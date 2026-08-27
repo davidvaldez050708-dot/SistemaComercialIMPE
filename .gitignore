@@ -1,0 +1,20 @@
+# Configuración privada
+.env
+config/database.local.php
+config/api_keys.php
+
+# Archivos del sistema operativo
+.DS_Store
+Thumbs.db
+
+# Visual Studio Code
+.vscode/
+
+# Respaldos
+*.sql
+backups/
+
+# Archivos temporales
+*.log
+tmp/
+
