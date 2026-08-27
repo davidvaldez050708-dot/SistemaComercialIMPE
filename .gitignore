@@ -12,9 +12,19 @@ Thumbs.db
 
 # Respaldos
 *.sql
+!database/sistema_comercial_impe.sql
+
 backups/
 
 # Archivos temporales
 *.log
 tmp/
 
+/vendor/
+config/mail_config.php
+
+# Archivos temporales de pruebas
+prueba_correo.php
+prueba_bd.php
+generar_password.php
+prueba_denue.php

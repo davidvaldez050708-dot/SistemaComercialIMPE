@@ -1,0 +1,498 @@
+* {
+    font-family: 'Manrope', sans-serif;
+}
+
+body {
+    background-color: #f5f7fa;
+}
+
+.login-page {
+    min-height: 100vh;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    padding: 20px;
+
+    position: relative;
+    overflow: hidden;
+}
+
+/* Decoración de fondo */
+
+.login-page::before {
+    content: "";
+
+    position: absolute;
+
+    width: 500px;
+    height: 500px;
+
+    left: -180px;
+    bottom: -220px;
+
+    border-radius: 50%;
+
+    background-color: rgba(20, 61, 125, 0.035);
+}
+
+.login-page::after {
+    content: "";
+
+    position: absolute;
+
+    width: 400px;
+    height: 400px;
+
+    right: -160px;
+    top: -200px;
+
+    border-radius: 50%;
+
+    background-color: rgba(20, 61, 125, 0.03);
+}
+
+
+/* Tarjeta */
+
+.login-card {
+    width: 100%;
+    max-width: 410px;
+
+    padding: 40px 36px 28px;
+
+    background-color: #ffffff;
+
+    border-radius: 12px;
+
+    box-shadow:
+        0 12px 40px
+        rgba(28, 46, 74, 0.10);
+
+    position: relative;
+    z-index: 1;
+}
+
+
+/* Logo temporal */
+
+.logo-placeholder {
+    width: 65px;
+    height: 65px;
+
+    border: 2px solid #164487;
+    border-radius: 12px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    color: #164487;
+
+    font-size: 28px;
+}
+
+.login-logo {
+    max-width: 85px;
+    max-height: 85px;
+}
+
+
+/* Textos */
+
+.login-title {
+    font-size: 22px;
+    font-weight: 700;
+    color: #252525;
+    margin-bottom: 6px;
+}
+
+.login-subtitle {
+    font-size: 13px;
+    font-weight: 400;
+    color: #777777;
+}
+
+.login-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #4d4d4d;
+}
+
+
+/* Inputs */
+
+.login-input-group {
+    background-color: #f2f4f7;
+    border: 1px solid transparent;
+    border-radius: 7px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+}
+
+.login-input-group .input-group-text,
+.login-input-group .form-control,
+.login-input-group .password-toggle {
+    background-color: #f2f4f7 !important;
+    border: none !important;
+}
+
+.login-input-group .input-group-text {
+    color: #9098a5;
+    padding-left: 14px;
+}
+
+.login-input-group .form-control {
+    height: 46px;
+    font-size: 13px;
+    color: #333333;
+    box-shadow: none !important;
+}
+
+.login-input-group .form-control::placeholder {
+    color: #7c7c7c;
+}
+
+.login-input-group .form-control:focus {
+    background-color: #f2f4f7 !important;
+    box-shadow: none !important;
+}
+
+/* Borde azul al seleccionar cualquier parte del campo */
+.login-input-group:focus-within {
+    border-color: #17478c;
+}
+
+/* Botón mostrar/ocultar contraseña */
+
+.password-toggle {
+    color: #7c8797;
+    padding-left: 14px;
+    padding-right: 14px;
+    box-shadow: none !important;
+}
+
+.password-toggle:hover,
+.password-toggle:focus,
+.password-toggle:active {
+    background-color: #f2f4f7 !important;
+    color: #17478c !important;
+    box-shadow: none !important;
+    outline: none !important;
+}
+
+
+/* Recuperación */
+
+.forgot-link {
+    font-size: 12px;
+    font-weight: 600;
+
+    color: #17478c;
+
+    text-decoration: none;
+}
+
+.forgot-link:hover {
+    text-decoration: underline;
+}
+
+
+/* Botón principal */
+
+.btn-login {
+    height: 46px;
+    background-color: #123c82;
+    color: #ffffff;
+    border-radius: 7px;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.btn-login:hover {
+    background-color: #0e326e;
+
+    color: #ffffff;
+}
+
+
+/* Footer */
+
+.login-footer {
+    border-top: 1px solid #eceff3;
+
+    margin-top: 25px;
+    padding-top: 18px;
+
+    text-align: center;
+
+    font-size: 10px;
+}
+
+.login-footer a {
+    color: #777777;
+    text-decoration: none;
+}
+
+.login-footer a:hover {
+    color: #17478c;
+}
+
+.login-footer span {
+    margin: 0 7px;
+    color: #aaaaaa;
+}
+
+/* Mensajes del login */
+
+.login-alert {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    padding: 10px 12px;
+    margin-bottom: 22px;
+
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.4;
+
+    border-radius: 7px;
+}
+
+.login-alert i {
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+.login-alert.alert-danger {
+    background-color: #fff3f3;
+    border-color: #f4c2c2;
+    color: #b42318;
+}
+
+.login-alert-warning {
+    background-color: #fff8e8;
+    border-color: #f1d89b;
+    color: #8a6116;
+}
+
+.back-login-link {
+    font-size: 12px;
+    font-weight: 600;
+
+    color: #17478c;
+
+    text-decoration: none;
+}
+
+.back-login-link:hover {
+    color: #123c82;
+    text-decoration: underline;
+}
+
+/* Modal de recuperación de contraseña */
+
+.recovery-modal-dialog {
+    max-width: 420px;
+    padding: 15px;
+}
+
+.recovery-modal {
+    border: none;
+    border-radius: 14px;
+
+    box-shadow:
+        0 18px 50px
+        rgba(28, 46, 74, 0.16);
+
+    overflow: hidden;
+}
+
+.recovery-modal .modal-body {
+    padding: 32px 30px 28px;
+}
+
+
+/* Icono principal */
+
+.recovery-modal-icon {
+    width: 64px;
+    height: 64px;
+
+    margin: 0 auto 18px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 50%;
+
+    background-color: #edf3fb;
+
+    color: #17478c;
+
+    font-size: 27px;
+}
+
+
+/* Título */
+
+.recovery-modal-title {
+    margin-bottom: 10px;
+
+    text-align: center;
+
+    font-size: 19px;
+    font-weight: 700;
+
+    color: #252525;
+}
+
+
+/* Texto */
+
+.recovery-modal-text {
+    margin-bottom: 22px;
+
+    text-align: center;
+
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 1.6;
+
+    color: #6d7480;
+}
+
+.recovery-modal-text strong {
+    font-weight: 700;
+    color: #424853;
+}
+
+
+/* Contenedor de indicaciones */
+
+.recovery-modal-info {
+    padding: 15px;
+
+    background-color: #f6f8fb;
+
+    border-radius: 9px;
+}
+
+
+/* Cada indicación */
+
+.recovery-info-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 11px;
+
+    padding: 8px 0;
+
+    font-size: 11px;
+    line-height: 1.5;
+
+    color: #5d6470;
+}
+
+.recovery-info-item + .recovery-info-item {
+    border-top: 1px solid #e7eaf0;
+}
+
+
+/* Iconos pequeños */
+
+.recovery-info-icon {
+    width: 25px;
+    min-width: 25px;
+    height: 25px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 6px;
+
+    background-color: #e9eff8;
+
+    color: #17478c;
+
+    font-size: 12px;
+}
+
+/* Modal obligatorio de cambio de contraseña */
+
+.cambio-password-dialog {
+    max-width: 430px;
+    padding: 15px;
+}
+
+.cambio-password-modal {
+    border: none;
+    border-radius: 14px;
+
+    box-shadow:
+        0 18px 50px
+        rgba(28, 46, 74, 0.18);
+
+    overflow: hidden;
+}
+
+.cambio-password-body {
+    padding: 36px 32px 30px;
+}
+
+
+/* Texto auxiliar */
+
+.password-help {
+    margin-top: 8px;
+    margin-bottom: 0;
+
+    font-size: 11px;
+    font-weight: 400;
+
+    color: #7b8491;
+}
+
+
+/* Fondo del modal */
+
+.modal-backdrop.show {
+    opacity: 0.35;
+}
+
+
+@media (max-width: 480px) {
+
+    .cambio-password-dialog {
+        margin-left: 10px;
+        margin-right: 10px;
+        padding: 0;
+    }
+
+    .cambio-password-body {
+        padding: 30px 24px 26px;
+    }
+
+}
+
+
+/* Fondo detrás del modal */
+
+.modal-backdrop.show {
+    opacity: 0.35;
+}
+
+
+/* Responsive */
+
+@media (max-width: 480px) {
+
+    .login-card {
+        padding: 30px 24px 24px;
+    }
+
+}
