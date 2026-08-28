@@ -52,9 +52,12 @@ unset($_SESSION['mostrar_modal_recuperacion']);
         <!-- Icono institucional temporal -->
         <div class="text-center mb-4">
 
-            <div class="logo-placeholder mx-auto">
+            <div class="login-brand">
 
-                <i class="bi bi-key"></i>
+                <img
+                    src="<?= BASE_URL ?>public/img/brand/porcayo-grupo.png"
+                    alt="Grupo Porcayo"
+                    class="login-brand-logo">
 
             </div>
 

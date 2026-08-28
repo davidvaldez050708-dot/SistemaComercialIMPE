@@ -7,7 +7,7 @@
     <meta name="viewport"
           content="width=device-width, initial-scale=1.0">
 
-    <title>Portal Institucional</title>
+    <title>Portal Institucional | Grupo Porcayo</title>
 
     <!-- Fuente Manrope -->
     <link
@@ -38,20 +38,12 @@
     <div class="login-card">
 
         <!-- Logo -->
-        <div class="text-center mb-4">
-
-            <!--
-            Cuando se defina la marca:
+        <div class="login-brand">
 
             <img
-                src="<?= BASE_URL ?>public/img/logo.png"
-                alt="Logo institucional"
-                class="login-logo">
-            -->
-
-            <div class="logo-placeholder mx-auto">
-                <i class="bi bi-building"></i>
-            </div>
+                src="<?= BASE_URL ?>public/img/brand/porcayo-grupo.png"
+                alt="Grupo Porcayo"
+                class="login-brand-logo">
 
         </div>
 

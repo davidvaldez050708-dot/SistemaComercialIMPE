@@ -86,6 +86,11 @@ switch ($controller) {
         $controllerInstance = new HomeController();
         break;
 
+    case 'usuario':
+        require_once __DIR__ . '/app/controllers/UsuarioController.php';
+        $controllerInstance = new UsuarioController();
+        break;
+
     default:
         die('Controlador no válido.');
 }

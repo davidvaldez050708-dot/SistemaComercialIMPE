@@ -34,7 +34,7 @@ body {
 
     border-radius: 50%;
 
-    background-color: rgba(20, 61, 125, 0.035);
+    background-color: rgba(34, 58, 132, 0.035);
 }
 
 .login-page::after {
@@ -50,7 +50,7 @@ body {
 
     border-radius: 50%;
 
-    background-color: rgba(20, 61, 125, 0.03);
+    background-color: rgba(0, 152, 127, 0.025);
 }
 
 
@@ -77,20 +77,22 @@ body {
 
 /* Logo temporal */
 
-.logo-placeholder {
-    width: 65px;
-    height: 65px;
-
-    border: 2px solid #164487;
-    border-radius: 12px;
-
+.login-brand {
     display: flex;
-    align-items: center;
     justify-content: center;
+    align-items: center;
 
-    color: #164487;
+    margin-bottom: 22px;
+}
 
-    font-size: 28px;
+.login-brand-logo {
+    display: block;
+
+    width: 100%;
+    max-width: 165px;
+    height: auto;
+
+    object-fit: contain;
 }
 
 .login-logo {
@@ -161,7 +163,7 @@ body {
 
 /* Borde azul al seleccionar cualquier parte del campo */
 .login-input-group:focus-within {
-    border-color: #17478c;
+    border-color: #0563A6;
 }
 
 /* Botón mostrar/ocultar contraseña */
@@ -177,7 +179,7 @@ body {
 .password-toggle:focus,
 .password-toggle:active {
     background-color: #f2f4f7 !important;
-    color: #17478c !important;
+    color: #223A84 !important;
     box-shadow: none !important;
     outline: none !important;
 }
@@ -189,30 +191,32 @@ body {
     font-size: 12px;
     font-weight: 600;
 
-    color: #17478c;
+    color: #0A8F7A;
 
     text-decoration: none;
 }
 
 .forgot-link:hover {
+    color: #087766;
     text-decoration: underline;
 }
-
 
 /* Botón principal */
 
 .btn-login {
     height: 46px;
-    background-color: #123c82;
+
+    background-color: #223A84;
     color: #ffffff;
+
     border-radius: 7px;
+
     font-size: 13px;
     font-weight: 700;
 }
 
 .btn-login:hover {
-    background-color: #0e326e;
-
+    background-color: #1C2544;
     color: #ffffff;
 }
 
@@ -282,13 +286,13 @@ body {
     font-size: 12px;
     font-weight: 600;
 
-    color: #17478c;
+    color: #0A8F7A;
 
     text-decoration: none;
 }
 
 .back-login-link:hover {
-    color: #123c82;
+    color: #087766;
     text-decoration: underline;
 }
 

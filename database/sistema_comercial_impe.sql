@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 27-08-2026 a las 17:02:25
+-- Tiempo de generación: 27-08-2026 a las 21:33:03
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.2.12
 
@@ -58,6 +58,7 @@ CREATE TABLE `usuarios` (
   `nombre` varchar(100) NOT NULL,
   `apellidos` varchar(150) NOT NULL,
   `telefono` varchar(20) DEFAULT NULL,
+  `foto_perfil` varchar(255) DEFAULT NULL,
   `correo` varchar(150) NOT NULL,
   `usuario` varchar(80) NOT NULL,
   `password` varchar(255) NOT NULL,
@@ -65,15 +66,17 @@ CREATE TABLE `usuarios` (
   `estado` tinyint(1) NOT NULL DEFAULT 1,
   `ultimo_acceso` datetime DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `requiere_cambio_password` tinyint(1) NOT NULL DEFAULT 0,
+  `password_temporal_expira` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `usuarios`
 --
 
-INSERT INTO `usuarios` (`id`, `nombre`, `apellidos`, `telefono`, `correo`, `usuario`, `password`, `rol_id`, `estado`, `ultimo_acceso`, `created_at`, `updated_at`) VALUES
-(1, 'Administrador', 'Sistema', NULL, 'admin@impe.local', 'admin', '$2y$10$L9wOK04gsm3yeo7l8Ssn7.IcxUJXX0INo3QClSiOZ4AP1PHBXGRSG', 1, 1, NULL, '2026-08-27 15:01:42', '2026-08-27 15:01:42');
+INSERT INTO `usuarios` (`id`, `nombre`, `apellidos`, `telefono`, `foto_perfil`, `correo`, `usuario`, `password`, `rol_id`, `estado`, `ultimo_acceso`, `created_at`, `updated_at`, `requiere_cambio_password`, `password_temporal_expira`) VALUES
+(1, 'Administrador', 'Sistema', NULL, NULL, 'davidvaldez050708@gmail.com', 'admin', '$2y$10$C3du38JsQDJ970uQY8AJR.pYGsduT5D/EytrTg5KAAVIc9DlHEP..', 1, 1, '2026-08-27 13:12:35', '2026-08-27 15:01:42', '2026-08-27 19:12:35', 0, NULL);
 
 --
 -- Índices para tablas volcadas

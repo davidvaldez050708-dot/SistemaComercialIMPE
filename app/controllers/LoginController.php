@@ -176,6 +176,9 @@ class LoginController
         $_SESSION['usuario'] =
             $usuario['usuario'];
 
+        $_SESSION['foto_perfil'] =
+            $usuario['foto_perfil'] ?? '';
+
         $_SESSION['rol_id'] =
             $usuario['rol_id'];
 
