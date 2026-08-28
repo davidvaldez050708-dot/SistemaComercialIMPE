@@ -142,10 +142,10 @@ $fechaLegible = function ($fecha) {
                             <div class="table-actions">
                                 <button
                                     type="button"
-                                    class="table-action-button"
+                                    class="table-action-button btn-ver-usuario"
                                     aria-label="Ver detalle"
-                                    data-bs-toggle="modal"
-                                    data-bs-target="#modalDetalleUsuario"
+                                    data-bs-toggle="offcanvas"
+                                    data-bs-target="#offcanvasDetalleUsuario"
                                     data-iniciales="<?= $texto($iniciales) ?>"
                                     data-foto-perfil="<?= $texto($fotoPerfilUrl) ?>"
                                     data-nombre-completo="<?= $texto($nombreCompleto) ?>"

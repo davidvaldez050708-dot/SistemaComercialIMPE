@@ -143,7 +143,7 @@ $seleccionado = function ($actual, $valor) {
 
             <button
                 type="button"
-                class="btn btn-system-primary module-new-button"
+                class="btn btn-new-user"
                 data-bs-toggle="modal"
                 data-bs-target="#modalCrearUsuario">
                 <i class="bi bi-person-plus me-2"></i>
@@ -169,145 +169,353 @@ $seleccionado = function ($actual, $valor) {
 
 </section>
 
+<!-- =========================================================
+     DETALLE DEL USUARIO
+     Panel lateral derecho
+     ========================================================= -->
+
 <div
-    class="modal fade"
-    id="modalDetalleUsuario"
+    class="offcanvas offcanvas-end user-detail-panel"
     tabindex="-1"
-    aria-labelledby="modalDetalleUsuarioTitulo"
-    aria-hidden="true">
+    id="offcanvasDetalleUsuario"
+    aria-labelledby="offcanvasDetalleUsuarioTitulo">
 
-    <div class="modal-dialog modal-dialog-centered system-detail-dialog">
-        <div class="modal-content system-form-modal">
-            <div class="modal-header">
-                <div>
-                    <h2 class="modal-title" id="modalDetalleUsuarioTitulo">
-                        Detalle del usuario
-                    </h2>
-                    <p class="modal-subtitle">
-                        Información general de la cuenta
-                    </p>
-                </div>
+    <!-- Encabezado -->
+    <div class="offcanvas-header user-detail-header">
 
-                <button
-                    type="button"
-                    class="btn-close"
-                    data-bs-dismiss="modal"
-                    aria-label="Cerrar">
-                </button>
-            </div>
+        <div>
 
-            <div class="modal-body">
-                <div class="detail-profile">
-                    <div class="detail-avatar-wrap">
-                        <img
-                            src=""
-                            class="detail-avatar-image d-none"
-                            id="detalle_foto_perfil"
-                            alt="Foto de perfil">
+            <h5
+                class="user-detail-title"
+                id="offcanvasDetalleUsuarioTitulo">
 
-                        <div class="detail-avatar" id="detalle_iniciales">
-                            --
-                        </div>
-                    </div>
+                Detalle del usuario
 
-                    <div>
-                        <h3 id="detalle_nombre_completo">
-                            Nombre del usuario
-                        </h3>
-                        <p id="detalle_rol_resumen">
-                            Rol del usuario
-                        </p>
-                    </div>
-                </div>
+            </h5>
 
-                <div class="detail-section">
-                    <div class="detail-section-title">
-                        <span>
-                            <i class="bi bi-person"></i>
-                        </span>
-                        Información de la cuenta
-                    </div>
+            <p class="user-detail-subtitle">
+                Información general de la cuenta
+            </p>
 
-                    <div class="detail-table">
-                        <div class="detail-row">
-                            <span>Usuario</span>
-                            <strong id="detalle_usuario"></strong>
-                        </div>
-
-                        <div class="detail-row">
-                            <span>Correo</span>
-                            <strong id="detalle_correo"></strong>
-                        </div>
-
-                        <div class="detail-row">
-                            <span>Teléfono</span>
-                            <strong id="detalle_telefono"></strong>
-                        </div>
-
-                        <div class="detail-row">
-                            <span>Estado</span>
-                            <strong>
-                                <span
-                                    class="status-pill"
-                                    id="detalle_estado">
-                                </span>
-                            </strong>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="detail-section">
-                    <div class="detail-section-title">
-                        <span>
-                            <i class="bi bi-shield"></i>
-                        </span>
-                        Acceso y seguridad
-                    </div>
-
-                    <div class="detail-grid detail-grid-compact">
-                        <div class="detail-row detail-row-card">
-                            <span>Rol</span>
-                            <strong id="detalle_rol"></strong>
-                        </div>
-
-                        <div class="detail-row detail-row-card">
-                            <span>Fecha de creación</span>
-                            <strong id="detalle_created_at"></strong>
-                        </div>
-
-                        <div class="detail-row detail-row-card">
-                            <span>Último acceso</span>
-                            <strong id="detalle_ultimo_acceso"></strong>
-                        </div>
-
-                        <div class="detail-row detail-row-card">
-                            <span>Última actualización</span>
-                            <strong id="detalle_updated_at"></strong>
-                        </div>
-
-                        <div class="detail-row detail-row-card detail-item-full">
-                            <span>Estado de seguridad</span>
-                            <strong
-                                class="security-status"
-                                id="detalle_seguridad">
-                                <i class="bi bi-check-circle"></i>
-                                <span>Acceso normal</span>
-                            </strong>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="modal-footer">
-                <button
-                    type="button"
-                    class="btn btn-system-primary detail-close-button"
-                    data-bs-dismiss="modal">
-                    Cerrar
-                </button>
-            </div>
         </div>
+
+        <button
+            type="button"
+            class="btn-close user-detail-close"
+            data-bs-dismiss="offcanvas"
+            aria-label="Cerrar">
+        </button>
+
     </div>
+
+
+    <div class="offcanvas-body user-detail-body">
+
+        <!-- Perfil -->
+        <div class="user-detail-profile">
+
+            <div class="user-detail-avatar-wrapper">
+
+                <img
+                    id="detalleFoto"
+                    class="user-detail-avatar-image d-none"
+                    src=""
+                    alt="Foto de perfil">
+
+                <div
+                    id="detalleIniciales"
+                    class="user-detail-avatar">
+
+                    US
+
+                </div>
+
+            </div>
+
+
+            <div class="user-detail-profile-info">
+
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+
+                    <h3
+                        id="detalleNombre"
+                        class="user-detail-name">
+
+                        Usuario
+
+                    </h3>
+
+                    <span
+                        id="detalleEstadoBadge"
+                        class="user-detail-status">
+
+                        Activo
+
+                    </span>
+
+                </div>
+
+                <p
+                    id="detalleRolPrincipal"
+                    class="user-detail-role">
+
+                    Rol
+
+                </p>
+
+                <p
+                    id="detalleCorreoPrincipal"
+                    class="user-detail-email">
+
+                    correo@ejemplo.com
+
+                </p>
+
+            </div>
+
+        </div>
+
+
+        <!-- Tabs -->
+        <div class="user-detail-tabs">
+
+            <button
+                type="button"
+                class="user-detail-tab active"
+                data-user-tab="cuenta">
+
+                Información de la cuenta
+
+            </button>
+
+            <button
+                type="button"
+                class="user-detail-tab"
+                data-user-tab="seguridad">
+
+                Acceso y seguridad
+
+            </button>
+
+        </div>
+
+
+        <!-- Información de la cuenta -->
+        <div
+            class="user-detail-tab-content active"
+            data-user-content="cuenta">
+
+
+            <div class="user-detail-info-row">
+
+                <div class="user-detail-info-icon">
+                    <i class="bi bi-person"></i>
+                </div>
+
+                <div class="user-detail-info-label">
+                    Usuario
+                </div>
+
+                <div
+                    id="detalleUsuario"
+                    class="user-detail-info-value">
+                    —
+                </div>
+
+            </div>
+
+
+            <div class="user-detail-info-row">
+
+                <div class="user-detail-info-icon">
+                    <i class="bi bi-person-vcard"></i>
+                </div>
+
+                <div class="user-detail-info-label">
+                    Nombre completo
+                </div>
+
+                <div
+                    id="detalleNombreCompleto"
+                    class="user-detail-info-value">
+                    —
+                </div>
+
+            </div>
+
+
+            <div class="user-detail-info-row">
+
+                <div class="user-detail-info-icon">
+                    <i class="bi bi-telephone"></i>
+                </div>
+
+                <div class="user-detail-info-label">
+                    Teléfono
+                </div>
+
+                <div
+                    id="detalleTelefono"
+                    class="user-detail-info-value">
+                    No registrado
+                </div>
+
+            </div>
+
+
+            <div class="user-detail-info-row">
+
+                <div class="user-detail-info-icon">
+                    <i class="bi bi-envelope"></i>
+                </div>
+
+                <div class="user-detail-info-label">
+                    Correo
+                </div>
+
+                <div
+                    id="detalleCorreo"
+                    class="user-detail-info-value">
+                    —
+                </div>
+
+            </div>
+
+
+            <div class="user-detail-info-row">
+
+                <div class="user-detail-info-icon">
+                    <i class="bi bi-calendar3"></i>
+                </div>
+
+                <div class="user-detail-info-label">
+                    Fecha de registro
+                </div>
+
+                <div
+                    id="detalleFechaCreacion"
+                    class="user-detail-info-value">
+                    —
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- Acceso y seguridad -->
+        <div
+            class="user-detail-tab-content"
+            data-user-content="seguridad">
+
+
+            <div class="user-detail-info-row">
+
+                <div class="user-detail-info-icon">
+                    <i class="bi bi-shield-check"></i>
+                </div>
+
+                <div class="user-detail-info-label">
+                    Rol
+                </div>
+
+                <div
+                    id="detalleRol"
+                    class="user-detail-info-value">
+                    —
+                </div>
+
+            </div>
+
+
+            <div class="user-detail-info-row">
+
+                <div class="user-detail-info-icon">
+                    <i class="bi bi-clock-history"></i>
+                </div>
+
+                <div class="user-detail-info-label">
+                    Último acceso
+                </div>
+
+                <div
+                    id="detalleUltimoAcceso"
+                    class="user-detail-info-value">
+                    —
+                </div>
+
+            </div>
+
+
+            <div class="user-detail-info-row">
+
+                <div class="user-detail-info-icon">
+                    <i class="bi bi-arrow-repeat"></i>
+                </div>
+
+                <div class="user-detail-info-label">
+                    Última actualización
+                </div>
+
+                <div
+                    id="detalleActualizacion"
+                    class="user-detail-info-value">
+                    —
+                </div>
+
+            </div>
+
+
+            <div class="user-detail-security">
+
+                <div class="user-detail-security-icon">
+                    <i class="bi bi-check-circle"></i>
+                </div>
+
+                <div>
+
+                    <span class="user-detail-security-label">
+                        Estado de seguridad
+                    </span>
+
+                    <strong id="detalleSeguridad">
+                        Acceso normal
+                    </strong>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- Footer -->
+    <div class="user-detail-footer">
+
+        <button
+            type="button"
+            class="btn user-detail-secondary-button"
+            data-bs-dismiss="offcanvas">
+
+            Cerrar
+
+        </button>
+
+        <button
+            type="button"
+            class="btn user-detail-primary-button"
+            id="btnEditarDesdeDetalle">
+
+            <i class="bi bi-pencil me-2"></i>
+
+            Editar usuario
+
+        </button>
+
+    </div>
+
 </div>
 
 <div
@@ -319,23 +527,28 @@ $seleccionado = function ($actual, $valor) {
 
     <div class="modal-dialog modal-dialog-centered modal-lg system-form-dialog">
         <div class="modal-content system-form-modal">
-            <div class="modal-header">
-                <div>
-                    <h2 class="modal-title" id="modalCrearUsuarioTitulo">
-                        Nuevo usuario
-                    </h2>
-                    <p class="modal-subtitle">
-                        Registra una cuenta de acceso al sistema
-                    </p>
-                </div>
+                    <div class="modal-header system-form-modal-header">
 
-                <button
-                    type="button"
-                    class="btn-close"
-                    data-bs-dismiss="modal"
-                    aria-label="Cerrar">
-                </button>
+            <div>
+
+                <h5 class="system-form-modal-title">
+                    Nuevo usuario
+                </h5>
+
+                <p class="system-form-modal-subtitle">
+                    Registra una nueva cuenta de acceso al sistema
+                </p>
+
             </div>
+
+            <button
+                type="button"
+                class="btn-close"
+                data-bs-dismiss="modal"
+                aria-label="Cerrar">
+            </button>
+
+        </div>
 
             <form
                 action="<?= BASE_URL ?>index.php?controller=usuario&action=guardar"
@@ -505,12 +718,14 @@ $seleccionado = function ($actual, $valor) {
                 <div class="modal-footer">
                     <button
                         type="button"
-                        class="btn btn-system-light"
+                        class="btn btn-system-cancel"
                         data-bs-dismiss="modal">
                         Cancelar
                     </button>
 
-                    <button type="submit" class="btn btn-system-primary">
+                    <button
+                        type="submit"
+                        class="btn btn-system-save">
                         <i class="bi bi-check2-circle me-2"></i>
                         Guardar usuario
                     </button>
@@ -529,23 +744,28 @@ $seleccionado = function ($actual, $valor) {
 
     <div class="modal-dialog modal-dialog-centered modal-lg system-form-dialog">
         <div class="modal-content system-form-modal">
-            <div class="modal-header">
-                <div>
-                    <h2 class="modal-title" id="modalEditarUsuarioTitulo">
-                        Editar usuario
-                    </h2>
-                    <p class="modal-subtitle">
-                        Actualiza los datos de acceso del usuario
-                    </p>
-                </div>
+                    <div class="modal-header system-form-modal-header">
 
-                <button
-                    type="button"
-                    class="btn-close"
-                    data-bs-dismiss="modal"
-                    aria-label="Cerrar">
-                </button>
+            <div>
+
+                <h5 class="system-form-modal-title">
+                    Editar usuario
+                </h5>
+
+                <p class="system-form-modal-subtitle">
+                    Actualiza la información y acceso de la cuenta
+                </p>
+
             </div>
+
+            <button
+                type="button"
+                class="btn-close"
+                data-bs-dismiss="modal"
+                aria-label="Cerrar">
+            </button>
+
+        </div>
 
             <form
                 action="<?= BASE_URL ?>index.php?controller=usuario&action=actualizar"
@@ -745,12 +965,14 @@ $seleccionado = function ($actual, $valor) {
                 <div class="modal-footer">
                     <button
                         type="button"
-                        class="btn btn-system-light"
+                        class="btn btn-system-cancel"
                         data-bs-dismiss="modal">
+
                         Cancelar
+
                     </button>
 
-                    <button type="submit" class="btn btn-system-primary">
+                    <button type="submit" class="btn btn-system-save">
                         <i class="bi bi-check2-circle me-2"></i>
                         Actualizar usuario
                     </button>
@@ -806,14 +1028,14 @@ $seleccionado = function ($actual, $valor) {
                 <div class="modal-footer">
                     <button
                         type="button"
-                        class="btn btn-system-light"
+                        class="btn btn-system-cancel"
                         data-bs-dismiss="modal">
                         Cancelar
                     </button>
 
                     <button
                         type="submit"
-                        class="btn btn-system-primary"
+                        class="btn btn-system-save"
                         id="estado_usuario_boton">
                         <i class="bi bi-toggle-on me-2"></i>
                         Confirmar
@@ -863,7 +1085,9 @@ document.addEventListener('DOMContentLoaded', function () {
     const filtrosForm = document.getElementById('usuariosFiltrosForm');
     const tablaContenido = document.getElementById('usuariosTablaContenido');
     const limpiarFiltros = document.getElementById('limpiarFiltrosUsuarios');
-    const modalDetalle = document.getElementById('modalDetalleUsuario');
+    const panelDetalle = document.getElementById('offcanvasDetalleUsuario');
+    const botonEditarDesdeDetalle =
+        document.getElementById('btnEditarDesdeDetalle');
     const modalEditar = document.getElementById('modalEditarUsuario');
     const modalEstado = document.getElementById('modalEstadoUsuario');
     const modalAbierto = '<?= htmlspecialchars($modalAbierto, ENT_QUOTES, 'UTF-8') ?>';
@@ -871,6 +1095,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     let temporizadorBusqueda = null;
     let consultaActual = null;
+    let botonEditarActual = null;
 
     const actualizarEnlaceLimpiar = function () {
         if (!filtrosForm || !limpiarFiltros) {
@@ -984,13 +1209,17 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    if (modalDetalle) {
-        modalDetalle.addEventListener('show.bs.modal', function (event) {
+    if (panelDetalle) {
+        panelDetalle.addEventListener('show.bs.offcanvas', function (event) {
             const boton = event.relatedTarget;
 
             if (!boton) {
                 return;
             }
+
+            botonEditarActual = boton
+                .closest('.table-actions')
+                ?.querySelector('[data-bs-target="#modalEditarUsuario"]');
 
             const asignarTexto = function (id, valor) {
                 const elemento = document.getElementById(id);
@@ -1009,40 +1238,39 @@ document.addEventListener('DOMContentLoaded', function () {
                 boton.getAttribute('data-seguridad-tipo') || 'normal';
             const seguridadTexto =
                 boton.getAttribute('data-seguridad') || 'Acceso normal';
-            const estadoElemento = document.getElementById('detalle_estado');
             const telefonoElemento =
-                document.getElementById('detalle_telefono');
+                document.getElementById('detalleTelefono');
             const seguridadElemento =
-                document.getElementById('detalle_seguridad');
+                document.getElementById('detalleSeguridad');
             const fotoPerfil = boton.getAttribute('data-foto-perfil') || '';
             const fotoPerfilElemento =
-                document.getElementById('detalle_foto_perfil');
+                document.getElementById('detalleFoto');
             const inicialesElemento =
-                document.getElementById('detalle_iniciales');
+                document.getElementById('detalleIniciales');
+            const estadoBadge =
+                document.getElementById('detalleEstadoBadge');
+            const seguridadIcono =
+                document.querySelector('.user-detail-security-icon i');
 
+            asignarTexto('detalleIniciales', boton.getAttribute('data-iniciales') || 'US');
+            asignarTexto('detalleNombre', boton.getAttribute('data-nombre-completo'));
+            asignarTexto('detalleNombreCompleto', boton.getAttribute('data-nombre-completo'));
+            asignarTexto('detalleRolPrincipal', boton.getAttribute('data-rol'));
+            asignarTexto('detalleCorreoPrincipal', boton.getAttribute('data-correo'));
+            asignarTexto('detalleUsuario', boton.getAttribute('data-usuario'));
+            asignarTexto('detalleCorreo', boton.getAttribute('data-correo'));
+            asignarTexto('detalleTelefono', telefono);
+            asignarTexto('detalleRol', boton.getAttribute('data-rol'));
             asignarTexto(
-                'detalle_iniciales',
-                boton.getAttribute('data-iniciales') || '--'
-            );
-            asignarTexto(
-                'detalle_nombre_completo',
-                boton.getAttribute('data-nombre-completo')
-            );
-            asignarTexto('detalle_rol_resumen', boton.getAttribute('data-rol'));
-            asignarTexto('detalle_usuario', boton.getAttribute('data-usuario'));
-            asignarTexto('detalle_correo', boton.getAttribute('data-correo'));
-            asignarTexto('detalle_telefono', telefono);
-            asignarTexto('detalle_rol', boton.getAttribute('data-rol'));
-            asignarTexto(
-                'detalle_ultimo_acceso',
+                'detalleUltimoAcceso',
                 boton.getAttribute('data-ultimo-acceso')
             );
             asignarTexto(
-                'detalle_created_at',
+                'detalleFechaCreacion',
                 boton.getAttribute('data-created-at')
             );
             asignarTexto(
-                'detalle_updated_at',
+                'detalleActualizacion',
                 boton.getAttribute('data-updated-at')
             );
 
@@ -1065,27 +1293,54 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }
 
-            if (estadoElemento) {
-                estadoElemento.textContent = estadoTexto;
-                estadoElemento.className = 'status-pill ' +
+            if (estadoBadge) {
+                estadoBadge.textContent = estadoTexto;
+                estadoBadge.className = 'user-detail-status ' +
                     (estado === '1'
-                        ? 'status-pill-active'
-                        : 'status-pill-inactive');
+                        ? 'user-detail-status-active'
+                        : 'user-detail-status-inactive');
             }
 
             if (seguridadElemento) {
-                seguridadElemento.className = 'security-status ' +
-                    (seguridadTipo === 'pendiente'
-                        ? 'security-status-pending'
-                        : 'security-status-normal');
-                seguridadElemento.innerHTML =
-                    '<i class="bi ' +
+                seguridadElemento.textContent = seguridadTexto;
+            }
+
+            if (seguridadIcono) {
+                seguridadIcono.className = 'bi ' +
                     (seguridadTipo === 'pendiente'
                         ? 'bi-exclamation-circle'
-                        : 'bi-check-circle') +
-                    '"></i><span></span>';
-                seguridadElemento.querySelector('span').textContent =
-                    seguridadTexto;
+                        : 'bi-check-circle');
+            }
+        });
+    }
+
+    if (botonEditarDesdeDetalle) {
+        botonEditarDesdeDetalle.addEventListener('click', function () {
+            if (!botonEditarActual) {
+                return;
+            }
+
+            const abrirEditor = function () {
+                botonEditarActual.click();
+            };
+
+            if (panelDetalle) {
+                panelDetalle.addEventListener(
+                    'hidden.bs.offcanvas',
+                    abrirEditor,
+                    { once: true }
+                );
+
+                const offcanvas =
+                    bootstrap.Offcanvas.getInstance(panelDetalle);
+
+                if (offcanvas) {
+                    offcanvas.hide();
+                } else {
+                    abrirEditor();
+                }
+            } else {
+                abrirEditor();
             }
         });
     }
@@ -1186,5 +1441,46 @@ document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('.system-toast').forEach(function (toast) {
         new bootstrap.Toast(toast).show();
     });
+});
+
+document.addEventListener('DOMContentLoaded', function () {
+
+    const tabs =
+        document.querySelectorAll('.user-detail-tab');
+
+    tabs.forEach(function (tab) {
+
+        tab.addEventListener('click', function () {
+
+            const target =
+                tab.dataset.userTab;
+
+            tabs.forEach(function (item) {
+                item.classList.remove('active');
+            });
+
+            document
+                .querySelectorAll('.user-detail-tab-content')
+                .forEach(function (content) {
+
+                    content.classList.remove('active');
+
+                });
+
+            tab.classList.add('active');
+
+            const content =
+                document.querySelector(
+                    `[data-user-content="${target}"]`
+                );
+
+            if (content) {
+                content.classList.add('active');
+            }
+
+        });
+
+    });
+
 });
 </script>

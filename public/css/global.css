@@ -18,6 +18,15 @@
 
     --color-success-soft: #EAF7F4;
     --color-primary-soft: #EDF2FA;
+
+    --color-primary-dark: var(--color-navy);
+    --color-background: var(--color-bg);
+    --color-text-primary: var(--color-text);
+    --color-text-secondary: var(--color-text-soft);
+    --color-text-muted: var(--color-muted);
+    --radius-sm: 7px;
+    --radius-md: 10px;
+    --radius-lg: 12px;
 }
 
 html,
