@@ -24,13 +24,15 @@ $claseDataTerritorial =
         <div class="sidebar-brand-card">
 
             <img
-                src="<?= BASE_URL ?>public/img/brand/porcayo-grupo4.png"
+                src="<?= BASE_URL ?>public/img/brand/porcayo-grupo8.png"
                 alt="Grupo Porcayo"
                 class="sidebar-brand-logo">
 
         </div>
 
-       
+       <div class="sidebar-system-name">
+            Sistema Comercial
+        </div>
 
     </div>
 
@@ -158,10 +160,14 @@ $claseDataTerritorial =
         <div class="sidebar-brand-card">
 
             <img
-                src="<?= BASE_URL ?>public/img/brand/porcayo-grupo4.png"
+                src="<?= BASE_URL ?>public/img/brand/porcayo-grupo8.png"
                 alt="Grupo Porcayo"
                 class="sidebar-brand-logo">
 
+        </div>
+
+        <div class="sidebar-system-name">
+            Sistema Comercial
         </div>
 
     </div>
