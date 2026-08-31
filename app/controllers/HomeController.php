@@ -1,6 +1,8 @@
 <?php
 
 require_once __DIR__ . '/../models/UsuarioModel.php';
+require_once __DIR__ . '/../models/TerritorioModel.php';
+require_once __DIR__ . '/../helpers/PermissionHelper.php';
 
 class HomeController
 {
@@ -48,6 +50,18 @@ class HomeController
             case 5:
                 $subtituloPagina = 'Panel de Finanzas';
                 $vistaPanel = __DIR__ . '/../views/dashboard/finanzas.php';
+                break;
+
+            case 6:
+                $tituloPagina = 'Panel de Cuenta Clave';
+                $subtituloPagina = 'Gestión de vinculación institucional';
+
+                $modeloTerritorio = new TerritorioModel();
+                $resumenCuentaClave = $modeloTerritorio->obtenerResumenCuentaClave(
+                    (int)$_SESSION['usuario_id']
+                );
+
+                $vistaPanel = __DIR__ . '/../views/dashboard/cuenta_clave.php';
                 break;
 
             default:

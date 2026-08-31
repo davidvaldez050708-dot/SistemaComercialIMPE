@@ -1,12 +1,13 @@
 <?php
 
 require_once __DIR__ . '/../models/UsuarioModel.php';
+require_once __DIR__ . '/../helpers/PermissionHelper.php';
 
 class UsuarioController
 {
     public function index()
     {
-        $this->validarAdministrador();
+        $this->validarPermisoUsuario('usuarios.ver');
 
         $modeloUsuario = new UsuarioModel();
 
@@ -42,7 +43,7 @@ class UsuarioController
 
     public function tabla()
     {
-        $this->validarAdministrador();
+        $this->validarPermisoUsuario('usuarios.ver');
 
         $modeloUsuario = new UsuarioModel();
 
@@ -56,7 +57,7 @@ class UsuarioController
 
     public function guardar()
     {
-        $this->validarAdministrador();
+        $this->validarPermisoUsuario('usuarios.crear');
         $this->validarMetodoPost();
 
         $modeloUsuario = new UsuarioModel();
@@ -70,6 +71,10 @@ class UsuarioController
         }
 
         if (!empty($errores)) {
+            if (!empty($foto['nueva'])) {
+                $this->eliminarFotoPerfil($foto['ruta']);
+            }
+
             $this->volverConErrores('crear', $errores, $datos);
         }
 
@@ -83,6 +88,10 @@ class UsuarioController
         if ($modeloUsuario->crearUsuario($datos)) {
             $_SESSION['mensaje_usuario'] = 'Usuario creado correctamente.';
         } else {
+            if (!empty($foto['nueva'])) {
+                $this->eliminarFotoPerfil($foto['ruta']);
+            }
+
             $_SESSION['error_usuario'] = 'No fue posible crear el usuario.';
         }
 
@@ -91,7 +100,7 @@ class UsuarioController
 
     public function actualizar()
     {
-        $this->validarAdministrador();
+        $this->validarPermisoUsuario('usuarios.editar');
         $this->validarMetodoPost();
 
         $modeloUsuario = new UsuarioModel();
@@ -109,11 +118,34 @@ class UsuarioController
             $this->volverConErrores('editar', $errores, $datos);
         }
 
-        $foto = $this->procesarFotoPerfil($usuarioOriginal['foto_perfil'] ?? '');
+        $fotoActual = $usuarioOriginal['foto_perfil'] ?? '';
+        $quitarFoto = isset($_POST['quitar_foto_perfil']) &&
+            (string)$_POST['quitar_foto_perfil'] === '1';
+        $hayFotoNueva =
+            isset($_FILES['foto_perfil']) &&
+            $_FILES['foto_perfil']['error'] !== UPLOAD_ERR_NO_FILE;
+
+        if ($quitarFoto && $hayFotoNueva) {
+            $datos['ultimo_acceso'] = $usuarioOriginal['ultimo_acceso'] ?? null;
+            $datos['foto_perfil'] = $fotoActual;
+            $this->volverConErrores(
+                'editar',
+                ['No puedes quitar y reemplazar la fotografía al mismo tiempo.'],
+                $datos
+            );
+        }
+
+        $foto = $quitarFoto
+            ? [
+                'ruta' => null,
+                'error' => '',
+                'nueva' => false
+            ]
+            : $this->procesarFotoPerfil($fotoActual);
 
         if ($foto['error'] !== '') {
             $datos['ultimo_acceso'] = $usuarioOriginal['ultimo_acceso'] ?? null;
-            $datos['foto_perfil'] = $usuarioOriginal['foto_perfil'] ?? '';
+            $datos['foto_perfil'] = $fotoActual;
             $this->volverConErrores('editar', [$foto['error']], $datos);
         }
 
@@ -122,6 +154,17 @@ class UsuarioController
         if ($modeloUsuario->actualizarUsuario((int)$datos['id'], $datos)) {
             $_SESSION['mensaje_usuario'] = 'Usuario actualizado correctamente.';
 
+            if (
+                ($quitarFoto || !empty($foto['nueva'])) &&
+                $fotoActual !== '' &&
+                $fotoActual !== (string)($datos['foto_perfil'] ?? '')
+            ) {
+                $this->eliminarFotoPerfilSiNoCompartida(
+                    $modeloUsuario,
+                    $fotoActual
+                );
+            }
+
             if ((int)$datos['id'] === (int)$_SESSION['usuario_id']) {
                 $_SESSION['nombre'] = $datos['nombre'];
                 $_SESSION['apellidos'] = $datos['apellidos'];
@@ -129,6 +172,10 @@ class UsuarioController
                 $_SESSION['foto_perfil'] = $datos['foto_perfil'];
             }
         } else {
+            if (!empty($foto['nueva'])) {
+                $this->eliminarFotoPerfil($foto['ruta']);
+            }
+
             $_SESSION['error_usuario'] = 'No fue posible actualizar el usuario.';
         }
 
@@ -137,7 +184,7 @@ class UsuarioController
 
     public function cambiarEstado()
     {
-        $this->validarAdministrador();
+        $this->validarPermisoUsuario('usuarios.cambiar_estado');
         $this->validarMetodoPost();
 
         $modeloUsuario = new UsuarioModel();
@@ -188,7 +235,7 @@ class UsuarioController
 
     public function eliminar()
     {
-        $this->validarAdministrador();
+        $this->validarPermisoUsuario('usuarios.cambiar_estado');
         $this->validarMetodoPost();
 
         $modeloUsuario = new UsuarioModel();
@@ -230,7 +277,7 @@ class UsuarioController
         $this->redirigirAUsuarios();
     }
 
-    private function validarAdministrador()
+    private function validarPermisoUsuario($codigo)
     {
         if (!isset($_SESSION['usuario_id'])) {
             header(
@@ -241,7 +288,7 @@ class UsuarioController
             exit;
         }
 
-        if ((int)($_SESSION['rol_id'] ?? 0) !== 1) {
+        if (!tienePermiso($codigo)) {
             header(
                 'Location: ' .
                 BASE_URL .
@@ -298,7 +345,12 @@ class UsuarioController
 
     private function validarDatosCreacion($modeloUsuario, $datos)
     {
-        $errores = $this->validarDatosBase($modeloUsuario, $datos);
+        $errores = $this->validarDatosBase(
+            $modeloUsuario,
+            $datos,
+            null,
+            true
+        );
 
         if (strlen($datos['password']) < 8) {
             $errores[] = 'La contraseña debe tener al menos 8 caracteres.';
@@ -366,7 +418,12 @@ class UsuarioController
         );
     }
 
-    private function validarDatosBase($modeloUsuario, $datos, $idExcluir = null)
+    private function validarDatosBase(
+        $modeloUsuario,
+        $datos,
+        $idExcluir = null,
+        $requiereRolActivo = false
+    )
     {
         $errores = [];
 
@@ -392,7 +449,11 @@ class UsuarioController
             $errores[] = 'El usuario ya está registrado.';
         }
 
-        if ((int)$datos['rol_id'] <= 0 || !$modeloUsuario->existeRol((int)$datos['rol_id'])) {
+        $rolValido = $requiereRolActivo
+            ? $modeloUsuario->existeRolActivo((int)$datos['rol_id'])
+            : $modeloUsuario->existeRol((int)$datos['rol_id']);
+
+        if ((int)$datos['rol_id'] <= 0 || !$rolValido) {
             $errores[] = 'El rol seleccionado no es válido.';
         }
 
@@ -418,26 +479,30 @@ class UsuarioController
         ) {
             return [
                 'ruta' => $fotoActual,
-                'error' => ''
+                'error' => '',
+                'nueva' => false
             ];
         }
 
         if ($_FILES['foto_perfil']['error'] !== UPLOAD_ERR_OK) {
             return [
                 'ruta' => $fotoActual,
-                'error' => 'No fue posible cargar la foto de perfil.'
+                'error' => 'No fue posible cargar la foto de perfil.',
+                'nueva' => false
             ];
         }
 
         if ($_FILES['foto_perfil']['size'] > 2 * 1024 * 1024) {
             return [
                 'ruta' => $fotoActual,
-                'error' => 'La foto de perfil no debe superar 2 MB.'
+                'error' => 'La foto de perfil no debe superar 2 MB.',
+                'nueva' => false
             ];
         }
 
         $rutaTemporal = $_FILES['foto_perfil']['tmp_name'];
-        $tipoImagen = mime_content_type($rutaTemporal);
+        $finfo = new finfo(FILEINFO_MIME_TYPE);
+        $tipoImagen = $finfo->file($rutaTemporal);
         $extensiones = [
             'image/jpeg' => 'jpg',
             'image/png' => 'png',
@@ -447,7 +512,8 @@ class UsuarioController
         if (!isset($extensiones[$tipoImagen])) {
             return [
                 'ruta' => $fotoActual,
-                'error' => 'La foto de perfil debe ser JPG, PNG o WEBP.'
+                'error' => 'La foto de perfil debe ser JPG, PNG o WEBP.',
+                'nueva' => false
             ];
         }
 
@@ -471,14 +537,71 @@ class UsuarioController
         if (!move_uploaded_file($rutaTemporal, $rutaDestino)) {
             return [
                 'ruta' => $fotoActual,
-                'error' => 'No fue posible guardar la foto de perfil.'
+                'error' => 'No fue posible guardar la foto de perfil.',
+                'nueva' => false
             ];
         }
 
         return [
             'ruta' => $rutaPublica,
-            'error' => ''
+            'error' => '',
+            'nueva' => true
         ];
+    }
+
+    private function eliminarFotoPerfil($ruta)
+    {
+        $ruta = trim(str_replace('\\', '/', (string)$ruta));
+
+        if ($ruta === '' || strpos($ruta, '..') !== false) {
+            return false;
+        }
+
+        $ruta = ltrim($ruta, '/');
+        $directorioRelativo = 'public/uploads/usuarios/';
+
+        if (strpos($ruta, $directorioRelativo) !== 0) {
+            return false;
+        }
+
+        $extension = strtolower(pathinfo($ruta, PATHINFO_EXTENSION));
+
+        if (!in_array($extension, ['jpg', 'jpeg', 'png', 'webp'], true)) {
+            return false;
+        }
+
+        $directorioBase = realpath(ROOT_PATH . '/public/uploads/usuarios');
+
+        if ($directorioBase === false) {
+            return false;
+        }
+
+        $rutaArchivo = realpath(ROOT_PATH . '/' . $ruta);
+
+        if ($rutaArchivo === false || !is_file($rutaArchivo)) {
+            return false;
+        }
+
+        $directorioBase = rtrim(str_replace('\\', '/', $directorioBase), '/') . '/';
+        $rutaArchivoNormalizada = str_replace('\\', '/', $rutaArchivo);
+
+        if (strpos($rutaArchivoNormalizada, $directorioBase) !== 0) {
+            return false;
+        }
+
+        return @unlink($rutaArchivo);
+    }
+
+    private function eliminarFotoPerfilSiNoCompartida($modeloUsuario, $ruta)
+    {
+        if (
+            $ruta === '' ||
+            $modeloUsuario->contarUsuariosConFotoPerfil($ruta) > 0
+        ) {
+            return false;
+        }
+
+        return $this->eliminarFotoPerfil($ruta);
     }
 
     private function redirigirAUsuarios()

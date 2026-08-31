@@ -57,11 +57,11 @@ $fotoPerfilUrl = $fotoPerfil !== ''
 
     <link
         rel="stylesheet"
-        href="<?= BASE_URL ?>public/css/global.css">
+        href="<?= BASE_URL ?>public/css/global.css?v=<?= filemtime(ROOT_PATH . '/public/css/global.css') ?>">
 
     <link
         rel="stylesheet"
-        href="<?= BASE_URL ?>public/css/dashboard.css">
+        href="<?= BASE_URL ?>public/css/dashboard.css?v=<?= filemtime(ROOT_PATH . '/public/css/dashboard.css') ?>">
 
 </head>
 

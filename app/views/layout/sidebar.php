@@ -1,11 +1,19 @@
 <?php
 
+require_once __DIR__ . '/../../helpers/AvatarHelper.php';
+
 $opcionActiva = $opcionActiva ?? 'inicio';
-$idRol = (int)($_SESSION['rol_id'] ?? 0);
+$mostrarUsuarios = tienePermiso('usuarios.ver');
+$mostrarRoles = tienePermiso('roles.ver');
+$mostrarTerritorios = tienePermiso('territorios.ver');
+$mostrarDataTerritorial = tienePermiso('data_territorial.ver');
 
 $claseInicio = $opcionActiva === 'inicio' ? 'active' : '';
 $claseUsuarios = $opcionActiva === 'usuarios' ? 'active' : '';
 $claseRoles = $opcionActiva === 'roles' ? 'active' : '';
+$claseTerritorios = $opcionActiva === 'territorios' ? 'active' : '';
+$claseDataTerritorial =
+    $opcionActiva === 'data_territorial' ? 'active' : '';
 
 ?>
 
@@ -42,25 +50,61 @@ $claseRoles = $opcionActiva === 'roles' ? 'active' : '';
             </a>
         </div>
 
-        <?php if ($idRol === 1): ?>
+        <?php if ($mostrarUsuarios || $mostrarRoles || $mostrarTerritorios): ?>
 
             <div class="sidebar-section">
                 <p class="sidebar-section-title">
                     GESTIÓN
                 </p>
 
-                <a
-                    href="<?= BASE_URL ?>index.php?controller=usuario&action=index"
-                    class="sidebar-link <?= $claseUsuarios ?>">
-                    <i class="bi bi-people"></i>
-                    Usuarios
-                </a>
+                <?php if ($mostrarUsuarios): ?>
+
+                    <a
+                        href="<?= BASE_URL ?>index.php?controller=usuario&action=index"
+                        class="sidebar-link <?= $claseUsuarios ?>">
+                        <i class="bi bi-people"></i>
+                        Usuarios
+                    </a>
+
+                <?php endif; ?>
+
+                <?php if ($mostrarRoles): ?>
+
+                    <a
+                        href="<?= BASE_URL ?>index.php?controller=rol&action=index"
+                        class="sidebar-link <?= $claseRoles ?>">
+                        <i class="bi bi-shield-lock"></i>
+                        Roles y permisos
+                    </a>
+
+                <?php endif; ?>
+
+                <?php if ($mostrarTerritorios): ?>
+
+                    <a
+                        href="<?= BASE_URL ?>index.php?controller=territorio&action=index"
+                        class="sidebar-link <?= $claseTerritorios ?>">
+                        <i class="bi bi-geo-alt"></i>
+                        Territorios
+                    </a>
+
+                <?php endif; ?>
+            </div>
+
+        <?php endif; ?>
+
+        <?php if ($mostrarDataTerritorial): ?>
+
+            <div class="sidebar-section">
+                <p class="sidebar-section-title">
+                    VINCULACIÓN
+                </p>
 
                 <a
-                    href="<?= BASE_URL ?>index.php?controller=home&action=index&vista=roles"
-                    class="sidebar-link <?= $claseRoles ?>">
-                    <i class="bi bi-shield-lock"></i>
-                    Roles y permisos
+                    href="<?= BASE_URL ?>index.php?controller=dataTerritorial&action=index"
+                    class="sidebar-link <?= $claseDataTerritorial ?>">
+                    <i class="bi bi-database"></i>
+                    Información territorial
                 </a>
             </div>
 
@@ -69,20 +113,14 @@ $claseRoles = $opcionActiva === 'roles' ? 'active' : '';
 
     <div class="sidebar-footer">
         <div class="sidebar-user">
-            <?php if ($fotoPerfilUrl !== ''): ?>
-
-                <img
-                    src="<?= htmlspecialchars($fotoPerfilUrl) ?>"
-                    class="system-avatar system-avatar-sm system-avatar-image"
-                    alt="Foto de perfil">
-
-            <?php else: ?>
-
-                <div class="system-avatar system-avatar-sm">
-                    <?= htmlspecialchars($iniciales) ?>
-                </div>
-
-            <?php endif; ?>
+            <?= renderAvatarUsuario(
+                $_SESSION['nombre'] ?? $nombreCompleto,
+                $_SESSION['apellidos'] ?? '',
+                $_SESSION['rol'] ?? 'Usuario',
+                $_SESSION['foto_perfil'] ?? '',
+                'sm',
+                'general'
+            ) ?>
 
             <div>
                 <div class="sidebar-user-name">
@@ -144,25 +182,61 @@ $claseRoles = $opcionActiva === 'roles' ? 'active' : '';
                 </a>
             </div>
 
-            <?php if ($idRol === 1): ?>
+            <?php if ($mostrarUsuarios || $mostrarRoles || $mostrarTerritorios): ?>
 
                 <div class="sidebar-section">
                     <p class="sidebar-section-title">
                         GESTIÓN
                     </p>
 
-                    <a
-                        href="<?= BASE_URL ?>index.php?controller=usuario&action=index"
-                        class="sidebar-link <?= $claseUsuarios ?>">
-                        <i class="bi bi-people"></i>
-                        Usuarios
-                    </a>
+                    <?php if ($mostrarUsuarios): ?>
+
+                        <a
+                            href="<?= BASE_URL ?>index.php?controller=usuario&action=index"
+                            class="sidebar-link <?= $claseUsuarios ?>">
+                            <i class="bi bi-people"></i>
+                            Usuarios
+                        </a>
+
+                    <?php endif; ?>
+
+                    <?php if ($mostrarRoles): ?>
+
+                        <a
+                            href="<?= BASE_URL ?>index.php?controller=rol&action=index"
+                            class="sidebar-link <?= $claseRoles ?>">
+                            <i class="bi bi-shield-lock"></i>
+                            Roles y permisos
+                        </a>
+
+                    <?php endif; ?>
+
+                    <?php if ($mostrarTerritorios): ?>
+
+                        <a
+                            href="<?= BASE_URL ?>index.php?controller=territorio&action=index"
+                            class="sidebar-link <?= $claseTerritorios ?>">
+                            <i class="bi bi-geo-alt"></i>
+                            Territorios
+                        </a>
+
+                    <?php endif; ?>
+                </div>
+
+            <?php endif; ?>
+
+            <?php if ($mostrarDataTerritorial): ?>
+
+                <div class="sidebar-section">
+                    <p class="sidebar-section-title">
+                        VINCULACIÓN
+                    </p>
 
                     <a
-                        href="<?= BASE_URL ?>index.php?controller=home&action=index&vista=roles"
-                        class="sidebar-link <?= $claseRoles ?>">
-                        <i class="bi bi-shield-lock"></i>
-                        Roles y permisos
+                        href="<?= BASE_URL ?>index.php?controller=dataTerritorial&action=index"
+                        class="sidebar-link <?= $claseDataTerritorial ?>">
+                        <i class="bi bi-database"></i>
+                        Información territorial
                     </a>
                 </div>
 
@@ -171,20 +245,15 @@ $claseRoles = $opcionActiva === 'roles' ? 'active' : '';
 
         <div class="sidebar-footer">
             <div class="sidebar-user">
-                <?php if ($fotoPerfilUrl !== ''): ?>
-
-                    <img
-                        src="<?= htmlspecialchars($fotoPerfilUrl) ?>"
-                        class="system-avatar system-avatar-sm system-avatar-image sidebar-user-avatar"
-                        alt="Foto de perfil">
-
-                <?php else: ?>
-
-                    <div class="system-avatar system-avatar-sm sidebar-user-avatar">
-                        <?= htmlspecialchars($iniciales) ?>
-                    </div>
-
-                <?php endif; ?>
+                <?= renderAvatarUsuario(
+                    $_SESSION['nombre'] ?? $nombreCompleto,
+                    $_SESSION['apellidos'] ?? '',
+                    $_SESSION['rol'] ?? 'Usuario',
+                    $_SESSION['foto_perfil'] ?? '',
+                    'sm',
+                    'general',
+                    'sidebar-user-avatar'
+                ) ?>
 
                 <div>
                     <div class="sidebar-user-name">

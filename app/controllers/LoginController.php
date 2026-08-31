@@ -1,15 +1,18 @@
 <?php
 
 require_once __DIR__ . '/../models/UsuarioModel.php';
+require_once __DIR__ . '/../models/RolModel.php';
 require_once ROOT_PATH . '/app/services/MailService.php';
 
 class LoginController
 {
     private $usuarioModel;
+    private $rolModel;
 
     public function __construct()
     {
         $this->usuarioModel = new UsuarioModel();
+        $this->rolModel = new RolModel();
     }
 
     public function mostrarLogin()
@@ -184,6 +187,13 @@ class LoginController
 
         $_SESSION['rol'] =
             $usuario['rol'];
+
+        $this->rolModel->inicializarPermisosSistema();
+
+        $_SESSION['permisos'] =
+            $this->rolModel->obtenerCodigosPermisosPorRol(
+                (int)$usuario['rol_id']
+            );
 
         $_SESSION['requiere_cambio_password'] =
             (int)$usuario['requiere_cambio_password'];

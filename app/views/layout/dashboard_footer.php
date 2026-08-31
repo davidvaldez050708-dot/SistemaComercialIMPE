@@ -4,6 +4,8 @@
 
 </div>
 
+<?php require_once __DIR__ . '/profile_photo_modal.php'; ?>
+
 <?php if (
     !empty($_SESSION['requiere_cambio_password'])
 ): ?>
@@ -161,6 +163,67 @@
 
 <script
     src="<?= BASE_URL ?>public/javascript/cambiar_password.js">
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const modalFoto = document.getElementById('modalVistaFotoPerfil');
+    const imagenFoto = document.getElementById('modalVistaFotoPerfilImagen');
+    const nombreFoto = document.getElementById('modalVistaFotoPerfilNombre');
+    const rolFoto = document.getElementById('modalVistaFotoPerfilRol');
+
+    document.addEventListener('click', function (event) {
+        const boton = event.target.closest('[data-profile-photo]');
+
+        if (!boton || !modalFoto || !imagenFoto || !nombreFoto || !rolFoto) {
+            return;
+        }
+
+        const url = boton.getAttribute('data-photo-url') || '';
+        const nombre = boton.getAttribute('data-photo-name') || 'Usuario';
+        const rol = boton.getAttribute('data-photo-role') || 'Usuario';
+
+        if (url === '') {
+            return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        imagenFoto.src = url;
+        imagenFoto.alt = 'Foto de ' + nombre;
+        nombreFoto.textContent = nombre;
+        rolFoto.textContent = rol;
+
+        bootstrap.Modal.getOrCreateInstance(modalFoto).show();
+    });
+
+    document.addEventListener('error', function (event) {
+        const imagen = event.target;
+
+        if (
+            !(imagen instanceof HTMLImageElement) ||
+            !imagen.classList.contains('system-avatar-image')
+        ) {
+            return;
+        }
+
+        const avatar = imagen.closest('.system-avatar');
+
+        if (!avatar) {
+            return;
+        }
+
+        const reemplazo = document.createElement('span');
+        reemplazo.className = avatar.className
+            .replace('system-avatar-photo-button', '')
+            .replace('system-avatar-image', '')
+            .trim() + ' system-avatar-initials';
+        reemplazo.textContent = imagen.getAttribute('data-avatar-initials') || 'US';
+
+        avatar.replaceWith(reemplazo);
+    }, true);
+});
 </script>
 
 <?php if (

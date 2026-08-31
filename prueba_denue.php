@@ -1,8 +1,10 @@
 <?php
 
-$token = '2ddbcd05-fa94-42be-85c0-90e048678818';
+require_once __DIR__ . '/config/api_keys.php';
 
-$url = "https://www.inegi.org.mx/app/api/denue/v1/consulta/BuscarAreaActEstr/17/0/0/0/0/93/0/0/0/0/1/100/0/0/" . $token;
+$url = DENUE_BASE_URL
+    . '/BuscarAreaActEstr/17/0/0/0/0/93/0/0/0/0/1/100/0/0/'
+    . DENUE_TOKEN;
 
 $respuesta = file_get_contents($url);
 

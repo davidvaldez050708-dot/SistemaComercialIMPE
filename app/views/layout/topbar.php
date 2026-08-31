@@ -1,3 +1,5 @@
+<?php require_once __DIR__ . '/../../helpers/AvatarHelper.php'; ?>
+
 <main class="admin-main">
 
     <header class="admin-topbar">
@@ -30,20 +32,16 @@
                 type="button"
                 data-bs-toggle="dropdown"
                 aria-expanded="false">
-                <?php if ($fotoPerfilUrl !== ''): ?>
-
-                    <img
-                        src="<?= htmlspecialchars($fotoPerfilUrl) ?>"
-                        class="system-avatar system-avatar-sm system-avatar-image topbar-user-avatar"
-                        alt="Foto de perfil">
-
-                <?php else: ?>
-
-                    <span class="system-avatar system-avatar-sm topbar-user-avatar">
-                        <?= htmlspecialchars($iniciales) ?>
-                    </span>
-
-                <?php endif; ?>
+                <?= renderAvatarUsuario(
+                    $_SESSION['nombre'] ?? $nombreCompleto,
+                    $_SESSION['apellidos'] ?? '',
+                    $_SESSION['rol'] ?? 'Usuario',
+                    $_SESSION['foto_perfil'] ?? '',
+                    'sm',
+                    'general',
+                    'topbar-user-avatar',
+                    false
+                ) ?>
 
                 <span class="topbar-account-text d-none d-sm-grid">
                     <span class="topbar-account-name">

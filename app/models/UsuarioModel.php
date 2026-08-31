@@ -313,6 +313,21 @@ class UsuarioModel
         return $roles;
     }
 
+    public function obtenerRolesActivos()
+    {
+        $sql = "SELECT
+                    id,
+                    nombre,
+                    estado
+                FROM roles
+                WHERE estado = 1
+                ORDER BY id";
+
+        $resultado = $this->connection->query($sql);
+
+        return $this->convertirResultadoEnArreglo($resultado);
+    }
+
     public function existeUsuario($usuario, $idExcluir = null)
     {
         $sql = "SELECT id
@@ -381,6 +396,23 @@ class UsuarioModel
         return $stmt->get_result()->num_rows > 0;
     }
 
+    public function existeRolActivo($rolId)
+    {
+        $sql = "SELECT id
+                FROM roles
+                WHERE id = ?
+                    AND estado = 1
+                LIMIT 1";
+
+        $stmt = $this->connection->prepare($sql);
+
+        $stmt->bind_param("i", $rolId);
+
+        $stmt->execute();
+
+        return $stmt->get_result()->num_rows > 0;
+    }
+
     public function contarAdministradoresActivos()
     {
         $sql = "SELECT COUNT(*) AS total
@@ -390,6 +422,21 @@ class UsuarioModel
 
         $resultado = $this->connection->query($sql);
         $fila = $resultado->fetch_assoc();
+
+        return (int)$fila['total'];
+    }
+
+    public function contarUsuariosConFotoPerfil($ruta)
+    {
+        $sql = "SELECT COUNT(*) AS total
+                FROM usuarios
+                WHERE foto_perfil = ?";
+
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param("s", $ruta);
+        $stmt->execute();
+
+        $fila = $stmt->get_result()->fetch_assoc();
 
         return (int)$fila['total'];
     }

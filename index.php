@@ -24,6 +24,7 @@ if (isset($_SESSION['usuario_id'], $_SESSION['ultima_actividad'])) {
 }
 
 require_once __DIR__ . '/config/config.php';
+require_once __DIR__ . '/app/helpers/PermissionHelper.php';
 
 $controller = $_GET['controller'] ?? 'login';
 $action = $_GET['action'] ?? 'mostrarLogin';
@@ -74,6 +75,21 @@ if (!$esRutaPublica && !isset($_SESSION['usuario_id'])) {
     exit;
 }
 
+if (
+    isset($_SESSION['usuario_id']) &&
+    !isset($_SESSION['permisos'])
+) {
+    require_once __DIR__ . '/app/models/RolModel.php';
+
+    $modeloRolSesion = new RolModel();
+    $modeloRolSesion->inicializarPermisosSistema();
+
+    $_SESSION['permisos'] =
+        $modeloRolSesion->obtenerCodigosPermisosPorRol(
+            (int)($_SESSION['rol_id'] ?? 0)
+        );
+}
+
 switch ($controller) {
 
     case 'login':
@@ -89,6 +105,21 @@ switch ($controller) {
     case 'usuario':
         require_once __DIR__ . '/app/controllers/UsuarioController.php';
         $controllerInstance = new UsuarioController();
+        break;
+
+    case 'rol':
+        require_once __DIR__ . '/app/controllers/RolController.php';
+        $controllerInstance = new RolController();
+        break;
+
+    case 'territorio':
+        require_once __DIR__ . '/app/controllers/TerritorioController.php';
+        $controllerInstance = new TerritorioController();
+        break;
+
+    case 'dataTerritorial':
+        require_once __DIR__ . '/app/controllers/DataTerritorialController.php';
+        $controllerInstance = new DataTerritorialController();
         break;
 
     default:

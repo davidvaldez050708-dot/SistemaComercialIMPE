@@ -1,8 +1,12 @@
 <?php
 
+require_once __DIR__ . '/../../helpers/AvatarHelper.php';
+
 $usuarios = $usuarios ?? [];
 $usuarioActualId = (int)($usuarioActualId ?? ($_SESSION['usuario_id'] ?? 0));
 $administradoresActivos = (int)($administradoresActivos ?? 0);
+$puedeEditarUsuarios = tienePermiso('usuarios.editar');
+$puedeCambiarEstadoUsuarios = tienePermiso('usuarios.cambiar_estado');
 
 $texto = function ($valor) {
     return htmlspecialchars((string)$valor, ENT_QUOTES, 'UTF-8');
@@ -87,12 +91,12 @@ $fechaLegible = function ($fecha) {
                             ? 'pendiente'
                             : 'normal';
                     $iniciales =
-                        strtoupper(substr($usuario['nombre'], 0, 1)) .
-                        strtoupper(substr($usuario['apellidos'], 0, 1));
+                        obtenerInicialesUsuario(
+                            $usuario['nombre'] ?? '',
+                            $usuario['apellidos'] ?? ''
+                        );
                     $fotoPerfil = trim((string)($usuario['foto_perfil'] ?? ''));
-                    $fotoPerfilUrl = $fotoPerfil !== ''
-                        ? BASE_URL . ltrim($fotoPerfil, '/')
-                        : '';
+                    $fotoPerfilUrl = obtenerUrlFotoPerfil($fotoPerfil);
                     $ultimoAccesoTexto =
                         $fechaLegible($usuario['ultimo_acceso'] ?? null);
                     $fechaCreacionTexto =
@@ -103,7 +107,18 @@ $fechaLegible = function ($fecha) {
 
                     <tr>
                         <td>
-                            <?= htmlspecialchars($nombreCompleto) ?>
+                            <div class="user-name-with-avatar">
+                                <?= renderAvatarUsuario(
+                                    $usuario['nombre'] ?? '',
+                                    $usuario['apellidos'] ?? '',
+                                    $usuario['rol'] ?? 'Usuario',
+                                    $fotoPerfil,
+                                    'sm',
+                                    'general'
+                                ) ?>
+
+                                <span><?= htmlspecialchars($nombreCompleto) ?></span>
+                            </div>
                         </td>
 
                         <td>
@@ -148,6 +163,7 @@ $fechaLegible = function ($fecha) {
                                     data-bs-target="#offcanvasDetalleUsuario"
                                     data-iniciales="<?= $texto($iniciales) ?>"
                                     data-foto-perfil="<?= $texto($fotoPerfilUrl) ?>"
+                                    data-foto-ruta="<?= $texto($fotoPerfil) ?>"
                                     data-nombre-completo="<?= $texto($nombreCompleto) ?>"
                                     data-usuario="<?= $texto($usuario['usuario']) ?>"
                                     data-correo="<?= $texto($usuario['correo']) ?>"
@@ -163,41 +179,50 @@ $fechaLegible = function ($fecha) {
                                     <i class="bi bi-eye"></i>
                                 </button>
 
-                                <button
-                                    type="button"
-                                    class="table-action-button"
-                                    aria-label="Editar usuario"
-                                    data-bs-toggle="modal"
-                                    data-bs-target="#modalEditarUsuario"
-                                    data-id="<?= (int)$usuario['id'] ?>"
-                                    data-es-cuenta-actual="<?= $esCuentaActual ? '1' : '0' ?>"
-                                    data-nombre="<?= $texto($usuario['nombre']) ?>"
-                                    data-apellidos="<?= $texto($usuario['apellidos']) ?>"
-                                    data-telefono="<?= $texto($usuario['telefono'] ?? '') ?>"
-                                    data-foto-perfil="<?= $texto($fotoPerfilUrl) ?>"
-                                    data-correo="<?= $texto($usuario['correo']) ?>"
-                                    data-usuario="<?= $texto($usuario['usuario']) ?>"
-                                    data-rol-id="<?= (int)$usuario['rol_id'] ?>"
-                                    data-estado="<?= (int)$usuario['estado'] ?>"
-                                    data-ultimo-acceso="<?= $texto($ultimoAccesoTexto) ?>">
-                                    <i class="bi bi-pencil"></i>
-                                </button>
+                                <?php if ($puedeEditarUsuarios): ?>
 
-                                <button
-                                    type="button"
-                                    class="table-action-button <?= (int)$usuario['estado'] === 1
-                                    ? 'table-action-warning'
-                                    : 'table-action-success' ?>"
-                                    aria-label="<?= (int)$usuario['estado'] === 1 ? 'Desactivar usuario' : 'Activar usuario' ?>"
-                                    data-bs-toggle="modal"
-                                    data-bs-target="#modalEstadoUsuario"
-                                    data-id="<?= (int)$usuario['id'] ?>"
-                                    data-nombre="<?= $texto($nombreCompleto) ?>"
-                                    data-estado-actual="<?= (int)$usuario['estado'] ?>"
-                                    data-estado-nuevo="<?= (int)$usuario['estado'] === 1 ? 0 : 1 ?>"
-                                    <?= ($esCuentaActual || $esUltimoAdministradorActivo) ? 'disabled' : '' ?>>
-                                    <i class="bi <?= (int)$usuario['estado'] === 1 ? 'bi-toggle-on' : 'bi-toggle-off' ?>"></i>
-                                </button>
+                                    <button
+                                        type="button"
+                                        class="table-action-button"
+                                        aria-label="Editar usuario"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#modalEditarUsuario"
+                                        data-id="<?= (int)$usuario['id'] ?>"
+                                        data-es-cuenta-actual="<?= $esCuentaActual ? '1' : '0' ?>"
+                                        data-nombre="<?= $texto($usuario['nombre']) ?>"
+                                        data-apellidos="<?= $texto($usuario['apellidos']) ?>"
+                                        data-telefono="<?= $texto($usuario['telefono'] ?? '') ?>"
+                                        data-foto-perfil="<?= $texto($fotoPerfilUrl) ?>"
+                                        data-foto-ruta="<?= $texto($fotoPerfil) ?>"
+                                        data-correo="<?= $texto($usuario['correo']) ?>"
+                                        data-usuario="<?= $texto($usuario['usuario']) ?>"
+                                        data-rol-id="<?= (int)$usuario['rol_id'] ?>"
+                                        data-estado="<?= (int)$usuario['estado'] ?>"
+                                        data-ultimo-acceso="<?= $texto($ultimoAccesoTexto) ?>">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+
+                                <?php endif; ?>
+
+                                <?php if ($puedeCambiarEstadoUsuarios): ?>
+
+                                    <button
+                                        type="button"
+                                        class="table-action-button <?= (int)$usuario['estado'] === 1
+                                        ? 'table-action-warning'
+                                        : 'table-action-success' ?>"
+                                        aria-label="<?= (int)$usuario['estado'] === 1 ? 'Desactivar usuario' : 'Activar usuario' ?>"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#modalEstadoUsuario"
+                                        data-id="<?= (int)$usuario['id'] ?>"
+                                        data-nombre="<?= $texto($nombreCompleto) ?>"
+                                        data-estado-actual="<?= (int)$usuario['estado'] ?>"
+                                        data-estado-nuevo="<?= (int)$usuario['estado'] === 1 ? 0 : 1 ?>"
+                                        <?= ($esCuentaActual || $esUltimoAdministradorActivo) ? 'disabled' : '' ?>>
+                                        <i class="bi <?= (int)$usuario['estado'] === 1 ? 'bi-toggle-on' : 'bi-toggle-off' ?>"></i>
+                                    </button>
+
+                                <?php endif; ?>
                             </div>
                         </td>
                     </tr>

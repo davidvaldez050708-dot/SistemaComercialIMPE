@@ -26,6 +26,7 @@
     $edicionCuentaActual =
         $modalAbierto === 'editar' &&
         (int)($datosEditar['id'] ?? 0) === $usuarioActualId;
+    $puedeCrearUsuarios = tienePermiso('usuarios.crear');
 
 $valor = function ($datos, $campo) {
     return htmlspecialchars((string)($datos[$campo] ?? ''), ENT_QUOTES, 'UTF-8');
@@ -141,14 +142,18 @@ $seleccionado = function ($actual, $valor) {
                 </button>
             </noscript>
 
-            <button
-                type="button"
-                class="btn btn-new-user"
-                data-bs-toggle="modal"
-                data-bs-target="#modalCrearUsuario">
-                <i class="bi bi-person-plus me-2"></i>
-                Nuevo usuario
-            </button>
+            <?php if ($puedeCrearUsuarios): ?>
+
+                <button
+                    type="button"
+                    class="btn btn-new-user"
+                    data-bs-toggle="modal"
+                    data-bs-target="#modalCrearUsuario">
+                    <i class="bi bi-person-plus me-2"></i>
+                    Nuevo usuario
+                </button>
+
+            <?php endif; ?>
         </div>
 
     </form>
@@ -216,11 +221,21 @@ $seleccionado = function ($actual, $valor) {
 
             <div class="user-detail-avatar-wrapper">
 
-                <img
-                    id="detalleFoto"
-                    class="user-detail-avatar-image d-none"
-                    src=""
-                    alt="Foto de perfil">
+                <button
+                    type="button"
+                    id="detalleFotoBoton"
+                    class="user-detail-avatar-action d-none"
+                    data-profile-photo
+                    data-photo-url=""
+                    data-photo-name="Usuario"
+                    data-photo-role="Usuario"
+                    aria-label="Ver foto de Usuario">
+                    <img
+                        id="detalleFoto"
+                        class="user-detail-avatar-image"
+                        src=""
+                        alt="Foto de perfil">
+                </button>
 
                 <div
                     id="detalleIniciales"
@@ -661,6 +676,10 @@ $seleccionado = function ($actual, $valor) {
 
                                 <?php foreach ($roles as $rol): ?>
 
+                                    <?php if ((int)$rol['estado'] !== 1) {
+                                        continue;
+                                    } ?>
+
                                     <option
                                         value="<?= (int)$rol['id'] ?>"
                                         <?= $seleccionado($datosCrear['rol_id'] ?? '', $rol['id']) ?>>
@@ -880,6 +899,24 @@ $seleccionado = function ($actual, $valor) {
                                 id="editar_foto_perfil"
                                 name="foto_perfil"
                                 accept="image/jpeg,image/png,image/webp">
+
+                            <div
+                                class="photo-remove-control d-none"
+                                id="editar_foto_actual_panel">
+                                <div class="form-check">
+                                    <input
+                                        class="form-check-input"
+                                        type="checkbox"
+                                        id="editar_quitar_foto"
+                                        name="quitar_foto_perfil"
+                                        value="1">
+                                    <label
+                                        class="form-check-label"
+                                        for="editar_quitar_foto">
+                                        Quitar foto actual al guardar
+                                    </label>
+                                </div>
+                            </div>
                         </div>
 
                         <div>
@@ -1243,6 +1280,8 @@ document.addEventListener('DOMContentLoaded', function () {
             const seguridadElemento =
                 document.getElementById('detalleSeguridad');
             const fotoPerfil = boton.getAttribute('data-foto-perfil') || '';
+            const fotoPerfilBoton =
+                document.getElementById('detalleFotoBoton');
             const fotoPerfilElemento =
                 document.getElementById('detalleFoto');
             const inicialesElemento =
@@ -1284,11 +1323,33 @@ document.addEventListener('DOMContentLoaded', function () {
             if (fotoPerfilElemento && inicialesElemento) {
                 if (fotoPerfil !== '') {
                     fotoPerfilElemento.src = fotoPerfil;
-                    fotoPerfilElemento.classList.remove('d-none');
+                    fotoPerfilElemento.alt =
+                        'Foto de ' +
+                        (boton.getAttribute('data-nombre-completo') || 'Usuario');
+                    if (fotoPerfilBoton) {
+                        fotoPerfilBoton.classList.remove('d-none');
+                        fotoPerfilBoton.setAttribute('data-photo-url', fotoPerfil);
+                        fotoPerfilBoton.setAttribute(
+                            'data-photo-name',
+                            boton.getAttribute('data-nombre-completo') || 'Usuario'
+                        );
+                        fotoPerfilBoton.setAttribute(
+                            'data-photo-role',
+                            boton.getAttribute('data-rol') || 'Usuario'
+                        );
+                        fotoPerfilBoton.setAttribute(
+                            'aria-label',
+                            'Ver foto de ' +
+                            (boton.getAttribute('data-nombre-completo') || 'Usuario')
+                        );
+                    }
                     inicialesElemento.classList.add('d-none');
                 } else {
                     fotoPerfilElemento.src = '';
-                    fotoPerfilElemento.classList.add('d-none');
+                    if (fotoPerfilBoton) {
+                        fotoPerfilBoton.classList.add('d-none');
+                        fotoPerfilBoton.setAttribute('data-photo-url', '');
+                    }
                     inicialesElemento.classList.remove('d-none');
                 }
             }
@@ -1376,6 +1437,13 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('editar_ultimo_acceso').textContent =
                 boton.getAttribute('data-ultimo-acceso') || 'Sin registro';
 
+            const fotoActual = boton.getAttribute('data-foto-ruta') || '';
+            const panelQuitarFoto =
+                document.getElementById('editar_foto_actual_panel');
+            const checkQuitarFoto =
+                document.getElementById('editar_quitar_foto');
+            const inputFoto =
+                document.getElementById('editar_foto_perfil');
             const esCuentaActual =
                 boton.getAttribute('data-es-cuenta-actual') === '1';
             const rolOculto = document.getElementById('editar_rol_oculto');
@@ -1391,6 +1459,34 @@ document.addEventListener('DOMContentLoaded', function () {
             rolOculto.disabled = !esCuentaActual;
             estadoOculto.disabled = !esCuentaActual;
             notaCuentaActual.classList.toggle('d-none', !esCuentaActual);
+
+            if (inputFoto) {
+                inputFoto.value = '';
+            }
+
+            if (checkQuitarFoto) {
+                checkQuitarFoto.checked = false;
+                checkQuitarFoto.disabled = false;
+            }
+
+            if (panelQuitarFoto) {
+                panelQuitarFoto.classList.toggle('d-none', fotoActual === '');
+            }
+        });
+    }
+
+    const inputEditarFoto = document.getElementById('editar_foto_perfil');
+    const checkEditarQuitarFoto = document.getElementById('editar_quitar_foto');
+
+    if (inputEditarFoto && checkEditarQuitarFoto) {
+        inputEditarFoto.addEventListener('change', function () {
+            const tieneArchivo = inputEditarFoto.files.length > 0;
+
+            if (tieneArchivo) {
+                checkEditarQuitarFoto.checked = false;
+            }
+
+            checkEditarQuitarFoto.disabled = tieneArchivo;
         });
     }
 
