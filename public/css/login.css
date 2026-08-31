@@ -1,33 +1,25 @@
+/* ========================================
+   CONFIGURACIÓN GENERAL
+======================================== */
+
 * {
     font-family: 'Manrope', sans-serif;
 }
 
+html,
 body {
-    background-color: #f5f7fa;
+    margin: 0;
+    min-height: 100%;
 }
 
-.login-page {
-    min-height: 100vh;
-
-    display: flex;
-    justify-content: center;
-    align-items: center;
-
-    padding: 20px;
-
-    position: relative;
-    overflow: hidden;
+body {
+    background-color: #f7faff;
 }
 
-/* Decoración de fondo */
+
 /* ========================================
-   FONDO DECORATIVO DEL LOGIN
-   No modifica la tarjeta del formulario
+   CONTENEDOR PRINCIPAL
 ======================================== */
-
-body {
-    background-color: #f7f9fc;
-}
 
 .login-page {
     min-height: 100vh;
@@ -41,104 +33,253 @@ body {
     position: relative;
     overflow: hidden;
 
-    /* Fondo base + decoraciones */
     background:
-        /* Círculo superior */
         radial-gradient(
-            circle at 70% 13%,
-            rgba(92, 155, 230, 0.28) 0 25px,
-            transparent 26px
-        ),
-
-        /* Círculo inferior izquierdo */
-        radial-gradient(
-            circle at 26% 72%,
-            rgba(92, 155, 230, 0.25) 0 24px,
-            transparent 25px
-        ),
-
-        /* Mancha circular muy tenue derecha */
-        radial-gradient(
-            circle at 85% 67%,
-            rgba(129, 181, 235, 0.08) 0 70px,
-            transparent 71px
-        ),
-
-        /* Degradado general */
-        linear-gradient(
-            135deg,
-            #f8fbff 0%,
-            #ffffff 48%,
-            #f5f9ff 100%
+            circle at 50% 45%,
+            rgba(255, 255, 255, 0.98) 0%,
+            rgba(255, 255, 255, 0.92) 30%,
+            rgba(244, 249, 255, 0.92) 100%
         );
 }
 
 
 /* ========================================
-   FRANJAS DIAGONALES
+   ELEMENTOS DECORATIVOS GENERALES
 ======================================== */
 
-.login-page::before {
-    content: "";
-
+.bg-decoration {
     position: absolute;
-    inset: 0;
-
     pointer-events: none;
-
-    background:
-
-        /* Líneas esquina superior izquierda */
-        linear-gradient(
-            135deg,
-            rgba(111, 169, 232, 0.16) 0 45px,
-            transparent 45px 75px,
-            rgba(111, 169, 232, 0.10) 75px 110px,
-            transparent 110px
-        );
-
-    width: 420px;
-    height: 420px;
-
-    left: -80px;
-    top: -100px;
-
-    transform: rotate(0deg);
+    z-index: 0;
 }
 
 
 /* ========================================
-   FRANJAS ESQUINA INFERIOR DERECHA
+   FRANJAS SUPERIOR IZQUIERDA
 ======================================== */
 
-.login-page::after {
-    content: "";
-
+.bg-stripes-top {
     position: absolute;
 
-    width: 550px;
-    height: 550px;
+    width: 520px;
+    height: 330px;
 
-    right: -180px;
-    bottom: -250px;
-
-    pointer-events: none;
+    top: -145px;
+    left: -125px;
 
     transform: rotate(-45deg);
+
+    pointer-events: none;
+    z-index: 0;
+
+    background:
+        repeating-linear-gradient(
+            90deg,
+
+            rgba(105, 164, 228, 0.05) 0px,
+            rgba(105, 164, 228, 0.05) 62px,
+
+            transparent 62px,
+            transparent 84px,
+
+            rgba(105, 164, 228, 0.16) 84px,
+            rgba(105, 164, 228, 0.16) 146px,
+
+            transparent 146px,
+            transparent 171px
+        );
+}
+
+
+/* ========================================
+   FRANJAS INFERIOR DERECHA
+======================================== */
+
+.bg-stripes-bottom {
+    position: absolute;
+
+    width: 720px;
+    height: 440px;
+
+    right: -245px;
+    bottom: -235px;
+
+    transform: rotate(-45deg);
+
+    pointer-events: none;
+    z-index: 0;
+
+    background:
+        repeating-linear-gradient(
+            90deg,
+
+            rgba(105, 164, 228, 0.05) 0px,
+            rgba(105, 164, 228, 0.05) 75px,
+
+            transparent 75px,
+            transparent 102px,
+
+            rgba(105, 164, 228, 0.16) 102px,
+            rgba(105, 164, 228, 0.16) 182px,
+
+            transparent 182px,
+            transparent 215px
+        );
+}
+
+
+/* ========================================
+   CÁPSULAS DIAGONALES
+======================================== */
+
+.bg-pill {
+    position: absolute;
+
+    height: 46px;
+
+    border-radius: 999px;
 
     background:
         linear-gradient(
             90deg,
-            rgba(105, 165, 230, 0.15) 0 65px,
-            transparent 65px 100px,
-            rgba(105, 165, 230, 0.10) 100px 165px,
-            transparent 165px 200px,
-            rgba(105, 165, 230, 0.07) 200px 265px,
-            transparent 265px
+            rgba(108, 168, 232, 0.20),
+            rgba(108, 168, 232, 0.08)
         );
+
+    transform: rotate(-45deg);
+
+    pointer-events: none;
+    z-index: 0;
 }
 
-/* Tarjeta */
+
+/* Cápsula izquierda */
+
+.bg-pill-left {
+    width: 185px;
+
+    top: 22%;
+    left: 15%;
+}
+
+
+/* Cápsula derecha superior */
+
+.bg-pill-right {
+    width: 165px;
+
+    top: 32%;
+    right: 13%;
+}
+
+
+/* Cápsula derecha inferior, más tenue */
+
+.bg-pill-right-bottom {
+    width: 205px;
+    height: 52px;
+
+    right: 15%;
+    bottom: 29%;
+
+    opacity: 0.32;
+}
+
+
+/* ========================================
+   CÍRCULOS
+======================================== */
+
+.bg-circle {
+    position: absolute;
+
+    border-radius: 50%;
+
+    background-color: rgba(91, 155, 227, 0.28);
+
+    pointer-events: none;
+    z-index: 0;
+}
+
+
+/* Círculo superior */
+
+.bg-circle-top {
+    width: 53px;
+    height: 53px;
+
+    top: 9%;
+    right: 28%;
+}
+
+
+/* Círculo inferior izquierdo */
+
+.bg-circle-left {
+    width: 50px;
+    height: 50px;
+
+    left: 25%;
+    bottom: 29%;
+}
+
+
+/* Círculo grande derecho muy tenue */
+
+.bg-circle-right {
+    width: 130px;
+    height: 130px;
+
+    right: 9%;
+    bottom: 27%;
+
+    background-color: rgba(110, 169, 230, 0.045);
+}
+
+
+/* ========================================
+   MATRICES DE PUNTOS
+======================================== */
+
+.bg-dots {
+    position: absolute;
+
+    width: 145px;
+    height: 145px;
+
+    background-image:
+        radial-gradient(
+            circle,
+            rgba(91, 155, 227, 0.28) 4px,
+            transparent 4.5px
+        );
+
+    background-size: 25px 25px;
+
+    pointer-events: none;
+    z-index: 0;
+}
+
+
+/* Puntos superiores derechos */
+
+.bg-dots-top {
+    top: 5%;
+    right: 4%;
+}
+
+
+/* Puntos inferiores izquierdos */
+
+.bg-dots-bottom {
+    left: 5%;
+    bottom: 5%;
+}
+
+
+/* ========================================
+   TARJETA DEL LOGIN
+======================================== */
 
 .login-card {
     width: 100%;
@@ -155,11 +296,13 @@ body {
         rgba(28, 46, 74, 0.10);
 
     position: relative;
-    z-index: 1;
+    z-index: 10;
 }
 
 
-/* Logo temporal */
+/* ========================================
+   LOGO
+======================================== */
 
 .login-brand {
     display: flex;
@@ -185,7 +328,9 @@ body {
 }
 
 
-/* Textos */
+/* ========================================
+   TEXTOS
+======================================== */
 
 .login-title {
     font-size: 22px;
@@ -207,7 +352,9 @@ body {
 }
 
 
-/* Inputs */
+/* ========================================
+   INPUTS
+======================================== */
 
 .login-input-group {
     background-color: #f2f4f7;
@@ -245,12 +392,14 @@ body {
     box-shadow: none !important;
 }
 
-/* Borde azul al seleccionar cualquier parte del campo */
 .login-input-group:focus-within {
     border-color: #0563A6;
 }
 
-/* Botón mostrar/ocultar contraseña */
+
+/* ========================================
+   BOTÓN MOSTRAR CONTRASEÑA
+======================================== */
 
 .password-toggle {
     color: #7c8797;
@@ -269,7 +418,9 @@ body {
 }
 
 
-/* Recuperación */
+/* ========================================
+   RECUPERACIÓN DE CONTRASEÑA
+======================================== */
 
 .forgot-link {
     font-size: 12px;
@@ -285,7 +436,10 @@ body {
     text-decoration: underline;
 }
 
-/* Botón principal */
+
+/* ========================================
+   BOTÓN PRINCIPAL
+======================================== */
 
 .btn-login {
     height: 46px;
@@ -305,7 +459,9 @@ body {
 }
 
 
-/* Footer */
+/* ========================================
+   FOOTER
+======================================== */
 
 .login-footer {
     border-top: 1px solid #eceff3;
@@ -332,7 +488,10 @@ body {
     color: #aaaaaa;
 }
 
-/* Mensajes del login */
+
+/* ========================================
+   MENSAJES
+======================================== */
 
 .login-alert {
     display: flex;
@@ -369,9 +528,7 @@ body {
 .back-login-link {
     font-size: 12px;
     font-weight: 600;
-
     color: #0A8F7A;
-
     text-decoration: none;
 }
 
@@ -380,7 +537,10 @@ body {
     text-decoration: underline;
 }
 
-/* Modal de recuperación de contraseña */
+
+/* ========================================
+   MODAL RECUPERACIÓN
+======================================== */
 
 .recovery-modal-dialog {
     max-width: 420px;
@@ -402,9 +562,6 @@ body {
     padding: 32px 30px 28px;
 }
 
-
-/* Icono principal */
-
 .recovery-modal-icon {
     width: 64px;
     height: 64px;
@@ -418,14 +575,10 @@ body {
     border-radius: 50%;
 
     background-color: #edf3fb;
-
     color: #17478c;
 
     font-size: 27px;
 }
-
-
-/* Título */
 
 .recovery-modal-title {
     margin-bottom: 10px;
@@ -437,9 +590,6 @@ body {
 
     color: #252525;
 }
-
-
-/* Texto */
 
 .recovery-modal-text {
     margin-bottom: 22px;
@@ -458,9 +608,6 @@ body {
     color: #424853;
 }
 
-
-/* Contenedor de indicaciones */
-
 .recovery-modal-info {
     padding: 15px;
 
@@ -468,9 +615,6 @@ body {
 
     border-radius: 9px;
 }
-
-
-/* Cada indicación */
 
 .recovery-info-item {
     display: flex;
@@ -489,9 +633,6 @@ body {
     border-top: 1px solid #e7eaf0;
 }
 
-
-/* Iconos pequeños */
-
 .recovery-info-icon {
     width: 25px;
     min-width: 25px;
@@ -504,13 +645,15 @@ body {
     border-radius: 6px;
 
     background-color: #e9eff8;
-
     color: #17478c;
 
     font-size: 12px;
 }
 
-/* Modal obligatorio de cambio de contraseña */
+
+/* ========================================
+   MODAL CAMBIO DE CONTRASEÑA
+======================================== */
 
 .cambio-password-dialog {
     max-width: 430px;
@@ -532,9 +675,6 @@ body {
     padding: 36px 32px 30px;
 }
 
-
-/* Texto auxiliar */
-
 .password-help {
     margin-top: 8px;
     margin-bottom: 0;
@@ -545,15 +685,72 @@ body {
     color: #7b8491;
 }
 
-
-/* Fondo del modal */
-
 .modal-backdrop.show {
     opacity: 0.35;
 }
 
 
+/* ========================================
+   RESPONSIVE TABLET
+======================================== */
+
+@media (max-width: 768px) {
+
+    .bg-stripes-top {
+        width: 430px;
+        height: 280px;
+
+        top: -170px;
+        left: -220px;
+    }
+
+    .bg-stripes-bottom {
+        width: 500px;
+        height: 330px;
+
+        right: -290px;
+        bottom: -200px;
+    }
+
+    .bg-pill-left {
+        left: 3%;
+    }
+
+    .bg-pill-right {
+        right: 2%;
+    }
+
+    .bg-pill-right-bottom {
+        display: none;
+    }
+
+    .bg-circle-right {
+        display: none;
+    }
+
+    .bg-dots {
+        transform: scale(0.7);
+    }
+
+    .bg-dots-top {
+        right: -15px;
+    }
+
+    .bg-dots-bottom {
+        left: -15px;
+    }
+}
+
+
+/* ========================================
+   RESPONSIVE MÓVIL
+======================================== */
+
 @media (max-width: 480px) {
+
+    .login-card {
+        padding: 30px 24px 24px;
+    }
 
     .cambio-password-dialog {
         margin-left: 10px;
@@ -565,26 +762,15 @@ body {
         padding: 30px 24px 26px;
     }
 
-}
-
-
-/* Fondo detrás del modal */
-
-.modal-backdrop.show {
-    opacity: 0.35;
-}
-
-
-/* Responsive */
-
-@media (max-width: 480px) {
-
-    .login-card {
-        padding: 30px 24px 24px;
+    .bg-pill {
+        opacity: 0.45;
     }
 
-}
+    .bg-circle {
+        opacity: 0.55;
+    }
 
-body {
-    background: red !important;
+    .bg-dots {
+        opacity: 0.55;
+    }
 }

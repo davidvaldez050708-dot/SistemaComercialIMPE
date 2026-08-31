@@ -27,13 +27,29 @@
     <!-- Estilos propios -->
     <link
         rel="stylesheet"
-        href="<?= BASE_URL ?>public/css/login.css">
+        href="<?= BASE_URL ?>public/css/login.css?v=<?= time() ?>">
 
 </head>
 
 <body>
 
 <div class="login-page">
+
+ <!-- Decoración del fondo -->
+
+    <div class="bg-stripes-top"></div>
+    <div class="bg-stripes-bottom"></div>
+
+    <div class="bg-pill bg-pill-left"></div>
+    <div class="bg-pill bg-pill-right"></div>
+    <div class="bg-pill bg-pill-right-bottom"></div>
+
+    <div class="bg-circle bg-circle-top"></div>
+    <div class="bg-circle bg-circle-left"></div>
+    <div class="bg-circle bg-circle-right"></div>
+
+    <div class="bg-dots bg-dots-top"></div>
+    <div class="bg-dots bg-dots-bottom"></div>
 
     <div class="login-card">
 
