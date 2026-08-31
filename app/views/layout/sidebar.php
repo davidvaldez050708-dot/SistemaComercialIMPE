@@ -131,13 +131,16 @@ $claseDataTerritorial =
                     <?= htmlspecialchars($_SESSION['rol'] ?? '') ?>
                 </div>
             </div>
+                <a
+                href="#"
+            class="sidebar-logout"
+    aria-label="Cerrar sesión"
+    data-bs-toggle="modal"
+    data-bs-target="#modalCerrarSesion">
 
-            <a
-                href="<?= BASE_URL ?>logout.php"
-                class="sidebar-logout"
-                aria-label="Cerrar sesión">
-                <i class="bi bi-box-arrow-right"></i>
-            </a>
+    <i class="bi bi-box-arrow-right"></i>
+
+</a>
         </div>
     </div>
 
@@ -319,6 +322,66 @@ $claseDataTerritorial =
                     <i class="bi bi-box-arrow-right"></i>
 
                 </a>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<!-- =====================================
+     MODAL CERRAR SESIÓN
+====================================== -->
+
+<div
+    class="modal fade"
+    id="modalCerrarSesion"
+    tabindex="-1"
+    aria-labelledby="modalCerrarSesionLabel"
+    aria-hidden="true">
+
+    <div class="modal-dialog modal-dialog-centered">
+
+        <div class="modal-content logout-confirm-modal">
+
+            <div class="modal-body text-center">
+
+                <div class="logout-confirm-icon">
+                    <i class="bi bi-box-arrow-right"></i>
+                </div>
+
+                <h5
+                    class="logout-confirm-title"
+                    id="modalCerrarSesionLabel">
+                    ¿Cerrar sesión?
+                </h5>
+
+                <p class="logout-confirm-text">
+                    ¿Estás seguro de que deseas cerrar tu sesión?
+                </p>
+
+                <div class="logout-confirm-actions">
+
+                    <button
+                        type="button"
+                        class="btn logout-cancel-button"
+                        data-bs-dismiss="modal">
+
+                        Cancelar
+
+                    </button>
+
+                    <a
+                        href="<?= BASE_URL ?>logout.php"
+                        class="btn logout-confirm-button">
+
+                        Sí, cerrar sesión
+
+                    </a>
+
+                </div>
 
             </div>
 

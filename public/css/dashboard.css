@@ -5828,3 +5828,122 @@
 
     isolation: isolate;
 }
+
+
+/* =========================================================
+   CONFIRMACIÓN CERRAR SESIÓN
+   ========================================================= */
+
+.logout-confirm-modal {
+    border: none;
+    border-radius: 16px;
+    overflow: hidden;
+
+    box-shadow:
+        0 20px 60px
+        rgba(15, 23, 42, 0.22);
+}
+
+.logout-confirm-modal .modal-body {
+    padding: 32px 30px 28px;
+}
+
+.logout-confirm-icon {
+    width: 58px;
+    height: 58px;
+
+    margin: 0 auto 18px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 50%;
+
+    background-color: #eef4ff;
+    color: #273a8a;
+
+    font-size: 25px;
+}
+
+.logout-confirm-title {
+    margin: 0 0 9px;
+
+    color: #16223b;
+
+    font-size: 19px;
+    font-weight: 800;
+}
+
+.logout-confirm-text {
+    margin: 0 0 25px;
+
+    color: #6d7480;
+
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.logout-confirm-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    gap: 10px;
+}
+
+.logout-cancel-button,
+.logout-confirm-button {
+    min-width: 135px;
+    min-height: 40px;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 7px;
+
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.logout-cancel-button {
+    border: 1px solid #e1e6ee;
+
+    background-color: #ffffff;
+    color: #6d7480;
+}
+
+.logout-cancel-button:hover {
+    background-color: #f5f7fa;
+    color: #16223b;
+}
+
+.logout-confirm-button {
+    border: 1px solid #273a8a !important;
+    background-color: #273a8a !important;
+    color: #ffffff !important;
+    text-decoration: none !important;
+}
+
+.logout-confirm-button:hover,
+.logout-confirm-button:focus,
+.logout-confirm-button:active {
+    border-color: #1f2f70 !important;
+    background-color: #1f2f70 !important;
+    color: #ffffff !important;
+    text-decoration: none !important;
+}
+
+@media (max-width: 480px) {
+
+    .logout-confirm-actions {
+        flex-direction: column-reverse;
+    }
+
+    .logout-cancel-button,
+    .logout-confirm-button {
+        width: 100%;
+    }
+
+}
