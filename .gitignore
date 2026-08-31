@@ -1,7 +1,6 @@
 # Configuración privada
 .env
 config/database.local.php
-config/api_keys.php
 
 # Archivos del sistema operativo
 .DS_Store
@@ -21,7 +20,6 @@ backups/
 tmp/
 
 /vendor/
-config/mail_config.php
 
 # Archivos temporales de pruebas
 prueba_correo.php
