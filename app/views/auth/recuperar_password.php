@@ -18,53 +18,93 @@ unset($_SESSION['mostrar_modal_recuperacion']);
         name="viewport"
         content="width=device-width, initial-scale=1.0">
 
-    <title>Recuperar contraseña</title>
+    <title>Recuperar contraseña | Grupo Porcayo</title>
+
 
     <!-- Bootstrap -->
     <link
         href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
         rel="stylesheet">
 
+
     <!-- Bootstrap Icons -->
     <link
         rel="stylesheet"
         href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
+
 
     <!-- Manrope -->
     <link
         href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"
         rel="stylesheet">
 
+
     <!-- CSS del login -->
     <link
         rel="stylesheet"
-        href="<?= BASE_URL ?>public/css/login.css">
+        href="<?= BASE_URL ?>public/css/login.css?v=<?= time() ?>">
 
 </head>
 
 
 <body>
 
+
 <div class="login-page">
+
+
+    <!-- ==========================================
+         DECORACIÓN DEL FONDO
+         MISMO DISEÑO DEL LOGIN
+    =========================================== -->
+
+
+    <!-- Franjas diagonales -->
+    <div class="bg-stripes-top"></div>
+    <div class="bg-stripes-bottom"></div>
+
+
+    <!-- Cápsulas -->
+    <div class="bg-pill bg-pill-left"></div>
+    <div class="bg-pill bg-pill-right"></div>
+    <div class="bg-pill bg-pill-right-bottom"></div>
+
+
+    <!-- Círculos -->
+    <div class="bg-circle bg-circle-top"></div>
+    <div class="bg-circle bg-circle-left"></div>
+    <div class="bg-circle bg-circle-right"></div>
+
+
+    <!-- Matrices de puntos -->
+    <div class="bg-dots bg-dots-top"></div>
+    <div class="bg-dots bg-dots-bottom"></div>
+
+
+
+    <!-- ==========================================
+         TARJETA DE RECUPERACIÓN
+    =========================================== -->
 
     <div class="login-card">
 
-        <!-- Icono institucional temporal -->
-        <div class="text-center mb-4">
 
-            <div class="login-brand">
+        <!-- Logo -->
+        <div class="login-brand">
 
-                <img
-                    src="<?= BASE_URL ?>public/img/brand/porcayo-grupo.png"
-                    alt="Grupo Porcayo"
-                    class="login-brand-logo">
-
-            </div>
+            <img
+                src="<?= BASE_URL ?>public/img/brand/porcayo-grupo.png"
+                alt="Grupo Porcayo"
+                class="login-brand-logo">
 
         </div>
 
 
-        <!-- Encabezado -->
+
+        <!-- ==========================================
+             ENCABEZADO
+        =========================================== -->
+
         <div class="text-center mb-4">
 
             <h1 class="login-title">
@@ -72,10 +112,17 @@ unset($_SESSION['mostrar_modal_recuperacion']);
             </h1>
 
             <p class="login-subtitle mb-0">
-                Ingrese su usuario o correo para recuperar el acceso a su cuenta
+                Ingrese su usuario o correo para recuperar
+                el acceso a su cuenta
             </p>
 
         </div>
+
+
+
+        <!-- ==========================================
+             MENSAJE DE ERROR
+        =========================================== -->
 
         <?php if (isset($_SESSION['error_recuperacion'])): ?>
 
@@ -86,9 +133,11 @@ unset($_SESSION['mostrar_modal_recuperacion']);
                 <i class="bi bi-exclamation-circle"></i>
 
                 <span>
+
                     <?= htmlspecialchars(
                         $_SESSION['error_recuperacion']
                     ) ?>
+
                 </span>
 
             </div>
@@ -98,14 +147,17 @@ unset($_SESSION['mostrar_modal_recuperacion']);
         <?php endif; ?>
 
 
-        <!--
-            Por ahora este formulario únicamente recarga
-            la pantalla. En el siguiente paso conectaremos
-            la generación de contraseña temporal.
-        -->
+
+        <!-- ==========================================
+             FORMULARIO DE RECUPERACIÓN
+        =========================================== -->
+
         <form
             action="<?= BASE_URL ?>index.php?controller=login&action=procesarRecuperacion"
             method="POST">
+
+
+            <!-- Usuario o correo -->
 
             <div class="mb-4">
 
@@ -120,11 +172,13 @@ unset($_SESSION['mostrar_modal_recuperacion']);
 
                 <div class="input-group login-input-group">
 
+
                     <span class="input-group-text">
 
                         <i class="bi bi-person"></i>
 
                     </span>
+
 
                     <input
                         type="text"
@@ -135,10 +189,16 @@ unset($_SESSION['mostrar_modal_recuperacion']);
                         autocomplete="username"
                         required>
 
+
                 </div>
 
             </div>
 
+
+
+            <!-- ==========================================
+                 BOTÓN
+            =========================================== -->
 
             <div class="d-grid mb-3">
 
@@ -154,10 +214,15 @@ unset($_SESSION['mostrar_modal_recuperacion']);
 
             </div>
 
+
         </form>
 
 
-        <!-- Regresar -->
+
+        <!-- ==========================================
+             REGRESAR AL LOGIN
+        =========================================== -->
+
         <div class="text-center">
 
             <a
@@ -173,6 +238,11 @@ unset($_SESSION['mostrar_modal_recuperacion']);
         </div>
 
 
+
+        <!-- ==========================================
+             FOOTER
+        =========================================== -->
+
         <div class="login-footer">
 
             <a href="#">
@@ -187,11 +257,19 @@ unset($_SESSION['mostrar_modal_recuperacion']);
 
         </div>
 
+
     </div>
 
 </div>
 
+
+
+<!-- ==========================================
+     MODAL DE RECUPERACIÓN
+=========================================== -->
+
 <?php if ($mostrarModalRecuperacion): ?>
+
 
 <div
     class="modal fade"
@@ -200,39 +278,67 @@ unset($_SESSION['mostrar_modal_recuperacion']);
     aria-labelledby="modalRecuperacionTitulo"
     aria-hidden="true">
 
+
     <div class="modal-dialog modal-dialog-centered recovery-modal-dialog">
+
+
         <div class="modal-content recovery-modal">
+
+
             <div class="modal-body">
 
+
                 <!-- Icono -->
+
                 <div class="recovery-modal-icon">
+
                     <i class="bi bi-envelope-check"></i>
+
                 </div>
 
 
+
                 <!-- Título -->
+
                 <h2
                     class="recovery-modal-title"
                     id="modalRecuperacionTitulo">
+
                     Revisa tu correo
+
                 </h2>
 
 
+
                 <!-- Mensaje -->
+
                 <p class="recovery-modal-text">
+
                     Si la cuenta existe, enviaremos una
-                    <strong>contraseña temporal</strong>
+
+                    <strong>
+                        contraseña temporal
+                    </strong>
+
                     al correo registrado.
+
                 </p>
 
 
+
                 <!-- Información -->
+
                 <div class="recovery-modal-info">
+
+
+                    <!-- Bandeja -->
 
                     <div class="recovery-info-item">
 
                         <div class="recovery-info-icon">
+
                             <i class="bi bi-envelope"></i>
+
                         </div>
 
                         <span>
@@ -242,76 +348,123 @@ unset($_SESSION['mostrar_modal_recuperacion']);
                     </div>
 
 
+
+                    <!-- Spam -->
+
                     <div class="recovery-info-item">
 
                         <div class="recovery-info-icon">
+
                             <i class="bi bi-shield-exclamation"></i>
+
                         </div>
 
                         <span>
+
                             Si no encuentras el correo,
                             revisa la carpeta de
-                            <strong>Spam o correo no deseado</strong>.
+
+                            <strong>
+                                Spam o correo no deseado
+                            </strong>.
+
                         </span>
 
                     </div>
 
+
+
+                    <!-- Contraseña -->
 
                     <div class="recovery-info-item">
 
                         <div class="recovery-info-icon">
+
                             <i class="bi bi-key"></i>
+
                         </div>
 
                         <span>
+
                             Inicia sesión con la contraseña temporal
                             y establece una contraseña nueva.
+
                         </span>
+
                     </div>
+
+
                 </div>
 
+
+
                 <!-- Botón -->
+
                 <div class="d-grid mt-4">
 
                     <button
                         type="button"
                         class="btn btn-login"
                         data-bs-dismiss="modal">
+
                         Entendido
+
                     </button>
+
                 </div>
+
+
             </div>
+
         </div>
+
     </div>
+
 </div>
+
 
 <?php endif; ?>
 
+
+
+<!-- ==========================================
+     BOOTSTRAP JS
+=========================================== -->
 
 <script
     src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js">
 </script>
 
+
+
+<!-- ==========================================
+     ABRIR MODAL AUTOMÁTICAMENTE
+=========================================== -->
+
 <?php if ($mostrarModalRecuperacion): ?>
 
-    <script>
-    document.addEventListener('DOMContentLoaded', function () {
+<script>
 
-        const modalElement =
-            document.getElementById('modalRecuperacion');
+document.addEventListener('DOMContentLoaded', function () {
 
-        if (modalElement) {
+    const modalElement =
+        document.getElementById('modalRecuperacion');
 
-            const modal =
-                new bootstrap.Modal(modalElement);
+    if (modalElement) {
 
-            modal.show();
+        const modal =
+            new bootstrap.Modal(modalElement);
 
-        }
-    });
-    </script>
+        modal.show();
+
+    }
+
+});
+
+</script>
 
 <?php endif; ?>
+
 
 </body>
 
