@@ -2449,48 +2449,629 @@ document.addEventListener('DOMContentLoaded', function () {
         }, 300);
     }
 
-    const enlacesSeccion = document.querySelectorAll('.data-section-nav a');
+        /*
+    |--------------------------------------------------------------------------
+    | Navegación interna de la ficha territorial
+    |--------------------------------------------------------------------------
+    |
+    | La ficha deja de funcionar como una página vertical con ScrollSpy.
+    | Se muestra únicamente una sección a la vez.
+    |
+    | El resumen se muestra de forma predeterminada.
+    |
+    */
 
-    enlacesSeccion.forEach(function (enlace) {
-        enlace.addEventListener('click', function (event) {
-            const destino = document.querySelector(enlace.getAttribute('href'));
+    const navegacionSecciones = document.querySelector('.data-section-nav');
 
-            if (destino) {
-                event.preventDefault();
-                destino.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const enlacesSeccion = Array.from(
+        document.querySelectorAll('.data-section-nav a')
+    );
+
+    const resumenPrincipal = document.querySelector('.data-state-summary');
+
+    const seccionesTerritorialesValidas = [
+        'resumen',
+        'secretarias',
+        'economia',
+        'educacion',
+        'municipios'
+    ];
+
+    const panelesTerritoriales = {
+        resumen: [
+            resumenPrincipal,
+            document.getElementById('resumen')
+        ],
+
+        secretarias: [
+            document.getElementById('secretarias')
+        ],
+
+        economia: [
+            document.getElementById('economia')
+        ],
+
+        educacion: [
+            document.getElementById('educacion')
+        ],
+
+        municipios: [
+            document.getElementById('municipios')
+        ]
+    };
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Reorganizar visualmente la ficha
+    |--------------------------------------------------------------------------
+    |
+    | En el HTML actual el resumen principal se encuentra antes de la barra.
+    |
+    | Lo movemos después de la navegación para obtener:
+    |
+    | Volver / Cambiar territorio
+    | Barra de secciones
+    | Contenido activo
+    |
+    | No se modifica el backend ni se duplica contenido.
+    |
+    */
+
+    if (
+        navegacionSecciones &&
+        resumenPrincipal
+    ) {
+        navegacionSecciones.insertAdjacentElement(
+            'afterend',
+            resumenPrincipal
+        );
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Obtener todos los paneles
+    |--------------------------------------------------------------------------
+    */
+
+    const todosLosPanelesTerritoriales = [];
+
+    Object.values(panelesTerritoriales)
+        .flat()
+        .filter(Boolean)
+        .forEach(function (panel) {
+
+            if (!todosLosPanelesTerritoriales.includes(panel)) {
+                todosLosPanelesTerritoriales.push(panel);
+            }
+
+            panel.classList.add(
+                'data-territorial-panel-content'
+            );
+        });
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Determinar sección solicitada
+    |--------------------------------------------------------------------------
+    */
+
+    const obtenerSeccionDesdeHash = function () {
+
+        const hash = decodeURIComponent(
+            window.location.hash.replace(/^#/, '')
+        )
+            .trim()
+            .toLowerCase();
+
+        if (
+            seccionesTerritorialesValidas.includes(hash)
+        ) {
+            return hash;
+        }
+
+        return 'resumen';
+    };
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Mantener visible el botón activo en la barra horizontal
+    |--------------------------------------------------------------------------
+    */
+
+    const mantenerTabVisible = function (enlace) {
+
+        if (
+            !navegacionSecciones ||
+            !enlace
+        ) {
+            return;
+        }
+
+        const izquierda =
+            enlace.offsetLeft;
+
+        const derecha =
+            izquierda +
+            enlace.offsetWidth;
+
+        const visibleIzquierda =
+            navegacionSecciones.scrollLeft;
+
+        const visibleDerecha =
+            visibleIzquierda +
+            navegacionSecciones.clientWidth;
+
+        if (
+            izquierda >= visibleIzquierda &&
+            derecha <= visibleDerecha
+        ) {
+            return;
+        }
+
+        const posicion =
+            izquierda -
+            (
+                navegacionSecciones.clientWidth -
+                enlace.offsetWidth
+            ) / 2;
+
+        navegacionSecciones.scrollTo({
+            left: Math.max(0, posicion),
+            behavior: 'smooth'
+        });
+    };
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Colocar navegación en una posición cómoda
+    |--------------------------------------------------------------------------
+    |
+    | Si el usuario estaba muy abajo dentro de una sección y cambia a otra,
+    | regresamos suavemente al inicio del contenido.
+    |
+    */
+
+    const acomodarVistaSeccion = function () {
+
+        if (!navegacionSecciones) {
+            return;
+        }
+
+        const rect =
+            navegacionSecciones.getBoundingClientRect();
+
+        const posicionNatural =
+            window.scrollY +
+            rect.top -
+            78;
+
+        if (
+            window.scrollY >
+            posicionNatural + 40
+        ) {
+            window.scrollTo({
+                top: Math.max(
+                    0,
+                    posicionNatural
+                ),
+                behavior: 'smooth'
+            });
+        }
+    };
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Mostrar una sección
+    |--------------------------------------------------------------------------
+    */
+
+    const activarSeccionTerritorial = function (
+        seccion,
+        opciones = {}
+    ) {
+
+        const seccionActiva =
+            seccionesTerritorialesValidas.includes(seccion)
+                ? seccion
+                : 'resumen';
+
+        const panelesActivos =
+            panelesTerritoriales[seccionActiva]
+                .filter(Boolean);
+
+
+        /*
+        | Ocultar / mostrar contenido
+        */
+
+        todosLosPanelesTerritoriales.forEach(
+            function (panel) {
+
+                const activo =
+                    panelesActivos.includes(panel);
+
+                panel.hidden = !activo;
+
+                panel.setAttribute(
+                    'aria-hidden',
+                    activo
+                        ? 'false'
+                        : 'true'
+                );
+
+                panel.classList.remove(
+                    'data-territorial-panel-enter'
+                );
+
+                if (
+                    activo &&
+                    opciones.animar !== false
+                ) {
+
+                    /*
+                    | Reiniciar animación
+                    */
+
+                    void panel.offsetWidth;
+
+                    panel.classList.add(
+                        'data-territorial-panel-enter'
+                    );
+                }
+            }
+        );
+
+
+        /*
+        | Actualizar barra
+        */
+
+        let enlaceActivo = null;
+
+        enlacesSeccion.forEach(function (enlace) {
+
+            const href =
+                enlace.getAttribute('href') || '';
+
+            const activo =
+                href === '#' + seccionActiva;
+
+            enlace.classList.toggle(
+                'active',
+                activo
+            );
+
+            enlace.setAttribute(
+                'aria-selected',
+                activo
+                    ? 'true'
+                    : 'false'
+            );
+
+            enlace.setAttribute(
+                'tabindex',
+                activo
+                    ? '0'
+                    : '-1'
+            );
+
+            if (activo) {
+                enlaceActivo = enlace;
             }
         });
-    });
 
-    const seccionesFicha = Array.from(enlacesSeccion)
-        .map(function (enlace) {
-            return document.querySelector(enlace.getAttribute('href'));
-        })
-        .filter(Boolean);
 
-    if ('IntersectionObserver' in window && seccionesFicha.length > 0) {
-        const observadorSecciones = new IntersectionObserver(function (entradas) {
-            entradas.forEach(function (entrada) {
-                if (!entrada.isIntersecting) {
-                    return;
-                }
+        /*
+        | Actualizar URL
+        */
 
-                enlacesSeccion.forEach(function (enlace) {
-                    enlace.classList.toggle(
-                        'active',
-                        enlace.getAttribute('href') === '#' + entrada.target.id
+        if (
+            opciones.actualizarUrl === true
+        ) {
+
+            const nuevaUrl =
+                window.location.pathname +
+                window.location.search +
+                '#' +
+                seccionActiva;
+
+            const hashActual =
+                window.location.hash
+                    .replace(/^#/, '');
+
+            if (
+                hashActual !== seccionActiva
+            ) {
+
+                if (
+                    opciones.reemplazarHistorial === true
+                ) {
+                    window.history.replaceState(
+                        null,
+                        '',
+                        nuevaUrl
                     );
-                });
+                } else {
+                    window.history.pushState(
+                        null,
+                        '',
+                        nuevaUrl
+                    );
+                }
+            }
+        }
+
+
+        /*
+        | Mantener botón activo visible
+        */
+
+        window.requestAnimationFrame(
+            function () {
+                mantenerTabVisible(
+                    enlaceActivo
+                );
+            }
+        );
+
+
+        /*
+        | Reacomodar scroll solamente cuando el usuario cambia sección
+        */
+
+        if (
+            opciones.acomodarVista === true
+        ) {
+            acomodarVistaSeccion();
+        }
+    };
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Click en secciones
+    |--------------------------------------------------------------------------
+    */
+
+    enlacesSeccion.forEach(
+        function (enlace, indice) {
+
+            enlace.setAttribute(
+                'role',
+                'tab'
+            );
+
+            enlace.addEventListener(
+                'click',
+                function (event) {
+
+                    event.preventDefault();
+
+                    const seccion =
+                        enlace
+                            .getAttribute('href')
+                            .replace(/^#/, '');
+
+                    activarSeccionTerritorial(
+                        seccion,
+                        {
+                            actualizarUrl: true,
+                            animar: true,
+                            acomodarVista: true
+                        }
+                    );
+                }
+            );
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Navegación con teclado
+            |--------------------------------------------------------------------------
+            */
+
+            enlace.addEventListener(
+                'keydown',
+                function (event) {
+
+                    let indiceDestino = null;
+
+                    if (
+                        event.key ===
+                        'ArrowRight'
+                    ) {
+                        indiceDestino =
+                            (
+                                indice + 1
+                            ) %
+                            enlacesSeccion.length;
+                    }
+
+                    if (
+                        event.key ===
+                        'ArrowLeft'
+                    ) {
+                        indiceDestino =
+                            (
+                                indice -
+                                1 +
+                                enlacesSeccion.length
+                            ) %
+                            enlacesSeccion.length;
+                    }
+
+                    if (
+                        event.key ===
+                        'Home'
+                    ) {
+                        indiceDestino = 0;
+                    }
+
+                    if (
+                        event.key ===
+                        'End'
+                    ) {
+                        indiceDestino =
+                            enlacesSeccion.length - 1;
+                    }
+
+                    if (
+                        indiceDestino === null
+                    ) {
+                        return;
+                    }
+
+                    event.preventDefault();
+
+                    const destino =
+                        enlacesSeccion[
+                            indiceDestino
+                        ];
+
+                    destino.focus();
+
+                    const seccion =
+                        destino
+                            .getAttribute('href')
+                            .replace(/^#/, '');
+
+                    activarSeccionTerritorial(
+                        seccion,
+                        {
+                            actualizarUrl: true,
+                            animar: true,
+                            acomodarVista: true
+                        }
+                    );
+                }
+            );
+        }
+    );
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Carga inicial
+    |--------------------------------------------------------------------------
+    |
+    | Si no existe un hash válido:
+    |
+    | #resumen
+    |
+    | será la pantalla inicial.
+    |
+    */
+
+    if (
+        enlacesSeccion.length > 0 &&
+        todosLosPanelesTerritoriales.length > 0
+    ) {
+
+        const hashOriginal =
+            decodeURIComponent(
+                window.location.hash
+                    .replace(/^#/, '')
+            )
+                .trim()
+                .toLowerCase();
+
+        const seccionInicial =
+            obtenerSeccionDesdeHash();
+
+        activarSeccionTerritorial(
+            seccionInicial,
+            {
+                actualizarUrl: false,
+                animar: false,
+                acomodarVista: false
+            }
+        );
+
+        /*
+        |--------------------------------------------------------------------------
+        | Posición inicial al abrir un territorio
+        |--------------------------------------------------------------------------
+        |
+        | Si el usuario entra normalmente al territorio, siempre comenzamos arriba.
+        | Si entra con #economia, #educacion, #municipios, etc., respetamos la
+        | sección solicitada pero igualmente evitamos restaurar un scroll anterior.
+        |
+        */
+
+        if ('scrollRestoration' in window.history) {
+            window.history.scrollRestoration = 'manual';
+        }
+
+        const colocarFichaAlInicio = function () {
+            window.scrollTo(0, 0);
+        };
+
+        colocarFichaAlInicio();
+
+        window.requestAnimationFrame(function () {
+            colocarFichaAlInicio();
+
+            window.requestAnimationFrame(function () {
+                colocarFichaAlInicio();
             });
-        }, {
-            rootMargin: '-110px 0px -55% 0px',
-            threshold: 0.18
         });
 
-        seccionesFicha.forEach(function (seccion) {
-            observadorSecciones.observe(seccion);
+        window.addEventListener('load', function () {
+            colocarFichaAlInicio();
+        }, {
+            once: true
         });
     }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Botón Atrás / Adelante del navegador
+    |--------------------------------------------------------------------------
+    */
+
+    window.addEventListener(
+        'popstate',
+        function () {
+
+            activarSeccionTerritorial(
+                obtenerSeccionDesdeHash(),
+                {
+                    actualizarUrl: false,
+                    animar: true,
+                    acomodarVista: true
+                }
+            );
+        }
+    );
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Cambio manual del hash
+    |--------------------------------------------------------------------------
+    */
+
+    window.addEventListener(
+        'hashchange',
+        function () {
+
+            activarSeccionTerritorial(
+                obtenerSeccionDesdeHash(),
+                {
+                    actualizarUrl: false,
+                    animar: true,
+                    acomodarVista: true
+                }
+            );
+        }
+    );
 
     document.querySelectorAll('.data-territorial-card[data-card-url]').forEach(function (tarjeta) {
         const abrirTarjeta = function () {
