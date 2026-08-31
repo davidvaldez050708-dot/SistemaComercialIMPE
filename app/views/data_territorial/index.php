@@ -1476,15 +1476,18 @@ $urlPaginaTerritorio = function ($pagina) use ($buscarTerritorio, $filtroInforma
                                     </div>
                                     <div>
                                         <label class="form-label" for="ficha_poblacion">Población</label>
-                                        <input class="form-control" type="number" min="0" id="ficha_poblacion" name="poblacion" value="<?= $texto($estadoSeleccionado['poblacion']) ?>">
+                                        <input class="form-control" type="number" min="0" id="ficha_poblacion" name="poblacion" value="<?= $texto($estadoSeleccionado['poblacion']) ?>" readonly>
                                     </div>
                                     <div>
                                         <label class="form-label" for="ficha_total_municipios">Total municipios</label>
-                                        <input class="form-control" type="number" min="0" id="ficha_total_municipios" name="total_municipios" value="<?= $texto($estadoSeleccionado['total_municipios']) ?>">
+                                        <input class="form-control" type="number" min="0" id="ficha_total_municipios" name="total_municipios" value="<?= $texto($estadoSeleccionado['total_municipios']) ?>" readonly>
                                     </div>
                                     <div>
                                         <label class="form-label" for="ficha_total_secretarias">Total secretarías</label>
-                                        <input class="form-control" type="number" min="0" id="ficha_total_secretarias" name="total_secretarias" value="<?= $texto($estadoSeleccionado['total_secretarias']) ?>">
+                                        <input class="form-control" type="number" min="0" id="ficha_total_secretarias" name="total_secretarias" value="<?= $texto($estadoSeleccionado['total_secretarias']) ?>" readonly>
+                                        <div class="form-text">
+                                            Población y municipios provienen de información oficial. El total de secretarías se calcula a partir de las dependencias registradas.
+                                        </div>
                                     </div>
                                     <div>
                                         <label class="form-label" for="ficha_periodo">Periodo de gobierno</label>
@@ -1621,7 +1624,7 @@ $urlPaginaTerritorio = function ($pagina) use ($buscarTerritorio, $filtroInforma
                         <div class="modal-header system-form-modal-header">
                             <div>
                                 <h5 class="system-form-modal-title" id="modalSecretariaTitulo">Registrar secretaría</h5>
-                                <p class="system-form-modal-subtitle" id="modalSecretariaSubtitulo">Registra información de una dependencia estatal.</p>
+                                <p class="system-form-modal-subtitle" id="modalSecretariaSubtitulo">Registra una dependencia estatal y su información institucional.</p>
                             </div>
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                         </div>
@@ -1630,29 +1633,65 @@ $urlPaginaTerritorio = function ($pagina) use ($buscarTerritorio, $filtroInforma
                             <input type="hidden" name="id" id="secretaria_id">
                             <div class="modal-body">
                                 <div class="system-form-grid">
+                                    <div class="data-form-section-title system-form-grid-full">
+                                        DEPENDENCIA
+                                    </div>
                                     <div class="system-form-grid-full">
-                                        <label class="form-label" for="secretaria_nombre">Nombre *</label>
-                                        <input class="form-control" id="secretaria_nombre" name="nombre" required>
+                                        <label class="form-label" for="secretaria_nombre">Nombre de la secretaría *</label>
+                                        <input
+                                            class="form-control"
+                                            id="secretaria_nombre"
+                                            name="nombre"
+                                            placeholder="Ej. Secretaría de Educación"
+                                            required>
+                                    </div>
+                                    <div class="system-form-grid-full">
+                                        <label class="form-label" for="secretaria_sitio">Sitio web oficial</label>
+                                        <input
+                                            class="form-control"
+                                            type="url"
+                                            id="secretaria_sitio"
+                                            name="sitio_web"
+                                            placeholder="Ej. https://www.ejemplo.gob.mx">
+                                    </div>
+                                    <div class="data-form-section-title system-form-grid-full">
+                                        TITULAR Y CONTACTO
                                     </div>
                                     <div>
                                         <label class="form-label" for="secretaria_titular">Titular</label>
-                                        <input class="form-control" id="secretaria_titular" name="titular">
+                                        <input
+                                            class="form-control"
+                                            id="secretaria_titular"
+                                            name="titular"
+                                            placeholder="Nombre del titular">
                                     </div>
                                     <div>
                                         <label class="form-label" for="secretaria_cargo">Cargo del titular</label>
-                                        <input class="form-control" id="secretaria_cargo" name="cargo_titular">
+                                        <input
+                                            class="form-control"
+                                            id="secretaria_cargo"
+                                            name="cargo_titular"
+                                            placeholder="Ej. Secretario(a) de Educación">
                                     </div>
                                     <div>
-                                        <label class="form-label" for="secretaria_correo">Correo</label>
-                                        <input class="form-control" type="email" id="secretaria_correo" name="correo">
+                                        <label class="form-label" for="secretaria_correo">Correo institucional</label>
+                                        <input
+                                            class="form-control"
+                                            type="email"
+                                            id="secretaria_correo"
+                                            name="correo"
+                                            placeholder="Ej. contacto@dependencia.gob.mx">
                                     </div>
                                     <div>
                                         <label class="form-label" for="secretaria_telefono">Teléfono</label>
-                                        <input class="form-control" id="secretaria_telefono" name="telefono">
+                                        <input
+                                            class="form-control"
+                                            id="secretaria_telefono"
+                                            name="telefono"
+                                            placeholder="Ej. 686 000 0000">
                                     </div>
-                                    <div class="system-form-grid-full">
-                                        <label class="form-label" for="secretaria_sitio">Sitio web</label>
-                                        <input class="form-control" type="url" id="secretaria_sitio" name="sitio_web">
+                                    <div class="form-text system-form-grid-full">
+                                        Registra preferentemente información institucional publicada por la dependencia.
                                     </div>
                                 </div>
                             </div>
@@ -4086,7 +4125,7 @@ document.addEventListener('DOMContentLoaded', function () {
             establecerTexto('modalSecretariaTitulo', 'Registrar secretaría');
             establecerTexto(
                 'modalSecretariaSubtitulo',
-                'Registra información de una dependencia estatal.'
+                'Registra una dependencia estatal y su información institucional.'
             );
             establecerTexto('botonGuardarSecretaria', 'Guardar secretaría');
             prepararFormulario(
@@ -4100,9 +4139,9 @@ document.addEventListener('DOMContentLoaded', function () {
             establecerTexto('modalSecretariaTitulo', 'Editar secretaría');
             establecerTexto(
                 'modalSecretariaSubtitulo',
-                'Actualiza la información de la dependencia estatal.'
+                'Actualiza la información institucional de la dependencia.'
             );
-            establecerTexto('botonGuardarSecretaria', 'Actualizar secretaría');
+            establecerTexto('botonGuardarSecretaria', 'Guardar cambios');
             prepararFormulario(
                 document.getElementById('formSecretaria'),
                 '<?= BASE_URL ?>index.php?controller=dataTerritorial&action=actualizarSecretaria',

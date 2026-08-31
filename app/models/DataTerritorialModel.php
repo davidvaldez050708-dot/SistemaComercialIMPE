@@ -2005,35 +2005,25 @@ class DataTerritorialModel
                     mapa_estado = ?,
                     cargo_titular = ?,
                     partido_politico = ?,
-                    poblacion = ?,
-                    total_municipios = ?,
-                    total_secretarias = ?,
                     periodo_gobierno = ?,
                     telefono = ?,
                     redes_sociales = ?,
-                    actividad_economica = ?,
-                    poder_adquisitivo = ?,
                     fecha_actualizacion = ?,
                     updated_at = NOW()
                 WHERE id = ?";
 
         $stmt = $this->connection->prepare($sql);
         $stmt->bind_param(
-            "ssssssiiissssssi",
+            "ssssssssssi",
             $datos['capital'],
             $datos['titular_gobierno'],
             $datos['foto_titular'],
             $datos['mapa_estado'],
             $datos['cargo_titular'],
             $datos['partido_politico'],
-            $datos['poblacion'],
-            $datos['total_municipios'],
-            $datos['total_secretarias'],
             $datos['periodo_gobierno'],
             $datos['telefono'],
             $datos['redes_sociales'],
-            $datos['actividad_economica'],
-            $datos['poder_adquisitivo'],
             $datos['fecha_actualizacion'],
             $estadoId
         );
