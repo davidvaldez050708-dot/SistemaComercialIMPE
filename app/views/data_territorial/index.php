@@ -475,7 +475,18 @@ $urlPaginaTerritorio = function ($pagina) use ($buscarTerritorio, $filtroInforma
 
                         $slugEstado = trim($slugEstado, '-');
 
-                        $imagenEstado = BASE_URL. 'public/img/estados/'. $slugEstado. '.png';?>
+                        $nombreEstado = trim($territorio['nombre'] ?? '');
+
+                        if ($nombreEstado === 'Ciudad de México') {
+                        $slugEstado = 'ciudad-de-mexico';
+                        }
+
+                        if ($nombreEstado === 'Estado de México') {
+                        $slugEstado = 'estado-de-mexico';
+                        }
+
+                        $imagenEstado = BASE_URL. 'public/img/estados/'. $slugEstado. '.png';
+                        ?>
                 <article
                     class="dashboard-panel data-territorial-card"
                     role="link"
