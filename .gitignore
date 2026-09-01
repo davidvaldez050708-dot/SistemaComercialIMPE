@@ -26,7 +26,3 @@ prueba_correo.php
 prueba_bd.php
 generar_password.php
 prueba_denue.php
-
-# Fotografías de usuarios
-public/uploads/usuarios/*
-!public/uploads/usuarios/.gitkeep
