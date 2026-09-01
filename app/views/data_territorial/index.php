@@ -485,6 +485,23 @@ $urlPaginaTerritorio = function ($pagina) use ($buscarTerritorio, $filtroInforma
                         $slugEstado = 'estado-de-mexico';
                         }
 
+                        if ($nombreEstado === 'Michoacán') {
+                        $slugEstado = 'michoacán';
+                        }
+
+                        if ($nombreEstado === 'Nuevo León') {
+                            $slugEstado = 'nuevo-leon';
+                        }
+
+                        if ( $nombreEstado === 'Querétaro') {
+                            $slugEstado = 'queretaro';
+                        }
+
+                        if ( $nombreEstado === 'San Luis Potosí') {
+                            $slugEstado = 'san-luis-potosi';
+                        }
+
+
                         $imagenEstado = BASE_URL. 'public/img/estados/'. $slugEstado. '.png';
                         ?>
                 <article
