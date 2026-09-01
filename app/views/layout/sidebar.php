@@ -7,6 +7,7 @@ $mostrarUsuarios = tienePermiso('usuarios.ver');
 $mostrarRoles = tienePermiso('roles.ver');
 $mostrarTerritorios = tienePermiso('territorios.ver');
 $mostrarDataTerritorial = tienePermiso('data_territorial.ver');
+$mostrarSeguimientoVinculacion = tienePermiso('seguimientos_vinculacion.ver');
 
 $claseInicio = $opcionActiva === 'inicio' ? 'active' : '';
 $claseUsuarios = $opcionActiva === 'usuarios' ? 'active' : '';
@@ -14,6 +15,8 @@ $claseRoles = $opcionActiva === 'roles' ? 'active' : '';
 $claseTerritorios = $opcionActiva === 'territorios' ? 'active' : '';
 $claseDataTerritorial =
     $opcionActiva === 'data_territorial' ? 'active' : '';
+$claseSeguimientoVinculacion =
+    $opcionActiva === 'seguimiento_vinculacion' ? 'active' : '';
 
 ?>
 
@@ -93,19 +96,34 @@ $claseDataTerritorial =
 
         <?php endif; ?>
 
-        <?php if ($mostrarDataTerritorial): ?>
+        <?php if ($mostrarDataTerritorial || $mostrarSeguimientoVinculacion): ?>
 
             <div class="sidebar-section">
                 <p class="sidebar-section-title">
                     VINCULACIÓN
                 </p>
 
-                <a
-                    href="<?= BASE_URL ?>index.php?controller=dataTerritorial&action=index"
-                    class="sidebar-link <?= $claseDataTerritorial ?>">
-                    <i class="bi bi-database"></i>
-                    Información territorial
-                </a>
+                <?php if ($mostrarDataTerritorial): ?>
+
+                    <a
+                        href="<?= BASE_URL ?>index.php?controller=dataTerritorial&action=index"
+                        class="sidebar-link <?= $claseDataTerritorial ?>">
+                        <i class="bi bi-database"></i>
+                        Información territorial
+                    </a>
+
+                <?php endif; ?>
+
+                <?php if ($mostrarSeguimientoVinculacion): ?>
+
+                    <a
+                        href="<?= BASE_URL ?>index.php?controller=seguimientoVinculacion&action=index"
+                        class="sidebar-link <?= $claseSeguimientoVinculacion ?>">
+                        <i class="bi bi-kanban"></i>
+                        Seguimiento
+                    </a>
+
+                <?php endif; ?>
             </div>
 
         <?php endif; ?>
@@ -260,7 +278,7 @@ $claseDataTerritorial =
 
 
             <!-- VINCULACIÓN -->
-            <?php if ($mostrarDataTerritorial): ?>
+            <?php if ($mostrarDataTerritorial || $mostrarSeguimientoVinculacion): ?>
 
                 <div class="sidebar-section">
 
@@ -268,14 +286,32 @@ $claseDataTerritorial =
                         VINCULACIÓN
                     </p>
 
-                    <a
-                        href="<?= BASE_URL ?>index.php?controller=dataTerritorial&action=index"
-                        class="sidebar-link <?= $claseDataTerritorial ?>">
+                    <?php if ($mostrarDataTerritorial): ?>
 
-                        <i class="bi bi-database"></i>
-                        Información territorial
+                        <a
+                            href="<?= BASE_URL ?>index.php?controller=dataTerritorial&action=index"
+                            class="sidebar-link <?= $claseDataTerritorial ?>">
 
-                    </a>
+                            <i class="bi bi-database"></i>
+                            Información territorial
+
+                        </a>
+
+                    <?php endif; ?>
+
+
+                    <?php if ($mostrarSeguimientoVinculacion): ?>
+
+                        <a
+                            href="<?= BASE_URL ?>index.php?controller=seguimientoVinculacion&action=index"
+                            class="sidebar-link <?= $claseSeguimientoVinculacion ?>">
+
+                            <i class="bi bi-kanban"></i>
+                            Seguimiento
+
+                        </a>
+
+                    <?php endif; ?>
 
                 </div>
 

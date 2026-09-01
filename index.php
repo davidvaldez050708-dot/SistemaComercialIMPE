@@ -122,6 +122,11 @@ switch ($controller) {
         $controllerInstance = new DataTerritorialController();
         break;
 
+    case 'seguimientoVinculacion':
+        require_once __DIR__ . '/app/controllers/SeguimientoVinculacionController.php';
+        $controllerInstance = new SeguimientoVinculacionController();
+        break;
+
     default:
         die('Controlador no válido.');
 }
