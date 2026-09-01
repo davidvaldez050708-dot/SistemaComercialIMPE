@@ -72,6 +72,15 @@ class DataTerritorialController
         $secretarias = [];
         $indicadores = [];
         $municipios = [];
+        $priorizacionMunicipal = [
+            'disponible' => false,
+            'total_municipios_con_poblacion' => 0,
+            'total_municipios_sin_poblacion' => 0,
+            'poblacion_municipal_registrada' => 0,
+            'conteos' => ['ALTA' => 0, 'MEDIA' => 0, 'BAJA' => 0],
+            'recomendados' => [],
+            'por_municipio' => []
+        ];
         $actividadEconomicaOficial = [
             'total_establecimientos' => 0,
             'sectores' => []
@@ -128,6 +137,7 @@ class DataTerritorialController
                 ['buscar' => $buscarMunicipio]
             );
             $municipiosCargados = $modelo->contarMunicipiosActivos($estadoId);
+            $priorizacionMunicipal = $modelo->obtenerPriorizacionMunicipal($estadoId, 3);
             $fuentes = $modelo->obtenerFuentesPorEstado($estadoId);
         }
 
@@ -178,6 +188,7 @@ class DataTerritorialController
             $estadoId,
             ['buscar' => $buscarMunicipio]
         );
+        $priorizacionMunicipal = $modelo->obtenerPriorizacionMunicipal($estadoId, 3);
         $estadoSeleccionado = $modelo->obtenerEstado($estadoId);
 
         require_once __DIR__ . '/../views/data_territorial/municipios_tabla.php';
@@ -202,12 +213,16 @@ class DataTerritorialController
         $fotoTitular = $this->procesarImagen(
             'foto_titular',
             $estadoActual['foto_titular'] ?? '',
-            'public/uploads/territorios/titulares'
+            'public/uploads/territorios/titulares',
+            'titular_estado',
+            $estadoId
         );
         $mapaEstado = $this->procesarImagen(
             'mapa_estado',
             $estadoActual['mapa_estado'] ?? '',
-            'public/uploads/territorios/mapas'
+            'public/uploads/territorios/mapas',
+            'mapa_estado',
+            $estadoId
         );
 
         foreach ([$fotoTitular, $mapaEstado] as $archivo) {
@@ -1467,10 +1482,21 @@ class DataTerritorialController
         $poblacion = trim($_POST['poblacion'] ?? '');
         $datos = [
             'estado_id' => $estadoId,
-            'clave_inegi' => trim($_POST['clave_inegi'] ?? ''),
+            'clave_inegi' => $editar
+                ? trim((string)($municipioActual['clave_inegi'] ?? ''))
+                : trim($_POST['clave_inegi'] ?? ''),
             'numero_excel' => null,
-            'nombre' => trim($_POST['nombre'] ?? ''),
-            'poblacion' => $poblacion === '' ? null : (int)$poblacion,
+            'nombre' => $editar
+                ? trim((string)($municipioActual['nombre'] ?? ''))
+                : trim($_POST['nombre'] ?? ''),
+            'poblacion' => $editar
+                ? (
+                    $municipioActual['poblacion'] === null ||
+                    trim((string)$municipioActual['poblacion']) === ''
+                        ? null
+                        : (int)$municipioActual['poblacion']
+                )
+                : ($poblacion === '' ? null : (int)$poblacion),
             'presidente_municipal' => trim($_POST['presidente_municipal'] ?? ''),
             'partido_politico' => trim($_POST['partido_politico'] ?? ''),
             'redes_sociales' => trim($_POST['redes_sociales'] ?? ''),
@@ -1479,17 +1505,17 @@ class DataTerritorialController
         ];
         $errores = [];
 
-        if ($datos['nombre'] === '') {
+        if (!$editar && $datos['nombre'] === '') {
             $errores[] = 'El nombre del municipio es obligatorio.';
-        } elseif ($modelo->existeMunicipioPorNombre(
+        } elseif (!$editar && $modelo->existeMunicipioPorNombre(
             $estadoId,
             $datos['nombre'],
-            $editar ? $id : null
+            null
         )) {
             $errores[] = 'Ya existe un municipio con ese nombre en el territorio.';
         }
 
-        if ($poblacion !== '' && (!ctype_digit($poblacion) || (int)$poblacion < 0)) {
+        if (!$editar && $poblacion !== '' && (!ctype_digit($poblacion) || (int)$poblacion < 0)) {
             $errores[] = 'La población debe ser un número válido.';
         }
 
@@ -1774,26 +1800,9 @@ class DataTerritorialController
             'mapa_estado' => $estadoActual['mapa_estado'] ?? '',
             'cargo_titular' => trim($origen['cargo_titular'] ?? ''),
             'partido_politico' => trim($origen['partido_politico'] ?? ''),
-            'poblacion' => $this->enteroOpcionalValidado(
-                $origen['poblacion'] ?? '',
-                $errores,
-                'La población debe ser un número válido.'
-            ),
-            'total_municipios' => $this->enteroOpcionalValidado(
-                $origen['total_municipios'] ?? '',
-                $errores,
-                'El total de municipios debe ser un número válido.'
-            ),
-            'total_secretarias' => $this->enteroOpcionalValidado(
-                $origen['total_secretarias'] ?? '',
-                $errores,
-                'El total de secretarías debe ser un número válido.'
-            ),
             'periodo_gobierno' => trim($origen['periodo_gobierno'] ?? ''),
             'telefono' => trim($origen['telefono'] ?? ''),
-            'redes_sociales' => trim($origen['redes_sociales'] ?? ''),
-            'actividad_economica' => $estadoActual['actividad_economica'] ?? '',
-            'poder_adquisitivo' => $estadoActual['poder_adquisitivo'] ?? ''
+            'redes_sociales' => trim($origen['redes_sociales'] ?? '')
         ];
     }
 
@@ -1888,7 +1897,13 @@ class DataTerritorialController
         }
     }
 
-    private function procesarImagen($campo, $rutaActual, $directorioRelativo)
+    private function procesarImagen(
+        $campo,
+        $rutaActual,
+        $directorioRelativo,
+        $prefijoArchivo = 'data',
+        $estadoId = null
+    )
     {
         if (
             !isset($_FILES[$campo]) ||
@@ -1911,7 +1926,24 @@ class DataTerritorialController
             ];
         }
 
-        if ($_FILES[$campo]['size'] > 2 * 1024 * 1024) {
+        $temporal = (string)($_FILES[$campo]['tmp_name'] ?? '');
+
+        if ($temporal === '' || !is_uploaded_file($temporal)) {
+            return [
+                'ruta' => $rutaActual,
+                'error' => 'No fue posible validar la imagen cargada.',
+                'nueva' => false,
+                'directorio' => $directorioRelativo
+            ];
+        }
+
+        $tamanoArchivo = filesize($temporal);
+
+        if (
+            $tamanoArchivo === false ||
+            $tamanoArchivo <= 0 ||
+            $tamanoArchivo > 2 * 1024 * 1024
+        ) {
             return [
                 'ruta' => $rutaActual,
                 'error' => 'La imagen no debe superar 2 MB.',
@@ -1920,7 +1952,6 @@ class DataTerritorialController
             ];
         }
 
-        $temporal = $_FILES[$campo]['tmp_name'];
         $finfo = new finfo(FILEINFO_MIME_TYPE);
         $tipoImagen = $finfo->file($temporal);
         $extensiones = [
@@ -1941,15 +1972,27 @@ class DataTerritorialController
         $directorioRelativo = trim(str_replace('\\', '/', $directorioRelativo), '/');
         $directorioFisico = ROOT_PATH . '/' . $directorioRelativo;
 
-        if (!is_dir($directorioFisico)) {
-            mkdir($directorioFisico, 0775, true);
+        if (!is_dir($directorioFisico) && !mkdir($directorioFisico, 0775, true) && !is_dir($directorioFisico)) {
+            return [
+                'ruta' => $rutaActual,
+                'error' => 'No fue posible preparar el directorio para guardar la imagen.',
+                'nueva' => false,
+                'directorio' => $directorioRelativo
+            ];
         }
 
+        $prefijoArchivo = preg_replace('/[^a-z0-9_]+/i', '_', (string)$prefijoArchivo);
+        $prefijoArchivo = trim((string)$prefijoArchivo, '_');
+        $prefijoArchivo = $prefijoArchivo !== '' ? strtolower($prefijoArchivo) : 'data';
+        $estadoId = max(0, (int)$estadoId);
+        $identificadorEstado = $estadoId > 0 ? '_' . $estadoId : '';
         $nombreArchivo =
-            'data_' .
+            $prefijoArchivo .
+            $identificadorEstado .
+            '_' .
             date('YmdHis') .
             '_' .
-            bin2hex(random_bytes(6)) .
+            bin2hex(random_bytes(3)) .
             '.' .
             $extensiones[$tipoImagen];
         $destino = $directorioFisico . '/' . $nombreArchivo;

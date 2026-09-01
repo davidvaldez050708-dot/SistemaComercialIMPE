@@ -17,6 +17,15 @@ $estadoSeleccionado = $estadoSeleccionado ?? null;
 $secretarias = $secretarias ?? [];
 $indicadores = $indicadores ?? [];
 $municipios = $municipios ?? [];
+$priorizacionMunicipal = $priorizacionMunicipal ?? [
+    'disponible' => false,
+    'total_municipios_con_poblacion' => 0,
+    'total_municipios_sin_poblacion' => 0,
+    'poblacion_municipal_registrada' => 0,
+    'conteos' => ['ALTA' => 0, 'MEDIA' => 0, 'BAJA' => 0],
+    'recomendados' => [],
+    'por_municipio' => []
+];
 $actividadEconomicaOficial = $actividadEconomicaOficial ?? [
     'total_establecimientos' => 0,
     'sectores' => []
@@ -1258,18 +1267,124 @@ $urlPaginaTerritorio = function ($pagina) use ($buscarTerritorio, $filtroInforma
                     </h3>
                 </div>
 
-                <?php if ($puedeGestionarMunicipios): ?>
-                    <button
-                        type="button"
-                        class="btn btn-system-save"
-                        data-municipio-create
-                        data-bs-toggle="modal"
-                        data-bs-target="#modalMunicipio">
-                        <i class="bi bi-plus-circle me-2"></i>
-                        Registrar municipio
-                    </button>
-                <?php endif; ?>
             </div>
+
+            <?php if (($priorizacionMunicipal['disponible'] ?? false) === true): ?>
+                <?php
+                    $conteosPrioridad = $priorizacionMunicipal['conteos'] ?? [];
+                    $municipiosRecomendados = $priorizacionMunicipal['recomendados'] ?? [];
+                    $municipiosSinPoblacion = (int)($priorizacionMunicipal['total_municipios_sin_poblacion'] ?? 0);
+                ?>
+                <section class="data-municipality-priority" aria-labelledby="prioridadMunicipalTitulo">
+                    <div class="data-municipality-priority-header">
+                        <div>
+                            <span>PRIORIZACIÓN SUGERIDA</span>
+                            <h4 id="prioridadMunicipalTitulo">Municipios prioritarios para vinculación</h4>
+                            <p>
+                                La priorización combina el Índice de Oportunidad Municipal con la posición de cada
+                                municipio dentro de su propio Estado.
+                            </p>
+                        </div>
+                        <div class="data-municipality-priority-help">
+                            <i class="bi bi-info-circle" aria-hidden="true"></i>
+                            <span>
+                                <strong>Priorización orientativa</strong><br>
+                                ATACAR: mayor prioridad · OFRECER: prioridad media · OBSERVAR: seguimiento<br>
+                                Educación y economía corresponden al contexto estatal.
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="data-municipality-priority-summary" aria-label="Resumen de prioridad municipal">
+                        <div>
+                            <span>Atacar</span>
+                            <strong><?= (int)($conteosPrioridad['ALTA'] ?? 0) ?></strong>
+                        </div>
+                        <div>
+                            <span>Ofrecer</span>
+                            <strong><?= (int)($conteosPrioridad['MEDIA'] ?? 0) ?></strong>
+                        </div>
+                        <div>
+                            <span>Observar</span>
+                            <strong><?= (int)($conteosPrioridad['BAJA'] ?? 0) ?></strong>
+                        </div>
+                        <div>
+                            <span>Con población disponible</span>
+                            <strong><?= (int)($priorizacionMunicipal['total_municipios_con_poblacion'] ?? 0) ?></strong>
+                        </div>
+                    </div>
+
+                    <?php if (!empty($municipiosRecomendados)): ?>
+                        <div class="data-municipality-priority-list">
+                            <?php foreach ($municipiosRecomendados as $indicePrioridad => $municipioPrioritario): ?>
+                                <?php
+                                    $clasePrioridad = strtolower((string)($municipioPrioritario['prioridad'] ?? 'MEDIA'));
+                                    $accionPrioridad = strtoupper((string)($municipioPrioritario['accion'] ?? 'OFRECER'));
+                                    $puntajeMunicipio = (int)($municipioPrioritario['puntaje'] ?? 0);
+                                    $coberturaMunicipio = (int)($municipioPrioritario['cobertura_datos'] ?? 0);
+                                    $rankingMunicipio = (int)($municipioPrioritario['ranking'] ?? 0);
+                                    $totalRankingMunicipio = (int)($municipioPrioritario['total_ranking'] ?? 0);
+                                ?>
+                                <article class="data-municipality-priority-card">
+                                    <div class="data-municipality-priority-rank" aria-hidden="true">
+                                        <?= (int)$indicePrioridad + 1 ?>
+                                    </div>
+                                    <div class="data-municipality-priority-main">
+                                        <div class="data-municipality-priority-title">
+                                            <strong><?= $texto($municipioPrioritario['nombre'] ?? '') ?></strong>
+                                            <span class="data-municipality-priority-badge data-municipality-priority-badge-<?= $texto($clasePrioridad) ?>">
+                                                <?= $texto($accionPrioridad) ?>
+                                            </span>
+                                        </div>
+                                        <div class="data-municipality-priority-metrics">
+                                            <span>
+                                                <i class="bi bi-people" aria-hidden="true"></i>
+                                                <?= number_format((int)($municipioPrioritario['poblacion'] ?? 0), 0, '.', ',') ?> habitantes
+                                            </span>
+                                            <span>
+                                                <?= (int)$puntajeMunicipio ?>/100
+                                                <?php if ($rankingMunicipio > 0 && $totalRankingMunicipio > 0): ?>
+                                                    · ranking <?= (int)$rankingMunicipio ?> de <?= (int)$totalRankingMunicipio ?>
+                                                <?php endif; ?>
+                                                · cobertura de datos <?= (int)$coberturaMunicipio ?> %
+                                            </span>
+                                        </div>
+                                        <p><?= $texto($municipioPrioritario['motivo'] ?? '') ?></p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        class="data-municipality-priority-action"
+                                        data-priority-municipality="<?= $texto($municipioPrioritario['nombre'] ?? '') ?>"
+                                        aria-label="Ver <?= $texto($municipioPrioritario['nombre'] ?? '') ?> en la tabla de municipios">
+                                        Ver en tabla
+                                        <i class="bi bi-arrow-down" aria-hidden="true"></i>
+                                    </button>
+                                </article>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+
+                    <p class="data-municipality-priority-note">
+                        <i class="bi bi-info-circle" aria-hidden="true"></i>
+                        Índice calculado con información municipal, contexto estatal y ranking relativo dentro del territorio.
+                    </p>
+
+                    <?php if ($municipiosSinPoblacion > 0): ?>
+                        <p class="data-municipality-priority-note">
+                            <i class="bi bi-info-circle" aria-hidden="true"></i>
+                            <?= $municipiosSinPoblacion ?> municipio<?= $municipiosSinPoblacion === 1 ? '' : 's' ?> sin población disponible no recibe<?= $municipiosSinPoblacion === 1 ? '' : 'n' ?> puntos por alcance poblacional.
+                        </p>
+                    <?php endif; ?>
+                </section>
+            <?php else: ?>
+                <section class="data-municipality-priority data-municipality-priority-empty">
+                    <i class="bi bi-bar-chart" aria-hidden="true"></i>
+                    <div>
+                        <strong>Priorización municipal no disponible</strong>
+                        <p>Se requiere población municipal oficial para generar la sugerencia de alcance.</p>
+                    </div>
+                </section>
+            <?php endif; ?>
 
             <form
                 class="data-municipality-toolbar"
@@ -1361,15 +1476,18 @@ $urlPaginaTerritorio = function ($pagina) use ($buscarTerritorio, $filtroInforma
                                     </div>
                                     <div>
                                         <label class="form-label" for="ficha_poblacion">Población</label>
-                                        <input class="form-control" type="number" min="0" id="ficha_poblacion" name="poblacion" value="<?= $texto($estadoSeleccionado['poblacion']) ?>">
+                                        <input class="form-control" type="number" min="0" id="ficha_poblacion" name="poblacion" value="<?= $texto($estadoSeleccionado['poblacion']) ?>" readonly>
                                     </div>
                                     <div>
                                         <label class="form-label" for="ficha_total_municipios">Total municipios</label>
-                                        <input class="form-control" type="number" min="0" id="ficha_total_municipios" name="total_municipios" value="<?= $texto($estadoSeleccionado['total_municipios']) ?>">
+                                        <input class="form-control" type="number" min="0" id="ficha_total_municipios" name="total_municipios" value="<?= $texto($estadoSeleccionado['total_municipios']) ?>" readonly>
                                     </div>
                                     <div>
                                         <label class="form-label" for="ficha_total_secretarias">Total secretarías</label>
-                                        <input class="form-control" type="number" min="0" id="ficha_total_secretarias" name="total_secretarias" value="<?= $texto($estadoSeleccionado['total_secretarias']) ?>">
+                                        <input class="form-control" type="number" min="0" id="ficha_total_secretarias" name="total_secretarias" value="<?= $texto($estadoSeleccionado['total_secretarias']) ?>" readonly>
+                                        <div class="form-text">
+                                            Población y municipios provienen de información oficial. El total de secretarías se calcula a partir de las dependencias registradas.
+                                        </div>
                                     </div>
                                     <div>
                                         <label class="form-label" for="ficha_periodo">Periodo de gobierno</label>
@@ -1506,7 +1624,7 @@ $urlPaginaTerritorio = function ($pagina) use ($buscarTerritorio, $filtroInforma
                         <div class="modal-header system-form-modal-header">
                             <div>
                                 <h5 class="system-form-modal-title" id="modalSecretariaTitulo">Registrar secretaría</h5>
-                                <p class="system-form-modal-subtitle" id="modalSecretariaSubtitulo">Registra información de una dependencia estatal.</p>
+                                <p class="system-form-modal-subtitle" id="modalSecretariaSubtitulo">Registra una dependencia estatal y su información institucional.</p>
                             </div>
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                         </div>
@@ -1515,29 +1633,65 @@ $urlPaginaTerritorio = function ($pagina) use ($buscarTerritorio, $filtroInforma
                             <input type="hidden" name="id" id="secretaria_id">
                             <div class="modal-body">
                                 <div class="system-form-grid">
+                                    <div class="data-form-section-title system-form-grid-full">
+                                        DEPENDENCIA
+                                    </div>
                                     <div class="system-form-grid-full">
-                                        <label class="form-label" for="secretaria_nombre">Nombre *</label>
-                                        <input class="form-control" id="secretaria_nombre" name="nombre" required>
+                                        <label class="form-label" for="secretaria_nombre">Nombre de la secretaría *</label>
+                                        <input
+                                            class="form-control"
+                                            id="secretaria_nombre"
+                                            name="nombre"
+                                            placeholder="Ej. Secretaría de Educación"
+                                            required>
+                                    </div>
+                                    <div class="system-form-grid-full">
+                                        <label class="form-label" for="secretaria_sitio">Sitio web oficial</label>
+                                        <input
+                                            class="form-control"
+                                            type="url"
+                                            id="secretaria_sitio"
+                                            name="sitio_web"
+                                            placeholder="Ej. https://www.ejemplo.gob.mx">
+                                    </div>
+                                    <div class="data-form-section-title system-form-grid-full">
+                                        TITULAR Y CONTACTO
                                     </div>
                                     <div>
                                         <label class="form-label" for="secretaria_titular">Titular</label>
-                                        <input class="form-control" id="secretaria_titular" name="titular">
+                                        <input
+                                            class="form-control"
+                                            id="secretaria_titular"
+                                            name="titular"
+                                            placeholder="Nombre del titular">
                                     </div>
                                     <div>
                                         <label class="form-label" for="secretaria_cargo">Cargo del titular</label>
-                                        <input class="form-control" id="secretaria_cargo" name="cargo_titular">
+                                        <input
+                                            class="form-control"
+                                            id="secretaria_cargo"
+                                            name="cargo_titular"
+                                            placeholder="Ej. Secretario(a) de Educación">
                                     </div>
                                     <div>
-                                        <label class="form-label" for="secretaria_correo">Correo</label>
-                                        <input class="form-control" type="email" id="secretaria_correo" name="correo">
+                                        <label class="form-label" for="secretaria_correo">Correo institucional</label>
+                                        <input
+                                            class="form-control"
+                                            type="email"
+                                            id="secretaria_correo"
+                                            name="correo"
+                                            placeholder="Ej. contacto@dependencia.gob.mx">
                                     </div>
                                     <div>
                                         <label class="form-label" for="secretaria_telefono">Teléfono</label>
-                                        <input class="form-control" id="secretaria_telefono" name="telefono">
+                                        <input
+                                            class="form-control"
+                                            id="secretaria_telefono"
+                                            name="telefono"
+                                            placeholder="Ej. 686 000 0000">
                                     </div>
-                                    <div class="system-form-grid-full">
-                                        <label class="form-label" for="secretaria_sitio">Sitio web</label>
-                                        <input class="form-control" type="url" id="secretaria_sitio" name="sitio_web">
+                                    <div class="form-text system-form-grid-full">
+                                        Registra preferentemente información institucional publicada por la dependencia.
                                     </div>
                                 </div>
                             </div>
@@ -1657,27 +1811,40 @@ $urlPaginaTerritorio = function ($pagina) use ($buscarTerritorio, $filtroInforma
                     <div class="modal-content system-form-modal">
                         <div class="modal-header system-form-modal-header">
                             <div>
-                                <h5 class="system-form-modal-title" id="modalMunicipioTitulo">Registrar municipio</h5>
-                                <p class="system-form-modal-subtitle" id="modalMunicipioSubtitulo">Registra información municipal del territorio.</p>
+                                <h5 class="system-form-modal-title" id="modalMunicipioTitulo">Editar municipio</h5>
+                                <p class="system-form-modal-subtitle" id="modalMunicipioSubtitulo">Actualiza la información complementaria del municipio.</p>
                             </div>
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                         </div>
-                        <form id="formMunicipio" action="<?= BASE_URL ?>index.php?controller=dataTerritorial&action=guardarMunicipio" method="POST" enctype="multipart/form-data">
+                        <form id="formMunicipio" action="<?= BASE_URL ?>index.php?controller=dataTerritorial&action=actualizarMunicipio" method="POST" enctype="multipart/form-data">
                             <input type="hidden" name="estado_id" value="<?= (int)$estadoSeleccionado['id'] ?>">
                             <input type="hidden" name="id" id="municipio_id">
                             <div class="modal-body">
                                 <div class="system-form-grid">
+                                    <div class="system-form-grid-full data-form-section-title">
+                                        DATOS OFICIALES
+                                    </div>
                                     <div>
                                         <label class="form-label" for="municipio_nombre">Nombre *</label>
-                                        <input class="form-control" id="municipio_nombre" name="nombre" required>
+                                        <input class="form-control" id="municipio_nombre" name="nombre" required readonly>
                                     </div>
                                     <div>
                                         <label class="form-label" for="municipio_clave">Clave INEGI</label>
-                                        <input class="form-control" id="municipio_clave" name="clave_inegi">
+                                        <input class="form-control" id="municipio_clave" name="clave_inegi" readonly>
                                     </div>
                                     <div>
                                         <label class="form-label" for="municipio_poblacion">Población</label>
-                                        <input class="form-control" type="number" min="0" id="municipio_poblacion" name="poblacion">
+                                        <input class="form-control" type="number" min="0" id="municipio_poblacion" name="poblacion" readonly>
+                                    </div>
+                                    <div class="system-form-grid-full data-context-note">
+                                        <i class="bi bi-info-circle" aria-hidden="true"></i>
+                                        <span>
+                                            Nombre, clave INEGI y población provienen de la información oficial
+                                            y se actualizan desde INEGI.
+                                        </span>
+                                    </div>
+                                    <div class="system-form-grid-full data-form-section-title">
+                                        INFORMACIÓN COMPLEMENTARIA
                                     </div>
                                     <div>
                                         <label class="form-label" for="municipio_presidente">Presidente municipal</label>
@@ -1717,7 +1884,7 @@ $urlPaginaTerritorio = function ($pagina) use ($buscarTerritorio, $filtroInforma
                             </div>
                             <div class="modal-footer">
                                 <button type="button" class="btn btn-system-cancel" data-bs-dismiss="modal">Cancelar</button>
-                                <button type="submit" class="btn btn-system-save" id="botonGuardarMunicipio">Guardar municipio</button>
+                                <button type="submit" class="btn btn-system-save" id="botonGuardarMunicipio">Guardar cambios</button>
                             </div>
                         </form>
                     </div>
@@ -2449,26 +2616,10 @@ document.addEventListener('DOMContentLoaded', function () {
         }, 300);
     }
 
-        /*
-    |--------------------------------------------------------------------------
-    | Navegación interna de la ficha territorial
-    |--------------------------------------------------------------------------
-    |
-    | La ficha deja de funcionar como una página vertical con ScrollSpy.
-    | Se muestra únicamente una sección a la vez.
-    |
-    | El resumen se muestra de forma predeterminada.
-    |
-    */
-
+    /* Navegación interna de la ficha territorial: una sección visible a la vez. */
     const navegacionSecciones = document.querySelector('.data-section-nav');
-
-    const enlacesSeccion = Array.from(
-        document.querySelectorAll('.data-section-nav a')
-    );
-
+    const enlacesSeccion = Array.from(document.querySelectorAll('.data-section-nav a'));
     const resumenPrincipal = document.querySelector('.data-state-summary');
-
     const seccionesTerritorialesValidas = [
         'resumen',
         'secretarias',
@@ -2476,533 +2627,183 @@ document.addEventListener('DOMContentLoaded', function () {
         'educacion',
         'municipios'
     ];
-
     const panelesTerritoriales = {
         resumen: [
             resumenPrincipal,
             document.getElementById('resumen')
         ],
-
-        secretarias: [
-            document.getElementById('secretarias')
-        ],
-
-        economia: [
-            document.getElementById('economia')
-        ],
-
-        educacion: [
-            document.getElementById('educacion')
-        ],
-
-        municipios: [
-            document.getElementById('municipios')
-        ]
+        secretarias: [document.getElementById('secretarias')],
+        economia: [document.getElementById('economia')],
+        educacion: [document.getElementById('educacion')],
+        municipios: [document.getElementById('municipios')]
     };
 
-
-    /*
-    |--------------------------------------------------------------------------
-    | Reorganizar visualmente la ficha
-    |--------------------------------------------------------------------------
-    |
-    | En el HTML actual el resumen principal se encuentra antes de la barra.
-    |
-    | Lo movemos después de la navegación para obtener:
-    |
-    | Volver / Cambiar territorio
-    | Barra de secciones
-    | Contenido activo
-    |
-    | No se modifica el backend ni se duplica contenido.
-    |
-    */
-
-    if (
-        navegacionSecciones &&
-        resumenPrincipal
-    ) {
-        navegacionSecciones.insertAdjacentElement(
-            'afterend',
-            resumenPrincipal
-        );
+    if (navegacionSecciones && resumenPrincipal) {
+        navegacionSecciones.insertAdjacentElement('afterend', resumenPrincipal);
     }
 
-
-    /*
-    |--------------------------------------------------------------------------
-    | Obtener todos los paneles
-    |--------------------------------------------------------------------------
-    */
-
     const todosLosPanelesTerritoriales = [];
-
     Object.values(panelesTerritoriales)
         .flat()
         .filter(Boolean)
         .forEach(function (panel) {
-
             if (!todosLosPanelesTerritoriales.includes(panel)) {
                 todosLosPanelesTerritoriales.push(panel);
             }
-
-            panel.classList.add(
-                'data-territorial-panel-content'
-            );
+            panel.classList.add('data-territorial-panel-content');
         });
 
-
-    /*
-    |--------------------------------------------------------------------------
-    | Determinar sección solicitada
-    |--------------------------------------------------------------------------
-    */
-
     const obtenerSeccionDesdeHash = function () {
-
-        const hash = decodeURIComponent(
-            window.location.hash.replace(/^#/, '')
-        )
+        const hash = decodeURIComponent(window.location.hash.replace(/^#/, ''))
             .trim()
             .toLowerCase();
 
-        if (
-            seccionesTerritorialesValidas.includes(hash)
-        ) {
-            return hash;
-        }
-
-        return 'resumen';
+        return seccionesTerritorialesValidas.includes(hash)
+            ? hash
+            : 'resumen';
     };
 
-
-    /*
-    |--------------------------------------------------------------------------
-    | Mantener visible el botón activo en la barra horizontal
-    |--------------------------------------------------------------------------
-    */
-
     const mantenerTabVisible = function (enlace) {
-
-        if (
-            !navegacionSecciones ||
-            !enlace
-        ) {
+        if (!navegacionSecciones || !enlace) {
             return;
         }
 
-        const izquierda =
-            enlace.offsetLeft;
+        const izquierda = enlace.offsetLeft;
+        const derecha = izquierda + enlace.offsetWidth;
+        const visibleIzquierda = navegacionSecciones.scrollLeft;
+        const visibleDerecha = visibleIzquierda + navegacionSecciones.clientWidth;
 
-        const derecha =
-            izquierda +
-            enlace.offsetWidth;
-
-        const visibleIzquierda =
-            navegacionSecciones.scrollLeft;
-
-        const visibleDerecha =
-            visibleIzquierda +
-            navegacionSecciones.clientWidth;
-
-        if (
-            izquierda >= visibleIzquierda &&
-            derecha <= visibleDerecha
-        ) {
+        if (izquierda >= visibleIzquierda && derecha <= visibleDerecha) {
             return;
         }
 
-        const posicion =
-            izquierda -
-            (
-                navegacionSecciones.clientWidth -
-                enlace.offsetWidth
-            ) / 2;
-
+        const posicion = izquierda - (navegacionSecciones.clientWidth - enlace.offsetWidth) / 2;
         navegacionSecciones.scrollTo({
             left: Math.max(0, posicion),
             behavior: 'smooth'
         });
     };
 
-
-    /*
-    |--------------------------------------------------------------------------
-    | Colocar navegación en una posición cómoda
-    |--------------------------------------------------------------------------
-    |
-    | Si el usuario estaba muy abajo dentro de una sección y cambia a otra,
-    | regresamos suavemente al inicio del contenido.
-    |
-    */
-
     const acomodarVistaSeccion = function () {
-
         if (!navegacionSecciones) {
             return;
         }
 
-        const rect =
-            navegacionSecciones.getBoundingClientRect();
+        const rect = navegacionSecciones.getBoundingClientRect();
+        const posicionNatural = window.scrollY + rect.top - 78;
 
-        const posicionNatural =
-            window.scrollY +
-            rect.top -
-            78;
-
-        if (
-            window.scrollY >
-            posicionNatural + 40
-        ) {
+        if (window.scrollY > posicionNatural + 40) {
             window.scrollTo({
-                top: Math.max(
-                    0,
-                    posicionNatural
-                ),
+                top: Math.max(0, posicionNatural),
                 behavior: 'smooth'
             });
         }
     };
 
+    const activarSeccionTerritorial = function (seccion, opciones = {}) {
+        const seccionActiva = seccionesTerritorialesValidas.includes(seccion)
+            ? seccion
+            : 'resumen';
+        const panelesActivos = panelesTerritoriales[seccionActiva].filter(Boolean);
 
-    /*
-    |--------------------------------------------------------------------------
-    | Mostrar una sección
-    |--------------------------------------------------------------------------
-    */
+        todosLosPanelesTerritoriales.forEach(function (panel) {
+            const activo = panelesActivos.includes(panel);
+            panel.hidden = !activo;
+            panel.setAttribute('aria-hidden', activo ? 'false' : 'true');
+            panel.classList.remove('data-territorial-panel-enter');
 
-    const activarSeccionTerritorial = function (
-        seccion,
-        opciones = {}
-    ) {
-
-        const seccionActiva =
-            seccionesTerritorialesValidas.includes(seccion)
-                ? seccion
-                : 'resumen';
-
-        const panelesActivos =
-            panelesTerritoriales[seccionActiva]
-                .filter(Boolean);
-
-
-        /*
-        | Ocultar / mostrar contenido
-        */
-
-        todosLosPanelesTerritoriales.forEach(
-            function (panel) {
-
-                const activo =
-                    panelesActivos.includes(panel);
-
-                panel.hidden = !activo;
-
-                panel.setAttribute(
-                    'aria-hidden',
-                    activo
-                        ? 'false'
-                        : 'true'
-                );
-
-                panel.classList.remove(
-                    'data-territorial-panel-enter'
-                );
-
-                if (
-                    activo &&
-                    opciones.animar !== false
-                ) {
-
-                    /*
-                    | Reiniciar animación
-                    */
-
-                    void panel.offsetWidth;
-
-                    panel.classList.add(
-                        'data-territorial-panel-enter'
-                    );
-                }
+            if (activo && opciones.animar !== false) {
+                void panel.offsetWidth;
+                panel.classList.add('data-territorial-panel-enter');
             }
-        );
-
-
-        /*
-        | Actualizar barra
-        */
+        });
 
         let enlaceActivo = null;
-
         enlacesSeccion.forEach(function (enlace) {
-
-            const href =
-                enlace.getAttribute('href') || '';
-
-            const activo =
-                href === '#' + seccionActiva;
-
-            enlace.classList.toggle(
-                'active',
-                activo
-            );
-
-            enlace.setAttribute(
-                'aria-selected',
-                activo
-                    ? 'true'
-                    : 'false'
-            );
-
-            enlace.setAttribute(
-                'tabindex',
-                activo
-                    ? '0'
-                    : '-1'
-            );
+            const href = enlace.getAttribute('href') || '';
+            const activo = href === '#' + seccionActiva;
+            enlace.classList.toggle('active', activo);
+            enlace.setAttribute('aria-selected', activo ? 'true' : 'false');
+            enlace.setAttribute('tabindex', activo ? '0' : '-1');
 
             if (activo) {
                 enlaceActivo = enlace;
             }
         });
 
+        if (opciones.actualizarUrl === true) {
+            const nuevaUrl = window.location.pathname + window.location.search + '#' + seccionActiva;
+            const hashActual = window.location.hash.replace(/^#/, '');
 
-        /*
-        | Actualizar URL
-        */
-
-        if (
-            opciones.actualizarUrl === true
-        ) {
-
-            const nuevaUrl =
-                window.location.pathname +
-                window.location.search +
-                '#' +
-                seccionActiva;
-
-            const hashActual =
-                window.location.hash
-                    .replace(/^#/, '');
-
-            if (
-                hashActual !== seccionActiva
-            ) {
-
-                if (
-                    opciones.reemplazarHistorial === true
-                ) {
-                    window.history.replaceState(
-                        null,
-                        '',
-                        nuevaUrl
-                    );
+            if (hashActual !== seccionActiva) {
+                if (opciones.reemplazarHistorial === true) {
+                    window.history.replaceState(null, '', nuevaUrl);
                 } else {
-                    window.history.pushState(
-                        null,
-                        '',
-                        nuevaUrl
-                    );
+                    window.history.pushState(null, '', nuevaUrl);
                 }
             }
         }
 
+        window.requestAnimationFrame(function () {
+            mantenerTabVisible(enlaceActivo);
+        });
 
-        /*
-        | Mantener botón activo visible
-        */
-
-        window.requestAnimationFrame(
-            function () {
-                mantenerTabVisible(
-                    enlaceActivo
-                );
-            }
-        );
-
-
-        /*
-        | Reacomodar scroll solamente cuando el usuario cambia sección
-        */
-
-        if (
-            opciones.acomodarVista === true
-        ) {
+        if (opciones.acomodarVista === true) {
             acomodarVistaSeccion();
         }
     };
 
+    enlacesSeccion.forEach(function (enlace, indice) {
+        enlace.setAttribute('role', 'tab');
 
-    /*
-    |--------------------------------------------------------------------------
-    | Click en secciones
-    |--------------------------------------------------------------------------
-    */
+        enlace.addEventListener('click', function (event) {
+            event.preventDefault();
+            const seccion = enlace.getAttribute('href').replace(/^#/, '');
+            activarSeccionTerritorial(seccion, {
+                actualizarUrl: true,
+                animar: true,
+                acomodarVista: true
+            });
+        });
 
-    enlacesSeccion.forEach(
-        function (enlace, indice) {
+        enlace.addEventListener('keydown', function (event) {
+            let indiceDestino = null;
 
-            enlace.setAttribute(
-                'role',
-                'tab'
-            );
-
-            enlace.addEventListener(
-                'click',
-                function (event) {
-
-                    event.preventDefault();
-
-                    const seccion =
-                        enlace
-                            .getAttribute('href')
-                            .replace(/^#/, '');
-
-                    activarSeccionTerritorial(
-                        seccion,
-                        {
-                            actualizarUrl: true,
-                            animar: true,
-                            acomodarVista: true
-                        }
-                    );
-                }
-            );
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | Navegación con teclado
-            |--------------------------------------------------------------------------
-            */
-
-            enlace.addEventListener(
-                'keydown',
-                function (event) {
-
-                    let indiceDestino = null;
-
-                    if (
-                        event.key ===
-                        'ArrowRight'
-                    ) {
-                        indiceDestino =
-                            (
-                                indice + 1
-                            ) %
-                            enlacesSeccion.length;
-                    }
-
-                    if (
-                        event.key ===
-                        'ArrowLeft'
-                    ) {
-                        indiceDestino =
-                            (
-                                indice -
-                                1 +
-                                enlacesSeccion.length
-                            ) %
-                            enlacesSeccion.length;
-                    }
-
-                    if (
-                        event.key ===
-                        'Home'
-                    ) {
-                        indiceDestino = 0;
-                    }
-
-                    if (
-                        event.key ===
-                        'End'
-                    ) {
-                        indiceDestino =
-                            enlacesSeccion.length - 1;
-                    }
-
-                    if (
-                        indiceDestino === null
-                    ) {
-                        return;
-                    }
-
-                    event.preventDefault();
-
-                    const destino =
-                        enlacesSeccion[
-                            indiceDestino
-                        ];
-
-                    destino.focus();
-
-                    const seccion =
-                        destino
-                            .getAttribute('href')
-                            .replace(/^#/, '');
-
-                    activarSeccionTerritorial(
-                        seccion,
-                        {
-                            actualizarUrl: true,
-                            animar: true,
-                            acomodarVista: true
-                        }
-                    );
-                }
-            );
-        }
-    );
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Carga inicial
-    |--------------------------------------------------------------------------
-    |
-    | Si no existe un hash válido:
-    |
-    | #resumen
-    |
-    | será la pantalla inicial.
-    |
-    */
-
-    if (
-        enlacesSeccion.length > 0 &&
-        todosLosPanelesTerritoriales.length > 0
-    ) {
-
-        const hashOriginal =
-            decodeURIComponent(
-                window.location.hash
-                    .replace(/^#/, '')
-            )
-                .trim()
-                .toLowerCase();
-
-        const seccionInicial =
-            obtenerSeccionDesdeHash();
-
-        activarSeccionTerritorial(
-            seccionInicial,
-            {
-                actualizarUrl: false,
-                animar: false,
-                acomodarVista: false
+            if (event.key === 'ArrowRight') {
+                indiceDestino = (indice + 1) % enlacesSeccion.length;
             }
-        );
+            if (event.key === 'ArrowLeft') {
+                indiceDestino = (indice - 1 + enlacesSeccion.length) % enlacesSeccion.length;
+            }
+            if (event.key === 'Home') {
+                indiceDestino = 0;
+            }
+            if (event.key === 'End') {
+                indiceDestino = enlacesSeccion.length - 1;
+            }
+            if (indiceDestino === null) {
+                return;
+            }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Posición inicial al abrir un territorio
-        |--------------------------------------------------------------------------
-        |
-        | Si el usuario entra normalmente al territorio, siempre comenzamos arriba.
-        | Si entra con #economia, #educacion, #municipios, etc., respetamos la
-        | sección solicitada pero igualmente evitamos restaurar un scroll anterior.
-        |
-        */
+            event.preventDefault();
+            const destino = enlacesSeccion[indiceDestino];
+            destino.focus();
+            const seccion = destino.getAttribute('href').replace(/^#/, '');
+            activarSeccionTerritorial(seccion, {
+                actualizarUrl: true,
+                animar: true,
+                acomodarVista: true
+            });
+        });
+    });
+
+    if (enlacesSeccion.length > 0 && todosLosPanelesTerritoriales.length > 0) {
+        const seccionInicial = obtenerSeccionDesdeHash();
+        activarSeccionTerritorial(seccionInicial, {
+            actualizarUrl: false,
+            animar: false,
+            acomodarVista: false
+        });
 
         if ('scrollRestoration' in window.history) {
             window.history.scrollRestoration = 'manual';
@@ -3013,65 +2814,30 @@ document.addEventListener('DOMContentLoaded', function () {
         };
 
         colocarFichaAlInicio();
-
         window.requestAnimationFrame(function () {
             colocarFichaAlInicio();
-
             window.requestAnimationFrame(function () {
                 colocarFichaAlInicio();
             });
         });
-
-        window.addEventListener('load', function () {
-            colocarFichaAlInicio();
-        }, {
-            once: true
-        });
+        window.addEventListener('load', colocarFichaAlInicio, { once: true });
     }
 
+    window.addEventListener('popstate', function () {
+        activarSeccionTerritorial(obtenerSeccionDesdeHash(), {
+            actualizarUrl: false,
+            animar: true,
+            acomodarVista: true
+        });
+    });
 
-    /*
-    |--------------------------------------------------------------------------
-    | Botón Atrás / Adelante del navegador
-    |--------------------------------------------------------------------------
-    */
-
-    window.addEventListener(
-        'popstate',
-        function () {
-
-            activarSeccionTerritorial(
-                obtenerSeccionDesdeHash(),
-                {
-                    actualizarUrl: false,
-                    animar: true,
-                    acomodarVista: true
-                }
-            );
-        }
-    );
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Cambio manual del hash
-    |--------------------------------------------------------------------------
-    */
-
-    window.addEventListener(
-        'hashchange',
-        function () {
-
-            activarSeccionTerritorial(
-                obtenerSeccionDesdeHash(),
-                {
-                    actualizarUrl: false,
-                    animar: true,
-                    acomodarVista: true
-                }
-            );
-        }
-    );
+    window.addEventListener('hashchange', function () {
+        activarSeccionTerritorial(obtenerSeccionDesdeHash(), {
+            actualizarUrl: false,
+            animar: true,
+            acomodarVista: true
+        });
+    });
 
     document.querySelectorAll('.data-territorial-card[data-card-url]').forEach(function (tarjeta) {
         const abrirTarjeta = function () {
@@ -3179,6 +2945,37 @@ document.addEventListener('DOMContentLoaded', function () {
             cargarMunicipios();
         });
     }
+
+    document.querySelectorAll('[data-priority-municipality]').forEach(function (boton) {
+        boton.addEventListener('click', function () {
+            if (!municipiosForm) {
+                return;
+            }
+
+            const busqueda = municipiosForm.querySelector('[name="buscar_municipio"]');
+            const pagina = municipiosForm.querySelector('[name="pagina_municipios"]');
+            const municipio = boton.dataset.priorityMunicipality || '';
+
+            if (!busqueda || municipio === '') {
+                return;
+            }
+
+            busqueda.value = municipio;
+            if (pagina) {
+                pagina.value = '1';
+            }
+
+            cargarMunicipios();
+
+            window.setTimeout(function () {
+                municipiosForm.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+                busqueda.focus({ preventScroll: true });
+            }, 120);
+        });
+    });
 
     const mostrarToastSistema = function (mensaje, esError) {
         const contenedor = document.querySelector('.toast-container');
@@ -4322,14 +4119,13 @@ document.addEventListener('DOMContentLoaded', function () {
         const indicadorCrear = event.target.closest('[data-indicador-create]');
         const indicadorEditar = event.target.closest('[data-indicador-edit]');
         const indicadorEliminar = event.target.closest('[data-indicador-delete]');
-        const municipioCrear = event.target.closest('[data-municipio-create]');
         const municipioEditar = event.target.closest('[data-municipio-edit]');
 
         if (secretariaCrear) {
             establecerTexto('modalSecretariaTitulo', 'Registrar secretaría');
             establecerTexto(
                 'modalSecretariaSubtitulo',
-                'Registra información de una dependencia estatal.'
+                'Registra una dependencia estatal y su información institucional.'
             );
             establecerTexto('botonGuardarSecretaria', 'Guardar secretaría');
             prepararFormulario(
@@ -4343,9 +4139,9 @@ document.addEventListener('DOMContentLoaded', function () {
             establecerTexto('modalSecretariaTitulo', 'Editar secretaría');
             establecerTexto(
                 'modalSecretariaSubtitulo',
-                'Actualiza la información de la dependencia estatal.'
+                'Actualiza la información institucional de la dependencia.'
             );
-            establecerTexto('botonGuardarSecretaria', 'Actualizar secretaría');
+            establecerTexto('botonGuardarSecretaria', 'Guardar cambios');
             prepararFormulario(
                 document.getElementById('formSecretaria'),
                 '<?= BASE_URL ?>index.php?controller=dataTerritorial&action=actualizarSecretaria',
@@ -4410,30 +4206,13 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
-        if (municipioCrear) {
-            establecerTexto('modalMunicipioTitulo', 'Registrar municipio');
-            establecerTexto(
-                'modalMunicipioSubtitulo',
-                'Registra información municipal del territorio.'
-            );
-            establecerTexto('botonGuardarMunicipio', 'Guardar municipio');
-            establecerTexto('municipioFotoLabel', 'Seleccionar fotografía del presidente');
-            prepararFormulario(
-                document.getElementById('formMunicipio'),
-                '<?= BASE_URL ?>index.php?controller=dataTerritorial&action=guardarMunicipio',
-                { municipio_id: '' }
-            );
-            document.getElementById('municipio_quitar_foto_panel')?.classList.add('d-none');
-            establecerPreviewImagen('municipioFotoPreview', '', 'bi-image');
-        }
-
         if (municipioEditar) {
             establecerTexto('modalMunicipioTitulo', 'Editar municipio');
             establecerTexto(
                 'modalMunicipioSubtitulo',
-                'Actualiza la información municipal.'
+                'Actualiza la información complementaria del municipio.'
             );
-            establecerTexto('botonGuardarMunicipio', 'Actualizar municipio');
+            establecerTexto('botonGuardarMunicipio', 'Guardar cambios');
             establecerTexto('municipioFotoLabel', 'Cambiar fotografía del presidente');
             prepararFormulario(
                 document.getElementById('formMunicipio'),
