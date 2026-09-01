@@ -3034,9 +3034,20 @@
 }
 
 .data-territorial-cards {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 14px;
+     display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 24px;
+
+    width: 100%;
+
+    /* IMPORTANTE: el contenedor no debe verse */
+    padding: 0;
+    margin: 0;
+
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
 }
 
 .data-territorial-card {
@@ -6099,3 +6110,244 @@
     }
 
 }
+
+/* =====================================================
+   TARJETA TERRITORIAL INDIVIDUAL
+   ===================================================== */
+
+.data-territorial-card {
+    position: relative;
+    overflow: hidden;
+
+    display: flex;
+    flex-direction: column;
+
+    min-height: 315px;
+    padding: 24px 20px 20px 28px;
+
+    background: #ffffff;
+
+    border: 1px solid #e1e7ef;
+    border-radius: 18px;
+
+    box-shadow: 0 4px 14px rgba(22, 34, 59, 0.06);
+
+    cursor: pointer;
+
+    transition:
+        transform 0.2s ease,
+        box-shadow 0.2s ease,
+        border-color 0.2s ease;
+}
+
+
+/* FRANJA AZUL DE CADA TARJETA */
+
+.data-territorial-card::before {
+    content: "";
+
+    position: absolute;
+
+    top: 0;
+    bottom: 0;
+    left: 0;
+
+    width: 7px;
+
+    background: #132b52;
+
+    border-radius: 18px 0 0 18px;
+}
+
+
+/* EFECTO AL PASAR EL MOUSE */
+
+.data-territorial-card:hover {
+    transform: translateY(-3px);
+
+    border-color: #d5deea;
+
+    box-shadow: 0 10px 25px rgba(22, 34, 59, 0.10);
+}
+
+/* TÍTULO */
+
+.data-territorial-card .data-card-heading h3 {
+    margin: 0;
+
+    color: #101828;
+
+    font-size: 18px;
+    font-weight: 800;
+}
+
+
+/* BADGE "CON INFORMACIÓN" */
+
+.data-territorial-card .data-status-badge {
+    align-self: flex-start;
+
+    margin-top: 14px;
+}
+
+
+/* MUNICIPIOS Y ACTUALIZACIÓN */
+
+.data-territorial-card .data-card-meta {
+    display: flex;
+    flex-direction: column;
+
+    gap: 16px;
+
+    margin-top: 28px;
+    margin-bottom: 26px;
+}
+
+
+.data-territorial-card .data-card-meta div {
+    display: flex;
+    flex-direction: column;
+
+    gap: 4px;
+}
+
+
+.data-territorial-card .data-card-meta dt {
+    color: #667085;
+
+    font-size: 13px;
+    font-weight: 500;
+}
+
+
+.data-territorial-card .data-card-meta dd {
+    margin: 0;
+
+    color: #101828;
+
+    font-size: 14px;
+    font-weight: 700;
+}
+
+
+/* BOTÓN AL FONDO */
+
+.data-territorial-card .btn-system-light {
+    width: 100%;
+    min-height: 44px;
+
+    margin-top: auto;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    gap: 14px;
+
+    background: #ffffff;
+
+    border: 1px solid #d5deea;
+    border-radius: 10px;
+
+    color: #2563eb;
+
+    font-weight: 700;
+
+    text-decoration: none;
+}
+
+
+/* FLECHA */
+
+.data-territorial-card .btn-system-light::after {
+    content: "→";
+
+    font-size: 21px;
+    line-height: 1;
+}
+
+
+.data-territorial-card .btn-system-light:hover {
+    background: #f8faff;
+
+    border-color: #2563eb;
+
+    color: #1d4ed8;
+}
+
+@media (max-width: 991.98px) {
+
+    .data-territorial-cards {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+
+@media (max-width: 767.98px) {
+
+    .data-territorial-cards {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+
+    .data-territorial-card {
+        min-height: 290px;
+
+        padding: 20px 18px 18px 26px;
+
+        border-radius: 16px;
+    }
+
+    .data-territorial-card::before {
+        width: 6px;
+
+        border-radius: 16px 0 0 16px;
+    }
+}
+
+/* =====================================================
+   IMAGEN DEL ESTADO
+   ===================================================== */
+
+.data-card-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 18px;
+}
+
+.data-state-image {
+    width: 92px;
+    height: 92px;
+
+    flex-shrink: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 12px;
+
+    background: #f1f5ff;
+
+    border-radius: 16px;
+}
+
+.data-state-image img {
+    width: 100%;
+    height: 100%;
+
+    object-fit: contain;
+
+    display: block;
+}
+
+.data-card-header-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.data-card-header-info .data-status-badge {
+    margin-top: 12px;
+}
+
+
