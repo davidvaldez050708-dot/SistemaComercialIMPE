@@ -467,6 +467,28 @@ $urlPaginaTerritorio = function ($pagina) use ($buscarTerritorio, $filtroInforma
 
         <section class="data-territorial-cards" data-territory-cards>
             <?php foreach ($territoriosInterfaz as $territorio): ?>
+                 <?php
+    $slugEstado = strtolower($territorio['nombre'] ?? '');
+
+    $slugEstado = iconv(
+        'UTF-8',
+        'ASCII//TRANSLIT',
+        $slugEstado
+    );
+
+    $slugEstado = preg_replace(
+        '/[^a-z0-9]+/',
+        '-',
+        $slugEstado
+    );
+
+    $slugEstado = trim($slugEstado, '-');
+
+    $imagenEstado = BASE_URL
+        . 'public/img/estados/'
+        . $slugEstado
+        . '.png';
+?>
                 <article
                     class="dashboard-panel data-territorial-card"
                     role="link"
@@ -476,10 +498,26 @@ $urlPaginaTerritorio = function ($pagina) use ($buscarTerritorio, $filtroInforma
                     data-territory-alias="<?= $texto($territorio['nombre_corto'] ?? '') ?>"
                     data-territory-info="<?= $tieneInformacion($territorio) ? 'con' : 'sin' ?>"
                     data-card-url="<?= BASE_URL ?>index.php?controller=dataTerritorial&action=index&estado_id=<?= (int)$territorio['id'] ?>">
-                    <div class="data-card-heading">
-                        <h3><?= $texto($territorio['nombre']) ?></h3>
-                        <?= $aliasTerritorio($territorio) ?>
-                    </div>
+                   <div class="data-card-header">
+
+    <div class="data-state-image">
+        <img
+            src="<?= htmlspecialchars($imagenEstado) ?>"
+            alt="Mapa de <?= $texto($territorio['nombre']) ?>">
+    </div>
+
+    <div class="data-card-header-info">
+
+        <div class="data-card-heading">
+            <h3><?= $texto($territorio['nombre']) ?></h3>
+            <?= $aliasTerritorio($territorio) ?>
+        </div>
+
+        <?= $badgeInformacion($territorio) ?>
+
+    </div>
+
+</div>
 
                     <?= $badgeInformacion($territorio) ?>
 
