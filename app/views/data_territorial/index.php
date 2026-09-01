@@ -468,27 +468,14 @@ $urlPaginaTerritorio = function ($pagina) use ($buscarTerritorio, $filtroInforma
         <section class="data-territorial-cards" data-territory-cards>
             <?php foreach ($territoriosInterfaz as $territorio): ?>
                  <?php
-    $slugEstado = strtolower($territorio['nombre'] ?? '');
+                        $slugEstado = strtolower($territorio['nombre'] ?? '');
+                        $slugEstado = iconv('UTF-8','ASCII//TRANSLIT',$slugEstado);
 
-    $slugEstado = iconv(
-        'UTF-8',
-        'ASCII//TRANSLIT',
-        $slugEstado
-    );
+                        $slugEstado = preg_replace('/[^a-z0-9]+/','-',$slugEstado);
 
-    $slugEstado = preg_replace(
-        '/[^a-z0-9]+/',
-        '-',
-        $slugEstado
-    );
+                        $slugEstado = trim($slugEstado, '-');
 
-    $slugEstado = trim($slugEstado, '-');
-
-    $imagenEstado = BASE_URL
-        . 'public/img/estados/'
-        . $slugEstado
-        . '.png';
-?>
+                        $imagenEstado = BASE_URL. 'public/img/estados/'. $slugEstado. '.png';?>
                 <article
                     class="dashboard-panel data-territorial-card"
                     role="link"
@@ -518,8 +505,6 @@ $urlPaginaTerritorio = function ($pagina) use ($buscarTerritorio, $filtroInforma
     </div>
 
 </div>
-
-                    <?= $badgeInformacion($territorio) ?>
 
                     <dl class="data-card-meta">
                         <div>

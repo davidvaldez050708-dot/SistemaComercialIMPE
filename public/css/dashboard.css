@@ -6326,7 +6326,7 @@
     display: flex;
     flex-direction: column;
 
-    min-height: 315px;
+    min-height: 250px;
     padding: 24px 20px 20px 28px;
 
     background: #ffffff;
@@ -6398,16 +6398,17 @@
 
 /* MUNICIPIOS Y ACTUALIZACIÓN */
 
-.data-territorial-card .data-card-meta {
-    display: flex;
-    flex-direction: column;
-
-    gap: 16px;
-
-    margin-top: 28px;
-    margin-bottom: 26px;
+.data-territorial-card {
+    min-height: 250px;
+    padding: 20px 20px 18px 28px;
 }
 
+.data-territorial-card .data-card-meta {
+    gap: 12px;
+    margin-top: 16px;
+    margin-bottom: 16px;
+    padding-right: 145px;
+}
 
 .data-territorial-card .data-card-meta div {
     display: flex;
@@ -6434,6 +6435,38 @@
     font-weight: 700;
 }
 
+.data-territorial-card .data-card-meta {
+    display: flex;
+    flex-direction: column;
+
+    gap: 16px;
+
+    margin-top: auto;
+    margin-bottom: 26px;
+
+    /* deja espacio para el mapa */
+    padding-right: 135px;
+}
+
+.data-territorial-card .data-card-meta div {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.data-territorial-card .data-card-meta dt {
+    color: #667085;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.data-territorial-card .data-card-meta dd {
+    margin: 0;
+
+    color: #101828;
+    font-size: 14px;
+    font-weight: 700;
+}
 
 /* BOTÓN AL FONDO */
 
@@ -6497,7 +6530,7 @@
     }
 
     .data-territorial-card {
-        min-height: 290px;
+        min-height: 260px;
 
         padding: 20px 18px 18px 26px;
 
@@ -6523,29 +6556,30 @@
 }
 
 .data-state-image {
-    width: 92px;
-    height: 92px;
+    position: absolute;
 
-    flex-shrink: 0;
+    top: 50px;
+    right: 30px;
+
+    width: 120px;
+    height: 120px;
 
     display: flex;
     align-items: center;
     justify-content: center;
 
-    padding: 12px;
+    background: transparent;
 
-    background: #f1f5ff;
-
-    border-radius: 16px;
+    pointer-events: none;
 }
 
 .data-state-image img {
+    display: block;
+
     width: 100%;
     height: 100%;
 
     object-fit: contain;
-
-    display: block;
 }
 
 .data-card-header-info {
