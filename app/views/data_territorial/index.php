@@ -501,6 +501,10 @@ $urlPaginaTerritorio = function ($pagina) use ($buscarTerritorio, $filtroInforma
                             $slugEstado = 'san-luis-potosi';
                         }
 
+                        if ( $nombreEstado === 'Yucatán') {
+                            $slugEstado = 'yucatan';
+                        }
+
 
                         $imagenEstado = BASE_URL. 'public/img/estados/'. $slugEstado. '.png';
                         ?>
