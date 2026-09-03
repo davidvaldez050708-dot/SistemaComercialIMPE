@@ -12,44 +12,50 @@ class OficioVinculacionModel
         $this->connection = $database->connect();
     }
 
-    public function obtenerEstadoSeguimiento($seguimientoId, $usuarioId)
+    public function obtenerEstadoSeguimiento($seguimientoId, $usuarioId, $modoAcceso = 'analista')
     {
-        $sql = "SELECT
-                    seguimientos.id,
-                    seguimientos.estado_id,
-                    seguimientos.analista_id,
-                    seguimientos.estado_seguimiento,
-                    seguimientos.datos_verificados,
-                    seguimientos.contacto_nombre,
-                    seguimientos.contacto_cargo,
-                    seguimientos.correo_verificado,
-                    estados.clave_inegi,
-                    estados.nombre AS estado_nombre,
-                    oficio.id AS oficio_id,
-                    oficio.folio,
-                    oficio.estado_oficio
-                FROM seguimientos_vinculacion seguimientos
-                INNER JOIN estados
-                    ON estados.id = seguimientos.estado_id
-                LEFT JOIN oficios_vinculacion oficio
-                    ON oficio.id = (
-                        SELECT oficio_reciente.id
-                        FROM oficios_vinculacion oficio_reciente
-                        WHERE oficio_reciente.seguimiento_id = seguimientos.id
-                        ORDER BY oficio_reciente.id DESC
-                        LIMIT 1
-                    )
+        $seguimientoId = (int)$seguimientoId;
+        $usuarioId = (int)$usuarioId;
+        $sql = $this->consultaEstadoSeguimientoBase();
+
+        if ($modoAcceso === 'administrador') {
+            $sql .= "
+                WHERE seguimientos.id = ?
+                    AND seguimientos.activo = 1
+                LIMIT 1";
+            $stmt = $this->connection->prepare($sql);
+            $stmt->bind_param('i', $seguimientoId);
+        } elseif ($modoAcceso === 'supervisor') {
+            $sql .= "
+                INNER JOIN asignaciones_territorio asignacion_analista
+                    ON asignacion_analista.usuario_id = seguimientos.analista_id
+                    AND asignacion_analista.estado_id = seguimientos.estado_id
+                    AND asignacion_analista.tipo_asignacion = 'ANALISTA_DATOS'
+                    AND asignacion_analista.activo = 1
+                    AND " . $this->condicionAsignacionVigente('asignacion_analista') . "
+                INNER JOIN asignaciones_territorio cuenta_clave
+                    ON cuenta_clave.id = asignacion_analista.cuenta_clave_asignacion_id
+                    AND cuenta_clave.estado_id = seguimientos.estado_id
+                    AND cuenta_clave.tipo_asignacion = 'CUENTA_CLAVE'
+                    AND cuenta_clave.activo = 1
+                    AND cuenta_clave.usuario_id = ?
+                    AND " . $this->condicionAsignacionVigente('cuenta_clave') . "
+                WHERE seguimientos.id = ?
+                    AND seguimientos.activo = 1
+                LIMIT 1";
+            $stmt = $this->connection->prepare($sql);
+            $stmt->bind_param('ii', $usuarioId, $seguimientoId);
+        } else {
+            $sql .= "
                 WHERE seguimientos.id = ?
                     AND seguimientos.analista_id = ?
                     AND seguimientos.activo = 1
                 LIMIT 1";
+            $stmt = $this->connection->prepare($sql);
+            $stmt->bind_param('ii', $seguimientoId, $usuarioId);
+        }
 
-        $stmt = $this->connection->prepare($sql);
-        $seguimientoId = (int)$seguimientoId;
-        $usuarioId = (int)$usuarioId;
-        $stmt->bind_param('ii', $seguimientoId, $usuarioId);
         $stmt->execute();
-
         $seguimiento = $stmt->get_result()->fetch_assoc() ?: null;
 
         if (!$seguimiento) {
@@ -294,6 +300,35 @@ class OficioVinculacionModel
         }
     }
 
+    private function consultaEstadoSeguimientoBase()
+    {
+        return "SELECT DISTINCT
+                    seguimientos.id,
+                    seguimientos.estado_id,
+                    seguimientos.analista_id,
+                    seguimientos.estado_seguimiento,
+                    seguimientos.datos_verificados,
+                    seguimientos.contacto_nombre,
+                    seguimientos.contacto_cargo,
+                    seguimientos.correo_verificado,
+                    estados.clave_inegi,
+                    estados.nombre AS estado_nombre,
+                    oficio.id AS oficio_id,
+                    oficio.folio,
+                    oficio.estado_oficio
+                FROM seguimientos_vinculacion seguimientos
+                INNER JOIN estados
+                    ON estados.id = seguimientos.estado_id
+                LEFT JOIN oficios_vinculacion oficio
+                    ON oficio.id = (
+                        SELECT oficio_reciente.id
+                        FROM oficios_vinculacion oficio_reciente
+                        WHERE oficio_reciente.seguimiento_id = seguimientos.id
+                        ORDER BY oficio_reciente.id DESC
+                        LIMIT 1
+                    )";
+    }
+
     private function completarEstadoOficio($seguimiento)
     {
         $faltantes = [];
@@ -317,15 +352,25 @@ class OficioVinculacionModel
         $folio = trim((string)($seguimiento['folio'] ?? ''));
         $datosVerificados = (int)($seguimiento['datos_verificados'] ?? 0) === 1;
         $etapa = (string)($seguimiento['estado_seguimiento'] ?? '');
-
-        $seguimiento['faltantes'] = $faltantes;
-        $seguimiento['puede_generar'] =
+        $cumpleRequisitos =
             $datosVerificados &&
             $etapa === 'DATOS_VERIFICADOS' &&
             $folio === '' &&
             empty($faltantes);
 
+        $seguimiento['faltantes'] = $faltantes;
+        $seguimiento['cumple_requisitos_generacion'] = $cumpleRequisitos;
+        $seguimiento['puede_generar'] = $cumpleRequisitos;
+
         return $seguimiento;
+    }
+
+    private function condicionAsignacionVigente($alias)
+    {
+        return "(
+            ($alias.fecha_inicio IS NULL OR $alias.fecha_inicio <= CURDATE())
+            AND ($alias.fecha_fin IS NULL OR $alias.fecha_fin >= CURDATE())
+        )";
     }
 
     private function codigoEstadoFolio($claveInegi)
