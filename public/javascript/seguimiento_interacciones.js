@@ -101,11 +101,18 @@
             selectorProximaAccion.appendChild(opcion);
         };
 
+        Array.from(selectorProximaAccion.options).forEach(function (opcion) {
+            if (opcion.value === 'Preparar oficio') {
+                opcion.remove();
+            }
+        });
+
         agregarOpcionSiFalta('Investigar nuevo contacto', 'Investigar nuevo contacto');
         agregarOpcionSiFalta(
             'Verificar información de contacto',
             'Verificar información de contacto'
         );
+        agregarOpcionSiFalta('Generar oficio', 'Generar oficio');
 
         const contenedorObservacion = campoObservacion.closest('.col-12');
         const contenedorMotivo = document.createElement('div');
@@ -189,7 +196,7 @@
                 case 'CONTACTO_CORRECTO':
                 case 'SOLICITO_INFORMACION':
                     accionSugerida = contactoEstaVerificado()
-                        ? 'Preparar oficio'
+                        ? 'Generar oficio'
                         : 'Verificar información de contacto';
                     break;
                 case 'SOLICITO_LLAMAR_DESPUES':
