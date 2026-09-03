@@ -287,7 +287,7 @@
                 renderizar(datos.programacion);
                 bootstrap.Modal.getOrCreateInstance(modal).hide();
                 mostrarToast(datos.mensaje || 'Programación guardada correctamente.', false);
-                document.dispatchEvent(new CustomEvent('recordatorios:actualizar'));
+                document.dispatchEvent(new Event('visibilitychange'));
             } catch (error) {
                 console.error(error);
                 mostrarToast(
