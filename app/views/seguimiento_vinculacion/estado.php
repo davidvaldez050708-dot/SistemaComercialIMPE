@@ -333,8 +333,7 @@ $hayFiltros =
             <a
                 href="#"
                 class="btn btn-system-light linkage-action-button"
-                aria-disabled="true"
-                data-linkage-disabled-action>
+                <?= $puedeCrearSeguimiento ? 'data-bs-toggle="modal" data-bs-target="#modalAgregarSeguimientoManual"' : 'aria-disabled="true" data-linkage-disabled-action' ?>>
                 <i class="bi bi-plus-lg"></i>
                 Agregar manualmente
             </a>
@@ -473,8 +472,7 @@ $hayFiltros =
                 <a
                     href="#"
                     class="btn btn-system-light linkage-action-button"
-                    aria-disabled="true"
-                    data-linkage-disabled-action>
+                    <?= $puedeCrearSeguimiento ? 'data-bs-toggle="modal" data-bs-target="#modalAgregarSeguimientoManual"' : 'aria-disabled="true" data-linkage-disabled-action' ?>>
                     Agregar manualmente
                 </a>
             </div>
@@ -677,6 +675,164 @@ $hayFiltros =
                     <button type="submit" class="btn btn-system-save" data-confirm-submit>
                         Confirmar e iniciar seguimiento
                     </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div
+    class="modal fade"
+    id="modalAgregarSeguimientoManual"
+    tabindex="-1"
+    aria-labelledby="modalAgregarSeguimientoManualTitulo"
+    aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg system-form-dialog">
+        <div class="modal-content system-form-modal">
+            <div class="modal-header system-form-modal-header">
+                <div>
+                    <h5 class="system-form-modal-title" id="modalAgregarSeguimientoManualTitulo">
+                        Agregar seguimiento manualmente
+                    </h5>
+                    <p class="system-form-modal-subtitle">
+                        Registra una entidad que no fue encontrada en la búsqueda automática.
+                    </p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+
+            <form data-manual-follow-form>
+                <div class="modal-body">
+                    <input type="hidden" name="estado_id" value="<?= (int)($estado['id'] ?? 0) ?>">
+
+                    <div class="row g-3">
+                        <div class="col-12 col-md-8">
+                            <label class="form-label" for="manual_entity_name">Nombre de la institución / empresa / organización *</label>
+                            <input class="form-control" id="manual_entity_name" name="nombre" maxlength="220" required data-manual-name>
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label class="form-label" for="manual_entity_type">Tipo de entidad *</label>
+                            <select class="form-select" id="manual_entity_type" name="tipo_entidad" required>
+                                <option value="">Seleccionar</option>
+                                <option value="EMPRESA">Empresa</option>
+                                <option value="ORGANIZACION">Organización</option>
+                                <option value="INSTITUCION">Institución</option>
+                                <option value="SECRETARIA">Secretaría</option>
+                                <option value="MUNICIPIO">Municipio</option>
+                                <option value="OTRO">Otro</option>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label" for="manual_municipality">Municipio</label>
+                            <select class="form-select" id="manual_municipality" name="municipio_id">
+                                <option value="0">Sin municipio específico</option>
+                                <?php foreach ($municipiosCandidatos as $municipio): ?>
+                                    <option value="<?= (int)$municipio['id'] ?>"><?= $texto($municipio['nombre'] ?? '') ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <?php if ($mostrarColumnaAnalista): ?>
+                            <div class="col-12 col-md-6">
+                                <label class="form-label" for="manual_analyst">Analista responsable *</label>
+                                <select class="form-select" id="manual_analyst" name="analista_id" required>
+                                    <option value="">Seleccionar Analista</option>
+                                    <?php foreach ($analistasFiltro as $analista): ?>
+                                        <?php $nombreFiltro = trim(($analista['nombre'] ?? '') . ' ' . ($analista['apellidos'] ?? '')); ?>
+                                        <option value="<?= (int)$analista['id'] ?>"><?= $texto($nombreFiltro) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        <?php endif; ?>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label" for="manual_contact_name">Persona de contacto</label>
+                            <input class="form-control" id="manual_contact_name" name="contacto_nombre" maxlength="180">
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label" for="manual_contact_role">Cargo / Área</label>
+                            <input class="form-control" id="manual_contact_role" name="contacto_cargo" maxlength="150">
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label class="form-label" for="manual_phone">Teléfono</label>
+                            <input class="form-control" id="manual_phone" name="telefono" maxlength="80">
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label class="form-label" for="manual_whatsapp">WhatsApp</label>
+                            <input class="form-control" id="manual_whatsapp" name="whatsapp" maxlength="80">
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label class="form-label" for="manual_email">Correo electrónico</label>
+                            <input class="form-control" id="manual_email" name="correo" type="email" maxlength="180">
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label class="form-label" for="manual_stage">Estado / etapa *</label>
+                            <select class="form-select" id="manual_stage" name="estado_seguimiento" required>
+                                <option value="NUEVO">Nuevo</option>
+                                <option value="CONTACTANDO">Contactando</option>
+                                <option value="DATOS_VERIFICADOS">Datos verificados</option>
+                                <option value="NO_LOCALIZADO">No localizado</option>
+                                <option value="DESCARTADO">Descartado</option>
+                                <option value="OFICIO_PREPARADO">Oficio preparado</option>
+                                <option value="ESPERANDO_RESPUESTA">Esperando respuesta</option>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label class="form-label" for="manual_channel">Canal de última actividad *</label>
+                            <select class="form-select" id="manual_channel" name="canal" required>
+                                <option value="LLAMADA">Llamada</option>
+                                <option value="WHATSAPP">WhatsApp</option>
+                                <option value="CORREO">Correo</option>
+                                <option value="NOTA">Nota</option>
+                                <option value="OTRO">Otro</option>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label class="form-label" for="manual_result">Resultado *</label>
+                            <select class="form-select" id="manual_result" name="resultado" required>
+                                <option value="SIN_RESPUESTA">Sin respuesta</option>
+                                <option value="NUMERO_INCORRECTO">Número incorrecto</option>
+                                <option value="CONTACTO_INCORRECTO">Contacto incorrecto</option>
+                                <option value="CONTACTO_CORRECTO">Contacto correcto</option>
+                                <option value="SOLICITO_INFORMACION">Solicitó información</option>
+                                <option value="SOLICITO_LLAMAR_DESPUES">Solicitó volver a llamar</option>
+                                <option value="NO_INTERESADO">No interesado</option>
+                                <option value="OTRO">Otro</option>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label" for="manual_person_attended">Persona atendió</label>
+                            <input class="form-control" id="manual_person_attended" name="persona_atendio">
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label" for="manual_last_activity">Última actividad *</label>
+                            <input class="form-control" id="manual_last_activity" name="ultima_actividad_at" type="datetime-local" required data-manual-last-activity>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label" for="manual_next_action">Próxima acción</label>
+                            <select class="form-select" id="manual_next_action" name="proxima_accion" data-manual-next-action>
+                                <option value="">Sin próxima acción</option>
+                                <option value="Volver a llamar">Volver a llamar</option>
+                                <option value="Enviar WhatsApp">Enviar WhatsApp</option>
+                                <option value="Confirmar contacto de RH">Confirmar contacto de RH</option>
+                                <option value="Revisar correo">Revisar correo</option>
+                                <option value="Preparar oficio">Preparar oficio</option>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label" for="manual_next_action_date">Fecha de próxima acción</label>
+                            <input class="form-control" id="manual_next_action_date" name="proxima_accion_at" type="datetime-local" data-manual-next-action-date>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label" for="manual_observations">Observaciones</label>
+                            <textarea class="form-control" id="manual_observations" name="observaciones" rows="3"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="linkage-candidate-alert d-none mt-3" data-manual-alert></div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-system-cancel" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-system-save" data-manual-submit>Guardar seguimiento</button>
                 </div>
             </form>
         </div>
@@ -1919,6 +2075,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const modalBuscar = document.getElementById('modalBuscarCandidato');
     const modalConfirmar = document.getElementById('modalConfirmarSeguimiento');
+    const modalManual = document.getElementById('modalAgregarSeguimientoManual');
+    const formularioManual = document.querySelector('[data-manual-follow-form]');
+    const campoNombreManual = document.querySelector('[data-manual-name]');
+    const campoUltimaActividadManual = document.querySelector('[data-manual-last-activity]');
+    const selectorProximaAccionManual = document.querySelector('[data-manual-next-action]');
+    const campoFechaProximaAccionManual = document.querySelector('[data-manual-next-action-date]');
+    const alertaManual = document.querySelector('[data-manual-alert]');
+    const botonGuardarManual = document.querySelector('[data-manual-submit]');
     const formularioBusqueda = document.querySelector('[data-candidate-search-form]');
     const campoBusqueda = document.querySelector('[data-candidate-search]');
     const selectorTipo = document.querySelector('[data-candidate-type]');
@@ -1941,6 +2105,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const urlBuscar = '<?= BASE_URL ?>index.php?controller=seguimientoVinculacion&action=buscarCandidatos';
     const urlActualizarSecretarias = '<?= BASE_URL ?>index.php?controller=seguimientoVinculacion&action=actualizarSecretariasDenue';
     const urlCrear = '<?= BASE_URL ?>index.php?controller=seguimientoVinculacion&action=crearSeguimientoDesdeCandidato';
+    const urlCrearManual = '<?= BASE_URL ?>index.php?controller=seguimientoVinculacion&action=crearSeguimientoManual';
     let temporizadorCandidatos = null;
     let paginaCandidatos = 1;
     let candidatosActuales = [];
@@ -2668,6 +2833,89 @@ document.addEventListener('DOMContentLoaded', function () {
 
     actualizarEstadoFiltrosCandidato();
     actualizarBotonLimpiarCandidato();
+
+    const fechaHoraLocalActual = function () {
+        const ahora = new Date();
+        const compensacion = ahora.getTimezoneOffset() * 60000;
+
+        return new Date(ahora.getTime() - compensacion).toISOString().slice(0, 16);
+    };
+
+    modalManual?.addEventListener('shown.bs.modal', function () {
+        mostrarAlerta(alertaManual, '', '');
+
+        if (campoUltimaActividadManual && campoUltimaActividadManual.value === '') {
+            campoUltimaActividadManual.value = fechaHoraLocalActual();
+        }
+
+        campoNombreManual?.focus();
+    });
+
+    selectorProximaAccionManual?.addEventListener('change', function () {
+        if (!campoFechaProximaAccionManual) {
+            return;
+        }
+
+        campoFechaProximaAccionManual.required = selectorProximaAccionManual.value !== '';
+
+        if (selectorProximaAccionManual.value === '') {
+            campoFechaProximaAccionManual.value = '';
+        }
+    });
+
+    formularioManual?.addEventListener('submit', async function (event) {
+        event.preventDefault();
+        mostrarAlerta(alertaManual, '', '');
+
+        if (!formularioManual.checkValidity()) {
+            formularioManual.reportValidity();
+            return;
+        }
+
+        const textoOriginal = botonGuardarManual?.textContent || 'Guardar seguimiento';
+
+        if (botonGuardarManual) {
+            botonGuardarManual.disabled = true;
+            botonGuardarManual.textContent = 'Guardando...';
+        }
+
+        try {
+            const respuesta = await fetch(urlCrearManual, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'fetch'
+                },
+                body: new FormData(formularioManual)
+            });
+            const contentType = respuesta.headers.get('content-type') || '';
+
+            if (!contentType.includes('application/json')) {
+                const contenido = await respuesta.text();
+                console.error('El servidor devolvió una respuesta que no es JSON:', contenido);
+                throw new Error('No fue posible guardar el seguimiento manual.');
+            }
+
+            const datos = await respuesta.json();
+
+            if (!respuesta.ok || !datos.ok) {
+                throw new Error(datos.mensaje || 'No fue posible guardar el seguimiento manual.');
+            }
+
+            bootstrap.Modal.getInstance(modalManual)?.hide();
+            mostrarToastSistema(datos.mensaje || 'Seguimiento manual guardado correctamente.');
+
+            window.setTimeout(function () {
+                window.location.reload();
+            }, 900);
+        } catch (error) {
+            mostrarAlerta(alertaManual, error.message, 'error');
+        } finally {
+            if (botonGuardarManual) {
+                botonGuardarManual.disabled = false;
+                botonGuardarManual.textContent = textoOriginal;
+            }
+        }
+    });
 
     botonAnterior?.addEventListener('click', function (event) {
         event.preventDefault();
