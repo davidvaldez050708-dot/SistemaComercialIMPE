@@ -51,7 +51,6 @@
             toast.setAttribute('role', 'status');
             toast.setAttribute('aria-live', 'polite');
             toast.setAttribute('aria-atomic', 'true');
-            toast.setAttribute('data-bs-delay', vencida ? '9000' : '7000');
 
             toast.innerHTML =
                 '<div class="reminder-toast-body">' +
@@ -62,18 +61,13 @@
                         '<strong>' + escapar(aviso.titulo || 'Recordatorio') + '</strong>' +
                         '<span>' + escapar(aviso.mensaje || '') + '</span>' +
                     '</span>' +
-                    '<button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Cerrar"></button>' +
                 '</div>';
 
             const seguimientoId = Number(aviso.seguimiento_id || 0);
 
             if (seguimientoId > 0) {
                 toast.classList.add('is-clickable');
-                toast.addEventListener('click', function (event) {
-                    if (event.target.closest('[data-bs-dismiss="toast"]')) {
-                        return;
-                    }
-
+                toast.addEventListener('click', function () {
                     window.location.href =
                         'index.php?controller=seguimientoVinculacion&action=detalle&id=' +
                         seguimientoId;
@@ -85,7 +79,11 @@
                 toast.remove();
             });
 
-            bootstrap.Toast.getOrCreateInstance(toast).show();
+            const instanciaToast = new bootstrap.Toast(toast, {
+                autohide: true,
+                delay: 6000
+            });
+            instanciaToast.show();
         };
 
         const renderizarRecordatorios = function (recordatorios) {
