@@ -106,6 +106,168 @@
     font-size: 0.78rem;
 }
 
+/* =========================================================
+   OFICIO EN PANEL DE TRABAJO
+   ========================================================= */
+
+.linkage-work-offcanvas,
+.linkage-work-offcanvas .offcanvas-body,
+[data-work-oficio-section] {
+    overflow-x: hidden;
+}
+
+[data-work-oficio-section] {
+    min-width: 0;
+}
+
+[data-work-oficio-section] .linkage-work-contact-grid,
+[data-work-oficio-section] .linkage-work-contact-grid > div,
+[data-work-oficio-section] > .linkage-work-verify-row,
+[data-work-send-schedule] {
+    min-width: 0;
+    max-width: 100%;
+}
+
+[data-work-oficio-section] .linkage-work-contact-grid > div {
+    padding: 11px 12px;
+}
+
+[data-work-oficio-section] .linkage-work-contact-grid strong {
+    font-size: 12px;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+}
+
+/* Los botones se muestran 2 x 2 en lugar de una sola fila apretada. */
+[data-work-oficio-section] > .linkage-work-verify-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    align-items: stretch;
+    justify-content: stretch;
+}
+
+[data-work-oficio-section] > .linkage-work-verify-row > .btn {
+    width: 100%;
+    min-width: 0;
+    min-height: 40px;
+    padding: 8px 10px;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+
+    border-radius: 10px;
+
+    font-size: 11.5px;
+    font-weight: 700;
+    line-height: 1.2;
+    text-align: center;
+    white-space: normal;
+}
+
+[data-work-oficio-section] > .linkage-work-verify-row > .btn i {
+    margin: 0 !important;
+    flex: 0 0 auto;
+    font-size: 13px;
+}
+
+/* =========================================================
+   PROGRAMACIÓN DEL ENVÍO
+   ========================================================= */
+
+[data-work-send-schedule] {
+    margin-top: 4px !important;
+    padding: 12px !important;
+
+    border: 1px solid var(--color-border) !important;
+    border-radius: 12px;
+
+    background-color: #f8fafc;
+}
+
+[data-work-send-schedule] > .d-flex {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: center !important;
+}
+
+[data-work-send-schedule] > .d-flex > div {
+    min-width: 0;
+}
+
+[data-work-send-schedule] > .d-flex > div > span:first-child {
+    margin: 0 0 4px;
+
+    color: var(--color-text-secondary) !important;
+    font-size: 9.5px !important;
+    font-weight: 800;
+    line-height: 1.2;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+[data-work-send-schedule] [data-schedule-label] {
+    display: block;
+
+    color: var(--color-text-primary);
+    font-size: 13px;
+    font-weight: 800;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+}
+
+[data-work-send-schedule] [data-schedule-note] {
+    margin-top: 4px !important;
+
+    color: var(--color-text-secondary) !important;
+    font-size: 10.5px !important;
+    font-weight: 600;
+    line-height: 1.35;
+}
+
+[data-work-send-schedule] [data-schedule-open] {
+    width: auto;
+    min-width: 0;
+    min-height: 36px;
+    padding: 7px 11px;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+
+    border-radius: 10px;
+
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+[data-work-send-schedule] [data-schedule-open] i {
+    margin: 0 !important;
+    font-size: 12px;
+}
+
+/* El mismo criterio visual en el expediente completo. */
+[data-detail-oficio-action] {
+    min-width: 0;
+    max-width: 100%;
+}
+
+[data-detail-send-schedule] [data-schedule-label] {
+    font-size: 12.5px;
+    line-height: 1.3;
+}
+
+[data-detail-send-schedule] [data-schedule-note] {
+    font-size: 10.5px !important;
+    line-height: 1.35;
+}
+
 @media (max-width: 767.98px) {
     .oficio-preview-modal-body {
         padding: 12px;
@@ -125,5 +287,24 @@
         font-size: 0.94rem;
         line-height: 1.6;
         text-align: left;
+    }
+
+    [data-work-oficio-section] > .linkage-work-verify-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    [data-work-send-schedule] > .d-flex {
+        grid-template-columns: 1fr;
+        align-items: start !important;
+    }
+
+    [data-work-send-schedule] [data-schedule-open] {
+        width: fit-content;
+    }
+}
+
+@media (max-width: 390px) {
+    [data-work-oficio-section] > .linkage-work-verify-row {
+        grid-template-columns: 1fr;
     }
 }
