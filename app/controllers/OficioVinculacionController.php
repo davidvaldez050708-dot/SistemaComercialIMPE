@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../models/OficioVinculacionModel.php';
+require_once __DIR__ . '/../services/OficioPreviewService.php';
 require_once __DIR__ . '/../helpers/PermissionHelper.php';
 
 class OficioVinculacionController
@@ -75,6 +76,36 @@ class OficioVinculacionController
 
         $modelo = new OficioVinculacionModel();
         $resultado = $modelo->generarBorrador($seguimientoId, $usuarioId);
+
+        if (!($resultado['ok'] ?? false)) {
+            $codigoHttp = (int)($resultado['codigo_http'] ?? 500);
+            unset($resultado['codigo_http']);
+            $this->responderJson($resultado, $codigoHttp);
+        }
+
+        $this->responderJson($resultado);
+    }
+
+    public function vistaPrevia()
+    {
+        $this->validarPermisoJson('oficios.ver');
+
+        $seguimientoId = (int)($_GET['seguimiento_id'] ?? 0);
+        $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
+
+        if ($seguimientoId <= 0) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'El seguimiento solicitado no es válido.'
+            ], 422);
+        }
+
+        $servicio = new OficioPreviewService();
+        $resultado = $servicio->obtenerVistaPrevia(
+            $seguimientoId,
+            $usuarioId,
+            $this->resolverModoAcceso()
+        );
 
         if (!($resultado['ok'] ?? false)) {
             $codigoHttp = (int)($resultado['codigo_http'] ?? 500);
