@@ -2,6 +2,12 @@
 
 session_start();
 
+$controllerSolicitado = $_GET['controller'] ?? 'login';
+$actionSolicitada = $_GET['action'] ?? 'mostrarLogin';
+$esConsultaAutomaticaRecordatorios =
+    $controllerSolicitado === 'reminder' &&
+    $actionSolicitada === 'pendientes';
+
 // Tiempo máximo de inactividad: 30 minutos
 $tiempoMaximoInactividad = 1800;
 
@@ -20,14 +26,16 @@ if (isset($_SESSION['usuario_id'], $_SESSION['ultima_actividad'])) {
         exit;
     }
 
-    $_SESSION['ultima_actividad'] = time();
+    if (!$esConsultaAutomaticaRecordatorios) {
+        $_SESSION['ultima_actividad'] = time();
+    }
 }
 
 require_once __DIR__ . '/config/config.php';
 require_once __DIR__ . '/app/helpers/PermissionHelper.php';
 
-$controller = $_GET['controller'] ?? 'login';
-$action = $_GET['action'] ?? 'mostrarLogin';
+$controller = $controllerSolicitado;
+$action = $actionSolicitada;
 
 /*
  * Si el usuario inició sesión con una contraseña temporal,
