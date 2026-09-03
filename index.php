@@ -2,6 +2,18 @@
 
 session_start();
 
+$esPeticionFetch = strtolower((string)($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '')) === 'fetch';
+
+$responderSesionJson = static function ($mensaje, $codigoHttp = 401) {
+    http_response_code($codigoHttp);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode([
+        'ok' => false,
+        'mensaje' => $mensaje
+    ], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+    exit;
+};
+
 // Tiempo máximo de inactividad: 30 minutos
 $tiempoMaximoInactividad = 1800;
 
@@ -13,6 +25,10 @@ if (isset($_SESSION['usuario_id'], $_SESSION['ultima_actividad'])) {
 
         $_SESSION = [];
         session_destroy();
+
+        if ($esPeticionFetch) {
+            $responderSesionJson('La sesión expiró. Inicia sesión nuevamente.');
+        }
 
         header(
             'Location: index.php?controller=login&action=mostrarLogin&sesion=expirada'
@@ -68,6 +84,10 @@ $esRutaPublica =
     in_array($action, $rutasPublicas[$controller]);
 
 if (!$esRutaPublica && !isset($_SESSION['usuario_id'])) {
+
+    if ($esPeticionFetch) {
+        $responderSesionJson('La sesión no está activa.');
+    }
 
     header(
         'Location: index.php?controller=login&action=mostrarLogin'

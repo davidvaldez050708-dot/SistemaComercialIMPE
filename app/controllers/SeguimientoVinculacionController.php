@@ -302,6 +302,132 @@ class SeguimientoVinculacionController
         ]);
     }
 
+    public function actualizarSecretariasDenue()
+    {
+        $this->validarMetodoPostJson();
+        $this->validarPermisoJson('seguimientos_vinculacion.crear');
+
+        $modelo = new SeguimientoVinculacionModel();
+        $usuarioId = $this->obtenerUsuarioActualId();
+        $modoSeguimiento = $this->resolverModoSeguimiento();
+        $estadoId = (int)($_POST['estado_id'] ?? 0);
+        $estado = $this->obtenerEstadoPorModo(
+            $modelo,
+            $usuarioId,
+            $estadoId,
+            $modoSeguimiento
+        );
+
+        if (!$estado) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'No tienes acceso a este territorio.'
+            ], 403);
+        }
+
+        $claveEstado = str_pad((string)($estado['clave_inegi'] ?? ''), 2, '0', STR_PAD_LEFT);
+        $servicioDenue = new DenueService();
+        $resultadoDenue = $servicioDenue->buscarDenuePorNombre(
+            $claveEstado,
+            '0',
+            'secretaria',
+            250
+        );
+
+        if (($resultadoDenue['ok'] ?? false) !== true) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => $resultadoDenue['mensaje'] ??
+                    'No fue posible consultar las secretarías en DENUE.'
+            ], 502);
+        }
+
+        $resultadosDenue = is_array($resultadoDenue['resultados'] ?? null)
+            ? $resultadoDenue['resultados']
+            : [];
+        $secretarias = $modelo->obtenerSecretariasParaActualizarDenue($estadoId);
+        $resultadosDenuePorClave = [];
+
+        foreach ($resultadosDenue as $candidatoDenue) {
+            $clave = trim((string)($candidatoDenue['id_origen'] ?? ''));
+
+            if ($clave !== '') {
+                $resultadosDenuePorClave[$clave] = $candidatoDenue;
+            }
+        }
+
+        $clavesUtilizadas = [];
+        $actualizadas = 0;
+        $coincidenciasValidas = 0;
+        $consultasNombreFallidas = 0;
+
+        foreach ($secretarias as $secretaria) {
+            $coincidencia = $this->encontrarSecretariaDenue(
+                $secretaria,
+                array_values($resultadosDenuePorClave),
+                $clavesUtilizadas
+            );
+
+            if ($coincidencia === null) {
+                $resultadoPorNombre = $servicioDenue->buscarDenuePorNombre(
+                    $claveEstado,
+                    '0',
+                    $this->obtenerTerminoBusquedaSecretaria($secretaria['nombre'] ?? ''),
+                    250
+                );
+
+                if (($resultadoPorNombre['ok'] ?? false) !== true) {
+                    $consultasNombreFallidas++;
+                    continue;
+                }
+
+                foreach ($resultadoPorNombre['resultados'] ?? [] as $candidatoDenue) {
+                    $clave = trim((string)($candidatoDenue['id_origen'] ?? ''));
+
+                    if ($clave !== '') {
+                        $resultadosDenuePorClave[$clave] = $candidatoDenue;
+                    }
+                }
+
+                $coincidencia = $this->encontrarSecretariaDenue(
+                    $secretaria,
+                    $resultadoPorNombre['resultados'] ?? [],
+                    $clavesUtilizadas
+                );
+            }
+
+            if ($coincidencia === null) {
+                continue;
+            }
+
+            $coincidenciasValidas++;
+            $claveDenue = (string)($coincidencia['id_origen'] ?? '');
+
+            if ($modelo->enriquecerSecretariaDesdeDenue(
+                $estadoId,
+                (int)$secretaria['id'],
+                $coincidencia
+            )) {
+                $actualizadas++;
+                $clavesUtilizadas[$claveDenue] = true;
+            }
+        }
+
+        $this->responderJson([
+            'ok' => true,
+            'mensaje' => $actualizadas > 0
+                ? 'Se actualizó la información disponible de las secretarías.'
+                : 'DENUE no devolvió coincidencias seguras para las secretarías registradas.',
+            'denue_total' => count($resultadosDenuePorClave),
+            'coincidencias_validas' => $coincidenciasValidas,
+            'actualizadas' => $actualizadas,
+            'insertadas' => 0,
+            'ignoradas' => max(0, count($resultadosDenuePorClave) - $coincidenciasValidas),
+            'consultas_nombre_fallidas' => $consultasNombreFallidas,
+            'hay_mas_denue' => (bool)($resultadoDenue['hay_mas'] ?? false)
+        ]);
+    }
+
     public function crearSeguimientoDesdeCandidato()
     {
         $this->validarMetodoPostJson();
@@ -1540,6 +1666,75 @@ class SeguimientoVinculacionController
         $normalizado = iconv('UTF-8', 'ASCII//TRANSLIT', $valor);
 
         return $normalizado === false ? $valor : $normalizado;
+    }
+
+    private function encontrarSecretariaDenue($secretaria, $resultadosDenue, $clavesUtilizadas)
+    {
+        $nombreLocal = $this->normalizarNombreSecretaria($secretaria['nombre'] ?? '');
+        $mejorCoincidencia = null;
+        $mejorPuntaje = -1;
+
+        foreach ($resultadosDenue as $candidato) {
+            $claveDenue = trim((string)($candidato['id_origen'] ?? ''));
+            $nombreDenue = $this->normalizarNombreSecretaria($candidato['nombre'] ?? '');
+
+            if (
+                $claveDenue === '' ||
+                isset($clavesUtilizadas[$claveDenue]) ||
+                strpos($nombreDenue, 'secretaria') === false ||
+                preg_match('/\b(municipal|municipio|ayuntamiento|federal)\b/', $nombreDenue)
+            ) {
+                continue;
+            }
+
+            $coincide = $nombreLocal === $nombreDenue;
+
+            if (!$coincide) {
+                continue;
+            }
+
+            $puntaje = 1000;
+            $puntaje += !empty($candidato['telefono']) ? 20 : 0;
+            $puntaje += !empty($candidato['correo']) ? 20 : 0;
+            $puntaje += !empty($candidato['sitio_web']) ? 20 : 0;
+            $puntaje += (int)($candidato['estrato_valor'] ?? 0);
+
+            if ($puntaje > $mejorPuntaje) {
+                $mejorPuntaje = $puntaje;
+                $mejorCoincidencia = $candidato;
+            }
+        }
+
+        return $mejorCoincidencia;
+    }
+
+    private function normalizarNombreSecretaria($valor)
+    {
+        $valor = $this->normalizarTexto($valor);
+        $valor = preg_replace('/[^a-z0-9]+/', ' ', $valor);
+
+        return trim(preg_replace('/\s+/', ' ', (string)$valor));
+    }
+
+    private function obtenerTerminoBusquedaSecretaria($nombre)
+    {
+        $palabrasOmitidas = [
+            'secretaria', 'de', 'del', 'la', 'las', 'los', 'y', 'para',
+            'estado', 'estatal'
+        ];
+        $palabras = explode(' ', $this->normalizarNombreSecretaria($nombre));
+
+        foreach ($palabras as $palabra) {
+            if (
+                strlen($palabra) >= 4 &&
+                strpos($palabra, 'secretar') !== 0 &&
+                !in_array($palabra, $palabrasOmitidas, true)
+            ) {
+                return $palabra;
+            }
+        }
+
+        return 'secretaria';
     }
 
     private function obtenerTerritoriosPorModo($modelo, $usuarioId, $modo)

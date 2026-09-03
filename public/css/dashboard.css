@@ -7137,7 +7137,10 @@
 
 .linkage-candidate-filter-actions {
     display: flex;
+    align-items: center;
     justify-content: flex-end;
+    gap: 12px;
+    flex-wrap: wrap;
     min-width: 0;
 }
 

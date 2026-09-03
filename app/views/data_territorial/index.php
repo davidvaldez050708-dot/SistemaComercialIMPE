@@ -440,6 +440,17 @@ $urlPaginaTerritorio = function ($pagina) use ($buscarTerritorio, $filtroInforma
                         <?php endforeach; ?>
                     </select>
                 </div>
+
+
+                <?php if ($hayFiltrosTerritorios): ?>
+                    <div class="linkage-filter-clear-slot">
+                        <a
+                            class="filter-clear-link"
+                            href="<?= BASE_URL ?>index.php?controller=dataTerritorial&action=index">
+                            Limpiar filtros
+                        </a>
+                    </div>
+                <?php endif; ?>
             </form>
         </section>
     <?php endif; ?>

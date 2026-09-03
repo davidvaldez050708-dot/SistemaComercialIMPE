@@ -301,7 +301,10 @@ class SeguimientoVinculacionModel
                     cargo_titular,
                     correo,
                     telefono,
-                    sitio_web
+                    sitio_web,
+                    fuente_datos,
+                    clave_denue,
+                    fecha_actualizacion_denue
                 FROM secretarias_estatales
                 WHERE estado_id = ?
                     AND estado = 1
@@ -338,6 +341,56 @@ class SeguimientoVinculacionModel
         }
 
         return $candidatos;
+    }
+
+    public function obtenerSecretariasParaActualizarDenue($estadoId)
+    {
+        $sql = "SELECT id, nombre, telefono, correo, sitio_web, clave_denue
+                FROM secretarias_estatales
+                WHERE estado_id = ?
+                    AND estado = 1
+                ORDER BY nombre ASC";
+
+        $stmt = $this->connection->prepare($sql);
+        $estadoId = (int)$estadoId;
+        $stmt->bind_param('i', $estadoId);
+        $stmt->execute();
+
+        return $this->convertirResultadoEnArreglo($stmt->get_result());
+    }
+
+    public function enriquecerSecretariaDesdeDenue($estadoId, $secretariaId, $candidatoDenue)
+    {
+        $sql = "UPDATE secretarias_estatales
+                SET telefono = COALESCE(NULLIF(telefono, ''), NULLIF(?, '')),
+                    correo = COALESCE(NULLIF(correo, ''), NULLIF(?, '')),
+                    sitio_web = COALESCE(NULLIF(sitio_web, ''), NULLIF(?, '')),
+                    fuente_datos = 'DENUE',
+                    clave_denue = ?,
+                    fecha_actualizacion_denue = NOW(),
+                    updated_at = NOW()
+                WHERE id = ?
+                    AND estado_id = ?
+                    AND estado = 1";
+
+        $stmt = $this->connection->prepare($sql);
+        $telefono = trim((string)($candidatoDenue['telefono'] ?? ''));
+        $correo = trim((string)($candidatoDenue['correo'] ?? ''));
+        $sitioWeb = trim((string)($candidatoDenue['sitio_web'] ?? ''));
+        $claveDenue = trim((string)($candidatoDenue['id_origen'] ?? ''));
+        $secretariaId = (int)$secretariaId;
+        $estadoId = (int)$estadoId;
+        $stmt->bind_param(
+            'ssssii',
+            $telefono,
+            $correo,
+            $sitioWeb,
+            $claveDenue,
+            $secretariaId,
+            $estadoId
+        );
+
+        return $stmt->execute();
     }
 
     public function buscarCandidatosMunicipios($estadoId, $buscar, $municipioId = 0, $limite = 10, $offset = 0)
@@ -1245,9 +1298,13 @@ class SeguimientoVinculacionModel
             'telefono' => $this->valorONulo($secretaria['telefono'] ?? null),
             'correo' => $this->valorONulo($secretaria['correo'] ?? null),
             'sitio_web' => $this->valorONulo($secretaria['sitio_web'] ?? null),
+            'fuente' => (string)($secretaria['fuente_datos'] ?? 'Sistema'),
+            'clave_denue' => $this->valorONulo($secretaria['clave_denue'] ?? null),
+            'fecha_actualizacion_denue' => $this->valorONulo(
+                $secretaria['fecha_actualizacion_denue'] ?? null
+            ),
             'municipio_nombre' => 'Estatal',
             'municipio_id' => null,
-            'fuente' => 'Sistema',
             'contexto' => $contexto !== '' ? $contexto : null
         ];
     }

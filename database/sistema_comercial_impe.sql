@@ -4132,6 +4132,9 @@ CREATE TABLE `secretarias_estatales` (
   `correo` varchar(180) DEFAULT NULL,
   `telefono` varchar(80) DEFAULT NULL,
   `sitio_web` varchar(255) DEFAULT NULL,
+  `fuente_datos` varchar(30) NOT NULL DEFAULT 'Sistema',
+  `clave_denue` varchar(30) DEFAULT NULL,
+  `fecha_actualizacion_denue` datetime DEFAULT NULL,
   `estado` tinyint(1) NOT NULL DEFAULT 1,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
@@ -4537,6 +4540,7 @@ ALTER TABLE `rol_permisos`
 --
 ALTER TABLE `secretarias_estatales`
   ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uk_secretaria_estado_denue` (`estado_id`,`clave_denue`),
   ADD KEY `fk_secretaria_estado` (`estado_id`);
 
 --

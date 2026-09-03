@@ -555,6 +555,20 @@ $hayFiltros =
                             <i class="bi bi-lightning-charge"></i>
                             Buscar candidatos automáticamente
                         </button>
+                        <button
+                            type="button"
+                            class="btn btn-system-save linkage-candidate-auto d-none"
+                            data-candidate-secretarias-auto>
+                            <i class="bi bi-arrow-repeat"></i>
+                            Actualizar secretarías automáticamente
+                        </button>
+                        <a
+                            href="#"
+                            class="filter-clear-link d-none"
+                            id="limpiarFiltrosCandidato"
+                            data-candidate-clear-filters>
+                            Limpiar filtros
+                        </a>
                     </div>
                 </form>
 
@@ -1911,6 +1925,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const selectorMunicipio = document.querySelector('[data-candidate-municipality]');
     const opcionMunicipioDefault = document.querySelector('[data-municipality-default]');
     const botonBusquedaAutomatica = document.querySelector('[data-candidate-auto-search]');
+    const botonSecretariasAutomaticas = document.querySelector('[data-candidate-secretarias-auto]');
+    const botonLimpiarFiltrosCandidato = document.getElementById('limpiarFiltrosCandidato');
     const contenedorResultados = document.querySelector('[data-candidate-results]');
     const estadoBusqueda = document.querySelector('[data-candidate-status]');
     const alertaBusqueda = document.querySelector('[data-candidate-alert]');
@@ -1923,6 +1939,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const botonConfirmar = document.querySelector('[data-confirm-submit]');
     const estadoId = '<?= (int)($estado['id'] ?? 0) ?>';
     const urlBuscar = '<?= BASE_URL ?>index.php?controller=seguimientoVinculacion&action=buscarCandidatos';
+    const urlActualizarSecretarias = '<?= BASE_URL ?>index.php?controller=seguimientoVinculacion&action=actualizarSecretariasDenue';
     const urlCrear = '<?= BASE_URL ?>index.php?controller=seguimientoVinculacion&action=crearSeguimientoDesdeCandidato';
     let temporizadorCandidatos = null;
     let paginaCandidatos = 1;
@@ -1979,6 +1996,14 @@ document.addEventListener('DOMContentLoaded', function () {
         return etiquetaTipoVisual(candidato);
     };
 
+    const actualizarBotonLimpiarCandidato = function () {
+        const hayFiltrosCandidato = String(campoBusqueda?.value || '') !== '' ||
+            String(selectorTipo?.value || 'TODOS') !== 'TODOS' ||
+            String(selectorMunicipio?.value || '0') !== '0';
+
+        botonLimpiarFiltrosCandidato?.classList.toggle('d-none', !hayFiltrosCandidato);
+    };
+
     const actualizarEstadoFiltrosCandidato = function () {
         if (!selectorTipo || !selectorMunicipio) {
             return;
@@ -2000,6 +2025,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         botonBusquedaAutomatica?.classList.toggle('d-none', !mostrarBusquedaAutomatica);
+        botonSecretariasAutomaticas?.classList.toggle('d-none', !esSecretaria);
     };
 
     const claseOportunidad = function (nivel) {
@@ -2227,10 +2253,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const construirTarjetaSecretaria = function (candidato, boton, oportunidad) {
         const contexto = separarContextoSecretaria(candidato.contexto);
+        const etiquetaFuente = candidato.fuente === 'DENUE' && candidato.clave_denue
+            ? 'DENUE'
+            : 'Secretaría estatal';
 
         return '<div class="linkage-candidate-main">' +
                 '<div class="linkage-candidate-badges">' +
-                    '<span class="linkage-source-badge">Secretaría estatal</span>' +
+                    '<span class="linkage-source-badge">' + limpiar(etiquetaFuente) + '</span>' +
                     oportunidad +
                 '</div>' +
                 '<strong>' + limpiar(candidato.nombre) + '</strong>' +
@@ -2428,7 +2457,28 @@ document.addEventListener('DOMContentLoaded', function () {
                 },
                 signal: controladorBusqueda.signal
             });
+            const contentType = respuesta.headers.get('content-type') || '';
+
+            if (!contentType.includes('application/json')) {
+                const contenido = await respuesta.text();
+                console.error('El servidor devolvió una respuesta que no es JSON:', contenido);
+                throw new Error(
+                    selectorTipo.value === 'SECRETARIA'
+                        ? 'No fue posible actualizar las secretarías. Intenta nuevamente.'
+                        : 'No fue posible consultar candidatos. Intenta nuevamente.'
+                );
+            }
+
             const datos = await respuesta.json();
+
+            if (!respuesta.ok) {
+                throw new Error(
+                    datos.mensaje ||
+                    (selectorTipo.value === 'SECRETARIA'
+                        ? 'No fue posible actualizar las secretarías. Intenta nuevamente.'
+                        : 'No fue posible consultar candidatos. Intenta nuevamente.')
+                );
+            }
 
             if (secuenciaActual !== secuenciaBusqueda) {
                 return;
@@ -2515,11 +2565,15 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    campoBusqueda?.addEventListener('input', programarBusqueda);
+    campoBusqueda?.addEventListener('input', function () {
+        actualizarBotonLimpiarCandidato();
+        programarBusqueda();
+    });
 
     [selectorTipo, selectorMunicipio].forEach(function (selector) {
         selector?.addEventListener('change', function () {
             actualizarEstadoFiltrosCandidato();
+            actualizarBotonLimpiarCandidato();
             paginaCandidatos = 1;
 
             if (selectorTipo?.value === 'SECRETARIA') {
@@ -2537,6 +2591,72 @@ document.addEventListener('DOMContentLoaded', function () {
         buscarCandidatos(true);
     });
 
+    botonSecretariasAutomaticas?.addEventListener('click', async function () {
+        if (selectorTipo?.value !== 'SECRETARIA') {
+            return;
+        }
+
+        paginaCandidatos = 1;
+        botonSecretariasAutomaticas.disabled = true;
+        botonSecretariasAutomaticas.innerHTML =
+            '<i class="bi bi-arrow-repeat"></i> Actualizando secretarías...';
+
+        try {
+            const formData = new FormData();
+            formData.append('estado_id', estadoId);
+            const respuesta = await fetch(urlActualizarSecretarias, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'fetch'
+                },
+                body: formData
+            });
+            const contentType = respuesta.headers.get('content-type') || '';
+
+            if (!contentType.includes('application/json')) {
+                const contenido = await respuesta.text();
+                console.error('El servidor devolvió una respuesta que no es JSON:', contenido);
+                throw new Error('No fue posible actualizar las secretarías. Intenta nuevamente.');
+            }
+
+            const datos = await respuesta.json();
+
+            if (!respuesta.ok || !datos.ok) {
+                throw new Error(
+                    datos.mensaje || 'No fue posible actualizar las secretarías. Intenta nuevamente.'
+                );
+            }
+
+            await buscarCandidatos(false);
+        } catch (error) {
+            mostrarAlerta(alertaBusqueda, error.message, 'error');
+        } finally {
+            botonSecretariasAutomaticas.disabled = false;
+            botonSecretariasAutomaticas.innerHTML =
+                '<i class="bi bi-arrow-repeat"></i> Actualizar secretarías automáticamente';
+        }
+    });
+
+    botonLimpiarFiltrosCandidato?.addEventListener('click', function (event) {
+        event.preventDefault();
+        window.clearTimeout(temporizadorCandidatos);
+
+        if (controladorBusqueda) {
+            controladorBusqueda.abort();
+            controladorBusqueda = null;
+        }
+
+        secuenciaBusqueda += 1;
+        campoBusqueda.value = '';
+        selectorTipo.value = 'TODOS';
+        selectorMunicipio.value = '0';
+        paginaCandidatos = 1;
+        actualizarEstadoFiltrosCandidato();
+        limpiarResultadosCandidatos();
+        actualizarBotonLimpiarCandidato();
+        campoBusqueda.focus();
+    });
+
     alertaBusqueda?.addEventListener('click', function (event) {
         if (!event.target.closest('[data-candidate-retry-denue]')) {
             return;
@@ -2547,6 +2667,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     actualizarEstadoFiltrosCandidato();
+    actualizarBotonLimpiarCandidato();
 
     botonAnterior?.addEventListener('click', function (event) {
         event.preventDefault();
