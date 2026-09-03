@@ -165,6 +165,10 @@
     src="<?= BASE_URL ?>public/javascript/cambiar_password.js">
 </script>
 
+<script
+    src="<?= BASE_URL ?>public/javascript/seguimiento_interacciones.js">
+</script>
+
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const modalFoto = document.getElementById('modalVistaFotoPerfil');
