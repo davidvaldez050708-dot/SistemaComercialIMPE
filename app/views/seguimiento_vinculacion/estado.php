@@ -765,65 +765,10 @@ $hayFiltros =
                         </div>
                         <div class="col-12 col-md-4">
                             <label class="form-label" for="manual_stage">Estado / etapa *</label>
-                            <select class="form-select" id="manual_stage" name="estado_seguimiento" required>
+                            <select class="form-select" id="manual_stage" disabled>
                                 <option value="NUEVO">Nuevo</option>
-                                <option value="CONTACTANDO">Contactando</option>
-                                <option value="DATOS_VERIFICADOS">Datos verificados</option>
-                                <option value="NO_LOCALIZADO">No localizado</option>
-                                <option value="DESCARTADO">Descartado</option>
-                                <option value="OFICIO_PREPARADO">Oficio preparado</option>
-                                <option value="ESPERANDO_RESPUESTA">Esperando respuesta</option>
                             </select>
-                        </div>
-                        <div class="col-12 col-md-4">
-                            <label class="form-label" for="manual_channel">Canal de última actividad *</label>
-                            <select class="form-select" id="manual_channel" name="canal" required>
-                                <option value="LLAMADA">Llamada</option>
-                                <option value="WHATSAPP">WhatsApp</option>
-                                <option value="CORREO">Correo</option>
-                                <option value="NOTA">Nota</option>
-                                <option value="OTRO">Otro</option>
-                            </select>
-                        </div>
-                        <div class="col-12 col-md-4">
-                            <label class="form-label" for="manual_result">Resultado *</label>
-                            <select class="form-select" id="manual_result" name="resultado" required>
-                                <option value="SIN_RESPUESTA">Sin respuesta</option>
-                                <option value="NUMERO_INCORRECTO">Número incorrecto</option>
-                                <option value="CONTACTO_INCORRECTO">Contacto incorrecto</option>
-                                <option value="CONTACTO_CORRECTO">Contacto correcto</option>
-                                <option value="SOLICITO_INFORMACION">Solicitó información</option>
-                                <option value="SOLICITO_LLAMAR_DESPUES">Solicitó volver a llamar</option>
-                                <option value="NO_INTERESADO">No interesado</option>
-                                <option value="OTRO">Otro</option>
-                            </select>
-                        </div>
-                        <div class="col-12 col-md-6">
-                            <label class="form-label" for="manual_person_attended">Persona atendió</label>
-                            <input class="form-control" id="manual_person_attended" name="persona_atendio">
-                        </div>
-                        <div class="col-12 col-md-6">
-                            <label class="form-label" for="manual_last_activity">Última actividad *</label>
-                            <input class="form-control" id="manual_last_activity" name="ultima_actividad_at" type="datetime-local" required data-manual-last-activity>
-                        </div>
-                        <div class="col-12 col-md-6">
-                            <label class="form-label" for="manual_next_action">Próxima acción</label>
-                            <select class="form-select" id="manual_next_action" name="proxima_accion" data-manual-next-action>
-                                <option value="">Sin próxima acción</option>
-                                <option value="Volver a llamar">Volver a llamar</option>
-                                <option value="Enviar WhatsApp">Enviar WhatsApp</option>
-                                <option value="Confirmar contacto de RH">Confirmar contacto de RH</option>
-                                <option value="Revisar correo">Revisar correo</option>
-                                <option value="Preparar oficio">Preparar oficio</option>
-                            </select>
-                        </div>
-                        <div class="col-12 col-md-6">
-                            <label class="form-label" for="manual_next_action_date">Fecha de próxima acción</label>
-                            <input class="form-control" id="manual_next_action_date" name="proxima_accion_at" type="datetime-local" data-manual-next-action-date>
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label" for="manual_observations">Observaciones</label>
-                            <textarea class="form-control" id="manual_observations" name="observaciones" rows="3"></textarea>
+                            <input type="hidden" name="estado_seguimiento" value="NUEVO">
                         </div>
                     </div>
 
@@ -2078,9 +2023,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const modalManual = document.getElementById('modalAgregarSeguimientoManual');
     const formularioManual = document.querySelector('[data-manual-follow-form]');
     const campoNombreManual = document.querySelector('[data-manual-name]');
-    const campoUltimaActividadManual = document.querySelector('[data-manual-last-activity]');
-    const selectorProximaAccionManual = document.querySelector('[data-manual-next-action]');
-    const campoFechaProximaAccionManual = document.querySelector('[data-manual-next-action-date]');
     const alertaManual = document.querySelector('[data-manual-alert]');
     const botonGuardarManual = document.querySelector('[data-manual-submit]');
     const formularioBusqueda = document.querySelector('[data-candidate-search-form]');
@@ -2834,33 +2776,9 @@ document.addEventListener('DOMContentLoaded', function () {
     actualizarEstadoFiltrosCandidato();
     actualizarBotonLimpiarCandidato();
 
-    const fechaHoraLocalActual = function () {
-        const ahora = new Date();
-        const compensacion = ahora.getTimezoneOffset() * 60000;
-
-        return new Date(ahora.getTime() - compensacion).toISOString().slice(0, 16);
-    };
-
     modalManual?.addEventListener('shown.bs.modal', function () {
         mostrarAlerta(alertaManual, '', '');
-
-        if (campoUltimaActividadManual && campoUltimaActividadManual.value === '') {
-            campoUltimaActividadManual.value = fechaHoraLocalActual();
-        }
-
         campoNombreManual?.focus();
-    });
-
-    selectorProximaAccionManual?.addEventListener('change', function () {
-        if (!campoFechaProximaAccionManual) {
-            return;
-        }
-
-        campoFechaProximaAccionManual.required = selectorProximaAccionManual.value !== '';
-
-        if (selectorProximaAccionManual.value === '') {
-            campoFechaProximaAccionManual.value = '';
-        }
     });
 
     formularioManual?.addEventListener('submit', async function (event) {
