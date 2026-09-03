@@ -17,6 +17,11 @@
         const campoMotivoDescarte = document.querySelector('[data-work-discard-reason-input]');
         const panelDescartado = document.querySelector('[data-work-discarded-panel]');
         const contenedorToasts = document.querySelector('.toast-container');
+        const accionesConHorarioObligatorio = [
+            'Volver a llamar',
+            'Enviar WhatsApp',
+            'Enviar oficio/correo'
+        ];
         let motivoNoInteresPendiente = '';
         let esperandoDecisionNoInteres = false;
         let toastInteraccionDiferido = false;
@@ -146,7 +151,7 @@
             const resultadoManual = resultado === 'OTRO';
 
             campoFechaProximaAccion.disabled = sinAccion && !resultadoManual;
-            campoFechaProximaAccion.required = accion === 'Volver a llamar';
+            campoFechaProximaAccion.required = accionesConHorarioObligatorio.includes(accion);
 
             if (sinAccion && !resultadoManual) {
                 campoFechaProximaAccion.value = '';
@@ -211,13 +216,7 @@
                 return;
             }
 
-            if (resultado === 'OTRO') {
-                selectorProximaAccion.disabled = false;
-                campoFechaProximaAccion.disabled = false;
-                campoFechaProximaAccion.required = false;
-                return;
-            }
-
+            selectorProximaAccion.disabled = false;
             actualizarFechaSegunAccion();
         };
 
@@ -233,6 +232,19 @@
         });
 
         formulario.addEventListener('submit', function (event) {
+            const accion = String(selectorProximaAccion.value || '');
+
+            if (
+                accionesConHorarioObligatorio.includes(accion) &&
+                String(campoFechaProximaAccion.value || '').trim() === ''
+            ) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                campoFechaProximaAccion.reportValidity();
+                campoFechaProximaAccion.focus();
+                return;
+            }
+
             if (selectorResultado.value !== 'NO_INTERESADO') {
                 motivoNoInteresPendiente = '';
                 esperandoDecisionNoInteres = false;
