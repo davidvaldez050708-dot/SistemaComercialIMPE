@@ -169,6 +169,10 @@
     src="<?= BASE_URL ?>public/javascript/seguimiento_interacciones.js">
 </script>
 
+<script
+    src="<?= BASE_URL ?>public/javascript/recordatorios.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/recordatorios.js') ?>">
+</script>
+
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const modalFoto = document.getElementById('modalVistaFotoPerfil');
