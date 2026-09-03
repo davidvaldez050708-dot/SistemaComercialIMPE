@@ -45,7 +45,10 @@ $totalRecordatoriosSeguimiento = count($recordatoriosSeguimiento);
 
         <div class="topbar-actions">
             <?php if ($esAnalistaDatos): ?>
-                <div class="dropdown">
+                <div
+                    class="dropdown"
+                    data-reminder-root
+                    data-reminder-endpoint="<?= BASE_URL ?>index.php?controller=reminder&action=pendientes">
                     <button
                         class="topbar-reminder-button dropdown-toggle"
                         type="button"
@@ -55,11 +58,11 @@ $totalRecordatoriosSeguimiento = count($recordatoriosSeguimiento);
                         aria-label="Abrir recordatorios">
                         <i class="bi bi-bell"></i>
 
-                        <?php if ($totalRecordatoriosSeguimiento > 0): ?>
-                            <span class="topbar-reminder-badge">
-                                <?= $totalRecordatoriosSeguimiento > 9 ? '9+' : $totalRecordatoriosSeguimiento ?>
-                            </span>
-                        <?php endif; ?>
+                        <span
+                            class="topbar-reminder-badge <?= $totalRecordatoriosSeguimiento > 0 ? '' : 'd-none' ?>"
+                            data-reminder-badge>
+                            <?= $totalRecordatoriosSeguimiento > 9 ? '9+' : $totalRecordatoriosSeguimiento ?>
+                        </span>
                     </button>
 
                     <div class="dropdown-menu dropdown-menu-end topbar-reminder-menu">
@@ -68,49 +71,51 @@ $totalRecordatoriosSeguimiento = count($recordatoriosSeguimiento);
                             <span>Acciones próximas en 24 h y acciones vencidas.</span>
                         </div>
 
-                        <?php if (!empty($recordatoriosSeguimiento)): ?>
-                            <div class="topbar-reminder-list">
-                                <?php foreach ($recordatoriosSeguimiento as $recordatorio): ?>
-                                    <?php
-                                    $accionRecordatorio = trim(
-                                        (string)($recordatorio['proxima_accion_texto'] ?? '')
-                                    );
-                                    $estadoRecordatorio = (string)(
-                                        $recordatorio['recordatorio']['estado'] ?? 'normal'
-                                    );
-                                    $etiquetaRecordatorio = (string)(
-                                        $recordatorio['recordatorio']['etiqueta'] ?? ''
-                                    );
-                                    ?>
-                                    <a
-                                        class="topbar-reminder-item"
-                                        href="<?= BASE_URL ?>index.php?controller=seguimientoVinculacion&action=detalle&id=<?= (int)($recordatorio['id'] ?? 0) ?>">
-                                        <span class="topbar-reminder-icon">
-                                            <i class="bi <?= htmlspecialchars(iconoAccionRecordatorioSeguimiento($accionRecordatorio), ENT_QUOTES, 'UTF-8') ?>"></i>
-                                        </span>
-
-                                        <span class="topbar-reminder-copy">
-                                            <strong>
-                                                <?= htmlspecialchars((string)($recordatorio['nombre_entidad'] ?? 'Seguimiento'), ENT_QUOTES, 'UTF-8') ?>
-                                            </strong>
-                                            <span>
-                                                <?= htmlspecialchars($accionRecordatorio, ENT_QUOTES, 'UTF-8') ?>
+                        <div data-reminder-content>
+                            <?php if (!empty($recordatoriosSeguimiento)): ?>
+                                <div class="topbar-reminder-list">
+                                    <?php foreach ($recordatoriosSeguimiento as $recordatorio): ?>
+                                        <?php
+                                        $accionRecordatorio = trim(
+                                            (string)($recordatorio['proxima_accion_texto'] ?? '')
+                                        );
+                                        $estadoRecordatorio = (string)(
+                                            $recordatorio['recordatorio']['estado'] ?? 'normal'
+                                        );
+                                        $etiquetaRecordatorio = (string)(
+                                            $recordatorio['recordatorio']['etiqueta'] ?? ''
+                                        );
+                                        ?>
+                                        <a
+                                            class="topbar-reminder-item"
+                                            href="<?= BASE_URL ?>index.php?controller=seguimientoVinculacion&action=detalle&id=<?= (int)($recordatorio['id'] ?? 0) ?>">
+                                            <span class="topbar-reminder-icon">
+                                                <i class="bi <?= htmlspecialchars(iconoAccionRecordatorioSeguimiento($accionRecordatorio), ENT_QUOTES, 'UTF-8') ?>"></i>
                                             </span>
-                                        </span>
 
-                                        <span class="topbar-reminder-time is-<?= htmlspecialchars($estadoRecordatorio, ENT_QUOTES, 'UTF-8') ?>">
-                                            <?= htmlspecialchars($etiquetaRecordatorio, ENT_QUOTES, 'UTF-8') ?>
-                                        </span>
-                                    </a>
-                                <?php endforeach; ?>
-                            </div>
-                        <?php else: ?>
-                            <div class="topbar-reminder-empty">
-                                <i class="bi bi-check2-circle"></i>
-                                <strong>Sin recordatorios pendientes</strong>
-                                <span>No tienes llamadas o mensajes próximos.</span>
-                            </div>
-                        <?php endif; ?>
+                                            <span class="topbar-reminder-copy">
+                                                <strong>
+                                                    <?= htmlspecialchars((string)($recordatorio['nombre_entidad'] ?? 'Seguimiento'), ENT_QUOTES, 'UTF-8') ?>
+                                                </strong>
+                                                <span>
+                                                    <?= htmlspecialchars($accionRecordatorio, ENT_QUOTES, 'UTF-8') ?>
+                                                </span>
+                                            </span>
+
+                                            <span class="topbar-reminder-time is-<?= htmlspecialchars($estadoRecordatorio, ENT_QUOTES, 'UTF-8') ?>">
+                                                <?= htmlspecialchars($etiquetaRecordatorio, ENT_QUOTES, 'UTF-8') ?>
+                                            </span>
+                                        </a>
+                                    <?php endforeach; ?>
+                                </div>
+                            <?php else: ?>
+                                <div class="topbar-reminder-empty">
+                                    <i class="bi bi-check2-circle"></i>
+                                    <strong>Sin recordatorios pendientes</strong>
+                                    <span>No tienes llamadas o mensajes próximos.</span>
+                                </div>
+                            <?php endif; ?>
+                        </div>
                     </div>
                 </div>
             <?php endif; ?>
