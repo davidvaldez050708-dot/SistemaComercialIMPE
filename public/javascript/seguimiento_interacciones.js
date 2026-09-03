@@ -73,12 +73,6 @@
             '[data-work-no-interest-reason]'
         );
 
-        const ayudaProximaAccion = document.createElement('div');
-        ayudaProximaAccion.className = 'form-text';
-        ayudaProximaAccion.textContent =
-            'Se sugiere automáticamente según el resultado, pero puedes cambiarla.';
-        selectorProximaAccion.insertAdjacentElement('afterend', ayudaProximaAccion);
-
         const contactoEstaVerificado = function () {
             const estado = String(
                 document.querySelector('[data-work-verified-status]')?.textContent || ''
