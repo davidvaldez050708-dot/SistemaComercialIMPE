@@ -232,6 +232,96 @@
     font-weight: 600;
 }
 
+.reminder-toast-container {
+    z-index: 1095;
+    margin-top: 62px;
+}
+
+.reminder-toast {
+    width: min(390px, calc(100vw - 30px));
+    overflow: hidden;
+
+    border: 1px solid #dbe4f0;
+    border-radius: 12px;
+
+    background-color: #ffffff;
+    color: var(--color-text-primary);
+
+    box-shadow: 0 16px 38px rgba(22, 34, 59, 0.16);
+}
+
+.reminder-toast.is-clickable {
+    cursor: pointer;
+}
+
+.reminder-toast.is-overdue {
+    border-color: #efc8c3;
+}
+
+.reminder-toast-body {
+    min-height: 72px;
+    padding: 13px 14px;
+
+    display: grid;
+    grid-template-columns: 38px minmax(0, 1fr) auto;
+    gap: 11px;
+    align-items: center;
+}
+
+.reminder-toast-icon {
+    width: 38px;
+    height: 38px;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 10px;
+
+    background-color: var(--color-primary-soft);
+    color: var(--color-primary);
+
+    font-size: 16px;
+}
+
+.reminder-toast.is-overdue .reminder-toast-icon {
+    background-color: #fff0ee;
+    color: #b42318;
+}
+
+.reminder-toast-copy {
+    min-width: 0;
+}
+
+.reminder-toast-copy strong,
+.reminder-toast-copy span {
+    display: block;
+}
+
+.reminder-toast-copy strong {
+    color: var(--color-text-primary);
+
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.reminder-toast-copy span {
+    margin-top: 3px;
+
+    color: var(--color-text-secondary);
+
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.35;
+}
+
+.reminder-toast .btn-close {
+    margin: 0;
+    align-self: start;
+
+    font-size: 9px;
+}
+
 @media (max-width: 575.98px) {
     .admin-topbar {
         padding-left: 16px;
@@ -254,5 +344,16 @@
     .topbar-reminder-time {
         grid-column: 2;
         justify-self: start;
+    }
+
+    .reminder-toast-container {
+        left: 0;
+        right: 0 !important;
+        padding-left: 12px !important;
+        padding-right: 12px !important;
+    }
+
+    .reminder-toast {
+        width: 100%;
     }
 }
