@@ -62,6 +62,10 @@ $fotoPerfilUrl = $fotoPerfil !== ''
     <link
         rel="stylesheet"
         href="<?= BASE_URL ?>public/css/dashboard.css?v=<?= time() ?>">
+
+    <link
+        rel="stylesheet"
+        href="<?= BASE_URL ?>public/css/recordatorios.css?v=<?= filemtime(ROOT_PATH . '/public/css/recordatorios.css') ?>">
 </head>
 
 <body>

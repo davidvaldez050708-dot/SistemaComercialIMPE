@@ -11,12 +11,18 @@
         const selectorResultado = formulario.querySelector('[name="resultado"]');
         const selectorProximaAccion = formulario.querySelector('[name="proxima_accion"]');
         const campoFechaProximaAccion = formulario.querySelector('[name="proxima_accion_at"]');
+        const etiquetaFechaProximaAccion = formulario.querySelector('label[for="work_next_action_date"]');
         const campoObservacion = formulario.querySelector('[name="observacion"]');
         const botonAbrirInteraccion = document.querySelector('[data-work-toggle-interaction]');
         const modalDescarte = document.getElementById('modalDescartarSeguimiento');
         const campoMotivoDescarte = document.querySelector('[data-work-discard-reason-input]');
         const panelDescartado = document.querySelector('[data-work-discarded-panel]');
         const contenedorToasts = document.querySelector('.toast-container');
+        const accionesConHorarioObligatorio = [
+            'Volver a llamar',
+            'Enviar WhatsApp',
+            'Enviar oficio/correo'
+        ];
         let motivoNoInteresPendiente = '';
         let esperandoDecisionNoInteres = false;
         let toastInteraccionDiferido = false;
@@ -139,14 +145,26 @@
                 botonVerificacion.includes('información verificada');
         };
 
+        const actualizarEtiquetaFecha = function (obligatoria) {
+            if (!etiquetaFechaProximaAccion) {
+                return;
+            }
+
+            etiquetaFechaProximaAccion.textContent = obligatoria
+                ? 'Fecha próxima acción *'
+                : 'Fecha próxima acción';
+        };
+
         const actualizarFechaSegunAccion = function () {
             const accion = String(selectorProximaAccion.value || '');
             const resultado = String(selectorResultado.value || '');
             const sinAccion = accion === '';
             const resultadoManual = resultado === 'OTRO';
+            const fechaObligatoria = accionesConHorarioObligatorio.includes(accion);
 
             campoFechaProximaAccion.disabled = sinAccion && !resultadoManual;
-            campoFechaProximaAccion.required = accion === 'Volver a llamar';
+            campoFechaProximaAccion.required = fechaObligatoria;
+            actualizarEtiquetaFecha(fechaObligatoria);
 
             if (sinAccion && !resultadoManual) {
                 campoFechaProximaAccion.value = '';
@@ -208,16 +226,11 @@
                 campoFechaProximaAccion.value = '';
                 campoFechaProximaAccion.disabled = true;
                 campoFechaProximaAccion.required = false;
+                actualizarEtiquetaFecha(false);
                 return;
             }
 
-            if (resultado === 'OTRO') {
-                selectorProximaAccion.disabled = false;
-                campoFechaProximaAccion.disabled = false;
-                campoFechaProximaAccion.required = false;
-                return;
-            }
-
+            selectorProximaAccion.disabled = false;
             actualizarFechaSegunAccion();
         };
 
@@ -233,6 +246,19 @@
         });
 
         formulario.addEventListener('submit', function (event) {
+            const accion = String(selectorProximaAccion.value || '');
+
+            if (
+                accionesConHorarioObligatorio.includes(accion) &&
+                String(campoFechaProximaAccion.value || '').trim() === ''
+            ) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                campoFechaProximaAccion.reportValidity();
+                campoFechaProximaAccion.focus();
+                return;
+            }
+
             if (selectorResultado.value !== 'NO_INTERESADO') {
                 motivoNoInteresPendiente = '';
                 esperandoDecisionNoInteres = false;
