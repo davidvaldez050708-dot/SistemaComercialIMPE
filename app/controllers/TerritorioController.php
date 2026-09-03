@@ -105,6 +105,8 @@ class TerritorioController
         }
 
         $equipoTerritorial = $modeloTerritorio->obtenerEquipoTerritorial($estadoId);
+        $analistasSinCuentaClave =
+            $modeloTerritorio->obtenerAnalistasSinCuentaClave($estadoId);
         $usuariosCuentaClave = $modeloTerritorio->obtenerUsuariosCuentaClave();
         $usuariosAnalistas = $modeloTerritorio->obtenerUsuariosAnalistas();
 
@@ -159,6 +161,58 @@ class TerritorioController
         $this->redirigirATerritorios();
     }
 
+    public function reasociarAnalistaCuentaClave()
+    {
+        $this->validarPermiso('territorios.asignar');
+        $this->validarMetodoPost();
+
+        $modeloTerritorio = new TerritorioModel();
+        $analistaAsignacionId = (int)($_POST['asignacion_analista_id'] ?? 0);
+        $cuentaClaveAsignacionId = (int)($_POST['cuenta_clave_asignacion_id'] ?? 0);
+        $errores = $this->validarReasignacionAnalista(
+            $modeloTerritorio,
+            $analistaAsignacionId,
+            $cuentaClaveAsignacionId
+        );
+
+        if (!empty($errores)) {
+            if ($this->esSolicitudFetch()) {
+                $this->responderJson([
+                    'ok' => false,
+                    'mensaje' => 'Revisa los datos de reasignación.',
+                    'errores' => $errores
+                ], 422);
+            }
+
+            $_SESSION['error_territorio'] = 'Revisa los datos de reasignación.';
+            $this->redirigirATerritorios();
+        }
+
+        $resultado = $modeloTerritorio->reasociarAnalistaCuentaClave(
+            $analistaAsignacionId,
+            $cuentaClaveAsignacionId
+        );
+
+        if ($this->esSolicitudFetch()) {
+            $this->responderJson([
+                'ok' => (bool)$resultado,
+                'mensaje' => $resultado
+                    ? 'Analista asignado a la Cuenta Clave correctamente.'
+                    : 'No fue posible reasignar el Analista.'
+            ], $resultado ? 200 : 500);
+        }
+
+        if ($resultado) {
+            $_SESSION['mensaje_territorio'] =
+                'Analista asignado a la Cuenta Clave correctamente.';
+        } else {
+            $_SESSION['error_territorio'] =
+                'No fue posible reasignar el Analista.';
+        }
+
+        $this->redirigirATerritorios();
+    }
+
     public function finalizarAsignacion()
     {
         $this->validarPermiso('territorios.asignar');
@@ -168,7 +222,7 @@ class TerritorioController
         $asignacionId = (int)($_POST['asignacion_id'] ?? 0);
         $fechaFinOrigen = trim((string)($_POST['fecha_fin'] ?? ''));
         $fechaFin = $this->normalizarFecha($fechaFinOrigen);
-        $finalizarEquipo = isset($_POST['finalizar_equipo']);
+        $finalizarEquipo = (string)($_POST['finalizar_equipo'] ?? '0') === '1';
 
         if ($fechaFinOrigen !== '' && $fechaFin === null) {
             if ($this->esSolicitudFetch()) {
@@ -234,27 +288,15 @@ class TerritorioController
             $tieneAnalistas =
                 $modeloTerritorio->cuentaClaveTieneAnalistasActivos($asignacionId);
 
-            if ($tieneAnalistas && !$finalizarEquipo) {
-                if ($this->esSolicitudFetch()) {
-                    $this->responderJson([
-                        'ok' => false,
-                        'mensaje' =>
-                            'Confirma la finalización del equipo vinculado antes de continuar.',
-                        'errores' => [
-                            'finalizar_equipo' =>
-                                'Confirma que también se finalizarán los analistas vinculados.'
-                        ]
-                    ], 422);
-                }
-
-                $_SESSION['error_territorio'] =
-                    'Confirma la finalización del equipo vinculado antes de continuar.';
-                $this->redirigirATerritorios();
-            }
         }
 
-        if ($tieneAnalistas) {
+        if ($tieneAnalistas && $finalizarEquipo) {
             $resultado = $modeloTerritorio->finalizarCuentaClaveConEquipo(
+                $asignacionId,
+                $fechaFin
+            );
+        } elseif ($tieneAnalistas) {
+            $resultado = $modeloTerritorio->finalizarCuentaClaveSinEquipo(
                 $asignacionId,
                 $fechaFin
             );
@@ -379,14 +421,30 @@ class TerritorioController
         $cuentaClave = $_GET['cuenta_clave'] ?? '';
         $analista = $_GET['analista'] ?? '';
         $estadoAsignacion = $_GET['estado_asignacion'] ?? '';
+        $estadosCuentaClave = ['con_cuenta_clave', 'sin_cuenta_clave'];
+        $estadosAnalista = ['con_analista', 'sin_analista'];
 
         return [
             'buscar' => trim($_GET['buscar'] ?? ''),
             'cuenta_clave' => ctype_digit((string)$cuentaClave)
                 ? (int)$cuentaClave
                 : '',
+            'cuenta_clave_filtro' => ctype_digit((string)$cuentaClave) ||
+                in_array($cuentaClave, $estadosCuentaClave, true)
+                    ? (string)$cuentaClave
+                    : '',
+            'estado_cuenta_clave' => in_array($cuentaClave, $estadosCuentaClave, true)
+                ? $cuentaClave
+                : '',
             'analista' => ctype_digit((string)$analista)
                 ? (int)$analista
+                : '',
+            'analista_filtro' => ctype_digit((string)$analista) ||
+                in_array($analista, $estadosAnalista, true)
+                    ? (string)$analista
+                    : '',
+            'estado_analista' => in_array($analista, $estadosAnalista, true)
+                ? $analista
                 : '',
             'estado_asignacion' => in_array(
                 $estadoAsignacion,
@@ -502,14 +560,54 @@ class TerritorioController
         if (
             empty($errores) &&
             $datos['tipo_asignacion'] === 'ANALISTA_DATOS' &&
-            $modeloTerritorio->existeAnalistaActivo(
+            $modeloTerritorio->existeAnalistaActivoEnEstado(
                 (int)$datos['estado_id'],
-                (int)$datos['usuario_id'],
-                (int)$datos['cuenta_clave_asignacion_id']
+                (int)$datos['usuario_id']
             )
         ) {
             $errores['usuario_id'] =
-                'El analista ya está vinculado a esta Cuenta Clave en el territorio.';
+                'El analista ya tiene una asignación activa en este territorio.';
+        }
+
+        return $errores;
+    }
+
+    private function validarReasignacionAnalista(
+        $modeloTerritorio,
+        $analistaAsignacionId,
+        $cuentaClaveAsignacionId
+    ) {
+        $errores = [];
+        $analista = $modeloTerritorio->buscarAsignacionPorId($analistaAsignacionId);
+        $cuentaClave = $modeloTerritorio->buscarAsignacionPorId($cuentaClaveAsignacionId);
+
+        if (
+            !$analista ||
+            $analista['tipo_asignacion'] !== 'ANALISTA_DATOS' ||
+            (int)$analista['activo'] !== 1
+        ) {
+            $errores['asignacion_analista_id'] =
+                'Selecciona un Analista activo válido.';
+        } elseif (!empty($analista['cuenta_clave_asignacion_id'])) {
+            $errores['asignacion_analista_id'] =
+                'El Analista ya está asociado a una Cuenta Clave.';
+        }
+
+        if (
+            !$cuentaClave ||
+            $cuentaClave['tipo_asignacion'] !== 'CUENTA_CLAVE' ||
+            (int)$cuentaClave['activo'] !== 1
+        ) {
+            $errores['cuenta_clave_asignacion_id'] =
+                'Selecciona una Cuenta Clave activa.';
+        }
+
+        if (
+            empty($errores) &&
+            (int)$analista['estado_id'] !== (int)$cuentaClave['estado_id']
+        ) {
+            $errores['cuenta_clave_asignacion_id'] =
+                'La Cuenta Clave debe pertenecer al mismo territorio del Analista.';
         }
 
         return $errores;

@@ -15,8 +15,12 @@ $puedeEditarTerritorio = tienePermiso('territorios.actualizar_ficha');
 $puedeAsignarTerritorio = tienePermiso('territorios.asignar');
 
 $buscarActual = $filtros['buscar'] ?? '';
-$cuentaClaveActual = (string)($filtros['cuenta_clave'] ?? '');
-$analistaActual = (string)($filtros['analista'] ?? '');
+$cuentaClaveActual = (string)(
+    $filtros['cuenta_clave_filtro'] ?? $filtros['cuenta_clave'] ?? ''
+);
+$analistaActual = (string)(
+    $filtros['analista_filtro'] ?? $filtros['analista'] ?? ''
+);
 $estadoAsignacionActual = (string)($filtros['estado_asignacion'] ?? '');
 $hayFiltros =
     $buscarActual !== '' ||
@@ -144,6 +148,16 @@ $valorForm = function ($campo) use ($datosFormulario, $texto) {
                 name="cuenta_clave"
                 aria-label="Filtrar por Cuenta Clave">
                 <option value="">Cuenta Clave</option>
+                <option
+                    value="con_cuenta_clave"
+                    <?= $seleccionado($cuentaClaveActual, 'con_cuenta_clave') ?>>
+                    Con Cuenta Clave
+                </option>
+                <option
+                    value="sin_cuenta_clave"
+                    <?= $seleccionado($cuentaClaveActual, 'sin_cuenta_clave') ?>>
+                    Sin Cuenta Clave
+                </option>
 
                 <?php foreach ($cuentasClaveFiltro as $usuario): ?>
                     <option
@@ -159,6 +173,16 @@ $valorForm = function ($campo) use ($datosFormulario, $texto) {
                 name="analista"
                 aria-label="Filtrar por Analista">
                 <option value="">Analista</option>
+                <option
+                    value="con_analista"
+                    <?= $seleccionado($analistaActual, 'con_analista') ?>>
+                    Con Analista
+                </option>
+                <option
+                    value="sin_analista"
+                    <?= $seleccionado($analistaActual, 'sin_analista') ?>>
+                    Sin Analista
+                </option>
 
                 <?php foreach ($analistasFiltro as $usuario): ?>
                     <option
@@ -358,17 +382,18 @@ $valorForm = function ($campo) use ($datosFormulario, $texto) {
                                     class="form-check-input"
                                     type="checkbox"
                                     id="finalizar_equipo"
-                                    name="finalizar_equipo">
+                                    name="finalizar_equipo"
+                                    value="1">
                                 <label class="form-check-label" for="finalizar_equipo">
-                                    Finalizar también los analistas vinculados.
+                                    Finalizar también al analista activo.
                                 </label>
                                 <div
                                     class="invalid-feedback d-block"
                                     data-field-error="finalizar_equipo"></div>
                             </div>
                             <p id="finalizar_equipo_mensaje">
-                                Esta Cuenta Clave tiene analistas activos. Al finalizar
-                                su asignación también se finalizarán sus asignaciones.
+                                Si no marcas esta opción, el analista permanecerá activo
+                                y solo quedará sin Cuenta Clave asociada.
                             </p>
                         </div>
 
@@ -1235,20 +1260,19 @@ document.addEventListener('DOMContentLoaded', function () {
             if (confirmacionEquipo && checkEquipo) {
                 confirmacionEquipo.classList.toggle('d-none', !tieneAnalistas);
                 checkEquipo.checked = false;
-                checkEquipo.required = tieneAnalistas;
             }
 
             if (mensajeEquipo) {
                 mensajeEquipo.textContent =
                     'Esta Cuenta Clave tiene ' +
                     totalAnalistas +
-                    ' Analistas activos. Al finalizar su asignación también ' +
-                    'se finalizarán las asignaciones de esos Analistas.';
+                    ' Analistas activos. Si no marcas la casilla, permanecerán activos ' +
+                    'y solo quedarán sin Cuenta Clave asociada.';
             }
 
             if (botonFinalizarModal) {
                 botonFinalizarModal.innerHTML = tieneAnalistas
-                    ? '<i class="bi bi-check2-circle me-2"></i>Finalizar equipo'
+                    ? '<i class="bi bi-check2-circle me-2"></i>Finalizar Cuenta Clave'
                     : '<i class="bi bi-check2-circle me-2"></i>Finalizar asignación';
             }
 

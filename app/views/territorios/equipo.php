@@ -4,10 +4,11 @@ require_once __DIR__ . '/../../helpers/AvatarHelper.php';
 
 $estado = $estado ?? [];
 $equipoTerritorial = $equipoTerritorial ?? [];
+$analistasSinCuentaClave = $analistasSinCuentaClave ?? [];
 $usuariosCuentaClave = $usuariosCuentaClave ?? [];
 $usuariosAnalistas = $usuariosAnalistas ?? [];
 $fechaHoy = date('Y-m-d');
-$tieneEquipo = !empty($equipoTerritorial);
+$tieneCuentasClave = !empty($equipoTerritorial);
 
 $texto = function ($valor) {
     return htmlspecialchars((string)$valor, ENT_QUOTES, 'UTF-8');
@@ -54,7 +55,7 @@ $fecha = function ($valorFecha) use ($texto) {
     <section class="territory-team-section">
         <h4 class="territory-team-section-title">Equipo actual</h4>
 
-        <?php if (!empty($equipoTerritorial)): ?>
+        <?php if ($tieneCuentasClave): ?>
 
             <div class="territory-team-list">
                 <?php foreach ($equipoTerritorial as $cuentaClave): ?>
@@ -256,6 +257,31 @@ $fecha = function ($valorFecha) use ($texto) {
                 <?php endforeach; ?>
             </div>
 
+        <?php elseif (!empty($analistasSinCuentaClave)): ?>
+
+            <article class="territory-team-card territory-unassigned-account-card">
+                <div class="territory-team-card-header">
+                    <div class="territory-team-person">
+                        <?= renderAvatarUsuario(
+                            'Sin',
+                            'asignar',
+                            'Cuenta Clave',
+                            '',
+                            'md',
+                            'cuenta-clave',
+                            '',
+                            false
+                        ) ?>
+
+                        <div>
+                            <span class="territory-team-label">Cuenta Clave</span>
+                            <strong>Sin asignar</strong>
+                            <small>Analistas activos en el territorio</small>
+                        </div>
+                    </div>
+                </div>
+            </article>
+
         <?php else: ?>
 
             <div class="territory-team-empty">
@@ -264,12 +290,148 @@ $fecha = function ($valorFecha) use ($texto) {
                 </span>
                 <strong>Sin equipo territorial</strong>
                 <p>
-                    Este territorio aún no tiene una Cuenta Clave asignada.
+                    Este territorio aún no tiene Cuenta Clave ni Analistas activos.
                 </p>
             </div>
 
         <?php endif; ?>
     </section>
+
+    <?php if (!empty($analistasSinCuentaClave)): ?>
+
+        <section class="territory-team-section">
+            <h4 class="territory-team-section-title">Analistas sin Cuenta Clave</h4>
+
+            <div class="territory-team-list">
+                <?php foreach ($analistasSinCuentaClave as $analistaSinCuenta): ?>
+
+                    <?php
+                    $nombreAnalistaSinCuenta = trim(
+                        ($analistaSinCuenta['nombre'] ?? '') . ' ' .
+                        ($analistaSinCuenta['apellidos'] ?? '')
+                    );
+                    $formReasignarId =
+                        'formReasignarAnalista' . (int)$analistaSinCuenta['id'];
+                    ?>
+
+                    <article class="territory-team-card territory-orphan-analyst-card">
+                        <div class="territory-team-card-header">
+                            <div class="territory-team-person">
+                                <?= renderAvatarUsuario(
+                                    $analistaSinCuenta['nombre'] ?? '',
+                                    $analistaSinCuenta['apellidos'] ?? '',
+                                    $analistaSinCuenta['rol'] ?? 'Analista de Datos',
+                                    $analistaSinCuenta['foto_perfil'] ?? '',
+                                    'sm',
+                                    'analista'
+                                ) ?>
+
+                                <div>
+                                    <span class="territory-team-label">Analista de Datos</span>
+                                    <strong><?= $texto($nombreAnalistaSinCuenta) ?></strong>
+                                    <small>Desde <?= $fecha($analistaSinCuenta['fecha_inicio'] ?? '') ?></small>
+                                </div>
+                            </div>
+
+                            <?php if ($tieneCuentasClave): ?>
+
+                                <button
+                                    type="button"
+                                    class="btn btn-territory-expand"
+                                    data-team-toggle
+                                    data-target="<?= $formReasignarId ?>"
+                                    aria-expanded="false"
+                                    aria-controls="<?= $formReasignarId ?>">
+                                    <i class="bi bi-link-45deg me-2"></i>
+                                    Asignar
+                                </button>
+
+                            <?php endif; ?>
+                        </div>
+
+                        <?php if ($tieneCuentasClave): ?>
+
+                            <div
+                                class="territory-expandable-form"
+                                id="<?= $formReasignarId ?>"
+                                hidden>
+                                <form
+                                    class="territory-inline-form"
+                                    data-team-form
+                                    action="<?= BASE_URL ?>index.php?controller=territorio&action=reasociarAnalistaCuentaClave"
+                                    method="POST">
+                                    <input
+                                        type="hidden"
+                                        name="asignacion_analista_id"
+                                        value="<?= (int)$analistaSinCuenta['id'] ?>">
+
+                                    <div>
+                                        <label
+                                            class="form-label"
+                                            for="reasignar_cuenta_clave_<?= (int)$analistaSinCuenta['id'] ?>">
+                                            Cuenta Clave
+                                        </label>
+                                        <select
+                                            class="form-select"
+                                            id="reasignar_cuenta_clave_<?= (int)$analistaSinCuenta['id'] ?>"
+                                            name="cuenta_clave_asignacion_id"
+                                            required>
+                                            <option value="">Seleccionar Cuenta Clave</option>
+
+                                            <?php foreach ($equipoTerritorial as $cuentaClave): ?>
+                                                <?php
+                                                $nombreCuentaAsignar = trim(
+                                                    ($cuentaClave['nombre'] ?? '') . ' ' .
+                                                    ($cuentaClave['apellidos'] ?? '')
+                                                );
+                                                ?>
+                                                <option
+                                                    value="<?= (int)$cuentaClave['id'] ?>"
+                                                    <?= count($equipoTerritorial) === 1 ? 'selected' : '' ?>>
+                                                    <?= $texto($nombreCuentaAsignar) ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                        <div
+                                            class="invalid-feedback d-block"
+                                            data-field-error="cuenta_clave_asignacion_id"></div>
+                                        <div
+                                            class="invalid-feedback d-block"
+                                            data-field-error="asignacion_analista_id"></div>
+                                    </div>
+
+                                    <div class="territory-inline-actions">
+                                        <button
+                                            type="button"
+                                            class="btn btn-system-cancel"
+                                            data-team-cancel>
+                                            Cancelar
+                                        </button>
+
+                                        <button
+                                            type="submit"
+                                            class="btn btn-territory-analyst">
+                                            <i class="bi bi-check2-circle me-2"></i>
+                                            Guardar
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+
+                        <?php else: ?>
+
+                            <p class="territory-empty-text mt-2">
+                                Sin Cuenta Clave activa para asociar.
+                            </p>
+
+                        <?php endif; ?>
+                    </article>
+
+                <?php endforeach; ?>
+            </div>
+        </section>
+
+    <?php endif; ?>
 
     <section class="territory-team-section territory-team-add">
         <div>
@@ -277,7 +439,7 @@ $fecha = function ($valorFecha) use ($texto) {
             <p>Selecciona un usuario activo con rol Cuenta Clave.</p>
         </div>
 
-        <?php if ($tieneEquipo): ?>
+        <?php if ($tieneCuentasClave): ?>
 
             <button
                 type="button"
@@ -295,7 +457,7 @@ $fecha = function ($valorFecha) use ($texto) {
         <div
             class="territory-expandable-form"
             id="formCuentaClave"
-            <?= $tieneEquipo ? 'hidden' : '' ?>>
+            <?= $tieneCuentasClave ? 'hidden' : '' ?>>
             <form
                 class="territory-inline-form"
                 data-team-form
@@ -343,7 +505,7 @@ $fecha = function ($valorFecha) use ($texto) {
                 </div>
 
                 <div class="territory-inline-actions">
-                    <?php if ($tieneEquipo): ?>
+                    <?php if ($tieneCuentasClave): ?>
 
                         <button
                             type="button"

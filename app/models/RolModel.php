@@ -21,6 +21,17 @@ class RolModel
         $permisosDataTerritorialNuevos =
             !$this->existePermisoPorCodigo('data_territorial.ver') ||
             !$this->existePermisoPorCodigo('data_territorial.actualizar_oficial');
+        $permisosSeguimientoVinculacionBaseFaltantes =
+            !$this->existePermisoPorCodigo('seguimientos_vinculacion.supervisar') ||
+            !$this->existePermisoPorCodigo('seguimientos_vinculacion.comentar') ||
+            !$this->rolTienePermisoActivo(
+                'Cuenta Clave',
+                'seguimientos_vinculacion.supervisar'
+            ) ||
+            !$this->rolTienePermisoActivo(
+                'Cuenta Clave',
+                'seguimientos_vinculacion.comentar'
+            );
 
         $sql = "INSERT INTO permisos (
                     modulo,
@@ -66,6 +77,10 @@ class RolModel
 
         if ($permisosDataTerritorialNuevos) {
             $this->asignarPermisosInicialesDataTerritorial();
+        }
+
+        if ($permisosSeguimientoVinculacionBaseFaltantes) {
+            $this->asignarPermisosInicialesSeguimientoVinculacion();
         }
 
         $this->asegurarPermisosAdministrador();
@@ -383,8 +398,8 @@ class RolModel
                 'difusion.enviar',
                 'difusion.gestionar',
                 'seguimientos_vinculacion.ver',
-                'seguimientos_vinculacion.crear',
-                'seguimientos_vinculacion.editar',
+                'seguimientos_vinculacion.supervisar',
+                'seguimientos_vinculacion.comentar',
                 'reportes.ver'
             ]
         ];
@@ -507,6 +522,27 @@ class RolModel
         return $stmt->get_result()->num_rows > 0;
     }
 
+    private function rolTienePermisoActivo($nombreRol, $codigoPermiso)
+    {
+        $sql = "SELECT rol_permisos.rol_id
+                FROM rol_permisos
+                INNER JOIN roles
+                    ON roles.id = rol_permisos.rol_id
+                INNER JOIN permisos
+                    ON permisos.id = rol_permisos.permiso_id
+                WHERE roles.nombre = ?
+                    AND roles.estado = 1
+                    AND permisos.codigo = ?
+                    AND permisos.estado = 1
+                LIMIT 1";
+
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param("ss", $nombreRol, $codigoPermiso);
+        $stmt->execute();
+
+        return $stmt->get_result()->num_rows > 0;
+    }
+
     private function asignarPermisosInicialesTerritorios()
     {
         $asignaciones = [
@@ -552,6 +588,39 @@ class RolModel
             ],
             'Cuenta Clave' => [
                 'data_territorial.ver'
+            ]
+        ];
+
+        $sql = "INSERT IGNORE INTO rol_permisos (
+                    rol_id,
+                    permiso_id
+                )
+                SELECT roles.id, permisos.id
+                FROM roles
+                INNER JOIN permisos
+                    ON permisos.codigo = ?
+                WHERE roles.nombre = ?";
+
+        $stmt = $this->connection->prepare($sql);
+
+        foreach ($asignaciones as $nombreRol => $codigos) {
+            foreach ($codigos as $codigo) {
+                $stmt->bind_param("ss", $codigo, $nombreRol);
+                $stmt->execute();
+            }
+        }
+    }
+
+    private function asignarPermisosInicialesSeguimientoVinculacion()
+    {
+        $asignaciones = [
+            'Analista de Datos' => [
+                'seguimientos_vinculacion.ver'
+            ],
+            'Cuenta Clave' => [
+                'seguimientos_vinculacion.ver',
+                'seguimientos_vinculacion.supervisar',
+                'seguimientos_vinculacion.comentar'
             ]
         ];
 
@@ -632,6 +701,8 @@ class RolModel
             ['modulo' => 'Seguimientos de vinculación', 'codigo' => 'seguimientos_vinculacion.ver', 'nombre' => 'Ver seguimientos de vinculación', 'descripcion' => 'Consultar seguimientos de vinculación institucional.'],
             ['modulo' => 'Seguimientos de vinculación', 'codigo' => 'seguimientos_vinculacion.crear', 'nombre' => 'Crear seguimientos de vinculación', 'descripcion' => 'Registrar seguimientos de vinculación institucional.'],
             ['modulo' => 'Seguimientos de vinculación', 'codigo' => 'seguimientos_vinculacion.editar', 'nombre' => 'Editar seguimientos de vinculación', 'descripcion' => 'Actualizar seguimientos de vinculación institucional.'],
+            ['modulo' => 'Seguimientos de vinculación', 'codigo' => 'seguimientos_vinculacion.supervisar', 'nombre' => 'Supervisar seguimientos de vinculación', 'descripcion' => 'Revisar los seguimientos de los Analistas asociados.'],
+            ['modulo' => 'Seguimientos de vinculación', 'codigo' => 'seguimientos_vinculacion.comentar', 'nombre' => 'Comentar seguimientos de vinculación', 'descripcion' => 'Agregar observaciones internas para los Analistas asociados.'],
             ['modulo' => 'Finanzas', 'codigo' => 'pagos.ver', 'nombre' => 'Ver pagos', 'descripcion' => 'Consultar pagos registrados.'],
             ['modulo' => 'Finanzas', 'codigo' => 'pagos.validar', 'nombre' => 'Validar pagos', 'descripcion' => 'Validar pagos e inscripciones.'],
             ['modulo' => 'Organizaciones', 'codigo' => 'organizaciones.ver', 'nombre' => 'Ver organizaciones', 'descripcion' => 'Consultar organizaciones.'],
