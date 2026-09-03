@@ -186,6 +186,10 @@
 </script>
 
 <script
+    src="<?= BASE_URL ?>public/javascript/seguimiento_expediente.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/seguimiento_expediente.js') ?>">
+</script>
+
+<script
     src="<?= BASE_URL ?>public/javascript/recordatorios.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/recordatorios.js') ?>">
 </script>
 
