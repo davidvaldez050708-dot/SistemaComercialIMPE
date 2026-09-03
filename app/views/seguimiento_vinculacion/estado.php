@@ -142,7 +142,16 @@ $formatearProximaAccion = function ($fecha) {
 
 $proximaAccionBandeja = function ($seguimiento) use ($formatearProximaAccion) {
     $fecha = trim((string)($seguimiento['proxima_accion_at'] ?? ''));
+    $textoAccion = trim((string)($seguimiento['proxima_accion_texto'] ?? ''));
     $estado = (string)($seguimiento['estado_seguimiento'] ?? '');
+
+    if ($estado === 'DESCARTADO') {
+        return '—';
+    }
+
+    if ($textoAccion !== '') {
+        return $textoAccion;
+    }
 
     if ($fecha === '' && $estado === 'NUEVO') {
         return 'Completar investigación';
@@ -192,7 +201,7 @@ $hayFiltros =
             <i class="bi bi-kanban"></i>
         </div>
         <div>
-            <p class="metric-value"><?= (int)$resumen['en_seguimiento'] ?></p>
+            <p class="metric-value" data-summary-count="en_seguimiento"><?= (int)$resumen['en_seguimiento'] ?></p>
             <p class="metric-label">En seguimiento</p>
         </div>
     </article>
@@ -202,7 +211,7 @@ $hayFiltros =
             <i class="bi bi-telephone"></i>
         </div>
         <div>
-            <p class="metric-value"><?= (int)$resumen['contactando'] ?></p>
+            <p class="metric-value" data-summary-count="contactando"><?= (int)$resumen['contactando'] ?></p>
             <p class="metric-label">Contactando</p>
         </div>
     </article>
@@ -212,7 +221,7 @@ $hayFiltros =
             <i class="bi bi-patch-check"></i>
         </div>
         <div>
-            <p class="metric-value"><?= (int)$resumen['datos_verificados'] ?></p>
+            <p class="metric-value" data-summary-count="datos_verificados"><?= (int)$resumen['datos_verificados'] ?></p>
             <p class="metric-label">Datos verificados</p>
         </div>
     </article>
@@ -222,7 +231,7 @@ $hayFiltros =
             <i class="bi bi-hourglass-split"></i>
         </div>
         <div>
-            <p class="metric-value"><?= (int)$resumen['esperando_respuesta'] ?></p>
+            <p class="metric-value" data-summary-count="esperando_respuesta"><?= (int)$resumen['esperando_respuesta'] ?></p>
             <p class="metric-label">Esperando respuesta</p>
         </div>
     </article>
@@ -396,12 +405,12 @@ $hayFiltros =
                         </td>
                         <td>
                             <span class="linkage-activity-date" data-row-last-activity>
-                                <?= $texto($formatearFecha($seguimiento['ultima_interaccion_at'] ?? '')) ?>
+                                <?= $texto($etiquetaCanal($seguimiento['ultimo_canal'] ?? '')) ?>
                             </span>
                             <small
-                                class="<?= trim((string)($seguimiento['ultimo_canal'] ?? '')) !== '' ? '' : 'd-none' ?>"
+                                class="<?= trim((string)($seguimiento['ultima_interaccion_at'] ?? '')) !== '' ? '' : 'd-none' ?>"
                                 data-row-last-channel>
-                                <?= $texto($etiquetaCanal($seguimiento['ultimo_canal'] ?? '')) ?>
+                                <?= $texto($formatearFecha($seguimiento['ultima_interaccion_at'] ?? '')) ?>
                             </small>
                         </td>
                         <td>
@@ -410,8 +419,9 @@ $hayFiltros =
                             </span>
                         </td>
                         <td data-row-next-action><?= $texto($proximaAccionBandeja($seguimiento)) ?></td>
-                        <td>
-                            <?= trim((string)($seguimiento['folio'] ?? '')) !== ''
+                        <td data-row-folio>
+                            <?= (string)($seguimiento['estado_seguimiento'] ?? '') !== 'DESCARTADO' &&
+                                trim((string)($seguimiento['folio'] ?? '')) !== ''
                                 ? $texto($seguimiento['folio'])
                                 : '—' ?>
                         </td>
@@ -676,19 +686,36 @@ $hayFiltros =
     <div class="offcanvas-body linkage-work-body">
         <div class="linkage-candidate-alert d-none" data-work-alert></div>
 
-        <section class="linkage-work-section linkage-work-next">
+        <section class="linkage-work-section linkage-work-next" data-work-next-section>
             <span>PRÓXIMA ACCIÓN</span>
             <strong data-work-next-action>—</strong>
-            <button type="button" class="btn btn-system-save linkage-work-primary" data-work-primary-action>
-                Completar / verificar contacto
-            </button>
+        </section>
+
+        <section class="linkage-work-section d-none" data-work-discarded-panel>
+            <div class="linkage-work-section-title">
+                <h3>SEGUIMIENTO DESCARTADO</h3>
+                <button type="button" class="btn btn-system-light linkage-work-small-button d-none" data-work-reactivate-follow>
+                    <i class="bi bi-arrow-counterclockwise"></i>
+                    Reactivar seguimiento
+                </button>
+            </div>
+            <div class="linkage-work-contact-grid">
+                <div>
+                    <span>Motivo</span>
+                    <strong data-work-discard-reason>—</strong>
+                </div>
+                <div>
+                    <span>Fecha</span>
+                    <strong data-work-discard-date>—</strong>
+                </div>
+            </div>
         </section>
 
         <section class="linkage-work-section">
             <div class="linkage-work-section-title">
-                <h3>Contacto</h3>
-                <button type="button" class="btn btn-system-light linkage-work-small-button" data-work-toggle-contact>
-                    Editar / verificar datos
+                <h3 data-work-contact-heading>Contacto</h3>
+                <button type="button" class="btn btn-system-light linkage-work-small-button" data-work-toggle-contact data-work-contact-action>
+                    Completar y verificar contacto
                 </button>
             </div>
 
@@ -719,20 +746,37 @@ $hayFiltros =
                 </div>
             </div>
 
+            <div class="linkage-work-verify-row" data-work-verify-row>
+                <button type="button" class="btn btn-system-light linkage-work-small-button" data-work-verify-contact>
+                    <i class="bi bi-patch-check"></i>
+                    Marcar información como verificada
+                </button>
+            </div>
+
             <form class="linkage-work-form d-none" data-work-contact-form>
                 <input type="hidden" name="seguimiento_id" data-work-contact-id>
 
+                <span class="linkage-work-form-title">DATOS ENCONTRADOS</span>
                 <div class="linkage-work-source-row">
                     <div>
-                        <span>Teléfono encontrado</span>
+                        <span>Teléfono fuente</span>
                         <strong data-work-source-phone>—</strong>
                     </div>
                     <div>
-                        <span>Correo encontrado</span>
+                        <span>Correo fuente</span>
                         <strong data-work-source-email>—</strong>
+                    </div>
+                    <div>
+                        <span>Sitio web</span>
+                        <strong data-work-source-site>—</strong>
+                    </div>
+                    <div>
+                        <span>Dirección</span>
+                        <strong data-work-source-address>—</strong>
                     </div>
                 </div>
 
+                <span class="linkage-work-form-title">DATOS VERIFICADOS</span>
                 <div class="row g-2">
                     <div class="col-12 col-md-6">
                         <label class="form-label" for="work_telefono_verificado">Teléfono verificado</label>
@@ -758,12 +802,6 @@ $hayFiltros =
                         <label class="form-label" for="work_contacto_observaciones">Observaciones</label>
                         <textarea class="form-control" id="work_contacto_observaciones" name="observaciones" rows="2"></textarea>
                     </div>
-                    <div class="col-12">
-                        <label class="linkage-work-check">
-                            <input type="checkbox" name="marcar_verificado" value="1">
-                            <span>Marcar datos como verificados</span>
-                        </label>
-                    </div>
                 </div>
 
                 <div class="linkage-work-form-actions">
@@ -773,21 +811,21 @@ $hayFiltros =
             </form>
         </section>
 
-        <section class="linkage-work-section">
+        <section class="linkage-work-section" data-work-contact-actions-section>
             <h3>Contactar</h3>
             <div class="linkage-work-quick-actions">
-                <button type="button" class="btn btn-system-light" disabled title="Integración pendiente">
+                <button type="button" class="btn btn-system-light" disabled title="Captura un teléfono para habilitar esta acción." data-work-call-button>
                     <i class="bi bi-telephone"></i>
                     Llamar
                 </button>
-                <button type="button" class="btn btn-system-light" disabled title="Integración pendiente">
+                <button type="button" class="btn btn-system-light" disabled title="Captura un WhatsApp verificado para habilitar esta acción." data-work-whatsapp-button>
                     <i class="bi bi-whatsapp"></i>
                     WhatsApp
                 </button>
             </div>
         </section>
 
-        <section class="linkage-work-section">
+        <section class="linkage-work-section" data-work-interaction-section>
             <div class="linkage-work-section-title">
                 <h3>Registrar interacción</h3>
                 <button type="button" class="btn btn-system-light linkage-work-small-button" data-work-toggle-interaction>
@@ -813,13 +851,12 @@ $hayFiltros =
                         <label class="form-label" for="work_interaction_result">Resultado</label>
                         <select class="form-select" id="work_interaction_result" name="resultado" required>
                             <option value="SIN_RESPUESTA">Sin respuesta</option>
-                            <option value="CONTACTADO">Contactado</option>
-                            <option value="NO_CONTESTO">No contestó</option>
-                            <option value="OCUPADO">Ocupado</option>
                             <option value="NUMERO_INCORRECTO">Número incorrecto</option>
-                            <option value="SOLICITO_LLAMAR_DESPUES">Solicitó llamar después</option>
-                            <option value="MENSAJE_ENVIADO">Mensaje enviado</option>
-                            <option value="CORREO_ENVIADO">Correo enviado</option>
+                            <option value="CONTACTO_INCORRECTO">Contacto incorrecto</option>
+                            <option value="CONTACTO_CORRECTO">Contacto correcto</option>
+                            <option value="SOLICITO_INFORMACION">Solicitó información</option>
+                            <option value="SOLICITO_LLAMAR_DESPUES">Solicitó volver a llamar</option>
+                            <option value="NO_INTERESADO">No interesado</option>
                             <option value="OTRO">Otro</option>
                         </select>
                     </div>
@@ -882,7 +919,143 @@ $hayFiltros =
     </div>
 </div>
 
-<div class="linkage-toast d-none" role="status" aria-live="polite" data-linkage-toast></div>
+<div
+    class="modal fade"
+    id="modalReactivarSeguimiento"
+    tabindex="-1"
+    aria-labelledby="modalReactivarSeguimientoTitulo"
+    aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm system-form-dialog">
+        <div class="modal-content system-form-modal">
+            <div class="modal-header system-form-modal-header">
+                <div>
+                    <h5 class="system-form-modal-title" id="modalReactivarSeguimientoTitulo">
+                        Reactivar seguimiento
+                    </h5>
+                    <p class="system-form-modal-subtitle">
+                        Esta institución fue descartada anteriormente.
+                    </p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <p class="linkage-work-confirm-text">
+                    ¿Deseas retomar su proceso de vinculación?
+                </p>
+                <label class="form-label" for="motivo_reactivacion">
+                    Motivo de reactivación *
+                </label>
+                <select class="form-select" id="motivo_reactivacion" data-work-reactivate-reason>
+                    <option value="">Selecciona un motivo</option>
+                    <option value="La institución volvió a contactar">La institución volvió a contactar</option>
+                    <option value="Ahora muestra interés">Ahora muestra interés</option>
+                    <option value="Solicitó retomar la vinculación">Solicitó retomar la vinculación</option>
+                    <option value="Indicación del Cuenta Clave">Indicación del Cuenta Clave</option>
+                    <option value="Otro">Otro</option>
+                </select>
+                <label class="form-label mt-3" for="observacion_reactivacion">
+                    Observación
+                </label>
+                <textarea
+                    class="form-control"
+                    id="observacion_reactivacion"
+                    rows="3"
+                    data-work-reactivate-observation></textarea>
+            </div>
+            <div class="modal-footer system-form-modal-footer">
+                <button type="button" class="btn btn-system-cancel" data-bs-dismiss="modal">
+                    Cancelar
+                </button>
+                <button type="button" class="btn btn-system-save" disabled data-work-confirm-reactivate>
+                    Reactivar seguimiento
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div
+    class="modal fade"
+    id="modalDescartarSeguimiento"
+    tabindex="-1"
+    aria-labelledby="modalDescartarSeguimientoTitulo"
+    aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm system-form-dialog">
+        <div class="modal-content system-form-modal">
+            <div class="modal-header system-form-modal-header">
+                <div>
+                    <h5 class="system-form-modal-title" id="modalDescartarSeguimientoTitulo">
+                        Descartar seguimiento
+                    </h5>
+                    <p class="system-form-modal-subtitle">
+                        La institución fue registrada como no interesada.
+                    </p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <p class="linkage-work-confirm-text">
+                    ¿Deseas finalizar este seguimiento como descartado?
+                </p>
+                <label class="form-label" for="motivo_descarte_confirmacion">
+                    Motivo del descarte *
+                </label>
+                <textarea
+                    class="form-control"
+                    id="motivo_descarte_confirmacion"
+                    rows="3"
+                    placeholder="Indica brevemente por qué se descarta este seguimiento..."
+                    data-work-discard-reason-input></textarea>
+            </div>
+            <div class="modal-footer system-form-modal-footer">
+                <button type="button" class="btn btn-system-cancel" data-bs-dismiss="modal">
+                    Cancelar
+                </button>
+                <button type="button" class="btn btn-system-save" disabled data-work-confirm-discard>
+                    Descartar seguimiento
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div
+    class="modal fade"
+    id="modalConfirmarVerificacionContacto"
+    tabindex="-1"
+    aria-labelledby="modalConfirmarVerificacionContactoTitulo"
+    aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm system-form-dialog">
+        <div class="modal-content system-form-modal">
+            <div class="modal-header system-form-modal-header">
+                <div>
+                    <h5 class="system-form-modal-title" id="modalConfirmarVerificacionContactoTitulo">
+                        Confirmar verificación
+                    </h5>
+                    <p class="system-form-modal-subtitle">
+                        Esta acción indicará que los datos de contacto fueron confirmados por el Analista.
+                    </p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <p class="linkage-work-confirm-text">
+                    ¿Deseas marcar la información de contacto como verificada?
+                </p>
+            </div>
+            <div class="modal-footer system-form-modal-footer">
+                <button type="button" class="btn btn-system-cancel" data-bs-dismiss="modal">
+                    Cancelar
+                </button>
+                <button type="button" class="btn btn-system-save" data-work-confirm-verify>
+                    Marcar como verificada
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="toast-container position-fixed top-0 end-0 p-3"></div>
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
@@ -897,6 +1070,24 @@ document.addEventListener('DOMContentLoaded', function () {
     const emptyRealSeguimientos = document.querySelector('[data-linkage-empty-real]');
     const emptyFiltradoSeguimientos = document.querySelector('[data-linkage-empty-filtered]');
     const enlacesLimpiarSeguimiento = document.querySelectorAll('[data-linkage-clear-filters]');
+    const modalVerificacionElemento = document.getElementById('modalConfirmarVerificacionContacto');
+    const modalVerificacion = modalVerificacionElemento && window.bootstrap
+        ? new bootstrap.Modal(modalVerificacionElemento)
+        : null;
+    const botonConfirmarVerificacion = document.querySelector('[data-work-confirm-verify]');
+    const modalDescarteElemento = document.getElementById('modalDescartarSeguimiento');
+    const modalDescarte = modalDescarteElemento && window.bootstrap
+        ? new bootstrap.Modal(modalDescarteElemento)
+        : null;
+    const motivoDescarteInput = document.querySelector('[data-work-discard-reason-input]');
+    const botonConfirmarDescarte = document.querySelector('[data-work-confirm-discard]');
+    const modalReactivarElemento = document.getElementById('modalReactivarSeguimiento');
+    const modalReactivar = modalReactivarElemento && window.bootstrap
+        ? new bootstrap.Modal(modalReactivarElemento)
+        : null;
+    const motivoReactivacionInput = document.querySelector('[data-work-reactivate-reason]');
+    const observacionReactivacionInput = document.querySelector('[data-work-reactivate-observation]');
+    const botonConfirmarReactivacion = document.querySelector('[data-work-confirm-reactivate]');
     const totalSeguimientosReales = <?= (int)$totalSeguimientosReales ?>;
     const filtrosInicialesServidor = <?= $hayFiltros ? 'true' : 'false' ?>;
     const offcanvasTrabajoElemento = document.getElementById('offcanvasSeguimientoTrabajo');
@@ -905,8 +1096,12 @@ document.addEventListener('DOMContentLoaded', function () {
         : null;
     const urlPanelTrabajo = '<?= BASE_URL ?>index.php?controller=seguimientoVinculacion&action=obtenerPanelTrabajo';
     const urlActualizarContactoTrabajo = '<?= BASE_URL ?>index.php?controller=seguimientoVinculacion&action=actualizarContactoTrabajo';
+    const urlMarcarContactoVerificadoTrabajo = '<?= BASE_URL ?>index.php?controller=seguimientoVinculacion&action=marcarContactoVerificadoTrabajo';
     const urlRegistrarInteraccionTrabajo = '<?= BASE_URL ?>index.php?controller=seguimientoVinculacion&action=registrarInteraccionTrabajo';
+    const urlDescartarSeguimientoTrabajo = '<?= BASE_URL ?>index.php?controller=seguimientoVinculacion&action=descartarSeguimientoTrabajo';
+    const urlReactivarSeguimientoTrabajo = '<?= BASE_URL ?>index.php?controller=seguimientoVinculacion&action=reactivarSeguimientoTrabajo';
     let seguimientoTrabajoActual = null;
+    let descartePendienteId = null;
 
     const normalizarFiltroSeguimiento = function (valor) {
         return String(valor || '')
@@ -1037,18 +1232,65 @@ document.addEventListener('DOMContentLoaded', function () {
         alerta.textContent = mensaje;
     };
 
+    const mostrarErrorTrabajo = function (error, mensajeUsuario) {
+        console.error(error);
+        mostrarToastSistema(mensajeUsuario, true);
+    };
+
+    const mostrarToastSistema = function (mensaje, esError = false) {
+        const contenedor = document.querySelector('.toast-container');
+
+        if (!contenedor || !window.bootstrap) {
+            return;
+        }
+
+        const toast = document.createElement('div');
+        toast.className = 'toast system-toast' + (esError ? ' system-toast-error' : '');
+        toast.setAttribute('role', esError ? 'alert' : 'status');
+        toast.setAttribute('aria-live', esError ? 'assertive' : 'polite');
+        toast.setAttribute('aria-atomic', 'true');
+        toast.setAttribute('data-bs-delay', esError ? '4200' : '3200');
+        toast.innerHTML =
+            '<div class="toast-body">' +
+                '<i class="bi ' + (esError ? 'bi-exclamation-circle' : 'bi-check2-circle') + '"></i>' +
+                '<span></span>' +
+            '</div>';
+        toast.querySelector('span').textContent = mensaje;
+        contenedor.appendChild(toast);
+
+        const instanciaToast = new bootstrap.Toast(toast);
+        toast.addEventListener('hidden.bs.toast', function () {
+            toast.remove();
+        });
+        instanciaToast.show();
+    };
+
     const fechaLocalInput = function (fecha = new Date()) {
         const local = new Date(fecha.getTime() - (fecha.getTimezoneOffset() * 60000));
         return local.toISOString().slice(0, 16);
     };
 
-    const establecerOperacionHabilitada = function (habilitada) {
+    const establecerOperacionHabilitada = function (habilitada, motivoBloqueo = 'Acción disponible para el Analista responsable') {
         document
-            .querySelectorAll('[data-work-toggle-contact], [data-work-toggle-interaction], [data-work-primary-action]')
+            .querySelectorAll('[data-work-toggle-contact], [data-work-toggle-interaction]')
             .forEach(function (boton) {
                 boton.disabled = !habilitada;
-                boton.title = habilitada ? '' : 'Acción disponible para el Analista responsable';
+                boton.title = habilitada ? '' : motivoBloqueo;
             });
+    };
+
+    const actualizarResumenSeguimiento = function (resumen) {
+        if (!resumen || typeof resumen !== 'object') {
+            return;
+        }
+
+        Object.keys(resumen).forEach(function (clave) {
+            const elemento = document.querySelector('[data-summary-count="' + clave + '"]');
+
+            if (elemento) {
+                elemento.textContent = String(parseInt(resumen[clave], 10) || 0);
+            }
+        });
     };
 
     const actualizarFilaSeguimiento = function (seguimiento, interaccionReciente = null) {
@@ -1070,17 +1312,25 @@ document.addEventListener('DOMContentLoaded', function () {
             etapa.textContent = seguimiento.estado_label || 'Sin estado';
         }
 
-        if (ultimaActividad) {
-            ultimaActividad.textContent = seguimiento.ultima_interaccion_label || '—';
+        if (ultimaActividad && interaccionReciente) {
+            ultimaActividad.textContent = interaccionReciente.canal_label || '—';
         }
 
         if (ultimoCanal && interaccionReciente) {
-            ultimoCanal.textContent = interaccionReciente.canal_label || '';
-            ultimoCanal.classList.toggle('d-none', !interaccionReciente.canal_label);
+            ultimoCanal.textContent = seguimiento.ultima_interaccion_label || '';
+            ultimoCanal.classList.toggle('d-none', !seguimiento.ultima_interaccion_label);
         }
 
         if (proximaAccion) {
             proximaAccion.textContent = seguimiento.proxima_accion_label || '—';
+        }
+
+        const folio = fila.querySelector('[data-row-folio]');
+
+        if (folio) {
+            folio.textContent = seguimiento.estado_seguimiento === 'DESCARTADO'
+                ? '—'
+                : (seguimiento.folio || '—');
         }
 
         actualizarBandejaSeguimiento();
@@ -1099,13 +1349,65 @@ document.addEventListener('DOMContentLoaded', function () {
         asignarTextoTrabajo('[data-work-phone]', seguimiento.telefono_verificado || seguimiento.telefono_fuente);
         asignarTextoTrabajo('[data-work-whatsapp]', seguimiento.whatsapp_verificado);
         asignarTextoTrabajo('[data-work-email]', seguimiento.correo_verificado || seguimiento.correo_fuente);
-        asignarTextoTrabajo('[data-work-verified-status]', seguimiento.datos_verificados_label);
         asignarTextoTrabajo('[data-work-source-phone]', seguimiento.telefono_fuente);
         asignarTextoTrabajo('[data-work-source-email]', seguimiento.correo_fuente);
+        asignarTextoTrabajo('[data-work-source-site]', seguimiento.sitio_web_fuente);
+        asignarTextoTrabajo('[data-work-source-address]', seguimiento.direccion_fuente);
 
-        const botonPrincipal = document.querySelector('[data-work-primary-action]');
-        if (botonPrincipal) {
-            botonPrincipal.textContent = seguimiento.accion_principal || 'Revisar seguimiento';
+        const seguimientoDescartado = seguimiento.estado_seguimiento === 'DESCARTADO';
+        const puedeReactivar = seguimientoDescartado && Boolean(seguimiento.puede_reactivar);
+        document.querySelector('[data-work-next-section]')?.classList.toggle('d-none', seguimientoDescartado);
+        document.querySelector('[data-work-discarded-panel]')?.classList.toggle('d-none', !seguimientoDescartado);
+        document.querySelector('[data-work-contact-actions-section]')?.classList.toggle('d-none', seguimientoDescartado);
+        document.querySelector('[data-work-interaction-section]')?.classList.toggle('d-none', seguimientoDescartado);
+        document.querySelector('[data-work-contact-action]')?.classList.toggle('d-none', seguimientoDescartado);
+        document.querySelector('[data-work-verify-row]')?.classList.toggle('d-none', seguimientoDescartado);
+        document.querySelector('[data-work-reactivate-follow]')?.classList.toggle('d-none', !puedeReactivar);
+        asignarTextoTrabajo('[data-work-contact-heading]', seguimientoDescartado ? 'CONTACTO REGISTRADO' : 'Contacto');
+        asignarTextoTrabajo('[data-work-discard-reason]', seguimiento.motivo_descarte);
+        asignarTextoTrabajo('[data-work-discard-date]', seguimiento.fecha_descarte_label);
+
+        const estadoVerificacion = document.querySelector('[data-work-verified-status]');
+        if (estadoVerificacion) {
+            const verificado = Number(seguimiento.datos_verificados) === 1;
+            estadoVerificacion.textContent = seguimientoDescartado && verificado
+                ? '✓ Datos verificados'
+                : seguimiento.datos_verificados_label;
+        }
+
+        const botonVerificar = document.querySelector('[data-work-verify-contact]');
+        if (botonVerificar) {
+            const verificado = Number(seguimiento.datos_verificados) === 1;
+            botonVerificar.disabled = seguimientoDescartado || verificado || !puedeOperar;
+            botonVerificar.innerHTML = verificado
+                ? '<i class="bi bi-check2-circle"></i> Información verificada'
+                : '<i class="bi bi-patch-check"></i> Marcar información como verificada';
+            botonVerificar.title = verificado
+                ? 'La información ya fue verificada'
+                : (seguimientoDescartado
+                    ? 'El seguimiento está descartado'
+                    : (puedeOperar ? '' : 'Acción disponible para el Analista responsable'));
+        }
+
+        const botonLlamar = document.querySelector('[data-work-call-button]');
+        const telefonoDisponible = seguimiento.telefono_verificado || seguimiento.telefono_fuente || '';
+        if (botonLlamar) {
+            botonLlamar.disabled = seguimientoDescartado || !telefonoDisponible;
+            botonLlamar.title = seguimientoDescartado
+                ? 'El seguimiento está descartado'
+                : (telefonoDisponible
+                ? 'Integración pendiente. Teléfono: ' + telefonoDisponible
+                : 'Captura un teléfono para habilitar esta acción.');
+        }
+
+        const botonWhatsapp = document.querySelector('[data-work-whatsapp-button]');
+        if (botonWhatsapp) {
+            botonWhatsapp.disabled = seguimientoDescartado || !seguimiento.whatsapp_verificado;
+            botonWhatsapp.title = seguimientoDescartado
+                ? 'El seguimiento está descartado'
+                : (seguimiento.whatsapp_verificado
+                ? 'Integración pendiente. WhatsApp: ' + seguimiento.whatsapp_verificado
+                : 'Captura un WhatsApp verificado para habilitar esta acción.');
         }
 
         const expediente = document.querySelector('[data-work-expedient]');
@@ -1125,7 +1427,6 @@ document.addEventListener('DOMContentLoaded', function () {
             formContacto.querySelector('[name="contacto_nombre"]').value = seguimiento.contacto_nombre || '';
             formContacto.querySelector('[name="contacto_cargo"]').value = seguimiento.contacto_cargo || '';
             formContacto.querySelector('[name="observaciones"]').value = seguimiento.observaciones || '';
-            formContacto.querySelector('[name="marcar_verificado"]').checked = false;
         }
 
         if (formInteraccion) {
@@ -1133,9 +1434,20 @@ document.addEventListener('DOMContentLoaded', function () {
             formInteraccion.reset();
             formInteraccion.querySelector('[data-work-interaction-id]').value = seguimiento.id;
             formInteraccion.querySelector('[name="fecha_inicio"]').value = fechaLocalInput();
+            formInteraccion.querySelector('[name="persona_atendio"]').value = seguimiento.contacto_nombre || '';
         }
 
-        establecerOperacionHabilitada(puedeOperar);
+        if (seguimientoDescartado) {
+            formContacto?.classList.add('d-none');
+            formInteraccion?.classList.add('d-none');
+        }
+
+        establecerOperacionHabilitada(
+            puedeOperar && !seguimientoDescartado,
+            seguimientoDescartado
+                ? 'El seguimiento está descartado'
+                : 'Acción disponible para el Analista responsable'
+        );
         actualizarFilaSeguimiento(seguimiento);
     };
 
@@ -1219,12 +1531,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         event.preventDefault();
         cargarPanelTrabajo(botonTrabajo.dataset.workFollowId).catch(function (error) {
-            mostrarAlertaTrabajo(error.message, 'error');
+            mostrarErrorTrabajo(error, 'No fue posible cargar el seguimiento.');
         });
-    });
-
-    document.querySelector('[data-work-primary-action]')?.addEventListener('click', function () {
-        document.querySelector('[data-work-contact-form]')?.classList.remove('d-none');
     });
 
     document.querySelector('[data-work-toggle-contact]')?.addEventListener('click', function () {
@@ -1248,9 +1556,87 @@ document.addEventListener('DOMContentLoaded', function () {
         document.querySelector('[data-work-interaction-form]')?.classList.add('d-none');
     });
 
+    document.querySelector('[data-work-verify-contact]')?.addEventListener('click', function () {
+        if (!seguimientoTrabajoActual || Number(seguimientoTrabajoActual.datos_verificados) === 1) {
+            return;
+        }
+
+        modalVerificacion?.show();
+    });
+
+    botonConfirmarVerificacion?.addEventListener('click', async function () {
+        if (!seguimientoTrabajoActual || Number(seguimientoTrabajoActual.datos_verificados) === 1) {
+            return;
+        }
+
+        mostrarAlertaTrabajo('');
+        const textoOriginal = botonConfirmarVerificacion.textContent;
+        botonConfirmarVerificacion.disabled = true;
+        botonConfirmarVerificacion.textContent = 'Verificando...';
+
+        const datosFormulario = new FormData();
+        datosFormulario.append('seguimiento_id', seguimientoTrabajoActual.id);
+
+        try {
+            const respuesta = await fetch(urlMarcarContactoVerificadoTrabajo, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'fetch'
+                },
+                body: datosFormulario
+            });
+            const datos = await respuesta.json();
+
+            if (!datos.ok) {
+                throw new Error(datos.mensaje || 'No fue posible verificar la información.');
+            }
+
+            modalVerificacion?.hide();
+            renderizarResumenTrabajo(datos.seguimiento, true);
+            actualizarResumenSeguimiento(datos.resumen);
+            mostrarToastSistema(
+                datos.mensaje || 'Información marcada como verificada correctamente.',
+                false
+            );
+        } catch (error) {
+            mostrarErrorTrabajo(error, 'No fue posible verificar la información.');
+        } finally {
+            botonConfirmarVerificacion.disabled = false;
+            botonConfirmarVerificacion.textContent = textoOriginal || 'Marcar como verificada';
+        }
+    });
+
+    motivoDescarteInput?.addEventListener('input', function () {
+        if (botonConfirmarDescarte) {
+            botonConfirmarDescarte.disabled = motivoDescarteInput.value.trim() === '';
+        }
+    });
+
+    motivoReactivacionInput?.addEventListener('change', function () {
+        if (botonConfirmarReactivacion) {
+            botonConfirmarReactivacion.disabled = motivoReactivacionInput.value.trim() === '';
+        }
+    });
+
+    document
+        .querySelectorAll('[data-work-call-button], [data-work-whatsapp-button]')
+        .forEach(function (boton) {
+            boton.addEventListener('click', function () {
+                mostrarAlertaTrabajo('La integración con proveedor externo queda pendiente para una etapa posterior.');
+            });
+        });
+
     document.querySelector('[data-work-contact-form]')?.addEventListener('submit', async function (event) {
         event.preventDefault();
         mostrarAlertaTrabajo('');
+        const formularioContacto = event.currentTarget;
+        const botonGuardar = formularioContacto.querySelector('button[type="submit"]');
+        const textoOriginal = botonGuardar ? botonGuardar.textContent : '';
+
+        if (botonGuardar) {
+            botonGuardar.disabled = true;
+            botonGuardar.textContent = 'Guardando...';
+        }
 
         try {
             const respuesta = await fetch(urlActualizarContactoTrabajo, {
@@ -1258,25 +1644,49 @@ document.addEventListener('DOMContentLoaded', function () {
                 headers: {
                     'X-Requested-With': 'fetch'
                 },
-                body: new FormData(event.currentTarget)
+                body: new FormData(formularioContacto)
             });
             const datos = await respuesta.json();
 
-            if (!datos.ok) {
+            if (!respuesta.ok || !datos.ok) {
                 throw new Error(datos.mensaje || 'No fue posible guardar los datos.');
             }
 
-            renderizarResumenTrabajo(datos.seguimiento, true);
-            event.currentTarget.classList.add('d-none');
-            mostrarAlertaTrabajo(datos.mensaje || 'Datos actualizados.');
+            try {
+                renderizarResumenTrabajo(datos.seguimiento, true);
+                actualizarResumenSeguimiento(datos.resumen);
+            } catch (errorRender) {
+                console.error(errorRender);
+            }
+
+            formularioContacto.classList.add('d-none');
+            mostrarToastSistema(
+                datos.mensaje || 'Datos de contacto actualizados correctamente.',
+                false
+            );
         } catch (error) {
-            mostrarAlertaTrabajo(error.message, 'error');
+            mostrarErrorTrabajo(error, 'No fue posible guardar los datos.');
+        } finally {
+            if (botonGuardar) {
+                botonGuardar.disabled = false;
+                botonGuardar.textContent = textoOriginal || 'Guardar datos';
+            }
         }
     });
 
     document.querySelector('[data-work-interaction-form]')?.addEventListener('submit', async function (event) {
         event.preventDefault();
         mostrarAlertaTrabajo('');
+        const formularioInteraccion = event.currentTarget;
+        const botonGuardar = formularioInteraccion.querySelector('button[type="submit"]');
+        const textoOriginal = botonGuardar ? botonGuardar.textContent : '';
+        const formData = new FormData(formularioInteraccion);
+        const resultado = String(formData.get('resultado') || '');
+
+        if (botonGuardar) {
+            botonGuardar.disabled = true;
+            botonGuardar.textContent = 'Guardando...';
+        }
 
         try {
             const respuesta = await fetch(urlRegistrarInteraccionTrabajo, {
@@ -1284,21 +1694,204 @@ document.addEventListener('DOMContentLoaded', function () {
                 headers: {
                     'X-Requested-With': 'fetch'
                 },
-                body: new FormData(event.currentTarget)
+                body: formData
             });
             const datos = await respuesta.json();
 
-            if (!datos.ok) {
+            if (!respuesta.ok || !datos.ok) {
                 throw new Error(datos.mensaje || 'No fue posible guardar la interacción.');
             }
 
-            renderizarResumenTrabajo(datos.seguimiento, true);
-            renderizarInteraccionesTrabajo(datos.interacciones);
-            actualizarFilaSeguimiento(datos.seguimiento, (datos.interacciones || [])[0] || null);
-            event.currentTarget.classList.add('d-none');
-            mostrarAlertaTrabajo(datos.mensaje || 'Interacción registrada.');
+            try {
+                renderizarResumenTrabajo(datos.seguimiento, true);
+                renderizarInteraccionesTrabajo(datos.interacciones);
+                actualizarResumenSeguimiento(datos.resumen);
+                actualizarFilaSeguimiento(datos.seguimiento, (datos.interacciones || [])[0] || null);
+            } catch (errorRender) {
+                console.error(errorRender);
+            }
+
+            formularioInteraccion.classList.add('d-none');
+            mostrarToastSistema(
+                datos.mensaje || 'Interacción registrada correctamente.',
+                false
+            );
+
+            if (resultado === 'NO_INTERESADO' && datos.seguimiento) {
+                descartePendienteId = datos.seguimiento.id;
+                if (motivoDescarteInput) {
+                    motivoDescarteInput.value = '';
+                }
+                if (botonConfirmarDescarte) {
+                    botonConfirmarDescarte.disabled = true;
+                }
+                modalDescarte?.show();
+            }
         } catch (error) {
-            mostrarAlertaTrabajo(error.message, 'error');
+            mostrarErrorTrabajo(error, 'No fue posible registrar la interacción.');
+        } finally {
+            if (botonGuardar) {
+                botonGuardar.disabled = false;
+                botonGuardar.textContent = textoOriginal || 'Guardar interacción';
+            }
+        }
+    });
+
+    botonConfirmarDescarte?.addEventListener('click', async function () {
+        const motivo = motivoDescarteInput ? motivoDescarteInput.value.trim() : '';
+
+        if (!descartePendienteId || motivo === '') {
+            if (botonConfirmarDescarte) {
+                botonConfirmarDescarte.disabled = true;
+            }
+            return;
+        }
+
+        mostrarAlertaTrabajo('');
+        const textoOriginal = botonConfirmarDescarte.textContent;
+        botonConfirmarDescarte.disabled = true;
+        botonConfirmarDescarte.textContent = 'Descartando...';
+
+        const formData = new FormData();
+        formData.append('seguimiento_id', descartePendienteId);
+        formData.append('motivo_descarte', motivo);
+
+        try {
+            const respuesta = await fetch(urlDescartarSeguimientoTrabajo, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'fetch'
+                },
+                body: formData
+            });
+            const datos = await respuesta.json();
+
+            if (!respuesta.ok || !datos.ok) {
+                throw new Error(datos.mensaje || 'No fue posible descartar el seguimiento.');
+            }
+
+            modalDescarte?.hide();
+            descartePendienteId = null;
+            renderizarResumenTrabajo(datos.seguimiento, Boolean(datos.puede_operar));
+            renderizarInteraccionesTrabajo(datos.interacciones);
+            actualizarResumenSeguimiento(datos.resumen);
+            actualizarFilaSeguimiento(datos.seguimiento, (datos.interacciones || [])[0] || null);
+            mostrarToastSistema(
+                datos.mensaje || 'Seguimiento descartado correctamente.',
+                false
+            );
+        } catch (error) {
+            mostrarErrorTrabajo(error, 'No fue posible descartar el seguimiento.');
+        } finally {
+            botonConfirmarDescarte.disabled = motivoDescarteInput
+                ? motivoDescarteInput.value.trim() === ''
+                : true;
+            botonConfirmarDescarte.textContent = textoOriginal || 'Descartar seguimiento';
+        }
+    });
+
+    modalDescarteElemento?.addEventListener('hidden.bs.modal', function () {
+        descartePendienteId = null;
+        if (motivoDescarteInput) {
+            motivoDescarteInput.value = '';
+        }
+        if (botonConfirmarDescarte) {
+            botonConfirmarDescarte.disabled = true;
+            botonConfirmarDescarte.textContent = 'Descartar seguimiento';
+        }
+    });
+
+    document.querySelector('[data-work-reactivate-follow]')?.addEventListener('click', function () {
+        if (
+            !seguimientoTrabajoActual ||
+            seguimientoTrabajoActual.estado_seguimiento !== 'DESCARTADO' ||
+            !seguimientoTrabajoActual.puede_reactivar
+        ) {
+            return;
+        }
+
+        if (motivoReactivacionInput) {
+            motivoReactivacionInput.value = '';
+        }
+        if (observacionReactivacionInput) {
+            observacionReactivacionInput.value = '';
+        }
+        if (botonConfirmarReactivacion) {
+            botonConfirmarReactivacion.disabled = true;
+        }
+        modalReactivar?.show();
+    });
+
+    botonConfirmarReactivacion?.addEventListener('click', async function () {
+        const motivo = motivoReactivacionInput ? motivoReactivacionInput.value.trim() : '';
+
+        if (
+            !seguimientoTrabajoActual ||
+            seguimientoTrabajoActual.estado_seguimiento !== 'DESCARTADO' ||
+            motivo === ''
+        ) {
+            if (botonConfirmarReactivacion) {
+                botonConfirmarReactivacion.disabled = true;
+            }
+            return;
+        }
+
+        mostrarAlertaTrabajo('');
+        const textoOriginal = botonConfirmarReactivacion.textContent;
+        botonConfirmarReactivacion.disabled = true;
+        botonConfirmarReactivacion.textContent = 'Reactivando...';
+
+        const formData = new FormData();
+        formData.append('seguimiento_id', seguimientoTrabajoActual.id);
+        formData.append('motivo_reactivacion', motivo);
+        formData.append(
+            'observacion',
+            observacionReactivacionInput ? observacionReactivacionInput.value.trim() : ''
+        );
+
+        try {
+            const respuesta = await fetch(urlReactivarSeguimientoTrabajo, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'fetch'
+                },
+                body: formData
+            });
+            const datos = await respuesta.json();
+
+            if (!respuesta.ok || !datos.ok) {
+                throw new Error(datos.mensaje || 'No fue posible reactivar el seguimiento.');
+            }
+
+            modalReactivar?.hide();
+            renderizarResumenTrabajo(datos.seguimiento, Boolean(datos.puede_operar));
+            renderizarInteraccionesTrabajo(datos.interacciones);
+            actualizarResumenSeguimiento(datos.resumen);
+            actualizarFilaSeguimiento(datos.seguimiento, (datos.interacciones || [])[0] || null);
+            mostrarToastSistema(
+                datos.mensaje || 'Seguimiento reactivado correctamente.',
+                false
+            );
+        } catch (error) {
+            mostrarErrorTrabajo(error, 'No fue posible reactivar el seguimiento.');
+        } finally {
+            botonConfirmarReactivacion.disabled = motivoReactivacionInput
+                ? motivoReactivacionInput.value.trim() === ''
+                : true;
+            botonConfirmarReactivacion.textContent = textoOriginal || 'Reactivar seguimiento';
+        }
+    });
+
+    modalReactivarElemento?.addEventListener('hidden.bs.modal', function () {
+        if (motivoReactivacionInput) {
+            motivoReactivacionInput.value = '';
+        }
+        if (observacionReactivacionInput) {
+            observacionReactivacionInput.value = '';
+        }
+        if (botonConfirmarReactivacion) {
+            botonConfirmarReactivacion.disabled = true;
+            botonConfirmarReactivacion.textContent = 'Reactivar seguimiento';
         }
     });
 
@@ -1328,7 +1921,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const formularioConfirmar = document.querySelector('[data-candidate-confirm-form]');
     const alertaConfirmar = document.querySelector('[data-confirm-alert]');
     const botonConfirmar = document.querySelector('[data-confirm-submit]');
-    const toast = document.querySelector('[data-linkage-toast]');
     const estadoId = '<?= (int)($estado['id'] ?? 0) ?>';
     const urlBuscar = '<?= BASE_URL ?>index.php?controller=seguimientoVinculacion&action=buscarCandidatos';
     const urlCrear = '<?= BASE_URL ?>index.php?controller=seguimientoVinculacion&action=crearSeguimientoDesdeCandidato';
@@ -2051,10 +2643,7 @@ document.addEventListener('DOMContentLoaded', function () {
             bootstrap.Modal.getInstance(modalConfirmar)?.hide();
             bootstrap.Modal.getInstance(modalBuscar)?.hide();
 
-            if (toast) {
-                toast.textContent = datos.mensaje || 'Seguimiento iniciado correctamente.';
-                toast.classList.remove('d-none');
-            }
+            mostrarToastSistema(datos.mensaje || 'Seguimiento iniciado correctamente.');
 
             window.setTimeout(function () {
                 window.location.reload();

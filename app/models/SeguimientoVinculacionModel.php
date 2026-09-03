@@ -614,7 +614,7 @@ class SeguimientoVinculacionModel
     public function obtenerResumenSeguimientosAnalistaEstado($usuarioId, $estadoId, $filtros = [])
     {
         $sql = "SELECT
-                    COUNT(*) AS en_seguimiento,
+                    COALESCE(SUM(seguimientos.estado_seguimiento <> 'DESCARTADO'), 0) AS en_seguimiento,
                     COALESCE(SUM(seguimientos.estado_seguimiento = 'CONTACTANDO'), 0) AS contactando,
                     COALESCE(SUM(seguimientos.estado_seguimiento = 'DATOS_VERIFICADOS'), 0) AS datos_verificados,
                     COALESCE(SUM(seguimientos.estado_seguimiento = 'ESPERANDO_RESPUESTA'), 0) AS esperando_respuesta
@@ -633,7 +633,7 @@ class SeguimientoVinculacionModel
     public function obtenerResumenSeguimientosSupervisorEstado($usuarioId, $estadoId, $filtros = [])
     {
         $sql = "SELECT
-                    COUNT(DISTINCT seguimientos.id) AS en_seguimiento,
+                    COALESCE(COUNT(DISTINCT CASE WHEN seguimientos.estado_seguimiento <> 'DESCARTADO' THEN seguimientos.id END), 0) AS en_seguimiento,
                     COALESCE(COUNT(DISTINCT CASE WHEN seguimientos.estado_seguimiento = 'CONTACTANDO' THEN seguimientos.id END), 0) AS contactando,
                     COALESCE(COUNT(DISTINCT CASE WHEN seguimientos.estado_seguimiento = 'DATOS_VERIFICADOS' THEN seguimientos.id END), 0) AS datos_verificados,
                     COALESCE(COUNT(DISTINCT CASE WHEN seguimientos.estado_seguimiento = 'ESPERANDO_RESPUESTA' THEN seguimientos.id END), 0) AS esperando_respuesta
@@ -664,7 +664,7 @@ class SeguimientoVinculacionModel
     public function obtenerResumenSeguimientosAdministradorEstado($estadoId, $filtros = [])
     {
         $sql = "SELECT
-                    COUNT(*) AS en_seguimiento,
+                    COALESCE(SUM(seguimientos.estado_seguimiento <> 'DESCARTADO'), 0) AS en_seguimiento,
                     COALESCE(SUM(seguimientos.estado_seguimiento = 'CONTACTANDO'), 0) AS contactando,
                     COALESCE(SUM(seguimientos.estado_seguimiento = 'DATOS_VERIFICADOS'), 0) AS datos_verificados,
                     COALESCE(SUM(seguimientos.estado_seguimiento = 'ESPERANDO_RESPUESTA'), 0) AS esperando_respuesta
@@ -970,6 +970,24 @@ class SeguimientoVinculacionModel
         return $stmt->execute();
     }
 
+    public function marcarDatosVerificadosSeguimiento($seguimientoId, $usuarioId)
+    {
+        $sql = "UPDATE seguimientos_vinculacion
+                SET datos_verificados = 1,
+                    datos_verificados_at = NOW(),
+                    datos_verificados_por = ?,
+                    estado_seguimiento = 'DATOS_VERIFICADOS'
+                WHERE id = ?
+                    AND activo = 1";
+
+        $stmt = $this->connection->prepare($sql);
+        $usuarioId = (int)$usuarioId;
+        $seguimientoId = (int)$seguimientoId;
+        $stmt->bind_param('ii', $usuarioId, $seguimientoId);
+
+        return $stmt->execute();
+    }
+
     public function registrarInteraccionManual($seguimientoId, $usuarioId, $datos)
     {
         $canal = (string)$datos['canal'];
@@ -979,7 +997,20 @@ class SeguimientoVinculacionModel
         $telefonoDestino = $this->valorONulo($datos['telefono_destino'] ?? '');
         $correoDestino = $this->valorONulo($datos['correo_destino'] ?? '');
         $proximaAccionAt = $this->valorONulo($datos['proxima_accion_at'] ?? '');
-        $estadoSeguimiento = $this->resolverEstadoDespuesInteraccion($canal, $resultado);
+        $datosVerificados = (int)($datos['datos_verificados'] ?? 0) === 1;
+        $descartar = (int)($datos['descartar'] ?? 0) === 1;
+        $motivoDescarte = $this->valorONulo($datos['motivo_descarte'] ?? '');
+
+        if ($descartar) {
+            $proximaAccionAt = null;
+        }
+
+        $estadoSeguimiento = $this->resolverEstadoDespuesInteraccion(
+            $canal,
+            $resultado,
+            $datosVerificados,
+            $descartar
+        );
 
         $this->connection->begin_transaction();
 
@@ -1014,18 +1045,33 @@ class SeguimientoVinculacionModel
             $sqlSeguimiento = "UPDATE seguimientos_vinculacion
                     SET ultima_interaccion_at = ?,
                         proxima_accion_at = ?,
-                        estado_seguimiento = ?
+                        estado_seguimiento = ?";
+
+            if ($descartar) {
+                $sqlSeguimiento .= ",
+                        motivo_descarte = ?";
+            }
+
+            $sqlSeguimiento .= "
                     WHERE id = ?
                         AND activo = 1";
 
             $stmtSeguimiento = $this->connection->prepare($sqlSeguimiento);
-            $stmtSeguimiento->bind_param(
-                'sssi',
+            $parametrosSeguimiento = [
                 $fechaInicio,
                 $proximaAccionAt,
-                $estadoSeguimiento,
-                $seguimientoId
-            );
+                $estadoSeguimiento
+            ];
+            $tiposSeguimiento = 'sss';
+
+            if ($descartar) {
+                $parametrosSeguimiento[] = $motivoDescarte;
+                $tiposSeguimiento .= 's';
+            }
+
+            $parametrosSeguimiento[] = $seguimientoId;
+            $tiposSeguimiento .= 'i';
+            $this->vincularParametros($stmtSeguimiento, $tiposSeguimiento, $parametrosSeguimiento);
             $stmtSeguimiento->execute();
 
             $this->connection->commit();
@@ -1037,10 +1083,88 @@ class SeguimientoVinculacionModel
         }
     }
 
-    private function resolverEstadoDespuesInteraccion($canal, $resultado)
+    public function descartarSeguimientoTrabajo($seguimientoId, $motivoDescarte)
     {
-        if ($canal === 'CORREO' && $resultado === 'CORREO_ENVIADO') {
-            return 'ESPERANDO_RESPUESTA';
+        $sql = "UPDATE seguimientos_vinculacion
+                SET estado_seguimiento = 'DESCARTADO',
+                    motivo_descarte = ?,
+                    proxima_accion_at = NULL
+                WHERE id = ?
+                    AND activo = 1
+                    AND estado_seguimiento <> 'DESCARTADO'";
+
+        $stmt = $this->connection->prepare($sql);
+        $seguimientoId = (int)$seguimientoId;
+        $motivoDescarte = trim((string)$motivoDescarte);
+        $stmt->bind_param('si', $motivoDescarte, $seguimientoId);
+
+        return $stmt->execute() && $stmt->affected_rows > 0;
+    }
+
+    public function reactivarSeguimientoTrabajo($seguimientoId, $usuarioId, $motivoReactivacion, $observacion = '')
+    {
+        $seguimientoId = (int)$seguimientoId;
+        $usuarioId = (int)$usuarioId;
+        $motivoReactivacion = trim((string)$motivoReactivacion);
+        $observacion = trim((string)$observacion);
+
+        $notas = trim(implode("\n", array_filter([
+            'Seguimiento reactivado',
+            'Motivo de reactivación: ' . $motivoReactivacion,
+            $observacion !== '' ? 'Observación: ' . $observacion : '',
+            'Próxima acción: Retomar contacto'
+        ])));
+
+        $this->connection->begin_transaction();
+
+        try {
+            $sqlInteraccion = "INSERT INTO interacciones_vinculacion (
+                    seguimiento_id,
+                    usuario_id,
+                    canal,
+                    fecha_inicio,
+                    resultado,
+                    notas
+                ) VALUES (?, ?, 'SISTEMA', NOW(), 'OTRO', ?)";
+
+            $stmtInteraccion = $this->connection->prepare($sqlInteraccion);
+            $stmtInteraccion->bind_param('iis', $seguimientoId, $usuarioId, $notas);
+            $stmtInteraccion->execute();
+
+            $sqlSeguimiento = "UPDATE seguimientos_vinculacion
+                    SET estado_seguimiento = 'CONTACTANDO',
+                        ultima_interaccion_at = NOW(),
+                        proxima_accion_at = NULL
+                    WHERE id = ?
+                        AND activo = 1
+                        AND estado_seguimiento = 'DESCARTADO'";
+
+            $stmtSeguimiento = $this->connection->prepare($sqlSeguimiento);
+            $stmtSeguimiento->bind_param('i', $seguimientoId);
+            $stmtSeguimiento->execute();
+
+            if ($stmtSeguimiento->affected_rows <= 0) {
+                $this->connection->rollback();
+                return false;
+            }
+
+            $this->connection->commit();
+
+            return true;
+        } catch (Throwable $error) {
+            $this->connection->rollback();
+            return false;
+        }
+    }
+
+    private function resolverEstadoDespuesInteraccion($canal, $resultado, $datosVerificados, $descartar)
+    {
+        if ($descartar) {
+            return 'DESCARTADO';
+        }
+
+        if ($datosVerificados) {
+            return 'DATOS_VERIFICADOS';
         }
 
         return 'CONTACTANDO';
@@ -1191,6 +1315,20 @@ class SeguimientoVinculacionModel
                     seguimientos.fecha_inicio,
                     seguimientos.proxima_accion_at,
                     seguimientos.analista_id,
+                    (
+                        SELECT TRIM(
+                            SUBSTRING_INDEX(
+                                SUBSTRING_INDEX(interacciones_accion.notas, 'Próxima acción: ', -1),
+                                '\n',
+                                1
+                            )
+                        )
+                        FROM interacciones_vinculacion interacciones_accion
+                        WHERE interacciones_accion.seguimiento_id = seguimientos.id
+                            AND interacciones_accion.notas LIKE '%Próxima acción:%'
+                        ORDER BY interacciones_accion.fecha_inicio DESC, interacciones_accion.id DESC
+                        LIMIT 1
+                    ) AS proxima_accion_texto,
                     municipios.nombre AS municipio,
                     usuarios.nombre AS analista_nombre,
                     usuarios.apellidos AS analista_apellidos,
@@ -1231,6 +1369,20 @@ class SeguimientoVinculacionModel
         return "SELECT
                     seguimientos.*,
                     estados.nombre AS estado_nombre,
+                    (
+                        SELECT TRIM(
+                            SUBSTRING_INDEX(
+                                SUBSTRING_INDEX(interacciones_accion.notas, 'Próxima acción: ', -1),
+                                '\n',
+                                1
+                            )
+                        )
+                        FROM interacciones_vinculacion interacciones_accion
+                        WHERE interacciones_accion.seguimiento_id = seguimientos.id
+                            AND interacciones_accion.notas LIKE '%Próxima acción:%'
+                        ORDER BY interacciones_accion.fecha_inicio DESC, interacciones_accion.id DESC
+                        LIMIT 1
+                    ) AS proxima_accion_texto,
                     municipios.nombre AS municipio,
                     usuarios.nombre AS analista_nombre,
                     usuarios.apellidos AS analista_apellidos,

@@ -419,7 +419,11 @@ class SeguimientoVinculacionController
 
         $this->responderJson([
             'ok' => true,
-            'seguimiento' => $this->serializarSeguimientoTrabajo($seguimiento),
+            'seguimiento' => $this->serializarSeguimientoTrabajoConPermisos(
+                $seguimiento,
+                $usuarioId,
+                $modoSeguimiento
+            ),
             'interacciones' => $this->serializarInteraccionesTrabajo(
                 $modelo->obtenerUltimasInteraccionesSeguimiento($seguimientoId, 3)
             ),
@@ -459,6 +463,13 @@ class SeguimientoVinculacionController
             ], 403);
         }
 
+        if ($this->seguimientoEstaDescartado($seguimiento)) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'El seguimiento está descartado y solo puede consultarse.'
+            ], 422);
+        }
+
         $datos = [
             'telefono_verificado' => trim((string)($_POST['telefono_verificado'] ?? '')),
             'whatsapp_verificado' => trim((string)($_POST['whatsapp_verificado'] ?? '')),
@@ -467,9 +478,8 @@ class SeguimientoVinculacionController
             'contacto_cargo' => trim((string)($_POST['contacto_cargo'] ?? '')),
             'observaciones' => trim((string)($_POST['observaciones'] ?? ''))
         ];
-        $marcarVerificado = (int)($_POST['marcar_verificado'] ?? 0) === 1;
 
-        if (!$modelo->actualizarContactoSeguimiento($seguimientoId, $usuarioId, $datos, $marcarVerificado)) {
+        if (!$modelo->actualizarContactoSeguimiento($seguimientoId, $usuarioId, $datos, false)) {
             $this->responderJson([
                 'ok' => false,
                 'mensaje' => 'No fue posible actualizar los datos de contacto.'
@@ -485,8 +495,79 @@ class SeguimientoVinculacionController
 
         $this->responderJson([
             'ok' => true,
-            'mensaje' => 'Datos de contacto actualizados.',
-            'seguimiento' => $this->serializarSeguimientoTrabajo($seguimientoActualizado)
+            'mensaje' => 'Datos de contacto actualizados correctamente.',
+            'seguimiento' => $this->serializarSeguimientoTrabajoConPermisos(
+                $seguimientoActualizado,
+                $usuarioId,
+                $modoSeguimiento
+            ),
+            'resumen' => $this->obtenerResumenTrabajoActualizado(
+                $modelo,
+                $usuarioId,
+                $seguimientoActualizado,
+                $modoSeguimiento
+            )
+        ]);
+    }
+
+    public function marcarContactoVerificadoTrabajo()
+    {
+        $this->validarMetodoPostJson();
+        $this->validarPermisoJson('seguimientos_vinculacion.ver');
+
+        $modelo = new SeguimientoVinculacionModel();
+        $usuarioId = $this->obtenerUsuarioActualId();
+        $modoSeguimiento = $this->resolverModoSeguimiento();
+        $seguimientoId = (int)($_POST['seguimiento_id'] ?? 0);
+        $seguimiento = $this->obtenerSeguimientoPorModo(
+            $modelo,
+            $usuarioId,
+            $seguimientoId,
+            $modoSeguimiento
+        );
+
+        if (!$seguimiento || !$this->puedeOperarSeguimiento($seguimiento, $usuarioId, $modoSeguimiento)) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'No tienes permiso para verificar este seguimiento.'
+            ], 403);
+        }
+
+        if ($this->seguimientoEstaDescartado($seguimiento)) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'El seguimiento está descartado y solo puede consultarse.'
+            ], 422);
+        }
+
+        if (!$modelo->marcarDatosVerificadosSeguimiento($seguimientoId, $usuarioId)) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'No fue posible marcar la información como verificada.'
+            ], 500);
+        }
+
+        $seguimientoActualizado = $this->obtenerSeguimientoPorModo(
+            $modelo,
+            $usuarioId,
+            $seguimientoId,
+            $modoSeguimiento
+        );
+
+        $this->responderJson([
+            'ok' => true,
+            'mensaje' => 'Información marcada como verificada correctamente.',
+            'seguimiento' => $this->serializarSeguimientoTrabajoConPermisos(
+                $seguimientoActualizado,
+                $usuarioId,
+                $modoSeguimiento
+            ),
+            'resumen' => $this->obtenerResumenTrabajoActualizado(
+                $modelo,
+                $usuarioId,
+                $seguimientoActualizado,
+                $modoSeguimiento
+            )
         ]);
     }
 
@@ -513,6 +594,13 @@ class SeguimientoVinculacionController
             ], 403);
         }
 
+        if ($this->seguimientoEstaDescartado($seguimiento)) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'El seguimiento está descartado y solo puede consultarse.'
+            ], 422);
+        }
+
         $canalFormulario = strtoupper(trim((string)($_POST['canal'] ?? '')));
         $canales = [
             'LLAMADA' => 'LLAMADA_IP',
@@ -521,7 +609,18 @@ class SeguimientoVinculacionController
             'OTRO' => 'NOTA'
         ];
         $canal = $canales[$canalFormulario] ?? '';
-        $resultado = strtoupper(trim((string)($_POST['resultado'] ?? '')));
+        $resultadoFormulario = strtoupper(trim((string)($_POST['resultado'] ?? '')));
+        $mapaResultados = [
+            'SIN_RESPUESTA' => 'SIN_RESPUESTA',
+            'NUMERO_INCORRECTO' => 'NUMERO_INCORRECTO',
+            'CONTACTO_INCORRECTO' => 'OCUPADO',
+            'CONTACTO_CORRECTO' => 'CONTACTADO',
+            'SOLICITO_INFORMACION' => 'MENSAJE_ENVIADO',
+            'SOLICITO_LLAMAR_DESPUES' => 'SOLICITO_LLAMAR_DESPUES',
+            'NO_INTERESADO' => 'OTRO',
+            'OTRO' => 'OTRO'
+        ];
+        $resultado = $mapaResultados[$resultadoFormulario] ?? '';
         $resultadosValidos = [
             'CONTACTADO',
             'NO_CONTESTO',
@@ -554,10 +653,23 @@ class SeguimientoVinculacionController
         $personaAtendio = trim((string)($_POST['persona_atendio'] ?? ''));
         $proximaAccion = trim((string)($_POST['proxima_accion'] ?? ''));
         $observacion = trim((string)($_POST['observacion'] ?? ''));
+        $descartar = $resultadoFormulario === 'NO_INTERESADO' &&
+            (int)($_POST['descartar'] ?? 0) === 1;
+        $motivoDescarte = trim((string)($_POST['motivo_descarte'] ?? ''));
+
+        if ($descartar && $motivoDescarte === '') {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'El motivo de descarte es obligatorio.'
+            ], 422);
+        }
+
         $notas = trim(implode("\n", array_filter([
             $personaAtendio !== '' ? 'Persona atendió: ' . $personaAtendio : '',
+            $resultadoFormulario === 'NO_INTERESADO' ? 'Resultado registrado: No interesado' : '',
             $observacion,
-            $proximaAccion !== '' ? 'Próxima acción: ' . $proximaAccion : ''
+            $proximaAccion !== '' ? 'Próxima acción: ' . $proximaAccion : '',
+            $descartar ? 'Motivo de descarte: ' . $motivoDescarte : ''
         ])));
 
         $datosInteraccion = [
@@ -567,7 +679,10 @@ class SeguimientoVinculacionController
             'notas' => $notas,
             'telefono_destino' => $seguimiento['telefono_verificado'] ?: $seguimiento['telefono_fuente'] ?: '',
             'correo_destino' => $seguimiento['correo_verificado'] ?: $seguimiento['correo_fuente'] ?: '',
-            'proxima_accion_at' => $proximaAccionAt
+            'proxima_accion_at' => $proximaAccionAt,
+            'datos_verificados' => (int)($seguimiento['datos_verificados'] ?? 0),
+            'descartar' => $descartar ? 1 : 0,
+            'motivo_descarte' => $motivoDescarte
         ];
 
         if (!$modelo->registrarInteraccionManual($seguimientoId, $usuarioId, $datosInteraccion)) {
@@ -586,10 +701,198 @@ class SeguimientoVinculacionController
 
         $this->responderJson([
             'ok' => true,
-            'mensaje' => 'Interacción registrada.',
-            'seguimiento' => $this->serializarSeguimientoTrabajo($seguimientoActualizado),
+            'mensaje' => 'Interacción registrada correctamente.',
+            'seguimiento' => $this->serializarSeguimientoTrabajoConPermisos(
+                $seguimientoActualizado,
+                $usuarioId,
+                $modoSeguimiento
+            ),
             'interacciones' => $this->serializarInteraccionesTrabajo(
                 $modelo->obtenerUltimasInteraccionesSeguimiento($seguimientoId, 3)
+            ),
+            'resumen' => $this->obtenerResumenTrabajoActualizado(
+                $modelo,
+                $usuarioId,
+                $seguimientoActualizado,
+                $modoSeguimiento
+            )
+        ]);
+    }
+
+    public function descartarSeguimientoTrabajo()
+    {
+        $this->validarMetodoPostJson();
+        $this->validarPermisoJson('seguimientos_vinculacion.ver');
+
+        $modelo = new SeguimientoVinculacionModel();
+        $usuarioId = $this->obtenerUsuarioActualId();
+        $modoSeguimiento = $this->resolverModoSeguimiento();
+        $seguimientoId = (int)($_POST['seguimiento_id'] ?? 0);
+        $seguimiento = $this->obtenerSeguimientoPorModo(
+            $modelo,
+            $usuarioId,
+            $seguimientoId,
+            $modoSeguimiento
+        );
+
+        if (!$seguimiento || !$this->puedeOperarSeguimiento($seguimiento, $usuarioId, $modoSeguimiento)) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'No tienes permiso para descartar este seguimiento.'
+            ], 403);
+        }
+
+        if ((string)($seguimiento['estado_seguimiento'] ?? '') === 'DESCARTADO') {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'Este seguimiento ya está descartado.'
+            ], 422);
+        }
+
+        $motivoDescarte = trim((string)($_POST['motivo_descarte'] ?? ''));
+
+        if ($motivoDescarte === '') {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'El motivo de descarte es obligatorio.'
+            ], 422);
+        }
+
+        if (strlen($motivoDescarte) > 255) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'El motivo de descarte no debe superar 255 caracteres.'
+            ], 422);
+        }
+
+        if (!$modelo->descartarSeguimientoTrabajo($seguimientoId, $motivoDescarte)) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'No fue posible descartar el seguimiento.'
+            ], 500);
+        }
+
+        $seguimientoActualizado = $this->obtenerSeguimientoPorModo(
+            $modelo,
+            $usuarioId,
+            $seguimientoId,
+            $modoSeguimiento
+        );
+
+        $this->responderJson([
+            'ok' => true,
+            'mensaje' => 'Seguimiento descartado correctamente.',
+            'puede_operar' => $this->puedeOperarSeguimiento(
+                $seguimientoActualizado,
+                $usuarioId,
+                $modoSeguimiento
+            ),
+            'seguimiento' => $this->serializarSeguimientoTrabajoConPermisos(
+                $seguimientoActualizado,
+                $usuarioId,
+                $modoSeguimiento
+            ),
+            'interacciones' => $this->serializarInteraccionesTrabajo(
+                $modelo->obtenerUltimasInteraccionesSeguimiento($seguimientoId, 3)
+            ),
+            'resumen' => $this->obtenerResumenTrabajoActualizado(
+                $modelo,
+                $usuarioId,
+                $seguimientoActualizado,
+                $modoSeguimiento
+            )
+        ]);
+    }
+
+    public function reactivarSeguimientoTrabajo()
+    {
+        $this->validarMetodoPostJson();
+        $this->validarPermisoJson('seguimientos_vinculacion.ver');
+
+        $modelo = new SeguimientoVinculacionModel();
+        $usuarioId = $this->obtenerUsuarioActualId();
+        $modoSeguimiento = $this->resolverModoSeguimiento();
+        $seguimientoId = (int)($_POST['seguimiento_id'] ?? 0);
+        $seguimiento = $this->obtenerSeguimientoPorModo(
+            $modelo,
+            $usuarioId,
+            $seguimientoId,
+            $modoSeguimiento
+        );
+
+        if (!$seguimiento || !$this->puedeReactivarSeguimiento($seguimiento, $usuarioId, $modoSeguimiento)) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'No tienes permiso para reactivar este seguimiento.'
+            ], 403);
+        }
+
+        if (!$this->seguimientoEstaDescartado($seguimiento)) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'Solo se pueden reactivar seguimientos descartados.'
+            ], 422);
+        }
+
+        $motivoReactivacion = trim((string)($_POST['motivo_reactivacion'] ?? ''));
+        $observacion = trim((string)($_POST['observacion'] ?? ''));
+        $motivosValidos = [
+            'La institución volvió a contactar',
+            'Ahora muestra interés',
+            'Solicitó retomar la vinculación',
+            'Indicación del Cuenta Clave',
+            'Otro'
+        ];
+
+        if (!in_array($motivoReactivacion, $motivosValidos, true)) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'Selecciona un motivo de reactivación válido.'
+            ], 422);
+        }
+
+        if (strlen($observacion) > 1000) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'La observación no debe superar 1000 caracteres.'
+            ], 422);
+        }
+
+        if (!$modelo->reactivarSeguimientoTrabajo($seguimientoId, $usuarioId, $motivoReactivacion, $observacion)) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'No fue posible reactivar el seguimiento.'
+            ], 500);
+        }
+
+        $seguimientoActualizado = $this->obtenerSeguimientoPorModo(
+            $modelo,
+            $usuarioId,
+            $seguimientoId,
+            $modoSeguimiento
+        );
+
+        $this->responderJson([
+            'ok' => true,
+            'mensaje' => 'Seguimiento reactivado correctamente.',
+            'puede_operar' => $this->puedeOperarSeguimiento(
+                $seguimientoActualizado,
+                $usuarioId,
+                $modoSeguimiento
+            ),
+            'seguimiento' => $this->serializarSeguimientoTrabajoConPermisos(
+                $seguimientoActualizado,
+                $usuarioId,
+                $modoSeguimiento
+            ),
+            'interacciones' => $this->serializarInteraccionesTrabajo(
+                $modelo->obtenerUltimasInteraccionesSeguimiento($seguimientoId, 3)
+            ),
+            'resumen' => $this->obtenerResumenTrabajoActualizado(
+                $modelo,
+                $usuarioId,
+                $seguimientoActualizado,
+                $modoSeguimiento
             )
         ]);
     }
@@ -1331,14 +1634,57 @@ class SeguimientoVinculacionController
 
     private function puedeOperarSeguimiento($seguimiento, $usuarioId, $modo)
     {
-        return $modo === 'analista' &&
+        $esAnalistaResponsable = $modo === 'analista' &&
             (int)($seguimiento['analista_id'] ?? 0) === (int)$usuarioId;
+
+        return $esAnalistaResponsable || tienePermiso('seguimientos_vinculacion.editar');
+    }
+
+    private function puedeReactivarSeguimiento($seguimiento, $usuarioId, $modo)
+    {
+        if (!$this->seguimientoEstaDescartado($seguimiento)) {
+            return false;
+        }
+
+        $esAnalistaResponsable = $modo === 'analista' &&
+            (int)($seguimiento['analista_id'] ?? 0) === (int)$usuarioId;
+
+        $puedeSupervisar = $modo === 'supervisor' &&
+            tienePermiso('seguimientos_vinculacion.supervisar');
+
+        return $esAnalistaResponsable ||
+            $puedeSupervisar ||
+            tienePermiso('seguimientos_vinculacion.editar');
+    }
+
+    private function seguimientoEstaDescartado($seguimiento)
+    {
+        return (string)($seguimiento['estado_seguimiento'] ?? '') === 'DESCARTADO';
+    }
+
+    private function serializarSeguimientoTrabajoConPermisos($seguimiento, $usuarioId, $modo)
+    {
+        $seguimientoSerializado = $this->serializarSeguimientoTrabajo($seguimiento);
+        $seguimientoSerializado['puede_reactivar'] = $this->puedeReactivarSeguimiento(
+            $seguimiento,
+            $usuarioId,
+            $modo
+        );
+
+        return $seguimientoSerializado;
     }
 
     private function serializarSeguimientoTrabajo($seguimiento)
     {
         $estado = (string)($seguimiento['estado_seguimiento'] ?? '');
         $proximaAccion = trim((string)($seguimiento['proxima_accion_at'] ?? ''));
+        $proximaAccionTexto = trim((string)($seguimiento['proxima_accion_texto'] ?? ''));
+        $seguimientoDescartado = $estado === 'DESCARTADO';
+
+        if ($seguimientoDescartado) {
+            $proximaAccion = '';
+            $proximaAccionTexto = '';
+        }
 
         return [
             'id' => (int)($seguimiento['id'] ?? 0),
@@ -1350,10 +1696,16 @@ class SeguimientoVinculacionController
             'estado_seguimiento' => $estado,
             'estado_label' => $this->etiquetarEstadoSeguimiento($estado),
             'accion_principal' => $this->resolverAccionPrincipalTrabajo($estado),
+            'proxima_accion_texto' => $proximaAccionTexto,
             'proxima_accion_at' => $proximaAccion,
-            'proxima_accion_label' => $proximaAccion !== ''
-                ? $this->formatearFechaTrabajo($proximaAccion)
-                : ($estado === 'NUEVO' ? 'Completar investigación' : '—'),
+            'proxima_accion_fecha_label' => $this->formatearFechaTrabajo($proximaAccion),
+            'proxima_accion_label' => $seguimientoDescartado
+                ? '—'
+                : ($proximaAccionTexto !== ''
+                ? $proximaAccionTexto
+                : ($proximaAccion !== ''
+                    ? $this->formatearFechaTrabajo($proximaAccion)
+                    : $this->resolverAccionPrincipalTrabajo($estado))),
             'ultima_interaccion_at' => (string)($seguimiento['ultima_interaccion_at'] ?? ''),
             'ultima_interaccion_label' => $this->formatearFechaTrabajo($seguimiento['ultima_interaccion_at'] ?? ''),
             'origen' => (string)($seguimiento['origen'] ?? ''),
@@ -1372,6 +1724,10 @@ class SeguimientoVinculacionController
             'datos_verificados_label' => (int)($seguimiento['datos_verificados'] ?? 0) === 1
                 ? 'Datos verificados'
                 : 'Datos sin verificar',
+            'motivo_descarte' => (string)($seguimiento['motivo_descarte'] ?? ''),
+            'fecha_descarte_label' => $seguimientoDescartado
+                ? $this->formatearFechaTrabajo($seguimiento['ultima_interaccion_at'] ?? '')
+                : '—',
             'observaciones' => (string)($seguimiento['observaciones'] ?? ''),
             'analista_nombre' => trim(
                 (string)($seguimiento['analista_nombre'] ?? '') . ' ' .
@@ -1383,15 +1739,18 @@ class SeguimientoVinculacionController
     private function serializarInteraccionesTrabajo($interacciones)
     {
         return array_map(function ($interaccion) {
+            $resultado = (string)($interaccion['resultado'] ?? '');
+            $notas = (string)($interaccion['notas'] ?? '');
+
             return [
                 'id' => (int)($interaccion['id'] ?? 0),
                 'canal' => (string)($interaccion['canal'] ?? ''),
                 'canal_label' => $this->etiquetarCanal((string)($interaccion['canal'] ?? '')),
-                'resultado' => (string)($interaccion['resultado'] ?? ''),
-                'resultado_label' => $this->etiquetarResultado((string)($interaccion['resultado'] ?? '')),
+                'resultado' => $resultado,
+                'resultado_label' => $this->etiquetarResultadoInteraccion($resultado, $notas),
                 'fecha_inicio' => (string)($interaccion['fecha_inicio'] ?? ''),
                 'fecha_label' => $this->formatearFechaTrabajo($interaccion['fecha_inicio'] ?? ''),
-                'notas' => (string)($interaccion['notas'] ?? '')
+                'notas' => $notas
             ];
         }, $interacciones);
     }
@@ -1503,12 +1862,12 @@ class SeguimientoVinculacionController
     private function etiquetarResultado($resultado)
     {
         $etiquetas = [
-            'CONTACTADO' => 'Contactado',
+            'CONTACTADO' => 'Contacto correcto',
             'NO_CONTESTO' => 'No contestó',
-            'OCUPADO' => 'Ocupado',
+            'OCUPADO' => 'Contacto incorrecto',
             'NUMERO_INCORRECTO' => 'Número incorrecto',
-            'SOLICITO_LLAMAR_DESPUES' => 'Solicitó llamar después',
-            'MENSAJE_ENVIADO' => 'Mensaje enviado',
+            'SOLICITO_LLAMAR_DESPUES' => 'Solicitó volver a llamar',
+            'MENSAJE_ENVIADO' => 'Solicitó información',
             'CORREO_ENVIADO' => 'Correo enviado',
             'SIN_RESPUESTA' => 'Sin respuesta',
             'OTRO' => 'Otro'
@@ -1517,17 +1876,46 @@ class SeguimientoVinculacionController
         return $etiquetas[$resultado] ?? '—';
     }
 
+    private function etiquetarResultadoInteraccion($resultado, $notas)
+    {
+        if ($resultado === 'OTRO') {
+            if (strpos($notas, 'Seguimiento reactivado') !== false) {
+                return 'Seguimiento reactivado';
+            }
+
+            if (
+                strpos($notas, 'Resultado registrado: No interesado') !== false ||
+                strpos($notas, 'Motivo de descarte:') !== false
+            ) {
+                return 'No interesado';
+            }
+        }
+
+        return $this->etiquetarResultado($resultado);
+    }
+
     private function resolverAccionPrincipalTrabajo($estado)
     {
         $acciones = [
-            'NUEVO' => 'Completar / verificar contacto',
-            'CONTACTANDO' => 'Registrar resultado / volver a contactar',
+            'NUEVO' => 'Completar investigación',
+            'CONTACTANDO' => 'Continuar contacto / verificar datos',
             'DATOS_VERIFICADOS' => 'Preparar oficio',
             'OFICIO_PREPARADO' => 'Enviar correo',
             'ESPERANDO_RESPUESTA' => 'Registrar respuesta / seguimiento'
         ];
 
         return $acciones[$estado] ?? 'Revisar seguimiento';
+    }
+
+    private function obtenerResumenTrabajoActualizado($modelo, $usuarioId, $seguimiento, $modo)
+    {
+        return $this->obtenerResumenPorModo(
+            $modelo,
+            $usuarioId,
+            (int)($seguimiento['estado_id'] ?? 0),
+            $modo,
+            []
+        );
     }
 
     private function obtenerFiltrosSeguimiento()
