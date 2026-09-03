@@ -263,7 +263,7 @@
     padding: 13px 14px;
 
     display: grid;
-    grid-template-columns: 38px minmax(0, 1fr) auto;
+    grid-template-columns: 38px minmax(0, 1fr);
     gap: 11px;
     align-items: center;
 }
@@ -313,13 +313,6 @@
     font-size: 11px;
     font-weight: 600;
     line-height: 1.35;
-}
-
-.reminder-toast .btn-close {
-    margin: 0;
-    align-self: start;
-
-    font-size: 9px;
 }
 
 @media (max-width: 575.98px) {
