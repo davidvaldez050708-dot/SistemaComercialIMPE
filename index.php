@@ -127,6 +127,11 @@ switch ($controller) {
         $controllerInstance = new SeguimientoVinculacionController();
         break;
 
+    case 'reminder':
+        require_once __DIR__ . '/app/controllers/ReminderController.php';
+        $controllerInstance = new ReminderController();
+        break;
+
     default:
         die('Controlador no válido.');
 }
