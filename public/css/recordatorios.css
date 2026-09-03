@@ -1,0 +1,258 @@
+.topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.topbar-reminder-button {
+    width: 44px;
+    height: 44px;
+    padding: 0;
+
+    position: relative;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+
+    background-color: #ffffff;
+    color: var(--color-primary);
+
+    font-size: 18px;
+}
+
+.topbar-reminder-button:hover,
+.topbar-reminder-button:focus {
+    border-color: rgba(5, 99, 166, 0.30);
+    background-color: #fafcfe;
+    color: var(--color-primary);
+}
+
+.topbar-reminder-button::after {
+    display: none;
+}
+
+.topbar-reminder-badge {
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+
+    position: absolute;
+    top: -5px;
+    right: -5px;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    border: 2px solid #ffffff;
+    border-radius: 999px;
+
+    background-color: #b42318;
+    color: #ffffff;
+
+    font-size: 9px;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.topbar-reminder-menu {
+    width: min(390px, calc(100vw - 28px));
+    max-height: 440px;
+    padding: 0;
+    overflow: hidden;
+}
+
+.topbar-reminder-header {
+    padding: 14px 16px 11px;
+
+    border-bottom: 1px solid var(--color-border);
+}
+
+.topbar-reminder-header strong {
+    display: block;
+
+    color: var(--color-text-primary);
+
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.topbar-reminder-header span {
+    display: block;
+    margin-top: 2px;
+
+    color: var(--color-text-secondary);
+
+    font-size: 10.5px;
+    font-weight: 600;
+}
+
+.topbar-reminder-list {
+    max-height: 350px;
+    overflow-y: auto;
+}
+
+.topbar-reminder-item {
+    padding: 11px 14px;
+
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: center;
+
+    border-bottom: 1px solid #edf0f4;
+
+    color: var(--color-text-primary);
+}
+
+.topbar-reminder-item:last-child {
+    border-bottom: 0;
+}
+
+.topbar-reminder-item:hover,
+.topbar-reminder-item:focus {
+    background-color: #f8fafc;
+    color: var(--color-text-primary);
+}
+
+.topbar-reminder-icon {
+    width: 34px;
+    height: 34px;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 9px;
+
+    background-color: var(--color-primary-soft);
+    color: var(--color-primary);
+
+    font-size: 14px;
+}
+
+.topbar-reminder-copy {
+    min-width: 0;
+}
+
+.topbar-reminder-copy strong,
+.topbar-reminder-copy span {
+    display: block;
+}
+
+.topbar-reminder-copy strong {
+    overflow: hidden;
+
+    color: var(--color-text-primary);
+
+    font-size: 11.5px;
+    font-weight: 800;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.topbar-reminder-copy span {
+    margin-top: 3px;
+
+    overflow: hidden;
+
+    color: var(--color-text-secondary);
+
+    font-size: 10.5px;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.topbar-reminder-time {
+    padding: 4px 7px;
+
+    border-radius: 999px;
+
+    background-color: #f1f4f8;
+    color: #59667a;
+
+    font-size: 9.5px;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.topbar-reminder-time.is-vencida {
+    background-color: #fff0ee;
+    color: #b42318;
+}
+
+.topbar-reminder-time.is-proxima,
+.topbar-reminder-time.is-hoy {
+    background-color: #fff7df;
+    color: #8b6100;
+}
+
+.topbar-reminder-time.is-manana {
+    background-color: var(--color-primary-soft);
+    color: var(--color-primary);
+}
+
+.topbar-reminder-empty {
+    padding: 24px 16px;
+
+    text-align: center;
+}
+
+.topbar-reminder-empty i {
+    display: block;
+    margin-bottom: 7px;
+
+    color: #94a0b2;
+    font-size: 21px;
+}
+
+.topbar-reminder-empty strong,
+.topbar-reminder-empty span {
+    display: block;
+}
+
+.topbar-reminder-empty strong {
+    color: var(--color-text-primary);
+
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.topbar-reminder-empty span {
+    margin-top: 3px;
+
+    color: var(--color-text-secondary);
+
+    font-size: 10.5px;
+    font-weight: 600;
+}
+
+@media (max-width: 575.98px) {
+    .admin-topbar {
+        padding-left: 16px;
+        padding-right: 16px;
+    }
+
+    .topbar-actions {
+        gap: 7px;
+    }
+
+    .topbar-reminder-button {
+        width: 40px;
+        height: 40px;
+    }
+
+    .topbar-reminder-item {
+        grid-template-columns: 32px minmax(0, 1fr);
+    }
+
+    .topbar-reminder-time {
+        grid-column: 2;
+        justify-self: start;
+    }
+}
