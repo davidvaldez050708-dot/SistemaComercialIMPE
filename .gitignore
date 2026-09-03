@@ -21,6 +21,9 @@ tmp/
 
 /vendor/
 
+# Archivos generados por el sistema
+/storage/oficios/
+
 # Archivos temporales de pruebas
 prueba_correo.php
 prueba_bd.php
