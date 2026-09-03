@@ -141,12 +141,14 @@
 
         const actualizarFechaSegunAccion = function () {
             const accion = String(selectorProximaAccion.value || '');
+            const resultado = String(selectorResultado.value || '');
             const sinAccion = accion === '';
+            const resultadoManual = resultado === 'OTRO';
 
-            campoFechaProximaAccion.disabled = sinAccion;
+            campoFechaProximaAccion.disabled = sinAccion && !resultadoManual;
             campoFechaProximaAccion.required = accion === 'Volver a llamar';
 
-            if (sinAccion) {
+            if (sinAccion && !resultadoManual) {
                 campoFechaProximaAccion.value = '';
             }
         };
@@ -154,6 +156,7 @@
         const aplicarResultadoInteraccion = function () {
             const resultado = String(selectorResultado.value || '');
             let accionSugerida = '';
+            let conservarSeleccionManual = false;
 
             switch (resultado) {
                 case 'SIN_RESPUESTA':
@@ -175,13 +178,19 @@
                     accionSugerida = 'Volver a llamar';
                     break;
                 case 'NO_INTERESADO':
+                    accionSugerida = '';
+                    break;
                 case 'OTRO':
+                    conservarSeleccionManual = true;
+                    break;
                 default:
                     accionSugerida = '';
                     break;
             }
 
-            selectorProximaAccion.value = accionSugerida;
+            if (!conservarSeleccionManual) {
+                selectorProximaAccion.value = accionSugerida;
+            }
 
             const noInteresado = resultado === 'NO_INTERESADO';
             selectorProximaAccion.disabled = noInteresado;
@@ -198,6 +207,13 @@
             if (noInteresado) {
                 campoFechaProximaAccion.value = '';
                 campoFechaProximaAccion.disabled = true;
+                campoFechaProximaAccion.required = false;
+                return;
+            }
+
+            if (resultado === 'OTRO') {
+                selectorProximaAccion.disabled = false;
+                campoFechaProximaAccion.disabled = false;
                 campoFechaProximaAccion.required = false;
                 return;
             }
