@@ -15,7 +15,11 @@
         const botonAbrirInteraccion = document.querySelector('[data-work-toggle-interaction]');
         const modalDescarte = document.getElementById('modalDescartarSeguimiento');
         const campoMotivoDescarte = document.querySelector('[data-work-discard-reason-input]');
+        const panelDescartado = document.querySelector('[data-work-discarded-panel]');
+        const contenedorToasts = document.querySelector('.toast-container');
         let motivoNoInteresPendiente = '';
+        let esperandoDecisionNoInteres = false;
+        let toastInteraccionDiferido = false;
 
         if (
             !selectorResultado ||
@@ -24,6 +28,56 @@
             !campoObservacion
         ) {
             return;
+        }
+
+        const mostrarToastLocal = function (mensaje) {
+            if (!contenedorToasts || !window.bootstrap) {
+                return;
+            }
+
+            const toast = document.createElement('div');
+            toast.className = 'toast system-toast';
+            toast.setAttribute('role', 'status');
+            toast.setAttribute('aria-live', 'polite');
+            toast.setAttribute('aria-atomic', 'true');
+            toast.setAttribute('data-bs-delay', '3200');
+            toast.innerHTML =
+                '<div class="toast-body">' +
+                    '<i class="bi bi-check2-circle"></i>' +
+                    '<span></span>' +
+                '</div>';
+            toast.querySelector('span').textContent = mensaje;
+            contenedorToasts.appendChild(toast);
+
+            const instancia = new bootstrap.Toast(toast);
+            toast.addEventListener('hidden.bs.toast', function () {
+                toast.remove();
+            });
+            instancia.show();
+        };
+
+        if (contenedorToasts && window.MutationObserver) {
+            const observadorToasts = new MutationObserver(function (mutaciones) {
+                mutaciones.forEach(function (mutacion) {
+                    mutacion.addedNodes.forEach(function (nodo) {
+                        if (!(nodo instanceof HTMLElement)) {
+                            return;
+                        }
+
+                        const textoToast = String(nodo.textContent || '').trim();
+
+                        if (
+                            esperandoDecisionNoInteres &&
+                            textoToast.includes('Interacción registrada correctamente.')
+                        ) {
+                            toastInteraccionDiferido = true;
+                            nodo.remove();
+                        }
+                    });
+                });
+            });
+
+            observadorToasts.observe(contenedorToasts, { childList: true });
         }
 
         const agregarOpcionSiFalta = function (valor, etiqueta) {
@@ -165,6 +219,8 @@
         formulario.addEventListener('submit', function (event) {
             if (selectorResultado.value !== 'NO_INTERESADO') {
                 motivoNoInteresPendiente = '';
+                esperandoDecisionNoInteres = false;
+                toastInteraccionDiferido = false;
                 return;
             }
 
@@ -179,6 +235,8 @@
             }
 
             motivoNoInteresPendiente = motivo;
+            esperandoDecisionNoInteres = true;
+            toastInteraccionDiferido = false;
 
             const observacionOriginal = campoObservacion.value;
             const observacionLimpia = observacionOriginal.trim();
@@ -188,9 +246,9 @@
                 ? observacionLimpia + '\n' + lineaMotivo
                 : lineaMotivo;
 
-            queueMicrotask(function () {
+            window.setTimeout(function () {
                 campoObservacion.value = observacionOriginal;
-            });
+            }, 0);
         }, true);
 
         modalDescarte?.addEventListener('show.bs.modal', function () {
@@ -204,7 +262,20 @@
         });
 
         modalDescarte?.addEventListener('hidden.bs.modal', function () {
+            const seguimientoQuedoDescartado = panelDescartado &&
+                !panelDescartado.classList.contains('d-none');
+
+            if (
+                esperandoDecisionNoInteres &&
+                toastInteraccionDiferido &&
+                !seguimientoQuedoDescartado
+            ) {
+                mostrarToastLocal('Interacción registrada correctamente.');
+            }
+
             motivoNoInteresPendiente = '';
+            esperandoDecisionNoInteres = false;
+            toastInteraccionDiferido = false;
 
             if (campoMotivoDescarte) {
                 campoMotivoDescarte.readOnly = false;
