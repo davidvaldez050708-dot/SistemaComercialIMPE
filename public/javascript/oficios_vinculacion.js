@@ -51,6 +51,18 @@
             bootstrap.Toast.getOrCreateInstance(toast).show();
         };
 
+        const normalizarAccionesBandeja = function () {
+            document
+                .querySelectorAll('[data-linkage-follow-row][data-stage="DATOS_VERIFICADOS"]')
+                .forEach(function (fila) {
+                    const proxima = fila.querySelector('[data-row-next-action]');
+
+                    if (proxima) {
+                        proxima.textContent = 'Generar oficio';
+                    }
+                });
+        };
+
         const crearBloqueOffcanvas = function () {
             if (!offcanvas || offcanvas.querySelector('[data-work-oficio-section]')) {
                 return;
@@ -137,6 +149,26 @@
             return 'Completa ' + faltantes.join(', ') + ' antes de generar el oficio.';
         };
 
+        const actualizarProximaAccion = function (estado) {
+            const proximaAccion = offcanvas?.querySelector('[data-work-next-action]');
+
+            if (!proximaAccion || !estado) {
+                return;
+            }
+
+            if (
+                estado.estado_seguimiento === 'DATOS_VERIFICADOS' &&
+                !String(estado.folio || '').trim()
+            ) {
+                proximaAccion.textContent = 'Generar oficio';
+                return;
+            }
+
+            if (estado.estado_seguimiento === 'OFICIO_PREPARADO') {
+                proximaAccion.textContent = 'Enviar oficio/correo';
+            }
+        };
+
         const actualizarFila = function (estado) {
             if (!estado || !estado.id) {
                 return;
@@ -151,7 +183,10 @@
                 return;
             }
 
-            if (estado.folio) {
+            const tieneFolio = String(estado.folio || '').trim() !== '';
+            const proxima = fila.querySelector('[data-row-next-action]');
+
+            if (tieneFolio) {
                 const folio = fila.querySelector('[data-row-folio]');
                 if (folio) {
                     folio.textContent = estado.folio;
@@ -160,11 +195,17 @@
                 fila.dataset.search = (fila.dataset.search || '') + ' ' + estado.folio;
             }
 
+            if (estado.estado_seguimiento === 'DATOS_VERIFICADOS' && !tieneFolio) {
+                if (proxima) {
+                    proxima.textContent = 'Generar oficio';
+                }
+                return;
+            }
+
             if (estado.estado_seguimiento === 'OFICIO_PREPARADO') {
                 fila.dataset.stage = 'OFICIO_PREPARADO';
 
                 const etapa = fila.querySelector('[data-row-stage-label]');
-                const proxima = fila.querySelector('[data-row-next-action]');
 
                 if (etapa) {
                     etapa.textContent = 'Oficio preparado';
@@ -189,12 +230,15 @@
 
             const datosVerificados = Number(estado?.datos_verificados || 0) === 1;
             const tieneFolio = String(estado?.folio || '').trim() !== '';
+            const soloConsulta = Boolean(estado?.solo_consulta);
             const mostrar = datosVerificados || tieneFolio;
             seccion.classList.toggle('d-none', !mostrar);
 
             if (!mostrar) {
                 return;
             }
+
+            actualizarProximaAccion(estado);
 
             const folio = seccion.querySelector('[data-work-oficio-folio]');
             const status = seccion.querySelector('[data-work-oficio-status]');
@@ -210,6 +254,12 @@
 
             if (tieneFolio) {
                 status.textContent = 'Borrador preparado';
+                boton.classList.add('d-none');
+                return;
+            }
+
+            if (soloConsulta) {
+                status.textContent = 'Pendiente de generación por el Analista responsable.';
                 boton.classList.add('d-none');
                 return;
             }
@@ -244,6 +294,7 @@
 
             const datosVerificados = Number(estado?.datos_verificados || 0) === 1;
             const tieneFolio = String(estado?.folio || '').trim() !== '';
+            const soloConsulta = Boolean(estado?.solo_consulta);
             bloque.classList.toggle('d-none', !(datosVerificados || tieneFolio));
 
             if (!(datosVerificados || tieneFolio)) {
@@ -264,6 +315,12 @@
 
             if (tieneFolio) {
                 status.textContent = 'El oficio ya tiene folio asignado.';
+                boton.classList.add('d-none');
+                return;
+            }
+
+            if (soloConsulta) {
+                status.textContent = 'Pendiente de generación por el Analista responsable.';
                 boton.classList.add('d-none');
                 return;
             }
@@ -334,11 +391,7 @@
                 actualizarBloqueOffcanvas(estadoActual);
                 actualizarBloqueDetalle(estadoActual);
                 actualizarFila(estadoActual);
-
-                const proximaAccion = offcanvas?.querySelector('[data-work-next-action]');
-                if (proximaAccion && estadoActual?.estado_seguimiento === 'OFICIO_PREPARADO') {
-                    proximaAccion.textContent = 'Enviar oficio/correo';
-                }
+                actualizarProximaAccion(estadoActual);
 
                 const contadorVerificados = document.querySelector('[data-summary-count="datos_verificados"]');
                 if (
@@ -368,6 +421,7 @@
             }
         };
 
+        normalizarAccionesBandeja();
         crearBloqueOffcanvas();
 
         document.addEventListener('click', function (event) {
