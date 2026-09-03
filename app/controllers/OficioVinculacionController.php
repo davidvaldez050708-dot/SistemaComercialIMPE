@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/../models/OficioVinculacionModel.php';
 require_once __DIR__ . '/../services/OficioPreviewService.php';
+require_once __DIR__ . '/../services/OficioPdfService.php';
 require_once __DIR__ . '/../helpers/PermissionHelper.php';
 
 class OficioVinculacionController
@@ -100,8 +101,53 @@ class OficioVinculacionController
             ], 422);
         }
 
+        $modoAcceso = $this->resolverModoAcceso();
         $servicio = new OficioPreviewService();
         $resultado = $servicio->obtenerVistaPrevia(
+            $seguimientoId,
+            $usuarioId,
+            $modoAcceso
+        );
+
+        if (!($resultado['ok'] ?? false)) {
+            $codigoHttp = (int)($resultado['codigo_http'] ?? 500);
+            unset($resultado['codigo_http']);
+            $this->responderJson($resultado, $codigoHttp);
+        }
+
+        $servicioPdf = new OficioPdfService();
+        $estadoPdf = $servicioPdf->obtenerEstadoPdf(
+            $seguimientoId,
+            $usuarioId,
+            $modoAcceso
+        );
+
+        if ($estadoPdf['ok'] ?? false) {
+            $resultado['estado_pdf'] = $this->completarPermisosPdf(
+                $estadoPdf['estado_pdf'] ?? [],
+                $usuarioId
+            );
+        }
+
+        $this->responderJson($resultado);
+    }
+
+    public function estadoPdf()
+    {
+        $this->validarPermisoJson('oficios.ver');
+
+        $seguimientoId = (int)($_GET['seguimiento_id'] ?? 0);
+        $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
+
+        if ($seguimientoId <= 0) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'El seguimiento solicitado no es válido.'
+            ], 422);
+        }
+
+        $servicio = new OficioPdfService();
+        $resultado = $servicio->obtenerEstadoPdf(
             $seguimientoId,
             $usuarioId,
             $this->resolverModoAcceso()
@@ -113,7 +159,113 @@ class OficioVinculacionController
             $this->responderJson($resultado, $codigoHttp);
         }
 
+        $resultado['estado_pdf'] = $this->completarPermisosPdf(
+            $resultado['estado_pdf'] ?? [],
+            $usuarioId
+        );
+
         $this->responderJson($resultado);
+    }
+
+    public function generarPdf()
+    {
+        $this->validarMetodoPostJson();
+        $this->validarPermisoJson('oficios.generar');
+
+        if ((int)($_SESSION['rol_id'] ?? 0) !== 4) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'El PDF solo puede ser generado por el Analista responsable.'
+            ], 403);
+        }
+
+        $seguimientoId = (int)($_POST['seguimiento_id'] ?? 0);
+        $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
+
+        if ($seguimientoId <= 0) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'El seguimiento solicitado no es válido.'
+            ], 422);
+        }
+
+        $servicio = new OficioPdfService();
+        $resultado = $servicio->generarPdf($seguimientoId, $usuarioId);
+
+        if (!($resultado['ok'] ?? false)) {
+            $codigoHttp = (int)($resultado['codigo_http'] ?? 500);
+            unset($resultado['codigo_http']);
+            $this->responderJson($resultado, $codigoHttp);
+        }
+
+        $resultado['estado_pdf'] = $this->completarPermisosPdf(
+            $resultado['estado_pdf'] ?? [],
+            $usuarioId
+        );
+
+        $this->responderJson($resultado);
+    }
+
+    public function verPdf()
+    {
+        $this->validarPermisoJson('oficios.ver');
+
+        $seguimientoId = (int)($_GET['seguimiento_id'] ?? 0);
+        $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
+
+        if ($seguimientoId <= 0) {
+            $this->responderTextoPdf('El seguimiento solicitado no es válido.', 422);
+        }
+
+        $servicio = new OficioPdfService();
+        $resultado = $servicio->obtenerArchivoPdf(
+            $seguimientoId,
+            $usuarioId,
+            $this->resolverModoAcceso()
+        );
+
+        if (!($resultado['ok'] ?? false)) {
+            $this->responderTextoPdf(
+                (string)($resultado['mensaje'] ?? 'No fue posible consultar el PDF.'),
+                (int)($resultado['codigo_http'] ?? 404)
+            );
+        }
+
+        $ruta = (string)$resultado['ruta_absoluta'];
+        $nombre = (string)$resultado['nombre_archivo'];
+        $descargar = (int)($_GET['descargar'] ?? 0) === 1;
+
+        header('Content-Type: application/pdf');
+        header('X-Content-Type-Options: nosniff');
+        header('Content-Length: ' . filesize($ruta));
+        header(
+            'Content-Disposition: ' .
+            ($descargar ? 'attachment' : 'inline') .
+            '; filename="' . str_replace('"', '', $nombre) . '"'
+        );
+        readfile($ruta);
+        exit;
+    }
+
+    private function completarPermisosPdf($estadoPdf, $usuarioId)
+    {
+        $esAnalistaResponsable =
+            (int)($_SESSION['rol_id'] ?? 0) === 4 &&
+            (int)($estadoPdf['analista_id'] ?? 0) === (int)$usuarioId;
+        $tieneFolio = trim((string)($estadoPdf['folio'] ?? '')) !== '';
+        $pdfGenerado = !empty($estadoPdf['pdf_generado']);
+
+        $estadoPdf['es_analista_responsable'] = $esAnalistaResponsable;
+        $estadoPdf['solo_consulta'] = !$esAnalistaResponsable;
+        $estadoPdf['puede_generar'] =
+            $esAnalistaResponsable &&
+            tienePermiso('oficios.generar') &&
+            $tieneFolio &&
+            !$pdfGenerado;
+
+        unset($estadoPdf['analista_id']);
+
+        return $estadoPdf;
     }
 
     private function resolverModoAcceso()
@@ -154,6 +306,14 @@ class OficioVinculacionController
                 'mensaje' => 'No tienes permiso para realizar esta acción.'
             ], 403);
         }
+    }
+
+    private function responderTextoPdf($mensaje, $codigoHttp)
+    {
+        http_response_code((int)$codigoHttp);
+        header('Content-Type: text/plain; charset=utf-8');
+        echo $mensaje;
+        exit;
     }
 
     private function responderJson($datos, $codigoHttp = 200)
