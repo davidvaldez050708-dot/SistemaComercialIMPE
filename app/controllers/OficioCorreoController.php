@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../services/OficioCorreoService.php';
+require_once __DIR__ . '/../services/OficioProgramacionService.php';
 require_once __DIR__ . '/../helpers/PermissionHelper.php';
 
 class OficioCorreoController
@@ -86,6 +87,85 @@ class OficioCorreoController
         $this->responderJson($resultado);
     }
 
+    public function programacion()
+    {
+        $this->validarPermisoJson('oficios.ver');
+
+        $seguimientoId = (int)($_GET['seguimiento_id'] ?? 0);
+        $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
+
+        if ($seguimientoId <= 0) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'El seguimiento solicitado no es válido.'
+            ], 422);
+        }
+
+        $servicio = new OficioProgramacionService();
+        $resultado = $servicio->obtenerEstado(
+            $seguimientoId,
+            $usuarioId,
+            $this->resolverModoAcceso()
+        );
+
+        if (!($resultado['ok'] ?? false)) {
+            $codigoHttp = (int)($resultado['codigo_http'] ?? 500);
+            unset($resultado['codigo_http']);
+            $this->responderJson($resultado, $codigoHttp);
+        }
+
+        $resultado['programacion'] = $this->completarPermisosProgramacion(
+            $resultado['programacion'] ?? [],
+            $usuarioId
+        );
+
+        $this->responderJson($resultado);
+    }
+
+    public function programarEnvio()
+    {
+        $this->validarMetodoPostJson();
+        $this->validarPermisoJson('oficios.enviar');
+
+        if ((int)($_SESSION['rol_id'] ?? 0) !== 4) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'La programación solo puede realizarla el Analista responsable.'
+            ], 403);
+        }
+
+        $seguimientoId = (int)($_POST['seguimiento_id'] ?? 0);
+        $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
+        $fecha = trim((string)($_POST['proxima_accion_at'] ?? ''));
+
+        if ($seguimientoId <= 0) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'El seguimiento solicitado no es válido.'
+            ], 422);
+        }
+
+        $servicio = new OficioProgramacionService();
+        $resultado = $servicio->programar(
+            $seguimientoId,
+            $usuarioId,
+            $fecha
+        );
+
+        if (!($resultado['ok'] ?? false)) {
+            $codigoHttp = (int)($resultado['codigo_http'] ?? 500);
+            unset($resultado['codigo_http']);
+            $this->responderJson($resultado, $codigoHttp);
+        }
+
+        $resultado['programacion'] = $this->completarPermisosProgramacion(
+            $resultado['programacion'] ?? [],
+            $usuarioId
+        );
+
+        $this->responderJson($resultado);
+    }
+
     private function completarPermisosCorreo($correo, $usuarioId)
     {
         $esAnalistaResponsable =
@@ -101,6 +181,24 @@ class OficioCorreoController
         unset($correo['analista_id']);
 
         return $correo;
+    }
+
+    private function completarPermisosProgramacion($programacion, $usuarioId)
+    {
+        $esAnalistaResponsable =
+            (int)($_SESSION['rol_id'] ?? 0) === 4 &&
+            (int)($programacion['analista_id'] ?? 0) === (int)$usuarioId;
+
+        $programacion['es_analista_responsable'] = $esAnalistaResponsable;
+        $programacion['solo_consulta'] = !$esAnalistaResponsable;
+        $programacion['puede_programar'] =
+            $esAnalistaResponsable &&
+            tienePermiso('oficios.enviar') &&
+            !empty($programacion['cumple_requisitos']);
+
+        unset($programacion['analista_id']);
+
+        return $programacion;
     }
 
     private function resolverModoAcceso()
