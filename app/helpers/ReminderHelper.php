@@ -22,16 +22,20 @@ if (!function_exists('obtenerRecordatoriosSeguimientoAnalista')) {
                         seguimientos.nombre_entidad,
                         seguimientos.proxima_accion_at,
                         (
-                            SELECT TRIM(
-                                SUBSTRING_INDEX(
-                                    SUBSTRING_INDEX(interacciones.notas, 'Próxima acción: ', -1),
-                                    '\n',
-                                    1
-                                )
-                            )
+                            SELECT
+                                CASE
+                                    WHEN interacciones.notas LIKE '%Próxima acción:%'
+                                    THEN TRIM(
+                                        SUBSTRING_INDEX(
+                                            SUBSTRING_INDEX(interacciones.notas, 'Próxima acción: ', -1),
+                                            '\n',
+                                            1
+                                        )
+                                    )
+                                    ELSE NULL
+                                END
                             FROM interacciones_vinculacion interacciones
                             WHERE interacciones.seguimiento_id = seguimientos.id
-                                AND interacciones.notas LIKE '%Próxima acción:%'
                             ORDER BY interacciones.fecha_inicio DESC, interacciones.id DESC
                             LIMIT 1
                         ) AS proxima_accion_texto
@@ -136,7 +140,6 @@ if (!function_exists('describirRecordatorioSeguimiento')) {
             $momento = new DateTime($fecha);
             $hoy = (clone $ahora)->setTime(0, 0, 0);
             $manana = (clone $hoy)->modify('+1 day');
-            $pasadoManana = (clone $hoy)->modify('+2 days');
             $momentoDia = (clone $momento)->setTime(0, 0, 0);
             $hora = $momento->format('H:i');
 
@@ -173,13 +176,6 @@ if (!function_exists('describirRecordatorioSeguimiento')) {
                 return [
                     'etiqueta' => 'Mañana · ' . $hora,
                     'estado' => 'manana'
-                ];
-            }
-
-            if ($momentoDia < $pasadoManana) {
-                return [
-                    'etiqueta' => $momento->format('d/m · H:i'),
-                    'estado' => 'normal'
                 ];
             }
 
