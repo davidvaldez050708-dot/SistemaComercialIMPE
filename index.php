@@ -237,6 +237,17 @@ switch ($controller) {
         break;
 
 
+    case 'oficioCorreo':
+
+        require_once __DIR__ .
+            '/app/controllers/OficioCorreoController.php';
+
+        $controllerInstance =
+            new OficioCorreoController();
+
+        break;
+
+
     case 'reminder':
 
         require_once __DIR__ .
