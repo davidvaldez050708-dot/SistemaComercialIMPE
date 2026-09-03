@@ -561,7 +561,7 @@ $urlPaginaTerritorio = function ($pagina) use ($buscarTerritorio, $filtroInforma
                     </dl>
 
                     <a
-                        class="btn btn-system-light"
+                        class="btn  btn-system-light"
                         href="<?= BASE_URL ?>index.php?controller=dataTerritorial&action=index&estado_id=<?= (int)$territorio['id'] ?>">
                         Ver ficha
                     </a>
