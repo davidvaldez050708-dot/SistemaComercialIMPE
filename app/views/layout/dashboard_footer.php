@@ -170,6 +170,10 @@
 </script>
 
 <script
+    src="<?= BASE_URL ?>public/javascript/oficios_vinculacion.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/oficios_vinculacion.js') ?>">
+</script>
+
+<script
     src="<?= BASE_URL ?>public/javascript/recordatorios.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/recordatorios.js') ?>">
 </script>
 
