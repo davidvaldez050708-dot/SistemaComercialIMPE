@@ -226,6 +226,17 @@ switch ($controller) {
         break;
 
 
+    case 'oficioVinculacion':
+
+        require_once __DIR__ .
+            '/app/controllers/OficioVinculacionController.php';
+
+        $controllerInstance =
+            new OficioVinculacionController();
+
+        break;
+
+
     case 'reminder':
 
         require_once __DIR__ .
