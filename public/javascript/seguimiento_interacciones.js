@@ -11,6 +11,7 @@
         const selectorResultado = formulario.querySelector('[name="resultado"]');
         const selectorProximaAccion = formulario.querySelector('[name="proxima_accion"]');
         const campoFechaProximaAccion = formulario.querySelector('[name="proxima_accion_at"]');
+        const etiquetaFechaProximaAccion = formulario.querySelector('label[for="work_next_action_date"]');
         const campoObservacion = formulario.querySelector('[name="observacion"]');
         const botonAbrirInteraccion = document.querySelector('[data-work-toggle-interaction]');
         const modalDescarte = document.getElementById('modalDescartarSeguimiento');
@@ -144,14 +145,26 @@
                 botonVerificacion.includes('información verificada');
         };
 
+        const actualizarEtiquetaFecha = function (obligatoria) {
+            if (!etiquetaFechaProximaAccion) {
+                return;
+            }
+
+            etiquetaFechaProximaAccion.textContent = obligatoria
+                ? 'Fecha próxima acción *'
+                : 'Fecha próxima acción';
+        };
+
         const actualizarFechaSegunAccion = function () {
             const accion = String(selectorProximaAccion.value || '');
             const resultado = String(selectorResultado.value || '');
             const sinAccion = accion === '';
             const resultadoManual = resultado === 'OTRO';
+            const fechaObligatoria = accionesConHorarioObligatorio.includes(accion);
 
             campoFechaProximaAccion.disabled = sinAccion && !resultadoManual;
-            campoFechaProximaAccion.required = accionesConHorarioObligatorio.includes(accion);
+            campoFechaProximaAccion.required = fechaObligatoria;
+            actualizarEtiquetaFecha(fechaObligatoria);
 
             if (sinAccion && !resultadoManual) {
                 campoFechaProximaAccion.value = '';
@@ -213,6 +226,7 @@
                 campoFechaProximaAccion.value = '';
                 campoFechaProximaAccion.disabled = true;
                 campoFechaProximaAccion.required = false;
+                actualizarEtiquetaFecha(false);
                 return;
             }
 
