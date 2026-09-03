@@ -20,7 +20,12 @@ class OficioVinculacionController
         }
 
         $modelo = new OficioVinculacionModel();
-        $estado = $modelo->obtenerEstadoSeguimiento($seguimientoId, $usuarioId);
+        $modoAcceso = $this->resolverModoAcceso();
+        $estado = $modelo->obtenerEstadoSeguimiento(
+            $seguimientoId,
+            $usuarioId,
+            $modoAcceso
+        );
 
         if (!$estado) {
             $this->responderJson([
@@ -28,6 +33,17 @@ class OficioVinculacionController
                 'mensaje' => 'No tienes acceso a este seguimiento.'
             ], 403);
         }
+
+        $esAnalistaResponsable =
+            (int)($_SESSION['rol_id'] ?? 0) === 4 &&
+            (int)($estado['analista_id'] ?? 0) === $usuarioId;
+
+        $estado['es_analista_responsable'] = $esAnalistaResponsable;
+        $estado['solo_consulta'] = !$esAnalistaResponsable;
+        $estado['puede_generar'] =
+            $esAnalistaResponsable &&
+            tienePermiso('oficios.generar') &&
+            !empty($estado['cumple_requisitos_generacion']);
 
         $this->responderJson([
             'ok' => true,
@@ -39,6 +55,13 @@ class OficioVinculacionController
     {
         $this->validarMetodoPostJson();
         $this->validarPermisoJson('oficios.generar');
+
+        if ((int)($_SESSION['rol_id'] ?? 0) !== 4) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'El oficio solo puede ser generado por el Analista responsable.'
+            ], 403);
+        }
 
         $seguimientoId = (int)($_POST['seguimiento_id'] ?? 0);
         $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
@@ -60,6 +83,19 @@ class OficioVinculacionController
         }
 
         $this->responderJson($resultado);
+    }
+
+    private function resolverModoAcceso()
+    {
+        if ((int)($_SESSION['rol_id'] ?? 0) === 1) {
+            return 'administrador';
+        }
+
+        if (tienePermiso('seguimientos_vinculacion.supervisar')) {
+            return 'supervisor';
+        }
+
+        return 'analista';
     }
 
     private function validarMetodoPostJson()
