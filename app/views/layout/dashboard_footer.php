@@ -220,6 +220,10 @@ window.IMPE_VOIP_SIP_DOMAIN = <?= json_encode($voipSipDomain, JSON_UNESCAPED_UNI
 </script>
 
 <script
+    src="<?= BASE_URL ?>public/javascript/seguimiento_post_envio.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/seguimiento_post_envio.js') ?>">
+</script>
+
+<script
     src="<?= BASE_URL ?>public/javascript/recordatorios.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/recordatorios.js') ?>">
 </script>
 
