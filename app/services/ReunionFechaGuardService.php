@@ -32,6 +32,12 @@ class ReunionFechaGuardService
         $flujo['contexto']['reunion_fecha'] = $fecha;
         $flujo['contexto']['reunion_disponible'] = $disponible;
 
+        $flujo['accion_secundaria'] = [
+            'codigo' => 'AGENDAR_REUNION',
+            'etiqueta' => 'Ver / reprogramar',
+            'icono' => 'bi-calendar3'
+        ];
+
         if ($disponible) {
             return $flujo;
         }
