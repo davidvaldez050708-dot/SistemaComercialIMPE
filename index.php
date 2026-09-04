@@ -237,6 +237,17 @@ switch ($controller) {
         break;
 
 
+    case 'agendaReunion':
+
+        require_once __DIR__ .
+            '/app/controllers/AgendaReunionController.php';
+
+        $controllerInstance =
+            new AgendaReunionController();
+
+        break;
+
+
     case 'oficioVinculacion':
 
         require_once __DIR__ .
