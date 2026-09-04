@@ -9,12 +9,13 @@
         const seguimientoDetalleId = Number(parametros.get('id') || 0);
         const urlBorrador = 'index.php?controller=oficioCorreo&action=borrador';
         const urlGuardar = 'index.php?controller=oficioCorreo&action=guardarBorrador';
+        const urlEnviar = 'index.php?controller=oficioCorreo&action=enviarAhora';
         let seguimientoTrabajoId = 0;
         let seguimientoModalId = 0;
         let temporizador = null;
 
         const mostrarToast = function (mensaje, esError) {
-            const contenedor = document.querySelector('.toast-container');
+            let contenedor = document.querySelector('.toast-container');
 
             if (!contenedor || !window.bootstrap) {
                 return;
@@ -38,7 +39,7 @@
 
             const instancia = new bootstrap.Toast(toast, {
                 autohide: true,
-                delay: esError ? 5000 : 3600
+                delay: esError ? 5200 : 3800
             });
             toast.addEventListener('hidden.bs.toast', function () {
                 toast.remove();
@@ -65,18 +66,18 @@
                         '<div class="modal-header system-form-modal-header">' +
                             '<div>' +
                                 '<h5 class="system-form-modal-title" id="modalBorradorCorreoOficioTitulo">' +
-                                    'Preparar correo institucional' +
+                                    'Correo institucional' +
                                 '</h5>' +
                                 '<p class="system-form-modal-subtitle" data-mail-subtitle>' +
-                                    'Borrador de prueba. No se enviará ningún correo.' +
+                                    'Revisa el correo antes de enviarlo.' +
                                 '</p>' +
                             '</div>' +
                             '<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>' +
                         '</div>' +
                         '<div class="modal-body">' +
-                            '<div class="alert alert-info mb-3" data-mail-test-note>' +
-                                '<i class="bi bi-info-circle me-2"></i>' +
-                                '<strong>Modo de prueba:</strong> guardar este borrador no envía mensajes ni utiliza Hostinger.' +
+                            '<div class="alert alert-info mb-3" data-mail-note>' +
+                                '<i class="bi bi-envelope-check me-2"></i>' +
+                                '<span>El correo se enviará desde la cuenta SMTP institucional y adjuntará el PDF del oficio.</span>' +
                             '</div>' +
                             '<div class="mb-3">' +
                                 '<label class="form-label" for="oficio_mail_to">Para</label>' +
@@ -99,8 +100,11 @@
                         '<div class="modal-footer system-form-modal-footer">' +
                             '<span class="me-auto text-muted small" data-mail-status></span>' +
                             '<button type="button" class="btn btn-system-cancel" data-bs-dismiss="modal">Cerrar</button>' +
-                            '<button type="button" class="btn btn-system-save" data-mail-save>' +
+                            '<button type="button" class="btn btn-system-light" data-mail-save>' +
                                 '<i class="bi bi-floppy me-2"></i>Guardar borrador' +
+                            '</button>' +
+                            '<button type="button" class="btn btn-system-save" data-mail-send>' +
+                                '<i class="bi bi-send me-2"></i>Enviar correo' +
                             '</button>' +
                         '</div>' +
                     '</div>' +
@@ -209,10 +213,19 @@
             temporizador = window.setTimeout(actualizarBotones, 70);
         };
 
-        const actualizarEtiquetaBotones = function (guardado, soloConsulta) {
-            const texto = soloConsulta
-                ? 'Ver correo'
-                : (guardado ? 'Editar correo' : 'Preparar correo');
+        const actualizarEtiquetaBotones = function (correo) {
+            const soloConsulta = Boolean(correo?.solo_consulta);
+            const guardado = Boolean(correo?.guardado);
+            const enviado = Boolean(correo?.enviado);
+            let texto = 'Preparar correo';
+
+            if (enviado) {
+                texto = 'Ver correo enviado';
+            } else if (soloConsulta) {
+                texto = 'Ver correo';
+            } else if (guardado) {
+                texto = 'Revisar / enviar correo';
+            }
 
             document.querySelectorAll(
                 '[data-work-mail-oficio], [data-detail-mail-oficio]'
@@ -230,10 +243,15 @@
             const adjunto = modal.querySelector('[data-mail-attachment]');
             const estado = modal.querySelector('[data-mail-status]');
             const subtitulo = modal.querySelector('[data-mail-subtitle]');
+            const nota = modal.querySelector('[data-mail-note]');
             const botonGuardar = modal.querySelector('[data-mail-save]');
+            const botonEnviar = modal.querySelector('[data-mail-send]');
             const soloConsulta = Boolean(correo?.solo_consulta);
             const puedeEditar = Boolean(correo?.puede_editar);
+            const puedeEnviar = Boolean(correo?.puede_enviar);
             const guardado = Boolean(correo?.guardado);
+            const enviado = Boolean(correo?.enviado);
+            const errorEnvio = String(correo?.error_envio || '').trim();
 
             campoPara.value = String(correo?.para || '');
             campoAsunto.value = String(correo?.asunto || '');
@@ -241,29 +259,70 @@
             adjunto.textContent = String(correo?.adjunto_nombre || '—');
             campoAsunto.readOnly = !puedeEditar;
             campoCuerpo.readOnly = !puedeEditar;
+
             botonGuardar.classList.toggle('d-none', !puedeEditar);
             botonGuardar.disabled = false;
             botonGuardar.innerHTML = '<i class="bi bi-floppy me-2"></i>Guardar borrador';
 
+            botonEnviar.classList.toggle('d-none', soloConsulta && !enviado);
+            botonEnviar.disabled = !puedeEnviar;
+            botonEnviar.innerHTML = enviado
+                ? '<i class="bi bi-check2-circle me-2"></i>Correo enviado'
+                : '<i class="bi bi-send me-2"></i>Enviar correo';
+
+            if (!enviado && !guardado && !soloConsulta) {
+                botonEnviar.title = 'Guarda el borrador antes de enviarlo.';
+            } else {
+                botonEnviar.removeAttribute('title');
+            }
+
             if (subtitulo) {
-                subtitulo.textContent = soloConsulta
-                    ? 'Consulta del borrador. Solo el Analista responsable puede editarlo.'
-                    : 'Borrador de prueba. No se enviará ningún correo.';
+                if (enviado) {
+                    subtitulo.textContent = 'Correo enviado. El seguimiento quedó en espera de respuesta.';
+                } else if (soloConsulta) {
+                    subtitulo.textContent = 'Consulta del correo. Solo el Analista responsable puede editarlo o enviarlo.';
+                } else {
+                    subtitulo.textContent = 'Revisa el destinatario, asunto, mensaje y PDF antes de enviar.';
+                }
+            }
+
+            if (nota) {
+                nota.classList.remove('alert-info', 'alert-success', 'alert-danger');
+
+                if (enviado) {
+                    nota.classList.add('alert-success');
+                    nota.querySelector('span').textContent =
+                        'El correo fue enviado correctamente y quedó registrado en el expediente.';
+                } else if (errorEnvio !== '') {
+                    nota.classList.add('alert-danger');
+                    nota.querySelector('span').textContent =
+                        'El último intento de envío falló. Puedes corregir la configuración e intentar nuevamente.';
+                } else {
+                    nota.classList.add('alert-info');
+                    nota.querySelector('span').textContent =
+                        'El correo se enviará desde la cuenta SMTP institucional y adjuntará el PDF del oficio.';
+                }
             }
 
             if (estado) {
-                if (guardado) {
-                    estado.textContent = 'Borrador guardado';
+                if (enviado) {
+                    estado.textContent = correo?.fecha_envio
+                        ? 'Enviado: ' + String(correo.fecha_envio)
+                        : 'Correo enviado';
+                } else if (guardado) {
+                    estado.textContent = 'Borrador guardado · listo para enviar';
                 } else if (soloConsulta) {
                     estado.textContent = 'El Analista aún no ha guardado este borrador.';
                 } else {
-                    estado.textContent = 'Plantilla provisional sin guardar';
+                    estado.textContent = 'Guarda el borrador para habilitar el envío';
                 }
             }
 
             modal.dataset.puedeEditar = puedeEditar ? '1' : '0';
+            modal.dataset.puedeEnviar = puedeEnviar ? '1' : '0';
             modal.dataset.guardado = guardado ? '1' : '0';
-            actualizarEtiquetaBotones(guardado, soloConsulta);
+            modal.dataset.enviado = enviado ? '1' : '0';
+            actualizarEtiquetaBotones(correo);
 
             return modal;
         };
@@ -293,7 +352,7 @@
 
                 if (!datos.ok || !datos.correo) {
                     throw new Error(
-                        datos.mensaje || 'No fue posible preparar el borrador del correo.'
+                        datos.mensaje || 'No fue posible preparar el correo institucional.'
                     );
                 }
 
@@ -303,7 +362,7 @@
             } catch (error) {
                 console.error(error);
                 mostrarToast(
-                    error.message || 'No fue posible preparar el borrador del correo.',
+                    error.message || 'No fue posible preparar el correo institucional.',
                     true
                 );
             } finally {
@@ -374,6 +433,82 @@
             }
         };
 
+        const enviarCorreo = async function (boton) {
+            const modal = crearModal();
+
+            if (
+                !seguimientoModalId ||
+                modal.dataset.puedeEnviar !== '1' ||
+                modal.dataset.enviado === '1'
+            ) {
+                return;
+            }
+
+            const para = String(modal.querySelector('[data-mail-to]')?.value || '').trim();
+
+            if (!window.confirm('¿Enviar el correo institucional a ' + para + '?')) {
+                return;
+            }
+
+            const htmlOriginal = boton.innerHTML;
+            boton.disabled = true;
+            boton.innerHTML =
+                '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>' +
+                'Enviando...';
+
+            const formulario = new FormData();
+            formulario.append('seguimiento_id', String(seguimientoModalId));
+
+            try {
+                const respuesta = await fetch(urlEnviar, {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'fetch'
+                    },
+                    body: formulario
+                });
+                const datos = await respuesta.json();
+
+                if (!respuesta.ok || !datos.ok) {
+                    throw new Error(
+                        datos.mensaje || 'No fue posible enviar el correo institucional.'
+                    );
+                }
+
+                if (datos.correo) {
+                    configurarModal(datos.correo);
+                }
+
+                const estadoOficio = document.querySelector('[data-work-oficio-status]');
+                if (estadoOficio) {
+                    estadoOficio.textContent = 'Correo enviado';
+                }
+
+                const proximaAccion = document.querySelector('[data-work-next-action]');
+                if (proximaAccion) {
+                    proximaAccion.textContent = 'Esperando respuesta';
+                }
+
+                mostrarToast(datos.mensaje || 'Correo enviado correctamente.', false);
+
+                window.setTimeout(function () {
+                    bootstrap.Modal.getOrCreateInstance(modal).hide();
+
+                    if (esDetalle) {
+                        window.location.reload();
+                    }
+                }, 700);
+            } catch (error) {
+                console.error(error);
+                mostrarToast(
+                    error.message || 'No fue posible enviar el correo institucional.',
+                    true
+                );
+                boton.disabled = false;
+                boton.innerHTML = htmlOriginal;
+            }
+        };
+
         document.addEventListener('click', function (event) {
             const botonTrabajo = event.target.closest('[data-work-follow]');
 
@@ -406,6 +541,14 @@
             if (botonGuardar) {
                 event.preventDefault();
                 guardarCorreo(botonGuardar);
+                return;
+            }
+
+            const botonEnviar = event.target.closest('[data-mail-send]');
+
+            if (botonEnviar) {
+                event.preventDefault();
+                enviarCorreo(botonEnviar);
             }
         });
 
