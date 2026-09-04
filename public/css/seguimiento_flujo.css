@@ -1,0 +1,210 @@
+/* =========================================================
+   RUTA DE VINCULACIÓN - PANEL DEL ANALISTA
+   ========================================================= */
+
+[data-work-flow-section] {
+    gap: 12px;
+    padding: 14px;
+    overflow: visible;
+}
+
+.linkage-flow-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.linkage-flow-heading h3 {
+    margin: 0;
+    color: var(--color-text-primary);
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.linkage-flow-step-count {
+    flex: 0 0 auto;
+    padding: 4px 8px;
+    border-radius: 999px;
+    background-color: var(--color-primary-soft);
+    color: var(--color-primary);
+    font-size: 9.5px;
+    font-weight: 800;
+}
+
+.linkage-flow-progress {
+    height: 5px;
+    overflow: hidden;
+    border-radius: 999px;
+    background-color: #e9edf3;
+}
+
+.linkage-flow-progress > span {
+    display: block;
+    width: 0;
+    height: 100%;
+    border-radius: inherit;
+    background-color: var(--color-accent);
+    transition: width 0.24s ease;
+}
+
+.linkage-flow-window {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+}
+
+.linkage-flow-node {
+    min-width: 0;
+    padding: 8px 7px;
+    display: grid;
+    gap: 4px;
+    align-content: start;
+    border: 1px solid var(--color-border);
+    border-radius: 9px;
+    background-color: #fbfcfe;
+}
+
+.linkage-flow-node span {
+    color: var(--color-text-muted);
+    font-size: 8.5px;
+    font-weight: 800;
+    letter-spacing: 0.035em;
+    text-transform: uppercase;
+}
+
+.linkage-flow-node strong {
+    min-width: 0;
+    color: var(--color-text-secondary);
+    font-size: 9.8px;
+    font-weight: 700;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+}
+
+.linkage-flow-node.is-current {
+    border-color: rgba(39, 58, 138, 0.18);
+    background-color: var(--color-primary-soft);
+}
+
+.linkage-flow-node.is-current span,
+.linkage-flow-node.is-current strong {
+    color: var(--color-primary);
+}
+
+.linkage-flow-node.is-complete strong {
+    color: #087866;
+}
+
+.linkage-flow-current {
+    padding: 11px 12px;
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    background-color: #ffffff;
+}
+
+.linkage-flow-current > span {
+    display: block;
+    margin-bottom: 3px;
+    color: var(--color-text-secondary);
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.linkage-flow-current h4 {
+    margin: 0;
+    color: var(--color-text-primary);
+    font-size: 13px;
+    font-weight: 800;
+    line-height: 1.3;
+}
+
+.linkage-flow-current p {
+    margin: 5px 0 0;
+    color: var(--color-text-secondary);
+    font-size: 10.5px;
+    font-weight: 600;
+    line-height: 1.45;
+}
+
+.linkage-flow-missing {
+    margin-top: 9px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex-wrap: wrap;
+}
+
+.linkage-flow-missing-label {
+    margin-right: 2px;
+    color: var(--color-text-secondary);
+    font-size: 9.5px;
+    font-weight: 800;
+}
+
+.linkage-flow-chip {
+    padding: 4px 7px;
+    border: 1px solid #eadfd0;
+    border-radius: 999px;
+    background-color: #fffaf2;
+    color: #8a5a16;
+    font-size: 9px;
+    font-weight: 800;
+}
+
+.linkage-flow-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    align-items: stretch;
+}
+
+.linkage-flow-actions.has-single-action {
+    grid-template-columns: 1fr;
+}
+
+.linkage-flow-actions .btn {
+    min-width: 0;
+    min-height: 38px;
+    padding: 7px 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border-radius: 9px;
+    font-size: 10.5px;
+    font-weight: 800;
+    line-height: 1.2;
+    white-space: normal;
+    text-align: center;
+}
+
+.linkage-flow-actions .btn i {
+    margin: 0 !important;
+    flex: 0 0 auto;
+}
+
+.linkage-flow-loading {
+    min-height: 86px;
+    display: grid;
+    place-items: center;
+    color: var(--color-text-secondary);
+    font-size: 10.5px;
+    font-weight: 700;
+}
+
+@media (max-width: 480px) {
+    .linkage-flow-window {
+        grid-template-columns: 1fr;
+    }
+
+    .linkage-flow-node:not(.is-current) {
+        display: none;
+    }
+
+    .linkage-flow-actions {
+        grid-template-columns: 1fr;
+    }
+}
