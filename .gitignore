@@ -1,6 +1,8 @@
 # Configuración privada
 .env
 config/database.local.php
+config/mail_config.php
+config/voip_config.php
 
 # Archivos del sistema operativo
 .DS_Store
