@@ -2,16 +2,19 @@
 
 require_once __DIR__ . '/../services/SeguimientoFlujoService.php';
 require_once __DIR__ . '/../services/SeguimientoPostEnvioService.php';
+require_once __DIR__ . '/../services/AgendaReunionService.php';
 
 class SeguimientoFlujoController
 {
     private $service;
     private $postEnvioService;
+    private $agendaReunionService;
 
     public function __construct()
     {
         $this->service = new SeguimientoFlujoService();
         $this->postEnvioService = new SeguimientoPostEnvioService();
+        $this->agendaReunionService = new AgendaReunionService();
     }
 
     public function estado()
@@ -42,9 +45,15 @@ class SeguimientoFlujoController
         );
 
         if (($postEnvio['ok'] ?? false) && ($postEnvio['aplica'] ?? false)) {
+            $flujo = $this->agendaReunionService->ajustarFlujoAnalista(
+                $seguimientoId,
+                $usuarioId,
+                $postEnvio['flujo']
+            );
+
             $this->responder([
                 'ok' => true,
-                'flujo' => $postEnvio['flujo']
+                'flujo' => $flujo
             ]);
         }
 
@@ -84,6 +93,13 @@ class SeguimientoFlujoController
                 'ok' => false,
                 'mensaje' => 'Faltan datos para guardar el avance.'
             ], 422);
+        }
+
+        if (strtoupper($accion) === 'AGENDAR_REUNION') {
+            $this->responder([
+                'ok' => false,
+                'mensaje' => 'Las reuniones ahora se coordinan desde la agenda compartida con Cuenta Clave.'
+            ], 409);
         }
 
         $resultado = $this->postEnvioService->registrarAccion(
