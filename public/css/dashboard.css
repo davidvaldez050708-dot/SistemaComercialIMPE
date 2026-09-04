@@ -6765,6 +6765,25 @@
     font-size: 12px;
 }
 
+.linkage-municipality-group-header th {
+    border-radius: 8px 8px 0 0;
+}
+
+.linkage-table tbody .linkage-municipality-group-spacer td {
+    height: 10px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+}
+
+.linkage-municipality-group-last-row td:first-child {
+    border-radius: 0 0 0 8px;
+}
+
+.linkage-municipality-group-last-row td:last-child {
+    border-radius: 0 0 8px 0;
+}
+
 .linkage-table tbody td small,
 .linkage-activity-date {
     display: block;

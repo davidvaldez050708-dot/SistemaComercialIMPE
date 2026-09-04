@@ -173,11 +173,50 @@ $seleccionado = function ($actual, $valor) {
 
 $buscarActual = $filtrosSeguimiento['buscar'] ?? '';
 $analistaActual = (string)($filtrosSeguimiento['analista_id'] ?? 0);
+$municipioActual = (string)($filtrosSeguimiento['municipio_id'] ?? 0);
 $estadoSeguimientoActual = (string)($filtrosSeguimiento['estado_seguimiento'] ?? '');
 $hayFiltros =
     trim((string)$buscarActual) !== '' ||
     (int)$analistaActual > 0 ||
+    (int)$municipioActual > 0 ||
     $estadoSeguimientoActual !== '';
+$seguimientosPorMunicipio = [];
+$seguimientosSinMunicipio = [];
+
+foreach ($seguimientos as $seguimientoAgrupado) {
+    $municipioIdAgrupado = (int)($seguimientoAgrupado['municipio_id'] ?? 0);
+    $municipioNombreAgrupado = trim((string)($seguimientoAgrupado['municipio'] ?? ''));
+
+    if ($municipioIdAgrupado <= 0 || $municipioNombreAgrupado === '') {
+        $seguimientosSinMunicipio[] = $seguimientoAgrupado;
+        continue;
+    }
+
+    if (!isset($seguimientosPorMunicipio[$municipioIdAgrupado])) {
+        $seguimientosPorMunicipio[$municipioIdAgrupado] = [
+            'id' => $municipioIdAgrupado,
+            'nombre' => $municipioNombreAgrupado,
+            'seguimientos' => []
+        ];
+    }
+
+    $seguimientosPorMunicipio[$municipioIdAgrupado]['seguimientos'][] = $seguimientoAgrupado;
+}
+
+uasort($seguimientosPorMunicipio, function ($municipioA, $municipioB) {
+    $nombreA = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $municipioA['nombre']) ?: $municipioA['nombre'];
+    $nombreB = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $municipioB['nombre']) ?: $municipioB['nombre'];
+
+    return strnatcasecmp($nombreA, $nombreB);
+});
+
+if (!empty($seguimientosSinMunicipio)) {
+    $seguimientosPorMunicipio['sin_municipio'] = [
+        'id' => 0,
+        'nombre' => 'Sin municipio',
+        'seguimientos' => $seguimientosSinMunicipio
+    ];
+}
 
 ?>
 
@@ -282,6 +321,25 @@ $hayFiltros =
             </select>
         </div>
 
+        <div class="data-filter-field">
+            <label for="municipio_seguimiento_filtro">Municipio</label>
+            <select
+                class="form-select"
+                id="municipio_seguimiento_filtro"
+                name="municipio_id"
+                aria-label="Filtrar por municipio"
+                data-linkage-municipality-filter>
+                <option value="">Todos los municipios</option>
+                <?php foreach ($municipiosCandidatos as $municipio): ?>
+                    <option
+                        value="<?= (int)$municipio['id'] ?>"
+                        <?= $seleccionado($municipioActual, $municipio['id']) ?>>
+                        <?= $texto($municipio['nombre'] ?? '') ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+
         <?php if ($mostrarColumnaAnalista): ?>
             <div class="data-filter-field">
                 <label for="analista_seguimiento_filtro">Analista</label>
@@ -370,7 +428,26 @@ $hayFiltros =
                 </tr>
             </thead>
             <tbody>
-                <?php foreach ($seguimientos as $seguimiento): ?>
+                <?php $primerGrupoMunicipio = true; ?>
+                <?php foreach ($seguimientosPorMunicipio as $municipioGrupo): ?>
+                    <?php $seguimientosGrupo = $municipioGrupo['seguimientos']; ?>
+                    <?php if (!$primerGrupoMunicipio): ?>
+                        <tr class="linkage-municipality-group-spacer" aria-hidden="true">
+                            <td colspan="<?= $mostrarColumnaAnalista ? 9 : 8 ?>"></td>
+                        </tr>
+                    <?php endif; ?>
+                    <?php $primerGrupoMunicipio = false; ?>
+                    <tr class="table-light linkage-municipality-group-header" data-linkage-municipality-group="<?= (int)$municipioGrupo['id'] ?>">
+                        <th colspan="<?= $mostrarColumnaAnalista ? 9 : 8 ?>">
+                            <div class="d-flex align-items-center justify-content-between gap-3">
+                                <span class="text-uppercase"><?= $texto($municipioGrupo['nombre']) ?></span>
+                                <span data-linkage-municipality-count>
+                                    <?= count($seguimientosGrupo) ?> <?= count($seguimientosGrupo) === 1 ? 'seguimiento' : 'seguimientos' ?>
+                                </span>
+                            </div>
+                        </th>
+                    </tr>
+                    <?php foreach ($seguimientosGrupo as $indiceSeguimientoGrupo => $seguimiento): ?>
                     <?php
                     $textoBusquedaFila = trim(implode(' ', [
                         $seguimiento['nombre_entidad'] ?? '',
@@ -381,10 +458,11 @@ $hayFiltros =
                         $seguimiento['analista_apellidos'] ?? ''
                     ]));
                     ?>
-                    <tr
+                    <tr class="<?= $indiceSeguimientoGrupo === array_key_last($seguimientosGrupo) ? 'linkage-municipality-group-last-row' : '' ?>"
                         data-linkage-follow-row
                         data-search="<?= $texto($textoBusquedaFila) ?>"
                         data-stage="<?= $texto($seguimiento['estado_seguimiento'] ?? '') ?>"
+                        data-municipality="<?= (int)($seguimiento['municipio_id'] ?? 0) ?>"
                         data-analyst="<?= (int)($seguimiento['analista_id'] ?? 0) ?>">
                         <td>
                             <strong><?= $texto($seguimiento['nombre_entidad'] ?? '') ?></strong>
@@ -439,6 +517,7 @@ $hayFiltros =
                             </div>
                         </td>
                     </tr>
+                    <?php endforeach; ?>
                 <?php endforeach; ?>
             </tbody>
         </table>
@@ -1178,8 +1257,10 @@ document.addEventListener('DOMContentLoaded', function () {
     let temporizadorFiltros = null;
     const campoFiltroSeguimiento = document.querySelector('[data-linkage-search-input]');
     const estadoFiltroSeguimiento = document.querySelector('[data-linkage-stage-filter]');
+    const municipioFiltroSeguimiento = document.querySelector('[data-linkage-municipality-filter]');
     const analistaFiltroSeguimiento = document.querySelector('[data-linkage-analyst-filter]');
     const filasSeguimiento = Array.from(document.querySelectorAll('[data-linkage-follow-row]'));
+    const gruposSeguimiento = Array.from(document.querySelectorAll('[data-linkage-municipality-group]'));
     const contadorSeguimientos = document.querySelector('[data-linkage-results-count]');
     const tablaSeguimientos = document.querySelector('[data-linkage-table-wrapper]');
     const emptyRealSeguimientos = document.querySelector('[data-linkage-empty-real]');
@@ -1229,12 +1310,14 @@ document.addEventListener('DOMContentLoaded', function () {
     const filtrosSeguimientoActivos = function () {
         return normalizarFiltroSeguimiento(campoFiltroSeguimiento?.value || '') !== '' ||
             String(estadoFiltroSeguimiento?.value || '') !== '' ||
+            String(municipioFiltroSeguimiento?.value || '') !== '' ||
             String(analistaFiltroSeguimiento?.value || '') !== '';
     };
 
     const actualizarBandejaSeguimiento = function () {
         const busqueda = normalizarFiltroSeguimiento(campoFiltroSeguimiento?.value || '');
         const etapa = String(estadoFiltroSeguimiento?.value || '');
+        const municipio = String(municipioFiltroSeguimiento?.value || '');
         const analista = String(analistaFiltroSeguimiento?.value || '');
         let visibles = 0;
 
@@ -1242,14 +1325,31 @@ document.addEventListener('DOMContentLoaded', function () {
             const coincideBusqueda = busqueda === '' ||
                 normalizarFiltroSeguimiento(fila.dataset.search || '').includes(busqueda);
             const coincideEtapa = etapa === '' || fila.dataset.stage === etapa;
+            const coincideMunicipio = municipio === '' || fila.dataset.municipality === municipio;
             const coincideAnalista = analista === '' || fila.dataset.analyst === analista;
-            const visible = coincideBusqueda && coincideEtapa && coincideAnalista;
+            const visible = coincideBusqueda && coincideEtapa && coincideMunicipio && coincideAnalista;
 
             fila.classList.toggle('d-none', !visible);
 
             if (visible) {
                 visibles += 1;
             }
+        });
+
+        gruposSeguimiento.forEach(function (grupo) {
+            const municipioGrupo = grupo.dataset.linkageMunicipalityGroup || '0';
+            const cantidad = filasSeguimiento.filter(function (fila) {
+                return (fila.dataset.municipality || '0') === municipioGrupo &&
+                    !fila.classList.contains('d-none');
+            }).length;
+            const contador = grupo.querySelector('[data-linkage-municipality-count]');
+
+            if (contador) {
+                contador.textContent = cantidad + ' ' +
+                    (cantidad === 1 ? 'seguimiento' : 'seguimientos');
+            }
+
+            grupo.classList.toggle('d-none', cantidad === 0 && filtrosSeguimientoActivos());
         });
 
         if (contadorSeguimientos) {
@@ -1276,7 +1376,7 @@ document.addEventListener('DOMContentLoaded', function () {
         temporizadorFiltros = window.setTimeout(actualizarBandejaSeguimiento, 320);
     });
 
-    [estadoFiltroSeguimiento, analistaFiltroSeguimiento].forEach(function (selector) {
+    [estadoFiltroSeguimiento, municipioFiltroSeguimiento, analistaFiltroSeguimiento].forEach(function (selector) {
         selector?.addEventListener('change', actualizarBandejaSeguimiento);
     });
 
@@ -1294,6 +1394,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (estadoFiltroSeguimiento) {
                 estadoFiltroSeguimiento.value = '';
+            }
+
+            if (municipioFiltroSeguimiento) {
+                municipioFiltroSeguimiento.value = '';
             }
 
             if (analistaFiltroSeguimiento) {

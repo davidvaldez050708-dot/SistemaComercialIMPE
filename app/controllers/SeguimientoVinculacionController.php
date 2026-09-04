@@ -2236,6 +2236,9 @@ class SeguimientoVinculacionController
             'estado_seguimiento' => in_array($estadoSeguimiento, $estadosValidos, true)
                 ? $estadoSeguimiento
                 : '',
+            'municipio_id' => ctype_digit((string)($_GET['municipio_id'] ?? ''))
+                ? (int)$_GET['municipio_id']
+                : 0,
             'buscar' => trim((string)($_GET['buscar'] ?? ''))
         ];
     }

@@ -1885,6 +1885,9 @@ $urlPaginaTerritorio = function ($pagina) use ($buscarTerritorio, $filtroInforma
                         <form id="formMunicipio" action="<?= BASE_URL ?>index.php?controller=dataTerritorial&action=actualizarMunicipio" method="POST" enctype="multipart/form-data">
                             <input type="hidden" name="estado_id" value="<?= (int)$estadoSeleccionado['id'] ?>">
                             <input type="hidden" name="id" id="municipio_id">
+                            <input type="hidden" name="pagina_municipios" id="municipio_pagina" value="<?= (int)$paginaMunicipios ?>">
+                            <input type="hidden" name="buscar_municipio" id="municipio_buscar" value="<?= $texto($buscarMunicipio) ?>">
+                            <input type="hidden" name="limite_municipios" id="municipio_limite" value="<?= (int)$limiteMunicipios ?>">
                             <div class="modal-body">
                                 <div class="system-form-grid">
                                     <div class="system-form-grid-full data-form-section-title">
@@ -4293,6 +4296,14 @@ document.addEventListener('DOMContentLoaded', function () {
                     municipio_redes: municipioEditar.dataset.redesSociales
                 }
             );
+            const formularioMunicipios = document.getElementById('municipiosFiltrosForm');
+            const paginaMunicipiosActual = formularioMunicipios?.querySelector('[name="pagina_municipios"]')?.value || '1';
+            const buscarMunicipioActual = formularioMunicipios?.querySelector('[name="buscar_municipio"]')?.value || '';
+            const limiteMunicipiosActual = formularioMunicipios?.querySelector('[name="limite_municipios"]')?.value || '';
+
+            document.getElementById('municipio_pagina').value = paginaMunicipiosActual;
+            document.getElementById('municipio_buscar').value = buscarMunicipioActual;
+            document.getElementById('municipio_limite').value = limiteMunicipiosActual;
             establecerPreviewImagen(
                 'municipioFotoPreview',
                 municipioEditar.dataset.fotografiaUrl || '',

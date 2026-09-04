@@ -1467,6 +1467,7 @@ class SeguimientoVinculacionModel
                     seguimientos.fecha_inicio,
                     seguimientos.proxima_accion_at,
                     seguimientos.analista_id,
+                    seguimientos.municipio_id,
                     (
                         SELECT TRIM(
                             SUBSTRING_INDEX(
@@ -1552,12 +1553,19 @@ class SeguimientoVinculacionModel
     private function agregarFiltrosSeguimiento(&$sql, &$parametros, &$tipos, $filtros, $alias)
     {
         $analistaId = (int)($filtros['analista_id'] ?? 0);
+        $municipioId = (int)($filtros['municipio_id'] ?? 0);
         $estadoSeguimiento = trim((string)($filtros['estado_seguimiento'] ?? ''));
         $buscar = trim((string)($filtros['buscar'] ?? ''));
 
         if ($analistaId > 0) {
             $sql .= " AND $alias.analista_id = ?";
             $parametros[] = $analistaId;
+            $tipos .= 'i';
+        }
+
+        if ($municipioId > 0) {
+            $sql .= " AND $alias.municipio_id = ?";
+            $parametros[] = $municipioId;
             $tipos .= 'i';
         }
 
