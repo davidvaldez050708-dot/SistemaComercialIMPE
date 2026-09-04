@@ -410,44 +410,38 @@ if (!empty($seguimientosSinMunicipio)) {
         </span>
     </div>
 
-    <div class="table-responsive <?= empty($seguimientos) ? 'd-none' : '' ?>" data-linkage-table-wrapper>
-        <table class="table users-table align-middle linkage-table">
-            <thead>
-                <tr>
-                    <th>Institución</th>
-                    <th>Tipo</th>
-                    <?php if ($mostrarColumnaAnalista): ?>
-                        <th>Analista</th>
-                    <?php endif; ?>
-                    <th>Municipio</th>
-                    <th>Última actividad</th>
-                    <th>Etapa</th>
-                    <th>Próxima acción</th>
-                    <th>Folio</th>
-                    <th class="text-end">Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php $primerGrupoMunicipio = true; ?>
-                <?php foreach ($seguimientosPorMunicipio as $municipioGrupo): ?>
-                    <?php $seguimientosGrupo = $municipioGrupo['seguimientos']; ?>
-                    <?php if (!$primerGrupoMunicipio): ?>
-                        <tr class="linkage-municipality-group-spacer" aria-hidden="true">
-                            <td colspan="<?= $mostrarColumnaAnalista ? 9 : 8 ?>"></td>
-                        </tr>
-                    <?php endif; ?>
-                    <?php $primerGrupoMunicipio = false; ?>
-                    <tr class="table-light linkage-municipality-group-header" data-linkage-municipality-group="<?= (int)$municipioGrupo['id'] ?>">
-                        <th colspan="<?= $mostrarColumnaAnalista ? 9 : 8 ?>">
-                            <div class="d-flex align-items-center justify-content-between gap-3">
-                                <span class="text-uppercase"><?= $texto($municipioGrupo['nombre']) ?></span>
-                                <span data-linkage-municipality-count>
-                                    <?= count($seguimientosGrupo) ?> <?= count($seguimientosGrupo) === 1 ? 'seguimiento' : 'seguimientos' ?>
-                                </span>
-                            </div>
-                        </th>
-                    </tr>
-                    <?php foreach ($seguimientosGrupo as $indiceSeguimientoGrupo => $seguimiento): ?>
+    <div class="linkage-municipality-cards <?= empty($seguimientos) ? 'd-none' : '' ?>" data-linkage-table-wrapper>
+        <?php foreach ($seguimientosPorMunicipio as $municipioGrupo): ?>
+            <?php $seguimientosGrupo = $municipioGrupo['seguimientos']; ?>
+            <article class="linkage-municipality-card" data-linkage-municipality-group="<?= (int)$municipioGrupo['id'] ?>">
+                <header class="linkage-municipality-card-header">
+                    <div class="linkage-municipality-card-title">
+                        <i class="bi <?= (int)$municipioGrupo['id'] > 0 ? 'bi-geo-alt' : 'bi-geo' ?>" aria-hidden="true"></i>
+                        <span><?= $texto($municipioGrupo['nombre']) ?></span>
+                    </div>
+                    <span class="linkage-municipality-card-count" data-linkage-municipality-count>
+                        <?= count($seguimientosGrupo) ?> <?= count($seguimientosGrupo) === 1 ? 'seguimiento' : 'seguimientos' ?>
+                    </span>
+                </header>
+                <div class="table-responsive">
+                    <table class="table users-table align-middle linkage-table">
+                        <thead>
+                            <tr>
+                                <th>Institución</th>
+                                <th>Tipo</th>
+                                <?php if ($mostrarColumnaAnalista): ?>
+                                    <th>Analista</th>
+                                <?php endif; ?>
+                                <th>Municipio</th>
+                                <th>Última actividad</th>
+                                <th>Etapa</th>
+                                <th>Próxima acción</th>
+                                <th>Folio</th>
+                                <th class="text-end">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                    <?php foreach ($seguimientosGrupo as $seguimiento): ?>
                     <?php
                     $textoBusquedaFila = trim(implode(' ', [
                         $seguimiento['nombre_entidad'] ?? '',
@@ -458,7 +452,7 @@ if (!empty($seguimientosSinMunicipio)) {
                         $seguimiento['analista_apellidos'] ?? ''
                     ]));
                     ?>
-                    <tr class="<?= $indiceSeguimientoGrupo === array_key_last($seguimientosGrupo) ? 'linkage-municipality-group-last-row' : '' ?>"
+                    <tr
                         data-linkage-follow-row
                         data-search="<?= $texto($textoBusquedaFila) ?>"
                         data-stage="<?= $texto($seguimiento['estado_seguimiento'] ?? '') ?>"
@@ -518,9 +512,11 @@ if (!empty($seguimientosSinMunicipio)) {
                         </td>
                     </tr>
                     <?php endforeach; ?>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
+                        </tbody>
+                    </table>
+                </div>
+            </article>
+        <?php endforeach; ?>
     </div>
 
     <div
