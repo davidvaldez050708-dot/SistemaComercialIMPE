@@ -1472,11 +1472,24 @@ class DataTerritorialController
         $modelo = new DataTerritorialModel();
         $estadoId = (int)($_POST['estado_id'] ?? 0);
         $id = (int)($_POST['id'] ?? 0);
+        $paginaMunicipios = max(1, (int)($_POST['pagina_municipios'] ?? 1));
+        $buscarMunicipio = trim((string)($_POST['buscar_municipio'] ?? ''));
+        $limiteMunicipios = (int)($_POST['limite_municipios'] ?? 0);
+        $contextoMunicipios = '&pagina_municipios=' . $paginaMunicipios;
+
+        if ($buscarMunicipio !== '') {
+            $contextoMunicipios .= '&buscar_municipio=' . rawurlencode($buscarMunicipio);
+        }
+
+        if (in_array($limiteMunicipios, [10, 15, 20], true)) {
+            $contextoMunicipios .= '&limite_municipios=' . $limiteMunicipios;
+        }
+
         $this->validarAccesoEstado($modelo, $estadoId);
         $municipioActual = $editar ? $modelo->buscarMunicipioPorId($id) : null;
 
         if ($editar && (!$municipioActual || (int)$municipioActual['estado_id'] !== $estadoId)) {
-            $this->volverConError($estadoId, 'El municipio seleccionado no es válido.', '#municipios');
+            $this->volverConError($estadoId, 'El municipio seleccionado no es válido.', $contextoMunicipios . '#municipios');
         }
 
         $poblacion = trim($_POST['poblacion'] ?? '');
@@ -1530,7 +1543,7 @@ class DataTerritorialController
         }
 
         if (!empty($errores)) {
-            $this->volverConError($estadoId, implode(' ', $errores), '#municipios');
+            $this->volverConError($estadoId, implode(' ', $errores), $contextoMunicipios . '#municipios');
         }
 
         $fotoAnterior = $municipioActual['fotografia'] ?? '';
@@ -1543,7 +1556,7 @@ class DataTerritorialController
             );
 
         if ($foto['error'] !== '') {
-            $this->volverConError($estadoId, $foto['error'], '#municipios');
+            $this->volverConError($estadoId, $foto['error'], $contextoMunicipios . '#municipios');
         }
 
         $datos['fotografia'] = $foto['ruta'];
@@ -1570,7 +1583,7 @@ class DataTerritorialController
                 'No fue posible guardar el municipio.';
         }
 
-        $this->redirigirAData($estadoId, '#municipios');
+        $this->redirigirAData($estadoId, $contextoMunicipios . '#municipios');
     }
 
     private function validarPermisoActualizacionOficialJson(): void

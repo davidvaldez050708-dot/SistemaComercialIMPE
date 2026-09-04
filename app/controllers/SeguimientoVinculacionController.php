@@ -1700,38 +1700,10 @@ class SeguimientoVinculacionController
         $nombre = trim((string)($_POST['nombre'] ?? ''));
         $tipoEntidad = strtoupper(trim((string)($_POST['tipo_entidad'] ?? '')));
         $tiposValidos = ['EMPRESA', 'ORGANIZACION', 'INSTITUCION', 'SECRETARIA', 'MUNICIPIO', 'OTRO'];
-        $estadoSeguimiento = strtoupper(trim((string)($_POST['estado_seguimiento'] ?? 'NUEVO')));
-        $estadosValidos = [
-            'NUEVO', 'CONTACTANDO', 'DATOS_VERIFICADOS', 'NO_LOCALIZADO',
-            'DESCARTADO', 'OFICIO_PREPARADO', 'ESPERANDO_RESPUESTA'
-        ];
-        $canalFormulario = strtoupper(trim((string)($_POST['canal'] ?? '')));
-        $canales = [
-            'LLAMADA' => 'LLAMADA_IP',
-            'WHATSAPP' => 'WHATSAPP',
-            'CORREO' => 'CORREO',
-            'NOTA' => 'NOTA',
-            'OTRO' => 'NOTA'
-        ];
-        $resultadoFormulario = strtoupper(trim((string)($_POST['resultado'] ?? '')));
-        $mapaResultados = [
-            'SIN_RESPUESTA' => 'SIN_RESPUESTA',
-            'NUMERO_INCORRECTO' => 'NUMERO_INCORRECTO',
-            'CONTACTO_INCORRECTO' => 'OCUPADO',
-            'CONTACTO_CORRECTO' => 'CONTACTADO',
-            'SOLICITO_INFORMACION' => 'MENSAJE_ENVIADO',
-            'SOLICITO_LLAMAR_DESPUES' => 'SOLICITO_LLAMAR_DESPUES',
-            'NO_INTERESADO' => 'OTRO',
-            'OTRO' => 'OTRO'
-        ];
-        $resultado = $mapaResultados[$resultadoFormulario] ?? '';
+        $estadoSeguimiento = 'NUEVO';
 
         if ($nombre === '' || !in_array($tipoEntidad, $tiposValidos, true)) {
             $this->responderJson(['ok' => false, 'mensaje' => 'Captura nombre y tipo de entidad válidos.'], 422);
-        }
-
-        if (!in_array($estadoSeguimiento, $estadosValidos, true) || !isset($canales[$canalFormulario]) || $resultado === '') {
-            $this->responderJson(['ok' => false, 'mensaje' => 'Selecciona etapa, canal y resultado válidos.'], 422);
         }
 
         $municipioId = (int)($_POST['municipio_id'] ?? 0);
@@ -1744,29 +1716,6 @@ class SeguimientoVinculacionController
 
         if ($correo !== '' && !filter_var($correo, FILTER_VALIDATE_EMAIL)) {
             $this->responderJson(['ok' => false, 'mensaje' => 'El correo electrónico no es válido.'], 422);
-        }
-
-        $ultimaActividadAt = $this->normalizarFechaFormulario($_POST['ultima_actividad_at'] ?? '');
-        $proximaAccion = trim((string)($_POST['proxima_accion'] ?? ''));
-        $proximaAccionAt = $this->normalizarFechaFormulario($_POST['proxima_accion_at'] ?? '', true);
-        $proximasAccionesValidas = [
-            '', 'Volver a llamar', 'Enviar WhatsApp', 'Confirmar contacto de RH',
-            'Revisar correo', 'Preparar oficio'
-        ];
-
-        if ($ultimaActividadAt === '') {
-            $this->responderJson(['ok' => false, 'mensaje' => 'La fecha de última actividad no es válida.'], 422);
-        }
-
-        if (!in_array($proximaAccion, $proximasAccionesValidas, true)) {
-            $this->responderJson(['ok' => false, 'mensaje' => 'La próxima acción seleccionada no es válida.'], 422);
-        }
-
-        if (($proximaAccion !== '' && $proximaAccionAt === null) || ($proximaAccion === '' && $proximaAccionAt !== null)) {
-            $this->responderJson([
-                'ok' => false,
-                'mensaje' => 'Selecciona una próxima acción y su fecha, o deja ambos campos vacíos.'
-            ], 422);
         }
 
         $duplicado = $modelo->obtenerSeguimientoManualExacto(
@@ -1787,7 +1736,6 @@ class SeguimientoVinculacionController
             ], 409);
         }
 
-        $observaciones = trim((string)($_POST['observaciones'] ?? ''));
         $datos = [
             'estado_id' => $estadoId,
             'municipio_id' => $municipioId,
@@ -1801,19 +1749,12 @@ class SeguimientoVinculacionController
             'correo' => $correo,
             'contacto_nombre' => trim((string)($_POST['contacto_nombre'] ?? '')),
             'contacto_cargo' => trim((string)($_POST['contacto_cargo'] ?? '')),
-            'datos_verificados' => $estadoSeguimiento === 'DATOS_VERIFICADOS' ? 1 : 0,
+            'datos_verificados' => 0,
             'estado_seguimiento' => $estadoSeguimiento,
-            'motivo_descarte' => $estadoSeguimiento === 'DESCARTADO'
-                ? ($observaciones !== '' ? $observaciones : 'Registro manual descartado')
-                : '',
-            'observaciones' => $observaciones,
-            'canal' => $canales[$canalFormulario],
-            'resultado' => $resultado,
-            'resultado_formulario' => $resultadoFormulario,
-            'persona_atendio' => trim((string)($_POST['persona_atendio'] ?? '')),
-            'ultima_actividad_at' => $ultimaActividadAt,
-            'proxima_accion' => $proximaAccion,
-            'proxima_accion_at' => $proximaAccionAt
+            'motivo_descarte' => '',
+            'observaciones' => '',
+            'ultima_actividad_at' => null,
+            'proxima_accion_at' => null
         ];
 
         try {
@@ -2295,6 +2236,9 @@ class SeguimientoVinculacionController
             'estado_seguimiento' => in_array($estadoSeguimiento, $estadosValidos, true)
                 ? $estadoSeguimiento
                 : '',
+            'municipio_id' => ctype_digit((string)($_GET['municipio_id'] ?? ''))
+                ? (int)$_GET['municipio_id']
+                : 0,
             'buscar' => trim((string)($_GET['buscar'] ?? ''))
         ];
     }

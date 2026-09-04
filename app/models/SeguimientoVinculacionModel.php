@@ -734,9 +734,9 @@ class SeguimientoVinculacionModel
                 (string)$datos['estado_seguimiento'],
                 $this->valorONulo($datos['motivo_descarte'] ?? ''),
                 $this->valorONulo($datos['observaciones'] ?? ''),
-                (string)$datos['ultima_actividad_at'],
+                null,
                 $this->valorONulo($datos['proxima_accion_at'] ?? ''),
-                (string)$datos['ultima_actividad_at']
+                date('Y-m-d H:i:s')
             ];
             $this->vincularParametros(
                 $stmtSeguimiento,
@@ -749,49 +749,6 @@ class SeguimientoVinculacionModel
             if ($seguimientoId <= 0) {
                 throw new RuntimeException('No fue posible crear el seguimiento manual.');
             }
-
-            $notas = trim(implode("\n", array_filter([
-                trim((string)($datos['persona_atendio'] ?? '')) !== ''
-                    ? 'Persona atendió: ' . trim((string)$datos['persona_atendio'])
-                    : '',
-                ($datos['resultado_formulario'] ?? '') === 'NO_INTERESADO'
-                    ? 'Resultado registrado: No interesado'
-                    : '',
-                trim((string)($datos['observaciones'] ?? '')),
-                trim((string)($datos['proxima_accion'] ?? '')) !== ''
-                    ? 'Próxima acción: ' . trim((string)$datos['proxima_accion'])
-                    : ''
-            ])));
-            $sqlInteraccion = "INSERT INTO interacciones_vinculacion (
-                        seguimiento_id,
-                        usuario_id,
-                        canal,
-                        telefono_destino,
-                        correo_destino,
-                        fecha_inicio,
-                        resultado,
-                        notas
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
-            $stmtInteraccion = $this->connection->prepare($sqlInteraccion);
-            $usuarioId = (int)$datos['usuario_id'];
-            $canal = (string)$datos['canal'];
-            $telefono = $this->valorONulo($datos['telefono'] ?? '');
-            $correo = $this->valorONulo($datos['correo'] ?? '');
-            $ultimaActividad = (string)$datos['ultima_actividad_at'];
-            $resultado = (string)$datos['resultado'];
-            $notas = $this->valorONulo($notas);
-            $stmtInteraccion->bind_param(
-                'iissssss',
-                $seguimientoId,
-                $usuarioId,
-                $canal,
-                $telefono,
-                $correo,
-                $ultimaActividad,
-                $resultado,
-                $notas
-            );
-            $stmtInteraccion->execute();
 
             $this->connection->commit();
 
@@ -1510,6 +1467,7 @@ class SeguimientoVinculacionModel
                     seguimientos.fecha_inicio,
                     seguimientos.proxima_accion_at,
                     seguimientos.analista_id,
+                    seguimientos.municipio_id,
                     (
                         SELECT TRIM(
                             SUBSTRING_INDEX(
@@ -1595,12 +1553,19 @@ class SeguimientoVinculacionModel
     private function agregarFiltrosSeguimiento(&$sql, &$parametros, &$tipos, $filtros, $alias)
     {
         $analistaId = (int)($filtros['analista_id'] ?? 0);
+        $municipioId = (int)($filtros['municipio_id'] ?? 0);
         $estadoSeguimiento = trim((string)($filtros['estado_seguimiento'] ?? ''));
         $buscar = trim((string)($filtros['buscar'] ?? ''));
 
         if ($analistaId > 0) {
             $sql .= " AND $alias.analista_id = ?";
             $parametros[] = $analistaId;
+            $tipos .= 'i';
+        }
+
+        if ($municipioId > 0) {
+            $sql .= " AND $alias.municipio_id = ?";
+            $parametros[] = $municipioId;
             $tipos .= 'i';
         }
 
