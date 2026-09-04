@@ -584,12 +584,12 @@
         const cancelarConfirmacionEnvio = function () {
             const modalConfirmacion = crearModalConfirmacion();
             const modalCorreo = crearModal();
-            botonEnvioPendiente = null;
             bootstrap.Modal.getOrCreateInstance(modalConfirmacion).hide();
 
             modalConfirmacion.addEventListener('hidden.bs.modal', function volverCorreo() {
                 modalConfirmacion.removeEventListener('hidden.bs.modal', volverCorreo);
                 bootstrap.Modal.getOrCreateInstance(modalCorreo).show();
+                botonEnvioPendiente = null;
             });
         };
 
