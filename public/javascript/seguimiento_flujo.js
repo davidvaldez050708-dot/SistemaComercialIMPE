@@ -264,7 +264,8 @@
                 const canal = formulario?.querySelector('[name="canal"]');
 
                 if (canal) {
-                    canal.value = 'LLAMADA_IP';
+                    // El formulario usa LLAMADA y el backend la registra como LLAMADA_IP.
+                    canal.value = 'LLAMADA';
                     canal.dispatchEvent(new Event('change', { bubbles: true }));
                 }
 
@@ -276,6 +277,7 @@
             const acciones = {
                 COMPLETAR_DATOS: '[data-work-toggle-contact]',
                 VERIFICAR_CONTACTO: '[data-work-verify-contact]',
+                LLAMAR_IP: '[data-work-call-button]',
                 GENERAR_OFICIO: '[data-work-generate-oficio]',
                 GENERAR_PDF: '[data-work-preview-oficio]',
                 PREPARAR_CORREO: '[data-work-mail-oficio]',
