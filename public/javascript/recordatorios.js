@@ -24,6 +24,16 @@
             return div.innerHTML;
         };
 
+        const urlRecordatorio = function (recordatorio) {
+            const personalizada = String(recordatorio.url || '').trim();
+            if (personalizada !== '') {
+                return personalizada;
+            }
+
+            return 'index.php?controller=seguimientoVinculacion&action=detalle&id=' +
+                Number(recordatorio.id || recordatorio.seguimiento_id || 0);
+        };
+
         const asegurarContenedorToasts = function () {
             let contenedor = document.querySelector('[data-reminder-toast-container]');
 
@@ -58,19 +68,16 @@
                         '<i class="bi ' + escapar(aviso.icono || 'bi-bell') + '"></i>' +
                     '</span>' +
                     '<span class="reminder-toast-copy">' +
-                        '<strong>' + escapar(aviso.titulo || 'Recordatorio') + '</strong>' +
+                        '<strong>' + escapar(aviso.titulo || 'Notificación') + '</strong>' +
                         '<span>' + escapar(aviso.mensaje || '') + '</span>' +
                     '</span>' +
                 '</div>';
 
-            const seguimientoId = Number(aviso.seguimiento_id || 0);
-
-            if (seguimientoId > 0) {
+            const url = urlRecordatorio(aviso);
+            if (url !== '') {
                 toast.classList.add('is-clickable');
                 toast.addEventListener('click', function () {
-                    window.location.href =
-                        'index.php?controller=seguimientoVinculacion&action=detalle&id=' +
-                        seguimientoId;
+                    window.location.href = url;
                 });
             }
 
@@ -107,8 +114,8 @@
                 contenido.innerHTML =
                     '<div class="topbar-reminder-empty">' +
                         '<i class="bi bi-check2-circle"></i>' +
-                        '<strong>Sin recordatorios pendientes</strong>' +
-                        '<span>No tienes llamadas o mensajes próximos.</span>' +
+                        '<strong>Sin notificaciones pendientes</strong>' +
+                        '<span>No tienes acciones o reuniones pendientes.</span>' +
                     '</div>';
                 return;
             }
@@ -116,9 +123,9 @@
             contenido.innerHTML =
                 '<div class="topbar-reminder-list">' +
                 lista.map(function (recordatorio) {
+                    const url = escapar(urlRecordatorio(recordatorio));
                     return (
-                        '<a class="topbar-reminder-item" href="index.php?controller=seguimientoVinculacion&action=detalle&id=' +
-                            Number(recordatorio.id || 0) + '">' +
+                        '<a class="topbar-reminder-item" href="' + url + '">' +
                             '<span class="topbar-reminder-icon">' +
                                 '<i class="bi ' + escapar(recordatorio.icono || 'bi-bell') + '"></i>' +
                             '</span>' +
@@ -174,7 +181,7 @@
 
                 (datos.avisos || []).forEach(mostrarToast);
             } catch (error) {
-                console.error('No fue posible actualizar los recordatorios.', error);
+                console.error('No fue posible actualizar las notificaciones.', error);
             } finally {
                 consultaEnCurso = false;
             }
