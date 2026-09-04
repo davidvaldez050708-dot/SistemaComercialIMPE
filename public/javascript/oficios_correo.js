@@ -13,6 +13,7 @@
         let seguimientoTrabajoId = 0;
         let seguimientoModalId = 0;
         let temporizador = null;
+        let botonEnvioPendiente = null;
 
         const mostrarToast = function (mensaje, esError) {
             let contenedor = document.querySelector('.toast-container');
@@ -105,6 +106,52 @@
                             '</button>' +
                             '<button type="button" class="btn btn-system-save" data-mail-send>' +
                                 '<i class="bi bi-send me-2"></i>Enviar correo' +
+                            '</button>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>';
+            document.body.appendChild(modal);
+
+            return modal;
+        };
+
+        const crearModalConfirmacion = function () {
+            let modal = document.getElementById('modalConfirmarEnvioOficio');
+
+            if (modal) {
+                return modal;
+            }
+
+            modal = document.createElement('div');
+            modal.className = 'modal fade';
+            modal.id = 'modalConfirmarEnvioOficio';
+            modal.tabIndex = -1;
+            modal.setAttribute('aria-labelledby', 'modalConfirmarEnvioOficioTitulo');
+            modal.setAttribute('aria-hidden', 'true');
+            modal.innerHTML =
+                '<div class="modal-dialog modal-dialog-centered system-form-dialog">' +
+                    '<div class="modal-content system-form-modal">' +
+                        '<div class="modal-header system-form-modal-header">' +
+                            '<div>' +
+                                '<h5 class="system-form-modal-title" id="modalConfirmarEnvioOficioTitulo">Confirmar envío</h5>' +
+                                '<p class="system-form-modal-subtitle">Esta acción enviará el correo institucional.</p>' +
+                            '</div>' +
+                            '<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>' +
+                        '</div>' +
+                        '<div class="modal-body">' +
+                            '<div class="d-flex align-items-start gap-3">' +
+                                '<span class="fs-3 text-primary"><i class="bi bi-send-check"></i></span>' +
+                                '<div>' +
+                                    '<p class="mb-2">¿Deseas enviar el correo institucional a:</p>' +
+                                    '<strong class="d-block text-break" data-mail-confirm-to>—</strong>' +
+                                    '<small class="text-muted d-block mt-2">Se adjuntará el PDF del oficio y el envío quedará registrado en el expediente.</small>' +
+                                '</div>' +
+                            '</div>' +
+                        '</div>' +
+                        '<div class="modal-footer system-form-modal-footer">' +
+                            '<button type="button" class="btn btn-system-cancel" data-mail-confirm-cancel>Cancelar</button>' +
+                            '<button type="button" class="btn btn-system-save" data-mail-confirm-send>' +
+                                '<i class="bi bi-send me-2"></i>Sí, enviar correo' +
                             '</button>' +
                         '</div>' +
                     '</div>' +
@@ -433,20 +480,15 @@
             }
         };
 
-        const enviarCorreo = async function (boton) {
+        const ejecutarEnvioCorreo = async function (boton) {
             const modal = crearModal();
 
             if (
                 !seguimientoModalId ||
                 modal.dataset.puedeEnviar !== '1' ||
-                modal.dataset.enviado === '1'
+                modal.dataset.enviado === '1' ||
+                !boton
             ) {
-                return;
-            }
-
-            const para = String(modal.querySelector('[data-mail-to]')?.value || '').trim();
-
-            if (!window.confirm('¿Enviar el correo institucional a ' + para + '?')) {
                 return;
             }
 
@@ -509,6 +551,74 @@
             }
         };
 
+        const solicitarConfirmacionEnvio = function (boton) {
+            const modalCorreo = crearModal();
+
+            if (
+                !seguimientoModalId ||
+                modalCorreo.dataset.puedeEnviar !== '1' ||
+                modalCorreo.dataset.enviado === '1'
+            ) {
+                return;
+            }
+
+            const para = String(
+                modalCorreo.querySelector('[data-mail-to]')?.value || ''
+            ).trim();
+            const modalConfirmacion = crearModalConfirmacion();
+            const destinatario = modalConfirmacion.querySelector('[data-mail-confirm-to]');
+
+            if (destinatario) {
+                destinatario.textContent = para || 'destinatario registrado';
+            }
+
+            botonEnvioPendiente = boton;
+            bootstrap.Modal.getOrCreateInstance(modalCorreo).hide();
+
+            modalCorreo.addEventListener('hidden.bs.modal', function abrirConfirmacion() {
+                modalCorreo.removeEventListener('hidden.bs.modal', abrirConfirmacion);
+                bootstrap.Modal.getOrCreateInstance(modalConfirmacion).show();
+            });
+        };
+
+        const cancelarConfirmacionEnvio = function () {
+            const modalConfirmacion = crearModalConfirmacion();
+            const modalCorreo = crearModal();
+            botonEnvioPendiente = null;
+            bootstrap.Modal.getOrCreateInstance(modalConfirmacion).hide();
+
+            modalConfirmacion.addEventListener('hidden.bs.modal', function volverCorreo() {
+                modalConfirmacion.removeEventListener('hidden.bs.modal', volverCorreo);
+                bootstrap.Modal.getOrCreateInstance(modalCorreo).show();
+            });
+        };
+
+        const confirmarEnvio = function (botonConfirmar) {
+            const botonCorreo = botonEnvioPendiente;
+            const modalConfirmacion = crearModalConfirmacion();
+            const htmlOriginal = botonConfirmar.innerHTML;
+
+            if (!botonCorreo) {
+                return;
+            }
+
+            botonConfirmar.disabled = true;
+            botonConfirmar.innerHTML =
+                '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>' +
+                'Preparando envío...';
+
+            bootstrap.Modal.getOrCreateInstance(modalConfirmacion).hide();
+
+            modalConfirmacion.addEventListener('hidden.bs.modal', function enviarDespuesDeCerrar() {
+                modalConfirmacion.removeEventListener('hidden.bs.modal', enviarDespuesDeCerrar);
+                botonConfirmar.disabled = false;
+                botonConfirmar.innerHTML = htmlOriginal;
+                botonEnvioPendiente = null;
+                bootstrap.Modal.getOrCreateInstance(crearModal()).show();
+                ejecutarEnvioCorreo(botonCorreo);
+            });
+        };
+
         document.addEventListener('click', function (event) {
             const botonTrabajo = event.target.closest('[data-work-follow]');
 
@@ -548,7 +658,23 @@
 
             if (botonEnviar) {
                 event.preventDefault();
-                enviarCorreo(botonEnviar);
+                solicitarConfirmacionEnvio(botonEnviar);
+                return;
+            }
+
+            const botonCancelarConfirmacion = event.target.closest('[data-mail-confirm-cancel]');
+
+            if (botonCancelarConfirmacion) {
+                event.preventDefault();
+                cancelarConfirmacionEnvio();
+                return;
+            }
+
+            const botonConfirmarEnvio = event.target.closest('[data-mail-confirm-send]');
+
+            if (botonConfirmarEnvio) {
+                event.preventDefault();
+                confirmarEnvio(botonConfirmarEnvio);
             }
         });
 
@@ -559,7 +685,17 @@
             });
 
         crearModal().addEventListener('hidden.bs.modal', function () {
-            seguimientoModalId = 0;
+            if (!document.getElementById('modalConfirmarEnvioOficio')?.classList.contains('show')) {
+                if (!botonEnvioPendiente) {
+                    seguimientoModalId = 0;
+                }
+            }
+        });
+
+        crearModalConfirmacion().addEventListener('hidden.bs.modal', function () {
+            if (!botonEnvioPendiente && !crearModal().classList.contains('show')) {
+                seguimientoModalId = 0;
+            }
         });
 
         if (window.MutationObserver) {
