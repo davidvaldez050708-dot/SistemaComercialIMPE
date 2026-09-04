@@ -4,7 +4,11 @@ require_once __DIR__ . '/../../helpers/AvatarHelper.php';
 require_once __DIR__ . '/../../helpers/ReminderHelper.php';
 
 $recordatoriosSeguimiento = [];
-$esAnalistaDatos = (int)($_SESSION['rol_id'] ?? 0) === 4;
+$rolTopbarId = (int)($_SESSION['rol_id'] ?? 0);
+$esAnalistaDatos = $rolTopbarId === 4;
+$esCuentaClave = $rolTopbarId === 6;
+$mostrarCentroAvisos = $esAnalistaDatos || $esCuentaClave;
+$mostrarAgendaReuniones = $mostrarCentroAvisos;
 
 if ($esAnalistaDatos) {
     $recordatoriosSeguimiento = obtenerRecordatoriosSeguimientoAnalista(
@@ -44,7 +48,17 @@ $totalRecordatoriosSeguimiento = count($recordatoriosSeguimiento);
         </div>
 
         <div class="topbar-actions">
-            <?php if ($esAnalistaDatos): ?>
+            <?php if ($mostrarAgendaReuniones): ?>
+                <a
+                    class="topbar-reminder-button"
+                    href="<?= BASE_URL ?>index.php?controller=agendaReunion&action=index"
+                    aria-label="Abrir agenda de reuniones"
+                    title="Agenda de reuniones">
+                    <i class="bi bi-calendar3"></i>
+                </a>
+            <?php endif; ?>
+
+            <?php if ($mostrarCentroAvisos): ?>
                 <div
                     class="dropdown"
                     data-reminder-root
@@ -55,7 +69,7 @@ $totalRecordatoriosSeguimiento = count($recordatoriosSeguimiento);
                         data-bs-toggle="dropdown"
                         data-bs-auto-close="outside"
                         aria-expanded="false"
-                        aria-label="Abrir recordatorios">
+                        aria-label="Abrir notificaciones">
                         <i class="bi bi-bell"></i>
 
                         <span
@@ -67,8 +81,8 @@ $totalRecordatoriosSeguimiento = count($recordatoriosSeguimiento);
 
                     <div class="dropdown-menu dropdown-menu-end topbar-reminder-menu">
                         <div class="topbar-reminder-header">
-                            <strong>Recordatorios</strong>
-                            <span>Acciones próximas en 24 h y acciones vencidas.</span>
+                            <strong>Notificaciones</strong>
+                            <span>Reuniones, confirmaciones y acciones próximas.</span>
                         </div>
 
                         <div data-reminder-content>
@@ -111,8 +125,8 @@ $totalRecordatoriosSeguimiento = count($recordatoriosSeguimiento);
                             <?php else: ?>
                                 <div class="topbar-reminder-empty">
                                     <i class="bi bi-check2-circle"></i>
-                                    <strong>Sin recordatorios pendientes</strong>
-                                    <span>No tienes llamadas o mensajes próximos.</span>
+                                    <strong>Sin notificaciones pendientes</strong>
+                                    <span>No tienes acciones o reuniones pendientes.</span>
                                 </div>
                             <?php endif; ?>
                         </div>
