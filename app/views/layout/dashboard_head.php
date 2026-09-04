@@ -78,6 +78,10 @@ $fotoPerfilUrl = $fotoPerfil !== ''
     <link
         rel="stylesheet"
         href="<?= BASE_URL ?>public/css/seguimiento_flujo.css?v=<?= filemtime(ROOT_PATH . '/public/css/seguimiento_flujo.css') ?>">
+
+    <link
+        rel="stylesheet"
+        href="<?= BASE_URL ?>public/css/seguimiento_post_envio.css?v=<?= filemtime(ROOT_PATH . '/public/css/seguimiento_post_envio.css') ?>">
 </head>
 
 <body>
