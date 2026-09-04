@@ -13,6 +13,7 @@
         }
 
         document.body.classList.add('linkage-expediente-enhanced');
+        nav.classList.add('data-section-nav', 'linkage-expediente-section-nav');
 
         const normalizar = function (valor) {
             return String(valor || '')
@@ -86,27 +87,6 @@
             const titulo = seccion.querySelector('.users-list-header h2');
             return normalizar(titulo?.textContent) === 'observaciones del cuenta clave';
         });
-
-        const shell = document.createElement('div');
-        shell.className = 'linkage-expediente-tabs-shell';
-        shell.setAttribute('aria-label', 'Navegación del expediente');
-
-        const botonAnterior = document.createElement('button');
-        botonAnterior.type = 'button';
-        botonAnterior.className = 'linkage-expediente-tab-arrow';
-        botonAnterior.setAttribute('aria-label', 'Ver secciones anteriores');
-        botonAnterior.innerHTML = '<i class="bi bi-chevron-left"></i>';
-
-        const botonSiguiente = document.createElement('button');
-        botonSiguiente.type = 'button';
-        botonSiguiente.className = 'linkage-expediente-tab-arrow';
-        botonSiguiente.setAttribute('aria-label', 'Ver secciones siguientes');
-        botonSiguiente.innerHTML = '<i class="bi bi-chevron-right"></i>';
-
-        nav.parentNode.insertBefore(shell, nav);
-        shell.appendChild(botonAnterior);
-        shell.appendChild(nav);
-        shell.appendChild(botonSiguiente);
 
         nav.setAttribute('role', 'tablist');
         nav.setAttribute('aria-label', 'Secciones del expediente');
@@ -236,7 +216,7 @@
             }
         });
 
-        const activar = function (clave, actualizarHash) {
+        const activar = function (clave, actualizarHash, acomodarVista) {
             if (!paneles[clave]) {
                 clave = 'resumen';
             }
@@ -251,23 +231,30 @@
                     tab.scrollIntoView({
                         behavior: 'smooth',
                         block: 'nearest',
-                        inline: 'center'
+                        inline: 'nearest'
                     });
                 }
             });
 
             Object.keys(paneles).forEach(function (panelClave) {
-                paneles[panelClave].hidden = panelClave !== clave;
+                const activo = panelClave === clave;
+                paneles[panelClave].hidden = !activo;
+                paneles[panelClave].setAttribute('aria-hidden', activo ? 'false' : 'true');
             });
 
             if (actualizarHash) {
                 history.replaceState(null, '', '#exp-' + clave);
             }
+
+            if (acomodarVista) {
+                const posicion = nav.getBoundingClientRect().top + window.scrollY - 78;
+                window.scrollTo({ top: Math.max(0, posicion), behavior: 'smooth' });
+            }
         };
 
         tabs.forEach(function (tab) {
             tab.addEventListener('click', function () {
-                activar(tab.dataset.expedienteTab || 'resumen', true);
+                activar(tab.dataset.expedienteTab || 'resumen', true, true);
             });
 
             tab.addEventListener('keydown', function (event) {
@@ -280,33 +267,19 @@
                     destino = tabs[(indice - 1 + tabs.length) % tabs.length];
                 } else if (event.key === 'Enter' || event.key === ' ') {
                     event.preventDefault();
-                    activar(tab.dataset.expedienteTab || 'resumen', true);
+                    activar(tab.dataset.expedienteTab || 'resumen', true, true);
                     return;
                 }
 
                 if (destino) {
                     event.preventDefault();
                     destino.focus();
-                    activar(destino.dataset.expedienteTab || 'resumen', true);
+                    activar(destino.dataset.expedienteTab || 'resumen', true, true);
                 }
             });
         });
 
-        const desplazarTabs = function (direccion) {
-            nav.scrollBy({
-                left: direccion * Math.max(240, Math.round(nav.clientWidth * 0.72)),
-                behavior: 'smooth'
-            });
-        };
-
-        botonAnterior.addEventListener('click', function () {
-            desplazarTabs(-1);
-        });
-        botonSiguiente.addEventListener('click', function () {
-            desplazarTabs(1);
-        });
-
         const hash = String(window.location.hash || '').replace('#exp-', '');
-        activar(paneles[hash] ? hash : 'resumen', false);
+        activar(paneles[hash] ? hash : 'resumen', false, false);
     });
 })();
