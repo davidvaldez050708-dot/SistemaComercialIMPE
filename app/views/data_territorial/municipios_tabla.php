@@ -257,9 +257,12 @@ if ($totalPaginasMunicipios <= 7) {
                                     class="data-external-link"
                                     href="<?= $escMunicipio($fotografiaUrl) ?>"
                                     target="_blank"
-                                    rel="noopener noreferrer">
-                                    <i class="bi bi-image"></i>
-                                    Ver foto
+                                    rel="noopener noreferrer"
+                                    aria-label="Ver fotografía de <?= $escMunicipio($presidente !== '' ? $presidente : $nombreMunicipio) ?>">
+                                    <img
+                                        class="data-municipality-president-photo"
+                                        src="<?= $escMunicipio($fotografiaUrl) ?>"
+                                        alt="Fotografía de <?= $escMunicipio($presidente !== '' ? $presidente : $nombreMunicipio) ?>">
                                 </a>
                             <?php else: ?>
                                 <span class="data-no-photo">Sin foto</span>
