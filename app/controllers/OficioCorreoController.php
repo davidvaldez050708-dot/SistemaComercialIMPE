@@ -87,6 +87,50 @@ class OficioCorreoController
         $this->responderJson($resultado);
     }
 
+    public function enviarAhora()
+    {
+        $this->validarMetodoPostJson();
+        $this->validarPermisoJson('oficios.enviar');
+
+        if ((int)($_SESSION['rol_id'] ?? 0) !== 4) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'El correo solo puede ser enviado por el Analista responsable.'
+            ], 403);
+        }
+
+        $seguimientoId = (int)($_POST['seguimiento_id'] ?? 0);
+        $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
+
+        if ($seguimientoId <= 0) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'El seguimiento solicitado no es válido.'
+            ], 422);
+        }
+
+        $servicio = new OficioCorreoService();
+        $resultado = $servicio->enviarAhora(
+            $seguimientoId,
+            $usuarioId
+        );
+
+        if (!($resultado['ok'] ?? false)) {
+            $codigoHttp = (int)($resultado['codigo_http'] ?? 500);
+            unset($resultado['codigo_http']);
+            $this->responderJson($resultado, $codigoHttp);
+        }
+
+        if (isset($resultado['correo'])) {
+            $resultado['correo'] = $this->completarPermisosCorreo(
+                $resultado['correo'],
+                $usuarioId
+            );
+        }
+
+        $this->responderJson($resultado);
+    }
+
     public function programacion()
     {
         $this->validarPermisoJson('oficios.ver');
@@ -171,12 +215,20 @@ class OficioCorreoController
         $esAnalistaResponsable =
             (int)($_SESSION['rol_id'] ?? 0) === 4 &&
             (int)($correo['analista_id'] ?? 0) === (int)$usuarioId;
+        $enviado = !empty($correo['enviado']);
+        $guardado = !empty($correo['guardado']);
 
         $correo['es_analista_responsable'] = $esAnalistaResponsable;
         $correo['solo_consulta'] = !$esAnalistaResponsable;
         $correo['puede_editar'] =
             $esAnalistaResponsable &&
+            !$enviado &&
             tienePermiso('oficios.generar');
+        $correo['puede_enviar'] =
+            $esAnalistaResponsable &&
+            !$enviado &&
+            $guardado &&
+            tienePermiso('oficios.enviar');
 
         unset($correo['analista_id']);
 
