@@ -13,7 +13,7 @@
                 '[data-work-flow-section] [data-flow-action="REUNION_AUN_NO_DISPONIBLE"]'
             );
 
-            if (!boton) {
+            if (!boton || boton.disabled) {
                 return;
             }
 
@@ -26,11 +26,13 @@
             boton.classList.add('disabled');
         };
 
-        const observador = new MutationObserver(aplicarBloqueo);
+        const observador = new MutationObserver(function () {
+            aplicarBloqueo();
+        });
+
         observador.observe(offcanvas, {
             childList: true,
-            subtree: true,
-            attributes: true
+            subtree: true
         });
 
         aplicarBloqueo();
