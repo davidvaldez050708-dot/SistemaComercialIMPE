@@ -136,8 +136,7 @@
             );
             const ventana = window.open(
                 'https://wa.me/' + numero + '?text=' + mensaje,
-                '_blank',
-                'noopener,noreferrer'
+                '_blank'
             );
 
             if (!ventana) {
@@ -146,6 +145,12 @@
                     true
                 );
                 return;
+            }
+
+            try {
+                ventana.opener = null;
+            } catch (error) {
+                // El navegador puede impedir modificar opener; no afecta la apertura.
             }
 
             mostrarToast('WhatsApp abierto en una nueva ventana.', false);
