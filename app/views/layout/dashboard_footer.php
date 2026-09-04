@@ -190,6 +190,10 @@
 </script>
 
 <script
+    src="<?= BASE_URL ?>public/javascript/seguimiento_flujo.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/seguimiento_flujo.js') ?>">
+</script>
+
+<script
     src="<?= BASE_URL ?>public/javascript/recordatorios.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/recordatorios.js') ?>">
 </script>
 
