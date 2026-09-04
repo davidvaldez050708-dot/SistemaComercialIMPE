@@ -53,7 +53,7 @@ $stmtPorNombre = $connection->prepare(
      FROM municipios
      WHERE estado_id = ?
        AND estado = 1
-       AND TRIM(nombre) = TRIM(?) COLLATE utf8mb4_general_ci
+       AND LOWER(TRIM(nombre)) = LOWER(TRIM(?))
      LIMIT 1"
 );
 

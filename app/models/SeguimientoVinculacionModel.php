@@ -529,6 +529,32 @@ class SeguimientoVinculacionModel
         return $stmt->get_result()->fetch_assoc() ?: null;
     }
 
+    public function obtenerMunicipioActivoPorNombre($estadoId, $nombre)
+    {
+        $nombre = trim((string)$nombre);
+
+        if ($nombre === '' || strcasecmp($nombre, 'Estatal') === 0) {
+            return null;
+        }
+
+        $sql = "SELECT
+                    id,
+                    clave_inegi,
+                    nombre
+                FROM municipios
+                WHERE estado_id = ?
+                    AND estado = 1
+                    AND LOWER(TRIM(nombre)) = LOWER(TRIM(?))
+                LIMIT 1";
+
+        $stmt = $this->connection->prepare($sql);
+        $estadoId = (int)$estadoId;
+        $stmt->bind_param('is', $estadoId, $nombre);
+        $stmt->execute();
+
+        return $stmt->get_result()->fetch_assoc() ?: null;
+    }
+
     public function obtenerSeguimientoPorClaveOrigen($estadoId, $claveOrigen)
     {
         $sql = "SELECT
@@ -630,6 +656,19 @@ class SeguimientoVinculacionModel
         $municipioId = isset($datos['municipio_id']) && (int)$datos['municipio_id'] > 0
             ? (int)$datos['municipio_id']
             : null;
+
+        if ($municipioId === null) {
+            $municipioNombre = trim((string)($datos['municipio_nombre'] ?? ''));
+            $municipio = $this->obtenerMunicipioActivoPorNombre(
+                $estadoId,
+                $municipioNombre
+            );
+
+            if ($municipio) {
+                $municipioId = (int)$municipio['id'];
+            }
+        }
+
         $analistaId = (int)$datos['analista_id'];
         $origen = (string)$datos['origen'];
         $claveOrigen = (string)$datos['clave_origen'];
