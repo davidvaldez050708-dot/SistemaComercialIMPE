@@ -39,11 +39,13 @@ class AgendaReunionRepository
 
         if ((int)$rolId === 4) {
             $sql .= " AND r.analista_id=?";
+        } elseif ((int)$rolId === 6) {
+            $sql .= " AND r.cuenta_clave_id=?";
         }
         $sql .= " ORDER BY r.fecha_propuesta ASC, r.id ASC";
 
         $stmt = $this->connection->prepare($sql);
-        if ((int)$rolId === 4) {
+        if (in_array((int)$rolId, [4, 6], true)) {
             $stmt->bind_param('ssi', $inicio, $fin, $usuarioId);
         } else {
             $stmt->bind_param('ss', $inicio, $fin);
@@ -85,6 +87,37 @@ class AgendaReunionRepository
         return $stmt->get_result()->fetch_assoc() ?: null;
     }
 
+    public function cuentaClaveParaSeguimiento($seguimientoId, $analistaId)
+    {
+        $sql = "SELECT cuenta.usuario_id AS cuenta_clave_id
+                FROM seguimientos_vinculacion s
+                JOIN asignaciones_territorio analista
+                    ON analista.estado_id = s.estado_id
+                    AND analista.usuario_id = s.analista_id
+                    AND analista.tipo_asignacion = 'ANALISTA_DATOS'
+                    AND analista.activo = 1
+                    AND (analista.fecha_inicio IS NULL OR analista.fecha_inicio <= CURDATE())
+                    AND (analista.fecha_fin IS NULL OR analista.fecha_fin >= CURDATE())
+                JOIN asignaciones_territorio cuenta
+                    ON cuenta.id = analista.cuenta_clave_asignacion_id
+                    AND cuenta.tipo_asignacion = 'CUENTA_CLAVE'
+                    AND cuenta.activo = 1
+                    AND (cuenta.fecha_inicio IS NULL OR cuenta.fecha_inicio <= CURDATE())
+                    AND (cuenta.fecha_fin IS NULL OR cuenta.fecha_fin >= CURDATE())
+                JOIN usuarios usuario_cuenta
+                    ON usuario_cuenta.id = cuenta.usuario_id
+                    AND usuario_cuenta.rol_id = 6
+                    AND usuario_cuenta.estado = 1
+                WHERE s.id = ? AND s.analista_id = ?
+                ORDER BY analista.id DESC
+                LIMIT 1";
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param('ii', $seguimientoId, $analistaId);
+        $stmt->execute();
+        $fila = $stmt->get_result()->fetch_assoc();
+        return (int)($fila['cuenta_clave_id'] ?? 0);
+    }
+
     public function reunionActivaSeguimiento($seguimientoId)
     {
         $sql = "SELECT id FROM reuniones_vinculacion
@@ -111,10 +144,12 @@ class AgendaReunionRepository
                 WHERE r.id=?";
         if ((int)$rolId === 4) {
             $sql .= " AND r.analista_id=?";
+        } elseif ((int)$rolId === 6) {
+            $sql .= " AND r.cuenta_clave_id=?";
         }
         $sql .= " LIMIT 1";
         $stmt = $this->connection->prepare($sql);
-        if ((int)$rolId === 4) {
+        if (in_array((int)$rolId, [4, 6], true)) {
             $stmt->bind_param('ii', $reunionId, $usuarioId);
         } else {
             $stmt->bind_param('i', $reunionId);
@@ -134,13 +169,13 @@ class AgendaReunionRepository
         return $stmt->get_result()->fetch_assoc() ?: null;
     }
 
-    public function insertarSolicitud($seguimientoId, $analistaId, $fecha, $duracion, $modalidad, $objetivo, $notas)
+    public function insertarSolicitud($seguimientoId, $analistaId, $cuentaClaveId, $fecha, $duracion, $modalidad, $objetivo, $notas)
     {
         $sql = "INSERT INTO reuniones_vinculacion
-                (seguimiento_id,analista_id,fecha_propuesta,duracion_minutos,modalidad,objetivo,notas_analista,estado)
-                VALUES (?,?,?,?,?,?,?,'SOLICITADA')";
+                (seguimiento_id,analista_id,cuenta_clave_id,fecha_propuesta,duracion_minutos,modalidad,objetivo,notas_analista,estado)
+                VALUES (?,?,?,?,?,?,?,?,'SOLICITADA')";
         $stmt = $this->connection->prepare($sql);
-        $stmt->bind_param('iisisss', $seguimientoId, $analistaId, $fecha, $duracion, $modalidad, $objetivo, $notas);
+        $stmt->bind_param('iiisisss', $seguimientoId, $analistaId, $cuentaClaveId, $fecha, $duracion, $modalidad, $objetivo, $notas);
         $stmt->execute();
         return (int)$this->connection->insert_id;
     }
@@ -161,9 +196,9 @@ class AgendaReunionRepository
     {
         $sql = "UPDATE reuniones_vinculacion SET cuenta_clave_id=?,zoom_url=?,ubicacion=?,notas_kam=?,estado='CONFIRMADA',
                     confirmada_at=NOW(),confirmada_por=?,notificado_analista_at=NULL
-                WHERE id=? AND estado='SOLICITADA'";
+                WHERE id=? AND cuenta_clave_id=? AND estado='SOLICITADA'";
         $stmt = $this->connection->prepare($sql);
-        $stmt->bind_param('isssii', $kamId, $zoomUrl, $ubicacion, $notasKam, $kamId, $reunionId);
+        $stmt->bind_param('isssiii', $kamId, $zoomUrl, $ubicacion, $notasKam, $kamId, $reunionId, $kamId);
         $stmt->execute();
         return $stmt->affected_rows > 0;
     }
@@ -172,9 +207,9 @@ class AgendaReunionRepository
     {
         $sql = "UPDATE reuniones_vinculacion SET cuenta_clave_id=?,estado='CAMBIO_SOLICITADO',cambio_motivo=?,
                     cambio_solicitado_at=NOW(),cambio_solicitado_por=?,notificado_analista_at=NULL
-                WHERE id=? AND estado='SOLICITADA'";
+                WHERE id=? AND cuenta_clave_id=? AND estado='SOLICITADA'";
         $stmt = $this->connection->prepare($sql);
-        $stmt->bind_param('isii', $kamId, $motivo, $kamId, $reunionId);
+        $stmt->bind_param('isiii', $kamId, $motivo, $kamId, $reunionId, $kamId);
         $stmt->execute();
         return $stmt->affected_rows > 0;
     }
@@ -224,13 +259,14 @@ class AgendaReunionRepository
         $stmt->execute();
     }
 
-    public function pendientesKam($limite)
+    public function pendientesKam($kamId, $limite)
     {
         $sql = "SELECT r.id,r.seguimiento_id,r.fecha_propuesta,s.nombre_entidad
                 FROM reuniones_vinculacion r JOIN seguimientos_vinculacion s ON s.id=r.seguimiento_id
-                WHERE r.estado='SOLICITADA' ORDER BY r.updated_at DESC LIMIT ?";
+                WHERE r.estado='SOLICITADA' AND r.cuenta_clave_id=?
+                ORDER BY r.updated_at DESC LIMIT ?";
         $stmt = $this->connection->prepare($sql);
-        $stmt->bind_param('i', $limite);
+        $stmt->bind_param('ii', $kamId, $limite);
         $stmt->execute();
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
