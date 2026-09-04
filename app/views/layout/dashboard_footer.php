@@ -169,6 +169,28 @@
     src="<?= BASE_URL ?>public/javascript/seguimiento_interacciones.js">
 </script>
 
+<?php
+$voipScheme = 'tel';
+$voipSipDomain = '';
+$voipConfigPath = ROOT_PATH . '/config/voip_config.php';
+
+if (is_file($voipConfigPath)) {
+    require_once $voipConfigPath;
+
+    if (defined('VOIP_SCHEME')) {
+        $voipScheme = (string)VOIP_SCHEME;
+    }
+
+    if (defined('VOIP_SIP_DOMAIN')) {
+        $voipSipDomain = (string)VOIP_SIP_DOMAIN;
+    }
+}
+?>
+<script>
+window.IMPE_VOIP_SCHEME = <?= json_encode($voipScheme, JSON_UNESCAPED_UNICODE) ?>;
+window.IMPE_VOIP_SIP_DOMAIN = <?= json_encode($voipSipDomain, JSON_UNESCAPED_UNICODE) ?>;
+</script>
+
 <script
     src="<?= BASE_URL ?>public/javascript/seguimiento_canales.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/seguimiento_canales.js') ?>">
 </script>
