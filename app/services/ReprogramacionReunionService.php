@@ -65,16 +65,7 @@ class ReprogramacionReunionService
                         notificado_kam_at=NULL, notificado_analista_at=NULL
                     WHERE id=? AND analista_id=? AND estado IN ('CONFIRMADA','CORREO_ENVIADO')";
             $stmt = $this->connection->prepare($sql);
-            $stmt->bind_param(
-                'sissiii',
-                $fecha,
-                $duracion,
-                $modalidad,
-                $motivo,
-                $usuarioId,
-                $reunionId,
-                $usuarioId
-            );
+            $stmt->bind_param('sissiii', $fecha, $duracion, $modalidad, $motivo, $usuarioId, $reunionId, $usuarioId);
             $stmt->execute();
 
             if ($stmt->affected_rows <= 0) {
@@ -198,15 +189,6 @@ class ReprogramacionReunionService
                 WHERE reunion_id=? AND estado='ESPERANDO_PROPUESTA'
                 ORDER BY id DESC LIMIT 1";
         $stmt = $this->connection->prepare($sql);
-        $stmt->bind_param('sis i', $fecha, $duracion, $modalidad, $reunionId);
-        // bind_param no permite espacios en el tipo; se prepara nuevamente abajo.
-        $stmt->close();
-        $stmt = $this->connection->prepare(
-            "UPDATE reuniones_vinculacion_reprogramaciones
-             SET fecha_nueva=?, duracion_nueva=?, modalidad_nueva=?, estado='PENDIENTE_KAM'
-             WHERE reunion_id=? AND estado='ESPERANDO_PROPUESTA'
-             ORDER BY id DESC LIMIT 1"
-        );
         $stmt->bind_param('sisi', $fecha, $duracion, $modalidad, $reunionId);
         $stmt->execute();
 
@@ -215,9 +197,13 @@ class ReprogramacionReunionService
 
     public function confirmarKam($usuarioId, $rolId, $datos)
     {
+        if ((int)$rolId !== AgendaReunionService::ROL_CUENTA_CLAVE) {
+            return $this->error('Solo Cuenta Clave puede confirmar la nueva fecha.', 403);
+        }
+
         $reunionId = (int)($datos['reunion_id'] ?? 0);
         $reunion = $this->obtenerReunion($reunionId, (int)$usuarioId, 6);
-        if (!$reunion || (int)($reunion['es_reprogramacion'] ?? 0) !== 1) {
+        if (!$reunion || (int)($reunion['es_reprogramacion'] ?? 0) !== 1 || (string)$reunion['estado'] !== 'SOLICITADA') {
             return $this->error('Esta reunión no corresponde a una reprogramación pendiente.', 409);
         }
 
@@ -242,9 +228,13 @@ class ReprogramacionReunionService
 
     public function marcarCorreoAnalista($usuarioId, $rolId, $datos)
     {
+        if ((int)$rolId !== AgendaReunionService::ROL_ANALISTA) {
+            return $this->error('Solo el Analista puede registrar el correo de reprogramación.', 403);
+        }
+
         $reunionId = (int)($datos['reunion_id'] ?? 0);
         $reunion = $this->obtenerReunion($reunionId, (int)$usuarioId, 4);
-        if (!$reunion || (int)($reunion['es_reprogramacion'] ?? 0) !== 1) {
+        if (!$reunion || (int)($reunion['es_reprogramacion'] ?? 0) !== 1 || (string)$reunion['estado'] !== 'CONFIRMADA') {
             return $this->error('Esta reunión no corresponde a una reprogramación confirmada.', 409);
         }
 
@@ -286,7 +276,7 @@ class ReprogramacionReunionService
         $modalidadNuevaDb = $modalidadNueva ?: null;
 
         $stmt->bind_param(
-            'iissiiissssiss',
+            'iissiisssssiss',
             $reunionId,
             $seguimientoId,
             $fechaAnterior,
