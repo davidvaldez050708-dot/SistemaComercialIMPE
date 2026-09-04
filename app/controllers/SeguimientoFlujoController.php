@@ -3,18 +3,21 @@
 require_once __DIR__ . '/../services/SeguimientoFlujoService.php';
 require_once __DIR__ . '/../services/SeguimientoPostEnvioService.php';
 require_once __DIR__ . '/../services/AgendaReunionService.php';
+require_once __DIR__ . '/../services/ReunionFechaGuardService.php';
 
 class SeguimientoFlujoController
 {
     private $service;
     private $postEnvioService;
     private $agendaReunionService;
+    private $reunionFechaGuardService;
 
     public function __construct()
     {
         $this->service = new SeguimientoFlujoService();
         $this->postEnvioService = new SeguimientoPostEnvioService();
         $this->agendaReunionService = new AgendaReunionService();
+        $this->reunionFechaGuardService = new ReunionFechaGuardService();
     }
 
     public function estado()
@@ -49,6 +52,12 @@ class SeguimientoFlujoController
                 $seguimientoId,
                 $usuarioId,
                 $postEnvio['flujo']
+            );
+
+            $flujo = $this->reunionFechaGuardService->ajustarFlujo(
+                $seguimientoId,
+                $usuarioId,
+                $flujo
             );
 
             $this->responder([
@@ -86,7 +95,7 @@ class SeguimientoFlujoController
         }
 
         $seguimientoId = (int)($_POST['seguimiento_id'] ?? 0);
-        $accion = trim((string)($_POST['accion'] ?? ''));
+        $accion = strtoupper(trim((string)($_POST['accion'] ?? '')));
 
         if ($seguimientoId <= 0 || $accion === '') {
             $this->responder([
@@ -95,11 +104,25 @@ class SeguimientoFlujoController
             ], 422);
         }
 
-        if (strtoupper($accion) === 'AGENDAR_REUNION') {
+        if ($accion === 'AGENDAR_REUNION') {
             $this->responder([
                 'ok' => false,
                 'mensaje' => 'Las reuniones ahora se coordinan desde la agenda compartida con Cuenta Clave.'
             ], 409);
+        }
+
+        if ($accion === 'REGISTRAR_REUNION_REALIZADA') {
+            $validacion = $this->reunionFechaGuardService->validarRegistro(
+                $seguimientoId,
+                $usuarioId
+            );
+
+            if (!($validacion['ok'] ?? false)) {
+                $this->responder([
+                    'ok' => false,
+                    'mensaje' => (string)($validacion['mensaje'] ?? 'La reunión todavía no puede registrarse como realizada.')
+                ], (int)($validacion['codigo_http'] ?? 409));
+            }
         }
 
         $resultado = $this->postEnvioService->registrarAccion(
@@ -110,6 +133,16 @@ class SeguimientoFlujoController
         );
         $codigoHttp = (int)($resultado['codigo_http'] ?? 200);
         unset($resultado['codigo_http']);
+
+        if (
+            $accion === 'REGISTRAR_REUNION_REALIZADA' &&
+            ($resultado['ok'] ?? false)
+        ) {
+            $this->reunionFechaGuardService->marcarRealizada(
+                $seguimientoId,
+                $usuarioId
+            );
+        }
 
         $this->responder($resultado, $codigoHttp);
     }
