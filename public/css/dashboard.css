@@ -4319,6 +4319,15 @@
     font-size: 12px;
 }
 
+.data-municipality-president-photo {
+    width: 42px;
+    height: 42px;
+    display: block;
+    border-radius: 50%;
+    object-fit: cover;
+    object-position: center;
+}
+
 .data-territorial-module .form-label {
     margin-bottom: 6px;
     font-size: 12px;
