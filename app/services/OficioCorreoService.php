@@ -216,7 +216,7 @@ class OficioCorreoService
             );
         }
 
-        $resultadoSmtp = $this->enviarPorSmtp(
+        $resultadoSmtp = $this->enviarCorreo(
             $seguimiento,
             $asunto,
             $cuerpo,
@@ -289,12 +289,12 @@ class OficioCorreoService
         } catch (Throwable $error) {
             $this->connection->rollback();
             error_log(
-                'Correo SMTP enviado, pero no se pudo actualizar el expediente: ' .
+                'Correo enviado, pero no se pudo actualizar el expediente: ' .
                 $error->getMessage()
             );
 
             return $this->error(
-                'El servidor SMTP aceptó el correo, pero no fue posible actualizar el expediente. Revisa el correo enviado antes de intentar nuevamente.',
+                'El proveedor de correo aceptó el mensaje, pero no fue posible actualizar el expediente. Revisa el correo enviado antes de intentar nuevamente.',
                 500
             );
         }
@@ -314,6 +314,42 @@ class OficioCorreoService
                 $plantilla ?: []
             )
         ];
+    }
+
+    private function enviarCorreo($seguimiento, $asunto, $cuerpo, $rutaPdf)
+    {
+        require_once __DIR__ . '/HostingerMailApiService.php';
+
+        $hostinger = new HostingerMailApiService();
+
+        if ($hostinger->estaConfigurado()) {
+            $analistaCorreo = trim((string)($seguimiento['analista_correo'] ?? ''));
+            $analistaNombre = trim(
+                (string)($seguimiento['analista_nombre'] ?? '') . ' ' .
+                (string)($seguimiento['analista_apellidos'] ?? '')
+            );
+            $destinatario = trim((string)($seguimiento['destinatario_correo'] ?? ''));
+            $nombreAdjunto = basename(
+                (string)($seguimiento['archivo_pdf'] ?? $rutaPdf)
+            );
+
+            return $hostinger->enviarOficio([
+                'remitente' => $analistaCorreo,
+                'nombre_remitente' => $analistaNombre,
+                'destinatario' => $destinatario,
+                'asunto' => $asunto,
+                'cuerpo' => $cuerpo,
+                'ruta_adjunto' => $rutaPdf,
+                'nombre_adjunto' => $nombreAdjunto
+            ]);
+        }
+
+        return $this->enviarPorSmtp(
+            $seguimiento,
+            $asunto,
+            $cuerpo,
+            $rutaPdf
+        );
     }
 
     private function enviarPorSmtp($seguimiento, $asunto, $cuerpo, $rutaPdf)
