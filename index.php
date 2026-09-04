@@ -226,6 +226,17 @@ switch ($controller) {
         break;
 
 
+    case 'seguimientoFlujo':
+
+        require_once __DIR__ .
+            '/app/controllers/SeguimientoFlujoController.php';
+
+        $controllerInstance =
+            new SeguimientoFlujoController();
+
+        break;
+
+
     case 'oficioVinculacion':
 
         require_once __DIR__ .
