@@ -222,12 +222,12 @@ class SeguimientoFlujoService
             $accionProgramacion = $proximaAccionAt === ''
                 ? [
                     'codigo' => 'PROGRAMAR_ENVIO',
-                    'etiqueta' => 'Programar para después',
+                    'etiqueta' => 'Recordar para después',
                     'icono' => 'bi-calendar-event'
                 ]
                 : [
                     'codigo' => 'REPROGRAMAR_ENVIO',
-                    'etiqueta' => 'Reprogramar envío',
+                    'etiqueta' => 'Cambiar recordatorio',
                     'icono' => 'bi-calendar-check'
                 ];
 
@@ -236,8 +236,8 @@ class SeguimientoFlujoService
                 7,
                 'Enviar oficio / correo',
                 $proximaAccionAt === ''
-                    ? 'El PDF y el correo están listos. Revisa el mensaje y envíalo ahora, o prográmalo para una fecha posterior.'
-                    : 'El envío tiene una fecha programada. También puedes revisar el correo y enviarlo ahora si ya corresponde.',
+                    ? 'El PDF y el correo están listos. Revisa el mensaje y envíalo ahora, o crea un recordatorio para hacerlo después.'
+                    : 'Tienes un recordatorio de envío. También puedes revisar el correo y enviarlo ahora si ya corresponde.',
                 [],
                 [
                     'codigo' => 'PREPARAR_CORREO',
@@ -306,19 +306,19 @@ class SeguimientoFlujoService
                 3,
                 'Continuar validación por llamada',
                 $telefonoDisponible !== ''
-                    ? 'Usa el teléfono disponible para confirmar con quién debe dirigirse la Fundación y registra los datos nuevos que te proporcionen.'
+                    ? 'Inicia la llamada con el teléfono disponible. Al terminar, registra el resultado y los datos nuevos que te proporcionen.'
                     : 'Continúa investigando un teléfono útil para contactar a la institución y validar con quién debe dirigirse la Fundación.',
                 $faltantesContacto,
                 [
-                    'codigo' => $telefonoDisponible !== '' ? 'REGISTRAR_LLAMADA' : 'COMPLETAR_DATOS',
-                    'etiqueta' => $telefonoDisponible !== '' ? 'Registrar llamada' : 'Completar datos',
+                    'codigo' => $telefonoDisponible !== '' ? 'LLAMAR_IP' : 'COMPLETAR_DATOS',
+                    'etiqueta' => $telefonoDisponible !== '' ? 'Llamar' : 'Completar datos',
                     'icono' => $telefonoDisponible !== '' ? 'bi-telephone' : 'bi-pencil-square'
                 ],
                 $telefonoDisponible !== ''
                     ? [
-                        'codigo' => 'COMPLETAR_DATOS',
-                        'etiqueta' => 'Actualizar contacto',
-                        'icono' => 'bi-person-lines-fill'
+                        'codigo' => 'REGISTRAR_LLAMADA',
+                        'etiqueta' => 'Registrar resultado',
+                        'icono' => 'bi-journal-check'
                     ]
                     : null,
                 $seguimiento
@@ -330,7 +330,7 @@ class SeguimientoFlujoService
             2,
             'Revisar y completar información',
             $telefonoDisponible !== ''
-                ? 'Revisa los datos encontrados, completa lo que puedas investigar y después realiza la primera llamada de validación.'
+                ? 'Revisa los datos encontrados, completa lo que puedas investigar y realiza la primera llamada de validación.'
                 : 'Antes de llamar, investiga un teléfono útil y completa la información disponible de la institución.',
             $this->faltantesInvestigacion($seguimiento),
             [
@@ -340,8 +340,8 @@ class SeguimientoFlujoService
             ],
             $telefonoDisponible !== ''
                 ? [
-                    'codigo' => 'REGISTRAR_LLAMADA',
-                    'etiqueta' => 'Registrar primera llamada',
+                    'codigo' => 'LLAMAR_IP',
+                    'etiqueta' => 'Realizar primera llamada',
                     'icono' => 'bi-telephone'
                 ]
                 : null,
