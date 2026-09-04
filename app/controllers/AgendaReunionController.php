@@ -1,14 +1,17 @@
 <?php
 
 require_once __DIR__ . '/../services/AgendaReunionService.php';
+require_once __DIR__ . '/../services/ReprogramacionReunionService.php';
 
 class AgendaReunionController
 {
     private $service;
+    private $reprogramacionService;
 
     public function __construct()
     {
         $this->service = new AgendaReunionService();
+        $this->reprogramacionService = new ReprogramacionReunionService();
     }
 
     public function index()
@@ -121,6 +124,31 @@ class AgendaReunionController
         $this->procesarAccion('marcarCorreoEnviado');
     }
 
+    public function solicitarReprogramacion()
+    {
+        $this->procesarReprogramacion('solicitarAnalista');
+    }
+
+    public function solicitarReprogramacionKam()
+    {
+        $this->procesarReprogramacion('solicitarKam');
+    }
+
+    public function completarReprogramacion()
+    {
+        $this->procesarReprogramacion('completarAnalista');
+    }
+
+    public function confirmarReprogramacion()
+    {
+        $this->procesarReprogramacion('confirmarKam');
+    }
+
+    public function marcarCorreoReprogramacionEnviado()
+    {
+        $this->procesarReprogramacion('marcarCorreoAnalista');
+    }
+
     private function procesarAccion($metodo)
     {
         header('Content-Type: application/json; charset=utf-8');
@@ -143,6 +171,34 @@ class AgendaReunionController
         }
 
         $resultado = $this->service->$metodo($usuarioId, $rolId, $_POST);
+        $codigoHttp = (int)($resultado['codigo_http'] ?? 200);
+        unset($resultado['codigo_http']);
+
+        $this->responder($resultado, $codigoHttp);
+    }
+
+    private function procesarReprogramacion($metodo)
+    {
+        header('Content-Type: application/json; charset=utf-8');
+
+        $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
+        $rolId = (int)($_SESSION['rol_id'] ?? 0);
+
+        if ($usuarioId <= 0 || !$this->service->puedeAcceder($rolId)) {
+            $this->responder([
+                'ok' => false,
+                'mensaje' => 'No tienes acceso a esta acción.'
+            ], 403);
+        }
+
+        if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
+            $this->responder([
+                'ok' => false,
+                'mensaje' => 'Método no permitido.'
+            ], 405);
+        }
+
+        $resultado = $this->reprogramacionService->$metodo($usuarioId, $rolId, $_POST);
         $codigoHttp = (int)($resultado['codigo_http'] ?? 200);
         unset($resultado['codigo_http']);
 
