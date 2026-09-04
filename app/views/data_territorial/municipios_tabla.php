@@ -258,6 +258,10 @@ if ($totalPaginasMunicipios <= 7) {
                                     href="<?= $escMunicipio($fotografiaUrl) ?>"
                                     target="_blank"
                                     rel="noopener noreferrer"
+                                    data-profile-photo
+                                    data-photo-url="<?= $escMunicipio($fotografiaUrl) ?>"
+                                    data-photo-name="<?= $escMunicipio($presidente !== '' ? $presidente : $nombreMunicipio) ?>"
+                                    data-photo-role="Presidente municipal"
                                     aria-label="Ver fotografía de <?= $escMunicipio($presidente !== '' ? $presidente : $nombreMunicipio) ?>">
                                     <img
                                         class="data-municipality-president-photo"
