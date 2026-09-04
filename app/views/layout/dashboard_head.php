@@ -90,6 +90,10 @@ $fotoPerfilUrl = $fotoPerfil !== ''
     <script
         src="<?= BASE_URL ?>public/javascript/agenda_reunion.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/agenda_reunion.js') ?>">
     </script>
+
+    <script
+        src="<?= BASE_URL ?>public/javascript/reunion_fecha_guard.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/reunion_fecha_guard.js') ?>">
+    </script>
 </head>
 
 <body>
