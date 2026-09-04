@@ -1,0 +1,6 @@
+diff --git a/app/models/SeguimientoVinculacionModel.php b/app/models/SeguimientoVinculacionModel.php
+--- a/app/models/SeguimientoVinculacionModel.php
++++ b/app/models/SeguimientoVinculacionModel.php
+@@
+-                    AND TRIM(nombre) = TRIM(?) COLLATE utf8mb4_general_ci
++                    AND LOWER(TRIM(nombre)) = LOWER(TRIM(?))
