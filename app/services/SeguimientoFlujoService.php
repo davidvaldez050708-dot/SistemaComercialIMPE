@@ -88,6 +88,7 @@ class SeguimientoFlujoService
             $seguimiento['telefono_fuente'] ??
             ''
         ));
+
         if ($telefonoDisponible === '') {
             $telefonoDisponible = trim((string)($seguimiento['telefono_fuente'] ?? ''));
         }
@@ -105,17 +106,21 @@ class SeguimientoFlujoService
         $totalLlamadas = (int)($seguimiento['total_llamadas'] ?? 0);
 
         $faltantesContacto = [];
+
         if ($contactoNombre === '') {
             $faltantesContacto[] = 'persona de contacto';
         }
+
         if ($contactoCargo === '') {
             $faltantesContacto[] = 'cargo / área';
         }
+
         if ($correoVerificado === '' || !filter_var($correoVerificado, FILTER_VALIDATE_EMAIL)) {
             $faltantesContacto[] = 'correo válido';
         }
 
         $pdfGenerado = false;
+
         if ($archivoPdf !== '') {
             $rutaPdf = defined('ROOT_PATH')
                 ? ROOT_PATH . '/' . ltrim(str_replace('\\', '/', $archivoPdf), '/')
@@ -130,16 +135,23 @@ class SeguimientoFlujoService
             (string)($seguimiento['estado_oficio'] ?? '') === 'ENVIADO' ||
             $estado === 'ESPERANDO_RESPUESTA';
 
+        // La ruta principal termina cuando el convenio queda formalizado.
+        // Los estados internos de preparación/programación del correo se resuelven
+        // dentro del paso 7 para no inflar artificialmente la ruta del Analista.
         $pasos = [
             ['numero' => 1, 'clave' => 'INICIO', 'titulo' => 'Seguimiento iniciado'],
-            ['numero' => 2, 'clave' => 'INVESTIGACION', 'titulo' => 'Revisar e investigar datos'],
-            ['numero' => 3, 'clave' => 'CONTACTO', 'titulo' => 'Llamada de validación'],
+            ['numero' => 2, 'clave' => 'INVESTIGACION', 'titulo' => 'Investigación de datos'],
+            ['numero' => 3, 'clave' => 'CONTACTO', 'titulo' => 'Contacto y validación'],
             ['numero' => 4, 'clave' => 'VERIFICACION', 'titulo' => 'Datos verificados'],
             ['numero' => 5, 'clave' => 'OFICIO', 'titulo' => 'Oficio preparado'],
             ['numero' => 6, 'clave' => 'PDF', 'titulo' => 'PDF generado'],
-            ['numero' => 7, 'clave' => 'CORREO', 'titulo' => 'Correo preparado'],
-            ['numero' => 8, 'clave' => 'PROGRAMACION', 'titulo' => 'Envío programado'],
-            ['numero' => 9, 'clave' => 'RESPUESTA', 'titulo' => 'Esperando respuesta']
+            ['numero' => 7, 'clave' => 'ENVIO', 'titulo' => 'Oficio / correo enviado'],
+            ['numero' => 8, 'clave' => 'ESPERA', 'titulo' => 'Esperando respuesta'],
+            ['numero' => 9, 'clave' => 'RESPUESTA', 'titulo' => 'Respuesta recibida'],
+            ['numero' => 10, 'clave' => 'SEGUIMIENTO_CORREO', 'titulo' => 'Seguimiento por correo'],
+            ['numero' => 11, 'clave' => 'REUNION_AGENDADA', 'titulo' => 'Reunión agendada'],
+            ['numero' => 12, 'clave' => 'REUNION_REALIZADA', 'titulo' => 'Reunión realizada'],
+            ['numero' => 13, 'clave' => 'CONVENIO', 'titulo' => 'Convenio formalizado']
         ];
 
         if ($estado === 'DESCARTADO') {
@@ -158,9 +170,9 @@ class SeguimientoFlujoService
         if ($envioRealizado) {
             return $this->construirRespuesta(
                 $pasos,
-                9,
-                'Dar seguimiento a la respuesta',
-                'El oficio y correo ya fueron enviados. Registra cualquier respuesta y continúa con la vinculación.',
+                8,
+                'Esperar y registrar respuesta',
+                'El oficio y el correo ya fueron enviados. Cuando la institución responda, registra la interacción para continuar con el seguimiento, la reunión y el convenio.',
                 [],
                 [
                     'codigo' => 'REGISTRAR_INTERACCION',
@@ -195,7 +207,7 @@ class SeguimientoFlujoService
                     $pasos,
                     7,
                     'Preparar correo institucional',
-                    'El PDF está listo. Revisa el destinatario, asunto y mensaje que acompañarán al oficio.',
+                    'El PDF está listo. Revisa el destinatario, asunto y mensaje que acompañarán al oficio antes de enviarlo.',
                     [],
                     [
                         'codigo' => 'PREPARAR_CORREO',
@@ -210,8 +222,8 @@ class SeguimientoFlujoService
             if ($proximaAccionAt === '') {
                 return $this->construirRespuesta(
                     $pasos,
-                    8,
-                    'Programar envío',
+                    7,
+                    'Programar envío del oficio',
                     'El oficio y el correo están preparados. Define la fecha y hora en que deberá realizarse el envío.',
                     [],
                     [
@@ -226,8 +238,8 @@ class SeguimientoFlujoService
 
             return $this->construirRespuesta(
                 $pasos,
-                8,
-                'Enviar oficio/correo',
+                7,
+                'Enviar oficio / correo',
                 'El envío está programado. Esta tarea permanecerá pendiente hasta que el correo se envíe correctamente o sea reprogramado.',
                 [],
                 [
@@ -241,6 +253,23 @@ class SeguimientoFlujoService
         }
 
         if ($datosVerificados || $estado === 'DATOS_VERIFICADOS') {
+            if (!empty($faltantesContacto)) {
+                return $this->construirRespuesta(
+                    $pasos,
+                    5,
+                    'Completar datos para generar oficio',
+                    'La información fue marcada como verificada, pero el oficio necesita destinatario, cargo y correo válido. Completa esos datos para poder asignar el folio.',
+                    $faltantesContacto,
+                    [
+                        'codigo' => 'COMPLETAR_DATOS',
+                        'etiqueta' => 'Completar datos',
+                        'icono' => 'bi-person-lines-fill'
+                    ],
+                    null,
+                    $seguimiento
+                );
+            }
+
             return $this->construirRespuesta(
                 $pasos,
                 5,
