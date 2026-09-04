@@ -219,35 +219,32 @@ class SeguimientoFlujoService
                 );
             }
 
-            if ($proximaAccionAt === '') {
-                return $this->construirRespuesta(
-                    $pasos,
-                    7,
-                    'Programar envío del oficio',
-                    'El oficio y el correo están preparados. Define la fecha y hora en que deberá realizarse el envío.',
-                    [],
-                    [
-                        'codigo' => 'PROGRAMAR_ENVIO',
-                        'etiqueta' => 'Programar envío',
-                        'icono' => 'bi-calendar-event'
-                    ],
-                    null,
-                    $seguimiento
-                );
-            }
+            $accionProgramacion = $proximaAccionAt === ''
+                ? [
+                    'codigo' => 'PROGRAMAR_ENVIO',
+                    'etiqueta' => 'Programar para después',
+                    'icono' => 'bi-calendar-event'
+                ]
+                : [
+                    'codigo' => 'REPROGRAMAR_ENVIO',
+                    'etiqueta' => 'Reprogramar envío',
+                    'icono' => 'bi-calendar-check'
+                ];
 
             return $this->construirRespuesta(
                 $pasos,
                 7,
                 'Enviar oficio / correo',
-                'El envío está programado. Esta tarea permanecerá pendiente hasta que el correo se envíe correctamente o sea reprogramado.',
+                $proximaAccionAt === ''
+                    ? 'El PDF y el correo están listos. Revisa el mensaje y envíalo ahora, o prográmalo para una fecha posterior.'
+                    : 'El envío tiene una fecha programada. También puedes revisar el correo y enviarlo ahora si ya corresponde.',
                 [],
                 [
-                    'codigo' => 'REPROGRAMAR_ENVIO',
-                    'etiqueta' => 'Ver / reprogramar',
-                    'icono' => 'bi-calendar-check'
+                    'codigo' => 'PREPARAR_CORREO',
+                    'etiqueta' => 'Revisar y enviar correo',
+                    'icono' => 'bi-send'
                 ],
-                null,
+                $accionProgramacion,
                 $seguimiento
             );
         }
