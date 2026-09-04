@@ -169,8 +169,13 @@ class AgendaReunionRepository
         return $stmt->get_result()->fetch_assoc() ?: null;
     }
 
-    public function insertarSolicitud($seguimientoId, $analistaId, $cuentaClaveId, $fecha, $duracion, $modalidad, $objetivo, $notas)
+    public function insertarSolicitud($seguimientoId, $analistaId, $fecha, $duracion, $modalidad, $objetivo, $notas)
     {
+        $cuentaClaveId = $this->cuentaClaveParaSeguimiento($seguimientoId, $analistaId);
+        if ($cuentaClaveId <= 0) {
+            throw new RuntimeException('No hay una Cuenta Clave activa vinculada al territorio del Analista.');
+        }
+
         $sql = "INSERT INTO reuniones_vinculacion
                 (seguimiento_id,analista_id,cuenta_clave_id,fecha_propuesta,duracion_minutos,modalidad,objetivo,notas_analista,estado)
                 VALUES (?,?,?,?,?,?,?,?,'SOLICITADA')";
@@ -259,8 +264,13 @@ class AgendaReunionRepository
         $stmt->execute();
     }
 
-    public function pendientesKam($kamId, $limite)
+    public function pendientesKam($limite)
     {
+        $kamId = (int)($_SESSION['usuario_id'] ?? 0);
+        if ($kamId <= 0) {
+            return [];
+        }
+
         $sql = "SELECT r.id,r.seguimiento_id,r.fecha_propuesta,s.nombre_entidad
                 FROM reuniones_vinculacion r JOIN seguimientos_vinculacion s ON s.id=r.seguimiento_id
                 WHERE r.estado='SOLICITADA' AND r.cuenta_clave_id=?
