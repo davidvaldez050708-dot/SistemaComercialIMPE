@@ -34,6 +34,59 @@
                 Number(recordatorio.id || recordatorio.seguimiento_id || 0);
         };
 
+        const dosDigitos = function (valor) {
+            return String(valor).padStart(2, '0');
+        };
+
+        const etiquetaVisibleRecordatorio = function (recordatorio) {
+            const etiquetaOriginal = String(recordatorio.etiqueta || '').trim();
+            const estado = String(recordatorio.estado || '').trim().toLowerCase();
+            const fechaTexto = String(recordatorio.fecha || '').trim();
+
+            if (estado !== 'vencida' || fechaTexto === '') {
+                return etiquetaOriginal;
+            }
+
+            const momento = new Date(fechaTexto.replace(' ', 'T'));
+            if (Number.isNaN(momento.getTime())) {
+                return etiquetaOriginal;
+            }
+
+            const ahora = new Date();
+            const hoy = new Date(
+                ahora.getFullYear(),
+                ahora.getMonth(),
+                ahora.getDate()
+            );
+            const diaEvento = new Date(
+                momento.getFullYear(),
+                momento.getMonth(),
+                momento.getDate()
+            );
+            const diferenciaDias = Math.round(
+                (diaEvento.getTime() - hoy.getTime()) / 86400000
+            );
+            const hora = dosDigitos(momento.getHours()) + ':' +
+                dosDigitos(momento.getMinutes());
+            const diaMes = dosDigitos(momento.getDate()) + '/' +
+                dosDigitos(momento.getMonth() + 1);
+
+            if (diferenciaDias === 0) {
+                return 'Vencida hoy · ' + hora;
+            }
+
+            if (diferenciaDias === -1) {
+                return 'Ayer · ' + diaMes + ' · ' + hora;
+            }
+
+            if (momento.getFullYear() === ahora.getFullYear()) {
+                return 'Vencida · ' + diaMes + ' · ' + hora;
+            }
+
+            return 'Vencida · ' + diaMes + '/' + momento.getFullYear() +
+                ' · ' + hora;
+        };
+
         const asegurarContenedorToasts = function () {
             let contenedor = document.querySelector('[data-reminder-toast-container]');
 
@@ -124,6 +177,7 @@
                 '<div class="topbar-reminder-list">' +
                 lista.map(function (recordatorio) {
                     const url = escapar(urlRecordatorio(recordatorio));
+                    const etiqueta = etiquetaVisibleRecordatorio(recordatorio);
                     return (
                         '<a class="topbar-reminder-item" href="' + url + '">' +
                             '<span class="topbar-reminder-icon">' +
@@ -134,7 +188,7 @@
                                 '<span>' + escapar(recordatorio.accion || '') + '</span>' +
                             '</span>' +
                             '<span class="topbar-reminder-time is-' + escapar(recordatorio.estado || 'normal') + '">' +
-                                escapar(recordatorio.etiqueta || '') +
+                                escapar(etiqueta) +
                             '</span>' +
                         '</a>'
                     );
