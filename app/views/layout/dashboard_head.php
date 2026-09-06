@@ -106,6 +106,10 @@ $fotoPerfilUrl = $fotoPerfil !== ''
     <script
         src="<?= BASE_URL ?>public/javascript/agenda_historial_navegacion.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/agenda_historial_navegacion.js') ?>">
     </script>
+
+    <script
+        src="<?= BASE_URL ?>public/javascript/seguimiento_bandeja_sync.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/seguimiento_bandeja_sync.js') ?>">
+    </script>
 </head>
 
 <body>
