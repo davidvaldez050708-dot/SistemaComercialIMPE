@@ -11,13 +11,29 @@
         }
 
         const rolId = Number(root.getAttribute('data-agenda-role') || 0);
-        let reunionActualId = Number(root.getAttribute('data-agenda-initial-meeting') || 0);
+        const seguimientoInicial = Number(
+            root.getAttribute('data-agenda-initial-follow') || 0
+        );
+        let reunionActualId = Number(
+            root.getAttribute('data-agenda-initial-meeting') || 0
+        );
         const reuniones = leerJson('agendaReunionesData');
         const porId = new Map(
             reuniones.map(function (item) {
                 return [Number(item.id || 0), item];
             })
         );
+
+        if (reunionActualId <= 0 && seguimientoInicial > 0) {
+            const reunionInicial = reuniones.find(function (item) {
+                return Number(item.seguimiento_id || 0) === seguimientoInicial &&
+                    String(item.estado || '') !== 'CANCELADA';
+            });
+
+            if (reunionInicial) {
+                reunionActualId = Number(reunionInicial.id || 0);
+            }
+        }
 
         document.addEventListener('click', function (event) {
             const boton = event.target.closest('[data-agenda-meeting]');
