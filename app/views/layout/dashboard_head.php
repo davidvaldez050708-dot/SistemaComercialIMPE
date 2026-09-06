@@ -87,6 +87,10 @@ $fotoPerfilUrl = $fotoPerfil !== ''
         rel="stylesheet"
         href="<?= BASE_URL ?>public/css/agenda_reunion.css?v=<?= filemtime(ROOT_PATH . '/public/css/agenda_reunion.css') ?>">
 
+    <link
+        rel="stylesheet"
+        href="<?= BASE_URL ?>public/css/agenda_reunion_refinamientos.css?v=<?= filemtime(ROOT_PATH . '/public/css/agenda_reunion_refinamientos.css') ?>">
+
     <script
         src="<?= BASE_URL ?>public/javascript/agenda_reunion.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/agenda_reunion.js') ?>">
     </script>
