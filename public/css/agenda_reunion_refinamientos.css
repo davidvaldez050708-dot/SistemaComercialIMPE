@@ -1,0 +1,22 @@
+/* Ajustes visuales puntuales de estados de la agenda. */
+
+.agenda-status-pill.is-correo-enviado {
+    border: 1px solid #d7e2f1;
+    background: #eef3fb;
+    color: var(--color-primary);
+}
+
+.agenda-inline-note.is-success {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid #dbe4f1;
+    background: #f5f7fb;
+    color: #40516d;
+    font-weight: 650;
+}
+
+.agenda-inline-note.is-success i {
+    color: var(--color-primary);
+    font-size: 12px;
+}
