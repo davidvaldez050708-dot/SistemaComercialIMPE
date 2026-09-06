@@ -180,6 +180,7 @@
             const proximaFila = fila?.querySelector('[data-row-next-action]');
 
             if (proximaFila && flujo.titulo) {
+                proximaFila.dataset.flowNextAction = String(flujo.titulo);
                 proximaFila.textContent = flujo.titulo;
             }
         };
