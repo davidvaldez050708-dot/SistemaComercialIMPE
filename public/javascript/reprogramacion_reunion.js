@@ -25,6 +25,7 @@
                 return;
             }
             reunionActualId = Number(boton.getAttribute('data-agenda-meeting') || 0);
+            body.removeAttribute('data-reprogramacion-procesada');
         }, true);
 
         document.addEventListener('submit', function (event) {
@@ -49,6 +50,23 @@
         }, true);
 
         const observer = new MutationObserver(function () {
+            const reunion = porId.get(reunionActualId);
+            if (!reunion) {
+                return;
+            }
+
+            const token = [
+                reunionActualId,
+                String(reunion.estado || ''),
+                Number(reunion.es_reprogramacion || 0),
+                rolId
+            ].join(':');
+
+            if (body.getAttribute('data-reprogramacion-procesada') === token) {
+                return;
+            }
+
+            body.setAttribute('data-reprogramacion-procesada', token);
             prepararDetalle();
         });
         observer.observe(body, { childList: true, subtree: true });
@@ -99,10 +117,10 @@
 
                 const titulo = form?.closest('.agenda-action-box')?.querySelector('h6');
                 const texto = form?.closest('.agenda-action-box')?.querySelector('p');
-                if (titulo) {
+                if (titulo && titulo.textContent !== 'Confirmar nueva fecha') {
                     titulo.textContent = 'Confirmar nueva fecha';
                 }
-                if (texto) {
+                if (texto && texto.textContent !== 'Revisa la nueva fecha. Puedes conservar el enlace de Zoom anterior o reemplazarlo antes de confirmar.') {
                     texto.textContent = 'Revisa la nueva fecha. Puedes conservar el enlace de Zoom anterior o reemplazarlo antes de confirmar.';
                 }
             }
@@ -117,8 +135,9 @@
                 if (titulo && titulo.textContent.trim() === 'Reunión formalmente agendada') {
                     titulo.textContent = 'Reunión reprogramada';
                 }
-                if (nota) {
+                if (nota && nota.dataset.reprogramacionNota !== '1') {
                     nota.innerHTML = '<i class="bi bi-check2-circle"></i> Reprogramación enviada a la institución.';
+                    nota.dataset.reprogramacionNota = '1';
                 }
             }
         }
