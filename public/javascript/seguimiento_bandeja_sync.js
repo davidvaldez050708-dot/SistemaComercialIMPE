@@ -7,6 +7,53 @@
             return;
         }
 
+        const observadores = new WeakMap();
+
+        const fijarAccionAutoritativa = function (celda, titulo) {
+            if (!celda) {
+                return;
+            }
+
+            const texto = String(titulo || '').trim();
+            if (texto === '') {
+                return;
+            }
+
+            celda.dataset.flowNextAction = texto;
+
+            if (String(celda.textContent || '').trim() !== texto) {
+                celda.textContent = texto;
+            }
+
+            if (observadores.has(celda) || !window.MutationObserver) {
+                return;
+            }
+
+            const observador = new MutationObserver(function () {
+                const autoritativa = String(celda.dataset.flowNextAction || '').trim();
+                const actual = String(celda.textContent || '').trim();
+
+                if (autoritativa === '' || actual === autoritativa) {
+                    return;
+                }
+
+                observador.disconnect();
+                celda.textContent = autoritativa;
+                observador.observe(celda, {
+                    childList: true,
+                    characterData: true,
+                    subtree: true
+                });
+            });
+
+            observador.observe(celda, {
+                childList: true,
+                characterData: true,
+                subtree: true
+            });
+            observadores.set(celda, observador);
+        };
+
         const filas = Array.from(
             tabla.querySelectorAll('[data-linkage-follow-row]')
         ).map(function (fila) {
@@ -63,7 +110,7 @@
                 const celda = item.fila.querySelector('[data-row-next-action]');
 
                 if (datos?.ok && titulo !== '' && celda) {
-                    celda.textContent = titulo;
+                    fijarAccionAutoritativa(celda, titulo);
                 }
             } catch (error) {
                 // La bandeja conserva el valor renderizado por PHP si no puede sincronizarse.
