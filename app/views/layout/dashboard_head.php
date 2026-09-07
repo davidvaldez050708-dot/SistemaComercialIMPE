@@ -124,6 +124,10 @@ $fotoPerfilUrl = $fotoPerfil !== ''
     </script>
 
     <script
+        src="<?= BASE_URL ?>public/javascript/seguimiento_resumen_ruta.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/seguimiento_resumen_ruta.js') ?>">
+    </script>
+
+    <script
         src="<?= BASE_URL ?>public/javascript/seguimiento_flujo_loading.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/seguimiento_flujo_loading.js') ?>">
     </script>
 
