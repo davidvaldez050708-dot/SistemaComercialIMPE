@@ -1,0 +1,103 @@
+/* Ajuste visual de la barra de filtros de Seguimiento Vinculación.
+   Mantiene filtros y acciones alineados en una sola fila en escritorio. */
+
+@media (min-width: 1280px) {
+    .linkage-tools-form {
+        grid-template-columns:
+            minmax(260px, 1.35fr)
+            minmax(150px, 0.68fr)
+            minmax(205px, 0.9fr)
+            minmax(210px, 1fr)
+            auto;
+        column-gap: 12px;
+        row-gap: 8px;
+        align-items: end;
+    }
+
+    .linkage-tools-form > .linkage-search-field {
+        grid-column: 1;
+        grid-row: 1;
+    }
+
+    .linkage-tools-form > .data-filter-field:has([data-linkage-stage-filter]) {
+        grid-column: 2;
+        grid-row: 1;
+    }
+
+    .linkage-tools-form > .data-filter-field:has([data-linkage-route-filter]) {
+        grid-column: 3;
+        grid-row: 1;
+    }
+
+    .linkage-tools-form > .data-filter-field:has([data-linkage-municipality-filter]) {
+        grid-column: 4;
+        grid-row: 1;
+    }
+
+    .linkage-tools-form:not(:has([data-linkage-analyst-filter])) .linkage-tools-actions {
+        grid-column: 5;
+        grid-row: 1;
+        align-self: end;
+        justify-self: end;
+        justify-content: flex-end;
+        flex-wrap: nowrap;
+        white-space: nowrap;
+    }
+
+    .linkage-tools-form:not(:has([data-linkage-analyst-filter])) .linkage-filter-clear-slot {
+        grid-column: 1 / 5;
+        grid-row: 2;
+        min-height: 18px;
+        align-items: flex-start;
+    }
+
+    .linkage-tools-form:not(:has([data-linkage-analyst-filter])) .linkage-action-button {
+        min-height: 42px;
+        padding-left: 16px;
+        padding-right: 16px;
+    }
+
+    /* Supervisor / administrador: conserva todos los filtros sin comprimirlos demasiado. */
+    .linkage-tools-form:has([data-linkage-analyst-filter]) {
+        grid-template-columns:
+            minmax(240px, 1.2fr)
+            minmax(145px, 0.65fr)
+            minmax(190px, 0.85fr)
+            minmax(190px, 0.9fr)
+            minmax(170px, 0.8fr);
+    }
+
+    .linkage-tools-form:has([data-linkage-analyst-filter]) .linkage-tools-actions {
+        grid-column: 4 / -1;
+        grid-row: 2;
+        justify-content: flex-end;
+    }
+
+    .linkage-tools-form:has([data-linkage-analyst-filter]) .linkage-filter-clear-slot {
+        grid-column: 1 / 4;
+        grid-row: 2;
+        min-height: 42px;
+    }
+}
+
+@media (max-width: 1279.98px) and (min-width: 769px) {
+    .linkage-tools-form {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .linkage-tools-actions {
+        grid-column: 1 / -1;
+        justify-content: flex-end;
+    }
+}
+
+@media (max-width: 768px) {
+    .linkage-tools-form {
+        grid-template-columns: 1fr;
+    }
+
+    .linkage-tools-actions,
+    .linkage-filter-clear-slot {
+        grid-column: 1;
+    }
+}
