@@ -5,6 +5,7 @@ require_once __DIR__ . '/../services/AgendaReunionService.php';
 require_once __DIR__ . '/../services/ReminderAgendaFilterService.php';
 require_once __DIR__ . '/../services/ReminderReunionFollowupService.php';
 require_once __DIR__ . '/../services/ReminderDirectLinkService.php';
+require_once __DIR__ . '/../services/ReminderObservacionService.php';
 
 class ReminderController
 {
@@ -12,6 +13,7 @@ class ReminderController
     private $reminderAgendaFilterService;
     private $reminderReunionFollowupService;
     private $reminderDirectLinkService;
+    private $reminderObservacionService;
 
     public function __construct()
     {
@@ -19,6 +21,7 @@ class ReminderController
         $this->reminderAgendaFilterService = new ReminderAgendaFilterService();
         $this->reminderReunionFollowupService = new ReminderReunionFollowupService();
         $this->reminderDirectLinkService = new ReminderDirectLinkService();
+        $this->reminderObservacionService = new ReminderObservacionService();
     }
 
     public function pendientes()
@@ -75,6 +78,19 @@ class ReminderController
                 $seguimientoReunion['avisos'] ?? []
             );
 
+            // Las observaciones de Cuenta Clave se muestran como notificaciones
+            // persistentes hasta que el Analista abra ese seguimiento.
+            $observaciones = $this->reminderObservacionService->obtener(
+                $usuarioId,
+                10
+            );
+            $recordatoriosObservaciones = array_values(
+                $observaciones['recordatorios'] ?? []
+            );
+            $avisosObservaciones = array_values(
+                $observaciones['avisos'] ?? []
+            );
+
             // Si el servicio especializado ya reconoce un seguimiento como
             // "Dar seguimiento a acuerdos", eliminamos cualquier recordatorio o
             // aviso genérico del mismo seguimiento. Esto evita que sobrevivan
@@ -127,6 +143,7 @@ class ReminderController
 
             $recordatorios = array_slice(
                 array_merge(
+                    $recordatoriosObservaciones,
                     $recordatoriosAgenda,
                     $recordatoriosAcuerdos,
                     $recordatoriosSeguimiento
@@ -135,6 +152,7 @@ class ReminderController
                 12
             );
             $avisos = array_values(array_merge(
+                $avisosObservaciones,
                 $avisosAgenda,
                 $avisosAcuerdos,
                 $avisosSeguimiento
