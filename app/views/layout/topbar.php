@@ -9,6 +9,7 @@ $esAnalistaDatos = $rolTopbarId === 4;
 $esCuentaClave = $rolTopbarId === 6;
 $mostrarCentroAvisos = $esAnalistaDatos || $esCuentaClave;
 $mostrarAgendaReuniones = $mostrarCentroAvisos;
+$trabajarNotificacionId = (int)($_GET['trabajar_id'] ?? 0);
 
 if ($esAnalistaDatos) {
     $recordatoriosSeguimiento = obtenerRecordatoriosSeguimientoAnalista(
@@ -99,10 +100,17 @@ $totalRecordatoriosSeguimiento = count($recordatoriosSeguimiento);
                                         $etiquetaRecordatorio = (string)(
                                             $recordatorio['recordatorio']['etiqueta'] ?? ''
                                         );
+                                        $recordatorioId = (int)($recordatorio['id'] ?? 0);
+                                        $recordatorioEstadoId = (int)($recordatorio['estado_id'] ?? 0);
+                                        $urlRecordatorioTopbar = $recordatorioEstadoId > 0
+                                            ? BASE_URL . 'index.php?controller=seguimientoVinculacion&action=estado&estado_id=' .
+                                                $recordatorioEstadoId . '&trabajar_id=' . $recordatorioId
+                                            : BASE_URL . 'index.php?controller=seguimientoVinculacion&action=detalle&id=' .
+                                                $recordatorioId;
                                         ?>
                                         <a
                                             class="topbar-reminder-item"
-                                            href="<?= BASE_URL ?>index.php?controller=seguimientoVinculacion&action=detalle&id=<?= (int)($recordatorio['id'] ?? 0) ?>">
+                                            href="<?= htmlspecialchars($urlRecordatorioTopbar, ENT_QUOTES, 'UTF-8') ?>">
                                             <span class="topbar-reminder-icon">
                                                 <i class="bi <?= htmlspecialchars(iconoAccionRecordatorioSeguimiento($accionRecordatorio), ENT_QUOTES, 'UTF-8') ?>"></i>
                                             </span>
@@ -198,5 +206,44 @@ $totalRecordatoriosSeguimiento = count($recordatoriosSeguimiento);
         </div>
 
     </header>
+
+    <?php if ($trabajarNotificacionId > 0): ?>
+        <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const seguimientoId = <?= $trabajarNotificacionId ?>;
+            let intentos = 0;
+
+            const abrirTrabajoNotificacion = function () {
+                const boton = document.querySelector(
+                    '[data-work-follow-id="' + seguimientoId + '"]'
+                );
+
+                if (!boton) {
+                    intentos += 1;
+                    if (intentos < 20) {
+                        window.setTimeout(abrirTrabajoNotificacion, 100);
+                    }
+                    return;
+                }
+
+                boton.click();
+
+                try {
+                    const url = new URL(window.location.href);
+                    url.searchParams.delete('trabajar_id');
+                    window.history.replaceState(
+                        null,
+                        '',
+                        url.pathname + url.search + url.hash
+                    );
+                } catch (error) {
+                    console.warn('No fue posible limpiar el destino de la notificación.', error);
+                }
+            };
+
+            window.setTimeout(abrirTrabajoNotificacion, 140);
+        });
+        </script>
+    <?php endif; ?>
 
     <section class="admin-content">
