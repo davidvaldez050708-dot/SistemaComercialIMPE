@@ -14,115 +14,80 @@ class ReminderAgendaFilterService
 
     public function filtrarRecordatoriosSeguimiento($items, $analistaId)
     {
-        $items = is_array($items) ? $items : [];
-        $analistaId = (int)$analistaId;
-        $idsConReunion = $this->obtenerSeguimientosConReunionActiva($analistaId);
-        $idsSeguimientoAcuerdos = $this->obtenerSeguimientosConAcuerdosPendientes($analistaId);
-        $salida = [];
-
-        foreach ($items as $item) {
-            $seguimientoId = (int)($item['id'] ?? $item['seguimiento_id'] ?? 0);
-
-            if ($seguimientoId > 0 && isset($idsConReunion[$seguimientoId])) {
-                continue;
-            }
-
-            if ($seguimientoId > 0 && isset($idsSeguimientoAcuerdos[$seguimientoId])) {
-                $item['accion'] = 'Dar seguimiento a acuerdos';
-                $item['icono'] = 'bi-clipboard-check';
-            }
-
-            $salida[] = $item;
-        }
-
-        return array_values($salida);
+        return $this->filtrarItems($items, (int)$analistaId, false);
     }
 
     public function filtrarAvisosSeguimiento($items, $analistaId)
     {
+        return $this->filtrarItems($items, (int)$analistaId, true);
+    }
+
+    private function filtrarItems($items, $analistaId, $esAviso)
+    {
         $items = is_array($items) ? $items : [];
-        $analistaId = (int)$analistaId;
-        $idsConReunion = $this->obtenerSeguimientosConReunionActiva($analistaId);
-        $idsSeguimientoAcuerdos = $this->obtenerSeguimientosConAcuerdosPendientes($analistaId);
-        $salida = [];
+        $idsBloqueados = $this->obtenerSeguimientosAdministradosPorAgenda($analistaId);
 
-        foreach ($items as $item) {
-            $seguimientoId = (int)($item['seguimiento_id'] ?? $item['id'] ?? 0);
-
-            if ($seguimientoId > 0 && isset($idsConReunion[$seguimientoId])) {
-                continue;
-            }
-
-            if ($seguimientoId > 0 && isset($idsSeguimientoAcuerdos[$seguimientoId])) {
-                $institucion = trim((string)($item['institucion'] ?? ''));
-                $item['accion'] = 'Dar seguimiento a acuerdos';
-                $item['mensaje'] = 'Dar seguimiento a acuerdos' .
-                    ($institucion !== '' ? ' · ' . $institucion : '');
-                $item['icono'] = 'bi-clipboard-check';
-            }
-
-            $salida[] = $item;
+        if (empty($idsBloqueados)) {
+            return array_values($items);
         }
 
-        return array_values($salida);
+        return array_values(array_filter(
+            $items,
+            static function ($item) use ($idsBloqueados, $esAviso) {
+                $seguimientoId = $esAviso
+                    ? (int)($item['seguimiento_id'] ?? $item['id'] ?? 0)
+                    : (int)($item['id'] ?? $item['seguimiento_id'] ?? 0);
+
+                return $seguimientoId <= 0 || !isset($idsBloqueados[$seguimientoId]);
+            }
+        ));
     }
 
-    private function obtenerSeguimientosConReunionActiva($analistaId)
+    private function obtenerSeguimientosAdministradosPorAgenda($analistaId)
     {
-        if ($analistaId <= 0 || !$this->tablaDisponible('reuniones_vinculacion')) {
+        if ($analistaId <= 0) {
             return [];
         }
 
-        $sql = "SELECT DISTINCT seguimiento_id
-                FROM reuniones_vinculacion
-                WHERE analista_id = ?
-                  AND estado NOT IN ('CANCELADA', 'REALIZADA')";
-        $stmt = $this->connection->prepare($sql);
-        $stmt->bind_param('i', $analistaId);
-        $stmt->execute();
-        $resultado = $stmt->get_result();
         $ids = [];
 
-        while ($fila = $resultado->fetch_assoc()) {
-            $id = (int)($fila['seguimiento_id'] ?? 0);
-            if ($id > 0) {
-                $ids[$id] = true;
+        if ($this->tablaDisponible('reuniones_vinculacion')) {
+            $sql = "SELECT DISTINCT seguimiento_id
+                    FROM reuniones_vinculacion
+                    WHERE analista_id = ?
+                      AND estado <> 'CANCELADA'";
+            $stmt = $this->connection->prepare($sql);
+            $stmt->bind_param('i', $analistaId);
+            $stmt->execute();
+            $resultado = $stmt->get_result();
+
+            while ($fila = $resultado->fetch_assoc()) {
+                $id = (int)($fila['seguimiento_id'] ?? 0);
+                if ($id > 0) {
+                    $ids[$id] = true;
+                }
             }
         }
 
-        return $ids;
-    }
+        if ($this->tablaDisponible('seguimientos_vinculacion_post_envio')) {
+            $sql = "SELECT seguimientos.id
+                    FROM seguimientos_vinculacion seguimientos
+                    JOIN seguimientos_vinculacion_post_envio post
+                        ON post.seguimiento_id = seguimientos.id
+                    WHERE seguimientos.analista_id = ?
+                      AND seguimientos.activo = 1
+                      AND seguimientos.estado_seguimiento <> 'DESCARTADO'
+                      AND post.reunion_realizada_at IS NOT NULL";
+            $stmt = $this->connection->prepare($sql);
+            $stmt->bind_param('i', $analistaId);
+            $stmt->execute();
+            $resultado = $stmt->get_result();
 
-    private function obtenerSeguimientosConAcuerdosPendientes($analistaId)
-    {
-        if (
-            $analistaId <= 0 ||
-            !$this->tablaDisponible('seguimientos_vinculacion_post_envio')
-        ) {
-            return [];
-        }
-
-        $sql = "SELECT seguimientos.id
-                FROM seguimientos_vinculacion seguimientos
-                JOIN seguimientos_vinculacion_post_envio post
-                    ON post.seguimiento_id = seguimientos.id
-                WHERE seguimientos.analista_id = ?
-                  AND seguimientos.activo = 1
-                  AND seguimientos.estado_seguimiento <> 'DESCARTADO'
-                  AND seguimientos.proxima_accion_at IS NOT NULL
-                  AND post.reunion_realizada_at IS NOT NULL
-                  AND post.reunion_resultado = 'REQUIERE_SEGUIMIENTO'
-                  AND post.convenio_formalizado_at IS NULL";
-        $stmt = $this->connection->prepare($sql);
-        $stmt->bind_param('i', $analistaId);
-        $stmt->execute();
-        $resultado = $stmt->get_result();
-        $ids = [];
-
-        while ($fila = $resultado->fetch_assoc()) {
-            $id = (int)($fila['id'] ?? 0);
-            if ($id > 0) {
-                $ids[$id] = true;
+            while ($fila = $resultado->fetch_assoc()) {
+                $id = (int)($fila['id'] ?? 0);
+                if ($id > 0) {
+                    $ids[$id] = true;
+                }
             }
         }
 
