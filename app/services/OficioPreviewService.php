@@ -5,7 +5,7 @@ require_once __DIR__ . '/../../config/db_connection.php';
 class OficioPreviewService
 {
     private const NOMBRE_PLANTILLA =
-        'Oficio institucional provisional - Fundación Red Educativa México';
+        'Oficio Programa de Profesionalización REDMEX 2026';
 
     private $connection;
 
@@ -43,7 +43,7 @@ class OficioPreviewService
 
         if (!$plantilla) {
             return $this->error(
-                'No fue posible preparar la plantilla provisional del oficio.',
+                'No fue posible preparar la plantilla institucional del oficio.',
                 500
             );
         }
@@ -69,7 +69,8 @@ class OficioPreviewService
             '{{INSTITUCION}}' => trim((string)($seguimiento['nombre_entidad'] ?? '')),
             '{{ESTADO}}' => trim((string)($seguimiento['estado_nombre'] ?? '')),
             '{{ANALISTA_NOMBRE}}' => $analistaNombre,
-            '{{ANALISTA_CORREO}}' => trim((string)($seguimiento['analista_correo'] ?? ''))
+            '{{ANALISTA_CORREO}}' => trim((string)($seguimiento['analista_correo'] ?? '')),
+            '{{ANALISTA_TELEFONO}}' => trim((string)($seguimiento['analista_telefono'] ?? ''))
         ];
 
         return [
@@ -90,9 +91,10 @@ class OficioPreviewService
                 'destinatario_correo' => (string)($seguimiento['destinatario_correo'] ?? ''),
                 'analista_nombre' => $analistaNombre,
                 'analista_correo' => (string)($seguimiento['analista_correo'] ?? ''),
+                'analista_telefono' => (string)($seguimiento['analista_telefono'] ?? ''),
                 'estado_oficio' => (string)($seguimiento['estado_oficio'] ?? ''),
                 'plantilla' => (string)($plantilla['nombre'] ?? self::NOMBRE_PLANTILLA),
-                'provisional' => true
+                'provisional' => false
             ]
         ];
     }
@@ -108,6 +110,7 @@ class OficioPreviewService
                     analista.nombre AS analista_nombre,
                     analista.apellidos AS analista_apellidos,
                     analista.correo AS analista_correo,
+                    analista.telefono AS analista_telefono,
                     oficio.id AS oficio_id,
                     oficio.folio,
                     oficio.plantilla_oficio_id,
@@ -192,31 +195,35 @@ class OficioPreviewService
         }
 
         $descripcion =
-            'Plantilla provisional para el primer acercamiento institucional del prototipo.';
-        $asunto = 'Invitación a vinculación institucional';
+            'Formato institucional REDMEX 2026 para solicitar reunión y presentar el programa de profesionalización.';
+        $asunto = 'Programa de Profesionalización';
         $contenido = <<<'TEXTO'
 {{DESTINATARIO_NOMBRE}}
 {{DESTINATARIO_CARGO}}
 {{INSTITUCION}}
-Presente.
+{{ESTADO}}
+P R E S E N T E
 
-Por medio de la presente, reciba un cordial saludo.
+Por medio de la presente, me dirijo a usted en representación de Red Educativa México, con la finalidad de solicitar atentamente la oportunidad de concertar una reunión para presentar un programa de profesionalización, que les permite obtener el Certificado de Bachillerato y/o el Título Profesional mediante un proceso académico.
 
-Nos ponemos en contacto en representación de la Fundación Red Educativa México, con el propósito de establecer un primer acercamiento con {{INSTITUCION}} y explorar oportunidades de colaboración y vinculación que puedan resultar de interés para ambas partes.
+Dichos programas cuentan con validez oficial y se encuentran regulados por la Secretaría de Educación Pública Federal, la cual nos otorga la responsabilidad como Sede Autorizada, que establece los lineamientos y criterios para la revalidación y equivalencia de estudios dentro del Sistema Educativo Nacional.
 
-Como parte de nuestras actividades, buscamos generar espacios de comunicación con instituciones y organizaciones de {{ESTADO}}, con la finalidad de presentar nuestras iniciativas, conocer sus áreas de interés e identificar posibles oportunidades de colaboración.
+En congruencia con las políticas de desarrollo del país, orientadas a propiciar nuevas oportunidades educativas para quienes, de manera voluntaria, deseen acreditar los niveles Medio Superior y Superior, hemos desarrollado mecanismos que permiten consolidar perfiles más competitivos, con reconocimiento oficial y aplicabilidad en el ámbito laboral y social.
 
-Por lo anterior, nos gustaría proponer una reunión virtual de presentación, en la cual podamos compartir mayor información sobre la Fundación Red Educativa México y conocer también las necesidades e intereses de su institución.
+Como parte de esta estrategia de profesionalización, Red Educativa México otorga becas académicas preferenciales, con el objetivo de facilitar el acceso a los programas educativos, reducir las barreras económicas y promover la igualdad de oportunidades para las personas participantes.
 
-Agradecemos de antemano su atención y quedamos pendientes para acordar una fecha y horario que resulten convenientes.
+Asimismo, consideramos de suma importancia generar una participación conjunta con su dependencia, a fin de ampliar el alcance e impacto de esta iniciativa. En este contexto, me permito informar que actualmente nos encontramos llevando a cabo el proceso de certificación correspondiente al año 2026, lo que representa una oportunidad inmediata para que más personas puedan beneficiarse de este programa.
 
-Sin otro particular, reciba un cordial saludo.
+Quedamos a su disposición para ampliar la información y coordinar una reunión, presencial o virtual, en la fecha y horario que mejor se ajusten a su agenda.
 
-Atentamente
+Sin otro particular, quedo a sus órdenes para cualquier información adicional.
+
+Atentamente.
 
 {{ANALISTA_NOMBRE}}
-Fundación Red Educativa México
-{{ANALISTA_CORREO}}
+Enlace Institucional
+Móvil/Atención WhatsApp:
+{{ANALISTA_TELEFONO}}
 TEXTO;
 
         $sqlInsertar = "INSERT INTO plantillas_vinculacion (
