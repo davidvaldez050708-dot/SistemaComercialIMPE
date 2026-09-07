@@ -11,6 +11,31 @@
         const textoCarga = 'Consultando ruta...';
         let temporizadorRespaldo = null;
 
+        const mostrarAvisoCarga = function () {
+            const contenedor = document.querySelector('.toast-container');
+
+            if (!contenedor || !window.bootstrap) {
+                return;
+            }
+
+            const toast = document.createElement('div');
+            toast.className = 'toast system-toast';
+            toast.setAttribute('role', 'status');
+            toast.setAttribute('aria-live', 'polite');
+            toast.setAttribute('aria-atomic', 'true');
+            toast.setAttribute('data-bs-delay', '2600');
+            toast.innerHTML =
+                '<div class="toast-body">' +
+                    '<i class="bi bi-hourglass-split"></i>' +
+                    '<span>Espera un momento mientras se actualiza la ruta.</span>' +
+                '</div>';
+            contenedor.appendChild(toast);
+            toast.addEventListener('hidden.bs.toast', function () {
+                toast.remove();
+            });
+            bootstrap.Toast.getOrCreateInstance(toast).show();
+        };
+
         const limpiarPendiente = function () {
             window.clearTimeout(temporizadorRespaldo);
             temporizadorRespaldo = null;
@@ -105,6 +130,20 @@
             }
 
             iniciarCarga(Number(boton.getAttribute('data-work-follow-id') || 0));
+        }, true);
+
+        document.addEventListener('submit', function (event) {
+            const formulario = event.target instanceof Element
+                ? event.target.closest('[data-work-interaction-form]')
+                : null;
+
+            if (!formulario || !offcanvas.hasAttribute('data-flow-ui-pending')) {
+                return;
+            }
+
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            mostrarAvisoCarga();
         }, true);
 
         const observador = new MutationObserver(function () {
