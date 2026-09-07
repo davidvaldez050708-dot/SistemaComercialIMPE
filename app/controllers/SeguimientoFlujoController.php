@@ -4,6 +4,7 @@ require_once __DIR__ . '/../services/SeguimientoFlujoService.php';
 require_once __DIR__ . '/../services/SeguimientoPostEnvioService.php';
 require_once __DIR__ . '/../services/AgendaReunionService.php';
 require_once __DIR__ . '/../services/ReunionFechaGuardService.php';
+require_once __DIR__ . '/../services/ReunionResultadoService.php';
 
 class SeguimientoFlujoController
 {
@@ -11,6 +12,7 @@ class SeguimientoFlujoController
     private $postEnvioService;
     private $agendaReunionService;
     private $reunionFechaGuardService;
+    private $reunionResultadoService;
 
     public function __construct()
     {
@@ -18,6 +20,7 @@ class SeguimientoFlujoController
         $this->postEnvioService = new SeguimientoPostEnvioService();
         $this->agendaReunionService = new AgendaReunionService();
         $this->reunionFechaGuardService = new ReunionFechaGuardService();
+        $this->reunionResultadoService = new ReunionResultadoService();
     }
 
     public function estado()
@@ -55,6 +58,12 @@ class SeguimientoFlujoController
             );
 
             $flujo = $this->reunionFechaGuardService->ajustarFlujo(
+                $seguimientoId,
+                $usuarioId,
+                $flujo
+            );
+
+            $flujo = $this->reunionResultadoService->ajustarFlujo(
                 $seguimientoId,
                 $usuarioId,
                 $flujo
@@ -111,17 +120,53 @@ class SeguimientoFlujoController
             ], 409);
         }
 
+        if ($accion === 'REGISTRAR_SEGUIMIENTO_REUNION') {
+            $resultado = $this->reunionResultadoService->registrarSeguimiento(
+                $seguimientoId,
+                $usuarioId,
+                $_POST
+            );
+            $codigoHttp = (int)($resultado['codigo_http'] ?? 200);
+            unset($resultado['codigo_http']);
+            $this->responder($resultado, $codigoHttp);
+        }
+
         if ($accion === 'REGISTRAR_REUNION_REALIZADA') {
-            $validacion = $this->reunionFechaGuardService->validarRegistro(
+            $validacionResultado = $this->reunionResultadoService->validarResultadoReunion(
+                $_POST
+            );
+
+            if (!($validacionResultado['ok'] ?? false)) {
+                $this->responder([
+                    'ok' => false,
+                    'mensaje' => (string)($validacionResultado['mensaje'] ?? 'Revisa los datos del seguimiento posterior a la reunión.')
+                ], (int)($validacionResultado['codigo_http'] ?? 422));
+            }
+
+            $validacionFecha = $this->reunionFechaGuardService->validarRegistro(
                 $seguimientoId,
                 $usuarioId
             );
 
-            if (!($validacion['ok'] ?? false)) {
+            if (!($validacionFecha['ok'] ?? false)) {
                 $this->responder([
                     'ok' => false,
-                    'mensaje' => (string)($validacion['mensaje'] ?? 'La reunión todavía no puede registrarse como realizada.')
-                ], (int)($validacion['codigo_http'] ?? 409));
+                    'mensaje' => (string)($validacionFecha['mensaje'] ?? 'La reunión todavía no puede registrarse como realizada.')
+                ], (int)($validacionFecha['codigo_http'] ?? 409));
+            }
+        }
+
+        if ($accion === 'FORMALIZAR_CONVENIO') {
+            $validacionConvenio = $this->reunionResultadoService->validarFormalizacion(
+                $seguimientoId,
+                $usuarioId
+            );
+
+            if (!($validacionConvenio['ok'] ?? false)) {
+                $this->responder([
+                    'ok' => false,
+                    'mensaje' => (string)($validacionConvenio['mensaje'] ?? 'El seguimiento todavía no puede avanzar a convenio.')
+                ], (int)($validacionConvenio['codigo_http'] ?? 409));
             }
         }
 
@@ -141,6 +186,12 @@ class SeguimientoFlujoController
             $this->reunionFechaGuardService->marcarRealizada(
                 $seguimientoId,
                 $usuarioId
+            );
+
+            $this->reunionResultadoService->programarSeguimientoTrasReunion(
+                $seguimientoId,
+                $usuarioId,
+                $_POST
             );
         }
 
