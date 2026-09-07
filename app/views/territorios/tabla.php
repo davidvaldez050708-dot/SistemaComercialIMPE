@@ -27,7 +27,7 @@ $nombreCortoVisible = function ($nombre, $nombreCorto) use ($texto) {
     return '<span>' . $texto($nombreCorto) . '</span>';
 };
 
-$resumenAsignados = function ($total, $personas, $tipo) use ($texto) {
+$resumenAsignados = function ($total, $personas, $tipo, $limite = 2) use ($texto) {
     $total = (int)$total;
 
     if ($total === 0) {
@@ -35,7 +35,7 @@ $resumenAsignados = function ($total, $personas, $tipo) use ($texto) {
     }
 
     $lista = array_values(array_filter(explode('||', (string)$personas)));
-    $visibles = array_slice($lista, 0, 2);
+    $visibles = array_slice($lista, 0, $limite);
     $html = '<div class="territory-assigned-list">';
     $nombresCompletos = [];
 
@@ -53,7 +53,9 @@ $resumenAsignados = function ($total, $personas, $tipo) use ($texto) {
         $nombre = $partes[0] ?? '';
         $foto = $partes[1] ?? '';
         $rol = $partes[2] ?? '';
-        $contexto = $tipo === 'ANALISTA_DATOS' ? 'analista' : 'cuenta-clave';
+        $contexto = in_array($tipo, ['ANALISTA_DATOS', 'ASESOR'], true)
+            ? 'analista'
+            : 'cuenta-clave';
 
         $html .= '<div class="territory-person">' .
             renderAvatarUsuario(
@@ -111,6 +113,7 @@ $cobertura = function ($cuentasClave, $analistas) {
                     <th>Estado</th>
                     <th>Cuenta Clave</th>
                     <th>Analistas</th>
+                    <th>Asesores</th>
                     <th>Cobertura</th>
                     <th class="text-end">Acciones</th>
                 </tr>
@@ -148,6 +151,17 @@ $cobertura = function ($cuentasClave, $analistas) {
                                     $estado['analista_nombres'] ??
                                     '',
                                 'ANALISTA_DATOS'
+                            ) ?>
+                        </td>
+
+                        <td>
+                            <?= $resumenAsignados(
+                                $estado['asesor_total'] ?? 0,
+                                $estado['asesor_personas'] ??
+                                    $estado['asesor_nombres'] ??
+                                    '',
+                                'ASESOR',
+                                PHP_INT_MAX
                             ) ?>
                         </td>
 

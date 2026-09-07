@@ -4,6 +4,8 @@ require_once __DIR__ . '/../../config/db_connection.php';
 
 class TerritorioModel
 {
+    public const ROL_ASESOR_ID = 3;
+
     private $connection;
 
     public function __construct()
@@ -147,7 +149,10 @@ class TerritorioModel
                     " . $this->subconsultaPersonasAsignaciones('CUENTA_CLAVE') . " AS cuenta_clave_personas,
                     " . $this->subconsultaTotalAsignaciones('ANALISTA_DATOS') . " AS analista_total,
                     " . $this->subconsultaNombresAsignaciones('ANALISTA_DATOS') . " AS analista_nombres,
-                    " . $this->subconsultaPersonasAsignaciones('ANALISTA_DATOS') . " AS analista_personas
+                    " . $this->subconsultaPersonasAsignaciones('ANALISTA_DATOS') . " AS analista_personas,
+                    " . $this->subconsultaTotalAsignaciones('ASESOR') . " AS asesor_total,
+                    " . $this->subconsultaNombresAsignaciones('ASESOR') . " AS asesor_nombres,
+                    " . $this->subconsultaPersonasAsignaciones('ASESOR') . " AS asesor_personas
                 FROM estados";
 
         if (!empty($condiciones)) {
@@ -228,6 +233,38 @@ class TerritorioModel
                     AND asignaciones_territorio.tipo_asignacion = 'ANALISTA_DATOS'
                     AND asignaciones_territorio.activo = 1
                     AND asignaciones_territorio.cuenta_clave_asignacion_id IS NULL
+                    AND (
+                        asignaciones_territorio.fecha_inicio IS NULL
+                        OR asignaciones_territorio.fecha_inicio <= CURDATE()
+                    )
+                    AND (
+                        asignaciones_territorio.fecha_fin IS NULL
+                        OR asignaciones_territorio.fecha_fin >= CURDATE()
+                    )
+                ORDER BY usuarios.nombre, usuarios.apellidos";
+
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param("i", $estadoId);
+        $stmt->execute();
+
+        return $this->convertirResultadoEnArreglo($stmt->get_result());
+    }
+
+    public function obtenerAsesoresActivos($estadoId)
+    {
+        $sql = "SELECT
+                    asignaciones_territorio.*,
+                    usuarios.nombre,
+                    usuarios.apellidos,
+                    usuarios.foto_perfil,
+                    usuarios.usuario,
+                    roles.nombre AS rol
+                FROM asignaciones_territorio
+                INNER JOIN usuarios ON usuarios.id = asignaciones_territorio.usuario_id
+                INNER JOIN roles ON roles.id = usuarios.rol_id
+                WHERE asignaciones_territorio.estado_id = ?
+                    AND asignaciones_territorio.tipo_asignacion = 'ASESOR'
+                    AND asignaciones_territorio.activo = 1
                     AND (
                         asignaciones_territorio.fecha_inicio IS NULL
                         OR asignaciones_territorio.fecha_inicio <= CURDATE()
@@ -399,6 +436,26 @@ class TerritorioModel
             $datos['estado_id'],
             $datos['usuario_id'],
             $datos['cuenta_clave_asignacion_id'],
+            $datos['fecha_inicio'],
+            $datos['observaciones']
+        );
+
+        return $stmt->execute();
+    }
+
+    public function crearAsesor($datos)
+    {
+        $sql = "INSERT INTO asignaciones_territorio (
+                    estado_id, usuario_id, tipo_asignacion,
+                    cuenta_clave_asignacion_id, es_principal,
+                    fecha_inicio, fecha_fin, activo, observaciones
+                ) VALUES (?, ?, 'ASESOR', NULL, 0, ?, NULL, 1, ?)";
+
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param(
+            "iiss",
+            $datos['estado_id'],
+            $datos['usuario_id'],
             $datos['fecha_inicio'],
             $datos['observaciones']
         );
@@ -615,6 +672,23 @@ class TerritorioModel
         return $stmt->get_result()->num_rows > 0;
     }
 
+    public function existeAsesorActivoEnEstado($estadoId, $usuarioId)
+    {
+        $sql = "SELECT id
+                FROM asignaciones_territorio
+                WHERE estado_id = ?
+                    AND usuario_id = ?
+                    AND tipo_asignacion = 'ASESOR'
+                    AND activo = 1
+                LIMIT 1";
+
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param("ii", $estadoId, $usuarioId);
+        $stmt->execute();
+
+        return $stmt->get_result()->num_rows > 0;
+    }
+
     public function obtenerUsuariosCuentaClave()
     {
         return $this->obtenerUsuariosFiltroPorRol('Cuenta Clave');
@@ -623,6 +697,30 @@ class TerritorioModel
     public function obtenerUsuariosAnalistas()
     {
         return $this->obtenerUsuariosFiltroPorRol('Analista de Datos');
+    }
+
+    public function obtenerUsuariosAsesores()
+    {
+        $sql = "SELECT
+                    usuarios.id,
+                    usuarios.nombre,
+                    usuarios.apellidos,
+                    usuarios.foto_perfil,
+                    usuarios.usuario,
+                    roles.nombre AS rol
+                FROM usuarios
+                INNER JOIN roles ON roles.id = usuarios.rol_id
+                WHERE usuarios.estado = 1
+                    AND roles.id = ?
+                    AND roles.estado = 1
+                ORDER BY usuarios.nombre, usuarios.apellidos";
+
+        $stmt = $this->connection->prepare($sql);
+        $rolAsesorId = self::ROL_ASESOR_ID;
+        $stmt->bind_param("i", $rolAsesorId);
+        $stmt->execute();
+
+        return $this->convertirResultadoEnArreglo($stmt->get_result());
     }
 
     public function obtenerUsuariosFiltroPorRol($nombreRol)
@@ -656,6 +754,7 @@ class TerritorioModel
                     usuarios.nombre,
                     usuarios.apellidos,
                     usuarios.foto_perfil,
+                    usuarios.rol_id,
                     roles.nombre AS rol
                 FROM usuarios
                 INNER JOIN roles

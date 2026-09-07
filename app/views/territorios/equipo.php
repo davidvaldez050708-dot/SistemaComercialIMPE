@@ -7,6 +7,8 @@ $equipoTerritorial = $equipoTerritorial ?? [];
 $analistasSinCuentaClave = $analistasSinCuentaClave ?? [];
 $usuariosCuentaClave = $usuariosCuentaClave ?? [];
 $usuariosAnalistas = $usuariosAnalistas ?? [];
+$asesoresTerritorio = $asesoresTerritorio ?? [];
+$usuariosAsesores = $usuariosAsesores ?? [];
 $fechaHoy = date('Y-m-d');
 $tieneCuentasClave = !empty($equipoTerritorial);
 
@@ -432,6 +434,128 @@ $fecha = function ($valorFecha) use ($texto) {
         </section>
 
     <?php endif; ?>
+
+    <section class="territory-team-section">
+        <h4 class="territory-team-section-title">Asesores</h4>
+
+        <article class="territory-team-card">
+            <div class="territory-analyst-list">
+                <?php if (!empty($asesoresTerritorio)): ?>
+
+                    <?php foreach ($asesoresTerritorio as $asesor): ?>
+                        <?php
+                        $nombreAsesor = trim(
+                            ($asesor['nombre'] ?? '') . ' ' .
+                            ($asesor['apellidos'] ?? '')
+                        );
+                        ?>
+
+                        <div class="territory-analyst-row">
+                            <div class="territory-team-person territory-team-person-compact">
+                                <?= renderAvatarUsuario(
+                                    $asesor['nombre'] ?? '',
+                                    $asesor['apellidos'] ?? '',
+                                    $asesor['rol'] ?? 'Asesor de Ventas',
+                                    $asesor['foto_perfil'] ?? '',
+                                    'sm',
+                                    'analista'
+                                ) ?>
+
+                                <div>
+                                    <strong><?= $texto($nombreAsesor) ?></strong>
+                                    <span>Desde <?= $fecha($asesor['fecha_inicio'] ?? '') ?></span>
+                                </div>
+                            </div>
+
+                            <button
+                                type="button"
+                                class="btn btn-territory-finalize"
+                                aria-label="Eliminar asignación del Asesor"
+                                data-finalize-assignment
+                                data-assignment-type="ASESOR"
+                                data-id="<?= (int)$asesor['id'] ?>"
+                                data-name="<?= $texto($nombreAsesor) ?>"
+                                data-has-analysts="0">
+                                <i class="bi bi-stop-circle me-2"></i>
+                                Eliminar asignación
+                            </button>
+                        </div>
+                    <?php endforeach; ?>
+
+                <?php else: ?>
+                    <p class="territory-empty-text">Sin asesores asignados.</p>
+                <?php endif; ?>
+            </div>
+
+            <button
+                type="button"
+                class="btn btn-territory-expand"
+                data-team-toggle
+                data-target="formAsesor"
+                aria-expanded="false"
+                aria-controls="formAsesor">
+                <i class="bi bi-plus-circle me-2"></i>
+                Agregar asesor
+            </button>
+
+            <div class="territory-expandable-form" id="formAsesor" hidden>
+                <form
+                    class="territory-inline-form"
+                    data-team-form
+                    action="<?= BASE_URL ?>index.php?controller=territorio&action=guardarAsignacion"
+                    method="POST">
+                    <input type="hidden" name="estado_id" value="<?= (int)$estado['id'] ?>">
+                    <input type="hidden" name="tipo_asignacion" value="ASESOR">
+
+                    <div>
+                        <label class="form-label" for="asesor_usuario">Asesor</label>
+                        <select
+                            class="form-select"
+                            id="asesor_usuario"
+                            name="usuario_id"
+                            <?= empty($usuariosAsesores) ? 'disabled' : '' ?>
+                            required>
+                            <option value="">
+                                <?= empty($usuariosAsesores)
+                                    ? 'No hay Asesores activos disponibles'
+                                    : 'Seleccionar usuario' ?>
+                            </option>
+                            <?php foreach ($usuariosAsesores as $usuario): ?>
+                                <option value="<?= (int)$usuario['id'] ?>">
+                                    <?= $nombreUsuario($usuario) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <div class="invalid-feedback d-block" data-field-error="usuario_id"></div>
+                    </div>
+
+                    <div>
+                        <label class="form-label" for="asesor_fecha">Fecha de inicio</label>
+                        <input
+                            type="date"
+                            class="form-control"
+                            id="asesor_fecha"
+                            name="fecha_inicio"
+                            value="<?= $fechaHoy ?>">
+                        <div class="invalid-feedback d-block" data-field-error="fecha_inicio"></div>
+                    </div>
+
+                    <div class="territory-inline-actions">
+                        <button type="button" class="btn btn-system-cancel" data-team-cancel>
+                            Cancelar
+                        </button>
+                        <button
+                            type="submit"
+                            class="btn btn-territory-analyst"
+                            <?= empty($usuariosAsesores) ? 'disabled' : '' ?>>
+                            <i class="bi bi-plus-circle me-2"></i>
+                            Agregar asesor
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </article>
+    </section>
 
     <section class="territory-team-section territory-team-add">
         <div>

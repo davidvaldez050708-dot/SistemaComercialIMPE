@@ -370,7 +370,7 @@ $valorForm = function ($campo) use ($datosFormulario, $texto) {
 
                     <div class="modal-body">
                         <p class="confirm-text">
-                            ¿Deseas finalizar la asignación de
+                            <span id="finalizar_asignacion_accion">¿Deseas finalizar la asignación de</span>
                             <strong id="finalizar_asignacion_nombre">este usuario</strong>?
                         </p>
 
@@ -1251,7 +1251,12 @@ document.addEventListener('DOMContentLoaded', function () {
             const mensajeEquipo = document.getElementById('finalizar_equipo_mensaje');
             const botonFinalizarModal =
                 document.getElementById('finalizar_asignacion_boton');
+            const tituloFinalizarModal =
+                document.getElementById('modalFinalizarAsignacionTitulo');
+            const textoAccionFinalizar =
+                document.getElementById('finalizar_asignacion_accion');
             const tieneAnalistas = botonFinalizar.dataset.hasAnalysts === '1';
+            const esAsesor = botonFinalizar.dataset.assignmentType === 'ASESOR';
             const totalAnalistas = parseInt(
                 botonFinalizar.dataset.analystCount || '0',
                 10
@@ -1271,9 +1276,23 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             if (botonFinalizarModal) {
-                botonFinalizarModal.innerHTML = tieneAnalistas
-                    ? '<i class="bi bi-check2-circle me-2"></i>Finalizar Cuenta Clave'
-                    : '<i class="bi bi-check2-circle me-2"></i>Finalizar asignación';
+                botonFinalizarModal.innerHTML = esAsesor
+                    ? '<i class="bi bi-check2-circle me-2"></i>Eliminar asignación'
+                    : (tieneAnalistas
+                        ? '<i class="bi bi-check2-circle me-2"></i>Finalizar Cuenta Clave'
+                        : '<i class="bi bi-check2-circle me-2"></i>Finalizar asignación');
+            }
+
+            if (tituloFinalizarModal) {
+                tituloFinalizarModal.textContent = esAsesor
+                    ? 'Eliminar asignación'
+                    : 'Finalizar asignación';
+            }
+
+            if (textoAccionFinalizar) {
+                textoAccionFinalizar.textContent = esAsesor
+                    ? '¿Deseas eliminar la asignación de'
+                    : '¿Deseas finalizar la asignación de';
             }
 
             if (modalFinalizar) {

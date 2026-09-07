@@ -7,7 +7,8 @@ class TerritorioController
 {
     private $tiposAsignacion = [
         'CUENTA_CLAVE',
-        'ANALISTA_DATOS'
+        'ANALISTA_DATOS',
+        'ASESOR'
     ];
 
     public function index()
@@ -109,6 +110,8 @@ class TerritorioController
             $modeloTerritorio->obtenerAnalistasSinCuentaClave($estadoId);
         $usuariosCuentaClave = $modeloTerritorio->obtenerUsuariosCuentaClave();
         $usuariosAnalistas = $modeloTerritorio->obtenerUsuariosAnalistas();
+        $asesoresTerritorio = $modeloTerritorio->obtenerAsesoresActivos($estadoId);
+        $usuariosAsesores = $modeloTerritorio->obtenerUsuariosAsesores();
 
         require_once __DIR__ . '/../views/territorios/equipo.php';
     }
@@ -137,9 +140,12 @@ class TerritorioController
         if ($datos['tipo_asignacion'] === 'CUENTA_CLAVE') {
             $resultado = $modeloTerritorio->crearCuentaClave($datos);
             $mensajeExito = 'Cuenta Clave asignada correctamente.';
-        } else {
+        } elseif ($datos['tipo_asignacion'] === 'ANALISTA_DATOS') {
             $resultado = $modeloTerritorio->crearAnalista($datos);
             $mensajeExito = 'Analista asignado correctamente.';
+        } else {
+            $resultado = $modeloTerritorio->crearAsesor($datos);
+            $mensajeExito = 'Asesor asignado correctamente.';
         }
 
         if ($this->esSolicitudFetch()) {
@@ -307,18 +313,22 @@ class TerritorioController
             );
         }
 
+        $mensajeFinalizacion = $asignacion['tipo_asignacion'] === 'ASESOR'
+            ? 'Asesor desasignado correctamente.'
+            : 'Asignación finalizada correctamente.';
+
         if ($this->esSolicitudFetch()) {
             $this->responderJson([
                 'ok' => (bool)$resultado,
                 'mensaje' => $resultado
-                    ? 'Asignación finalizada correctamente.'
+                    ? $mensajeFinalizacion
                     : 'No fue posible finalizar la asignación.'
             ], $resultado ? 200 : 500);
         }
 
         if ($resultado) {
             $_SESSION['mensaje_territorio'] =
-                'Asignación finalizada correctamente.';
+                $mensajeFinalizacion;
         } else {
             $_SESSION['error_territorio'] =
                 'No fue posible finalizar la asignación.';
@@ -508,6 +518,12 @@ class TerritorioController
         ) {
             $errores['usuario_id'] =
                 'Para Analista de Datos selecciona un usuario con ese rol.';
+        } elseif (
+            $datos['tipo_asignacion'] === 'ASESOR' &&
+            (int)($usuario['rol_id'] ?? 0) !== TerritorioModel::ROL_ASESOR_ID
+        ) {
+            $errores['usuario_id'] =
+                'Para Asesor selecciona un usuario con ese rol.';
         }
 
         if (strlen($datos['observaciones']) > 255) {
@@ -567,6 +583,18 @@ class TerritorioController
         ) {
             $errores['usuario_id'] =
                 'El analista ya tiene una asignación activa en este territorio.';
+        }
+
+        if (
+            empty($errores) &&
+            $datos['tipo_asignacion'] === 'ASESOR' &&
+            $modeloTerritorio->existeAsesorActivoEnEstado(
+                (int)$datos['estado_id'],
+                (int)$datos['usuario_id']
+            )
+        ) {
+            $errores['usuario_id'] =
+                'El asesor ya tiene una asignación activa en este territorio.';
         }
 
         return $errores;
