@@ -84,6 +84,40 @@
     line-height: 1.45;
 }
 
+#modalSeguimientoPostEnvio [data-reunion-no-realizada-help] {
+    padding: 11px 12px;
+    border-color: var(--color-border) !important;
+    border-radius: var(--radius-sm);
+    background: #f8fafd;
+    color: var(--color-text-secondary);
+    font-size: 11px;
+    line-height: 1.45;
+}
+
+#modalSeguimientoPostEnvio [data-reunion-no-realizada-help] > .d-flex {
+    gap: 8px !important;
+}
+
+#modalSeguimientoPostEnvio [data-reunion-no-realizada-help] i {
+    margin-top: 2px;
+    font-size: 13px;
+}
+
+#modalSeguimientoPostEnvio [data-reunion-no-realizada-help] strong.d-block {
+    margin-bottom: 2px !important;
+    color: var(--color-text-primary);
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1.35;
+}
+
+#modalSeguimientoPostEnvio [data-reunion-no-realizada-help] span.small {
+    color: var(--color-text-secondary) !important;
+    font-size: 11px !important;
+    font-weight: 500;
+    line-height: 1.5;
+}
+
 #modalSeguimientoPostEnvio .modal-footer .btn {
     min-height: 40px;
     padding: 0 14px;
