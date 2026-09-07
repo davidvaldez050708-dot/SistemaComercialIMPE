@@ -69,6 +69,10 @@ $fotoPerfilUrl = $fotoPerfil !== ''
 
     <link
         rel="stylesheet"
+        href="<?= BASE_URL ?>public/css/seguimiento_panel_ruta.css?v=<?= filemtime(ROOT_PATH . '/public/css/seguimiento_panel_ruta.css') ?>">
+
+    <link
+        rel="stylesheet"
         href="<?= BASE_URL ?>public/css/recordatorios.css?v=<?= filemtime(ROOT_PATH . '/public/css/recordatorios.css') ?>">
 
     <link
@@ -107,6 +111,10 @@ $fotoPerfilUrl = $fotoPerfil !== ''
         rel="stylesheet"
         href="<?= BASE_URL ?>public/css/agenda_reunion_refinamientos.css?v=<?= filemtime(ROOT_PATH . '/public/css/agenda_reunion_refinamientos.css') ?>">
 
+    <script>
+        window.IMPE_CURRENT_ROLE_ID = <?= (int)($_SESSION['rol_id'] ?? 0) ?>;
+    </script>
+
     <script
         src="<?= BASE_URL ?>public/javascript/agenda_reunion.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/agenda_reunion.js') ?>">
     </script>
@@ -133,6 +141,10 @@ $fotoPerfilUrl = $fotoPerfil !== ''
 
     <script
         src="<?= BASE_URL ?>public/javascript/seguimiento_resumen_ruta.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/seguimiento_resumen_ruta.js') ?>">
+    </script>
+
+    <script
+        src="<?= BASE_URL ?>public/javascript/seguimiento_panel_ruta.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/seguimiento_panel_ruta.js') ?>">
     </script>
 
     <script
