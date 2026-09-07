@@ -3,16 +3,19 @@
 require_once __DIR__ . '/../helpers/ReminderHelper.php';
 require_once __DIR__ . '/../services/AgendaReunionService.php';
 require_once __DIR__ . '/../services/ReminderAgendaFilterService.php';
+require_once __DIR__ . '/../services/ReminderReunionFollowupService.php';
 
 class ReminderController
 {
     private $agendaReunionService;
     private $reminderAgendaFilterService;
+    private $reminderReunionFollowupService;
 
     public function __construct()
     {
         $this->agendaReunionService = new AgendaReunionService();
         $this->reminderAgendaFilterService = new ReminderAgendaFilterService();
+        $this->reminderReunionFollowupService = new ReminderReunionFollowupService();
     }
 
     public function pendientes()
@@ -49,21 +52,38 @@ class ReminderController
                 $resultado['recordatorios'] ?? []
             );
 
-            // Cuando el seguimiento ya tiene una reunión activa, la agenda compartida
-            // es la fuente correcta de notificaciones. Evitamos mostrar recordatorios
-            // antiguos como "Enviar oficio/correo" que pertenecen a una etapa previa.
+            // Los pasos administrados por la agenda/reunión no deben conservar
+            // recordatorios antiguos como "Enviar oficio/correo".
             $recordatoriosSeguimiento = $this->reminderAgendaFilterService
                 ->filtrarRecordatoriosSeguimiento($recordatoriosSeguimiento, $usuarioId);
             $avisosSeguimiento = $this->reminderAgendaFilterService
                 ->filtrarAvisosSeguimiento($resultado['avisos'] ?? [], $usuarioId);
 
+            // Después de una reunión realizada con acuerdos pendientes usamos un
+            // recordatorio propio: "Dar seguimiento a acuerdos".
+            $seguimientoReunion = $this->reminderReunionFollowupService->obtener(
+                $usuarioId,
+                10
+            );
+            $recordatoriosAcuerdos = array_values(
+                $seguimientoReunion['recordatorios'] ?? []
+            );
+            $avisosAcuerdos = array_values(
+                $seguimientoReunion['avisos'] ?? []
+            );
+
             $recordatorios = array_slice(
-                array_merge($recordatoriosAgenda, $recordatoriosSeguimiento),
+                array_merge(
+                    $recordatoriosAgenda,
+                    $recordatoriosAcuerdos,
+                    $recordatoriosSeguimiento
+                ),
                 0,
                 12
             );
             $avisos = array_values(array_merge(
                 $avisosAgenda,
+                $avisosAcuerdos,
                 $avisosSeguimiento
             ));
             $requiereMigracion = (bool)($resultado['requiere_migracion'] ?? false);
