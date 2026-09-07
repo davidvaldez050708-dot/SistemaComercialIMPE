@@ -12,10 +12,47 @@ $linea = function ($texto = '') {
     echo $texto . PHP_EOL;
 };
 
-$valor = function ($datos, $claves, $default = '') {
+$normalizarTexto = function ($valor, $default = '') {
+    if ($valor === null) {
+        return $default;
+    }
+
+    if (is_scalar($valor)) {
+        $texto = trim((string)$valor);
+        return $texto !== '' ? $texto : $default;
+    }
+
+    if (is_array($valor)) {
+        foreach (['name', 'domain', 'domain_name', 'domainName', 'address', 'value'] as $clave) {
+            if (!array_key_exists($clave, $valor) || $valor[$clave] === null) {
+                continue;
+            }
+
+            if (is_scalar($valor[$clave])) {
+                $texto = trim((string)$valor[$clave]);
+                if ($texto !== '') {
+                    return $texto;
+                }
+            }
+        }
+
+        $json = json_encode(
+            $valor,
+            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+        );
+
+        if (is_string($json) && $json !== '') {
+            return $json;
+        }
+    }
+
+    return $default;
+};
+
+$valor = function ($datos, $claves, $default = '') use ($normalizarTexto) {
     foreach ($claves as $clave) {
         if (array_key_exists($clave, $datos) && $datos[$clave] !== null) {
-            return trim((string)$datos[$clave]);
+            return $normalizarTexto($datos[$clave], $default);
         }
     }
 
