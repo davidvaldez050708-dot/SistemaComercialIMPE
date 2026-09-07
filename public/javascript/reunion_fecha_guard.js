@@ -9,21 +9,29 @@
         }
 
         const aplicarBloqueo = function () {
-            const boton = offcanvas.querySelector(
-                '[data-work-flow-section] [data-flow-action="REUNION_AUN_NO_DISPONIBLE"]'
+            const botones = offcanvas.querySelectorAll(
+                '[data-work-flow-section] [data-flow-action="REUNION_AUN_NO_DISPONIBLE"], ' +
+                '[data-work-flow-section] [data-flow-action="SEGUIMIENTO_REUNION_AUN_NO_DISPONIBLE"]'
             );
 
-            if (!boton || boton.disabled) {
-                return;
-            }
+            botones.forEach(function (boton) {
+                if (boton.disabled) {
+                    return;
+                }
 
-            boton.disabled = true;
-            boton.setAttribute('aria-disabled', 'true');
-            boton.setAttribute(
-                'title',
-                'La reunión todavía no ha ocurrido.'
-            );
-            boton.classList.add('disabled');
+                const esSeguimiento = boton.getAttribute('data-flow-action') ===
+                    'SEGUIMIENTO_REUNION_AUN_NO_DISPONIBLE';
+
+                boton.disabled = true;
+                boton.setAttribute('aria-disabled', 'true');
+                boton.setAttribute(
+                    'title',
+                    esSeguimiento
+                        ? 'El seguimiento de acuerdos todavía no llega a su fecha programada.'
+                        : 'La reunión todavía no ha ocurrido.'
+                );
+                boton.classList.add('disabled');
+            });
         };
 
         const observador = new MutationObserver(function () {
