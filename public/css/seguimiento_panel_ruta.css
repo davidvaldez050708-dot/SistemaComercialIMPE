@@ -1,0 +1,74 @@
+/* Ruta visible dentro del panel lateral de Seguimiento Vinculación. */
+
+.linkage-work-route-card {
+    display: grid;
+    gap: 8px;
+}
+
+.linkage-work-route-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.linkage-work-route-head > span {
+    color: #6b7280;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+}
+
+.linkage-work-route-step {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    padding: 4px 10px;
+    border: 1px solid #dbe4f2;
+    border-radius: 999px;
+    background: #f5f8fd;
+    color: #183b77;
+    font-size: 0.78rem;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.linkage-work-route-title {
+    color: #111827;
+    font-size: 0.98rem;
+    font-weight: 800;
+    line-height: 1.3;
+}
+
+.linkage-work-route-progress {
+    width: 100%;
+    height: 6px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #e9eef6;
+}
+
+.linkage-work-route-progress > span {
+    display: block;
+    width: 0;
+    height: 100%;
+    border-radius: inherit;
+    background: #1f3b8f;
+    transition: width 180ms ease;
+}
+
+body.impe-seguimiento-readonly .linkage-tools-actions,
+body.impe-seguimiento-readonly .linkage-empty-actions,
+body.impe-seguimiento-readonly [data-work-contact-action],
+body.impe-seguimiento-readonly [data-work-verify-row],
+body.impe-seguimiento-readonly [data-work-contact-actions-section],
+body.impe-seguimiento-readonly [data-work-interaction-section],
+body.impe-seguimiento-readonly [data-work-reactivate-follow],
+body.impe-seguimiento-readonly [data-work-contact-form],
+body.impe-seguimiento-readonly [data-work-interaction-form] {
+    display: none !important;
+}
+
+body.impe-seguimiento-readonly .linkage-work-offcanvas [data-work-expedient] {
+    margin-top: 4px;
+}
