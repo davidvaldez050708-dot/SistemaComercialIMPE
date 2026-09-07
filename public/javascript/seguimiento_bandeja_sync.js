@@ -108,17 +108,19 @@
             });
         };
 
+        const filaVisible = function (fila) {
+            return !fila.classList.contains('d-none') &&
+                fila.dataset.routeFiltered !== '1';
+        };
+
         const actualizarContador = function () {
             if (!contadorResultados) {
                 return;
             }
 
-            const visibles = filasElementos.filter(function (fila) {
-                return !fila.classList.contains('d-none') &&
-                    fila.dataset.routeFiltered !== '1';
-            }).length;
-
-            contadorResultados.textContent = String(visibles);
+            const visibles = filasElementos.filter(filaVisible).length;
+            contadorResultados.textContent =
+                visibles + (visibles === 1 ? ' resultado' : ' resultados');
         };
 
         const actualizarGrupos = function () {
@@ -126,12 +128,16 @@
                 const filasGrupo = Array.from(
                     grupo.querySelectorAll('[data-linkage-follow-row]')
                 );
-                const tieneVisible = filasGrupo.some(function (fila) {
-                    return !fila.classList.contains('d-none') &&
-                        fila.dataset.routeFiltered !== '1';
-                });
+                const visiblesGrupo = filasGrupo.filter(filaVisible).length;
+                const contadorGrupo = grupo.querySelector('[data-linkage-municipality-count]');
 
-                if (tieneVisible) {
+                if (contadorGrupo) {
+                    contadorGrupo.textContent =
+                        visiblesGrupo +
+                        (visiblesGrupo === 1 ? ' seguimiento' : ' seguimientos');
+                }
+
+                if (visiblesGrupo > 0) {
                     delete grupo.dataset.routeFiltered;
                 } else {
                     grupo.dataset.routeFiltered = '1';
