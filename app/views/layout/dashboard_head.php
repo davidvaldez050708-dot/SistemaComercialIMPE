@@ -100,6 +100,10 @@ $fotoPerfilUrl = $fotoPerfil !== ''
     </script>
 
     <script
+        src="<?= BASE_URL ?>public/javascript/reunion_resultado.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/reunion_resultado.js') ?>">
+    </script>
+
+    <script
         src="<?= BASE_URL ?>public/javascript/reprogramacion_reunion.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/reprogramacion_reunion.js') ?>">
     </script>
 
