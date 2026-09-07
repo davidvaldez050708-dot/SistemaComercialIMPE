@@ -39,7 +39,9 @@
 
         const texto = function (valor, reserva) {
             const limpio = String(valor == null ? '' : valor).trim();
-            return limpio !== '' ? limpio : (reserva || '—');
+            return limpio !== ''
+                ? limpio
+                : (reserva !== undefined ? String(reserva) : '—');
         };
 
         const fechaLegible = function (valor, soloFecha) {
