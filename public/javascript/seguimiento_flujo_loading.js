@@ -2,6 +2,14 @@
     'use strict';
 
     document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('.linkage-comment-form textarea').forEach(function (campo) {
+            campo.setAttribute('rows', '3');
+            campo.setAttribute('placeholder', 'Escribe una observación...');
+            campo.style.minHeight = '82px';
+            campo.style.fontSize = '13px';
+            campo.style.lineHeight = '1.45';
+        });
+
         const offcanvas = document.getElementById('offcanvasSeguimientoTrabajo');
 
         if (!offcanvas) {
@@ -9,7 +17,14 @@
         }
 
         const textoCarga = 'Consultando ruta...';
+        const rolActual = String(
+            document.querySelector('.topbar-account-role')?.textContent || ''
+        ).trim().toLowerCase();
+        const esCuentaClave = rolActual.includes('cuenta clave');
+        const urlObservacionKam =
+            'index.php?controller=seguimientoObservacion&action=registrarTrabajo';
         let temporizadorRespaldo = null;
+        let seguimientoObservacionId = 0;
 
         const mostrarAvisoCarga = function () {
             const contenedor = document.querySelector('.toast-container');
@@ -35,6 +50,179 @@
             });
             bootstrap.Toast.getOrCreateInstance(toast).show();
         };
+
+        const mostrarToastObservacion = function (mensaje, esError) {
+            const contenedor = document.querySelector('.toast-container');
+
+            if (!contenedor || !window.bootstrap) {
+                return;
+            }
+
+            const toast = document.createElement('div');
+            toast.className = 'toast system-toast' + (esError ? ' system-toast-error' : '');
+            toast.setAttribute('role', esError ? 'alert' : 'status');
+            toast.setAttribute('aria-live', esError ? 'assertive' : 'polite');
+            toast.setAttribute('aria-atomic', 'true');
+            toast.setAttribute('data-bs-delay', esError ? '4200' : '3000');
+            toast.innerHTML =
+                '<div class="toast-body">' +
+                    '<i class="bi ' + (esError ? 'bi-exclamation-circle' : 'bi-check2-circle') + '"></i>' +
+                    '<span></span>' +
+                '</div>';
+            toast.querySelector('span').textContent = mensaje;
+            contenedor.appendChild(toast);
+            toast.addEventListener('hidden.bs.toast', function () {
+                toast.remove();
+            });
+            bootstrap.Toast.getOrCreateInstance(toast).show();
+        };
+
+        const agregarObservacionAlPanel = function (observacion) {
+            const lista = offcanvas.querySelector('[data-work-observation-list]');
+
+            if (!lista || !observacion) {
+                return;
+            }
+
+            lista.querySelector('.linkage-work-empty')?.remove();
+
+            const articulo = document.createElement('article');
+            const fecha = document.createElement('strong');
+            const autor = document.createElement('span');
+            const texto = document.createElement('p');
+
+            fecha.textContent = String(observacion.fecha_label || 'Ahora');
+            autor.textContent = String(observacion.autor || 'Cuenta Clave');
+            texto.textContent = String(observacion.observacion || '');
+
+            articulo.appendChild(fecha);
+            articulo.appendChild(autor);
+            articulo.appendChild(texto);
+            lista.prepend(articulo);
+
+            const articulos = lista.querySelectorAll('article');
+            for (let indice = 2; indice < articulos.length; indice += 1) {
+                articulos[indice].remove();
+            }
+        };
+
+        const instalarFormularioObservacionKam = function () {
+            if (!esCuentaClave) {
+                return;
+            }
+
+            const lista = offcanvas.querySelector('[data-work-observation-list]');
+            const seccion = lista?.closest('.linkage-work-section');
+            const titulo = seccion?.querySelector('.linkage-work-section-title');
+
+            if (!lista || !seccion || !titulo || seccion.querySelector('[data-work-kam-observation-form]')) {
+                return;
+            }
+
+            const formulario = document.createElement('form');
+            formulario.setAttribute('data-work-kam-observation-form', '');
+            formulario.style.display = 'grid';
+            formulario.style.gap = '8px';
+            formulario.style.margin = '10px 0 12px';
+
+            const campo = document.createElement('textarea');
+            campo.className = 'form-control';
+            campo.setAttribute('rows', '2');
+            campo.setAttribute('maxlength', '2000');
+            campo.setAttribute('placeholder', 'Escribe una observación...');
+            campo.setAttribute('aria-label', 'Observación para el Analista');
+            campo.style.minHeight = '64px';
+            campo.style.fontSize = '12.5px';
+            campo.style.lineHeight = '1.4';
+            campo.style.resize = 'vertical';
+
+            const pie = document.createElement('div');
+            pie.style.display = 'flex';
+            pie.style.alignItems = 'center';
+            pie.style.justifyContent = 'space-between';
+            pie.style.gap = '8px';
+
+            const ayuda = document.createElement('small');
+            ayuda.textContent = 'Se guarda en el expediente del Analista.';
+            ayuda.style.color = '#6b7789';
+            ayuda.style.fontSize = '10.5px';
+
+            const boton = document.createElement('button');
+            boton.type = 'submit';
+            boton.className = 'btn btn-system-save';
+            boton.innerHTML = '<i class="bi bi-send"></i><span>Guardar</span>';
+            boton.style.minHeight = '34px';
+            boton.style.padding = '7px 11px';
+            boton.style.fontSize = '11px';
+
+            pie.appendChild(ayuda);
+            pie.appendChild(boton);
+            formulario.appendChild(campo);
+            formulario.appendChild(pie);
+            titulo.insertAdjacentElement('afterend', formulario);
+
+            formulario.addEventListener('submit', async function (event) {
+                event.preventDefault();
+
+                const observacion = String(campo.value || '').trim();
+                const seguimientoId = Number(
+                    seguimientoObservacionId ||
+                    offcanvas.dataset.flowSeguimientoId ||
+                    0
+                );
+
+                if (!seguimientoId) {
+                    mostrarToastObservacion('No fue posible identificar el seguimiento.', true);
+                    return;
+                }
+
+                if (observacion === '') {
+                    campo.focus();
+                    mostrarToastObservacion('Escribe una observación antes de guardar.', true);
+                    return;
+                }
+
+                const textoOriginal = boton.innerHTML;
+                const formData = new FormData();
+                formData.set('seguimiento_id', String(seguimientoId));
+                formData.set('observacion', observacion);
+
+                boton.disabled = true;
+                boton.innerHTML = '<span>Guardando...</span>';
+
+                try {
+                    const respuesta = await fetch(urlObservacionKam, {
+                        method: 'POST',
+                        headers: { 'X-Requested-With': 'fetch' },
+                        body: formData
+                    });
+                    const datos = await respuesta.json();
+
+                    if (!respuesta.ok || !datos.ok) {
+                        throw new Error(
+                            datos.mensaje || 'No fue posible guardar la observación.'
+                        );
+                    }
+
+                    campo.value = '';
+                    agregarObservacionAlPanel(datos.observacion);
+                    mostrarToastObservacion(
+                        datos.mensaje || 'Observación guardada en el expediente.',
+                        false
+                    );
+                } catch (error) {
+                    mostrarToastObservacion(
+                        error.message || 'No fue posible guardar la observación.',
+                        true
+                    );
+                } finally {
+                    boton.disabled = false;
+                    boton.innerHTML = textoOriginal;
+                }
+            });
+        };
+
+        instalarFormularioObservacionKam();
 
         const limpiarPendiente = function () {
             window.clearTimeout(temporizadorRespaldo);
@@ -129,7 +317,10 @@
                 return;
             }
 
-            iniciarCarga(Number(boton.getAttribute('data-work-follow-id') || 0));
+            seguimientoObservacionId = Number(
+                boton.getAttribute('data-work-follow-id') || 0
+            );
+            iniciarCarga(seguimientoObservacionId);
         }, true);
 
         document.addEventListener('submit', function (event) {
@@ -204,6 +395,7 @@
 
         offcanvas.addEventListener('hidden.bs.offcanvas', function () {
             limpiarPendiente();
+            seguimientoObservacionId = 0;
         });
     });
 })();
