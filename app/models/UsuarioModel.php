@@ -505,6 +505,31 @@ class UsuarioModel
         return $stmt->execute();
     }
 
+    public function actualizarPerfilPropio($id, $datos)
+    {
+        $sql = "UPDATE usuarios
+                SET nombre = ?,
+                    apellidos = ?,
+                    telefono = ?,
+                    correo = ?,
+                    foto_perfil = ?
+                WHERE id = ?";
+
+        $stmt = $this->connection->prepare($sql);
+        $id = (int)$id;
+        $stmt->bind_param(
+            'sssssi',
+            $datos['nombre'],
+            $datos['apellidos'],
+            $datos['telefono'],
+            $datos['correo'],
+            $datos['foto_perfil'],
+            $id
+        );
+
+        return $stmt->execute();
+    }
+
     public function actualizarEstadoUsuario($id, $estado)
     {
         $sql = "UPDATE usuarios

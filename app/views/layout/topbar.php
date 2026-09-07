@@ -33,7 +33,7 @@ $totalRecordatoriosSeguimiento = count($recordatoriosSeguimiento);
                 data-bs-toggle="offcanvas"
                 data-bs-target="#mobileSidebar"
                 aria-controls="mobileSidebar"
-                aria-label="Abrir navegación">
+                aria-label="Abrir navegaciÃ³n">
                 <i class="bi bi-list"></i>
             </button>
 
@@ -83,7 +83,7 @@ $totalRecordatoriosSeguimiento = count($recordatoriosSeguimiento);
                     <div class="dropdown-menu dropdown-menu-end topbar-reminder-menu">
                         <div class="topbar-reminder-header">
                             <strong>Notificaciones</strong>
-                            <span>Reuniones, confirmaciones y acciones próximas.</span>
+                            <span>Reuniones, confirmaciones y acciones prÃ³ximas.</span>
                         </div>
 
                         <div data-reminder-content>
@@ -174,7 +174,7 @@ $totalRecordatoriosSeguimiento = count($recordatoriosSeguimiento);
                     <li>
                         <a
                             class="dropdown-item"
-                            href="<?= BASE_URL ?>index.php?controller=home&action=index&vista=perfil">
+                            href="#" data-my-profile-open>
                             <i class="bi bi-person me-2"></i>
                             Mi perfil
                         </a>
@@ -183,9 +183,9 @@ $totalRecordatoriosSeguimiento = count($recordatoriosSeguimiento);
                     <li>
                         <a
                             class="dropdown-item"
-                            href="<?= BASE_URL ?>index.php?controller=home&action=index&vista=cambiar-password">
+                            href="#" data-bs-toggle="modal" data-bs-target="#modalCambiarMiPassword">
                             <i class="bi bi-key me-2"></i>
-                            Cambiar contraseña
+                            Cambiar contraseÃ±a
                         </a>
                     </li>
 
@@ -196,9 +196,9 @@ $totalRecordatoriosSeguimiento = count($recordatoriosSeguimiento);
                     <li>
                         <a
                             class="dropdown-item"
-                            href="<?= BASE_URL ?>logout.php">
+                            href="#" data-bs-toggle="modal" data-bs-target="#modalCerrarSesion">
                             <i class="bi bi-box-arrow-right me-2"></i>
-                            Cerrar sesión
+                            Cerrar sesiÃ³n
                         </a>
                     </li>
                 </ul>
@@ -237,7 +237,7 @@ $totalRecordatoriosSeguimiento = count($recordatoriosSeguimiento);
                         url.pathname + url.search + url.hash
                     );
                 } catch (error) {
-                    console.warn('No fue posible limpiar el destino de la notificación.', error);
+                    console.warn('No fue posible limpiar el destino de la notificaciÃ³n.', error);
                 }
             };
 
@@ -245,5 +245,8 @@ $totalRecordatoriosSeguimiento = count($recordatoriosSeguimiento);
         });
         </script>
     <?php endif; ?>
+
+    <?php require_once __DIR__ . '/my_profile_modal.php'; ?>
+    <?php require_once __DIR__ . '/my_password_modal.php'; ?>
 
     <section class="admin-content">
