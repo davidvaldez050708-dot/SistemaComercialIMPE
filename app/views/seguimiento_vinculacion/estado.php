@@ -416,7 +416,7 @@ if (!empty($seguimientosSinMunicipio)) {
             <article class="linkage-municipality-card" data-linkage-municipality-group="<?= (int)$municipioGrupo['id'] ?>">
                 <header class="linkage-municipality-card-header">
                     <div class="linkage-municipality-card-title">
-                        <i class="bi <?= (int)$municipioGrupo['id'] > 0 ? 'bi-geo-alt' : 'bi-geo' ?>" aria-hidden="true"></i>
+                        <i class="bi bi-geo-alt-fill" aria-hidden="true"></i>
                         <span><?= $texto($municipioGrupo['nombre']) ?></span>
                     </div>
                     <span class="linkage-municipality-card-count" data-linkage-municipality-count>
