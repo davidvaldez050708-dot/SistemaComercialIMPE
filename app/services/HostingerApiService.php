@@ -112,6 +112,52 @@ class HostingerApiService
         ];
     }
 
+    public function listarAliases($orderId)
+    {
+        if (!$this->estaConfigurado()) {
+            return $this->error(
+                'El token general de Hostinger todavía no está configurado.',
+                500,
+                'HOSTINGER_API_TOKEN no está definido.'
+            );
+        }
+
+        $orderId = trim((string)$orderId);
+
+        if ($orderId === '') {
+            return $this->error(
+                'No se recibió el identificador del servicio de correo.',
+                422,
+                'orderId vacío.'
+            );
+        }
+
+        $respuesta = $this->solicitar(
+            'GET',
+            '/api/mail/v1/orders/' . rawurlencode($orderId) .
+                '/aliases?per_page=100'
+        );
+
+        if (!($respuesta['ok'] ?? false)) {
+            return $respuesta;
+        }
+
+        $json = is_array($respuesta['json'] ?? null)
+            ? $respuesta['json']
+            : [];
+        $aliases = $json['data'] ?? [];
+
+        if (!is_array($aliases)) {
+            $aliases = [];
+        }
+
+        return [
+            'ok' => true,
+            'aliases' => $aliases,
+            'meta' => is_array($json['meta'] ?? null) ? $json['meta'] : []
+        ];
+    }
+
     private function solicitar($metodo, $ruta)
     {
         if (!function_exists('curl_init')) {
