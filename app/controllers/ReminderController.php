@@ -72,6 +72,36 @@ class ReminderController
                 $seguimientoReunion['avisos'] ?? []
             );
 
+            // Si el servicio especializado ya reconoce un seguimiento como
+            // "Dar seguimiento a acuerdos", eliminamos cualquier recordatorio o
+            // aviso genérico del mismo seguimiento. Esto evita que sobrevivan
+            // mensajes de etapas anteriores como "Enviar oficio/correo".
+            $idsAcuerdos = [];
+            foreach ($recordatoriosAcuerdos as $itemAcuerdos) {
+                $idAcuerdos = (int)($itemAcuerdos['seguimiento_id'] ?? $itemAcuerdos['id'] ?? 0);
+                if ($idAcuerdos > 0) {
+                    $idsAcuerdos[$idAcuerdos] = true;
+                }
+            }
+
+            if (!empty($idsAcuerdos)) {
+                $recordatoriosSeguimiento = array_values(array_filter(
+                    $recordatoriosSeguimiento,
+                    static function ($item) use ($idsAcuerdos) {
+                        $id = (int)($item['seguimiento_id'] ?? $item['id'] ?? 0);
+                        return $id <= 0 || !isset($idsAcuerdos[$id]);
+                    }
+                ));
+
+                $avisosSeguimiento = array_values(array_filter(
+                    $avisosSeguimiento,
+                    static function ($item) use ($idsAcuerdos) {
+                        $id = (int)($item['seguimiento_id'] ?? $item['id'] ?? 0);
+                        return $id <= 0 || !isset($idsAcuerdos[$id]);
+                    }
+                ));
+            }
+
             $recordatorios = array_slice(
                 array_merge(
                     $recordatoriosAgenda,
