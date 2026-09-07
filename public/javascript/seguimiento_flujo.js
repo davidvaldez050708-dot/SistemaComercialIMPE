@@ -111,6 +111,12 @@
 
             bloque.classList.remove('d-none');
 
+            const pasoActual = Number(flujo.paso_actual || 0);
+            const tituloActual = String(flujo.titulo || 'Próxima acción');
+            offcanvas.dataset.flowStep = String(pasoActual);
+            offcanvas.dataset.flowTitle = tituloActual;
+            offcanvas.dataset.flowSeguimientoId = String(Number(flujo.seguimiento_id || 0));
+
             const contador = bloque.querySelector('[data-flow-step-count]');
             const progreso = bloque.querySelector('[data-flow-progress]');
             const ventana = bloque.querySelector('[data-flow-window]');
@@ -121,7 +127,7 @@
 
             if (contador) {
                 contador.textContent =
-                    'Paso ' + Number(flujo.paso_actual || 0) +
+                    'Paso ' + pasoActual +
                     ' de ' + Number(flujo.total_pasos || 0);
             }
 
@@ -137,7 +143,7 @@
             }
 
             if (titulo) {
-                titulo.textContent = String(flujo.titulo || 'Próxima acción');
+                titulo.textContent = tituloActual;
             }
 
             if (descripcion) {
@@ -179,10 +185,23 @@
             const fila = botonTrabajo?.closest('[data-linkage-follow-row]');
             const proximaFila = fila?.querySelector('[data-row-next-action]');
 
+            if (fila) {
+                fila.dataset.flowStep = String(pasoActual);
+                fila.dataset.flowTitle = tituloActual;
+            }
+
             if (proximaFila && flujo.titulo) {
                 proximaFila.dataset.flowNextAction = String(flujo.titulo);
                 proximaFila.textContent = flujo.titulo;
             }
+
+            document.dispatchEvent(new CustomEvent('impe:flow-updated', {
+                detail: {
+                    seguimientoId: Number(flujo.seguimiento_id || 0),
+                    pasoActual: pasoActual,
+                    titulo: tituloActual
+                }
+            }));
         };
 
         const consultar = async function () {
@@ -320,6 +339,9 @@
                 seguimientoActualId = Number(
                     botonTrabajo.getAttribute('data-work-follow-id') || 0
                 );
+                delete offcanvas.dataset.flowStep;
+                delete offcanvas.dataset.flowTitle;
+                offcanvas.dataset.flowSeguimientoId = String(seguimientoActualId);
                 crearBloque();
                 programarConsulta(260);
                 return;
@@ -360,6 +382,9 @@
         offcanvas.addEventListener('hidden.bs.offcanvas', function () {
             seguimientoActualId = 0;
             window.clearTimeout(temporizadorConsulta);
+            delete offcanvas.dataset.flowStep;
+            delete offcanvas.dataset.flowTitle;
+            delete offcanvas.dataset.flowSeguimientoId;
             offcanvas.querySelector('[data-work-flow-section]')?.classList.add('d-none');
         });
     });
