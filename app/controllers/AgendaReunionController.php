@@ -2,16 +2,19 @@
 
 require_once __DIR__ . '/../services/AgendaReunionService.php';
 require_once __DIR__ . '/../services/ReprogramacionReunionService.php';
+require_once __DIR__ . '/../services/SeguimientoExpedienteService.php';
 
 class AgendaReunionController
 {
     private $service;
     private $reprogramacionService;
+    private $expedienteService;
 
     public function __construct()
     {
         $this->service = new AgendaReunionService();
         $this->reprogramacionService = new ReprogramacionReunionService();
+        $this->expedienteService = new SeguimientoExpedienteService();
     }
 
     public function index()
@@ -97,6 +100,32 @@ class AgendaReunionController
         require_once __DIR__ . '/../views/layout/topbar.php';
         require_once __DIR__ . '/../views/seguimiento_vinculacion/agenda.php';
         require_once __DIR__ . '/../views/layout/dashboard_footer.php';
+    }
+
+    public function expedienteSeguimiento()
+    {
+        header('Content-Type: application/json; charset=utf-8');
+
+        $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
+        $rolId = (int)($_SESSION['rol_id'] ?? 0);
+        $seguimientoId = (int)($_GET['seguimiento_id'] ?? 0);
+
+        if ($usuarioId <= 0 || !$this->service->puedeAcceder($rolId)) {
+            $this->responder([
+                'ok' => false,
+                'mensaje' => 'No tienes acceso a los datos operativos del expediente.'
+            ], 403);
+        }
+
+        $resultado = $this->expedienteService->obtener(
+            $seguimientoId,
+            $usuarioId,
+            $rolId
+        );
+        $codigoHttp = (int)($resultado['codigo_http'] ?? 200);
+        unset($resultado['codigo_http']);
+
+        $this->responder($resultado, $codigoHttp);
     }
 
     public function solicitar()
