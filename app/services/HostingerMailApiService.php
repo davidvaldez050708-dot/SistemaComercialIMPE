@@ -34,6 +34,46 @@ class HostingerMailApiService
         return $this->token !== '' && $this->baseUrl !== '';
     }
 
+    public function diagnosticarAcceso()
+    {
+        if (!$this->estaConfigurado()) {
+            return $this->error(
+                'La API de correo de Hostinger todavía no está configurada.',
+                500,
+                'HOSTINGER_MAIL_API_TOKEN no está definido.'
+            );
+        }
+
+        $resultado = $this->obtenerMailboxes();
+
+        if (!($resultado['ok'] ?? false)) {
+            return $resultado;
+        }
+
+        $mailboxes = [];
+
+        foreach ($resultado['mailboxes'] as $mailbox) {
+            if (!is_array($mailbox)) {
+                continue;
+            }
+
+            $mailboxes[] = [
+                'address' => trim((string)($mailbox['address'] ?? '')),
+                'resource_id' => trim((string)(
+                    $mailbox['resource_id'] ??
+                    $mailbox['resourceId'] ??
+                    ''
+                ))
+            ];
+        }
+
+        return [
+            'ok' => true,
+            'mailboxes' => $mailboxes,
+            'total' => count($mailboxes)
+        ];
+    }
+
     public function enviarOficio($datos)
     {
         if (!$this->estaConfigurado()) {
