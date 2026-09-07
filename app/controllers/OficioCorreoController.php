@@ -3,6 +3,7 @@
 require_once __DIR__ . '/../services/OficioCorreoService.php';
 require_once __DIR__ . '/../services/OficioEnvioService.php';
 require_once __DIR__ . '/../services/OficioProgramacionService.php';
+require_once __DIR__ . '/../services/OficioDestinatarioSyncService.php';
 require_once __DIR__ . '/../helpers/PermissionHelper.php';
 
 class OficioCorreoController
@@ -20,6 +21,8 @@ class OficioCorreoController
                 'mensaje' => 'El seguimiento solicitado no es válido.'
             ], 422);
         }
+
+        $this->sincronizarDestinatarioActual($seguimientoId, $usuarioId);
 
         $servicio = new OficioCorreoService();
         $resultado = $servicio->obtenerBorrador(
@@ -66,6 +69,8 @@ class OficioCorreoController
             ], 422);
         }
 
+        $this->sincronizarDestinatarioActual($seguimientoId, $usuarioId);
+
         $servicio = new OficioCorreoService();
         $resultado = $servicio->guardarBorrador(
             $seguimientoId,
@@ -109,6 +114,8 @@ class OficioCorreoController
                 'mensaje' => 'El seguimiento solicitado no es válido.'
             ], 422);
         }
+
+        $this->sincronizarDestinatarioActual($seguimientoId, $usuarioId);
 
         /*
          * Este servicio valida la fecha incluida en el folio justo antes del
@@ -216,6 +223,25 @@ class OficioCorreoController
         $this->responderJson($resultado);
     }
 
+    private function sincronizarDestinatarioActual($seguimientoId, $usuarioId)
+    {
+        if ((int)($_SESSION['rol_id'] ?? 0) !== 4) {
+            return;
+        }
+
+        $servicio = new OficioDestinatarioSyncService();
+        $resultado = $servicio->sincronizar(
+            (int)$seguimientoId,
+            (int)$usuarioId
+        );
+
+        if (!($resultado['ok'] ?? false)) {
+            $codigoHttp = (int)($resultado['codigo_http'] ?? 500);
+            unset($resultado['codigo_http']);
+            $this->responderJson($resultado, $codigoHttp);
+        }
+    }
+
     private function completarPermisosCorreo($correo, $usuarioId)
     {
         $esAnalistaResponsable =
@@ -235,10 +261,33 @@ class OficioCorreoController
             !$enviado &&
             $guardado &&
             tienePermiso('oficios.enviar');
+        $correo['adjunto_nombre'] = $this->nombreAdjuntoVisible($correo);
 
         unset($correo['analista_id']);
 
         return $correo;
+    }
+
+    private function nombreAdjuntoVisible($correo)
+    {
+        if (empty($correo['pdf_generado'])) {
+            return '';
+        }
+
+        $folio = trim((string)($correo['folio'] ?? ''));
+
+        if (preg_match('/^REDMEX\/\d+\/\d{2}-\d{2}\/\d{2}$/', $folio)) {
+            $nombre = preg_replace('/[^A-Za-z0-9_-]+/', '_', $folio);
+            $nombre = trim((string)$nombre, '_');
+
+            return ($nombre !== '' ? $nombre : 'Oficio_RED_MEXICO') . '.pdf';
+        }
+
+        if (!empty($correo['enviado'])) {
+            return trim((string)($correo['adjunto_nombre'] ?? ''));
+        }
+
+        return 'Oficio_RED_MEXICO.pdf';
     }
 
     private function completarPermisosProgramacion($programacion, $usuarioId)
