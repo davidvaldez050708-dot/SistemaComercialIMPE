@@ -3,7 +3,7 @@
 class InegiEducacionObjetivoService
 {
     private const PERIODO = 2020;
-    private const BASE_URL = 'https://www.inegi.org.mx/contenidos/programas/ccpv/iter/zip/iter2020';
+    private const BASE_URL = 'https://www.inegi.org.mx/contenidos/programas/ccpv/2020/datosabiertos/iter';
 
     public function obtenerPorEstado(string $claveEstado): array
     {
@@ -37,7 +37,7 @@ class InegiEducacionObjetivoService
             );
         }
 
-        $url = self::BASE_URL . '/iter_' . $claveEstado . 'csv20.zip';
+        $url = self::BASE_URL . '/iter_' . $claveEstado . '_cpv2020_csv.zip';
         $temporal = tempnam(sys_get_temp_dir(), 'inegi_edu_');
 
         if ($temporal === false) {
@@ -74,7 +74,8 @@ class InegiEducacionObjetivoService
         if ($okCurl === false || $errorCurl !== '' || $codigoHttp !== 200) {
             @unlink($temporal);
             return $this->respuestaError(
-                'No fue posible descargar el Censo 2020 de INEGI en este momento.'
+                'No fue posible descargar el Censo 2020 de INEGI en este momento. HTTP ' .
+                $codigoHttp . ($errorCurl !== '' ? ' · ' . $errorCurl : '')
             );
         }
 
@@ -88,9 +89,14 @@ class InegiEducacionObjetivoService
         $csvNombre = $this->buscarCsvDatos($zip, $claveEstado);
 
         if ($csvNombre === null) {
+            $entradas = $this->listarEntradasZip($zip, 12);
             $zip->close();
             @unlink($temporal);
-            return $this->respuestaError('No se encontró el conjunto de datos del Censo 2020.');
+
+            return $this->respuestaError(
+                'No se encontró el conjunto de datos del Censo 2020 dentro del ZIP.' .
+                (!empty($entradas) ? ' Archivos detectados: ' . implode(', ', $entradas) : '')
+            );
         }
 
         $stream = $zip->getStream($csvNombre);
@@ -112,13 +118,19 @@ class InegiEducacionObjetivoService
 
     private function buscarCsvDatos(ZipArchive $zip, string $claveEstado): ?string
     {
-        $preferido = 'conjunto_de_datos_iter_' . $claveEstado . 'CSV20.csv';
+        $preferidos = [
+            'conjunto_de_datos_iter_' . $claveEstado . 'CSV20.csv',
+            'conjunto_de_datos_iter_' . $claveEstado . '_cpv2020.csv'
+        ];
 
         for ($i = 0; $i < $zip->numFiles; $i++) {
             $nombre = (string)$zip->getNameIndex($i);
+            $base = basename($nombre);
 
-            if (strcasecmp(basename($nombre), $preferido) === 0) {
-                return $nombre;
+            foreach ($preferidos as $preferido) {
+                if (strcasecmp($base, $preferido) === 0) {
+                    return $nombre;
+                }
             }
         }
 
@@ -136,6 +148,21 @@ class InegiEducacionObjetivoService
         }
 
         return null;
+    }
+
+    private function listarEntradasZip(ZipArchive $zip, int $limite = 12): array
+    {
+        $entradas = [];
+        $total = min($zip->numFiles, max(1, $limite));
+
+        for ($i = 0; $i < $total; $i++) {
+            $nombre = trim((string)$zip->getNameIndex($i));
+            if ($nombre !== '') {
+                $entradas[] = $nombre;
+            }
+        }
+
+        return $entradas;
     }
 
     private function procesarCsv($stream, string $claveEstado): array
