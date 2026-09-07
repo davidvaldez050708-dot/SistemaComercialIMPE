@@ -237,6 +237,17 @@ switch ($controller) {
         break;
 
 
+    case 'seguimientoInteraccion':
+
+        require_once __DIR__ .
+            '/app/controllers/SeguimientoInteraccionController.php';
+
+        $controllerInstance =
+            new SeguimientoInteraccionController();
+
+        break;
+
+
     case 'agendaReunion':
 
         require_once __DIR__ .
