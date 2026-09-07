@@ -5,7 +5,7 @@ require_once __DIR__ . '/../../config/db_connection.php';
 class OficioCorreoService
 {
     private const NOMBRE_PLANTILLA =
-        'Correo institucional - Fundación Red Educativa México';
+        'Correo Programa de Profesionalización REDMEX 2026';
 
     private $connection;
 
@@ -480,7 +480,8 @@ class OficioCorreoService
             '{{INSTITUCION}}' => trim((string)($seguimiento['nombre_entidad'] ?? '')),
             '{{ESTADO}}' => trim((string)($seguimiento['estado_nombre'] ?? '')),
             '{{ANALISTA_NOMBRE}}' => $analistaNombre,
-            '{{ANALISTA_CORREO}}' => trim((string)($seguimiento['analista_correo'] ?? ''))
+            '{{ANALISTA_CORREO}}' => trim((string)($seguimiento['analista_correo'] ?? '')),
+            '{{ANALISTA_TELEFONO}}' => trim((string)($seguimiento['analista_telefono'] ?? ''))
         ];
 
         $asuntoGuardado = trim((string)($seguimiento['asunto_correo'] ?? ''));
@@ -633,6 +634,7 @@ class OficioCorreoService
                     analista.nombre AS analista_nombre,
                     analista.apellidos AS analista_apellidos,
                     analista.correo AS analista_correo,
+                    analista.telefono AS analista_telefono,
                     oficio.id AS oficio_id,
                     oficio.folio,
                     oficio.plantilla_correo_id,
@@ -680,27 +682,29 @@ class OficioCorreoService
         }
 
         $descripcion =
-            'Plantilla institucional para acompañar el oficio de vinculación.';
+            'Correo institucional para el primer acercamiento y solicitud de reunión del programa de profesionalización.';
         $asunto =
-            'Invitación a vinculación institucional | Fundación Red Educativa México | {{FOLIO}}';
+            'Programa de Profesionalización | {{INSTITUCION}}';
         $contenido = <<<'TEXTO'
-Estimado/a {{DESTINATARIO_NOMBRE}}:
+{{DESTINATARIO_NOMBRE}}
 
-Espero se encuentre muy bien.
+{{DESTINATARIO_CARGO}}
 
-Mi nombre es {{ANALISTA_NOMBRE}} y me comunico de parte de la Fundación Red Educativa México. Adjunto encontrará el oficio {{FOLIO}}, mediante el cual nos gustaría establecer un primer acercamiento con {{INSTITUCION}} y proponer una reunión virtual de presentación.
+{{INSTITUCION}}
 
-El objetivo es compartir brevemente nuestras iniciativas, conocer los intereses de su institución e identificar posibles oportunidades de colaboración y vinculación.
+{{ESTADO}}
 
-Quedamos atentos a la fecha y horario que les resulte conveniente para realizar esta reunión.
+P R E S E N T E
 
-Agradezco de antemano su atención.
+Esperando se encuentre muy bien, reciba un cordial saludo. Por medio del presente, me permito dirigirme a usted en representación de Fundación Red Educativa México, con la finalidad de solicitar una reunión virtual para presentar nuestra Oferta Educativa, dirigida al personal adscrito y a la ciudadanía en general que desee concluir o acreditar sus estudios de Nivel Medio Superior y Superior.
 
-Saludos cordiales,
+Nuestros programas se encuentran regulados por la Secretaría de Educación Pública Federal, bajo el marco del Acuerdo 286, mediante el cual contamos con la autorización como Sede Autorizada, permitiendo la obtención del certificado de bachillerato y/o título profesional. En el marco de este acercamiento, ponemos a disposición la asignación de becas, con el objetivo de facilitar el acceso a nuestros programas educativos y generar un beneficio directo para la población que usted representa.
 
-{{ANALISTA_NOMBRE}}
-Fundación Red Educativa México
-{{ANALISTA_CORREO}}
+Quedo atento para coordinar una reunión vía Zoom y definir el mejor esquema de colaboración.
+
+Agradeciendo su atención, le envío un cordial saludo.
+
+Atentamente
 TEXTO;
 
         $sqlInsertar = "INSERT INTO plantillas_vinculacion (
