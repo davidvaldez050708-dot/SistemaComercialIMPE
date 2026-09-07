@@ -118,6 +118,10 @@ $fotoPerfilUrl = $fotoPerfil !== ''
     <script
         src="<?= BASE_URL ?>public/javascript/seguimiento_bandeja_sync.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/seguimiento_bandeja_sync.js') ?>">
     </script>
+
+    <script
+        src="<?= BASE_URL ?>public/javascript/seguimiento_flujo_loading.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/seguimiento_flujo_loading.js') ?>">
+    </script>
 </head>
 
 <body>
