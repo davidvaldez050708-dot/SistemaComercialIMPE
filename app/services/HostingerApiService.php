@@ -158,7 +158,112 @@ class HostingerApiService
         ];
     }
 
-    private function solicitar($metodo, $ruta)
+    public function listarTokensMailApi($orderId = '')
+    {
+        if (!$this->estaConfigurado()) {
+            return $this->error(
+                'El token general de Hostinger todavía no está configurado.',
+                500,
+                'HOSTINGER_API_TOKEN no está definido.'
+            );
+        }
+
+        $ruta = '/api/mail/v1/api-tokens?per_page=100';
+        $orderId = trim((string)$orderId);
+
+        if ($orderId !== '') {
+            $ruta .= '&order_id=' . rawurlencode($orderId);
+        }
+
+        $respuesta = $this->solicitar('GET', $ruta);
+
+        if (!($respuesta['ok'] ?? false)) {
+            return $respuesta;
+        }
+
+        $json = is_array($respuesta['json'] ?? null)
+            ? $respuesta['json']
+            : [];
+        $tokens = $json['data'] ?? [];
+
+        if (!is_array($tokens)) {
+            $tokens = [];
+        }
+
+        return [
+            'ok' => true,
+            'tokens' => $tokens,
+            'meta' => is_array($json['meta'] ?? null) ? $json['meta'] : []
+        ];
+    }
+
+    public function crearTokenMailApi($orderId, $nombre, array $mailboxIds)
+    {
+        if (!$this->estaConfigurado()) {
+            return $this->error(
+                'El token general de Hostinger todavía no está configurado.',
+                500,
+                'HOSTINGER_API_TOKEN no está definido.'
+            );
+        }
+
+        $orderId = trim((string)$orderId);
+        $nombre = trim((string)$nombre);
+        $mailboxIds = array_values(array_unique(array_filter(array_map(
+            function ($id) {
+                return trim((string)$id);
+            },
+            $mailboxIds
+        ))));
+
+        if ($orderId === '' || $nombre === '' || count($mailboxIds) === 0) {
+            return $this->error(
+                'Faltan datos para generar el token de Hostinger Mail API.',
+                422,
+                'Se requiere orderId, nombre y al menos un mailboxId.'
+            );
+        }
+
+        $respuesta = $this->solicitar(
+            'POST',
+            '/api/mail/v1/orders/' . rawurlencode($orderId) . '/api-tokens',
+            [
+                'name' => $nombre,
+                'scope' => [
+                    'has_all_mailboxes' => false,
+                    'mailbox_ids' => $mailboxIds
+                ]
+            ]
+        );
+
+        if (!($respuesta['ok'] ?? false)) {
+            return $respuesta;
+        }
+
+        $json = is_array($respuesta['json'] ?? null)
+            ? $respuesta['json']
+            : [];
+        $tokenPlano = trim((string)($json['token'] ?? ''));
+        $tokenId = trim((string)($json['id'] ?? ''));
+
+        if ($tokenPlano === '') {
+            return $this->error(
+                'Hostinger creó la credencial, pero no devolvió el token en la respuesta.',
+                502,
+                'Respuesta 2xx sin campo token.'
+            );
+        }
+
+        return [
+            'ok' => true,
+            'token' => $tokenPlano,
+            'token_id' => $tokenId,
+            'nombre' => trim((string)($json['name'] ?? $nombre)),
+            'scope' => is_array($json['scope'] ?? null) ? $json['scope'] : []
+        ];
+    }
+
+    private function solicitar($metodo, $ruta, $payload = null)
     {
         if (!function_exists('curl_init')) {
             return $this->error(
@@ -170,15 +275,37 @@ class HostingerApiService
 
         $url = $this->baseUrl . '/' . ltrim((string)$ruta, '/');
         $curl = curl_init($url);
+        $headers = [
+            'Accept: application/json',
+            'Authorization: Bearer ' . $this->token
+        ];
 
         curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($curl, CURLOPT_CUSTOMREQUEST, strtoupper((string)$metodo));
         curl_setopt($curl, CURLOPT_CONNECTTIMEOUT, 10);
         curl_setopt($curl, CURLOPT_TIMEOUT, 30);
-        curl_setopt($curl, CURLOPT_HTTPHEADER, [
-            'Accept: application/json',
-            'Authorization: Bearer ' . $this->token
-        ]);
+
+        if ($payload !== null) {
+            $json = json_encode(
+                $payload,
+                JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+            );
+
+            if ($json === false) {
+                curl_close($curl);
+
+                return $this->error(
+                    'No fue posible preparar la solicitud para Hostinger.',
+                    500,
+                    'json_encode falló: ' . json_last_error_msg()
+                );
+            }
+
+            $headers[] = 'Content-Type: application/json';
+            curl_setopt($curl, CURLOPT_POSTFIELDS, $json);
+        }
+
+        curl_setopt($curl, CURLOPT_HTTPHEADER, $headers);
 
         $respuesta = curl_exec($curl);
         $codigoHttp = (int)curl_getinfo($curl, CURLINFO_HTTP_CODE);
