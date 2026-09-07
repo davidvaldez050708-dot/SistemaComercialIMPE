@@ -33,7 +33,7 @@ $totalRecordatoriosSeguimiento = count($recordatoriosSeguimiento);
                 data-bs-toggle="offcanvas"
                 data-bs-target="#mobileSidebar"
                 aria-controls="mobileSidebar"
-                aria-label="Abrir navegaciÃ³n">
+                aria-label="Abrir navegación">
                 <i class="bi bi-list"></i>
             </button>
 
@@ -83,7 +83,7 @@ $totalRecordatoriosSeguimiento = count($recordatoriosSeguimiento);
                     <div class="dropdown-menu dropdown-menu-end topbar-reminder-menu">
                         <div class="topbar-reminder-header">
                             <strong>Notificaciones</strong>
-                            <span>Reuniones, confirmaciones y acciones prÃ³ximas.</span>
+                            <span>Reuniones, confirmaciones y acciones próximas.</span>
                         </div>
 
                         <div data-reminder-content>
@@ -185,7 +185,7 @@ $totalRecordatoriosSeguimiento = count($recordatoriosSeguimiento);
                             class="dropdown-item"
                             href="#" data-bs-toggle="modal" data-bs-target="#modalCambiarMiPassword">
                             <i class="bi bi-key me-2"></i>
-                            Cambiar contraseÃ±a
+                            Cambiar contraseña
                         </a>
                     </li>
 
@@ -198,7 +198,7 @@ $totalRecordatoriosSeguimiento = count($recordatoriosSeguimiento);
                             class="dropdown-item"
                             href="#" data-bs-toggle="modal" data-bs-target="#modalCerrarSesion">
                             <i class="bi bi-box-arrow-right me-2"></i>
-                            Cerrar sesiÃ³n
+                            Cerrar sesión
                         </a>
                     </li>
                 </ul>
@@ -237,7 +237,7 @@ $totalRecordatoriosSeguimiento = count($recordatoriosSeguimiento);
                         url.pathname + url.search + url.hash
                     );
                 } catch (error) {
-                    console.warn('No fue posible limpiar el destino de la notificaciÃ³n.', error);
+                    console.warn('No fue posible limpiar el destino de la notificación.', error);
                 }
             };
 
