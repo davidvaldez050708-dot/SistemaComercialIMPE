@@ -162,11 +162,15 @@
 </script>
 
 <script
-    src="<?= BASE_URL ?>public/javascript/cambiar_password.js">
+    src="<?= BASE_URL ?>public/javascript/cambiar_password.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/cambiar_password.js') ?>">
 </script>
 
 <script
     src="<?= BASE_URL ?>public/javascript/seguimiento_interacciones.js">
+</script>
+
+<script
+    src="<?= BASE_URL ?>public/javascript/mi_perfil.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/mi_perfil.js') ?>">
 </script>
 
 <script

@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/../models/UsuarioModel.php';
 require_once __DIR__ . '/../helpers/PermissionHelper.php';
+require_once __DIR__ . '/../helpers/AvatarHelper.php';
 
 class UsuarioController
 {
@@ -180,6 +181,160 @@ class UsuarioController
         }
 
         $this->redirigirAUsuarios();
+    }
+
+    public function obtenerMiPerfil()
+    {
+        $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
+
+        if ($usuarioId <= 0) {
+            $this->responderJsonPerfil(['ok' => false, 'mensaje' => 'La sesión no está activa.'], 401);
+        }
+
+        $modeloUsuario = new UsuarioModel();
+        $usuario = $modeloUsuario->buscarPorId($usuarioId);
+
+        if (!$usuario) {
+            $this->responderJsonPerfil(['ok' => false, 'mensaje' => 'No fue posible cargar tu perfil.'], 404);
+        }
+
+        $this->responderJsonPerfil([
+            'ok' => true,
+            'perfil' => $this->serializarMiPerfil($usuario)
+        ]);
+    }
+
+    public function actualizarMiPerfil()
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->responderJsonPerfil(['ok' => false, 'mensaje' => 'Método no permitido.'], 405);
+        }
+
+        $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
+
+        if ($usuarioId <= 0) {
+            $this->responderJsonPerfil(['ok' => false, 'mensaje' => 'La sesión no está activa.'], 401);
+        }
+
+        $modeloUsuario = new UsuarioModel();
+        $usuarioOriginal = $modeloUsuario->buscarPorId($usuarioId);
+
+        if (!$usuarioOriginal) {
+            $this->responderJsonPerfil(['ok' => false, 'mensaje' => 'No fue posible cargar tu perfil.'], 404);
+        }
+
+        $datos = [
+            'nombre' => trim((string)($_POST['nombre'] ?? '')),
+            'apellidos' => trim((string)($_POST['apellidos'] ?? '')),
+            'telefono' => trim((string)($_POST['telefono'] ?? '')),
+            'correo' => trim((string)($_POST['correo'] ?? '')),
+            'foto_perfil' => (string)($usuarioOriginal['foto_perfil'] ?? '')
+        ];
+        $errores = [];
+
+        if ($datos['nombre'] === '') {
+            $errores[] = 'El nombre es obligatorio.';
+        }
+
+        if ($datos['apellidos'] === '') {
+            $errores[] = 'Los apellidos son obligatorios.';
+        }
+
+        if ($datos['correo'] === '') {
+            $errores[] = 'El correo electrónico es obligatorio.';
+        } elseif (!filter_var($datos['correo'], FILTER_VALIDATE_EMAIL)) {
+            $errores[] = 'El formato del correo electrónico no es válido.';
+        } elseif ($modeloUsuario->existeCorreo($datos['correo'], $usuarioId)) {
+            $errores[] = 'El correo electrónico ya está registrado.';
+        }
+
+        if (!empty($errores)) {
+            $this->responderJsonPerfil(['ok' => false, 'mensaje' => implode(' ', $errores)], 422);
+        }
+
+        $fotoActual = (string)($usuarioOriginal['foto_perfil'] ?? '');
+        $foto = $this->procesarFotoPerfil($fotoActual);
+
+        if ($foto['error'] !== '') {
+            $this->responderJsonPerfil(['ok' => false, 'mensaje' => $foto['error']], 422);
+        }
+
+        $datos['foto_perfil'] = $foto['ruta'];
+
+        if (!$modeloUsuario->actualizarPerfilPropio($usuarioId, $datos)) {
+            if (!empty($foto['nueva'])) {
+                $this->eliminarFotoPerfil($foto['ruta']);
+            }
+
+            $this->responderJsonPerfil(['ok' => false, 'mensaje' => 'No fue posible actualizar el perfil.'], 500);
+        }
+
+        if (
+            !empty($foto['nueva']) &&
+            $fotoActual !== '' &&
+            $fotoActual !== (string)$datos['foto_perfil']
+        ) {
+            $this->eliminarFotoPerfilSiNoCompartida($modeloUsuario, $fotoActual);
+        }
+
+        $_SESSION['nombre'] = $datos['nombre'];
+        $_SESSION['apellidos'] = $datos['apellidos'];
+        $_SESSION['foto_perfil'] = $datos['foto_perfil'];
+
+        $usuarioActualizado = $modeloUsuario->buscarPorId($usuarioId);
+        $this->responderJsonPerfil([
+            'ok' => true,
+            'mensaje' => 'Perfil actualizado correctamente.',
+            'perfil' => $this->serializarMiPerfil($usuarioActualizado)
+        ]);
+    }
+
+    public function actualizarMiPassword()
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->responderJsonPerfil(['ok' => false, 'mensaje' => 'Método no permitido.'], 405);
+        }
+
+        $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
+
+        if ($usuarioId <= 0) {
+            $this->responderJsonPerfil(['ok' => false, 'mensaje' => 'La sesión no está activa.'], 401);
+        }
+
+        $passwordNueva = (string)($_POST['password_nueva'] ?? '');
+        $confirmarPassword = (string)($_POST['confirmar_password'] ?? '');
+
+        if ($passwordNueva === '' || $confirmarPassword === '') {
+            $this->responderJsonPerfil(['ok' => false, 'mensaje' => 'Complete ambos campos.'], 422);
+        }
+
+        if (strlen($passwordNueva) < 8) {
+            $this->responderJsonPerfil([
+                'ok' => false,
+                'mensaje' => 'La contraseña debe tener al menos 8 caracteres.'
+            ], 422);
+        }
+
+        if ($passwordNueva !== $confirmarPassword) {
+            $this->responderJsonPerfil(['ok' => false, 'mensaje' => 'Las contraseñas no coinciden.'], 422);
+        }
+
+        $passwordHash = password_hash($passwordNueva, PASSWORD_DEFAULT);
+        $modeloUsuario = new UsuarioModel();
+
+        if (!$modeloUsuario->actualizarPasswordDefinitivo($usuarioId, $passwordHash)) {
+            $this->responderJsonPerfil([
+                'ok' => false,
+                'mensaje' => 'No fue posible actualizar la contraseña.'
+            ], 500);
+        }
+
+        $_SESSION['requiere_cambio_password'] = 0;
+
+        $this->responderJsonPerfil([
+            'ok' => true,
+            'mensaje' => 'Contraseña actualizada correctamente.'
+        ]);
     }
 
     public function cambiarEstado()
@@ -547,6 +702,35 @@ class UsuarioController
             'error' => '',
             'nueva' => true
         ];
+    }
+
+    private function serializarMiPerfil($usuario)
+    {
+        $ultimoAcceso = trim((string)($usuario['ultimo_acceso'] ?? ''));
+
+        return [
+            'nombre' => (string)($usuario['nombre'] ?? ''),
+            'apellidos' => (string)($usuario['apellidos'] ?? ''),
+            'telefono' => (string)($usuario['telefono'] ?? ''),
+            'correo' => (string)($usuario['correo'] ?? ''),
+            'usuario' => (string)($usuario['usuario'] ?? ''),
+            'rol' => (string)($usuario['rol'] ?? 'Usuario'),
+            'estado' => (int)($usuario['estado'] ?? 0) === 1 ? 'Activo' : 'Inactivo',
+            'ultimo_acceso' => $ultimoAcceso,
+            'foto_url' => obtenerUrlFotoPerfil($usuario['foto_perfil'] ?? ''),
+            'iniciales' => obtenerInicialesUsuario(
+                $usuario['nombre'] ?? '',
+                $usuario['apellidos'] ?? ''
+            )
+        ];
+    }
+
+    private function responderJsonPerfil($datos, $codigo = 200)
+    {
+        http_response_code((int)$codigo);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode($datos, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+        exit;
     }
 
     private function eliminarFotoPerfil($ruta)

@@ -152,7 +152,8 @@ $totalRecordatoriosSeguimiento = count($recordatoriosSeguimiento);
                     <li>
                         <a
                             class="dropdown-item"
-                            href="<?= BASE_URL ?>index.php?controller=home&action=index&vista=perfil">
+                            href="#"
+                            data-my-profile-open>
                             <i class="bi bi-person me-2"></i>
                             Mi perfil
                         </a>
@@ -161,7 +162,9 @@ $totalRecordatoriosSeguimiento = count($recordatoriosSeguimiento);
                     <li>
                         <a
                             class="dropdown-item"
-                            href="<?= BASE_URL ?>index.php?controller=home&action=index&vista=cambiar-password">
+                            href="#"
+                            data-bs-toggle="modal"
+                            data-bs-target="#modalCambiarMiPassword">
                             <i class="bi bi-key me-2"></i>
                             Cambiar contraseña
                         </a>
@@ -174,7 +177,9 @@ $totalRecordatoriosSeguimiento = count($recordatoriosSeguimiento);
                     <li>
                         <a
                             class="dropdown-item"
-                            href="<?= BASE_URL ?>logout.php">
+                            href="#"
+                            data-bs-toggle="modal"
+                            data-bs-target="#modalCerrarSesion">
                             <i class="bi bi-box-arrow-right me-2"></i>
                             Cerrar sesión
                         </a>
@@ -184,5 +189,8 @@ $totalRecordatoriosSeguimiento = count($recordatoriosSeguimiento);
         </div>
 
     </header>
+
+    <?php require_once __DIR__ . '/my_profile_modal.php'; ?>
+    <?php require_once __DIR__ . '/my_password_modal.php'; ?>
 
     <section class="admin-content">
