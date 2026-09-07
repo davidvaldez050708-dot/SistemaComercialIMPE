@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/../models/OficioVinculacionModel.php';
 require_once __DIR__ . '/OficioPreviewService.php';
+require_once __DIR__ . '/OficioDocxPdfService.php';
 
 class OficioPdfService
 {
@@ -14,7 +15,8 @@ class OficioPdfService
         $database = new Database();
         $this->connection = $database->connect();
         $this->rootPath = dirname(__DIR__, 2);
-        $this->storagePath = $this->rootPath . DIRECTORY_SEPARATOR . 'storage' . DIRECTORY_SEPARATOR . 'oficios';
+        $this->storagePath = $this->rootPath . DIRECTORY_SEPARATOR .
+            'storage' . DIRECTORY_SEPARATOR . 'oficios';
     }
 
     public function obtenerEstadoPdf($seguimientoId, $usuarioId, $modoAcceso)
@@ -123,24 +125,6 @@ class OficioPdfService
             ];
         }
 
-        $autoload = $this->rootPath . DIRECTORY_SEPARATOR . 'vendor' . DIRECTORY_SEPARATOR . 'autoload.php';
-
-        if (!is_file($autoload)) {
-            return $this->error(
-                'No se encontraron las dependencias de Composer. Ejecuta composer install.',
-                500
-            );
-        }
-
-        require_once $autoload;
-
-        if (!class_exists('Dompdf\\Dompdf')) {
-            return $this->error(
-                'Dompdf no está disponible. Ejecuta composer install.',
-                500
-            );
-        }
-
         $servicioVistaPrevia = new OficioPreviewService();
         $resultadoVista = $servicioVistaPrevia->obtenerVistaPrevia(
             $seguimientoId,
@@ -152,23 +136,27 @@ class OficioPdfService
             return $resultadoVista;
         }
 
-        $vista = $resultadoVista['vista_previa'] ?? [];
-        $html = $this->construirHtmlPdf($vista);
+        $vista = is_array($resultadoVista['vista_previa'] ?? null)
+            ? $resultadoVista['vista_previa']
+            : [];
+        $generadorDocumento = new OficioDocxPdfService();
+        $resultadoDocumento = $generadorDocumento->generarPdf($vista);
 
-        try {
-            $opciones = new \Dompdf\Options();
-            $opciones->set('defaultFont', 'DejaVu Sans');
-            $opciones->set('isRemoteEnabled', false);
-            $opciones->set('isHtml5ParserEnabled', true);
+        if (!($resultadoDocumento['ok'] ?? false)) {
+            $detalle = trim((string)($resultadoDocumento['mensaje_tecnico'] ?? ''));
 
-            $dompdf = new \Dompdf\Dompdf($opciones);
-            $dompdf->loadHtml($html, 'UTF-8');
-            $dompdf->setPaper('A4', 'portrait');
-            $dompdf->render();
-            $contenidoPdf = $dompdf->output();
-        } catch (Throwable $error) {
-            return $this->error('No fue posible construir el PDF del oficio.', 500);
+            if ($detalle !== '') {
+                error_log('Error DOCX/PDF de oficio: ' . $detalle);
+            }
+
+            return $this->error(
+                (string)($resultadoDocumento['mensaje'] ??
+                    'No fue posible generar el PDF desde la plantilla institucional.'),
+                500
+            );
         }
+
+        $contenidoPdf = (string)($resultadoDocumento['contenido_pdf'] ?? '');
 
         if ($contenidoPdf === '') {
             return $this->error('El PDF generado está vacío.', 500);
@@ -203,6 +191,7 @@ class OficioPdfService
 
         if (!$stmtActualizar->execute()) {
             @unlink($rutaAbsoluta);
+
             return $this->error(
                 'El PDF se creó, pero no fue posible registrar su información.',
                 500
@@ -212,8 +201,9 @@ class OficioPdfService
         return [
             'ok' => true,
             'existente' => false,
-            'mensaje' => 'PDF generado correctamente.',
+            'mensaje' => 'PDF generado correctamente desde la plantilla institucional.',
             'folio' => $folio,
+            'conversor' => (string)($resultadoDocumento['conversor'] ?? ''),
             'estado_pdf' => $this->estadoPdfGenerado(
                 $seguimientoId,
                 $usuarioId,
@@ -292,227 +282,13 @@ class OficioPdfService
         return $stmt->get_result()->fetch_assoc() ?: null;
     }
 
-    private function construirHtmlPdf($vista)
-    {
-        $escapar = static function ($valor) {
-            return htmlspecialchars((string)$valor, ENT_QUOTES, 'UTF-8');
-        };
-
-        $folio = $escapar($vista['folio'] ?? '');
-        $fecha = $escapar($vista['fecha'] ?? '');
-        $asunto = $escapar($vista['asunto'] ?? 'Programa de Profesionalización');
-        $contenidoHtml = $this->formatearContenidoInstitucional(
-            (string)($vista['contenido'] ?? '')
-        );
-
-        $header = $this->imagenDataUri(
-            $this->rootPath . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR .
-                'img' . DIRECTORY_SEPARATOR . 'oficios' . DIRECTORY_SEPARATOR .
-                'redmex_encabezado.png'
-        );
-        $sello = $this->imagenDataUri(
-            $this->rootPath . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR .
-                'img' . DIRECTORY_SEPARATOR . 'oficios' . DIRECTORY_SEPARATOR .
-                'redmex_sello.png'
-        );
-        $pie = $this->imagenDataUri(
-            $this->rootPath . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR .
-                'img' . DIRECTORY_SEPARATOR . 'oficios' . DIRECTORY_SEPARATOR .
-                'redmex_pie.png'
-        );
-
-        $encabezadoHtml = $header !== ''
-            ? '<img class="encabezado-img" src="' . $header . '" alt="Red Educativa México">'
-            : '<div class="encabezado-fallback">RED EDUCATIVA<br>MÉXICO</div><div class="linea-marca"></div>';
-        $selloHtml = $sello !== ''
-            ? '<img class="sello" src="' . $sello . '" alt="Sello REDMEX">'
-            : '';
-        $pieHtml = $pie !== ''
-            ? '<img class="pie-img" src="' . $pie . '" alt="rededucativamexico.org">'
-            : '<div class="pie-fallback">www.rededucativamexico.org &nbsp; | &nbsp; Tel. 800.0440.189</div>';
-
-        return '<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<style>
-    @page { margin: 1.15cm 1.65cm 1.75cm; }
-    * { box-sizing: border-box; }
-    body {
-        font-family: "DejaVu Sans", Arial, sans-serif;
-        font-size: 9.15pt;
-        line-height: 1.23;
-        color: #111111;
-        margin: 0;
-    }
-    .encabezado-wrap {
-        height: 2.35cm;
-        margin: -0.25cm -0.35cm 0.12cm;
-        overflow: hidden;
-    }
-    .encabezado-img {
-        display: block;
-        width: 100%;
-        height: auto;
-    }
-    .encabezado-fallback {
-        color: #2b2a66;
-        font-size: 19pt;
-        line-height: .92;
-        font-weight: 800;
-        padding-top: .15cm;
-    }
-    .linea-marca {
-        height: 4px;
-        margin-top: .25cm;
-        background: #29294f;
-        border-right: 7cm solid #12a69a;
-    }
-    .meta {
-        width: 100%;
-        text-align: right;
-        margin: 0 0 .38cm 0;
-        font-size: 8.7pt;
-        line-height: 1.18;
-    }
-    .meta strong { font-weight: 700; }
-    .contenido { margin: 0; }
-    .destinatario {
-        font-weight: 700;
-        text-transform: uppercase;
-        line-height: 1.32;
-        margin-bottom: .42cm;
-    }
-    .parrafo {
-        text-align: justify;
-        margin: 0 0 .16cm 0;
-    }
-    .atentamente {
-        margin-top: .28cm;
-        font-weight: 700;
-    }
-    .firma-texto {
-        margin-top: .10cm;
-        line-height: 1.25;
-    }
-    .sello {
-        position: fixed;
-        width: 2.55cm;
-        right: 3.15cm;
-        bottom: 2.35cm;
-    }
-    .pie-wrap {
-        position: fixed;
-        left: -1.65cm;
-        right: -1.65cm;
-        bottom: -1.75cm;
-        height: 1.03cm;
-        overflow: hidden;
-    }
-    .pie-img {
-        width: 100%;
-        height: 1.03cm;
-        display: block;
-    }
-    .pie-fallback {
-        height: 1.03cm;
-        padding-top: .30cm;
-        background: #29294f;
-        color: #ffffff;
-        text-align: center;
-        font-size: 8pt;
-    }
-</style>
-</head>
-<body>
-    <div class="encabezado-wrap">' . $encabezadoHtml . '</div>
-
-    <div class="meta">
-        <div><strong>Asunto:</strong> ' . $asunto . '</div>
-        <div><strong>No. de oficio:</strong> ' . $folio . '</div>
-        <div>Cuernavaca, Morelos, a ' . $fecha . '</div>
-    </div>
-
-    <div class="contenido">' . $contenidoHtml . '</div>
-    ' . $selloHtml . '
-    <div class="pie-wrap">' . $pieHtml . '</div>
-</body>
-</html>';
-    }
-
-    private function formatearContenidoInstitucional($contenido)
-    {
-        $contenido = trim(str_replace(["\r\n", "\r"], "\n", (string)$contenido));
-
-        if ($contenido === '') {
-            return '';
-        }
-
-        $bloques = preg_split('/\n\s*\n/u', $contenido) ?: [];
-        $html = '';
-
-        foreach ($bloques as $indice => $bloque) {
-            $bloque = trim((string)$bloque);
-
-            if ($bloque === '') {
-                continue;
-            }
-
-            $seguro = htmlspecialchars($bloque, ENT_QUOTES, 'UTF-8');
-            $seguro = nl2br($seguro, false);
-
-            if ($indice === 0) {
-                $html .= '<div class="destinatario">' . $seguro . '</div>';
-                continue;
-            }
-
-            if (preg_match('/^Atentamente\.?$/iu', $bloque)) {
-                $html .= '<div class="atentamente">' . $seguro . '</div>';
-                continue;
-            }
-
-            if (
-                strpos($bloque, 'Enlace Institucional') !== false ||
-                strpos($bloque, 'Móvil/Atención WhatsApp') !== false
-            ) {
-                $html .= '<div class="firma-texto">' . $seguro . '</div>';
-                continue;
-            }
-
-            $html .= '<p class="parrafo">' . $seguro . '</p>';
-        }
-
-        return $html;
-    }
-
-    private function imagenDataUri($ruta)
-    {
-        if (!is_file($ruta)) {
-            return '';
-        }
-
-        $contenido = file_get_contents($ruta);
-
-        if ($contenido === false || $contenido === '') {
-            return '';
-        }
-
-        $mime = 'image/png';
-
-        if (function_exists('mime_content_type')) {
-            $detectado = mime_content_type($ruta);
-
-            if (is_string($detectado) && strpos($detectado, 'image/') === 0) {
-                $mime = $detectado;
-            }
-        }
-
-        return 'data:' . $mime . ';base64,' . base64_encode($contenido);
-    }
-
     private function resolverRutaPdf($rutaRelativa)
     {
-        $rutaRelativa = trim(str_replace(['\\', '/'], DIRECTORY_SEPARATOR, (string)$rutaRelativa));
+        $rutaRelativa = trim(str_replace(
+            ['\\', '/'],
+            DIRECTORY_SEPARATOR,
+            (string)$rutaRelativa
+        ));
 
         if ($rutaRelativa === '') {
             return null;
