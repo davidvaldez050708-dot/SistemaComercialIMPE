@@ -18,14 +18,9 @@ class HostingerMailApiService
             require_once $archivoConfig;
         }
 
-        $this->token = $this->config(
-            'HOSTINGER_MAIL_API_TOKEN'
-        );
+        $this->token = $this->config('HOSTINGER_MAIL_API_TOKEN');
         $this->baseUrl = rtrim(
-            $this->config(
-                'HOSTINGER_MAIL_API_BASE_URL',
-                self::BASE_URL_DEFAULT
-            ),
+            $this->config('HOSTINGER_MAIL_API_BASE_URL', self::BASE_URL_DEFAULT),
             '/'
         );
     }
@@ -145,16 +140,11 @@ class HostingerMailApiService
             $nombreAdjunto = basename($rutaAdjunto);
         }
 
-        $contentType = $this->detectarContentType(
-            $rutaAdjunto,
-            'application/pdf'
-        );
-
         $attachments = [
             [
                 'filename' => $nombreAdjunto,
                 'content' => base64_encode($contenidoAdjunto),
-                'contentType' => $contentType,
+                'contentType' => $this->detectarContentType($rutaAdjunto, 'application/pdf'),
                 'encoding' => 'base64'
             ]
         ];
@@ -169,10 +159,7 @@ class HostingerMailApiService
                 $attachments[] = [
                     'filename' => basename($rutaFirma),
                     'content' => base64_encode($contenidoFirma),
-                    'contentType' => $this->detectarContentType(
-                        $rutaFirma,
-                        'image/png'
-                    ),
+                    'contentType' => $this->detectarContentType($rutaFirma, 'image/png'),
                     'cid' => self::FIRMA_CID,
                     'encoding' => 'base64'
                 ];
@@ -181,15 +168,8 @@ class HostingerMailApiService
             }
         }
 
-        $texto = rtrim($cuerpo);
-        $firmaTexto = $this->construirFirmaTexto(
-            $nombreRemitente,
-            $remitente
-        );
-
-        if (!$this->cuerpoYaIncluyeFirma($texto, $nombreRemitente, $remitente)) {
-            $texto .= "\n\n" . $firmaTexto;
-        }
+        $perfilFirma = $this->obtenerPerfilFirma($remitente, $nombreRemitente);
+        $texto = $this->completarFirmaTexto(rtrim($cuerpo), $perfilFirma);
 
         $payload = [
             'to' => [$destinatario],
@@ -197,8 +177,7 @@ class HostingerMailApiService
             'text' => $texto,
             'html' => $this->construirHtmlCorreo(
                 $cuerpo,
-                $nombreRemitente,
-                $remitente,
+                $perfilFirma,
                 $firmaDisponible
             ),
             'attachments' => $attachments
@@ -231,30 +210,28 @@ class HostingerMailApiService
         ];
     }
 
-    private function construirHtmlCorreo($cuerpo, $nombreRemitente, $remitente, $firmaDisponible)
+    private function construirHtmlCorreo($cuerpo, $perfilFirma, $firmaDisponible)
     {
-        $cuerpoSeguro = htmlspecialchars(
-            trim((string)$cuerpo),
-            ENT_QUOTES,
-            'UTF-8'
-        );
-        $cuerpoHtml = nl2br($cuerpoSeguro, false);
+        $cuerpoHtml = $this->formatearCuerpoHtml((string)$cuerpo);
+        $cuerpoTexto = trim((string)$cuerpo);
 
         $html = '<!DOCTYPE html><html lang="es"><body style="margin:0;padding:0;background:#ffffff;">';
         $html .= '<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.65;color:#222222;max-width:760px;">';
         $html .= $cuerpoHtml;
 
-        if ($firmaDisponible) {
-            $html .= '<div style="margin-top:22px;">';
-            $html .= '<img src="cid:' . self::FIRMA_CID . '" alt="Firma institucional" style="display:block;width:100%;max-width:720px;height:auto;border:0;">';
-            $html .= '</div>';
-        } else {
+        if (!$this->cuerpoYaIncluyeFirma($cuerpoTexto, $perfilFirma)) {
             $firma = htmlspecialchars(
-                $this->construirFirmaTexto($nombreRemitente, $remitente),
+                $this->construirFirmaTexto($perfilFirma, false),
                 ENT_QUOTES,
                 'UTF-8'
             );
-            $html .= '<div style="margin-top:22px;">' . nl2br($firma, false) . '</div>';
+            $html .= '<div style="margin-top:0;">' . nl2br($firma, false) . '</div>';
+        }
+
+        if ($firmaDisponible) {
+            $html .= '<div style="margin-top:18px;">';
+            $html .= '<img src="cid:' . self::FIRMA_CID . '" alt="Firma institucional" style="display:block;width:100%;max-width:720px;height:auto;border:0;">';
+            $html .= '</div>';
         }
 
         $html .= '</div></body></html>';
@@ -262,37 +239,113 @@ class HostingerMailApiService
         return $html;
     }
 
-    private function construirFirmaTexto($nombreRemitente, $remitente)
+    private function formatearCuerpoHtml($cuerpo)
     {
-        $nombreRemitente = trim((string)$nombreRemitente);
-        $remitente = trim((string)$remitente);
-        $lineas = [];
+        $lineas = preg_split('/\R/u', trim((string)$cuerpo));
 
-        if ($nombreRemitente !== '') {
-            $lineas[] = $nombreRemitente;
+        if (!is_array($lineas)) {
+            $lineas = [trim((string)$cuerpo)];
         }
 
-        $lineas[] = 'Analista de Enlace Institucional';
-        $lineas[] = 'Fundación Red Educativa México';
+        $html = '';
+        $enEncabezado = true;
 
-        if ($remitente !== '') {
-            $lineas[] = $remitente;
+        foreach ($lineas as $linea) {
+            $texto = trim((string)$linea);
+
+            if ($enEncabezado && preg_match('/^Esperando\b/iu', $texto)) {
+                $enEncabezado = false;
+            }
+
+            if ($texto === '') {
+                $html .= '<br>';
+                continue;
+            }
+
+            $seguro = htmlspecialchars($texto, ENT_QUOTES, 'UTF-8');
+
+            if ($enEncabezado) {
+                $html .= '<strong>' . $seguro . '</strong><br>';
+            } else {
+                $html .= $seguro . '<br>';
+            }
+        }
+
+        return $html;
+    }
+
+    private function obtenerPerfilFirma($remitente, $nombreRemitente)
+    {
+        $remitente = strtolower(trim((string)$remitente));
+        $nombreRemitente = trim((string)$nombreRemitente);
+
+        $perfil = [
+            'nombre' => $nombreRemitente,
+            'cargo' => 'Analista de Enlace Institucional',
+            'institucion' => 'Fundación Red Educativa México',
+            'telefono' => ''
+        ];
+
+        if ($remitente === 'd.institucional2@rededucativamexico.org') {
+            $perfil['nombre'] = 'Ing. Diego Israel Bahena Espin';
+            $perfil['telefono'] = '5535318203';
+        }
+
+        return $perfil;
+    }
+
+    private function completarFirmaTexto($cuerpo, $perfilFirma)
+    {
+        $cuerpo = rtrim((string)$cuerpo);
+
+        if ($this->cuerpoYaIncluyeFirma($cuerpo, $perfilFirma)) {
+            return $cuerpo;
+        }
+
+        $firmaSinAtentamente = $this->construirFirmaTexto($perfilFirma, false);
+
+        if (preg_match('/Atentamente\s*$/iu', $cuerpo)) {
+            return $cuerpo . "\n" . $firmaSinAtentamente;
+        }
+
+        return $cuerpo . "\n\nAtentamente\n" . $firmaSinAtentamente;
+    }
+
+    private function construirFirmaTexto($perfilFirma, $incluirAtentamente = true)
+    {
+        $lineas = [];
+
+        if ($incluirAtentamente) {
+            $lineas[] = 'Atentamente';
+        }
+
+        $nombre = trim((string)($perfilFirma['nombre'] ?? ''));
+        $cargo = trim((string)($perfilFirma['cargo'] ?? ''));
+        $institucion = trim((string)($perfilFirma['institucion'] ?? ''));
+        $telefono = trim((string)($perfilFirma['telefono'] ?? ''));
+
+        if ($nombre !== '') {
+            $lineas[] = $nombre;
+        }
+        if ($cargo !== '') {
+            $lineas[] = $cargo;
+        }
+        if ($institucion !== '') {
+            $lineas[] = $institucion;
+        }
+        if ($telefono !== '') {
+            $lineas[] = 'Tel. ' . $telefono;
         }
 
         return implode("\n", $lineas);
     }
 
-    private function cuerpoYaIncluyeFirma($cuerpo, $nombreRemitente, $remitente)
+    private function cuerpoYaIncluyeFirma($cuerpo, $perfilFirma)
     {
-        $cuerpo = strtolower((string)$cuerpo);
-        $nombreRemitente = strtolower(trim((string)$nombreRemitente));
-        $remitente = strtolower(trim((string)$remitente));
+        $cuerpo = mb_strtolower((string)$cuerpo, 'UTF-8');
+        $nombre = mb_strtolower(trim((string)($perfilFirma['nombre'] ?? '')), 'UTF-8');
 
-        if ($remitente !== '' && strpos($cuerpo, $remitente) !== false) {
-            return true;
-        }
-
-        return $nombreRemitente !== '' && strpos($cuerpo, $nombreRemitente) !== false;
+        return $nombre !== '' && strpos($cuerpo, $nombre) !== false;
     }
 
     private function buscarFirmaLocal($remitente)
