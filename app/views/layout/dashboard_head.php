@@ -65,6 +65,10 @@ $fotoPerfilUrl = $fotoPerfil !== ''
 
     <link
         rel="stylesheet"
+        href="<?= BASE_URL ?>public/css/seguimiento_filtros_layout.css?v=<?= filemtime(ROOT_PATH . '/public/css/seguimiento_filtros_layout.css') ?>">
+
+    <link
+        rel="stylesheet"
         href="<?= BASE_URL ?>public/css/recordatorios.css?v=<?= filemtime(ROOT_PATH . '/public/css/recordatorios.css') ?>">
 
     <link
