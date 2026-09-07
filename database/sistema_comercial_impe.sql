@@ -700,7 +700,7 @@ CREATE TABLE `asignaciones_territorio` (
   `id` int(11) NOT NULL,
   `estado_id` int(11) NOT NULL,
   `usuario_id` int(11) NOT NULL,
-  `tipo_asignacion` enum('CUENTA_CLAVE','ANALISTA_DATOS') NOT NULL,
+  `tipo_asignacion` enum('CUENTA_CLAVE','ANALISTA_DATOS','ASESOR') NOT NULL,
   `cuenta_clave_asignacion_id` int(11) DEFAULT NULL,
   `es_principal` tinyint(1) NOT NULL DEFAULT 1,
   `fecha_inicio` date DEFAULT NULL,
