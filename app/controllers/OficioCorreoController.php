@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../services/OficioCorreoService.php';
+require_once __DIR__ . '/../services/OficioEnvioService.php';
 require_once __DIR__ . '/../services/OficioProgramacionService.php';
 require_once __DIR__ . '/../helpers/PermissionHelper.php';
 
@@ -109,7 +110,12 @@ class OficioCorreoController
             ], 422);
         }
 
-        $servicio = new OficioCorreoService();
+        /*
+         * Este servicio valida la fecha incluida en el folio justo antes del
+         * envío. Si el oficio fue preparado otro día, actualiza el segmento
+         * de fecha y vuelve a generar el PDF institucional antes de enviarlo.
+         */
+        $servicio = new OficioEnvioService();
         $resultado = $servicio->enviarAhora(
             $seguimientoId,
             $usuarioId
