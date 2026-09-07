@@ -16,7 +16,9 @@
             document.querySelectorAll('[data-linkage-municipality-group]')
         );
         const contadorResultados = document.querySelector('[data-linkage-results-count]');
-        const enlaceLimpiar = document.querySelector('.filter-clear-link');
+        const enlaceLimpiar = document.querySelector('[data-linkage-clear-filters]');
+        const emptyReal = document.querySelector('[data-linkage-empty-real]');
+        const emptyFiltrado = document.querySelector('[data-linkage-empty-filtered]');
         let selectorRuta = null;
 
         const estilosRuta = document.createElement('style');
@@ -114,13 +116,14 @@
         };
 
         const actualizarContador = function () {
-            if (!contadorResultados) {
-                return;
+            const visibles = filasElementos.filter(filaVisible).length;
+
+            if (contadorResultados) {
+                contadorResultados.textContent =
+                    visibles + (visibles === 1 ? ' resultado' : ' resultados');
             }
 
-            const visibles = filasElementos.filter(filaVisible).length;
-            contadorResultados.textContent =
-                visibles + (visibles === 1 ? ' resultado' : ' resultados');
+            return visibles;
         };
 
         const actualizarGrupos = function () {
@@ -157,6 +160,18 @@
             );
         };
 
+        const actualizarEstadoVacio = function (visibles) {
+            const rutaActiva = String(selectorRuta?.value || '') !== '';
+
+            if (!rutaActiva) {
+                return;
+            }
+
+            tabla.classList.toggle('d-none', visibles === 0);
+            emptyReal?.classList.add('d-none');
+            emptyFiltrado?.classList.toggle('d-none', visibles !== 0);
+        };
+
         const aplicarFiltroRuta = function () {
             const pasoSeleccionado = String(selectorRuta?.value || '');
 
@@ -172,8 +187,9 @@
             });
 
             actualizarGrupos();
-            actualizarContador();
+            const visibles = actualizarContador();
             actualizarBotonLimpiar();
+            actualizarEstadoVacio(visibles);
         };
 
         selectorRuta?.addEventListener('change', function () {
@@ -186,7 +202,30 @@
                 url.searchParams.delete('ruta_paso');
             }
             window.history.replaceState({}, '', url.toString());
+
+            if (!selectorRuta.value) {
+                window.setTimeout(function () {
+                    const visibles = filasElementos.filter(filaVisible).length;
+                    tabla.classList.toggle('d-none', visibles === 0);
+                    emptyFiltrado?.classList.toggle(
+                        'd-none',
+                        !(hayOtrosFiltros() && visibles === 0)
+                    );
+                }, 0);
+            }
         });
+
+        enlaceLimpiar?.addEventListener('click', function () {
+            if (!selectorRuta || selectorRuta.value === '') {
+                return;
+            }
+
+            selectorRuta.value = '';
+            const url = new URL(window.location.href);
+            url.searchParams.delete('ruta_paso');
+            window.history.replaceState({}, '', url.toString());
+            window.setTimeout(aplicarFiltroRuta, 0);
+        }, true);
 
         ['input', 'change'].forEach(function (tipoEvento) {
             formularioFiltros?.addEventListener(tipoEvento, function () {
