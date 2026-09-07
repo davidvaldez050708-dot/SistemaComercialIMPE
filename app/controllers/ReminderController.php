@@ -2,14 +2,17 @@
 
 require_once __DIR__ . '/../helpers/ReminderHelper.php';
 require_once __DIR__ . '/../services/AgendaReunionService.php';
+require_once __DIR__ . '/../services/ReminderAgendaFilterService.php';
 
 class ReminderController
 {
     private $agendaReunionService;
+    private $reminderAgendaFilterService;
 
     public function __construct()
     {
         $this->agendaReunionService = new AgendaReunionService();
+        $this->reminderAgendaFilterService = new ReminderAgendaFilterService();
     }
 
     public function pendientes()
@@ -46,6 +49,14 @@ class ReminderController
                 $resultado['recordatorios'] ?? []
             );
 
+            // Cuando el seguimiento ya tiene una reunión activa, la agenda compartida
+            // es la fuente correcta de notificaciones. Evitamos mostrar recordatorios
+            // antiguos como "Enviar oficio/correo" que pertenecen a una etapa previa.
+            $recordatoriosSeguimiento = $this->reminderAgendaFilterService
+                ->filtrarRecordatoriosSeguimiento($recordatoriosSeguimiento, $usuarioId);
+            $avisosSeguimiento = $this->reminderAgendaFilterService
+                ->filtrarAvisosSeguimiento($resultado['avisos'] ?? [], $usuarioId);
+
             $recordatorios = array_slice(
                 array_merge($recordatoriosAgenda, $recordatoriosSeguimiento),
                 0,
@@ -53,7 +64,7 @@ class ReminderController
             );
             $avisos = array_values(array_merge(
                 $avisosAgenda,
-                $resultado['avisos'] ?? []
+                $avisosSeguimiento
             ));
             $requiereMigracion = (bool)($resultado['requiere_migracion'] ?? false);
             $ok = (bool)($resultado['ok'] ?? true);
