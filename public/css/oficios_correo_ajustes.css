@@ -1,0 +1,15 @@
+/* Ajustes del modal de correo institucional */
+
+#modalBorradorCorreoOficio [data-mail-note].alert-info {
+    display: none !important;
+}
+
+#modalBorradorCorreoOficio [data-mail-note].alert-success,
+#modalBorradorCorreoOficio [data-mail-note].alert-danger {
+    display: flex !important;
+    align-items: center;
+}
+
+#modalBorradorCorreoOficio [data-mail-attachment] {
+    overflow-wrap: anywhere;
+}
