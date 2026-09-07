@@ -4,6 +4,8 @@ require_once __DIR__ . '/../../config/db_connection.php';
 
 class OficioVinculacionModel
 {
+    private const LOCK_FOLIO_GLOBAL = 'sistema_comercial_impe_oficio_folio_global';
+
     private $connection;
 
     public function __construct()
@@ -69,6 +71,7 @@ class OficioVinculacionModel
     {
         $seguimientoId = (int)$seguimientoId;
         $usuarioId = (int)$usuarioId;
+        $bloqueoFolio = false;
         $this->connection->begin_transaction();
 
         try {
@@ -173,42 +176,24 @@ class OficioVinculacionModel
                 return $this->error('El correo verificado no tiene un formato válido.', 422);
             }
 
-            $estadoId = (int)$seguimiento['estado_id'];
-            $anio = (int)date('Y');
+            $bloqueoFolio = $this->adquirirBloqueoFolioGlobal();
 
-            $sqlConsecutivo = "INSERT INTO consecutivos_vinculacion (
-                        estado_id,
-                        anio,
-                        ultimo_consecutivo
-                    ) VALUES (?, ?, 1)
-                    ON DUPLICATE KEY UPDATE
-                        ultimo_consecutivo = ultimo_consecutivo + 1";
-            $stmtConsecutivo = $this->connection->prepare($sqlConsecutivo);
-            $stmtConsecutivo->bind_param('ii', $estadoId, $anio);
-            $stmtConsecutivo->execute();
+            if (!$bloqueoFolio) {
+                throw new RuntimeException(
+                    'No fue posible reservar el consecutivo general del oficio.'
+                );
+            }
 
-            $sqlLeerConsecutivo = "SELECT ultimo_consecutivo
-                    FROM consecutivos_vinculacion
-                    WHERE estado_id = ?
-                        AND anio = ?
-                    LIMIT 1
-                    FOR UPDATE";
-            $stmtLeerConsecutivo = $this->connection->prepare($sqlLeerConsecutivo);
-            $stmtLeerConsecutivo->bind_param('ii', $estadoId, $anio);
-            $stmtLeerConsecutivo->execute();
-            $filaConsecutivo = $stmtLeerConsecutivo->get_result()->fetch_assoc() ?: [];
-            $consecutivo = (int)($filaConsecutivo['ultimo_consecutivo'] ?? 0);
+            $consecutivo = $this->siguienteConsecutivoFolioGeneral();
 
             if ($consecutivo <= 0) {
                 throw new RuntimeException('No fue posible obtener el consecutivo del oficio.');
             }
 
-            $codigoEstado = $this->codigoEstadoFolio((string)($seguimiento['clave_inegi'] ?? ''));
             $folio = sprintf(
-                'REDMEX-%s-%d-%04d',
-                $codigoEstado,
-                $anio,
-                $consecutivo
+                'REDMEX/%04d/%s',
+                $consecutivo,
+                date('d-m/y')
             );
 
             if ($oficioExistente) {
@@ -283,6 +268,8 @@ class OficioVinculacionModel
             }
 
             $this->connection->commit();
+            $this->liberarBloqueoFolioGlobal();
+            $bloqueoFolio = false;
             $estado = $this->obtenerEstadoSeguimiento($seguimientoId, $usuarioId);
 
             return [
@@ -295,6 +282,10 @@ class OficioVinculacionModel
             ];
         } catch (Throwable $error) {
             $this->connection->rollback();
+
+            if ($bloqueoFolio) {
+                $this->liberarBloqueoFolioGlobal();
+            }
 
             return $this->error('No fue posible generar el oficio.', 500);
         }
@@ -365,54 +356,52 @@ class OficioVinculacionModel
         return $seguimiento;
     }
 
+    private function adquirirBloqueoFolioGlobal()
+    {
+        $nombre = self::LOCK_FOLIO_GLOBAL;
+        $sql = "SELECT GET_LOCK(?, 5) AS adquirido";
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param('s', $nombre);
+        $stmt->execute();
+        $fila = $stmt->get_result()->fetch_assoc() ?: [];
+
+        return (int)($fila['adquirido'] ?? 0) === 1;
+    }
+
+    private function liberarBloqueoFolioGlobal()
+    {
+        $nombre = self::LOCK_FOLIO_GLOBAL;
+        $sql = "SELECT RELEASE_LOCK(?)";
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param('s', $nombre);
+        $stmt->execute();
+    }
+
+    private function siguienteConsecutivoFolioGeneral()
+    {
+        $sql = "SELECT COALESCE(MAX(
+                    CAST(
+                        SUBSTRING_INDEX(
+                            SUBSTRING_INDEX(folio, '/', 2),
+                            '/',
+                            -1
+                        ) AS UNSIGNED
+                    )
+                ), 0) AS ultimo
+                FROM oficios_vinculacion
+                WHERE folio REGEXP '^REDMEX/[0-9]+/[0-9]{2}-[0-9]{2}/[0-9]{2}$'";
+        $resultado = $this->connection->query($sql);
+        $fila = $resultado ? ($resultado->fetch_assoc() ?: []) : [];
+
+        return (int)($fila['ultimo'] ?? 0) + 1;
+    }
+
     private function condicionAsignacionVigente($alias)
     {
         return "(
             ($alias.fecha_inicio IS NULL OR $alias.fecha_inicio <= CURDATE())
             AND ($alias.fecha_fin IS NULL OR $alias.fecha_fin >= CURDATE())
         )";
-    }
-
-    private function codigoEstadoFolio($claveInegi)
-    {
-        $codigos = [
-            '01' => 'AGS',
-            '02' => 'BC',
-            '03' => 'BCS',
-            '04' => 'CAM',
-            '05' => 'COA',
-            '06' => 'COL',
-            '07' => 'CHP',
-            '08' => 'CHH',
-            '09' => 'CDMX',
-            '10' => 'DGO',
-            '11' => 'GTO',
-            '12' => 'GRO',
-            '13' => 'HGO',
-            '14' => 'JAL',
-            '15' => 'MEX',
-            '16' => 'MIC',
-            '17' => 'MOR',
-            '18' => 'NAY',
-            '19' => 'NL',
-            '20' => 'OAX',
-            '21' => 'PUE',
-            '22' => 'QRO',
-            '23' => 'QROO',
-            '24' => 'SLP',
-            '25' => 'SIN',
-            '26' => 'SON',
-            '27' => 'TAB',
-            '28' => 'TAM',
-            '29' => 'TLAX',
-            '30' => 'VER',
-            '31' => 'YUC',
-            '32' => 'ZAC'
-        ];
-
-        $clave = str_pad(trim($claveInegi), 2, '0', STR_PAD_LEFT);
-
-        return $codigos[$clave] ?? $clave;
     }
 
     private function error($mensaje, $codigoHttp)
