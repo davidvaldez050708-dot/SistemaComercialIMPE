@@ -4,18 +4,21 @@ require_once __DIR__ . '/../helpers/ReminderHelper.php';
 require_once __DIR__ . '/../services/AgendaReunionService.php';
 require_once __DIR__ . '/../services/ReminderAgendaFilterService.php';
 require_once __DIR__ . '/../services/ReminderReunionFollowupService.php';
+require_once __DIR__ . '/../services/ReminderDirectLinkService.php';
 
 class ReminderController
 {
     private $agendaReunionService;
     private $reminderAgendaFilterService;
     private $reminderReunionFollowupService;
+    private $reminderDirectLinkService;
 
     public function __construct()
     {
         $this->agendaReunionService = new AgendaReunionService();
         $this->reminderAgendaFilterService = new ReminderAgendaFilterService();
         $this->reminderReunionFollowupService = new ReminderReunionFollowupService();
+        $this->reminderDirectLinkService = new ReminderDirectLinkService();
     }
 
     public function pendientes()
@@ -101,6 +104,26 @@ class ReminderController
                     }
                 ));
             }
+
+            // Las notificaciones operativas del Analista deben abrir directamente
+            // el panel "Trabajar" del seguimiento. Las notificaciones de agenda
+            // conservan su URL propia hacia la reunión correspondiente.
+            $recordatoriosSeguimiento = $this->reminderDirectLinkService->aplicar(
+                $recordatoriosSeguimiento,
+                $usuarioId
+            );
+            $avisosSeguimiento = $this->reminderDirectLinkService->aplicar(
+                $avisosSeguimiento,
+                $usuarioId
+            );
+            $recordatoriosAcuerdos = $this->reminderDirectLinkService->aplicar(
+                $recordatoriosAcuerdos,
+                $usuarioId
+            );
+            $avisosAcuerdos = $this->reminderDirectLinkService->aplicar(
+                $avisosAcuerdos,
+                $usuarioId
+            );
 
             $recordatorios = array_slice(
                 array_merge(
