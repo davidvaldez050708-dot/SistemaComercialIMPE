@@ -81,6 +81,10 @@ $fotoPerfilUrl = $fotoPerfil !== ''
 
     <link
         rel="stylesheet"
+        href="<?= BASE_URL ?>public/css/oficios_correo_ajustes.css?v=<?= filemtime(ROOT_PATH . '/public/css/oficios_correo_ajustes.css') ?>">
+
+    <link
+        rel="stylesheet"
         href="<?= BASE_URL ?>public/css/seguimiento_expediente.css?v=<?= filemtime(ROOT_PATH . '/public/css/seguimiento_expediente.css') ?>">
 
     <link
