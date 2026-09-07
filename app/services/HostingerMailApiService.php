@@ -3,6 +3,7 @@
 class HostingerMailApiService
 {
     private const BASE_URL_DEFAULT = 'https://api.mail.hostinger.com';
+    private const FIRMA_CID = 'firma-analista';
 
     private $token;
     private $baseUrl;
@@ -144,28 +145,63 @@ class HostingerMailApiService
             $nombreAdjunto = basename($rutaAdjunto);
         }
 
-        $contentType = 'application/pdf';
+        $contentType = $this->detectarContentType(
+            $rutaAdjunto,
+            'application/pdf'
+        );
 
-        if (function_exists('mime_content_type')) {
-            $detectado = mime_content_type($rutaAdjunto);
+        $attachments = [
+            [
+                'filename' => $nombreAdjunto,
+                'content' => base64_encode($contenidoAdjunto),
+                'contentType' => $contentType,
+                'encoding' => 'base64'
+            ]
+        ];
 
-            if (is_string($detectado) && trim($detectado) !== '') {
-                $contentType = trim($detectado);
+        $rutaFirma = $this->buscarFirmaLocal($remitente);
+        $firmaDisponible = $rutaFirma !== '' && is_file($rutaFirma);
+
+        if ($firmaDisponible) {
+            $contenidoFirma = file_get_contents($rutaFirma);
+
+            if ($contenidoFirma !== false) {
+                $attachments[] = [
+                    'filename' => basename($rutaFirma),
+                    'content' => base64_encode($contenidoFirma),
+                    'contentType' => $this->detectarContentType(
+                        $rutaFirma,
+                        'image/png'
+                    ),
+                    'cid' => self::FIRMA_CID,
+                    'encoding' => 'base64'
+                ];
+            } else {
+                $firmaDisponible = false;
             }
+        }
+
+        $texto = rtrim($cuerpo);
+        $firmaTexto = $this->construirFirmaTexto(
+            $nombreRemitente,
+            $remitente
+        );
+
+        if (!$this->cuerpoYaIncluyeFirma($texto, $nombreRemitente, $remitente)) {
+            $texto .= "\n\n" . $firmaTexto;
         }
 
         $payload = [
             'to' => [$destinatario],
             'subject' => $asunto,
-            'text' => $cuerpo,
-            'attachments' => [
-                [
-                    'filename' => $nombreAdjunto,
-                    'content' => base64_encode($contenidoAdjunto),
-                    'contentType' => $contentType,
-                    'encoding' => 'base64'
-                ]
-            ]
+            'text' => $texto,
+            'html' => $this->construirHtmlCorreo(
+                $cuerpo,
+                $nombreRemitente,
+                $remitente,
+                $firmaDisponible
+            ),
+            'attachments' => $attachments
         ];
 
         if ($nombreRemitente !== '') {
@@ -190,8 +226,111 @@ class HostingerMailApiService
             'ok' => true,
             'proveedor' => 'HOSTINGER_MAIL_API',
             'remitente' => $remitente,
-            'mailbox_resource_id' => $mailboxResourceId['resource_id']
+            'mailbox_resource_id' => $mailboxResourceId['resource_id'],
+            'firma_incluida' => $firmaDisponible
         ];
+    }
+
+    private function construirHtmlCorreo($cuerpo, $nombreRemitente, $remitente, $firmaDisponible)
+    {
+        $cuerpoSeguro = htmlspecialchars(
+            trim((string)$cuerpo),
+            ENT_QUOTES,
+            'UTF-8'
+        );
+        $cuerpoHtml = nl2br($cuerpoSeguro, false);
+
+        $html = '<!DOCTYPE html><html lang="es"><body style="margin:0;padding:0;background:#ffffff;">';
+        $html .= '<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.65;color:#222222;max-width:760px;">';
+        $html .= $cuerpoHtml;
+
+        if ($firmaDisponible) {
+            $html .= '<div style="margin-top:22px;">';
+            $html .= '<img src="cid:' . self::FIRMA_CID . '" alt="Firma institucional" style="display:block;width:100%;max-width:720px;height:auto;border:0;">';
+            $html .= '</div>';
+        } else {
+            $firma = htmlspecialchars(
+                $this->construirFirmaTexto($nombreRemitente, $remitente),
+                ENT_QUOTES,
+                'UTF-8'
+            );
+            $html .= '<div style="margin-top:22px;">' . nl2br($firma, false) . '</div>';
+        }
+
+        $html .= '</div></body></html>';
+
+        return $html;
+    }
+
+    private function construirFirmaTexto($nombreRemitente, $remitente)
+    {
+        $nombreRemitente = trim((string)$nombreRemitente);
+        $remitente = trim((string)$remitente);
+        $lineas = [];
+
+        if ($nombreRemitente !== '') {
+            $lineas[] = $nombreRemitente;
+        }
+
+        $lineas[] = 'Analista de Enlace Institucional';
+        $lineas[] = 'Fundación Red Educativa México';
+
+        if ($remitente !== '') {
+            $lineas[] = $remitente;
+        }
+
+        return implode("\n", $lineas);
+    }
+
+    private function cuerpoYaIncluyeFirma($cuerpo, $nombreRemitente, $remitente)
+    {
+        $cuerpo = strtolower((string)$cuerpo);
+        $nombreRemitente = strtolower(trim((string)$nombreRemitente));
+        $remitente = strtolower(trim((string)$remitente));
+
+        if ($remitente !== '' && strpos($cuerpo, $remitente) !== false) {
+            return true;
+        }
+
+        return $nombreRemitente !== '' && strpos($cuerpo, $nombreRemitente) !== false;
+    }
+
+    private function buscarFirmaLocal($remitente)
+    {
+        $remitente = strtolower(trim((string)$remitente));
+
+        if ($remitente === '') {
+            return '';
+        }
+
+        $nombreBase = preg_replace('/[^a-z0-9._-]+/i', '_', $remitente);
+        $directorio = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR .
+            'storage' . DIRECTORY_SEPARATOR . 'mail' . DIRECTORY_SEPARATOR . 'firmas';
+
+        foreach (['png', 'jpg', 'jpeg', 'webp'] as $extension) {
+            $ruta = $directorio . DIRECTORY_SEPARATOR . $nombreBase . '.' . $extension;
+
+            if (is_file($ruta)) {
+                return $ruta;
+            }
+        }
+
+        return '';
+    }
+
+    private function detectarContentType($ruta, $default)
+    {
+        $contentType = trim((string)$default);
+
+        if (function_exists('mime_content_type')) {
+            $detectado = mime_content_type($ruta);
+
+            if (is_string($detectado) && trim($detectado) !== '') {
+                $contentType = trim($detectado);
+            }
+        }
+
+        return $contentType;
     }
 
     private function obtenerMailboxResourceId($correo)
