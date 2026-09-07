@@ -29,7 +29,6 @@ class ReminderObservacionService
                         observaciones.id,
                         observaciones.seguimiento_id,
                         observaciones.created_at,
-                        seguimientos.estado_id,
                         seguimientos.nombre_entidad,
                         usuarios.nombre,
                         usuarios.apellidos
@@ -60,16 +59,14 @@ class ReminderObservacionService
             while ($fila = $resultado->fetch_assoc()) {
                 $observacionId = (int)($fila['id'] ?? 0);
                 $seguimientoId = (int)($fila['seguimiento_id'] ?? 0);
-                $estadoId = (int)($fila['estado_id'] ?? 0);
                 $nombreEntidad = trim((string)($fila['nombre_entidad'] ?? ''));
                 $autor = trim(
                     (string)($fila['nombre'] ?? '') . ' ' .
                     (string)($fila['apellidos'] ?? '')
                 );
                 $fecha = trim((string)($fila['created_at'] ?? ''));
-                $url = 'index.php?controller=seguimientoVinculacion&action=estado' .
-                    '&estado_id=' . $estadoId .
-                    '&trabajar_id=' . $seguimientoId;
+                $url = 'index.php?controller=seguimientoVinculacion&action=detalle&id=' .
+                    $seguimientoId;
 
                 if ($autor === '') {
                     $autor = 'Cuenta Clave';
