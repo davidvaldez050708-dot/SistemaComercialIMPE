@@ -300,102 +300,214 @@ class OficioPdfService
 
         $folio = $escapar($vista['folio'] ?? '');
         $fecha = $escapar($vista['fecha'] ?? '');
-        $asunto = $escapar($vista['asunto'] ?? '');
-        $contenido = nl2br($escapar($vista['contenido'] ?? ''), false);
+        $asunto = $escapar($vista['asunto'] ?? 'Programa de Profesionalización');
+        $contenidoHtml = $this->formatearContenidoInstitucional(
+            (string)($vista['contenido'] ?? '')
+        );
+
+        $header = $this->imagenDataUri(
+            $this->rootPath . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR .
+                'img' . DIRECTORY_SEPARATOR . 'oficios' . DIRECTORY_SEPARATOR .
+                'redmex_encabezado.png'
+        );
+        $sello = $this->imagenDataUri(
+            $this->rootPath . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR .
+                'img' . DIRECTORY_SEPARATOR . 'oficios' . DIRECTORY_SEPARATOR .
+                'redmex_sello.png'
+        );
+        $pie = $this->imagenDataUri(
+            $this->rootPath . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR .
+                'img' . DIRECTORY_SEPARATOR . 'oficios' . DIRECTORY_SEPARATOR .
+                'redmex_pie.png'
+        );
+
+        $encabezadoHtml = $header !== ''
+            ? '<img class="encabezado-img" src="' . $header . '" alt="Red Educativa México">'
+            : '<div class="encabezado-fallback">RED EDUCATIVA<br>MÉXICO</div><div class="linea-marca"></div>';
+        $selloHtml = $sello !== ''
+            ? '<img class="sello" src="' . $sello . '" alt="Sello REDMEX">'
+            : '';
+        $pieHtml = $pie !== ''
+            ? '<img class="pie-img" src="' . $pie . '" alt="rededucativamexico.org">'
+            : '<div class="pie-fallback">www.rededucativamexico.org &nbsp; | &nbsp; Tel. 800.0440.189</div>';
 
         return '<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
 <style>
-    @page { margin: 2cm 2.1cm 1.8cm; }
+    @page { margin: 1.15cm 1.65cm 1.75cm; }
+    * { box-sizing: border-box; }
     body {
-        font-family: "DejaVu Sans", sans-serif;
-        font-size: 11.5pt;
-        line-height: 1.55;
-        color: #20252b;
+        font-family: "DejaVu Sans", Arial, sans-serif;
+        font-size: 9.15pt;
+        line-height: 1.23;
+        color: #111111;
         margin: 0;
     }
-    .encabezado {
-        padding-bottom: 14px;
-        border-bottom: 2px solid #243b53;
-        margin-bottom: 22px;
+    .encabezado-wrap {
+        height: 2.35cm;
+        margin: -0.25cm -0.35cm 0.12cm;
+        overflow: hidden;
     }
-    .fundacion {
-        font-size: 17pt;
-        font-weight: 700;
-        color: #172b4d;
+    .encabezado-img {
+        display: block;
+        width: 100%;
+        height: auto;
     }
-    .area {
-        margin-top: 3px;
-        font-size: 9.5pt;
-        color: #5d6772;
+    .encabezado-fallback {
+        color: #2b2a66;
+        font-size: 19pt;
+        line-height: .92;
+        font-weight: 800;
+        padding-top: .15cm;
+    }
+    .linea-marca {
+        height: 4px;
+        margin-top: .25cm;
+        background: #29294f;
+        border-right: 7cm solid #12a69a;
     }
     .meta {
         width: 100%;
-        margin-bottom: 22px;
-        border-collapse: collapse;
+        text-align: right;
+        margin: 0 0 .38cm 0;
+        font-size: 8.7pt;
+        line-height: 1.18;
     }
-    .meta td {
-        width: 50%;
-        vertical-align: top;
-        padding: 0;
-    }
-    .meta .derecha { text-align: right; }
-    .etiqueta {
-        display: block;
-        font-size: 8.5pt;
+    .meta strong { font-weight: 700; }
+    .contenido { margin: 0; }
+    .destinatario {
+        font-weight: 700;
         text-transform: uppercase;
-        letter-spacing: .5px;
-        color: #6b7280;
-        margin-bottom: 2px;
+        line-height: 1.32;
+        margin-bottom: .42cm;
     }
-    .valor { font-weight: 700; }
-    .asunto {
-        background: #f3f5f7;
-        border-left: 3px solid #243b53;
-        padding: 10px 12px;
-        margin-bottom: 24px;
-    }
-    .contenido {
+    .parrafo {
         text-align: justify;
-        line-height: 1.65;
+        margin: 0 0 .16cm 0;
     }
-    .pie {
-        margin-top: 34px;
-        padding-top: 10px;
-        border-top: 1px solid #d9dee3;
-        font-size: 8.5pt;
-        color: #6b7280;
+    .atentamente {
+        margin-top: .28cm;
+        font-weight: 700;
+    }
+    .firma-texto {
+        margin-top: .10cm;
+        line-height: 1.25;
+    }
+    .sello {
+        position: fixed;
+        width: 2.55cm;
+        right: 3.15cm;
+        bottom: 2.35cm;
+    }
+    .pie-wrap {
+        position: fixed;
+        left: -1.65cm;
+        right: -1.65cm;
+        bottom: -1.75cm;
+        height: 1.03cm;
+        overflow: hidden;
+    }
+    .pie-img {
+        width: 100%;
+        height: 1.03cm;
+        display: block;
+    }
+    .pie-fallback {
+        height: 1.03cm;
+        padding-top: .30cm;
+        background: #29294f;
+        color: #ffffff;
         text-align: center;
+        font-size: 8pt;
     }
 </style>
 </head>
 <body>
-    <div class="encabezado">
-        <div class="fundacion">Fundación Red Educativa México</div>
-        <div class="area">Vinculación institucional</div>
+    <div class="encabezado-wrap">' . $encabezadoHtml . '</div>
+
+    <div class="meta">
+        <div><strong>Asunto:</strong> ' . $asunto . '</div>
+        <div><strong>No. de oficio:</strong> ' . $folio . '</div>
+        <div>Cuernavaca, Morelos, a ' . $fecha . '</div>
     </div>
 
-    <table class="meta">
-        <tr>
-            <td>
-                <span class="etiqueta">Folio</span>
-                <span class="valor">' . $folio . '</span>
-            </td>
-            <td class="derecha">
-                <span class="etiqueta">Fecha</span>
-                <span class="valor">' . $fecha . '</span>
-            </td>
-        </tr>
-    </table>
-
-    <div class="asunto"><strong>Asunto:</strong> ' . $asunto . '</div>
-    <div class="contenido">' . $contenido . '</div>
-
-    <div class="pie">Fundación Red Educativa México · Vinculación institucional</div>
+    <div class="contenido">' . $contenidoHtml . '</div>
+    ' . $selloHtml . '
+    <div class="pie-wrap">' . $pieHtml . '</div>
 </body>
 </html>';
+    }
+
+    private function formatearContenidoInstitucional($contenido)
+    {
+        $contenido = trim(str_replace(["\r\n", "\r"], "\n", (string)$contenido));
+
+        if ($contenido === '') {
+            return '';
+        }
+
+        $bloques = preg_split('/\n\s*\n/u', $contenido) ?: [];
+        $html = '';
+
+        foreach ($bloques as $indice => $bloque) {
+            $bloque = trim((string)$bloque);
+
+            if ($bloque === '') {
+                continue;
+            }
+
+            $seguro = htmlspecialchars($bloque, ENT_QUOTES, 'UTF-8');
+            $seguro = nl2br($seguro, false);
+
+            if ($indice === 0) {
+                $html .= '<div class="destinatario">' . $seguro . '</div>';
+                continue;
+            }
+
+            if (preg_match('/^Atentamente\.?$/iu', $bloque)) {
+                $html .= '<div class="atentamente">' . $seguro . '</div>';
+                continue;
+            }
+
+            if (
+                strpos($bloque, 'Enlace Institucional') !== false ||
+                strpos($bloque, 'Móvil/Atención WhatsApp') !== false
+            ) {
+                $html .= '<div class="firma-texto">' . $seguro . '</div>';
+                continue;
+            }
+
+            $html .= '<p class="parrafo">' . $seguro . '</p>';
+        }
+
+        return $html;
+    }
+
+    private function imagenDataUri($ruta)
+    {
+        if (!is_file($ruta)) {
+            return '';
+        }
+
+        $contenido = file_get_contents($ruta);
+
+        if ($contenido === false || $contenido === '') {
+            return '';
+        }
+
+        $mime = 'image/png';
+
+        if (function_exists('mime_content_type')) {
+            $detectado = mime_content_type($ruta);
+
+            if (is_string($detectado) && strpos($detectado, 'image/') === 0) {
+                $mime = $detectado;
+            }
+        }
+
+        return 'data:' . $mime . ';base64,' . base64_encode($contenido);
     }
 
     private function resolverRutaPdf($rutaRelativa)
