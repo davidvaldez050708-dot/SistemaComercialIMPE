@@ -42,6 +42,10 @@ $puedeRegistrar = !empty($correoEntrante['puede_registrar_respuesta']);
 $nombreEntidad = trim((string)($correoEntrante['nombre_entidad'] ?? ''));
 $nombreEntidad = $nombreEntidad !== '' ? $nombreEntidad : 'Institución';
 $vistaPrevia = trim((string)($correoEntrante['vista_previa'] ?? ''));
+$contenidoCompleto = trim((string)($correoEntrante['contenido_completo'] ?? ''));
+$tieneContenidoCompleto = $contenidoCompleto !== '';
+$contenidoMostrado = $tieneContenidoCompleto ? $contenidoCompleto : $vistaPrevia;
+$respuestaSugerida = mb_substr($contenidoMostrado, 0, 8000, 'UTF-8');
 
 $esReunion = $contexto === 'REUNION';
 $etiquetaContexto = $esReunion
@@ -120,15 +124,29 @@ $urlExpediente = $seguimientoId > 0
     </div>
 
     <div class="linkage-detail-notes" style="margin-top:14px;">
-        <span>Vista previa recibida por Hostinger</span>
-        <p style="white-space:pre-wrap;overflow-wrap:anywhere;"><?= $vistaPrevia !== '' ? $texto($vistaPrevia) : 'Hostinger no incluyó texto de vista previa en este evento.' ?></p>
+        <span><?= $tieneContenidoCompleto ? 'Contenido completo consultado en Hostinger' : 'Vista previa recibida por Hostinger' ?></span>
+        <p style="white-space:pre-wrap;overflow-wrap:anywhere;"><?= $contenidoMostrado !== '' ? $texto($contenidoMostrado) : 'Hostinger no incluyó texto legible en este evento.' ?></p>
+    </div>
+
+    <div class="security-note mt-3 mb-0">
+        <i class="bi <?= $tieneContenidoCompleto ? 'bi-envelope-open' : 'bi-info-circle' ?>"></i>
+        <span>
+            <?php if ($tieneContenidoCompleto): ?>
+                El contenido se recuperó de INBOX mediante Hostinger Mail API.
+            <?php elseif (!empty($correoEntrante['contenido_api_disponible'])): ?>
+                No fue posible identificar el mensaje completo con suficiente seguridad; se muestra la vista previa del webhook.
+            <?php else: ?>
+                Se muestra la vista previa del webhook. La lectura completa estará disponible cuando Hostinger Mail API esté configurada en este servidor.
+            <?php endif; ?>
+        </span>
     </div>
 
     <?php if (
         trim((string)($correoEntrante['mensaje_externo_id'] ?? '')) !== '' ||
-        trim((string)($correoEntrante['thread_id'] ?? '')) !== ''
+        trim((string)($correoEntrante['thread_id'] ?? '')) !== '' ||
+        (int)($correoEntrante['contenido_api_uid'] ?? 0) > 0
     ): ?>
-        <div class="security-note mt-3 mb-0">
+        <div class="security-note mt-2 mb-0">
             <i class="bi bi-link-45deg"></i>
             <span>
                 Referencia de correo:
@@ -138,6 +156,9 @@ $urlExpediente = $seguimientoId > 0
                 <?php if (trim((string)($correoEntrante['thread_id'] ?? '')) !== ''): ?>
                     <?= trim((string)($correoEntrante['mensaje_externo_id'] ?? '')) !== '' ? ' · ' : '' ?>
                     conversación <?= $texto($correoEntrante['thread_id']) ?>
+                <?php endif; ?>
+                <?php if ((int)($correoEntrante['contenido_api_uid'] ?? 0) > 0): ?>
+                    · UID <?= (int)$correoEntrante['contenido_api_uid'] ?>
                 <?php endif; ?>
             </span>
         </div>
@@ -228,7 +249,7 @@ $urlExpediente = $seguimientoId > 0
                         name="respuesta_texto"
                         rows="7"
                         maxlength="8000"
-                        required><?= $texto($vistaPrevia) ?></textarea>
+                        required><?= $texto($respuestaSugerida) ?></textarea>
                     <div class="form-text">
                         Puedes corregir o completar el texto antes de guardarlo en el historial.
                     </div>
