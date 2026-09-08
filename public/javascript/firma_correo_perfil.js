@@ -33,7 +33,7 @@
             imagen.src = url;
             imagen.alt = 'Vista previa de la firma de correo';
             imagen.style.maxWidth = '100%';
-            imagen.style.maxHeight = '130px';
+            imagen.style.maxHeight = '88px';
             imagen.style.objectFit = 'contain';
             imagen.style.display = 'block';
             preview.appendChild(imagen);
