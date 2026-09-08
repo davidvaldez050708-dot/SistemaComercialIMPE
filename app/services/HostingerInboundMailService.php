@@ -30,38 +30,29 @@ class HostingerInboundMailService
 
     public function procesarWebhook($authorization, $rawBody)
     {
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
             return $this->error('Método no permitido.', 405);
         }
 
         if (!$this->tablaDisponible()) {
-            return $this->error(
-                'Falta aplicar la migración de respuestas de correo.',
-                503
-            );
+            return $this->error('Falta aplicar la migración de respuestas de correo.', 503);
         }
 
         if ($this->webhookSecret === '') {
-            return $this->error(
-                'El webhook de Hostinger todavía no está configurado.',
-                503
-            );
+            return $this->error('El webhook de Hostinger todavía no está configurado.', 503);
         }
 
         $token = $this->extraerBearer($authorization);
-
         if ($token === '' || !hash_equals($this->webhookSecret, $token)) {
             return $this->error('Webhook no autorizado.', 401);
         }
 
         $payload = json_decode((string)$rawBody, true);
-
         if (!is_array($payload)) {
             return $this->error('El cuerpo del webhook no contiene JSON válido.', 400);
         }
 
         $evento = trim((string)($payload['event'] ?? ''));
-
         if ($evento !== 'message.received') {
             return [
                 'ok' => true,
@@ -71,14 +62,8 @@ class HostingerInboundMailService
             ];
         }
 
-        $message = is_array($payload['message'] ?? null)
-            ? $payload['message']
-            : [];
-
-        $remitente = $this->normalizarCorreo(
-            $message['from'] ?? $payload['from'] ?? ''
-        );
-
+        $message = is_array($payload['message'] ?? null) ? $payload['message'] : [];
+        $remitente = $this->normalizarCorreo($message['from'] ?? $payload['from'] ?? '');
         if ($remitente === '') {
             return $this->error('El webhook no incluye un remitente válido.', 422);
         }
@@ -87,16 +72,11 @@ class HostingerInboundMailService
         $asunto = $this->limpiarTexto($message['subject'] ?? $payload['subject'] ?? '', 500);
         $vistaPrevia = $this->extraerVistaPrevia($message, $payload);
         $mensajeExternoId = $this->limpiarTexto(
-            $message['id'] ??
-            $message['message_id'] ??
-            $message['messageId'] ??
-            '',
+            $message['id'] ?? $message['message_id'] ?? $message['messageId'] ?? '',
             191
         );
         $threadId = $this->limpiarTexto(
-            $message['thread_id'] ??
-            $message['threadId'] ??
-            '',
+            $message['thread_id'] ?? $message['threadId'] ?? '',
             191
         );
         $recibidoAt = $this->normalizarFecha(
@@ -107,33 +87,29 @@ class HostingerInboundMailService
             $payload['created_at'] ??
             ''
         );
+
         $rawNormalizado = json_encode(
             $payload,
             JSON_UNESCAPED_UNICODE |
             JSON_UNESCAPED_SLASHES |
             JSON_INVALID_UTF8_SUBSTITUTE
         );
-
         if ($rawNormalizado === false) {
             $rawNormalizado = '{}';
         }
 
-        $eventoHash = hash(
-            'sha256',
-            implode('|', [
-                $evento,
-                strtolower($mailbox),
-                $mensajeExternoId,
-                $threadId,
-                strtolower($remitente),
-                $asunto,
-                $recibidoAt,
-                $vistaPrevia
-            ])
-        );
+        $eventoHash = hash('sha256', implode('|', [
+            $evento,
+            strtolower($mailbox),
+            $mensajeExternoId,
+            $threadId,
+            strtolower($remitente),
+            $asunto,
+            $recibidoAt,
+            $vistaPrevia
+        ]));
 
         $existente = $this->buscarPorHash($eventoHash);
-
         if ($existente) {
             return [
                 'ok' => true,
@@ -145,9 +121,7 @@ class HostingerInboundMailService
         }
 
         $coincidencia = $this->buscarSeguimiento($remitente, $asunto);
-        $seguimientoId = $coincidencia
-            ? (int)$coincidencia['seguimiento_id']
-            : null;
+        $seguimientoId = $coincidencia ? (int)$coincidencia['seguimiento_id'] : null;
         $reunionId = $coincidencia && (int)($coincidencia['reunion_id'] ?? 0) > 0
             ? (int)$coincidencia['reunion_id']
             : null;
@@ -172,48 +146,6 @@ class HostingerInboundMailService
                     estado,
                     raw_payload
                 ) VALUES (?, 'HOSTINGER_MAIL_API', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDIENTE', ?)";
-        $stmt = $this->connection->prepare($sql);
-        $stmt->bind_param(
-            'sssssssssii ss',
-            $eventoHash,
-            $evento,
-            $mensajeExternoId,
-            $threadId,
-            $mailbox,
-            $remitente,
-            $asunto,
-            $vistaPrevia,
-            $recibidoAt,
-            $seguimientoId,
-            $reunionId,
-            $contexto,
-            $rawNormalizado
-        );
-
-        // mysqli no admite espacios en la cadena de tipos.
-        // Rehacemos el bind con la firma correcta antes de ejecutar.
-        $stmt->close();
-        $stmt = $this->connection->prepare($sql);
-        $stmt->bind_param(
-            'sssssssssii ss',
-            $eventoHash,
-            $evento,
-            $mensajeExternoId,
-            $threadId,
-            $mailbox,
-            $remitente,
-            $asunto,
-            $vistaPrevia,
-            $recibidoAt,
-            $seguimientoId,
-            $reunionId,
-            $contexto,
-            $rawNormalizado
-        );
-
-        // La línea anterior se mantiene legible durante la revisión; aquí usamos
-        // call_user_func_array para evitar cualquier ambigüedad de tipos en PHP.
-        $stmt->close();
         $stmt = $this->connection->prepare($sql);
         $tipos = 'sssssssssii' . 'ss';
         $stmt->bind_param(
@@ -258,6 +190,21 @@ class HostingerInboundMailService
             return null;
         }
 
+        $joinPost = $this->tablaExiste('seguimientos_vinculacion_post_envio')
+            ? "LEFT JOIN seguimientos_vinculacion_post_envio post
+                    ON post.seguimiento_id = correo.seguimiento_id"
+            : '';
+        $campoPost = $joinPost !== ''
+            ? 'post.respuesta_at AS flujo_respuesta_at,'
+            : 'NULL AS flujo_respuesta_at,';
+        $joinReunion = $this->tablaExiste('reuniones_vinculacion')
+            ? "LEFT JOIN reuniones_vinculacion reunion
+                    ON reunion.id = correo.reunion_id"
+            : '';
+        $camposReunion = $joinReunion !== ''
+            ? 'reunion.estado AS reunion_estado, reunion.fecha_propuesta AS reunion_fecha'
+            : 'NULL AS reunion_estado, NULL AS reunion_fecha';
+
         $sql = "SELECT
                     correo.id,
                     correo.evento,
@@ -277,19 +224,16 @@ class HostingerInboundMailService
                     destinatario.leido_at,
                     seguimiento.nombre_entidad,
                     seguimiento.analista_id,
-                    post.respuesta_at AS flujo_respuesta_at,
-                    reunion.estado AS reunion_estado,
-                    reunion.fecha_propuesta AS reunion_fecha
+                    {$campoPost}
+                    {$camposReunion}
                 FROM correo_respuestas_entrantes correo
                 INNER JOIN correo_respuestas_destinatarios destinatario
                     ON destinatario.respuesta_id = correo.id
                     AND destinatario.usuario_id = ?
                 LEFT JOIN seguimientos_vinculacion seguimiento
                     ON seguimiento.id = correo.seguimiento_id
-                LEFT JOIN seguimientos_vinculacion_post_envio post
-                    ON post.seguimiento_id = correo.seguimiento_id
-                LEFT JOIN reuniones_vinculacion reunion
-                    ON reunion.id = correo.reunion_id
+                {$joinPost}
+                {$joinReunion}
                 WHERE correo.id = ?
                 LIMIT 1";
         $stmt = $this->connection->prepare($sql);
@@ -337,7 +281,6 @@ class HostingerInboundMailService
         }
 
         $this->connection->begin_transaction();
-
         try {
             $sql = "UPDATE correo_respuestas_entrantes
                     SET estado = 'REGISTRADA',
@@ -369,16 +312,23 @@ class HostingerInboundMailService
     private function buscarSeguimiento($remitente, $asunto)
     {
         $correo = strtolower(trim((string)$remitente));
+        $joinPost = $this->tablaExiste('seguimientos_vinculacion_post_envio')
+            ? "LEFT JOIN seguimientos_vinculacion_post_envio post
+                    ON post.seguimiento_id = seguimiento.id"
+            : '';
+        $campoRespuesta = $joinPost !== ''
+            ? 'post.respuesta_at'
+            : 'NULL AS respuesta_at';
+
         $sql = "SELECT
                     seguimiento.id AS seguimiento_id,
                     seguimiento.analista_id,
                     seguimiento.nombre_entidad,
                     seguimiento.correo_verificado,
                     seguimiento.correo_fuente,
-                    post.respuesta_at
+                    {$campoRespuesta}
                 FROM seguimientos_vinculacion seguimiento
-                LEFT JOIN seguimientos_vinculacion_post_envio post
-                    ON post.seguimiento_id = seguimiento.id
+                {$joinPost}
                 WHERE seguimiento.activo = 1
                     AND seguimiento.estado_seguimiento <> 'DESCARTADO'
                     AND (
@@ -407,7 +357,6 @@ class HostingerInboundMailService
             if ((int)$a['puntaje'] === (int)$b['puntaje']) {
                 return (int)$b['seguimiento_id'] <=> (int)$a['seguimiento_id'];
             }
-
             return (int)$b['puntaje'] <=> (int)$a['puntaje'];
         });
 
@@ -468,7 +417,6 @@ class HostingerInboundMailService
 
         $asuntoNormalizado = $this->normalizarBusqueda($asunto);
         $entidadNormalizada = $this->normalizarBusqueda($fila['nombre_entidad'] ?? '');
-
         if (
             $asuntoNormalizado !== '' &&
             $entidadNormalizada !== '' &&
@@ -481,10 +429,7 @@ class HostingerInboundMailService
         }
 
         $reunion = is_array($fila['reunion'] ?? null) ? $fila['reunion'] : [];
-        $asuntoReunion = $this->normalizarBusqueda(
-            $reunion['correo_confirmacion_asunto'] ?? ''
-        );
-
+        $asuntoReunion = $this->normalizarBusqueda($reunion['correo_confirmacion_asunto'] ?? '');
         if ($asuntoReunion !== '' && $asuntoNormalizado !== '') {
             if (
                 strpos($asuntoNormalizado, $asuntoReunion) !== false ||
@@ -507,7 +452,6 @@ class HostingerInboundMailService
         if ($analistaId > 0) {
             $destinatarios[$analistaId] = 4;
         }
-
         if ($contexto === 'REUNION' && $cuentaClaveId > 0) {
             $destinatarios[$cuentaClaveId] = 6;
         }
@@ -555,9 +499,7 @@ class HostingerInboundMailService
             if (is_array($valor)) {
                 $valor = $valor['text'] ?? $valor['plain'] ?? '';
             }
-
             $texto = $this->limpiarTexto($valor, 8000);
-
             if ($texto !== '') {
                 return $texto;
             }
@@ -581,11 +523,9 @@ class HostingerInboundMailService
         }
 
         $valor = trim((string)$valor);
-
         if (preg_match('/<([^>]+)>/', $valor, $coincidencia)) {
             $valor = trim((string)$coincidencia[1]);
         }
-
         $valor = strtolower($valor);
 
         return filter_var($valor, FILTER_VALIDATE_EMAIL) ? $valor : '';
@@ -596,17 +536,13 @@ class HostingerInboundMailService
         if (is_array($valor)) {
             $valor = $valor['address'] ?? $valor['email'] ?? '';
         }
-
         return $this->limpiarTexto($valor, 255);
     }
 
     private function limpiarTexto($valor, $limite)
     {
         if (is_array($valor) || is_object($valor)) {
-            $valor = json_encode(
-                $valor,
-                JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
-            );
+            $valor = json_encode($valor, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         }
 
         $texto = html_entity_decode(
@@ -624,7 +560,6 @@ class HostingerInboundMailService
     private function normalizarFecha($valor)
     {
         $valor = trim((string)$valor);
-
         if ($valor === '') {
             return date('Y-m-d H:i:s');
         }
@@ -642,11 +577,9 @@ class HostingerInboundMailService
     {
         $valor = mb_strtolower(trim((string)$valor), 'UTF-8');
         $transliterado = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $valor);
-
         if (is_string($transliterado)) {
             $valor = strtolower($transliterado);
         }
-
         $valor = preg_replace('/[^a-z0-9]+/', ' ', $valor);
 
         return trim((string)$valor);
@@ -655,11 +588,9 @@ class HostingerInboundMailService
     private function extraerBearer($authorization)
     {
         $authorization = trim((string)$authorization);
-
         if (preg_match('/^Bearer\s+(.+)$/i', $authorization, $coincidencia)) {
             return trim((string)$coincidencia[1]);
         }
-
         return '';
     }
 
@@ -676,13 +607,10 @@ class HostingerInboundMailService
         if (defined($nombre)) {
             return trim((string)constant($nombre));
         }
-
         $valor = getenv($nombre);
-
         if ($valor !== false && trim((string)$valor) !== '') {
             return trim((string)$valor);
         }
-
         return trim((string)$default);
     }
 
