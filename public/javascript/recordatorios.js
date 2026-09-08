@@ -24,6 +24,69 @@
             return div.innerHTML;
         };
 
+        const urlRecordatorio = function (recordatorio) {
+            const personalizada = String(recordatorio.url || '').trim();
+            if (personalizada !== '') {
+                return personalizada;
+            }
+
+            return 'index.php?controller=seguimientoVinculacion&action=detalle&id=' +
+                Number(recordatorio.id || recordatorio.seguimiento_id || 0);
+        };
+
+        const dosDigitos = function (valor) {
+            return String(valor).padStart(2, '0');
+        };
+
+        const etiquetaVisibleRecordatorio = function (recordatorio) {
+            const etiquetaOriginal = String(recordatorio.etiqueta || '').trim();
+            const estado = String(recordatorio.estado || '').trim().toLowerCase();
+            const fechaTexto = String(recordatorio.fecha || '').trim();
+
+            if (estado !== 'vencida' || fechaTexto === '') {
+                return etiquetaOriginal;
+            }
+
+            const momento = new Date(fechaTexto.replace(' ', 'T'));
+            if (Number.isNaN(momento.getTime())) {
+                return etiquetaOriginal;
+            }
+
+            const ahora = new Date();
+            const hoy = new Date(
+                ahora.getFullYear(),
+                ahora.getMonth(),
+                ahora.getDate()
+            );
+            const diaEvento = new Date(
+                momento.getFullYear(),
+                momento.getMonth(),
+                momento.getDate()
+            );
+            const diferenciaDias = Math.round(
+                (diaEvento.getTime() - hoy.getTime()) / 86400000
+            );
+            const hora = dosDigitos(momento.getHours()) + ':' +
+                dosDigitos(momento.getMinutes());
+            const diaMes = dosDigitos(momento.getDate()) + '/' +
+                dosDigitos(momento.getMonth() + 1);
+
+            if (diferenciaDias === 0) {
+                return 'Vencida hoy · ' + hora;
+            }
+
+            if (diferenciaDias === -1) {
+                return 'Ayer · ' + diaMes + ' · ' + hora;
+            }
+
+            if (momento.getFullYear() === ahora.getFullYear()) {
+                return 'Vencida · ' + diaMes + ' · ' + hora;
+            }
+
+            return 'Vencida · ' + diaMes + '/' + momento.getFullYear() +
+                ' · ' + hora;
+        };
+
         const asegurarContenedorToasts = function () {
             let contenedor = document.querySelector('[data-reminder-toast-container]');
 
@@ -58,19 +121,16 @@
                         '<i class="bi ' + escapar(aviso.icono || 'bi-bell') + '"></i>' +
                     '</span>' +
                     '<span class="reminder-toast-copy">' +
-                        '<strong>' + escapar(aviso.titulo || 'Recordatorio') + '</strong>' +
+                        '<strong>' + escapar(aviso.titulo || 'Notificación') + '</strong>' +
                         '<span>' + escapar(aviso.mensaje || '') + '</span>' +
                     '</span>' +
                 '</div>';
 
-            const seguimientoId = Number(aviso.seguimiento_id || 0);
-
-            if (seguimientoId > 0) {
+            const url = urlRecordatorio(aviso);
+            if (url !== '') {
                 toast.classList.add('is-clickable');
                 toast.addEventListener('click', function () {
-                    window.location.href =
-                        'index.php?controller=seguimientoVinculacion&action=detalle&id=' +
-                        seguimientoId;
+                    window.location.href = url;
                 });
             }
 
@@ -107,8 +167,8 @@
                 contenido.innerHTML =
                     '<div class="topbar-reminder-empty">' +
                         '<i class="bi bi-check2-circle"></i>' +
-                        '<strong>Sin recordatorios pendientes</strong>' +
-                        '<span>No tienes llamadas o mensajes próximos.</span>' +
+                        '<strong>Sin notificaciones pendientes</strong>' +
+                        '<span>No tienes acciones o reuniones pendientes.</span>' +
                     '</div>';
                 return;
             }
@@ -116,9 +176,10 @@
             contenido.innerHTML =
                 '<div class="topbar-reminder-list">' +
                 lista.map(function (recordatorio) {
+                    const url = escapar(urlRecordatorio(recordatorio));
+                    const etiqueta = etiquetaVisibleRecordatorio(recordatorio);
                     return (
-                        '<a class="topbar-reminder-item" href="index.php?controller=seguimientoVinculacion&action=detalle&id=' +
-                            Number(recordatorio.id || 0) + '">' +
+                        '<a class="topbar-reminder-item" href="' + url + '">' +
                             '<span class="topbar-reminder-icon">' +
                                 '<i class="bi ' + escapar(recordatorio.icono || 'bi-bell') + '"></i>' +
                             '</span>' +
@@ -127,7 +188,7 @@
                                 '<span>' + escapar(recordatorio.accion || '') + '</span>' +
                             '</span>' +
                             '<span class="topbar-reminder-time is-' + escapar(recordatorio.estado || 'normal') + '">' +
-                                escapar(recordatorio.etiqueta || '') +
+                                escapar(etiqueta) +
                             '</span>' +
                         '</a>'
                     );
@@ -174,7 +235,7 @@
 
                 (datos.avisos || []).forEach(mostrarToast);
             } catch (error) {
-                console.error('No fue posible actualizar los recordatorios.', error);
+                console.error('No fue posible actualizar las notificaciones.', error);
             } finally {
                 consultaEnCurso = false;
             }

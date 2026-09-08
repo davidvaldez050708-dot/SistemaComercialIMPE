@@ -237,6 +237,72 @@ switch ($controller) {
         break;
 
 
+    case 'seguimientoFlujo':
+
+        require_once __DIR__ .
+            '/app/controllers/SeguimientoFlujoController.php';
+
+        $controllerInstance =
+            new SeguimientoFlujoController();
+
+        break;
+
+
+    case 'seguimientoInteraccion':
+
+        require_once __DIR__ .
+            '/app/controllers/SeguimientoInteraccionController.php';
+
+        $controllerInstance =
+            new SeguimientoInteraccionController();
+
+        break;
+
+
+    case 'seguimientoObservacion':
+
+        require_once __DIR__ .
+            '/app/controllers/SeguimientoObservacionController.php';
+
+        $controllerInstance =
+            new SeguimientoObservacionController();
+
+        break;
+
+
+    case 'agendaReunion':
+
+        require_once __DIR__ .
+            '/app/controllers/AgendaReunionController.php';
+
+        $controllerInstance =
+            new AgendaReunionController();
+
+        break;
+
+
+    case 'oficioVinculacion':
+
+        require_once __DIR__ .
+            '/app/controllers/OficioVinculacionController.php';
+
+        $controllerInstance =
+            new OficioVinculacionController();
+
+        break;
+
+
+    case 'oficioCorreo':
+
+        require_once __DIR__ .
+            '/app/controllers/OficioCorreoController.php';
+
+        $controllerInstance =
+            new OficioCorreoController();
+
+        break;
+
+
     case 'reminder':
 
         require_once __DIR__ .

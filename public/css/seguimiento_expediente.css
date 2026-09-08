@@ -1,0 +1,496 @@
+/* =========================================================
+   EXPEDIENTE COMPLETO DE VINCULACIÓN
+   ========================================================= */
+
+body.linkage-expediente-enhanced {
+    overflow-x: hidden;
+}
+
+/* Encabezado principal más compacto. La página ya dice "Expediente completo"
+   en el topbar, así que dentro de la tarjeta solo dejamos la información útil. */
+.linkage-expediente-enhanced .linkage-panel {
+    padding: 14px 18px;
+}
+
+.linkage-expediente-enhanced .linkage-panel .linkage-back-link {
+    margin-bottom: 6px;
+    font-size: 11px;
+}
+
+.linkage-expediente-enhanced .linkage-panel .linkage-heading {
+    min-height: 0;
+    align-items: center;
+    gap: 14px;
+}
+
+.linkage-expediente-enhanced .linkage-panel .linkage-heading > div:first-child > span {
+    display: none;
+}
+
+.linkage-expediente-enhanced .linkage-panel .linkage-heading h2 {
+    margin: 0;
+    font-size: 17px;
+    line-height: 1.25;
+}
+
+.linkage-expediente-enhanced .linkage-panel .linkage-heading p {
+    margin: 3px 0 0;
+    font-size: 11.5px;
+    line-height: 1.35;
+}
+
+.linkage-expediente-enhanced .linkage-panel .linkage-state-pill {
+    flex: 0 0 auto;
+    min-height: 32px;
+    padding: 6px 11px;
+    font-size: 10.5px;
+}
+
+/* =========================================================
+   NAVEGACIÓN - MISMO PATRÓN QUE INFORMACIÓN TERRITORIAL
+   ========================================================= */
+
+.linkage-expediente-section-nav {
+    position: sticky;
+    top: 72px;
+    z-index: 20;
+
+    width: 100%;
+    margin: 0 0 14px;
+    padding: 6px;
+
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 4px;
+
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+
+    background-color: #ffffff;
+    box-shadow: 0 5px 14px rgba(22, 34, 59, 0.05);
+}
+
+.linkage-expediente-section-nav::-webkit-scrollbar {
+    display: none;
+}
+
+/* detalle.php usa span; visualmente se comportan igual que los <a>
+   de .data-section-nav en Información territorial. */
+.linkage-expediente-section-nav span {
+    flex: 0 0 auto;
+    min-width: max-content;
+    min-height: 36px;
+    padding: 0 13px;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+
+    background-color: transparent;
+    color: var(--color-text-secondary);
+
+    font-size: 11.5px;
+    font-weight: 800;
+    line-height: 1;
+    white-space: nowrap;
+
+    cursor: pointer;
+    user-select: none;
+    transition:
+        color 0.16s ease,
+        background-color 0.16s ease,
+        border-color 0.16s ease,
+        box-shadow 0.16s ease;
+}
+
+.linkage-expediente-section-nav span:hover,
+.linkage-expediente-section-nav span:focus {
+    border-color: #e1e7ef;
+    background-color: #f7f9fc;
+    color: var(--color-primary);
+    outline: none;
+}
+
+.linkage-expediente-section-nav span.active {
+    border-color: rgba(39, 58, 138, 0.12);
+    background-color: var(--color-primary-soft);
+    color: var(--color-primary);
+    box-shadow: inset 0 -2px 0 var(--color-accent);
+}
+
+.linkage-expediente-section-nav span:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(39, 58, 138, 0.10);
+}
+
+.linkage-expediente-content {
+    min-width: 0;
+}
+
+.linkage-expediente-pane {
+    display: grid;
+    gap: 14px;
+}
+
+.linkage-expediente-pane[hidden] {
+    display: none !important;
+}
+
+.linkage-expediente-pane > .linkage-detail-panel {
+    margin-bottom: 0;
+}
+
+/* Encabezados internos: evita títulos gigantes heredados. */
+.linkage-expediente-enhanced .linkage-detail-panel .users-list-header {
+    margin-bottom: 14px;
+}
+
+.linkage-expediente-enhanced .linkage-detail-panel .users-list-header h2 {
+    margin: 0;
+    color: var(--color-text-primary);
+    font-size: 16px;
+    font-weight: 800;
+    line-height: 1.25;
+}
+
+.linkage-expediente-enhanced .linkage-detail-panel .users-list-header p {
+    margin: 4px 0 0;
+    color: var(--color-text-secondary);
+    font-size: 11.5px;
+    font-weight: 600;
+    line-height: 1.45;
+}
+
+.linkage-expediente-enhanced .linkage-detail-panel > .panel-title {
+    margin: 0 0 14px;
+    font-size: 15px;
+    font-weight: 800;
+}
+
+/* Tarjeta del analista. */
+.linkage-expediente-enhanced .linkage-detail-header {
+    min-width: 0;
+    padding: 0 0 14px;
+    margin-bottom: 14px;
+    gap: 12px;
+}
+
+.linkage-expediente-enhanced .linkage-detail-header .system-avatar,
+.linkage-expediente-enhanced .linkage-detail-header .system-avatar-initials {
+    width: 46px;
+    min-width: 46px;
+    height: 46px;
+    padding: 0;
+
+    display: inline-grid;
+    place-items: center;
+
+    line-height: 1;
+    text-align: center;
+    text-indent: 0;
+}
+
+.linkage-expediente-enhanced .linkage-detail-header .system-avatar-initials {
+    font-size: 11px;
+    letter-spacing: 0;
+}
+
+.linkage-expediente-enhanced .linkage-detail-header > div:last-child {
+    min-width: 0;
+}
+
+.linkage-expediente-enhanced .linkage-detail-header p {
+    overflow-wrap: anywhere;
+}
+
+/* Tarjetas de datos más compactas y legibles. */
+.linkage-expediente-enhanced .linkage-detail-grid .detail-row {
+    min-height: 64px;
+    padding: 11px 13px;
+
+    display: grid;
+    align-content: center;
+    gap: 3px;
+}
+
+.linkage-expediente-enhanced .linkage-detail-grid .detail-row span,
+.linkage-expediente-enhanced .linkage-detail-notes span {
+    margin: 0;
+    font-size: 10.5px;
+}
+
+.linkage-expediente-enhanced .linkage-detail-grid .detail-row strong {
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.linkage-expediente-enhanced .linkage-detail-notes {
+    margin-top: 10px;
+    padding: 12px 13px;
+}
+
+.linkage-expediente-enhanced .linkage-detail-notes p {
+    margin: 4px 0 0;
+    font-size: 11.5px;
+    line-height: 1.5;
+}
+
+/* Historial compacto + ver más. */
+.linkage-expediente-enhanced .linkage-history-list {
+    gap: 8px;
+}
+
+.linkage-expediente-enhanced .linkage-history-item {
+    padding: 11px 13px;
+}
+
+.linkage-expediente-enhanced .linkage-history-item > div {
+    gap: 10px;
+}
+
+.linkage-expediente-enhanced .linkage-history-item > div strong {
+    font-size: 11.5px;
+}
+
+.linkage-expediente-enhanced .linkage-history-item > div span {
+    font-size: 10.5px;
+}
+
+.linkage-expediente-enhanced .linkage-history-item p {
+    margin-top: 6px;
+    font-size: 11.5px;
+    line-height: 1.45;
+}
+
+.linkage-history-item.is-history-hidden {
+    display: none;
+}
+
+.linkage-history-more {
+    margin-top: 12px;
+    padding-top: 12px;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+
+    border-top: 1px solid var(--color-border);
+}
+
+.linkage-history-more span {
+    color: var(--color-text-secondary);
+    font-size: 10.5px;
+    font-weight: 700;
+}
+
+.linkage-history-more .btn {
+    min-height: 34px;
+    padding: 0 12px;
+    font-size: 11px;
+}
+
+/* Oficio y correos en el expediente completo. */
+.linkage-expediente-enhanced [data-detail-oficio-action] {
+    width: 100%;
+    min-width: 0;
+    margin: 0 0 14px !important;
+    padding: 13px;
+
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 9px;
+    align-items: stretch;
+
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+
+    background-color: #f8fafc;
+}
+
+.linkage-expediente-enhanced [data-detail-oficio-action] > div:first-child {
+    grid-column: 1 / -1;
+    padding: 10px 12px;
+
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+
+    background-color: #ffffff;
+}
+
+.linkage-expediente-enhanced [data-detail-oficio-action] > div:first-child strong {
+    display: block;
+    margin-top: 3px;
+    overflow-wrap: anywhere;
+    font-size: 13px;
+}
+
+.linkage-expediente-enhanced [data-detail-oficio-action] > .btn,
+.linkage-expediente-enhanced [data-detail-oficio-action] > a.btn {
+    width: 100%;
+    min-width: 0;
+    min-height: 40px;
+    padding: 8px 10px;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+
+    font-size: 11.5px;
+    line-height: 1.2;
+    white-space: normal;
+}
+
+.linkage-expediente-enhanced [data-detail-oficio-action] > .btn i,
+.linkage-expediente-enhanced [data-detail-oficio-action] > a.btn i {
+    margin: 0 !important;
+}
+
+.linkage-expediente-enhanced [data-detail-send-schedule] {
+    grid-column: 1 / -1;
+    margin: 0 !important;
+    padding: 11px 12px !important;
+
+    border: 1px solid var(--color-border) !important;
+    border-radius: 10px;
+
+    background-color: #ffffff;
+}
+
+.linkage-expediente-enhanced [data-detail-send-schedule] > .d-flex {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: center !important;
+}
+
+.linkage-expediente-enhanced [data-detail-send-schedule] [data-schedule-label] {
+    font-size: 12px;
+}
+
+.linkage-expediente-enhanced [data-detail-send-schedule] [data-schedule-note] {
+    margin-top: 3px !important;
+    font-size: 10px !important;
+}
+
+.linkage-expediente-enhanced [data-detail-send-schedule] [data-schedule-open] {
+    min-height: 34px;
+    padding: 6px 10px;
+    font-size: 10.5px;
+    white-space: nowrap;
+}
+
+.linkage-expediente-enhanced .linkage-table {
+    margin-bottom: 0;
+}
+
+/* Estados vacíos para módulos todavía sin información. */
+.linkage-expediente-empty {
+    min-height: 270px;
+    padding: 28px;
+
+    display: grid;
+    place-items: center;
+    text-align: center;
+}
+
+.linkage-expediente-empty-content {
+    max-width: 430px;
+    display: grid;
+    justify-items: center;
+    gap: 8px;
+}
+
+.linkage-expediente-empty-icon {
+    width: 48px;
+    height: 48px;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    border: 1px solid #d8e4f5;
+    border-radius: 14px;
+
+    background-color: var(--color-primary-soft);
+    color: var(--color-primary);
+
+    font-size: 19px;
+}
+
+.linkage-expediente-empty h3 {
+    margin: 5px 0 0;
+    font-size: 15px;
+    font-weight: 800;
+}
+
+.linkage-expediente-empty p {
+    margin: 0;
+    color: var(--color-text-secondary);
+    font-size: 11.5px;
+    font-weight: 600;
+    line-height: 1.5;
+}
+
+@media (max-width: 991.98px) {
+    .linkage-expediente-section-nav {
+        top: 68px;
+        gap: 3px;
+    }
+
+    .linkage-expediente-section-nav span {
+        padding: 0 12px;
+        font-size: 11px;
+    }
+
+    .linkage-expediente-enhanced [data-detail-oficio-action] {
+        grid-template-columns: 1fr;
+    }
+
+    .linkage-expediente-enhanced [data-detail-oficio-action] > div:first-child,
+    .linkage-expediente-enhanced [data-detail-send-schedule] {
+        grid-column: 1;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .linkage-expediente-enhanced .linkage-panel {
+        padding: 12px 14px;
+    }
+
+    .linkage-expediente-section-nav {
+        top: 0;
+        padding: 5px;
+        border-radius: 10px;
+    }
+
+    .linkage-expediente-section-nav span {
+        min-height: 35px;
+        padding: 0 11px;
+        font-size: 10.8px;
+    }
+
+    .linkage-expediente-enhanced [data-detail-send-schedule] > .d-flex {
+        grid-template-columns: 1fr;
+        align-items: start !important;
+    }
+
+    .linkage-history-more {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .linkage-history-more .btn {
+        width: 100%;
+    }
+}

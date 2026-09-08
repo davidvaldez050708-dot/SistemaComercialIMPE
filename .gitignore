@@ -1,6 +1,9 @@
 # Configuración privada
 .env
 config/database.local.php
+config/mail_config.php
+config/hostinger_mail_config.php
+config/voip_config.php
 
 # Archivos del sistema operativo
 .DS_Store
@@ -20,6 +23,9 @@ backups/
 tmp/
 
 /vendor/
+
+# Archivos generados por el sistema
+/storage/oficios/
 
 # Archivos temporales de pruebas
 prueba_correo.php

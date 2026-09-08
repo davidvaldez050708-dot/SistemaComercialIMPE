@@ -97,6 +97,22 @@ $resultados = [
     'OTRO' => 'Otro'
 ];
 
+$formatearNotasInteraccion = function ($notas) {
+    $notas = trim((string)$notas);
+
+    if ($notas === '') {
+        return '';
+    }
+
+    $etiquetasTecnicas = [
+        '[AVANZAR_CONVENIO]' => '· Avanzar a convenio',
+        '[REQUIERE_SEGUIMIENTO]' => '· Requiere seguimiento',
+        '[NO_INTERESADO]' => '· No interesado'
+    ];
+
+    return strtr($notas, $etiquetasTecnicas);
+};
+
 $nombreAnalista = trim(
     ($seguimiento['analista_nombre'] ?? '') . ' ' .
     ($seguimiento['analista_apellidos'] ?? '')
@@ -311,7 +327,7 @@ $proximaAccion = trim((string)($seguimiento['proxima_accion_at'] ?? '')) !== ''
                             <?= $texto($etiqueta($interaccion['resultado'] ?? '', $resultados)) ?>
                         </span>
                     </div>
-                    <p><?= nl2br($valor($interaccion['notas'] ?? '')) ?></p>
+                    <p><?= nl2br($valor($formatearNotasInteraccion($interaccion['notas'] ?? ''))) ?></p>
                 </article>
             <?php endforeach; ?>
         </div>

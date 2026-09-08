@@ -7,7 +7,21 @@ if (!function_exists('tienePermiso')) {
             return false;
         }
 
-        if ((int)($_SESSION['rol_id'] ?? 0) === 1) {
+        $rolId = (int)($_SESSION['rol_id'] ?? 0);
+        $codigo = trim((string)$codigo);
+
+        if ($rolId === 1) {
+            /*
+             * En Seguimiento de vinculación el Administrador funciona como
+             * observador general: puede consultar todos los territorios y
+             * expedientes, pero no crear, editar, comentar ni operar la ruta.
+             * En el resto del sistema conserva el comportamiento administrativo
+             * habitual.
+             */
+            if (strpos($codigo, 'seguimientos_vinculacion.') === 0) {
+                return $codigo === 'seguimientos_vinculacion.ver';
+            }
+
             return true;
         }
 

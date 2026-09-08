@@ -8,6 +8,7 @@
             return;
         }
 
+        const offcanvas = document.getElementById('offcanvasSeguimientoTrabajo');
         const selectorResultado = formulario.querySelector('[name="resultado"]');
         const selectorProximaAccion = formulario.querySelector('[name="proxima_accion"]');
         const campoFechaProximaAccion = formulario.querySelector('[name="proxima_accion_at"]');
@@ -18,6 +19,8 @@
         const campoMotivoDescarte = document.querySelector('[data-work-discard-reason-input]');
         const panelDescartado = document.querySelector('[data-work-discarded-panel]');
         const contenedorToasts = document.querySelector('.toast-container');
+        const urlInteraccionInformativa =
+            'index.php?controller=seguimientoInteraccion&action=registrarInformativa';
         const accionesConHorarioObligatorio = [
             'Volver a llamar',
             'Enviar WhatsApp',
@@ -36,20 +39,38 @@
             return;
         }
 
-        const mostrarToastLocal = function (mensaje) {
+        const contenedorProximaAccion = selectorProximaAccion.closest(
+            '.col-12, .col-md-6'
+        );
+        const contenedorFechaProximaAccion = campoFechaProximaAccion.closest(
+            '.col-12, .col-md-6'
+        );
+        const filaFormulario = formulario.querySelector('.row');
+        const avisoInformativo = document.createElement('div');
+        avisoInformativo.className = 'col-12 d-none';
+        avisoInformativo.setAttribute('data-work-informative-interaction-note', '');
+        avisoInformativo.innerHTML =
+            '<div class="alert alert-light border mb-1 py-2 px-3 small">' +
+                '<i class="bi bi-info-circle me-1"></i>' +
+                '<strong>Registro informativo.</strong> ' +
+                'Se guardará en el expediente sin modificar la ruta ni la próxima acción.' +
+            '</div>';
+        filaFormulario?.prepend(avisoInformativo);
+
+        const mostrarToastLocal = function (mensaje, esError) {
             if (!contenedorToasts || !window.bootstrap) {
                 return;
             }
 
             const toast = document.createElement('div');
-            toast.className = 'toast system-toast';
-            toast.setAttribute('role', 'status');
-            toast.setAttribute('aria-live', 'polite');
+            toast.className = 'toast system-toast' + (esError ? ' system-toast-error' : '');
+            toast.setAttribute('role', esError ? 'alert' : 'status');
+            toast.setAttribute('aria-live', esError ? 'assertive' : 'polite');
             toast.setAttribute('aria-atomic', 'true');
-            toast.setAttribute('data-bs-delay', '3200');
+            toast.setAttribute('data-bs-delay', esError ? '4200' : '3200');
             toast.innerHTML =
                 '<div class="toast-body">' +
-                    '<i class="bi bi-check2-circle"></i>' +
+                    '<i class="bi ' + (esError ? 'bi-exclamation-circle' : 'bi-check2-circle') + '"></i>' +
                     '<span></span>' +
                 '</div>';
             toast.querySelector('span').textContent = mensaje;
@@ -101,11 +122,18 @@
             selectorProximaAccion.appendChild(opcion);
         };
 
+        Array.from(selectorProximaAccion.options).forEach(function (opcion) {
+            if (opcion.value === 'Preparar oficio') {
+                opcion.remove();
+            }
+        });
+
         agregarOpcionSiFalta('Investigar nuevo contacto', 'Investigar nuevo contacto');
         agregarOpcionSiFalta(
             'Verificar información de contacto',
             'Verificar información de contacto'
         );
+        agregarOpcionSiFalta('Generar oficio', 'Generar oficio');
 
         const contenedorObservacion = campoObservacion.closest('.col-12');
         const contenedorMotivo = document.createElement('div');
@@ -126,12 +154,20 @@
         if (contenedorObservacion) {
             contenedorObservacion.insertAdjacentElement('afterend', contenedorMotivo);
         } else {
-            formulario.querySelector('.row')?.appendChild(contenedorMotivo);
+            filaFormulario?.appendChild(contenedorMotivo);
         }
 
         const campoMotivoNoInteres = contenedorMotivo.querySelector(
             '[data-work-no-interest-reason]'
         );
+
+        const pasoRutaActual = function () {
+            return Number(offcanvas?.dataset.flowStep || 0);
+        };
+
+        const esRutaAvanzada = function () {
+            return pasoRutaActual() >= 8;
+        };
 
         const contactoEstaVerificado = function () {
             const estado = String(
@@ -156,6 +192,16 @@
         };
 
         const actualizarFechaSegunAccion = function () {
+            if (esRutaAvanzada()) {
+                selectorProximaAccion.value = '';
+                selectorProximaAccion.disabled = true;
+                campoFechaProximaAccion.value = '';
+                campoFechaProximaAccion.disabled = true;
+                campoFechaProximaAccion.required = false;
+                actualizarEtiquetaFecha(false);
+                return;
+            }
+
             const accion = String(selectorProximaAccion.value || '');
             const resultado = String(selectorResultado.value || '');
             const sinAccion = accion === '';
@@ -168,6 +214,24 @@
 
             if (sinAccion && !resultadoManual) {
                 campoFechaProximaAccion.value = '';
+            }
+        };
+
+        const aplicarModoRuta = function () {
+            const avanzada = esRutaAvanzada();
+            avisoInformativo.classList.toggle('d-none', !avanzada);
+            contenedorProximaAccion?.classList.toggle('d-none', avanzada);
+            contenedorFechaProximaAccion?.classList.toggle('d-none', avanzada);
+
+            if (avanzada) {
+                selectorProximaAccion.value = '';
+                selectorProximaAccion.disabled = true;
+                campoFechaProximaAccion.value = '';
+                campoFechaProximaAccion.disabled = true;
+                campoFechaProximaAccion.required = false;
+                actualizarEtiquetaFecha(false);
+            } else {
+                selectorProximaAccion.disabled = false;
             }
         };
 
@@ -189,7 +253,7 @@
                 case 'CONTACTO_CORRECTO':
                 case 'SOLICITO_INFORMACION':
                     accionSugerida = contactoEstaVerificado()
-                        ? 'Preparar oficio'
+                        ? 'Generar oficio'
                         : 'Verificar información de contacto';
                     break;
                 case 'SOLICITO_LLAMAR_DESPUES':
@@ -206,12 +270,11 @@
                     break;
             }
 
-            if (!conservarSeleccionManual) {
+            if (!conservarSeleccionManual && !esRutaAvanzada()) {
                 selectorProximaAccion.value = accionSugerida;
             }
 
             const noInteresado = resultado === 'NO_INTERESADO';
-            selectorProximaAccion.disabled = noInteresado;
             contenedorMotivo.classList.toggle('d-none', !noInteresado);
 
             if (campoMotivoNoInteres) {
@@ -221,6 +284,18 @@
                     campoMotivoNoInteres.value = '';
                 }
             }
+
+            if (esRutaAvanzada()) {
+                selectorProximaAccion.value = '';
+                selectorProximaAccion.disabled = true;
+                campoFechaProximaAccion.value = '';
+                campoFechaProximaAccion.disabled = true;
+                campoFechaProximaAccion.required = false;
+                actualizarEtiquetaFecha(false);
+                return;
+            }
+
+            selectorProximaAccion.disabled = noInteresado;
 
             if (noInteresado) {
                 campoFechaProximaAccion.value = '';
@@ -234,18 +309,153 @@
             actualizarFechaSegunAccion();
         };
 
+        const agregarActividadInformativa = function (interaccion) {
+            const lista = document.querySelector('[data-work-activity-list]');
+
+            if (!lista || !interaccion) {
+                return;
+            }
+
+            lista.querySelector('.linkage-work-empty')?.remove();
+
+            const articulo = document.createElement('article');
+            const fecha = document.createElement('strong');
+            const meta = document.createElement('span');
+            const notas = document.createElement('p');
+
+            fecha.textContent = String(interaccion.fecha_label || 'Ahora');
+            meta.textContent =
+                String(interaccion.canal_label || 'Interacción') + ' · ' +
+                String(interaccion.resultado_label || 'Otro');
+            notas.textContent = String(interaccion.notas || '');
+
+            articulo.appendChild(fecha);
+            articulo.appendChild(meta);
+
+            if (notas.textContent !== '') {
+                articulo.appendChild(notas);
+            }
+
+            lista.prepend(articulo);
+
+            while (lista.children.length > 3) {
+                lista.lastElementChild?.remove();
+            }
+        };
+
+        const registrarInteraccionInformativa = async function (event) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+
+            if (!formulario.checkValidity()) {
+                formulario.reportValidity();
+                return;
+            }
+
+            const botonGuardar = formulario.querySelector('button[type="submit"]');
+            const textoOriginal = botonGuardar?.textContent || 'Guardar interacción';
+            const formData = new FormData(formulario);
+            const resultado = String(selectorResultado.value || '');
+
+            formData.delete('proxima_accion');
+            formData.delete('proxima_accion_at');
+
+            if (resultado === 'NO_INTERESADO') {
+                const motivo = String(campoMotivoNoInteres?.value || '').trim();
+
+                if (motivo === '') {
+                    campoMotivoNoInteres?.reportValidity();
+                    campoMotivoNoInteres?.focus();
+                    return;
+                }
+
+                const observacion = String(formData.get('observacion') || '').trim();
+                formData.set(
+                    'observacion',
+                    observacion !== ''
+                        ? observacion + '\nMotivo de no interés: ' + motivo
+                        : 'Motivo de no interés: ' + motivo
+                );
+            }
+
+            if (botonGuardar) {
+                botonGuardar.disabled = true;
+                botonGuardar.textContent = 'Guardando...';
+            }
+
+            try {
+                const respuesta = await fetch(urlInteraccionInformativa, {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'fetch'
+                    },
+                    body: formData
+                });
+                const datos = await respuesta.json();
+
+                if (!respuesta.ok || !datos.ok) {
+                    throw new Error(
+                        datos.mensaje || 'No fue posible registrar la interacción.'
+                    );
+                }
+
+                agregarActividadInformativa(datos.interaccion);
+                formulario.classList.add('d-none');
+                formulario.reset();
+                aplicarModoRuta();
+                aplicarResultadoInteraccion();
+                mostrarToastLocal(
+                    datos.mensaje ||
+                    'Interacción registrada en el expediente sin modificar la ruta.',
+                    false
+                );
+
+                document.dispatchEvent(new CustomEvent('impe:interaction-informative-saved', {
+                    detail: {
+                        seguimientoId: Number(formData.get('seguimiento_id') || 0)
+                    }
+                }));
+            } catch (error) {
+                mostrarToastLocal(
+                    error.message || 'No fue posible registrar la interacción.',
+                    true
+                );
+            } finally {
+                if (botonGuardar) {
+                    botonGuardar.disabled = false;
+                    botonGuardar.textContent = textoOriginal;
+                }
+            }
+        };
+
         selectorResultado.addEventListener('change', aplicarResultadoInteraccion);
         selectorProximaAccion.addEventListener('change', actualizarFechaSegunAccion);
 
         formulario.addEventListener('reset', function () {
-            window.setTimeout(aplicarResultadoInteraccion, 0);
+            window.setTimeout(function () {
+                aplicarModoRuta();
+                aplicarResultadoInteraccion();
+            }, 0);
         });
 
         botonAbrirInteraccion?.addEventListener('click', function () {
-            window.setTimeout(aplicarResultadoInteraccion, 0);
+            window.setTimeout(function () {
+                aplicarModoRuta();
+                aplicarResultadoInteraccion();
+            }, 0);
+        });
+
+        document.addEventListener('impe:flow-updated', function () {
+            aplicarModoRuta();
+            aplicarResultadoInteraccion();
         });
 
         formulario.addEventListener('submit', function (event) {
+            if (esRutaAvanzada()) {
+                registrarInteraccionInformativa(event);
+                return;
+            }
+
             const accion = String(selectorProximaAccion.value || '');
 
             if (
@@ -312,7 +522,7 @@
                 toastInteraccionDiferido &&
                 !seguimientoQuedoDescartado
             ) {
-                mostrarToastLocal('Interacción registrada correctamente.');
+                mostrarToastLocal('Interacción registrada correctamente.', false);
             }
 
             motivoNoInteresPendiente = '';
@@ -324,6 +534,7 @@
             }
         });
 
+        aplicarModoRuta();
         aplicarResultadoInteraccion();
     });
 })();

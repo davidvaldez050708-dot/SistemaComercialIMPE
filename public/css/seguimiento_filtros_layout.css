@@ -1,0 +1,138 @@
+/* Ajuste visual de la barra de filtros de Seguimiento Vinculación.
+   En escritorio separa las acciones de alta de los filtros para darles más aire visual. */
+
+@media (min-width: 1280px) {
+    .linkage-tools-form {
+        grid-template-columns:
+            minmax(280px, 1.35fr)
+            minmax(165px, 0.72fr)
+            minmax(220px, 0.92fr)
+            minmax(220px, 1fr);
+        column-gap: 14px;
+        row-gap: 12px;
+        align-items: end;
+    }
+
+    /* Acciones principales arriba, alineadas a la derecha. */
+    .linkage-tools-form .linkage-tools-actions {
+        grid-column: 1 / -1;
+        grid-row: 1;
+        justify-self: end;
+        justify-content: flex-end;
+        align-items: center;
+        flex-wrap: nowrap;
+        white-space: nowrap;
+        margin-bottom: 2px;
+    }
+
+    .linkage-tools-form .linkage-action-button {
+        min-height: 42px;
+        padding-left: 18px;
+        padding-right: 18px;
+    }
+
+    /* Filtros principales debajo, con anchuras cómodas. */
+    .linkage-tools-form > .linkage-search-field {
+        grid-column: 1;
+        grid-row: 2;
+    }
+
+    .linkage-tools-form > .data-filter-field:has([data-linkage-stage-filter]) {
+        grid-column: 2;
+        grid-row: 2;
+    }
+
+    .linkage-tools-form > .data-filter-field:has([data-linkage-route-filter]) {
+        grid-column: 3;
+        grid-row: 2;
+    }
+
+    .linkage-tools-form > .data-filter-field:has([data-linkage-municipality-filter]) {
+        grid-column: 4;
+        grid-row: 2;
+    }
+
+    .linkage-tools-form:not(:has([data-linkage-analyst-filter])) .linkage-filter-clear-slot {
+        grid-column: 1 / -1;
+        grid-row: 3;
+        min-height: 18px;
+        align-items: flex-start;
+    }
+
+    /* Supervisor / administrador: cinco filtros en una fila propia. */
+    .linkage-tools-form:has([data-linkage-analyst-filter]) {
+        grid-template-columns:
+            minmax(240px, 1.18fr)
+            minmax(145px, 0.64fr)
+            minmax(190px, 0.84fr)
+            minmax(190px, 0.88fr)
+            minmax(175px, 0.78fr);
+    }
+
+    .linkage-tools-form:has([data-linkage-analyst-filter]) > .linkage-search-field {
+        grid-column: 1;
+        grid-row: 2;
+    }
+
+    .linkage-tools-form:has([data-linkage-analyst-filter]) > .data-filter-field:has([data-linkage-stage-filter]) {
+        grid-column: 2;
+        grid-row: 2;
+    }
+
+    .linkage-tools-form:has([data-linkage-analyst-filter]) > .data-filter-field:has([data-linkage-route-filter]) {
+        grid-column: 3;
+        grid-row: 2;
+    }
+
+    .linkage-tools-form:has([data-linkage-analyst-filter]) > .data-filter-field:has([data-linkage-municipality-filter]) {
+        grid-column: 4;
+        grid-row: 2;
+    }
+
+    .linkage-tools-form:has([data-linkage-analyst-filter]) > .data-filter-field:has([data-linkage-analyst-filter]) {
+        grid-column: 5;
+        grid-row: 2;
+    }
+
+    .linkage-tools-form:has([data-linkage-analyst-filter]) .linkage-filter-clear-slot {
+        grid-column: 1 / -1;
+        grid-row: 3;
+        min-height: 18px;
+        align-items: flex-start;
+    }
+}
+
+@media (max-width: 1279.98px) and (min-width: 769px) {
+    .linkage-tools-form {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .linkage-tools-actions {
+        grid-column: 1 / -1;
+        grid-row: 1;
+        justify-content: flex-end;
+        margin-bottom: 2px;
+    }
+
+    .linkage-filter-clear-slot {
+        grid-column: 1 / -1;
+    }
+}
+
+@media (max-width: 768px) {
+    .linkage-tools-form {
+        grid-template-columns: 1fr;
+    }
+
+    .linkage-tools-actions {
+        grid-column: 1;
+        grid-row: 1;
+        justify-content: stretch;
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .linkage-filter-clear-slot {
+        grid-column: 1;
+    }
+}

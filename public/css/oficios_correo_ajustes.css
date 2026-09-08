@@ -1,0 +1,37 @@
+/* Ajustes del modal de correo institucional */
+
+#modalBorradorCorreoOficio [data-mail-note].alert-info {
+    display: none !important;
+}
+
+#modalBorradorCorreoOficio [data-mail-note].alert-success,
+#modalBorradorCorreoOficio [data-mail-note].alert-danger {
+    display: flex !important;
+    align-items: center;
+}
+
+#modalBorradorCorreoOficio [data-mail-attachment] {
+    overflow-wrap: anywhere;
+}
+
+/* Programación de envío: textos informativos más compactos */
+#modalProgramarEnvioOficio .alert {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 13px;
+    margin-bottom: 18px !important;
+    font-size: 12.5px;
+    line-height: 1.35;
+}
+
+#modalProgramarEnvioOficio .alert i {
+    flex: 0 0 auto;
+    font-size: 13px;
+}
+
+#modalProgramarEnvioOficio .form-text {
+    margin-top: 7px !important;
+    font-size: 12px;
+    line-height: 1.35;
+}

@@ -1,0 +1,109 @@
+.oficio-preview-document-modal .modal-dialog {
+    width: min(97vw, 1460px);
+    max-width: 1460px;
+}
+
+.oficio-preview-document-modal .modal-content {
+    height: min(96vh, 1020px);
+    min-height: 700px;
+}
+
+.oficio-preview-document-modal .modal-header {
+    flex: 0 0 auto;
+    padding: 14px 18px 12px;
+}
+
+.oficio-preview-document-modal .modal-title {
+    font-size: 1.03rem;
+    line-height: 1.25;
+}
+
+.oficio-preview-document-modal .oficio-preview-modal-subtitle {
+    margin-top: 2px;
+    font-size: 0.78rem;
+}
+
+/*
+ * La explicación técnica ya no se muestra. La vista habla por sí misma y
+ * así el documento aprovecha más altura dentro del modal.
+ */
+.oficio-preview-document-message {
+    display: none !important;
+}
+
+.oficio-preview-document-body {
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: 0 !important;
+    overflow: hidden;
+    background: #dfe3e8;
+}
+
+.oficio-preview-document-frame {
+    display: block;
+    width: 100%;
+    height: 100%;
+    min-height: 600px;
+    border: 0;
+    background: #fff;
+    opacity: 0;
+    transition: opacity .15s ease;
+}
+
+.oficio-preview-document-frame.is-loaded {
+    opacity: 1;
+}
+
+.oficio-preview-document-loading {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    background: #f3f5f7;
+    color: #5f6b76;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.oficio-preview-document-modal .modal-footer {
+    flex: 0 0 auto;
+    min-height: 54px;
+    padding: 8px 14px;
+    gap: 8px;
+}
+
+.oficio-preview-document-modal .modal-footer .btn {
+    min-height: 36px;
+    padding: 7px 12px;
+    font-size: 11.5px;
+}
+
+@media (max-width: 767.98px) {
+    .oficio-preview-document-modal .modal-dialog {
+        width: calc(100vw - 12px);
+        margin: 6px;
+    }
+
+    .oficio-preview-document-modal .modal-content {
+        height: calc(100vh - 12px);
+        min-height: 0;
+        border-radius: 14px;
+    }
+
+    .oficio-preview-document-modal .modal-header {
+        padding: 11px 12px 9px;
+    }
+
+    .oficio-preview-document-frame {
+        min-height: 0;
+    }
+
+    .oficio-preview-document-modal .modal-footer {
+        min-height: 50px;
+        padding: 7px 9px;
+    }
+}
