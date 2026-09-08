@@ -66,6 +66,10 @@ $fotoPerfilUrl = $fotoPerfil !== ''
     <link
         rel="stylesheet"
         href="<?= BASE_URL ?>public/css/recordatorios.css?v=<?= filemtime(ROOT_PATH . '/public/css/recordatorios.css') ?>">
+
+    <link
+        rel="stylesheet"
+        href="<?= BASE_URL ?>public/css/poblacion_objetivo_educativa.css?v=<?= filemtime(ROOT_PATH . '/public/css/poblacion_objetivo_educativa.css') ?>">
 </head>
 
 <body>
