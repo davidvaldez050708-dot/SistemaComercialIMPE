@@ -53,7 +53,9 @@ $jsOpcionalHead = [
     'seguimiento_panel_ruta.js',
     'seguimiento_flujo_loading.js',
     'seguimiento_resultados_humanizados.js',
-    'oficios_correo_formato.js'
+    'oficios_correo_formato.js',
+    'firma_correo_perfil.js',
+    'correo_firma_envio.js'
 ];
 
 ?>
