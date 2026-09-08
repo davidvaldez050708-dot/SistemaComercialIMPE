@@ -1,0 +1,5 @@
+-- Nota de implementación:
+-- SCITEL publica "Población de 15 años y más con secundaria completa".
+-- Ese indicador no se debe interpretar automáticamente como "no estudia".
+-- Para identificar falta de continuidad educativa se deberá agregar un segundo
+-- indicador basado también en condición de asistencia escolar.

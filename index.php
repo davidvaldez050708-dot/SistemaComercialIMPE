@@ -215,6 +215,17 @@ switch ($controller) {
         break;
 
 
+    case 'poblacionObjetivoEducativa':
+
+        require_once __DIR__ .
+            '/app/controllers/PoblacionObjetivoEducativaController.php';
+
+        $controllerInstance =
+            new PoblacionObjetivoEducativaController();
+
+        break;
+
+
     case 'seguimientoVinculacion':
 
         require_once __DIR__ .

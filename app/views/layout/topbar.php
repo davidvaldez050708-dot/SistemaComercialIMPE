@@ -4,12 +4,7 @@ require_once __DIR__ . '/../../helpers/AvatarHelper.php';
 require_once __DIR__ . '/../../helpers/ReminderHelper.php';
 
 $recordatoriosSeguimiento = [];
-$rolTopbarId = (int)($_SESSION['rol_id'] ?? 0);
-$esAnalistaDatos = $rolTopbarId === 4;
-$esCuentaClave = $rolTopbarId === 6;
-$mostrarCentroAvisos = $esAnalistaDatos || $esCuentaClave;
-$mostrarAgendaReuniones = $mostrarCentroAvisos;
-$trabajarNotificacionId = (int)($_GET['trabajar_id'] ?? 0);
+$esAnalistaDatos = (int)($_SESSION['rol_id'] ?? 0) === 4;
 
 if ($esAnalistaDatos) {
     $recordatoriosSeguimiento = obtenerRecordatoriosSeguimientoAnalista(
@@ -49,17 +44,7 @@ $totalRecordatoriosSeguimiento = count($recordatoriosSeguimiento);
         </div>
 
         <div class="topbar-actions">
-            <?php if ($mostrarAgendaReuniones): ?>
-                <a
-                    class="topbar-reminder-button"
-                    href="<?= BASE_URL ?>index.php?controller=agendaReunion&action=index"
-                    aria-label="Abrir agenda de reuniones"
-                    title="Agenda de reuniones">
-                    <i class="bi bi-calendar3"></i>
-                </a>
-            <?php endif; ?>
-
-            <?php if ($mostrarCentroAvisos): ?>
+            <?php if ($esAnalistaDatos): ?>
                 <div
                     class="dropdown"
                     data-reminder-root
@@ -70,7 +55,7 @@ $totalRecordatoriosSeguimiento = count($recordatoriosSeguimiento);
                         data-bs-toggle="dropdown"
                         data-bs-auto-close="outside"
                         aria-expanded="false"
-                        aria-label="Abrir notificaciones">
+                        aria-label="Abrir recordatorios">
                         <i class="bi bi-bell"></i>
 
                         <span
@@ -82,8 +67,8 @@ $totalRecordatoriosSeguimiento = count($recordatoriosSeguimiento);
 
                     <div class="dropdown-menu dropdown-menu-end topbar-reminder-menu">
                         <div class="topbar-reminder-header">
-                            <strong>Notificaciones</strong>
-                            <span>Reuniones, confirmaciones y acciones próximas.</span>
+                            <strong>Recordatorios</strong>
+                            <span>Acciones próximas en 24 h y acciones vencidas.</span>
                         </div>
 
                         <div data-reminder-content>
@@ -100,17 +85,10 @@ $totalRecordatoriosSeguimiento = count($recordatoriosSeguimiento);
                                         $etiquetaRecordatorio = (string)(
                                             $recordatorio['recordatorio']['etiqueta'] ?? ''
                                         );
-                                        $recordatorioId = (int)($recordatorio['id'] ?? 0);
-                                        $recordatorioEstadoId = (int)($recordatorio['estado_id'] ?? 0);
-                                        $urlRecordatorioTopbar = $recordatorioEstadoId > 0
-                                            ? BASE_URL . 'index.php?controller=seguimientoVinculacion&action=estado&estado_id=' .
-                                                $recordatorioEstadoId . '&trabajar_id=' . $recordatorioId
-                                            : BASE_URL . 'index.php?controller=seguimientoVinculacion&action=detalle&id=' .
-                                                $recordatorioId;
                                         ?>
                                         <a
                                             class="topbar-reminder-item"
-                                            href="<?= htmlspecialchars($urlRecordatorioTopbar, ENT_QUOTES, 'UTF-8') ?>">
+                                            href="<?= BASE_URL ?>index.php?controller=seguimientoVinculacion&action=detalle&id=<?= (int)($recordatorio['id'] ?? 0) ?>">
                                             <span class="topbar-reminder-icon">
                                                 <i class="bi <?= htmlspecialchars(iconoAccionRecordatorioSeguimiento($accionRecordatorio), ENT_QUOTES, 'UTF-8') ?>"></i>
                                             </span>
@@ -133,8 +111,8 @@ $totalRecordatoriosSeguimiento = count($recordatoriosSeguimiento);
                             <?php else: ?>
                                 <div class="topbar-reminder-empty">
                                     <i class="bi bi-check2-circle"></i>
-                                    <strong>Sin notificaciones pendientes</strong>
-                                    <span>No tienes acciones o reuniones pendientes.</span>
+                                    <strong>Sin recordatorios pendientes</strong>
+                                    <span>No tienes llamadas o mensajes próximos.</span>
                                 </div>
                             <?php endif; ?>
                         </div>
@@ -174,7 +152,8 @@ $totalRecordatoriosSeguimiento = count($recordatoriosSeguimiento);
                     <li>
                         <a
                             class="dropdown-item"
-                            href="#" data-my-profile-open>
+                            href="#"
+                            data-my-profile-open>
                             <i class="bi bi-person me-2"></i>
                             Mi perfil
                         </a>
@@ -183,7 +162,9 @@ $totalRecordatoriosSeguimiento = count($recordatoriosSeguimiento);
                     <li>
                         <a
                             class="dropdown-item"
-                            href="#" data-bs-toggle="modal" data-bs-target="#modalCambiarMiPassword">
+                            href="#"
+                            data-bs-toggle="modal"
+                            data-bs-target="#modalCambiarMiPassword">
                             <i class="bi bi-key me-2"></i>
                             Cambiar contraseña
                         </a>
@@ -196,7 +177,9 @@ $totalRecordatoriosSeguimiento = count($recordatoriosSeguimiento);
                     <li>
                         <a
                             class="dropdown-item"
-                            href="#" data-bs-toggle="modal" data-bs-target="#modalCerrarSesion">
+                            href="#"
+                            data-bs-toggle="modal"
+                            data-bs-target="#modalCerrarSesion">
                             <i class="bi bi-box-arrow-right me-2"></i>
                             Cerrar sesión
                         </a>
@@ -206,45 +189,6 @@ $totalRecordatoriosSeguimiento = count($recordatoriosSeguimiento);
         </div>
 
     </header>
-
-    <?php if ($trabajarNotificacionId > 0): ?>
-        <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            const seguimientoId = <?= $trabajarNotificacionId ?>;
-            let intentos = 0;
-
-            const abrirTrabajoNotificacion = function () {
-                const boton = document.querySelector(
-                    '[data-work-follow-id="' + seguimientoId + '"]'
-                );
-
-                if (!boton) {
-                    intentos += 1;
-                    if (intentos < 20) {
-                        window.setTimeout(abrirTrabajoNotificacion, 100);
-                    }
-                    return;
-                }
-
-                boton.click();
-
-                try {
-                    const url = new URL(window.location.href);
-                    url.searchParams.delete('trabajar_id');
-                    window.history.replaceState(
-                        null,
-                        '',
-                        url.pathname + url.search + url.hash
-                    );
-                } catch (error) {
-                    console.warn('No fue posible limpiar el destino de la notificación.', error);
-                }
-            };
-
-            window.setTimeout(abrirTrabajoNotificacion, 140);
-        });
-        </script>
-    <?php endif; ?>
 
     <?php require_once __DIR__ . '/my_profile_modal.php'; ?>
     <?php require_once __DIR__ . '/my_password_modal.php'; ?>

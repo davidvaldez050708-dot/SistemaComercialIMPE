@@ -1,0 +1,12 @@
+-- Esta migración no inserta cifras: únicamente documenta el indicador oficial
+-- que consumirá la interfaz. Los valores deben provenir de INEGI/SCITEL.
+--
+-- Indicador principal:
+--   SECUNDARIA_COMPLETA_15_MAS
+--   Población de 15 años y más con secundaria completa.
+--
+-- IMPORTANTE:
+-- Este indicador no equivale por sí solo a "no continúa estudiando". La
+-- estructura permite agregar posteriormente otro indicador que combine nivel
+-- educativo y condición de asistencia escolar, sin modificar el rezago
+-- educativo oficial ya existente.

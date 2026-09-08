@@ -65,99 +65,11 @@ $fotoPerfilUrl = $fotoPerfil !== ''
 
     <link
         rel="stylesheet"
-        href="<?= BASE_URL ?>public/css/seguimiento_filtros_layout.css?v=<?= filemtime(ROOT_PATH . '/public/css/seguimiento_filtros_layout.css') ?>">
-
-    <link
-        rel="stylesheet"
-        href="<?= BASE_URL ?>public/css/seguimiento_panel_ruta.css?v=<?= filemtime(ROOT_PATH . '/public/css/seguimiento_panel_ruta.css') ?>">
-
-    <link
-        rel="stylesheet"
         href="<?= BASE_URL ?>public/css/recordatorios.css?v=<?= filemtime(ROOT_PATH . '/public/css/recordatorios.css') ?>">
 
     <link
         rel="stylesheet"
-        href="<?= BASE_URL ?>public/css/oficios_vista_previa.css?v=<?= filemtime(ROOT_PATH . '/public/css/oficios_vista_previa.css') ?>">
-
-    <link
-        rel="stylesheet"
-        href="<?= BASE_URL ?>public/css/oficios_vista_previa_documento.css?v=<?= filemtime(ROOT_PATH . '/public/css/oficios_vista_previa_documento.css') ?>">
-
-    <link
-        rel="stylesheet"
-        href="<?= BASE_URL ?>public/css/oficios_correo_ajustes.css?v=<?= filemtime(ROOT_PATH . '/public/css/oficios_correo_ajustes.css') ?>">
-
-    <link
-        rel="stylesheet"
-        href="<?= BASE_URL ?>public/css/seguimiento_expediente.css?v=<?= filemtime(ROOT_PATH . '/public/css/seguimiento_expediente.css') ?>">
-
-    <link
-        rel="stylesheet"
-        href="<?= BASE_URL ?>public/css/seguimiento_expediente_v2.css?v=<?= filemtime(ROOT_PATH . '/public/css/seguimiento_expediente_v2.css') ?>">
-
-    <link
-        rel="stylesheet"
-        href="<?= BASE_URL ?>public/css/seguimiento_flujo.css?v=<?= filemtime(ROOT_PATH . '/public/css/seguimiento_flujo.css') ?>">
-
-    <link
-        rel="stylesheet"
-        href="<?= BASE_URL ?>public/css/seguimiento_post_envio.css?v=<?= filemtime(ROOT_PATH . '/public/css/seguimiento_post_envio.css') ?>">
-
-    <link
-        rel="stylesheet"
-        href="<?= BASE_URL ?>public/css/agenda_reunion.css?v=<?= filemtime(ROOT_PATH . '/public/css/agenda_reunion.css') ?>">
-
-    <link
-        rel="stylesheet"
-        href="<?= BASE_URL ?>public/css/agenda_reunion_refinamientos.css?v=<?= filemtime(ROOT_PATH . '/public/css/agenda_reunion_refinamientos.css') ?>">
-
-    <script>
-        window.IMPE_CURRENT_ROLE_ID = <?= (int)($_SESSION['rol_id'] ?? 0) ?>;
-    </script>
-
-    <script
-        src="<?= BASE_URL ?>public/javascript/agenda_reunion.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/agenda_reunion.js') ?>">
-    </script>
-
-    <script
-        src="<?= BASE_URL ?>public/javascript/reunion_fecha_guard.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/reunion_fecha_guard.js') ?>">
-    </script>
-
-    <script
-        src="<?= BASE_URL ?>public/javascript/reunion_resultado.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/reunion_resultado.js') ?>">
-    </script>
-
-    <script
-        src="<?= BASE_URL ?>public/javascript/reprogramacion_reunion.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/reprogramacion_reunion.js') ?>">
-    </script>
-
-    <script
-        src="<?= BASE_URL ?>public/javascript/agenda_historial_navegacion.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/agenda_historial_navegacion.js') ?>">
-    </script>
-
-    <script
-        src="<?= BASE_URL ?>public/javascript/seguimiento_bandeja_sync.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/seguimiento_bandeja_sync.js') ?>">
-    </script>
-
-    <script
-        src="<?= BASE_URL ?>public/javascript/seguimiento_resumen_ruta.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/seguimiento_resumen_ruta.js') ?>">
-    </script>
-
-    <script
-        src="<?= BASE_URL ?>public/javascript/seguimiento_panel_ruta.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/seguimiento_panel_ruta.js') ?>">
-    </script>
-
-    <script
-        src="<?= BASE_URL ?>public/javascript/seguimiento_flujo_loading.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/seguimiento_flujo_loading.js') ?>">
-    </script>
-
-    <script
-        src="<?= BASE_URL ?>public/javascript/seguimiento_resultados_humanizados.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/seguimiento_resultados_humanizados.js') ?>">
-    </script>
-
-    <script
-        src="<?= BASE_URL ?>public/javascript/oficios_correo_formato.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/oficios_correo_formato.js') ?>">
-    </script>
+        href="<?= BASE_URL ?>public/css/poblacion_objetivo_educativa.css?v=<?= filemtime(ROOT_PATH . '/public/css/poblacion_objetivo_educativa.css') ?>">
 </head>
 
 <body>
