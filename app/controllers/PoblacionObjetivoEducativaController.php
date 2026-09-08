@@ -3,13 +3,12 @@
 require_once __DIR__ . '/../models/PoblacionObjetivoEducativaModel.php';
 require_once __DIR__ . '/../models/DataTerritorialModel.php';
 require_once __DIR__ . '/../services/InegiEducacionService.php';
-require_once __DIR__ . '/../services/InegiPerfilEducativoMasivoService.php';
+require_once __DIR__ . '/../services/InegiEducacionObjetivoService.php';
 require_once __DIR__ . '/../helpers/PermissionHelper.php';
 
 class PoblacionObjetivoEducativaController
 {
     private const MAX_ARCHIVO_BYTES = 16777216;
-    private const MAX_ARCHIVO_MASIVO_BYTES = 134217728;
 
     public function obtener()
     {
@@ -180,6 +179,8 @@ class PoblacionObjetivoEducativaController
         $this->validarSesion();
         $this->validarPeticionActualizacion();
 
+        @set_time_limit(0);
+
         $modelo = new PoblacionObjetivoEducativaModel();
 
         if (!$modelo->tablaDisponible()) {
@@ -189,158 +190,127 @@ class PoblacionObjetivoEducativaController
             ], 503);
         }
 
-        $archivo = $_FILES['archivo_perfil_educativo'] ?? null;
-
-        if (!is_array($archivo)) {
-            $this->responderJson([
-                'ok' => false,
-                'mensaje' => 'Selecciona el XLSX general o el ZIP con los XLSX estatales de ITER/SCITEL.'
-            ], 422);
-        }
-
-        $errorCarga = (int)($archivo['error'] ?? UPLOAD_ERR_NO_FILE);
-
-        if ($errorCarga !== UPLOAD_ERR_OK) {
-            $this->responderJson([
-                'ok' => false,
-                'mensaje' => $this->mensajeErrorCarga($errorCarga)
-            ], 422);
-        }
-
-        $nombreOriginal = trim(basename((string)($archivo['name'] ?? '')));
-        $rutaTemporal = (string)($archivo['tmp_name'] ?? '');
-        $tamano = (int)($archivo['size'] ?? 0);
-        $extension = strtolower(pathinfo($nombreOriginal, PATHINFO_EXTENSION));
-
-        if ($nombreOriginal === '' || !in_array($extension, ['xlsx', 'zip'], true)) {
-            $this->responderJson([
-                'ok' => false,
-                'mensaje' => 'El archivo general debe estar en formato XLSX o ZIP.'
-            ], 422);
-        }
-
-        if ($tamano <= 0 || $tamano > self::MAX_ARCHIVO_MASIVO_BYTES) {
-            $this->responderJson([
-                'ok' => false,
-                'mensaje' => 'El archivo general está vacío o supera 128 MB.'
-            ], 422);
-        }
-
-        if (!is_uploaded_file($rutaTemporal)) {
-            $this->responderJson([
-                'ok' => false,
-                'mensaje' => 'No fue posible validar el archivo general cargado.'
-            ], 422);
-        }
-
-        $servicio = new InegiPerfilEducativoMasivoService();
-        $resultado = $servicio->leerCarga($rutaTemporal, $nombreOriginal);
-
-        if (($resultado['ok'] ?? false) !== true) {
-            $this->responderJson([
-                'ok' => false,
-                'mensaje' => $resultado['mensaje'] ??
-                    'No fue posible reconocer la información educativa de ITER/SCITEL.'
-            ], 422);
-        }
-
-        $registrosPorClave = [];
-
-        foreach (($resultado['registros'] ?? []) as $registro) {
-            $clave = $this->normalizarClaveEstado($registro['clave_geografica'] ?? '');
-
-            if ($clave !== null) {
-                $registrosPorClave[$clave] = $registro;
-            }
-        }
-
         $modeloTerritorial = new DataTerritorialModel();
         $estadosBase = $modeloTerritorial->obtenerEstadosActivosParaActualizacionOficial();
-        $estadosPorClave = [];
 
-        foreach ($estadosBase as $estadoBase) {
-            $estado = $modeloTerritorial->obtenerEstado((int)($estadoBase['id'] ?? 0));
-
-            if (!$estado) {
-                continue;
-            }
-
-            $clave = $this->normalizarClaveEstado($estado['clave_inegi'] ?? '');
-
-            if ($clave !== null) {
-                $estadosPorClave[$clave] = [
-                    'id' => (int)$estado['id'],
-                    'nombre' => (string)($estado['nombre'] ?? $clave)
-                ];
-            }
-        }
-
-        if (empty($estadosPorClave)) {
+        if (empty($estadosBase)) {
             $this->responderJson([
                 'ok' => false,
                 'mensaje' => 'No hay Estados activos disponibles para realizar la actualización general.'
             ], 422);
         }
 
-        $faltantes = array_diff(array_keys($estadosPorClave), array_keys($registrosPorClave));
+        $servicio = new InegiEducacionObjetivoService();
+        $preparados = [];
+        $errores = [];
 
-        if (!empty($faltantes)) {
-            $nombresFaltantes = array_map(
-                function ($clave) use ($estadosPorClave) {
-                    return $estadosPorClave[$clave]['nombre'] ?? $clave;
-                },
-                array_values($faltantes)
-            );
-            $muestra = array_slice($nombresFaltantes, 0, 6);
-            $detalle = implode(', ', $muestra);
+        foreach ($estadosBase as $estadoBase) {
+            $estadoId = (int)($estadoBase['id'] ?? 0);
+            $estado = $modeloTerritorial->obtenerEstado($estadoId);
 
-            if (count($nombresFaltantes) > count($muestra)) {
-                $detalle .= ' y ' . (count($nombresFaltantes) - count($muestra)) . ' más';
+            if (!$estado) {
+                $errores[] = 'No fue posible consultar uno de los Estados activos.';
+                continue;
+            }
+
+            $clave = $this->normalizarClaveEstado($estado['clave_inegi'] ?? '');
+            $nombre = (string)($estado['nombre'] ?? ('Estado ' . $estadoId));
+
+            if ($clave === null) {
+                $errores[] = $nombre . ': clave INEGI no válida.';
+                continue;
+            }
+
+            $resultado = $servicio->obtenerPorEstado($clave);
+
+            if (($resultado['ok'] ?? false) !== true) {
+                $errores[] = $nombre . ': ' .
+                    ($resultado['mensaje'] ?? 'no fue posible consultar INEGI.');
+                continue;
+            }
+
+            $metricas = $resultado['estado']['metricas'] ?? [];
+            $poblacionBase = $metricas['poblacion_15_mas'] ?? null;
+            $secundaria = $metricas['secundaria_completa'] ?? null;
+            $porcentaje = $metricas['secundaria_completa_pct'] ?? null;
+
+            if (
+                !is_numeric($poblacionBase) ||
+                !is_numeric($secundaria) ||
+                !is_numeric($porcentaje)
+            ) {
+                $errores[] = $nombre . ': INEGI no devolvió las métricas educativas esperadas.';
+                continue;
+            }
+
+            $preparados[] = [
+                'estado_id' => $estadoId,
+                'nombre_estado' => $nombre,
+                'datos' => [
+                    'clave_geografica' => $clave,
+                    'codigo_indicador' => InegiEducacionService::CODIGO_INDICADOR,
+                    'nombre_indicador' =>
+                        'Población de 15 años y más cuya máxima escolaridad es secundaria completa',
+                    'grupo_edad' => '15 años y más',
+                    'anio' => (int)($resultado['periodo'] ?? 2020),
+                    'cantidad_personas' => (int)$secundaria,
+                    'poblacion_base' => (int)$poblacionBase,
+                    'porcentaje' => (float)$porcentaje,
+                    'fuente' => (string)($resultado['fuente'] ??
+                        'INEGI - Censo de Población y Vivienda 2020 (ITER)'),
+                    'archivo_origen' => 'iter_' . $clave . '_cpv2020_csv.zip',
+                    'tipo_actualizacion' => 'AUTOMATICA'
+                ]
+            ];
+        }
+
+        if (!empty($errores)) {
+            $muestra = array_slice($errores, 0, 4);
+            $mensaje = implode(' ', $muestra);
+
+            if (count($errores) > count($muestra)) {
+                $mensaje .= ' Hay ' . (count($errores) - count($muestra)) . ' error(es) adicional(es).';
             }
 
             $this->responderJson([
                 'ok' => false,
                 'mensaje' =>
-                    'La carga no cubre todos los Estados activos. Faltan ' .
-                    count($nombresFaltantes) . ': ' . $detalle . '. No se guardó información.'
-            ], 422);
+                    'No se guardó la actualización porque no fue posible validar todos los Estados. ' .
+                    $mensaje
+            ], 502);
         }
 
-        ksort($estadosPorClave, SORT_STRING);
-        $guardados = 0;
-        $periodos = [];
         $usuarioId = (int)$_SESSION['usuario_id'];
+        $guardados = 0;
 
-        foreach ($estadosPorClave as $clave => $estado) {
-            $registro = $registrosPorClave[$clave];
-            $registro['clave_geografica'] = $clave;
-            $periodos[(int)($registro['anio'] ?? 0)] = true;
-
-            if (!$modelo->guardarIndicadorEstado($estado['id'], $registro, $usuarioId)) {
+        foreach ($preparados as $preparado) {
+            if (!$modelo->guardarIndicadorEstado(
+                (int)$preparado['estado_id'],
+                $preparado['datos'],
+                $usuarioId
+            )) {
                 $this->responderJson([
                     'ok' => false,
                     'mensaje' =>
-                        'La validación fue correcta, pero no fue posible guardar ' .
-                        $estado['nombre'] . '. Se actualizaron ' . $guardados . ' Estados antes del error.'
+                        'La consulta a INEGI fue correcta, pero no fue posible guardar ' .
+                        $preparado['nombre_estado'] . '. Se actualizaron ' . $guardados .
+                        ' Estados antes del error.'
                 ], 500);
             }
 
             $guardados++;
         }
 
-        $anios = array_values(array_filter(array_keys($periodos)));
-        sort($anios, SORT_NUMERIC);
-
         $this->responderJson([
             'ok' => true,
             'mensaje' =>
-                'Perfil educativo actualizado para ' . $guardados .
-                ' Estados desde la información oficial de ITER/SCITEL.',
+                'Perfil educativo actualizado automáticamente para ' . $guardados .
+                ' Estados desde INEGI. No fue necesario cargar archivos.',
             'datos' => [
                 'total_estados' => $guardados,
-                'archivos_procesados' => (int)($resultado['archivos_procesados'] ?? 1),
-                'periodos' => $anios,
-                'codigo_indicador' => InegiPerfilEducativoMasivoService::CODIGO_INDICADOR
+                'periodos' => [2020],
+                'codigo_indicador' => InegiEducacionService::CODIGO_INDICADOR,
+                'tipo_actualizacion' => 'AUTOMATICA'
             ]
         ]);
     }
@@ -383,13 +353,13 @@ class PoblacionObjetivoEducativaController
             UPLOAD_ERR_INI_SIZE => 'El archivo supera el tamaño permitido por el servidor.',
             UPLOAD_ERR_FORM_SIZE => 'El archivo supera el tamaño permitido.',
             UPLOAD_ERR_PARTIAL => 'El archivo se cargó de forma incompleta.',
-            UPLOAD_ERR_NO_FILE => 'Selecciona el archivo oficial de INEGI/ITER.',
+            UPLOAD_ERR_NO_FILE => 'Selecciona el archivo XLSX oficial de INEGI/ITER.',
             UPLOAD_ERR_NO_TMP_DIR => 'El servidor no tiene disponible el directorio temporal.',
             UPLOAD_ERR_CANT_WRITE => 'El servidor no pudo recibir el archivo.',
             UPLOAD_ERR_EXTENSION => 'La carga del archivo fue detenida por el servidor.'
         ];
 
-        return $mensajes[$codigo] ?? 'No fue posible cargar el archivo.';
+        return $mensajes[$codigo] ?? 'No fue posible cargar el archivo XLSX.';
     }
 
     private function validarSesion(): void
