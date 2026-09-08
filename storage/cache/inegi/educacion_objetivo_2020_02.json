@@ -1,0 +1,169 @@
+{
+    "ok": true,
+    "fuente": "INEGI - Censo de Población y Vivienda 2020 (ITER)",
+    "periodo": "2020",
+    "metodologia": {
+        "secundaria_completa": "Personas de 15 años y más cuya máxima escolaridad son 3 grados aprobados de secundaria (P15SEC_CO).",
+        "fuera_15_17": "Diferencia entre la población de 15 a 17 años y la población del mismo grupo que asiste a la escuela.",
+        "fuera_18_24": "Diferencia entre la población de 18 a 24 años y la población del mismo grupo que asiste a la escuela.",
+        "advertencia": "Los indicadores de escolaridad máxima y asistencia son grupos distintos; no deben sumarse ni interpretarse como las mismas personas."
+    },
+    "estado": {
+        "clave": "02",
+        "nombre": "Baja California",
+        "metricas": {
+            "poblacion_15_mas": 2882498,
+            "secundaria_completa": 721812,
+            "secundaria_completa_pct": 25.04,
+            "poblacion_15_17": 183590,
+            "asiste_15_17": 142012,
+            "fuera_15_17": 41578,
+            "fuera_15_17_pct": 22.65,
+            "poblacion_18_24": 472408,
+            "asiste_18_24": 162584,
+            "fuera_18_24": 309824,
+            "fuera_18_24_pct": 65.58,
+            "poblacion_15_24": 655998,
+            "fuera_15_24": 351402,
+            "fuera_15_24_pct": 53.57,
+            "educacion_posbasica_18_mas": 1338625,
+            "grado_promedio_escolaridad": 10.2
+        }
+    },
+    "municipios": [
+        {
+            "clave": "004",
+            "nombre": "Tijuana",
+            "metricas": {
+                "poblacion_15_mas": 1467282,
+                "secundaria_completa": 373371,
+                "secundaria_completa_pct": 25.45,
+                "poblacion_15_17": 93150,
+                "asiste_15_17": 71811,
+                "fuera_15_17": 21339,
+                "fuera_15_17_pct": 22.91,
+                "poblacion_18_24": 244356,
+                "asiste_18_24": 80936,
+                "fuera_18_24": 163420,
+                "fuera_18_24_pct": 66.88,
+                "poblacion_15_24": 337506,
+                "fuera_15_24": 184759,
+                "fuera_15_24_pct": 54.74,
+                "educacion_posbasica_18_mas": 676767,
+                "grado_promedio_escolaridad": 10.18
+            }
+        },
+        {
+            "clave": "002",
+            "nombre": "Mexicali",
+            "metricas": {
+                "poblacion_15_mas": 814668,
+                "secundaria_completa": 208697,
+                "secundaria_completa_pct": 25.62,
+                "poblacion_15_17": 51325,
+                "asiste_15_17": 40723,
+                "fuera_15_17": 10602,
+                "fuera_15_17_pct": 20.66,
+                "poblacion_18_24": 128334,
+                "asiste_18_24": 48885,
+                "fuera_18_24": 79449,
+                "fuera_18_24_pct": 61.91,
+                "poblacion_15_24": 179659,
+                "fuera_15_24": 90051,
+                "fuera_15_24_pct": 50.12,
+                "educacion_posbasica_18_mas": 399411,
+                "grado_promedio_escolaridad": 10.53
+            }
+        },
+        {
+            "clave": "001",
+            "nombre": "Ensenada",
+            "metricas": {
+                "poblacion_15_mas": 339720,
+                "secundaria_completa": 75838,
+                "secundaria_completa_pct": 22.32,
+                "poblacion_15_17": 20882,
+                "asiste_15_17": 16272,
+                "fuera_15_17": 4610,
+                "fuera_15_17_pct": 22.08,
+                "poblacion_18_24": 54266,
+                "asiste_18_24": 20708,
+                "fuera_18_24": 33558,
+                "fuera_18_24_pct": 61.84,
+                "poblacion_15_24": 75148,
+                "fuera_15_24": 38168,
+                "fuera_15_24_pct": 50.79,
+                "educacion_posbasica_18_mas": 165913,
+                "grado_promedio_escolaridad": 10.34
+            }
+        },
+        {
+            "clave": "006",
+            "nombre": "San Quintín",
+            "metricas": {
+                "poblacion_15_mas": 81352,
+                "secundaria_completa": 18205,
+                "secundaria_completa_pct": 22.38,
+                "poblacion_15_17": 6521,
+                "asiste_15_17": 4349,
+                "fuera_15_17": 2172,
+                "fuera_15_17_pct": 33.31,
+                "poblacion_18_24": 16851,
+                "asiste_18_24": 3412,
+                "fuera_18_24": 13439,
+                "fuera_18_24_pct": 79.75,
+                "poblacion_15_24": 23372,
+                "fuera_15_24": 15611,
+                "fuera_15_24_pct": 66.79,
+                "educacion_posbasica_18_mas": 22125,
+                "grado_promedio_escolaridad": 7.83
+            }
+        },
+        {
+            "clave": "005",
+            "nombre": "Playas de Rosarito",
+            "metricas": {
+                "poblacion_15_mas": 96931,
+                "secundaria_completa": 24611,
+                "secundaria_completa_pct": 25.39,
+                "poblacion_15_17": 6534,
+                "asiste_15_17": 4928,
+                "fuera_15_17": 1606,
+                "fuera_15_17_pct": 24.58,
+                "poblacion_18_24": 15726,
+                "asiste_18_24": 4538,
+                "fuera_18_24": 11188,
+                "fuera_18_24_pct": 71.14,
+                "poblacion_15_24": 22260,
+                "fuera_15_24": 12794,
+                "fuera_15_24_pct": 57.48,
+                "educacion_posbasica_18_mas": 39700,
+                "grado_promedio_escolaridad": 9.58
+            }
+        },
+        {
+            "clave": "003",
+            "nombre": "Tecate",
+            "metricas": {
+                "poblacion_15_mas": 82545,
+                "secundaria_completa": 21090,
+                "secundaria_completa_pct": 25.55,
+                "poblacion_15_17": 5178,
+                "asiste_15_17": 3929,
+                "fuera_15_17": 1249,
+                "fuera_15_17_pct": 24.12,
+                "poblacion_18_24": 12875,
+                "asiste_18_24": 4105,
+                "fuera_18_24": 8770,
+                "fuera_18_24_pct": 68.12,
+                "poblacion_15_24": 18053,
+                "fuera_15_24": 10019,
+                "fuera_15_24_pct": 55.5,
+                "educacion_posbasica_18_mas": 34709,
+                "grado_promedio_escolaridad": 9.79
+            }
+        }
+    ],
+    "municipios_total": 6,
+    "generado_at": "2026-09-07 19:52:54"
+}

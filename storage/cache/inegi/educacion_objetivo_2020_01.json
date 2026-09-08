@@ -1,0 +1,279 @@
+{
+    "ok": true,
+    "fuente": "INEGI - Censo de Población y Vivienda 2020 (ITER)",
+    "periodo": "2020",
+    "metodologia": {
+        "secundaria_completa": "Personas de 15 años y más cuya máxima escolaridad son 3 grados aprobados de secundaria (P15SEC_CO).",
+        "fuera_15_17": "Diferencia entre la población de 15 a 17 años y la población del mismo grupo que asiste a la escuela.",
+        "fuera_18_24": "Diferencia entre la población de 18 a 24 años y la población del mismo grupo que asiste a la escuela.",
+        "advertencia": "Los indicadores de escolaridad máxima y asistencia son grupos distintos; no deben sumarse ni interpretarse como las mismas personas."
+    },
+    "estado": {
+        "clave": "01",
+        "nombre": "Aguascalientes",
+        "metricas": {
+            "poblacion_15_mas": 1038904,
+            "secundaria_completa": 288036,
+            "secundaria_completa_pct": 27.72,
+            "poblacion_15_17": 78140,
+            "asiste_15_17": 55493,
+            "fuera_15_17": 22647,
+            "fuera_15_17_pct": 28.98,
+            "poblacion_18_24": 180847,
+            "asiste_18_24": 59978,
+            "fuera_18_24": 120869,
+            "fuera_18_24_pct": 66.83,
+            "poblacion_15_24": 258987,
+            "fuera_15_24": 143516,
+            "fuera_15_24_pct": 55.41,
+            "educacion_posbasica_18_mas": 467249,
+            "grado_promedio_escolaridad": 10.35
+        }
+    },
+    "municipios": [
+        {
+            "clave": "001",
+            "nombre": "Aguascalientes",
+            "metricas": {
+                "poblacion_15_mas": 707473,
+                "secundaria_completa": 182540,
+                "secundaria_completa_pct": 25.8,
+                "poblacion_15_17": 49934,
+                "asiste_15_17": 36490,
+                "fuera_15_17": 13444,
+                "fuera_15_17_pct": 26.92,
+                "poblacion_18_24": 120452,
+                "asiste_18_24": 44885,
+                "fuera_18_24": 75567,
+                "fuera_18_24_pct": 62.74,
+                "poblacion_15_24": 170386,
+                "fuera_15_24": 89011,
+                "fuera_15_24_pct": 52.24,
+                "educacion_posbasica_18_mas": 354455,
+                "grado_promedio_escolaridad": 10.84
+            }
+        },
+        {
+            "clave": "005",
+            "nombre": "Jesús María",
+            "metricas": {
+                "poblacion_15_mas": 91487,
+                "secundaria_completa": 24176,
+                "secundaria_completa_pct": 26.43,
+                "poblacion_15_17": 7680,
+                "asiste_15_17": 5238,
+                "fuera_15_17": 2442,
+                "fuera_15_17_pct": 31.8,
+                "poblacion_18_24": 16640,
+                "asiste_18_24": 5081,
+                "fuera_18_24": 11559,
+                "fuera_18_24_pct": 69.47,
+                "poblacion_15_24": 24320,
+                "fuera_15_24": 14001,
+                "fuera_15_24_pct": 57.57,
+                "educacion_posbasica_18_mas": 39383,
+                "grado_promedio_escolaridad": 10.22
+            }
+        },
+        {
+            "clave": "011",
+            "nombre": "San Francisco de los Romo",
+            "metricas": {
+                "poblacion_15_mas": 41714,
+                "secundaria_completa": 15163,
+                "secundaria_completa_pct": 36.35,
+                "poblacion_15_17": 3544,
+                "asiste_15_17": 2303,
+                "fuera_15_17": 1241,
+                "fuera_15_17_pct": 35.02,
+                "poblacion_18_24": 7793,
+                "asiste_18_24": 1591,
+                "fuera_18_24": 6202,
+                "fuera_18_24_pct": 79.58,
+                "poblacion_15_24": 11337,
+                "fuera_15_24": 7443,
+                "fuera_15_24_pct": 65.65,
+                "educacion_posbasica_18_mas": 13302,
+                "grado_promedio_escolaridad": 9.21
+            }
+        },
+        {
+            "clave": "003",
+            "nombre": "Calvillo",
+            "metricas": {
+                "poblacion_15_mas": 41495,
+                "secundaria_completa": 13314,
+                "secundaria_completa_pct": 32.09,
+                "poblacion_15_17": 3220,
+                "asiste_15_17": 1907,
+                "fuera_15_17": 1313,
+                "fuera_15_17_pct": 40.78,
+                "poblacion_18_24": 6935,
+                "asiste_18_24": 1456,
+                "fuera_18_24": 5479,
+                "fuera_18_24_pct": 79.01,
+                "poblacion_15_24": 10155,
+                "fuera_15_24": 6792,
+                "fuera_15_24_pct": 66.88,
+                "educacion_posbasica_18_mas": 9402,
+                "grado_promedio_escolaridad": 8.05
+            }
+        },
+        {
+            "clave": "007",
+            "nombre": "Rincón de Romos",
+            "metricas": {
+                "poblacion_15_mas": 39505,
+                "secundaria_completa": 11954,
+                "secundaria_completa_pct": 30.26,
+                "poblacion_15_17": 3471,
+                "asiste_15_17": 2473,
+                "fuera_15_17": 998,
+                "fuera_15_17_pct": 28.75,
+                "poblacion_18_24": 7362,
+                "asiste_18_24": 1951,
+                "fuera_18_24": 5411,
+                "fuera_18_24_pct": 73.5,
+                "poblacion_15_24": 10833,
+                "fuera_15_24": 6409,
+                "fuera_15_24_pct": 59.16,
+                "educacion_posbasica_18_mas": 15209,
+                "grado_promedio_escolaridad": 9.6
+            }
+        },
+        {
+            "clave": "002",
+            "nombre": "Asientos",
+            "metricas": {
+                "poblacion_15_mas": 35250,
+                "secundaria_completa": 13014,
+                "secundaria_completa_pct": 36.92,
+                "poblacion_15_17": 3218,
+                "asiste_15_17": 2148,
+                "fuera_15_17": 1070,
+                "fuera_15_17_pct": 33.25,
+                "poblacion_18_24": 6581,
+                "asiste_18_24": 1398,
+                "fuera_18_24": 5183,
+                "fuera_18_24_pct": 78.76,
+                "poblacion_15_24": 9799,
+                "fuera_15_24": 6253,
+                "fuera_15_24_pct": 63.81,
+                "educacion_posbasica_18_mas": 8892,
+                "grado_promedio_escolaridad": 8.54
+            }
+        },
+        {
+            "clave": "006",
+            "nombre": "Pabellón de Arteaga",
+            "metricas": {
+                "poblacion_15_mas": 33468,
+                "secundaria_completa": 10547,
+                "secundaria_completa_pct": 31.51,
+                "poblacion_15_17": 2872,
+                "asiste_15_17": 2071,
+                "fuera_15_17": 801,
+                "fuera_15_17_pct": 27.89,
+                "poblacion_18_24": 6150,
+                "asiste_18_24": 1776,
+                "fuera_18_24": 4374,
+                "fuera_18_24_pct": 71.12,
+                "poblacion_15_24": 9022,
+                "fuera_15_24": 5175,
+                "fuera_15_24_pct": 57.36,
+                "educacion_posbasica_18_mas": 13029,
+                "grado_promedio_escolaridad": 9.77
+            }
+        },
+        {
+            "clave": "009",
+            "nombre": "Tepezalá",
+            "metricas": {
+                "poblacion_15_mas": 15573,
+                "secundaria_completa": 5166,
+                "secundaria_completa_pct": 33.17,
+                "poblacion_15_17": 1373,
+                "asiste_15_17": 949,
+                "fuera_15_17": 424,
+                "fuera_15_17_pct": 30.88,
+                "poblacion_18_24": 2962,
+                "asiste_18_24": 557,
+                "fuera_18_24": 2405,
+                "fuera_18_24_pct": 81.2,
+                "poblacion_15_24": 4335,
+                "fuera_15_24": 2829,
+                "fuera_15_24_pct": 65.26,
+                "educacion_posbasica_18_mas": 4303,
+                "grado_promedio_escolaridad": 8.56
+            }
+        },
+        {
+            "clave": "010",
+            "nombre": "El Llano",
+            "metricas": {
+                "poblacion_15_mas": 14603,
+                "secundaria_completa": 5416,
+                "secundaria_completa_pct": 37.09,
+                "poblacion_15_17": 1225,
+                "asiste_15_17": 778,
+                "fuera_15_17": 447,
+                "fuera_15_17_pct": 36.49,
+                "poblacion_18_24": 2565,
+                "asiste_18_24": 504,
+                "fuera_18_24": 2061,
+                "fuera_18_24_pct": 80.35,
+                "poblacion_15_24": 3790,
+                "fuera_15_24": 2508,
+                "fuera_15_24_pct": 66.17,
+                "educacion_posbasica_18_mas": 3553,
+                "grado_promedio_escolaridad": 8.49
+            }
+        },
+        {
+            "clave": "004",
+            "nombre": "Cosío",
+            "metricas": {
+                "poblacion_15_mas": 11817,
+                "secundaria_completa": 4323,
+                "secundaria_completa_pct": 36.58,
+                "poblacion_15_17": 1045,
+                "asiste_15_17": 774,
+                "fuera_15_17": 271,
+                "fuera_15_17_pct": 25.93,
+                "poblacion_18_24": 2228,
+                "asiste_18_24": 541,
+                "fuera_18_24": 1687,
+                "fuera_18_24_pct": 75.72,
+                "poblacion_15_24": 3273,
+                "fuera_15_24": 1958,
+                "fuera_15_24_pct": 59.82,
+                "educacion_posbasica_18_mas": 3721,
+                "grado_promedio_escolaridad": 9.08
+            }
+        },
+        {
+            "clave": "008",
+            "nombre": "San José de Gracia",
+            "metricas": {
+                "poblacion_15_mas": 6519,
+                "secundaria_completa": 2423,
+                "secundaria_completa_pct": 37.17,
+                "poblacion_15_17": 558,
+                "asiste_15_17": 362,
+                "fuera_15_17": 196,
+                "fuera_15_17_pct": 35.13,
+                "poblacion_18_24": 1179,
+                "asiste_18_24": 238,
+                "fuera_18_24": 941,
+                "fuera_18_24_pct": 79.81,
+                "poblacion_15_24": 1737,
+                "fuera_15_24": 1137,
+                "fuera_15_24_pct": 65.46,
+                "educacion_posbasica_18_mas": 2000,
+                "grado_promedio_escolaridad": 9.24
+            }
+        }
+    ],
+    "municipios_total": 11,
+    "generado_at": "2026-09-07 19:52:53"
+}

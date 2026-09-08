@@ -1,0 +1,279 @@
+{
+    "ok": true,
+    "fuente": "INEGI - Censo de Población y Vivienda 2020 (ITER)",
+    "periodo": "2020",
+    "metodologia": {
+        "secundaria_completa": "Personas de 15 años y más cuya máxima escolaridad son 3 grados aprobados de secundaria (P15SEC_CO).",
+        "fuera_15_17": "Diferencia entre la población de 15 a 17 años y la población del mismo grupo que asiste a la escuela.",
+        "fuera_18_24": "Diferencia entre la población de 18 a 24 años y la población del mismo grupo que asiste a la escuela.",
+        "advertencia": "Los indicadores de escolaridad máxima y asistencia son grupos distintos; no deben sumarse ni interpretarse como las mismas personas."
+    },
+    "estado": {
+        "clave": "23",
+        "nombre": "Quintana Roo",
+        "metricas": {
+            "poblacion_15_mas": 1379563,
+            "secundaria_completa": 368696,
+            "secundaria_completa_pct": 26.73,
+            "poblacion_15_17": 86328,
+            "asiste_15_17": 65030,
+            "fuera_15_17": 21298,
+            "fuera_15_17_pct": 24.67,
+            "poblacion_18_24": 226210,
+            "asiste_18_24": 61264,
+            "fuera_18_24": 164946,
+            "fuera_18_24_pct": 72.92,
+            "poblacion_15_24": 312538,
+            "fuera_15_24": 186244,
+            "fuera_15_24_pct": 59.59,
+            "educacion_posbasica_18_mas": 655583,
+            "grado_promedio_escolaridad": 10.24
+        }
+    },
+    "municipios": [
+        {
+            "clave": "005",
+            "nombre": "Benito Juárez",
+            "metricas": {
+                "poblacion_15_mas": 688772,
+                "secundaria_completa": 175463,
+                "secundaria_completa_pct": 25.47,
+                "poblacion_15_17": 40858,
+                "asiste_15_17": 30834,
+                "fuera_15_17": 10024,
+                "fuera_15_17_pct": 24.53,
+                "poblacion_18_24": 112678,
+                "asiste_18_24": 31583,
+                "fuera_18_24": 81095,
+                "fuera_18_24_pct": 71.97,
+                "poblacion_15_24": 153536,
+                "fuera_15_24": 91119,
+                "fuera_15_24_pct": 59.35,
+                "educacion_posbasica_18_mas": 350607,
+                "grado_promedio_escolaridad": 10.56
+            }
+        },
+        {
+            "clave": "008",
+            "nombre": "Solidaridad",
+            "metricas": {
+                "poblacion_15_mas": 240659,
+                "secundaria_completa": 66658,
+                "secundaria_completa_pct": 27.7,
+                "poblacion_15_17": 13248,
+                "asiste_15_17": 9532,
+                "fuera_15_17": 3716,
+                "fuera_15_17_pct": 28.05,
+                "poblacion_18_24": 39967,
+                "asiste_18_24": 7451,
+                "fuera_18_24": 32516,
+                "fuera_18_24_pct": 81.36,
+                "poblacion_15_24": 53215,
+                "fuera_15_24": 36232,
+                "fuera_15_24_pct": 68.09,
+                "educacion_posbasica_18_mas": 124695,
+                "grado_promedio_escolaridad": 10.7
+            }
+        },
+        {
+            "clave": "004",
+            "nombre": "Othón P. Blanco",
+            "metricas": {
+                "poblacion_15_mas": 177849,
+                "secundaria_completa": 44859,
+                "secundaria_completa_pct": 25.22,
+                "poblacion_15_17": 11642,
+                "asiste_15_17": 9619,
+                "fuera_15_17": 2023,
+                "fuera_15_17_pct": 17.38,
+                "poblacion_18_24": 27518,
+                "asiste_18_24": 11328,
+                "fuera_18_24": 16190,
+                "fuera_18_24_pct": 58.83,
+                "poblacion_15_24": 39160,
+                "fuera_15_24": 18213,
+                "fuera_15_24_pct": 46.51,
+                "educacion_posbasica_18_mas": 83221,
+                "grado_promedio_escolaridad": 10.19
+            }
+        },
+        {
+            "clave": "002",
+            "nombre": "Felipe Carrillo Puerto",
+            "metricas": {
+                "poblacion_15_mas": 58345,
+                "secundaria_completa": 17973,
+                "secundaria_completa_pct": 30.8,
+                "poblacion_15_17": 5323,
+                "asiste_15_17": 4034,
+                "fuera_15_17": 1289,
+                "fuera_15_17_pct": 24.22,
+                "poblacion_18_24": 10436,
+                "asiste_18_24": 2999,
+                "fuera_18_24": 7437,
+                "fuera_18_24_pct": 71.26,
+                "poblacion_15_24": 15759,
+                "fuera_15_24": 8726,
+                "fuera_15_24_pct": 55.37,
+                "educacion_posbasica_18_mas": 17953,
+                "grado_promedio_escolaridad": 8.52
+            }
+        },
+        {
+            "clave": "001",
+            "nombre": "Cozumel",
+            "metricas": {
+                "poblacion_15_mas": 66851,
+                "secundaria_completa": 19225,
+                "secundaria_completa_pct": 28.76,
+                "poblacion_15_17": 4480,
+                "asiste_15_17": 3637,
+                "fuera_15_17": 843,
+                "fuera_15_17_pct": 18.82,
+                "poblacion_18_24": 9881,
+                "asiste_18_24": 2688,
+                "fuera_18_24": 7193,
+                "fuera_18_24_pct": 72.8,
+                "poblacion_15_24": 14361,
+                "fuera_15_24": 8036,
+                "fuera_15_24_pct": 55.96,
+                "educacion_posbasica_18_mas": 30972,
+                "grado_promedio_escolaridad": 10.15
+            }
+        },
+        {
+            "clave": "009",
+            "nombre": "Tulum",
+            "metricas": {
+                "poblacion_15_mas": 33388,
+                "secundaria_completa": 9819,
+                "secundaria_completa_pct": 29.41,
+                "poblacion_15_17": 2140,
+                "asiste_15_17": 1378,
+                "fuera_15_17": 762,
+                "fuera_15_17_pct": 35.61,
+                "poblacion_18_24": 6366,
+                "asiste_18_24": 959,
+                "fuera_18_24": 5407,
+                "fuera_18_24_pct": 84.94,
+                "poblacion_15_24": 8506,
+                "fuera_15_24": 6169,
+                "fuera_15_24_pct": 72.53,
+                "educacion_posbasica_18_mas": 12617,
+                "grado_promedio_escolaridad": 9.28
+            }
+        },
+        {
+            "clave": "010",
+            "nombre": "Bacalar",
+            "metricas": {
+                "poblacion_15_mas": 29189,
+                "secundaria_completa": 8410,
+                "secundaria_completa_pct": 28.81,
+                "poblacion_15_17": 2331,
+                "asiste_15_17": 1596,
+                "fuera_15_17": 735,
+                "fuera_15_17_pct": 31.53,
+                "poblacion_18_24": 5246,
+                "asiste_18_24": 1164,
+                "fuera_18_24": 4082,
+                "fuera_18_24_pct": 77.81,
+                "poblacion_15_24": 7577,
+                "fuera_15_24": 4817,
+                "fuera_15_24_pct": 63.57,
+                "educacion_posbasica_18_mas": 7670,
+                "grado_promedio_escolaridad": 7.86
+            }
+        },
+        {
+            "clave": "006",
+            "nombre": "José María Morelos",
+            "metricas": {
+                "poblacion_15_mas": 27070,
+                "secundaria_completa": 9008,
+                "secundaria_completa_pct": 33.28,
+                "poblacion_15_17": 2451,
+                "asiste_15_17": 1752,
+                "fuera_15_17": 699,
+                "fuera_15_17_pct": 28.52,
+                "poblacion_18_24": 4955,
+                "asiste_18_24": 1322,
+                "fuera_18_24": 3633,
+                "fuera_18_24_pct": 73.32,
+                "poblacion_15_24": 7406,
+                "fuera_15_24": 4332,
+                "fuera_15_24_pct": 58.49,
+                "educacion_posbasica_18_mas": 6942,
+                "grado_promedio_escolaridad": 8.15
+            }
+        },
+        {
+            "clave": "007",
+            "nombre": "Lázaro Cárdenas",
+            "metricas": {
+                "poblacion_15_mas": 20503,
+                "secundaria_completa": 6978,
+                "secundaria_completa_pct": 34.03,
+                "poblacion_15_17": 1587,
+                "asiste_15_17": 1179,
+                "fuera_15_17": 408,
+                "fuera_15_17_pct": 25.71,
+                "poblacion_18_24": 3435,
+                "asiste_18_24": 747,
+                "fuera_18_24": 2688,
+                "fuera_18_24_pct": 78.25,
+                "poblacion_15_24": 5022,
+                "fuera_15_24": 3096,
+                "fuera_15_24_pct": 61.65,
+                "educacion_posbasica_18_mas": 5466,
+                "grado_promedio_escolaridad": 8.28
+            }
+        },
+        {
+            "clave": "011",
+            "nombre": "Puerto Morelos",
+            "metricas": {
+                "poblacion_15_mas": 20276,
+                "secundaria_completa": 4699,
+                "secundaria_completa_pct": 23.18,
+                "poblacion_15_17": 1161,
+                "asiste_15_17": 796,
+                "fuera_15_17": 365,
+                "fuera_15_17_pct": 31.44,
+                "poblacion_18_24": 3095,
+                "asiste_18_24": 576,
+                "fuera_18_24": 2519,
+                "fuera_18_24_pct": 81.39,
+                "poblacion_15_24": 4256,
+                "fuera_15_24": 2884,
+                "fuera_15_24_pct": 67.76,
+                "educacion_posbasica_18_mas": 10081,
+                "grado_promedio_escolaridad": 10.36
+            }
+        },
+        {
+            "clave": "003",
+            "nombre": "Isla Mujeres",
+            "metricas": {
+                "poblacion_15_mas": 16661,
+                "secundaria_completa": 5604,
+                "secundaria_completa_pct": 33.64,
+                "poblacion_15_17": 1107,
+                "asiste_15_17": 673,
+                "fuera_15_17": 434,
+                "fuera_15_17_pct": 39.21,
+                "poblacion_18_24": 2633,
+                "asiste_18_24": 447,
+                "fuera_18_24": 2186,
+                "fuera_18_24_pct": 83.02,
+                "poblacion_15_24": 3740,
+                "fuera_15_24": 2620,
+                "fuera_15_24_pct": 70.05,
+                "educacion_posbasica_18_mas": 5359,
+                "grado_promedio_escolaridad": 8.92
+            }
+        }
+    ],
+    "municipios_total": 11,
+    "generado_at": "2026-09-07 19:53:24"
+}

@@ -1,0 +1,301 @@
+{
+    "ok": true,
+    "fuente": "INEGI - Censo de Población y Vivienda 2020 (ITER)",
+    "periodo": "2020",
+    "metodologia": {
+        "secundaria_completa": "Personas de 15 años y más cuya máxima escolaridad son 3 grados aprobados de secundaria (P15SEC_CO).",
+        "fuera_15_17": "Diferencia entre la población de 15 a 17 años y la población del mismo grupo que asiste a la escuela.",
+        "fuera_18_24": "Diferencia entre la población de 18 a 24 años y la población del mismo grupo que asiste a la escuela.",
+        "advertencia": "Los indicadores de escolaridad máxima y asistencia son grupos distintos; no deben sumarse ni interpretarse como las mismas personas."
+    },
+    "estado": {
+        "clave": "04",
+        "nombre": "Campeche",
+        "metricas": {
+            "poblacion_15_mas": 682951,
+            "secundaria_completa": 172718,
+            "secundaria_completa_pct": 25.29,
+            "poblacion_15_17": 45762,
+            "asiste_15_17": 33731,
+            "fuera_15_17": 12031,
+            "fuera_15_17_pct": 26.29,
+            "poblacion_18_24": 105934,
+            "asiste_18_24": 37620,
+            "fuera_18_24": 68314,
+            "fuera_18_24_pct": 64.49,
+            "poblacion_15_24": 151696,
+            "fuera_15_24": 80345,
+            "fuera_15_24_pct": 52.96,
+            "educacion_posbasica_18_mas": 285453,
+            "grado_promedio_escolaridad": 9.63
+        }
+    },
+    "municipios": [
+        {
+            "clave": "002",
+            "nombre": "Campeche",
+            "metricas": {
+                "poblacion_15_mas": 226479,
+                "secundaria_completa": 48491,
+                "secundaria_completa_pct": 21.41,
+                "poblacion_15_17": 13520,
+                "asiste_15_17": 11082,
+                "fuera_15_17": 2438,
+                "fuera_15_17_pct": 18.03,
+                "poblacion_18_24": 33919,
+                "asiste_18_24": 15599,
+                "fuera_18_24": 18320,
+                "fuera_18_24_pct": 54.01,
+                "poblacion_15_24": 47439,
+                "fuera_15_24": 20758,
+                "fuera_15_24_pct": 43.76,
+                "educacion_posbasica_18_mas": 118958,
+                "grado_promedio_escolaridad": 10.72
+            }
+        },
+        {
+            "clave": "003",
+            "nombre": "Carmen",
+            "metricas": {
+                "poblacion_15_mas": 184437,
+                "secundaria_completa": 42233,
+                "secundaria_completa_pct": 22.9,
+                "poblacion_15_17": 11635,
+                "asiste_15_17": 8975,
+                "fuera_15_17": 2660,
+                "fuera_15_17_pct": 22.86,
+                "poblacion_18_24": 27463,
+                "asiste_18_24": 10314,
+                "fuera_18_24": 17149,
+                "fuera_18_24_pct": 62.44,
+                "poblacion_15_24": 39098,
+                "fuera_15_24": 19809,
+                "fuera_15_24_pct": 50.66,
+                "educacion_posbasica_18_mas": 87228,
+                "grado_promedio_escolaridad": 10.26
+            }
+        },
+        {
+            "clave": "004",
+            "nombre": "Champotón",
+            "metricas": {
+                "poblacion_15_mas": 55767,
+                "secundaria_completa": 16939,
+                "secundaria_completa_pct": 30.37,
+                "poblacion_15_17": 4267,
+                "asiste_15_17": 2942,
+                "fuera_15_17": 1325,
+                "fuera_15_17_pct": 31.05,
+                "poblacion_18_24": 9044,
+                "asiste_18_24": 2221,
+                "fuera_18_24": 6823,
+                "fuera_18_24_pct": 75.44,
+                "poblacion_15_24": 13311,
+                "fuera_15_24": 8148,
+                "fuera_15_24_pct": 61.21,
+                "educacion_posbasica_18_mas": 15365,
+                "grado_promedio_escolaridad": 8.12
+            }
+        },
+        {
+            "clave": "009",
+            "nombre": "Escárcega",
+            "metricas": {
+                "poblacion_15_mas": 41839,
+                "secundaria_completa": 12958,
+                "secundaria_completa_pct": 30.97,
+                "poblacion_15_17": 3225,
+                "asiste_15_17": 2002,
+                "fuera_15_17": 1223,
+                "fuera_15_17_pct": 37.92,
+                "poblacion_18_24": 6999,
+                "asiste_18_24": 1690,
+                "fuera_18_24": 5309,
+                "fuera_18_24_pct": 75.85,
+                "poblacion_15_24": 10224,
+                "fuera_15_24": 6532,
+                "fuera_15_24_pct": 63.89,
+                "educacion_posbasica_18_mas": 11486,
+                "grado_promedio_escolaridad": 8.18
+            }
+        },
+        {
+            "clave": "011",
+            "nombre": "Candelaria",
+            "metricas": {
+                "poblacion_15_mas": 31792,
+                "secundaria_completa": 11434,
+                "secundaria_completa_pct": 35.97,
+                "poblacion_15_17": 2580,
+                "asiste_15_17": 1349,
+                "fuera_15_17": 1231,
+                "fuera_15_17_pct": 47.71,
+                "poblacion_18_24": 5191,
+                "asiste_18_24": 645,
+                "fuera_18_24": 4546,
+                "fuera_18_24_pct": 87.57,
+                "poblacion_15_24": 7771,
+                "fuera_15_24": 5777,
+                "fuera_15_24_pct": 74.34,
+                "educacion_posbasica_18_mas": 5481,
+                "grado_promedio_escolaridad": 7.25
+            }
+        },
+        {
+            "clave": "006",
+            "nombre": "Hopelchén",
+            "metricas": {
+                "poblacion_15_mas": 29013,
+                "secundaria_completa": 8674,
+                "secundaria_completa_pct": 29.9,
+                "poblacion_15_17": 2425,
+                "asiste_15_17": 1358,
+                "fuera_15_17": 1067,
+                "fuera_15_17_pct": 44,
+                "poblacion_18_24": 5146,
+                "asiste_18_24": 1180,
+                "fuera_18_24": 3966,
+                "fuera_18_24_pct": 77.07,
+                "poblacion_15_24": 7571,
+                "fuera_15_24": 5033,
+                "fuera_15_24_pct": 66.48,
+                "educacion_posbasica_18_mas": 7040,
+                "grado_promedio_escolaridad": 7.5
+            }
+        },
+        {
+            "clave": "001",
+            "nombre": "Calkiní",
+            "metricas": {
+                "poblacion_15_mas": 43717,
+                "secundaria_completa": 10314,
+                "secundaria_completa_pct": 23.59,
+                "poblacion_15_17": 2886,
+                "asiste_15_17": 2327,
+                "fuera_15_17": 559,
+                "fuera_15_17_pct": 19.37,
+                "poblacion_18_24": 6921,
+                "asiste_18_24": 2780,
+                "fuera_18_24": 4141,
+                "fuera_18_24_pct": 59.83,
+                "poblacion_15_24": 9807,
+                "fuera_15_24": 4700,
+                "fuera_15_24_pct": 47.92,
+                "educacion_posbasica_18_mas": 17956,
+                "grado_promedio_escolaridad": 9.4
+            }
+        },
+        {
+            "clave": "010",
+            "nombre": "Calakmul",
+            "metricas": {
+                "poblacion_15_mas": 20425,
+                "secundaria_completa": 8250,
+                "secundaria_completa_pct": 40.39,
+                "poblacion_15_17": 1894,
+                "asiste_15_17": 1143,
+                "fuera_15_17": 751,
+                "fuera_15_17_pct": 39.65,
+                "poblacion_18_24": 3757,
+                "asiste_18_24": 621,
+                "fuera_18_24": 3136,
+                "fuera_18_24_pct": 83.47,
+                "poblacion_15_24": 5651,
+                "fuera_15_24": 3887,
+                "fuera_15_24_pct": 68.78,
+                "educacion_posbasica_18_mas": 3536,
+                "grado_promedio_escolaridad": 7.43
+            }
+        },
+        {
+            "clave": "005",
+            "nombre": "Hecelchakán",
+            "metricas": {
+                "poblacion_15_mas": 23366,
+                "secundaria_completa": 5930,
+                "secundaria_completa_pct": 25.38,
+                "poblacion_15_17": 1630,
+                "asiste_15_17": 1295,
+                "fuera_15_17": 335,
+                "fuera_15_17_pct": 20.55,
+                "poblacion_18_24": 3602,
+                "asiste_18_24": 1387,
+                "fuera_18_24": 2215,
+                "fuera_18_24_pct": 61.49,
+                "poblacion_15_24": 5232,
+                "fuera_15_24": 2550,
+                "fuera_15_24_pct": 48.74,
+                "educacion_posbasica_18_mas": 9475,
+                "grado_promedio_escolaridad": 9.27
+            }
+        },
+        {
+            "clave": "012",
+            "nombre": "Seybaplaya",
+            "metricas": {
+                "poblacion_15_mas": 11543,
+                "secundaria_completa": 3146,
+                "secundaria_completa_pct": 27.25,
+                "poblacion_15_17": 696,
+                "asiste_15_17": 504,
+                "fuera_15_17": 192,
+                "fuera_15_17_pct": 27.59,
+                "poblacion_18_24": 1822,
+                "asiste_18_24": 622,
+                "fuera_18_24": 1200,
+                "fuera_18_24_pct": 65.86,
+                "poblacion_15_24": 2518,
+                "fuera_15_24": 1392,
+                "fuera_15_24_pct": 55.28,
+                "educacion_posbasica_18_mas": 4064,
+                "grado_promedio_escolaridad": 9
+            }
+        },
+        {
+            "clave": "008",
+            "nombre": "Tenabo",
+            "metricas": {
+                "poblacion_15_mas": 8332,
+                "secundaria_completa": 2237,
+                "secundaria_completa_pct": 26.85,
+                "poblacion_15_17": 554,
+                "asiste_15_17": 424,
+                "fuera_15_17": 130,
+                "fuera_15_17_pct": 23.47,
+                "poblacion_18_24": 1266,
+                "asiste_18_24": 385,
+                "fuera_18_24": 881,
+                "fuera_18_24_pct": 69.59,
+                "poblacion_15_24": 1820,
+                "fuera_15_24": 1011,
+                "fuera_15_24_pct": 55.55,
+                "educacion_posbasica_18_mas": 3093,
+                "grado_promedio_escolaridad": 8.75
+            }
+        },
+        {
+            "clave": "007",
+            "nombre": "Palizada",
+            "metricas": {
+                "poblacion_15_mas": 6241,
+                "secundaria_completa": 2112,
+                "secundaria_completa_pct": 33.84,
+                "poblacion_15_17": 450,
+                "asiste_15_17": 330,
+                "fuera_15_17": 120,
+                "fuera_15_17_pct": 26.67,
+                "poblacion_18_24": 804,
+                "asiste_18_24": 176,
+                "fuera_18_24": 628,
+                "fuera_18_24_pct": 78.11,
+                "poblacion_15_24": 1254,
+                "fuera_15_24": 748,
+                "fuera_15_24_pct": 59.65,
+                "educacion_posbasica_18_mas": 1771,
+                "grado_promedio_escolaridad": 8.46
+            }
+        }
+    ],
+    "municipios_total": 12,
+    "generado_at": "2026-09-07 19:52:55"
+}

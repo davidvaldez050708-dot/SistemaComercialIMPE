@@ -1,0 +1,147 @@
+{
+    "ok": true,
+    "fuente": "INEGI - Censo de Población y Vivienda 2020 (ITER)",
+    "periodo": "2020",
+    "metodologia": {
+        "secundaria_completa": "Personas de 15 años y más cuya máxima escolaridad son 3 grados aprobados de secundaria (P15SEC_CO).",
+        "fuera_15_17": "Diferencia entre la población de 15 a 17 años y la población del mismo grupo que asiste a la escuela.",
+        "fuera_18_24": "Diferencia entre la población de 18 a 24 años y la población del mismo grupo que asiste a la escuela.",
+        "advertencia": "Los indicadores de escolaridad máxima y asistencia son grupos distintos; no deben sumarse ni interpretarse como las mismas personas."
+    },
+    "estado": {
+        "clave": "03",
+        "nombre": "Baja California Sur",
+        "metricas": {
+            "poblacion_15_mas": 597552,
+            "secundaria_completa": 138355,
+            "secundaria_completa_pct": 23.15,
+            "poblacion_15_17": 39576,
+            "asiste_15_17": 32242,
+            "fuera_15_17": 7334,
+            "fuera_15_17_pct": 18.53,
+            "poblacion_18_24": 92636,
+            "asiste_18_24": 29318,
+            "fuera_18_24": 63318,
+            "fuera_18_24_pct": 68.35,
+            "poblacion_15_24": 132212,
+            "fuera_15_24": 70652,
+            "fuera_15_24_pct": 53.44,
+            "educacion_posbasica_18_mas": 292807,
+            "grado_promedio_escolaridad": 10.34
+        }
+    },
+    "municipios": [
+        {
+            "clave": "008",
+            "nombre": "Los Cabos",
+            "metricas": {
+                "poblacion_15_mas": 254833,
+                "secundaria_completa": 64639,
+                "secundaria_completa_pct": 25.37,
+                "poblacion_15_17": 17269,
+                "asiste_15_17": 13806,
+                "fuera_15_17": 3463,
+                "fuera_15_17_pct": 20.05,
+                "poblacion_18_24": 43075,
+                "asiste_18_24": 10440,
+                "fuera_18_24": 32635,
+                "fuera_18_24_pct": 75.76,
+                "poblacion_15_24": 60344,
+                "fuera_15_24": 36098,
+                "fuera_15_24_pct": 59.82,
+                "educacion_posbasica_18_mas": 119186,
+                "grado_promedio_escolaridad": 10.17
+            }
+        },
+        {
+            "clave": "003",
+            "nombre": "La Paz",
+            "metricas": {
+                "poblacion_15_mas": 227140,
+                "secundaria_completa": 46226,
+                "secundaria_completa_pct": 20.35,
+                "poblacion_15_17": 14005,
+                "asiste_15_17": 11738,
+                "fuera_15_17": 2267,
+                "fuera_15_17_pct": 16.19,
+                "poblacion_18_24": 33298,
+                "asiste_18_24": 14577,
+                "fuera_18_24": 18721,
+                "fuera_18_24_pct": 56.22,
+                "poblacion_15_24": 47303,
+                "fuera_15_24": 20988,
+                "fuera_15_24_pct": 44.37,
+                "educacion_posbasica_18_mas": 127126,
+                "grado_promedio_escolaridad": 11.07
+            }
+        },
+        {
+            "clave": "002",
+            "nombre": "Mulegé",
+            "metricas": {
+                "poblacion_15_mas": 46913,
+                "secundaria_completa": 11831,
+                "secundaria_completa_pct": 25.22,
+                "poblacion_15_17": 3282,
+                "asiste_15_17": 2521,
+                "fuera_15_17": 761,
+                "fuera_15_17_pct": 23.19,
+                "poblacion_18_24": 6827,
+                "asiste_18_24": 1319,
+                "fuera_18_24": 5508,
+                "fuera_18_24_pct": 80.68,
+                "poblacion_15_24": 10109,
+                "fuera_15_24": 6269,
+                "fuera_15_24_pct": 62.01,
+                "educacion_posbasica_18_mas": 17745,
+                "grado_promedio_escolaridad": 9.13
+            }
+        },
+        {
+            "clave": "001",
+            "nombre": "Comondú",
+            "metricas": {
+                "poblacion_15_mas": 55168,
+                "secundaria_completa": 12275,
+                "secundaria_completa_pct": 22.25,
+                "poblacion_15_17": 4090,
+                "asiste_15_17": 3408,
+                "fuera_15_17": 682,
+                "fuera_15_17_pct": 16.67,
+                "poblacion_18_24": 7643,
+                "asiste_18_24": 2484,
+                "fuera_18_24": 5159,
+                "fuera_18_24_pct": 67.5,
+                "poblacion_15_24": 11733,
+                "fuera_15_24": 5841,
+                "fuera_15_24_pct": 49.78,
+                "educacion_posbasica_18_mas": 22680,
+                "grado_promedio_escolaridad": 9.27
+            }
+        },
+        {
+            "clave": "009",
+            "nombre": "Loreto",
+            "metricas": {
+                "poblacion_15_mas": 13498,
+                "secundaria_completa": 3384,
+                "secundaria_completa_pct": 25.07,
+                "poblacion_15_17": 930,
+                "asiste_15_17": 769,
+                "fuera_15_17": 161,
+                "fuera_15_17_pct": 17.31,
+                "poblacion_18_24": 1793,
+                "asiste_18_24": 498,
+                "fuera_18_24": 1295,
+                "fuera_18_24_pct": 72.23,
+                "poblacion_15_24": 2723,
+                "fuera_15_24": 1456,
+                "fuera_15_24_pct": 53.47,
+                "educacion_posbasica_18_mas": 6070,
+                "grado_promedio_escolaridad": 9.99
+            }
+        }
+    ],
+    "municipios_total": 5,
+    "generado_at": "2026-09-07 19:52:55"
+}

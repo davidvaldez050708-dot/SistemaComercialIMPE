@@ -1,0 +1,257 @@
+{
+    "ok": true,
+    "fuente": "INEGI - Censo de Población y Vivienda 2020 (ITER)",
+    "periodo": "2020",
+    "metodologia": {
+        "secundaria_completa": "Personas de 15 años y más cuya máxima escolaridad son 3 grados aprobados de secundaria (P15SEC_CO).",
+        "fuera_15_17": "Diferencia entre la población de 15 a 17 años y la población del mismo grupo que asiste a la escuela.",
+        "fuera_18_24": "Diferencia entre la población de 18 a 24 años y la población del mismo grupo que asiste a la escuela.",
+        "advertencia": "Los indicadores de escolaridad máxima y asistencia son grupos distintos; no deben sumarse ni interpretarse como las mismas personas."
+    },
+    "estado": {
+        "clave": "06",
+        "nombre": "Colima",
+        "metricas": {
+            "poblacion_15_mas": 556272,
+            "secundaria_completa": 130565,
+            "secundaria_completa_pct": 23.47,
+            "poblacion_15_17": 36239,
+            "asiste_15_17": 27964,
+            "fuera_15_17": 8275,
+            "fuera_15_17_pct": 22.83,
+            "poblacion_18_24": 83767,
+            "asiste_18_24": 31032,
+            "fuera_18_24": 52735,
+            "fuera_18_24_pct": 62.95,
+            "poblacion_15_24": 120006,
+            "fuera_15_24": 61010,
+            "fuera_15_24_pct": 50.84,
+            "educacion_posbasica_18_mas": 253137,
+            "grado_promedio_escolaridad": 10.05
+        }
+    },
+    "municipios": [
+        {
+            "clave": "007",
+            "nombre": "Manzanillo",
+            "metricas": {
+                "poblacion_15_mas": 143996,
+                "secundaria_completa": 36756,
+                "secundaria_completa_pct": 25.53,
+                "poblacion_15_17": 9454,
+                "asiste_15_17": 7598,
+                "fuera_15_17": 1856,
+                "fuera_15_17_pct": 19.63,
+                "poblacion_18_24": 21030,
+                "asiste_18_24": 7437,
+                "fuera_18_24": 13593,
+                "fuera_18_24_pct": 64.64,
+                "poblacion_15_24": 30484,
+                "fuera_15_24": 15449,
+                "fuera_15_24_pct": 50.68,
+                "educacion_posbasica_18_mas": 65392,
+                "grado_promedio_escolaridad": 10.11
+            }
+        },
+        {
+            "clave": "009",
+            "nombre": "Tecomán",
+            "metricas": {
+                "poblacion_15_mas": 84877,
+                "secundaria_completa": 22242,
+                "secundaria_completa_pct": 26.2,
+                "poblacion_15_17": 6118,
+                "asiste_15_17": 3915,
+                "fuera_15_17": 2203,
+                "fuera_15_17_pct": 36.01,
+                "poblacion_18_24": 13516,
+                "asiste_18_24": 3422,
+                "fuera_18_24": 10094,
+                "fuera_18_24_pct": 74.68,
+                "poblacion_15_24": 19634,
+                "fuera_15_24": 12297,
+                "fuera_15_24_pct": 62.63,
+                "educacion_posbasica_18_mas": 25015,
+                "grado_promedio_escolaridad": 8.22
+            }
+        },
+        {
+            "clave": "002",
+            "nombre": "Colima",
+            "metricas": {
+                "poblacion_15_mas": 123399,
+                "secundaria_completa": 25291,
+                "secundaria_completa_pct": 20.5,
+                "poblacion_15_17": 7421,
+                "asiste_15_17": 6062,
+                "fuera_15_17": 1359,
+                "fuera_15_17_pct": 18.31,
+                "poblacion_18_24": 18065,
+                "asiste_18_24": 7848,
+                "fuera_18_24": 10217,
+                "fuera_18_24_pct": 56.56,
+                "poblacion_15_24": 25486,
+                "fuera_15_24": 11576,
+                "fuera_15_24_pct": 45.42,
+                "educacion_posbasica_18_mas": 64918,
+                "grado_promedio_escolaridad": 10.83
+            }
+        },
+        {
+            "clave": "010",
+            "nombre": "Villa de Álvarez",
+            "metricas": {
+                "poblacion_15_mas": 115406,
+                "secundaria_completa": 22945,
+                "secundaria_completa_pct": 19.88,
+                "poblacion_15_17": 7185,
+                "asiste_15_17": 6047,
+                "fuera_15_17": 1138,
+                "fuera_15_17_pct": 15.84,
+                "poblacion_18_24": 17776,
+                "asiste_18_24": 8379,
+                "fuera_18_24": 9397,
+                "fuera_18_24_pct": 52.86,
+                "poblacion_15_24": 24961,
+                "fuera_15_24": 10535,
+                "fuera_15_24_pct": 42.21,
+                "educacion_posbasica_18_mas": 69414,
+                "grado_promedio_escolaridad": 11.56
+            }
+        },
+        {
+            "clave": "001",
+            "nombre": "Armería",
+            "metricas": {
+                "poblacion_15_mas": 20454,
+                "secundaria_completa": 5285,
+                "secundaria_completa_pct": 25.84,
+                "poblacion_15_17": 1409,
+                "asiste_15_17": 925,
+                "fuera_15_17": 484,
+                "fuera_15_17_pct": 34.35,
+                "poblacion_18_24": 3125,
+                "asiste_18_24": 685,
+                "fuera_18_24": 2440,
+                "fuera_18_24_pct": 78.08,
+                "poblacion_15_24": 4534,
+                "fuera_15_24": 2924,
+                "fuera_15_24_pct": 64.49,
+                "educacion_posbasica_18_mas": 5206,
+                "grado_promedio_escolaridad": 7.77
+            }
+        },
+        {
+            "clave": "005",
+            "nombre": "Cuauhtémoc",
+            "metricas": {
+                "poblacion_15_mas": 24120,
+                "secundaria_completa": 5879,
+                "secundaria_completa_pct": 24.37,
+                "poblacion_15_17": 1664,
+                "asiste_15_17": 1252,
+                "fuera_15_17": 412,
+                "fuera_15_17_pct": 24.76,
+                "poblacion_18_24": 3620,
+                "asiste_18_24": 1236,
+                "fuera_18_24": 2384,
+                "fuera_18_24_pct": 65.86,
+                "poblacion_15_24": 5284,
+                "fuera_15_24": 2796,
+                "fuera_15_24_pct": 52.91,
+                "educacion_posbasica_18_mas": 9070,
+                "grado_promedio_escolaridad": 9.22
+            }
+        },
+        {
+            "clave": "004",
+            "nombre": "Coquimatlán",
+            "metricas": {
+                "poblacion_15_mas": 15756,
+                "secundaria_completa": 4448,
+                "secundaria_completa_pct": 28.23,
+                "poblacion_15_17": 1077,
+                "asiste_15_17": 745,
+                "fuera_15_17": 332,
+                "fuera_15_17_pct": 30.83,
+                "poblacion_18_24": 2505,
+                "asiste_18_24": 749,
+                "fuera_18_24": 1756,
+                "fuera_18_24_pct": 70.1,
+                "poblacion_15_24": 3582,
+                "fuera_15_24": 2088,
+                "fuera_15_24_pct": 58.29,
+                "educacion_posbasica_18_mas": 4789,
+                "grado_promedio_escolaridad": 8.48
+            }
+        },
+        {
+            "clave": "003",
+            "nombre": "Comala",
+            "metricas": {
+                "poblacion_15_mas": 16597,
+                "secundaria_completa": 4445,
+                "secundaria_completa_pct": 26.78,
+                "poblacion_15_17": 1148,
+                "asiste_15_17": 839,
+                "fuera_15_17": 309,
+                "fuera_15_17_pct": 26.92,
+                "poblacion_18_24": 2480,
+                "asiste_18_24": 827,
+                "fuera_18_24": 1653,
+                "fuera_18_24_pct": 66.65,
+                "poblacion_15_24": 3628,
+                "fuera_15_24": 1962,
+                "fuera_15_24_pct": 54.08,
+                "educacion_posbasica_18_mas": 5659,
+                "grado_promedio_escolaridad": 9.09
+            }
+        },
+        {
+            "clave": "008",
+            "nombre": "Minatitlán",
+            "metricas": {
+                "poblacion_15_mas": 7315,
+                "secundaria_completa": 2145,
+                "secundaria_completa_pct": 29.32,
+                "poblacion_15_17": 494,
+                "asiste_15_17": 385,
+                "fuera_15_17": 109,
+                "fuera_15_17_pct": 22.06,
+                "poblacion_18_24": 1063,
+                "asiste_18_24": 286,
+                "fuera_18_24": 777,
+                "fuera_18_24_pct": 73.1,
+                "poblacion_15_24": 1557,
+                "fuera_15_24": 886,
+                "fuera_15_24_pct": 56.9,
+                "educacion_posbasica_18_mas": 2450,
+                "grado_promedio_escolaridad": 8.85
+            }
+        },
+        {
+            "clave": "006",
+            "nombre": "Ixtlahuacán",
+            "metricas": {
+                "poblacion_15_mas": 4352,
+                "secundaria_completa": 1129,
+                "secundaria_completa_pct": 25.94,
+                "poblacion_15_17": 269,
+                "asiste_15_17": 196,
+                "fuera_15_17": 73,
+                "fuera_15_17_pct": 27.14,
+                "poblacion_18_24": 587,
+                "asiste_18_24": 163,
+                "fuera_18_24": 424,
+                "fuera_18_24_pct": 72.23,
+                "poblacion_15_24": 856,
+                "fuera_15_24": 497,
+                "fuera_15_24_pct": 58.06,
+                "educacion_posbasica_18_mas": 1224,
+                "grado_promedio_escolaridad": 8.01
+            }
+        }
+    ],
+    "municipios_total": 10,
+    "generado_at": "2026-09-07 19:53:01"
+}
