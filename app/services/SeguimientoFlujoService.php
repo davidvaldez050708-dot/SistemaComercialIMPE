@@ -43,6 +43,13 @@ class SeguimientoFlujoService
                         WHERE interacciones.seguimiento_id = seguimientos.id
                             AND interacciones.canal = 'LLAMADA_IP'
                     ) AS total_llamadas,
+                    (
+                        SELECT COUNT(*)
+                        FROM interacciones_vinculacion interacciones
+                        WHERE interacciones.seguimiento_id = seguimientos.id
+                            AND interacciones.canal = 'LLAMADA_IP'
+                            AND interacciones.resultado IN ('CONTACTADO', 'MENSAJE_ENVIADO')
+                    ) AS total_llamadas_validacion,
                     oficio.id AS oficio_id,
                     oficio.folio,
                     oficio.estado_oficio,
@@ -102,8 +109,8 @@ class SeguimientoFlujoService
         $cuerpoCorreo = trim((string)($seguimiento['cuerpo_correo'] ?? ''));
         $fechaEnvio = trim((string)($seguimiento['fecha_envio'] ?? ''));
         $proximaAccionAt = trim((string)($seguimiento['proxima_accion_at'] ?? ''));
-        $totalInteracciones = (int)($seguimiento['total_interacciones'] ?? 0);
         $totalLlamadas = (int)($seguimiento['total_llamadas'] ?? 0);
+        $totalLlamadasValidacion = (int)($seguimiento['total_llamadas_validacion'] ?? 0);
 
         $faltantesContacto = [];
 
@@ -283,68 +290,98 @@ class SeguimientoFlujoService
             );
         }
 
-        if (empty($faltantesContacto)) {
+        if ($telefonoDisponible === '') {
             return $this->construirRespuesta(
                 $pasos,
-                4,
-                'Verificar información de contacto',
-                'Ya están capturados persona, cargo y correo. Confirma que la información sea correcta para avanzar al oficio.',
-                [],
+                2,
+                'Investigar teléfono de contacto',
+                'Antes de iniciar la llamada de validación necesitas un teléfono útil de la institución. Captúralo sin marcar todavía la información como verificada.',
+                $this->faltantesInvestigacion($seguimiento),
                 [
-                    'codigo' => 'VERIFICAR_CONTACTO',
-                    'etiqueta' => 'Verificar contacto',
-                    'icono' => 'bi-patch-check'
+                    'codigo' => 'COMPLETAR_DATOS',
+                    'etiqueta' => 'Capturar teléfono',
+                    'icono' => 'bi-search'
                 ],
                 null,
                 $seguimiento
             );
         }
 
-        if ($estado === 'CONTACTANDO' || $totalInteracciones > 0 || $totalLlamadas > 0) {
+        if ($totalLlamadas === 0) {
+            return $this->construirRespuesta(
+                $pasos,
+                2,
+                'Realizar primera llamada de validación',
+                'Ya existe un teléfono disponible. La primera llamada es obligatoria antes de verificar los datos del contacto. Al finalizar registra el resultado de la llamada.',
+                [],
+                [
+                    'codigo' => 'LLAMAR_IP',
+                    'etiqueta' => 'Realizar llamada IP',
+                    'icono' => 'bi-telephone'
+                ],
+                [
+                    'codigo' => 'REGISTRAR_LLAMADA',
+                    'etiqueta' => 'Registrar llamada de prueba',
+                    'icono' => 'bi-journal-check'
+                ],
+                $seguimiento
+            );
+        }
+
+        if ($totalLlamadasValidacion === 0) {
             return $this->construirRespuesta(
                 $pasos,
                 3,
-                'Continuar validación por llamada',
-                $telefonoDisponible !== ''
-                    ? 'Inicia la llamada con el teléfono disponible. Al terminar, registra el resultado y los datos nuevos que te proporcionen.'
-                    : 'Continúa investigando un teléfono útil para contactar a la institución y validar con quién debe dirigirse la Fundación.',
+                'Continuar contacto por llamada',
+                'Ya se registró una llamada, pero todavía no existe una comunicación que permita validar el contacto. Vuelve a intentar hasta hablar con la institución o con la persona adecuada.',
                 $faltantesContacto,
                 [
-                    'codigo' => $telefonoDisponible !== '' ? 'LLAMAR_IP' : 'COMPLETAR_DATOS',
-                    'etiqueta' => $telefonoDisponible !== '' ? 'Llamar' : 'Completar datos',
-                    'icono' => $telefonoDisponible !== '' ? 'bi-telephone' : 'bi-pencil-square'
+                    'codigo' => 'LLAMAR_IP',
+                    'etiqueta' => 'Volver a llamar',
+                    'icono' => 'bi-telephone'
                 ],
-                $telefonoDisponible !== ''
-                    ? [
-                        'codigo' => 'REGISTRAR_LLAMADA',
-                        'etiqueta' => 'Registrar resultado',
-                        'icono' => 'bi-journal-check'
-                    ]
-                    : null,
+                [
+                    'codigo' => 'REGISTRAR_LLAMADA',
+                    'etiqueta' => 'Registrar resultado',
+                    'icono' => 'bi-journal-check'
+                ],
+                $seguimiento
+            );
+        }
+
+        if (!empty($faltantesContacto)) {
+            return $this->construirRespuesta(
+                $pasos,
+                3,
+                'Completar información obtenida en la llamada',
+                'La institución ya fue contactada correctamente. Captura o corrige la persona de contacto, su cargo o área y un correo válido con la información obtenida durante la llamada.',
+                $faltantesContacto,
+                [
+                    'codigo' => 'COMPLETAR_DATOS',
+                    'etiqueta' => 'Completar datos de contacto',
+                    'icono' => 'bi-person-lines-fill'
+                ],
+                [
+                    'codigo' => 'LLAMAR_IP',
+                    'etiqueta' => 'Realizar otra llamada',
+                    'icono' => 'bi-telephone'
+                ],
                 $seguimiento
             );
         }
 
         return $this->construirRespuesta(
             $pasos,
-            2,
-            'Revisar y completar información',
-            $telefonoDisponible !== ''
-                ? 'Revisa los datos encontrados, completa lo que puedas investigar y realiza la primera llamada de validación.'
-                : 'Antes de llamar, investiga un teléfono útil y completa la información disponible de la institución.',
-            $this->faltantesInvestigacion($seguimiento),
+            4,
+            'Verificar información de contacto',
+            'La llamada de validación fue registrada y ya están completos persona, cargo y correo. Confirma que la información obtenida sea correcta para avanzar al oficio.',
+            [],
             [
-                'codigo' => 'COMPLETAR_DATOS',
-                'etiqueta' => 'Revisar datos',
-                'icono' => 'bi-search'
+                'codigo' => 'VERIFICAR_CONTACTO',
+                'etiqueta' => 'Verificar contacto',
+                'icono' => 'bi-patch-check'
             ],
-            $telefonoDisponible !== ''
-                ? [
-                    'codigo' => 'LLAMAR_IP',
-                    'etiqueta' => 'Realizar primera llamada',
-                    'icono' => 'bi-telephone'
-                ]
-                : null,
+            null,
             $seguimiento
         );
     }
