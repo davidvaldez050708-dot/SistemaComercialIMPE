@@ -136,6 +136,29 @@
 
             const pasoActual = Number(flujo.paso_actual || 0);
             const tituloActual = String(flujo.titulo || 'Próxima acción');
+            const telefonoDisponible = String(
+                flujo.contexto?.telefono_disponible || ''
+            ).trim();
+            let accionPrincipal = flujo.accion_principal;
+            let accionSecundaria = flujo.accion_secundaria;
+
+            // En un seguimiento recién creado, si ya existe un teléfono, el botón
+            // "Comenzar investigación" debe iniciar el contacto por llamada.
+            // Mientras la telefonía IP está pendiente dejamos además el registro
+            // manual de llamada para poder probar el flujo completo.
+            if (pasoActual === 1 && telefonoDisponible !== '') {
+                accionPrincipal = {
+                    codigo: 'LLAMAR_IP',
+                    etiqueta: 'Comenzar investigación',
+                    icono: 'bi-telephone'
+                };
+                accionSecundaria = {
+                    codigo: 'REGISTRAR_LLAMADA',
+                    etiqueta: 'Registrar llamada de prueba',
+                    icono: 'bi-journal-check'
+                };
+            }
+
             offcanvas.dataset.flowStep = String(pasoActual);
             offcanvas.dataset.flowTitle = tituloActual;
             offcanvas.dataset.flowSeguimientoId = String(Number(flujo.seguimiento_id || 0));
@@ -190,11 +213,11 @@
 
             if (acciones) {
                 acciones.innerHTML =
-                    crearBotonAccion(flujo.accion_principal, true) +
-                    crearBotonAccion(flujo.accion_secundaria, false);
+                    crearBotonAccion(accionPrincipal, true) +
+                    crearBotonAccion(accionSecundaria, false);
                 acciones.classList.toggle(
                     'has-single-action',
-                    !flujo.accion_secundaria || !flujo.accion_secundaria.codigo
+                    !accionSecundaria || !accionSecundaria.codigo
                 );
             }
 
