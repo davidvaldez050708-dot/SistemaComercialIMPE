@@ -69,35 +69,34 @@
                         </div>
 
                         <div class="system-form-grid-full">
-                            <div class="border rounded-3 p-3 bg-light">
-                                <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap mb-2">
+                            <div class="mail-signature-box border rounded-3 bg-light">
+                                <div class="mail-signature-heading d-flex align-items-start justify-content-between gap-2 flex-wrap">
                                     <div>
-                                        <label class="form-label login-label mb-1" for="mi_perfil_firma">Firma de correo</label>
-                                        <div class="text-muted small">
-                                            Se agregará automáticamente a los correos que envíes desde el sistema.
+                                        <label class="form-label login-label mb-0" for="mi_perfil_firma">Firma de correo</label>
+                                        <div class="mail-signature-description text-muted">
+                                            Se agregará automáticamente a los correos enviados desde el sistema.
                                         </div>
                                     </div>
-                                    <span class="badge text-bg-light border">PNG · JPG · WEBP</span>
+                                    <span class="mail-signature-badge badge text-bg-light border">PNG · JPG · WEBP</span>
                                 </div>
 
                                 <div
-                                    class="bg-white border rounded-3 p-2 mb-2 d-flex align-items-center justify-content-center"
-                                    style="min-height:72px;"
+                                    class="mail-signature-preview bg-white border rounded-3 d-flex align-items-center justify-content-center"
                                     data-mail-signature-preview>
                                     <span class="text-muted small">Sin firma configurada</span>
                                 </div>
 
                                 <input
-                                    class="form-control system-form-control"
+                                    class="form-control system-form-control mail-signature-file"
                                     id="mi_perfil_firma"
                                     type="file"
                                     accept="image/jpeg,image/png,image/webp"
                                     data-mail-signature-file>
 
-                                <div class="d-flex gap-2 flex-wrap mt-2">
+                                <div class="mail-signature-actions d-flex gap-2 flex-wrap">
                                     <button
                                         type="button"
-                                        class="btn btn-system-save btn-sm"
+                                        class="btn btn-system-save btn-sm mail-signature-action"
                                         data-mail-signature-save
                                         disabled>
                                         <i class="bi bi-upload me-1"></i>
@@ -105,7 +104,7 @@
                                     </button>
                                     <button
                                         type="button"
-                                        class="btn btn-system-light btn-sm"
+                                        class="btn btn-system-light btn-sm mail-signature-action"
                                         data-mail-signature-delete
                                         disabled>
                                         <i class="bi bi-trash me-1"></i>
@@ -113,10 +112,10 @@
                                     </button>
                                 </div>
 
-                                <div class="form-text mt-2" data-mail-signature-status>
+                                <div class="mail-signature-status text-muted" data-mail-signature-status>
                                     Consultando firma...
                                 </div>
-                                <div class="form-text">
+                                <div class="mail-signature-help text-muted">
                                     Máximo 3 MB. Si cambias tu correo, guarda primero el perfil y después vuelve a cargar la firma.
                                 </div>
                             </div>
@@ -137,3 +136,65 @@
         </div>
     </div>
 </div>
+
+<style>
+#modalMiPerfil .mail-signature-box {
+    padding: .8rem .9rem;
+}
+
+#modalMiPerfil .mail-signature-heading {
+    margin-bottom: .55rem;
+}
+
+#modalMiPerfil .mail-signature-description,
+#modalMiPerfil .mail-signature-status,
+#modalMiPerfil .mail-signature-help {
+    font-size: .76rem;
+    line-height: 1.35;
+}
+
+#modalMiPerfil .mail-signature-badge {
+    font-size: .68rem;
+    font-weight: 700;
+    padding: .3rem .5rem;
+}
+
+#modalMiPerfil .mail-signature-preview {
+    min-height: 54px;
+    max-height: 104px;
+    padding: .35rem .55rem;
+    margin-bottom: .5rem;
+    overflow: hidden;
+}
+
+#modalMiPerfil .mail-signature-file {
+    min-height: 36px;
+    font-size: .78rem;
+    padding-top: .32rem;
+    padding-bottom: .32rem;
+}
+
+#modalMiPerfil .mail-signature-file::file-selector-button {
+    font-size: .78rem;
+}
+
+#modalMiPerfil .mail-signature-actions {
+    margin-top: .5rem;
+}
+
+#modalMiPerfil .mail-signature-action {
+    min-height: 34px;
+    padding: .36rem .7rem !important;
+    font-size: .78rem !important;
+    line-height: 1.15;
+    font-weight: 600;
+}
+
+#modalMiPerfil .mail-signature-status {
+    margin-top: .5rem;
+}
+
+#modalMiPerfil .mail-signature-help {
+    margin-top: .18rem;
+}
+</style>
