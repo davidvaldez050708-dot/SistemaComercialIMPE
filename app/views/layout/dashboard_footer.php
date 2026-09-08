@@ -158,6 +158,7 @@ $jsDashboardFooter = [
     'oficios_programacion.js',
     'seguimiento_expediente.js',
     'seguimiento_flujo.js',
+    'seguimiento_correo_etapa.js',
     'seguimiento_post_envio.js',
     'educacion_objetivo.js',
     'mi_perfil.js',
@@ -257,7 +258,3 @@ document.addEventListener('DOMContentLoaded', function () {
     });
     </script>
 <?php endif; ?>
-
-</body>
-
-</html>

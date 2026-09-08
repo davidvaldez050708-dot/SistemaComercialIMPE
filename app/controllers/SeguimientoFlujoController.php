@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/../services/SeguimientoFlujoService.php';
 require_once __DIR__ . '/../services/SeguimientoPostEnvioService.php';
+require_once __DIR__ . '/../services/SeguimientoCorreoService.php';
 require_once __DIR__ . '/../services/AgendaReunionService.php';
 require_once __DIR__ . '/../services/ReunionFechaGuardService.php';
 require_once __DIR__ . '/../services/ReunionResultadoService.php';
@@ -12,6 +13,7 @@ class SeguimientoFlujoController
 {
     private $service;
     private $postEnvioService;
+    private $seguimientoCorreoService;
     private $agendaReunionService;
     private $reunionFechaGuardService;
     private $reunionResultadoService;
@@ -20,6 +22,7 @@ class SeguimientoFlujoController
     {
         $this->service = new SeguimientoFlujoService();
         $this->postEnvioService = new SeguimientoPostEnvioService();
+        $this->seguimientoCorreoService = new SeguimientoCorreoService();
         $this->agendaReunionService = new AgendaReunionService();
         $this->reunionFechaGuardService = new ReunionFechaGuardService();
         $this->reunionResultadoService = new ReunionResultadoService();
@@ -87,6 +90,17 @@ class SeguimientoFlujoController
                 $postEnvio['flujo']
             );
 
+            /*
+             * Mientras todavía no exista una reunión real en Agenda, la etapa
+             * de correo permanece abierta y permite varios mensajes. El envío de
+             * un primer seguimiento ya no obliga a avanzar inmediatamente.
+             */
+            $flujo = $this->seguimientoCorreoService->ajustarFlujo(
+                $seguimientoId,
+                $analistaId,
+                $flujo
+            );
+
             $flujo = $this->reunionFechaGuardService->ajustarFlujo(
                 $seguimientoId,
                 $analistaId,
@@ -124,6 +138,38 @@ class SeguimientoFlujoController
         $this->responder($resultado, $codigoHttp);
     }
 
+    public function borradorSeguimientoCorreo()
+    {
+        header('Content-Type: application/json; charset=utf-8');
+
+        $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
+        $rolId = (int)($_SESSION['rol_id'] ?? 0);
+        $seguimientoId = (int)($_GET['seguimiento_id'] ?? 0);
+
+        if ($usuarioId <= 0 || $rolId !== 4) {
+            $this->responder([
+                'ok' => false,
+                'mensaje' => 'Solo el Analista responsable puede preparar este correo.'
+            ], 403);
+        }
+
+        if ($seguimientoId <= 0) {
+            $this->responder([
+                'ok' => false,
+                'mensaje' => 'Selecciona un seguimiento válido.'
+            ], 422);
+        }
+
+        $resultado = $this->seguimientoCorreoService->obtenerBorrador(
+            $seguimientoId,
+            $usuarioId
+        );
+        $codigoHttp = (int)($resultado['codigo_http'] ?? 200);
+        unset($resultado['codigo_http']);
+
+        $this->responder($resultado, $codigoHttp);
+    }
+
     public function registrarPostEnvio()
     {
         header('Content-Type: application/json; charset=utf-8');
@@ -153,6 +199,28 @@ class SeguimientoFlujoController
                 'ok' => false,
                 'mensaje' => 'Faltan datos para guardar el avance.'
             ], 422);
+        }
+
+        if ($accion === 'ENVIAR_SEGUIMIENTO_CORREO') {
+            $resultado = $this->seguimientoCorreoService->enviar(
+                $seguimientoId,
+                $usuarioId,
+                $_POST['asunto'] ?? '',
+                $_POST['cuerpo'] ?? ''
+            );
+            $codigoHttp = (int)($resultado['codigo_http'] ?? 200);
+            unset($resultado['codigo_http']);
+            $this->responder($resultado, $codigoHttp);
+        }
+
+        if ($accion === 'CONTINUAR_REUNION') {
+            $resultado = $this->seguimientoCorreoService->habilitarAgenda(
+                $seguimientoId,
+                $usuarioId
+            );
+            $codigoHttp = (int)($resultado['codigo_http'] ?? 200);
+            unset($resultado['codigo_http']);
+            $this->responder($resultado, $codigoHttp);
         }
 
         if ($accion === 'AGENDAR_REUNION') {
