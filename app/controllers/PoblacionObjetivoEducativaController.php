@@ -7,6 +7,8 @@ require_once __DIR__ . '/../helpers/PermissionHelper.php';
 
 class PoblacionObjetivoEducativaController
 {
+    private const MAX_ARCHIVO_BYTES = 16777216;
+
     public function obtener()
     {
         $this->validarSesion();
@@ -61,7 +63,11 @@ class PoblacionObjetivoEducativaController
 
         $estadoIdPost = trim((string)($_POST['estado_id'] ?? ''));
 
-        if ($estadoIdPost === '' || !ctype_digit($estadoIdPost) || (int)$estadoIdPost <= 0) {
+        if (
+            $estadoIdPost === '' ||
+            !ctype_digit($estadoIdPost) ||
+            (int)$estadoIdPost <= 0
+        ) {
             $this->responderJson([
                 'ok' => false,
                 'mensaje' => 'El territorio seleccionado no es válido.'
@@ -103,15 +109,65 @@ class PoblacionObjetivoEducativaController
             ], 503);
         }
 
+        $archivo = $_FILES['archivo_educacion_objetivo'] ?? null;
+
+        if (!is_array($archivo)) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'Selecciona el archivo XLSX oficial de INEGI/ITER.'
+            ], 422);
+        }
+
+        $errorCarga = (int)($archivo['error'] ?? UPLOAD_ERR_NO_FILE);
+
+        if ($errorCarga !== UPLOAD_ERR_OK) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => $this->mensajeErrorCarga($errorCarga)
+            ], 422);
+        }
+
+        $nombreOriginal = trim(basename((string)($archivo['name'] ?? '')));
+        $rutaTemporal = (string)($archivo['tmp_name'] ?? '');
+        $tamano = (int)($archivo['size'] ?? 0);
+
+        if (
+            $nombreOriginal === '' ||
+            strtolower(pathinfo($nombreOriginal, PATHINFO_EXTENSION)) !== 'xlsx'
+        ) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'El archivo debe estar en formato XLSX.'
+            ], 422);
+        }
+
+        if ($tamano <= 0 || $tamano > self::MAX_ARCHIVO_BYTES) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'El archivo XLSX supera el tamaño permitido o está vacío.'
+            ], 422);
+        }
+
+        if (!is_uploaded_file($rutaTemporal)) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'No fue posible validar el archivo cargado.'
+            ], 422);
+        }
+
         $servicio = new InegiEducacionService();
-        $resultado = $servicio->obtenerPoblacionObjetivoEstado($claveInegi);
+        $resultado = $servicio->leerArchivo(
+            $rutaTemporal,
+            $claveInegi,
+            $nombreOriginal
+        );
 
         if (($resultado['ok'] ?? false) !== true) {
             $this->responderJson([
                 'ok' => false,
                 'mensaje' => $resultado['mensaje'] ??
-                    'No fue posible obtener el indicador educativo oficial de INEGI.'
-            ], 502);
+                    'No fue posible reconocer el indicador educativo oficial de INEGI.'
+            ], 422);
         }
 
         $guardado = $modelo->guardarIndicadorEstado(
@@ -131,9 +187,25 @@ class PoblacionObjetivoEducativaController
 
         $this->responderJson([
             'ok' => true,
-            'mensaje' => 'La población objetivo educativa se actualizó correctamente desde INEGI.',
+            'mensaje' =>
+                'La población objetivo educativa se importó o actualizó correctamente desde el XLSX oficial de INEGI.',
             'datos' => $datosActualizados
         ]);
+    }
+
+    private function mensajeErrorCarga(int $codigo): string
+    {
+        $mensajes = [
+            UPLOAD_ERR_INI_SIZE => 'El archivo supera el tamaño permitido por el servidor.',
+            UPLOAD_ERR_FORM_SIZE => 'El archivo supera el tamaño permitido.',
+            UPLOAD_ERR_PARTIAL => 'El archivo se cargó de forma incompleta.',
+            UPLOAD_ERR_NO_FILE => 'Selecciona el archivo XLSX oficial de INEGI/ITER.',
+            UPLOAD_ERR_NO_TMP_DIR => 'El servidor no tiene disponible el directorio temporal.',
+            UPLOAD_ERR_CANT_WRITE => 'El servidor no pudo recibir el archivo.',
+            UPLOAD_ERR_EXTENSION => 'La carga del archivo fue detenida por el servidor.'
+        ];
+
+        return $mensajes[$codigo] ?? 'No fue posible cargar el archivo XLSX.';
     }
 
     private function validarSesion(): void
