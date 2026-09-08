@@ -45,6 +45,7 @@ $jsOpcionalHead = [
     'reunion_fecha_guard.js',
     'reunion_resultado.js',
     'reprogramacion_reunion.js',
+    'agenda_correo_natural.js',
     'agenda_historial_navegacion.js',
     'seguimiento_bandeja_sync.js',
     'seguimiento_resumen_ruta.js',
