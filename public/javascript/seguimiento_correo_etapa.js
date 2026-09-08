@@ -29,41 +29,46 @@
             modal.className = 'modal fade';
             modal.id = 'modalSeguimientoCorreo';
             modal.tabIndex = -1;
+            modal.setAttribute('aria-labelledby', 'modalSeguimientoCorreoTitulo');
             modal.setAttribute('aria-hidden', 'true');
             modal.innerHTML =
-                '<div class="modal-dialog modal-dialog-centered modal-lg">' +
-                    '<div class="modal-content">' +
+                '<div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">' +
+                    '<div class="modal-content system-form-modal">' +
                         '<form data-followup-mail-form>' +
-                            '<div class="modal-header">' +
+                            '<div class="modal-header system-form-modal-header">' +
                                 '<div>' +
-                                    '<h5 class="modal-title">Correo de seguimiento</h5>' +
-                                    '<p class="mb-0 text-muted small">Puedes enviar tantos correos como sean necesarios antes de coordinar la reunión.</p>' +
+                                    '<h5 class="system-form-modal-title" id="modalSeguimientoCorreoTitulo">' +
+                                        'Correo de seguimiento' +
+                                    '</h5>' +
+                                    '<p class="system-form-modal-subtitle">' +
+                                        'Revisa el destinatario, asunto y mensaje antes de enviar.' +
+                                    '</p>' +
                                 '</div>' +
                                 '<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>' +
                             '</div>' +
                             '<div class="modal-body">' +
-                                '<div class="alert alert-danger d-none" data-followup-mail-error></div>' +
-                                '<div class="alert alert-light border d-none" data-followup-mail-info></div>' +
-                                '<div class="row g-3">' +
-                                    '<div class="col-12">' +
-                                        '<label class="form-label" for="followup_mail_to">Para</label>' +
-                                        '<input class="form-control" id="followup_mail_to" type="email" readonly data-followup-mail-to>' +
-                                    '</div>' +
-                                    '<div class="col-12">' +
-                                        '<label class="form-label" for="followup_mail_subject">Asunto</label>' +
-                                        '<input class="form-control" id="followup_mail_subject" name="asunto" maxlength="255" required data-followup-mail-subject>' +
-                                    '</div>' +
-                                    '<div class="col-12">' +
-                                        '<label class="form-label" for="followup_mail_body">Mensaje</label>' +
-                                        '<textarea class="form-control" id="followup_mail_body" name="cuerpo" rows="11" maxlength="20000" required data-followup-mail-body></textarea>' +
-                                        '<div class="form-text">El mensaje es editable. Cada envío quedará registrado por separado en el historial de interacciones.</div>' +
-                                    '</div>' +
+                                '<div class="alert alert-danger d-none mb-3" data-followup-mail-error></div>' +
+                                '<div class="alert alert-info d-none mb-3" data-followup-mail-info></div>' +
+                                '<div class="mb-3">' +
+                                    '<label class="form-label" for="followup_mail_to">Para</label>' +
+                                    '<input class="form-control" id="followup_mail_to" type="email" readonly data-followup-mail-to>' +
+                                '</div>' +
+                                '<div class="mb-3">' +
+                                    '<label class="form-label" for="followup_mail_subject">Asunto</label>' +
+                                    '<input class="form-control" id="followup_mail_subject" name="asunto" maxlength="255" required data-followup-mail-subject>' +
+                                '</div>' +
+                                '<div class="mb-0">' +
+                                    '<label class="form-label" for="followup_mail_body">Mensaje</label>' +
+                                    '<textarea class="form-control" id="followup_mail_body" name="cuerpo" rows="9" maxlength="20000" required data-followup-mail-body></textarea>' +
                                 '</div>' +
                             '</div>' +
-                            '<div class="modal-footer">' +
-                                '<button type="button" class="btn btn-system-light" data-bs-dismiss="modal">Cancelar</button>' +
+                            '<div class="modal-footer system-form-modal-footer">' +
+                                '<span class="me-auto text-muted small">' +
+                                    'Cada envío quedará registrado por separado en el historial.' +
+                                '</span>' +
+                                '<button type="button" class="btn btn-system-cancel" data-bs-dismiss="modal">Cancelar</button>' +
                                 '<button type="submit" class="btn btn-system-save" data-followup-mail-send>' +
-                                    '<i class="bi bi-send"></i> Enviar correo' +
+                                    '<i class="bi bi-send me-2"></i>Enviar correo' +
                                 '</button>' +
                             '</div>' +
                         '</form>' +

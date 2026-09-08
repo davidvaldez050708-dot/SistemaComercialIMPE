@@ -42,6 +42,7 @@ $cssOpcionalDashboard = [
 
 $jsOpcionalHead = [
     'agenda_reunion.js',
+    'agenda_kam_cambio.js',
     'reunion_fecha_guard.js',
     'reunion_resultado.js',
     'reprogramacion_reunion.js',
@@ -52,7 +53,9 @@ $jsOpcionalHead = [
     'seguimiento_panel_ruta.js',
     'seguimiento_flujo_loading.js',
     'seguimiento_resultados_humanizados.js',
-    'oficios_correo_formato.js'
+    'oficios_correo_formato.js',
+    'firma_correo_perfil.js',
+    'correo_firma_envio.js'
 ];
 
 ?>

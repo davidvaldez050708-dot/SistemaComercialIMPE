@@ -1,6 +1,19 @@
 (function () {
     'use strict';
 
+    /*
+     * La tabla llega inicialmente renderizada por PHP con el estado interno
+     * (NUEVO, CONTACTANDO, etc.) y después la bandeja consulta la ruta real.
+     * Ocultamos únicamente la etiqueta de etapa mientras dura esa sincronización
+     * para evitar que el usuario vea por milisegundos un estado técnico distinto.
+     * visibility:hidden conserva el espacio y evita saltos en la tabla.
+     */
+    const estiloSincronizacionEtapa = document.createElement('style');
+    estiloSincronizacionEtapa.textContent =
+        '[data-linkage-follow-row] [data-row-stage-label]{visibility:hidden;}' +
+        '[data-linkage-follow-row] [data-row-stage-label][data-route-stage-ready="1"]{visibility:visible;}';
+    document.head.appendChild(estiloSincronizacionEtapa);
+
     document.addEventListener('DOMContentLoaded', function () {
         const offcanvas = document.getElementById('offcanvasSeguimientoTrabajo');
 
@@ -10,9 +23,7 @@
 
         const rolId = Number(window.IMPE_CURRENT_ROLE_ID || 0);
         const esAdministrador = rolId === 1;
-        let seguimientoActualId = 0;
-
-        const pasos = [
+        const pasosRuta = [
             [1, 'Seguimiento iniciado'],
             [2, 'Investigación de datos'],
             [3, 'Contacto y validación'],
@@ -27,133 +38,7 @@
             [12, 'Reunión y acuerdos'],
             [13, 'Convenio']
         ];
-
-        const obtenerEtiquetaPaso = function (numero) {
-            const paso = pasos.find(function (item) {
-                return Number(item[0]) === Number(numero);
-            });
-
-            return paso ? paso[1] : 'En seguimiento';
-        };
-
-        const asegurarTarjetaRuta = function () {
-            let tarjeta = offcanvas.querySelector('[data-work-route-card]');
-
-            if (tarjeta) {
-                return tarjeta;
-            }
-
-            const siguiente = offcanvas.querySelector('[data-work-next-section]');
-            tarjeta = document.createElement('section');
-            tarjeta.className = 'linkage-work-section linkage-work-route-card';
-            tarjeta.setAttribute('data-work-route-card', '');
-            tarjeta.innerHTML =
-                '<div class="linkage-work-route-head">' +
-                    '<span>ETAPA DE RUTA</span>' +
-                    '<strong class="linkage-work-route-step" data-work-route-step>Paso — de 13</strong>' +
-                '</div>' +
-                '<div class="linkage-work-route-title" data-work-route-title>Consultando ruta...</div>' +
-                '<div class="linkage-work-route-progress" aria-hidden="true">' +
-                    '<span data-work-route-progress></span>' +
-                '</div>';
-
-            if (siguiente && siguiente.parentNode) {
-                siguiente.parentNode.insertBefore(tarjeta, siguiente);
-            } else {
-                offcanvas.querySelector('.offcanvas-body')?.prepend(tarjeta);
-            }
-
-            return tarjeta;
-        };
-
-        const renderizarRuta = function (pasoActual, titulo) {
-            asegurarTarjetaRuta();
-
-            const paso = Math.max(0, Math.min(13, Number(pasoActual) || 0));
-            const total = 13;
-            const etiqueta = paso > 0 ? obtenerEtiquetaPaso(paso) : 'Consultando ruta...';
-            const textoTitulo = String(titulo || '').trim();
-            const pasoElemento = offcanvas.querySelector('[data-work-route-step]');
-            const tituloElemento = offcanvas.querySelector('[data-work-route-title]');
-            const progreso = offcanvas.querySelector('[data-work-route-progress]');
-
-            if (pasoElemento) {
-                pasoElemento.textContent = paso > 0
-                    ? 'Paso ' + paso + ' de ' + total
-                    : 'Paso — de ' + total;
-            }
-
-            if (tituloElemento) {
-                tituloElemento.textContent = etiqueta;
-                tituloElemento.title = textoTitulo !== '' && textoTitulo !== etiqueta
-                    ? 'Próxima acción: ' + textoTitulo
-                    : '';
-            }
-
-            if (progreso) {
-                progreso.style.width = paso > 0
-                    ? Math.round((paso / total) * 100) + '%'
-                    : '0%';
-            }
-        };
-
-        const renderizarDesdeFila = function (seguimientoId) {
-            const boton = document.querySelector(
-                '[data-work-follow-id="' + Number(seguimientoId) + '"]'
-            );
-            const fila = boton?.closest('[data-linkage-follow-row]');
-
-            if (!fila) {
-                renderizarRuta(0, '');
-                return;
-            }
-
-            renderizarRuta(
-                Number(fila.dataset.flowStep || 0),
-                String(fila.dataset.flowTitle || '')
-            );
-        };
-
-        const consultarRuta = async function (seguimientoId) {
-            seguimientoId = Number(seguimientoId || 0);
-
-            if (seguimientoId <= 0) {
-                return;
-            }
-
-            seguimientoActualId = seguimientoId;
-            renderizarDesdeFila(seguimientoId);
-
-            try {
-                const respuesta = await fetch(
-                    'index.php?controller=seguimientoFlujo&action=estado&seguimiento_id=' +
-                    encodeURIComponent(seguimientoId),
-                    {
-                        headers: {
-                            'X-Requested-With': 'fetch'
-                        },
-                        cache: 'no-store'
-                    }
-                );
-
-                if (!respuesta.ok) {
-                    return;
-                }
-
-                const datos = await respuesta.json();
-
-                if (!datos?.ok || !datos?.flujo) {
-                    return;
-                }
-
-                renderizarRuta(
-                    Number(datos.flujo.paso_actual || 0),
-                    String(datos.flujo.titulo || '')
-                );
-            } catch (error) {
-                // La fila conserva una representación útil si la consulta falla.
-            }
-        };
+        const observadoresEtapa = new WeakMap();
 
         const aplicarModoAdministrador = function () {
             if (!esAdministrador) {
@@ -184,42 +69,172 @@
             }
         };
 
-        asegurarTarjetaRuta();
-        aplicarModoAdministrador();
+        const etiquetaEtapaRuta = function (pasoActual, tituloFlujo, fila) {
+            const estadoInterno = String(
+                fila?.dataset.internalStage || fila?.dataset.stage || ''
+            ).trim().toUpperCase();
+            const titulo = String(tituloFlujo || '').trim().toLowerCase();
 
-        document.addEventListener('click', function (evento) {
-            const boton = evento.target.closest('[data-work-follow]');
+            if (estadoInterno === 'DESCARTADO') {
+                return 'Descartado';
+            }
 
-            if (!boton) {
+            if (Number(pasoActual) === 12) {
+                if (titulo.includes('programad')) {
+                    return 'Reunión programada';
+                }
+
+                if (
+                    titulo.includes('seguimiento de acuerdos') ||
+                    titulo.includes('dar seguimiento')
+                ) {
+                    return 'Seguimiento de acuerdos';
+                }
+
+                return 'Reunión y acuerdos';
+            }
+
+            const paso = pasosRuta.find(function (item) {
+                return Number(item[0]) === Number(pasoActual);
+            });
+
+            return paso ? paso[1] : '';
+        };
+
+        const fijarEtiquetaRuta = function (fila, pasoActual, tituloFlujo) {
+            if (!fila || Number(pasoActual) <= 0) {
                 return;
             }
 
-            const seguimientoId = Number(boton.dataset.workFollowId || 0);
-            if (seguimientoId > 0) {
-                consultarRuta(seguimientoId);
-            }
-        }, true);
+            const etapa = fila.querySelector('[data-row-stage-label]');
+            const etiqueta = etiquetaEtapaRuta(pasoActual, tituloFlujo, fila);
 
-        document.addEventListener('impe:flow-row-updated', function (evento) {
+            if (!etapa || etiqueta === '') {
+                return;
+            }
+
+            fila.dataset.flowStep = String(Number(pasoActual));
+            fila.dataset.flowStageLabel = etiqueta;
+
+            if (String(tituloFlujo || '').trim() !== '') {
+                fila.dataset.flowTitle = String(tituloFlujo).trim();
+            }
+
+            etapa.textContent = etiqueta;
+            etapa.title = 'Paso ' + Number(pasoActual) + ' de 13';
+            etapa.dataset.routeStageReady = '1';
+        };
+
+        const protegerEtiquetaRuta = function (fila) {
+            const etapa = fila?.querySelector('[data-row-stage-label]');
+
+            if (!etapa || observadoresEtapa.has(etapa) || !window.MutationObserver) {
+                return;
+            }
+
+            const observador = new MutationObserver(function () {
+                const etiquetaAutoritativa = String(
+                    fila.dataset.flowStageLabel || ''
+                ).trim();
+                const actual = String(etapa.textContent || '').trim();
+
+                if (etiquetaAutoritativa === '' || actual === etiquetaAutoritativa) {
+                    return;
+                }
+
+                observador.disconnect();
+                etapa.textContent = etiquetaAutoritativa;
+
+                const paso = Number(fila.dataset.flowStep || 0);
+                if (paso > 0) {
+                    etapa.title = 'Paso ' + paso + ' de 13';
+                }
+                etapa.dataset.routeStageReady = '1';
+
+                observador.observe(etapa, {
+                    childList: true,
+                    characterData: true,
+                    subtree: true
+                });
+            });
+
+            observador.observe(etapa, {
+                childList: true,
+                characterData: true,
+                subtree: true
+            });
+            observadoresEtapa.set(etapa, observador);
+        };
+
+        const reaplicarEtiquetasRuta = function () {
+            document.querySelectorAll('[data-linkage-follow-row]').forEach(function (fila) {
+                protegerEtiquetaRuta(fila);
+
+                const paso = Number(fila.dataset.flowStep || 0);
+                const titulo = String(fila.dataset.flowTitle || '');
+
+                if (paso > 0) {
+                    fijarEtiquetaRuta(fila, paso, titulo);
+                }
+            });
+        };
+
+        const actualizarDesdeEvento = function (evento) {
             const detalle = evento.detail || {};
             const seguimientoId = Number(detalle.seguimientoId || 0);
+            const pasoActual = Number(detalle.pasoActual || 0);
 
-            if (seguimientoId <= 0 || seguimientoId !== seguimientoActualId) {
+            if (seguimientoId <= 0 || pasoActual <= 0) {
                 return;
             }
 
-            renderizarRuta(
-                Number(detalle.pasoActual || 0),
-                String(detalle.titulo || '')
+            const boton = document.querySelector(
+                '[data-work-follow-id="' + seguimientoId + '"]'
             );
-        });
+            const fila = boton?.closest('[data-linkage-follow-row]');
+
+            if (!fila) {
+                return;
+            }
+
+            protegerEtiquetaRuta(fila);
+            fijarEtiquetaRuta(
+                fila,
+                pasoActual,
+                String(detalle.titulo || fila.dataset.flowTitle || '')
+            );
+        };
+
+        // La ruta completa ya se muestra en seguimiento_flujo.js.
+        // Este archivo conserva el modo de consulta del Administrador y evita
+        // que el panel de trabajo reemplace la etapa de ruta por el estado
+        // interno de base de datos (por ejemplo, "Nuevo").
+        offcanvas.querySelector('[data-work-route-card]')?.remove();
+        aplicarModoAdministrador();
+        reaplicarEtiquetasRuta();
+
+        document.addEventListener('impe:flow-row-updated', actualizarDesdeEvento);
+        document.addEventListener('impe:flow-updated', actualizarDesdeEvento);
 
         offcanvas.addEventListener('shown.bs.offcanvas', function () {
+            offcanvas.querySelector('[data-work-route-card]')?.remove();
             aplicarModoAdministrador();
-
-            if (seguimientoActualId > 0) {
-                consultarRuta(seguimientoActualId);
-            }
+            window.setTimeout(reaplicarEtiquetasRuta, 0);
+            window.setTimeout(reaplicarEtiquetasRuta, 350);
         });
+
+        offcanvas.addEventListener('hidden.bs.offcanvas', function () {
+            window.setTimeout(reaplicarEtiquetasRuta, 0);
+        });
+
+        // Si por algún problema no responde la consulta de ruta, después de unos
+        // segundos mostramos el valor renderizado por PHP para no dejar la celda vacía.
+        window.setTimeout(function () {
+            document
+                .querySelectorAll('[data-linkage-follow-row] [data-row-stage-label]:not([data-route-stage-ready="1"])')
+                .forEach(function (etapa) {
+                    etapa.dataset.routeStageReady = '1';
+                });
+        }, 5000);
     });
 })();

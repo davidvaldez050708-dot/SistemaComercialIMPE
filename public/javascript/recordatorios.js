@@ -38,17 +38,43 @@
             return String(valor).padStart(2, '0');
         };
 
-        const etiquetaVisibleRecordatorio = function (recordatorio) {
-            const etiquetaOriginal = String(recordatorio.etiqueta || '').trim();
-            const estado = String(recordatorio.estado || '').trim().toLowerCase();
+        const fechaRecordatorio = function (recordatorio) {
             const fechaTexto = String(recordatorio.fecha || '').trim();
-
-            if (estado !== 'vencida' || fechaTexto === '') {
-                return etiquetaOriginal;
+            if (fechaTexto === '') {
+                return null;
             }
 
             const momento = new Date(fechaTexto.replace(' ', 'T'));
-            if (Number.isNaN(momento.getTime())) {
+            return Number.isNaN(momento.getTime()) ? null : momento;
+        };
+
+        const estadoVisibleRecordatorio = function (recordatorio) {
+            const estado = String(recordatorio.estado || 'normal').trim().toLowerCase();
+            const momento = fechaRecordatorio(recordatorio);
+
+            // Algunos avisos de agenda representan una acción que requiere atención
+            // (por ejemplo, reprogramar una reunión) y el backend puede marcarlos
+            // como "vencida" para darles prioridad. Si la fecha de la reunión sigue
+            // siendo futura, no debe mostrarse visualmente como una reunión vencida.
+            if (estado === 'vencida' && momento && momento.getTime() > Date.now()) {
+                return 'proxima';
+            }
+
+            return estado || 'normal';
+        };
+
+        const etiquetaVisibleRecordatorio = function (recordatorio) {
+            const etiquetaOriginal = String(recordatorio.etiqueta || '').trim();
+            const estado = String(recordatorio.estado || '').trim().toLowerCase();
+            const momento = fechaRecordatorio(recordatorio);
+
+            if (estado !== 'vencida' || !momento) {
+                return etiquetaOriginal;
+            }
+
+            // Si la fecha todavía no ocurre, conservamos la etiqueta operativa
+            // (por ejemplo, "Requiere ajuste") en lugar de mostrar "Vencida".
+            if (momento.getTime() > Date.now()) {
                 return etiquetaOriginal;
             }
 
@@ -178,6 +204,7 @@
                 lista.map(function (recordatorio) {
                     const url = escapar(urlRecordatorio(recordatorio));
                     const etiqueta = etiquetaVisibleRecordatorio(recordatorio);
+                    const estadoVisual = estadoVisibleRecordatorio(recordatorio);
                     return (
                         '<a class="topbar-reminder-item" href="' + url + '">' +
                             '<span class="topbar-reminder-icon">' +
@@ -187,7 +214,7 @@
                                 '<strong>' + escapar(recordatorio.nombre_entidad || 'Seguimiento') + '</strong>' +
                                 '<span>' + escapar(recordatorio.accion || '') + '</span>' +
                             '</span>' +
-                            '<span class="topbar-reminder-time is-' + escapar(recordatorio.estado || 'normal') + '">' +
+                            '<span class="topbar-reminder-time is-' + escapar(estadoVisual) + '">' +
                                 escapar(etiqueta) +
                             '</span>' +
                         '</a>'

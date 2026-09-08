@@ -27,6 +27,9 @@ tmp/
 # Archivos generados por el sistema
 /storage/oficios/
 
+# Firmas personales cargadas desde Mi perfil
+/storage/mail/firmas/*
+
 # Archivos temporales de pruebas
 prueba_correo.php
 prueba_bd.php

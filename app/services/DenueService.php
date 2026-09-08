@@ -440,6 +440,51 @@ class DenueService
             ];
         }
 
+        /*
+         * Los candidatos se obtienen mediante BuscarAreaAct/BuscarAreaActEstr.
+         * Para validarlos al crear el seguimiento consultamos primero el mismo
+         * tipo de recurso por ID. Esto conserva la información geográfica que
+         * usa el módulo para comprobar estado y municipio. Ficha queda como
+         * respaldo para no romper el comportamiento anterior.
+         */
+        $urlPorId = rtrim(DENUE_BASE_URL, '/') .
+            '/BuscarAreaActEstr/00/0/0/0/0/0/0/0/0/0/1/2/' .
+            rawurlencode($idEstablecimiento) .
+            '/0/' .
+            rawurlencode(DENUE_TOKEN);
+        $respuestaPorId = $this->consultarUrl($urlPorId);
+
+        if (($respuestaPorId['ok'] ?? false) === true) {
+            $registros = $respuestaPorId['datos'] ?? [];
+
+            if (is_array($registros) && $this->obtenerValor($registros, ['Id', 'id', 'ID']) !== '') {
+                $registros = [$registros];
+            }
+
+            if (is_array($registros)) {
+                foreach ($registros as $registro) {
+                    if (!is_array($registro)) {
+                        continue;
+                    }
+
+                    $idRegistro = $this->obtenerValor($registro, ['Id', 'id', 'ID']);
+
+                    if ($idRegistro !== $idEstablecimiento) {
+                        continue;
+                    }
+
+                    $candidato = $this->normalizarEstablecimiento($registro);
+
+                    if ($candidato !== null) {
+                        return [
+                            'ok' => true,
+                            'candidato' => $candidato
+                        ];
+                    }
+                }
+            }
+        }
+
         $url = rtrim(DENUE_BASE_URL, '/') .
             '/Ficha/' .
             rawurlencode($idEstablecimiento) .
@@ -449,7 +494,12 @@ class DenueService
         $respuesta = $this->consultarUrl($url);
 
         if (!$respuesta['ok']) {
-            return $respuesta;
+            return $respuestaPorId['ok'] ?? false
+                ? [
+                    'ok' => false,
+                    'mensaje' => 'DENUE no devolvió información válida del establecimiento.'
+                ]
+                : $respuesta;
         }
 
         $registro = $respuesta['datos'][0] ?? $respuesta['datos'];
