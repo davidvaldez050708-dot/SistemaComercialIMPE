@@ -8,6 +8,7 @@ require_once __DIR__ . '/../services/ReminderDirectLinkService.php';
 require_once __DIR__ . '/../services/ReminderObservacionService.php';
 require_once __DIR__ . '/../services/ReminderCorreoEntranteService.php';
 require_once __DIR__ . '/../services/HostingerInboundMailService.php';
+require_once __DIR__ . '/../services/HostingerMailReaderService.php';
 require_once __DIR__ . '/../services/SeguimientoPostEnvioService.php';
 
 class ReminderController
@@ -216,6 +217,18 @@ class ReminderController
         }
 
         $servicioCorreoEntrante->marcarLeido($respuestaId, $usuarioId);
+
+        // El webhook trae una vista previa. Al abrir la notificación intentamos
+        // recuperar el contenido completo mediante la API oficial. Si la lectura
+        // falla, la vista sigue funcionando con la información del webhook.
+        $lectorCorreo = new HostingerMailReaderService();
+        $lecturaApi = $lectorCorreo->obtenerTextoRespuesta($correoEntrante);
+        $correoEntrante['contenido_completo'] = ($lecturaApi['ok'] ?? false)
+            ? trim((string)($lecturaApi['texto'] ?? ''))
+            : '';
+        $correoEntrante['contenido_api_disponible'] = (bool)($lecturaApi['disponible'] ?? false);
+        $correoEntrante['contenido_api_mensaje'] = (string)($lecturaApi['mensaje'] ?? '');
+        $correoEntrante['contenido_api_uid'] = (int)($lecturaApi['uid'] ?? 0);
 
         $mensajeExito = isset($_GET['registrada'])
             ? 'La respuesta quedó registrada en la ruta de vinculación.'
