@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS indicadores_educativos_oficiales (
     fuente VARCHAR(255) NOT NULL,
     archivo_origen VARCHAR(255) DEFAULT NULL,
     fecha_consulta DATETIME NOT NULL,
-    tipo_actualizacion VARCHAR(30) NOT NULL DEFAULT 'AUTOMATICA',
+    tipo_actualizacion VARCHAR(30) NOT NULL DEFAULT 'IMPORTACION',
     usuario_importo_id INT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
