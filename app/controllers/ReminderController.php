@@ -18,7 +18,7 @@ class ReminderController
     private $reminderDirectLinkService;
     private $reminderObservacionService;
     private $reminderCorreoEntranteService;
-    private $hostingerInboundMailService;
+    private $hostingerInboundMailService = null;
 
     public function __construct()
     {
@@ -28,7 +28,6 @@ class ReminderController
         $this->reminderDirectLinkService = new ReminderDirectLinkService();
         $this->reminderObservacionService = new ReminderObservacionService();
         $this->reminderCorreoEntranteService = new ReminderCorreoEntranteService();
-        $this->hostingerInboundMailService = new HostingerInboundMailService();
     }
 
     public function pendientes()
@@ -204,7 +203,8 @@ class ReminderController
             die('No tienes acceso a esta respuesta de correo.');
         }
 
-        $correoEntrante = $this->hostingerInboundMailService->obtenerParaUsuario(
+        $servicioCorreoEntrante = $this->obtenerHostingerInboundMailService();
+        $correoEntrante = $servicioCorreoEntrante->obtenerParaUsuario(
             $respuestaId,
             $usuarioId,
             $rolId
@@ -215,7 +215,7 @@ class ReminderController
             die('La respuesta de correo no existe o no está asignada a tu usuario.');
         }
 
-        $this->hostingerInboundMailService->marcarLeido($respuestaId, $usuarioId);
+        $servicioCorreoEntrante->marcarLeido($respuestaId, $usuarioId);
 
         $mensajeExito = isset($_GET['registrada'])
             ? 'La respuesta quedó registrada en la ruta de vinculación.'
@@ -250,7 +250,8 @@ class ReminderController
             die('Solo el Analista responsable puede registrar esta respuesta.');
         }
 
-        $correoEntrante = $this->hostingerInboundMailService->obtenerParaUsuario(
+        $servicioCorreoEntrante = $this->obtenerHostingerInboundMailService();
+        $correoEntrante = $servicioCorreoEntrante->obtenerParaUsuario(
             $respuestaId,
             $usuarioId,
             $rolId
@@ -286,7 +287,7 @@ class ReminderController
             $this->redirigirCorreoEntrante($respuestaId);
         }
 
-        $this->hostingerInboundMailService->marcarProcesada($respuestaId, $usuarioId);
+        $servicioCorreoEntrante->marcarProcesada($respuestaId, $usuarioId);
 
         header(
             'Location: ' . BASE_URL .
@@ -294,6 +295,15 @@ class ReminderController
             $respuestaId . '&registrada=1'
         );
         exit;
+    }
+
+    private function obtenerHostingerInboundMailService()
+    {
+        if (!$this->hostingerInboundMailService) {
+            $this->hostingerInboundMailService = new HostingerInboundMailService();
+        }
+
+        return $this->hostingerInboundMailService;
     }
 
     private function redirigirCorreoEntrante($respuestaId)
