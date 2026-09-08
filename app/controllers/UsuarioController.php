@@ -223,29 +223,39 @@ class UsuarioController
             $this->responderJsonPerfil(['ok' => false, 'mensaje' => 'No fue posible cargar tu perfil.'], 404);
         }
 
+        $esAdministrador = (int)($usuarioOriginal['rol_id'] ?? 0) === 1;
+
         $datos = [
-            'nombre' => trim((string)($_POST['nombre'] ?? '')),
-            'apellidos' => trim((string)($_POST['apellidos'] ?? '')),
+            'nombre' => $esAdministrador
+                ? trim((string)($_POST['nombre'] ?? ''))
+                : (string)($usuarioOriginal['nombre'] ?? ''),
+            'apellidos' => $esAdministrador
+                ? trim((string)($_POST['apellidos'] ?? ''))
+                : (string)($usuarioOriginal['apellidos'] ?? ''),
             'telefono' => trim((string)($_POST['telefono'] ?? '')),
-            'correo' => trim((string)($_POST['correo'] ?? '')),
+            'correo' => $esAdministrador
+                ? trim((string)($_POST['correo'] ?? ''))
+                : (string)($usuarioOriginal['correo'] ?? ''),
             'foto_perfil' => (string)($usuarioOriginal['foto_perfil'] ?? '')
         ];
         $errores = [];
 
-        if ($datos['nombre'] === '') {
-            $errores[] = 'El nombre es obligatorio.';
-        }
+        if ($esAdministrador) {
+            if ($datos['nombre'] === '') {
+                $errores[] = 'El nombre es obligatorio.';
+            }
 
-        if ($datos['apellidos'] === '') {
-            $errores[] = 'Los apellidos son obligatorios.';
-        }
+            if ($datos['apellidos'] === '') {
+                $errores[] = 'Los apellidos son obligatorios.';
+            }
 
-        if ($datos['correo'] === '') {
-            $errores[] = 'El correo electrónico es obligatorio.';
-        } elseif (!filter_var($datos['correo'], FILTER_VALIDATE_EMAIL)) {
-            $errores[] = 'El formato del correo electrónico no es válido.';
-        } elseif ($modeloUsuario->existeCorreo($datos['correo'], $usuarioId)) {
-            $errores[] = 'El correo electrónico ya está registrado.';
+            if ($datos['correo'] === '') {
+                $errores[] = 'El correo electrónico es obligatorio.';
+            } elseif (!filter_var($datos['correo'], FILTER_VALIDATE_EMAIL)) {
+                $errores[] = 'El formato del correo electrónico no es válido.';
+            } elseif ($modeloUsuario->existeCorreo($datos['correo'], $usuarioId)) {
+                $errores[] = 'El correo electrónico ya está registrado.';
+            }
         }
 
         if (!empty($errores)) {
@@ -261,7 +271,11 @@ class UsuarioController
 
         $datos['foto_perfil'] = $foto['ruta'];
 
-        if (!$modeloUsuario->actualizarPerfilPropio($usuarioId, $datos)) {
+        $perfilActualizado = $esAdministrador
+            ? $modeloUsuario->actualizarPerfilPropio($usuarioId, $datos)
+            : $modeloUsuario->actualizarPerfilPropioLimitado($usuarioId, $datos);
+
+        if (!$perfilActualizado) {
             if (!empty($foto['nueva'])) {
                 $this->eliminarFotoPerfil($foto['ruta']);
             }
@@ -715,6 +729,7 @@ class UsuarioController
             'correo' => (string)($usuario['correo'] ?? ''),
             'usuario' => (string)($usuario['usuario'] ?? ''),
             'rol' => (string)($usuario['rol'] ?? 'Usuario'),
+            'es_administrador' => (int)($usuario['rol_id'] ?? 0) === 1,
             'estado' => (int)($usuario['estado'] ?? 0) === 1 ? 'Activo' : 'Inactivo',
             'ultimo_acceso' => $ultimoAcceso,
             'foto_url' => obtenerUrlFotoPerfil($usuario['foto_perfil'] ?? ''),

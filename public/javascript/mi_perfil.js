@@ -109,6 +109,10 @@
             formulario.elements.apellidos.value = perfil.apellidos || '';
             formulario.elements.telefono.value = perfil.telefono || '';
             formulario.elements.correo.value = perfil.correo || '';
+            const camposRestringidos = ['nombre', 'apellidos', 'correo'];
+            camposRestringidos.forEach(function (campo) {
+                formulario.elements[campo].readOnly = !perfil.es_administrador;
+            });
             modalElemento.querySelector('[data-my-profile-username]').value = perfil.usuario || '';
             modalElemento.querySelector('[data-my-profile-role]').value = perfil.rol || '';
             modalElemento.querySelector('[data-my-profile-status]').value = perfil.estado || '';

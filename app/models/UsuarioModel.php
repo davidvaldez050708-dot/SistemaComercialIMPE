@@ -530,6 +530,25 @@ class UsuarioModel
         return $stmt->execute();
     }
 
+    public function actualizarPerfilPropioLimitado($id, $datos)
+    {
+        $sql = "UPDATE usuarios
+                SET telefono = ?,
+                    foto_perfil = ?
+                WHERE id = ?";
+
+        $stmt = $this->connection->prepare($sql);
+        $id = (int)$id;
+        $stmt->bind_param(
+            'ssi',
+            $datos['telefono'],
+            $datos['foto_perfil'],
+            $id
+        );
+
+        return $stmt->execute();
+    }
+
     public function actualizarEstadoUsuario($id, $estado)
     {
         $sql = "UPDATE usuarios
