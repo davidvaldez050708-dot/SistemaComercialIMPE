@@ -6,10 +6,6 @@ require_once __DIR__ . '/../services/ReminderAgendaFilterService.php';
 require_once __DIR__ . '/../services/ReminderReunionFollowupService.php';
 require_once __DIR__ . '/../services/ReminderDirectLinkService.php';
 require_once __DIR__ . '/../services/ReminderObservacionService.php';
-require_once __DIR__ . '/../services/ReminderCorreoEntranteService.php';
-require_once __DIR__ . '/../services/HostingerInboundMailService.php';
-require_once __DIR__ . '/../services/HostingerMailReaderService.php';
-require_once __DIR__ . '/../services/SeguimientoPostEnvioService.php';
 
 class ReminderController
 {
@@ -18,8 +14,6 @@ class ReminderController
     private $reminderReunionFollowupService;
     private $reminderDirectLinkService;
     private $reminderObservacionService;
-    private $reminderCorreoEntranteService;
-    private $hostingerInboundMailService = null;
 
     public function __construct()
     {
@@ -28,7 +22,6 @@ class ReminderController
         $this->reminderReunionFollowupService = new ReminderReunionFollowupService();
         $this->reminderDirectLinkService = new ReminderDirectLinkService();
         $this->reminderObservacionService = new ReminderObservacionService();
-        $this->reminderCorreoEntranteService = new ReminderCorreoEntranteService();
     }
 
     public function pendientes()
@@ -54,23 +47,10 @@ class ReminderController
         );
         $recordatoriosAgenda = array_values($agenda['recordatorios'] ?? []);
         $avisosAgenda = array_values($agenda['avisos'] ?? []);
-
-        $correoEntrante = $this->reminderCorreoEntranteService->obtener(
-            $usuarioId,
-            $rolId,
-            10
-        );
-        $recordatoriosCorreo = array_values($correoEntrante['recordatorios'] ?? []);
-        $avisosCorreo = array_values($correoEntrante['avisos'] ?? []);
-
         $requiereMigracion = false;
         $ok = true;
-        $recordatorios = array_slice(
-            array_merge($recordatoriosCorreo, $recordatoriosAgenda),
-            0,
-            12
-        );
-        $avisos = array_values(array_merge($avisosCorreo, $avisosAgenda));
+        $recordatorios = $recordatoriosAgenda;
+        $avisos = $avisosAgenda;
 
         if ($rolId === 4) {
             $resultado = obtenerAvisosPendientesRecordatoriosAnalista($usuarioId);
@@ -143,7 +123,7 @@ class ReminderController
 
             // Las notificaciones operativas del Analista deben abrir directamente
             // el panel "Trabajar" del seguimiento. Las notificaciones de agenda
-            // y de correo conservan sus URL especializadas.
+            // conservan su URL propia hacia la reunión correspondiente.
             $recordatoriosSeguimiento = $this->reminderDirectLinkService->aplicar(
                 $recordatoriosSeguimiento,
                 $usuarioId
@@ -163,7 +143,6 @@ class ReminderController
 
             $recordatorios = array_slice(
                 array_merge(
-                    $recordatoriosCorreo,
                     $recordatoriosObservaciones,
                     $recordatoriosAgenda,
                     $recordatoriosAcuerdos,
@@ -173,7 +152,6 @@ class ReminderController
                 12
             );
             $avisos = array_values(array_merge(
-                $avisosCorreo,
                 $avisosObservaciones,
                 $avisosAgenda,
                 $avisosAcuerdos,
@@ -190,142 +168,6 @@ class ReminderController
             'recordatorios' => $recordatorios,
             'total' => count($recordatorios)
         ], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
-        exit;
-    }
-
-    public function correoEntrante()
-    {
-        $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
-        $rolId = (int)($_SESSION['rol_id'] ?? 0);
-        $respuestaId = (int)($_GET['id'] ?? 0);
-
-        if ($usuarioId <= 0 || !in_array($rolId, [4, 6], true)) {
-            http_response_code(403);
-            die('No tienes acceso a esta respuesta de correo.');
-        }
-
-        $servicioCorreoEntrante = $this->obtenerHostingerInboundMailService();
-        $correoEntrante = $servicioCorreoEntrante->obtenerParaUsuario(
-            $respuestaId,
-            $usuarioId,
-            $rolId
-        );
-
-        if (!$correoEntrante) {
-            http_response_code(404);
-            die('La respuesta de correo no existe o no está asignada a tu usuario.');
-        }
-
-        $servicioCorreoEntrante->marcarLeido($respuestaId, $usuarioId);
-
-        // El webhook trae una vista previa. Al abrir la notificación intentamos
-        // recuperar el contenido completo mediante la API oficial. Si la lectura
-        // falla, la vista sigue funcionando con la información del webhook.
-        $lectorCorreo = new HostingerMailReaderService();
-        $lecturaApi = $lectorCorreo->obtenerTextoRespuesta($correoEntrante);
-        $correoEntrante['contenido_completo'] = ($lecturaApi['ok'] ?? false)
-            ? trim((string)($lecturaApi['texto'] ?? ''))
-            : '';
-        $correoEntrante['contenido_api_disponible'] = (bool)($lecturaApi['disponible'] ?? false);
-        $correoEntrante['contenido_api_mensaje'] = (string)($lecturaApi['mensaje'] ?? '');
-        $correoEntrante['contenido_api_uid'] = (int)($lecturaApi['uid'] ?? 0);
-
-        $mensajeExito = isset($_GET['registrada'])
-            ? 'La respuesta quedó registrada en la ruta de vinculación.'
-            : '';
-        $mensajeError = $_SESSION['error_correo_entrante'] ?? '';
-        unset($_SESSION['error_correo_entrante']);
-
-        $tituloPagina = 'Respuesta de correo';
-        $subtituloPagina = (string)($correoEntrante['nombre_entidad'] ?? 'Seguimiento de vinculación');
-        $opcionActiva = 'seguimiento_vinculacion';
-
-        require_once __DIR__ . '/../views/layout/dashboard_head.php';
-        require_once __DIR__ . '/../views/layout/sidebar.php';
-        require_once __DIR__ . '/../views/layout/topbar.php';
-        require_once __DIR__ . '/../views/reminders/correo_entrante.php';
-        require_once __DIR__ . '/../views/layout/dashboard_footer.php';
-    }
-
-    public function registrarCorreoEntranteRespuesta()
-    {
-        if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
-            http_response_code(405);
-            die('Método no permitido.');
-        }
-
-        $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
-        $rolId = (int)($_SESSION['rol_id'] ?? 0);
-        $respuestaId = (int)($_POST['respuesta_id'] ?? 0);
-
-        if ($usuarioId <= 0 || $rolId !== 4) {
-            http_response_code(403);
-            die('Solo el Analista responsable puede registrar esta respuesta.');
-        }
-
-        $servicioCorreoEntrante = $this->obtenerHostingerInboundMailService();
-        $correoEntrante = $servicioCorreoEntrante->obtenerParaUsuario(
-            $respuestaId,
-            $usuarioId,
-            $rolId
-        );
-
-        if (!$correoEntrante || !($correoEntrante['puede_registrar_respuesta'] ?? false)) {
-            $_SESSION['error_correo_entrante'] =
-                'Esta respuesta ya no puede registrarse automáticamente en la ruta.';
-            $this->redirigirCorreoEntrante($respuestaId);
-        }
-
-        $seguimientoId = (int)($correoEntrante['seguimiento_id'] ?? 0);
-        $tipo = strtoupper(trim((string)($_POST['respuesta_tipo'] ?? '')));
-        $texto = trim((string)($_POST['respuesta_texto'] ?? ''));
-        $contactarDespues = trim((string)($_POST['contactar_despues_at'] ?? ''));
-
-        $servicioPostEnvio = new SeguimientoPostEnvioService();
-        $resultado = $servicioPostEnvio->registrarAccion(
-            $seguimientoId,
-            $usuarioId,
-            'REGISTRAR_RESPUESTA',
-            [
-                'respuesta_tipo' => $tipo,
-                'respuesta_canal' => 'CORREO',
-                'respuesta_texto' => $texto,
-                'contactar_despues_at' => $contactarDespues
-            ]
-        );
-
-        if (!($resultado['ok'] ?? false)) {
-            $_SESSION['error_correo_entrante'] =
-                (string)($resultado['mensaje'] ?? 'No fue posible registrar la respuesta.');
-            $this->redirigirCorreoEntrante($respuestaId);
-        }
-
-        $servicioCorreoEntrante->marcarProcesada($respuestaId, $usuarioId);
-
-        header(
-            'Location: ' . BASE_URL .
-            'index.php?controller=reminder&action=correoEntrante&id=' .
-            $respuestaId . '&registrada=1'
-        );
-        exit;
-    }
-
-    private function obtenerHostingerInboundMailService()
-    {
-        if (!$this->hostingerInboundMailService) {
-            $this->hostingerInboundMailService = new HostingerInboundMailService();
-        }
-
-        return $this->hostingerInboundMailService;
-    }
-
-    private function redirigirCorreoEntrante($respuestaId)
-    {
-        header(
-            'Location: ' . BASE_URL .
-            'index.php?controller=reminder&action=correoEntrante&id=' .
-            (int)$respuestaId
-        );
         exit;
     }
 }
