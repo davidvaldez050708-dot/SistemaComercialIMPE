@@ -14,9 +14,3 @@ define('HOSTINGER_API_BASE_URL', 'https://developers.hostinger.com');
 // Si se deja vacío, el envío actual seguirá usando SMTP como respaldo.
 define('HOSTINGER_MAIL_API_TOKEN', '');
 define('HOSTINGER_MAIL_API_BASE_URL', 'https://api.mail.hostinger.com');
-
-// Secreto privado del webhook message.received.
-// Hostinger lo envía como Authorization: Bearer <secreto> y el sistema lo valida
-// antes de aceptar cualquier respuesta entrante.
-// URL pública esperada: https://TU-DOMINIO/public/hostinger_mail_webhook.php
-define('HOSTINGER_MAIL_WEBHOOK_SECRET', '');
