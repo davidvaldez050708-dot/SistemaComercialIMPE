@@ -1,6 +1,19 @@
 (function () {
     'use strict';
 
+    /*
+     * La tabla llega inicialmente renderizada por PHP con el estado interno
+     * (NUEVO, CONTACTANDO, etc.) y después la bandeja consulta la ruta real.
+     * Ocultamos únicamente la etiqueta de etapa mientras dura esa sincronización
+     * para evitar que el usuario vea por milisegundos un estado técnico distinto.
+     * visibility:hidden conserva el espacio y evita saltos en la tabla.
+     */
+    const estiloSincronizacionEtapa = document.createElement('style');
+    estiloSincronizacionEtapa.textContent =
+        '[data-linkage-follow-row] [data-row-stage-label]{visibility:hidden;}' +
+        '[data-linkage-follow-row] [data-row-stage-label][data-route-stage-ready="1"]{visibility:visible;}';
+    document.head.appendChild(estiloSincronizacionEtapa);
+
     document.addEventListener('DOMContentLoaded', function () {
         const offcanvas = document.getElementById('offcanvasSeguimientoTrabajo');
 
@@ -109,6 +122,7 @@
 
             etapa.textContent = etiqueta;
             etapa.title = 'Paso ' + Number(pasoActual) + ' de 13';
+            etapa.dataset.routeStageReady = '1';
         };
 
         const protegerEtiquetaRuta = function (fila) {
@@ -135,6 +149,7 @@
                 if (paso > 0) {
                     etapa.title = 'Paso ' + paso + ' de 13';
                 }
+                etapa.dataset.routeStageReady = '1';
 
                 observador.observe(etapa, {
                     childList: true,
@@ -211,5 +226,15 @@
         offcanvas.addEventListener('hidden.bs.offcanvas', function () {
             window.setTimeout(reaplicarEtiquetasRuta, 0);
         });
+
+        // Si por algún problema no responde la consulta de ruta, después de unos
+        // segundos mostramos el valor renderizado por PHP para no dejar la celda vacía.
+        window.setTimeout(function () {
+            document
+                .querySelectorAll('[data-linkage-follow-row] [data-row-stage-label]:not([data-route-stage-ready="1"])')
+                .forEach(function (etapa) {
+                    etapa.dataset.routeStageReady = '1';
+                });
+        }, 5000);
     });
 })();
