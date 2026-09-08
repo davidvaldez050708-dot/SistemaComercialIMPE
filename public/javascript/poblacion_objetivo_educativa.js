@@ -180,8 +180,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const total = Number(resultado.datos?.total_estados || 0);
             mostrarEstado(
-                resultado.mensaje ||
-                    ('Perfil educativo actualizado automáticamente para ' + total + ' Estados.'),
+                'Perfil educativo actualizado automáticamente para ' + total + ' Estados desde INEGI.',
                 'success'
             );
         } catch (error) {
