@@ -70,7 +70,7 @@ class HostingerMailReaderService
 
         $resourceId = rawurlencode((string)$mailboxResourceId['resource_id']);
         $rutaBusqueda = '/api/v1/mailboxes/' . $resourceId .
-            '/folders/INBOX/messages/search?page=1&perPage=30&sort=-uid';
+            '/folders/INBOX/messages/search?page=1&per_page=30&sort=-uid';
         $busqueda = $this->solicitar('POST', $rutaBusqueda, $criterios);
 
         if (!($busqueda['ok'] ?? false)) {
