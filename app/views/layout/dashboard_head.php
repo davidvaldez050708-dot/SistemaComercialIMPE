@@ -42,6 +42,7 @@ $cssOpcionalDashboard = [
 
 $jsOpcionalHead = [
     'agenda_reunion.js',
+    'agenda_kam_cambio.js',
     'reunion_fecha_guard.js',
     'reunion_resultado.js',
     'reprogramacion_reunion.js',
