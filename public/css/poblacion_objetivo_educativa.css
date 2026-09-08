@@ -155,6 +155,33 @@
     line-height: 1.5;
 }
 
+.data-target-update-file {
+    margin-top: 14px;
+}
+
+.data-target-update-file .form-label {
+    margin-bottom: 6px;
+    color: #46536a;
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.data-target-update-help {
+    display: block;
+    margin-top: 7px;
+    color: #7b8799;
+    font-size: 0.74rem;
+    line-height: 1.45;
+}
+
+.data-target-update-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 14px;
+}
+
 .data-target-update-status {
     margin-top: 10px;
     font-size: 0.78rem;
@@ -177,5 +204,13 @@
     .data-target-education-heading,
     .data-target-update-panel-head {
         flex-direction: column;
+    }
+
+    .data-target-update-actions {
+        justify-content: stretch;
+    }
+
+    .data-target-update-actions .btn {
+        width: 100%;
     }
 }
