@@ -57,6 +57,23 @@
     transition: width 180ms ease;
 }
 
+/* El aviso de interacción avanzada debe informar sin dominar el formulario. */
+[data-work-informative-interaction-note] .alert {
+    display: flex;
+    align-items: flex-start;
+    gap: 4px;
+    margin-bottom: 2px !important;
+    padding: 7px 10px !important;
+    border-radius: 8px;
+    font-size: 0.8rem !important;
+    line-height: 1.3;
+}
+
+[data-work-informative-interaction-note] .alert i {
+    flex: 0 0 auto;
+    margin-top: 1px;
+}
+
 body.impe-seguimiento-readonly .linkage-tools-actions,
 body.impe-seguimiento-readonly .linkage-empty-actions,
 body.impe-seguimiento-readonly [data-work-contact-action],
