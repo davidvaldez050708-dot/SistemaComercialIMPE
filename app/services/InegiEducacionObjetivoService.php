@@ -37,6 +37,12 @@ class InegiEducacionObjetivoService
             );
         }
 
+        if (!function_exists('curl_init')) {
+            return $this->respuestaError(
+                'La extensión cURL de PHP no está disponible para consultar INEGI.'
+            );
+        }
+
         $url = self::BASE_URL . '/iter_' . $claveEstado . '_cpv2020_csv.zip';
         $temporal = tempnam(sys_get_temp_dir(), 'inegi_edu_');
 

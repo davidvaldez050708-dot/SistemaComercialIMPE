@@ -26,6 +26,34 @@ $fotoPerfilUrl = $fotoPerfil !== ''
     ? BASE_URL . ltrim($fotoPerfil, '/')
     : '';
 
+$cssOpcionalDashboard = [
+    'seguimiento_filtros_layout.css',
+    'seguimiento_panel_ruta.css',
+    'oficios_vista_previa.css',
+    'oficios_vista_previa_documento.css',
+    'oficios_correo_ajustes.css',
+    'seguimiento_expediente.css',
+    'seguimiento_expediente_v2.css',
+    'seguimiento_flujo.css',
+    'seguimiento_post_envio.css',
+    'agenda_reunion.css',
+    'agenda_reunion_refinamientos.css'
+];
+
+$jsOpcionalHead = [
+    'agenda_reunion.js',
+    'reunion_fecha_guard.js',
+    'reunion_resultado.js',
+    'reprogramacion_reunion.js',
+    'agenda_historial_navegacion.js',
+    'seguimiento_bandeja_sync.js',
+    'seguimiento_resumen_ruta.js',
+    'seguimiento_panel_ruta.js',
+    'seguimiento_flujo_loading.js',
+    'seguimiento_resultados_humanizados.js',
+    'oficios_correo_formato.js'
+];
+
 ?>
 
 <!DOCTYPE html>
@@ -70,6 +98,28 @@ $fotoPerfilUrl = $fotoPerfil !== ''
     <link
         rel="stylesheet"
         href="<?= BASE_URL ?>public/css/poblacion_objetivo_educativa.css?v=<?= filemtime(ROOT_PATH . '/public/css/poblacion_objetivo_educativa.css') ?>">
+
+    <?php foreach ($cssOpcionalDashboard as $archivoCss): ?>
+        <?php $rutaCss = ROOT_PATH . '/public/css/' . $archivoCss; ?>
+        <?php if (is_file($rutaCss)): ?>
+            <link
+                rel="stylesheet"
+                href="<?= BASE_URL ?>public/css/<?= htmlspecialchars($archivoCss, ENT_QUOTES, 'UTF-8') ?>?v=<?= filemtime($rutaCss) ?>">
+        <?php endif; ?>
+    <?php endforeach; ?>
+
+    <script>
+        window.IMPE_CURRENT_ROLE_ID = <?= (int)($_SESSION['rol_id'] ?? 0) ?>;
+    </script>
+
+    <?php foreach ($jsOpcionalHead as $archivoJs): ?>
+        <?php $rutaJs = ROOT_PATH . '/public/javascript/' . $archivoJs; ?>
+        <?php if (is_file($rutaJs)): ?>
+            <script
+                src="<?= BASE_URL ?>public/javascript/<?= htmlspecialchars($archivoJs, ENT_QUOTES, 'UTF-8') ?>?v=<?= filemtime($rutaJs) ?>">
+            </script>
+        <?php endif; ?>
+    <?php endforeach; ?>
 </head>
 
 <body>

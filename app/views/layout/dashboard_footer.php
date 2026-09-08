@@ -231,6 +231,50 @@ window.IMPE_VOIP_SIP_DOMAIN = <?= json_encode($voipSipDomain, JSON_UNESCAPED_UNI
     src="<?= BASE_URL ?>public/javascript/mi_perfil.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/mi_perfil.js') ?>">
 </script>
 
+<?php
+$voipScheme = 'tel';
+$voipSipDomain = '';
+$voipConfigPath = ROOT_PATH . '/config/voip_config.php';
+
+if (is_file($voipConfigPath)) {
+    require_once $voipConfigPath;
+
+    if (defined('VOIP_SCHEME')) {
+        $voipScheme = (string)VOIP_SCHEME;
+    }
+
+    if (defined('VOIP_SIP_DOMAIN')) {
+        $voipSipDomain = (string)VOIP_SIP_DOMAIN;
+    }
+}
+
+$jsOpcionalFooter = [
+    'seguimiento_canales.js',
+    'oficios_vinculacion.js',
+    'oficios_vista_previa.js',
+    'oficios_correo.js',
+    'oficios_programacion.js',
+    'seguimiento_expediente.js',
+    'seguimiento_flujo.js',
+    'seguimiento_post_envio.js',
+    'educacion_objetivo.js'
+];
+?>
+
+<script>
+window.IMPE_VOIP_SCHEME = <?= json_encode($voipScheme, JSON_UNESCAPED_UNICODE) ?>;
+window.IMPE_VOIP_SIP_DOMAIN = <?= json_encode($voipSipDomain, JSON_UNESCAPED_UNICODE) ?>;
+</script>
+
+<?php foreach ($jsOpcionalFooter as $archivoJs): ?>
+    <?php $rutaJs = ROOT_PATH . '/public/javascript/' . $archivoJs; ?>
+    <?php if (is_file($rutaJs)): ?>
+        <script
+            src="<?= BASE_URL ?>public/javascript/<?= htmlspecialchars($archivoJs, ENT_QUOTES, 'UTF-8') ?>?v=<?= filemtime($rutaJs) ?>">
+        </script>
+    <?php endif; ?>
+<?php endforeach; ?>
+
 <script
     src="<?= BASE_URL ?>public/javascript/recordatorios.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/recordatorios.js') ?>">
 </script>
