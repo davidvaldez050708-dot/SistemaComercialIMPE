@@ -3670,6 +3670,7 @@ CREATE TABLE `plantillas_vinculacion` (
   `descripcion` varchar(255) DEFAULT NULL,
   `asunto` varchar(255) DEFAULT NULL,
   `contenido` longtext NOT NULL,
+  `archivo_docx` varchar(255) DEFAULT NULL,
   `activo` tinyint(1) NOT NULL DEFAULT 1,
   `creado_por` int(11) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),

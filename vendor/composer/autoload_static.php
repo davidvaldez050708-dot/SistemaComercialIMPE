@@ -99,6 +99,8 @@ class ComposerStaticInit2185d2f99bcd56787481d9357a5972d3
         ),
         'P' =>
         array (
+            'PhpOffice\\PhpWord\\' => 18,
+            'PhpOffice\\Math\\' => 15,
             'PHPMailer\\PHPMailer\\' => 20,
         ),
         'M' =>
@@ -123,6 +125,14 @@ class ComposerStaticInit2185d2f99bcd56787481d9357a5972d3
         'Sabberworm\\CSS\\' =>
         array (
             0 => __DIR__ . '/..' . '/sabberworm/php-css-parser/src',
+        ),
+        'PhpOffice\\PhpWord\\' =>
+        array (
+            0 => __DIR__ . '/..' . '/phpoffice/phpword/src/PhpWord',
+        ),
+        'PhpOffice\\Math\\' =>
+        array (
+            0 => __DIR__ . '/..' . '/phpoffice/math/src/Math',
         ),
         'PHPMailer\\PHPMailer\\' =>
         array (

@@ -67,10 +67,48 @@ class OficioVinculacionModel
         return $this->completarEstadoOficio($seguimiento);
     }
 
-    public function generarBorrador($seguimientoId, $usuarioId)
+    public function listarPlantillasOficioDocx()
+    {
+        $sql = "SELECT id, nombre, 'Plantilla personalizada' AS descripcion
+                FROM plantillas_vinculacion
+                WHERE tipo = 'OFICIO'
+                    AND activo = 1
+                    AND archivo_docx IS NOT NULL
+                    AND archivo_docx <> ''
+                ORDER BY created_at DESC, id DESC";
+        $resultado = $this->connection->query($sql);
+
+        return $resultado ? $resultado->fetch_all(MYSQLI_ASSOC) : [];
+    }
+
+    public function registrarPlantillaOficioDocx($nombre, $ruta, $usuarioId)
+    {
+        $descripcion = 'Plantilla personalizada';
+        $contenido = '';
+        $sql = "INSERT INTO plantillas_vinculacion
+                    (nombre, tipo, descripcion, contenido, archivo_docx, activo, creado_por)
+                VALUES (?, 'OFICIO', ?, ?, ?, 1, ?)";
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param('ssssi', $nombre, $descripcion, $contenido, $ruta, $usuarioId);
+
+        return $stmt->execute() ? (int)$this->connection->insert_id : 0;
+    }
+
+    public function eliminarPlantillaOficioDocx($plantillaId)
+    {
+        $sql = "DELETE FROM plantillas_vinculacion
+                WHERE id = ? AND tipo = 'OFICIO' AND archivo_docx IS NOT NULL";
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param('i', $plantillaId);
+
+        return $stmt->execute();
+    }
+
+    public function generarBorrador($seguimientoId, $usuarioId, $plantillaId = 0)
     {
         $seguimientoId = (int)$seguimientoId;
         $usuarioId = (int)$usuarioId;
+        $plantillaId = (int)$plantillaId;
         $bloqueoFolio = false;
         $this->connection->begin_transaction();
 
@@ -176,6 +214,11 @@ class OficioVinculacionModel
                 return $this->error('El correo verificado no tiene un formato válido.', 422);
             }
 
+            if ($plantillaId > 0 && !$this->plantillaDocxActiva($plantillaId)) {
+                $this->connection->rollback();
+                return $this->error('La plantilla de oficio seleccionada no está disponible.', 422);
+            }
+
             $bloqueoFolio = $this->adquirirBloqueoFolioGlobal();
 
             if (!$bloqueoFolio) {
@@ -195,11 +238,13 @@ class OficioVinculacionModel
                 $consecutivo,
                 date('d-m/y')
             );
+            $plantillaSeleccionada = $plantillaId > 0 ? $plantillaId : null;
 
             if ($oficioExistente) {
                 $oficioId = (int)$oficioExistente['id'];
                 $sqlOficio = "UPDATE oficios_vinculacion
                         SET folio = ?,
+                            plantilla_oficio_id = ?,
                             destinatario_nombre = ?,
                             destinatario_cargo = ?,
                             destinatario_correo = ?,
@@ -209,8 +254,9 @@ class OficioVinculacionModel
                         WHERE id = ?";
                 $stmtOficio = $this->connection->prepare($sqlOficio);
                 $stmtOficio->bind_param(
-                    'ssssi',
+                    'sisssi',
                     $folio,
+                    $plantillaSeleccionada,
                     $contactoNombre,
                     $contactoCargo,
                     $correoVerificado,
@@ -224,17 +270,19 @@ class OficioVinculacionModel
                             destinatario_nombre,
                             destinatario_cargo,
                             destinatario_correo,
+                            plantilla_oficio_id,
                             solicita_reunion,
                             estado_oficio
-                        ) VALUES (?, ?, ?, ?, ?, 1, 'BORRADOR')";
+                        ) VALUES (?, ?, ?, ?, ?, ?, 1, 'BORRADOR')";
                 $stmtOficio = $this->connection->prepare($sqlOficio);
                 $stmtOficio->bind_param(
-                    'issss',
+                    'issssi',
                     $seguimientoId,
                     $folio,
                     $contactoNombre,
                     $contactoCargo,
-                    $correoVerificado
+                    $correoVerificado,
+                    $plantillaSeleccionada
                 );
                 $stmtOficio->execute();
                 $oficioId = (int)$this->connection->insert_id;
@@ -318,6 +366,18 @@ class OficioVinculacionModel
                         ORDER BY oficio_reciente.id DESC
                         LIMIT 1
                     )";
+    }
+
+    private function plantillaDocxActiva($plantillaId)
+    {
+        $sql = "SELECT id FROM plantillas_vinculacion
+                WHERE id = ? AND tipo = 'OFICIO' AND activo = 1
+                    AND archivo_docx IS NOT NULL AND archivo_docx <> '' LIMIT 1";
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param('i', $plantillaId);
+        $stmt->execute();
+
+        return (bool)$stmt->get_result()->fetch_assoc();
     }
 
     private function completarEstadoOficio($seguimiento)

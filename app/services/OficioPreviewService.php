@@ -39,7 +39,13 @@ class OficioPreviewService
             );
         }
 
-        $plantilla = $this->obtenerOCrearPlantillaProvisional();
+        $plantilla = $this->obtenerPlantillaSeleccionada(
+            (int)($seguimiento['plantilla_oficio_id'] ?? 0)
+        );
+
+        if (!$plantilla) {
+            $plantilla = $this->obtenerOCrearPlantillaProvisional();
+        }
 
         if (!$plantilla) {
             return $this->error(
@@ -56,6 +62,15 @@ class OficioPreviewService
         $fecha = $this->formatearFechaOficio(
             $seguimiento['oficio_created_at'] ?? ''
         );
+        $municipio = trim((string)($seguimiento['municipio_nombre'] ?? ''));
+        $estadoNombre = trim((string)($seguimiento['estado_nombre'] ?? ''));
+        $ubicacion = implode(' / ', array_filter([$municipio, $estadoNombre], static function ($valor) {
+            return $valor !== '';
+        }));
+        $lugar = implode(', ', array_filter([$municipio, $estadoNombre], static function ($valor) {
+            return $valor !== '';
+        }));
+        $lugarFecha = ($lugar !== '' ? $lugar . ', a ' : '') . $fecha;
         $analistaNombre = trim(
             (string)($seguimiento['analista_nombre'] ?? '') . ' ' .
             (string)($seguimiento['analista_apellidos'] ?? '')
@@ -79,6 +94,7 @@ class OficioPreviewService
                 'oficio_id' => $oficioId,
                 'folio' => $folio,
                 'fecha' => $fecha,
+                'lugar_fecha' => $lugarFecha,
                 'asunto' => (string)($plantilla['asunto'] ?? ''),
                 'contenido' => strtr(
                     (string)($plantilla['contenido'] ?? ''),
@@ -86,6 +102,8 @@ class OficioPreviewService
                 ),
                 'institucion' => (string)($seguimiento['nombre_entidad'] ?? ''),
                 'estado' => (string)($seguimiento['estado_nombre'] ?? ''),
+                'municipio' => $municipio,
+                'ubicacion' => $ubicacion,
                 'destinatario_nombre' => (string)($seguimiento['destinatario_nombre'] ?? ''),
                 'destinatario_cargo' => (string)($seguimiento['destinatario_cargo'] ?? ''),
                 'destinatario_correo' => (string)($seguimiento['destinatario_correo'] ?? ''),
@@ -94,6 +112,7 @@ class OficioPreviewService
                 'analista_telefono' => (string)($seguimiento['analista_telefono'] ?? ''),
                 'estado_oficio' => (string)($seguimiento['estado_oficio'] ?? ''),
                 'plantilla' => (string)($plantilla['nombre'] ?? self::NOMBRE_PLANTILLA),
+                'archivo_plantilla' => (string)($plantilla['archivo_docx'] ?? ''),
                 'provisional' => false
             ]
         ];
@@ -105,8 +124,10 @@ class OficioPreviewService
                     seguimientos.id,
                     seguimientos.nombre_entidad,
                     seguimientos.estado_id,
+                    seguimientos.municipio_id,
                     seguimientos.analista_id,
                     estados.nombre AS estado_nombre,
+                    municipios.nombre AS municipio_nombre,
                     analista.nombre AS analista_nombre,
                     analista.apellidos AS analista_apellidos,
                     analista.correo AS analista_correo,
@@ -122,6 +143,8 @@ class OficioPreviewService
                 FROM seguimientos_vinculacion seguimientos
                 INNER JOIN estados
                     ON estados.id = seguimientos.estado_id
+                LEFT JOIN municipios
+                    ON municipios.id = seguimientos.municipio_id
                 INNER JOIN usuarios analista
                     ON analista.id = seguimientos.analista_id
                 LEFT JOIN oficios_vinculacion oficio
@@ -254,6 +277,23 @@ TEXTO;
             'asunto' => $asunto,
             'contenido' => $contenido
         ];
+    }
+
+    private function obtenerPlantillaSeleccionada($plantillaId)
+    {
+        if ($plantillaId <= 0) {
+            return null;
+        }
+
+        $sql = "SELECT id, nombre, asunto, contenido, archivo_docx
+                FROM plantillas_vinculacion
+                WHERE id = ? AND tipo = 'OFICIO' AND activo = 1
+                    AND archivo_docx IS NOT NULL AND archivo_docx <> '' LIMIT 1";
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param('i', $plantillaId);
+        $stmt->execute();
+
+        return $stmt->get_result()->fetch_assoc() ?: null;
     }
 
     private function asignarPlantillaSiFalta($oficioId, $plantillaId)

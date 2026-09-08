@@ -13,6 +13,7 @@
 
         const urlEstado = 'index.php?controller=oficioVinculacion&action=estado';
         const urlGenerar = 'index.php?controller=oficioVinculacion&action=generarBorrador';
+        let contextoGeneracion = null;
 
         const escapar = function (valor) {
             const div = document.createElement('div');
@@ -49,6 +50,82 @@
                 toast.remove();
             });
             bootstrap.Toast.getOrCreateInstance(toast).show();
+        };
+
+        const obtenerModalPlantillas = function () {
+            let elemento = document.getElementById('modalSeleccionarOficio');
+            if (elemento) return elemento;
+
+            elemento = document.createElement('div');
+            elemento.id = 'modalSeleccionarOficio';
+            elemento.className = 'modal fade';
+            elemento.tabIndex = -1;
+            elemento.setAttribute('aria-hidden', 'true');
+            elemento.innerHTML =
+                '<div class="modal-dialog modal-dialog-centered"><div class="modal-content">' +
+                    '<div class="modal-header"><h2 class="modal-title fs-5">Seleccionar oficio</h2>' +
+                    '<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button></div>' +
+                    '<div class="modal-body"><p>Selecciona el formato de oficio que deseas utilizar.</p>' +
+                    '<div class="list-group mb-3" data-oficio-template-list></div>' +
+                    '<div class="d-none" data-oficio-custom-file>' +
+                        '<label class="form-label" for="oficioTemplateFile">Archivo de plantilla</label>' +
+                        '<input class="form-control" id="oficioTemplateFile" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document">' +
+                        '<div class="form-text">Archivo DOCX de hasta 20 MB.</div>' +
+                    '</div></div>' +
+                    '<div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>' +
+                    '<button type="button" class="btn btn-system-save" data-oficio-use-selected>Generar</button></div>' +
+                '</div></div>';
+            document.body.appendChild(elemento);
+
+            elemento.addEventListener('change', function (event) {
+                if (event.target.name !== 'oficio_plantilla') return;
+                elemento.querySelector('[data-oficio-custom-file]').classList.toggle(
+                    'd-none',
+                    event.target.value !== 'personalizada'
+                );
+            });
+            elemento.querySelector('[data-oficio-use-selected]').addEventListener('click', function () {
+                const seleccion = elemento.querySelector('input[name="oficio_plantilla"]:checked');
+                if (!seleccion || !contextoGeneracion) return;
+                const archivo = elemento.querySelector('#oficioTemplateFile')?.files?.[0] || null;
+                if (seleccion.value === 'personalizada' && !archivo) {
+                    mostrarToast('Selecciona una plantilla de oficio.', true);
+                    return;
+                }
+                bootstrap.Modal.getOrCreateInstance(elemento).hide();
+                generarOficio(
+                    contextoGeneracion.seguimientoId,
+                    contextoGeneracion.boton,
+                    contextoGeneracion.desdeDetalle,
+                    seleccion.value,
+                    archivo
+                );
+            });
+            return elemento;
+        };
+
+        const prepararOpcionesPlantilla = function () {
+            const modal = obtenerModalPlantillas();
+            const lista = modal.querySelector('[data-oficio-template-list]');
+            const opciones = [
+                { id: 'predeterminada', nombre: 'Oficio predeterminado', descripcion: 'Formato actual del sistema' },
+                { id: 'personalizada', nombre: 'Usar plantilla personalizada', descripcion: 'Seleccionar documento desde mi equipo' }
+            ];
+            lista.innerHTML = opciones.map(function (item, indice) {
+                return '<label class="list-group-item d-flex gap-2 align-items-start">' +
+                    '<input class="form-check-input mt-1" type="radio" name="oficio_plantilla" value="' + item.id + '" ' + (indice === 0 ? 'checked' : '') + '>' +
+                    '<span><strong class="d-block">' + escapar(item.nombre) + '</strong>' +
+                    '<small class="text-muted">' + escapar(item.descripcion) + '</small></span></label>';
+            }).join('');
+            modal.querySelector('[data-oficio-custom-file]').classList.add('d-none');
+            modal.querySelector('#oficioTemplateFile').value = '';
+            modal.querySelector('[data-oficio-use-selected]').disabled = !Boolean(estadoActual?.puede_generar);
+        };
+
+        const abrirSeleccionPlantilla = async function (seguimientoId, boton, desdeDetalle) {
+            contextoGeneracion = { seguimientoId: seguimientoId, boton: boton, desdeDetalle: desdeDetalle };
+            prepararOpcionesPlantilla();
+            bootstrap.Modal.getOrCreateInstance(obtenerModalPlantillas()).show();
         };
 
         const normalizarAccionesBandeja = function () {
@@ -260,7 +337,7 @@
 
             if (soloConsulta) {
                 status.textContent = 'Pendiente de generación por el Analista responsable.';
-                boton.classList.add('d-none');
+                boton.classList.toggle('d-none', !Boolean(estado?.puede_administrar_plantillas));
                 return;
             }
 
@@ -321,7 +398,7 @@
 
             if (soloConsulta) {
                 status.textContent = 'Pendiente de generación por el Analista responsable.';
-                boton.classList.add('d-none');
+                boton.classList.toggle('d-none', !Boolean(estado?.puede_administrar_plantillas));
                 return;
             }
 
@@ -359,7 +436,7 @@
             return estadoActual;
         };
 
-        const generarOficio = async function (seguimientoId, boton, desdeDetalle) {
+        const generarOficio = async function (seguimientoId, boton, desdeDetalle, tipoPlantilla, archivoPlantilla) {
             if (!seguimientoId || !boton || boton.disabled) {
                 return;
             }
@@ -372,6 +449,10 @@
 
             const formulario = new FormData();
             formulario.append('seguimiento_id', String(seguimientoId));
+            formulario.append('tipo_plantilla', tipoPlantilla === 'personalizada' ? 'personalizada' : 'predeterminada');
+            if (tipoPlantilla === 'personalizada' && archivoPlantilla) {
+                formulario.append('archivo_plantilla', archivoPlantilla, archivoPlantilla.name);
+            }
 
             try {
                 const respuesta = await fetch(urlGenerar, {
@@ -441,7 +522,7 @@
 
             if (botonGenerarTrabajo && seguimientoActualId > 0) {
                 event.preventDefault();
-                generarOficio(seguimientoActualId, botonGenerarTrabajo, false);
+                abrirSeleccionPlantilla(seguimientoActualId, botonGenerarTrabajo, false);
                 return;
             }
 
@@ -449,7 +530,7 @@
 
             if (botonGenerarDetalle && seguimientoDetalleId > 0) {
                 event.preventDefault();
-                generarOficio(seguimientoDetalleId, botonGenerarDetalle, true);
+                abrirSeleccionPlantilla(seguimientoDetalleId, botonGenerarDetalle, true);
             }
         });
 
