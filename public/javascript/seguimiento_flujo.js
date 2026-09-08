@@ -9,6 +9,7 @@
         }
 
         const urlEstado = 'index.php?controller=seguimientoFlujo&action=estado';
+        const rolId = Number(window.IMPE_CURRENT_ROLE_ID || 0);
         let seguimientoActualId = 0;
         let temporizadorConsulta = null;
         let consultando = false;
@@ -102,6 +103,28 @@
             '</button>';
         };
 
+        const sincronizarBotonVerificacion = function (pasoActual) {
+            const boton = offcanvas.querySelector('[data-work-verify-contact]');
+
+            if (!boton || rolId !== 4) {
+                return;
+            }
+
+            const texto = String(boton.textContent || '').toLowerCase();
+            const yaVerificado = texto.includes('información verificada');
+            const puedeVerificar = Number(pasoActual) === 4 && !yaVerificado;
+
+            boton.disabled = !puedeVerificar;
+
+            if (yaVerificado) {
+                boton.title = 'La información ya fue verificada';
+            } else if (!puedeVerificar) {
+                boton.title = 'Primero completa la llamada de validación y los datos del contacto.';
+            } else {
+                boton.title = '';
+            }
+        };
+
         const renderizar = function (flujo) {
             const bloque = crearBloque();
 
@@ -116,6 +139,7 @@
             offcanvas.dataset.flowStep = String(pasoActual);
             offcanvas.dataset.flowTitle = tituloActual;
             offcanvas.dataset.flowSeguimientoId = String(Number(flujo.seguimiento_id || 0));
+            sincronizarBotonVerificacion(pasoActual);
 
             const contador = bloque.querySelector('[data-flow-step-count]');
             const progreso = bloque.querySelector('[data-flow-progress]');
@@ -342,6 +366,11 @@
                 delete offcanvas.dataset.flowStep;
                 delete offcanvas.dataset.flowTitle;
                 offcanvas.dataset.flowSeguimientoId = String(seguimientoActualId);
+                const botonVerificar = offcanvas.querySelector('[data-work-verify-contact]');
+                if (botonVerificar && rolId === 4) {
+                    botonVerificar.disabled = true;
+                    botonVerificar.title = 'Consultando la ruta de validación...';
+                }
                 crearBloque();
                 programarConsulta(260);
                 return;
