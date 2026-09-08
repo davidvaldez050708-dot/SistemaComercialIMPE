@@ -1,0 +1,10 @@
+-- Esta migración no inserta cifras: únicamente documenta el indicador oficial
+-- que consumirá la interfaz. Los valores deben provenir de INEGI/SCITEL.
+--
+-- Indicador principal:
+--   SECUNDARIA_MAXIMO_15_MAS
+--   Población de 15 años y más con secundaria completa.
+--
+-- Se conserva la etiqueta interna "como máximo nivel de escolaridad" para el
+-- objetivo comercial, pero en pantalla se muestra la definición oficial y la
+-- fuente para evitar confundirla con rezago educativo.
