@@ -182,6 +182,28 @@ switch ($controller) {
         break;
 
 
+    case 'firmaCorreo':
+
+        require_once __DIR__ .
+            '/app/controllers/FirmaCorreoController.php';
+
+        $controllerInstance =
+            new FirmaCorreoController();
+
+        break;
+
+
+    case 'correoFirmado':
+
+        require_once __DIR__ .
+            '/app/controllers/CorreoFirmadoController.php';
+
+        $controllerInstance =
+            new CorreoFirmadoController();
+
+        break;
+
+
     case 'rol':
 
         require_once __DIR__ .
