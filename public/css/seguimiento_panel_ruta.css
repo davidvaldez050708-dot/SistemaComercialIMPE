@@ -57,21 +57,29 @@
     transition: width 180ms ease;
 }
 
-/* El aviso de interacción avanzada debe informar sin dominar el formulario. */
+/* El aviso de interacción avanzada debe informar sin ocupar media tarjeta. */
+[data-work-informative-interaction-note] {
+    margin-bottom: 0 !important;
+}
+
 [data-work-informative-interaction-note] .alert {
-    display: flex;
-    align-items: flex-start;
-    gap: 4px;
-    margin-bottom: 2px !important;
-    padding: 7px 10px !important;
-    border-radius: 8px;
-    font-size: 0.8rem !important;
-    line-height: 1.3;
+    display: block !important;
+    margin: 0 0 2px !important;
+    padding: 4px 7px !important;
+    border-radius: 7px;
+    font-size: 0.74rem !important;
+    line-height: 1.22 !important;
 }
 
 [data-work-informative-interaction-note] .alert i {
-    flex: 0 0 auto;
-    margin-top: 1px;
+    display: inline-block;
+    margin: 0 4px 0 0 !important;
+    vertical-align: -1px;
+}
+
+[data-work-informative-interaction-note] .alert strong {
+    display: inline;
+    font-size: inherit;
 }
 
 body.impe-seguimiento-readonly .linkage-tools-actions,
