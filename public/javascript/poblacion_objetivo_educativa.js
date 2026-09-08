@@ -61,6 +61,15 @@ document.addEventListener('DOMContentLoaded', function () {
             minute: '2-digit'
         }).format(objeto);
     };
+    const tipoActualizacion = function (valor) {
+        const tipos = {
+            IMPORTACION: 'Importada',
+            AUTOMATICA: 'Automática',
+            MANUAL: 'Manual'
+        };
+
+        return tipos[String(valor || '').toUpperCase()] || 'Oficial';
+    };
 
     const bloque = document.createElement('div');
     bloque.className = 'data-target-education';
@@ -86,19 +95,18 @@ document.addEventListener('DOMContentLoaded', function () {
                 '<div class="data-target-education-heading">' +
                     '<div>' +
                         '<span class="data-target-education-kicker">POBLACIÓN OBJETIVO EDUCATIVA</span>' +
-                        '<h4>Secundaria completa</h4>' +
-                        '<p>Población de 15 años y más con secundaria completa según la fuente oficial de INEGI.</p>' +
+                        '<h4>Máxima escolaridad: secundaria completa</h4>' +
+                        '<p>Población de 15 años y más cuya máxima escolaridad corresponde a tres grados aprobados de secundaria, conforme al indicador P15SEC_CO de INEGI.</p>' +
                     '</div>' +
                 '</div>' +
                 '<p class="data-target-education-empty">' +
                     (migracionPendiente
                         ? 'La estructura está preparada, pero falta aplicar la migración de base de datos para comenzar a guardar este indicador.'
-                        : 'Aún no hay información oficial registrada. Usa “Actualizar información oficial” para consultarla desde INEGI.') +
+                        : 'Aún no hay información oficial registrada. Usa “Actualizar información oficial” y carga el XLSX de ITER/SCITEL de INEGI.') +
                 '</p>' +
                 '<p class="data-target-education-note">' +
                     '<i class="bi bi-info-circle" aria-hidden="true"></i>' +
-                    'Este indicador es una aproximación inicial al universo de continuidad educativa. ' +
-                    'Por sí solo no confirma que una persona actualmente no estudie.' +
+                    'Este indicador identifica el máximo nivel de escolaridad, pero no confirma por sí solo la condición actual de asistencia escolar.' +
                 '</p>';
             return;
         }
@@ -114,16 +122,19 @@ document.addEventListener('DOMContentLoaded', function () {
             '<div class="data-target-education-heading">' +
                 '<div>' +
                     '<span class="data-target-education-kicker">POBLACIÓN OBJETIVO EDUCATIVA</span>' +
-                    '<h4>' + escapar(datos.nombre_indicador || 'Población de 15 años y más con secundaria completa') + '</h4>' +
-                    '<p>Permite dimensionar a la población que ya concluyó secundaria como punto de partida para analizar oportunidades de continuidad educativa.</p>' +
+                    '<h4>' + escapar(
+                        datos.nombre_indicador ||
+                        'Población de 15 años y más cuya máxima escolaridad es secundaria completa'
+                    ) + '</h4>' +
+                    '<p>Dimensiona a la población cuyo máximo nivel aprobado es secundaria y sirve como base para analizar oportunidades de continuidad hacia media superior o niveles posteriores.</p>' +
                 '</div>' +
                 '<span class="data-target-education-period">' + escapar(datos.anio || '') + '</span>' +
             '</div>' +
             '<div class="data-target-education-metrics">' +
                 '<article class="data-target-education-metric">' +
-                    '<span>Personas con secundaria completa</span>' +
+                    '<span>Personas con máxima escolaridad en secundaria</span>' +
                     '<strong>' + numero(datos.cantidad_personas) + '</strong>' +
-                    '<small>' + escapar(datos.grupo_edad || '15 años y más') + '</small>' +
+                    '<small>' + escapar(datos.grupo_edad || '15 años y más') + ' · Indicador P15SEC_CO</small>' +
                 '</article>' +
                 '<article class="data-target-education-metric">' +
                     '<span>Proporción sobre población de 15 años y más</span>' +
@@ -133,18 +144,17 @@ document.addEventListener('DOMContentLoaded', function () {
                 '<article class="data-target-education-metric">' +
                     '<span>Población base de 15 años y más</span>' +
                     '<strong>' + numero(datos.poblacion_base) + '</strong>' +
-                    '<small>Denominador utilizado para calcular la proporción.</small>' +
+                    '<small>Denominador P_15YMAS utilizado para calcular la proporción.</small>' +
                 '</article>' +
             '</div>' +
             '<p class="data-target-education-note">' +
                 '<i class="bi bi-info-circle" aria-hidden="true"></i>' +
-                'Secundaria completa no equivale automáticamente a “no continúa estudiando”. ' +
-                'La condición de asistencia escolar se integrará como un indicador adicional cuando se incorpore esa variable oficial.' +
+                'Máxima escolaridad en secundaria no equivale automáticamente a “actualmente no estudia”. La condición de asistencia escolar se manejará como un indicador adicional para no mezclar conceptos oficiales.' +
             '</p>' +
             '<div class="data-target-education-source">' +
                 '<span>Fuente: <strong>' + escapar(datos.fuente || 'INEGI') + '</strong></span>' +
                 '<span>Última consulta: <strong>' + escapar(fecha(datos.fecha_consulta)) + '</strong></span>' +
-                '<span>Actualización: <strong>Automática</strong></span>' +
+                '<span>Actualización: <strong>' + escapar(tipoActualizacion(datos.tipo_actualizacion)) + '</strong></span>' +
             '</div>' +
             historicoHtml;
     };
@@ -163,7 +173,10 @@ document.addEventListener('DOMContentLoaded', function () {
             const resultado = await respuesta.json();
 
             if (!respuesta.ok || resultado.ok !== true) {
-                throw new Error(resultado.mensaje || 'No fue posible cargar la población objetivo educativa.');
+                throw new Error(
+                    resultado.mensaje ||
+                    'No fue posible cargar la población objetivo educativa.'
+                );
             }
 
             renderizar(resultado.datos || {});
@@ -172,7 +185,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 '<div class="data-target-education-heading">' +
                     '<div>' +
                         '<span class="data-target-education-kicker">POBLACIÓN OBJETIVO EDUCATIVA</span>' +
-                        '<h4>Secundaria completa</h4>' +
+                        '<h4>Máxima escolaridad: secundaria completa</h4>' +
                     '</div>' +
                 '</div>' +
                 '<p class="data-target-education-empty">' +
@@ -196,30 +209,65 @@ document.addEventListener('DOMContentLoaded', function () {
             '<div class="data-target-update-panel-head">' +
                 '<div>' +
                     '<strong>Población objetivo educativa</strong>' +
-                    '<p>Consulta automáticamente el Censo 2020 de INEGI/ITER para obtener P15SEC_CO y P_15YMAS del Estado.</p>' +
+                    '<p>Importa el XLSX oficial de Principales resultados por localidad (ITER/SCITEL) y obtiene automáticamente P15SEC_CO y P_15YMAS del Estado abierto.</p>' +
                 '</div>' +
-                '<button type="button" class="btn btn-system-light" data-target-update-button>' +
-                    '<i class="bi bi-mortarboard me-2" aria-hidden="true"></i>' +
-                    '<span>Actualizar desde INEGI</span>' +
+            '</div>' +
+            '<div class="data-target-update-file">' +
+                '<label class="form-label" for="archivoEducacionObjetivo">Archivo XLSX oficial de INEGI</label>' +
+                '<input class="form-control" type="file" id="archivoEducacionObjetivo" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" data-target-update-file-input>' +
+                '<small class="data-target-update-help">Descarga el archivo de ITER/SCITEL directamente desde INEGI y súbelo sin modificarlo. El sistema comprobará que corresponda al Estado seleccionado.</small>' +
+            '</div>' +
+            '<div class="data-target-update-actions">' +
+                '<a class="btn btn-system-light" href="https://www.inegi.org.mx/app/scitel/Default?ev=6" target="_blank" rel="noopener noreferrer">' +
+                    '<i class="bi bi-box-arrow-up-right me-2" aria-hidden="true"></i>Abrir SCITEL' +
+                '</a>' +
+                '<button type="button" class="btn btn-system-save" data-target-update-button disabled>' +
+                    '<i class="bi bi-file-earmark-arrow-up me-2" aria-hidden="true"></i>' +
+                    '<span>Actualizar información</span>' +
                 '</button>' +
             '</div>' +
             '<div class="data-target-update-status d-none" data-target-update-status role="status"></div>';
         inicial.appendChild(panel);
 
+        const archivoInput = panel.querySelector('[data-target-update-file-input]');
         const boton = panel.querySelector('[data-target-update-button]');
         const estado = panel.querySelector('[data-target-update-status]');
 
+        archivoInput?.addEventListener('change', function () {
+            const archivo = archivoInput.files?.[0] || null;
+            boton.disabled = !archivo;
+            estado.className = 'data-target-update-status d-none';
+            estado.textContent = '';
+        });
+
         boton?.addEventListener('click', async function () {
+            const archivo = archivoInput?.files?.[0] || null;
+
+            if (!archivo) {
+                estado.className = 'data-target-update-status is-error';
+                estado.textContent = 'Selecciona el XLSX oficial de INEGI.';
+                return;
+            }
+
+            if (!archivo.name.toLowerCase().endsWith('.xlsx')) {
+                estado.className = 'data-target-update-status is-error';
+                estado.textContent = 'El archivo debe estar en formato XLSX.';
+                return;
+            }
+
             boton.disabled = true;
+            archivoInput.disabled = true;
             const textoOriginal = boton.innerHTML;
             boton.innerHTML =
                 '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>' +
-                'Consultando INEGI...';
+                'Validando XLSX...';
             estado.className = 'data-target-update-status';
-            estado.textContent = 'Descargando y validando el archivo oficial del Estado...';
+            estado.textContent =
+                'Validando estructura, Estado y variables educativas del archivo oficial...';
 
-            const datos = new URLSearchParams();
-            datos.set('estado_id', estadoId);
+            const datos = new FormData();
+            datos.append('estado_id', estadoId);
+            datos.append('archivo_educacion_objetivo', archivo);
 
             try {
                 const respuesta = await fetch(
@@ -227,26 +275,33 @@ document.addEventListener('DOMContentLoaded', function () {
                     {
                         method: 'POST',
                         headers: {
-                            'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
                             'X-Requested-With': 'fetch'
                         },
-                        body: datos.toString()
+                        body: datos
                     }
                 );
                 const resultado = await respuesta.json();
 
                 if (!respuesta.ok || resultado.ok !== true) {
-                    throw new Error(resultado.mensaje || 'No fue posible actualizar el indicador educativo.');
+                    throw new Error(
+                        resultado.mensaje ||
+                        'No fue posible actualizar el indicador educativo.'
+                    );
                 }
 
                 estado.className = 'data-target-update-status is-success';
-                estado.textContent = resultado.mensaje || 'Información educativa actualizada correctamente.';
+                estado.textContent =
+                    resultado.mensaje ||
+                    'Información educativa actualizada correctamente.';
                 renderizar(resultado.datos || {});
             } catch (error) {
                 estado.className = 'data-target-update-status is-error';
-                estado.textContent = error.message || 'No fue posible actualizar la información educativa.';
+                estado.textContent =
+                    error.message ||
+                    'No fue posible actualizar la información educativa.';
             } finally {
-                boton.disabled = false;
+                archivoInput.disabled = false;
+                boton.disabled = !(archivoInput.files?.[0]);
                 boton.innerHTML = textoOriginal;
             }
         });
