@@ -6,10 +6,7 @@
 
 <?php require_once __DIR__ . '/profile_photo_modal.php'; ?>
 
-<?php if (
-    !empty($_SESSION['requiere_cambio_password'])
-): ?>
-
+<?php if (!empty($_SESSION['requiere_cambio_password'])): ?>
     <div
         class="modal fade"
         id="modalCambioPassword"
@@ -19,13 +16,9 @@
         aria-labelledby="modalCambioPasswordTitulo"
         aria-hidden="true">
 
-        <div
-            class="modal-dialog modal-dialog-centered recovery-modal-dialog">
-
+        <div class="modal-dialog modal-dialog-centered recovery-modal-dialog">
             <div class="modal-content recovery-modal">
-
                 <div class="modal-body">
-
                     <div class="recovery-modal-icon">
                         <i class="bi bi-shield-lock"></i>
                     </div>
@@ -42,30 +35,15 @@
                         antes de continuar.
                     </p>
 
-                    <?php if (
-                        isset($_SESSION['error_cambio_password'])
-                    ): ?>
-
-                        <div
-                            class="alert alert-danger login-alert"
-                            role="alert">
-
+                    <?php if (isset($_SESSION['error_cambio_password'])): ?>
+                        <div class="alert alert-danger login-alert" role="alert">
                             <i class="bi bi-exclamation-circle"></i>
-
                             <span>
-                                <?= htmlspecialchars(
-                                    $_SESSION['error_cambio_password']
-                                ) ?>
+                                <?= htmlspecialchars($_SESSION['error_cambio_password']) ?>
                             </span>
-
                         </div>
 
-                        <?php
-                            unset(
-                                $_SESSION['error_cambio_password']
-                            );
-                        ?>
-
+                        <?php unset($_SESSION['error_cambio_password']); ?>
                     <?php endif; ?>
 
                     <form
@@ -137,100 +115,22 @@
                         </p>
 
                         <div class="d-grid mt-4">
-                            <button
-                                type="submit"
-                                class="btn btn-login">
+                            <button type="submit" class="btn btn-login">
                                 <i class="bi bi-check2-circle me-2"></i>
                                 Guardar nueva contraseña
                             </button>
                         </div>
-
                     </form>
-
                 </div>
-
             </div>
-
         </div>
-
     </div>
-
 <?php endif; ?>
 
 <script
     src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js">
 </script>
 
-<script
-    src="<?= BASE_URL ?>public/javascript/cambiar_password.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/cambiar_password.js') ?>">
-</script>
-
-<script
-    src="<?= BASE_URL ?>public/javascript/seguimiento_interacciones.js">
-</script>
-
-<?php
-$voipScheme = 'tel';
-$voipSipDomain = '';
-$voipConfigPath = ROOT_PATH . '/config/voip_config.php';
-
-if (is_file($voipConfigPath)) {
-    require_once $voipConfigPath;
-
-    if (defined('VOIP_SCHEME')) {
-        $voipScheme = (string)VOIP_SCHEME;
-    }
-
-    if (defined('VOIP_SIP_DOMAIN')) {
-        $voipSipDomain = (string)VOIP_SIP_DOMAIN;
-    }
-}
-?>
-<script>
-window.IMPE_VOIP_SCHEME = <?= json_encode($voipScheme, JSON_UNESCAPED_UNICODE) ?>;
-window.IMPE_VOIP_SIP_DOMAIN = <?= json_encode($voipSipDomain, JSON_UNESCAPED_UNICODE) ?>;
-</script>
-
-<script
-    src="<?= BASE_URL ?>public/javascript/seguimiento_canales.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/seguimiento_canales.js') ?>">
-</script>
-
-<script
-    src="<?= BASE_URL ?>public/javascript/oficios_vinculacion.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/oficios_vinculacion.js') ?>">
-</script>
-
-<script
-    src="<?= BASE_URL ?>public/javascript/oficios_vista_previa.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/oficios_vista_previa.js') ?>">
-</script>
-
-<script
-    src="<?= BASE_URL ?>public/javascript/oficios_correo.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/oficios_correo.js') ?>">
-</script>
-
-<script
-    src="<?= BASE_URL ?>public/javascript/oficios_programacion.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/oficios_programacion.js') ?>">
-</script>
-
-<script
-    src="<?= BASE_URL ?>public/javascript/seguimiento_expediente.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/seguimiento_expediente.js') ?>">
-</script>
-
-<script
-    src="<?= BASE_URL ?>public/javascript/seguimiento_flujo.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/seguimiento_flujo.js') ?>">
-</script>
-
-<script
-    src="<?= BASE_URL ?>public/javascript/seguimiento_post_envio.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/seguimiento_post_envio.js') ?>">
-</script>
-
-<script
-    src="<?= BASE_URL ?>public/javascript/educacion_objetivo.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/educacion_objetivo.js') ?>">
-</script>
-
-<script
-    src="<?= BASE_URL ?>public/javascript/mi_perfil.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/mi_perfil.js') ?>">
-</script>
-
 <?php
 $voipScheme = 'tel';
 $voipSipDomain = '';
@@ -248,7 +148,9 @@ if (is_file($voipConfigPath)) {
     }
 }
 
-$jsOpcionalFooter = [
+$jsDashboardFooter = [
+    'cambiar_password.js',
+    'seguimiento_interacciones.js',
     'seguimiento_canales.js',
     'oficios_vinculacion.js',
     'oficios_vista_previa.js',
@@ -257,7 +159,10 @@ $jsOpcionalFooter = [
     'seguimiento_expediente.js',
     'seguimiento_flujo.js',
     'seguimiento_post_envio.js',
-    'educacion_objetivo.js'
+    'educacion_objetivo.js',
+    'mi_perfil.js',
+    'recordatorios.js',
+    'poblacion_objetivo_educativa.js'
 ];
 ?>
 
@@ -266,7 +171,7 @@ window.IMPE_VOIP_SCHEME = <?= json_encode($voipScheme, JSON_UNESCAPED_UNICODE) ?
 window.IMPE_VOIP_SIP_DOMAIN = <?= json_encode($voipSipDomain, JSON_UNESCAPED_UNICODE) ?>;
 </script>
 
-<?php foreach ($jsOpcionalFooter as $archivoJs): ?>
+<?php foreach ($jsDashboardFooter as $archivoJs): ?>
     <?php $rutaJs = ROOT_PATH . '/public/javascript/' . $archivoJs; ?>
     <?php if (is_file($rutaJs)): ?>
         <script
@@ -274,14 +179,6 @@ window.IMPE_VOIP_SIP_DOMAIN = <?= json_encode($voipSipDomain, JSON_UNESCAPED_UNI
         </script>
     <?php endif; ?>
 <?php endforeach; ?>
-
-<script
-    src="<?= BASE_URL ?>public/javascript/recordatorios.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/recordatorios.js') ?>">
-</script>
-
-<script
-    src="<?= BASE_URL ?>public/javascript/poblacion_objetivo_educativa.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/poblacion_objetivo_educativa.js') ?>">
-</script>
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
@@ -344,33 +241,21 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 
-<?php if (
-    !empty($_SESSION['requiere_cambio_password'])
-): ?>
-
+<?php if (!empty($_SESSION['requiere_cambio_password'])): ?>
     <script>
-    document.addEventListener(
-        'DOMContentLoaded',
-        function () {
-            const modalElement =
-                document.getElementById('modalCambioPassword');
+    document.addEventListener('DOMContentLoaded', function () {
+        const modalElement = document.getElementById('modalCambioPassword');
 
-            if (modalElement) {
-                const modal =
-                    new bootstrap.Modal(
-                        modalElement,
-                        {
-                            backdrop: 'static',
-                            keyboard: false
-                        }
-                    );
+        if (modalElement) {
+            const modal = new bootstrap.Modal(modalElement, {
+                backdrop: 'static',
+                keyboard: false
+            });
 
-                modal.show();
-            }
+            modal.show();
         }
-    );
+    });
     </script>
-
 <?php endif; ?>
 
 </body>
