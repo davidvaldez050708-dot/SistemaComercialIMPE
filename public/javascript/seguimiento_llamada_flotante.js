@@ -273,18 +273,30 @@
             domObserver.observe(document.body, { childList: true, subtree: true });
         }
 
+        /*
+         * El módulo principal de Twilio incluye una protección histórica que
+         * desconecta la llamada cuando el panel de trabajo termina de ocultarse.
+         * En modo flotante el panel sí puede cerrarse: detenemos únicamente ese
+         * manejador durante una llamada activa y mantenemos la llamada en pantalla.
+         * Usamos captura para ejecutarnos antes del listener original.
+         */
         if (offcanvas) {
-            offcanvas.addEventListener('hide.bs.offcanvas', function (event) {
+            offcanvas.addEventListener('hidden.bs.offcanvas', function (event) {
                 if (!llamadaActiva()) {
                     return;
                 }
 
-                event.preventDefault();
+                event.stopImmediatePropagation();
+
+                if (!minimized) {
+                    minimizar();
+                }
+
                 mostrarToast(
-                    'La llamada sigue activa. Minimízala para trabajar sin cerrar el panel.',
-                    true
+                    'El panel se cerró. La llamada continúa en el control flotante.',
+                    false
                 );
-            });
+            }, true);
         }
 
         document.addEventListener('click', function (event) {
