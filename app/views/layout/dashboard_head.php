@@ -47,6 +47,7 @@ $cssOpcionalDashboard = [
 ];
 
 $jsOpcionalHead = [
+    'seguimiento_interaccion_id_bridge.js',
     'seguimiento_llamada_twilio.js',
     'seguimiento_llamada_flotante.js',
     'seguimiento_llamadas_expediente.js',
