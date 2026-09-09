@@ -91,23 +91,26 @@
         const interacciones = Array.isArray(datos && datos.interacciones)
             ? datos.interacciones
             : [];
+        const llamadas = interacciones.filter(function (interaccion) {
+            return String(interaccion && interaccion.canal || '') === contexto.canal;
+        });
         const fechaMinuto = String(contexto.fechaInicio || '').slice(0, 16);
 
-        const candidatas = interacciones.filter(function (interaccion) {
-            if (String(interaccion.canal || '') !== contexto.canal) {
-                return false;
-            }
+        if (llamadas.length === 0) {
+            return 0;
+        }
 
-            if (fechaMinuto === '') {
-                return true;
-            }
+        const candidatas = fechaMinuto === ''
+            ? llamadas
+            : llamadas.filter(function (interaccion) {
+                return String(interaccion.fecha_inicio || '').slice(0, 16) === fechaMinuto;
+            });
 
-            return String(interaccion.fecha_inicio || '').slice(0, 16) === fechaMinuto;
-        });
+        if (candidatas.length === 0) {
+            return 0;
+        }
 
-        const fuente = candidatas.length > 0 ? candidatas : interacciones;
-
-        return fuente.reduce(function (mayor, interaccion) {
+        return candidatas.reduce(function (mayor, interaccion) {
             const id = Number(interaccion && interaccion.id || 0);
             return id > mayor ? id : mayor;
         }, 0);
