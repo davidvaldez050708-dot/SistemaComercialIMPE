@@ -96,7 +96,7 @@ class TwilioRecordingService
         return null;
     }
 
-    public function descargarGrabacion($recordingSid)
+    public function descargarGrabacion($recordingSid, $rangeHeader = '')
     {
         $recordingSid = trim((string)$recordingSid);
 
@@ -104,9 +104,17 @@ class TwilioRecordingService
             throw new InvalidArgumentException('La grabación solicitada no es válida.');
         }
 
+        $headers = [];
+        $rangeHeader = trim((string)$rangeHeader);
+
+        if ($rangeHeader !== '' && preg_match('/^bytes=\d*-\d*$/', $rangeHeader)) {
+            $headers[] = 'Range: ' . $rangeHeader;
+        }
+
         return $this->solicitar(
             $this->baseUrl . '/Recordings/' . rawurlencode($recordingSid) . '.mp3',
-            false
+            false,
+            $headers
         );
     }
 
@@ -122,10 +130,12 @@ class TwilioRecordingService
         return $datos;
     }
 
-    private function solicitar($url, $esperarJson)
+    private function solicitar($url, $esperarJson, array $headersExtra = [])
     {
         $ch = curl_init($url);
         $headers = $esperarJson ? ['Accept: application/json'] : [];
+        $headers = array_merge($headers, $headersExtra);
+        $responseHeaders = [];
 
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
@@ -134,7 +144,27 @@ class TwilioRecordingService
             CURLOPT_TIMEOUT => $esperarJson ? 18 : 35,
             CURLOPT_USERPWD => $this->accountSid . ':' . $this->authToken,
             CURLOPT_HTTPAUTH => CURLAUTH_BASIC,
-            CURLOPT_HTTPHEADER => $headers
+            CURLOPT_HTTPHEADER => $headers,
+            CURLOPT_HEADERFUNCTION => function ($curl, $line) use (&$responseHeaders) {
+                $length = strlen($line);
+                $trimmed = trim($line);
+
+                if ($trimmed === '') {
+                    return $length;
+                }
+
+                if (stripos($trimmed, 'HTTP/') === 0) {
+                    $responseHeaders = [];
+                    return $length;
+                }
+
+                $parts = explode(':', $line, 2);
+                if (count($parts) === 2) {
+                    $responseHeaders[strtolower(trim($parts[0]))] = trim($parts[1]);
+                }
+
+                return $length;
+            }
         ]);
 
         $body = curl_exec($ch);
@@ -151,7 +181,9 @@ class TwilioRecordingService
 
         return [
             'body' => $body,
-            'content_type' => $contentType
+            'content_type' => $contentType,
+            'status' => $status,
+            'headers' => $responseHeaders
         ];
     }
 }
