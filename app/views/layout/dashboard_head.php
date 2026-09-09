@@ -40,6 +40,7 @@ $cssOpcionalDashboard = [
     'seguimiento_llamadas_player.css',
     'seguimiento_flujo.css',
     'seguimiento_llamada_twilio.css',
+    'seguimiento_caller_id_usuario.css',
     'seguimiento_llamada_flotante.css',
     'seguimiento_llamada_registro_obligatorio.css',
     'seguimiento_llamada_registro_compacto.css',
@@ -50,6 +51,7 @@ $cssOpcionalDashboard = [
 
 $jsOpcionalHead = [
     'seguimiento_interaccion_id_bridge.js',
+    'seguimiento_caller_id_usuario.js',
     'seguimiento_llamada_twilio.js',
     'seguimiento_llamada_flotante.js',
     'seguimiento_llamada_registro_obligatorio.js',
