@@ -691,6 +691,7 @@ class OficioDocxPdfService
             }
         }
 
+        $parrafosDinamicosProcesados = [];
         if (!empty($lineasBloqueMismoParrafo)) {
             foreach ($lineasBloqueMismoParrafo as $posicion => $linea) {
                 $nuevo = $nuevoBloque[$posicion] ?? '';
@@ -712,6 +713,7 @@ class OficioDocxPdfService
                 if (!$this->reemplazarTextoEnParrafo($xpath, $parrafos[$indice]['nodo'], $parrafos[$indice]['texto'], $nuevo)) {
                     return $this->error('No fue posible procesar el bloque del destinatario.', 'No se pudo sustituir un párrafo existente.');
                 }
+                $parrafosDinamicosProcesados[] = $parrafos[$indice]['nodo'];
             }
 
             if (count($nuevoBloque) > count($indicesBloque)) {
@@ -727,11 +729,41 @@ class OficioDocxPdfService
                         return $this->error('No fue posible procesar el bloque del destinatario.', 'No se pudo crear un párrafo conservando el formato.');
                     }
                     $presente->parentNode->insertBefore($clon, $presente);
+                    $parrafosDinamicosProcesados[] = $clon;
                 }
             }
         }
 
+        foreach ($parrafosDinamicosProcesados as $parrafoDinamico) {
+            $this->quitarSaltosFinalesVacios($xpath, $parrafoDinamico);
+        }
+
         return $documento->saveXML();
+    }
+
+    private function quitarSaltosFinalesVacios(DOMXPath $xpath, DOMNode $parrafo)
+    {
+        $texto = '';
+        foreach ($xpath->query('.//w:t', $parrafo) as $nodoTexto) {
+            $texto .= $nodoTexto->textContent;
+        }
+        if (trim($texto) === '') {
+            return;
+        }
+
+        // El párrafo ya separa los campos; solo se retiran saltos sin texto al final.
+        $contenido = iterator_to_array($xpath->query('.//w:r/*[not(self::w:rPr)]', $parrafo));
+        foreach (array_reverse($contenido) as $nodo) {
+            if ($nodo->localName === 't' && trim($nodo->textContent) === '') {
+                continue;
+            }
+            if ($nodo->localName !== 'br'
+                || !in_array($nodo->getAttributeNS($nodo->namespaceURI, 'type'), ['', 'textWrapping'], true)
+                || $nodo->hasAttributeNS($nodo->namespaceURI, 'clear')) {
+                break;
+            }
+            $nodo->parentNode->removeChild($nodo);
+        }
     }
 
     private function extraerLineasVisuales(DOMXPath $xpath, DOMNode $parrafo)

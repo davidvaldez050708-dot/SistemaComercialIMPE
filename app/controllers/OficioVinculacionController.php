@@ -86,7 +86,10 @@ class OficioVinculacionController
 
         if ($tipoPlantilla === 'personalizada') {
             OficioDocxPdfService::registrarTrazaTemporal('CUSTOM_TEMPLATE_SELECTED', ['seguimiento_id' => $seguimientoId]);
-            $plantillaCargada = $this->guardarPlantillaParaGeneracion(
+            $plantillaGuardadaId = (int)($_POST['plantilla_id'] ?? 0);
+            $plantillaCargada = $plantillaGuardadaId > 0
+                ? $this->copiarPlantillaGuardada($plantillaGuardadaId, $usuarioId, $modelo)
+                : $this->guardarPlantillaParaGeneracion(
                 $_FILES['archivo_plantilla'] ?? null,
                 $usuarioId,
                 $modelo
@@ -152,7 +155,22 @@ class OficioVinculacionController
         $this->responderJson($resultado);
     }
 
-    private function guardarPlantillaParaGeneracion($archivo, $usuarioId, OficioVinculacionModel $modelo)
+    private function copiarPlantillaGuardada($id, $usuarioId, OficioVinculacionModel $modelo)
+    {
+        $plantilla = $modelo->obtenerPlantillaGuardada($id);
+        $base = realpath(dirname(__DIR__, 2) . '/storage/templates/oficios_personalizados');
+        $ruta = $plantilla ? realpath(dirname(__DIR__, 2) . '/' . $plantilla['archivo_docx']) : false;
+        if (!$base || !$ruta || !is_file($ruta)
+            || strncmp($ruta, $base . DIRECTORY_SEPARATOR, strlen($base) + 1) !== 0
+            || strpos(basename($ruta), 'generacion_') === 0) {
+            return ['ok' => false, 'mensaje' => 'La plantilla guardada no está disponible.', 'codigo_http' => 422];
+        }
+        return $this->guardarPlantillaParaGeneracion([
+            'error' => UPLOAD_ERR_OK, 'tmp_name' => $ruta, 'name' => basename($ruta)
+        ], $usuarioId, $modelo, null, true);
+    }
+
+    private function guardarPlantillaParaGeneracion($archivo, $usuarioId, OficioVinculacionModel $modelo, $nombreBiblioteca = null, $copiar = false)
     {
         if (!$archivo || (int)($archivo['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
             return ['ok' => false, 'mensaje' => 'Selecciona una plantilla de oficio.', 'codigo_http' => 422];
@@ -208,15 +226,15 @@ class OficioVinculacionController
             return ['ok' => false, 'mensaje' => 'No fue posible preparar temporalmente la plantilla.', 'codigo_http' => 500];
         }
 
-        $nombreArchivo = 'generacion_' . date('Ymd_His') . '_' . bin2hex(random_bytes(6)) . '.docx';
+        $nombreArchivo = ($nombreBiblioteca === null ? 'generacion_' : 'oficio_') . date('Ymd_His') . '_' . bin2hex(random_bytes(6)) . '.docx';
         $rutaFinal = $directorio . DIRECTORY_SEPARATOR . $nombreArchivo;
-        if (!move_uploaded_file($rutaTemporal, $rutaFinal)) {
+        if (!($copiar ? copy($rutaTemporal, $rutaFinal) : move_uploaded_file($rutaTemporal, $rutaFinal))) {
             return ['ok' => false, 'mensaje' => 'No fue posible recibir la plantilla seleccionada.', 'codigo_http' => 500];
         }
 
         $nombreVisible = preg_replace('/[^\pL\pN ._()-]+/u', '', pathinfo($nombreOriginal, PATHINFO_FILENAME));
         $rutaRelativa = $directorioRelativo . '/' . $nombreArchivo;
-        $id = $modelo->registrarPlantillaOficioDocx($nombreVisible ?: 'Plantilla personalizada', $rutaRelativa, $usuarioId);
+        $id = $modelo->registrarPlantillaOficioDocx($nombreBiblioteca ?? ($nombreVisible ?: 'Plantilla personalizada'), $rutaRelativa, $usuarioId);
         if ($id <= 0) {
             @unlink($rutaFinal);
             return ['ok' => false, 'mensaje' => 'No fue posible preparar la plantilla seleccionada.', 'codigo_http' => 500];
@@ -232,7 +250,7 @@ class OficioVinculacionController
         $this->responderJson([
             'ok' => true,
             'plantillas' => $modelo->listarPlantillasOficioDocx(),
-            'puede_subir' => (int)($_SESSION['rol_id'] ?? 0) === 1
+            'puede_subir' => (int)($_SESSION['rol_id'] ?? 0) === 1 || tienePermiso('oficios.generar')
         ]);
     }
 
@@ -244,10 +262,10 @@ class OficioVinculacionController
             $this->responderJson(['ok' => false, 'mensaje' => 'La sesión no está activa.'], 401);
         }
 
-        if ((int)($_SESSION['rol_id'] ?? 0) !== 1) {
+        if ((int)($_SESSION['rol_id'] ?? 0) !== 1 && !tienePermiso('oficios.generar')) {
             $this->responderJson([
                 'ok' => false,
-                'mensaje' => 'Solo un Administrador puede subir plantillas de oficio.'
+                'mensaje' => 'No tienes permiso para agregar plantillas de oficio.'
             ], 403);
         }
 
@@ -258,55 +276,15 @@ class OficioVinculacionController
             $this->responderJson(['ok' => false, 'mensaje' => 'Captura un nombre de hasta 150 caracteres.'], 422);
         }
 
-        if (!$archivo || (int)($archivo['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
-            $this->responderJson(['ok' => false, 'mensaje' => 'Selecciona un archivo DOCX válido.'], 422);
+        $resultado = $this->guardarPlantillaParaGeneracion(
+            $archivo, (int)$_SESSION['usuario_id'], new OficioVinculacionModel(), $nombre
+        );
+        if (!($resultado['ok'] ?? false)) {
+            $codigo = (int)($resultado['codigo_http'] ?? 422);
+            unset($resultado['codigo_http']);
+            $this->responderJson($resultado, $codigo);
         }
-
-        $rutaTemporal = (string)($archivo['tmp_name'] ?? '');
-        $nombreOriginal = (string)($archivo['name'] ?? '');
-        $tamano = (int)($archivo['size'] ?? 0);
-
-        if (strtolower(pathinfo($nombreOriginal, PATHINFO_EXTENSION)) !== 'docx' || $tamano <= 0 || $tamano > self::MAX_DOCX_BYTES) {
-            $this->responderJson(['ok' => false, 'mensaje' => 'Solo se permiten archivos DOCX de hasta 20 MB.'], 422);
-        }
-
-        $mime = class_exists('finfo') ? (new finfo(FILEINFO_MIME_TYPE))->file($rutaTemporal) : '';
-        $mimesPermitidos = [
-            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            'application/zip',
-            'application/octet-stream'
-        ];
-
-        if ($mime !== '' && !in_array($mime, $mimesPermitidos, true)) {
-            $this->responderJson(['ok' => false, 'mensaje' => 'El contenido del archivo no corresponde a un DOCX.'], 422);
-        }
-
-        $validacion = $this->validarPlantillaDocx($rutaTemporal);
-        if (!($validacion['ok'] ?? false)) {
-            $this->responderJson($validacion, 422);
-        }
-
-        $directorioRelativo = 'storage/templates/oficios_personalizados';
-        $directorio = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $directorioRelativo);
-        if (!is_dir($directorio) && !mkdir($directorio, 0775, true)) {
-            $this->responderJson(['ok' => false, 'mensaje' => 'No fue posible preparar el almacenamiento de plantillas.'], 500);
-        }
-
-        $nombreArchivo = 'oficio_' . date('Ymd_His') . '_' . bin2hex(random_bytes(6)) . '.docx';
-        $rutaFinal = $directorio . DIRECTORY_SEPARATOR . $nombreArchivo;
-
-        if (!move_uploaded_file($rutaTemporal, $rutaFinal)) {
-            $this->responderJson(['ok' => false, 'mensaje' => 'No fue posible guardar la plantilla.'], 500);
-        }
-
-        $rutaRelativa = $directorioRelativo . '/' . $nombreArchivo;
-        $modelo = new OficioVinculacionModel();
-        $id = $modelo->registrarPlantillaOficioDocx($nombre, $rutaRelativa, (int)$_SESSION['usuario_id']);
-
-        if ($id <= 0) {
-            @unlink($rutaFinal);
-            $this->responderJson(['ok' => false, 'mensaje' => 'No fue posible registrar la plantilla.'], 500);
-        }
+        $id = (int)$resultado['plantilla_id'];
 
         $this->responderJson(['ok' => true, 'mensaje' => 'Plantilla cargada correctamente.', 'plantilla_id' => $id]);
     }

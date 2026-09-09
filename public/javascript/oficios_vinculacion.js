@@ -68,6 +68,20 @@
                     '<div class="modal-body"><p>Selecciona el formato de oficio que deseas utilizar.</p>' +
                     '<div class="list-group mb-3" data-oficio-template-list></div>' +
                     '<div class="d-none" data-oficio-custom-file>' +
+                        '<label class="form-label" for="oficioSavedTemplate">Plantillas guardadas</label>' +
+                        '<select class="form-select mb-2" id="oficioSavedTemplate"><option value="">Seleccionar una plantilla...</option></select>' +
+                        '<div class="form-text mb-2" data-oficio-library-status role="status"></div>' +
+                        '<button type="button" class="btn btn-secondary btn-sm mb-3" data-oficio-add>+ Agregar plantilla</button>' +
+                        '<div class="border rounded p-3 mb-3 d-none" data-oficio-add-form>' +
+                            '<label class="form-label" for="oficioLibraryName">Nombre de la plantilla</label>' +
+                            '<input class="form-control mb-2" id="oficioLibraryName" maxlength="150">' +
+                            '<label class="form-label" for="oficioLibraryFile">Archivo DOCX</label>' +
+                            '<input class="form-control mb-2" id="oficioLibraryFile" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document">' +
+                            '<div class="form-text mb-2">Archivo DOCX de hasta 20 MB.</div>' +
+                            '<div class="d-flex gap-2 justify-content-end"><button type="button" class="btn btn-secondary btn-sm" data-oficio-add-cancel>Cancelar</button>' +
+                            '<button type="button" class="btn btn-system-save btn-sm" data-oficio-add-save>Guardar plantilla</button></div>' +
+                        '</div>' +
+                        '<div class="text-muted text-center mb-2">o seleccionar archivo desde mi equipo</div>' +
                         '<label class="form-label" for="oficioTemplateFile">Archivo de plantilla</label>' +
                         '<input class="form-control" id="oficioTemplateFile" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document">' +
                         '<div class="form-text">Archivo DOCX de hasta 20 MB.</div>' +
@@ -76,6 +90,48 @@
                     '<button type="button" class="btn btn-system-save" data-oficio-use-selected>Generar</button></div>' +
                 '</div></div>';
             document.body.appendChild(elemento);
+
+            const selector = elemento.querySelector('#oficioSavedTemplate');
+            const manual = elemento.querySelector('#oficioTemplateFile');
+            const bloqueAlta = elemento.querySelector('[data-oficio-add-form]');
+            selector.addEventListener('change', function () { if (selector.value) manual.value = ''; });
+            manual.addEventListener('change', function () { if (manual.files.length) selector.value = ''; });
+            elemento.querySelector('[data-oficio-add]').addEventListener('click', function () {
+                bloqueAlta.classList.remove('d-none');
+                elemento.querySelector('#oficioLibraryName').focus();
+            });
+            elemento.querySelector('[data-oficio-add-cancel]').addEventListener('click', function () {
+                bloqueAlta.classList.add('d-none');
+            });
+            elemento.querySelector('#oficioLibraryFile').addEventListener('change', function () {
+                const nombre = elemento.querySelector('#oficioLibraryName');
+                if (!nombre.value.trim() && this.files[0]) nombre.value = this.files[0].name.replace(/\.docx$/i, '').slice(0, 150);
+            });
+            elemento.querySelector('[data-oficio-add-save]').addEventListener('click', async function () {
+                const archivo = elemento.querySelector('#oficioLibraryFile').files[0];
+                const nombre = elemento.querySelector('#oficioLibraryName').value.trim();
+                if (!archivo || !nombre) { mostrarToast('Indica el nombre y selecciona un DOCX.', true); return; }
+                const formulario = new FormData();
+                formulario.append('nombre', nombre);
+                formulario.append('archivo', archivo, archivo.name);
+                this.disabled = true;
+                const generar = elemento.querySelector('[data-oficio-use-selected]');
+                generar.disabled = true;
+                try {
+                    const respuesta = await fetch('index.php?controller=oficioVinculacion&action=subirPlantilla', {
+                        method: 'POST', headers: { 'X-Requested-With': 'fetch' }, body: formulario
+                    });
+                    const datos = await respuesta.json();
+                    if (!datos.ok) throw new Error(datos.mensaje || 'No fue posible guardar la plantilla.');
+                    await cargarBiblioteca(elemento, datos.plantilla_id);
+                    manual.value = '';
+                    bloqueAlta.classList.add('d-none');
+                    elemento.querySelector('#oficioLibraryName').value = '';
+                    elemento.querySelector('#oficioLibraryFile').value = '';
+                    mostrarToast('Plantilla guardada correctamente.', false);
+                } catch (error) { mostrarToast(error.message, true); }
+                finally { this.disabled = false; generar.disabled = !Boolean(estadoActual?.puede_generar); }
+            });
 
             elemento.addEventListener('change', function (event) {
                 if (event.target.name !== 'oficio_plantilla') return;
@@ -88,7 +144,8 @@
                 const seleccion = elemento.querySelector('input[name="oficio_plantilla"]:checked');
                 if (!seleccion || !contextoGeneracion) return;
                 const archivo = elemento.querySelector('#oficioTemplateFile')?.files?.[0] || null;
-                if (seleccion.value === 'personalizada' && !archivo) {
+                const plantillaId = Number(selector.value || 0);
+                if (seleccion.value === 'personalizada' && !archivo && !plantillaId) {
                     mostrarToast('Selecciona una plantilla de oficio.', true);
                     return;
                 }
@@ -98,10 +155,27 @@
                     contextoGeneracion.boton,
                     contextoGeneracion.desdeDetalle,
                     seleccion.value,
-                    archivo
+                    archivo,
+                    plantillaId
                 );
             });
             return elemento;
+        };
+
+        const cargarBiblioteca = async function (modal, seleccionId) {
+            const estado = modal.querySelector('[data-oficio-library-status]');
+            estado.textContent = 'Cargando plantillas...';
+            const respuesta = await fetch('index.php?controller=oficioVinculacion&action=plantillas', {
+                headers: { 'X-Requested-With': 'fetch' }, cache: 'no-store'
+            });
+            const datos = await respuesta.json();
+            if (!datos.ok) throw new Error(datos.mensaje || 'No fue posible consultar las plantillas.');
+            const selector = modal.querySelector('#oficioSavedTemplate');
+            selector.replaceChildren(new Option('Seleccionar una plantilla...', ''));
+            datos.plantillas.forEach(function (item) { selector.add(new Option(item.nombre, String(item.id))); });
+            selector.value = seleccionId ? String(seleccionId) : '';
+            estado.textContent = datos.plantillas.length ? '' : 'Aún no hay plantillas guardadas.';
+            modal.querySelector('[data-oficio-add]').classList.toggle('d-none', !datos.puede_subir);
         };
 
         const prepararOpcionesPlantilla = function () {
@@ -119,6 +193,8 @@
             }).join('');
             modal.querySelector('[data-oficio-custom-file]').classList.add('d-none');
             modal.querySelector('#oficioTemplateFile').value = '';
+            modal.querySelector('#oficioSavedTemplate').replaceChildren(new Option('Seleccionar una plantilla...', ''));
+            modal.querySelector('[data-oficio-add-form]').classList.add('d-none');
             modal.querySelector('[data-oficio-use-selected]').disabled = !Boolean(estadoActual?.puede_generar);
         };
 
@@ -126,6 +202,8 @@
             contextoGeneracion = { seguimientoId: seguimientoId, boton: boton, desdeDetalle: desdeDetalle };
             prepararOpcionesPlantilla();
             bootstrap.Modal.getOrCreateInstance(obtenerModalPlantillas()).show();
+            try { await cargarBiblioteca(obtenerModalPlantillas()); }
+            catch (error) { obtenerModalPlantillas().querySelector('[data-oficio-library-status]').textContent = error.message; }
         };
 
         const normalizarAccionesBandeja = function () {
@@ -436,7 +514,7 @@
             return estadoActual;
         };
 
-        const generarOficio = async function (seguimientoId, boton, desdeDetalle, tipoPlantilla, archivoPlantilla) {
+        const generarOficio = async function (seguimientoId, boton, desdeDetalle, tipoPlantilla, archivoPlantilla, plantillaId) {
             if (!seguimientoId || !boton || boton.disabled) {
                 return;
             }
@@ -452,6 +530,8 @@
             formulario.append('tipo_plantilla', tipoPlantilla === 'personalizada' ? 'personalizada' : 'predeterminada');
             if (tipoPlantilla === 'personalizada' && archivoPlantilla) {
                 formulario.append('archivo_plantilla', archivoPlantilla, archivoPlantilla.name);
+            } else if (tipoPlantilla === 'personalizada' && plantillaId) {
+                formulario.append('plantilla_id', String(plantillaId));
             }
 
             try {

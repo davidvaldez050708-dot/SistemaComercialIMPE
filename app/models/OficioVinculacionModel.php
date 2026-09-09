@@ -75,10 +75,22 @@ class OficioVinculacionModel
                     AND activo = 1
                     AND archivo_docx IS NOT NULL
                     AND archivo_docx <> ''
+                    AND archivo_docx NOT LIKE 'storage/templates/oficios_personalizados/generacion%'
                 ORDER BY created_at DESC, id DESC";
         $resultado = $this->connection->query($sql);
 
         return $resultado ? $resultado->fetch_all(MYSQLI_ASSOC) : [];
+    }
+
+    public function obtenerPlantillaGuardada($id)
+    {
+        $stmt = $this->connection->prepare("SELECT id, nombre, archivo_docx
+            FROM plantillas_vinculacion WHERE id = ? AND tipo = 'OFICIO' AND activo = 1
+            AND archivo_docx IS NOT NULL AND archivo_docx <> ''
+            AND archivo_docx NOT LIKE 'storage/templates/oficios_personalizados/generacion%' LIMIT 1");
+        $stmt->bind_param('i', $id);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_assoc() ?: null;
     }
 
     public function registrarPlantillaOficioDocx($nombre, $ruta, $usuarioId)
