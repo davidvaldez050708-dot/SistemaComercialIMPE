@@ -28,12 +28,20 @@ if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
 }
 
 $seguimientoId = (int)($_POST['seguimiento_id'] ?? 0);
+$interaccionId = (int)($_POST['interaccion_id'] ?? 0);
 $callSid = trim((string)($_POST['call_sid'] ?? ''));
 $parentSid = trim((string)($_POST['parent_sid'] ?? ''));
 
-if ($seguimientoId <= 0 || !preg_match('/^CA[a-fA-F0-9]{32}$/', $callSid)) {
+if (
+    $seguimientoId <= 0 ||
+    $interaccionId <= 0 ||
+    !preg_match('/^CA[a-fA-F0-9]{32}$/', $callSid)
+) {
     http_response_code(422);
-    echo json_encode(['ok' => false, 'mensaje' => 'Los datos de la llamada no son válidos.']);
+    echo json_encode([
+        'ok' => false,
+        'mensaje' => 'Los datos de la llamada o de la interacción no son válidos.'
+    ]);
     exit;
 }
 
@@ -139,17 +147,18 @@ try {
         exit;
     }
 
-    $sqlInteraccion = "SELECT id
+    $sqlInteraccion = "SELECT
+            id,
+            proveedor_externo,
+            id_externo
         FROM interacciones_vinculacion
-        WHERE seguimiento_id = ?
+        WHERE id = ?
+          AND seguimiento_id = ?
           AND usuario_id = ?
           AND canal = 'LLAMADA_IP'
-          AND created_at >= (NOW() - INTERVAL 10 MINUTE)
-          AND (id_externo IS NULL OR id_externo = '')
-        ORDER BY id DESC
         LIMIT 1";
     $stmtInteraccion = $connection->prepare($sqlInteraccion);
-    $stmtInteraccion->bind_param('ii', $seguimientoId, $usuarioId);
+    $stmtInteraccion->bind_param('iii', $interaccionId, $seguimientoId, $usuarioId);
     $stmtInteraccion->execute();
     $interaccion = $stmtInteraccion->get_result()->fetch_assoc() ?: null;
 
@@ -157,7 +166,28 @@ try {
         http_response_code(404);
         echo json_encode([
             'ok' => false,
-            'mensaje' => 'Todavía no se encontró la interacción de llamada para vincular.'
+            'mensaje' => 'La interacción telefónica indicada no pertenece a este seguimiento.'
+        ]);
+        exit;
+    }
+
+    $idExternoActual = trim((string)($interaccion['id_externo'] ?? ''));
+    $proveedorActual = strtoupper(trim((string)($interaccion['proveedor_externo'] ?? '')));
+
+    if ($idExternoActual !== '' && !hash_equals($idExternoActual, $callSid)) {
+        http_response_code(409);
+        echo json_encode([
+            'ok' => false,
+            'mensaje' => 'Esta interacción ya está vinculada con otra llamada.'
+        ]);
+        exit;
+    }
+
+    if ($idExternoActual !== '' && $proveedorActual !== '' && $proveedorActual !== 'TWILIO') {
+        http_response_code(409);
+        echo json_encode([
+            'ok' => false,
+            'mensaje' => 'Esta interacción ya está vinculada con otro proveedor de telefonía.'
         ]);
         exit;
     }
@@ -166,7 +196,6 @@ try {
     $fechaFin = fechaMysql($call['end_time'] ?? '');
     $duracion = max(0, (int)($call['duration'] ?? 0));
     $proveedor = 'TWILIO';
-    $interaccionId = (int)$interaccion['id'];
 
     $sqlActualizar = "UPDATE interacciones_vinculacion
         SET fecha_inicio = ?,
@@ -176,7 +205,8 @@ try {
             id_externo = ?
         WHERE id = ?
           AND seguimiento_id = ?
-          AND usuario_id = ?";
+          AND usuario_id = ?
+          AND canal = 'LLAMADA_IP'";
     $stmtActualizar = $connection->prepare($sqlActualizar);
     $stmtActualizar->bind_param(
         'ssissiii',
@@ -193,7 +223,7 @@ try {
 
     echo json_encode([
         'ok' => true,
-        'mensaje' => 'La llamada real quedó vinculada con la interacción.',
+        'mensaje' => 'La llamada real quedó vinculada con la interacción exacta.',
         'interaccion_id' => $interaccionId,
         'call_sid' => $callSid,
         'duracion_segundos' => $duracion,
