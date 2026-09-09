@@ -1,0 +1,86 @@
+/* =========================================================
+   LLAMADA INSTITUCIONAL · REGISTRO OBLIGATORIO
+   ========================================================= */
+
+#modalLlamadaVinculacion.linkage-call-registration-required .btn-close,
+#modalLlamadaVinculacion.linkage-call-registration-required [data-call-window-toggle],
+#modalLlamadaVinculacion.linkage-call-registration-required .modal-footer [data-bs-dismiss="modal"],
+#modalLlamadaVinculacion.linkage-call-registration-required .linkage-call-actions {
+    display: none !important;
+}
+
+#modalLlamadaVinculacion.linkage-call-registration-required .modal-footer {
+    justify-content: flex-end;
+    padding-top: 2px !important;
+}
+
+#modalLlamadaVinculacion.linkage-call-registration-required [data-call-register] {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    min-width: 170px;
+}
+
+#modalLlamadaVinculacion.linkage-call-registration-required .linkage-call-result {
+    border-color: #cfdcf0;
+    background: #f5f8fd;
+    color: var(--color-primary, #17478c);
+}
+
+#modalLlamadaVinculacion.linkage-call-registration-required .linkage-call-result > i {
+    color: var(--color-primary, #17478c);
+}
+
+#modalLlamadaVinculacion.linkage-call-registration-required .linkage-call-result strong {
+    color: var(--color-text-primary, #172033);
+}
+
+#modalLlamadaVinculacion.linkage-call-registration-required .linkage-call-result span {
+    color: #5f6d82;
+}
+
+.linkage-call-required-note {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    margin-bottom: 6px;
+    padding: 9px 11px;
+    border: 1px solid #d5e0ef;
+    border-radius: 9px;
+    background: #f7f9fc;
+    color: #53627c;
+}
+
+.linkage-call-required-note > i {
+    margin-top: 1px;
+    flex: 0 0 auto;
+    color: var(--color-primary, #17478c);
+    font-size: 13px;
+}
+
+.linkage-call-required-note strong,
+.linkage-call-required-note span {
+    display: block;
+}
+
+.linkage-call-required-note strong {
+    color: var(--color-text-primary, #172033);
+    font-size: 10.5px;
+    font-weight: 800;
+}
+
+.linkage-call-required-note span {
+    margin-top: 2px;
+    color: #66748a;
+    font-size: 9.8px;
+    font-weight: 600;
+    line-height: 1.45;
+}
+
+@media (max-width: 575.98px) {
+    #modalLlamadaVinculacion.linkage-call-registration-required [data-call-register] {
+        width: 100%;
+        min-width: 0;
+    }
+}
