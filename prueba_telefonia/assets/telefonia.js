@@ -25,6 +25,11 @@
     let timerInterval = null;
     let timerStartedAt = null;
     let muted = false;
+    let activeParentSid = null;
+    let statusPollInterval = null;
+    let statusPollBusy = false;
+    let conversationStarted = false;
+    let lastChildStatus = null;
 
     function log(message, type = 'info') {
         const row = document.createElement('div');
@@ -46,8 +51,12 @@
     }
 
     function startTimer() {
-        stopTimer(false);
+        if (timerInterval || timerStartedAt) {
+            return;
+        }
+
         timerStartedAt = Date.now();
+        els.callTimer.textContent = '00:00';
         timerInterval = window.setInterval(() => {
             const elapsed = Math.floor((Date.now() - timerStartedAt) / 1000);
             els.callTimer.textContent = formatDuration(elapsed);
@@ -62,6 +71,137 @@
         timerStartedAt = null;
         if (reset) {
             els.callTimer.textContent = '00:00';
+        }
+    }
+
+    function stopStatusPolling() {
+        if (statusPollInterval) {
+            clearInterval(statusPollInterval);
+            statusPollInterval = null;
+        }
+        statusPollBusy = false;
+    }
+
+    async function fetchChildCall(parentSid) {
+        const response = await fetch(`api/estado_llamada.php?parent_sid=${encodeURIComponent(parentSid)}`, {
+            headers: { 'X-Requested-With': 'fetch' },
+            credentials: 'same-origin',
+            cache: 'no-store',
+        });
+        const data = await response.json();
+
+        if (!response.ok || !data.ok) {
+            throw new Error(data.mensaje || 'No se pudo consultar el estado real de la llamada.');
+        }
+
+        return data.call || null;
+    }
+
+    function applyChildCallState(childCall) {
+        if (!childCall) {
+            return;
+        }
+
+        const status = String(childCall.status || '');
+        const statusChanged = status !== lastChildStatus;
+        lastChildStatus = status;
+
+        if (status === 'queued') {
+            els.callLabel.textContent = 'Preparando llamada…';
+            return;
+        }
+
+        if (status === 'ringing') {
+            els.callLabel.textContent = 'Timbrando…';
+            setDeviceState('Timbrando', 'busy');
+            if (statusChanged) {
+                log('El teléfono destino está timbrando.');
+            }
+            return;
+        }
+
+        if (status === 'in-progress') {
+            els.callLabel.textContent = 'Llamada en curso';
+            setDeviceState('En llamada', 'busy');
+            els.btnMute.disabled = false;
+
+            if (!conversationStarted) {
+                conversationStarted = true;
+                startTimer();
+                log('El destino contestó. Inicia el tiempo de conversación.', 'success');
+            }
+            return;
+        }
+
+        if (status === 'completed') {
+            if (Number(childCall.duration) > 0) {
+                els.callTimer.textContent = formatDuration(childCall.duration);
+            }
+            return;
+        }
+
+        const terminalLabels = {
+            busy: 'Línea ocupada',
+            'no-answer': 'Sin respuesta',
+            failed: 'Llamada fallida',
+            canceled: 'Llamada cancelada',
+        };
+
+        if (terminalLabels[status]) {
+            els.callLabel.textContent = terminalLabels[status];
+        }
+    }
+
+    async function checkCallStatus(parentSid) {
+        if (!parentSid || statusPollBusy) {
+            return;
+        }
+
+        statusPollBusy = true;
+        try {
+            const childCall = await fetchChildCall(parentSid);
+            applyChildCallState(childCall);
+        } catch (error) {
+            // La consulta es complementaria al audio. No se interrumpe la llamada si falla temporalmente.
+            console.warn(error);
+        } finally {
+            statusPollBusy = false;
+        }
+    }
+
+    function startStatusPolling(parentSid) {
+        stopStatusPolling();
+        activeParentSid = parentSid;
+        lastChildStatus = null;
+        checkCallStatus(parentSid);
+        statusPollInterval = window.setInterval(() => checkCallStatus(parentSid), 800);
+    }
+
+    async function syncFinalDuration(parentSid, attempt = 0) {
+        if (!parentSid) {
+            return;
+        }
+
+        try {
+            const childCall = await fetchChildCall(parentSid);
+            if (childCall && Number(childCall.duration) > 0) {
+                els.callTimer.textContent = formatDuration(childCall.duration);
+                return;
+            }
+
+            const terminal = childCall && ['completed', 'busy', 'no-answer', 'failed', 'canceled'].includes(childCall.status);
+            if (terminal) {
+                if (!conversationStarted) {
+                    els.callTimer.textContent = '00:00';
+                }
+                return;
+            }
+        } catch (error) {
+            console.warn(error);
+        }
+
+        if (attempt < 6) {
+            window.setTimeout(() => syncFinalDuration(parentSid, attempt + 1), 800);
         }
     }
 
@@ -81,22 +221,41 @@
         els.speakerMeter.style.width = '0%';
         els.callLabel.textContent = 'Llamada finalizada';
         stopTimer(false);
+        stopStatusPolling();
+        activeParentSid = null;
+        lastChildStatus = null;
     }
 
     function bindCall(call) {
         activeCall = call;
+        conversationStarted = false;
         els.btnCall.disabled = true;
+        els.btnMute.disabled = true;
         els.btnHangup.disabled = false;
-        els.callLabel.textContent = 'Conectando llamada…';
+        els.callLabel.textContent = 'Conectando con Twilio…';
         els.volumeWrap.hidden = false;
-        log('Twilio está conectando la llamada.');
+        log('Twilio está preparando la llamada.');
+
+        call.on('ringing', () => {
+            els.callLabel.textContent = 'Timbrando…';
+            setDeviceState('Timbrando', 'busy');
+        });
 
         call.on('accept', () => {
-            els.callLabel.textContent = 'Llamada en curso';
-            els.btnMute.disabled = false;
-            setDeviceState('En llamada', 'busy');
-            startTimer();
-            log('Llamada aceptada por Twilio.', 'success');
+            const parentSid = call.parameters?.CallSid
+                || call.parameters?.CallSID
+                || call.outboundConnectionId
+                || '';
+
+            els.callLabel.textContent = 'Marcando al destino…';
+            setDeviceState('Marcando', 'busy');
+            log('Conexión con Twilio establecida. Esperando respuesta del destino.', 'success');
+
+            if (parentSid) {
+                startStatusPolling(parentSid);
+            } else {
+                log('No se obtuvo el Call SID para sincronizar el tiempo real.', 'error');
+            }
         });
 
         call.on('volume', (inputVolume, outputVolume) => {
@@ -105,9 +264,11 @@
         });
 
         const finish = (label) => {
+            const parentSid = activeParentSid;
             log(label);
             setDeviceState('Teléfono listo', 'ready');
             resetCallUi();
+            syncFinalDuration(parentSid);
             window.setTimeout(refreshHistory, 3000);
         };
 
@@ -178,6 +339,7 @@
         }
 
         try {
+            conversationStarted = false;
             els.callLabel.textContent = `Marcando a ${to}`;
             els.callTimer.textContent = '00:00';
             const call = await device.connect({ params: { To: to } });
@@ -302,6 +464,7 @@
     });
 
     window.addEventListener('beforeunload', () => {
+        stopStatusPolling();
         if (device) {
             device.destroy();
         }
