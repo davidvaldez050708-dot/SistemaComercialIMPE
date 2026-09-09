@@ -1,0 +1,53 @@
+/* =========================================================
+   REGISTRO DE LLAMADA · VISTA COMPACTA
+   ========================================================= */
+
+.impe-call-compact-hide {
+    display: none !important;
+}
+
+body.impe-call-registration-pending .linkage-call-required-note {
+    margin-bottom: 4px;
+    padding: 8px 10px;
+    gap: 8px;
+    align-items: center;
+    border-color: #d7e1ef;
+    border-radius: 8px;
+    background: #f7f9fc;
+}
+
+body.impe-call-registration-pending .linkage-call-required-note > i {
+    margin-top: 0;
+    font-size: 12px;
+}
+
+body.impe-call-registration-pending .linkage-call-required-note strong {
+    font-size: 10.2px;
+    line-height: 1.35;
+}
+
+body.impe-call-registration-pending .linkage-call-required-note span {
+    margin-top: 1px;
+    font-size: 9.4px;
+    line-height: 1.38;
+}
+
+[data-work-informative-interaction-note] .alert {
+    padding: 6px 9px !important;
+    margin-bottom: 4px !important;
+    border-radius: 8px;
+    font-size: 9.7px !important;
+    line-height: 1.4;
+}
+
+[data-work-informative-interaction-note] .alert strong {
+    font-size: inherit;
+    font-weight: 800;
+}
+
+@media (max-width: 575.98px) {
+    body.impe-call-registration-pending .linkage-call-required-note {
+        align-items: flex-start;
+        padding: 8px 9px;
+    }
+}
