@@ -93,6 +93,18 @@ class OficioVinculacionModel
         return $stmt->get_result()->fetch_assoc() ?: null;
     }
 
+    public function obtenerPlantillaOficioDocxPorId($id)
+    {
+        $stmt = $this->connection->prepare("SELECT id, nombre, archivo_docx, activo
+            FROM plantillas_vinculacion WHERE id = ? AND tipo = 'OFICIO'
+            AND archivo_docx IS NOT NULL AND archivo_docx <> ''
+            AND archivo_docx NOT LIKE 'storage/templates/oficios_personalizados/generacion%' LIMIT 1");
+        $stmt->bind_param('i', $id);
+        $stmt->execute();
+
+        return $stmt->get_result()->fetch_assoc() ?: null;
+    }
+
     public function registrarPlantillaOficioDocx($nombre, $ruta, $usuarioId)
     {
         $descripcion = 'Plantilla personalizada';
@@ -104,6 +116,22 @@ class OficioVinculacionModel
         $stmt->bind_param('ssssi', $nombre, $descripcion, $contenido, $ruta, $usuarioId);
 
         return $stmt->execute() ? (int)$this->connection->insert_id : 0;
+    }
+
+    public function desactivarPlantillaOficioDocx($plantillaId)
+    {
+        $sql = "UPDATE plantillas_vinculacion
+                SET activo = 0
+                WHERE id = ?
+                    AND tipo = 'OFICIO'
+                    AND activo = 1
+                    AND archivo_docx IS NOT NULL
+                    AND archivo_docx <> ''
+                    AND archivo_docx NOT LIKE 'storage/templates/oficios_personalizados/generacion%'";
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param('i', $plantillaId);
+
+        return $stmt->execute() && $stmt->affected_rows === 1;
     }
 
     public function eliminarPlantillaOficioDocx($plantillaId)
