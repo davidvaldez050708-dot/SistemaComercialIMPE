@@ -145,6 +145,17 @@
 
         const perfil = window.IMPE_ANALYST_CALLER_PROFILE || {};
         const telefono = String(perfil.callerId || '').trim();
+        const firma = [
+            telefono,
+            perfil.verified === true ? '1' : '0',
+            String(perfil.status || '')
+        ].join('|');
+
+        if (origen.dataset.callerSignature === firma) {
+            return;
+        }
+
+        origen.dataset.callerSignature = firma;
 
         if (telefono === '') {
             origen.innerHTML =
