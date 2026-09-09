@@ -34,6 +34,7 @@ $cssOpcionalDashboard = [
     'oficios_correo_ajustes.css',
     'seguimiento_expediente.css',
     'seguimiento_expediente_v2.css',
+    'seguimiento_interacciones_refinamientos.css',
     'seguimiento_llamadas_expediente.css',
     'seguimiento_llamadas_refinamientos.css',
     'seguimiento_llamadas_player.css',
