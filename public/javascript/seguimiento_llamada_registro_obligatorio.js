@@ -38,7 +38,7 @@
                     '<span></span>' +
                 '</div>';
             toast.querySelector('span').textContent = mensaje;
-            contenedor.appendChild(toast);
+            contenedorToastsAppend(contenedor, toast);
 
             const instancia = new bootstrap.Toast(toast, {
                 autohide: true,
@@ -48,6 +48,10 @@
                 toast.remove();
             });
             instancia.show();
+        };
+
+        const contenedorToastsAppend = function (contenedor, toast) {
+            contenedor.appendChild(toast);
         };
 
         const obtenerSeguimientoActual = function () {
@@ -68,7 +72,13 @@
         };
 
         const establecerPendiente = function (valor) {
-            registrationPending = Boolean(valor);
+            const nuevoValor = Boolean(valor);
+
+            if (registrationPending === nuevoValor) {
+                return;
+            }
+
+            registrationPending = nuevoValor;
 
             if (registrationPending) {
                 pendingSeguimientoId = obtenerSeguimientoActual();
@@ -143,10 +153,6 @@
                     fechaInicio.value = fechaLocalAhora();
                 }
 
-                if (resultado && String(resultado.value || '').trim() === '') {
-                    resultado.focus({ preventScroll: true });
-                }
-
                 let aviso = formulario.querySelector('[data-call-registration-required-note]');
                 if (!aviso) {
                     aviso = document.createElement('div');
@@ -165,6 +171,12 @@
 
                 formulario.classList.remove('d-none');
                 formulario.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+                if (resultado && String(resultado.value || '').trim() === '') {
+                    window.setTimeout(function () {
+                        resultado.focus({ preventScroll: true });
+                    }, 80);
+                }
             }, 80);
         };
 
@@ -217,11 +229,15 @@
             }
 
             if (resultBox && !resultBox.classList.contains('d-none') && registerButton) {
-                registerButton.classList.remove('d-none');
+                if (registerButton.classList.contains('d-none')) {
+                    registerButton.classList.remove('d-none');
+                }
 
                 const titulo = resultBox.querySelector('strong');
-                if (titulo) {
-                    titulo.textContent = 'Llamada finalizada · registro pendiente';
+                const textoTitulo = 'Llamada finalizada · registro pendiente';
+
+                if (titulo && titulo.textContent !== textoTitulo) {
+                    titulo.textContent = textoTitulo;
                 }
             }
         };
@@ -259,14 +275,21 @@
             });
 
             modalObserver?.disconnect();
-            modalObserver = new MutationObserver(sincronizarModal);
-            modalObserver.observe(modalEl, {
-                subtree: true,
-                childList: true,
-                characterData: true,
-                attributes: true,
-                attributeFilter: ['disabled', 'class']
+            modalObserver = new MutationObserver(function () {
+                sincronizarModal();
             });
+
+            modalObserver.observe(hangupButton, {
+                attributes: true,
+                attributeFilter: ['disabled']
+            });
+
+            if (resultBox) {
+                modalObserver.observe(resultBox, {
+                    attributes: true,
+                    attributeFilter: ['class']
+                });
+            }
 
             sincronizarModal();
         };
@@ -296,17 +319,26 @@
             }
 
             const botonSalir = document.querySelector('[data-call-navigation-leave]');
-            if (botonSalir && !botonSalir.disabled) {
+            if (!botonSalir || botonSalir.disabled) {
+                return;
+            }
+
+            const textoEsperado = 'Finalizar y registrar';
+            if (String(botonSalir.textContent || '').trim() !== textoEsperado) {
                 botonSalir.innerHTML =
                     '<i class="bi bi-journal-check"></i> Finalizar y registrar';
-                botonSalir.setAttribute(
-                    'title',
-                    'Finaliza la llamada y obliga a registrar su resultado antes de salir'
-                );
+            }
+
+            const tituloEsperado =
+                'Finaliza la llamada y obliga a registrar su resultado antes de salir';
+            if (botonSalir.getAttribute('title') !== tituloEsperado) {
+                botonSalir.setAttribute('title', tituloEsperado);
             }
         };
 
-        const navigationObserver = new MutationObserver(ajustarProteccionNavegacion);
+        const navigationObserver = new MutationObserver(function () {
+            ajustarProteccionNavegacion();
+        });
         navigationObserver.observe(document.body, {
             childList: true,
             subtree: true,
