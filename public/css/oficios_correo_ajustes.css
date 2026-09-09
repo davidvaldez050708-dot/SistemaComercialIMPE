@@ -536,12 +536,3 @@
         min-width: 0;
     }
 }
-
-/* Cambio visual mínimo: ocultar únicamente el selector manual inferior.
-   El input permanece en el DOM porque la lógica actual lo referencia. */
-#modalSeleccionarOficio [data-oficio-custom-file] > .text-muted.text-center,
-#modalSeleccionarOficio [data-oficio-custom-file] > label[for="oficioTemplateFile"],
-#modalSeleccionarOficio #oficioTemplateFile,
-#modalSeleccionarOficio [data-oficio-custom-file] > .form-text:last-child {
-    display: none !important;
-}
