@@ -99,6 +99,15 @@ if (
     exit('Esta llamada no tiene una grabación asociada.');
 }
 
+$rangeHeader = trim((string)($_SERVER['HTTP_RANGE'] ?? ''));
+if ($rangeHeader !== '' && !preg_match('/^bytes=\d*-\d*$/', $rangeHeader)) {
+    http_response_code(416);
+    header('Accept-Ranges: bytes');
+    exit;
+}
+
+$forzarDescarga = (int)($_GET['download'] ?? 0) === 1;
+
 try {
     $servicio = new TwilioRecordingService();
     $grabacion = $servicio->obtenerGrabacionParaLlamada($callSid);
@@ -108,16 +117,83 @@ try {
         exit('La grabación todavía no está disponible.');
     }
 
-    $audio = $servicio->descargarGrabacion($grabacion['sid']);
+    $audio = $servicio->descargarGrabacion($grabacion['sid'], $rangeHeader);
+    $body = (string)($audio['body'] ?? '');
     $contentType = trim((string)($audio['content_type'] ?? ''));
+    $statusUpstream = (int)($audio['status'] ?? 200);
+    $headersUpstream = is_array($audio['headers'] ?? null) ? $audio['headers'] : [];
+    $nombreArchivo = 'llamada-' . $interaccionId . '.mp3';
 
     header('Content-Type: ' . ($contentType !== '' ? $contentType : 'audio/mpeg'));
-    header('Content-Length: ' . strlen($audio['body']));
-    header('Content-Disposition: inline; filename="llamada-' . $interaccionId . '.mp3"');
+    header('Accept-Ranges: bytes');
+    header(
+        'Content-Disposition: ' . ($forzarDescarga ? 'attachment' : 'inline') .
+        '; filename="' . $nombreArchivo . '"'
+    );
     header('Cache-Control: private, max-age=300');
     header('X-Content-Type-Options: nosniff');
 
-    echo $audio['body'];
+    if (
+        $rangeHeader !== '' &&
+        $statusUpstream === 206 &&
+        !empty($headersUpstream['content-range'])
+    ) {
+        http_response_code(206);
+        header('Content-Range: ' . $headersUpstream['content-range']);
+        header('Content-Length: ' . strlen($body));
+        echo $body;
+        exit;
+    }
+
+    if ($rangeHeader !== '') {
+        $size = strlen($body);
+
+        if (!preg_match('/^bytes=(\d*)-(\d*)$/', $rangeHeader, $matches)) {
+            http_response_code(416);
+            header('Content-Range: bytes */' . $size);
+            exit;
+        }
+
+        $startRaw = $matches[1];
+        $endRaw = $matches[2];
+
+        if ($startRaw === '' && $endRaw === '') {
+            http_response_code(416);
+            header('Content-Range: bytes */' . $size);
+            exit;
+        }
+
+        if ($startRaw === '') {
+            $suffixLength = (int)$endRaw;
+            if ($suffixLength <= 0) {
+                http_response_code(416);
+                header('Content-Range: bytes */' . $size);
+                exit;
+            }
+            $start = max(0, $size - $suffixLength);
+            $end = $size - 1;
+        } else {
+            $start = (int)$startRaw;
+            $end = $endRaw === '' ? $size - 1 : min((int)$endRaw, $size - 1);
+        }
+
+        if ($size <= 0 || $start < 0 || $start >= $size || $end < $start) {
+            http_response_code(416);
+            header('Content-Range: bytes */' . $size);
+            exit;
+        }
+
+        $partial = substr($body, $start, ($end - $start) + 1);
+        http_response_code(206);
+        header('Content-Range: bytes ' . $start . '-' . $end . '/' . $size);
+        header('Content-Length: ' . strlen($partial));
+        echo $partial;
+        exit;
+    }
+
+    http_response_code(200);
+    header('Content-Length: ' . strlen($body));
+    echo $body;
 } catch (Throwable $error) {
     http_response_code(502);
     exit('No fue posible recuperar la grabación en este momento.');
