@@ -9,6 +9,10 @@
     gap: 6px;
 }
 
+.linkage-call-window-actions .btn-close {
+    margin: 0;
+}
+
 .linkage-call-window-toggle {
     min-height: 30px;
     padding: 5px 9px;
