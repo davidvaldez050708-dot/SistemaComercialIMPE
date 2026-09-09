@@ -55,6 +55,8 @@ if (!$seguimiento) {
 }
 
 $llamadas = [];
+$marcadorBuzon = '[BUZON_VOZ]';
+$marcadorFueraServicio = '[FUERA_SERVICIO]';
 
 foreach ($modelo->obtenerInteraccionesSeguimiento($seguimientoId) as $interaccion) {
     if (strtoupper((string)($interaccion['canal'] ?? '')) !== 'LLAMADA_IP') {
@@ -65,7 +67,31 @@ foreach ($modelo->obtenerInteraccionesSeguimiento($seguimientoId) as $interaccio
     $proveedor = strtoupper(trim((string)($interaccion['proveedor_externo'] ?? '')));
     $callSid = trim((string)($interaccion['id_externo'] ?? ''));
     $duracion = max(0, (int)($interaccion['duracion_segundos'] ?? 0));
+    $resultado = strtoupper(trim((string)($interaccion['resultado'] ?? '')));
+    $notas = trim((string)($interaccion['notas'] ?? ''));
+    $resultadoTelefonico = $resultado;
+    $excluirGrabacion = false;
+
+    if (strpos($notas, $marcadorBuzon) !== false) {
+        $resultadoTelefonico = 'BUZON_VOZ';
+        $excluirGrabacion = true;
+    } elseif (strpos($notas, $marcadorFueraServicio) !== false) {
+        $resultadoTelefonico = 'FUERA_SERVICIO';
+        $excluirGrabacion = true;
+    }
+
+    if (in_array($resultado, ['NO_CONTESTO', 'SIN_RESPUESTA', 'NUMERO_INCORRECTO'], true)) {
+        $excluirGrabacion = true;
+    }
+
+    $notasLimpias = trim(str_replace(
+        [$marcadorBuzon, $marcadorFueraServicio],
+        '',
+        $notas
+    ));
+
     $puedeTenerGrabacion =
+        !$excluirGrabacion &&
         $interaccionId > 0 &&
         $proveedor === 'TWILIO' &&
         $duracion > 0 &&
@@ -81,11 +107,13 @@ foreach ($modelo->obtenerInteraccionesSeguimiento($seguimientoId) as $interaccio
         'fecha_inicio' => $interaccion['fecha_inicio'] ?? null,
         'fecha_fin' => $interaccion['fecha_fin'] ?? null,
         'duracion_segundos' => $duracion,
-        'resultado' => (string)($interaccion['resultado'] ?? ''),
-        'notas' => (string)($interaccion['notas'] ?? ''),
+        'resultado' => $resultado,
+        'resultado_telefonico' => $resultadoTelefonico,
+        'notas' => $notasLimpias,
         'proveedor' => $proveedor,
         'usuario' => $nombreUsuario,
         'rol' => (string)($interaccion['rol'] ?? ''),
+        'excluir_grabacion' => $excluirGrabacion,
         'tiene_grabacion' => (bool)$puedeTenerGrabacion,
         'grabacion_url' => $puedeTenerGrabacion
             ? 'prueba_telefonia/api/grabacion_interaccion.php?interaccion_id=' . $interaccionId
