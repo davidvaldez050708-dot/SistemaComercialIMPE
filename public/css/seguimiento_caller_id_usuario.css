@@ -1,0 +1,72 @@
+/* =========================================================
+   LLAMADA INSTITUCIONAL · CALLER ID DEL ANALISTA
+   ========================================================= */
+
+.linkage-call-origin {
+    margin: -2px 0 8px;
+    padding: 0 2px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #66748a;
+    font-size: 10px;
+    font-weight: 650;
+    line-height: 1.35;
+}
+
+.linkage-call-origin > i {
+    flex: 0 0 auto;
+    color: var(--color-primary, #17478c);
+    font-size: 11px;
+}
+
+.linkage-call-origin span {
+    min-width: 0;
+}
+
+.linkage-call-origin strong {
+    color: #3d4b61;
+    font-weight: 800;
+}
+
+.linkage-call-origin small {
+    margin-left: auto;
+    padding: 3px 6px;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    flex: 0 0 auto;
+    border: 1px solid #cde4dc;
+    border-radius: 999px;
+    background: #f3fbf8;
+    color: #16816d;
+    font-size: 8.8px;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.linkage-call-origin small.is-warning,
+.linkage-call-origin.is-warning small {
+    border-color: #ead9b5;
+    background: #fffaf0;
+    color: #9a6b16;
+}
+
+.linkage-call-origin.is-warning > i {
+    color: #9a6b16;
+}
+
+#modalLlamadaVinculacion.linkage-call-minimized .linkage-call-origin {
+    display: none;
+}
+
+@media (max-width: 575.98px) {
+    .linkage-call-origin {
+        flex-wrap: wrap;
+        row-gap: 4px;
+    }
+
+    .linkage-call-origin small {
+        margin-left: 17px;
+    }
+}
