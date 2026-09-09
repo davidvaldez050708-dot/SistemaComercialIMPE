@@ -35,6 +35,7 @@ $cssOpcionalDashboard = [
     'seguimiento_expediente.css',
     'seguimiento_expediente_v2.css',
     'seguimiento_flujo.css',
+    'seguimiento_llamada_twilio.css',
     'seguimiento_post_envio.css',
     'agenda_reunion.css',
     'agenda_reunion_refinamientos.css'
