@@ -1,0 +1,198 @@
+/* =========================================================
+   LLAMADA INSTITUCIONAL · MODO FLOTANTE
+   ========================================================= */
+
+.linkage-call-window-actions {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.linkage-call-window-toggle {
+    min-height: 30px;
+    padding: 5px 9px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    border: 1px solid #dbe3ee;
+    border-radius: 8px;
+    background: #f8fafc;
+    color: var(--color-primary, #17478c);
+    font-size: 10px;
+    font-weight: 800;
+    line-height: 1;
+    transition: border-color .16s ease, background-color .16s ease, color .16s ease;
+}
+
+.linkage-call-window-toggle:hover:not(:disabled),
+.linkage-call-window-toggle:focus-visible:not(:disabled) {
+    border-color: #cbd8ec;
+    background: var(--color-primary-soft, #eef4ff);
+    color: var(--color-primary, #17478c);
+    outline: none;
+}
+
+.linkage-call-window-toggle:disabled {
+    opacity: .55;
+    cursor: not-allowed;
+}
+
+.linkage-call-window-toggle i {
+    margin: 0;
+    font-size: 11px;
+}
+
+body.impe-call-workspace-mode {
+    overflow: auto !important;
+}
+
+body.impe-call-workspace-mode .modal-backdrop,
+body.impe-call-workspace-mode .offcanvas-backdrop {
+    display: none !important;
+}
+
+#modalLlamadaVinculacion.linkage-call-minimized {
+    position: fixed !important;
+    inset: auto 18px 18px auto !important;
+    width: min(355px, calc(100vw - 28px)) !important;
+    height: auto !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    background: transparent !important;
+    pointer-events: none !important;
+    z-index: 1095 !important;
+}
+
+#modalLlamadaVinculacion.linkage-call-minimized .modal-dialog {
+    width: 100% !important;
+    max-width: none !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    transform: none !important;
+    pointer-events: auto !important;
+}
+
+#modalLlamadaVinculacion.linkage-call-minimized .linkage-call-modal {
+    overflow: hidden;
+    border-color: #dce4ef;
+    border-radius: 14px;
+    background: #ffffff;
+    box-shadow: 0 16px 38px rgba(28, 46, 74, .17);
+}
+
+#modalLlamadaVinculacion.linkage-call-minimized .modal-header {
+    padding: 12px 13px 8px;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+#modalLlamadaVinculacion.linkage-call-minimized .modal-header > div:first-child {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+#modalLlamadaVinculacion.linkage-call-minimized .linkage-call-eyebrow {
+    margin-bottom: 2px;
+    font-size: 8.8px;
+    letter-spacing: .055em;
+}
+
+#modalLlamadaVinculacion.linkage-call-minimized .modal-title {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    font-size: 12px;
+    line-height: 1.32;
+}
+
+#modalLlamadaVinculacion.linkage-call-minimized .linkage-call-window-actions {
+    flex: 0 0 auto;
+}
+
+#modalLlamadaVinculacion.linkage-call-minimized .linkage-call-window-toggle {
+    min-height: 28px;
+    padding: 4px 8px;
+    border-color: #d8e2ef;
+    background: #f7f9fc;
+    font-size: 9.5px;
+}
+
+#modalLlamadaVinculacion.linkage-call-minimized .btn-close {
+    display: none;
+}
+
+#modalLlamadaVinculacion.linkage-call-minimized .modal-body {
+    padding: 4px 13px 12px;
+}
+
+#modalLlamadaVinculacion.linkage-call-minimized .linkage-call-number,
+#modalLlamadaVinculacion.linkage-call-minimized .linkage-call-meters,
+#modalLlamadaVinculacion.linkage-call-minimized [data-call-result],
+#modalLlamadaVinculacion.linkage-call-minimized .modal-footer,
+#modalLlamadaVinculacion.linkage-call-minimized [data-call-start] {
+    display: none !important;
+}
+
+#modalLlamadaVinculacion.linkage-call-minimized .linkage-call-state {
+    margin: 0 0 9px;
+    padding: 9px 10px;
+    border: 1px solid #e3e9f1;
+    border-radius: 9px;
+    background: #f7f9fc;
+}
+
+#modalLlamadaVinculacion.linkage-call-minimized .linkage-call-state span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: #5f6d82;
+    font-size: 10px;
+    font-weight: 750;
+    white-space: nowrap;
+}
+
+#modalLlamadaVinculacion.linkage-call-minimized .linkage-call-state strong {
+    flex: 0 0 auto;
+    font-size: 18px;
+}
+
+#modalLlamadaVinculacion.linkage-call-minimized .linkage-call-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+}
+
+#modalLlamadaVinculacion.linkage-call-minimized .linkage-call-actions .btn {
+    min-height: 34px;
+    padding: 6px 8px;
+    border-radius: 8px;
+    font-size: 10px;
+}
+
+#modalLlamadaVinculacion.linkage-call-minimized .linkage-call-actions .btn i {
+    font-size: 11px;
+}
+
+@media (max-width: 575.98px) {
+    .linkage-call-window-toggle span {
+        display: none;
+    }
+
+    .linkage-call-window-toggle {
+        width: 30px;
+        min-width: 30px;
+        padding: 0;
+    }
+
+    #modalLlamadaVinculacion.linkage-call-minimized {
+        inset: auto 10px 10px 10px !important;
+        width: auto !important;
+    }
+
+    #modalLlamadaVinculacion.linkage-call-minimized .linkage-call-actions {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
