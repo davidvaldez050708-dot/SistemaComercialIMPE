@@ -46,6 +46,7 @@ $cssOpcionalDashboard = [
 $jsOpcionalHead = [
     'seguimiento_llamada_twilio.js',
     'seguimiento_llamadas_expediente.js',
+    'seguimiento_llamadas_desplegable.js',
     'agenda_reunion.js',
     'agenda_kam_cambio.js',
     'reunion_fecha_guard.js',
