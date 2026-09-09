@@ -9,20 +9,28 @@
 .linkage-expediente-enhanced [data-expediente-pane="interacciones"] .linkage-history-item {
     padding: 8px 10px;
     grid-template-columns: 30px minmax(0, 1fr);
+    grid-template-rows: auto auto;
     column-gap: 8px;
-    row-gap: 0;
+    row-gap: 1px;
     align-items: start;
 }
 
+/* El icono acompaña las dos líneas de contenido sin obligar a que la
+   primera fila mida lo mismo que sus 30 px de alto. */
 .linkage-expediente-enhanced [data-expediente-pane="interacciones"] .linkage-expediente-history-icon {
     width: 30px;
     height: 30px;
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    align-self: start;
     border-radius: 8px;
     font-size: 11px;
 }
 
 .linkage-expediente-enhanced [data-expediente-pane="interacciones"] .linkage-history-item > div {
     min-width: 0;
+    grid-column: 2;
+    grid-row: 1;
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 8px;
@@ -45,7 +53,10 @@
 }
 
 .linkage-expediente-enhanced [data-expediente-pane="interacciones"] .linkage-history-item > p {
-    margin: 3px 0 0;
+    min-width: 0;
+    grid-column: 2;
+    grid-row: 2;
+    margin: 1px 0 0;
     font-size: 11px;
     line-height: 1.35;
 }
