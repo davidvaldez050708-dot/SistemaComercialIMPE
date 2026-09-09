@@ -54,6 +54,10 @@
             return Number(offcanvas.dataset.flowSeguimientoId || 0);
         };
 
+        const llamadaActiva = function () {
+            return Boolean(hangupButton && !hangupButton.disabled);
+        };
+
         const estaPendiente = function () {
             return registrationPending ||
                 String(modalEl?.dataset.callRegistrationPending || '') === '1';
@@ -286,7 +290,49 @@
             observer.observe(document.body, { childList: true, subtree: true });
         }
 
+        const ajustarProteccionNavegacion = function () {
+            if (!llamadaActiva()) {
+                return;
+            }
+
+            const botonSalir = document.querySelector('[data-call-navigation-leave]');
+            if (botonSalir && !botonSalir.disabled) {
+                botonSalir.innerHTML =
+                    '<i class="bi bi-journal-check"></i> Finalizar y registrar';
+                botonSalir.setAttribute(
+                    'title',
+                    'Finaliza la llamada y obliga a registrar su resultado antes de salir'
+                );
+            }
+        };
+
+        const navigationObserver = new MutationObserver(ajustarProteccionNavegacion);
+        navigationObserver.observe(document.body, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['hidden']
+        });
+
         document.addEventListener('click', function (event) {
+            const botonFinalizarDesdeNavegacion = event.target.closest(
+                '[data-call-navigation-leave]'
+            );
+
+            if (botonFinalizarDesdeNavegacion && llamadaActiva()) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+
+                hangupButton.click();
+                document.querySelector('[data-call-navigation-stay]')?.click();
+
+                mostrarToast(
+                    'La llamada se está finalizando. Registra su resultado antes de salir.',
+                    false
+                );
+                return;
+            }
+
             const botonRegistrar = event.target.closest('[data-call-register]');
 
             if (botonRegistrar && estaPendiente()) {
