@@ -1,0 +1,260 @@
+/* =========================================================
+   EXPEDIENTE · LLAMADAS Y GRABACIONES
+   ========================================================= */
+
+.linkage-call-recordings {
+    margin: 0 0 15px;
+    padding: 0 0 15px;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.linkage-call-recordings-heading {
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.linkage-call-recordings-title {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+}
+
+.linkage-call-recordings-icon,
+.linkage-call-recording-card-icon {
+    flex: 0 0 auto;
+    width: 32px;
+    height: 32px;
+    display: inline-grid;
+    place-items: center;
+    border: 1px solid #dce5f2;
+    border-radius: 9px;
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
+    font-size: 12px;
+}
+
+.linkage-call-recordings-title > div {
+    min-width: 0;
+    display: grid;
+    gap: 2px;
+}
+
+.linkage-call-recordings-title strong {
+    color: var(--color-text-primary);
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1.3;
+}
+
+.linkage-call-recordings-title p {
+    margin: 0;
+    color: var(--color-text-secondary);
+    font-size: 10.5px;
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+.linkage-call-recordings-count {
+    flex: 0 0 auto;
+    min-width: 29px;
+    min-height: 29px;
+    padding: 4px 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #dbe3ee;
+    border-radius: 999px;
+    background: #f8fafc;
+    color: var(--color-primary);
+    font-size: 10.5px;
+    font-weight: 800;
+}
+
+.linkage-call-recordings-list {
+    display: grid;
+    gap: 8px;
+}
+
+.linkage-call-recordings-loading,
+.linkage-call-recordings-empty {
+    min-height: 52px;
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: 1px dashed #dce3ec;
+    border-radius: 10px;
+    background: #fafbfd;
+    color: var(--color-text-secondary);
+    font-size: 10.5px;
+    font-weight: 650;
+    text-align: center;
+}
+
+.linkage-call-recordings-loading .spinner-border {
+    width: 14px;
+    height: 14px;
+    border-width: 2px;
+}
+
+.linkage-call-recording-card {
+    min-width: 0;
+    padding: 10px 11px;
+    display: grid;
+    grid-template-columns: 32px minmax(0, 1fr);
+    gap: 10px;
+    align-items: start;
+    border: 1px solid #e0e6ef;
+    border-radius: 11px;
+    background: #fbfcfe;
+}
+
+.linkage-call-recording-card-icon {
+    background: #ffffff;
+}
+
+.linkage-call-recording-body {
+    min-width: 0;
+    display: grid;
+    gap: 7px;
+}
+
+.linkage-call-recording-top {
+    min-width: 0;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.linkage-call-recording-top > div {
+    min-width: 0;
+    display: grid;
+    gap: 2px;
+}
+
+.linkage-call-recording-top strong {
+    color: var(--color-text-primary);
+    font-size: 11.5px;
+    font-weight: 800;
+    line-height: 1.35;
+}
+
+.linkage-call-recording-top > div > span {
+    overflow-wrap: anywhere;
+    color: var(--color-text-secondary);
+    font-size: 9.8px;
+    font-weight: 650;
+    line-height: 1.4;
+}
+
+.linkage-call-recording-duration {
+    flex: 0 0 auto;
+    min-height: 25px;
+    padding: 4px 7px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    border: 1px solid #e0e6ef;
+    border-radius: 999px;
+    background: #ffffff;
+    color: #5d6878;
+    font-size: 9.8px;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.linkage-call-recording-notes {
+    margin: 0;
+    overflow-wrap: anywhere;
+    color: var(--color-text-secondary);
+    font-size: 10.5px;
+    font-weight: 600;
+    line-height: 1.45;
+}
+
+.linkage-call-recording-audio {
+    min-width: 0;
+    padding-top: 7px;
+    display: grid;
+    grid-template-columns: auto minmax(180px, 1fr);
+    gap: 8px;
+    align-items: center;
+    border-top: 1px solid #e6ebf2;
+}
+
+.linkage-call-recording-audio.is-unavailable {
+    grid-template-columns: 1fr;
+}
+
+.linkage-call-recording-audio-label,
+.linkage-call-recording-unavailable {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--color-text-secondary);
+    font-size: 9.8px;
+    font-weight: 750;
+    white-space: nowrap;
+}
+
+.linkage-call-recording-audio-label i {
+    color: var(--color-accent);
+    font-size: 11px;
+}
+
+.linkage-call-recording-unavailable i {
+    color: #8994a5;
+}
+
+.linkage-call-recording-audio audio {
+    width: 100%;
+    min-width: 0;
+    height: 32px;
+}
+
+@media (max-width: 767.98px) {
+    .linkage-call-recordings-heading,
+    .linkage-call-recording-top {
+        align-items: flex-start;
+    }
+
+    .linkage-call-recordings-title p {
+        max-width: 260px;
+    }
+
+    .linkage-call-recording-audio {
+        grid-template-columns: 1fr;
+        gap: 6px;
+    }
+
+    .linkage-call-recording-audio-label,
+    .linkage-call-recording-unavailable {
+        white-space: normal;
+    }
+}
+
+@media (max-width: 479.98px) {
+    .linkage-call-recording-card {
+        grid-template-columns: 28px minmax(0, 1fr);
+        gap: 8px;
+        padding: 9px;
+    }
+
+    .linkage-call-recording-card-icon {
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        font-size: 11px;
+    }
+
+    .linkage-call-recording-top {
+        flex-direction: column;
+        gap: 6px;
+    }
+}

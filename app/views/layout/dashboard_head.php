@@ -34,6 +34,7 @@ $cssOpcionalDashboard = [
     'oficios_correo_ajustes.css',
     'seguimiento_expediente.css',
     'seguimiento_expediente_v2.css',
+    'seguimiento_grabaciones.css',
     'seguimiento_flujo.css',
     'seguimiento_llamada_twilio.css',
     'seguimiento_post_envio.css',
@@ -43,6 +44,7 @@ $cssOpcionalDashboard = [
 
 $jsOpcionalHead = [
     'seguimiento_llamada_twilio.js',
+    'seguimiento_grabaciones.js',
     'agenda_reunion.js',
     'agenda_kam_cambio.js',
     'reunion_fecha_guard.js',
