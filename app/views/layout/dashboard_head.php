@@ -42,6 +42,7 @@ $cssOpcionalDashboard = [
     'seguimiento_llamada_twilio.css',
     'seguimiento_llamada_flotante.css',
     'seguimiento_llamada_registro_obligatorio.css',
+    'seguimiento_llamada_registro_compacto.css',
     'seguimiento_post_envio.css',
     'agenda_reunion.css',
     'agenda_reunion_refinamientos.css'
@@ -52,6 +53,7 @@ $jsOpcionalHead = [
     'seguimiento_llamada_twilio.js',
     'seguimiento_llamada_flotante.js',
     'seguimiento_llamada_registro_obligatorio.js',
+    'seguimiento_llamada_registro_compacto.js',
     'seguimiento_llamadas_expediente.js',
     'seguimiento_llamadas_desplegable.js',
     'agenda_reunion.js',
