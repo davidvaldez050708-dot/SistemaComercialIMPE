@@ -250,7 +250,8 @@ class OficioVinculacionController
         $this->responderJson([
             'ok' => true,
             'plantillas' => $modelo->listarPlantillasOficioDocx(),
-            'puede_subir' => (int)($_SESSION['rol_id'] ?? 0) === 1 || tienePermiso('oficios.generar')
+            'puede_subir' => (int)($_SESSION['rol_id'] ?? 0) === 1 || tienePermiso('oficios.generar'),
+            'puede_eliminar' => (int)($_SESSION['rol_id'] ?? 0) === 1
         ]);
     }
 
@@ -287,6 +288,57 @@ class OficioVinculacionController
         $id = (int)$resultado['plantilla_id'];
 
         $this->responderJson(['ok' => true, 'mensaje' => 'Plantilla cargada correctamente.', 'plantilla_id' => $id]);
+    }
+
+    public function eliminarPlantilla()
+    {
+        $this->validarMetodoPostJson();
+        $this->validarPermisoJson('oficios.ver');
+
+        if ((int)($_SESSION['rol_id'] ?? 0) !== 1) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'No tienes permiso para eliminar plantillas de oficio.'
+            ], 403);
+        }
+
+        $plantillaId = (int)($_POST['plantilla_id'] ?? 0);
+
+        if ($plantillaId <= 0) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'La plantilla seleccionada no es válida.'
+            ], 422);
+        }
+
+        $modelo = new OficioVinculacionModel();
+        $plantilla = $modelo->obtenerPlantillaOficioDocxPorId($plantillaId);
+
+        if (!$plantilla) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'La plantilla solicitada no existe.'
+            ], 404);
+        }
+
+        if ((int)($plantilla['activo'] ?? 0) !== 1) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'La plantilla ya no está activa.'
+            ], 409);
+        }
+
+        if (!$modelo->desactivarPlantillaOficioDocx($plantillaId)) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'No fue posible eliminar la plantilla.'
+            ], 409);
+        }
+
+        $this->responderJson([
+            'ok' => true,
+            'mensaje' => 'Plantilla eliminada correctamente.'
+        ]);
     }
 
     private function validarPlantillaDocx($ruta)

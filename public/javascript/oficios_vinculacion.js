@@ -52,6 +52,79 @@
             bootstrap.Toast.getOrCreateInstance(toast).show();
         };
 
+        const actualizarAccionEliminarPlantilla = function (modal) {
+            const selector = modal.querySelector('#oficioSavedTemplate');
+            const boton = modal.querySelector('[data-oficio-delete-template]');
+
+            if (!selector || !boton) {
+                return;
+            }
+
+            const puedeEliminar = modal.dataset.puedeEliminarPlantillas === '1';
+            boton.classList.toggle('d-none', !puedeEliminar || !selector.value);
+        };
+
+        const obtenerModalEliminarPlantilla = function () {
+            let modal = document.getElementById('modalEliminarPlantillaOficio');
+
+            if (modal) {
+                return modal;
+            }
+
+            modal = document.createElement('div');
+            modal.id = 'modalEliminarPlantillaOficio';
+            modal.className = 'modal fade';
+            modal.tabIndex = -1;
+            modal.setAttribute('aria-hidden', 'true');
+            modal.innerHTML =
+                '<div class="modal-dialog modal-dialog-centered system-confirm-dialog">' +
+                    '<div class="modal-content system-form-modal">' +
+                        '<div class="modal-header">' +
+                            '<div><h2 class="modal-title fs-5">Eliminar plantilla</h2></div>' +
+                            '<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>' +
+                        '</div>' +
+                        '<div class="modal-body">' +
+                            '<p class="confirm-text mb-2">¿Eliminar esta plantilla?</p>' +
+                            '<p class="text-muted mb-0">La plantilla dejará de estar disponible para generar nuevos oficios.</p>' +
+                        '</div>' +
+                        '<div class="modal-footer">' +
+                            '<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>' +
+                            '<button type="button" class="btn btn-danger" data-oficio-delete-confirm>Eliminar plantilla</button>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>';
+            document.body.appendChild(modal);
+
+            return modal;
+        };
+
+        const confirmarEliminacionPlantilla = function (modalPrincipal) {
+            return new Promise(function (resolve) {
+                const modalConfirmacion = obtenerModalEliminarPlantilla();
+                const instanciaPrincipal = bootstrap.Modal.getOrCreateInstance(modalPrincipal);
+                const instanciaConfirmacion = bootstrap.Modal.getOrCreateInstance(modalConfirmacion);
+                const botonConfirmar = modalConfirmacion.querySelector('[data-oficio-delete-confirm]');
+                let confirmado = false;
+
+                const confirmar = function () {
+                    confirmado = true;
+                    instanciaConfirmacion.hide();
+                };
+
+                botonConfirmar.addEventListener('click', confirmar);
+                modalConfirmacion.addEventListener('hidden.bs.modal', function () {
+                    botonConfirmar.removeEventListener('click', confirmar);
+                    instanciaPrincipal.show();
+                    resolve(confirmado);
+                }, { once: true });
+                modalPrincipal.addEventListener('hidden.bs.modal', function () {
+                    instanciaConfirmacion.show();
+                }, { once: true });
+
+                instanciaPrincipal.hide();
+            });
+        };
+
         const obtenerModalPlantillas = function () {
             let elemento = document.getElementById('modalSeleccionarOficio');
             if (elemento) return elemento;
@@ -69,7 +142,10 @@
                     '<div class="list-group mb-3" data-oficio-template-list></div>' +
                     '<div class="d-none" data-oficio-custom-file>' +
                         '<label class="form-label" for="oficioSavedTemplate">Plantillas guardadas</label>' +
-                        '<select class="form-select mb-2" id="oficioSavedTemplate"><option value="">Seleccionar una plantilla...</option></select>' +
+                        '<div class="d-flex gap-2 mb-2">' +
+                            '<select class="form-select" id="oficioSavedTemplate"><option value="">Seleccionar una plantilla...</option></select>' +
+                            '<button type="button" class="btn btn-outline-danger d-none flex-shrink-0" data-oficio-delete-template aria-label="Eliminar plantilla seleccionada" title="Eliminar plantilla"><i class="bi bi-trash"></i></button>' +
+                        '</div>' +
                         '<div class="form-text mb-2" data-oficio-library-status role="status"></div>' +
                         '<button type="button" class="btn btn-secondary btn-sm mb-3" data-oficio-add>+ Agregar plantilla</button>' +
                         '<div class="border rounded p-3 mb-3 d-none" data-oficio-add-form>' +
@@ -94,8 +170,14 @@
             const selector = elemento.querySelector('#oficioSavedTemplate');
             const manual = elemento.querySelector('#oficioTemplateFile');
             const bloqueAlta = elemento.querySelector('[data-oficio-add-form]');
-            selector.addEventListener('change', function () { if (selector.value) manual.value = ''; });
-            manual.addEventListener('change', function () { if (manual.files.length) selector.value = ''; });
+            selector.addEventListener('change', function () {
+                if (selector.value) manual.value = '';
+                actualizarAccionEliminarPlantilla(elemento);
+            });
+            manual.addEventListener('change', function () {
+                if (manual.files.length) selector.value = '';
+                actualizarAccionEliminarPlantilla(elemento);
+            });
             elemento.querySelector('[data-oficio-add]').addEventListener('click', function () {
                 bloqueAlta.classList.remove('d-none');
                 elemento.querySelector('#oficioLibraryName').focus();
@@ -131,6 +213,44 @@
                     mostrarToast('Plantilla guardada correctamente.', false);
                 } catch (error) { mostrarToast(error.message, true); }
                 finally { this.disabled = false; generar.disabled = !Boolean(estadoActual?.puede_generar); }
+            });
+            elemento.querySelector('[data-oficio-delete-template]').addEventListener('click', async function () {
+                const plantillaId = Number(selector.value || 0);
+
+                if (!plantillaId) {
+                    return;
+                }
+
+                const confirmado = await confirmarEliminacionPlantilla(elemento);
+
+                if (!confirmado) {
+                    return;
+                }
+
+                const formulario = new FormData();
+                formulario.append('plantilla_id', String(plantillaId));
+                this.disabled = true;
+
+                try {
+                    const respuesta = await fetch('index.php?controller=oficioVinculacion&action=eliminarPlantilla', {
+                        method: 'POST',
+                        headers: { 'X-Requested-With': 'fetch' },
+                        body: formulario
+                    });
+                    const datos = await respuesta.json();
+
+                    if (!datos.ok) {
+                        throw new Error(datos.mensaje || 'No fue posible eliminar la plantilla.');
+                    }
+
+                    await cargarBiblioteca(elemento);
+                    mostrarToast('Plantilla eliminada correctamente.', false);
+                } catch (error) {
+                    mostrarToast(error.message, true);
+                } finally {
+                    this.disabled = false;
+                    actualizarAccionEliminarPlantilla(elemento);
+                }
             });
 
             elemento.addEventListener('change', function (event) {
@@ -174,8 +294,10 @@
             selector.replaceChildren(new Option('Seleccionar una plantilla...', ''));
             datos.plantillas.forEach(function (item) { selector.add(new Option(item.nombre, String(item.id))); });
             selector.value = seleccionId ? String(seleccionId) : '';
+            modal.dataset.puedeEliminarPlantillas = datos.puede_eliminar ? '1' : '0';
             estado.textContent = datos.plantillas.length ? '' : 'Aún no hay plantillas guardadas.';
             modal.querySelector('[data-oficio-add]').classList.toggle('d-none', !datos.puede_subir);
+            actualizarAccionEliminarPlantilla(modal);
         };
 
         const prepararOpcionesPlantilla = function () {
@@ -194,6 +316,8 @@
             modal.querySelector('[data-oficio-custom-file]').classList.add('d-none');
             modal.querySelector('#oficioTemplateFile').value = '';
             modal.querySelector('#oficioSavedTemplate').replaceChildren(new Option('Seleccionar una plantilla...', ''));
+            modal.dataset.puedeEliminarPlantillas = '0';
+            actualizarAccionEliminarPlantilla(modal);
             modal.querySelector('[data-oficio-add-form]').classList.add('d-none');
             modal.querySelector('[data-oficio-use-selected]').disabled = !Boolean(estadoActual?.puede_generar);
         };
