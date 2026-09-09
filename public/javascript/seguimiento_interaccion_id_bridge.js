@@ -160,23 +160,25 @@
             }
         }
 
-        return fetchOriginal(input, init).then(function (response) {
+        return fetchOriginal(input, init).then(async function (response) {
             if (contexto) {
-                response.clone().json().then(function (datos) {
+                try {
+                    const datos = await response.clone().json();
                     guardarInteraccionExacta(datos, contexto);
-                }).catch(function () {
+                } catch (error) {
                     // La respuesta principal conserva su manejo normal de errores.
-                });
+                }
             }
 
             if (esVinculacion && seguimientoVinculacion > 0 && interaccionVinculacion > 0) {
-                response.clone().json().then(function (datos) {
+                try {
+                    const datos = await response.clone().json();
                     if (datos && datos.ok === true) {
                         interaccionesExactas.delete(seguimientoVinculacion);
                     }
-                }).catch(function () {
+                } catch (error) {
                     // Conserva el ID para permitir un reintento si la respuesta no fue JSON.
-                });
+                }
             }
 
             return response;
