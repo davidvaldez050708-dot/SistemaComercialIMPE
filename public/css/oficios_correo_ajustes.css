@@ -35,3 +35,504 @@
     font-size: 12px;
     line-height: 1.35;
 }
+
+/* =========================================================
+   Selector de oficio / plantillas
+   Rediseño visual. No modifica la lógica del formulario.
+   ========================================================= */
+
+#modalSeleccionarOficio .modal-dialog {
+    width: min(960px, calc(100vw - 32px));
+    max-width: 960px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+#modalSeleccionarOficio .modal-content {
+    overflow: hidden;
+    border: 1px solid rgba(148, 163, 184, 0.28);
+    border-radius: 20px;
+    background: #ffffff;
+    box-shadow: 0 28px 70px rgba(15, 23, 42, 0.24);
+}
+
+#modalSeleccionarOficio .modal-header {
+    min-height: 92px;
+    padding: 24px 30px;
+    border-bottom: 1px solid #dce3ed;
+    background: #ffffff;
+}
+
+#modalSeleccionarOficio .modal-title {
+    margin: 0;
+    color: #101828;
+    font-size: 30px !important;
+    font-weight: 750;
+    line-height: 1.2;
+    letter-spacing: -0.03em;
+}
+
+#modalSeleccionarOficio .btn-close {
+    width: 20px;
+    height: 20px;
+    margin: 0;
+    padding: 10px;
+    border-radius: 10px;
+    opacity: 0.88;
+    transition: background-color 0.18s ease, opacity 0.18s ease;
+}
+
+#modalSeleccionarOficio .btn-close:hover {
+    background-color: #f1f5f9;
+    opacity: 1;
+}
+
+#modalSeleccionarOficio .modal-body {
+    padding: 24px 30px 28px;
+    color: #344767;
+}
+
+#modalSeleccionarOficio .modal-body > p {
+    margin: 0 0 18px;
+    color: #415a7a;
+    font-size: 17px;
+    font-weight: 500;
+    line-height: 1.5;
+}
+
+/* Opciones: oficio predeterminado / plantilla personalizada */
+#modalSeleccionarOficio [data-oficio-template-list] {
+    display: grid;
+    gap: 14px;
+    margin-bottom: 24px !important;
+    border: 0;
+    border-radius: 0;
+}
+
+#modalSeleccionarOficio [data-oficio-template-list] .list-group-item {
+    position: relative;
+    display: grid !important;
+    grid-template-columns: 28px 48px minmax(0, 1fr);
+    align-items: center !important;
+    gap: 14px !important;
+    min-height: 88px;
+    padding: 17px 20px;
+    border: 1px solid #d7e0eb !important;
+    border-radius: 13px !important;
+    background: #ffffff;
+    color: #17233c;
+    cursor: pointer;
+    transition: border-color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+#modalSeleccionarOficio [data-oficio-template-list] .list-group-item:hover {
+    border-color: #9bbcf8 !important;
+    box-shadow: 0 8px 22px rgba(37, 99, 235, 0.07);
+}
+
+#modalSeleccionarOficio [data-oficio-template-list] .list-group-item:has(input:checked) {
+    border-color: #82adff !important;
+    background: #f3f7ff;
+    box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.08);
+}
+
+#modalSeleccionarOficio [data-oficio-template-list] .list-group-item::before {
+    content: "";
+    grid-column: 2;
+    grid-row: 1;
+    width: 36px;
+    height: 44px;
+    border: 3px solid #36547c;
+    border-radius: 5px;
+    background:
+        linear-gradient(#36547c, #36547c) 8px 13px / 17px 3px no-repeat,
+        linear-gradient(#36547c, #36547c) 8px 21px / 17px 3px no-repeat,
+        linear-gradient(#36547c, #36547c) 8px 29px / 12px 3px no-repeat,
+        #ffffff;
+    box-sizing: border-box;
+}
+
+#modalSeleccionarOficio [data-oficio-template-list] .list-group-item:has(input:checked)::before {
+    border-color: #1749c9;
+    background:
+        linear-gradient(#1749c9, #1749c9) 8px 13px / 17px 3px no-repeat,
+        linear-gradient(#1749c9, #1749c9) 8px 21px / 17px 3px no-repeat,
+        linear-gradient(#1749c9, #1749c9) 8px 29px / 12px 3px no-repeat,
+        #ffffff;
+}
+
+#modalSeleccionarOficio [data-oficio-template-list] .form-check-input {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: center;
+    width: 23px;
+    height: 23px;
+    margin: 0 !important;
+    border: 2px solid #bac7d8;
+    box-shadow: none;
+    cursor: pointer;
+}
+
+#modalSeleccionarOficio [data-oficio-template-list] .form-check-input:checked {
+    border-color: #2563eb;
+    background-color: #2563eb;
+}
+
+#modalSeleccionarOficio [data-oficio-template-list] .list-group-item > span {
+    grid-column: 3;
+    grid-row: 1;
+    min-width: 0;
+}
+
+#modalSeleccionarOficio [data-oficio-template-list] strong {
+    margin-bottom: 3px;
+    color: #111b31;
+    font-size: 18px;
+    font-weight: 750;
+    line-height: 1.3;
+}
+
+#modalSeleccionarOficio [data-oficio-template-list] .list-group-item:has(input:checked) strong {
+    color: #173aa4;
+}
+
+#modalSeleccionarOficio [data-oficio-template-list] small {
+    color: #61738e !important;
+    font-size: 14.5px;
+    font-weight: 500;
+    line-height: 1.4;
+}
+
+/* Área personalizada: se organiza visualmente como el mockup de referencia */
+#modalSeleccionarOficio [data-oficio-custom-file]:not(.d-none) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
+    padding: 0 24px 24px;
+    border: 1px solid #d5dee9;
+    border-radius: 14px;
+    background: #ffffff;
+    overflow: hidden;
+}
+
+#modalSeleccionarOficio [data-oficio-custom-file] > label[for="oficioSavedTemplate"] {
+    grid-column: 1;
+    order: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 62px;
+    margin: 0 0 20px -24px;
+    padding: 0 18px;
+    border-top: 3px solid #1d5be3;
+    border-right: 1px solid #d5dee9;
+    border-bottom: 1px solid transparent;
+    background: #ffffff;
+    color: #1e5be0;
+    font-size: 17px;
+    font-weight: 750;
+    text-align: center;
+}
+
+#modalSeleccionarOficio [data-oficio-custom-file] > label[for="oficioSavedTemplate"]::before {
+    content: "▣";
+    margin-right: 10px;
+    color: #1e5be0;
+    font-size: 20px;
+    line-height: 1;
+}
+
+#modalSeleccionarOficio [data-oficio-add] {
+    grid-column: 2;
+    order: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: calc(100% + 24px);
+    min-height: 62px;
+    margin: 0 -24px 20px 0 !important;
+    padding: 0 18px;
+    border: 0;
+    border-top: 1px solid #d5dee9;
+    border-bottom: 1px solid #d5dee9;
+    border-radius: 0;
+    background: #f8fafc;
+    color: transparent;
+    font-size: 0;
+    font-weight: 750;
+    box-shadow: none;
+}
+
+#modalSeleccionarOficio [data-oficio-add]::before {
+    content: "☁";
+    margin-right: 10px;
+    color: #36547c;
+    font-size: 22px;
+    line-height: 1;
+}
+
+#modalSeleccionarOficio [data-oficio-add]::after {
+    content: "Subir nueva plantilla";
+    color: #36547c;
+    font-size: 17px;
+    font-weight: 750;
+}
+
+#modalSeleccionarOficio [data-oficio-add]:hover,
+#modalSeleccionarOficio [data-oficio-add]:focus {
+    background: #f0f4f9;
+}
+
+#modalSeleccionarOficio #oficioSavedTemplate {
+    grid-column: 1 / -1;
+    order: 3;
+    min-height: 54px;
+    margin: 0 0 8px !important;
+    padding: 10px 42px 10px 15px;
+    border: 1px solid #cfd9e6;
+    border-radius: 10px;
+    background-color: #ffffff;
+    color: #384b67;
+    font-size: 15.5px;
+    box-shadow: none;
+}
+
+#modalSeleccionarOficio #oficioSavedTemplate:focus {
+    border-color: #7aa7fa;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+#modalSeleccionarOficio [data-oficio-library-status] {
+    grid-column: 1 / -1;
+    order: 4;
+    min-height: 0;
+    margin: 0 0 4px !important;
+    color: #718096;
+    font-size: 13px;
+}
+
+#modalSeleccionarOficio [data-oficio-add-form] {
+    grid-column: 1 / -1;
+    order: 5;
+    margin: 8px 0 18px !important;
+    padding: 18px !important;
+    border: 1px solid #d9e2ee !important;
+    border-radius: 12px !important;
+    background: #f8fafc;
+}
+
+#modalSeleccionarOficio [data-oficio-add-form] .form-label {
+    margin-bottom: 7px;
+    color: #344767;
+    font-size: 14px;
+    font-weight: 650;
+}
+
+#modalSeleccionarOficio [data-oficio-add-form] .form-control {
+    min-height: 48px;
+    border-color: #cfd9e6;
+    border-radius: 9px;
+    background-color: #ffffff;
+}
+
+#modalSeleccionarOficio [data-oficio-add-form] [data-oficio-add-cancel] {
+    border-color: #d0d7e2;
+    background: #e7ebf0;
+    color: #1d2939;
+}
+
+#modalSeleccionarOficio [data-oficio-add-form] [data-oficio-add-save] {
+    border-color: #174dbd;
+    background: #174dbd;
+    color: #ffffff;
+}
+
+#modalSeleccionarOficio [data-oficio-custom-file] > .text-muted.text-center {
+    grid-column: 1 / -1;
+    order: 6;
+    position: relative;
+    margin: 8px 0 14px !important;
+    color: #7b8798 !important;
+    font-size: 13px;
+}
+
+#modalSeleccionarOficio [data-oficio-custom-file] > label[for="oficioTemplateFile"] {
+    grid-column: 1 / -1;
+    order: 7;
+    margin-bottom: 8px;
+    color: #41516b;
+    font-size: 14px;
+    font-weight: 650;
+}
+
+#modalSeleccionarOficio #oficioTemplateFile {
+    grid-column: 1 / -1;
+    order: 8;
+    min-height: 52px;
+    padding: 7px;
+    border: 1px solid #cfd9e6;
+    border-radius: 10px;
+    background: #ffffff;
+    color: #4b5e79;
+}
+
+#modalSeleccionarOficio #oficioTemplateFile::file-selector-button,
+#modalSeleccionarOficio #oficioLibraryFile::file-selector-button {
+    margin: -7px 12px -7px -7px;
+    padding: 14px 16px;
+    border: 0;
+    border-right: 1px solid #d5dee9;
+    background: #f4f6f9;
+    color: #26364f;
+    font-weight: 650;
+}
+
+#modalSeleccionarOficio [data-oficio-custom-file] > .form-text:last-child {
+    grid-column: 1 / -1;
+    order: 9;
+    margin-top: 7px;
+    color: #8995a6;
+    font-size: 12px;
+}
+
+/* Footer */
+#modalSeleccionarOficio .modal-footer {
+    gap: 12px;
+    min-height: 92px;
+    padding: 20px 30px;
+    border-top: 1px solid #dce3ed;
+    background: #f8fafc;
+}
+
+#modalSeleccionarOficio .modal-footer .btn {
+    min-width: 142px;
+    min-height: 52px;
+    padding: 11px 24px;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 750;
+}
+
+#modalSeleccionarOficio .modal-footer .btn-secondary {
+    border-color: #d8dee8;
+    background: #e6eaf0;
+    color: #14213a;
+}
+
+#modalSeleccionarOficio .modal-footer .btn-secondary:hover {
+    border-color: #cbd3df;
+    background: #dce2e9;
+    color: #14213a;
+}
+
+#modalSeleccionarOficio .modal-footer [data-oficio-use-selected] {
+    border-color: #1249b7;
+    background: #1249b7;
+    color: #ffffff;
+    box-shadow: 0 7px 16px rgba(18, 73, 183, 0.18);
+}
+
+#modalSeleccionarOficio .modal-footer [data-oficio-use-selected]:hover:not(:disabled) {
+    border-color: #0e3e9e;
+    background: #0e3e9e;
+    color: #ffffff;
+}
+
+#modalSeleccionarOficio .modal-footer [data-oficio-use-selected]:disabled {
+    border-color: #91a9d6;
+    background: #91a9d6;
+    color: #ffffff;
+    box-shadow: none;
+}
+
+@media (max-width: 767.98px) {
+    #modalSeleccionarOficio .modal-dialog {
+        width: calc(100vw - 20px);
+        margin: 10px auto;
+    }
+
+    #modalSeleccionarOficio .modal-content {
+        border-radius: 15px;
+    }
+
+    #modalSeleccionarOficio .modal-header {
+        min-height: 76px;
+        padding: 18px 20px;
+    }
+
+    #modalSeleccionarOficio .modal-title {
+        font-size: 23px !important;
+    }
+
+    #modalSeleccionarOficio .modal-body {
+        padding: 20px;
+    }
+
+    #modalSeleccionarOficio .modal-body > p {
+        font-size: 15px;
+    }
+
+    #modalSeleccionarOficio [data-oficio-template-list] .list-group-item {
+        grid-template-columns: 25px 38px minmax(0, 1fr);
+        min-height: 78px;
+        padding: 14px;
+    }
+
+    #modalSeleccionarOficio [data-oficio-template-list] .list-group-item::before {
+        width: 31px;
+        height: 39px;
+        border-width: 2px;
+        background:
+            linear-gradient(#36547c, #36547c) 7px 12px / 15px 2px no-repeat,
+            linear-gradient(#36547c, #36547c) 7px 19px / 15px 2px no-repeat,
+            linear-gradient(#36547c, #36547c) 7px 26px / 11px 2px no-repeat,
+            #ffffff;
+    }
+
+    #modalSeleccionarOficio [data-oficio-template-list] strong {
+        font-size: 16px;
+    }
+
+    #modalSeleccionarOficio [data-oficio-template-list] small {
+        font-size: 13px;
+    }
+
+    #modalSeleccionarOficio [data-oficio-custom-file]:not(.d-none) {
+        grid-template-columns: 1fr;
+        padding: 0 16px 18px;
+    }
+
+    #modalSeleccionarOficio [data-oficio-custom-file] > label[for="oficioSavedTemplate"] {
+        grid-column: 1;
+        margin: 0 -16px;
+        min-height: 54px;
+        border-right: 0;
+    }
+
+    #modalSeleccionarOficio [data-oficio-add] {
+        grid-column: 1;
+        width: calc(100% + 32px);
+        min-height: 54px;
+        margin: 0 -16px 18px !important;
+        border-top: 0;
+    }
+
+    #modalSeleccionarOficio #oficioSavedTemplate,
+    #modalSeleccionarOficio [data-oficio-library-status],
+    #modalSeleccionarOficio [data-oficio-add-form],
+    #modalSeleccionarOficio [data-oficio-custom-file] > .text-muted.text-center,
+    #modalSeleccionarOficio [data-oficio-custom-file] > label[for="oficioTemplateFile"],
+    #modalSeleccionarOficio #oficioTemplateFile,
+    #modalSeleccionarOficio [data-oficio-custom-file] > .form-text:last-child {
+        grid-column: 1;
+    }
+
+    #modalSeleccionarOficio .modal-footer {
+        padding: 16px 20px;
+    }
+
+    #modalSeleccionarOficio .modal-footer .btn {
+        flex: 1 1 0;
+        min-width: 0;
+    }
+}
