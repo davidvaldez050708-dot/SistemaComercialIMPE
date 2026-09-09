@@ -20,6 +20,11 @@
         let allowUnloadOnce = false;
         let savedBodyState = null;
         let observer = null;
+        let navigationGuard = null;
+        let navigationGuardContinue = null;
+        let navigationGuardLeave = null;
+        let pendingNavigation = null;
+        let focusBeforeGuard = null;
 
         const mostrarToast = function (mensaje, esError) {
             const contenedor = document.querySelector('.toast-container');
@@ -178,13 +183,173 @@
             }
         };
 
+        const cerrarProteccionNavegacion = function (devolverFoco) {
+            if (!navigationGuard || navigationGuard.hidden) {
+                pendingNavigation = null;
+                return;
+            }
+
+            navigationGuard.hidden = true;
+            navigationGuard.setAttribute('aria-hidden', 'true');
+            document.body.classList.remove('impe-call-navigation-guard-open');
+            pendingNavigation = null;
+
+            if (devolverFoco !== false && focusBeforeGuard instanceof HTMLElement) {
+                window.setTimeout(function () {
+                    focusBeforeGuard?.focus?.({ preventScroll: true });
+                    focusBeforeGuard = null;
+                }, 20);
+            } else {
+                focusBeforeGuard = null;
+            }
+        };
+
+        const crearProteccionNavegacion = function () {
+            if (navigationGuard) {
+                return;
+            }
+
+            navigationGuard = document.createElement('div');
+            navigationGuard.className = 'linkage-call-navigation-guard';
+            navigationGuard.hidden = true;
+            navigationGuard.setAttribute('role', 'dialog');
+            navigationGuard.setAttribute('aria-modal', 'true');
+            navigationGuard.setAttribute('aria-hidden', 'true');
+            navigationGuard.setAttribute('aria-labelledby', 'tituloProteccionLlamada');
+            navigationGuard.setAttribute('aria-describedby', 'textoProteccionLlamada');
+            navigationGuard.innerHTML =
+                '<div class="linkage-call-navigation-guard-backdrop"></div>' +
+                '<div class="linkage-call-navigation-card" role="document">' +
+                    '<div class="linkage-call-navigation-icon" aria-hidden="true">' +
+                        '<i class="bi bi-telephone-fill"></i>' +
+                    '</div>' +
+                    '<div class="linkage-call-navigation-copy">' +
+                        '<span class="linkage-call-navigation-eyebrow">LLAMADA EN CURSO</span>' +
+                        '<h3 id="tituloProteccionLlamada">¿Salir de esta sección?</h3>' +
+                        '<p id="textoProteccionLlamada">Cambiar de página finalizará la llamada actual. Puedes continuar trabajando aquí sin cerrarla.</p>' +
+                    '</div>' +
+                    '<div class="linkage-call-navigation-actions">' +
+                        '<button type="button" class="btn btn-system-light" data-call-navigation-stay>' +
+                            '<i class="bi bi-arrow-left"></i> Continuar llamada' +
+                        '</button>' +
+                        '<button type="button" class="btn btn-outline-danger" data-call-navigation-leave>' +
+                            '<i class="bi bi-box-arrow-right"></i> Salir y finalizar' +
+                        '</button>' +
+                    '</div>' +
+                '</div>';
+            document.body.appendChild(navigationGuard);
+
+            navigationGuardContinue = navigationGuard.querySelector('[data-call-navigation-stay]');
+            navigationGuardLeave = navigationGuard.querySelector('[data-call-navigation-leave]');
+
+            navigationGuardContinue?.addEventListener('click', function () {
+                cerrarProteccionNavegacion(true);
+            });
+
+            navigationGuard.querySelector('.linkage-call-navigation-guard-backdrop')
+                ?.addEventListener('click', function () {
+                    cerrarProteccionNavegacion(true);
+                });
+
+            navigationGuardLeave?.addEventListener('click', function () {
+                if (!pendingNavigation) {
+                    cerrarProteccionNavegacion(false);
+                    return;
+                }
+
+                const destino = pendingNavigation.href;
+                navigationGuardLeave.disabled = true;
+                navigationGuardContinue.disabled = true;
+                navigationGuardLeave.innerHTML =
+                    '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span> Finalizando…';
+                allowUnloadOnce = true;
+
+                if (hangupButton && !hangupButton.disabled) {
+                    hangupButton.click();
+                }
+
+                window.setTimeout(function () {
+                    window.location.assign(destino);
+                }, 220);
+
+                window.setTimeout(function () {
+                    allowUnloadOnce = false;
+                    if (navigationGuardLeave) {
+                        navigationGuardLeave.disabled = false;
+                        navigationGuardLeave.innerHTML =
+                            '<i class="bi bi-box-arrow-right"></i> Salir y finalizar';
+                    }
+                    if (navigationGuardContinue) {
+                        navigationGuardContinue.disabled = false;
+                    }
+                }, 2500);
+            });
+
+            navigationGuard.addEventListener('keydown', function (event) {
+                if (event.key === 'Escape') {
+                    event.preventDefault();
+                    cerrarProteccionNavegacion(true);
+                    return;
+                }
+
+                if (event.key !== 'Tab') {
+                    return;
+                }
+
+                const focos = Array.from(
+                    navigationGuard.querySelectorAll('button:not(:disabled)')
+                );
+
+                if (focos.length < 2) {
+                    return;
+                }
+
+                const primero = focos[0];
+                const ultimo = focos[focos.length - 1];
+
+                if (event.shiftKey && document.activeElement === primero) {
+                    event.preventDefault();
+                    ultimo.focus();
+                } else if (!event.shiftKey && document.activeElement === ultimo) {
+                    event.preventDefault();
+                    primero.focus();
+                }
+            });
+        };
+
+        const mostrarProteccionNavegacion = function (href) {
+            crearProteccionNavegacion();
+            pendingNavigation = { href: href };
+            focusBeforeGuard = document.activeElement;
+            navigationGuard.hidden = false;
+            navigationGuard.setAttribute('aria-hidden', 'false');
+            document.body.classList.add('impe-call-navigation-guard-open');
+
+            if (navigationGuardLeave) {
+                navigationGuardLeave.disabled = false;
+                navigationGuardLeave.innerHTML =
+                    '<i class="bi bi-box-arrow-right"></i> Salir y finalizar';
+            }
+            if (navigationGuardContinue) {
+                navigationGuardContinue.disabled = false;
+            }
+
+            window.setTimeout(function () {
+                navigationGuardContinue?.focus?.({ preventScroll: true });
+            }, 30);
+        };
+
         const sincronizarEstado = function () {
             const activeNow = llamadaActiva();
 
-            if (previousActive && !activeNow && minimized) {
-                window.setTimeout(function () {
-                    restaurar(true);
-                }, 120);
+            if (previousActive && !activeNow) {
+                cerrarProteccionNavegacion(false);
+
+                if (minimized) {
+                    window.setTimeout(function () {
+                        restaurar(true);
+                    }, 120);
+                }
             }
 
             previousActive = activeNow;
@@ -300,39 +465,57 @@
         }
 
         document.addEventListener('click', function (event) {
-            if (!llamadaActiva()) {
+            if (!llamadaActiva() || event.defaultPrevented) {
+                return;
+            }
+
+            if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) {
                 return;
             }
 
             const enlace = event.target.closest('a[href]');
-            if (!enlace) {
+            if (!enlace || enlace.hasAttribute('download')) {
                 return;
             }
 
             const href = String(enlace.getAttribute('href') || '').trim();
             const target = String(enlace.getAttribute('target') || '').toLowerCase();
+            const hrefLower = href.toLowerCase();
 
             if (
                 href === '' ||
                 href === '#' ||
                 href.startsWith('#') ||
-                href.toLowerCase().startsWith('javascript:') ||
+                hrefLower.startsWith('javascript:') ||
+                hrefLower.startsWith('mailto:') ||
+                hrefLower.startsWith('tel:') ||
+                hrefLower.startsWith('callto:') ||
+                hrefLower.startsWith('sip:') ||
                 target === '_blank'
             ) {
                 return;
             }
 
-            const continuar = window.confirm(
-                'Hay una llamada en curso. Cambiar de página finalizará la llamada. ¿Deseas continuar?'
-            );
-
-            if (!continuar) {
-                event.preventDefault();
-                event.stopImmediatePropagation();
+            let destino;
+            try {
+                destino = new URL(enlace.href, window.location.href);
+            } catch (error) {
                 return;
             }
 
-            allowUnloadOnce = true;
+            const actual = new URL(window.location.href);
+            if (
+                destino.origin === actual.origin &&
+                destino.pathname === actual.pathname &&
+                destino.search === actual.search &&
+                destino.hash !== actual.hash
+            ) {
+                return;
+            }
+
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            mostrarProteccionNavegacion(destino.href);
         }, true);
 
         window.addEventListener('beforeunload', function (event) {
