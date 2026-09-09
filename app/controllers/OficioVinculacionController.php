@@ -251,7 +251,7 @@ class OficioVinculacionController
             'ok' => true,
             'plantillas' => $modelo->listarPlantillasOficioDocx(),
             'puede_subir' => (int)($_SESSION['rol_id'] ?? 0) === 1 || tienePermiso('oficios.generar'),
-            'puede_eliminar' => (int)($_SESSION['rol_id'] ?? 0) === 1
+            'puede_eliminar' => (int)($_SESSION['rol_id'] ?? 0) === 1 || tienePermiso('oficios.generar')
         ]);
     }
 
@@ -295,7 +295,7 @@ class OficioVinculacionController
         $this->validarMetodoPostJson();
         $this->validarPermisoJson('oficios.ver');
 
-        if ((int)($_SESSION['rol_id'] ?? 0) !== 1) {
+        if ((int)($_SESSION['rol_id'] ?? 0) !== 1 && !tienePermiso('oficios.generar')) {
             $this->responderJson([
                 'ok' => false,
                 'mensaje' => 'No tienes permiso para eliminar plantillas de oficio.'
