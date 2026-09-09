@@ -40,6 +40,8 @@ $sql = "SELECT
             id,
             seguimiento_id,
             canal,
+            resultado,
+            notas,
             proveedor_externo,
             id_externo,
             duracion_segundos
@@ -76,6 +78,17 @@ if (!$seguimiento) {
 $proveedor = strtoupper(trim((string)($interaccion['proveedor_externo'] ?? '')));
 $callSid = trim((string)($interaccion['id_externo'] ?? ''));
 $duracion = max(0, (int)($interaccion['duracion_segundos'] ?? 0));
+$resultado = strtoupper(trim((string)($interaccion['resultado'] ?? '')));
+$notas = (string)($interaccion['notas'] ?? '');
+$excluirGrabacion =
+    strpos($notas, '[BUZON_VOZ]') !== false ||
+    strpos($notas, '[FUERA_SERVICIO]') !== false ||
+    in_array($resultado, ['NO_CONTESTO', 'SIN_RESPUESTA', 'NUMERO_INCORRECTO'], true);
+
+if ($excluirGrabacion) {
+    http_response_code(404);
+    exit('Esta llamada se conserva únicamente en el historial telefónico.');
+}
 
 if (
     $proveedor !== 'TWILIO' ||
