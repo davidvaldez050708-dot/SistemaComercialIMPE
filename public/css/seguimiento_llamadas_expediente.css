@@ -1,0 +1,408 @@
+/* =========================================================
+   EXPEDIENTE · LLAMADAS Y GRABACIONES
+   ========================================================= */
+
+.linkage-call-pane {
+    min-width: 0;
+}
+
+.linkage-call-module {
+    min-width: 0;
+    padding: 18px;
+}
+
+.linkage-call-module-heading {
+    margin-bottom: 13px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+}
+
+.linkage-call-module-heading > div {
+    min-width: 0;
+}
+
+.linkage-call-module-heading h3 {
+    margin: 3px 0 0;
+    color: var(--color-text-primary);
+    font-size: 16px;
+    font-weight: 800;
+    line-height: 1.3;
+}
+
+.linkage-call-module-heading p {
+    max-width: 700px;
+    margin: 4px 0 0;
+    color: var(--color-text-secondary);
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.45;
+}
+
+.linkage-call-summary {
+    margin-bottom: 14px;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.linkage-call-summary > div {
+    min-width: 0;
+    min-height: 58px;
+    padding: 10px 12px;
+    display: grid;
+    align-content: center;
+    gap: 2px;
+    border: 1px solid #e0e6ef;
+    border-radius: 11px;
+    background: #fbfcfe;
+}
+
+.linkage-call-summary span {
+    color: var(--color-text-secondary);
+    font-size: 9.8px;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+}
+
+.linkage-call-summary strong {
+    color: var(--color-primary);
+    font-size: 16px;
+    font-weight: 800;
+    line-height: 1.2;
+}
+
+.linkage-call-section {
+    min-width: 0;
+    padding-top: 13px;
+    border-top: 1px solid var(--color-border);
+}
+
+.linkage-call-section + .linkage-call-section {
+    margin-top: 15px;
+}
+
+.linkage-call-section-heading {
+    margin-bottom: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.linkage-call-section-heading > div {
+    min-width: 0;
+    display: grid;
+    gap: 2px;
+}
+
+.linkage-call-section-heading strong {
+    color: var(--color-text-primary);
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1.3;
+}
+
+.linkage-call-section-heading p {
+    margin: 0;
+    color: var(--color-text-secondary);
+    font-size: 10.3px;
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+.linkage-call-recordings-count {
+    flex: 0 0 auto;
+    min-width: 29px;
+    min-height: 29px;
+    padding: 4px 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #dbe3ee;
+    border-radius: 999px;
+    background: #f8fafc;
+    color: var(--color-primary);
+    font-size: 10.5px;
+    font-weight: 800;
+}
+
+.linkage-call-history-list,
+.linkage-call-audio-list {
+    display: grid;
+    gap: 8px;
+}
+
+.linkage-call-recordings-loading,
+.linkage-call-recordings-empty {
+    min-height: 58px;
+    padding: 11px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: 1px dashed #dce3ec;
+    border-radius: 10px;
+    background: #fafbfd;
+    color: var(--color-text-secondary);
+    font-size: 10.5px;
+    font-weight: 650;
+    text-align: center;
+}
+
+.linkage-call-recordings-loading .spinner-border {
+    width: 14px;
+    height: 14px;
+    border-width: 2px;
+}
+
+.linkage-call-history-card {
+    min-width: 0;
+    padding: 10px 11px;
+    display: grid;
+    grid-template-columns: 32px minmax(0, 1fr);
+    gap: 10px;
+    align-items: start;
+    border: 1px solid #e0e6ef;
+    border-radius: 11px;
+    background: #fbfcfe;
+}
+
+.linkage-call-recordings-icon,
+.linkage-call-recording-card-icon {
+    flex: 0 0 auto;
+    width: 32px;
+    height: 32px;
+    display: inline-grid;
+    place-items: center;
+    border: 1px solid #dce5f2;
+    border-radius: 9px;
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
+    font-size: 12px;
+}
+
+.linkage-call-recording-card-icon {
+    background: #ffffff;
+}
+
+.linkage-call-recording-body {
+    min-width: 0;
+    display: grid;
+    gap: 7px;
+}
+
+.linkage-call-recording-top {
+    min-width: 0;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.linkage-call-recording-top > div:first-child {
+    min-width: 0;
+    display: grid;
+    gap: 2px;
+}
+
+.linkage-call-recording-top strong {
+    color: var(--color-text-primary);
+    font-size: 11.5px;
+    font-weight: 800;
+    line-height: 1.35;
+}
+
+.linkage-call-recording-top > div:first-child > span {
+    overflow-wrap: anywhere;
+    color: var(--color-text-secondary);
+    font-size: 9.8px;
+    font-weight: 650;
+    line-height: 1.4;
+}
+
+.linkage-call-history-meta {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+.linkage-call-recording-duration,
+.linkage-call-audio-state {
+    min-height: 25px;
+    padding: 4px 7px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    border: 1px solid #e0e6ef;
+    border-radius: 999px;
+    background: #ffffff;
+    color: #5d6878;
+    font-size: 9.6px;
+    font-weight: 800;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.linkage-call-audio-state.is-available {
+    border-color: #cbe7df;
+    background: #f0faf7;
+    color: #1d7767;
+}
+
+.linkage-call-audio-state.is-available i {
+    color: var(--color-accent);
+}
+
+.linkage-call-recording-notes {
+    margin: 0;
+    overflow-wrap: anywhere;
+    color: var(--color-text-secondary);
+    font-size: 10.5px;
+    font-weight: 600;
+    line-height: 1.45;
+}
+
+.linkage-call-audio-card {
+    min-width: 0;
+    padding: 10px 11px;
+    border: 1px solid #e0e6ef;
+    border-radius: 11px;
+    background: #ffffff;
+}
+
+.linkage-call-audio-card-heading {
+    margin-bottom: 8px;
+}
+
+.linkage-call-audio-card-heading > div {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+}
+
+.linkage-call-audio-card-heading > div > div {
+    min-width: 0;
+    display: grid;
+    gap: 2px;
+}
+
+.linkage-call-audio-card-heading strong {
+    overflow-wrap: anywhere;
+    color: var(--color-text-primary);
+    font-size: 11.2px;
+    font-weight: 800;
+    line-height: 1.35;
+}
+
+.linkage-call-audio-card-heading div > span {
+    color: var(--color-text-secondary);
+    font-size: 9.8px;
+    font-weight: 650;
+    line-height: 1.4;
+}
+
+.linkage-call-recording-audio {
+    min-width: 0;
+    padding-top: 7px;
+    display: grid;
+    grid-template-columns: auto minmax(180px, 1fr);
+    gap: 8px;
+    align-items: center;
+    border-top: 1px solid #e6ebf2;
+}
+
+.linkage-call-recording-audio-label,
+.linkage-call-recording-unavailable {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--color-text-secondary);
+    font-size: 9.8px;
+    font-weight: 750;
+    white-space: nowrap;
+}
+
+.linkage-call-recording-audio-label i {
+    color: var(--color-accent);
+    font-size: 11px;
+}
+
+.linkage-call-recording-unavailable i {
+    color: #8994a5;
+}
+
+.linkage-call-recording-audio audio {
+    width: 100%;
+    min-width: 0;
+    height: 32px;
+}
+
+@media (max-width: 767.98px) {
+    .linkage-call-module {
+        padding: 15px;
+    }
+
+    .linkage-call-summary {
+        grid-template-columns: 1fr;
+    }
+
+    .linkage-call-summary > div {
+        min-height: 50px;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+    }
+
+    .linkage-call-section-heading,
+    .linkage-call-recording-top {
+        align-items: flex-start;
+    }
+
+    .linkage-call-recording-top {
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .linkage-call-history-meta {
+        justify-content: flex-start;
+    }
+
+    .linkage-call-recording-audio {
+        grid-template-columns: 1fr;
+        gap: 6px;
+    }
+
+    .linkage-call-recording-audio-label,
+    .linkage-call-recording-unavailable {
+        white-space: normal;
+    }
+}
+
+@media (max-width: 479.98px) {
+    .linkage-call-module {
+        padding: 13px;
+    }
+
+    .linkage-call-section-heading {
+        align-items: flex-start;
+    }
+
+    .linkage-call-history-card {
+        grid-template-columns: 28px minmax(0, 1fr);
+        gap: 8px;
+        padding: 9px;
+    }
+
+    .linkage-call-recording-card-icon,
+    .linkage-call-recordings-icon {
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        font-size: 11px;
+    }
+}
