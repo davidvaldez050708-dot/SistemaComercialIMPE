@@ -1,0 +1,88 @@
+/* =========================================================
+   EXPEDIENTE · REFINAMIENTOS DE LLAMADAS Y GRABACIONES
+   ========================================================= */
+
+/*
+ * En la tarjeta de grabación el primer span contiene actualmente el nombre
+ * del analista. Lo presentamos como metadato normal, sin forzarlo dentro del
+ * cuadro reservado originalmente para un icono.
+ */
+.linkage-call-audio-card-heading > div {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 3px;
+    align-items: start;
+}
+
+.linkage-call-audio-card-heading > div > div {
+    order: 1;
+    min-width: 0;
+}
+
+.linkage-call-audio-card-heading > div > .linkage-call-recordings-icon {
+    order: 2;
+    width: auto;
+    min-width: 0;
+    height: auto;
+    padding: 0;
+    justify-self: start;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 4px;
+
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--color-text-secondary);
+
+    font-size: 10px;
+    font-weight: 650;
+    line-height: 1.4;
+    white-space: normal;
+}
+
+.linkage-call-audio-card-heading > div > .linkage-call-recordings-icon::before {
+    content: 'Analista ·';
+    color: #7b8797;
+    font-size: 9.4px;
+    font-weight: 800;
+}
+
+.linkage-call-audio-card-heading > div > div > span:empty {
+    display: none;
+}
+
+/*
+ * El reproductor no necesita ocupar toda la tarjeta en escritorio. Se limita
+ * a una medida similar a otros controles operativos del expediente.
+ */
+.linkage-call-recording-audio {
+    grid-template-columns: auto minmax(260px, 620px);
+    justify-content: start;
+}
+
+.linkage-call-recording-audio audio {
+    width: 100%;
+    max-width: 620px;
+}
+
+.linkage-call-recording-audio .linkage-call-recording-unavailable:not(.d-none) {
+    grid-column: 2;
+}
+
+@media (max-width: 767.98px) {
+    .linkage-call-recording-audio {
+        grid-template-columns: 1fr;
+        justify-content: stretch;
+    }
+
+    .linkage-call-recording-audio audio {
+        max-width: none;
+    }
+
+    .linkage-call-recording-audio .linkage-call-recording-unavailable:not(.d-none) {
+        grid-column: 1;
+    }
+}
