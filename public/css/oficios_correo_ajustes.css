@@ -302,6 +302,59 @@
     box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
+/* Mantiene el selector en su posición original y presenta la acción de baja junto a él. */
+#modalSeleccionarOficio [data-oficio-custom-file] > .d-flex.gap-2.mb-2 {
+    grid-column: 1 / -1;
+    order: 3;
+    align-items: stretch;
+    margin: 0 0 8px !important;
+}
+
+#modalSeleccionarOficio [data-oficio-custom-file] > .d-flex.gap-2.mb-2 #oficioSavedTemplate {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0 !important;
+}
+
+#modalSeleccionarOficio [data-oficio-delete-template] {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 118px;
+    min-height: 54px;
+    padding: 0 16px;
+    border: 1px solid #efb2b2;
+    border-radius: 10px;
+    background: #fff7f7;
+    color: #b42318;
+    font-size: 14px;
+    font-weight: 750;
+    box-shadow: none;
+    transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+}
+
+#modalSeleccionarOficio [data-oficio-delete-template]::after {
+    content: "Eliminar";
+    margin-left: 8px;
+}
+
+#modalSeleccionarOficio [data-oficio-delete-template] i {
+    font-size: 16px;
+}
+
+#modalSeleccionarOficio [data-oficio-delete-template]:hover,
+#modalSeleccionarOficio [data-oficio-delete-template]:focus {
+    border-color: #dc5d5d;
+    background: #fff0f0;
+    color: #9f1c14;
+    box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.08);
+}
+
+#modalSeleccionarOficio [data-oficio-delete-template]:disabled {
+    opacity: 0.6;
+    box-shadow: none;
+}
+
 #modalSeleccionarOficio [data-oficio-library-status] {
     grid-column: 1 / -1;
     order: 4;
@@ -515,6 +568,20 @@
         min-height: 54px;
         margin: 0 -16px 18px !important;
         border-top: 0;
+    }
+
+    #modalSeleccionarOficio [data-oficio-custom-file] > .d-flex.gap-2.mb-2 {
+        grid-column: 1;
+    }
+
+    #modalSeleccionarOficio [data-oficio-delete-template] {
+        min-width: 54px;
+        width: 54px;
+        padding: 0;
+    }
+
+    #modalSeleccionarOficio [data-oficio-delete-template]::after {
+        display: none;
     }
 
     #modalSeleccionarOficio #oficioSavedTemplate,
