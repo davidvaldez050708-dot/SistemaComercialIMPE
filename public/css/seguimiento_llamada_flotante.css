@@ -57,6 +57,10 @@ body.impe-call-workspace-mode .offcanvas-backdrop {
     display: none !important;
 }
 
+body.impe-call-workspace-mode.impe-call-navigation-guard-open {
+    overflow: hidden !important;
+}
+
 #modalLlamadaVinculacion.linkage-call-minimized {
     position: fixed !important;
     inset: auto 18px 18px auto !important;
@@ -180,6 +184,124 @@ body.impe-call-workspace-mode .offcanvas-backdrop {
     font-size: 11px;
 }
 
+/* =========================================================
+   PROTECCIÓN DE NAVEGACIÓN DURANTE LLAMADA
+   ========================================================= */
+
+.linkage-call-navigation-guard[hidden] {
+    display: none !important;
+}
+
+.linkage-call-navigation-guard {
+    position: fixed;
+    inset: 0;
+    z-index: 1210;
+    padding: 20px;
+    display: grid;
+    place-items: center;
+}
+
+.linkage-call-navigation-guard-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(18, 27, 44, .42);
+    backdrop-filter: blur(1.5px);
+}
+
+.linkage-call-navigation-card {
+    position: relative;
+    z-index: 1;
+    width: min(430px, 100%);
+    padding: 20px;
+    display: grid;
+    grid-template-columns: 42px minmax(0, 1fr);
+    column-gap: 13px;
+    row-gap: 16px;
+    border: 1px solid #dde5ef;
+    border-radius: 14px;
+    background: #ffffff;
+    box-shadow: 0 22px 54px rgba(20, 34, 56, .20);
+}
+
+.linkage-call-navigation-icon {
+    width: 42px;
+    height: 42px;
+    display: inline-grid;
+    place-items: center;
+    border: 1px solid #cfdaef;
+    border-radius: 11px;
+    background: var(--color-primary-soft, #eef4ff);
+    color: var(--color-primary, #17478c);
+    font-size: 16px;
+}
+
+.linkage-call-navigation-copy {
+    min-width: 0;
+}
+
+.linkage-call-navigation-eyebrow {
+    display: block;
+    margin-bottom: 3px;
+    color: #6f7d95;
+    font-size: 9.5px;
+    font-weight: 800;
+    letter-spacing: .065em;
+}
+
+.linkage-call-navigation-copy h3 {
+    margin: 0;
+    color: var(--color-text-primary, #172033);
+    font-size: 16px;
+    font-weight: 800;
+    line-height: 1.3;
+}
+
+.linkage-call-navigation-copy p {
+    margin: 6px 0 0;
+    color: var(--color-text-secondary, #657188);
+    font-size: 11.5px;
+    font-weight: 600;
+    line-height: 1.5;
+}
+
+.linkage-call-navigation-actions {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.linkage-call-navigation-actions .btn {
+    min-height: 39px;
+    padding: 8px 11px;
+    border-radius: 8px;
+    font-size: 10.8px;
+    font-weight: 800;
+    line-height: 1.2;
+}
+
+.linkage-call-navigation-actions .btn i {
+    margin-right: 4px;
+    font-size: 11px;
+}
+
+.linkage-call-navigation-actions .btn-outline-danger {
+    border-color: #e5a0a6;
+    background: #ffffff;
+    color: #bd4f59;
+}
+
+.linkage-call-navigation-actions .btn-outline-danger:hover:not(:disabled),
+.linkage-call-navigation-actions .btn-outline-danger:focus-visible:not(:disabled) {
+    border-color: #dc6670;
+    background: #fff7f8;
+    color: #a83e48;
+}
+
+.linkage-call-navigation-actions .btn:disabled {
+    opacity: .68;
+}
+
 @media (max-width: 575.98px) {
     .linkage-call-window-toggle span {
         display: none;
@@ -198,5 +320,37 @@ body.impe-call-workspace-mode .offcanvas-backdrop {
 
     #modalLlamadaVinculacion.linkage-call-minimized .linkage-call-actions {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .linkage-call-navigation-guard {
+        padding: 14px;
+        align-items: end;
+    }
+
+    .linkage-call-navigation-card {
+        padding: 16px;
+        grid-template-columns: 38px minmax(0, 1fr);
+        column-gap: 11px;
+        row-gap: 14px;
+        border-radius: 13px;
+    }
+
+    .linkage-call-navigation-icon {
+        width: 38px;
+        height: 38px;
+        border-radius: 10px;
+        font-size: 14px;
+    }
+
+    .linkage-call-navigation-copy h3 {
+        font-size: 14px;
+    }
+
+    .linkage-call-navigation-copy p {
+        font-size: 10.8px;
+    }
+
+    .linkage-call-navigation-actions {
+        grid-template-columns: 1fr;
     }
 }
