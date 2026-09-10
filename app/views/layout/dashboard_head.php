@@ -53,6 +53,7 @@ $jsOpcionalHead = [
     'seguimiento_interaccion_id_bridge.js',
     'seguimiento_llamada_zadarma.js',
     'seguimiento_zadarma_marcado_e164.js',
+    'seguimiento_zadarma_widget_oculto.js',
     'seguimiento_caller_id_usuario.js',
     'seguimiento_llamada_twilio.js',
     'seguimiento_llamada_flotante.js',
