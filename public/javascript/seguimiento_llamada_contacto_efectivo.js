@@ -84,7 +84,8 @@
 
         opciones.forEach(function (boton) {
             boton.addEventListener('click', function () {
-                seleccionar(boton.dataset.callContactOption || '');
+                const valor = String(boton.dataset.callContactOption || '').toUpperCase();
+                seleccionar(valorContacto === valor ? '' : valor);
             });
         });
 
