@@ -57,6 +57,33 @@ if (!$seguimiento) {
 $llamadas = [];
 $marcadorBuzon = '[BUZON_VOZ]';
 $marcadorFueraServicio = '[FUERA_SERVICIO]';
+$marcadorContacto = '[CONTACTO_EFECTIVO]';
+$marcadorSinContacto = '[SIN_CONTACTO_EFECTIVO]';
+
+// Zadarma entrega el aviso de grabación unos segundos después de terminar la llamada.
+// Se usa el pbx_call_id guardado en la interacción para comprobar que el audio ya existe.
+$grabacionesZadarma = [];
+$logPath = $root . '/storage/zadarma_webhooks.log';
+if (is_file($logPath)) {
+    $lineas = file($logPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
+    foreach ($lineas as $linea) {
+        $fila = json_decode($linea, true);
+        if (!is_array($fila) || ($fila['event'] ?? '') !== 'NOTIFY_RECORD') {
+            continue;
+        }
+
+        $pbxCallId = trim((string)($fila['pbx_call_id'] ?? ''));
+        if ($pbxCallId !== '') {
+            $grabacionesZadarma[$pbxCallId] = true;
+        }
+    }
+}
+
+$resultadosConContacto = [
+    'CONTACTADO',
+    'SOLICITO_LLAMAR_DESPUES',
+    'MENSAJE_ENVIADO',
+];
 
 foreach ($modelo->obtenerInteraccionesSeguimiento($seguimientoId) as $interaccion) {
     if (strtoupper((string)($interaccion['canal'] ?? '')) !== 'LLAMADA_IP') {
@@ -65,7 +92,7 @@ foreach ($modelo->obtenerInteraccionesSeguimiento($seguimientoId) as $interaccio
 
     $interaccionId = (int)($interaccion['id'] ?? 0);
     $proveedor = strtoupper(trim((string)($interaccion['proveedor_externo'] ?? '')));
-    $callSid = trim((string)($interaccion['id_externo'] ?? ''));
+    $idExterno = trim((string)($interaccion['id_externo'] ?? ''));
     $duracion = max(0, (int)($interaccion['duracion_segundos'] ?? 0));
     $resultado = strtoupper(trim((string)($interaccion['resultado'] ?? '')));
     $notas = trim((string)($interaccion['notas'] ?? ''));
@@ -84,18 +111,39 @@ foreach ($modelo->obtenerInteraccionesSeguimiento($seguimientoId) as $interaccio
         $excluirGrabacion = true;
     }
 
+    $contactoEfectivo = in_array($resultado, $resultadosConContacto, true);
+    if (strpos($notas, $marcadorSinContacto) !== false) {
+        $contactoEfectivo = false;
+    } elseif (strpos($notas, $marcadorContacto) !== false) {
+        $contactoEfectivo = true;
+    }
+
     $notasLimpias = trim(str_replace(
-        [$marcadorBuzon, $marcadorFueraServicio],
+        [
+            $marcadorBuzon,
+            $marcadorFueraServicio,
+            $marcadorContacto,
+            $marcadorSinContacto,
+        ],
         '',
         $notas
     ));
 
+    $grabacionTwilio =
+        $proveedor === 'TWILIO' &&
+        $duracion > 0 &&
+        preg_match('/^CA[a-fA-F0-9]{32}$/', $idExterno);
+
+    $grabacionZadarma =
+        $proveedor === 'ZADARMA' &&
+        $duracion > 0 &&
+        preg_match('/^out_[a-fA-F0-9]{32,64}$/', $idExterno) &&
+        isset($grabacionesZadarma[$idExterno]);
+
     $puedeTenerGrabacion =
         !$excluirGrabacion &&
         $interaccionId > 0 &&
-        $proveedor === 'TWILIO' &&
-        $duracion > 0 &&
-        preg_match('/^CA[a-fA-F0-9]{32}$/', $callSid);
+        ($grabacionTwilio || $grabacionZadarma);
 
     $nombreUsuario = trim(
         (string)($interaccion['nombre'] ?? '') . ' ' .
@@ -109,6 +157,7 @@ foreach ($modelo->obtenerInteraccionesSeguimiento($seguimientoId) as $interaccio
         'duracion_segundos' => $duracion,
         'resultado' => $resultado,
         'resultado_telefonico' => $resultadoTelefonico,
+        'contacto_efectivo' => (bool)$contactoEfectivo,
         'notas' => $notasLimpias,
         'proveedor' => $proveedor,
         'usuario' => $nombreUsuario,
