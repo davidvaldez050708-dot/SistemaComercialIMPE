@@ -1,5 +1,7 @@
 <?php
 
+date_default_timezone_set('America/Mexico_City');
+
 // Verificación inicial exigida por Zadarma al registrar el webhook.
 if (isset($_GET['zd_echo'])) {
     header('Content-Type: text/plain; charset=utf-8');
