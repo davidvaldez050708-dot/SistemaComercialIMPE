@@ -6,6 +6,7 @@ require_once $root . '/app/helpers/PermissionHelper.php';
 require_once $root . '/app/models/RolModel.php';
 require_once $root . '/app/models/SeguimientoVinculacionModel.php';
 require_once $root . '/app/services/TwilioRecordingService.php';
+require_once $root . '/app/services/ZadarmaRecordingService.php';
 require_once $root . '/config/db_connection.php';
 
 if (!isset($_SESSION['usuario_id'])) {
@@ -76,7 +77,7 @@ if (!$seguimiento) {
 }
 
 $proveedor = strtoupper(trim((string)($interaccion['proveedor_externo'] ?? '')));
-$callSid = trim((string)($interaccion['id_externo'] ?? ''));
+$idExterno = trim((string)($interaccion['id_externo'] ?? ''));
 $duracion = max(0, (int)($interaccion['duracion_segundos'] ?? 0));
 $resultado = strtoupper(trim((string)($interaccion['resultado'] ?? '')));
 $notas = (string)($interaccion['notas'] ?? '');
@@ -90,11 +91,7 @@ if ($excluirGrabacion) {
     exit('Esta llamada se conserva únicamente en el historial telefónico.');
 }
 
-if (
-    $proveedor !== 'TWILIO' ||
-    $duracion <= 0 ||
-    !preg_match('/^CA[a-fA-F0-9]{32}$/', $callSid)
-) {
+if ($duracion <= 0) {
     http_response_code(404);
     exit('Esta llamada no tiene una grabación asociada.');
 }
@@ -109,20 +106,62 @@ if ($rangeHeader !== '' && !preg_match('/^bytes=\d*-\d*$/', $rangeHeader)) {
 $forzarDescarga = (int)($_GET['download'] ?? 0) === 1;
 
 try {
-    $servicio = new TwilioRecordingService();
-    $grabacion = $servicio->obtenerGrabacionParaLlamada($callSid);
+    $audio = null;
 
-    if (!$grabacion || empty($grabacion['sid'])) {
+    if ($proveedor === 'TWILIO') {
+        if (!preg_match('/^CA[a-fA-F0-9]{32}$/', $idExterno)) {
+            http_response_code(404);
+            exit('Esta llamada no tiene una grabación asociada.');
+        }
+
+        $servicio = new TwilioRecordingService();
+        $grabacion = $servicio->obtenerGrabacionParaLlamada($idExterno);
+
+        if (!$grabacion || empty($grabacion['sid'])) {
+            http_response_code(404);
+            exit('La grabación todavía no está disponible.');
+        }
+
+        $audio = $servicio->descargarGrabacion($grabacion['sid'], $rangeHeader);
+    } elseif ($proveedor === 'ZADARMA') {
+        if (!preg_match('/^out_[a-fA-F0-9]{32,64}$/', $idExterno)) {
+            http_response_code(404);
+            exit('Esta llamada no tiene una grabación asociada.');
+        }
+
+        $servicio = new ZadarmaRecordingService();
+        $grabacion = $servicio->obtenerGrabacionParaLlamada($idExterno);
+
+        if (!$grabacion || empty($grabacion['link'])) {
+            http_response_code(404);
+            exit('La grabación todavía no está disponible.');
+        }
+
+        $audio = $servicio->descargarGrabacion((string)$grabacion['link'], $rangeHeader);
+    } else {
         http_response_code(404);
-        exit('La grabación todavía no está disponible.');
+        exit('Esta llamada no tiene una grabación asociada.');
     }
 
-    $audio = $servicio->descargarGrabacion($grabacion['sid'], $rangeHeader);
     $body = (string)($audio['body'] ?? '');
     $contentType = trim((string)($audio['content_type'] ?? ''));
     $statusUpstream = (int)($audio['status'] ?? 200);
     $headersUpstream = is_array($audio['headers'] ?? null) ? $audio['headers'] : [];
-    $nombreArchivo = 'llamada-' . $interaccionId . '.mp3';
+
+    if ($body === '') {
+        http_response_code(404);
+        exit('La grabación todavía no está disponible.');
+    }
+
+    $extension = 'mp3';
+    $contentTypeLower = strtolower($contentType);
+    if (str_contains($contentTypeLower, 'wav')) {
+        $extension = 'wav';
+    } elseif (str_contains($contentTypeLower, 'ogg')) {
+        $extension = 'ogg';
+    }
+
+    $nombreArchivo = 'llamada-' . $interaccionId . '.' . $extension;
 
     header('Content-Type: ' . ($contentType !== '' ? $contentType : 'audio/mpeg'));
     header('Accept-Ranges: bytes');
