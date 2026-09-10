@@ -2,6 +2,7 @@
     "require": {
         "phpmailer/phpmailer": "^7.1",
         "dompdf/dompdf": "^3.1",
-        "phpoffice/phpword": "^1.4"
+        "phpoffice/phpword": "^1.4",
+        "zadarma/user-api-v1": "^1.1"
     }
 }
