@@ -1,0 +1,78 @@
+.call-contact-effective-field {
+    margin-top: 0.15rem;
+}
+
+.call-contact-effective-box {
+    width: 100%;
+}
+
+.call-contact-effective-title {
+    display: block;
+    margin-bottom: 0.45rem;
+}
+
+.call-contact-effective-options {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.55rem;
+}
+
+.call-contact-effective-option {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.5rem;
+    width: 100%;
+    min-height: 46px;
+    padding: 0.65rem 0.75rem;
+    border: 1px solid #d7deea;
+    border-radius: 10px;
+    background: #fff;
+    color: #263249;
+    font: inherit;
+    font-size: 0.9rem;
+    font-weight: 600;
+    line-height: 1.2;
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.call-contact-effective-option:hover {
+    border-color: #aebbd3;
+    background: #f8faff;
+}
+
+.call-contact-effective-option:focus-visible {
+    outline: 0;
+    border-color: #2e48a5;
+    box-shadow: 0 0 0 0.2rem rgba(46, 72, 165, 0.14);
+}
+
+.call-contact-effective-option.is-selected {
+    border-color: #2e48a5;
+    background: #f1f4ff;
+    color: #233a91;
+}
+
+.call-contact-effective-option i {
+    flex: 0 0 auto;
+    font-size: 1rem;
+}
+
+.call-contact-effective-box.is-invalid .call-contact-effective-options {
+    border-radius: 11px;
+    box-shadow: 0 0 0 1px #dc3545;
+}
+
+.call-contact-effective-error {
+    margin-top: 0.4rem;
+    color: #b42318;
+    font-size: 0.8rem;
+}
+
+@media (max-width: 420px) {
+    .call-contact-effective-options {
+        grid-template-columns: 1fr;
+    }
+}
