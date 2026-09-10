@@ -7,8 +7,8 @@
         return;
     }
 
-    const PREFIJO = 'impe:seguimiento:panel:v1:' + usuarioId + ':';
-    const VIGENCIA_MS = 10 * 60 * 1000;
+    const PREFIJO = 'impe:seguimiento:panel:v2:' + usuarioId + ':';
+    const VIGENCIA_MS = 30 * 1000;
     const memoria = new Map();
     const enCurso = new Map();
     const fetchBase = window.fetch.bind(window);
@@ -110,6 +110,25 @@
         }
     };
 
+    const limpiarVersionAnterior = function () {
+        const prefijoAnterior = 'impe:seguimiento:panel:v1:' + usuarioId + ':';
+
+        try {
+            const borrar = [];
+            for (let indice = 0; indice < window.sessionStorage.length; indice += 1) {
+                const item = window.sessionStorage.key(indice);
+                if (item && item.startsWith(prefijoAnterior)) {
+                    borrar.push(item);
+                }
+            }
+            borrar.forEach(function (item) {
+                window.sessionStorage.removeItem(item);
+            });
+        } catch (error) {
+            // Sin acción.
+        }
+    };
+
     const urlDe = function (entrada) {
         try {
             if (typeof entrada === 'string') {
@@ -143,7 +162,11 @@
     };
 
     const seguimientoIdDe = function (url, opciones) {
-        let seguimientoId = Number(url?.searchParams.get('seguimiento_id') || 0);
+        let seguimientoId = Number(
+            url?.searchParams.get('id') ||
+            url?.searchParams.get('seguimiento_id') ||
+            0
+        );
 
         if (seguimientoId > 0) {
             return seguimientoId;
@@ -152,9 +175,9 @@
         const body = opciones?.body;
 
         if (typeof FormData !== 'undefined' && body instanceof FormData) {
-            seguimientoId = Number(body.get('seguimiento_id') || 0);
+            seguimientoId = Number(body.get('seguimiento_id') || body.get('id') || 0);
         } else if (typeof URLSearchParams !== 'undefined' && body instanceof URLSearchParams) {
-            seguimientoId = Number(body.get('seguimiento_id') || 0);
+            seguimientoId = Number(body.get('seguimiento_id') || body.get('id') || 0);
         }
 
         return seguimientoId > 0 ? seguimientoId : 0;
@@ -182,8 +205,9 @@
 
     const solicitarRed = function (seguimientoId, entrada, opciones) {
         seguimientoId = Number(seguimientoId || 0);
+        const puedeCompartirPeticion = seguimientoId > 0;
 
-        if (enCurso.has(seguimientoId)) {
+        if (puedeCompartirPeticion && enCurso.has(seguimientoId)) {
             return enCurso.get(seguimientoId);
         }
 
@@ -209,10 +233,15 @@
                 contentType: respuesta.headers.get('content-type') || 'application/json; charset=utf-8'
             };
         })().finally(function () {
-            enCurso.delete(seguimientoId);
+            if (puedeCompartirPeticion) {
+                enCurso.delete(seguimientoId);
+            }
         });
 
-        enCurso.set(seguimientoId, peticion);
+        if (puedeCompartirPeticion) {
+            enCurso.set(seguimientoId, peticion);
+        }
+
         return peticion;
     };
 
@@ -248,7 +277,7 @@
     };
 
     const urlPanel = function (seguimientoId) {
-        return 'index.php?controller=seguimientoVinculacion&action=obtenerPanelTrabajo&seguimiento_id=' +
+        return 'index.php?controller=seguimientoVinculacion&action=obtenerPanelTrabajo&id=' +
             encodeURIComponent(seguimientoId);
     };
 
@@ -354,6 +383,8 @@
         precargar: precargar
     };
 
+    limpiarVersionAnterior();
+
     document.addEventListener('DOMContentLoaded', function () {
         const filas = Array.from(document.querySelectorAll('[data-linkage-follow-row]'));
         const ids = filas.map(function (fila) {
@@ -384,6 +415,20 @@
         for (let trabajador = 0; trabajador < trabajadores; trabajador += 1) {
             void siguiente();
         }
+
+        document.addEventListener('pointerover', function (event) {
+            const boton = event.target.closest?.('[data-work-follow]');
+            if (boton) {
+                void precargar(Number(boton.getAttribute('data-work-follow-id') || 0));
+            }
+        }, { passive: true });
+
+        document.addEventListener('focusin', function (event) {
+            const boton = event.target.closest?.('[data-work-follow]');
+            if (boton) {
+                void precargar(Number(boton.getAttribute('data-work-follow-id') || 0));
+            }
+        });
 
         document.addEventListener('impe:interaction-informative-saved', function (evento) {
             const seguimientoId = Number(
