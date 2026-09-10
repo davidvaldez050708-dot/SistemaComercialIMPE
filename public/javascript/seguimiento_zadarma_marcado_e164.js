@@ -14,12 +14,14 @@
             .trim()
             .replace(/[^0-9+*#]/g, '');
 
-        // La prueba manual que validamos con el webphone de Zadarma utiliza
-        // formato internacional E.164 (+52...). El integrador principal quitaba
-        // el signo + antes de llamar a regToCall(), haciendo que Zadarma pudiera
-        // interpretar el destino como una marcación local inválida.
-        if (/^52\d{10}$/.test(numero)) {
-            numero = '+' + numero;
+        // En las llamadas que ya validamos correctamente con la extensión 100,
+        // Zadarma registró el destino mexicano en 10 dígitos. Cuando enviamos
+        // 52XXXXXXXXXX devolvió status 34 y con +52XXXXXXXXXX el celular llegó a
+        // timbrar, pero la PBX terminó la llamada como "no answer" aun cuando fue
+        // contestada. Para México entregamos al webphone exactamente los 10
+        // dígitos que ya demostraron completar llamada, audio y grabación.
+        if (/^\+?52\d{10}$/.test(numero)) {
+            numero = numero.replace(/^\+?52/, '');
         }
 
         return numero;
