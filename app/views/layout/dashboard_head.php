@@ -44,6 +44,7 @@ $cssOpcionalDashboard = [
     'seguimiento_llamada_flotante.css',
     'seguimiento_llamada_registro_obligatorio.css',
     'seguimiento_llamada_registro_compacto.css',
+    'seguimiento_llamada_contacto_efectivo.css',
     'seguimiento_post_envio.css',
     'agenda_reunion.css',
     'agenda_reunion_refinamientos.css'
