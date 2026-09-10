@@ -1,7 +1,7 @@
 (function () {
     'use strict';
 
-    const PREFIJO = 'impe:seguimiento:ruta:v1:';
+    const PREFIJO = 'impe:seguimiento:ruta:v2:';
     const VIGENCIA_MS = 30 * 60 * 1000;
     const memoria = new Map();
     const fetchOriginal = window.fetch.bind(window);
@@ -32,11 +32,11 @@
         try {
             window.sessionStorage.setItem(clave(seguimientoId), JSON.stringify(registro));
         } catch (error) {
-            // La memoria de la pestaña es suficiente si sessionStorage no está disponible.
+            // La caché en memoria sigue funcionando si sessionStorage no está disponible.
         }
     };
 
-    const obtener = function (seguimientoId) {
+    const obtenerRegistro = function (seguimientoId) {
         seguimientoId = Number(seguimientoId || 0);
         if (seguimientoId <= 0) {
             return null;
@@ -68,7 +68,18 @@
         }
 
         memoria.set(seguimientoId, registro);
-        return registro.flujo;
+        return registro;
+    };
+
+    const obtener = function (seguimientoId) {
+        return obtenerRegistro(seguimientoId)?.flujo || null;
+    };
+
+    const edad = function (seguimientoId) {
+        const registro = obtenerRegistro(seguimientoId);
+        return registro
+            ? Math.max(0, Date.now() - Number(registro.guardado_at || 0))
+            : null;
     };
 
     const etiquetaEtapa = function (pasoActual, tituloFlujo, fila) {
@@ -85,10 +96,7 @@
             if (titulo.includes('programad')) {
                 return 'Reunión programada';
             }
-            if (
-                titulo.includes('seguimiento de acuerdos') ||
-                titulo.includes('dar seguimiento')
-            ) {
+            if (titulo.includes('seguimiento de acuerdos') || titulo.includes('dar seguimiento')) {
                 return 'Seguimiento de acuerdos';
             }
             return 'Reunión y acuerdos';
@@ -136,13 +144,11 @@
 
     const aplicarFila = function (seguimientoId, flujo, emitirEvento) {
         seguimientoId = Number(seguimientoId || flujo?.seguimiento_id || 0);
-        const boton = document.querySelector(
-            '[data-work-follow-id="' + seguimientoId + '"]'
-        );
+        const boton = document.querySelector('[data-work-follow-id="' + seguimientoId + '"]');
         const fila = boton?.closest('[data-linkage-follow-row]');
 
         if (!fila || !flujo) {
-            return;
+            return false;
         }
 
         if (!fila.dataset.internalStage && fila.dataset.stage) {
@@ -153,29 +159,43 @@
         const titulo = String(flujo.titulo || '').trim();
         const etapa = fila.querySelector('[data-row-stage-label]');
         const proxima = fila.querySelector('[data-row-next-action]');
+        let cambio = false;
 
         if (pasoActual > 0) {
-            fila.dataset.flowStep = String(pasoActual);
-            const etiqueta = etiquetaEtapa(pasoActual, titulo, fila);
+            if (String(fila.dataset.flowStep || '') !== String(pasoActual)) {
+                fila.dataset.flowStep = String(pasoActual);
+                cambio = true;
+            }
 
+            const etiqueta = etiquetaEtapa(pasoActual, titulo, fila);
             if (etapa && etiqueta !== '') {
                 fila.dataset.flowStageLabel = etiqueta;
-                etapa.textContent = etiqueta;
+                if (String(etapa.textContent || '').trim() !== etiqueta) {
+                    etapa.textContent = etiqueta;
+                    cambio = true;
+                }
                 etapa.title = 'Paso ' + pasoActual + ' de 13';
                 etapa.dataset.routeStageReady = '1';
             }
         }
 
         if (titulo !== '') {
-            fila.dataset.flowTitle = titulo;
+            if (String(fila.dataset.flowTitle || '') !== titulo) {
+                fila.dataset.flowTitle = titulo;
+                cambio = true;
+            }
+
             if (proxima) {
                 proxima.dataset.flowNextAction = titulo;
-                proxima.textContent = titulo;
+                if (String(proxima.textContent || '').trim() !== titulo) {
+                    proxima.textContent = titulo;
+                    cambio = true;
+                }
                 proxima.dataset.routeNextReady = '1';
             }
         }
 
-        if (emitirEvento !== false) {
+        if (cambio && emitirEvento !== false) {
             document.dispatchEvent(new CustomEvent('impe:flow-row-updated', {
                 detail: {
                     seguimientoId: seguimientoId,
@@ -186,6 +206,7 @@
         }
 
         marcarResumenListo();
+        return cambio;
     };
 
     const escapar = function (valor) {
@@ -262,25 +283,62 @@
         return bloque;
     };
 
-    const renderizarPanel = function (seguimientoId, flujo) {
+    const sincronizarBotonVerificacion = function (offcanvas, pasoActual) {
+        const boton = offcanvas.querySelector('[data-work-verify-contact]');
+        if (!boton || Number(window.IMPE_CURRENT_ROLE_ID || 0) !== 4) {
+            return;
+        }
+
+        const texto = String(boton.textContent || '').toLowerCase();
+        const yaVerificado = texto.includes('información verificada');
+        const puedeVerificar = Number(pasoActual) === 4 && !yaVerificado;
+        boton.disabled = !puedeVerificar;
+
+        if (yaVerificado) {
+            boton.title = 'La información ya fue verificada';
+        } else if (!puedeVerificar) {
+            boton.title = 'Primero completa la llamada de validación y los datos del contacto.';
+        } else {
+            boton.title = '';
+        }
+    };
+
+    const renderizarPanel = function (seguimientoId, flujo, emitirEvento) {
         const offcanvas = document.getElementById('offcanvasSeguimientoTrabajo');
         if (!offcanvas || !flujo) {
-            return;
+            return false;
         }
 
         const bloque = obtenerOCrearBloque(offcanvas);
         if (!bloque) {
-            return;
+            return false;
         }
 
         const pasoActual = Number(flujo.paso_actual || 0);
         const totalPasos = Number(flujo.total_pasos || 13);
         const titulo = String(flujo.titulo || 'Próxima acción');
-        bloque.classList.remove('d-none');
+        const telefonoDisponible = String(flujo.contexto?.telefono_disponible || '').trim();
+        let accionPrincipal = flujo.accion_principal;
+        let accionSecundaria = flujo.accion_secundaria;
 
+        if (pasoActual === 1 && telefonoDisponible !== '') {
+            accionPrincipal = {
+                codigo: 'LLAMAR_IP',
+                etiqueta: 'Comenzar investigación',
+                icono: 'bi-telephone'
+            };
+            accionSecundaria = {
+                codigo: 'REGISTRAR_LLAMADA',
+                etiqueta: 'Registrar llamada de prueba',
+                icono: 'bi-journal-check'
+            };
+        }
+
+        bloque.classList.remove('d-none');
         offcanvas.dataset.flowStep = String(pasoActual);
         offcanvas.dataset.flowTitle = titulo;
         offcanvas.dataset.flowSeguimientoId = String(seguimientoId);
+        sincronizarBotonVerificacion(offcanvas, pasoActual);
 
         const contador = bloque.querySelector('[data-flow-step-count]');
         const progreso = bloque.querySelector('[data-flow-progress]');
@@ -324,11 +382,11 @@
 
         if (acciones) {
             acciones.innerHTML =
-                botonAccion(flujo.accion_principal, true) +
-                botonAccion(flujo.accion_secundaria, false);
+                botonAccion(accionPrincipal, true) +
+                botonAccion(accionSecundaria, false);
             acciones.classList.toggle(
                 'has-single-action',
-                !flujo.accion_secundaria || !flujo.accion_secundaria.codigo
+                !accionSecundaria || !accionSecundaria.codigo
             );
         }
 
@@ -340,14 +398,19 @@
         offcanvas.removeAttribute('data-flow-ui-pending');
         offcanvas.removeAttribute('data-flow-ui-prepared');
         offcanvas.removeAttribute('data-flow-ui-fallback');
+        offcanvas.dataset.flowCacheVisible = '1';
 
-        document.dispatchEvent(new CustomEvent('impe:flow-updated', {
-            detail: {
-                seguimientoId: seguimientoId,
-                pasoActual: pasoActual,
-                titulo: titulo
-            }
-        }));
+        if (emitirEvento !== false) {
+            document.dispatchEvent(new CustomEvent('impe:flow-updated', {
+                detail: {
+                    seguimientoId: seguimientoId,
+                    pasoActual: pasoActual,
+                    titulo: titulo
+                }
+            }));
+        }
+
+        return true;
     };
 
     const extraerUrl = function (input) {
@@ -389,7 +452,7 @@
                 guardar(seguimientoId, datos.flujo);
                 aplicarFila(seguimientoId, datos.flujo, true);
             }).catch(function () {
-                // La respuesta original continúa disponible para el consumidor normal.
+                // La respuesta original continúa disponible para su consumidor normal.
             });
         }
 
@@ -398,6 +461,7 @@
 
     window.IMPE_SEGUIMIENTO_RUTA_CACHE = {
         obtener: obtener,
+        edad: edad,
         guardar: guardar,
         aplicarFila: aplicarFila,
         renderizarPanel: renderizarPanel
@@ -418,24 +482,5 @@
         });
 
         marcarResumenListo();
-
-        let seguimientoClickId = 0;
-        document.addEventListener('click', function (event) {
-            const boton = event.target.closest('[data-work-follow]');
-            if (!boton) {
-                return;
-            }
-
-            seguimientoClickId = Number(boton.getAttribute('data-work-follow-id') || 0);
-            const flujo = obtener(seguimientoClickId);
-            if (!flujo) {
-                return;
-            }
-
-            window.requestAnimationFrame(function () {
-                aplicarFila(seguimientoClickId, flujo, true);
-                renderizarPanel(seguimientoClickId, flujo);
-            });
-        }, true);
     });
 })();
