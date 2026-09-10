@@ -42,6 +42,18 @@ class ReunionFechaGuardService
             return $flujo;
         }
 
+        /*
+         * El paso 12 representa la etapa de reunión, pero mientras la fecha
+         * todavía no llega no debe mostrarse como si ya se hubiera realizado.
+         * Mantenemos el número de paso y ajustamos únicamente su estado visual.
+         */
+        if (
+            isset($flujo['ventana']['actual']) &&
+            is_array($flujo['ventana']['actual'])
+        ) {
+            $flujo['ventana']['actual']['titulo'] = 'Reunión programada';
+        }
+
         $fechaLegible = $this->fechaLegible($fecha);
         $flujo['titulo'] = 'Reunión programada';
         $flujo['descripcion'] = $fechaLegible !== ''
