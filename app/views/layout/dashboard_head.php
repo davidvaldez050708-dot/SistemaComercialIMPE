@@ -75,6 +75,7 @@ $jsOpcionalHead = [
     'seguimiento_panel_ruta.js',
     'seguimiento_flujo_loading.js',
     'seguimiento_ruta_cache.js',
+    'seguimiento_panel_cache.js',
     'seguimiento_resultados_humanizados.js',
     'oficios_correo_formato.js',
     'firma_correo_perfil.js',
@@ -137,6 +138,7 @@ $jsOpcionalHead = [
 
     <script>
         window.IMPE_CURRENT_ROLE_ID = <?= (int)($_SESSION['rol_id'] ?? 0) ?>;
+        window.IMPE_CURRENT_USER_ID = <?= (int)($_SESSION['usuario_id'] ?? 0) ?>;
     </script>
 
     <?php foreach ($jsOpcionalHead as $archivoJs): ?>
