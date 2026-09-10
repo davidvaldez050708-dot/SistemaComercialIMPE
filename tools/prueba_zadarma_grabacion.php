@@ -75,8 +75,22 @@ $callId = trim((string)$ultimoRecord['call_id_with_rec']);
 
 try {
     $api = new \Zadarma_API\Api($apiKey, $apiSecret, false);
-    $record = $api->getPbxRecord($callId, $pbxCallId, 300);
+
+    // Cuando conocemos call_id_with_rec debemos consultar únicamente por call_id.
+    // Si se manda pbx_call_id, Zadarma puede devolver "links" (plural) en vez de
+    // "link", porque una misma llamada PBX puede contener más de una grabación.
+    $record = $api->getPbxRecord($callId, null, 300);
     $link = trim((string)($record->link ?? ''));
+    $metodoConsulta = 'call_id';
+
+    // Fallback defensivo: si el proveedor no devuelve link para call_id,
+    // consultamos por pbx_call_id y tomamos la primera grabación disponible.
+    if ($link === '') {
+        $record = $api->getPbxRecord(null, $pbxCallId, 300);
+        $links = is_array($record->links ?? null) ? $record->links : [];
+        $link = trim((string)($links[0] ?? ''));
+        $metodoConsulta = 'pbx_call_id';
+    }
 
     if ($link === '' || filter_var($link, FILTER_VALIDATE_URL) === false) {
         throw new RuntimeException('Zadarma no devolvió un enlace válido para la grabación.');
@@ -139,6 +153,7 @@ try {
     echo "=== PRUEBA GRABACIÓN ZADARMA ===\n\n";
     echo "[OK] Evento NOTIFY_RECORD encontrado\n";
     echo "[OK] Enlace temporal solicitado a Zadarma\n";
+    echo '[OK] Consulta resuelta por: ' . $metodoConsulta . "\n";
     echo "[OK] Grabación descargada correctamente\n";
     echo 'Archivo: storage/' . basename($rutaFinal) . "\n";
     echo 'Tamaño: ' . $bytes . " bytes\n";
