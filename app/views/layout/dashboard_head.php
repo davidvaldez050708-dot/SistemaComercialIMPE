@@ -60,6 +60,7 @@ $jsOpcionalHead = [
     'seguimiento_llamada_registro_obligatorio.js',
     'seguimiento_llamada_registro_compacto.js',
     'seguimiento_llamadas_expediente.js',
+    'seguimiento_llamada_contacto_efectivo.js',
     'seguimiento_llamadas_desplegable.js',
     'agenda_reunion.js',
     'agenda_kam_cambio.js',
