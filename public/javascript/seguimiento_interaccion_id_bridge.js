@@ -147,7 +147,9 @@
     window.fetch = function (input, init) {
         const url = obtenerUrl(input);
         const contexto = contextoRegistro(url, init || {});
-        const esVinculacion = esUrl(url, 'prueba_telefonia/api/vincular_interaccion.php');
+        const esVinculacion =
+            esUrl(url, 'prueba_telefonia/api/vincular_interaccion.php') ||
+            esUrl(url, 'prueba_telefonia/api/vincular_interaccion_zadarma.php');
         const body = init && init.body instanceof FormData ? init.body : null;
         let seguimientoVinculacion = 0;
         let interaccionVinculacion = 0;
