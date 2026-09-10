@@ -246,6 +246,10 @@
         };
 
         const prepararBloqueRuta = function () {
+            if (!offcanvas.hasAttribute('data-flow-ui-pending')) {
+                return;
+            }
+
             const bloque = offcanvas.querySelector('[data-work-flow-section]');
 
             if (!bloque) {
@@ -289,10 +293,30 @@
             offcanvas.setAttribute('data-flow-ui-prepared', '1');
         };
 
-        const iniciarCarga = function (seguimientoId) {
-            const proximaAccion = offcanvas.querySelector('[data-work-next-action]');
+        const mostrarRutaGuardada = function (seguimientoId) {
+            const cache = window.IMPE_SEGUIMIENTO_RUTA_CACHE;
+            const flujo = cache?.obtener?.(seguimientoId) || null;
 
+            if (!flujo || typeof cache?.renderizarPanel !== 'function') {
+                return false;
+            }
+
+            limpiarPendiente();
+            cache.renderizarPanel(seguimientoId, flujo, false);
+            return true;
+        };
+
+        const iniciarCarga = function (seguimientoId) {
             window.clearTimeout(temporizadorRespaldo);
+
+            // Si la ruta ya se calculó en la bandeja, se reutiliza de inmediato.
+            // La consulta normal continúa en segundo plano y actualizará la caché
+            // solamente si el estado real cambió.
+            if (mostrarRutaGuardada(seguimientoId)) {
+                return;
+            }
+
+            const proximaAccion = offcanvas.querySelector('[data-work-next-action]');
             offcanvas.setAttribute('data-flow-ui-pending', String(seguimientoId || '1'));
             offcanvas.setAttribute('data-flow-ui-prepared', '0');
             offcanvas.removeAttribute('data-flow-ui-fallback');
@@ -396,6 +420,7 @@
         offcanvas.addEventListener('hidden.bs.offcanvas', function () {
             limpiarPendiente();
             seguimientoObservacionId = 0;
+            delete offcanvas.dataset.flowCacheVisible;
         });
     });
 })();
