@@ -156,6 +156,101 @@
         return true;
     };
 
+    const procesarRegistroVisible = function (registro) {
+        if (!(registro instanceof Element)) {
+            return;
+        }
+
+        let tipoContacto = '';
+        const bloquesTexto = Array.from(registro.querySelectorAll('p'));
+
+        bloquesTexto.forEach(function (bloque) {
+            const textoOriginal = String(bloque.textContent || '');
+
+            if (textoOriginal.includes(MARCADOR_CONTACTO)) {
+                tipoContacto = 'SI';
+            } else if (textoOriginal.includes(MARCADOR_SIN_CONTACTO)) {
+                tipoContacto = 'NO';
+            }
+
+            if (
+                !textoOriginal.includes(MARCADOR_CONTACTO) &&
+                !textoOriginal.includes(MARCADOR_SIN_CONTACTO)
+            ) {
+                return;
+            }
+
+            const textoLimpio = limpiarMarcadores(textoOriginal);
+            if (textoLimpio) {
+                bloque.textContent = textoLimpio;
+            } else {
+                bloque.remove();
+            }
+        });
+
+        if (!tipoContacto) {
+            return;
+        }
+
+        const etiqueta = tipoContacto === 'SI' ? 'Contacto efectivo' : 'Sin contacto';
+        const meta = registro.matches('.linkage-history-item')
+            ? registro.querySelector('div > span')
+            : registro.querySelector(':scope > span');
+
+        if (!meta) {
+            return;
+        }
+
+        const textoMeta = String(meta.textContent || '')
+            .replace(/\s*·\s*(Contacto efectivo|Sin contacto)\s*$/i, '')
+            .trim();
+
+        meta.textContent = textoMeta ? textoMeta + ' · ' + etiqueta : etiqueta;
+        meta.dataset.contactoEfectivoPresentado = tipoContacto;
+    };
+
+    const corregirMarcadoresVisibles = function (raiz) {
+        if (!raiz) {
+            return;
+        }
+
+        const selector = '[data-work-activity-list] article, .linkage-history-item';
+        const registros = [];
+
+        if (raiz instanceof Element && raiz.matches(selector)) {
+            registros.push(raiz);
+        }
+
+        if (typeof raiz.querySelectorAll === 'function') {
+            registros.push(...raiz.querySelectorAll(selector));
+        }
+
+        registros.forEach(procesarRegistroVisible);
+    };
+
+    const inicializarPresentacionMarcadores = function () {
+        corregirMarcadoresVisibles(document);
+
+        if (!window.MutationObserver || !document.body) {
+            return;
+        }
+
+        const observer = new MutationObserver(function (mutaciones) {
+            mutaciones.forEach(function (mutacion) {
+                mutacion.addedNodes.forEach(function (nodo) {
+                    if (nodo instanceof Element) {
+                        corregirMarcadoresVisibles(nodo);
+                    }
+                });
+            });
+        });
+
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+    };
+
     const inicializarResumenExpediente = function () {
         const parametros = new URLSearchParams(window.location.search);
         const seguimientoId = Number(parametros.get('id') || 0);
@@ -247,6 +342,7 @@
             }, 100);
         }
 
+        inicializarPresentacionMarcadores();
         inicializarResumenExpediente();
     };
 
