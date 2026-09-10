@@ -27,6 +27,7 @@ tmp/
 
 # Archivos generados por el sistema
 /storage/oficios/
+/storage/zadarma_prueba_ultima.*
 
 # Firmas personales cargadas desde Mi perfil
 /storage/mail/firmas/*
