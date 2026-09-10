@@ -1,7 +1,20 @@
 <?php
 
-// URL principal del sistema
-define('BASE_URL', 'http://localhost/SistemaComercialIMPE/');
+// URL principal del sistema.
+// En desarrollo normal se conserva localhost. Para pruebas temporales de WebRTC
+// se acepta únicamente un Quick Tunnel HTTPS de Cloudflare (trycloudflare.com),
+// evitando depender de un dominio fijo mientras se valida la telefonía.
+$baseUrl = 'http://localhost/SistemaComercialIMPE/';
+$hostActual = strtolower(trim((string)($_SERVER['HTTP_HOST'] ?? '')));
+
+if (
+    $hostActual !== '' &&
+    preg_match('/^[a-z0-9-]+\.trycloudflare\.com(?::\d+)?$/', $hostActual)
+) {
+    $baseUrl = 'https://' . $hostActual . '/SistemaComercialIMPE/';
+}
+
+define('BASE_URL', $baseUrl);
 
 // Ruta física principal del proyecto
 define('ROOT_PATH', dirname(__DIR__));
