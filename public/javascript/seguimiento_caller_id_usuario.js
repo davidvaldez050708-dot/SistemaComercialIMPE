@@ -135,6 +135,10 @@
             return;
         }
 
+        if (String(modal.dataset.callProvider || '').toUpperCase() === 'ZADARMA') {
+            return;
+        }
+
         let origen = modal.querySelector('[data-call-origin]');
         if (!origen) {
             origen = document.createElement('div');
