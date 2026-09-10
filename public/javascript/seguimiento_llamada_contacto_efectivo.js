@@ -21,6 +21,7 @@
         const canal = formulario.querySelector('[name="canal"]');
         const resultado = formulario.querySelector('[name="resultado"]');
         const observacion = formulario.querySelector('[name="observacion"]');
+        const personaAtendio = formulario.querySelector('[name="persona_atendio"]');
 
         if (!canal || !resultado || !observacion) {
             return false;
@@ -28,29 +29,64 @@
 
         formulario.dataset.contactoEfectivoReady = '1';
 
+        const campoPersona = personaAtendio
+            ? (personaAtendio.closest('[class*="col-"]') || personaAtendio.parentElement)
+            : null;
         const campoResultado = resultado.closest('[class*="col-"]') || resultado.parentElement;
         const campo = document.createElement('div');
-        campo.className = campoResultado && typeof campoResultado.className === 'string' && campoResultado.className.trim() !== ''
-            ? campoResultado.className
-            : 'col-md-6';
-        campo.classList.add('d-none');
+        campo.className = 'col-12 d-none call-contact-effective-field';
         campo.setAttribute('data-call-contact-field', '');
         campo.innerHTML =
-            '<label class="form-label" for="callContactoEfectivo">¿Se logró hablar con una persona?</label>' +
-            '<select class="form-select" id="callContactoEfectivo" data-call-contact-select>' +
-                '<option value="">Selecciona una opción…</option>' +
-                '<option value="SI">Sí, hubo contacto efectivo</option>' +
-                '<option value="NO">No, no se logró contacto</option>' +
-            '</select>' +
-            '<div class="form-text">Se solicita cuando el resultado es “Otro”, para que el resumen de llamadas sea correcto.</div>';
+            '<div class="call-contact-effective-box" data-call-contact-box>' +
+                '<span class="form-label call-contact-effective-title">¿Se logró hablar con una persona?</span>' +
+                '<div class="call-contact-effective-options" role="group" aria-label="Contacto efectivo">' +
+                    '<button type="button" class="call-contact-effective-option" data-call-contact-option="SI" aria-pressed="false">' +
+                        '<i class="bi bi-person-check" aria-hidden="true"></i>' +
+                        '<span>Sí, hubo contacto</span>' +
+                    '</button>' +
+                    '<button type="button" class="call-contact-effective-option" data-call-contact-option="NO" aria-pressed="false">' +
+                        '<i class="bi bi-person-x" aria-hidden="true"></i>' +
+                        '<span>No hubo contacto</span>' +
+                    '</button>' +
+                '</div>' +
+                '<div class="call-contact-effective-error" data-call-contact-error hidden>Selecciona una opción.</div>' +
+            '</div>';
 
-        if (campoResultado && campoResultado.parentElement) {
-            campoResultado.insertAdjacentElement('afterend', campo);
+        if (campoPersona && campoPersona.parentElement) {
+            campoPersona.insertAdjacentElement('afterend', campo);
+        } else if (campoResultado && campoResultado.parentElement) {
+            campoResultado.parentElement.appendChild(campo);
         } else {
             formulario.querySelector('.row')?.appendChild(campo);
         }
 
-        const selector = campo.querySelector('[data-call-contact-select]');
+        const caja = campo.querySelector('[data-call-contact-box]');
+        const opciones = Array.from(campo.querySelectorAll('[data-call-contact-option]'));
+        const error = campo.querySelector('[data-call-contact-error]');
+        let valorContacto = '';
+
+        const limpiarError = function () {
+            caja?.classList.remove('is-invalid');
+            if (error) {
+                error.hidden = true;
+            }
+        };
+
+        const seleccionar = function (valor) {
+            valorContacto = String(valor || '').toUpperCase();
+            opciones.forEach(function (boton) {
+                const activo = boton.dataset.callContactOption === valorContacto;
+                boton.classList.toggle('is-selected', activo);
+                boton.setAttribute('aria-pressed', activo ? 'true' : 'false');
+            });
+            limpiarError();
+        };
+
+        opciones.forEach(function (boton) {
+            boton.addEventListener('click', function () {
+                seleccionar(boton.dataset.callContactOption || '');
+            });
+        });
 
         const actualizarVisibilidad = function () {
             const esLlamada = String(canal.value || '').toUpperCase() === 'LLAMADA';
@@ -58,19 +94,14 @@
             const visible = esLlamada && esOtro;
 
             campo.classList.toggle('d-none', !visible);
-            selector.required = visible;
 
             if (!visible) {
-                selector.value = '';
-                selector.setCustomValidity('');
+                seleccionar('');
             }
         };
 
         canal.addEventListener('change', actualizarVisibilidad);
         resultado.addEventListener('change', actualizarVisibilidad);
-        selector.addEventListener('change', function () {
-            selector.setCustomValidity('');
-        });
 
         // Se usa captura en window para colocar el marcador antes de que el
         // controlador existente serialice el formulario. Después se restaura la
@@ -87,17 +118,20 @@
                 return;
             }
 
-            if (!selector.value) {
+            if (!valorContacto) {
                 event.preventDefault();
                 event.stopImmediatePropagation();
-                selector.setCustomValidity('Indica si se logró hablar con una persona.');
-                selector.reportValidity();
+                caja?.classList.add('is-invalid');
+                if (error) {
+                    error.hidden = false;
+                }
+                opciones[0]?.focus();
                 return;
             }
 
             const observacionOriginal = observacion.value;
             const notasLimpias = limpiarMarcadores(observacionOriginal);
-            const marcador = selector.value === 'SI'
+            const marcador = valorContacto === 'SI'
                 ? MARCADOR_CONTACTO
                 : MARCADOR_SIN_CONTACTO;
 
@@ -112,7 +146,7 @@
 
         formulario.addEventListener('reset', function () {
             window.setTimeout(function () {
-                selector.value = '';
+                seleccionar('');
                 actualizarVisibilidad();
             }, 0);
         });
