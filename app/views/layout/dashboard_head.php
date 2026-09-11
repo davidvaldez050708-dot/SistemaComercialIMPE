@@ -87,6 +87,7 @@ $jsOpcionalHead = [
     'seguimiento_expediente_proxima_accion.js',
     'seguimiento_abrir_desde_dashboard.js',
     'dashboard_analista.js',
+    'dashboard_analista_integridad.js',
     'dashboard_analista_refinamientos.js',
     'dashboard_analista_navegacion_rapida.js',
     'dashboard_analista_reuniones.js',
@@ -156,6 +157,18 @@ $jsOpcionalHead = [
         window.IMPE_ANALISTA_REUNIONES = <?= json_encode(
             is_array($tableroAnalista['reuniones_dashboard'] ?? null)
                 ? $tableroAnalista['reuniones_dashboard']
+                : [],
+            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+        ) ?>;
+        window.IMPE_ANALISTA_DASHBOARD_META = <?= json_encode(
+            is_array($tableroAnalista['integridad_dashboard'] ?? null)
+                ? $tableroAnalista['integridad_dashboard']
+                : [],
+            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+        ) ?>;
+        window.IMPE_ANALISTA_ACTIVIDAD_RECIENTE = <?= json_encode(
+            is_array($tableroAnalista['integridad_dashboard']['actividad_actores'] ?? null)
+                ? $tableroAnalista['integridad_dashboard']['actividad_actores']
                 : [],
             JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
         ) ?>;
