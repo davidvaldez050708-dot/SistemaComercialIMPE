@@ -738,6 +738,24 @@ class OficioDocxPdfService
             $this->quitarSaltosFinalesVacios($xpath, $parrafoDinamico);
         }
 
+        $reemplazosFirmaDisponibles = [
+            '(Nombre del coordinador o analista)' => trim((string)($vista['analista_nombre'] ?? '')),
+            '(NOMBRE DEL COORDINADOR O ANALISTA)' => trim((string)($vista['analista_nombre'] ?? '')),
+            '(Número del coordinador o analista)' => trim((string)($vista['analista_telefono'] ?? '')),
+            '(NÚMERO DEL COORDINADOR O ANALISTA)' => trim((string)($vista['analista_telefono'] ?? ''))
+        ];
+
+        foreach ($xpath->query('//w:body//w:p') as $parrafoFirma) {
+            foreach ($reemplazosFirmaDisponibles as $marcador => $valor) {
+                if ($valor === '') {
+                    continue;
+                }
+                while ($this->reemplazarTextoEnParrafo($xpath, $parrafoFirma, $marcador, $valor)) {
+                    // Sustituye todas las apariciones del marcador dentro del mismo párrafo.
+                }
+            }
+        }
+
         return $documento->saveXML();
     }
 
