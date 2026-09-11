@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/../models/UsuarioModel.php';
 require_once __DIR__ . '/../models/TerritorioModel.php';
+require_once __DIR__ . '/../models/AnalistaDashboardModel.php';
 require_once __DIR__ . '/../helpers/PermissionHelper.php';
 
 class HomeController
@@ -43,7 +44,14 @@ class HomeController
                 break;
 
             case 4:
-                $subtituloPagina = 'Panel de Analista de Datos';
+                $tituloPagina = 'Inicio';
+                $subtituloPagina = 'Resumen operativo de tus seguimientos de vinculación';
+
+                $modeloDashboardAnalista = new AnalistaDashboardModel();
+                $tableroAnalista = $modeloDashboardAnalista->obtenerTablero(
+                    (int)$_SESSION['usuario_id']
+                );
+
                 $vistaPanel = __DIR__ . '/../views/dashboard/analista.php';
                 break;
 
