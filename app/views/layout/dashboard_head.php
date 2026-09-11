@@ -28,6 +28,7 @@ $fotoPerfilUrl = $fotoPerfil !== ''
 
 $cssOpcionalDashboard = [
     'dashboard_analista.css',
+    'dashboard_analista_refinamientos.css',
     'seguimiento_filtros_layout.css',
     'seguimiento_panel_ruta.css',
     'oficios_vista_previa.css',
@@ -80,6 +81,7 @@ $jsOpcionalHead = [
     'seguimiento_panel_cache.js',
     'seguimiento_abrir_desde_dashboard.js',
     'dashboard_analista.js',
+    'dashboard_analista_refinamientos.js',
     'seguimiento_resultados_humanizados.js',
     'oficios_correo_formato.js',
     'firma_correo_perfil.js',
