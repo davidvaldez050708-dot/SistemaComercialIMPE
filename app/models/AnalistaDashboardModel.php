@@ -42,7 +42,8 @@ class AnalistaDashboardModel
                     WHERE reunion_hoy.seguimiento_id = seguimientos.id
                       AND reunion_hoy.analista_id = seguimientos.analista_id
                       AND reunion_hoy.estado NOT IN ('CANCELADA', 'REALIZADA')
-                      AND DATE(reunion_hoy.fecha_propuesta) = CURDATE()
+                      AND reunion_hoy.fecha_propuesta >= NOW()
+                      AND reunion_hoy.fecha_propuesta < DATE_ADD(CURDATE(), INTERVAL 1 DAY)
                 )"
             : '';
         $reunionAtrasada = $usaReuniones
@@ -61,7 +62,8 @@ class AnalistaDashboardModel
                     COALESCE(SUM(
                         (
                             (seguimientos.proxima_accion_at IS NOT NULL
-                             AND DATE(seguimientos.proxima_accion_at) = CURDATE())
+                             AND seguimientos.proxima_accion_at >= NOW()
+                             AND seguimientos.proxima_accion_at < DATE_ADD(CURDATE(), INTERVAL 1 DAY))
                             {$reunionHoy}
                         )
                     ), 0) AS para_hoy,
