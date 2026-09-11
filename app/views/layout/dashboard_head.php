@@ -160,12 +160,9 @@ $jsOpcionalHead = [
                 : [],
             JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
         ) ?>;
-        window.IMPE_ANALISTA_DASHBOARD_META = <?= json_encode(
-            is_array($tableroAnalista['integridad_dashboard'] ?? null)
-                ? $tableroAnalista['integridad_dashboard']
-                : [],
-            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
-        ) ?>;
+        window.IMPE_ANALISTA_DASHBOARD_META = <?= json_encode([
+            'requieren_atencion_total' => (int)($tableroAnalista['resumen']['requieren_atencion'] ?? 0)
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
         window.IMPE_ANALISTA_ACTIVIDAD_RECIENTE = <?= json_encode(
             is_array($tableroAnalista['integridad_dashboard']['actividad_actores'] ?? null)
                 ? $tableroAnalista['integridad_dashboard']['actividad_actores']
