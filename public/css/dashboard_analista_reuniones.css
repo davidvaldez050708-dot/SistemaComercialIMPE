@@ -1,38 +1,62 @@
 .analyst-upcoming-copy {
     min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
 }
 
-.analyst-upcoming-meeting-status {
+/*
+ * dashboard_analista.css aplica display:block y margin-top a todos los span
+ * de Próximamente. Estas reglas son más específicas para que el estado de la
+ * reunión se comporte como una píldora real y no se desarme verticalmente.
+ */
+.analyst-upcoming-item .analyst-upcoming-meeting-status {
     width: fit-content;
-    margin-top: 5px;
-    padding: 2px 7px;
+    max-width: 100%;
+    margin-top: 6px;
+    padding: 3px 8px;
     display: inline-flex;
     align-items: center;
+    justify-content: flex-start;
     gap: 5px;
+    align-self: flex-start;
     border: 1px solid #dbe5f2;
     border-radius: 999px;
     background: #f5f8fc;
     color: #66758a;
     font-size: 8.5px;
     font-weight: 800;
-    line-height: 1.35;
+    line-height: 1.2;
+    white-space: nowrap;
 }
 
-.analyst-upcoming-meeting-status.is-pending {
+.analyst-upcoming-item .analyst-upcoming-meeting-status.is-pending {
     border-color: #f1d6c9;
     background: #fff7f2;
     color: #a84b16;
 }
 
-.analyst-upcoming-meeting-status.is-confirmed {
+.analyst-upcoming-item .analyst-upcoming-meeting-status.is-confirmed {
     border-color: rgba(10, 143, 122, 0.18);
     background: #edf9f6;
     color: #087965;
 }
 
-.analyst-upcoming-meeting-status i {
+.analyst-upcoming-item .analyst-upcoming-meeting-status > i {
+    display: inline-block;
+    flex: 0 0 auto;
+    margin: 0;
     font-size: 9px;
     line-height: 1;
+}
+
+.analyst-upcoming-item .analyst-upcoming-meeting-status > span {
+    display: inline;
+    margin: 0;
+    color: inherit;
+    font-size: inherit;
+    font-weight: inherit;
+    line-height: inherit;
 }
 
 .analyst-upcoming-item.is-meeting-pending .analyst-upcoming-icon {
@@ -43,4 +67,10 @@
 .analyst-upcoming-item.is-meeting-confirmed .analyst-upcoming-icon {
     background: #eaf7f4;
     color: var(--color-accent);
+}
+
+@media (max-width: 575.98px) {
+    .analyst-upcoming-item .analyst-upcoming-meeting-status {
+        white-space: normal;
+    }
 }
