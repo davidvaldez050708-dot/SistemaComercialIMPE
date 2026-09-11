@@ -128,11 +128,11 @@
     min-height: 46px !important;
     margin-bottom: 14px !important;
     padding: 0 12px !important;
-    font-size: 12px !important;
 }
 
 #modalSeleccionarOficio [data-oficio-custom-file] > label[for="oficioSavedTemplate"] {
     margin-left: -16px !important;
+    font-size: 12px !important;
 }
 
 #modalSeleccionarOficio [data-oficio-add] {
@@ -140,7 +140,8 @@
     margin-right: -16px !important;
     align-items: center !important;
     justify-content: center !important;
-    gap: 6px !important;
+    gap: 8px !important;
+    font-size: 0 !important;
 }
 
 #modalSeleccionarOficio [data-oficio-add]::before {
