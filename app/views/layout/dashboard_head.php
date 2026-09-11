@@ -29,6 +29,7 @@ $fotoPerfilUrl = $fotoPerfil !== ''
 $cssOpcionalDashboard = [
     'dashboard_analista.css',
     'dashboard_analista_refinamientos.css',
+    'dashboard_analista_reuniones.css',
     'seguimiento_filtros_layout.css',
     'seguimiento_panel_ruta.css',
     'oficios_vista_previa.css',
@@ -83,6 +84,7 @@ $jsOpcionalHead = [
     'seguimiento_abrir_desde_dashboard.js',
     'dashboard_analista.js',
     'dashboard_analista_refinamientos.js',
+    'dashboard_analista_reuniones.js',
     'seguimiento_resultados_humanizados.js',
     'oficios_correo_formato.js',
     'firma_correo_perfil.js',
@@ -146,6 +148,12 @@ $jsOpcionalHead = [
     <script>
         window.IMPE_CURRENT_ROLE_ID = <?= (int)($_SESSION['rol_id'] ?? 0) ?>;
         window.IMPE_CURRENT_USER_ID = <?= (int)($_SESSION['usuario_id'] ?? 0) ?>;
+        window.IMPE_ANALISTA_REUNIONES = <?= json_encode(
+            is_array($tableroAnalista['reuniones_dashboard'] ?? null)
+                ? $tableroAnalista['reuniones_dashboard']
+                : [],
+            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+        ) ?>;
     </script>
 
     <?php foreach ($jsOpcionalHead as $archivoJs): ?>
