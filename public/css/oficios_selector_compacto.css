@@ -138,13 +138,19 @@
 #modalSeleccionarOficio [data-oficio-add] {
     width: calc(100% + 16px) !important;
     margin-right: -16px !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
 }
 
 #modalSeleccionarOficio [data-oficio-add]::before {
+    margin-right: 0 !important;
+    flex: 0 0 auto;
     font-size: 16px !important;
 }
 
 #modalSeleccionarOficio [data-oficio-add]::after {
+    flex: 0 0 auto;
     font-size: 12px !important;
 }
 
