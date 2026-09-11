@@ -4,6 +4,7 @@ require_once __DIR__ . '/../models/UsuarioModel.php';
 require_once __DIR__ . '/../models/TerritorioModel.php';
 require_once __DIR__ . '/../models/AnalistaDashboardModel.php';
 require_once __DIR__ . '/../services/AnalistaDashboardReunionService.php';
+require_once __DIR__ . '/../services/AnalistaDashboardIntegrityService.php';
 require_once __DIR__ . '/../helpers/PermissionHelper.php';
 
 class HomeController
@@ -54,6 +55,12 @@ class HomeController
 
                 $servicioReunionesDashboard = new AnalistaDashboardReunionService();
                 $tableroAnalista = $servicioReunionesDashboard->ajustar(
+                    $tableroAnalista,
+                    $usuarioId
+                );
+
+                $servicioIntegridadDashboard = new AnalistaDashboardIntegrityService();
+                $tableroAnalista = $servicioIntegridadDashboard->ajustar(
                     $tableroAnalista,
                     $usuarioId
                 );
