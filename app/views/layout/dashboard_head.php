@@ -27,6 +27,8 @@ $fotoPerfilUrl = $fotoPerfil !== ''
     : '';
 
 $cssOpcionalDashboard = [
+    'dashboard_analista.css',
+    'dashboard_analista_refinamientos.css',
     'seguimiento_filtros_layout.css',
     'seguimiento_panel_ruta.css',
     'oficios_vista_previa.css',
@@ -40,16 +42,28 @@ $cssOpcionalDashboard = [
     'seguimiento_llamadas_player.css',
     'seguimiento_flujo.css',
     'seguimiento_llamada_twilio.css',
+    'seguimiento_caller_id_usuario.css',
     'seguimiento_llamada_flotante.css',
+    'seguimiento_llamada_registro_obligatorio.css',
+    'seguimiento_llamada_registro_compacto.css',
+    'seguimiento_llamada_contacto_efectivo.css',
     'seguimiento_post_envio.css',
     'agenda_reunion.css',
     'agenda_reunion_refinamientos.css'
 ];
 
 $jsOpcionalHead = [
+    'seguimiento_interaccion_id_bridge.js',
+    'seguimiento_llamada_zadarma.js',
+    'seguimiento_zadarma_marcado_e164.js',
+    'seguimiento_zadarma_widget_oculto.js',
+    'seguimiento_caller_id_usuario.js',
     'seguimiento_llamada_twilio.js',
     'seguimiento_llamada_flotante.js',
+    'seguimiento_llamada_registro_obligatorio.js',
+    'seguimiento_llamada_registro_compacto.js',
     'seguimiento_llamadas_expediente.js',
+    'seguimiento_llamada_contacto_efectivo.js',
     'seguimiento_llamadas_desplegable.js',
     'agenda_reunion.js',
     'agenda_kam_cambio.js',
@@ -62,6 +76,12 @@ $jsOpcionalHead = [
     'seguimiento_resumen_ruta.js',
     'seguimiento_panel_ruta.js',
     'seguimiento_flujo_loading.js',
+    'seguimiento_ruta_cache.js',
+    'seguimiento_flujo_consistencia.js',
+    'seguimiento_panel_cache.js',
+    'seguimiento_abrir_desde_dashboard.js',
+    'dashboard_analista.js',
+    'dashboard_analista_refinamientos.js',
     'seguimiento_resultados_humanizados.js',
     'oficios_correo_formato.js',
     'firma_correo_perfil.js',
@@ -124,6 +144,7 @@ $jsOpcionalHead = [
 
     <script>
         window.IMPE_CURRENT_ROLE_ID = <?= (int)($_SESSION['rol_id'] ?? 0) ?>;
+        window.IMPE_CURRENT_USER_ID = <?= (int)($_SESSION['usuario_id'] ?? 0) ?>;
     </script>
 
     <?php foreach ($jsOpcionalHead as $archivoJs): ?>

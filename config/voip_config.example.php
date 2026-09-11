@@ -11,7 +11,7 @@ define('VOIP_SCHEME', 'sip');
 define('VOIP_SIP_DOMAIN', 'pbx.ejemplo.com');
 
 /**
- * Prueba aislada de telefonía con Twilio.
+ * Telefonía integrada con Twilio.
  *
  * Copia este archivo como config/voip_config.php y completa los valores reales.
  * config/voip_config.php está ignorado por Git y NO debe subirse al repositorio.
@@ -21,11 +21,15 @@ return [
     // Ejemplo: https://mi-quickstart-1234-dev.twil.io/voice-token
     'token_url' => 'https://TU-DOMINIO-TWILIO.twil.io/voice-token',
 
-    // Se usan únicamente desde PHP para consultar historial y reproducir grabaciones.
-    // Nunca expongas estos valores en JavaScript ni los subas a GitHub.
+    // Se usan únicamente desde PHP para validar Caller IDs, consultar historial
+    // y reproducir grabaciones. Nunca expongas estos valores en JavaScript.
     'account_sid' => 'ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
     'auth_token' => 'TU_AUTH_TOKEN_PRIVADO',
 
-    // Referencia visual. La llamada real usa el CALLER_ID de la Function/TwiML App.
+    // Número institucional/base que ya utiliza la cuenta. Se conserva como
+    // referencia y también se considera autorizado si coincide con el teléfono
+    // de un usuario. Las llamadas productivas toman el Caller ID desde
+    // usuarios.telefono y requieren que ese número esté comprado o verificado
+    // en Twilio. Ver prueba_telefonia/TWILIO_CALLER_ID_USUARIO.md.
     'caller_id' => '+1XXXXXXXXXX',
 ];
