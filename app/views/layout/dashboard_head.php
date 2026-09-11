@@ -34,6 +34,7 @@ $cssOpcionalDashboard = [
     'oficios_vista_previa.css',
     'oficios_vista_previa_documento.css',
     'oficios_correo_ajustes.css',
+    'oficios_selector_compacto.css',
     'seguimiento_expediente.css',
     'seguimiento_expediente_v2.css',
     'seguimiento_interacciones_refinamientos.css',
