@@ -1,0 +1,39 @@
+.linkage-work-next [data-work-next-action] {
+    display: block;
+}
+
+.linkage-work-next-schedule {
+    margin-top: 7px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #6f7d91;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.35;
+}
+
+.linkage-work-next-schedule i {
+    color: var(--color-primary);
+    font-size: 11px;
+}
+
+.linkage-work-next-schedule.is-overdue,
+.linkage-work-next-schedule.is-overdue i {
+    color: #b54708;
+}
+
+[data-row-next-action][data-next-schedule]::after {
+    content: attr(data-next-schedule);
+    display: block;
+    margin-top: 4px;
+    color: #7d899a;
+    font-size: 9px;
+    font-weight: 600;
+    line-height: 1.35;
+}
+
+[data-row-next-action][data-next-overdue="1"]::after {
+    color: #b54708;
+    font-weight: 700;
+}
