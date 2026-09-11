@@ -8,6 +8,44 @@
             return;
         }
 
+        // Desde Inicio, un seguimiento concreto debe abrir su expediente directamente.
+        // Evitamos navegar primero a la tabla territorial y esperar a que otro script
+        // encuentre la fila correspondiente para continuar.
+        tablero.addEventListener('click', function (event) {
+            if (
+                event.defaultPrevented ||
+                event.button !== 0 ||
+                event.ctrlKey ||
+                event.metaKey ||
+                event.shiftKey ||
+                event.altKey
+            ) {
+                return;
+            }
+
+            const enlace = event.target.closest('a[href*="abrir_seguimiento="]');
+            if (!enlace || !tablero.contains(enlace)) {
+                return;
+            }
+
+            let seguimientoId = 0;
+            try {
+                const url = new URL(enlace.href, window.location.href);
+                seguimientoId = Number(url.searchParams.get('abrir_seguimiento') || 0);
+            } catch (error) {
+                seguimientoId = 0;
+            }
+
+            if (seguimientoId <= 0) {
+                return;
+            }
+
+            event.preventDefault();
+            window.location.href =
+                'index.php?controller=seguimientoVinculacion&action=detalle&id=' +
+                encodeURIComponent(seguimientoId);
+        });
+
         const elementos = Array.from(
             tablero.querySelectorAll('[data-analyst-attention-item]')
         );
