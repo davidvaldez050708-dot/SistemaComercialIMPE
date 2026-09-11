@@ -43,6 +43,37 @@
     min-width: 0;
 }
 
+.analyst-upcoming-item > .analyst-upcoming-icon {
+    width: 34px;
+    min-width: 34px;
+    height: 34px;
+    display: grid !important;
+    place-items: center;
+    padding: 0;
+}
+
+.analyst-upcoming-item > .analyst-upcoming-icon i {
+    display: block;
+    width: 1em;
+    height: 1em;
+    margin: 0;
+    line-height: 1;
+    text-align: center;
+}
+
+.analyst-attention-panel.is-empty,
+.analyst-upcoming-panel.is-empty {
+    height: auto !important;
+    min-height: 0 !important;
+    align-self: flex-start;
+}
+
+.analyst-attention-panel.is-empty .analyst-empty-state,
+.analyst-upcoming-panel.is-empty .analyst-empty-state {
+    min-height: 108px;
+    padding: 10px;
+}
+
 .analyst-priority-row.is-all-empty .analyst-attention-panel,
 .analyst-priority-row.is-all-empty .analyst-upcoming-panel {
     height: auto !important;
@@ -53,12 +84,6 @@
 .analyst-priority-row.is-all-empty .analyst-upcoming-panel .analyst-empty-state {
     min-height: 94px;
     padding: 8px 10px;
-}
-
-.analyst-attention-panel.is-empty .analyst-empty-state,
-.analyst-upcoming-panel.is-empty .analyst-empty-state {
-    padding-left: 10px;
-    padding-right: 10px;
 }
 
 .analyst-empty-cta {
@@ -269,6 +294,12 @@
         width: 38px;
         min-width: 38px;
         height: 38px;
+    }
+
+    .analyst-upcoming-item > .analyst-upcoming-icon {
+        width: 34px;
+        min-width: 34px;
+        height: 34px;
     }
 
     .analyst-territory-item {
