@@ -9,6 +9,26 @@
             .replace(/[\u0300-\u036f]/g, '');
     };
 
+    const normalizarTexto = function (valor) {
+        return String(valor || '')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .toLowerCase();
+    };
+
+    const obtenerSeguimientoDesdeHref = function (href) {
+        try {
+            const url = new URL(String(href || ''), window.location.href);
+            return Number(
+                url.searchParams.get('abrir_seguimiento') ||
+                url.searchParams.get('trabajar_id') ||
+                0
+            );
+        } catch (error) {
+            return 0;
+        }
+    };
+
     const archivoEstado = function (nombre) {
         const normalizado = normalizarNombreEstado(nombre);
         const especiales = {
@@ -69,23 +89,97 @@
         }
     };
 
+    const crearEstadoVacioProximos = function (panel, esDuplicadoDePrioridad) {
+        if (!panel || panel.querySelector('.analyst-empty-state')) {
+            return;
+        }
+
+        const vacio = document.createElement('div');
+        vacio.className = 'analyst-empty-state analyst-empty-state-small';
+        vacio.innerHTML =
+            '<span><i class="bi bi-calendar2"></i></span>' +
+            '<div>' +
+                '<strong>' + (esDuplicadoDePrioridad
+                    ? 'Sin compromisos adicionales'
+                    : 'Sin compromisos próximos') + '</strong>' +
+                '<p>' + (esDuplicadoDePrioridad
+                    ? 'Las acciones que requieren atención hoy ya aparecen en Prioridad operativa.'
+                    : 'No hay acciones ni reuniones programadas para los siguientes 7 días.') + '</p>' +
+            '</div>';
+        panel.appendChild(vacio);
+    };
+
+    const refinarProximos = function (tablero) {
+        const panel = tablero.querySelector('.analyst-upcoming-panel');
+        const lista = panel?.querySelector('.analyst-upcoming-list');
+        if (!panel || !lista) {
+            return;
+        }
+
+        const referenciasPrioridad = new Map();
+        tablero.querySelectorAll('[data-analyst-attention-item]').forEach(function (item) {
+            const seguimientoId = Number(item.dataset.seguimientoId || 0);
+            if (seguimientoId <= 0) {
+                return;
+            }
+
+            const fecha = normalizarTexto(
+                item.querySelector('.analyst-attention-meta span:last-child')?.textContent || ''
+            );
+
+            if (!referenciasPrioridad.has(seguimientoId)) {
+                referenciasPrioridad.set(seguimientoId, []);
+            }
+
+            if (fecha !== '') {
+                referenciasPrioridad.get(seguimientoId).push(fecha);
+            }
+        });
+
+        let duplicadosEliminados = 0;
+
+        Array.from(lista.querySelectorAll('.analyst-upcoming-item')).forEach(function (item) {
+            const seguimientoId = obtenerSeguimientoDesdeHref(item.getAttribute('href'));
+            const fechasPrioridad = referenciasPrioridad.get(seguimientoId) || [];
+            if (seguimientoId <= 0 || fechasPrioridad.length === 0) {
+                return;
+            }
+
+            const detalle = normalizarTexto(item.querySelector('div > span')?.textContent || '');
+            const coincide = fechasPrioridad.some(function (fecha) {
+                return fecha !== '' && detalle.includes(fecha);
+            });
+
+            if (!coincide) {
+                return;
+            }
+
+            item.remove();
+            duplicadosEliminados += 1;
+        });
+
+        const restantes = lista.querySelectorAll('.analyst-upcoming-item').length;
+        if (restantes > 0) {
+            return;
+        }
+
+        lista.remove();
+        crearEstadoVacioProximos(panel, duplicadosEliminados > 0);
+    };
+
     const refinarVacios = function (tablero) {
         const atencion = tablero.querySelector('.analyst-attention-panel');
         const proximos = tablero.querySelector('.analyst-upcoming-panel');
         const atencionVacia = Boolean(atencion?.querySelector('.analyst-empty-state'));
         const proximosVacio = Boolean(proximos?.querySelector('.analyst-empty-state'));
 
-        if (atencionVacia) {
-            atencion.classList.add('is-empty');
-        }
-
-        if (proximosVacio) {
-            proximos.classList.add('is-empty');
-        }
+        atencion?.classList.toggle('is-empty', atencionVacia);
+        proximos?.classList.toggle('is-empty', proximosVacio);
 
         const fila = atencion?.closest('.row');
-        if (fila && atencionVacia && proximosVacio) {
-            fila.classList.add('analyst-priority-row', 'is-all-empty');
+        if (fila) {
+            fila.classList.add('analyst-priority-row');
+            fila.classList.toggle('is-all-empty', atencionVacia && proximosVacio);
         }
 
         const vacioProximos = proximos?.querySelector('.analyst-empty-state');
@@ -375,6 +469,7 @@
         }
 
         refinarEstadoJornada(tablero);
+        refinarProximos(tablero);
         refinarVacios(tablero);
         refinarMetricas(tablero);
         refinarActividad(tablero);
