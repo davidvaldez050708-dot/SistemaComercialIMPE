@@ -1,0 +1,231 @@
+/* Selector de oficio compacto y consistente con los modales del sistema. */
+
+#modalSeleccionarOficio .modal-dialog {
+    width: min(620px, calc(100vw - 28px)) !important;
+    max-width: 620px !important;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+#modalSeleccionarOficio .modal-content {
+    max-height: 88vh;
+    overflow: hidden;
+    border: 1px solid var(--color-border) !important;
+    border-radius: var(--radius-lg) !important;
+    background: var(--color-surface) !important;
+    box-shadow: 0 18px 44px rgba(28, 46, 74, 0.14) !important;
+}
+
+#modalSeleccionarOficio .modal-header {
+    min-height: auto !important;
+    padding: 15px 18px !important;
+    border-color: var(--color-border) !important;
+}
+
+#modalSeleccionarOficio .modal-title {
+    margin: 0 !important;
+    color: var(--color-text-primary) !important;
+    font-size: 16px !important;
+    font-weight: 800 !important;
+    line-height: 1.3 !important;
+    letter-spacing: 0 !important;
+}
+
+#modalSeleccionarOficio .btn-close {
+    width: 14px !important;
+    height: 14px !important;
+    padding: 8px !important;
+    margin: 0 !important;
+    border-radius: 8px !important;
+}
+
+#modalSeleccionarOficio .modal-body {
+    padding: 16px 18px 18px !important;
+    overflow-y: auto;
+    color: var(--color-text-secondary) !important;
+}
+
+#modalSeleccionarOficio .modal-body > p {
+    margin: 0 0 13px !important;
+    color: var(--color-text-secondary) !important;
+    font-size: 12px !important;
+    font-weight: 500 !important;
+    line-height: 1.45 !important;
+}
+
+#modalSeleccionarOficio [data-oficio-template-list] {
+    gap: 9px !important;
+    margin-bottom: 14px !important;
+}
+
+#modalSeleccionarOficio [data-oficio-template-list] .list-group-item {
+    grid-template-columns: 20px 32px minmax(0, 1fr) !important;
+    gap: 10px !important;
+    min-height: 66px !important;
+    padding: 11px 13px !important;
+    border: 1px solid var(--color-border) !important;
+    border-radius: 10px !important;
+    background: #fff !important;
+    box-shadow: none !important;
+}
+
+#modalSeleccionarOficio [data-oficio-template-list] .list-group-item:hover {
+    border-color: #cbd8ec !important;
+    background: #fbfcfe !important;
+    box-shadow: none !important;
+}
+
+#modalSeleccionarOficio [data-oficio-template-list] .list-group-item:has(input:checked) {
+    border-color: rgba(39, 58, 138, 0.30) !important;
+    background: var(--color-primary-soft) !important;
+    box-shadow: none !important;
+}
+
+#modalSeleccionarOficio [data-oficio-template-list] .form-check-input {
+    width: 18px !important;
+    height: 18px !important;
+    margin: 0 !important;
+    border-width: 1.5px !important;
+}
+
+#modalSeleccionarOficio [data-oficio-template-list] .list-group-item::before,
+#modalSeleccionarOficio [data-oficio-template-list] .list-group-item:has(input:checked)::before {
+    width: 25px !important;
+    height: 31px !important;
+    border-width: 2px !important;
+    border-radius: 4px !important;
+    background:
+        linear-gradient(currentColor, currentColor) 6px 9px / 12px 2px no-repeat,
+        linear-gradient(currentColor, currentColor) 6px 15px / 12px 2px no-repeat,
+        linear-gradient(currentColor, currentColor) 6px 21px / 9px 2px no-repeat,
+        #fff !important;
+    color: var(--color-primary) !important;
+}
+
+#modalSeleccionarOficio [data-oficio-template-list] strong {
+    margin-bottom: 2px !important;
+    color: var(--color-text-primary) !important;
+    font-size: 13px !important;
+    font-weight: 800 !important;
+    line-height: 1.3 !important;
+}
+
+#modalSeleccionarOficio [data-oficio-template-list] small {
+    color: var(--color-text-secondary) !important;
+    font-size: 11px !important;
+    font-weight: 500 !important;
+    line-height: 1.35 !important;
+}
+
+#modalSeleccionarOficio [data-oficio-custom-file]:not(.d-none) {
+    padding: 0 16px 16px !important;
+    border-color: var(--color-border) !important;
+    border-radius: 10px !important;
+}
+
+#modalSeleccionarOficio [data-oficio-custom-file] > label[for="oficioSavedTemplate"],
+#modalSeleccionarOficio [data-oficio-add] {
+    min-height: 46px !important;
+    margin-bottom: 14px !important;
+    padding: 0 12px !important;
+    font-size: 12px !important;
+}
+
+#modalSeleccionarOficio [data-oficio-custom-file] > label[for="oficioSavedTemplate"] {
+    margin-left: -16px !important;
+}
+
+#modalSeleccionarOficio [data-oficio-add] {
+    width: calc(100% + 16px) !important;
+    margin-right: -16px !important;
+}
+
+#modalSeleccionarOficio [data-oficio-add]::before {
+    font-size: 16px !important;
+}
+
+#modalSeleccionarOficio [data-oficio-add]::after {
+    font-size: 12px !important;
+}
+
+#modalSeleccionarOficio #oficioSavedTemplate,
+#modalSeleccionarOficio #oficioTemplateFile,
+#modalSeleccionarOficio [data-oficio-add-form] .form-control {
+    min-height: 40px !important;
+    border-radius: var(--radius-sm) !important;
+    font-size: 12px !important;
+}
+
+#modalSeleccionarOficio [data-oficio-delete-template] {
+    min-width: 94px !important;
+    min-height: 40px !important;
+    padding: 0 12px !important;
+    border-radius: var(--radius-sm) !important;
+    font-size: 11px !important;
+}
+
+#modalSeleccionarOficio [data-oficio-library-status],
+#modalSeleccionarOficio [data-oficio-custom-file] > .form-text:last-child,
+#modalSeleccionarOficio [data-oficio-custom-file] > .text-muted.text-center {
+    font-size: 10.5px !important;
+}
+
+#modalSeleccionarOficio [data-oficio-add-form] {
+    margin: 6px 0 12px !important;
+    padding: 12px !important;
+    border-radius: 9px !important;
+}
+
+#modalSeleccionarOficio [data-oficio-add-form] .form-label,
+#modalSeleccionarOficio [data-oficio-custom-file] > label[for="oficioTemplateFile"] {
+    font-size: 11px !important;
+}
+
+#modalSeleccionarOficio .modal-footer {
+    gap: 8px !important;
+    min-height: auto !important;
+    padding: 13px 18px !important;
+    border-color: var(--color-border) !important;
+    background: #fff !important;
+}
+
+#modalSeleccionarOficio .modal-footer .btn {
+    min-width: 100px !important;
+    min-height: 40px !important;
+    padding: 8px 15px !important;
+    border-radius: var(--radius-sm) !important;
+    font-size: 12px !important;
+    font-weight: 800 !important;
+}
+
+#modalSeleccionarOficio .modal-footer .btn-secondary {
+    border-color: var(--color-border) !important;
+    background: #f4f6f8 !important;
+    color: var(--color-text-primary) !important;
+}
+
+#modalSeleccionarOficio .modal-footer [data-oficio-use-selected] {
+    border-color: var(--color-primary) !important;
+    background: var(--color-primary) !important;
+    box-shadow: none !important;
+}
+
+@media (max-width: 767.98px) {
+    #modalSeleccionarOficio .modal-dialog {
+        width: calc(100vw - 20px) !important;
+        margin: 10px auto !important;
+    }
+
+    #modalSeleccionarOficio .modal-header,
+    #modalSeleccionarOficio .modal-body,
+    #modalSeleccionarOficio .modal-footer {
+        padding-left: 14px !important;
+        padding-right: 14px !important;
+    }
+
+    #modalSeleccionarOficio [data-oficio-template-list] .list-group-item {
+        grid-template-columns: 20px 30px minmax(0, 1fr) !important;
+        min-height: 62px !important;
+        padding: 10px 11px !important;
+    }
+}
