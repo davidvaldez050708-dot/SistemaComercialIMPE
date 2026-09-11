@@ -92,10 +92,12 @@
                 return;
             }
 
+            // La cache se usa únicamente para pintar de inmediato. Siempre consultamos
+            // después el estado autoritativo porque Cuenta Clave puede haber cambiado la
+            // reunión desde otra sesión y la ruta guardada podría haber quedado obsoleta.
             const cache = obtenerCache(seguimientoId);
             if (cache) {
                 pintar(elemento, cache);
-                return;
             }
 
             try {
@@ -118,6 +120,12 @@
 
                 pintar(elemento, datos.flujo);
             } catch (error) {
+                // Si ya había cache visible, la conservamos como respaldo en vez de
+                // sustituirla por un mensaje genérico.
+                if (cache) {
+                    return;
+                }
+
                 const destino = elemento.querySelector('[data-route-action]');
                 if (destino) {
                     destino.textContent = 'Abre el seguimiento para consultar la ruta actual';
