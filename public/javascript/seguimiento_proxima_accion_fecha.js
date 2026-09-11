@@ -128,7 +128,7 @@
         if (!seguimiento || descripcion.texto === '') {
             destino.classList.add('d-none');
             destino.classList.remove('is-overdue');
-            if (texto) {
+            if (texto && texto.textContent !== '') {
                 texto.textContent = '';
             }
             return;
@@ -136,7 +136,7 @@
 
         destino.classList.remove('d-none');
         destino.classList.toggle('is-overdue', descripcion.vencida);
-        if (texto) {
+        if (texto && texto.textContent !== descripcion.texto) {
             texto.textContent = descripcion.texto;
         }
     };
@@ -160,8 +160,13 @@
                 return;
             }
 
-            celda.dataset.nextSchedule = descripcion.texto;
-            celda.dataset.nextOverdue = descripcion.vencida ? '1' : '0';
+            if (celda.dataset.nextSchedule !== descripcion.texto) {
+                celda.dataset.nextSchedule = descripcion.texto;
+            }
+            const vencida = descripcion.vencida ? '1' : '0';
+            if (celda.dataset.nextOverdue !== vencida) {
+                celda.dataset.nextOverdue = vencida;
+            }
         });
     };
 
