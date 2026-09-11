@@ -3,6 +3,7 @@
 require_once __DIR__ . '/../models/UsuarioModel.php';
 require_once __DIR__ . '/../models/TerritorioModel.php';
 require_once __DIR__ . '/../models/AnalistaDashboardModel.php';
+require_once __DIR__ . '/../services/AnalistaDashboardReunionService.php';
 require_once __DIR__ . '/../helpers/PermissionHelper.php';
 
 class HomeController
@@ -47,9 +48,14 @@ class HomeController
                 $tituloPagina = 'Inicio';
                 $subtituloPagina = 'Resumen operativo de tus seguimientos de vinculación';
 
+                $usuarioId = (int)$_SESSION['usuario_id'];
                 $modeloDashboardAnalista = new AnalistaDashboardModel();
-                $tableroAnalista = $modeloDashboardAnalista->obtenerTablero(
-                    (int)$_SESSION['usuario_id']
+                $tableroAnalista = $modeloDashboardAnalista->obtenerTablero($usuarioId);
+
+                $servicioReunionesDashboard = new AnalistaDashboardReunionService();
+                $tableroAnalista = $servicioReunionesDashboard->ajustar(
+                    $tableroAnalista,
+                    $usuarioId
                 );
 
                 $vistaPanel = __DIR__ . '/../views/dashboard/analista.php';
