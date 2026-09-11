@@ -148,6 +148,51 @@
     font-size: 12px !important;
 }
 
+/* Estado visual de las pestañas: depende únicamente del formulario que ya muestra/oculta la lógica existente. */
+#modalSeleccionarOficio [data-oficio-custom-file] > label[for="oficioSavedTemplate"] {
+    border-top: 3px solid #1d5be3 !important;
+    border-bottom: 1px solid transparent !important;
+    background: #ffffff !important;
+    color: #1e5be0 !important;
+}
+
+#modalSeleccionarOficio [data-oficio-custom-file] > label[for="oficioSavedTemplate"]::before {
+    color: #1e5be0 !important;
+}
+
+#modalSeleccionarOficio [data-oficio-add] {
+    border-top: 1px solid #d5dee9 !important;
+    border-bottom: 1px solid #d5dee9 !important;
+    background: #f8fafc !important;
+}
+
+#modalSeleccionarOficio [data-oficio-add]::before,
+#modalSeleccionarOficio [data-oficio-add]::after {
+    color: #36547c !important;
+}
+
+#modalSeleccionarOficio [data-oficio-custom-file]:has([data-oficio-add-form]:not(.d-none)) > label[for="oficioSavedTemplate"] {
+    border-top: 1px solid #d5dee9 !important;
+    border-bottom: 1px solid #d5dee9 !important;
+    background: #f8fafc !important;
+    color: #36547c !important;
+}
+
+#modalSeleccionarOficio [data-oficio-custom-file]:has([data-oficio-add-form]:not(.d-none)) > label[for="oficioSavedTemplate"]::before {
+    color: #36547c !important;
+}
+
+#modalSeleccionarOficio [data-oficio-custom-file]:has([data-oficio-add-form]:not(.d-none)) [data-oficio-add] {
+    border-top: 3px solid #1d5be3 !important;
+    border-bottom: 1px solid transparent !important;
+    background: #ffffff !important;
+}
+
+#modalSeleccionarOficio [data-oficio-custom-file]:has([data-oficio-add-form]:not(.d-none)) [data-oficio-add]::before,
+#modalSeleccionarOficio [data-oficio-custom-file]:has([data-oficio-add-form]:not(.d-none)) [data-oficio-add]::after {
+    color: #1e5be0 !important;
+}
+
 #modalSeleccionarOficio #oficioSavedTemplate,
 #modalSeleccionarOficio #oficioTemplateFile,
 #modalSeleccionarOficio [data-oficio-add-form] .form-control {
