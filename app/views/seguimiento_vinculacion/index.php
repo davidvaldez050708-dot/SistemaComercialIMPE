@@ -87,6 +87,15 @@ $tarjetasPorPaginaSeguimiento = 12;
     </div>
 <?php endif; ?>
 
+<div class="d-flex justify-content-end mb-3">
+    <a
+        class="btn btn-system-primary"
+        href="<?= BASE_URL ?>index.php?controller=seguimientoVinculacionReporte&action=index">
+        <i class="bi bi-file-earmark-bar-graph me-2"></i>
+        Generar Reportes
+    </a>
+</div>
+
 <?php if (!empty($territorios)): ?>
     <section class="dashboard-panel data-territorial-selector linkage-selector">
         <div class="data-selector-heading">
