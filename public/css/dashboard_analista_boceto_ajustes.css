@@ -85,41 +85,164 @@
     display: none !important;
 }
 
-/* Compactación de la fila inferior para recuperar la proporción del boceto. */
+/*
+ * FILA INFERIOR
+ * Cada tarjeta vuelve a tomar la altura de su propio contenido. Así Actividad
+ * del mes deja de estirarse hasta la altura de Territorios y desaparece el gran
+ * bloque blanco que quedaba debajo de las barras.
+ */
 .analyst-dashboard-v2 .analyst-bottom-grid {
-    align-items: stretch;
+    grid-template-columns: minmax(0, 1.15fr) minmax(330px, 1fr) minmax(330px, .9fr);
+    gap: 16px;
+    align-items: start;
 }
 
 .analyst-dashboard-v2 .analyst-bottom-grid > .dashboard-panel {
-    min-height: 220px;
+    min-height: 0 !important;
+    height: auto;
+    align-self: start;
 }
 
+/* Actividad del mes: contenido más compacto y equilibrado. */
+.analyst-dashboard-v2 .analyst-progress-heading {
+    margin-bottom: 10px;
+}
+
+.analyst-dashboard-v2 .analyst-progress-heading > div {
+    min-width: 0;
+}
+
+.analyst-dashboard-v2 .analyst-interaction-total {
+    margin-left: auto;
+    white-space: nowrap;
+}
+
+.analyst-dashboard-v2 .analyst-progress-grid {
+    align-items: start;
+}
+
+.analyst-dashboard-v2 .analyst-progress-step {
+    min-height: 122px;
+    padding-top: 10px;
+    padding-bottom: 7px;
+    justify-content: center;
+}
+
+.analyst-dashboard-v2 .analyst-progress-step > strong + span {
+    min-height: 26px;
+}
+
+.analyst-dashboard-v2 .analyst-month-track {
+    margin-top: 8px;
+}
+
+/* Actividad reciente: cuatro acciones legibles sin alargar la tarjeta. */
 .analyst-dashboard-v2 .analyst-activity-item {
-    min-height: 40px;
+    min-height: 42px;
     padding-top: 5px;
     padding-bottom: 5px;
+}
+
+.analyst-dashboard-v2 .analyst-activity-icon {
+    width: 30px;
+    min-width: 30px;
+    height: 30px;
+}
+
+/*
+ * Territorios gana presencia visual. Los mapas y nombres crecen, pero la lista
+ * sigue limitada a cuatro elementos para conservar el carácter de resumen.
+ */
+.analyst-dashboard-v2 .analyst-territory-panel .analyst-panel-heading {
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.analyst-dashboard-v2 .analyst-territory-panel .analyst-panel-heading > div {
+    min-width: 0;
 }
 
 .analyst-dashboard-v2 .analyst-territory-item {
-    min-height: 43px;
+    min-height: 49px;
     padding-top: 5px;
     padding-bottom: 5px;
+    grid-template-columns: 40px minmax(0, 1fr) auto auto;
+    gap: 10px;
 }
 
+.analyst-dashboard-v2 .analyst-territory-icon,
 .analyst-dashboard-v2 .analyst-territory-icon.has-state-image {
-    width: 32px;
-    height: 32px;
+    width: 40px;
+    min-width: 40px;
+    height: 40px;
+    padding: 4px;
 }
 
-.analyst-dashboard-v2 .analyst-territory-footer {
+.analyst-dashboard-v2 .analyst-territory-item strong {
+    font-size: 10px;
+    line-height: 1.2;
+}
+
+.analyst-dashboard-v2 .analyst-territory-item div > span,
+.analyst-dashboard-v2 .analyst-territory-count {
     margin-top: 2px;
-    padding-top: 8px;
+    font-size: 8.5px;
+    line-height: 1.25;
+}
+
+.analyst-dashboard-v2 .analyst-territory-item.is-active .analyst-territory-count {
+    font-size: 9px;
+}
+
+.analyst-dashboard-v2 .analyst-territory-item:not(.is-active) .analyst-territory-count {
+    font-size: 0 !important;
+}
+
+.analyst-dashboard-v2 .analyst-territory-item:not(.is-active) .analyst-territory-count::after {
+    content: "Sin seguimientos activos";
+    color: #8a96a8;
+    font-size: 8.5px;
+    font-weight: 600;
+    line-height: 1.25;
+}
+
+/* El enlace superior ya lleva a Territorios; evitamos un segundo CTA redundante. */
+.analyst-dashboard-v2 .analyst-territory-footer {
+    display: none !important;
 }
 
 /* El estado vacío de agenda debe sentirse integrado, no como una tarjeta perdida. */
 .analyst-dashboard-v2 .analyst-upcoming-panel.is-empty .analyst-empty-state {
     margin-top: 8px;
     padding: 12px 14px;
+}
+
+@media (max-width: 1399.98px) {
+    .analyst-dashboard-v2 .analyst-bottom-grid {
+        grid-template-columns: minmax(0, 1.05fr) minmax(280px, .98fr) minmax(280px, .92fr);
+    }
+
+    .analyst-dashboard-v2 .analyst-territory-icon,
+    .analyst-dashboard-v2 .analyst-territory-icon.has-state-image {
+        width: 38px;
+        min-width: 38px;
+        height: 38px;
+    }
+
+    .analyst-dashboard-v2 .analyst-territory-item {
+        grid-template-columns: 38px minmax(0, 1fr) auto auto;
+    }
+}
+
+@media (max-width: 1199.98px) {
+    .analyst-dashboard-v2 .analyst-bottom-grid {
+        grid-template-columns: 1fr;
+        align-items: stretch;
+    }
+
+    .analyst-dashboard-v2 .analyst-bottom-grid > .dashboard-panel {
+        width: 100%;
+    }
 }
 
 @media (max-width: 767.98px) {
@@ -144,5 +267,13 @@
 
     .analyst-dashboard-v2 .analyst-attention-route {
         white-space: normal;
+    }
+
+    .analyst-dashboard-v2 .analyst-progress-step {
+        min-height: 105px;
+    }
+
+    .analyst-dashboard-v2 .analyst-territory-item {
+        grid-template-columns: 38px minmax(0, 1fr) auto;
     }
 }
