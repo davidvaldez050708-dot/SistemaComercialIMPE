@@ -126,6 +126,24 @@
         });
     };
 
+    const normalizarAvanceMensual = function (tablero) {
+        const panel = tablero.querySelector('.analyst-progress-panel');
+        if (!panel) {
+            return;
+        }
+
+        // Sin metas configuradas, una barra al 100 % puede interpretarse como
+        // cumplimiento de objetivo. Conservamos los valores reales y eliminamos
+        // únicamente esa representación porcentual artificial.
+        panel.querySelectorAll('.analyst-month-track').forEach(function (barra) {
+            barra.remove();
+        });
+
+        panel.querySelectorAll('.analyst-month-caption').forEach(function (caption) {
+            caption.textContent = 'Registrado este mes';
+        });
+    };
+
     document.addEventListener('DOMContentLoaded', function () {
         const tablero = document.querySelector('[data-analyst-dashboard]');
         if (!tablero || Number(window.IMPE_CURRENT_ROLE_ID || 0) !== 4) {
@@ -134,5 +152,6 @@
 
         corregirResumenAtencion(tablero);
         enriquecerActividad(tablero);
+        normalizarAvanceMensual(tablero);
     });
 })();
