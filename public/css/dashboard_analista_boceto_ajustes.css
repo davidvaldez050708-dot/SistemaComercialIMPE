@@ -24,6 +24,39 @@
     margin-left: auto;
 }
 
+/* El resumen de jornada que muestra seguimientos pendientes es una acción real. */
+.analyst-dashboard-v2 .analyst-welcome-status.is-dashboard-action {
+    cursor: pointer;
+    transition: border-color .16s ease, background-color .16s ease, box-shadow .16s ease;
+}
+
+.analyst-dashboard-v2 .analyst-welcome-status.is-dashboard-action:hover {
+    border-color: #e9bfae;
+    background: #fff4ee;
+    box-shadow: 0 8px 18px rgba(181, 71, 8, .06);
+}
+
+.analyst-dashboard-v2 .analyst-welcome-status.is-dashboard-action:focus-visible {
+    outline: none;
+    border-color: #dca58d;
+    box-shadow: 0 0 0 3px rgba(198, 74, 10, .10);
+}
+
+.analyst-dashboard-v2 .analyst-welcome-status.is-dashboard-action.is-clear:hover {
+    border-color: rgba(10, 143, 122, .28);
+    background: #eff9f6;
+    box-shadow: 0 8px 18px rgba(10, 143, 122, .05);
+}
+
+.analyst-dashboard-v2 .analyst-welcome-status.is-dashboard-action .analyst-welcome-status-arrow {
+    transition: transform .16s ease;
+}
+
+.analyst-dashboard-v2 .analyst-welcome-status.is-dashboard-action:hover .analyst-welcome-status-arrow,
+.analyst-dashboard-v2 .analyst-welcome-status.is-dashboard-action:focus-visible .analyst-welcome-status-arrow {
+    transform: translateX(2px);
+}
+
 /*
  * PRIORIDAD OPERATIVA
  * La barra lateral de prioridad está posicionada de forma absoluta, por lo que
