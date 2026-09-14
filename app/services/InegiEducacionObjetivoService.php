@@ -5,7 +5,7 @@ class InegiEducacionObjetivoService
     private const MAX_DESCARGA_BYTES = 67108864;
     private const CACHE_TTL_SEGUNDOS = 21600;
 
-    private ?array $enlacesIntercensal2025 = null;
+    private $enlacesIntercensal2025 = null;
 
     public function obtenerPorEstado(string $claveEstado): array
     {
@@ -15,10 +15,9 @@ class InegiEducacionObjetivoService
             return $this->respuestaError('La clave del Estado no es válida.');
         }
 
-        $candidatos = $this->construirCandidatos($claveEstado);
         $errores = [];
 
-        foreach ($candidatos as $candidato) {
+        foreach ($this->construirCandidatos($claveEstado) as $candidato) {
             $cache = $this->rutaCache($claveEstado, $candidato);
             $datosCache = $this->leerCache($cache);
 
@@ -33,12 +32,15 @@ class InegiEducacionObjetivoService
                 return $resultado;
             }
 
-            $errores[] = (string)($resultado['mensaje'] ?? 'Fuente no compatible.');
+            $mensaje = trim((string)($resultado['mensaje'] ?? ''));
+            if ($mensaje !== '') {
+                $errores[$mensaje] = true;
+            }
         }
 
         $detalle = '';
         if (!empty($errores)) {
-            $detalle = ' ' . implode(' ', array_slice(array_unique($errores), 0, 2));
+            $detalle = ' ' . implode(' ', array_slice(array_keys($errores), 0, 2));
         }
 
         return $this->respuestaError(
@@ -50,7 +52,6 @@ class InegiEducacionObjetivoService
     private function construirCandidatos(string $claveEstado): array
     {
         $candidatos = [];
-        $anioActual = (int)date('Y');
 
         foreach ($this->descubrirIntercensal2025($claveEstado) as $url) {
             $candidatos[] = [
@@ -63,17 +64,17 @@ class InegiEducacionObjetivoService
             ];
         }
 
+        $anioActual = (int)date('Y');
         $decadaActual = (int)(floor($anioActual / 10) * 10);
-        for ($anio = $decadaActual; $anio >= 2030; $anio -= 10) {
-            $url = 'https://www.inegi.org.mx/contenidos/programas/ccpv/' . $anio .
-                '/datosabiertos/iter/iter_' . $claveEstado . '_cpv' . $anio . '_csv.zip';
 
+        for ($anio = $decadaActual; $anio >= 2030; $anio -= 10) {
             $candidatos[] = [
                 'id' => 'CPV' . $anio,
                 'periodo' => $anio,
                 'fuente' => 'INEGI - Censo de Población y Vivienda ' . $anio . ' (ITER)',
                 'producto' => 'CPV',
-                'url' => $url,
+                'url' => 'https://www.inegi.org.mx/contenidos/programas/ccpv/' . $anio .
+                    '/datosabiertos/iter/iter_' . $claveEstado . '_cpv' . $anio . '_csv.zip',
                 'prioridad' => 250
             ];
         }
@@ -136,12 +137,12 @@ class InegiEducacionObjetivoService
         $nacionales = [];
 
         foreach ($this->enlacesIntercensal2025 as $url) {
-            $urlNormalizada = $this->normalizarTextoUrl($url);
+            $normalizada = $this->normalizarTextoUrl($url);
             $coincideClave = (bool)preg_match(
                 '/(?:^|[^0-9])' . preg_quote($claveEstado, '/') . '(?:[^0-9]|$)/',
-                $urlNormalizada
+                $normalizada
             );
-            $coincideNombre = $nombreEstado !== '' && str_contains($urlNormalizada, $nombreEstado);
+            $coincideNombre = $nombreEstado !== '' && strpos($normalizada, $nombreEstado) !== false;
 
             if ($coincideClave || $coincideNombre) {
                 $seleccionados[] = $url;
@@ -149,9 +150,9 @@ class InegiEducacionObjetivoService
             }
 
             if (
-                str_contains($urlNormalizada, 'nacional') ||
-                str_contains($urlNormalizada, 'estados_unidos_mexicanos') ||
-                str_contains($urlNormalizada, 'eum')
+                strpos($normalizada, 'nacional') !== false ||
+                strpos($normalizada, 'estados_unidos_mexicanos') !== false ||
+                strpos($normalizada, 'eum') !== false
             ) {
                 $nacionales[] = $url;
             }
@@ -170,22 +171,15 @@ class InegiEducacionObjetivoService
         }
 
         foreach ($coincidencias[1] as $href) {
-            $href = trim((string)$href);
-            if ($href === '') {
-                continue;
-            }
-
-            $url = $this->absolutizarUrl($href, $paginaBase);
+            $url = $this->absolutizarUrl(trim((string)$href), $paginaBase);
             if ($url === null || !$this->esUrlOficialInegi($url)) {
                 continue;
             }
 
             $ruta = strtolower((string)parse_url($url, PHP_URL_PATH));
-            if (!preg_match('/\.(zip|csv)(?:$|\?)/i', $url) && !str_ends_with($ruta, '.zip') && !str_ends_with($ruta, '.csv')) {
-                continue;
-            }
+            $esDescarga = preg_match('/\.(zip|csv)$/i', $ruta) === 1;
 
-            if (!str_contains(strtolower($url), '2025')) {
+            if (!$esDescarga || strpos(strtolower($url), '2025') === false) {
                 continue;
             }
 
@@ -220,9 +214,9 @@ class InegiEducacionObjetivoService
         $bytes = 0;
         $exceso = false;
         $ch = curl_init();
+
         curl_setopt_array($ch, [
             CURLOPT_URL => $url,
-            CURLOPT_FILE => $archivo,
             CURLOPT_FOLLOWLOCATION => true,
             CURLOPT_MAXREDIRS => 3,
             CURLOPT_CONNECTTIMEOUT => 10,
@@ -232,14 +226,17 @@ class InegiEducacionObjetivoService
             CURLOPT_HTTPHEADER => [
                 'Accept: application/zip,text/csv,application/octet-stream;q=0.9,*/*;q=0.5'
             ],
-            CURLOPT_NOPROGRESS => false,
-            CURLOPT_PROGRESSFUNCTION => static function ($recurso, $totalDescarga, $descargado) use (&$bytes, &$exceso): int {
-                $bytes = (int)$descargado;
+            CURLOPT_WRITEFUNCTION => static function ($curl, string $datos) use ($archivo, &$bytes, &$exceso): int {
+                $longitud = strlen($datos);
+                $bytes += $longitud;
+
                 if ($bytes > self::MAX_DESCARGA_BYTES) {
                     $exceso = true;
-                    return 1;
+                    return 0;
                 }
-                return 0;
+
+                $escritos = fwrite($archivo, $datos);
+                return $escritos === false ? 0 : $escritos;
             }
         ]);
 
@@ -247,17 +244,23 @@ class InegiEducacionObjetivoService
         $codigoHttp = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $contentType = strtolower((string)curl_getinfo($ch, CURLINFO_CONTENT_TYPE));
         $errorCurl = curl_error($ch);
-        curl_close($ch);
+        unset($ch);
+        fflush($archivo);
         fclose($archivo);
 
         if ($exceso) {
             @unlink($temporal);
-            return $this->respuestaError('La fuente detectada supera el tamaño máximo permitido para validación automática.');
+            return $this->respuestaError(
+                'La fuente detectada supera el tamaño máximo permitido para validación automática.'
+            );
         }
 
         if ($okCurl === false || $errorCurl !== '' || $codigoHttp !== 200) {
             @unlink($temporal);
-            return $this->respuestaError('La fuente ' . (int)($candidato['periodo'] ?? 0) . ' todavía no está disponible o no respondió correctamente.');
+            return $this->respuestaError(
+                'La fuente ' . (int)($candidato['periodo'] ?? 0) .
+                ' todavía no está disponible o no respondió correctamente.'
+            );
         }
 
         $resultado = $this->procesarArchivoDescargado(
@@ -280,19 +283,27 @@ class InegiEducacionObjetivoService
         string $url
     ): array {
         $extension = strtolower(pathinfo((string)parse_url($url, PHP_URL_PATH), PATHINFO_EXTENSION));
-        $esZip = $extension === 'zip' || str_contains($contentType, 'zip');
+        $firma = @file_get_contents($ruta, false, null, 0, 4);
+        $esZip = $extension === 'zip' || strpos($contentType, 'zip') !== false || $firma === "PK\x03\x04";
 
         if ($esZip) {
-            return $this->procesarZip($ruta, $claveEstado, $candidato, $url);
+            return $this->procesarZip($ruta, $claveEstado, $candidato);
         }
 
-        return $this->procesarCsvRuta($ruta, $claveEstado, $candidato, basename((string)parse_url($url, PHP_URL_PATH)));
+        return $this->procesarCsvRuta(
+            $ruta,
+            $claveEstado,
+            $candidato,
+            basename((string)parse_url($url, PHP_URL_PATH))
+        );
     }
 
-    private function procesarZip(string $ruta, string $claveEstado, array $candidato, string $url): array
+    private function procesarZip(string $ruta, string $claveEstado, array $candidato): array
     {
         if (!class_exists('ZipArchive')) {
-            return $this->respuestaError('La extensión ZIP de PHP no está disponible para leer los datos de INEGI.');
+            return $this->respuestaError(
+                'La extensión ZIP de PHP no está disponible para leer los datos de INEGI.'
+            );
         }
 
         $zip = new ZipArchive();
@@ -301,11 +312,11 @@ class InegiEducacionObjetivoService
         }
 
         try {
-            $errores = [];
+            $primerError = '';
 
             for ($i = 0; $i < $zip->numFiles; $i++) {
                 $nombre = (string)$zip->getNameIndex($i);
-                if (!str_ends_with(strtolower($nombre), '.csv')) {
+                if (strtolower(substr($nombre, -4)) !== '.csv') {
                     continue;
                 }
 
@@ -314,27 +325,38 @@ class InegiEducacionObjetivoService
                     continue;
                 }
 
-                $resultado = $this->procesarCsvStream($stream, $claveEstado, $candidato, basename($nombre));
+                $resultado = $this->procesarCsvStream(
+                    $stream,
+                    $claveEstado,
+                    $candidato,
+                    basename($nombre)
+                );
                 fclose($stream);
 
                 if (($resultado['ok'] ?? false) === true) {
                     return $resultado;
                 }
 
-                $errores[] = (string)($resultado['mensaje'] ?? 'CSV no compatible.');
+                if ($primerError === '') {
+                    $primerError = trim((string)($resultado['mensaje'] ?? ''));
+                }
             }
 
             return $this->respuestaError(
                 'La fuente oficial fue localizada, pero ningún CSV contiene las variables educativas compatibles requeridas.' .
-                (!empty($errores) ? ' ' . $errores[0] : '')
+                ($primerError !== '' ? ' ' . $primerError : '')
             );
         } finally {
             $zip->close();
         }
     }
 
-    private function procesarCsvRuta(string $ruta, string $claveEstado, array $candidato, string $archivoOrigen): array
-    {
+    private function procesarCsvRuta(
+        string $ruta,
+        string $claveEstado,
+        array $candidato,
+        string $archivoOrigen
+    ): array {
         $stream = fopen($ruta, 'rb');
         if ($stream === false) {
             return $this->respuestaError('No fue posible leer el archivo CSV oficial de INEGI.');
@@ -376,7 +398,7 @@ class InegiEducacionObjetivoService
 
         $estado = null;
         $municipios = [];
-        $candidatosSinDetalle = [];
+        $sinDetalle = [];
 
         while (($fila = fgetcsv($stream, 0, $delimitador)) !== false) {
             if (!is_array($fila)) {
@@ -409,7 +431,7 @@ class InegiEducacionObjetivoService
             ];
 
             if ($municipio === null && $localidad === null) {
-                $candidatosSinDetalle[] = $registro;
+                $sinDetalle[] = $registro;
                 continue;
             }
 
@@ -429,8 +451,8 @@ class InegiEducacionObjetivoService
             }
         }
 
-        if ($estado === null && count($candidatosSinDetalle) === 1) {
-            $estado = $candidatosSinDetalle[0];
+        if ($estado === null && count($sinDetalle) === 1) {
+            $estado = $sinDetalle[0];
         }
 
         if (!is_array($estado)) {
@@ -443,13 +465,10 @@ class InegiEducacionObjetivoService
             return strcmp((string)($a['nombre'] ?? ''), (string)($b['nombre'] ?? ''));
         });
 
-        $periodo = (int)($candidato['periodo'] ?? 0);
-        $fuente = trim((string)($candidato['fuente'] ?? ''));
-
         return [
             'ok' => true,
-            'fuente' => $fuente,
-            'periodo' => (string)$periodo,
+            'fuente' => trim((string)($candidato['fuente'] ?? '')),
+            'periodo' => (string)((int)($candidato['periodo'] ?? 0)),
             'producto' => (string)($candidato['producto'] ?? ''),
             'archivo_origen' => $archivoOrigen,
             'compatibilidad' => 'VALIDADA',
@@ -476,12 +495,11 @@ class InegiEducacionObjetivoService
         }
 
         $entidad = $this->indiceAlias($mapa, ['ENTIDAD', 'ENT', 'CVE_ENT', 'CVE_ENTIDAD']);
-        $municipio = $this->indiceAlias($mapa, ['MUN', 'MUNICIPIO', 'CVE_MUN', 'CVE_MUNICIPIO']);
-        $localidad = $this->indiceAlias($mapa, ['LOC', 'LOCALIDAD', 'CVE_LOC', 'CVE_LOCALIDAD']);
-        $nombreEntidad = $this->indiceAlias($mapa, ['NOM_ENT', 'NOMBRE_ENTIDAD', 'ENTIDAD_NOMBRE']);
-        $nombreMunicipio = $this->indiceAlias($mapa, ['NOM_MUN', 'NOMBRE_MUNICIPIO', 'MUNICIPIO_NOMBRE']);
         $p15Mas = $this->indiceAlias($mapa, ['P_15YMAS', 'P15YMAS', 'POB_15YMAS', 'POB15MAS']);
-        $secundaria = $this->indiceAlias($mapa, ['P15SEC_CO', 'P_15SEC_CO', 'P15SEC_COMPLETA', 'SECUNDARIA_COMPLETA_15_MAS']);
+        $secundaria = $this->indiceAlias(
+            $mapa,
+            ['P15SEC_CO', 'P_15SEC_CO', 'P15SEC_COMPLETA', 'SECUNDARIA_COMPLETA_15_MAS']
+        );
 
         if ($entidad === null || $p15Mas === null || $secundaria === null) {
             return null;
@@ -489,10 +507,10 @@ class InegiEducacionObjetivoService
 
         return [
             'entidad' => $entidad,
-            'municipio' => $municipio,
-            'localidad' => $localidad,
-            'nombre_entidad' => $nombreEntidad,
-            'nombre_municipio' => $nombreMunicipio,
+            'municipio' => $this->indiceAlias($mapa, ['MUN', 'MUNICIPIO', 'CVE_MUN', 'CVE_MUNICIPIO']),
+            'localidad' => $this->indiceAlias($mapa, ['LOC', 'LOCALIDAD', 'CVE_LOC', 'CVE_LOCALIDAD']),
+            'nombre_entidad' => $this->indiceAlias($mapa, ['NOM_ENT', 'NOMBRE_ENTIDAD', 'ENTIDAD_NOMBRE']),
+            'nombre_municipio' => $this->indiceAlias($mapa, ['NOM_MUN', 'NOMBRE_MUNICIPIO', 'MUNICIPIO_NOMBRE']),
             'p15_mas' => $p15Mas,
             'secundaria' => $secundaria,
             'p15_17' => $this->indiceAlias($mapa, ['P_15A17', 'P15A17']),
@@ -558,6 +576,7 @@ class InegiEducacionObjetivoService
                 return (int)$mapa[$nombre];
             }
         }
+
         return null;
     }
 
@@ -566,6 +585,7 @@ class InegiEducacionObjetivoService
         if ($indice === null) {
             return null;
         }
+
         return $this->numero($fila[$indice] ?? null);
     }
 
@@ -574,13 +594,13 @@ class InegiEducacionObjetivoService
         if ($indice === null) {
             return null;
         }
+
         return $this->decimal($fila[$indice] ?? null);
     }
 
     private function numero($valor): ?int
     {
-        $valor = trim((string)$valor);
-        $valor = str_replace([',', ' '], '', $valor);
+        $valor = str_replace([',', ' '], '', trim((string)$valor));
 
         if ($valor === '' || !preg_match('/^-?\d+(?:\.0+)?$/', $valor)) {
             return null;
@@ -591,8 +611,7 @@ class InegiEducacionObjetivoService
 
     private function decimal($valor): ?float
     {
-        $valor = trim((string)$valor);
-        $valor = str_replace(',', '', $valor);
+        $valor = str_replace(',', '', trim((string)$valor));
 
         if ($valor === '' || !is_numeric($valor)) {
             return null;
@@ -606,6 +625,7 @@ class InegiEducacionObjetivoService
         if ($total === null || $parte === null) {
             return null;
         }
+
         return max(0, $total - $parte);
     }
 
@@ -614,6 +634,7 @@ class InegiEducacionObjetivoService
         if ($a === null || $b === null) {
             return null;
         }
+
         return $a + $b;
     }
 
@@ -622,15 +643,18 @@ class InegiEducacionObjetivoService
         if ($parte === null || $total === null || $total <= 0) {
             return null;
         }
+
         return round(($parte / $total) * 100, 2);
     }
 
     private function claveNumerica($valor, int $longitud): ?string
     {
         $valor = trim((string)$valor);
+
         if ($valor === '' || !preg_match('/^\d+(?:\.0+)?$/', $valor)) {
             return null;
         }
+
         return str_pad((string)(int)$valor, $longitud, '0', STR_PAD_LEFT);
     }
 
@@ -655,8 +679,13 @@ class InegiEducacionObjetivoService
     {
         $valor = preg_replace('/^\xEF\xBB\xBF/', '', $valor);
         $valor = strtoupper(trim((string)$valor));
-        $valor = str_replace(['Á', 'É', 'Í', 'Ó', 'Ú', 'Ü', 'Ñ'], ['A', 'E', 'I', 'O', 'U', 'U', 'N'], $valor);
+        $valor = str_replace(
+            ['Á', 'É', 'Í', 'Ó', 'Ú', 'Ü', 'Ñ'],
+            ['A', 'E', 'I', 'O', 'U', 'U', 'N'],
+            $valor
+        );
         $valor = preg_replace('/[^A-Z0-9_]+/', '_', $valor) ?? $valor;
+
         return trim(preg_replace('/_+/', '_', $valor) ?? $valor, '_');
     }
 
@@ -681,7 +710,7 @@ class InegiEducacionObjetivoService
 
         $contenido = curl_exec($ch);
         $codigo = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
+        unset($ch);
 
         return is_string($contenido) && $contenido !== '' && $codigo >= 200 && $codigo < 400
             ? $contenido
@@ -690,15 +719,19 @@ class InegiEducacionObjetivoService
 
     private function absolutizarUrl(string $href, string $base): ?string
     {
+        if ($href === '') {
+            return null;
+        }
+
         if (preg_match('#^https?://#i', $href)) {
             return $href;
         }
 
-        if (str_starts_with($href, '//')) {
+        if (substr($href, 0, 2) === '//') {
             return 'https:' . $href;
         }
 
-        if (str_starts_with($href, '/')) {
+        if (substr($href, 0, 1) === '/') {
             return 'https://www.inegi.org.mx' . $href;
         }
 
@@ -711,20 +744,28 @@ class InegiEducacionObjetivoService
         $ruta = $partes['path'] ?? '/';
         $directorio = rtrim(str_replace('\\', '/', dirname($ruta)), '/');
 
-        return $esquema . '://' . $partes['host'] . ($directorio !== '' ? $directorio : '') . '/' . ltrim($href, '/');
+        return $esquema . '://' . $partes['host'] .
+            ($directorio !== '' ? $directorio : '') . '/' . ltrim($href, '/');
     }
 
     private function esUrlOficialInegi(string $url): bool
     {
         $host = strtolower((string)parse_url($url, PHP_URL_HOST));
-        return $host === 'inegi.org.mx' || str_ends_with($host, '.inegi.org.mx');
+
+        return $host === 'inegi.org.mx' ||
+            ($host !== '' && substr($host, -13) === '.inegi.org.mx');
     }
 
     private function normalizarTextoUrl(string $url): string
     {
         $valor = strtolower(rawurldecode($url));
-        $valor = str_replace(['á', 'é', 'í', 'ó', 'ú', 'ü', 'ñ'], ['a', 'e', 'i', 'o', 'u', 'u', 'n'], $valor);
+        $valor = str_replace(
+            ['á', 'é', 'í', 'ó', 'ú', 'ü', 'ñ'],
+            ['a', 'e', 'i', 'o', 'u', 'u', 'n'],
+            $valor
+        );
         $valor = preg_replace('/[^a-z0-9]+/', '_', $valor) ?? $valor;
+
         return trim($valor, '_');
     }
 
@@ -733,13 +774,13 @@ class InegiEducacionObjetivoService
         $estados = [
             '01' => 'aguascalientes', '02' => 'baja_california', '03' => 'baja_california_sur',
             '04' => 'campeche', '05' => 'coahuila', '06' => 'colima', '07' => 'chiapas',
-            '08' => 'chihuahua', '09' => 'ciudad_de_mexico', '10' => 'durango', '11' => 'guanajuato',
-            '12' => 'guerrero', '13' => 'hidalgo', '14' => 'jalisco', '15' => 'mexico',
-            '16' => 'michoacan', '17' => 'morelos', '18' => 'nayarit', '19' => 'nuevo_leon',
-            '20' => 'oaxaca', '21' => 'puebla', '22' => 'queretaro', '23' => 'quintana_roo',
-            '24' => 'san_luis_potosi', '25' => 'sinaloa', '26' => 'sonora', '27' => 'tabasco',
-            '28' => 'tamaulipas', '29' => 'tlaxcala', '30' => 'veracruz', '31' => 'yucatan',
-            '32' => 'zacatecas'
+            '08' => 'chihuahua', '09' => 'ciudad_de_mexico', '10' => 'durango',
+            '11' => 'guanajuato', '12' => 'guerrero', '13' => 'hidalgo', '14' => 'jalisco',
+            '15' => 'mexico', '16' => 'michoacan', '17' => 'morelos', '18' => 'nayarit',
+            '19' => 'nuevo_leon', '20' => 'oaxaca', '21' => 'puebla', '22' => 'queretaro',
+            '23' => 'quintana_roo', '24' => 'san_luis_potosi', '25' => 'sinaloa',
+            '26' => 'sonora', '27' => 'tabasco', '28' => 'tamaulipas', '29' => 'tlaxcala',
+            '30' => 'veracruz', '31' => 'yucatan', '32' => 'zacatecas'
         ];
 
         return $estados[$clave] ?? '';
@@ -748,7 +789,9 @@ class InegiEducacionObjetivoService
     private function rutaCache(string $claveEstado, array $candidato): string
     {
         $id = preg_replace('/[^A-Za-z0-9_-]+/', '_', (string)($candidato['id'] ?? 'fuente'));
-        return ROOT_PATH . '/storage/cache/inegi/educacion_objetivo_' . $id . '_' . $claveEstado . '.json';
+
+        return ROOT_PATH . '/storage/cache/inegi/educacion_objetivo_' . $id . '_' .
+            $claveEstado . '.json';
     }
 
     private function leerCache(string $ruta): ?array
@@ -773,6 +816,7 @@ class InegiEducacionObjetivoService
     private function guardarCache(string $ruta, array $datos): void
     {
         $directorio = dirname($ruta);
+
         if (!is_dir($directorio)) {
             @mkdir($directorio, 0775, true);
         }
