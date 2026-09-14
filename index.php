@@ -270,6 +270,17 @@ switch ($controller) {
         break;
 
 
+    case 'seguimientoVinculacionReporte':
+
+        require_once __DIR__ .
+            '/app/controllers/SeguimientoVinculacionReporteController.php';
+
+        $controllerInstance =
+            new SeguimientoVinculacionReporteController();
+
+        break;
+
+
     case 'seguimientoFlujo':
 
         require_once __DIR__ .
