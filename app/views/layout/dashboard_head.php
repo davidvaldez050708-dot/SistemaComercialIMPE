@@ -30,6 +30,7 @@ $cssOpcionalDashboard = [
     'dashboard_analista.css',
     'dashboard_analista_refinamientos.css',
     'dashboard_analista_reuniones.css',
+    'dashboard_analista_boceto.css',
     'seguimiento_filtros_layout.css',
     'seguimiento_panel_ruta.css',
     'seguimiento_proxima_accion_fecha.css',
