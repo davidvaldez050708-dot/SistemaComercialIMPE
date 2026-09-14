@@ -1,0 +1,31 @@
+.analyst-dashboard-v2 .analyst-progress-step > strong + span {
+    min-height: 30px;
+    margin-top: 6px;
+    color: var(--color-text-secondary);
+    font-size: 9px;
+    font-weight: 700;
+    line-height: 1.25;
+}
+
+.analyst-dashboard-v2 .analyst-upcoming-panel.is-empty .analyst-upcoming-footer {
+    display: none;
+}
+
+.analyst-dashboard-v2 .analyst-territory-summary {
+    display: none !important;
+}
+
+.analyst-dashboard-v2 .analyst-territory-panel .analyst-panel-heading {
+    align-items: flex-start;
+}
+
+.analyst-dashboard-v2 .analyst-activity-panel .analyst-panel-link,
+.analyst-dashboard-v2 .analyst-territory-panel .analyst-panel-link {
+    margin-left: auto;
+}
+
+@media (max-width: 767.98px) {
+    .analyst-dashboard-v2 .analyst-progress-step > strong + span {
+        min-height: 24px;
+    }
+}
