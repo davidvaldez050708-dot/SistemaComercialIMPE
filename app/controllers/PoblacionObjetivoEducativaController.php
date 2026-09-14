@@ -237,6 +237,10 @@ class PoblacionObjetivoEducativaController
             $producto = trim((string)($resultado['producto'] ?? ''));
             $archivoOrigen = trim((string)($resultado['archivo_origen'] ?? ''));
             $compatibilidad = trim((string)($resultado['compatibilidad'] ?? ''));
+            $compatibilidadesAceptadas = [
+                'VALIDADA',
+                'PERFIL_COMPLETO_VALIDADO'
+            ];
 
             if (
                 $periodo < 2000 ||
@@ -244,7 +248,7 @@ class PoblacionObjetivoEducativaController
                 $fuente === '' ||
                 $producto === '' ||
                 $archivoOrigen === '' ||
-                $compatibilidad !== 'VALIDADA'
+                !in_array($compatibilidad, $compatibilidadesAceptadas, true)
             ) {
                 $errores[] = $nombre . ': la fuente encontrada no pudo validarse con seguridad.';
                 continue;
