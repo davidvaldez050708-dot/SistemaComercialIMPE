@@ -79,13 +79,25 @@
         const estado = tablero.querySelector('.analyst-welcome-status');
         const titulo = estado?.querySelector('strong');
         const detalle = estado?.querySelector('div > span');
-        if (!titulo || !detalle) {
+        const icono = estado?.querySelector('.analyst-welcome-status-icon i');
+        if (!estado || !titulo || !detalle) {
             return;
         }
 
         limpiarMensajeAnterior(tablero, detalle);
 
-        if (total === 0) {
+        const estaAlDia = total === 0;
+        estado.classList.toggle('is-clear', estaAlDia);
+        estado.classList.toggle('is-attention', !estaAlDia);
+
+        if (icono) {
+            icono.className = 'bi ' + (estaAlDia
+                ? 'bi-check2-circle'
+                : 'bi-exclamation-circle');
+            icono.setAttribute('aria-hidden', 'true');
+        }
+
+        if (estaAlDia) {
             titulo.textContent = 'Tu operación está al día';
             detalle.hidden = false;
             detalle.textContent = 'No hay seguimientos prioritarios detectados en este momento.';
@@ -95,8 +107,7 @@
         titulo.textContent = total + ' ' +
             (total === 1 ? 'seguimiento requiere atención' : 'seguimientos requieren atención');
 
-        // Cuando hay pendientes, el conteo ya comunica lo necesario.
-        // Evitamos una segunda frase genérica que solo ocupa espacio y puede duplicarse.
+        // El conteo comunica el estado operativo; no repetimos una frase auxiliar debajo.
         detalle.textContent = '';
         detalle.hidden = true;
     };
