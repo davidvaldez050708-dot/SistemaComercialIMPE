@@ -26,12 +26,10 @@
             enlaceTabulados.rel = 'noopener noreferrer';
             enlaceTabulados.textContent = 'Ver tabulados en INEGI';
 
-            enlacePobrezaMultidimensional.insertAdjacentText('afterend', ' · ');
-            enlacePobrezaMultidimensional.nextSibling.insertAdjacentElement?.('afterend', enlaceTabulados);
-
-            if (!enlaceTabulados.parentNode) {
-                enlacePobrezaMultidimensional.parentNode?.append(' · ', enlaceTabulados);
-            }
+            enlacePobrezaMultidimensional.after(
+                document.createTextNode(' · '),
+                enlaceTabulados
+            );
         }
     });
 })();
