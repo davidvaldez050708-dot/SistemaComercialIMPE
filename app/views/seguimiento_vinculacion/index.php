@@ -97,7 +97,9 @@ $tarjetasPorPaginaSeguimiento = 12;
 
             <a
                 class="btn btn-system-primary"
-                href="<?= BASE_URL ?>index.php?controller=seguimientoVinculacionReporte&action=index">
+                href="<?= BASE_URL ?>index.php?controller=seguimientoVinculacionReporte&action=index"
+                data-bs-toggle="modal"
+                data-bs-target="#modalGenerarReporteSeguimiento">
                 <i class="bi bi-file-earmark-bar-graph me-2"></i>
                 Generar Reportes
             </a>
@@ -166,6 +168,43 @@ $tarjetasPorPaginaSeguimiento = 12;
             </div>
         </form>
     </section>
+
+    <div
+        class="modal fade"
+        id="modalGenerarReporteSeguimiento"
+        tabindex="-1"
+        aria-labelledby="modalGenerarReporteSeguimientoTitulo"
+        aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-xl modal-fullscreen-sm-down">
+            <div class="modal-content system-form-modal">
+                <div class="modal-header system-form-modal-header">
+                    <div>
+                        <h5
+                            class="system-form-modal-title"
+                            id="modalGenerarReporteSeguimientoTitulo">
+                            Generar reporte de seguimiento
+                        </h5>
+                        <p class="system-form-modal-subtitle">
+                            Selecciona los criterios que deseas utilizar para personalizar el reporte.
+                        </p>
+                    </div>
+                    <button
+                        type="button"
+                        class="btn-close"
+                        data-bs-dismiss="modal"
+                        aria-label="Cerrar"></button>
+                </div>
+
+                <div class="modal-body p-0 overflow-hidden">
+                    <iframe
+                        title="Configurar reporte de seguimiento"
+                        src="<?= BASE_URL ?>index.php?controller=seguimientoVinculacionReporte&action=index&modal=1"
+                        loading="lazy"
+                        style="display:block;width:100%;height:clamp(360px,70vh,720px);border:0;background:#fff;"></iframe>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <div class="linkage-results-text" data-linkage-results-summary>
         <span data-linkage-counter>

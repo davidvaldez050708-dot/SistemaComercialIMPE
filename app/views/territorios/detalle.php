@@ -4,9 +4,36 @@ require_once __DIR__ . '/../../helpers/AvatarHelper.php';
 
 $estado = $estado ?? [];
 $equipoTerritorial = $equipoTerritorial ?? [];
+$analistasSinCuentaClave = $analistasSinCuentaClave ?? [];
+$asesoresTerritorio = $asesoresTerritorio ?? [];
 $historialAsignaciones = $historialAsignaciones ?? [];
 $puedeEditarTerritorio = tienePermiso('territorios.actualizar_ficha');
 $puedeAsignarTerritorio = tienePermiso('territorios.asignar');
+
+/*
+ * El detalle territorial históricamente sólo recibía Cuenta Clave + Analistas.
+ * Para que represente el equipo real del Estado, completamos aquí las dos
+ * colecciones independientes que ya administra TerritorioModel: Analistas sin
+ * Cuenta Clave y Asesores. No se modifica ninguna asignación desde esta vista.
+ */
+if (!empty($estado['id']) && class_exists('TerritorioModel')) {
+    $modeloDetalleTerritorio = new TerritorioModel();
+
+    if (empty($analistasSinCuentaClave)) {
+        $analistasSinCuentaClave =
+            $modeloDetalleTerritorio->obtenerAnalistasSinCuentaClave((int)$estado['id']);
+    }
+
+    if (empty($asesoresTerritorio)) {
+        $asesoresTerritorio =
+            $modeloDetalleTerritorio->obtenerAsesoresActivos((int)$estado['id']);
+    }
+}
+
+$hayEquipoActual =
+    !empty($equipoTerritorial) ||
+    !empty($analistasSinCuentaClave) ||
+    !empty($asesoresTerritorio);
 
 $texto = function ($valor) {
     return htmlspecialchars((string)$valor, ENT_QUOTES, 'UTF-8');
@@ -76,7 +103,8 @@ $fechaInput = function ($valorFecha) {
 $tipoTexto = function ($tipo) {
     $mapa = [
         'CUENTA_CLAVE' => 'Cuenta Clave',
-        'ANALISTA_DATOS' => 'Analista de Datos'
+        'ANALISTA_DATOS' => 'Analista de Datos',
+        'ASESOR' => 'Asesor'
     ];
 
     return $mapa[$tipo] ?? $tipo;
@@ -131,7 +159,7 @@ $totalTexto = function ($total, $cargados) {
         <section class="territory-detail-section">
             <h4>Equipo territorial actual</h4>
 
-            <?php if (!empty($equipoTerritorial)): ?>
+            <?php if ($hayEquipoActual): ?>
 
                 <div class="territory-detail-team-list">
                     <?php foreach ($equipoTerritorial as $cuentaClave): ?>
@@ -187,9 +215,12 @@ $totalTexto = function ($total, $cargados) {
                                                 'xs',
                                                 'analista'
                                             ) ?>
-                                            <span class="territory-person-name">
-                                                <?= $texto($nombreAnalista) ?>
-                                            </span>
+                                            <div>
+                                                <span class="assignment-role">Analista de Datos</span>
+                                                <span class="territory-person-name">
+                                                    <?= $texto($nombreAnalista) ?>
+                                                </span>
+                                            </div>
                                         </div>
 
                                     <?php endforeach; ?>
@@ -203,12 +234,91 @@ $totalTexto = function ($total, $cargados) {
                         </article>
 
                     <?php endforeach; ?>
+
+                    <?php if (!empty($analistasSinCuentaClave)): ?>
+                        <article class="territory-detail-team-card">
+                            <div class="territory-detail-team-header">
+                                <div>
+                                    <span class="assignment-role">Analistas sin Cuenta Clave</span>
+                                    <strong>Asignados directamente al territorio</strong>
+                                </div>
+                            </div>
+
+                            <div class="territory-detail-analysts">
+                                <?php foreach ($analistasSinCuentaClave as $analista): ?>
+                                    <?php
+                                    $nombreAnalista = trim(
+                                        ($analista['nombre'] ?? '') . ' ' .
+                                        ($analista['apellidos'] ?? '')
+                                    );
+                                    ?>
+
+                                    <div class="territory-person">
+                                        <?= renderAvatarUsuario(
+                                            $analista['nombre'] ?? '',
+                                            $analista['apellidos'] ?? '',
+                                            $analista['rol'] ?? 'Analista de Datos',
+                                            $analista['foto_perfil'] ?? '',
+                                            'xs',
+                                            'analista'
+                                        ) ?>
+                                        <div>
+                                            <span class="territory-person-name">
+                                                <?= $texto($nombreAnalista) ?>
+                                            </span>
+                                            <small>Desde <?= $fecha($analista['fecha_inicio'] ?? '') ?></small>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        </article>
+                    <?php endif; ?>
+
+                    <?php if (!empty($asesoresTerritorio)): ?>
+                        <article class="territory-detail-team-card">
+                            <div class="territory-detail-team-header">
+                                <div>
+                                    <span class="assignment-role">Asesores</span>
+                                    <strong>Apoyo comercial del territorio</strong>
+                                </div>
+                            </div>
+
+                            <div class="territory-detail-analysts">
+                                <?php foreach ($asesoresTerritorio as $asesor): ?>
+                                    <?php
+                                    $nombreAsesor = trim(
+                                        ($asesor['nombre'] ?? '') . ' ' .
+                                        ($asesor['apellidos'] ?? '')
+                                    );
+                                    ?>
+
+                                    <div class="territory-person">
+                                        <?= renderAvatarUsuario(
+                                            $asesor['nombre'] ?? '',
+                                            $asesor['apellidos'] ?? '',
+                                            $asesor['rol'] ?? 'Asesor',
+                                            $asesor['foto_perfil'] ?? '',
+                                            'xs',
+                                            'general'
+                                        ) ?>
+                                        <div>
+                                            <span class="assignment-role">Asesor</span>
+                                            <span class="territory-person-name">
+                                                <?= $texto($nombreAsesor) ?>
+                                            </span>
+                                            <small>Desde <?= $fecha($asesor['fecha_inicio'] ?? '') ?></small>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        </article>
+                    <?php endif; ?>
                 </div>
 
             <?php else: ?>
 
                 <p class="territory-empty-text">
-                    Este territorio aún no tiene Cuenta Clave asignada.
+                    Este territorio aún no tiene equipo territorial activo.
                 </p>
 
             <?php endif; ?>

@@ -18,6 +18,7 @@ $resumenReporte = $resumenReporte ?? [
 ];
 $generarReporte = $generarReporte ?? false;
 $errorFiltros = $errorFiltros ?? '';
+$modoModalReporte = (string)($_GET['modal'] ?? '') === '1';
 
 $texto = static function ($valor) {
     return htmlspecialchars((string)$valor, ENT_QUOTES, 'UTF-8');
@@ -40,33 +41,72 @@ $maxMunicipio = !empty($resumenReporte['por_municipio'])
     : 1;
 $urlLimpiar = BASE_URL . 'index.php?controller=seguimientoVinculacionReporte&action=index';
 
+if ($modoModalReporte) {
+    $urlLimpiar .= '&modal=1';
+}
+
 $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
     return $estadosSeguimiento[$codigo] ?? 'Sin estado';
 };
 
 ?>
 
-<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
-    <a
-        class="linkage-back-link"
-        href="<?= BASE_URL ?>index.php?controller=seguimientoVinculacion&action=index">
-        <i class="bi bi-arrow-left"></i>
-        Volver a Seguimiento de Vinculación
-    </a>
-</div>
+<?php if ($modoModalReporte): ?>
+    <style>
+        body {
+            background: #ffffff !important;
+        }
 
-<section class="dashboard-panel mb-4">
-    <div class="d-flex align-items-start justify-content-between gap-3 mb-3">
-        <div>
-            <h2 class="panel-title mb-1">Generar reporte de seguimiento</h2>
-            <p class="page-subtitle mb-0">
-                Selecciona los criterios que deseas utilizar para personalizar el reporte.
-            </p>
-        </div>
-        <span class="metric-icon" aria-hidden="true">
-            <i class="bi bi-file-earmark-bar-graph"></i>
-        </span>
+        .admin-sidebar,
+        .admin-topbar {
+            display: none !important;
+        }
+
+        .admin-shell,
+        .admin-main {
+            min-height: 0 !important;
+        }
+
+        .admin-main {
+            margin-left: 0 !important;
+            background: #ffffff !important;
+        }
+
+        .admin-content {
+            padding: 0 !important;
+        }
+    </style>
+    <script>
+        document.querySelector('.admin-sidebar')?.remove();
+        document.querySelector('.admin-topbar')?.remove();
+    </script>
+<?php endif; ?>
+
+<?php if (!$modoModalReporte): ?>
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
+        <a
+            class="linkage-back-link"
+            href="<?= BASE_URL ?>index.php?controller=seguimientoVinculacion&action=index">
+            <i class="bi bi-arrow-left"></i>
+            Volver a Seguimiento de Vinculación
+        </a>
     </div>
+<?php endif; ?>
+
+<section class="<?= $modoModalReporte ? 'mb-0' : 'dashboard-panel mb-4' ?>">
+    <?php if (!$modoModalReporte): ?>
+        <div class="d-flex align-items-start justify-content-between gap-3 mb-3">
+            <div>
+                <h2 class="panel-title mb-1">Generar reporte de seguimiento</h2>
+                <p class="page-subtitle mb-0">
+                    Selecciona los criterios que deseas utilizar para personalizar el reporte.
+                </p>
+            </div>
+            <span class="metric-icon" aria-hidden="true">
+                <i class="bi bi-file-earmark-bar-graph"></i>
+            </span>
+        </div>
+    <?php endif; ?>
 
     <?php if ($errorFiltros !== ''): ?>
         <div class="alert alert-danger login-alert mb-3" role="alert">
@@ -75,10 +115,18 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
         </div>
     <?php endif; ?>
 
-    <form action="<?= BASE_URL ?>index.php" method="GET" data-report-form>
+    <form
+        action="<?= BASE_URL ?>index.php"
+        method="GET"
+        data-report-form
+        <?= $modoModalReporte ? 'class="system-form-modal border-0 shadow-none" target="_top"' : '' ?>>
         <input type="hidden" name="controller" value="seguimientoVinculacionReporte">
         <input type="hidden" name="action" value="index">
         <input type="hidden" name="generar" value="1">
+
+        <?php if ($modoModalReporte): ?>
+            <div class="modal-body">
+        <?php endif; ?>
 
         <div class="row g-3">
             <div class="col-md-6 col-xl-3">
@@ -213,12 +261,20 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
             El periodo se aplica sobre la fecha de inicio registrada en cada seguimiento.
         </div>
 
-        <div class="d-flex flex-wrap justify-content-end gap-2 mt-4">
-            <a class="btn btn-secondary" href="<?= $texto($urlLimpiar) ?>">
+        <?php if ($modoModalReporte): ?>
+            </div>
+        <?php endif; ?>
+
+        <div class="<?= $modoModalReporte ? 'modal-footer' : 'd-flex flex-wrap justify-content-end gap-2 mt-4' ?>">
+            <a
+                class="btn <?= $modoModalReporte ? 'btn-system-cancel' : 'btn-secondary' ?>"
+                href="<?= $texto($urlLimpiar) ?>">
                 <i class="bi bi-arrow-counterclockwise me-2"></i>
                 Limpiar filtros
             </a>
-            <button class="btn btn-system-primary" type="submit">
+            <button
+                class="btn <?= $modoModalReporte ? 'btn-system-save' : 'btn-system-primary' ?>"
+                type="submit">
                 <i class="bi bi-bar-chart me-2"></i>
                 Generar reporte
             </button>
@@ -226,7 +282,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
     </form>
 </section>
 
-<?php if ($generarReporte && $errorFiltros === ''): ?>
+<?php if (!$modoModalReporte && $generarReporte && $errorFiltros === ''): ?>
     <section aria-labelledby="titulo-reporte-seguimiento">
         <div class="d-flex flex-wrap align-items-end justify-content-between gap-3 mb-3">
             <div>
