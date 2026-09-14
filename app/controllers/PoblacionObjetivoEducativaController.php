@@ -426,7 +426,7 @@ class PoblacionObjetivoEducativaController
         if ($estadoId <= 0) {
             $this->responderJson([
                 'ok' => false,
-                'mensaje' => 'El territorio seleccionado no es válido.';
+                'mensaje' => 'El territorio seleccionado no es válido.'
             ], 422);
         }
 
