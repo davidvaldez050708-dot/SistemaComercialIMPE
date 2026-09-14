@@ -55,6 +55,20 @@
         return nombre !== '' ? etiqueta + ': ' + nombre : etiqueta;
     };
 
+    const limpiarMensajeAnterior = function (tablero, detalleCorrecto) {
+        const mensajeAnterior = 'Ordenados por urgencia para que sepas por dónde continuar.';
+
+        tablero.querySelectorAll('span, p, div').forEach(function (elemento) {
+            if (elemento === detalleCorrecto || elemento.children.length > 0) {
+                return;
+            }
+
+            if (texto(elemento.textContent) === mensajeAnterior) {
+                elemento.remove();
+            }
+        });
+    };
+
     const corregirResumenAtencion = function (tablero) {
         const meta = window.IMPE_ANALISTA_DASHBOARD_META || {};
         const total = Number(meta.requieren_atencion_total);
@@ -69,15 +83,22 @@
             return;
         }
 
+        limpiarMensajeAnterior(tablero, detalle);
+
         if (total === 0) {
             titulo.textContent = 'Tu operación está al día';
+            detalle.hidden = false;
             detalle.textContent = 'No hay seguimientos prioritarios detectados en este momento.';
             return;
         }
 
         titulo.textContent = total + ' ' +
             (total === 1 ? 'seguimiento requiere atención' : 'seguimientos requieren atención');
-        detalle.textContent = 'Ordenados por urgencia para que sepas por dónde continuar.';
+
+        // Cuando hay pendientes, el conteo ya comunica lo necesario.
+        // Evitamos una segunda frase genérica que solo ocupa espacio y puede duplicarse.
+        detalle.textContent = '';
+        detalle.hidden = true;
     };
 
     const enriquecerActividad = function (tablero) {
