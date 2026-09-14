@@ -69,11 +69,45 @@
         await Promise.allSettled(tareas);
     };
 
+    const activarResumenSeguimientos = function (tablero) {
+        const resumen = tablero.querySelector('.analyst-welcome-status');
+        if (!resumen) {
+            return;
+        }
+
+        const destino = 'index.php?controller=seguimientoVinculacion&action=index';
+        const requiereAtencion = resumen.classList.contains('is-attention');
+
+        resumen.classList.add('is-dashboard-action');
+        resumen.tabIndex = 0;
+        resumen.setAttribute('role', 'link');
+        resumen.setAttribute(
+            'aria-label',
+            requiereAtencion
+                ? 'Abrir seguimientos que requieren atención'
+                : 'Abrir todos los seguimientos'
+        );
+
+        const abrir = function () {
+            window.location.href = destino;
+        };
+
+        resumen.addEventListener('click', abrir);
+        resumen.addEventListener('keydown', function (evento) {
+            if (evento.key === 'Enter' || evento.key === ' ') {
+                evento.preventDefault();
+                abrir();
+            }
+        });
+    };
+
     document.addEventListener('DOMContentLoaded', function () {
         const tablero = document.querySelector('[data-analyst-dashboard]');
         if (!tablero || Number(window.IMPE_CURRENT_ROLE_ID || 0) !== 4) {
             return;
         }
+
+        activarResumenSeguimientos(tablero);
 
         const enlaces = Array.from(tablero.querySelectorAll(
             '.analyst-work-button, .analyst-upcoming-item'
