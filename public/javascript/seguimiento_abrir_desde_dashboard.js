@@ -30,6 +30,12 @@
             }
         };
 
-        buscarYAbrir(0);
+        // Esperamos al siguiente ciclo para que la vista de Seguimiento termine
+        // de registrar el listener que convierte el botón "Trabajar" en el
+        // offcanvas del panel de trabajo. Si se hacía clic durante el propio
+        // DOMContentLoaded, el enlace podía navegar al expediente completo.
+        window.setTimeout(function () {
+            buscarYAbrir(0);
+        }, 0);
     });
 })();
