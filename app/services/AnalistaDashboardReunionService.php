@@ -57,7 +57,7 @@ class AnalistaDashboardReunionService
                             FROM reuniones_vinculacion r_hoy
                             WHERE r_hoy.seguimiento_id = s.id
                               AND r_hoy.analista_id = s.analista_id
-                              AND r_hoy.estado IN ('CONFIRMADA', 'CORREO_ENVIADO')
+                              AND r_hoy.estado IN ('SOLICITADA', 'CONFIRMADA', 'CORREO_ENVIADO')
                               AND r_hoy.fecha_propuesta >= NOW()
                               AND DATE(r_hoy.fecha_propuesta) = CURDATE()
                         )
@@ -80,7 +80,7 @@ class AnalistaDashboardReunionService
                             FROM reuniones_vinculacion r_vencida
                             WHERE r_vencida.seguimiento_id = s.id
                               AND r_vencida.analista_id = s.analista_id
-                              AND r_vencida.estado IN ('SOLICITADA', 'CONFIRMADA', 'CORREO_ENVIADO', 'CAMBIO_SOLICITADO')
+                              AND r_vencida.estado IN ('SOLICITADA', 'CONFIRMADA', 'CORREO_ENVIADO')
                               AND r_vencida.fecha_propuesta < NOW()
                         )
                     ) THEN s.id END) AS atrasados
@@ -90,14 +90,14 @@ class AnalistaDashboardReunionService
                   AND s.estado_seguimiento <> 'DESCARTADO'";
         $fila = $this->obtenerFila($sql, 'i', [$usuarioId]);
 
-        $sqlReuniones = "SELECT COUNT(DISTINCT r.id) AS total
+        $sqlReuniones = "SELECT COUNT(DISTINCT s.id) AS total
                          FROM reuniones_vinculacion r
                          INNER JOIN seguimientos_vinculacion s ON s.id = r.seguimiento_id
                          WHERE r.analista_id = ?
                            AND s.analista_id = ?
                            AND s.activo = 1
                            AND s.estado_seguimiento <> 'DESCARTADO'
-                           AND r.estado IN ('CONFIRMADA', 'CORREO_ENVIADO')
+                           AND r.estado IN ('SOLICITADA', 'CONFIRMADA', 'CORREO_ENVIADO')
                            AND r.fecha_propuesta >= NOW()
                            AND r.fecha_propuesta < DATE_ADD(NOW(), INTERVAL 7 DAY)";
         $filaReuniones = $this->obtenerFila($sqlReuniones, 'ii', [$usuarioId, $usuarioId]);

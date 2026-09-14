@@ -30,6 +30,8 @@ $cssOpcionalDashboard = [
     'dashboard_analista.css',
     'dashboard_analista_refinamientos.css',
     'dashboard_analista_reuniones.css',
+    'dashboard_analista_boceto.css',
+    'dashboard_analista_boceto_ajustes.css',
     'seguimiento_filtros_layout.css',
     'seguimiento_panel_ruta.css',
     'seguimiento_proxima_accion_fecha.css',
@@ -87,6 +89,7 @@ $jsOpcionalHead = [
     'seguimiento_expediente_proxima_accion.js',
     'seguimiento_abrir_desde_dashboard.js',
     'dashboard_analista.js',
+    'dashboard_analista_integridad.js',
     'dashboard_analista_refinamientos.js',
     'dashboard_analista_navegacion_rapida.js',
     'dashboard_analista_reuniones.js',
@@ -156,6 +159,15 @@ $jsOpcionalHead = [
         window.IMPE_ANALISTA_REUNIONES = <?= json_encode(
             is_array($tableroAnalista['reuniones_dashboard'] ?? null)
                 ? $tableroAnalista['reuniones_dashboard']
+                : [],
+            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+        ) ?>;
+        window.IMPE_ANALISTA_DASHBOARD_META = <?= json_encode([
+            'requieren_atencion_total' => (int)($tableroAnalista['resumen']['requieren_atencion'] ?? 0)
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+        window.IMPE_ANALISTA_ACTIVIDAD_RECIENTE = <?= json_encode(
+            is_array($tableroAnalista['integridad_dashboard']['actividad_actores'] ?? null)
+                ? $tableroAnalista['integridad_dashboard']['actividad_actores']
                 : [],
             JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
         ) ?>;

@@ -237,6 +237,17 @@ switch ($controller) {
         break;
 
 
+    case 'fuenteOficial':
+
+        require_once __DIR__ .
+            '/app/controllers/FuenteOficialController.php';
+
+        $controllerInstance =
+            new FuenteOficialController();
+
+        break;
+
+
     case 'poblacionObjetivoEducativa':
 
         require_once __DIR__ .

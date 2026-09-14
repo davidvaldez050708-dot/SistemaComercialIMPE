@@ -222,17 +222,27 @@ class OficioProgramacionService
     private function construirEstado($seguimiento)
     {
         $fecha = trim((string)($seguimiento['proxima_accion_at'] ?? ''));
+        $estadoSeguimiento = strtoupper(trim((string)($seguimiento['estado_seguimiento'] ?? '')));
         $requisitos = $this->validarRequisitos($seguimiento);
+
+        /*
+         * proxima_accion_at es una fecha operacional compartida por distintas
+         * etapas del seguimiento. Después de enviar el oficio puede reutilizarse
+         * para una reunión, por lo que no debemos interpretarla como fecha de
+         * envío fuera de OFICIO_PREPARADO.
+         */
+        $programado = $estadoSeguimiento === 'OFICIO_PREPARADO' && $fecha !== '';
+        $fechaProgramacion = $programado ? $fecha : '';
 
         return [
             'seguimiento_id' => (int)($seguimiento['id'] ?? 0),
             'analista_id' => (int)($seguimiento['analista_id'] ?? 0),
             'folio' => (string)($seguimiento['folio'] ?? ''),
             'estado_seguimiento' => (string)($seguimiento['estado_seguimiento'] ?? ''),
-            'programado' => $fecha !== '',
-            'proxima_accion_at' => $fecha,
-            'proxima_accion_input' => $this->fechaParaInput($fecha),
-            'proxima_accion_label' => $this->fechaLabel($fecha),
+            'programado' => $programado,
+            'proxima_accion_at' => $fechaProgramacion,
+            'proxima_accion_input' => $this->fechaParaInput($fechaProgramacion),
+            'proxima_accion_label' => $this->fechaLabel($fechaProgramacion),
             'cumple_requisitos' => (bool)($requisitos['ok'] ?? false),
             'motivo_bloqueo' => ($requisitos['ok'] ?? false)
                 ? ''

@@ -17,8 +17,8 @@ document.addEventListener('DOMContentLoaded', function () {
         '<input class="form-check-input" type="checkbox" data-profile-education-mass-option>' +
         '<span>' +
             '<strong>Perfil educativo</strong>' +
-            '<small>Fuente: INEGI - Censo de Población y Vivienda (ITER 2020)</small>' +
-            '<em>Consulta y actualiza automáticamente el perfil educativo oficial de todos los Estados.</em>' +
+            '<small>Fuente: INEGI - fuente sociodemográfica oficial compatible más reciente</small>' +
+            '<em>Detecta, valida y actualiza automáticamente el perfil educativo oficial de todos los Estados.</em>' +
         '</span>';
     listaOpciones.appendChild(opcion);
 
@@ -29,12 +29,12 @@ document.addEventListener('DOMContentLoaded', function () {
         '<div class="data-power-import-heading">' +
             '<div>' +
                 '<strong>Actualización automática del perfil educativo</strong>' +
-                '<span>El sistema consultará directamente los datos abiertos de ITER 2020 publicados por INEGI para los 32 Estados.</span>' +
+                '<span>El sistema buscará la fuente oficial más reciente de INEGI y sólo la utilizará si conserva variables educativas compatibles y validables.</span>' +
             '</div>' +
             '<i class="bi bi-cloud-arrow-down" aria-hidden="true"></i>' +
         '</div>' +
         '<small class="data-power-import-help">' +
-            'No necesitas descargar, filtrar ni subir archivos. Se consultan automáticamente las variables de escolaridad, asistencia y grupos de edad utilizadas por el bloque “Perfil educativo relacionado con la oferta académica”.' +
+            'No necesitas descargar ni filtrar archivos. Si INEGI publica una fuente nueva con una estructura compatible, se utilizará automáticamente. Si cambia la metodología o las variables requeridas, la actualización se detendrá para evitar guardar datos incorrectos.' +
         '</small>' +
         '<div class="data-power-import-status d-none" data-profile-education-auto-status role="status"></div>';
 
@@ -151,11 +151,11 @@ document.addEventListener('DOMContentLoaded', function () {
         if (etiquetaBoton) {
             etiquetaBoton.innerHTML =
                 '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>' +
-                'Consultando INEGI...';
+                'Buscando fuente vigente...';
         }
 
         mostrarEstado(
-            'Consultando y validando el perfil educativo oficial de todos los Estados. Esto puede tardar unos minutos la primera vez.',
+            'Buscando la fuente educativa oficial compatible más reciente y validando los 32 Estados. Esto puede tardar unos minutos la primera vez.',
             'loading'
         );
 
@@ -179,10 +179,21 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             const total = Number(resultado.datos?.total_estados || 0);
-            mostrarEstado(
-                'Perfil educativo actualizado automáticamente para ' + total + ' Estados desde INEGI.',
-                'success'
-            );
+            const periodos = Array.isArray(resultado.datos?.periodos)
+                ? resultado.datos.periodos.join(', ')
+                : '';
+            const fuente = String(resultado.datos?.fuente || '').trim();
+            let mensaje = 'Perfil educativo actualizado automáticamente para ' + total + ' Estados desde INEGI.';
+
+            if (periodos) {
+                mensaje += ' Periodo utilizado: ' + periodos + '.';
+            }
+
+            if (fuente) {
+                mensaje += ' Fuente: ' + fuente + '.';
+            }
+
+            mostrarEstado(mensaje, 'success');
         } catch (error) {
             mostrarEstado(
                 error.message || 'No fue posible actualizar automáticamente el perfil educativo.',

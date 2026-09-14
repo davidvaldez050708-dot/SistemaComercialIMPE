@@ -8,9 +8,9 @@
             return;
         }
 
-        // Desde Inicio, un seguimiento concreto debe abrir su expediente directamente.
-        // Evitamos navegar primero a la tabla territorial y esperar a que otro script
-        // encuentre la fila correspondiente para continuar.
+        // Los accesos generales a un seguimiento pueden abrir el expediente completo,
+        // pero el botón "Trabajar" de Prioridad operativa conserva la ruta territorial
+        // con abrir_seguimiento para que Seguimiento abra directamente su panel de trabajo.
         tablero.addEventListener('click', function (event) {
             if (
                 event.defaultPrevented ||
@@ -25,6 +25,10 @@
 
             const enlace = event.target.closest('a[href*="abrir_seguimiento="]');
             if (!enlace || !tablero.contains(enlace)) {
+                return;
+            }
+
+            if (enlace.classList.contains('analyst-work-button')) {
                 return;
             }
 

@@ -164,6 +164,7 @@ $jsDashboardFooter = [
     'educacion_objetivo.js',
     'mi_perfil.js',
     'recordatorios.js',
+    'data_territorial_fuentes.js',
     'poblacion_objetivo_educativa.js'
 ];
 ?>

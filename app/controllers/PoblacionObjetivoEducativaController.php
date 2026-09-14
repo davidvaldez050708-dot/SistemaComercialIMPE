@@ -203,6 +203,9 @@ class PoblacionObjetivoEducativaController
         $servicio = new InegiEducacionObjetivoService();
         $preparados = [];
         $errores = [];
+        $periodosDetectados = [];
+        $productosDetectados = [];
+        $fuentesDetectadas = [];
 
         foreach ($estadosBase as $estadoBase) {
             $estadoId = (int)($estadoBase['id'] ?? 0);
@@ -229,6 +232,24 @@ class PoblacionObjetivoEducativaController
                 continue;
             }
 
+            $periodo = (int)($resultado['periodo'] ?? 0);
+            $fuente = trim((string)($resultado['fuente'] ?? ''));
+            $producto = trim((string)($resultado['producto'] ?? ''));
+            $archivoOrigen = trim((string)($resultado['archivo_origen'] ?? ''));
+            $compatibilidad = trim((string)($resultado['compatibilidad'] ?? ''));
+
+            if (
+                $periodo < 2000 ||
+                $periodo > 2100 ||
+                $fuente === '' ||
+                $producto === '' ||
+                $archivoOrigen === '' ||
+                $compatibilidad !== 'VALIDADA'
+            ) {
+                $errores[] = $nombre . ': la fuente encontrada no pudo validarse con seguridad.';
+                continue;
+            }
+
             $metricas = $resultado['estado']['metricas'] ?? [];
             $poblacionBase = $metricas['poblacion_15_mas'] ?? null;
             $secundaria = $metricas['secundaria_completa'] ?? null;
@@ -237,11 +258,20 @@ class PoblacionObjetivoEducativaController
             if (
                 !is_numeric($poblacionBase) ||
                 !is_numeric($secundaria) ||
-                !is_numeric($porcentaje)
+                !is_numeric($porcentaje) ||
+                (int)$poblacionBase <= 0 ||
+                (int)$secundaria < 0 ||
+                (int)$secundaria > (int)$poblacionBase ||
+                (float)$porcentaje < 0 ||
+                (float)$porcentaje > 100
             ) {
-                $errores[] = $nombre . ': INEGI no devolvió las métricas educativas esperadas.';
+                $errores[] = $nombre . ': INEGI no devolvió métricas educativas válidas.';
                 continue;
             }
+
+            $periodosDetectados[$periodo] = true;
+            $productosDetectados[$producto] = true;
+            $fuentesDetectadas[$fuente] = true;
 
             $preparados[] = [
                 'estado_id' => $estadoId,
@@ -252,16 +282,24 @@ class PoblacionObjetivoEducativaController
                     'nombre_indicador' =>
                         'Población de 15 años y más cuya máxima escolaridad es secundaria completa',
                     'grupo_edad' => '15 años y más',
-                    'anio' => (int)($resultado['periodo'] ?? 2020),
+                    'anio' => $periodo,
                     'cantidad_personas' => (int)$secundaria,
                     'poblacion_base' => (int)$poblacionBase,
                     'porcentaje' => (float)$porcentaje,
-                    'fuente' => (string)($resultado['fuente'] ??
-                        'INEGI - Censo de Población y Vivienda 2020 (ITER)'),
-                    'archivo_origen' => 'iter_' . $clave . '_cpv2020_csv.zip',
+                    'fuente' => $fuente,
+                    'archivo_origen' => $archivoOrigen,
                     'tipo_actualizacion' => 'AUTOMATICA'
                 ]
             ];
+        }
+
+        if (
+            count($periodosDetectados) > 1 ||
+            count($productosDetectados) > 1 ||
+            count($fuentesDetectadas) > 1
+        ) {
+            $errores[] =
+                'INEGI devolvió fuentes o periodos distintos entre Estados. Para evitar mezclar metodologías, no se guardó ningún cambio.';
         }
 
         if (!empty($errores)) {
@@ -275,10 +313,15 @@ class PoblacionObjetivoEducativaController
             $this->responderJson([
                 'ok' => false,
                 'mensaje' =>
-                    'No se guardó la actualización porque no fue posible validar todos los Estados. ' .
+                    'No se guardó la actualización porque no fue posible validar todos los Estados con una misma fuente compatible. ' .
                     $mensaje
             ], 502);
         }
+
+        $periodos = array_map('intval', array_keys($periodosDetectados));
+        sort($periodos, SORT_NUMERIC);
+        $fuentes = array_keys($fuentesDetectadas);
+        $productos = array_keys($productosDetectados);
 
         $usuarioId = (int)$_SESSION['usuario_id'];
         $guardados = 0;
@@ -301,14 +344,18 @@ class PoblacionObjetivoEducativaController
             $guardados++;
         }
 
+        $periodoTexto = !empty($periodos) ? (string)max($periodos) : 'vigente';
+
         $this->responderJson([
             'ok' => true,
             'mensaje' =>
                 'Perfil educativo actualizado automáticamente para ' . $guardados .
-                ' Estados desde INEGI. No fue necesario cargar archivos.',
+                ' Estados desde la fuente oficial compatible más reciente de INEGI (' . $periodoTexto . ').',
             'datos' => [
                 'total_estados' => $guardados,
-                'periodos' => [2020],
+                'periodos' => $periodos,
+                'fuente' => $fuentes[0] ?? '',
+                'producto' => $productos[0] ?? '',
                 'codigo_indicador' => InegiEducacionService::CODIGO_INDICADOR,
                 'tipo_actualizacion' => 'AUTOMATICA'
             ]

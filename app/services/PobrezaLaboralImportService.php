@@ -42,6 +42,8 @@ class PobrezaLaboralImportService
         'Zacatecas' => '32'
     ];
 
+    private ?array $mapaEntidadesComparables = null;
+
     public function leerArchivo(string $rutaArchivo): array
     {
         $rutaArchivo = trim($rutaArchivo);
@@ -78,24 +80,21 @@ class PobrezaLaboralImportService
         try {
             $hojas = $this->obtenerRutasHojas($zip);
 
-            if (!isset($hojas[self::HOJA_INGRESO], $hojas[self::HOJA_POBREZA])) {
-                return $this->error('El archivo no contiene los tabulados requeridos: Cuadro 5 y Cuadro 9.');
+            if (empty($hojas)) {
+                return $this->error('El archivo XLSX no contiene hojas legibles.');
             }
 
             $sharedStrings = $this->obtenerSharedStrings($zip);
-            $cuadroIngreso = $this->leerHoja(
+            $tabulados = $this->resolverTabulados(
                 $zip,
-                $hojas[self::HOJA_INGRESO],
+                $hojas,
                 $sharedStrings
             );
-            $cuadroPobreza = $this->leerHoja(
-                $zip,
-                $hojas[self::HOJA_POBREZA],
-                $sharedStrings
-            );
+            $cuadroIngreso = $tabulados['ingreso'];
+            $cuadroPobreza = $tabulados['pobreza'];
 
-            $periodoIngreso = $this->obtenerUltimoPeriodo($cuadroIngreso, 8);
-            $periodoPobreza = $this->obtenerUltimoPeriodo($cuadroPobreza, 7);
+            $periodoIngreso = $this->obtenerUltimoPeriodo($cuadroIngreso);
+            $periodoPobreza = $this->obtenerUltimoPeriodo($cuadroPobreza);
 
             if ($periodoIngreso === null || $periodoPobreza === null) {
                 return $this->error('No fue posible identificar el último periodo disponible en los tabulados.');
@@ -105,7 +104,7 @@ class PobrezaLaboralImportService
                 $periodoIngreso['anio'] !== $periodoPobreza['anio'] ||
                 $periodoIngreso['trimestre'] !== $periodoPobreza['trimestre']
             ) {
-                return $this->error('Cuadro 5 y Cuadro 9 no corresponden al mismo periodo.');
+                return $this->error('Los tabulados de ingreso y pobreza laboral no corresponden al mismo periodo.');
             }
 
             $ingresos = $this->extraerIngresoReal($cuadroIngreso, $periodoIngreso['fila']);
@@ -115,13 +114,11 @@ class PobrezaLaboralImportService
                 range(0, 32)
             );
 
-            if (array_keys($ingresos) !== array_keys($pobreza)) {
-                ksort($ingresos);
-                ksort($pobreza);
-            }
+            ksort($ingresos);
+            ksort($pobreza);
 
             foreach ($clavesEsperadas as $clave) {
-                if (!isset($ingresos[$clave], $pobreza[$clave])) {
+                if (!array_key_exists($clave, $ingresos) || !array_key_exists($clave, $pobreza)) {
                     return $this->error('El archivo no contiene las 32 entidades y la referencia nacional completas.');
                 }
             }
@@ -167,14 +164,256 @@ class PobrezaLaboralImportService
                 'fuente' => 'INEGI - Pobreza Laboral (PL)',
                 'archivo_origen' => basename($rutaArchivo),
                 'total_geografias' => count($datos),
+                'hojas_detectadas' => [
+                    'ingreso' => $tabulados['nombre_ingreso'],
+                    'pobreza' => $tabulados['nombre_pobreza']
+                ],
                 'datos' => $datos
             ];
+        } catch (RuntimeException $error) {
+            error_log($error->getMessage());
+            return $this->error(
+                'No fue posible reconocer con seguridad la estructura actual del XLSX de INEGI. '
+                . 'No se modificó información. Detalle: '
+                . $error->getMessage()
+            );
         } catch (Throwable $error) {
             error_log($error->getMessage());
-            return $this->error('No fue posible validar la estructura del archivo XLSX.');
+            return $this->error('No fue posible validar la estructura del archivo XLSX. No se modificó información.');
         } finally {
             $zip->close();
         }
+    }
+
+    private function resolverTabulados(
+        ZipArchive $zip,
+        array $hojas,
+        array $sharedStrings
+    ): array {
+        $rutaIngreso = $this->buscarRutaHojaPorNombre($hojas, self::HOJA_INGRESO);
+        $rutaPobreza = $this->buscarRutaHojaPorNombre($hojas, self::HOJA_POBREZA);
+        $hojasLeidas = [];
+
+        $leer = function (string $nombre, string $ruta) use ($zip, $sharedStrings, &$hojasLeidas): array {
+            if (!isset($hojasLeidas[$ruta])) {
+                $hojasLeidas[$ruta] = $this->leerHoja($zip, $ruta, $sharedStrings);
+            }
+
+            return $hojasLeidas[$ruta];
+        };
+
+        $nombreIngreso = $rutaIngreso !== null
+            ? $this->nombreHojaPorRuta($hojas, $rutaIngreso)
+            : '';
+        $nombrePobreza = $rutaPobreza !== null
+            ? $this->nombreHojaPorRuta($hojas, $rutaPobreza)
+            : '';
+        $ingreso = $rutaIngreso !== null
+            ? $leer($nombreIngreso, $rutaIngreso)
+            : null;
+        $pobreza = $rutaPobreza !== null
+            ? $leer($nombrePobreza, $rutaPobreza)
+            : null;
+
+        if ($ingreso !== null && $pobreza !== null && $rutaIngreso !== $rutaPobreza) {
+            return [
+                'ingreso' => $ingreso,
+                'pobreza' => $pobreza,
+                'nombre_ingreso' => $nombreIngreso,
+                'nombre_pobreza' => $nombrePobreza
+            ];
+        }
+
+        $candidatosIngreso = [];
+        $candidatosPobreza = [];
+
+        foreach ($hojas as $nombreHoja => $rutaHoja) {
+            $hoja = $leer($nombreHoja, $rutaHoja);
+            $puntajeIngreso = $this->puntuarHojaIngreso($nombreHoja, $hoja);
+            $puntajePobreza = $this->puntuarHojaPobreza($nombreHoja, $hoja);
+
+            if ($puntajeIngreso >= 6) {
+                $candidatosIngreso[] = [
+                    'nombre' => $nombreHoja,
+                    'ruta' => $rutaHoja,
+                    'hoja' => $hoja,
+                    'puntaje' => $puntajeIngreso
+                ];
+            }
+
+            if ($puntajePobreza >= 6) {
+                $candidatosPobreza[] = [
+                    'nombre' => $nombreHoja,
+                    'ruta' => $rutaHoja,
+                    'hoja' => $hoja,
+                    'puntaje' => $puntajePobreza
+                ];
+            }
+        }
+
+        usort($candidatosIngreso, static fn ($a, $b) => $b['puntaje'] <=> $a['puntaje']);
+        usort($candidatosPobreza, static fn ($a, $b) => $b['puntaje'] <=> $a['puntaje']);
+
+        if ($ingreso === null) {
+            $candidato = $this->primerCandidatoDistinto($candidatosIngreso, $rutaPobreza);
+
+            if ($candidato !== null) {
+                $ingreso = $candidato['hoja'];
+                $rutaIngreso = $candidato['ruta'];
+                $nombreIngreso = $candidato['nombre'];
+            }
+        }
+
+        if ($pobreza === null) {
+            $candidato = $this->primerCandidatoDistinto($candidatosPobreza, $rutaIngreso);
+
+            if ($candidato !== null) {
+                $pobreza = $candidato['hoja'];
+                $rutaPobreza = $candidato['ruta'];
+                $nombrePobreza = $candidato['nombre'];
+            }
+        }
+
+        if (
+            !is_array($ingreso) ||
+            !is_array($pobreza) ||
+            $rutaIngreso === null ||
+            $rutaPobreza === null ||
+            $rutaIngreso === $rutaPobreza
+        ) {
+            throw new RuntimeException(
+                'No se localizaron dos tabulados distintos para ingreso laboral real y pobreza laboral.'
+            );
+        }
+
+        return [
+            'ingreso' => $ingreso,
+            'pobreza' => $pobreza,
+            'nombre_ingreso' => $nombreIngreso,
+            'nombre_pobreza' => $nombrePobreza
+        ];
+    }
+
+    private function buscarRutaHojaPorNombre(array $hojas, string $nombreBuscado): ?string
+    {
+        $buscado = $this->textoComparable($nombreBuscado);
+
+        foreach ($hojas as $nombre => $ruta) {
+            if ($this->textoComparable($nombre) === $buscado) {
+                return $ruta;
+            }
+        }
+
+        return null;
+    }
+
+    private function nombreHojaPorRuta(array $hojas, string $rutaBuscada): string
+    {
+        foreach ($hojas as $nombre => $ruta) {
+            if ($ruta === $rutaBuscada) {
+                return $nombre;
+            }
+        }
+
+        return '';
+    }
+
+    private function primerCandidatoDistinto(array $candidatos, ?string $rutaExcluida): ?array
+    {
+        foreach ($candidatos as $candidato) {
+            if (($candidato['ruta'] ?? null) !== $rutaExcluida) {
+                return $candidato;
+            }
+        }
+
+        return null;
+    }
+
+    private function puntuarHojaIngreso(string $nombreHoja, array $hoja): int
+    {
+        $puntaje = 0;
+        $nombreComparable = $this->textoComparable($nombreHoja);
+        $texto = $this->textoResumenHoja($hoja);
+        $filaEntidades = $this->detectarFilaEntidades($hoja, false);
+
+        if (str_contains($nombreComparable, 'cuadro 5')) {
+            $puntaje += 6;
+        }
+
+        if (str_contains($texto, 'ingreso laboral real')) {
+            $puntaje += 5;
+        }
+
+        if (str_contains($texto, 'deflactado') && str_contains($texto, 'inpc')) {
+            $puntaje += 5;
+        }
+
+        if (str_contains($texto, 'per capita')) {
+            $puntaje += 2;
+        }
+
+        if ($filaEntidades !== null && count($filaEntidades['territorios']) >= 30) {
+            $puntaje += 2;
+        }
+
+        return $puntaje;
+    }
+
+    private function puntuarHojaPobreza(string $nombreHoja, array $hoja): int
+    {
+        $puntaje = 0;
+        $nombreComparable = $this->textoComparable($nombreHoja);
+        $texto = $this->textoResumenHoja($hoja);
+        $filaEntidades = $this->detectarFilaEntidades($hoja, false);
+
+        if (str_contains($nombreComparable, 'cuadro 9')) {
+            $puntaje += 6;
+        }
+
+        if (str_contains($texto, 'pobreza laboral')) {
+            $puntaje += 5;
+        }
+
+        if (
+            str_contains($texto, 'ingreso laboral') &&
+            str_contains($texto, 'canasta alimentaria')
+        ) {
+            $puntaje += 6;
+        }
+
+        if (str_contains($texto, 'ingreso laboral inferior')) {
+            $puntaje += 3;
+        }
+
+        if ($filaEntidades !== null && count($filaEntidades['territorios']) >= 30) {
+            $puntaje += 2;
+        }
+
+        return $puntaje;
+    }
+
+    private function textoResumenHoja(array $hoja): string
+    {
+        $partes = [];
+        $filasLeidas = 0;
+
+        foreach ($hoja as $celdas) {
+            foreach ($celdas as $valor) {
+                $texto = $this->textoComparable($valor);
+
+                if ($texto !== '') {
+                    $partes[] = $texto;
+                }
+            }
+
+            $filasLeidas++;
+
+            if ($filasLeidas >= 20) {
+                break;
+            }
+        }
+
+        return implode(' ', $partes);
     }
 
     private function obtenerRutasHojas(ZipArchive $zip): array
@@ -322,6 +561,7 @@ class PobrezaLaboralImportService
             }
         }
 
+        ksort($filas);
         return $filas;
     }
 
@@ -367,44 +607,41 @@ class PobrezaLaboralImportService
         return $valor;
     }
 
-    private function obtenerUltimoPeriodo(array $hoja, int $filaInicio): ?array
+    private function obtenerUltimoPeriodo(array $hoja): ?array
     {
-        $anioActual = null;
-        $periodos = [];
-        $mapaTrimestres = [
-            'I' => 1,
-            'II' => 2,
-            'III' => 3,
-            'IV' => 4
-        ];
+        $columnas = $this->detectarColumnasPeriodo($hoja);
 
-        if (empty($hoja)) {
+        if ($columnas === null) {
             return null;
         }
 
-        $ultimaFila = max(array_keys($hoja));
+        $anioActual = null;
+        $periodos = [];
 
-        for ($fila = $filaInicio; $fila <= $ultimaFila; $fila++) {
-            $valorAnio = $hoja[$fila][1] ?? null;
-            $valorTrimestre = strtoupper($this->normalizarEspacios($hoja[$fila][2] ?? ''));
-
-            if (is_numeric($valorAnio)) {
-                $anioCandidato = (int)$valorAnio;
-
-                if ($anioCandidato >= 2000 && $anioCandidato <= 2100) {
-                    $anioActual = $anioCandidato;
-                }
+        foreach ($hoja as $numeroFila => $celdas) {
+            if ((int)$numeroFila <= $columnas['fila_encabezado']) {
+                continue;
             }
 
-            if ($anioActual === null || !isset($mapaTrimestres[$valorTrimestre])) {
+            $anioCandidato = $this->anioValido($celdas[$columnas['columna_anio']] ?? null);
+
+            if ($anioCandidato !== null) {
+                $anioActual = $anioCandidato;
+            }
+
+            $trimestre = $this->trimestreNumero(
+                $celdas[$columnas['columna_trimestre']] ?? null
+            );
+
+            if ($anioActual === null || $trimestre === null) {
                 continue;
             }
 
             $periodos[] = [
                 'anio' => $anioActual,
-                'trimestre' => $mapaTrimestres[$valorTrimestre],
-                'trimestre_romano' => $valorTrimestre,
-                'fila' => $fila
+                'trimestre' => $trimestre,
+                'trimestre_romano' => $this->trimestreRomano($trimestre),
+                'fila' => (int)$numeroFila
             ];
         }
 
@@ -422,69 +659,168 @@ class PobrezaLaboralImportService
         return $periodos[0];
     }
 
-    private function extraerIngresoReal(array $hoja, int $filaDatos): array
+    private function detectarColumnasPeriodo(array $hoja): ?array
     {
-        $encabezadosTerritorio = $hoja[6] ?? [];
-        $subencabezados = $hoja[7] ?? [];
-        $filaValores = $hoja[$filaDatos] ?? [];
-        $columnasTerritorio = [];
+        foreach ($hoja as $numeroFila => $celdas) {
+            $columnaAnio = null;
+            $columnaTrimestre = null;
 
-        foreach ($encabezadosTerritorio as $columna => $nombre) {
-            if ((int)$columna <= 2) {
-                continue;
-            }
+            foreach ($celdas as $columna => $valor) {
+                $comparable = $this->textoComparable($valor);
 
-            $nombreNormalizado = $this->normalizarEspacios($nombre);
-
-            if ($nombreNormalizado === '' || !isset($this->mapaEntidades[$nombreNormalizado])) {
-                continue;
-            }
-
-            $columnasTerritorio[] = [
-                'columna' => (int)$columna,
-                'nombre' => $nombreNormalizado,
-                'clave' => $this->mapaEntidades[$nombreNormalizado]
-            ];
-        }
-
-        if (count($columnasTerritorio) !== 33) {
-            throw new RuntimeException('Cuadro 5 no contiene las geografías esperadas.');
-        }
-
-        usort($columnasTerritorio, static fn ($a, $b) => $a['columna'] <=> $b['columna']);
-        $resultado = [];
-        $maxColumna = max(array_keys($encabezadosTerritorio + $subencabezados + $filaValores));
-
-        foreach ($columnasTerritorio as $indice => $territorio) {
-            $inicio = $territorio['columna'];
-            $fin = isset($columnasTerritorio[$indice + 1])
-                ? $columnasTerritorio[$indice + 1]['columna'] - 1
-                : $maxColumna;
-            $columnaIngreso = null;
-
-            for ($columna = $inicio; $columna <= $fin; $columna++) {
-                $subtitulo = $this->normalizarEspacios($subencabezados[$columna] ?? '');
+                if ($comparable === 'ano' || $comparable === 'anio') {
+                    $columnaAnio = (int)$columna;
+                }
 
                 if (
-                    $subtitulo !== '' &&
-                    stripos($subtitulo, 'deflactado con el INPC') !== false
+                    $comparable === 'trimestre' ||
+                    $comparable === 'periodo' ||
+                    $comparable === 'periodo trimestral'
                 ) {
-                    $columnaIngreso = $columna;
-                    break;
+                    $columnaTrimestre = (int)$columna;
                 }
             }
 
-            if ($columnaIngreso === null) {
-                throw new RuntimeException('No se encontró la columna de ingreso real deflactado con INPC.');
+            if ($columnaAnio !== null && $columnaTrimestre !== null) {
+                return [
+                    'fila_encabezado' => (int)$numeroFila,
+                    'columna_anio' => $columnaAnio,
+                    'columna_trimestre' => $columnaTrimestre
+                ];
+            }
+        }
+
+        $conteos = [];
+
+        foreach ($hoja as $numeroFila => $celdas) {
+            foreach ($celdas as $columnaAnio => $valorAnio) {
+                if ($this->anioValido($valorAnio) === null) {
+                    continue;
+                }
+
+                foreach ($celdas as $columnaTrimestre => $valorTrimestre) {
+                    if ((int)$columnaAnio === (int)$columnaTrimestre) {
+                        continue;
+                    }
+
+                    if ($this->trimestreNumero($valorTrimestre) === null) {
+                        continue;
+                    }
+
+                    $distancia = abs((int)$columnaTrimestre - (int)$columnaAnio);
+
+                    if ($distancia > 3) {
+                        continue;
+                    }
+
+                    $clave = (int)$columnaAnio . ':' . (int)$columnaTrimestre;
+                    $conteos[$clave] = ($conteos[$clave] ?? 0) + 1;
+                }
+            }
+        }
+
+        if (empty($conteos)) {
+            return null;
+        }
+
+        arsort($conteos, SORT_NUMERIC);
+        $clave = (string)array_key_first($conteos);
+
+        if (($conteos[$clave] ?? 0) < 2) {
+            return null;
+        }
+
+        [$columnaAnio, $columnaTrimestre] = array_map('intval', explode(':', $clave));
+
+        return [
+            'fila_encabezado' => 0,
+            'columna_anio' => $columnaAnio,
+            'columna_trimestre' => $columnaTrimestre
+        ];
+    }
+
+    private function extraerIngresoReal(array $hoja, int $filaDatos): array
+    {
+        $encabezado = $this->detectarFilaEntidades($hoja, true);
+        $filaValores = $hoja[$filaDatos] ?? [];
+
+        if ($encabezado === null || empty($filaValores)) {
+            throw new RuntimeException('No se localizaron las geografías o la fila del último periodo en el tabulado de ingreso.');
+        }
+
+        $territorios = $encabezado['territorios'];
+        usort($territorios, static fn ($a, $b) => $a['columna'] <=> $b['columna']);
+        $maxColumna = max(array_keys($filaValores + ($hoja[$encabezado['fila']] ?? [])));
+        $resultado = [];
+
+        foreach ($territorios as $indice => $territorio) {
+            $inicio = $territorio['columna'];
+            $fin = isset($territorios[$indice + 1])
+                ? $territorios[$indice + 1]['columna'] - 1
+                : $maxColumna;
+            $candidatos = [];
+
+            for ($columna = $inicio; $columna <= $fin; $columna++) {
+                $textoColumna = $this->textoEncabezadoColumna(
+                    $hoja,
+                    $columna,
+                    $encabezado['fila'],
+                    min($encabezado['fila'] + 8, $filaDatos - 1)
+                );
+                $puntaje = $this->puntuarColumnaIngreso($textoColumna);
+
+                if ($puntaje > 0) {
+                    $candidatos[] = [
+                        'columna' => $columna,
+                        'puntaje' => $puntaje
+                    ];
+                }
             }
 
-            $valor = $filaValores[$columnaIngreso] ?? null;
+            if (empty($candidatos)) {
+                throw new RuntimeException(
+                    'No se encontró con seguridad la columna de ingreso laboral real para '
+                    . $territorio['nombre'] . '.'
+                );
+            }
+
+            usort($candidatos, static function ($a, $b) {
+                $comparacion = $b['puntaje'] <=> $a['puntaje'];
+                return $comparacion !== 0
+                    ? $comparacion
+                    : ($a['columna'] <=> $b['columna']);
+            });
+
+            $mejor = $candidatos[0];
+
+            if ($mejor['puntaje'] < 5) {
+                throw new RuntimeException(
+                    'El encabezado de ingreso laboral real cambió para '
+                    . $territorio['nombre'] . '.'
+                );
+            }
+
+            if (
+                isset($candidatos[1]) &&
+                $candidatos[1]['puntaje'] === $mejor['puntaje']
+            ) {
+                throw new RuntimeException(
+                    'El tabulado contiene más de una columna posible de ingreso laboral real para '
+                    . $territorio['nombre'] . '.'
+                );
+            }
+
+            $valor = $filaValores[$mejor['columna']] ?? null;
 
             if (!is_numeric($valor)) {
-                throw new RuntimeException('Cuadro 5 contiene un valor no disponible en el último periodo.');
+                throw new RuntimeException('El tabulado de ingreso contiene un valor no disponible en el último periodo.');
             }
 
             $resultado[$territorio['clave']] = (float)$valor;
+        }
+
+        if (count($resultado) !== 33) {
+            throw new RuntimeException('El tabulado de ingreso no contiene las 32 entidades y la referencia nacional completas.');
         }
 
         ksort($resultado);
@@ -493,36 +829,230 @@ class PobrezaLaboralImportService
 
     private function extraerPobrezaLaboral(array $hoja, int $filaDatos): array
     {
-        $encabezados = $hoja[6] ?? [];
+        $encabezado = $this->detectarFilaEntidades($hoja, true);
         $filaValores = $hoja[$filaDatos] ?? [];
+
+        if ($encabezado === null || empty($filaValores)) {
+            throw new RuntimeException('No se localizaron las geografías o la fila del último periodo en el tabulado de pobreza laboral.');
+        }
+
         $resultado = [];
 
-        foreach ($encabezados as $columna => $nombre) {
-            if ((int)$columna <= 2) {
-                continue;
-            }
-
-            $nombreNormalizado = $this->normalizarEspacios($nombre);
-
-            if ($nombreNormalizado === '' || !isset($this->mapaEntidades[$nombreNormalizado])) {
-                continue;
-            }
-
-            $valor = $filaValores[(int)$columna] ?? null;
+        foreach ($encabezado['territorios'] as $territorio) {
+            $valor = $filaValores[$territorio['columna']] ?? null;
 
             if (!is_numeric($valor)) {
-                throw new RuntimeException('Cuadro 9 contiene un valor no disponible en el último periodo.');
+                throw new RuntimeException(
+                    'El tabulado de pobreza laboral contiene un valor no disponible para '
+                    . $territorio['nombre'] . '.'
+                );
             }
 
-            $resultado[$this->mapaEntidades[$nombreNormalizado]] = (float)$valor;
+            $resultado[$territorio['clave']] = (float)$valor;
         }
 
         if (count($resultado) !== 33) {
-            throw new RuntimeException('Cuadro 9 no contiene las geografías esperadas.');
+            throw new RuntimeException('El tabulado de pobreza laboral no contiene las 32 entidades y la referencia nacional completas.');
         }
 
         ksort($resultado);
         return $resultado;
+    }
+
+    private function detectarFilaEntidades(array $hoja, bool $exigirCompleta): ?array
+    {
+        $mejor = null;
+
+        foreach ($hoja as $numeroFila => $celdas) {
+            $territorios = [];
+            $clavesVistas = [];
+
+            foreach ($celdas as $columna => $valor) {
+                $clave = $this->clavePorNombre($valor);
+
+                if ($clave === null) {
+                    continue;
+                }
+
+                if (isset($clavesVistas[$clave])) {
+                    continue;
+                }
+
+                $clavesVistas[$clave] = true;
+                $territorios[] = [
+                    'columna' => (int)$columna,
+                    'nombre' => $this->normalizarEspacios($valor),
+                    'clave' => $clave
+                ];
+            }
+
+            $cantidad = count($territorios);
+
+            if ($mejor === null || $cantidad > count($mejor['territorios'])) {
+                $mejor = [
+                    'fila' => (int)$numeroFila,
+                    'territorios' => $territorios
+                ];
+            }
+        }
+
+        if ($mejor === null) {
+            return null;
+        }
+
+        $minimo = $exigirCompleta ? 33 : 20;
+
+        if (count($mejor['territorios']) < $minimo) {
+            return null;
+        }
+
+        if ($exigirCompleta && count($mejor['territorios']) !== 33) {
+            throw new RuntimeException('No se reconocieron exactamente las 32 entidades y la referencia nacional en los encabezados.');
+        }
+
+        return $mejor;
+    }
+
+    private function textoEncabezadoColumna(
+        array $hoja,
+        int $columna,
+        int $filaInicio,
+        int $filaFin
+    ): string {
+        if ($filaFin < $filaInicio) {
+            $filaFin = $filaInicio;
+        }
+
+        $partes = [];
+
+        for ($fila = $filaInicio; $fila <= $filaFin; $fila++) {
+            $texto = $this->textoComparable($hoja[$fila][$columna] ?? '');
+
+            if ($texto !== '') {
+                $partes[] = $texto;
+            }
+        }
+
+        return implode(' ', array_unique($partes));
+    }
+
+    private function puntuarColumnaIngreso(string $texto): int
+    {
+        $texto = $this->textoComparable($texto);
+        $puntaje = 0;
+
+        if (str_contains($texto, 'deflactado') && str_contains($texto, 'inpc')) {
+            $puntaje += 8;
+        }
+
+        if (str_contains($texto, 'ingreso laboral real')) {
+            $puntaje += 6;
+        }
+
+        if (str_contains($texto, 'ingreso real')) {
+            $puntaje += 4;
+        }
+
+        if (str_contains($texto, 'per capita')) {
+            $puntaje += 3;
+        }
+
+        if (str_contains($texto, 'pesos')) {
+            $puntaje += 1;
+        }
+
+        if (str_contains($texto, 'nominal') && !str_contains($texto, 'real')) {
+            $puntaje -= 6;
+        }
+
+        return max(0, $puntaje);
+    }
+
+    private function clavePorNombre($valor): ?string
+    {
+        $comparable = $this->textoComparable($valor);
+
+        if ($comparable === '') {
+            return null;
+        }
+
+        if ($this->mapaEntidadesComparables === null) {
+            $mapa = [];
+
+            foreach ($this->mapaEntidades as $nombre => $clave) {
+                $mapa[$this->textoComparable($nombre)] = $clave;
+            }
+
+            $alias = [
+                'coahuila' => '05',
+                'cdmx' => '09',
+                'estado de mexico' => '15',
+                'michoacan' => '16',
+                'veracruz' => '30'
+            ];
+
+            foreach ($alias as $nombre => $clave) {
+                $mapa[$this->textoComparable($nombre)] = $clave;
+            }
+
+            $this->mapaEntidadesComparables = $mapa;
+        }
+
+        return $this->mapaEntidadesComparables[$comparable] ?? null;
+    }
+
+    private function anioValido($valor): ?int
+    {
+        if (!is_numeric($valor)) {
+            return null;
+        }
+
+        $anio = (int)$valor;
+        return $anio >= 2000 && $anio <= 2100 ? $anio : null;
+    }
+
+    private function trimestreNumero($valor): ?int
+    {
+        if (is_numeric($valor)) {
+            $numero = (int)$valor;
+            return $numero >= 1 && $numero <= 4 ? $numero : null;
+        }
+
+        $texto = $this->textoComparable($valor);
+        $mapa = [
+            'i' => 1,
+            'ii' => 2,
+            'iii' => 3,
+            'iv' => 4,
+            '1t' => 1,
+            '2t' => 2,
+            '3t' => 3,
+            '4t' => 4,
+            't1' => 1,
+            't2' => 2,
+            't3' => 3,
+            't4' => 4,
+            'primer trimestre' => 1,
+            'primero trimestre' => 1,
+            'segundo trimestre' => 2,
+            'tercer trimestre' => 3,
+            'cuarto trimestre' => 4
+        ];
+
+        if (isset($mapa[$texto])) {
+            return $mapa[$texto];
+        }
+
+        if (preg_match('/^(?:trimestre )?([1-4])$/', $texto, $coincidencias)) {
+            return (int)$coincidencias[1];
+        }
+
+        return null;
+    }
+
+    private function trimestreRomano(int $trimestre): string
+    {
+        return [1 => 'I', 2 => 'II', 3 => 'III', 4 => 'IV'][$trimestre] ?? '';
     }
 
     private function indiceColumna(string $referencia): int
@@ -545,6 +1075,32 @@ class PobrezaLaboralImportService
     {
         $texto = trim((string)$valor);
         return preg_replace('/\s+/u', ' ', $texto) ?? $texto;
+    }
+
+    private function textoComparable($valor): string
+    {
+        $texto = $this->normalizarEspacios($valor);
+
+        if ($texto === '') {
+            return '';
+        }
+
+        $texto = strtr($texto, [
+            'Á' => 'A', 'É' => 'E', 'Í' => 'I', 'Ó' => 'O', 'Ú' => 'U', 'Ü' => 'U', 'Ñ' => 'N',
+            'á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u', 'ü' => 'u', 'ñ' => 'n'
+        ]);
+
+        if (function_exists('iconv')) {
+            $ascii = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $texto);
+
+            if ($ascii !== false) {
+                $texto = $ascii;
+            }
+        }
+
+        $texto = strtolower($texto);
+        $texto = preg_replace('/[^a-z0-9]+/', ' ', $texto) ?? $texto;
+        return trim(preg_replace('/\s+/', ' ', $texto) ?? $texto);
     }
 
     private function cargarXml(string $xml): DOMDocument

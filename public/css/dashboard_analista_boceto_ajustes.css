@@ -1,0 +1,345 @@
+.analyst-dashboard-v2 .analyst-progress-step > strong + span {
+    min-height: 30px;
+    margin-top: 6px;
+    color: var(--color-text-secondary);
+    font-size: 9px;
+    font-weight: 700;
+    line-height: 1.25;
+}
+
+.analyst-dashboard-v2 .analyst-upcoming-panel.is-empty .analyst-upcoming-footer {
+    display: none;
+}
+
+.analyst-dashboard-v2 .analyst-territory-summary {
+    display: none !important;
+}
+
+.analyst-dashboard-v2 .analyst-territory-panel .analyst-panel-heading {
+    align-items: flex-start;
+}
+
+.analyst-dashboard-v2 .analyst-activity-panel .analyst-panel-link,
+.analyst-dashboard-v2 .analyst-territory-panel .analyst-panel-link {
+    margin-left: auto;
+}
+
+/*
+ * El aviso de jornada ya no sale del Inicio: lleva a Prioridad operativa.
+ * La flecha hacia abajo refuerza que se trata de una navegación interna.
+ */
+.analyst-dashboard-v2 .analyst-welcome-status.is-dashboard-action {
+    cursor: pointer;
+    transition: border-color .16s ease, background-color .16s ease, box-shadow .16s ease;
+}
+
+.analyst-dashboard-v2 .analyst-welcome-status.is-dashboard-action:hover {
+    border-color: #e9bfae;
+    background: #fff4ee;
+    box-shadow: 0 8px 18px rgba(181, 71, 8, .06);
+}
+
+.analyst-dashboard-v2 .analyst-welcome-status.is-dashboard-action:focus-visible {
+    outline: none;
+    border-color: #dca58d;
+    box-shadow: 0 0 0 3px rgba(198, 74, 10, .10);
+}
+
+.analyst-dashboard-v2 .analyst-welcome-status.is-dashboard-action .analyst-welcome-status-arrow {
+    transition: transform .16s ease;
+}
+
+.analyst-dashboard-v2 .analyst-welcome-status.is-dashboard-action:hover .analyst-welcome-status-arrow,
+.analyst-dashboard-v2 .analyst-welcome-status.is-dashboard-action:focus-visible .analyst-welcome-status-arrow {
+    transform: translateY(2px);
+}
+
+.analyst-dashboard-v2 .analyst-welcome-status.is-dashboard-static {
+    cursor: default;
+}
+
+.analyst-dashboard-v2 .analyst-welcome-status.is-dashboard-static .analyst-welcome-status-arrow {
+    display: none;
+}
+
+/* El panel recibe un énfasis breve al llegar desde el aviso superior. */
+.analyst-dashboard-v2 .analyst-attention-panel {
+    scroll-margin-top: 86px;
+    transition: border-color .22s ease, box-shadow .22s ease;
+}
+
+.analyst-dashboard-v2 .analyst-attention-panel.is-dashboard-focus {
+    border-color: #cfdced;
+    box-shadow: 0 0 0 3px rgba(23, 71, 140, .08), 0 12px 28px rgba(28, 46, 74, .06);
+}
+
+/*
+ * Los KPI son principalmente informativos. Sólo Reuniones próximas conserva
+ * comportamiento de enlace porque tiene un destino distinto y claro: Agenda.
+ */
+.analyst-dashboard-v2 .analyst-metric-card:not(.is-actionable),
+.analyst-dashboard-v2 .analyst-metric-card:not(.is-actionable):hover {
+    cursor: default;
+    transform: none;
+    border-color: #e2e7ef;
+    background: transparent;
+    box-shadow: none;
+}
+
+.analyst-dashboard-v2 .analyst-metric-card.is-agenda-action {
+    cursor: pointer;
+}
+
+/*
+ * PRIORIDAD OPERATIVA
+ * La barra lateral de prioridad está posicionada de forma absoluta, por lo que
+ * no debe reservar una columna dentro del grid. Mantener aquella columna de 4px
+ * hacía que el contenido principal colapsara y que el botón Trabajar absorbiera
+ * casi todo el ancho de la tarjeta.
+ */
+.analyst-dashboard-v2 .analyst-attention-item {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    column-gap: 16px;
+    row-gap: 8px;
+    width: 100%;
+    min-width: 0;
+    padding-left: 18px;
+}
+
+.analyst-dashboard-v2 .analyst-attention-main {
+    grid-column: 1;
+    min-width: 0;
+    width: 100%;
+}
+
+.analyst-dashboard-v2 .analyst-attention-topline {
+    min-width: 0;
+    width: 100%;
+}
+
+.analyst-dashboard-v2 .analyst-attention-topline > strong {
+    min-width: 0;
+    max-width: min(100%, 430px);
+}
+
+.analyst-dashboard-v2 .analyst-attention-meta {
+    min-width: 0;
+}
+
+.analyst-dashboard-v2 .analyst-attention-route {
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.analyst-dashboard-v2 .analyst-work-button {
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+    align-self: center;
+    justify-self: end !important;
+    width: auto !important;
+    min-width: 92px;
+    max-width: 118px;
+    white-space: nowrap;
+}
+
+/* El Inicio funciona como resumen: cuatro registros son suficientes. */
+.analyst-dashboard-v2 .analyst-activity-list > .analyst-activity-item:nth-child(n+5),
+.analyst-dashboard-v2 .analyst-territory-list > .analyst-territory-item:nth-child(n+5) {
+    display: none !important;
+}
+
+/*
+ * FILA INFERIOR
+ * Cada tarjeta vuelve a tomar la altura de su propio contenido. Así Actividad
+ * del mes deja de estirarse hasta la altura de Territorios y desaparece el gran
+ * bloque blanco que quedaba debajo de las barras.
+ */
+.analyst-dashboard-v2 .analyst-bottom-grid {
+    grid-template-columns: minmax(0, 1.15fr) minmax(330px, 1fr) minmax(330px, .9fr);
+    gap: 16px;
+    align-items: start;
+}
+
+.analyst-dashboard-v2 .analyst-bottom-grid > .dashboard-panel {
+    min-height: 0 !important;
+    height: auto;
+    align-self: start;
+}
+
+/* Actividad del mes: contenido más compacto y equilibrado. */
+.analyst-dashboard-v2 .analyst-progress-heading {
+    margin-bottom: 10px;
+}
+
+.analyst-dashboard-v2 .analyst-progress-heading > div {
+    min-width: 0;
+}
+
+.analyst-dashboard-v2 .analyst-interaction-total {
+    margin-left: auto;
+    white-space: nowrap;
+}
+
+.analyst-dashboard-v2 .analyst-progress-grid {
+    align-items: start;
+}
+
+.analyst-dashboard-v2 .analyst-progress-step {
+    min-height: 122px;
+    padding-top: 10px;
+    padding-bottom: 7px;
+    justify-content: center;
+}
+
+.analyst-dashboard-v2 .analyst-progress-step > strong + span {
+    min-height: 26px;
+}
+
+.analyst-dashboard-v2 .analyst-month-track {
+    margin-top: 8px;
+}
+
+/* Actividad reciente: cuatro acciones legibles sin alargar la tarjeta. */
+.analyst-dashboard-v2 .analyst-activity-item {
+    min-height: 42px;
+    padding-top: 5px;
+    padding-bottom: 5px;
+}
+
+.analyst-dashboard-v2 .analyst-activity-icon {
+    width: 30px;
+    min-width: 30px;
+    height: 30px;
+}
+
+/*
+ * Territorios gana presencia visual. Los mapas y nombres crecen, pero la lista
+ * sigue limitada a cuatro elementos para conservar el carácter de resumen.
+ */
+.analyst-dashboard-v2 .analyst-territory-panel .analyst-panel-heading {
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.analyst-dashboard-v2 .analyst-territory-panel .analyst-panel-heading > div {
+    min-width: 0;
+}
+
+.analyst-dashboard-v2 .analyst-territory-item {
+    min-height: 49px;
+    padding-top: 5px;
+    padding-bottom: 5px;
+    grid-template-columns: 40px minmax(0, 1fr) auto auto;
+    gap: 10px;
+}
+
+.analyst-dashboard-v2 .analyst-territory-icon,
+.analyst-dashboard-v2 .analyst-territory-icon.has-state-image {
+    width: 40px;
+    min-width: 40px;
+    height: 40px;
+    padding: 4px;
+}
+
+.analyst-dashboard-v2 .analyst-territory-item strong {
+    font-size: 10px;
+    line-height: 1.2;
+}
+
+.analyst-dashboard-v2 .analyst-territory-item div > span,
+.analyst-dashboard-v2 .analyst-territory-count {
+    margin-top: 2px;
+    font-size: 8.5px;
+    line-height: 1.25;
+}
+
+.analyst-dashboard-v2 .analyst-territory-item.is-active .analyst-territory-count {
+    font-size: 9px;
+}
+
+.analyst-dashboard-v2 .analyst-territory-item:not(.is-active) .analyst-territory-count {
+    font-size: 0 !important;
+}
+
+.analyst-dashboard-v2 .analyst-territory-item:not(.is-active) .analyst-territory-count::after {
+    content: "Sin seguimientos activos";
+    color: #8a96a8;
+    font-size: 8.5px;
+    font-weight: 600;
+    line-height: 1.25;
+}
+
+/* El enlace superior ya lleva a Territorios; evitamos un segundo CTA redundante. */
+.analyst-dashboard-v2 .analyst-territory-footer {
+    display: none !important;
+}
+
+/* El estado vacío de agenda debe sentirse integrado, no como una tarjeta perdida. */
+.analyst-dashboard-v2 .analyst-upcoming-panel.is-empty .analyst-empty-state {
+    margin-top: 8px;
+    padding: 12px 14px;
+}
+
+@media (max-width: 1399.98px) {
+    .analyst-dashboard-v2 .analyst-bottom-grid {
+        grid-template-columns: minmax(0, 1.05fr) minmax(280px, .98fr) minmax(280px, .92fr);
+    }
+
+    .analyst-dashboard-v2 .analyst-territory-icon,
+    .analyst-dashboard-v2 .analyst-territory-icon.has-state-image {
+        width: 38px;
+        min-width: 38px;
+        height: 38px;
+    }
+
+    .analyst-dashboard-v2 .analyst-territory-item {
+        grid-template-columns: 38px minmax(0, 1fr) auto auto;
+    }
+}
+
+@media (max-width: 1199.98px) {
+    .analyst-dashboard-v2 .analyst-bottom-grid {
+        grid-template-columns: 1fr;
+        align-items: stretch;
+    }
+
+    .analyst-dashboard-v2 .analyst-bottom-grid > .dashboard-panel {
+        width: 100%;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .analyst-dashboard-v2 .analyst-progress-step > strong + span {
+        min-height: 24px;
+    }
+
+    .analyst-dashboard-v2 .analyst-attention-item {
+        grid-template-columns: minmax(0, 1fr) !important;
+        padding: 12px 12px 12px 17px;
+    }
+
+    .analyst-dashboard-v2 .analyst-attention-main,
+    .analyst-dashboard-v2 .analyst-work-button {
+        grid-column: 1 !important;
+    }
+
+    .analyst-dashboard-v2 .analyst-work-button {
+        grid-row: auto !important;
+        justify-self: start !important;
+    }
+
+    .analyst-dashboard-v2 .analyst-attention-route {
+        white-space: normal;
+    }
+
+    .analyst-dashboard-v2 .analyst-progress-step {
+        min-height: 105px;
+    }
+
+    .analyst-dashboard-v2 .analyst-territory-item {
+        grid-template-columns: 38px minmax(0, 1fr) auto;
+    }
+}
