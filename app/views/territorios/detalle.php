@@ -30,9 +30,12 @@ if (!empty($estado['id']) && class_exists('TerritorioModel')) {
     }
 }
 
-$hayEquipoActual =
+$hayEquipoOperativo =
     !empty($equipoTerritorial) ||
-    !empty($analistasSinCuentaClave) ||
+    !empty($analistasSinCuentaClave);
+
+$hayEquipoActual =
+    $hayEquipoOperativo ||
     !empty($asesoresTerritorio);
 
 $texto = function ($valor) {
@@ -194,7 +197,7 @@ $totalTexto = function ($total, $cargados) {
                                 </div>
                             </div>
 
-                            <div class="territory-detail-analysts">
+                            <div class="territory-detail-analysts border-0 pt-0 mt-3">
                                 <?php if (!empty($analistas)): ?>
 
                                     <?php foreach ($analistas as $analista): ?>
@@ -215,11 +218,12 @@ $totalTexto = function ($total, $cargados) {
                                                 'xs',
                                                 'analista'
                                             ) ?>
-                                            <div>
+                                            <div class="d-flex flex-column align-items-start gap-1">
                                                 <span class="assignment-role">Analista de Datos</span>
                                                 <span class="territory-person-name">
                                                     <?= $texto($nombreAnalista) ?>
                                                 </span>
+                                                <small>Desde <?= $fecha($analista['fecha_inicio'] ?? '') ?></small>
                                             </div>
                                         </div>
 
@@ -244,7 +248,7 @@ $totalTexto = function ($total, $cargados) {
                                 </div>
                             </div>
 
-                            <div class="territory-detail-analysts">
+                            <div class="territory-detail-analysts border-0 pt-0 mt-3">
                                 <?php foreach ($analistasSinCuentaClave as $analista): ?>
                                     <?php
                                     $nombreAnalista = trim(
@@ -262,7 +266,7 @@ $totalTexto = function ($total, $cargados) {
                                             'xs',
                                             'analista'
                                         ) ?>
-                                        <div>
+                                        <div class="d-flex flex-column align-items-start gap-1">
                                             <span class="territory-person-name">
                                                 <?= $texto($nombreAnalista) ?>
                                             </span>
@@ -275,15 +279,12 @@ $totalTexto = function ($total, $cargados) {
                     <?php endif; ?>
 
                     <?php if (!empty($asesoresTerritorio)): ?>
-                        <article class="territory-detail-team-card">
-                            <div class="territory-detail-team-header">
-                                <div>
-                                    <span class="assignment-role">Asesores</span>
-                                    <strong>Apoyo comercial del territorio</strong>
-                                </div>
+                        <div class="<?= $hayEquipoOperativo ? 'border-top pt-3 mt-1' : '' ?>">
+                            <div class="mb-2">
+                                <span class="assignment-role">Asesores</span>
                             </div>
 
-                            <div class="territory-detail-analysts">
+                            <div class="territory-detail-analysts border-0 pt-0 mt-0">
                                 <?php foreach ($asesoresTerritorio as $asesor): ?>
                                     <?php
                                     $nombreAsesor = trim(
@@ -292,7 +293,7 @@ $totalTexto = function ($total, $cargados) {
                                     );
                                     ?>
 
-                                    <div class="territory-person">
+                                    <div class="territory-person py-1">
                                         <?= renderAvatarUsuario(
                                             $asesor['nombre'] ?? '',
                                             $asesor['apellidos'] ?? '',
@@ -301,7 +302,7 @@ $totalTexto = function ($total, $cargados) {
                                             'xs',
                                             'general'
                                         ) ?>
-                                        <div>
+                                        <div class="d-flex flex-column align-items-start gap-1">
                                             <span class="assignment-role">Asesor</span>
                                             <span class="territory-person-name">
                                                 <?= $texto($nombreAsesor) ?>
@@ -311,7 +312,7 @@ $totalTexto = function ($total, $cargados) {
                                     </div>
                                 <?php endforeach; ?>
                             </div>
-                        </article>
+                        </div>
                     <?php endif; ?>
                 </div>
 

@@ -96,11 +96,11 @@ $tarjetasPorPaginaSeguimiento = 12;
             </div>
 
             <a
-                class="btn btn-system-primary"
+                class="btn btn-system-save linkage-action-button"
                 href="<?= BASE_URL ?>index.php?controller=seguimientoVinculacionReporte&action=index"
                 data-bs-toggle="modal"
                 data-bs-target="#modalGenerarReporteSeguimiento">
-                <i class="bi bi-file-earmark-bar-graph me-2"></i>
+                <i class="bi bi-file-earmark-bar-graph"></i>
                 Generar Reportes
             </a>
         </div>
