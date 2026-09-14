@@ -2,6 +2,45 @@
     'use strict';
 
     document.addEventListener('DOMContentLoaded', function () {
+        const agregarAccesosExpediente = function () {
+            document
+                .querySelectorAll('[data-linkage-follow-row] [data-work-follow-id]')
+                .forEach(function (botonTrabajo) {
+                    const acciones = botonTrabajo.closest('.table-actions');
+                    const seguimientoId = Number(
+                        botonTrabajo.getAttribute('data-work-follow-id') || 0
+                    );
+                    const href = String(
+                        botonTrabajo.getAttribute('href') || ''
+                    ).trim();
+
+                    if (
+                        !acciones ||
+                        seguimientoId <= 0 ||
+                        href === '' ||
+                        acciones.querySelector('[data-direct-expedient]')
+                    ) {
+                        return;
+                    }
+
+                    const enlace = document.createElement('a');
+                    enlace.href = href;
+                    enlace.className = 'btn btn-system-light linkage-manage-button';
+                    enlace.title = 'Ver expediente completo';
+                    enlace.setAttribute('aria-label', 'Ver expediente completo');
+                    enlace.setAttribute('data-direct-expedient', '');
+                    enlace.innerHTML =
+                        '<i class="bi bi-folder2-open"></i>' +
+                        '<span>Expediente</span>';
+
+                    acciones.appendChild(enlace);
+                });
+        };
+
+        // La tabla ofrece dos acciones distintas: Trabajar abre el panel lateral
+        // y Expediente navega directamente al historial completo del seguimiento.
+        agregarAccesosExpediente();
+
         const parametros = new URLSearchParams(window.location.search);
         const seguimientoId = Number(parametros.get('abrir_seguimiento') || 0);
 
