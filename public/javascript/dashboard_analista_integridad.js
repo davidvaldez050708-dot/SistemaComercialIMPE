@@ -55,20 +55,6 @@
         return nombre !== '' ? etiqueta + ': ' + nombre : etiqueta;
     };
 
-    const limpiarMensajeAnterior = function (tablero, detalleCorrecto) {
-        const mensajeAnterior = 'Ordenados por urgencia para que sepas por dónde continuar.';
-
-        tablero.querySelectorAll('span, p, div').forEach(function (elemento) {
-            if (elemento === detalleCorrecto || elemento.children.length > 0) {
-                return;
-            }
-
-            if (texto(elemento.textContent) === mensajeAnterior) {
-                elemento.remove();
-            }
-        });
-    };
-
     const corregirResumenAtencion = function (tablero) {
         const meta = window.IMPE_ANALISTA_DASHBOARD_META || {};
         const total = Number(meta.requieren_atencion_total);
@@ -78,13 +64,11 @@
 
         const estado = tablero.querySelector('.analyst-welcome-status');
         const titulo = estado?.querySelector('strong');
-        const detalle = estado?.querySelector('div > span');
+        const detalle = tablero.querySelector('.analyst-welcome-status-copy');
         const icono = estado?.querySelector('.analyst-welcome-status-icon i');
-        if (!estado || !titulo || !detalle) {
+        if (!estado || !titulo) {
             return;
         }
-
-        limpiarMensajeAnterior(tablero, detalle);
 
         const estaAlDia = total === 0;
         estado.classList.toggle('is-clear', estaAlDia);
@@ -99,17 +83,18 @@
 
         if (estaAlDia) {
             titulo.textContent = 'Tu operación está al día';
-            detalle.hidden = false;
-            detalle.textContent = 'No hay seguimientos prioritarios detectados en este momento.';
+            if (detalle) {
+                detalle.textContent = 'No hay seguimientos prioritarios detectados en este momento.';
+            }
             return;
         }
 
         titulo.textContent = total + ' ' +
             (total === 1 ? 'seguimiento requiere atención' : 'seguimientos requieren atención');
 
-        // El conteo comunica el estado operativo; no repetimos una frase auxiliar debajo.
-        detalle.textContent = '';
-        detalle.hidden = true;
+        if (detalle) {
+            detalle.textContent = 'Revisa tus principales pendientes para mantener el avance.';
+        }
     };
 
     const enriquecerActividad = function (tablero) {
