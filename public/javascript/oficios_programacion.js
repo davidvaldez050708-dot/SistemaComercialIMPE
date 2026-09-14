@@ -109,7 +109,7 @@
             bloque.innerHTML =
                 '<div class="d-flex align-items-start justify-content-between gap-3 flex-wrap">' +
                     '<div>' +
-                        '<span class="d-block text-muted small">ENVÍO PROGRAMADO</span>' +
+                        '<span class="d-block text-muted small">ENVÍO DE OFICIO/CORREO PROGRAMADO</span>' +
                         '<strong data-schedule-label>Sin programar</strong>' +
                         '<span class="d-block text-muted small mt-1 d-none" data-schedule-note></span>' +
                     '</div>' +
@@ -189,7 +189,7 @@
                     ? (programado
                         ? 'Programado por el Analista responsable.'
                         : 'Pendiente de programación por el Analista responsable.')
-                    : 'Generará un recordatorio para Enviar oficio/correo.';
+                    : 'Generará un recordatorio para enviar el oficio/correo.';
                 nota.textContent = texto;
                 nota.classList.remove('d-none');
             }
