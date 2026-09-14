@@ -24,7 +24,10 @@
     margin-left: auto;
 }
 
-/* El resumen de jornada que muestra seguimientos pendientes es una acción real. */
+/*
+ * El aviso de jornada ya no sale del Inicio: lleva a Prioridad operativa.
+ * La flecha hacia abajo refuerza que se trata de una navegación interna.
+ */
 .analyst-dashboard-v2 .analyst-welcome-status.is-dashboard-action {
     cursor: pointer;
     transition: border-color .16s ease, background-color .16s ease, box-shadow .16s ease;
@@ -42,19 +45,49 @@
     box-shadow: 0 0 0 3px rgba(198, 74, 10, .10);
 }
 
-.analyst-dashboard-v2 .analyst-welcome-status.is-dashboard-action.is-clear:hover {
-    border-color: rgba(10, 143, 122, .28);
-    background: #eff9f6;
-    box-shadow: 0 8px 18px rgba(10, 143, 122, .05);
-}
-
 .analyst-dashboard-v2 .analyst-welcome-status.is-dashboard-action .analyst-welcome-status-arrow {
     transition: transform .16s ease;
 }
 
 .analyst-dashboard-v2 .analyst-welcome-status.is-dashboard-action:hover .analyst-welcome-status-arrow,
 .analyst-dashboard-v2 .analyst-welcome-status.is-dashboard-action:focus-visible .analyst-welcome-status-arrow {
-    transform: translateX(2px);
+    transform: translateY(2px);
+}
+
+.analyst-dashboard-v2 .analyst-welcome-status.is-dashboard-static {
+    cursor: default;
+}
+
+.analyst-dashboard-v2 .analyst-welcome-status.is-dashboard-static .analyst-welcome-status-arrow {
+    display: none;
+}
+
+/* El panel recibe un énfasis breve al llegar desde el aviso superior. */
+.analyst-dashboard-v2 .analyst-attention-panel {
+    scroll-margin-top: 86px;
+    transition: border-color .22s ease, box-shadow .22s ease;
+}
+
+.analyst-dashboard-v2 .analyst-attention-panel.is-dashboard-focus {
+    border-color: #cfdced;
+    box-shadow: 0 0 0 3px rgba(23, 71, 140, .08), 0 12px 28px rgba(28, 46, 74, .06);
+}
+
+/*
+ * Los KPI son principalmente informativos. Sólo Reuniones próximas conserva
+ * comportamiento de enlace porque tiene un destino distinto y claro: Agenda.
+ */
+.analyst-dashboard-v2 .analyst-metric-card:not(.is-actionable),
+.analyst-dashboard-v2 .analyst-metric-card:not(.is-actionable):hover {
+    cursor: default;
+    transform: none;
+    border-color: #e2e7ef;
+    background: transparent;
+    box-shadow: none;
+}
+
+.analyst-dashboard-v2 .analyst-metric-card.is-agenda-action {
+    cursor: pointer;
 }
 
 /*
