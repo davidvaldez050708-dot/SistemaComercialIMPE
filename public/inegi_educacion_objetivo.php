@@ -6,6 +6,7 @@ require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../app/helpers/PermissionHelper.php';
 require_once __DIR__ . '/../app/models/DataTerritorialModel.php';
 require_once __DIR__ . '/../app/services/InegiEducacionObjetivoService.php';
+require_once __DIR__ . '/../app/services/InegiEducacionPerfilDetalleService.php';
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
@@ -69,5 +70,8 @@ $resultado = $servicio->obtenerPorEstado($claveInegi);
 if (($resultado['ok'] ?? false) !== true) {
     $responder($resultado, 502);
 }
+
+$detalle = new InegiEducacionPerfilDetalleService();
+$resultado = $detalle->enriquecer($resultado, $claveInegi);
 
 $responder($resultado);

@@ -83,6 +83,42 @@ document.addEventListener('DOMContentLoaded', function () {
         estado.className = 'data-power-import-status d-none';
     };
 
+    const leerRespuestaJson = async function (respuesta) {
+        const texto = await respuesta.text();
+        const limpio = texto.trim();
+
+        if (limpio === '') {
+            throw new Error('El servidor no devolvió una respuesta al consultar INEGI.');
+        }
+
+        try {
+            return JSON.parse(limpio);
+        } catch (error) {
+            const inicioJson = limpio.indexOf('{');
+            const finJson = limpio.lastIndexOf('}');
+
+            if (inicioJson >= 0 && finJson > inicioJson) {
+                try {
+                    return JSON.parse(limpio.slice(inicioJson, finJson + 1));
+                } catch (errorJson) {
+                    // Continúa con un mensaje controlado.
+                }
+            }
+
+            const temporal = document.createElement('div');
+            temporal.innerHTML = limpio;
+            const detalle = (temporal.textContent || '').replace(/\s+/g, ' ').trim();
+            const resumen = detalle.length > 180
+                ? detalle.slice(0, 180) + '…'
+                : detalle;
+
+            throw new Error(
+                resumen ||
+                'El servidor devolvió una respuesta no válida al consultar INEGI.'
+            );
+        }
+    };
+
     const hayOpcionNormal = function () {
         return opcionesExistentes.some(function (elemento) {
             return elemento.checked;
@@ -169,7 +205,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
                 }
             );
-            const resultado = await respuesta.json();
+            const resultado = await leerRespuestaJson(respuesta);
 
             if (!respuesta.ok || resultado.ok !== true) {
                 throw new Error(
