@@ -24,8 +24,125 @@
     margin-left: auto;
 }
 
+/*
+ * PRIORIDAD OPERATIVA
+ * La barra lateral de prioridad está posicionada de forma absoluta, por lo que
+ * no debe reservar una columna dentro del grid. Mantener aquella columna de 4px
+ * hacía que el contenido principal colapsara y que el botón Trabajar absorbiera
+ * casi todo el ancho de la tarjeta.
+ */
+.analyst-dashboard-v2 .analyst-attention-item {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    column-gap: 16px;
+    row-gap: 8px;
+    width: 100%;
+    min-width: 0;
+    padding-left: 18px;
+}
+
+.analyst-dashboard-v2 .analyst-attention-main {
+    grid-column: 1;
+    min-width: 0;
+    width: 100%;
+}
+
+.analyst-dashboard-v2 .analyst-attention-topline {
+    min-width: 0;
+    width: 100%;
+}
+
+.analyst-dashboard-v2 .analyst-attention-topline > strong {
+    min-width: 0;
+    max-width: min(100%, 430px);
+}
+
+.analyst-dashboard-v2 .analyst-attention-meta {
+    min-width: 0;
+}
+
+.analyst-dashboard-v2 .analyst-attention-route {
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.analyst-dashboard-v2 .analyst-work-button {
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+    align-self: center;
+    justify-self: end !important;
+    width: auto !important;
+    min-width: 92px;
+    max-width: 118px;
+    white-space: nowrap;
+}
+
+/* El Inicio funciona como resumen: cuatro registros son suficientes. */
+.analyst-dashboard-v2 .analyst-activity-list > .analyst-activity-item:nth-child(n+5),
+.analyst-dashboard-v2 .analyst-territory-list > .analyst-territory-item:nth-child(n+5) {
+    display: none !important;
+}
+
+/* Compactación de la fila inferior para recuperar la proporción del boceto. */
+.analyst-dashboard-v2 .analyst-bottom-grid {
+    align-items: stretch;
+}
+
+.analyst-dashboard-v2 .analyst-bottom-grid > .dashboard-panel {
+    min-height: 220px;
+}
+
+.analyst-dashboard-v2 .analyst-activity-item {
+    min-height: 40px;
+    padding-top: 5px;
+    padding-bottom: 5px;
+}
+
+.analyst-dashboard-v2 .analyst-territory-item {
+    min-height: 43px;
+    padding-top: 5px;
+    padding-bottom: 5px;
+}
+
+.analyst-dashboard-v2 .analyst-territory-icon.has-state-image {
+    width: 32px;
+    height: 32px;
+}
+
+.analyst-dashboard-v2 .analyst-territory-footer {
+    margin-top: 2px;
+    padding-top: 8px;
+}
+
+/* El estado vacío de agenda debe sentirse integrado, no como una tarjeta perdida. */
+.analyst-dashboard-v2 .analyst-upcoming-panel.is-empty .analyst-empty-state {
+    margin-top: 8px;
+    padding: 12px 14px;
+}
+
 @media (max-width: 767.98px) {
     .analyst-dashboard-v2 .analyst-progress-step > strong + span {
         min-height: 24px;
+    }
+
+    .analyst-dashboard-v2 .analyst-attention-item {
+        grid-template-columns: minmax(0, 1fr) !important;
+        padding: 12px 12px 12px 17px;
+    }
+
+    .analyst-dashboard-v2 .analyst-attention-main,
+    .analyst-dashboard-v2 .analyst-work-button {
+        grid-column: 1 !important;
+    }
+
+    .analyst-dashboard-v2 .analyst-work-button {
+        grid-row: auto !important;
+        justify-self: start !important;
+    }
+
+    .analyst-dashboard-v2 .analyst-attention-route {
+        white-space: normal;
     }
 }
