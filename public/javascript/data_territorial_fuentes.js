@@ -17,12 +17,12 @@
 
         if (enlacePobrezaMultidimensional) {
             enlacePobrezaMultidimensional.href =
-                'https://www.inegi.org.mx/contenidos/desarrollosocial/pm/tabulados/pm_ct_2024.xlsx';
+                'index.php?controller=fuenteOficial&action=rezagoEducativo';
             enlacePobrezaMultidimensional.innerHTML =
-                '<i class="bi bi-download" aria-hidden="true"></i> Descargar XLSX oficial 2024';
+                '<i class="bi bi-download" aria-hidden="true"></i> Descargar XLSX oficial vigente';
             enlacePobrezaMultidimensional.title =
-                'Descarga directamente el tabulado oficial por entidad federativa de INEGI';
-            enlacePobrezaMultidimensional.setAttribute('download', 'pm_ct_2024.xlsx');
+                'El sistema consulta INEGI y resuelve automáticamente el tabulado vigente de Pobreza Multidimensional';
+            enlacePobrezaMultidimensional.removeAttribute('download');
             enlacePobrezaMultidimensional.removeAttribute('target');
         }
     });
