@@ -9,12 +9,56 @@ $asesoresTerritorio = $asesoresTerritorio ?? [];
 $historialAsignaciones = $historialAsignaciones ?? [];
 $movimientosTerritoriales = $movimientosTerritoriales ?? [];
 $puedeAsignarTerritorio = tienePermiso('territorios.asignar');
-$puedeVerDataTerritorial = tienePermiso('data_territorial.ver');
 
 $hayEquipoOperativo =
     !empty($equipoTerritorial) ||
     !empty($analistasSinCuentaClave);
 $hayEquipoActual = $hayEquipoOperativo || !empty($asesoresTerritorio);
+
+/*
+ * Territorios puede ser una vista global, pero Información territorial conserva
+ * su alcance por asignación. El enlace sólo se muestra si este usuario tendría
+ * acceso real al Estado en ese módulo.
+ */
+$puedeVerDataTerritorial = false;
+
+if (tienePermiso('data_territorial.ver')) {
+    $usuarioActualId = (int)($_SESSION['usuario_id'] ?? 0);
+    $rolActualId = (int)($_SESSION['rol_id'] ?? 0);
+    $rolActual = trim((string)($_SESSION['rol'] ?? ''));
+    $rolActualNormalizado = function_exists('mb_strtolower')
+        ? mb_strtolower($rolActual, 'UTF-8')
+        : strtolower($rolActual);
+
+    if ($rolActualId === 1) {
+        $puedeVerDataTerritorial = true;
+    } elseif ($usuarioActualId > 0 && $rolActualNormalizado === 'cuenta clave') {
+        foreach ($equipoTerritorial as $cuentaClaveAcceso) {
+            if ((int)($cuentaClaveAcceso['usuario_id'] ?? 0) === $usuarioActualId) {
+                $puedeVerDataTerritorial = true;
+                break;
+            }
+        }
+    } elseif ($usuarioActualId > 0 && $rolActualNormalizado === 'analista de datos') {
+        foreach ($equipoTerritorial as $cuentaClaveAcceso) {
+            foreach (($cuentaClaveAcceso['analistas'] ?? []) as $analistaAcceso) {
+                if ((int)($analistaAcceso['usuario_id'] ?? 0) === $usuarioActualId) {
+                    $puedeVerDataTerritorial = true;
+                    break 2;
+                }
+            }
+        }
+
+        if (!$puedeVerDataTerritorial) {
+            foreach ($analistasSinCuentaClave as $analistaAcceso) {
+                if ((int)($analistaAcceso['usuario_id'] ?? 0) === $usuarioActualId) {
+                    $puedeVerDataTerritorial = true;
+                    break;
+                }
+            }
+        }
+    }
+}
 
 $texto = function ($valor) {
     return htmlspecialchars((string)$valor, ENT_QUOTES, 'UTF-8');
