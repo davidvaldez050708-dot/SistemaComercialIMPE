@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/../../services/EvolucionActividadSeguimientoService.php';
+
 $territorios = $territorios ?? [];
 $municipiosPorEstado = $municipiosPorEstado ?? [];
 $institucionesDisponibles = $institucionesDisponibles ?? [];
@@ -21,6 +23,30 @@ $errorFiltros = $errorFiltros ?? '';
 $errorExportacionPdf = $errorExportacionPdf ?? '';
 $urlExportarPdf = $urlExportarPdf ?? '';
 $modoModalReporte = (string)($_GET['modal'] ?? '') === '1';
+$evolucionActividad = [
+    'periodos' => [],
+    'total' => 0,
+    'mayor' => ['etiqueta' => '—', 'total' => 0],
+    'menor' => ['etiqueta' => '—', 'total' => 0],
+    'variacion' => null,
+    'total_anterior' => null,
+    'comparacion_disponible' => false,
+    'granularidad' => 'dia',
+    'fecha_inicial' => '',
+    'fecha_final' => '',
+    'sin_datos' => true
+];
+
+if (!$modoModalReporte && $generarReporte && $errorFiltros === '') {
+    try {
+        $evolucionActividad = (new EvolucionActividadSeguimientoService())->construir(
+            $seguimientosReporte,
+            $filtrosReporte
+        );
+    } catch (Throwable $error) {
+        error_log('[reporte_evolucion_actividad] ' . $error->getMessage());
+    }
+}
 
 $texto = static function ($valor) {
     return htmlspecialchars((string)$valor, ENT_QUOTES, 'UTF-8');
@@ -420,6 +446,167 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                 </section>
             </div>
         </div>
+
+        <section class="dashboard-panel mb-4" aria-labelledby="grafica-evolucion-actividad-titulo">
+            <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
+                <div>
+                    <h3 class="panel-title mb-1" id="grafica-evolucion-actividad-titulo">Evolución de la actividad</h3>
+                    <p class="page-subtitle mb-0">Actividades registradas durante el periodo seleccionado.</p>
+                </div>
+            </div>
+
+            <div class="row g-3 mb-4">
+                <div class="col-sm-6 col-xl-3">
+                    <article class="metric-card h-100">
+                        <div class="metric-icon">
+                            <i class="bi bi-activity"></i>
+                        </div>
+                        <div>
+                            <p class="metric-value"><?= (int)$evolucionActividad['total'] ?></p>
+                            <p class="metric-label">Actividades en el periodo</p>
+                        </div>
+                    </article>
+                </div>
+                <div class="col-sm-6 col-xl-3">
+                    <article class="metric-card h-100">
+                        <div class="metric-icon">
+                            <i class="bi bi-arrow-up-circle"></i>
+                        </div>
+                        <div>
+                            <p class="metric-value" style="font-size: 18px; line-height: 1.2;"><?= $texto($evolucionActividad['mayor']['etiqueta'] ?? '—') ?></p>
+                            <p class="metric-label"><?= (int)($evolucionActividad['mayor']['total'] ?? 0) ?> actividades · Mayor actividad</p>
+                        </div>
+                    </article>
+                </div>
+                <div class="col-sm-6 col-xl-3">
+                    <article class="metric-card h-100">
+                        <div class="metric-icon metric-icon-muted">
+                            <i class="bi bi-arrow-down-circle"></i>
+                        </div>
+                        <div>
+                            <p class="metric-value" style="font-size: 18px; line-height: 1.2;"><?= $texto($evolucionActividad['menor']['etiqueta'] ?? '—') ?></p>
+                            <p class="metric-label"><?= (int)($evolucionActividad['menor']['total'] ?? 0) ?> actividades · Menor actividad</p>
+                        </div>
+                    </article>
+                </div>
+                <div class="col-sm-6 col-xl-3">
+                    <article class="metric-card h-100">
+                        <div class="metric-icon metric-icon-muted">
+                            <i class="bi bi-percent"></i>
+                        </div>
+                        <div>
+                            <?php if (!empty($evolucionActividad['comparacion_disponible'])): ?>
+                                <?php $variacionActividad = (float)$evolucionActividad['variacion']; ?>
+                                <p class="metric-value">
+                                    <?= $variacionActividad > 0 ? '+' : '' ?><?= number_format($variacionActividad, 1) ?>%
+                                </p>
+                                <p class="metric-label">Variación vs. periodo anterior</p>
+                            <?php else: ?>
+                                <p class="metric-value" style="font-size: 16px; line-height: 1.2;">Sin comparación disponible</p>
+                                <p class="metric-label">Variación vs. periodo anterior</p>
+                            <?php endif; ?>
+                        </div>
+                    </article>
+                </div>
+            </div>
+
+            <?php $periodosActividad = $evolucionActividad['periodos'] ?? []; ?>
+            <?php if (!empty($periodosActividad)): ?>
+                <?php
+                $svgAncho = 1000;
+                $svgAlto = 340;
+                $margenIzquierdo = 58;
+                $margenDerecho = 24;
+                $margenSuperior = 20;
+                $margenInferior = 58;
+                $anchoArea = $svgAncho - $margenIzquierdo - $margenDerecho;
+                $altoArea = $svgAlto - $margenSuperior - $margenInferior;
+                $maxActividad = max(1, max(array_map(static function ($periodo) {
+                    return (int)($periodo['total'] ?? 0);
+                }, $periodosActividad)));
+                $cantidadPeriodos = count($periodosActividad);
+                $pasoX = $cantidadPeriodos > 1 ? $anchoArea / ($cantidadPeriodos - 1) : 0;
+                $puntosLinea = [];
+                $puntosSvg = [];
+
+                foreach ($periodosActividad as $indicePeriodo => $periodoActividad) {
+                    $x = $cantidadPeriodos > 1
+                        ? $margenIzquierdo + ($pasoX * $indicePeriodo)
+                        : $margenIzquierdo + ($anchoArea / 2);
+                    $totalPeriodo = (int)($periodoActividad['total'] ?? 0);
+                    $y = $margenSuperior + $altoArea - (($totalPeriodo / $maxActividad) * $altoArea);
+                    $puntosLinea[] = number_format($x, 2, '.', '') . ',' . number_format($y, 2, '.', '');
+                    $puntosSvg[] = [
+                        'x' => $x,
+                        'y' => $y,
+                        'total' => $totalPeriodo,
+                        'etiqueta' => (string)($periodoActividad['etiqueta'] ?? ''),
+                        'tooltip' => (string)($periodoActividad['tooltip'] ?? '')
+                    ];
+                }
+
+                $saltoEtiquetas = max(1, (int)ceil($cantidadPeriodos / 8));
+                ?>
+                <div class="w-100 overflow-hidden">
+                    <svg
+                        viewBox="0 0 <?= $svgAncho ?> <?= $svgAlto ?>"
+                        width="100%"
+                        role="img"
+                        aria-labelledby="grafica-evolucion-actividad-titulo">
+                        <?php for ($nivel = 0; $nivel <= 4; $nivel++): ?>
+                            <?php
+                            $valorNivel = (int)round($maxActividad * (1 - ($nivel / 4)));
+                            $yNivel = $margenSuperior + (($altoArea / 4) * $nivel);
+                            ?>
+                            <line
+                                x1="<?= $margenIzquierdo ?>"
+                                y1="<?= number_format($yNivel, 2, '.', '') ?>"
+                                x2="<?= $svgAncho - $margenDerecho ?>"
+                                y2="<?= number_format($yNivel, 2, '.', '') ?>"
+                                style="stroke: var(--color-border); stroke-width: 1;" />
+                            <text
+                                x="<?= $margenIzquierdo - 10 ?>"
+                                y="<?= number_format($yNivel + 4, 2, '.', '') ?>"
+                                text-anchor="end"
+                                style="fill: var(--color-text-secondary); font-size: 12px;">
+                                <?= $valorNivel ?>
+                            </text>
+                        <?php endfor; ?>
+
+                        <polyline
+                            points="<?= $texto(implode(' ', $puntosLinea)) ?>"
+                            fill="none"
+                            style="stroke: var(--color-primary); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round;" />
+
+                        <?php foreach ($puntosSvg as $indicePunto => $puntoSvg): ?>
+                            <circle
+                                cx="<?= number_format($puntoSvg['x'], 2, '.', '') ?>"
+                                cy="<?= number_format($puntoSvg['y'], 2, '.', '') ?>"
+                                r="5"
+                                style="fill: var(--color-primary); stroke: #ffffff; stroke-width: 2;">
+                                <title><?= $texto($puntoSvg['tooltip']) ?> · <?= (int)$puntoSvg['total'] ?> actividades</title>
+                            </circle>
+
+                            <?php if ($indicePunto % $saltoEtiquetas === 0 || $indicePunto === $cantidadPeriodos - 1): ?>
+                                <text
+                                    x="<?= number_format($puntoSvg['x'], 2, '.', '') ?>"
+                                    y="<?= $svgAlto - 22 ?>"
+                                    text-anchor="middle"
+                                    style="fill: var(--color-text-secondary); font-size: 12px;">
+                                    <?= $texto($puntoSvg['etiqueta']) ?>
+                                </text>
+                            <?php endif; ?>
+                        <?php endforeach; ?>
+                    </svg>
+                </div>
+
+                <?php if (!empty($evolucionActividad['sin_datos'])): ?>
+                    <p class="text-muted mb-0 mt-2">No se registraron actividades durante el periodo seleccionado.</p>
+                <?php endif; ?>
+            <?php else: ?>
+                <p class="text-muted mb-0">No se registraron actividades durante el periodo seleccionado.</p>
+            <?php endif; ?>
+        </section>
 
         <section class="dashboard-panel p-0 overflow-hidden">
             <div class="table-panel-header">
