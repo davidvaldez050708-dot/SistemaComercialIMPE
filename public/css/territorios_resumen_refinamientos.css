@@ -333,6 +333,62 @@
     font-weight: 600;
 }
 
+/* Control de expansión integrado al lenguaje visual del sistema. */
+.territory-history-toggle {
+    width: 100%;
+    min-height: 38px;
+    margin-top: 8px;
+    padding: 9px 12px;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+
+    background-color: #ffffff;
+    color: var(--color-text-secondary);
+
+    font: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.2;
+    text-align: center;
+
+    box-shadow: none;
+    cursor: pointer;
+    transition:
+        background-color 0.16s ease,
+        border-color 0.16s ease,
+        color 0.16s ease;
+}
+
+.territory-history-toggle i {
+    color: var(--color-text-muted);
+    font-size: 11px;
+    line-height: 1;
+}
+
+.territory-history-toggle:hover,
+.territory-history-toggle[aria-expanded="true"] {
+    border-color: #d4dbe5;
+    background-color: #f8fafc;
+    color: var(--color-text-primary);
+}
+
+.territory-history-toggle:hover i,
+.territory-history-toggle[aria-expanded="true"] i {
+    color: currentColor;
+}
+
+.territory-history-toggle:focus-visible {
+    outline: none;
+    border-color: #cbd4df;
+    box-shadow: 0 0 0 3px rgba(76, 91, 113, 0.10);
+}
+
 @media (max-width: 767.98px) {
     .territory-summary-card {
         min-height: 104px;
