@@ -113,6 +113,36 @@ $tipoTexto = function ($tipo) {
     return $mapa[$tipo] ?? $tipo;
 };
 
+$slugEstado = function ($nombreEstado) {
+    $nombreEstado = trim((string)$nombreEstado);
+    $slug = strtolower($nombreEstado);
+    $transliterado = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $slug);
+
+    if ($transliterado !== false) {
+        $slug = $transliterado;
+    }
+
+    $slug = preg_replace('/[^a-z0-9]+/', '-', $slug);
+    $slug = trim((string)$slug, '-');
+
+    $ajustes = [
+        'Michoacán' => 'michoacán',
+        'Nuevo León' => 'nuevo-leon',
+        'Querétaro' => 'queretaro',
+        'San Luis Potosí' => 'san-luis-potosi',
+        'Yucatán' => 'yucatan',
+        'Ciudad de México' => 'ciudad-de-mexico',
+        'Estado de México' => 'estado-de-mexico'
+    ];
+
+    return $ajustes[$nombreEstado] ?? $slug;
+};
+
+$imagenEstado = BASE_URL .
+    'public/img/estados/' .
+    $slugEstado($estado['nombre'] ?? '') .
+    '.png';
+
 $nombreCortoVisible = function ($nombre, $nombreCorto) use ($texto) {
     $nombreCorto = trim((string)$nombreCorto);
 
@@ -139,13 +169,93 @@ $totalTexto = function ($total, $cargados) {
     return (int)$cargados . ' de ' . (int)$total . ' cargados';
 };
 
+/*
+ * La tabla asignaciones_territorio guarda periodos, no un log de eventos.
+ * Para mostrar un historial entendible reconstruimos únicamente hechos que
+ * pueden demostrarse con esos datos: inicio y final de cada asignación.
+ */
+$asignacionesParaHistorial = [];
+$agregarAsignacionHistorial = function ($asignacion) use (&$asignacionesParaHistorial) {
+    $id = (int)($asignacion['id'] ?? 0);
+
+    if ($id > 0) {
+        $asignacionesParaHistorial[$id] = $asignacion;
+    }
+};
+
+foreach ($historialAsignaciones as $asignacionHistorica) {
+    $agregarAsignacionHistorial($asignacionHistorica);
+}
+
+foreach ($equipoTerritorial as $cuentaClaveActual) {
+    $agregarAsignacionHistorial($cuentaClaveActual);
+
+    foreach (($cuentaClaveActual['analistas'] ?? []) as $analistaActual) {
+        $agregarAsignacionHistorial($analistaActual);
+    }
+}
+
+foreach ($analistasSinCuentaClave as $analistaActual) {
+    $agregarAsignacionHistorial($analistaActual);
+}
+
+foreach ($asesoresTerritorio as $asesorActual) {
+    $agregarAsignacionHistorial($asesorActual);
+}
+
+$eventosHistorial = [];
+
+foreach ($asignacionesParaHistorial as $asignacion) {
+    $nombrePersona = trim(
+        ($asignacion['nombre'] ?? '') . ' ' .
+        ($asignacion['apellidos'] ?? '')
+    );
+    $rolPersona = $tipoTexto($asignacion['tipo_asignacion'] ?? '');
+    $fechaInicio = trim((string)($asignacion['fecha_inicio'] ?? ''));
+    $fechaFin = trim((string)($asignacion['fecha_fin'] ?? ''));
+
+    if ($fechaInicio !== '') {
+        $eventosHistorial[] = [
+            'fecha' => $fechaInicio,
+            'orden' => 1,
+            'tipo' => 'ASIGNACION',
+            'titulo' => 'Se asignó a ' . $nombrePersona,
+            'detalle' => 'Como ' . $rolPersona,
+            'icono' => 'bi-person-plus'
+        ];
+    }
+
+    if ($fechaFin !== '') {
+        $eventosHistorial[] = [
+            'fecha' => $fechaFin,
+            'orden' => 2,
+            'tipo' => 'DESASIGNACION',
+            'titulo' => 'Finalizó la asignación de ' . $nombrePersona,
+            'detalle' => 'Como ' . $rolPersona,
+            'icono' => 'bi-person-dash'
+        ];
+    }
+}
+
+usort($eventosHistorial, function ($eventoA, $eventoB) {
+    $comparacionFecha = strcmp((string)$eventoB['fecha'], (string)$eventoA['fecha']);
+
+    if ($comparacionFecha !== 0) {
+        return $comparacionFecha;
+    }
+
+    return (int)$eventoB['orden'] <=> (int)$eventoA['orden'];
+});
+
 ?>
 
 <div class="territory-detail-content">
     <div class="territory-detail-scroll">
         <div class="territory-detail-heading">
-            <span class="territory-detail-icon">
-                <i class="bi bi-geo-alt"></i>
+            <span class="territory-detail-state-image">
+                <img
+                    src="<?= $texto($imagenEstado) ?>"
+                    alt="Mapa de <?= $texto($estado['nombre'] ?? '') ?>">
             </span>
 
             <div>
@@ -397,43 +507,30 @@ $totalTexto = function ($total, $cargados) {
         </section>
 
         <section class="territory-detail-section">
-            <h4>Historial</h4>
+            <h4>Historial de asignaciones</h4>
 
-            <?php if (!empty($historialAsignaciones)): ?>
+            <?php if (!empty($eventosHistorial)): ?>
 
-                <div class="territory-history-list">
-                    <?php foreach ($historialAsignaciones as $asignacion): ?>
-
-                        <?php
-                        $nombre = trim(
-                            ($asignacion['nombre'] ?? '') . ' ' .
-                            ($asignacion['apellidos'] ?? '')
-                        );
-                        ?>
-
-                        <div class="territory-history-item">
-                            <div>
-                                <strong><?= $texto($nombre) ?></strong>
-                                <span><?= $texto($tipoTexto($asignacion['tipo_asignacion'])) ?></span>
-                                <small>
-                                    <?= $fecha($asignacion['fecha_inicio']) ?>
-                                    -
-                                    <?= $fecha($asignacion['fecha_fin']) ?>
-                                </small>
-                            </div>
-
-                            <span class="status-pill status-pill-inactive">
-                                Finalizada
+                <div class="territory-activity-list">
+                    <?php foreach ($eventosHistorial as $evento): ?>
+                        <div class="territory-activity-item">
+                            <span class="territory-activity-icon <?= $evento['tipo'] === 'ASIGNACION' ? 'is-assignment' : 'is-unassignment' ?>">
+                                <i class="bi <?= $texto($evento['icono']) ?>"></i>
                             </span>
-                        </div>
 
+                            <div class="territory-activity-copy">
+                                <strong><?= $texto($evento['titulo']) ?></strong>
+                                <span><?= $texto($evento['detalle']) ?></span>
+                                <small><?= $fecha($evento['fecha']) ?></small>
+                            </div>
+                        </div>
                     <?php endforeach; ?>
                 </div>
 
             <?php else: ?>
 
                 <p class="territory-empty-text">
-                    No hay historial de asignaciones.
+                    No hay movimientos de asignación registrados.
                 </p>
 
             <?php endif; ?>

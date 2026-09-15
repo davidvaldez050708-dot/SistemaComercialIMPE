@@ -93,9 +93,9 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
     </div>
 <?php endif; ?>
 
-<section class="<?= $modoModalReporte ? 'mb-0' : 'dashboard-panel mb-4' ?>">
+<section class="<?= $modoModalReporte ? 'mb-0' : 'dashboard-panel mb-4 py-3' ?>">
     <?php if (!$modoModalReporte): ?>
-        <div class="d-flex align-items-start justify-content-between gap-3 mb-3">
+        <div class="d-flex align-items-start justify-content-between gap-3 mb-2">
             <div>
                 <h2 class="panel-title mb-1">Generar reporte de seguimiento</h2>
                 <p class="page-subtitle mb-0">
@@ -128,7 +128,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
             <div class="modal-body">
         <?php endif; ?>
 
-        <div class="row g-3">
+        <div class="<?= $modoModalReporte ? 'row g-3' : 'row gx-3 gy-2' ?>">
             <div class="col-md-6 col-xl-3">
                 <label class="form-label" for="reporte_fecha_inicial">Fecha inicial</label>
                 <input
@@ -257,7 +257,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
             </div>
         </div>
 
-        <div class="form-text mt-3">
+        <div class="form-text <?= $modoModalReporte ? 'mt-3' : 'mt-2' ?>">
             El periodo se aplica sobre la fecha de inicio registrada en cada seguimiento.
         </div>
 
@@ -265,7 +265,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
             </div>
         <?php endif; ?>
 
-        <div class="<?= $modoModalReporte ? 'modal-footer' : 'd-flex flex-wrap justify-content-end gap-2 mt-4' ?>">
+        <div class="<?= $modoModalReporte ? 'modal-footer' : 'd-flex flex-wrap justify-content-end gap-2 mt-3' ?>">
             <a
                 class="btn <?= $modoModalReporte ? 'btn-system-cancel' : 'btn-secondary' ?>"
                 href="<?= $texto($urlLimpiar) ?>">
