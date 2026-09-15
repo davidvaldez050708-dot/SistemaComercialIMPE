@@ -43,7 +43,6 @@ $cssOpcionalDashboard = [
     'seguimiento_expediente.css',
     'seguimiento_expediente_v2.css',
     'seguimiento_expediente_proxima_accion.css',
-    'seguimiento_expediente_actividad.css',
     'seguimiento_interacciones_refinamientos.css',
     'seguimiento_llamadas_expediente.css',
     'seguimiento_llamadas_refinamientos.css',
@@ -57,7 +56,8 @@ $cssOpcionalDashboard = [
     'seguimiento_llamada_contacto_efectivo.css',
     'seguimiento_post_envio.css',
     'agenda_reunion.css',
-    'agenda_reunion_refinamientos.css'
+    'agenda_reunion_refinamientos.css',
+    'seguimiento_expediente_actividad.css'
 ];
 
 $jsOpcionalHead = [
