@@ -136,6 +136,82 @@ $proximaAccion = trim((string)($seguimiento['proxima_accion_at'] ?? '')) !== ''
         ? 'Completar investigación'
         : '—');
 
+/*
+ * La pestaña Actividad combina interacciones operativas con hitos que ya
+ * existen en el propio seguimiento. Así el expediente conserva contexto
+ * histórico sin inventar eventos que nunca fueron almacenados.
+ */
+$actividadExpediente = [];
+
+foreach ($interacciones as $interaccion) {
+    $actividadExpediente[] = [
+        'tipo' => strtolower((string)($interaccion['canal'] ?? 'interaccion')),
+        'titulo' => $etiqueta($interaccion['canal'] ?? '', $canales),
+        'fecha' => trim((string)($interaccion['fecha_inicio'] ?? '')),
+        'estado' => $etiqueta($interaccion['resultado'] ?? '', $resultados),
+        'detalle' => $formatearNotasInteraccion($interaccion['notas'] ?? ''),
+        'orden' => (int)($interaccion['id'] ?? 0)
+    ];
+}
+
+$fechaInicioSeguimiento = trim((string)($seguimiento['fecha_inicio'] ?? ''));
+$datosVerificados = (int)($seguimiento['datos_verificados'] ?? 0) === 1;
+$fechaDatosVerificados = trim((string)($seguimiento['datos_verificados_at'] ?? ''));
+
+if ($fechaInicioSeguimiento !== '') {
+    $detalleInicio = [];
+    $nombreEntidadActividad = trim((string)($seguimiento['nombre_entidad'] ?? ''));
+
+    if ($nombreEntidadActividad !== '') {
+        $detalleInicio[] = 'Se incorporó ' . $nombreEntidadActividad . ' al seguimiento.';
+    } else {
+        $detalleInicio[] = 'Se creó el expediente de seguimiento.';
+    }
+
+    if ($nombreAnalista !== '') {
+        $detalleInicio[] = 'Analista responsable: ' . $nombreAnalista . '.';
+    }
+
+    if ($origenSeguimiento !== '') {
+        $detalleInicio[] = 'Origen: ' . $origenSeguimiento . '.';
+    }
+
+    if ($datosVerificados && $fechaDatosVerificados === '') {
+        $detalleInicio[] = 'El expediente se registró inicialmente con datos verificados.';
+    }
+
+    $actividadExpediente[] = [
+        'tipo' => 'inicio',
+        'titulo' => 'Seguimiento iniciado',
+        'fecha' => $fechaInicioSeguimiento,
+        'estado' => 'Inicio del expediente',
+        'detalle' => implode(' ', $detalleInicio),
+        'orden' => 0
+    ];
+}
+
+if ($datosVerificados && $fechaDatosVerificados !== '') {
+    $actividadExpediente[] = [
+        'tipo' => 'verificacion',
+        'titulo' => 'Información verificada',
+        'fecha' => $fechaDatosVerificados,
+        'estado' => 'Datos verificados',
+        'detalle' => 'Los datos de contacto fueron marcados como verificados.',
+        'orden' => PHP_INT_MAX
+    ];
+}
+
+usort($actividadExpediente, function ($eventoA, $eventoB) {
+    $fechaA = strtotime((string)($eventoA['fecha'] ?? '')) ?: 0;
+    $fechaB = strtotime((string)($eventoB['fecha'] ?? '')) ?: 0;
+
+    if ($fechaA === $fechaB) {
+        return (int)($eventoB['orden'] ?? 0) <=> (int)($eventoA['orden'] ?? 0);
+    }
+
+    return $fechaB <=> $fechaA;
+});
+
 ?>
 
 <?php if (!empty($mensajeError)): ?>
@@ -312,28 +388,36 @@ $proximaAccion = trim((string)($seguimiento['proxima_accion_at'] ?? '')) !== ''
     </div>
 </section>
 
-<section class="dashboard-panel linkage-detail-panel">
+<section class="dashboard-panel linkage-detail-panel" data-expediente-activity-section>
     <h3 class="panel-title">Historial de interacciones</h3>
 
-    <?php if (!empty($interacciones)): ?>
+    <?php if (!empty($actividadExpediente)): ?>
         <div class="linkage-history-list">
-            <?php foreach ($interacciones as $interaccion): ?>
-                <article class="linkage-history-item">
+            <?php foreach ($actividadExpediente as $eventoActividad): ?>
+                <article
+                    class="linkage-history-item"
+                    data-activity-type="<?= $texto($eventoActividad['tipo'] ?? '') ?>">
                     <div>
-                        <strong><?= $texto($etiqueta($interaccion['canal'] ?? '', $canales)) ?></strong>
+                        <strong><?= $texto($eventoActividad['titulo'] ?? 'Actividad') ?></strong>
                         <span>
-                            <?= $texto($formatearFecha($interaccion['fecha_inicio'] ?? '')) ?>
+                            <?= $texto($formatearFecha($eventoActividad['fecha'] ?? '')) ?>
                             ·
-                            <?= $texto($etiqueta($interaccion['resultado'] ?? '', $resultados)) ?>
+                            <?= $texto($eventoActividad['estado'] ?? 'Actividad') ?>
                         </span>
                     </div>
-                    <p><?= nl2br($valor($formatearNotasInteraccion($interaccion['notas'] ?? ''))) ?></p>
+                    <p>
+                        <?= nl2br($texto(
+                            trim((string)($eventoActividad['detalle'] ?? '')) !== ''
+                                ? $eventoActividad['detalle']
+                                : 'Sin detalle adicional.'
+                        )) ?>
+                    </p>
                 </article>
             <?php endforeach; ?>
         </div>
     <?php else: ?>
         <div class="empty-table-message linkage-empty-message">
-            Sin interacciones registradas.
+            Sin actividad registrada.
         </div>
     <?php endif; ?>
 </section>
@@ -437,3 +521,58 @@ $proximaAccion = trim((string)($seguimiento['proxima_accion_at'] ?? '')) !== ''
         </div>
     <?php endif; ?>
 </section>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const nav = document.querySelector('.linkage-detail-tabs');
+    const seccionActividad = document.querySelector('[data-expediente-activity-section]');
+
+    if (!nav || !seccionActividad) {
+        return;
+    }
+
+    const tabInteracciones = Array.from(nav.querySelectorAll('span')).find(function (tab) {
+        return String(tab.textContent || '').trim() === 'Interacciones';
+    });
+
+    if (tabInteracciones) {
+        tabInteracciones.textContent = 'Actividad';
+    }
+
+    const titulo = seccionActividad.querySelector('.panel-title');
+    if (titulo) {
+        titulo.textContent = 'Actividad del expediente';
+    }
+
+    seccionActividad.querySelectorAll('[data-activity-type="inicio"]').forEach(function (item) {
+        const icono = item.querySelector('.linkage-expediente-history-icon i');
+        if (icono) {
+            icono.className = 'bi bi-play-circle';
+        }
+    });
+
+    seccionActividad.querySelectorAll('[data-activity-type="verificacion"]').forEach(function (item) {
+        const icono = item.querySelector('.linkage-expediente-history-icon i');
+        if (icono) {
+            icono.className = 'bi bi-patch-check';
+        }
+    });
+
+    const ajustarTextoPaginador = function () {
+        const pie = seccionActividad.querySelector('.linkage-history-more');
+        const resumen = pie?.querySelector('span');
+
+        if (resumen) {
+            resumen.textContent = String(resumen.textContent || '')
+                .replace(/interacciones/g, 'actividades');
+        }
+    };
+
+    ajustarTextoPaginador();
+
+    const botonPaginador = seccionActividad.querySelector('.linkage-history-more button');
+    botonPaginador?.addEventListener('click', function () {
+        window.setTimeout(ajustarTextoPaginador, 0);
+    });
+});
+</script>
