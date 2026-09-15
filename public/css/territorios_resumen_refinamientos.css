@@ -61,6 +61,12 @@
     color: #7b8491;
 }
 
+/* El detalle territorial usa la misma proporción del panel de trabajo de Seguimiento. */
+.territory-detail-panel {
+    width: min(500px, calc(100vw - 18px)) !important;
+    max-width: 100%;
+}
+
 /* =========================================================
    DETALLE TERRITORIAL · EQUIPO ACTUAL
    Un solo contenedor para Cuenta Clave, Analistas y Asesores.
@@ -173,6 +179,11 @@
 
     .territory-summary-card .metric-label {
         font-size: 12px;
+    }
+
+    .territory-detail-panel {
+        width: calc(100vw - 8px) !important;
+        max-width: 100%;
     }
 
     .territory-detail-section .territory-detail-team-list > .territory-detail-team-card,
