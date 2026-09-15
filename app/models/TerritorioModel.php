@@ -4,9 +4,9 @@ require_once __DIR__ . '/../../config/db_connection.php';
 
 class TerritorioModel
 {
-    public const ROL_ASESOR_ID = 3;
-
     private $connection;
+    private $bitacoraDisponible = null;
+    private $bitacoraInicializada = false;
 
     public function __construct()
     {
@@ -23,9 +23,7 @@ class TerritorioModel
         $estadoAnalista = $filtros['estado_analista'] ?? '';
         $estadoAsignacion = $filtros['estado_asignacion'] ?? '';
 
-        $condiciones = [
-            'estados.estado = 1'
-        ];
+        $condiciones = ['estados.estado = 1'];
         $parametros = [];
         $tipos = '';
 
@@ -45,7 +43,6 @@ class TerritorioModel
                 OR estados.nombre_corto LIKE ?
                 OR estados.capital LIKE ?
             )";
-
             $busqueda = '%' . $buscar . '%';
             $parametros[] = $busqueda;
             $parametros[] = $busqueda;
@@ -160,7 +157,6 @@ class TerritorioModel
         }
 
         $sql .= " ORDER BY estados.nombre";
-
         $stmt = $this->connection->prepare($sql);
         $this->vincularParametros($stmt, $tipos, $parametros);
         $stmt->execute();
@@ -197,7 +193,7 @@ class TerritorioModel
                 LIMIT 1";
 
         $stmt = $this->connection->prepare($sql);
-        $stmt->bind_param("i", $id);
+        $stmt->bind_param('i', $id);
         $stmt->execute();
 
         return $stmt->get_result()->fetch_assoc();
@@ -225,26 +221,17 @@ class TerritorioModel
                     usuarios.usuario,
                     roles.nombre AS rol
                 FROM asignaciones_territorio
-                INNER JOIN usuarios
-                    ON usuarios.id = asignaciones_territorio.usuario_id
-                INNER JOIN roles
-                    ON roles.id = usuarios.rol_id
+                INNER JOIN usuarios ON usuarios.id = asignaciones_territorio.usuario_id
+                INNER JOIN roles ON roles.id = usuarios.rol_id
                 WHERE asignaciones_territorio.estado_id = ?
                     AND asignaciones_territorio.tipo_asignacion = 'ANALISTA_DATOS'
                     AND asignaciones_territorio.activo = 1
                     AND asignaciones_territorio.cuenta_clave_asignacion_id IS NULL
-                    AND (
-                        asignaciones_territorio.fecha_inicio IS NULL
-                        OR asignaciones_territorio.fecha_inicio <= CURDATE()
-                    )
-                    AND (
-                        asignaciones_territorio.fecha_fin IS NULL
-                        OR asignaciones_territorio.fecha_fin >= CURDATE()
-                    )
+                    AND " . $this->condicionAsignacionVigente('asignaciones_territorio') . "
                 ORDER BY usuarios.nombre, usuarios.apellidos";
 
         $stmt = $this->connection->prepare($sql);
-        $stmt->bind_param("i", $estadoId);
+        $stmt->bind_param('i', $estadoId);
         $stmt->execute();
 
         return $this->convertirResultadoEnArreglo($stmt->get_result());
@@ -265,18 +252,11 @@ class TerritorioModel
                 WHERE asignaciones_territorio.estado_id = ?
                     AND asignaciones_territorio.tipo_asignacion = 'ASESOR'
                     AND asignaciones_territorio.activo = 1
-                    AND (
-                        asignaciones_territorio.fecha_inicio IS NULL
-                        OR asignaciones_territorio.fecha_inicio <= CURDATE()
-                    )
-                    AND (
-                        asignaciones_territorio.fecha_fin IS NULL
-                        OR asignaciones_territorio.fecha_fin >= CURDATE()
-                    )
+                    AND " . $this->condicionAsignacionVigente('asignaciones_territorio') . "
                 ORDER BY usuarios.nombre, usuarios.apellidos";
 
         $stmt = $this->connection->prepare($sql);
-        $stmt->bind_param("i", $estadoId);
+        $stmt->bind_param('i', $estadoId);
         $stmt->execute();
 
         return $this->convertirResultadoEnArreglo($stmt->get_result());
@@ -292,18 +272,17 @@ class TerritorioModel
                     usuarios.usuario,
                     roles.nombre AS rol
                 FROM asignaciones_territorio
-                INNER JOIN usuarios
-                    ON usuarios.id = asignaciones_territorio.usuario_id
-                INNER JOIN roles
-                    ON roles.id = usuarios.rol_id
+                INNER JOIN usuarios ON usuarios.id = asignaciones_territorio.usuario_id
+                INNER JOIN roles ON roles.id = usuarios.rol_id
                 WHERE asignaciones_territorio.estado_id = ?
                     AND asignaciones_territorio.tipo_asignacion = 'CUENTA_CLAVE'
                     AND asignaciones_territorio.activo = 1
+                    AND " . $this->condicionAsignacionVigente('asignaciones_territorio') . "
                 ORDER BY asignaciones_territorio.fecha_inicio DESC,
                     asignaciones_territorio.id DESC";
 
         $stmt = $this->connection->prepare($sql);
-        $stmt->bind_param("i", $estadoId);
+        $stmt->bind_param('i', $estadoId);
         $stmt->execute();
 
         return $this->convertirResultadoEnArreglo($stmt->get_result());
@@ -319,17 +298,16 @@ class TerritorioModel
                     usuarios.usuario,
                     roles.nombre AS rol
                 FROM asignaciones_territorio
-                INNER JOIN usuarios
-                    ON usuarios.id = asignaciones_territorio.usuario_id
-                INNER JOIN roles
-                    ON roles.id = usuarios.rol_id
+                INNER JOIN usuarios ON usuarios.id = asignaciones_territorio.usuario_id
+                INNER JOIN roles ON roles.id = usuarios.rol_id
                 WHERE asignaciones_territorio.cuenta_clave_asignacion_id = ?
                     AND asignaciones_territorio.tipo_asignacion = 'ANALISTA_DATOS'
                     AND asignaciones_territorio.activo = 1
+                    AND " . $this->condicionAsignacionVigente('asignaciones_territorio') . "
                 ORDER BY usuarios.nombre, usuarios.apellidos";
 
         $stmt = $this->connection->prepare($sql);
-        $stmt->bind_param("i", $cuentaClaveAsignacionId);
+        $stmt->bind_param('i', $cuentaClaveAsignacionId);
         $stmt->execute();
 
         return $this->convertirResultadoEnArreglo($stmt->get_result());
@@ -345,10 +323,8 @@ class TerritorioModel
                     usuarios.usuario,
                     roles.nombre AS rol
                 FROM asignaciones_territorio
-                INNER JOIN usuarios
-                    ON usuarios.id = asignaciones_territorio.usuario_id
-                INNER JOIN roles
-                    ON roles.id = usuarios.rol_id
+                INNER JOIN usuarios ON usuarios.id = asignaciones_territorio.usuario_id
+                INNER JOIN roles ON roles.id = usuarios.rol_id
                 WHERE asignaciones_territorio.estado_id = ?
                     AND asignaciones_territorio.activo = 0
                 ORDER BY
@@ -357,32 +333,64 @@ class TerritorioModel
                     asignaciones_territorio.id DESC";
 
         $stmt = $this->connection->prepare($sql);
-        $stmt->bind_param("i", $estadoId);
+        $stmt->bind_param('i', $estadoId);
         $stmt->execute();
 
         return $this->convertirResultadoEnArreglo($stmt->get_result());
     }
 
-    public function crearCuentaClave($datos)
+    public function obtenerBitacoraMovimientos($estadoId)
     {
+        if (!$this->asegurarBitacoraTerritorial()) {
+            return [];
+        }
+
+        $sql = "SELECT
+                    bitacora.*,
+                    TRIM(CONCAT(afectado.nombre, ' ', afectado.apellidos)) AS usuario_afectado_nombre,
+                    TRIM(CONCAT(actor.nombre, ' ', actor.apellidos)) AS usuario_accion_nombre,
+                    TRIM(CONCAT(cuenta_anterior_usuario.nombre, ' ', cuenta_anterior_usuario.apellidos)) AS cuenta_clave_anterior_nombre,
+                    TRIM(CONCAT(cuenta_nueva_usuario.nombre, ' ', cuenta_nueva_usuario.apellidos)) AS cuenta_clave_nueva_nombre
+                FROM bitacora_movimientos_territoriales bitacora
+                LEFT JOIN usuarios afectado
+                    ON afectado.id = bitacora.usuario_afectado_id
+                LEFT JOIN usuarios actor
+                    ON actor.id = bitacora.usuario_accion_id
+                LEFT JOIN asignaciones_territorio cuenta_anterior
+                    ON cuenta_anterior.id = bitacora.cuenta_clave_asignacion_anterior_id
+                LEFT JOIN usuarios cuenta_anterior_usuario
+                    ON cuenta_anterior_usuario.id = cuenta_anterior.usuario_id
+                LEFT JOIN asignaciones_territorio cuenta_nueva
+                    ON cuenta_nueva.id = bitacora.cuenta_clave_asignacion_nueva_id
+                LEFT JOIN usuarios cuenta_nueva_usuario
+                    ON cuenta_nueva_usuario.id = cuenta_nueva.usuario_id
+                WHERE bitacora.estado_id = ?
+                ORDER BY bitacora.registrado_at DESC, bitacora.id DESC";
+
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param('i', $estadoId);
+        $stmt->execute();
+
+        return $this->convertirResultadoEnArreglo($stmt->get_result());
+    }
+
+    public function crearCuentaClave($datos, $usuarioAccionId = null)
+    {
+        if (!$this->asegurarBitacoraTerritorial()) {
+            return false;
+        }
+
         $this->connection->begin_transaction();
 
         try {
             $sql = "INSERT INTO asignaciones_territorio (
-                        estado_id,
-                        usuario_id,
-                        tipo_asignacion,
-                        cuenta_clave_asignacion_id,
-                        es_principal,
-                        fecha_inicio,
-                        fecha_fin,
-                        activo,
-                        observaciones
+                        estado_id, usuario_id, tipo_asignacion,
+                        cuenta_clave_asignacion_id, es_principal,
+                        fecha_inicio, fecha_fin, activo, observaciones
                     ) VALUES (?, ?, 'CUENTA_CLAVE', NULL, 0, ?, NULL, 1, ?)";
-
             $stmt = $this->connection->prepare($sql);
             $stmt->bind_param(
-                "iiss",
+                'iiss',
                 $datos['estado_id'],
                 $datos['usuario_id'],
                 $datos['fecha_inicio'],
@@ -393,95 +401,184 @@ class TerritorioModel
                 throw new Exception('No fue posible crear la Cuenta Clave.');
             }
 
-            $cuentaClaveAsignacionId = (int)$this->connection->insert_id;
-
-            if (
-                $cuentaClaveAsignacionId > 0 &&
-                $this->contarCuentasClaveActivasPorEstado((int)$datos['estado_id']) === 1
-            ) {
-                $this->asociarAnalistasSinCuentaClave(
-                    (int)$datos['estado_id'],
-                    $cuentaClaveAsignacionId
-                );
-            }
+            $asignacionId = (int)$this->connection->insert_id;
+            $this->registrarMovimientoTerritorial(
+                (int)$datos['estado_id'],
+                $asignacionId,
+                (int)$datos['usuario_id'],
+                'CUENTA_CLAVE',
+                'ASIGNACION',
+                null,
+                null,
+                $datos['fecha_inicio'],
+                $usuarioAccionId,
+                'Cuenta Clave asignada al territorio.'
+            );
 
             $this->connection->commit();
-
             return true;
         } catch (Throwable $error) {
             $this->connection->rollback();
             error_log($error->getMessage());
-
             return false;
         }
     }
 
-    public function crearAnalista($datos)
+    public function crearAnalista($datos, $usuarioAccionId = null)
     {
-        $sql = "INSERT INTO asignaciones_territorio (
-                    estado_id,
-                    usuario_id,
-                    tipo_asignacion,
-                    cuenta_clave_asignacion_id,
-                    es_principal,
-                    fecha_inicio,
-                    fecha_fin,
-                    activo,
-                    observaciones
-                ) VALUES (?, ?, 'ANALISTA_DATOS', ?, 0, ?, NULL, 1, ?)";
+        if (!$this->asegurarBitacoraTerritorial()) {
+            return false;
+        }
 
-        $stmt = $this->connection->prepare($sql);
-        $stmt->bind_param(
-            "iiiss",
-            $datos['estado_id'],
-            $datos['usuario_id'],
-            $datos['cuenta_clave_asignacion_id'],
-            $datos['fecha_inicio'],
-            $datos['observaciones']
-        );
+        $this->connection->begin_transaction();
 
-        return $stmt->execute();
+        try {
+            $sql = "INSERT INTO asignaciones_territorio (
+                        estado_id, usuario_id, tipo_asignacion,
+                        cuenta_clave_asignacion_id, es_principal,
+                        fecha_inicio, fecha_fin, activo, observaciones
+                    ) VALUES (?, ?, 'ANALISTA_DATOS', ?, 0, ?, NULL, 1, ?)";
+            $stmt = $this->connection->prepare($sql);
+            $stmt->bind_param(
+                'iiiss',
+                $datos['estado_id'],
+                $datos['usuario_id'],
+                $datos['cuenta_clave_asignacion_id'],
+                $datos['fecha_inicio'],
+                $datos['observaciones']
+            );
+
+            if (!$stmt->execute()) {
+                throw new Exception('No fue posible crear la asignación del Analista.');
+            }
+
+            $asignacionId = (int)$this->connection->insert_id;
+            $this->registrarMovimientoTerritorial(
+                (int)$datos['estado_id'],
+                $asignacionId,
+                (int)$datos['usuario_id'],
+                'ANALISTA_DATOS',
+                'ASIGNACION',
+                null,
+                (int)$datos['cuenta_clave_asignacion_id'],
+                $datos['fecha_inicio'],
+                $usuarioAccionId,
+                'Analista asignado al territorio y vinculado a una Cuenta Clave.'
+            );
+
+            $this->connection->commit();
+            return true;
+        } catch (Throwable $error) {
+            $this->connection->rollback();
+            error_log($error->getMessage());
+            return false;
+        }
     }
 
-    public function crearAsesor($datos)
+    public function crearAsesor($datos, $usuarioAccionId = null)
     {
-        $sql = "INSERT INTO asignaciones_territorio (
-                    estado_id, usuario_id, tipo_asignacion,
-                    cuenta_clave_asignacion_id, es_principal,
-                    fecha_inicio, fecha_fin, activo, observaciones
-                ) VALUES (?, ?, 'ASESOR', NULL, 0, ?, NULL, 1, ?)";
+        if (!$this->asegurarBitacoraTerritorial()) {
+            return false;
+        }
 
-        $stmt = $this->connection->prepare($sql);
-        $stmt->bind_param(
-            "iiss",
-            $datos['estado_id'],
-            $datos['usuario_id'],
-            $datos['fecha_inicio'],
-            $datos['observaciones']
-        );
+        $this->connection->begin_transaction();
 
-        return $stmt->execute();
+        try {
+            $sql = "INSERT INTO asignaciones_territorio (
+                        estado_id, usuario_id, tipo_asignacion,
+                        cuenta_clave_asignacion_id, es_principal,
+                        fecha_inicio, fecha_fin, activo, observaciones
+                    ) VALUES (?, ?, 'ASESOR', NULL, 0, ?, NULL, 1, ?)";
+            $stmt = $this->connection->prepare($sql);
+            $stmt->bind_param(
+                'iiss',
+                $datos['estado_id'],
+                $datos['usuario_id'],
+                $datos['fecha_inicio'],
+                $datos['observaciones']
+            );
+
+            if (!$stmt->execute()) {
+                throw new Exception('No fue posible crear la asignación del Asesor.');
+            }
+
+            $asignacionId = (int)$this->connection->insert_id;
+            $this->registrarMovimientoTerritorial(
+                (int)$datos['estado_id'],
+                $asignacionId,
+                (int)$datos['usuario_id'],
+                'ASESOR',
+                'ASIGNACION',
+                null,
+                null,
+                $datos['fecha_inicio'],
+                $usuarioAccionId,
+                'Asesor asignado al territorio.'
+            );
+
+            $this->connection->commit();
+            return true;
+        } catch (Throwable $error) {
+            $this->connection->rollback();
+            error_log($error->getMessage());
+            return false;
+        }
     }
 
-    public function finalizarAsignacion($asignacionId, $fechaFin)
+    public function finalizarAsignacion($asignacionId, $fechaFin, $usuarioAccionId = null)
     {
+        if (!$this->asegurarBitacoraTerritorial()) {
+            return false;
+        }
+
+        $asignacion = $this->buscarAsignacionPorId($asignacionId);
+        if (!$asignacion || (int)$asignacion['activo'] !== 1) {
+            return false;
+        }
+
         $this->connection->begin_transaction();
 
         try {
             $actualizado = $this->marcarAsignacionFinalizada($asignacionId, $fechaFin);
-            $this->connection->commit();
 
+            if ($actualizado) {
+                $this->registrarMovimientoTerritorial(
+                    (int)$asignacion['estado_id'],
+                    (int)$asignacion['id'],
+                    (int)$asignacion['usuario_id'],
+                    (string)$asignacion['tipo_asignacion'],
+                    'DESASIGNACION',
+                    $asignacion['cuenta_clave_asignacion_id'] !== null
+                        ? (int)$asignacion['cuenta_clave_asignacion_id']
+                        : null,
+                    null,
+                    $fechaFin,
+                    $usuarioAccionId,
+                    'Asignación territorial finalizada.'
+                );
+            }
+
+            $this->connection->commit();
             return $actualizado;
         } catch (Throwable $error) {
             $this->connection->rollback();
             error_log($error->getMessage());
-
             return false;
         }
     }
 
-    public function finalizarCuentaClaveConEquipo($asignacionId, $fechaFin)
+    public function finalizarCuentaClaveConEquipo($asignacionId, $fechaFin, $usuarioAccionId = null)
     {
+        if (!$this->asegurarBitacoraTerritorial()) {
+            return false;
+        }
+
+        $cuentaClave = $this->buscarAsignacionPorId($asignacionId);
+        if (!$cuentaClave || (int)$cuentaClave['activo'] !== 1) {
+            return false;
+        }
+
+        $analistas = $this->obtenerAnalistasVinculadosActivos($asignacionId);
         $this->connection->begin_transaction();
 
         try {
@@ -492,58 +589,147 @@ class TerritorioModel
                     WHERE cuenta_clave_asignacion_id = ?
                         AND tipo_asignacion = 'ANALISTA_DATOS'
                         AND activo = 1";
-
             $stmtAnalistas = $this->connection->prepare($sqlAnalistas);
-            $stmtAnalistas->bind_param("si", $fechaFin, $asignacionId);
+            $stmtAnalistas->bind_param('si', $fechaFin, $asignacionId);
 
             if (!$stmtAnalistas->execute()) {
                 throw new Exception('No fue posible finalizar analistas vinculados.');
             }
 
-            $actualizado = $this->marcarAsignacionFinalizada($asignacionId, $fechaFin);
-            $this->connection->commit();
+            foreach ($analistas as $analista) {
+                $this->registrarMovimientoTerritorial(
+                    (int)$analista['estado_id'],
+                    (int)$analista['id'],
+                    (int)$analista['usuario_id'],
+                    'ANALISTA_DATOS',
+                    'DESASIGNACION',
+                    $asignacionId,
+                    null,
+                    $fechaFin,
+                    $usuarioAccionId,
+                    'Analista finalizado junto con su Cuenta Clave.'
+                );
+            }
 
+            $actualizado = $this->marcarAsignacionFinalizada($asignacionId, $fechaFin);
+
+            if ($actualizado) {
+                $this->registrarMovimientoTerritorial(
+                    (int)$cuentaClave['estado_id'],
+                    (int)$cuentaClave['id'],
+                    (int)$cuentaClave['usuario_id'],
+                    'CUENTA_CLAVE',
+                    'DESASIGNACION',
+                    null,
+                    null,
+                    $fechaFin,
+                    $usuarioAccionId,
+                    'Cuenta Clave finalizada junto con su equipo de Analistas.'
+                );
+            }
+
+            $this->connection->commit();
             return $actualizado;
         } catch (Throwable $error) {
             $this->connection->rollback();
             error_log($error->getMessage());
-
             return false;
         }
     }
 
-    public function finalizarCuentaClaveSinEquipo($asignacionId, $fechaFin)
+    public function finalizarCuentaClaveSinEquipo($asignacionId, $fechaFin, $usuarioAccionId = null)
     {
+        if (!$this->asegurarBitacoraTerritorial()) {
+            return false;
+        }
+
+        $cuentaClave = $this->buscarAsignacionPorId($asignacionId);
+        if (!$cuentaClave || (int)$cuentaClave['activo'] !== 1) {
+            return false;
+        }
+
+        $analistas = $this->obtenerAnalistasVinculadosActivos($asignacionId);
         $this->connection->begin_transaction();
 
         try {
             $sqlAnalistas = "UPDATE asignaciones_territorio
-                    SET cuenta_clave_asignacion_id = NULL
+                    SET cuenta_clave_asignacion_id = NULL,
+                        updated_at = NOW()
                     WHERE cuenta_clave_asignacion_id = ?
                         AND tipo_asignacion = 'ANALISTA_DATOS'
                         AND activo = 1";
-
             $stmtAnalistas = $this->connection->prepare($sqlAnalistas);
-            $stmtAnalistas->bind_param("i", $asignacionId);
+            $stmtAnalistas->bind_param('i', $asignacionId);
 
             if (!$stmtAnalistas->execute()) {
                 throw new Exception('No fue posible desvincular analistas activos.');
             }
 
-            $actualizado = $this->marcarAsignacionFinalizada($asignacionId, $fechaFin);
-            $this->connection->commit();
+            foreach ($analistas as $analista) {
+                $this->registrarMovimientoTerritorial(
+                    (int)$analista['estado_id'],
+                    (int)$analista['id'],
+                    (int)$analista['usuario_id'],
+                    'ANALISTA_DATOS',
+                    'DESVINCULACION_CUENTA_CLAVE',
+                    $asignacionId,
+                    null,
+                    date('Y-m-d'),
+                    $usuarioAccionId,
+                    'El Analista permaneció activo y quedó sin Cuenta Clave.'
+                );
+            }
 
+            $actualizado = $this->marcarAsignacionFinalizada($asignacionId, $fechaFin);
+
+            if ($actualizado) {
+                $this->registrarMovimientoTerritorial(
+                    (int)$cuentaClave['estado_id'],
+                    (int)$cuentaClave['id'],
+                    (int)$cuentaClave['usuario_id'],
+                    'CUENTA_CLAVE',
+                    'DESASIGNACION',
+                    null,
+                    null,
+                    $fechaFin,
+                    $usuarioAccionId,
+                    'Cuenta Clave finalizada; los Analistas vinculados permanecieron activos.'
+                );
+            }
+
+            $this->connection->commit();
             return $actualizado;
         } catch (Throwable $error) {
             $this->connection->rollback();
             error_log($error->getMessage());
-
             return false;
         }
     }
 
-    public function reasociarAnalistaCuentaClave($analistaAsignacionId, $cuentaClaveAsignacionId)
-    {
+    public function reasociarAnalistaCuentaClave(
+        $analistaAsignacionId,
+        $cuentaClaveAsignacionId,
+        $usuarioAccionId = null
+    ) {
+        if (!$this->asegurarBitacoraTerritorial()) {
+            return false;
+        }
+
+        $analista = $this->buscarAsignacionPorId($analistaAsignacionId);
+        $cuentaClave = $this->buscarAsignacionPorId($cuentaClaveAsignacionId);
+
+        if (!$analista || !$cuentaClave) {
+            return false;
+        }
+
+        $cuentaAnterior = $analista['cuenta_clave_asignacion_id'] !== null
+            ? (int)$analista['cuenta_clave_asignacion_id']
+            : null;
+
+        if ($cuentaAnterior === (int)$cuentaClaveAsignacionId) {
+            return false;
+        }
+
         $this->connection->begin_transaction();
 
         try {
@@ -552,29 +738,47 @@ class TerritorioModel
                         ON cuentas.id = ?
                         AND cuentas.tipo_asignacion = 'CUENTA_CLAVE'
                         AND cuentas.activo = 1
+                        AND " . $this->condicionAsignacionVigente('cuentas') . "
                         AND cuentas.estado_id = analistas.estado_id
                     SET analistas.cuenta_clave_asignacion_id = cuentas.id,
                         analistas.updated_at = NOW()
                     WHERE analistas.id = ?
                         AND analistas.tipo_asignacion = 'ANALISTA_DATOS'
                         AND analistas.activo = 1
-                        AND analistas.cuenta_clave_asignacion_id IS NULL";
-
+                        AND " . $this->condicionAsignacionVigente('analistas');
             $stmt = $this->connection->prepare($sql);
-            $stmt->bind_param("ii", $cuentaClaveAsignacionId, $analistaAsignacionId);
+            $stmt->bind_param('ii', $cuentaClaveAsignacionId, $analistaAsignacionId);
 
             if (!$stmt->execute()) {
                 throw new Exception('No fue posible reasociar el Analista.');
             }
 
             $actualizado = $stmt->affected_rows > 0;
-            $this->connection->commit();
 
+            if ($actualizado) {
+                $this->registrarMovimientoTerritorial(
+                    (int)$analista['estado_id'],
+                    (int)$analista['id'],
+                    (int)$analista['usuario_id'],
+                    'ANALISTA_DATOS',
+                    $cuentaAnterior === null
+                        ? 'VINCULACION_CUENTA_CLAVE'
+                        : 'CAMBIO_CUENTA_CLAVE',
+                    $cuentaAnterior,
+                    (int)$cuentaClaveAsignacionId,
+                    date('Y-m-d'),
+                    $usuarioAccionId,
+                    $cuentaAnterior === null
+                        ? 'Analista vinculado a una Cuenta Clave.'
+                        : 'Analista cambiado de Cuenta Clave.'
+                );
+            }
+
+            $this->connection->commit();
             return $actualizado;
         } catch (Throwable $error) {
             $this->connection->rollback();
             error_log($error->getMessage());
-
             return false;
         }
     }
@@ -587,9 +791,8 @@ class TerritorioModel
                     AND tipo_asignacion = 'ANALISTA_DATOS'
                     AND activo = 1
                 LIMIT 1";
-
         $stmt = $this->connection->prepare($sql);
-        $stmt->bind_param("i", $asignacionId);
+        $stmt->bind_param('i', $asignacionId);
         $stmt->execute();
 
         return $stmt->get_result()->num_rows > 0;
@@ -604,37 +807,46 @@ class TerritorioModel
                     usuarios.apellidos,
                     roles.nombre AS rol
                 FROM asignaciones_territorio
-                INNER JOIN estados
-                    ON estados.id = asignaciones_territorio.estado_id
-                INNER JOIN usuarios
-                    ON usuarios.id = asignaciones_territorio.usuario_id
-                INNER JOIN roles
-                    ON roles.id = usuarios.rol_id
+                INNER JOIN estados ON estados.id = asignaciones_territorio.estado_id
+                INNER JOIN usuarios ON usuarios.id = asignaciones_territorio.usuario_id
+                INNER JOIN roles ON roles.id = usuarios.rol_id
                 WHERE asignaciones_territorio.id = ?
                 LIMIT 1";
-
         $stmt = $this->connection->prepare($sql);
-        $stmt->bind_param("i", $id);
+        $stmt->bind_param('i', $id);
         $stmt->execute();
 
         return $stmt->get_result()->fetch_assoc();
     }
 
+    public function asignacionEstaVigenteHoy($asignacion)
+    {
+        if (!is_array($asignacion) || (int)($asignacion['activo'] ?? 0) !== 1) {
+            return false;
+        }
+
+        $hoy = date('Y-m-d');
+        $inicio = trim((string)($asignacion['fecha_inicio'] ?? ''));
+        $fin = trim((string)($asignacion['fecha_fin'] ?? ''));
+
+        if ($inicio !== '' && $inicio > $hoy) {
+            return false;
+        }
+
+        if ($fin !== '' && $fin < $hoy) {
+            return false;
+        }
+
+        return true;
+    }
+
     public function existeCuentaClaveActiva($estadoId, $usuarioId)
     {
-        $sql = "SELECT id
-                FROM asignaciones_territorio
-                WHERE estado_id = ?
-                    AND usuario_id = ?
-                    AND tipo_asignacion = 'CUENTA_CLAVE'
-                    AND activo = 1
-                LIMIT 1";
-
-        $stmt = $this->connection->prepare($sql);
-        $stmt->bind_param("ii", $estadoId, $usuarioId);
-        $stmt->execute();
-
-        return $stmt->get_result()->num_rows > 0;
+        return $this->existeAsignacionActivaEnEstado(
+            $estadoId,
+            $usuarioId,
+            'CUENTA_CLAVE'
+        );
     }
 
     public function existeAnalistaActivo($estadoId, $usuarioId, $cuentaClaveAsignacionId)
@@ -647,9 +859,8 @@ class TerritorioModel
                     AND tipo_asignacion = 'ANALISTA_DATOS'
                     AND activo = 1
                 LIMIT 1";
-
         $stmt = $this->connection->prepare($sql);
-        $stmt->bind_param("iii", $estadoId, $usuarioId, $cuentaClaveAsignacionId);
+        $stmt->bind_param('iii', $estadoId, $usuarioId, $cuentaClaveAsignacionId);
         $stmt->execute();
 
         return $stmt->get_result()->num_rows > 0;
@@ -657,36 +868,20 @@ class TerritorioModel
 
     public function existeAnalistaActivoEnEstado($estadoId, $usuarioId)
     {
-        $sql = "SELECT id
-                FROM asignaciones_territorio
-                WHERE estado_id = ?
-                    AND usuario_id = ?
-                    AND tipo_asignacion = 'ANALISTA_DATOS'
-                    AND activo = 1
-                LIMIT 1";
-
-        $stmt = $this->connection->prepare($sql);
-        $stmt->bind_param("ii", $estadoId, $usuarioId);
-        $stmt->execute();
-
-        return $stmt->get_result()->num_rows > 0;
+        return $this->existeAsignacionActivaEnEstado(
+            $estadoId,
+            $usuarioId,
+            'ANALISTA_DATOS'
+        );
     }
 
     public function existeAsesorActivoEnEstado($estadoId, $usuarioId)
     {
-        $sql = "SELECT id
-                FROM asignaciones_territorio
-                WHERE estado_id = ?
-                    AND usuario_id = ?
-                    AND tipo_asignacion = 'ASESOR'
-                    AND activo = 1
-                LIMIT 1";
-
-        $stmt = $this->connection->prepare($sql);
-        $stmt->bind_param("ii", $estadoId, $usuarioId);
-        $stmt->execute();
-
-        return $stmt->get_result()->num_rows > 0;
+        return $this->existeAsignacionActivaEnEstado(
+            $estadoId,
+            $usuarioId,
+            'ASESOR'
+        );
     }
 
     public function obtenerUsuariosCuentaClave()
@@ -711,13 +906,10 @@ class TerritorioModel
                 FROM usuarios
                 INNER JOIN roles ON roles.id = usuarios.rol_id
                 WHERE usuarios.estado = 1
-                    AND roles.id = ?
+                    AND LOWER(TRIM(roles.nombre)) IN ('asesor', 'asesor de ventas')
                     AND roles.estado = 1
                 ORDER BY usuarios.nombre, usuarios.apellidos";
-
         $stmt = $this->connection->prepare($sql);
-        $rolAsesorId = self::ROL_ASESOR_ID;
-        $stmt->bind_param("i", $rolAsesorId);
         $stmt->execute();
 
         return $this->convertirResultadoEnArreglo($stmt->get_result());
@@ -733,15 +925,13 @@ class TerritorioModel
                     usuarios.usuario,
                     roles.nombre AS rol
                 FROM usuarios
-                INNER JOIN roles
-                    ON roles.id = usuarios.rol_id
+                INNER JOIN roles ON roles.id = usuarios.rol_id
                 WHERE usuarios.estado = 1
                     AND roles.nombre = ?
                     AND roles.estado = 1
                 ORDER BY usuarios.nombre, usuarios.apellidos";
-
         $stmt = $this->connection->prepare($sql);
-        $stmt->bind_param("s", $nombreRol);
+        $stmt->bind_param('s', $nombreRol);
         $stmt->execute();
 
         return $this->convertirResultadoEnArreglo($stmt->get_result());
@@ -757,15 +947,13 @@ class TerritorioModel
                     usuarios.rol_id,
                     roles.nombre AS rol
                 FROM usuarios
-                INNER JOIN roles
-                    ON roles.id = usuarios.rol_id
+                INNER JOIN roles ON roles.id = usuarios.rol_id
                 WHERE usuarios.id = ?
                     AND usuarios.estado = 1
                     AND roles.estado = 1
                 LIMIT 1";
-
         $stmt = $this->connection->prepare($sql);
-        $stmt->bind_param("i", $id);
+        $stmt->bind_param('i', $id);
         $stmt->execute();
 
         return $stmt->get_result()->fetch_assoc();
@@ -798,10 +986,9 @@ class TerritorioModel
                     fecha_actualizacion = ?,
                     updated_at = NOW()
                 WHERE id = ?";
-
         $stmt = $this->connection->prepare($sql);
         $stmt->bind_param(
-            "ssssiiisssssi",
+            'ssssiiisssssi',
             $datos['capital'],
             $datos['titular_gobierno'],
             $datos['cargo_titular'],
@@ -826,21 +1013,17 @@ class TerritorioModel
             return false;
         }
 
-        $sql = "SELECT id
-                FROM estados
-                WHERE clave_inegi = ?";
-
+        $sql = "SELECT id FROM estados WHERE clave_inegi = ?";
         $parametros = [$claveInegi];
         $tipos = 's';
 
         if ($idExcluir !== null) {
-            $sql .= " AND id <> ?";
+            $sql .= ' AND id <> ?';
             $parametros[] = (int)$idExcluir;
             $tipos .= 'i';
         }
 
-        $sql .= " LIMIT 1";
-
+        $sql .= ' LIMIT 1';
         $stmt = $this->connection->prepare($sql);
         $this->vincularParametros($stmt, $tipos, $parametros);
         $stmt->execute();
@@ -878,7 +1061,6 @@ class TerritorioModel
                     ) THEN 0 ELSE 1 END) AS sin_cuenta_clave
                 FROM estados
                 WHERE estados.estado = 1";
-
         $resultado = $this->connection->query($sql);
 
         return $resultado->fetch_assoc();
@@ -895,15 +1077,47 @@ class TerritorioModel
                     ON analistas.cuenta_clave_asignacion_id = cuentas.id
                     AND analistas.tipo_asignacion = 'ANALISTA_DATOS'
                     AND analistas.activo = 1
+                    AND " . $this->condicionAsignacionVigente('analistas') . "
                 WHERE cuentas.usuario_id = ?
                     AND cuentas.tipo_asignacion = 'CUENTA_CLAVE'
-                    AND cuentas.activo = 1";
-
+                    AND cuentas.activo = 1
+                    AND " . $this->condicionAsignacionVigente('cuentas');
         $stmt = $this->connection->prepare($sql);
-        $stmt->bind_param("i", $usuarioId);
+        $stmt->bind_param('i', $usuarioId);
         $stmt->execute();
 
         return $stmt->get_result()->fetch_assoc();
+    }
+
+    private function existeAsignacionActivaEnEstado($estadoId, $usuarioId, $tipo)
+    {
+        $sql = "SELECT id
+                FROM asignaciones_territorio
+                WHERE estado_id = ?
+                    AND usuario_id = ?
+                    AND tipo_asignacion = ?
+                    AND activo = 1
+                LIMIT 1";
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param('iis', $estadoId, $usuarioId, $tipo);
+        $stmt->execute();
+
+        return $stmt->get_result()->num_rows > 0;
+    }
+
+    private function obtenerAnalistasVinculadosActivos($cuentaClaveAsignacionId)
+    {
+        $sql = "SELECT *
+                FROM asignaciones_territorio
+                WHERE cuenta_clave_asignacion_id = ?
+                    AND tipo_asignacion = 'ANALISTA_DATOS'
+                    AND activo = 1
+                ORDER BY id";
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param('i', $cuentaClaveAsignacionId);
+        $stmt->execute();
+
+        return $this->convertirResultadoEnArreglo($stmt->get_result());
     }
 
     private function marcarAsignacionFinalizada($asignacionId, $fechaFin)
@@ -914,9 +1128,8 @@ class TerritorioModel
                     updated_at = NOW()
                 WHERE id = ?
                     AND activo = 1";
-
         $stmt = $this->connection->prepare($sql);
-        $stmt->bind_param("si", $fechaFin, $asignacionId);
+        $stmt->bind_param('si', $fechaFin, $asignacionId);
 
         if (!$stmt->execute()) {
             throw new Exception('No fue posible finalizar la asignación.');
@@ -925,60 +1138,15 @@ class TerritorioModel
         return $stmt->affected_rows > 0;
     }
 
-    private function contarCuentasClaveActivasPorEstado($estadoId)
-    {
-        $sql = "SELECT COUNT(*) AS total
-                FROM asignaciones_territorio
-                WHERE estado_id = ?
-                    AND tipo_asignacion = 'CUENTA_CLAVE'
-                    AND activo = 1";
-
-        $stmt = $this->connection->prepare($sql);
-        $stmt->bind_param("i", $estadoId);
-        $stmt->execute();
-
-        $fila = $stmt->get_result()->fetch_assoc();
-
-        return (int)($fila['total'] ?? 0);
-    }
-
-    private function asociarAnalistasSinCuentaClave($estadoId, $cuentaClaveAsignacionId)
-    {
-        $sql = "UPDATE asignaciones_territorio
-                SET cuenta_clave_asignacion_id = ?,
-                    updated_at = NOW()
-                WHERE estado_id = ?
-                    AND tipo_asignacion = 'ANALISTA_DATOS'
-                    AND activo = 1
-                    AND cuenta_clave_asignacion_id IS NULL
-                    AND (
-                        fecha_inicio IS NULL
-                        OR fecha_inicio <= CURDATE()
-                    )
-                    AND (
-                        fecha_fin IS NULL
-                        OR fecha_fin >= CURDATE()
-                    )";
-
-        $stmt = $this->connection->prepare($sql);
-        $stmt->bind_param("ii", $cuentaClaveAsignacionId, $estadoId);
-
-        if (!$stmt->execute()) {
-            throw new Exception('No fue posible asociar analistas sin Cuenta Clave.');
-        }
-    }
-
     private function contarPorEstado($tabla, $estadoId)
     {
         $sql = "SELECT COUNT(*) AS total
                 FROM $tabla
                 WHERE estado_id = ?
                     AND estado = 1";
-
         $stmt = $this->connection->prepare($sql);
-        $stmt->bind_param("i", $estadoId);
+        $stmt->bind_param('i', $estadoId);
         $stmt->execute();
-
         $fila = $stmt->get_result()->fetch_assoc();
 
         return (int)$fila['total'];
@@ -1005,8 +1173,7 @@ class TerritorioModel
                 SEPARATOR '||'
             )
             FROM asignaciones_territorio asignaciones
-            INNER JOIN usuarios
-                ON usuarios.id = asignaciones.usuario_id
+            INNER JOIN usuarios ON usuarios.id = asignaciones.usuario_id
             WHERE asignaciones.estado_id = estados.id
                 AND asignaciones.tipo_asignacion = '$tipo'
                 AND asignaciones.activo = 1
@@ -1029,10 +1196,8 @@ class TerritorioModel
                 SEPARATOR '||'
             )
             FROM asignaciones_territorio asignaciones
-            INNER JOIN usuarios
-                ON usuarios.id = asignaciones.usuario_id
-            INNER JOIN roles
-                ON roles.id = usuarios.rol_id
+            INNER JOIN usuarios ON usuarios.id = asignaciones.usuario_id
+            INNER JOIN roles ON roles.id = usuarios.rol_id
             WHERE asignaciones.estado_id = estados.id
                 AND asignaciones.tipo_asignacion = '$tipo'
                 AND asignaciones.activo = 1
@@ -1046,6 +1211,156 @@ class TerritorioModel
             ($alias.fecha_inicio IS NULL OR $alias.fecha_inicio <= CURDATE())
             AND ($alias.fecha_fin IS NULL OR $alias.fecha_fin >= CURDATE())
         )";
+    }
+
+    private function asegurarBitacoraTerritorial()
+    {
+        if ($this->bitacoraDisponible !== null) {
+            return $this->bitacoraDisponible;
+        }
+
+        $sql = "CREATE TABLE IF NOT EXISTS bitacora_movimientos_territoriales (
+                    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                    estado_id INT NOT NULL,
+                    asignacion_id INT NULL,
+                    usuario_afectado_id INT NULL,
+                    tipo_asignacion VARCHAR(40) NOT NULL,
+                    accion VARCHAR(50) NOT NULL,
+                    cuenta_clave_asignacion_anterior_id INT NULL,
+                    cuenta_clave_asignacion_nueva_id INT NULL,
+                    fecha_efectiva DATE NULL,
+                    usuario_accion_id INT NULL,
+                    detalle VARCHAR(255) NULL,
+                    registrado_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (id),
+                    KEY idx_bitacora_territorio_estado_fecha (estado_id, registrado_at),
+                    KEY idx_bitacora_territorio_asignacion (asignacion_id),
+                    KEY idx_bitacora_territorio_usuario (usuario_afectado_id),
+                    KEY idx_bitacora_territorio_accion (accion)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci";
+
+        $this->bitacoraDisponible = (bool)$this->connection->query($sql);
+
+        if (!$this->bitacoraDisponible) {
+            error_log('No fue posible asegurar la bitácora territorial: ' . $this->connection->error);
+            return false;
+        }
+
+        $this->inicializarBitacoraHistoricaSiVacia();
+        return true;
+    }
+
+    private function inicializarBitacoraHistoricaSiVacia()
+    {
+        if ($this->bitacoraInicializada) {
+            return;
+        }
+
+        $this->bitacoraInicializada = true;
+        $resultado = $this->connection->query(
+            'SELECT COUNT(*) AS total FROM bitacora_movimientos_territoriales'
+        );
+        $fila = $resultado ? $resultado->fetch_assoc() : null;
+
+        if ((int)($fila['total'] ?? 0) > 0) {
+            return;
+        }
+
+        $sqlAsignaciones = "INSERT INTO bitacora_movimientos_territoriales (
+                    estado_id, asignacion_id, usuario_afectado_id,
+                    tipo_asignacion, accion,
+                    cuenta_clave_asignacion_nueva_id,
+                    fecha_efectiva, usuario_accion_id, detalle, registrado_at
+                )
+                SELECT
+                    a.estado_id, a.id, a.usuario_id,
+                    a.tipo_asignacion, 'ASIGNACION',
+                    a.cuenta_clave_asignacion_id,
+                    a.fecha_inicio, NULL,
+                    'Evento reconstruido a partir de la asignación histórica.',
+                    COALESCE(a.created_at, NOW())
+                FROM asignaciones_territorio a";
+        $this->connection->query($sqlAsignaciones);
+
+        $sqlFinalizaciones = "INSERT INTO bitacora_movimientos_territoriales (
+                    estado_id, asignacion_id, usuario_afectado_id,
+                    tipo_asignacion, accion,
+                    cuenta_clave_asignacion_anterior_id,
+                    fecha_efectiva, usuario_accion_id, detalle, registrado_at
+                )
+                SELECT
+                    a.estado_id, a.id, a.usuario_id,
+                    a.tipo_asignacion, 'DESASIGNACION',
+                    a.cuenta_clave_asignacion_id,
+                    a.fecha_fin, NULL,
+                    'Evento reconstruido a partir de la asignación histórica.',
+                    COALESCE(a.updated_at, NOW())
+                FROM asignaciones_territorio a
+                WHERE a.fecha_fin IS NOT NULL";
+        $this->connection->query($sqlFinalizaciones);
+    }
+
+    private function registrarMovimientoTerritorial(
+        $estadoId,
+        $asignacionId,
+        $usuarioAfectadoId,
+        $tipoAsignacion,
+        $accion,
+        $cuentaClaveAnteriorId,
+        $cuentaClaveNuevaId,
+        $fechaEfectiva,
+        $usuarioAccionId,
+        $detalle
+    ) {
+        $sql = "INSERT INTO bitacora_movimientos_territoriales (
+                    estado_id,
+                    asignacion_id,
+                    usuario_afectado_id,
+                    tipo_asignacion,
+                    accion,
+                    cuenta_clave_asignacion_anterior_id,
+                    cuenta_clave_asignacion_nueva_id,
+                    fecha_efectiva,
+                    usuario_accion_id,
+                    detalle,
+                    registrado_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+        $stmt = $this->connection->prepare($sql);
+
+        if (!$stmt) {
+            throw new RuntimeException('No fue posible preparar el registro de auditoría territorial.');
+        }
+
+        $estadoId = (int)$estadoId;
+        $asignacionId = $asignacionId !== null ? (int)$asignacionId : null;
+        $usuarioAfectadoId = $usuarioAfectadoId !== null ? (int)$usuarioAfectadoId : null;
+        $cuentaClaveAnteriorId = $cuentaClaveAnteriorId !== null
+            ? (int)$cuentaClaveAnteriorId
+            : null;
+        $cuentaClaveNuevaId = $cuentaClaveNuevaId !== null
+            ? (int)$cuentaClaveNuevaId
+            : null;
+        $usuarioAccionId = $usuarioAccionId !== null ? (int)$usuarioAccionId : null;
+        $fechaEfectiva = $fechaEfectiva !== null ? (string)$fechaEfectiva : null;
+        $detalle = trim((string)$detalle);
+
+        $stmt->bind_param(
+            'iiissiisis',
+            $estadoId,
+            $asignacionId,
+            $usuarioAfectadoId,
+            $tipoAsignacion,
+            $accion,
+            $cuentaClaveAnteriorId,
+            $cuentaClaveNuevaId,
+            $fechaEfectiva,
+            $usuarioAccionId,
+            $detalle
+        );
+
+        if (!$stmt->execute()) {
+            throw new RuntimeException('No fue posible registrar la bitácora territorial.');
+        }
     }
 
     private function vincularParametros($stmt, $tipos, $parametros)
