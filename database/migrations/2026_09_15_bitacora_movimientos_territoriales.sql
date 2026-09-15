@@ -18,8 +18,9 @@ CREATE TABLE IF NOT EXISTS bitacora_movimientos_territoriales (
     KEY idx_bitacora_territorio_accion (accion)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Semilla histórica: conserva lo que sí puede demostrarse con los periodos
--- ya guardados antes de que existiera la bitácora.
+-- Semilla histórica: conserva exclusivamente hechos que pueden demostrarse
+-- a partir de asignaciones ya existentes. No intenta reconstruir cambios de
+-- Cuenta Clave anteriores a la creación de esta bitácora.
 INSERT INTO bitacora_movimientos_territoriales (
     estado_id,
     asignacion_id,
@@ -75,7 +76,8 @@ SELECT
     'Evento reconstruido a partir de la asignación histórica.',
     COALESCE(a.updated_at, NOW())
 FROM asignaciones_territorio a
-WHERE a.fecha_fin IS NOT NULL
+WHERE a.activo = 0
+  AND a.fecha_fin IS NOT NULL
   AND NOT EXISTS (
       SELECT 1
       FROM bitacora_movimientos_territoriales b
