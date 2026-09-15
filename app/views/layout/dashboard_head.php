@@ -57,7 +57,8 @@ $cssOpcionalDashboard = [
     'seguimiento_post_envio.css',
     'agenda_reunion.css',
     'agenda_reunion_refinamientos.css',
-    'seguimiento_expediente_actividad.css'
+    'seguimiento_expediente_actividad.css',
+    'seguimiento_estado_compacto.css'
 ];
 
 $jsOpcionalHead = [
