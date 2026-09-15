@@ -150,6 +150,7 @@
                         '<strong>' + escapar(aviso.titulo || 'Notificación') + '</strong>' +
                         '<span>' + escapar(aviso.mensaje || '') + '</span>' +
                     '</span>' +
+                    '<button type="button" class="btn-close reminder-toast-close" aria-label="Cerrar notificación"></button>' +
                 '</div>';
 
             const url = urlRecordatorio(aviso);
@@ -161,15 +162,36 @@
             }
 
             contenedor.appendChild(toast);
+
+            // Desactivamos el autohide de Bootstrap porque éste pausa el contador
+            // cuando el usuario mantiene el cursor o el foco sobre el toast. El
+            // temporizador propio garantiza un máximo real de 6 segundos.
+            const instanciaToast = new bootstrap.Toast(toast, {
+                autohide: false
+            });
+            let temporizadorCierre = null;
+
+            const botonCerrar = toast.querySelector('.reminder-toast-close');
+            if (botonCerrar) {
+                botonCerrar.addEventListener('click', function (evento) {
+                    evento.preventDefault();
+                    evento.stopPropagation();
+                    instanciaToast.hide();
+                });
+            }
+
             toast.addEventListener('hidden.bs.toast', function () {
+                if (temporizadorCierre !== null) {
+                    window.clearTimeout(temporizadorCierre);
+                    temporizadorCierre = null;
+                }
                 toast.remove();
             });
 
-            const instanciaToast = new bootstrap.Toast(toast, {
-                autohide: true,
-                delay: 6000
-            });
             instanciaToast.show();
+            temporizadorCierre = window.setTimeout(function () {
+                instanciaToast.hide();
+            }, 6000);
         };
 
         const renderizarRecordatorios = function (recordatorios) {
