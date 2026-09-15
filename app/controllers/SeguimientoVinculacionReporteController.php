@@ -203,9 +203,21 @@ class SeguimientoVinculacionReporteController
         $errorFiltros = $this->validarPeriodo($filtrosReporte);
         $generarReporte = $forzarGeneracion || (string)($_GET['generar'] ?? '') === '1';
         $seguimientosReporte = [];
+        $seguimientosActividad = [];
         $resumenReporte = $this->crearResumenReporte([]);
 
         if ($generarReporte && $errorFiltros === '') {
+            if (!$forzarGeneracion) {
+                $filtrosActividad = $filtrosReporte;
+                $filtrosActividad['fecha_inicial'] = '';
+                $filtrosActividad['fecha_final'] = '';
+                $filtrosActividad['tipo_actividad'] = '';
+                $seguimientosActividad = $this->aplicarFiltrosReporte(
+                    $seguimientosDisponibles,
+                    $filtrosActividad
+                );
+            }
+
             $seguimientosReporte = $this->aplicarFiltrosReporte(
                 $seguimientosDisponibles,
                 $filtrosReporte
@@ -236,6 +248,7 @@ class SeguimientoVinculacionReporteController
             'filtrosReporte' => $filtrosReporte,
             'resumenFiltros' => $resumenFiltros,
             'seguimientosReporte' => $seguimientosReporte,
+            'seguimientosActividad' => $seguimientosActividad,
             'resumenReporte' => $resumenReporte,
             'generarReporte' => $generarReporte,
             'errorFiltros' => $errorFiltros
