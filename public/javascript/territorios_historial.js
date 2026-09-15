@@ -26,15 +26,14 @@
 
         const boton = document.createElement('button');
         boton.type = 'button';
-        boton.className =
-            'btn btn-sm btn-link px-0 mt-2 text-decoration-none fw-semibold territory-history-toggle';
+        boton.className = 'territory-history-toggle';
         boton.setAttribute('aria-expanded', 'false');
 
         const etiqueta = document.createElement('span');
         etiqueta.textContent = 'Mostrar más (' + adicionales.length + ')';
 
         const icono = document.createElement('i');
-        icono.className = 'bi bi-chevron-down ms-1';
+        icono.className = 'bi bi-chevron-down';
         icono.setAttribute('aria-hidden', 'true');
 
         boton.appendChild(etiqueta);
@@ -53,8 +52,8 @@
                 ? 'Mostrar menos'
                 : 'Mostrar más (' + adicionales.length + ')';
             icono.className = mostrar
-                ? 'bi bi-chevron-up ms-1'
-                : 'bi bi-chevron-down ms-1';
+                ? 'bi bi-chevron-up'
+                : 'bi bi-chevron-down';
         });
 
         lista.insertAdjacentElement('afterend', boton);
