@@ -91,6 +91,12 @@
     color: #a64008;
 }
 
+/* El refinamiento v2 dibuja cada interacción con display:grid.
+   Esta regla debe tener prioridad cuando el paginador marca elementos ocultos. */
+.linkage-expediente-enhanced .linkage-history-item.is-history-hidden {
+    display: none !important;
+}
+
 @media (max-width: 767.98px) {
     .linkage-expediente-next-schedule {
         grid-template-columns: 36px minmax(0, 1fr);
