@@ -158,7 +158,7 @@
     border: 1px solid #d8e4f5;
     border-radius: var(--radius-md);
 
-    background-color: var(--color-primary-soft);
+    background-color: #ffffff;
 }
 
 .territory-detail-state-image img {
@@ -166,6 +166,7 @@
     height: 50px;
     object-fit: contain;
     display: block;
+    background-color: transparent;
 }
 
 /* =========================================================
