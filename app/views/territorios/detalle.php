@@ -7,36 +7,14 @@ $equipoTerritorial = $equipoTerritorial ?? [];
 $analistasSinCuentaClave = $analistasSinCuentaClave ?? [];
 $asesoresTerritorio = $asesoresTerritorio ?? [];
 $historialAsignaciones = $historialAsignaciones ?? [];
-$puedeEditarTerritorio = tienePermiso('territorios.actualizar_ficha');
+$movimientosTerritoriales = $movimientosTerritoriales ?? [];
 $puedeAsignarTerritorio = tienePermiso('territorios.asignar');
-
-/*
- * El detalle territorial históricamente sólo recibía Cuenta Clave + Analistas.
- * Para que represente el equipo real del Estado, completamos aquí las dos
- * colecciones independientes que ya administra TerritorioModel: Analistas sin
- * Cuenta Clave y Asesores. No se modifica ninguna asignación desde esta vista.
- */
-if (!empty($estado['id']) && class_exists('TerritorioModel')) {
-    $modeloDetalleTerritorio = new TerritorioModel();
-
-    if (empty($analistasSinCuentaClave)) {
-        $analistasSinCuentaClave =
-            $modeloDetalleTerritorio->obtenerAnalistasSinCuentaClave((int)$estado['id']);
-    }
-
-    if (empty($asesoresTerritorio)) {
-        $asesoresTerritorio =
-            $modeloDetalleTerritorio->obtenerAsesoresActivos((int)$estado['id']);
-    }
-}
+$puedeVerDataTerritorial = tienePermiso('data_territorial.ver');
 
 $hayEquipoOperativo =
     !empty($equipoTerritorial) ||
     !empty($analistasSinCuentaClave);
-
-$hayEquipoActual =
-    $hayEquipoOperativo ||
-    !empty($asesoresTerritorio);
+$hayEquipoActual = $hayEquipoOperativo || !empty($asesoresTerritorio);
 
 $texto = function ($valor) {
     return htmlspecialchars((string)$valor, ENT_QUOTES, 'UTF-8');
@@ -58,7 +36,22 @@ $numero = function ($valor) {
     return number_format((float)$valor, 0, '.', ',');
 };
 
-$fecha = function ($valorFecha) use ($texto) {
+$meses = [
+    '01' => 'ene',
+    '02' => 'feb',
+    '03' => 'mar',
+    '04' => 'abr',
+    '05' => 'may',
+    '06' => 'jun',
+    '07' => 'jul',
+    '08' => 'ago',
+    '09' => 'sep',
+    '10' => 'oct',
+    '11' => 'nov',
+    '12' => 'dic'
+];
+
+$fecha = function ($valorFecha) use ($texto, $meses) {
     if (!$valorFecha) {
         return '<span class="detail-muted">No registrado</span>';
     }
@@ -69,27 +62,12 @@ $fecha = function ($valorFecha) use ($texto) {
         return $texto($valorFecha);
     }
 
-    $meses = [
-        '01' => 'ene',
-        '02' => 'feb',
-        '03' => 'mar',
-        '04' => 'abr',
-        '05' => 'may',
-        '06' => 'jun',
-        '07' => 'jul',
-        '08' => 'ago',
-        '09' => 'sep',
-        '10' => 'oct',
-        '11' => 'nov',
-        '12' => 'dic'
-    ];
-
     return $fechaObjeto->format('d') . ' ' .
         $meses[$fechaObjeto->format('m')] . ' ' .
         $fechaObjeto->format('Y');
 };
 
-$fechaInput = function ($valorFecha) {
+$fechaHora = function ($valorFecha) use ($texto, $meses) {
     if (!$valorFecha) {
         return '';
     }
@@ -97,10 +75,12 @@ $fechaInput = function ($valorFecha) {
     try {
         $fechaObjeto = new DateTime($valorFecha);
     } catch (Exception $error) {
-        return '';
+        return $texto($valorFecha);
     }
 
-    return $fechaObjeto->format('Y-m-d\TH:i');
+    return $fechaObjeto->format('d') . ' ' .
+        $meses[$fechaObjeto->format('m')] . ' ' .
+        $fechaObjeto->format('Y · H:i');
 };
 
 $tipoTexto = function ($tipo) {
@@ -169,83 +149,134 @@ $totalTexto = function ($total, $cargados) {
     return (int)$cargados . ' de ' . (int)$total . ' cargados';
 };
 
-/*
- * La tabla asignaciones_territorio guarda periodos, no un log de eventos.
- * Para mostrar un historial entendible reconstruimos únicamente hechos que
- * pueden demostrarse con esos datos: inicio y final de cada asignación.
- */
-$asignacionesParaHistorial = [];
-$agregarAsignacionHistorial = function ($asignacion) use (&$asignacionesParaHistorial) {
-    $id = (int)($asignacion['id'] ?? 0);
-
-    if ($id > 0) {
-        $asignacionesParaHistorial[$id] = $asignacion;
-    }
-};
-
-foreach ($historialAsignaciones as $asignacionHistorica) {
-    $agregarAsignacionHistorial($asignacionHistorica);
-}
-
-foreach ($equipoTerritorial as $cuentaClaveActual) {
-    $agregarAsignacionHistorial($cuentaClaveActual);
-
-    foreach (($cuentaClaveActual['analistas'] ?? []) as $analistaActual) {
-        $agregarAsignacionHistorial($analistaActual);
-    }
-}
-
-foreach ($analistasSinCuentaClave as $analistaActual) {
-    $agregarAsignacionHistorial($analistaActual);
-}
-
-foreach ($asesoresTerritorio as $asesorActual) {
-    $agregarAsignacionHistorial($asesorActual);
-}
-
 $eventosHistorial = [];
 
-foreach ($asignacionesParaHistorial as $asignacion) {
-    $nombrePersona = trim(
-        ($asignacion['nombre'] ?? '') . ' ' .
-        ($asignacion['apellidos'] ?? '')
-    );
-    $rolPersona = $tipoTexto($asignacion['tipo_asignacion'] ?? '');
-    $fechaInicio = trim((string)($asignacion['fecha_inicio'] ?? ''));
-    $fechaFin = trim((string)($asignacion['fecha_fin'] ?? ''));
+if (!empty($movimientosTerritoriales)) {
+    foreach ($movimientosTerritoriales as $movimiento) {
+        $accion = strtoupper(trim((string)($movimiento['accion'] ?? '')));
+        $nombrePersona = trim((string)($movimiento['usuario_afectado_nombre'] ?? ''));
+        $rolPersona = $tipoTexto($movimiento['tipo_asignacion'] ?? '');
+        $cuentaAnterior = trim((string)($movimiento['cuenta_clave_anterior_nombre'] ?? ''));
+        $cuentaNueva = trim((string)($movimiento['cuenta_clave_nueva_nombre'] ?? ''));
+        $actor = trim((string)($movimiento['usuario_accion_nombre'] ?? ''));
+        $titulo = '';
+        $detalle = '';
+        $icono = 'bi-clock-history';
+        $clase = 'is-assignment';
 
-    if ($fechaInicio !== '') {
+        if ($accion === 'ASIGNACION') {
+            $titulo = 'Se asignó a ' . $nombrePersona;
+            $detalle = 'Como ' . $rolPersona;
+            if ($cuentaNueva !== '' && $rolPersona === 'Analista de Datos') {
+                $detalle .= ' · con ' . $cuentaNueva;
+            }
+            $icono = 'bi-person-plus';
+        } elseif ($accion === 'DESASIGNACION') {
+            $titulo = 'Finalizó la asignación de ' . $nombrePersona;
+            $detalle = 'Como ' . $rolPersona;
+            $icono = 'bi-person-dash';
+            $clase = 'is-unassignment';
+        } elseif ($accion === 'DESVINCULACION_CUENTA_CLAVE') {
+            $titulo = $nombrePersona . ' quedó sin Cuenta Clave';
+            $detalle = $cuentaAnterior !== ''
+                ? 'Antes vinculado con ' . $cuentaAnterior
+                : 'El Analista permaneció activo en el territorio';
+            $icono = 'bi-link-45deg';
+            $clase = 'is-unassignment';
+        } elseif ($accion === 'VINCULACION_CUENTA_CLAVE') {
+            $titulo = 'Se vinculó a ' . $nombrePersona;
+            $detalle = $cuentaNueva !== ''
+                ? 'Cuenta Clave: ' . $cuentaNueva
+                : 'Vinculado a una Cuenta Clave';
+            $icono = 'bi-link-45deg';
+        } elseif ($accion === 'CAMBIO_CUENTA_CLAVE') {
+            $titulo = 'Se cambió la Cuenta Clave de ' . $nombrePersona;
+            $detalle = trim($cuentaAnterior . ' → ' . $cuentaNueva, ' →');
+            $icono = 'bi-arrow-repeat';
+        } else {
+            $titulo = $nombrePersona !== ''
+                ? 'Movimiento de ' . $nombrePersona
+                : 'Movimiento territorial';
+            $detalle = trim((string)($movimiento['detalle'] ?? ''));
+        }
+
         $eventosHistorial[] = [
-            'fecha' => $fechaInicio,
-            'orden' => 1,
-            'tipo' => 'ASIGNACION',
-            'titulo' => 'Se asignó a ' . $nombrePersona,
-            'detalle' => 'Como ' . $rolPersona,
-            'icono' => 'bi-person-plus'
+            'titulo' => $titulo,
+            'detalle' => $detalle,
+            'icono' => $icono,
+            'clase' => $clase,
+            'fecha' => $movimiento['registrado_at'] ?? null,
+            'fecha_efectiva' => $movimiento['fecha_efectiva'] ?? null,
+            'actor' => $actor
         ];
     }
+} else {
+    /*
+     * Compatibilidad con instalaciones que aún no tengan la bitácora creada:
+     * se reconstruyen únicamente inicio y fin desde los periodos existentes.
+     */
+    $asignacionesParaHistorial = [];
+    $agregarAsignacionHistorial = function ($asignacion) use (&$asignacionesParaHistorial) {
+        $id = (int)($asignacion['id'] ?? 0);
+        if ($id > 0) {
+            $asignacionesParaHistorial[$id] = $asignacion;
+        }
+    };
 
-    if ($fechaFin !== '') {
-        $eventosHistorial[] = [
-            'fecha' => $fechaFin,
-            'orden' => 2,
-            'tipo' => 'DESASIGNACION',
-            'titulo' => 'Finalizó la asignación de ' . $nombrePersona,
-            'detalle' => 'Como ' . $rolPersona,
-            'icono' => 'bi-person-dash'
-        ];
+    foreach ($historialAsignaciones as $asignacionHistorica) {
+        $agregarAsignacionHistorial($asignacionHistorica);
     }
+    foreach ($equipoTerritorial as $cuentaClaveActual) {
+        $agregarAsignacionHistorial($cuentaClaveActual);
+        foreach (($cuentaClaveActual['analistas'] ?? []) as $analistaActual) {
+            $agregarAsignacionHistorial($analistaActual);
+        }
+    }
+    foreach ($analistasSinCuentaClave as $analistaActual) {
+        $agregarAsignacionHistorial($analistaActual);
+    }
+    foreach ($asesoresTerritorio as $asesorActual) {
+        $agregarAsignacionHistorial($asesorActual);
+    }
+
+    foreach ($asignacionesParaHistorial as $asignacion) {
+        $nombrePersona = trim(
+            ($asignacion['nombre'] ?? '') . ' ' .
+            ($asignacion['apellidos'] ?? '')
+        );
+        $rolPersona = $tipoTexto($asignacion['tipo_asignacion'] ?? '');
+        $fechaInicio = trim((string)($asignacion['fecha_inicio'] ?? ''));
+        $fechaFin = trim((string)($asignacion['fecha_fin'] ?? ''));
+
+        if ($fechaInicio !== '') {
+            $eventosHistorial[] = [
+                'titulo' => 'Se asignó a ' . $nombrePersona,
+                'detalle' => 'Como ' . $rolPersona,
+                'icono' => 'bi-person-plus',
+                'clase' => 'is-assignment',
+                'fecha' => $fechaInicio,
+                'fecha_efectiva' => $fechaInicio,
+                'actor' => ''
+            ];
+        }
+
+        if ($fechaFin !== '') {
+            $eventosHistorial[] = [
+                'titulo' => 'Finalizó la asignación de ' . $nombrePersona,
+                'detalle' => 'Como ' . $rolPersona,
+                'icono' => 'bi-person-dash',
+                'clase' => 'is-unassignment',
+                'fecha' => $fechaFin,
+                'fecha_efectiva' => $fechaFin,
+                'actor' => ''
+            ];
+        }
+    }
+
+    usort($eventosHistorial, function ($a, $b) {
+        return strcmp((string)($b['fecha'] ?? ''), (string)($a['fecha'] ?? ''));
+    });
 }
-
-usort($eventosHistorial, function ($eventoA, $eventoB) {
-    $comparacionFecha = strcmp((string)$eventoB['fecha'], (string)$eventoA['fecha']);
-
-    if ($comparacionFecha !== 0) {
-        return $comparacionFecha;
-    }
-
-    return (int)$eventoB['orden'] <=> (int)$eventoA['orden'];
-});
 
 ?>
 
@@ -273,10 +304,8 @@ usort($eventosHistorial, function ($eventoA, $eventoB) {
             <h4>Equipo territorial actual</h4>
 
             <?php if ($hayEquipoActual): ?>
-
                 <div class="territory-detail-team-list">
                     <?php foreach ($equipoTerritorial as $cuentaClave): ?>
-
                         <?php
                         $nombreCuenta = trim(
                             ($cuentaClave['nombre'] ?? '') . ' ' .
@@ -309,9 +338,7 @@ usort($eventosHistorial, function ($eventoA, $eventoB) {
 
                             <div class="territory-detail-analysts border-0 pt-0 mt-3">
                                 <?php if (!empty($analistas)): ?>
-
                                     <?php foreach ($analistas as $analista): ?>
-
                                         <?php
                                         $nombreAnalista = trim(
                                             ($analista['nombre'] ?? '') . ' ' .
@@ -336,17 +363,12 @@ usort($eventosHistorial, function ($eventoA, $eventoB) {
                                                 <small>Desde <?= $fecha($analista['fecha_inicio'] ?? '') ?></small>
                                             </div>
                                         </div>
-
                                     <?php endforeach; ?>
-
                                 <?php else: ?>
-
                                     <span class="detail-muted">Sin analistas asignados</span>
-
                                 <?php endif; ?>
                             </div>
                         </article>
-
                     <?php endforeach; ?>
 
                     <?php if (!empty($analistasSinCuentaClave)): ?>
@@ -425,13 +447,10 @@ usort($eventosHistorial, function ($eventoA, $eventoB) {
                         </div>
                     <?php endif; ?>
                 </div>
-
             <?php else: ?>
-
                 <p class="territory-empty-text">
                     Este territorio aún no tiene equipo territorial activo.
                 </p>
-
             <?php endif; ?>
         </section>
 
@@ -443,12 +462,10 @@ usort($eventosHistorial, function ($eventoA, $eventoB) {
                     <span>Capital</span>
                     <strong><?= $valor($estado['capital'] ?? null) ?></strong>
                 </div>
-
                 <div class="detail-row">
                     <span>Población</span>
                     <strong><?= $numero($estado['poblacion'] ?? null) ?></strong>
                 </div>
-
                 <div class="detail-row">
                     <span>Municipios</span>
                     <strong>
@@ -458,7 +475,6 @@ usort($eventosHistorial, function ($eventoA, $eventoB) {
                         )) ?>
                     </strong>
                 </div>
-
                 <div class="detail-row">
                     <span>Secretarías</span>
                     <strong>
@@ -468,37 +484,30 @@ usort($eventosHistorial, function ($eventoA, $eventoB) {
                         )) ?>
                     </strong>
                 </div>
-
                 <div class="detail-row">
                     <span>Titular gobierno</span>
                     <strong><?= $valor($estado['titular_gobierno'] ?? null) ?></strong>
                 </div>
-
                 <div class="detail-row">
                     <span>Cargo</span>
                     <strong><?= $valor($estado['cargo_titular'] ?? null) ?></strong>
                 </div>
-
                 <div class="detail-row">
                     <span>Partido político</span>
                     <strong><?= $valor($estado['partido_politico'] ?? null) ?></strong>
                 </div>
-
                 <div class="detail-row">
                     <span>Periodo de gobierno</span>
                     <strong><?= $valor($estado['periodo_gobierno'] ?? null) ?></strong>
                 </div>
-
                 <div class="detail-row">
                     <span>Teléfono</span>
                     <strong><?= $valor($estado['telefono'] ?? null) ?></strong>
                 </div>
-
                 <div class="detail-row">
                     <span>Redes sociales</span>
                     <strong><?= $valor($estado['redes_sociales'] ?? null) ?></strong>
                 </div>
-
                 <div class="detail-row">
                     <span>Fecha actualización</span>
                     <strong><?= $fecha($estado['fecha_actualizacion'] ?? null) ?></strong>
@@ -510,29 +519,32 @@ usort($eventosHistorial, function ($eventoA, $eventoB) {
             <h4>Historial de asignaciones</h4>
 
             <?php if (!empty($eventosHistorial)): ?>
-
                 <div class="territory-activity-list">
                     <?php foreach ($eventosHistorial as $evento): ?>
                         <div class="territory-activity-item">
-                            <span class="territory-activity-icon <?= $evento['tipo'] === 'ASIGNACION' ? 'is-assignment' : 'is-unassignment' ?>">
+                            <span class="territory-activity-icon <?= $texto($evento['clase']) ?>">
                                 <i class="bi <?= $texto($evento['icono']) ?>"></i>
                             </span>
 
                             <div class="territory-activity-copy">
                                 <strong><?= $texto($evento['titulo']) ?></strong>
                                 <span><?= $texto($evento['detalle']) ?></span>
-                                <small><?= $fecha($evento['fecha']) ?></small>
+                                <small>
+                                    <?= $texto($fechaHora($evento['fecha'])) ?>
+                                    <?php if (!empty($evento['actor'])): ?>
+                                        · por <?= $texto($evento['actor']) ?>
+                                    <?php else: ?>
+                                        · registro histórico
+                                    <?php endif; ?>
+                                </small>
                             </div>
                         </div>
                     <?php endforeach; ?>
                 </div>
-
             <?php else: ?>
-
                 <p class="territory-empty-text">
                     No hay movimientos de asignación registrados.
                 </p>
-
             <?php endif; ?>
         </section>
     </div>
@@ -545,38 +557,16 @@ usort($eventosHistorial, function ($eventoA, $eventoB) {
             Cerrar
         </button>
 
-        <?php if ($puedeEditarTerritorio): ?>
-
-            <button
-                type="button"
+        <?php if ($puedeVerDataTerritorial): ?>
+            <a
                 class="btn btn-system-light"
-                data-edit-territory
-                data-bs-toggle="modal"
-                data-bs-target="#modalEditarTerritorio"
-                data-id="<?= (int)$estado['id'] ?>"
-                data-clave-inegi="<?= $texto($estado['clave_inegi'] ?? '') ?>"
-                data-nombre="<?= $texto($estado['nombre'] ?? '') ?>"
-                data-nombre-corto="<?= $texto($estado['nombre_corto'] ?? '') ?>"
-                data-capital="<?= $texto($estado['capital'] ?? '') ?>"
-                data-titular-gobierno="<?= $texto($estado['titular_gobierno'] ?? '') ?>"
-                data-cargo-titular="<?= $texto($estado['cargo_titular'] ?? '') ?>"
-                data-partido-politico="<?= $texto($estado['partido_politico'] ?? '') ?>"
-                data-poblacion="<?= $texto($estado['poblacion'] ?? '') ?>"
-                data-total-municipios="<?= $texto($estado['total_municipios'] ?? '') ?>"
-                data-total-secretarias="<?= $texto($estado['total_secretarias'] ?? '') ?>"
-                data-periodo-gobierno="<?= $texto($estado['periodo_gobierno'] ?? '') ?>"
-                data-telefono="<?= $texto($estado['telefono'] ?? '') ?>"
-                data-redes-sociales="<?= $texto($estado['redes_sociales'] ?? '') ?>"
-                data-fuente="<?= $texto($estado['fuente'] ?? '') ?>"
-                data-fecha-actualizacion="<?= $texto($fechaInput($estado['fecha_actualizacion'] ?? null)) ?>">
-                <i class="bi bi-pencil me-2"></i>
-                Editar ficha territorial
-            </button>
-
+                href="<?= BASE_URL ?>index.php?controller=dataTerritorial&action=index&estado_id=<?= (int)$estado['id'] ?>">
+                <i class="bi bi-database me-2"></i>
+                Ver información territorial
+            </a>
         <?php endif; ?>
 
         <?php if ($puedeAsignarTerritorio): ?>
-
             <button
                 type="button"
                 class="btn btn-system-save"
@@ -586,7 +576,6 @@ usort($eventosHistorial, function ($eventoA, $eventoB) {
                 <i class="bi bi-people me-2"></i>
                 Gestionar equipo
             </button>
-
         <?php endif; ?>
     </div>
 </div>
