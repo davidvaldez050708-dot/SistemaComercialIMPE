@@ -85,8 +85,13 @@ class TerritorioController
         }
 
         $equipoTerritorial = $modeloTerritorio->obtenerEquipoTerritorial($estadoId);
+        $analistasSinCuentaClave =
+            $modeloTerritorio->obtenerAnalistasSinCuentaClave($estadoId);
+        $asesoresTerritorio = $modeloTerritorio->obtenerAsesoresActivos($estadoId);
         $historialAsignaciones =
             $modeloTerritorio->obtenerHistorialAsignaciones($estadoId);
+        $movimientosTerritoriales =
+            $modeloTerritorio->obtenerBitacoraMovimientos($estadoId);
 
         require_once __DIR__ . '/../views/territorios/detalle.php';
     }
@@ -137,14 +142,16 @@ class TerritorioController
             $this->volverConErrores('equipo', $errores, $datos);
         }
 
+        $usuarioAccionId = (int)($_SESSION['usuario_id'] ?? 0);
+
         if ($datos['tipo_asignacion'] === 'CUENTA_CLAVE') {
-            $resultado = $modeloTerritorio->crearCuentaClave($datos);
+            $resultado = $modeloTerritorio->crearCuentaClave($datos, $usuarioAccionId);
             $mensajeExito = 'Cuenta Clave asignada correctamente.';
         } elseif ($datos['tipo_asignacion'] === 'ANALISTA_DATOS') {
-            $resultado = $modeloTerritorio->crearAnalista($datos);
+            $resultado = $modeloTerritorio->crearAnalista($datos, $usuarioAccionId);
             $mensajeExito = 'Analista asignado correctamente.';
         } else {
-            $resultado = $modeloTerritorio->crearAsesor($datos);
+            $resultado = $modeloTerritorio->crearAsesor($datos, $usuarioAccionId);
             $mensajeExito = 'Asesor asignado correctamente.';
         }
 
@@ -196,24 +203,25 @@ class TerritorioController
 
         $resultado = $modeloTerritorio->reasociarAnalistaCuentaClave(
             $analistaAsignacionId,
-            $cuentaClaveAsignacionId
+            $cuentaClaveAsignacionId,
+            (int)($_SESSION['usuario_id'] ?? 0)
         );
 
         if ($this->esSolicitudFetch()) {
             $this->responderJson([
                 'ok' => (bool)$resultado,
                 'mensaje' => $resultado
-                    ? 'Analista asignado a la Cuenta Clave correctamente.'
-                    : 'No fue posible reasignar el Analista.'
+                    ? 'Analista vinculado a la Cuenta Clave correctamente.'
+                    : 'No fue posible cambiar la Cuenta Clave del Analista.'
             ], $resultado ? 200 : 500);
         }
 
         if ($resultado) {
             $_SESSION['mensaje_territorio'] =
-                'Analista asignado a la Cuenta Clave correctamente.';
+                'Analista vinculado a la Cuenta Clave correctamente.';
         } else {
             $_SESSION['error_territorio'] =
-                'No fue posible reasignar el Analista.';
+                'No fue posible cambiar la Cuenta Clave del Analista.';
         }
 
         $this->redirigirATerritorios();
@@ -231,23 +239,21 @@ class TerritorioController
         $finalizarEquipo = (string)($_POST['finalizar_equipo'] ?? '0') === '1';
 
         if ($fechaFinOrigen !== '' && $fechaFin === null) {
-            if ($this->esSolicitudFetch()) {
-                $this->responderJson([
-                    'ok' => false,
-                    'mensaje' => 'La fecha de finalización no es válida.',
-                    'errores' => [
-                        'fecha_fin' => 'La fecha de finalización no es válida.'
-                    ]
-                ], 422);
-            }
-
-            $_SESSION['error_territorio'] =
-                'La fecha de finalización no es válida.';
-            $this->redirigirATerritorios();
+            $this->responderErrorFinalizacion(
+                'La fecha de finalización no es válida.',
+                'La fecha de finalización no es válida.'
+            );
         }
 
         if ($fechaFin === null) {
             $fechaFin = date('Y-m-d');
+        }
+
+        if ($fechaFin > date('Y-m-d')) {
+            $this->responderErrorFinalizacion(
+                'La fecha de finalización no puede ser futura.',
+                'Finaliza la asignación con la fecha de hoy o una fecha anterior.'
+            );
         }
 
         $asignacion = $modeloTerritorio->buscarAsignacionPorId($asignacionId);
@@ -272,20 +278,10 @@ class TerritorioController
             !empty($asignacion['fecha_inicio']) &&
             $fechaFin < $asignacion['fecha_inicio']
         ) {
-            if ($this->esSolicitudFetch()) {
-                $this->responderJson([
-                    'ok' => false,
-                    'mensaje' => 'La fecha de finalización no es válida.',
-                    'errores' => [
-                        'fecha_fin' =>
-                            'La fecha de finalización no puede ser anterior al inicio.'
-                    ]
-                ], 422);
-            }
-
-            $_SESSION['error_territorio'] =
-                'La fecha de finalización no puede ser anterior al inicio.';
-            $this->redirigirATerritorios();
+            $this->responderErrorFinalizacion(
+                'La fecha de finalización no es válida.',
+                'La fecha de finalización no puede ser anterior al inicio.'
+            );
         }
 
         $tieneAnalistas = false;
@@ -293,23 +289,27 @@ class TerritorioController
         if ($asignacion['tipo_asignacion'] === 'CUENTA_CLAVE') {
             $tieneAnalistas =
                 $modeloTerritorio->cuentaClaveTieneAnalistasActivos($asignacionId);
-
         }
+
+        $usuarioAccionId = (int)($_SESSION['usuario_id'] ?? 0);
 
         if ($tieneAnalistas && $finalizarEquipo) {
             $resultado = $modeloTerritorio->finalizarCuentaClaveConEquipo(
                 $asignacionId,
-                $fechaFin
+                $fechaFin,
+                $usuarioAccionId
             );
         } elseif ($tieneAnalistas) {
             $resultado = $modeloTerritorio->finalizarCuentaClaveSinEquipo(
                 $asignacionId,
-                $fechaFin
+                $fechaFin,
+                $usuarioAccionId
             );
         } else {
             $resultado = $modeloTerritorio->finalizarAsignacion(
                 $asignacionId,
-                $fechaFin
+                $fechaFin,
+                $usuarioAccionId
             );
         }
 
@@ -327,8 +327,7 @@ class TerritorioController
         }
 
         if ($resultado) {
-            $_SESSION['mensaje_territorio'] =
-                $mensajeFinalizacion;
+            $_SESSION['mensaje_territorio'] = $mensajeFinalizacion;
         } else {
             $_SESSION['error_territorio'] =
                 'No fue posible finalizar la asignación.';
@@ -344,36 +343,31 @@ class TerritorioController
 
     public function actualizarFichaTerritorial()
     {
-        $this->validarPermiso('territorios.actualizar_ficha');
-        $this->validarMetodoPost();
+        $this->validarPermiso('territorios.ver');
+        $estadoId = (int)($_POST['id'] ?? $_GET['id'] ?? 0);
+        $mensaje =
+            'La ficha territorial se administra desde Información territorial.';
 
-        $modeloTerritorio = new TerritorioModel();
-        $estadoId = (int)($_POST['id'] ?? 0);
-        $estado = $modeloTerritorio->buscarEstadoPorId($estadoId);
-        $datos = $this->limpiarDatosEstado($_POST);
-        $errores = $this->validarDatosEstado(
-            $modeloTerritorio,
-            $datos,
-            $estadoId,
-            $estado
-        );
-
-        if (!empty($errores)) {
-            $datos['id'] = $estadoId;
-            $datos['clave_inegi'] = $estado['clave_inegi'] ?? '';
-            $datos['nombre'] = $estado['nombre'] ?? '';
-            $datos['nombre_corto'] = $estado['nombre_corto'] ?? '';
-            $this->volverConErrores('estado', $errores, $datos);
+        if ($this->esSolicitudFetch()) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => $mensaje,
+                'redirect' => tienePermiso('data_territorial.ver')
+                    ? BASE_URL . 'index.php?controller=dataTerritorial&action=index&estado_id=' . $estadoId
+                    : null
+            ], 409);
         }
 
-        if ($modeloTerritorio->actualizarFichaTerritorial($estadoId, $datos)) {
-            $_SESSION['mensaje_territorio'] =
-                'Ficha territorial actualizada correctamente.';
-        } else {
-            $_SESSION['error_territorio'] =
-                'No fue posible actualizar la ficha territorial.';
+        if (tienePermiso('data_territorial.ver')) {
+            header(
+                'Location: ' . BASE_URL .
+                'index.php?controller=dataTerritorial&action=index&estado_id=' .
+                $estadoId
+            );
+            exit;
         }
 
+        $_SESSION['error_territorio'] = $mensaje;
         $this->redirigirATerritorios();
     }
 
@@ -520,7 +514,7 @@ class TerritorioController
                 'Para Analista de Datos selecciona un usuario con ese rol.';
         } elseif (
             $datos['tipo_asignacion'] === 'ASESOR' &&
-            (int)($usuario['rol_id'] ?? 0) !== TerritorioModel::ROL_ASESOR_ID
+            !$this->esRolAsesor($usuario['rol'] ?? '')
         ) {
             $errores['usuario_id'] =
                 'Para Asesor selecciona un usuario con ese rol.';
@@ -535,8 +529,10 @@ class TerritorioController
             $datos['fecha_inicio_original'] !== '' &&
             $this->normalizarFecha($datos['fecha_inicio_original']) === null
         ) {
+            $errores['fecha_inicio'] = 'La fecha de inicio no es válida.';
+        } elseif ($datos['fecha_inicio'] > date('Y-m-d')) {
             $errores['fecha_inicio'] =
-                'La fecha de inicio no es válida.';
+                'La fecha de inicio no puede ser futura.';
         }
 
         if ($datos['tipo_asignacion'] === 'ANALISTA_DATOS') {
@@ -547,17 +543,17 @@ class TerritorioController
             if (
                 !$cuentaClave ||
                 $cuentaClave['tipo_asignacion'] !== 'CUENTA_CLAVE' ||
-                (int)$cuentaClave['activo'] !== 1 ||
+                !$modeloTerritorio->asignacionEstaVigenteHoy($cuentaClave) ||
                 (int)$cuentaClave['estado_id'] !== (int)$datos['estado_id']
             ) {
                 $errores['cuenta_clave_asignacion_id'] =
-                    'Selecciona una Cuenta Clave activa para vincular al analista.';
+                    'Selecciona una Cuenta Clave vigente del mismo territorio.';
             } elseif (
                 !empty($cuentaClave['fecha_inicio']) &&
                 $datos['fecha_inicio'] < $cuentaClave['fecha_inicio']
             ) {
                 $errores['fecha_inicio'] =
-                    'La fecha de inicio del analista no puede ser anterior a la Cuenta Clave.';
+                    'La fecha de inicio del Analista no puede ser anterior a la Cuenta Clave.';
             }
         }
 
@@ -570,7 +566,7 @@ class TerritorioController
             )
         ) {
             $errores['usuario_id'] =
-                'La Cuenta Clave ya tiene una asignación activa en este territorio.';
+                'La Cuenta Clave ya tiene una asignación abierta en este territorio.';
         }
 
         if (
@@ -582,7 +578,7 @@ class TerritorioController
             )
         ) {
             $errores['usuario_id'] =
-                'El analista ya tiene una asignación activa en este territorio.';
+                'El Analista ya tiene una asignación abierta en este territorio.';
         }
 
         if (
@@ -594,7 +590,7 @@ class TerritorioController
             )
         ) {
             $errores['usuario_id'] =
-                'El asesor ya tiene una asignación activa en este territorio.';
+                'El Asesor ya tiene una asignación abierta en este territorio.';
         }
 
         return $errores;
@@ -612,22 +608,19 @@ class TerritorioController
         if (
             !$analista ||
             $analista['tipo_asignacion'] !== 'ANALISTA_DATOS' ||
-            (int)$analista['activo'] !== 1
+            !$modeloTerritorio->asignacionEstaVigenteHoy($analista)
         ) {
             $errores['asignacion_analista_id'] =
-                'Selecciona un Analista activo válido.';
-        } elseif (!empty($analista['cuenta_clave_asignacion_id'])) {
-            $errores['asignacion_analista_id'] =
-                'El Analista ya está asociado a una Cuenta Clave.';
+                'Selecciona un Analista vigente válido.';
         }
 
         if (
             !$cuentaClave ||
             $cuentaClave['tipo_asignacion'] !== 'CUENTA_CLAVE' ||
-            (int)$cuentaClave['activo'] !== 1
+            !$modeloTerritorio->asignacionEstaVigenteHoy($cuentaClave)
         ) {
             $errores['cuenta_clave_asignacion_id'] =
-                'Selecciona una Cuenta Clave activa.';
+                'Selecciona una Cuenta Clave vigente.';
         }
 
         if (
@@ -638,77 +631,39 @@ class TerritorioController
                 'La Cuenta Clave debe pertenecer al mismo territorio del Analista.';
         }
 
+        if (
+            empty($errores) &&
+            (int)($analista['cuenta_clave_asignacion_id'] ?? 0) ===
+                (int)$cuentaClaveAsignacionId
+        ) {
+            $errores['cuenta_clave_asignacion_id'] =
+                'El Analista ya está vinculado a esa Cuenta Clave.';
+        }
+
         return $errores;
     }
 
-    private function limpiarDatosEstado($origen)
+    private function responderErrorFinalizacion($mensaje, $detalle)
     {
-        return [
-            'capital' => $this->valorNullable($origen['capital'] ?? ''),
-            'titular_gobierno' => $this->valorNullable(
-                $origen['titular_gobierno'] ?? ''
-            ),
-            'cargo_titular' => $this->valorNullable(
-                $origen['cargo_titular'] ?? ''
-            ),
-            'partido_politico' => $this->valorNullable(
-                $origen['partido_politico'] ?? ''
-            ),
-            'poblacion' => trim((string)($origen['poblacion'] ?? '')),
-            'total_municipios' => trim((string)($origen['total_municipios'] ?? '')),
-            'total_secretarias' => trim((string)($origen['total_secretarias'] ?? '')),
-            'periodo_gobierno' => $this->valorNullable(
-                $origen['periodo_gobierno'] ?? ''
-            ),
-            'telefono' => $this->valorNullable($origen['telefono'] ?? ''),
-            'redes_sociales' => $this->valorNullable(
-                $origen['redes_sociales'] ?? ''
-            ),
-            'fuente' => $this->valorNullable($origen['fuente'] ?? ''),
-            'fecha_actualizacion' => $this->normalizarFechaHora(
-                $origen['fecha_actualizacion'] ?? ''
-            )
-        ];
+        if ($this->esSolicitudFetch()) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => $mensaje,
+                'errores' => ['fecha_fin' => $detalle]
+            ], 422);
+        }
+
+        $_SESSION['error_territorio'] = $detalle;
+        $this->redirigirATerritorios();
     }
 
-    private function validarDatosEstado(
-        $modeloTerritorio,
-        &$datos,
-        $estadoId,
-        $estado
-    ) {
-        $errores = [];
+    private function esRolAsesor($rol)
+    {
+        $rol = function_exists('mb_strtolower')
+            ? mb_strtolower(trim((string)$rol), 'UTF-8')
+            : strtolower(trim((string)$rol));
 
-        if (!$estado) {
-            $errores[] = 'El territorio seleccionado no es válido.';
-        }
-
-        $this->validarEnteroFicha(
-            $datos['poblacion'],
-            'La población debe ser un número válido.',
-            $errores
-        );
-        $this->validarEnteroFicha(
-            $datos['total_municipios'],
-            'El total de municipios debe ser un número válido.',
-            $errores
-        );
-        $this->validarEnteroFicha(
-            $datos['total_secretarias'],
-            'El total de secretarías debe ser un número válido.',
-            $errores
-        );
-
-        if (empty($errores)) {
-            $datos['poblacion'] =
-                $datos['poblacion'] === '' ? null : (int)$datos['poblacion'];
-            $datos['total_municipios'] =
-                $datos['total_municipios'] === '' ? null : (int)$datos['total_municipios'];
-            $datos['total_secretarias'] =
-                $datos['total_secretarias'] === '' ? null : (int)$datos['total_secretarias'];
-        }
-
-        return $errores;
+        return in_array($rol, ['asesor', 'asesor de ventas'], true);
     }
 
     private function tipoAsignacionValido($tipo)
@@ -733,53 +688,11 @@ class TerritorioController
         return $fecha;
     }
 
-    private function normalizarFechaHora($fecha)
-    {
-        $fecha = trim((string)$fecha);
-
-        if ($fecha === '') {
-            return null;
-        }
-
-        $fechaObjeto = DateTime::createFromFormat('Y-m-d\TH:i', $fecha);
-
-        if ($fechaObjeto) {
-            return $fechaObjeto->format('Y-m-d H:i:s');
-        }
-
-        $fechaObjeto = DateTime::createFromFormat('Y-m-d H:i:s', $fecha);
-
-        if ($fechaObjeto) {
-            return $fechaObjeto->format('Y-m-d H:i:s');
-        }
-
-        return null;
-    }
-
-    private function valorNullable($valor)
-    {
-        $valor = trim((string)$valor);
-
-        return $valor === '' ? null : $valor;
-    }
-
-    private function validarEnteroFicha($valor, $mensaje, &$errores)
-    {
-        if ($valor === '') {
-            return;
-        }
-
-        if (!ctype_digit((string)$valor)) {
-            $errores[] = $mensaje;
-        }
-    }
-
     private function volverConErrores($modal, $errores, $datos)
     {
         $_SESSION['errores_territorio'] = $errores;
         $_SESSION['datos_territorio'] = $datos;
         $_SESSION['modal_territorio'] = $modal;
-
         $this->redirigirATerritorios();
     }
 
