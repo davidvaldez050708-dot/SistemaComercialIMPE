@@ -11,6 +11,7 @@ $estadosSeguimiento = $estadosSeguimiento ?? [];
 $filtrosReporte = $filtrosReporte ?? [];
 $resumenFiltros = $resumenFiltros ?? [];
 $seguimientosReporte = $seguimientosReporte ?? [];
+$seguimientosActividad = $seguimientosActividad ?? [];
 $resumenReporte = $resumenReporte ?? [
     'total' => 0,
     'sin_actividad' => 0,
@@ -40,7 +41,7 @@ $evolucionActividad = [
 if (!$modoModalReporte && $generarReporte && $errorFiltros === '') {
     try {
         $evolucionActividad = (new EvolucionActividadSeguimientoService())->construir(
-            $seguimientosReporte,
+            $seguimientosActividad,
             $filtrosReporte
         );
     } catch (Throwable $error) {
