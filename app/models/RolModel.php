@@ -17,7 +17,7 @@ class RolModel
         $permisos = $this->obtenerCatalogoInicialPermisos();
         $permisosTerritorioNuevos =
             !$this->existePermisoPorCodigo('territorios.ver') ||
-            !$this->existePermisoPorCodigo('territorios.actualizar_ficha');
+            !$this->existePermisoPorCodigo('territorios.asignar');
         $permisosDataTerritorialNuevos =
             !$this->existePermisoPorCodigo('data_territorial.ver') ||
             !$this->existePermisoPorCodigo('data_territorial.actualizar_oficial');
@@ -70,6 +70,7 @@ class RolModel
         }
 
         $this->desactivarPermisosGenericosSeguimientos();
+        $this->desactivarPermisosTerritorioObsoletos();
 
         if ($permisosTerritorioNuevos) {
             $this->asignarPermisosInicialesTerritorios();
@@ -508,6 +509,24 @@ class RolModel
         return $stmt->execute();
     }
 
+    private function desactivarPermisosTerritorioObsoletos()
+    {
+        $codigos = [
+            'territorios.editar',
+            'territorios.actualizar_ficha'
+        ];
+        $placeholders = implode(',', array_fill(0, count($codigos), '?'));
+
+        $sql = "UPDATE permisos
+                SET estado = 0
+                WHERE codigo IN ($placeholders)";
+
+        $stmt = $this->connection->prepare($sql);
+        $this->vincularParametros($stmt, str_repeat('s', count($codigos)), $codigos);
+
+        return $stmt->execute();
+    }
+
     private function existePermisoPorCodigo($codigo)
     {
         $sql = "SELECT id
@@ -547,8 +566,7 @@ class RolModel
     {
         $asignaciones = [
             'Analista de Datos' => [
-                'territorios.ver',
-                'territorios.actualizar_ficha'
+                'territorios.ver'
             ],
             'Cuenta Clave' => [
                 'territorios.ver'
@@ -675,9 +693,7 @@ class RolModel
             ['modulo' => 'Usuarios', 'codigo' => 'usuarios.editar', 'nombre' => 'Editar usuarios', 'descripcion' => 'Actualizar datos de usuario.'],
             ['modulo' => 'Usuarios', 'codigo' => 'usuarios.cambiar_estado', 'nombre' => 'Activar / desactivar usuarios', 'descripcion' => 'Modificar el estado de una cuenta.'],
             ['modulo' => 'Territorios', 'codigo' => 'territorios.ver', 'nombre' => 'Ver territorios', 'descripcion' => 'Consultar estados y responsables territoriales.'],
-            ['modulo' => 'Territorios', 'codigo' => 'territorios.editar', 'nombre' => 'Editar territorios', 'descripcion' => 'Actualizar información general de los territorios.'],
             ['modulo' => 'Territorios', 'codigo' => 'territorios.asignar', 'nombre' => 'Asignar responsables', 'descripcion' => 'Gestionar responsables territoriales por estado.'],
-            ['modulo' => 'Territorios', 'codigo' => 'territorios.actualizar_ficha', 'nombre' => 'Actualizar ficha territorial', 'descripcion' => 'Actualizar información de investigación de los territorios.'],
             ['modulo' => 'Información territorial', 'codigo' => 'data_territorial.ver', 'nombre' => 'Consultar información territorial', 'descripcion' => 'Consultar la información territorial de los estados asignados.'],
             ['modulo' => 'Información territorial', 'codigo' => 'data_territorial.editar', 'nombre' => 'Editar información territorial', 'descripcion' => 'Actualizar información territorial de los estados asignados.'],
             ['modulo' => 'Información territorial', 'codigo' => 'data_territorial.actualizar_oficial', 'nombre' => 'Actualizar información oficial', 'descripcion' => 'Actualizar las fuentes oficiales de información territorial para los Estados registrados.'],
@@ -708,7 +724,7 @@ class RolModel
             ['modulo' => 'Organizaciones', 'codigo' => 'organizaciones.ver', 'nombre' => 'Ver organizaciones', 'descripcion' => 'Consultar organizaciones.'],
             ['modulo' => 'Organizaciones', 'codigo' => 'organizaciones.crear', 'nombre' => 'Crear organizaciones', 'descripcion' => 'Registrar organizaciones.'],
             ['modulo' => 'Organizaciones', 'codigo' => 'organizaciones.editar', 'nombre' => 'Editar organizaciones', 'descripcion' => 'Actualizar organizaciones.'],
-            ['modulo' => 'Organizaciones', 'codigo' => 'organizaciones.validar', 'nombre' => 'Validar organizaciones', 'descripcion' => 'Validar información institucional.'],
+            ['modulo' => 'Organizaciones', 'codigo' => 'organizaciones.validar', 'nombre' => 'Validar información institucional.'],
             ['modulo' => 'Oficios', 'codigo' => 'oficios.ver', 'nombre' => 'Ver oficios', 'descripcion' => 'Consultar oficios.'],
             ['modulo' => 'Oficios', 'codigo' => 'oficios.generar', 'nombre' => 'Generar oficios', 'descripcion' => 'Generar documentos oficiales.'],
             ['modulo' => 'Oficios', 'codigo' => 'oficios.enviar', 'nombre' => 'Enviar oficios', 'descripcion' => 'Enviar oficios a destinatarios.'],
