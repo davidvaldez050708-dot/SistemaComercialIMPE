@@ -262,6 +262,8 @@
     min-height: 72px;
     padding: 13px 14px;
 
+    position: relative;
+
     display: grid;
     grid-template-columns: 38px minmax(0, 1fr);
     gap: 11px;
@@ -291,6 +293,7 @@
 
 .reminder-toast-copy {
     min-width: 0;
+    padding-right: 22px;
 }
 
 .reminder-toast-copy strong,
@@ -313,6 +316,28 @@
     font-size: 11px;
     font-weight: 600;
     line-height: 1.35;
+}
+
+.reminder-toast-close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+
+    width: 18px;
+    height: 18px;
+    padding: 3px;
+
+    opacity: 0.42;
+    box-shadow: none !important;
+}
+
+.reminder-toast-close:hover,
+.reminder-toast-close:focus {
+    opacity: 0.72;
+}
+
+.reminder-toast.is-overdue .reminder-toast-close {
+    opacity: 0.5;
 }
 
 @media (max-width: 575.98px) {
