@@ -724,7 +724,7 @@ class RolModel
             ['modulo' => 'Organizaciones', 'codigo' => 'organizaciones.ver', 'nombre' => 'Ver organizaciones', 'descripcion' => 'Consultar organizaciones.'],
             ['modulo' => 'Organizaciones', 'codigo' => 'organizaciones.crear', 'nombre' => 'Crear organizaciones', 'descripcion' => 'Registrar organizaciones.'],
             ['modulo' => 'Organizaciones', 'codigo' => 'organizaciones.editar', 'nombre' => 'Editar organizaciones', 'descripcion' => 'Actualizar organizaciones.'],
-            ['modulo' => 'Organizaciones', 'codigo' => 'organizaciones.validar', 'nombre' => 'Validar información institucional.'],
+            ['modulo' => 'Organizaciones', 'codigo' => 'organizaciones.validar', 'nombre' => 'Validar organizaciones', 'descripcion' => 'Validar información institucional.'],
             ['modulo' => 'Oficios', 'codigo' => 'oficios.ver', 'nombre' => 'Ver oficios', 'descripcion' => 'Consultar oficios.'],
             ['modulo' => 'Oficios', 'codigo' => 'oficios.generar', 'nombre' => 'Generar oficios', 'descripcion' => 'Generar documentos oficiales.'],
             ['modulo' => 'Oficios', 'codigo' => 'oficios.enviar', 'nombre' => 'Enviar oficios', 'descripcion' => 'Enviar oficios a destinatarios.'],
