@@ -61,22 +61,72 @@
     color: #7b8491;
 }
 
-/* Detalle territorial: los asesores son un grupo separado del equipo
-   Cuenta Clave + Analista, pero conservan la misma proporción de persona. */
-.territory-detail-team-list > div > .mb-2 > .assignment-role {
-    padding: 0;
+/* =========================================================
+   DETALLE TERRITORIAL · EQUIPO ACTUAL
+   Un solo contenedor para Cuenta Clave, Analistas y Asesores.
+   ========================================================= */
+
+.territory-detail-section .territory-detail-team-list {
+    display: block;
+    overflow: hidden;
+
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+
+    background-color: var(--color-surface);
+}
+
+/* Las tarjetas internas dejan de competir con el contenedor exterior. */
+.territory-detail-section .territory-detail-team-list > .territory-detail-team-card {
+    margin: 0;
+    padding: 13px 16px;
+
     border: 0;
     border-radius: 0;
+
+    background-color: transparent;
+    box-shadow: none;
+}
+
+/* Si existen varios equipos operativos, se distinguen sin crear otro cuadro. */
+.territory-detail-section .territory-detail-team-list > .territory-detail-team-card + .territory-detail-team-card {
+    border-top: 1px solid var(--color-border);
+}
+
+/* Asesores pertenece al mismo equipo territorial, pero como grupo independiente. */
+.territory-detail-section .territory-detail-team-list > div {
+    margin: 0 !important;
+    padding: 14px 16px 15px !important;
+
+    border-top: 1px solid var(--color-border) !important;
+}
+
+.territory-detail-section .territory-detail-team-list > div:first-child {
+    border-top: 0 !important;
+}
+
+.territory-detail-team-list > div > .mb-2 {
+    margin-bottom: 9px !important;
+}
+
+.territory-detail-team-list > div > .mb-2 > .assignment-role {
+    padding: 0;
+
+    border: 0;
+    border-radius: 0;
+
     background: transparent;
     color: var(--color-text-secondary);
+
     font-size: 11px;
     font-weight: 800;
     letter-spacing: 0.04em;
     text-transform: uppercase;
 }
 
+/* La persona Asesor conserva la misma proporción visual que el Analista. */
 .territory-detail-team-list > div > .territory-detail-analysts .territory-person {
-    padding: 6px 0 6px 18px !important;
+    padding: 5px 0 !important;
     gap: 10px;
     align-items: center;
 }
@@ -125,7 +175,9 @@
         font-size: 12px;
     }
 
-    .territory-detail-team-list > div > .territory-detail-analysts .territory-person {
+    .territory-detail-section .territory-detail-team-list > .territory-detail-team-card,
+    .territory-detail-section .territory-detail-team-list > div {
         padding-left: 14px !important;
+        padding-right: 14px !important;
     }
 }
