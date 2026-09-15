@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/../models/SeguimientoVinculacionModel.php';
 require_once __DIR__ . '/../helpers/PermissionHelper.php';
+require_once __DIR__ . '/../services/ReporteSeguimientoVinculacionPdfService.php';
 
 class SeguimientoVinculacionReporteController
 {
@@ -26,7 +27,72 @@ class SeguimientoVinculacionReporteController
     public function index()
     {
         $this->validarPermiso('seguimientos_vinculacion.ver');
+        $contexto = $this->construirContextoReporte(false);
+        extract($contexto, EXTR_SKIP);
 
+        $errorExportacionPdf = (string)($_SESSION['error_reporte_seguimiento_pdf'] ?? '');
+        unset($_SESSION['error_reporte_seguimiento_pdf']);
+        $urlExportarPdf = $generarReporte && $errorFiltros === ''
+            ? $this->construirUrlExportacion($filtrosReporte)
+            : '';
+
+        $tituloPagina = 'Generar reportes';
+        $subtituloPagina = 'Seguimiento de vinculación';
+        $opcionActiva = 'seguimiento_vinculacion';
+
+        require_once __DIR__ . '/../views/layout/dashboard_head.php';
+        require_once __DIR__ . '/../views/layout/sidebar.php';
+        require_once __DIR__ . '/../views/layout/topbar.php';
+        require_once __DIR__ . '/../views/seguimiento_vinculacion/reportes.php';
+        require_once __DIR__ . '/../views/layout/dashboard_footer.php';
+    }
+
+    public function exportarPdf()
+    {
+        $this->validarPermiso('seguimientos_vinculacion.ver');
+        $contexto = $this->construirContextoReporte(true);
+
+        if ((string)$contexto['errorFiltros'] !== '') {
+            $this->redirigirErrorPdf(
+                (string)$contexto['errorFiltros'],
+                $contexto['filtrosReporte']
+            );
+        }
+
+        $servicio = new ReporteSeguimientoVinculacionPdfService();
+        $resultado = $servicio->generar([
+            'resumen_filtros' => $contexto['resumenFiltros'],
+            'resumen_reporte' => $contexto['resumenReporte'],
+            'seguimientos' => $contexto['seguimientosReporte'],
+            'etiquetas_estatus' => self::ESTADOS_SEGUIMIENTO,
+            'fecha_generacion' => date('d/m/Y H:i')
+        ]);
+
+        if (!($resultado['ok'] ?? false)) {
+            error_log(
+                '[reporte_seguimiento_pdf] ' .
+                (string)($resultado['mensaje_tecnico'] ?? $resultado['mensaje'] ?? 'Error sin detalle.')
+            );
+            $this->redirigirErrorPdf(
+                (string)($resultado['mensaje'] ?? 'No fue posible generar el PDF del reporte.'),
+                $contexto['filtrosReporte']
+            );
+        }
+
+        $contenidoPdf = (string)($resultado['contenido_pdf'] ?? '');
+        $nombreArchivo = (string)($resultado['nombre_archivo'] ?? 'Reporte_Seguimiento_Vinculacion.pdf');
+
+        header('Content-Type: application/pdf');
+        header('Content-Disposition: attachment; filename="' . $nombreArchivo . '"');
+        header('Content-Length: ' . strlen($contenidoPdf));
+        header('Cache-Control: private, no-store, max-age=0');
+        header('X-Content-Type-Options: nosniff');
+        echo $contenidoPdf;
+        exit;
+    }
+
+    private function construirContextoReporte($forzarGeneracion)
+    {
         $modelo = new SeguimientoVinculacionModel();
         $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
         $modoSeguimiento = $this->resolverModoSeguimiento();
@@ -135,7 +201,7 @@ class SeguimientoVinculacionReporteController
         }
 
         $errorFiltros = $this->validarPeriodo($filtrosReporte);
-        $generarReporte = (string)($_GET['generar'] ?? '') === '1';
+        $generarReporte = $forzarGeneracion || (string)($_GET['generar'] ?? '') === '1';
         $seguimientosReporte = [];
         $resumenReporte = $this->crearResumenReporte([]);
 
@@ -160,15 +226,64 @@ class SeguimientoVinculacionReporteController
             $canalesDisponibles
         );
 
-        $tituloPagina = 'Generar reportes';
-        $subtituloPagina = 'Seguimiento de vinculación';
-        $opcionActiva = 'seguimiento_vinculacion';
+        return [
+            'territorios' => $territorios,
+            'municipiosPorEstado' => $municipiosPorEstado,
+            'institucionesDisponibles' => $institucionesDisponibles,
+            'responsablesDisponibles' => $responsablesDisponibles,
+            'canalesDisponibles' => $canalesDisponibles,
+            'estadosSeguimiento' => $estadosSeguimiento,
+            'filtrosReporte' => $filtrosReporte,
+            'resumenFiltros' => $resumenFiltros,
+            'seguimientosReporte' => $seguimientosReporte,
+            'resumenReporte' => $resumenReporte,
+            'generarReporte' => $generarReporte,
+            'errorFiltros' => $errorFiltros
+        ];
+    }
 
-        require_once __DIR__ . '/../views/layout/dashboard_head.php';
-        require_once __DIR__ . '/../views/layout/sidebar.php';
-        require_once __DIR__ . '/../views/layout/topbar.php';
-        require_once __DIR__ . '/../views/seguimiento_vinculacion/reportes.php';
-        require_once __DIR__ . '/../views/layout/dashboard_footer.php';
+    private function construirUrlExportacion(array $filtros)
+    {
+        $parametros = [
+            'controller' => 'seguimientoVinculacionReporte',
+            'action' => 'exportarPdf',
+            'fecha_inicial' => (string)$filtros['fecha_inicial'],
+            'fecha_final' => (string)$filtros['fecha_final'],
+            'estado_id' => (int)$filtros['estado_id'],
+            'municipio_id' => (int)$filtros['municipio_id'],
+            'institucion' => (string)$filtros['institucion'],
+            'responsable_id' => (int)$filtros['responsable_id'],
+            'estado_seguimiento' => (string)$filtros['estado_seguimiento'],
+            'tipo_actividad' => (string)$filtros['tipo_actividad'],
+            'dias_sin_actividad' => (int)$filtros['dias_sin_actividad']
+        ];
+
+        return BASE_URL . 'index.php?' . http_build_query($parametros, '', '&', PHP_QUERY_RFC3986);
+    }
+
+    private function redirigirErrorPdf($mensaje, array $filtros)
+    {
+        $_SESSION['error_reporte_seguimiento_pdf'] = (string)$mensaje;
+        $parametros = [
+            'controller' => 'seguimientoVinculacionReporte',
+            'action' => 'index',
+            'generar' => 1,
+            'fecha_inicial' => (string)$filtros['fecha_inicial'],
+            'fecha_final' => (string)$filtros['fecha_final'],
+            'estado_id' => (int)$filtros['estado_id'],
+            'municipio_id' => (int)$filtros['municipio_id'],
+            'institucion' => (string)$filtros['institucion'],
+            'responsable_id' => (int)$filtros['responsable_id'],
+            'estado_seguimiento' => (string)$filtros['estado_seguimiento'],
+            'tipo_actividad' => (string)$filtros['tipo_actividad'],
+            'dias_sin_actividad' => (int)$filtros['dias_sin_actividad']
+        ];
+
+        header(
+            'Location: ' . BASE_URL . 'index.php?' .
+            http_build_query($parametros, '', '&', PHP_QUERY_RFC3986)
+        );
+        exit;
     }
 
     private function obtenerFiltrosReporte()

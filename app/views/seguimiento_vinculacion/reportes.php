@@ -18,6 +18,8 @@ $resumenReporte = $resumenReporte ?? [
 ];
 $generarReporte = $generarReporte ?? false;
 $errorFiltros = $errorFiltros ?? '';
+$errorExportacionPdf = $errorExportacionPdf ?? '';
+$urlExportarPdf = $urlExportarPdf ?? '';
 $modoModalReporte = (string)($_GET['modal'] ?? '') === '1';
 
 $texto = static function ($valor) {
@@ -112,6 +114,13 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
         <div class="alert alert-danger login-alert mb-3" role="alert">
             <i class="bi bi-exclamation-circle"></i>
             <span><?= $texto($errorFiltros) ?></span>
+        </div>
+    <?php endif; ?>
+
+    <?php if (!$modoModalReporte && $errorExportacionPdf !== ''): ?>
+        <div class="alert alert-danger login-alert mb-3" role="alert">
+            <i class="bi bi-exclamation-circle"></i>
+            <span><?= $texto($errorExportacionPdf) ?></span>
         </div>
     <?php endif; ?>
 
@@ -289,9 +298,17 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                 <h2 class="page-title" id="titulo-reporte-seguimiento">Reporte de Seguimiento de Vinculación</h2>
                 <p class="page-subtitle mb-0">Resultados calculados con los criterios seleccionados.</p>
             </div>
-            <span class="status-pill status-pill-active">
-                <?= (int)$resumenReporte['total'] ?> <?= (int)$resumenReporte['total'] === 1 ? 'seguimiento' : 'seguimientos' ?>
-            </span>
+            <div class="d-flex flex-wrap align-items-center justify-content-end gap-2">
+                <span class="status-pill status-pill-active">
+                    <?= (int)$resumenReporte['total'] ?> <?= (int)$resumenReporte['total'] === 1 ? 'seguimiento' : 'seguimientos' ?>
+                </span>
+                <?php if ($urlExportarPdf !== ''): ?>
+                    <a class="btn btn-system-save linkage-action-button" href="<?= $texto($urlExportarPdf) ?>">
+                        <i class="bi bi-file-earmark-pdf"></i>
+                        Exportar PDF
+                    </a>
+                <?php endif; ?>
+            </div>
         </div>
 
         <section class="dashboard-panel mb-4" aria-label="Filtros utilizados">
