@@ -127,6 +127,15 @@
     </div>
 <?php endif; ?>
 
+<?php if (!empty($_SESSION['mensaje_password_actualizado'])): ?>
+    <div
+        class="d-none"
+        data-password-update-success
+        data-message="Tu nueva contraseña se guardó correctamente.">
+    </div>
+    <?php unset($_SESSION['mensaje_password_actualizado']); ?>
+<?php endif; ?>
+
 <script
     src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js">
 </script>
