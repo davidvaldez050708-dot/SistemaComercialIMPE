@@ -58,7 +58,8 @@ $cssOpcionalDashboard = [
     'agenda_reunion.css',
     'agenda_reunion_refinamientos.css',
     'seguimiento_expediente_actividad.css',
-    'seguimiento_estado_compacto.css'
+    'seguimiento_estado_compacto.css',
+    'seguimiento_expediente_oficios_refinamiento.css'
 ];
 
 $jsOpcionalHead = [
@@ -100,7 +101,8 @@ $jsOpcionalHead = [
     'seguimiento_resultados_humanizados.js',
     'oficios_correo_formato.js',
     'firma_correo_perfil.js',
-    'correo_firma_envio.js'
+    'correo_firma_envio.js',
+    'seguimiento_expediente_oficios_refinamiento.js'
 ];
 
 ?>
