@@ -18,7 +18,15 @@ CREATE TABLE IF NOT EXISTS correos_oficio_vinculacion (
     KEY idx_correo_oficio_oficio (oficio_id),
     KEY idx_correo_oficio_usuario (usuario_id),
     UNIQUE KEY uq_correo_oficio_envio (oficio_id, fecha_envio, destinatario)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+/*
+ * Si la primera ejecución alcanzó a crear la tabla con otra collation antes
+ * de fallar en el backfill, la normalizamos al estándar usado por las tablas
+ * existentes de vinculación. Esto hace la migración segura al reejecutarla.
+ */
+ALTER TABLE correos_oficio_vinculacion
+    CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
 
 /*
  * Recupera los envíos que ya estaban registrados antes de crear la bitácora.
@@ -64,5 +72,6 @@ WHERE oficio.fecha_envio IS NOT NULL
       FROM correos_oficio_vinculacion historial
       WHERE historial.oficio_id = oficio.id
         AND historial.fecha_envio = oficio.fecha_envio
-        AND historial.destinatario = COALESCE(oficio.destinatario_correo, '')
+        AND historial.destinatario COLLATE utf8mb4_general_ci =
+            COALESCE(oficio.destinatario_correo, '') COLLATE utf8mb4_general_ci
   );
