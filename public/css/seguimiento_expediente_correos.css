@@ -1,0 +1,318 @@
+/* =========================================================
+   EXPEDIENTE · HISTORIAL DE CORREOS
+   ========================================================= */
+
+.linkage-mail-history-section {
+    margin-top: 14px;
+    padding: 18px;
+}
+
+.linkage-mail-history-heading {
+    margin-bottom: 14px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.linkage-mail-history-heading > div {
+    min-width: 0;
+}
+
+.linkage-mail-history-heading h3 {
+    margin: 3px 0 0;
+    color: var(--color-text-primary);
+    font-size: 16px;
+    font-weight: 800;
+    line-height: 1.3;
+}
+
+.linkage-mail-history-heading p {
+    margin: 4px 0 0;
+    color: var(--color-text-secondary);
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.45;
+}
+
+.linkage-mail-history-count {
+    flex: 0 0 auto;
+    min-height: 28px;
+    padding: 5px 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #d9e2ef;
+    border-radius: 999px;
+    background: #f8fafc;
+    color: var(--color-primary);
+    font-size: 10px;
+    font-weight: 800;
+}
+
+.linkage-mail-history-loading,
+.linkage-mail-history-error {
+    min-height: 82px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: var(--color-text-secondary);
+    font-size: 11px;
+    font-weight: 650;
+}
+
+.linkage-mail-history-error {
+    color: #a13a3a;
+}
+
+.linkage-mail-history-empty {
+    min-height: 112px;
+    padding: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    border: 1px dashed #d9e1ec;
+    border-radius: 12px;
+    background: #fbfcfe;
+    text-align: left;
+}
+
+.linkage-mail-history-empty > span {
+    width: 38px;
+    height: 38px;
+    flex: 0 0 38px;
+    display: inline-grid;
+    place-items: center;
+    border-radius: 10px;
+    background: #eef3fb;
+    color: var(--color-primary);
+    font-size: 15px;
+}
+
+.linkage-mail-history-empty > div {
+    min-width: 0;
+}
+
+.linkage-mail-history-empty strong {
+    display: block;
+    color: var(--color-text-primary);
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.linkage-mail-history-empty p {
+    margin: 4px 0 0;
+    color: var(--color-text-secondary);
+    font-size: 10.8px;
+    font-weight: 600;
+    line-height: 1.45;
+}
+
+.linkage-mail-history-table-wrap {
+    border: 1px solid #e1e7ef;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.linkage-mail-history-table {
+    min-width: 920px;
+    margin: 0;
+}
+
+.linkage-mail-history-table thead th {
+    padding: 10px 12px;
+    border-bottom-color: #e1e7ef;
+    background: #f7f9fc;
+    color: #65738a;
+    font-size: 9.8px;
+    font-weight: 800;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+}
+
+.linkage-mail-history-table tbody td {
+    padding: 11px 12px;
+    border-bottom-color: #edf0f4;
+    color: var(--color-text-primary);
+    font-size: 10.8px;
+    font-weight: 600;
+    vertical-align: middle;
+}
+
+.linkage-mail-history-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.linkage-mail-history-table td > strong,
+.linkage-mail-history-table td > span {
+    display: block;
+}
+
+.linkage-mail-history-table td > strong {
+    font-size: 10.8px;
+    font-weight: 750;
+}
+
+.linkage-mail-history-table td > span {
+    margin-top: 2px;
+    color: var(--color-text-secondary);
+    font-size: 9.6px;
+    font-weight: 600;
+}
+
+.linkage-mail-history-subject {
+    max-width: 270px;
+    line-height: 1.4;
+}
+
+.linkage-mail-history-status {
+    width: max-content;
+    min-height: 25px;
+    padding: 4px 8px;
+    display: inline-flex !important;
+    align-items: center;
+    gap: 5px;
+    border: 1px solid #c9e4d6;
+    border-radius: 999px;
+    background: #eff8f3;
+    color: #22694e;
+    font-size: 9.5px !important;
+    font-weight: 800 !important;
+    white-space: nowrap;
+}
+
+.linkage-mail-history-status.is-error {
+    border-color: #eccaca;
+    background: #fff4f4;
+    color: #9b3a3a;
+}
+
+.linkage-mail-history-attachment {
+    max-width: 190px;
+}
+
+.linkage-mail-history-attachment i {
+    margin-right: 5px;
+    color: var(--color-primary);
+}
+
+.linkage-mail-history-attachment span {
+    display: inline;
+    overflow-wrap: anywhere;
+    color: var(--color-text-secondary);
+    font-size: 9.8px;
+}
+
+.linkage-mail-history-view {
+    min-height: 32px;
+    padding: 6px 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10px;
+    font-weight: 750;
+    white-space: nowrap;
+}
+
+.linkage-mail-detail-modal .modal-content {
+    overflow: hidden;
+    border: 1px solid #dfe5ee;
+    border-radius: 16px;
+    box-shadow: 0 18px 46px rgba(18, 34, 65, 0.15);
+}
+
+.linkage-mail-detail-modal .modal-header {
+    padding: 18px 20px;
+    align-items: flex-start;
+    border-bottom-color: #e8ecf2;
+}
+
+.linkage-mail-modal-eyebrow {
+    display: block;
+    margin-bottom: 4px;
+    color: var(--color-primary);
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+}
+
+.linkage-mail-detail-modal .modal-body {
+    padding: 20px;
+    background: #fbfcfe;
+}
+
+.linkage-mail-modal-meta {
+    margin-bottom: 14px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 9px;
+}
+
+.linkage-mail-modal-meta > div,
+.linkage-mail-modal-field {
+    min-width: 0;
+    padding: 11px 12px;
+    border: 1px solid #e0e6ef;
+    border-radius: 10px;
+    background: #ffffff;
+}
+
+.linkage-mail-modal-meta span,
+.linkage-mail-modal-field > span {
+    display: block;
+    margin-bottom: 4px;
+    color: var(--color-text-secondary);
+    font-size: 9.5px;
+    font-weight: 800;
+}
+
+.linkage-mail-modal-meta strong,
+.linkage-mail-modal-field > strong {
+    display: block;
+    overflow-wrap: anywhere;
+    color: var(--color-text-primary);
+    font-size: 11px;
+    font-weight: 750;
+    line-height: 1.45;
+}
+
+.linkage-mail-modal-field + .linkage-mail-modal-field {
+    margin-top: 10px;
+}
+
+.linkage-mail-modal-field.is-body > div {
+    max-height: 320px;
+    overflow: auto;
+    white-space: pre-wrap;
+    color: #344155;
+    font-size: 11px;
+    font-weight: 550;
+    line-height: 1.65;
+}
+
+.linkage-mail-detail-modal .modal-footer {
+    padding: 12px 20px;
+    border-top-color: #e8ecf2;
+}
+
+@media (max-width: 767.98px) {
+    .linkage-mail-history-section {
+        padding: 14px;
+    }
+
+    .linkage-mail-history-heading {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 9px;
+    }
+
+    .linkage-mail-history-empty {
+        align-items: flex-start;
+    }
+
+    .linkage-mail-modal-meta {
+        grid-template-columns: 1fr;
+    }
+}
