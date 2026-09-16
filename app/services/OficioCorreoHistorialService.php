@@ -104,7 +104,7 @@ class OficioCorreoHistorialService
                     )";
             $stmt = $this->connection->prepare($sql);
             $stmt->bind_param(
-                'iiissssssssiiss',
+                'iiissssssssiss',
                 $seguimientoId,
                 $oficioId,
                 $usuarioId,
@@ -179,11 +179,7 @@ class OficioCorreoHistorialService
                     COALESCE(oficio.destinatario_nombre, '') AS destinatario_nombre,
                     COALESCE(oficio.asunto_correo, '') AS asunto,
                     COALESCE(oficio.cuerpo_correo, '') AS cuerpo,
-                    SUBSTRING_INDEX(
-                        REPLACE(COALESCE(oficio.archivo_pdf, ''), '\\\\', '/'),
-                        '/',
-                        -1
-                    ) AS adjunto_nombre,
+                    SUBSTRING_INDEX(COALESCE(oficio.archivo_pdf, ''), '/', -1) AS adjunto_nombre,
                     'ENVIADO' AS estado,
                     NULL AS error_envio,
                     oficio.fecha_envio,
