@@ -24,11 +24,16 @@
         cuerpo.className = 'toast-body d-flex align-items-start gap-2';
 
         const icono = document.createElement('i');
-        icono.className = 'bi bi-check2-circle';
+        icono.className = 'bi bi-check2-circle mt-1';
 
         const copia = document.createElement('div');
+        copia.className = 'd-grid gap-1 flex-grow-1';
+
         const encabezado = document.createElement('strong');
+        encabezado.className = 'd-block lh-sm';
+
         const detalle = document.createElement('span');
+        detalle.className = 'd-block fw-normal text-body-secondary lh-sm';
 
         encabezado.textContent = titulo || 'Contraseña actualizada';
         detalle.textContent = mensaje || 'La contraseña se actualizó correctamente.';
