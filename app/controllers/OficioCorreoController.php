@@ -4,6 +4,7 @@ require_once __DIR__ . '/../services/OficioCorreoService.php';
 require_once __DIR__ . '/../services/OficioEnvioService.php';
 require_once __DIR__ . '/../services/OficioProgramacionService.php';
 require_once __DIR__ . '/../services/OficioDestinatarioSyncService.php';
+require_once __DIR__ . '/../services/OficioCorreoHistorialService.php';
 require_once __DIR__ . '/../helpers/PermissionHelper.php';
 
 class OficioCorreoController
@@ -134,11 +135,54 @@ class OficioCorreoController
             $this->responderJson($resultado, $codigoHttp);
         }
 
+        /*
+         * El historial es una bitácora complementaria. Si por alguna razón no
+         * puede escribirse, no convertimos un correo ya enviado en un error.
+         */
+        if (!empty($resultado['correo']) && !empty($resultado['correo']['enviado'])) {
+            $historial = new OficioCorreoHistorialService();
+            $historial->registrarEnvio(
+                $seguimientoId,
+                $usuarioId,
+                $resultado['correo']
+            );
+        }
+
         if (isset($resultado['correo'])) {
             $resultado['correo'] = $this->completarPermisosCorreo(
                 $resultado['correo'],
                 $usuarioId
             );
+        }
+
+        $this->responderJson($resultado);
+    }
+
+    public function historial()
+    {
+        $this->validarPermisoJson('oficios.ver');
+
+        $seguimientoId = (int)($_GET['seguimiento_id'] ?? 0);
+        $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
+
+        if ($seguimientoId <= 0) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'El seguimiento solicitado no es válido.'
+            ], 422);
+        }
+
+        $servicio = new OficioCorreoHistorialService();
+        $resultado = $servicio->obtenerHistorial(
+            $seguimientoId,
+            $usuarioId,
+            $this->resolverModoAcceso()
+        );
+
+        if (!($resultado['ok'] ?? false)) {
+            $codigoHttp = (int)($resultado['codigo_http'] ?? 500);
+            unset($resultado['codigo_http']);
+            $this->responderJson($resultado, $codigoHttp);
         }
 
         $this->responderJson($resultado);
