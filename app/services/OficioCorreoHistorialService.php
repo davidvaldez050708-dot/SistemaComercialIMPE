@@ -79,7 +79,7 @@ class OficioCorreoHistorialService
         $adjuntoNombre = trim((string)($correo['adjunto_nombre'] ?? ''));
 
         try {
-            $sql = "INSERT INTO correos_oficio_vinculacion (
+            $sql = "INSERT IGNORE INTO correos_oficio_vinculacion (
                         seguimiento_id,
                         oficio_id,
                         usuario_id,
@@ -93,18 +93,10 @@ class OficioCorreoHistorialService
                         error_envio,
                         fecha_envio,
                         created_at
-                    )
-                    SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ENVIADO', NULL, ?, ?
-                    WHERE NOT EXISTS (
-                        SELECT 1
-                        FROM correos_oficio_vinculacion
-                        WHERE oficio_id = ?
-                          AND fecha_envio = ?
-                          AND destinatario = ?
-                    )";
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'ENVIADO', NULL, ?, ?)";
             $stmt = $this->connection->prepare($sql);
             $stmt->bind_param(
-                'iiissssssssiss',
+                'iiissssssss',
                 $seguimientoId,
                 $oficioId,
                 $usuarioId,
@@ -115,10 +107,7 @@ class OficioCorreoHistorialService
                 $cuerpo,
                 $adjuntoNombre,
                 $fechaEnvio,
-                $fechaEnvio,
-                $oficioId,
-                $fechaEnvio,
-                $destinatario
+                $fechaEnvio
             );
 
             return $stmt->execute();
