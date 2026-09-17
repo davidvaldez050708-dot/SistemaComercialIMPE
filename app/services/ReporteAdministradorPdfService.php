@@ -292,11 +292,6 @@ class ReporteAdministradorPdfService
         );
         $elementos[] = $this->crearEspaciador($documento, 120);
 
-        $elementos[] = $this->crearTituloSeccion($documento, 'CARGA OPERATIVA');
-        $elementos[] = $this->crearSubtitulo($documento, 'Carga de seguimiento por usuario');
-        $elementos[] = $this->crearGraficaBarras($documento, $cargaPorUsuario, $anchoUtil);
-        $elementos[] = $this->crearEspaciador($documento, 80);
-
         $filasCarga = [];
         foreach ($usuarios as $usuario) {
             $filasCarga[] = [
@@ -309,14 +304,6 @@ class ReporteAdministradorPdfService
                 (string)((int)($usuario['mas_7_dias'] ?? 0))
             ];
         }
-        $elementos[] = $this->crearSubtitulo($documento, 'Carga de seguimiento por usuario');
-        $elementos[] = $this->crearTablaDetalle(
-            $documento,
-            ['Usuario', 'Rol', 'Seguimientos', 'Pendientes', 'Vencidas', 'Sin actividad', '> 7 días'],
-            $filasCarga,
-            $this->anchos($anchoUtil, [18, 18, 13, 13, 12, 14, 12])
-        );
-        $elementos[] = $this->crearEspaciador($documento, 120);
 
         $elementos[] = $this->crearTituloSeccion($documento, 'ATENCIÓN REQUERIDA');
         $elementos[] = $this->crearTarjetasIndicadores(
