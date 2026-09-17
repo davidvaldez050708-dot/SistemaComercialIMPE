@@ -83,7 +83,7 @@
 
     function panelBase(titulo, subtitulo, icono) {
         const panel = document.createElement('section');
-        panel.className = 'dashboard-panel seguimiento-report-insight-panel h-100';
+        panel.className = 'dashboard-panel seguimiento-report-insight-panel';
 
         const heading = document.createElement('div');
         heading.className = 'seguimiento-report-insight-heading';
@@ -189,6 +189,7 @@
             'Punto operativo actual de los seguimientos incluidos.',
             'bi-signpost-split'
         );
+        panel.classList.add('seguimiento-report-flow-panel');
         columna.replaceChildren(panel);
 
         if (!tabla) {
@@ -265,6 +266,35 @@
         return url.toString();
     }
 
+    function actualizarResumenOperativo(root, resumen) {
+        const tarjetas = root.querySelectorAll('[data-operational-summary] .seguimiento-report-summary-card');
+
+        tarjetas.forEach(function (tarjeta) {
+            const etiqueta = tarjeta.querySelector('.metric-label');
+            const valor = tarjeta.querySelector('.metric-value');
+            const detalle = tarjeta.querySelector('.seguimiento-report-summary-detail');
+            const textoEtiqueta = normalizarTexto(etiqueta?.textContent || '');
+
+            if (!etiqueta || !valor) {
+                return;
+            }
+
+            if (textoEtiqueta.includes('interacciones registradas')) {
+                valor.textContent = formatearNumero(resumen.interacciones);
+                etiqueta.textContent = 'Interacciones de contacto';
+                if (detalle) {
+                    detalle.textContent = 'Sin eventos automáticos';
+                }
+            } else if (textoEtiqueta.includes('interacciones por seguimiento')) {
+                valor.textContent = formatearNumero(resumen.promedio_por_seguimiento);
+                etiqueta.textContent = 'Interacciones por seguimiento';
+                if (detalle) {
+                    detalle.textContent = 'Promedio de contacto';
+                }
+            }
+        });
+    }
+
     function renderizarActividad(columna, resumen) {
         const periodo = resumen.periodo || {};
         const tienePeriodo = Boolean(periodo.fecha_inicial || periodo.fecha_final);
@@ -275,6 +305,7 @@
                 : 'Interacciones de contacto del historial disponible. Los eventos automáticos del sistema no se cuentan.',
             'bi-telephone-forward'
         );
+        panel.classList.add('seguimiento-report-activity-insight-panel');
         columna.replaceChildren(panel);
 
         const metricas = document.createElement('div');
@@ -286,7 +317,7 @@
         ));
         metricas.appendChild(crearMetrica(
             formatearNumero(resumen.cobertura_actividad) + '%',
-            'Cobertura de actividad',
+            'Seguimientos con actividad',
             formatearNumero(resumen.seguimientos_con_actividad) + ' de ' +
                 formatearNumero(resumen.seguimientos_considerados) + ' seguimientos'
         ));
@@ -297,8 +328,8 @@
         ));
         metricas.appendChild(crearMetrica(
             formatearNumero(resumen.promedio_por_seguimiento),
-            'Por seguimiento',
-            'Promedio de interacciones'
+            'Promedio por seguimiento',
+            'Interacciones de contacto'
         ));
         panel.appendChild(metricas);
 
@@ -316,9 +347,13 @@
             ['WhatsApp', numero(canales.whatsapp)],
             ['Otros', numero(canales.otros)]
         ].forEach(function (item) {
+            const porcentaje = (item[1] / total) * 100;
             const caja = document.createElement('div');
-            caja.innerHTML = '<span>' + item[0] + '</span><strong>' + formatearNumero(item[1]) + '</strong>';
-            caja.title = ((item[1] / total) * 100).toFixed(1) + '% de las interacciones de contacto';
+            caja.innerHTML =
+                '<span>' + item[0] + '</span>' +
+                '<strong>' + formatearNumero(item[1]) + '</strong>' +
+                '<small>' + porcentaje.toFixed(1) + '%</small>';
+            caja.title = porcentaje.toFixed(1) + '% de las interacciones de contacto';
             listaCanales.appendChild(caja);
         });
         bloqueCanales.appendChild(listaCanales);
@@ -326,6 +361,19 @@
 
         const llamadas = resumen.llamadas || {};
         if (numero(llamadas.total) > 0) {
+            const chips = [
+                '<span><b>' + formatearNumero(llamadas.contactadas) + '</b> Contactadas</span>',
+                '<span><b>' + formatearNumero(llamadas.sin_respuesta) + '</b> Sin respuesta</span>',
+                '<span><b>' + formatearNumero(llamadas.numero_incorrecto) + '</b> Número incorrecto</span>',
+                '<span><b>' + formatearNumero(llamadas.volver_llamar) + '</b> Volver a llamar</span>'
+            ];
+
+            if (numero(llamadas.otros) > 0) {
+                chips.push(
+                    '<span><b>' + formatearNumero(llamadas.otros) + '</b> Otros / sin clasificación</span>'
+                );
+            }
+
             const resultados = document.createElement('div');
             resultados.className = 'seguimiento-report-call-results';
             resultados.innerHTML =
@@ -333,17 +381,12 @@
                     '<strong>Resultado de llamadas</strong>' +
                     '<span>' + formatearNumero(llamadas.tasa_contacto) + '% registradas como contacto efectivo</span>' +
                 '</div>' +
-                '<div class="seguimiento-report-call-chips">' +
-                    '<span><b>' + formatearNumero(llamadas.contactadas) + '</b> Contactadas</span>' +
-                    '<span><b>' + formatearNumero(llamadas.sin_respuesta) + '</b> Sin respuesta</span>' +
-                    '<span><b>' + formatearNumero(llamadas.numero_incorrecto) + '</b> Número incorrecto</span>' +
-                    '<span><b>' + formatearNumero(llamadas.volver_llamar) + '</b> Volver a llamar</span>' +
-                '</div>';
+                '<div class="seguimiento-report-call-chips">' + chips.join('') + '</div>';
             panel.appendChild(resultados);
         }
     }
 
-    function cargarActividad(columna) {
+    function cargarActividad(root, columna) {
         const ids = Array.isArray(window.IMPE_REPORTE_SEGUIMIENTO_IDS)
             ? window.IMPE_REPORTE_SEGUIMIENTO_IDS
                 .map(function (id) { return Number(id); })
@@ -381,6 +424,7 @@
                 if (!datos || !datos.ok || !datos.resumen) {
                     throw new Error('La respuesta de analítica no es válida.');
                 }
+                actualizarResumenOperativo(root, datos.resumen);
                 renderizarActividad(columna, datos.resumen);
             })
             .catch(function () {
@@ -430,7 +474,7 @@
         columnaAvance.replaceChildren(panelAvanceCarga);
 
         esperarAcciones(root, columnaAvance, 0);
-        cargarActividad(columnaActividad);
+        cargarActividad(root, columnaActividad);
     }
 
     function iniciar() {
