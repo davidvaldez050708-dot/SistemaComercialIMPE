@@ -8,6 +8,7 @@ $mostrarRoles = tienePermiso('roles.ver');
 $mostrarTerritorios = tienePermiso('territorios.ver');
 $mostrarDataTerritorial = tienePermiso('data_territorial.ver');
 $mostrarSeguimientoVinculacion = tienePermiso('seguimientos_vinculacion.ver');
+$mostrarReportes = $mostrarDataTerritorial || $mostrarSeguimientoVinculacion;
 
 $claseInicio = $opcionActiva === 'inicio' ? 'active' : '';
 $claseUsuarios = $opcionActiva === 'usuarios' ? 'active' : '';
@@ -17,6 +18,7 @@ $claseDataTerritorial =
     $opcionActiva === 'data_territorial' ? 'active' : '';
 $claseSeguimientoVinculacion =
     $opcionActiva === 'seguimiento_vinculacion' ? 'active' : '';
+$claseReportes = $opcionActiva === 'reportes' ? 'active' : '';
 
 ?>
 
@@ -96,7 +98,7 @@ $claseSeguimientoVinculacion =
 
         <?php endif; ?>
 
-        <?php if ($mostrarDataTerritorial || $mostrarSeguimientoVinculacion): ?>
+        <?php if ($mostrarDataTerritorial || $mostrarSeguimientoVinculacion || $mostrarReportes): ?>
 
             <div class="sidebar-section">
                 <p class="sidebar-section-title">
@@ -121,6 +123,17 @@ $claseSeguimientoVinculacion =
                         class="sidebar-link <?= $claseSeguimientoVinculacion ?>">
                         <i class="bi bi-kanban"></i>
                         Seguimiento
+                    </a>
+
+                <?php endif; ?>
+
+                <?php if ($mostrarReportes): ?>
+
+                    <a
+                        href="<?= BASE_URL ?>index.php?controller=reporte&action=index"
+                        class="sidebar-link <?= $claseReportes ?>">
+                        <i class="bi bi-file-earmark-bar-graph"></i>
+                        Reportes
                     </a>
 
                 <?php endif; ?>
@@ -278,7 +291,7 @@ $claseSeguimientoVinculacion =
 
 
             <!-- VINCULACIÓN -->
-            <?php if ($mostrarDataTerritorial || $mostrarSeguimientoVinculacion): ?>
+            <?php if ($mostrarDataTerritorial || $mostrarSeguimientoVinculacion || $mostrarReportes): ?>
 
                 <div class="sidebar-section">
 
@@ -308,6 +321,19 @@ $claseSeguimientoVinculacion =
 
                             <i class="bi bi-kanban"></i>
                             Seguimiento
+
+                        </a>
+
+                    <?php endif; ?>
+
+                    <?php if ($mostrarReportes): ?>
+
+                        <a
+                            href="<?= BASE_URL ?>index.php?controller=reporte&action=index"
+                            class="sidebar-link <?= $claseReportes ?>">
+
+                            <i class="bi bi-file-earmark-bar-graph"></i>
+                            Reportes
 
                         </a>
 
