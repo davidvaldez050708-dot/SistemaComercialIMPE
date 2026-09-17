@@ -237,6 +237,28 @@ switch ($controller) {
         break;
 
 
+    case 'reporte':
+
+        require_once __DIR__ .
+            '/app/controllers/ReporteController.php';
+
+        $controllerInstance =
+            new ReporteController();
+
+        break;
+
+
+    case 'dataTerritorialReporte':
+
+        require_once __DIR__ .
+            '/app/controllers/DataTerritorialReporteController.php';
+
+        $controllerInstance =
+            new DataTerritorialReporteController();
+
+        break;
+
+
     case 'fuenteOficial':
 
         require_once __DIR__ .
