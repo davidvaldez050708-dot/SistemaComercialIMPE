@@ -70,6 +70,7 @@ class ReporteTerritorialPdfService
         $fechaGeneracion = $this->fecha((string)($reporte['fecha_generacion'] ?? ''));
 
         $logo = $this->logoDataUri();
+        $mapaEstado = $this->mapaEstadoData($estado['mapa_estado'] ?? '');
         $nombreEstado = $this->e($estado['nombre'] ?? 'Territorio');
         $poblacion = $this->numero($estado['poblacion'] ?? null);
         $municipios = $this->numero($estado['total_municipios'] ?? $estado['municipios_cargados'] ?? null);
@@ -85,6 +86,10 @@ class ReporteTerritorialPdfService
             $html .= '<img src="' . $logo . '" alt="Grupo Porcayo">';
         }
         $html .= '</td><td class="header-copy"><div class="eyebrow">SISTEMA COMERCIAL</div><h1>Reporte de Información Territorial</h1><p>' . $nombreEstado . ' · Generado ' . $this->e($fechaGeneracion) . '</p></td></tr></table>';
+
+        if (($mapaEstado['src'] ?? '') !== '') {
+            $html .= '<div class="state-map"><img src="' . $this->e($mapaEstado['src']) . '" alt="Mapa de ' . $nombreEstado . '" width="' . (int)($mapaEstado['width'] ?? 0) . '" height="' . (int)($mapaEstado['height'] ?? 0) . '"></div>';
+        }
 
         $html .= '<div class="section-title first"><span>RESUMEN EJECUTIVO</span><h2>Panorama territorial</h2></div>';
         $html .= '<table class="metrics"><tr>';
@@ -250,7 +255,7 @@ class ReporteTerritorialPdfService
 
     private function css(): string
     {
-        return '@page{margin:24mm 16mm 18mm 16mm}body{font-family:"DejaVu Sans",sans-serif;color:#252525;font-size:9.5pt;line-height:1.38;margin:0}.top-rule{height:4px;background:#0A8F7A;margin:-24mm -16mm 18px}.header{width:100%;border-collapse:collapse;margin-bottom:20px}.brand{width:25%;vertical-align:top}.brand img{width:112px;max-height:58px}.header-copy{text-align:right;vertical-align:top}.eyebrow,.section-title span{color:#0A8F7A;font-size:7.5pt;font-weight:700;letter-spacing:.08em}.header h1{font-size:20pt;color:#16223B;margin:3px 0}.header p{color:#6D7480;margin:0;font-size:8.5pt}.section-title{border-bottom:1px solid #E5E9EF;padding-bottom:6px;margin:18px 0 10px}.section-title.first{margin-top:4px}.section-title h2{font-size:12.5pt;color:#16223B;margin:2px 0 0}.metrics,.mini-metrics,.info-table,.data-table{width:100%;border-collapse:collapse}.metrics{table-layout:fixed;margin-bottom:8px}.metric{border:1px solid #E5E9EF;background:#F8FAFC;padding:10px;vertical-align:top}.metric .label{font-size:7.5pt;color:#6D7480;margin-bottom:5px}.metric .value{font-size:15pt;color:#16223B;font-weight:700}.metric .meta{font-size:7.2pt;color:#8B94A2;margin-top:3px}.metrics.two .metric{width:50%}.info-table td{border-bottom:1px solid #EEF1F5;padding:7px 8px;vertical-align:top}.info-label{width:17%;color:#6D7480;font-size:7.6pt}.info-value{width:33%;font-weight:600;color:#252525}.mini-metrics{table-layout:fixed;margin-bottom:10px}.mini-metric{width:33.33%;border:1px solid #E5E9EF;padding:8px}.mini-metric small{display:block;color:#6D7480;font-size:7.2pt;margin-bottom:3px}.mini-metric strong{color:#16223B;font-size:9pt}.data-table{margin:6px 0 9px;font-size:8.2pt}.data-table th{background:#EDF2FA;color:#273A8A;text-align:left;padding:7px;border:1px solid #D9E2EF;font-weight:700}.data-table td{padding:6px 7px;border:1px solid #E5E9EF;vertical-align:top}.data-table .num{text-align:right}.data-table.compact{font-size:7.8pt}.note,.comparison,.empty,.footer-note{border:1px solid #E5E9EF;background:#F8FAFC;padding:8px 10px;margin:8px 0;color:#4F5968}.comparison strong{color:#16223B}.empty{color:#6D7480}.insights{border:1px solid #E5E9EF;padding:4px 10px}.insight{display:table;width:100%;border-bottom:1px solid #EEF1F5;padding:7px 0}.insight:last-child{border-bottom:0}.insight span,.insight p{display:table-cell;vertical-align:top}.insight span{width:14px;color:#0A8F7A;font-weight:700}.insight p{margin:0}.section-copy{color:#6D7480;font-size:8pt;margin:-4px 0 8px}.footer-note{margin-top:18px;font-size:7.4pt;color:#6D7480}.page-break-avoid{page-break-after:avoid}';
+        return '@page{margin:24mm 16mm 18mm 16mm}body{font-family:"DejaVu Sans",sans-serif;color:#252525;font-size:9pt;line-height:1.38;margin:0}.top-rule{height:4px;background:#0A8F7A;margin:-24mm -16mm 18px}.header{width:100%;border-collapse:collapse;margin-bottom:20px}.brand{width:25%;vertical-align:top}.brand img{width:112px;max-height:58px}.header-copy{text-align:right;vertical-align:top}.eyebrow,.section-title span{color:#0A8F7A;font-size:7.2pt;font-weight:700;letter-spacing:.08em}.header h1{font-size:20pt;color:#16223B;margin:3px 0}.header p{color:#6D7480;margin:0;font-size:8pt}.state-map{text-align:center;margin:0 0 12px;page-break-inside:avoid}.state-map img{display:inline-block}.section-title{border-bottom:1px solid #E5E9EF;padding-bottom:6px;margin:18px 0 10px}.section-title.first{margin-top:4px}.section-title h2{font-size:12.5pt;color:#16223B;margin:2px 0 0}.metrics,.mini-metrics,.info-table,.data-table{width:100%;border-collapse:collapse}.metrics{table-layout:fixed;margin-bottom:8px}.metric{border:1px solid #E5E9EF;background:#F8FAFC;padding:10px;vertical-align:top}.metric .label{font-size:7.2pt;color:#6D7480;margin-bottom:5px}.metric .value{font-size:14.5pt;color:#16223B;font-weight:700}.metric .meta{font-size:7pt;color:#8B94A2;margin-top:3px}.metrics.two .metric{width:50%}.info-table td{border-bottom:1px solid #EEF1F5;padding:7px 8px;vertical-align:top}.info-label{width:17%;color:#6D7480;font-size:7.2pt}.info-value{width:33%;font-weight:600;color:#252525}.mini-metrics{table-layout:fixed;margin-bottom:10px}.mini-metric{width:33.33%;border:1px solid #E5E9EF;padding:8px}.mini-metric small{display:block;color:#6D7480;font-size:7pt;margin-bottom:3px}.mini-metric strong{color:#16223B;font-size:8.6pt}.data-table{margin:6px 0 9px;font-size:7.8pt}.data-table th{background:#EDF2FA;color:#273A8A;text-align:left;padding:7px;border:1px solid #D9E2EF;font-weight:700}.data-table td{padding:6px 7px;border:1px solid #E5E9EF;vertical-align:top}.data-table .num{text-align:right}.data-table.compact{font-size:7.5pt}.note,.comparison,.empty,.footer-note{border:1px solid #E5E9EF;background:#F8FAFC;padding:8px 10px;margin:8px 0;color:#4F5968}.comparison strong{color:#16223B}.empty{color:#6D7480}.insights{border:1px solid #E5E9EF;padding:4px 10px}.insight{display:table;width:100%;border-bottom:1px solid #EEF1F5;padding:7px 0}.insight:last-child{border-bottom:0}.insight span,.insight p{display:table-cell;vertical-align:top}.insight span{width:14px;color:#0A8F7A;font-weight:700}.insight p{margin:0}.section-copy{color:#6D7480;font-size:7.7pt;margin:-4px 0 8px}.footer-note{margin-top:18px;font-size:7.1pt;color:#6D7480}.page-break-avoid{page-break-after:avoid}';
     }
 
     private function metric(string $label, string $value, string $meta): string
@@ -271,6 +276,83 @@ class ReporteTerritorialPdfService
     private function emptyBlock(string $texto): string
     {
         return '<div class="empty">' . $this->e($texto) . '</div>';
+    }
+
+    private function mapaEstadoData($rutaAlmacenada): array
+    {
+        $vacio = ['src' => '', 'width' => 0, 'height' => 0];
+        $ruta = trim(str_replace('\\', '/', (string)$rutaAlmacenada));
+
+        if ($ruta === '' || strpos($ruta, '..') !== false) {
+            return $vacio;
+        }
+
+        $ruta = ltrim($ruta, '/');
+        $directorioPermitido = 'public/uploads/territorios/mapas/';
+
+        if (strpos($ruta, $directorioPermitido) !== 0) {
+            return $vacio;
+        }
+
+        $extension = strtolower((string)pathinfo($ruta, PATHINFO_EXTENSION));
+        if (!in_array($extension, ['jpg', 'jpeg', 'png', 'webp'], true)) {
+            return $vacio;
+        }
+
+        $rutaFisica = dirname(__DIR__, 2) . '/' . $ruta;
+        if (!is_file($rutaFisica) || !is_readable($rutaFisica)) {
+            return $vacio;
+        }
+
+        $contenido = file_get_contents($rutaFisica);
+        if ($contenido === false || $contenido === '') {
+            return $vacio;
+        }
+
+        $mime = $extension === 'jpg' || $extension === 'jpeg'
+            ? 'image/jpeg'
+            : ($extension === 'png' ? 'image/png' : 'image/webp');
+
+        if ($extension === 'webp') {
+            if (!function_exists('imagecreatefromwebp') || !function_exists('imagepng')) {
+                return $vacio;
+            }
+
+            $imagenWebp = @imagecreatefromwebp($rutaFisica);
+            if ($imagenWebp === false) {
+                return $vacio;
+            }
+
+            ob_start();
+            $convertida = imagepng($imagenWebp);
+            $contenidoPng = ob_get_clean();
+
+            if (function_exists('imagedestroy')) {
+                imagedestroy($imagenWebp);
+            }
+
+            if (!$convertida || !is_string($contenidoPng) || $contenidoPng === '') {
+                return $vacio;
+            }
+
+            $contenido = $contenidoPng;
+            $mime = 'image/png';
+        }
+
+        $dimensiones = @getimagesizefromstring($contenido);
+        if (!is_array($dimensiones) || (int)($dimensiones[0] ?? 0) <= 0 || (int)($dimensiones[1] ?? 0) <= 0) {
+            return $vacio;
+        }
+
+        $anchoOriginal = (int)$dimensiones[0];
+        $altoOriginal = (int)$dimensiones[1];
+        $factor = min(150 / $anchoOriginal, 85 / $altoOriginal, 1);
+
+        return [
+            'src' => 'data:' . $mime . ';base64,' . base64_encode($contenido),
+            'width' => max(1, (int)round($anchoOriginal * $factor)),
+            'height' => max(1, (int)round($altoOriginal * $factor))
+        ];
     }
 
     private function logoDataUri(): string
