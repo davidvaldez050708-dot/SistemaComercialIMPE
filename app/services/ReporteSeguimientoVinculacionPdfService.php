@@ -743,6 +743,7 @@ class ReporteSeguimientoVinculacionPdfService
         foreach ($filas as $indice => $valores) {
             $esEncabezado = $encabezado && $indice === 0;
             $fila = $this->crearFila($documento, $esEncabezado);
+            $rellenoFila = $indice % 2 === 0 ? 'FFFFFF' : self::COLOR_FONDO;
 
             foreach ($anchos as $columna => $ancho) {
                 $fila->appendChild($this->crearCelda(
@@ -753,7 +754,7 @@ class ReporteSeguimientoVinculacionPdfService
                         'tamano' => 17,
                         'negrita' => $columna === 0 || $esEncabezado,
                         'color' => $columna === 0 || $esEncabezado ? self::COLOR_PRIMARIO : self::COLOR_TEXTO,
-                        'relleno' => $esEncabezado || $columna === 0 ? self::COLOR_FONDO : 'FFFFFF'
+                        'relleno' => $esEncabezado || $columna === 0 ? self::COLOR_FONDO_PRIMARIO : $rellenoFila
                     ]
                 ));
             }
@@ -789,14 +790,21 @@ class ReporteSeguimientoVinculacionPdfService
         }
         $tabla->appendChild($filaCabecera);
 
-        foreach ($filas as $valores) {
+        foreach ($filas as $indiceFila => $valores) {
             $fila = $this->crearFila($documento, false);
+            $rellenoFila = $indiceFila % 2 === 0 ? 'FFFFFF' : self::COLOR_FONDO;
+
             foreach ($anchos as $indice => $ancho) {
+                $esEstatus = $indice === 3;
                 $fila->appendChild($this->crearCelda(
                     $documento,
                     (string)($valores[$indice] ?? ''),
                     $ancho,
-                    ['tamano' => 14, 'color' => self::COLOR_TEXTO]
+                    [
+                        'tamano' => 14,
+                        'color' => $esEstatus ? self::COLOR_PRIMARIO : self::COLOR_TEXTO,
+                        'relleno' => $esEstatus ? self::COLOR_FONDO_PRIMARIO : $rellenoFila
+                    ]
                 ));
             }
             $tabla->appendChild($fila);
