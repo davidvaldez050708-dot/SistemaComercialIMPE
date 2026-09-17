@@ -299,6 +299,27 @@
         return url.toString();
     }
 
+    function asegurarOrigenEnFormularioModal(iframe) {
+        const origen = new URL(window.location.href).searchParams.get('origen');
+        if (!origen || !iframe.contentDocument) {
+            return;
+        }
+
+        const formulario = iframe.contentDocument.querySelector('form[data-report-form]');
+        if (!formulario) {
+            return;
+        }
+
+        let input = formulario.querySelector('input[name="origen"]');
+        if (!input) {
+            input = iframe.contentDocument.createElement('input');
+            input.type = 'hidden';
+            input.name = 'origen';
+            formulario.appendChild(input);
+        }
+        input.value = origen;
+    }
+
     function crearModalEditarFiltros() {
         let modal = document.getElementById('modalEditarFiltrosReporteSeguimiento');
         if (modal) {
@@ -326,6 +347,15 @@
                     '</div>' +
                 '</div>' +
             '</div>';
+
+        const iframe = modal.querySelector('.seguimiento-report-edit-iframe');
+        iframe?.addEventListener('load', function () {
+            try {
+                asegurarOrigenEnFormularioModal(iframe);
+            } catch (error) {
+                // El formulario sigue siendo utilizable aunque no pueda conservar el origen.
+            }
+        });
 
         document.body.appendChild(modal);
         return modal;
