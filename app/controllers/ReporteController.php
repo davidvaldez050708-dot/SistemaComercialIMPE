@@ -8,8 +8,9 @@ class ReporteController
     {
         $puedeReporteTerritorial = tienePermiso('data_territorial.ver');
         $puedeReporteSeguimiento = tienePermiso('seguimientos_vinculacion.ver');
+        $puedeReporteAdministrador = (int)($_SESSION['rol_id'] ?? 0) === 1;
 
-        if (!$puedeReporteTerritorial && !$puedeReporteSeguimiento) {
+        if (!$puedeReporteTerritorial && !$puedeReporteSeguimiento && !$puedeReporteAdministrador) {
             http_response_code(403);
             die('No tienes permiso para consultar reportes.');
         }
