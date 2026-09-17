@@ -1,0 +1,51 @@
+.seguimiento-report-results .seguimiento-report-advanced-insights > [data-report-flow-insight],
+.seguimiento-report-results .seguimiento-report-advanced-insights > [data-report-activity-insight] {
+    flex: 0 0 100% !important;
+    width: 100% !important;
+    max-width: 100% !important;
+}
+
+.seguimiento-report-results .seguimiento-report-flow-panel .seguimiento-report-breakdown-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px 12px;
+}
+
+.seguimiento-report-results .seguimiento-report-flow-panel .seguimiento-report-breakdown-row {
+    min-width: 0;
+    padding: 10px 11px;
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    background: var(--color-bg);
+}
+
+.seguimiento-report-results .seguimiento-report-flow-panel .seguimiento-report-breakdown-copy {
+    margin-bottom: 6px;
+}
+
+.seguimiento-report-results .seguimiento-report-activity-insight-panel .seguimiento-report-insight-metrics {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.seguimiento-report-results .seguimiento-report-summary-card.is-analytics-pending .metric-value {
+    color: var(--color-text-soft);
+}
+
+.seguimiento-report-results .seguimiento-report-summary-card.is-analytics-pending .seguimiento-report-summary-detail {
+    color: var(--color-text-soft);
+}
+
+@media (max-width: 991.98px) {
+    .seguimiento-report-results .seguimiento-report-flow-panel .seguimiento-report-breakdown-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .seguimiento-report-results .seguimiento-report-activity-insight-panel .seguimiento-report-insight-metrics {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 767.98px) {
+    .seguimiento-report-results .seguimiento-report-flow-panel .seguimiento-report-breakdown-list {
+        grid-template-columns: 1fr;
+    }
+}
