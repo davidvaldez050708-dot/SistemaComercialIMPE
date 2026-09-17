@@ -1,10 +1,21 @@
 .seguimiento-report-results .seguimiento-report-advanced-insights {
     --bs-gutter-x: 16px;
     --bs-gutter-y: 16px;
+    align-items: flex-start;
+}
+
+.seguimiento-report-results .seguimiento-report-advanced-insights > [data-report-flow-insight],
+.seguimiento-report-results .seguimiento-report-advanced-insights > [data-report-activity-insight] {
+    align-self: flex-start;
 }
 
 .seguimiento-report-results .seguimiento-report-insight-panel {
     padding: 17px 19px;
+}
+
+.seguimiento-report-results .seguimiento-report-flow-panel {
+    height: auto !important;
+    min-height: 0 !important;
 }
 
 .seguimiento-report-results .seguimiento-report-insight-heading {
@@ -155,7 +166,8 @@
 }
 
 .seguimiento-report-results .seguimiento-report-channel-grid span,
-.seguimiento-report-results .seguimiento-report-channel-grid strong {
+.seguimiento-report-results .seguimiento-report-channel-grid strong,
+.seguimiento-report-results .seguimiento-report-channel-grid small {
     display: block;
 }
 
@@ -173,6 +185,13 @@
     color: var(--color-text);
     font-size: 14px;
     line-height: 1.1;
+}
+
+.seguimiento-report-results .seguimiento-report-channel-grid small {
+    margin-top: 2px;
+    color: var(--color-text-soft);
+    font-size: 9px;
+    line-height: 1.2;
 }
 
 .seguimiento-report-results .seguimiento-report-call-results {
