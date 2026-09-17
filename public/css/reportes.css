@@ -87,7 +87,24 @@
 
 .report-card-action {
     align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-width: 168px;
+    min-height: 42px;
     margin-top: auto;
+    padding-inline: 16px;
+    text-align: center;
+    line-height: 1;
+}
+
+.report-card-action i,
+.report-card-action span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
 }
 
 .report-filter-panel {
