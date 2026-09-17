@@ -5,6 +5,7 @@ require_once __DIR__ . '/../models/TerritorioModel.php';
 require_once __DIR__ . '/../models/AnalistaDashboardModel.php';
 require_once __DIR__ . '/../services/AnalistaDashboardReunionService.php';
 require_once __DIR__ . '/../services/AnalistaDashboardIntegrityService.php';
+require_once __DIR__ . '/../services/SeguimientoAtencionOperativaService.php';
 require_once __DIR__ . '/../helpers/PermissionHelper.php';
 
 class HomeController
@@ -64,6 +65,19 @@ class HomeController
                     $tableroAnalista,
                     $usuarioId
                 );
+
+                // Fuente única final para "requieren atención" en Inicio y Reportes.
+                $servicioAtencionOperativa = new SeguimientoAtencionOperativaService();
+                $atencionesOperativas = $servicioAtencionOperativa->obtenerPorAnalista($usuarioId);
+                $totalAtencionesOperativas = count($atencionesOperativas);
+
+                $tableroAnalista['atenciones'] = array_slice($atencionesOperativas, 0, 6);
+                $tableroAnalista['resumen']['requieren_atencion'] = $totalAtencionesOperativas;
+                $tableroAnalista['integridad_dashboard'] = is_array(
+                    $tableroAnalista['integridad_dashboard'] ?? null
+                ) ? $tableroAnalista['integridad_dashboard'] : [];
+                $tableroAnalista['integridad_dashboard']['requieren_atencion_total'] =
+                    $totalAtencionesOperativas;
 
                 $vistaPanel = __DIR__ . '/../views/dashboard/analista.php';
                 break;
