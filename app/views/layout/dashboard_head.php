@@ -65,7 +65,8 @@ $cssOpcionalDashboard = [
     'seguimiento_reportes_refinamiento.css',
     'seguimiento_reportes_decisiones_v2.css',
     'seguimiento_reportes_analitica.css',
-    'seguimiento_reportes_presentacion_v3.css'
+    'seguimiento_reportes_presentacion_v3.css',
+    'seguimiento_reportes_institucion_operativa.css'
 ];
 
 $jsOpcionalHead = [
@@ -115,7 +116,8 @@ $jsOpcionalHead = [
     'seguimiento_reportes_decisiones_v2.js',
     'seguimiento_reportes_analitica.js',
     'seguimiento_reportes_presentacion_v3.js',
-    'seguimiento_reportes_atencion_unificada.js'
+    'seguimiento_reportes_atencion_unificada.js',
+    'seguimiento_reportes_institucion_operativa.js'
 ];
 
 ?>
