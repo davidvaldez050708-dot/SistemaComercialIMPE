@@ -25,24 +25,6 @@
         });
     }
 
-    function ocultarProximaAccionIncorrecta(root) {
-        const tabla = root.querySelector('.seguimiento-report-detail-panel table');
-        if (!tabla) {
-            return;
-        }
-
-        ocultarColumna(tabla, indiceColumna(tabla, 'Próxima acción'));
-
-        root.querySelectorAll('.seguimiento-report-attention-action').forEach(function (accion) {
-            accion.remove();
-        });
-
-        const subtituloAtencion = root.querySelector('[data-attention-panel] .seguimiento-report-section-heading .page-subtitle');
-        if (subtituloAtencion) {
-            subtituloAtencion.textContent = 'Se muestran los casos sin actividad registrada o con más de 7 días sin movimiento.';
-        }
-    }
-
     function ocultarResponsableRedundante(root) {
         const tabla = root.querySelector('.seguimiento-report-detail-panel table');
         if (!tabla) {
@@ -151,6 +133,17 @@
         }
     }
 
+    function limpiarAccionIncorrectaAtencion(root) {
+        root.querySelectorAll('.seguimiento-report-attention-action').forEach(function (accion) {
+            accion.remove();
+        });
+
+        const subtituloAtencion = root.querySelector('[data-attention-panel] .seguimiento-report-section-heading .page-subtitle');
+        if (subtituloAtencion) {
+            subtituloAtencion.textContent = 'Se muestran los casos sin actividad registrada o con más de 7 días sin movimiento.';
+        }
+    }
+
     function formatearFechaIso(valor) {
         if (!/^\d{4}-\d{2}-\d{2}$/.test(valor || '')) {
             return '';
@@ -221,11 +214,143 @@
 
         const subtitulo = detalle.querySelector('.seguimiento-report-detail-subtitle');
         if (subtitulo) {
-            subtitulo.textContent = 'Instituciones incluidas y estado actual de su seguimiento.';
+            subtitulo.textContent = 'Instituciones incluidas, estado actual y siguiente paso operativo.';
         }
 
-        ocultarProximaAccionIncorrecta(root);
         ocultarResponsableRedundante(root);
+        limpiarAccionIncorrectaAtencion(root);
+    }
+
+    function sincronizarProximasAcciones(root) {
+        const tabla = root.querySelector('.seguimiento-report-detail-panel table');
+        if (!tabla) {
+            return;
+        }
+
+        const indiceAccion = indiceColumna(tabla, 'Próxima acción');
+        if (indiceAccion < 0) {
+            return;
+        }
+
+        const ids = Array.isArray(window.IMPE_REPORTE_SEGUIMIENTO_IDS)
+            ? window.IMPE_REPORTE_SEGUIMIENTO_IDS
+            : [];
+        const filas = Array.from(tabla.querySelectorAll('tbody tr'));
+
+        filas.forEach(function (fila, indiceFila) {
+            const celda = fila.children[indiceAccion];
+            const seguimientoId = Number(ids[indiceFila] || 0);
+
+            if (!celda) {
+                return;
+            }
+
+            celda.classList.add('seguimiento-report-next-action-cell', 'is-loading');
+            celda.textContent = seguimientoId > 0 ? 'Consultando…' : '—';
+
+            if (seguimientoId <= 0) {
+                celda.classList.remove('is-loading');
+                return;
+            }
+
+            fetch(
+                'index.php?controller=seguimientoFlujo&action=estado&seguimiento_id=' +
+                encodeURIComponent(seguimientoId),
+                {
+                    headers: { 'X-Requested-With': 'fetch' },
+                    cache: 'no-store'
+                }
+            )
+                .then(function (respuesta) {
+                    if (!respuesta.ok) {
+                        throw new Error('No fue posible consultar la ruta del seguimiento.');
+                    }
+                    return respuesta.json();
+                })
+                .then(function (datos) {
+                    const titulo = datos && datos.ok && datos.flujo
+                        ? String(datos.flujo.titulo || datos.flujo.accion_principal?.etiqueta || '').trim()
+                        : '';
+
+                    celda.textContent = titulo !== '' ? titulo : '—';
+                    celda.classList.remove('is-loading');
+                    celda.dataset.flowNextAction = titulo;
+                })
+                .catch(function () {
+                    celda.textContent = '—';
+                    celda.classList.remove('is-loading');
+                });
+        });
+    }
+
+    function ocultarFiltrosTrasGenerar() {
+        const formulario = document.querySelector('form[data-report-form]');
+        const panel = formulario?.closest('section.dashboard-panel');
+
+        if (panel) {
+            panel.classList.add('d-none');
+            panel.setAttribute('aria-hidden', 'true');
+        }
+    }
+
+    function urlModalFiltros() {
+        const url = new URL(window.location.href);
+        url.searchParams.set('modal', '1');
+        return url.toString();
+    }
+
+    function crearModalEditarFiltros() {
+        let modal = document.getElementById('modalEditarFiltrosReporteSeguimiento');
+        if (modal) {
+            return modal;
+        }
+
+        modal = document.createElement('div');
+        modal.className = 'modal fade seguimiento-report-edit-modal';
+        modal.id = 'modalEditarFiltrosReporteSeguimiento';
+        modal.tabIndex = -1;
+        modal.setAttribute('aria-labelledby', 'modalEditarFiltrosReporteSeguimientoTitulo');
+        modal.setAttribute('aria-hidden', 'true');
+        modal.innerHTML =
+            '<div class="modal-dialog modal-dialog-centered modal-xl modal-fullscreen-sm-down">' +
+                '<div class="modal-content system-form-modal">' +
+                    '<div class="modal-header system-form-modal-header">' +
+                        '<div>' +
+                            '<h5 class="system-form-modal-title" id="modalEditarFiltrosReporteSeguimientoTitulo">Editar filtros del reporte</h5>' +
+                            '<p class="system-form-modal-subtitle">Ajusta los criterios y vuelve a generar el reporte.</p>' +
+                        '</div>' +
+                        '<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>' +
+                    '</div>' +
+                    '<div class="modal-body p-0 overflow-hidden">' +
+                        '<iframe class="seguimiento-report-edit-iframe" title="Editar filtros del reporte de seguimiento"></iframe>' +
+                    '</div>' +
+                '</div>' +
+            '</div>';
+
+        document.body.appendChild(modal);
+        return modal;
+    }
+
+    function configurarEditarFiltros(root) {
+        const botonAnterior = root.querySelector('[data-edit-report-filters]');
+        if (!botonAnterior) {
+            return;
+        }
+
+        const boton = botonAnterior.cloneNode(true);
+        botonAnterior.replaceWith(boton);
+
+        boton.addEventListener('click', function () {
+            const modal = crearModalEditarFiltros();
+            const iframe = modal.querySelector('.seguimiento-report-edit-iframe');
+            if (iframe) {
+                iframe.src = urlModalFiltros();
+            }
+
+            if (window.bootstrap && window.bootstrap.Modal) {
+                window.bootstrap.Modal.getOrCreateInstance(modal).show();
+            }
+        });
     }
 
     function aplicar() {
@@ -239,11 +364,14 @@
         }
 
         root.setAttribute('data-decision-report-v2', '');
+        ocultarFiltrosTrasGenerar();
         compactarEncabezado(root);
         compactarResumen(root);
         compactarAtencionVacia(root);
         refinarActividad(root);
         refinarDetalle(root);
+        configurarEditarFiltros(root);
+        sincronizarProximasAcciones(root);
     }
 
     function iniciar() {
