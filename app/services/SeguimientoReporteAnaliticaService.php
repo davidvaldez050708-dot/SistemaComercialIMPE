@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../../config/db_connection.php';
+require_once __DIR__ . '/SeguimientoAtencionOperativaService.php';
 
 class SeguimientoReporteAnaliticaService
 {
@@ -104,6 +105,8 @@ class SeguimientoReporteAnaliticaService
         $totalSeguimientos = count($autorizados);
         $totalInteracciones = count($interacciones);
         $totalConActividad = count($seguimientosConActividad);
+        $atenciones = (new SeguimientoAtencionOperativaService())->obtenerPorIds($autorizados);
+        $totalAtencion = count($atenciones);
 
         return [
             'seguimientos_considerados' => $totalSeguimientos,
@@ -117,6 +120,25 @@ class SeguimientoReporteAnaliticaService
                 : 0.0,
             'canales' => $canales,
             'llamadas' => $llamadas,
+            'atencion' => [
+                'total' => $totalAtencion,
+                'porcentaje' => $totalSeguimientos > 0
+                    ? round(($totalAtencion / $totalSeguimientos) * 100, 1)
+                    : 0.0,
+                'casos' => array_map(static function ($item) {
+                    return [
+                        'id' => (int)($item['id'] ?? 0),
+                        'nombre_entidad' => (string)($item['nombre_entidad'] ?? 'Institución'),
+                        'municipio' => (string)($item['municipio'] ?? ''),
+                        'estado_nombre' => (string)($item['estado_nombre'] ?? ''),
+                        'estado_seguimiento' => (string)($item['estado_seguimiento'] ?? ''),
+                        'tipo' => (string)($item['tipo_atencion'] ?? ''),
+                        'motivo' => (string)($item['motivo_atencion'] ?? ''),
+                        'prioridad' => (int)($item['prioridad'] ?? 0),
+                        'fecha_referencia' => (string)($item['fecha_referencia'] ?? '')
+                    ];
+                }, $atenciones)
+            ],
             'periodo' => [
                 'fecha_inicial' => $fechaInicial,
                 'fecha_final' => $fechaFinal
@@ -293,6 +315,11 @@ class SeguimientoReporteAnaliticaService
                 'volver_llamar' => 0,
                 'otros' => 0,
                 'tasa_contacto' => 0.0
+            ],
+            'atencion' => [
+                'total' => 0,
+                'porcentaje' => 0.0,
+                'casos' => []
             ],
             'periodo' => [
                 'fecha_inicial' => '',
