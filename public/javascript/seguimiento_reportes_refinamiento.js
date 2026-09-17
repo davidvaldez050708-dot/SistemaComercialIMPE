@@ -136,20 +136,38 @@
         });
     }
 
-    function inicializar() {
-        if (!esReporteSeguimiento()) {
+    function refinarColumnasModal(formulario) {
+        const fila = formulario.querySelector('.modal-body > .row');
+        if (!fila) {
             return;
         }
 
-        const parametros = new URLSearchParams(window.location.search);
-        if (parametros.get('modal') === '1') {
-            return;
-        }
+        fila.classList.remove('g-3');
+        fila.classList.add('gx-3', 'gy-2', 'seguimiento-report-modal-grid');
 
-        const formulario = document.querySelector('form[data-report-form]');
-        const panel = formulario?.closest('section.dashboard-panel');
+        Array.from(fila.children).forEach(function (columna) {
+            if (!(columna instanceof HTMLElement)) {
+                return;
+            }
 
-        if (!formulario || !panel) {
+            columna.classList.remove('col-xl-3', 'col-xl-4');
+            columna.classList.add('col-12', 'col-md-6', 'col-lg-4');
+        });
+    }
+
+    function inicializarModal(formulario) {
+        document.body.classList.add('seguimiento-reportes-page', 'seguimiento-reportes-modal-page');
+        formulario.classList.add('seguimiento-report-filter-form', 'seguimiento-report-modal-form');
+
+        refinarColumnasModal(formulario);
+        refinarBotones(formulario);
+        crearAyudaCompacta(formulario);
+    }
+
+    function inicializarPagina(formulario) {
+        const panel = formulario.closest('section.dashboard-panel');
+
+        if (!panel) {
             return;
         }
 
@@ -163,6 +181,25 @@
         refinarRegreso(formulario);
         refinarTopbar();
         refinarExportacion();
+    }
+
+    function inicializar() {
+        if (!esReporteSeguimiento()) {
+            return;
+        }
+
+        const formulario = document.querySelector('form[data-report-form]');
+        if (!formulario) {
+            return;
+        }
+
+        const parametros = new URLSearchParams(window.location.search);
+        if (parametros.get('modal') === '1') {
+            inicializarModal(formulario);
+            return;
+        }
+
+        inicializarPagina(formulario);
     }
 
     if (document.readyState === 'loading') {
