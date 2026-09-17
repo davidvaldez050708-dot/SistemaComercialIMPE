@@ -248,6 +248,17 @@ switch ($controller) {
         break;
 
 
+    case 'reporteAdministrador':
+
+        require_once __DIR__ .
+            '/app/controllers/ReporteAdministradorController.php';
+
+        $controllerInstance =
+            new ReporteAdministradorController();
+
+        break;
+
+
     case 'dataTerritorialReporte':
 
         require_once __DIR__ .
