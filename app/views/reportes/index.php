@@ -1,6 +1,7 @@
 <?php
 $puedeReporteTerritorial = $puedeReporteTerritorial ?? false;
 $puedeReporteSeguimiento = $puedeReporteSeguimiento ?? false;
+$puedeReporteAdministrador = $puedeReporteAdministrador ?? false;
 ?>
 
 <section class="report-module">
@@ -78,6 +79,38 @@ $puedeReporteSeguimiento = $puedeReporteSeguimiento ?? false;
                     href="<?= BASE_URL ?>index.php?controller=seguimientoVinculacionReporte&action=index&origen=reportes">
                     <i class="bi bi-arrow-right-circle" aria-hidden="true"></i>
                     <span>Abrir reporte</span>
+                </a>
+            </article>
+        <?php endif; ?>
+
+        <?php if ($puedeReporteAdministrador): ?>
+            <article class="dashboard-panel report-catalog-card">
+                <div class="report-card-heading">
+                    <span class="metric-icon">
+                        <i class="bi bi-people"></i>
+                    </span>
+                    <div>
+                        <span class="report-card-kicker">ADMINISTRACIÓN</span>
+                        <h3>Reporte de usuarios</h3>
+                    </div>
+                </div>
+
+                <p>
+                    Consolida la información de usuarios del sistema, su estado, último acceso,
+                    carga de seguimientos, acciones programadas y casos que requieren atención.
+                </p>
+
+                <div class="report-card-meta">
+                    <span><i class="bi bi-person-check"></i> Usuarios, roles y estado</span>
+                    <span><i class="bi bi-list-check"></i> Seguimientos y pendientes</span>
+                    <span><i class="bi bi-file-earmark-pdf"></i> Exportación a PDF</span>
+                </div>
+
+                <a
+                    class="btn btn-system-save report-card-action"
+                    href="<?= BASE_URL ?>index.php?controller=reporteAdministrador&action=exportarPdf">
+                    <i class="bi bi-arrow-right-circle" aria-hidden="true"></i>
+                    <span>Generar reporte</span>
                 </a>
             </article>
         <?php endif; ?>
