@@ -44,19 +44,25 @@
 }
 
 .seguimiento-report-institution-focus [data-institution-focus-grid] > div > div {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
     min-height: 66px;
+    height: 100%;
     padding: 10px 12px !important;
     border-radius: 10px !important;
 }
 
 .seguimiento-report-institution-focus [data-institution-focus-grid] small {
-    margin-bottom: 3px !important;
+    margin-bottom: 4px !important;
     font-size: 9.5px !important;
     font-weight: 700 !important;
     line-height: 1.2 !important;
 }
 
 .seguimiento-report-institution-focus [data-institution-focus-grid] strong {
+    margin-bottom: 0 !important;
     font-size: 12.5px !important;
     font-weight: 700 !important;
     line-height: 1.3 !important;
