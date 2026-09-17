@@ -8,8 +8,9 @@ class ReporteSeguimientoVinculacionPdfService
     private const COLOR_PRIMARIO = '273A8A';
     private const COLOR_TEXTO = '16223B';
     private const COLOR_SECUNDARIO = '6D7480';
-    private const COLOR_BORDE = 'D9E2EF';
-    private const COLOR_FONDO = 'F5F7FA';
+    private const COLOR_BORDE = 'E5E9EF';
+    private const COLOR_FONDO = 'F8FAFC';
+    private const COLOR_FONDO_PRIMARIO = 'EDF2FA';
 
     private $rootPath;
     private $templatePath;
@@ -466,7 +467,7 @@ class ReporteSeguimientoVinculacionPdfService
                 $documento,
                 '',
                 $vacio,
-                ['borde' => false, 'relleno' => 'EEF2F7', 'alto' => 180]
+                ['borde' => false, 'relleno' => self::COLOR_FONDO_PRIMARIO, 'alto' => 180]
             ));
             $barra->appendChild($filaBarra);
             $celdaBarra->appendChild($barra);
@@ -751,6 +752,7 @@ class ReporteSeguimientoVinculacionPdfService
                     [
                         'tamano' => 17,
                         'negrita' => $columna === 0 || $esEncabezado,
+                        'color' => $columna === 0 || $esEncabezado ? self::COLOR_PRIMARIO : self::COLOR_TEXTO,
                         'relleno' => $esEncabezado || $columna === 0 ? self::COLOR_FONDO : 'FFFFFF'
                     ]
                 ));
@@ -779,8 +781,8 @@ class ReporteSeguimientoVinculacionPdfService
                 [
                     'tamano' => 15,
                     'negrita' => true,
-                    'color' => 'FFFFFF',
-                    'relleno' => self::COLOR_PRIMARIO,
+                    'color' => self::COLOR_PRIMARIO,
+                    'relleno' => self::COLOR_FONDO_PRIMARIO,
                     'alineacion' => 'center'
                 ]
             ));
@@ -821,7 +823,7 @@ class ReporteSeguimientoVinculacionPdfService
             foreach (['top', 'left', 'bottom', 'right', 'insideH', 'insideV'] as $lado) {
                 $borde = $this->w($documento, $lado);
                 $this->attr($borde, 'w', 'w', 'val', 'single');
-                $this->attr($borde, 'w', 'w', 'sz', '4');
+                $this->attr($borde, 'w', 'w', 'sz', '2');
                 $this->attr($borde, 'w', 'w', 'color', self::COLOR_BORDE);
                 $bordesNodo->appendChild($borde);
             }
