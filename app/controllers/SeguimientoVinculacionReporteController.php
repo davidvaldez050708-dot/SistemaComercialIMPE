@@ -48,6 +48,94 @@ class SeguimientoVinculacionReporteController
         require_once __DIR__ . '/../views/layout/dashboard_footer.php';
     }
 
+    public function opcionesFiltros()
+    {
+        $this->validarPermiso('seguimientos_vinculacion.ver');
+        header('Content-Type: application/json; charset=UTF-8');
+        header('Cache-Control: private, no-store, max-age=0');
+
+        try {
+            $modelo = new SeguimientoVinculacionModel();
+            $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
+            $modoSeguimiento = $this->resolverModoSeguimiento();
+            $territorios = $this->obtenerTerritoriosPorModo(
+                $modelo,
+                $usuarioId,
+                $modoSeguimiento
+            );
+            $territoriosPorId = [];
+
+            foreach ($territorios as $territorio) {
+                $territorioId = (int)($territorio['id'] ?? 0);
+                if ($territorioId > 0) {
+                    $territoriosPorId[$territorioId] = $territorio;
+                }
+            }
+
+            $filtros = $this->obtenerFiltrosReporte();
+            $estadoId = (int)$filtros['estado_id'];
+
+            if ($estadoId > 0 && !isset($territoriosPorId[$estadoId])) {
+                http_response_code(403);
+                echo json_encode([
+                    'ok' => false,
+                    'mensaje' => 'No tienes acceso a este territorio.'
+                ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                return;
+            }
+
+            if ($estadoId <= 0) {
+                $filtros['municipio_id'] = 0;
+            }
+
+            $territoriosConsulta = $estadoId > 0
+                ? [$estadoId => $territoriosPorId[$estadoId]]
+                : $territoriosPorId;
+            $seguimientos = $this->cargarSeguimientosAccesibles(
+                $modelo,
+                $usuarioId,
+                $modoSeguimiento,
+                $territoriosConsulta
+            );
+            $filtros = $this->normalizarFiltrosDependientes(
+                $seguimientos,
+                $filtros,
+                $modoSeguimiento
+            );
+            $opciones = $this->construirOpcionesDependientes(
+                $seguimientos,
+                $filtros,
+                $modoSeguimiento
+            );
+
+            echo json_encode([
+                'ok' => true,
+                'modo' => $modoSeguimiento,
+                'mostrar_responsable' => $modoSeguimiento !== 'analista',
+                'seleccion' => [
+                    'estado_id' => (int)$filtros['estado_id'],
+                    'municipio_id' => (int)$filtros['municipio_id'],
+                    'institucion_id' => (int)$filtros['institucion_id'],
+                    'responsable_id' => (int)$filtros['responsable_id'],
+                    'estado_seguimiento' => (string)$filtros['estado_seguimiento'],
+                    'tipo_actividad' => (string)$filtros['tipo_actividad']
+                ],
+                'municipios' => $opciones['municipios'],
+                'instituciones' => $opciones['instituciones'],
+                'responsables' => $opciones['responsables'],
+                'estatus' => $opciones['estatus'],
+                'canales' => $opciones['canales']
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        } catch (Throwable $error) {
+            error_log('[reporte_filtros_dependientes] ' . $error->getMessage());
+            http_response_code(500);
+            echo json_encode([
+                'ok' => false,
+                'mensaje' => 'No fue posible actualizar los filtros del reporte.'
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        }
+    }
+
     public function exportarPdf()
     {
         $this->validarPermiso('seguimientos_vinculacion.ver');
@@ -164,23 +252,17 @@ class SeguimientoVinculacionReporteController
         $territoriosConsulta = $estadoId > 0
             ? [$estadoId => $territoriosPorId[$estadoId]]
             : $territoriosPorId;
-        $seguimientosDisponibles = [];
-
-        foreach ($territoriosConsulta as $territorioConsultaId => $territorio) {
-            $seguimientosEstado = $this->obtenerSeguimientosPorModo(
-                $modelo,
-                $usuarioId,
-                (int)$territorioConsultaId,
-                $modoSeguimiento,
-                []
-            );
-
-            foreach ($seguimientosEstado as $seguimiento) {
-                $seguimiento['estado_id'] = (int)$territorioConsultaId;
-                $seguimiento['estado_nombre'] = (string)($territorio['nombre'] ?? '');
-                $seguimientosDisponibles[] = $seguimiento;
-            }
-        }
+        $seguimientosDisponibles = $this->cargarSeguimientosAccesibles(
+            $modelo,
+            $usuarioId,
+            $modoSeguimiento,
+            $territoriosConsulta
+        );
+        $filtrosReporte = $this->normalizarFiltrosDependientes(
+            $seguimientosDisponibles,
+            $filtrosReporte,
+            $modoSeguimiento
+        );
 
         $institucionesDisponibles = $this->obtenerInstitucionesDisponibles(
             $seguimientosDisponibles
@@ -191,27 +273,6 @@ class SeguimientoVinculacionReporteController
         $canalesDisponibles = $this->obtenerCanalesDisponibles(
             $seguimientosDisponibles
         );
-
-        if (
-            $filtrosReporte['institucion'] !== '' &&
-            !isset($institucionesDisponibles[$filtrosReporte['institucion']])
-        ) {
-            $filtrosReporte['institucion'] = '';
-        }
-
-        if (
-            (int)$filtrosReporte['responsable_id'] > 0 &&
-            !isset($responsablesDisponibles[(int)$filtrosReporte['responsable_id']])
-        ) {
-            $filtrosReporte['responsable_id'] = 0;
-        }
-
-        if (
-            $filtrosReporte['tipo_actividad'] !== '' &&
-            !isset($canalesDisponibles[$filtrosReporte['tipo_actividad']])
-        ) {
-            $filtrosReporte['tipo_actividad'] = '';
-        }
 
         $errorFiltros = $this->validarPeriodo($filtrosReporte);
         $generarReporte = $forzarGeneracion || (string)($_GET['generar'] ?? '') === '1';
@@ -262,8 +323,228 @@ class SeguimientoVinculacionReporteController
             'seguimientosActividad' => $seguimientosActividad,
             'resumenReporte' => $resumenReporte,
             'generarReporte' => $generarReporte,
-            'errorFiltros' => $errorFiltros
+            'errorFiltros' => $errorFiltros,
+            'modoSeguimiento' => $modoSeguimiento
         ];
+    }
+
+    private function cargarSeguimientosAccesibles($modelo, $usuarioId, $modo, array $territoriosConsulta)
+    {
+        $seguimientosDisponibles = [];
+
+        foreach ($territoriosConsulta as $territorioConsultaId => $territorio) {
+            $seguimientosEstado = $this->obtenerSeguimientosPorModo(
+                $modelo,
+                $usuarioId,
+                (int)$territorioConsultaId,
+                $modo,
+                []
+            );
+
+            foreach ($seguimientosEstado as $seguimiento) {
+                $seguimiento['estado_id'] = (int)$territorioConsultaId;
+                $seguimiento['estado_nombre'] = (string)($territorio['nombre'] ?? '');
+                $seguimientosDisponibles[] = $seguimiento;
+            }
+        }
+
+        return $seguimientosDisponibles;
+    }
+
+    private function normalizarFiltrosDependientes(array $seguimientos, array $filtros, $modo)
+    {
+        $actuales = $seguimientos;
+        $municipioId = (int)($filtros['municipio_id'] ?? 0);
+
+        if ($municipioId > 0) {
+            $coinciden = array_values(array_filter($actuales, function ($seguimiento) use ($municipioId) {
+                return (int)($seguimiento['municipio_id'] ?? 0) === $municipioId;
+            }));
+
+            if (empty($coinciden)) {
+                $filtros['municipio_id'] = 0;
+            } else {
+                $actuales = $coinciden;
+            }
+        }
+
+        $institucionId = (int)($filtros['institucion_id'] ?? 0);
+        $institucionLegacy = trim((string)($filtros['institucion'] ?? ''));
+
+        if ($institucionId <= 0 && $institucionLegacy !== '') {
+            foreach ($actuales as $seguimiento) {
+                if ((string)($seguimiento['nombre_entidad'] ?? '') === $institucionLegacy) {
+                    $institucionId = (int)($seguimiento['id'] ?? 0);
+                    break;
+                }
+            }
+        }
+
+        $filtros['institucion_id'] = 0;
+        $filtros['institucion'] = '';
+
+        if ($institucionId > 0) {
+            $coinciden = array_values(array_filter($actuales, function ($seguimiento) use ($institucionId) {
+                return (int)($seguimiento['id'] ?? 0) === $institucionId;
+            }));
+
+            if (!empty($coinciden)) {
+                $actuales = $coinciden;
+                $filtros['institucion_id'] = $institucionId;
+                $filtros['institucion'] = trim((string)($coinciden[0]['nombre_entidad'] ?? ''));
+            }
+        }
+
+        if ($modo === 'analista') {
+            $filtros['responsable_id'] = 0;
+        } else {
+            $responsableId = (int)($filtros['responsable_id'] ?? 0);
+
+            if ($responsableId > 0) {
+                $coinciden = array_values(array_filter($actuales, function ($seguimiento) use ($responsableId) {
+                    return (int)($seguimiento['analista_id'] ?? 0) === $responsableId;
+                }));
+
+                if (empty($coinciden)) {
+                    $filtros['responsable_id'] = 0;
+                } else {
+                    $actuales = $coinciden;
+                }
+            }
+        }
+
+        $estatus = (string)($filtros['estado_seguimiento'] ?? '');
+        if ($estatus !== '') {
+            $coinciden = array_values(array_filter($actuales, function ($seguimiento) use ($estatus) {
+                return (string)($seguimiento['estado_seguimiento'] ?? '') === $estatus;
+            }));
+
+            if (empty($coinciden)) {
+                $filtros['estado_seguimiento'] = '';
+            } else {
+                $actuales = $coinciden;
+            }
+        }
+
+        $canal = strtoupper(trim((string)($filtros['tipo_actividad'] ?? '')));
+        if ($canal !== '') {
+            $coinciden = array_values(array_filter($actuales, function ($seguimiento) use ($canal) {
+                return strtoupper(trim((string)($seguimiento['ultimo_canal'] ?? ''))) === $canal;
+            }));
+
+            if (empty($coinciden)) {
+                $filtros['tipo_actividad'] = '';
+            }
+        }
+
+        return $filtros;
+    }
+
+    private function construirOpcionesDependientes(array $seguimientos, array $filtros, $modo)
+    {
+        $actuales = $seguimientos;
+        $municipios = [];
+
+        if ((int)($filtros['estado_id'] ?? 0) > 0) {
+            foreach ($actuales as $seguimiento) {
+                $id = (int)($seguimiento['municipio_id'] ?? 0);
+                $nombre = trim((string)($seguimiento['municipio'] ?? ''));
+                if ($id > 0 && $nombre !== '') {
+                    $municipios[$id] = $nombre;
+                }
+            }
+            natcasesort($municipios);
+        }
+
+        if ((int)$filtros['municipio_id'] > 0) {
+            $municipioId = (int)$filtros['municipio_id'];
+            $actuales = array_values(array_filter($actuales, function ($seguimiento) use ($municipioId) {
+                return (int)($seguimiento['municipio_id'] ?? 0) === $municipioId;
+            }));
+        }
+
+        $instituciones = [];
+        foreach ($actuales as $seguimiento) {
+            $id = (int)($seguimiento['id'] ?? 0);
+            $nombre = trim((string)($seguimiento['nombre_entidad'] ?? ''));
+            if ($id > 0 && $nombre !== '') {
+                $instituciones[$id] = $nombre;
+            }
+        }
+        natcasesort($instituciones);
+
+        if ((int)$filtros['institucion_id'] > 0) {
+            $institucionId = (int)$filtros['institucion_id'];
+            $actuales = array_values(array_filter($actuales, function ($seguimiento) use ($institucionId) {
+                return (int)($seguimiento['id'] ?? 0) === $institucionId;
+            }));
+        }
+
+        $responsables = [];
+        if ($modo !== 'analista') {
+            foreach ($actuales as $seguimiento) {
+                $id = (int)($seguimiento['analista_id'] ?? 0);
+                $nombre = trim(
+                    (string)($seguimiento['analista_nombre'] ?? '') . ' ' .
+                    (string)($seguimiento['analista_apellidos'] ?? '')
+                );
+                if ($id > 0 && $nombre !== '') {
+                    $responsables[$id] = $nombre;
+                }
+            }
+            natcasesort($responsables);
+        }
+
+        if ((int)$filtros['responsable_id'] > 0) {
+            $responsableId = (int)$filtros['responsable_id'];
+            $actuales = array_values(array_filter($actuales, function ($seguimiento) use ($responsableId) {
+                return (int)($seguimiento['analista_id'] ?? 0) === $responsableId;
+            }));
+        }
+
+        $estatus = [];
+        foreach ($actuales as $seguimiento) {
+            $codigo = strtoupper(trim((string)($seguimiento['estado_seguimiento'] ?? '')));
+            if ($codigo !== '' && isset(self::ESTADOS_SEGUIMIENTO[$codigo])) {
+                $estatus[$codigo] = self::ESTADOS_SEGUIMIENTO[$codigo];
+            }
+        }
+
+        if ((string)$filtros['estado_seguimiento'] !== '') {
+            $estadoSeguimiento = (string)$filtros['estado_seguimiento'];
+            $actuales = array_values(array_filter($actuales, function ($seguimiento) use ($estadoSeguimiento) {
+                return (string)($seguimiento['estado_seguimiento'] ?? '') === $estadoSeguimiento;
+            }));
+        }
+
+        $canales = [];
+        foreach ($actuales as $seguimiento) {
+            $canal = strtoupper(trim((string)($seguimiento['ultimo_canal'] ?? '')));
+            if ($canal !== '') {
+                $canales[$canal] = $this->etiquetarCanal($canal);
+            }
+        }
+        asort($canales, SORT_NATURAL | SORT_FLAG_CASE);
+
+        return [
+            'municipios' => $this->convertirMapaOpciones($municipios),
+            'instituciones' => $this->convertirMapaOpciones($instituciones),
+            'responsables' => $this->convertirMapaOpciones($responsables),
+            'estatus' => $this->convertirMapaOpciones($estatus),
+            'canales' => $this->convertirMapaOpciones($canales)
+        ];
+    }
+
+    private function convertirMapaOpciones(array $mapa)
+    {
+        $opciones = [];
+        foreach ($mapa as $valor => $etiqueta) {
+            $opciones[] = [
+                'valor' => (string)$valor,
+                'etiqueta' => (string)$etiqueta
+            ];
+        }
+        return $opciones;
     }
 
     private function construirUrlExportacion(array $filtros)
@@ -275,7 +556,7 @@ class SeguimientoVinculacionReporteController
             'fecha_final' => (string)$filtros['fecha_final'],
             'estado_id' => (int)$filtros['estado_id'],
             'municipio_id' => (int)$filtros['municipio_id'],
-            'institucion' => (string)$filtros['institucion'],
+            'institucion_id' => (int)$filtros['institucion_id'],
             'responsable_id' => (int)$filtros['responsable_id'],
             'estado_seguimiento' => (string)$filtros['estado_seguimiento'],
             'tipo_actividad' => (string)$filtros['tipo_actividad'],
@@ -296,7 +577,7 @@ class SeguimientoVinculacionReporteController
             'fecha_final' => (string)$filtros['fecha_final'],
             'estado_id' => (int)$filtros['estado_id'],
             'municipio_id' => (int)$filtros['municipio_id'],
-            'institucion' => (string)$filtros['institucion'],
+            'institucion_id' => (int)$filtros['institucion_id'],
             'responsable_id' => (int)$filtros['responsable_id'],
             'estado_seguimiento' => (string)$filtros['estado_seguimiento'],
             'tipo_actividad' => (string)$filtros['tipo_actividad'],
@@ -321,6 +602,7 @@ class SeguimientoVinculacionReporteController
             'fecha_final' => $this->normalizarFecha($_GET['fecha_final'] ?? ''),
             'estado_id' => $this->enteroPositivo($_GET['estado_id'] ?? 0),
             'municipio_id' => $this->enteroPositivo($_GET['municipio_id'] ?? 0),
+            'institucion_id' => $this->enteroPositivo($_GET['institucion_id'] ?? 0),
             'institucion' => trim((string)($_GET['institucion'] ?? '')),
             'responsable_id' => $this->enteroPositivo($_GET['responsable_id'] ?? 0),
             'estado_seguimiento' => isset(self::ESTADOS_SEGUIMIENTO[$estadoSeguimiento])
@@ -339,8 +621,30 @@ class SeguimientoVinculacionReporteController
             $seguimientos,
             function ($seguimiento) use ($filtros) {
                 if (
+                    (int)$filtros['estado_id'] > 0 &&
+                    (int)($seguimiento['estado_id'] ?? 0) !== (int)$filtros['estado_id']
+                ) {
+                    return false;
+                }
+
+                if (
                     (int)$filtros['municipio_id'] > 0 &&
                     (int)($seguimiento['municipio_id'] ?? 0) !== (int)$filtros['municipio_id']
+                ) {
+                    return false;
+                }
+
+                if (
+                    (int)$filtros['institucion_id'] > 0 &&
+                    (int)($seguimiento['id'] ?? 0) !== (int)$filtros['institucion_id']
+                ) {
+                    return false;
+                }
+
+                if (
+                    (int)$filtros['institucion_id'] <= 0 &&
+                    $filtros['institucion'] !== '' &&
+                    (string)($seguimiento['nombre_entidad'] ?? '') !== $filtros['institucion']
                 ) {
                     return false;
                 }
@@ -355,13 +659,6 @@ class SeguimientoVinculacionReporteController
                 if (
                     $filtros['estado_seguimiento'] !== '' &&
                     (string)($seguimiento['estado_seguimiento'] ?? '') !== $filtros['estado_seguimiento']
-                ) {
-                    return false;
-                }
-
-                if (
-                    $filtros['institucion'] !== '' &&
-                    (string)($seguimiento['nombre_entidad'] ?? '') !== $filtros['institucion']
                 ) {
                     return false;
                 }
@@ -384,7 +681,7 @@ class SeguimientoVinculacionReporteController
                         $seguimiento['ultima_interaccion_at'] ?? ''
                     );
 
-                    if ($diasSinActividad === null || $diasSinActividad <= $diasMinimos) {
+                    if ($diasSinActividad !== null && $diasSinActividad <= $diasMinimos) {
                         return false;
                     }
                 }
@@ -548,7 +845,7 @@ class SeguimientoVinculacionReporteController
             'Estatus' => $filtros['estado_seguimiento'] !== ''
                 ? (self::ESTADOS_SEGUIMIENTO[$filtros['estado_seguimiento']] ?? 'Todos')
                 : 'Todos',
-            'Tipo de actividad' => $filtros['tipo_actividad'] !== ''
+            'Último canal de contacto' => $filtros['tipo_actividad'] !== ''
                 ? (string)($canalesDisponibles[$filtros['tipo_actividad']] ?? 'Todos')
                 : 'Todos',
             'Días sin actividad' => (int)$filtros['dias_sin_actividad'] > 0
