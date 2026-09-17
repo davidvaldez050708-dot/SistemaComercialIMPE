@@ -109,12 +109,17 @@
     border-radius: 14px;
 }
 
+.seguimiento-report-edit-modal .modal-body {
+    min-height: 0;
+}
+
 .seguimiento-report-edit-modal .seguimiento-report-edit-iframe {
     display: block;
     width: 100%;
     height: 315px;
     border: 0;
     background: #fff;
+    overflow: auto;
 }
 
 @media (max-width: 991.98px) {
@@ -147,10 +152,29 @@
     .seguimiento-report-edit-modal .modal-dialog {
         width: 100%;
         max-width: none;
+        height: 100vh;
+        height: 100dvh;
         margin: 0;
     }
 
+    .seguimiento-report-edit-modal .modal-content {
+        height: 100vh;
+        height: 100dvh;
+        max-height: 100vh;
+        max-height: 100dvh;
+        border-radius: 0;
+    }
+
+    .seguimiento-report-edit-modal .modal-body {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow: hidden !important;
+    }
+
     .seguimiento-report-edit-modal .seguimiento-report-edit-iframe {
-        height: calc(100vh - 82px);
+        width: 100%;
+        height: 100%;
+        min-height: 0;
+        overflow: auto;
     }
 }
