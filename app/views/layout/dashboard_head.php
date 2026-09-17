@@ -185,6 +185,15 @@ $jsOpcionalHead = [
                 : [],
             JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
         ) ?>;
+        window.IMPE_REPORTE_SEGUIMIENTO_IDS = <?= json_encode(
+            array_values(array_map(
+                static function ($seguimiento) {
+                    return (int)($seguimiento['id'] ?? 0);
+                },
+                is_array($seguimientosReporte ?? null) ? $seguimientosReporte : []
+            )),
+            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+        ) ?>;
     </script>
 
     <?php foreach ($jsOpcionalHead as $archivoJs): ?>
