@@ -1,6 +1,11 @@
 (function () {
     'use strict';
 
+    function esPaginaReporteSeguimiento() {
+        const parametros = new URLSearchParams(window.location.search);
+        return parametros.get('controller') === 'seguimientoVinculacionReporte';
+    }
+
     function esReporteSeguimiento() {
         const parametros = new URLSearchParams(window.location.search);
         return parametros.get('controller') === 'seguimientoVinculacionReporte' && parametros.get('modal') !== '1';
@@ -23,6 +28,256 @@
                 fila.children[indice].classList.add('d-none');
             }
         });
+    }
+
+    function normalizarOpcion(item) {
+        return {
+            valor: String(item && item.valor !== undefined ? item.valor : ''),
+            etiqueta: String(item && item.etiqueta !== undefined ? item.etiqueta : '')
+        };
+    }
+
+    function reemplazarOpciones(select, items, etiquetaGeneral, seleccionado, deshabilitarSinDatos) {
+        if (!select) {
+            return;
+        }
+
+        const valorSeleccionado = String(seleccionado === undefined || seleccionado === null ? '' : seleccionado);
+        select.replaceChildren(new Option(etiquetaGeneral, select.name === 'municipio_id' || select.name === 'responsable_id' ? '0' : ''));
+
+        (Array.isArray(items) ? items : []).map(normalizarOpcion).forEach(function (item) {
+            const opcion = new Option(item.etiqueta, item.valor);
+            opcion.selected = item.valor === valorSeleccionado;
+            select.add(opcion);
+        });
+
+        if (valorSeleccionado !== '' && valorSeleccionado !== '0') {
+            select.value = valorSeleccionado;
+        }
+
+        if (deshabilitarSinDatos) {
+            select.disabled = (Array.isArray(items) ? items.length : 0) === 0;
+        }
+    }
+
+    function ajustarEtiquetasFiltros(formulario) {
+        const etiquetaDesde = formulario.querySelector('label[for="reporte_fecha_inicial"]');
+        const etiquetaHasta = formulario.querySelector('label[for="reporte_fecha_final"]');
+        const etiquetaCanal = formulario.querySelector('label[for="reporte_actividad"]');
+
+        if (etiquetaDesde) {
+            etiquetaDesde.textContent = 'Seguimiento iniciado desde';
+        }
+        if (etiquetaHasta) {
+            etiquetaHasta.textContent = 'Seguimiento iniciado hasta';
+        }
+        if (etiquetaCanal) {
+            etiquetaCanal.textContent = 'Último canal de contacto';
+        }
+
+        const ayudaCompacta = formulario.querySelector('[data-report-help-compact] span');
+        if (ayudaCompacta) {
+            ayudaCompacta.textContent = 'Las fechas filtran por la fecha de inicio del seguimiento. El canal corresponde a la última interacción registrada.';
+        }
+    }
+
+    function configurarFiltrosDependientes() {
+        const formulario = document.querySelector('form[data-report-form]');
+        if (!formulario || formulario.hasAttribute('data-dependent-report-filters')) {
+            return;
+        }
+
+        formulario.setAttribute('data-dependent-report-filters', '');
+        ajustarEtiquetasFiltros(formulario);
+
+        const estado = formulario.querySelector('#reporte_estado');
+        const municipio = formulario.querySelector('#reporte_municipio');
+        const institucion = formulario.querySelector('#reporte_institucion');
+        const responsable = formulario.querySelector('#reporte_responsable');
+        const estatus = formulario.querySelector('#reporte_estatus');
+        const canal = formulario.querySelector('#reporte_actividad');
+        const parametrosIniciales = new URLSearchParams(window.location.search);
+        let institucionLegacy = parametrosIniciales.get('institucion') || '';
+        let institucionInicial = parametrosIniciales.get('institucion_id') || '0';
+        let solicitudActual = 0;
+
+        if (institucion) {
+            if (institucionInicial === '0' && institucionLegacy === '') {
+                institucionLegacy = String(institucion.value || '');
+            }
+            institucion.name = 'institucion_id';
+            institucion.dataset.reportInstitutionId = institucionInicial;
+        }
+
+        const columnaResponsable = responsable?.closest('.col-md-6, .col-12');
+
+        const valor = function (select, respaldo) {
+            return select ? String(select.value || respaldo || '') : String(respaldo || '');
+        };
+
+        const limpiarDesde = function (origen) {
+            if (origen === 'estado') {
+                if (municipio) municipio.value = '0';
+                if (institucion) institucion.dataset.reportInstitutionId = '0';
+            }
+            if (origen === 'estado' || origen === 'municipio') {
+                if (institucion) {
+                    institucion.value = '';
+                    institucion.dataset.reportInstitutionId = '0';
+                }
+            }
+            if (origen === 'estado' || origen === 'municipio' || origen === 'institucion') {
+                if (responsable) responsable.value = '0';
+            }
+            if (origen !== 'estatus') {
+                if (estatus) estatus.value = '';
+            }
+            if (canal) canal.value = '';
+            institucionLegacy = '';
+        };
+
+        const construirUrl = function () {
+            const url = new URL(window.location.href);
+            url.search = '';
+            url.searchParams.set('controller', 'seguimientoVinculacionReporte');
+            url.searchParams.set('action', 'opcionesFiltros');
+            url.searchParams.set('estado_id', valor(estado, '0'));
+            url.searchParams.set('municipio_id', valor(municipio, '0'));
+
+            const institucionId = institucion
+                ? String(institucion.dataset.reportInstitutionId || institucion.value || '0')
+                : '0';
+            if (/^\d+$/.test(institucionId) && Number(institucionId) > 0) {
+                url.searchParams.set('institucion_id', institucionId);
+            } else if (institucionLegacy !== '') {
+                url.searchParams.set('institucion', institucionLegacy);
+            }
+
+            url.searchParams.set('responsable_id', valor(responsable, '0'));
+            url.searchParams.set('estado_seguimiento', valor(estatus, ''));
+            url.searchParams.set('tipo_actividad', valor(canal, ''));
+            return url.toString();
+        };
+
+        const aplicarRespuesta = function (datos) {
+            if (!datos || !datos.ok) {
+                return;
+            }
+
+            const seleccion = datos.seleccion || {};
+            reemplazarOpciones(
+                municipio,
+                datos.municipios,
+                'Todos',
+                String(seleccion.municipio_id || '0'),
+                true
+            );
+            if (municipio) {
+                municipio.disabled = String(seleccion.estado_id || '0') === '0' || !Array.isArray(datos.municipios) || datos.municipios.length === 0;
+            }
+
+            if (institucion) {
+                reemplazarOpciones(
+                    institucion,
+                    datos.instituciones,
+                    'Todas',
+                    String(seleccion.institucion_id || '0'),
+                    true
+                );
+                institucion.dataset.reportInstitutionId = String(seleccion.institucion_id || '0');
+            }
+
+            if (responsable) {
+                reemplazarOpciones(
+                    responsable,
+                    datos.responsables,
+                    'Todos',
+                    String(seleccion.responsable_id || '0'),
+                    true
+                );
+            }
+
+            reemplazarOpciones(
+                estatus,
+                datos.estatus,
+                'Todos',
+                String(seleccion.estado_seguimiento || ''),
+                true
+            );
+            reemplazarOpciones(
+                canal,
+                datos.canales,
+                'Todos',
+                String(seleccion.tipo_actividad || ''),
+                true
+            );
+
+            if (responsable && columnaResponsable) {
+                const mostrar = datos.mostrar_responsable !== false;
+                columnaResponsable.classList.toggle('d-none', !mostrar);
+                responsable.disabled = !mostrar || !Array.isArray(datos.responsables) || datos.responsables.length === 0;
+                if (!mostrar) {
+                    responsable.value = '0';
+                }
+            }
+
+            institucionLegacy = '';
+        };
+
+        const actualizar = function () {
+            const solicitud = ++solicitudActual;
+            fetch(construirUrl(), {
+                headers: { 'X-Requested-With': 'fetch' },
+                cache: 'no-store'
+            })
+                .then(function (respuesta) {
+                    if (!respuesta.ok) {
+                        throw new Error('No fue posible actualizar los filtros.');
+                    }
+                    return respuesta.json();
+                })
+                .then(function (datos) {
+                    if (solicitud !== solicitudActual) {
+                        return;
+                    }
+                    aplicarRespuesta(datos);
+                })
+                .catch(function () {
+                    // El formulario conserva las opciones renderizadas por el servidor como respaldo.
+                });
+        };
+
+        estado?.addEventListener('change', function () {
+            limpiarDesde('estado');
+            actualizar();
+        });
+        municipio?.addEventListener('change', function () {
+            limpiarDesde('municipio');
+            actualizar();
+        });
+        institucion?.addEventListener('change', function () {
+            institucion.dataset.reportInstitutionId = String(institucion.value || '0');
+            limpiarDesde('institucion');
+            institucion.dataset.reportInstitutionId = String(institucion.value || '0');
+            actualizar();
+        });
+        responsable?.addEventListener('change', function () {
+            limpiarDesde('responsable');
+            actualizar();
+        });
+        estatus?.addEventListener('change', function () {
+            limpiarDesde('estatus');
+            actualizar();
+        });
+
+        formulario.addEventListener('submit', function () {
+            if (institucion) {
+                institucion.name = 'institucion_id';
+                institucion.disabled = false;
+            }
+        });
+
+        actualizar();
     }
 
     function ocultarResponsableRedundante(root) {
@@ -221,6 +476,160 @@
         limpiarAccionIncorrectaAtencion(root);
     }
 
+    function textoCelda(fila, indice, respaldo) {
+        if (!fila || indice < 0 || !fila.children[indice]) {
+            return respaldo || '—';
+        }
+        const texto = fila.children[indice].textContent.trim();
+        return texto !== '' ? texto : (respaldo || '—');
+    }
+
+    function ocultarDistribucionesRedundantes(root) {
+        const ids = ['grafica-estatus-titulo', 'grafica-municipios-titulo'];
+        const filas = new Set();
+
+        ids.forEach(function (id) {
+            const panel = root.querySelector('section[aria-labelledby="' + id + '"]');
+            const columna = panel?.closest('.col-xl-6');
+            if (columna) {
+                columna.classList.add('d-none');
+                const fila = columna.parentElement;
+                if (fila) {
+                    filas.add(fila);
+                }
+            }
+        });
+
+        filas.forEach(function (fila) {
+            const columnasVisibles = Array.from(fila.children).filter(function (columna) {
+                return !columna.classList.contains('d-none');
+            });
+            if (columnasVisibles.length === 0) {
+                fila.classList.add('d-none');
+            }
+        });
+    }
+
+    function crearVistaInstitucion(root) {
+        const parametros = new URLSearchParams(window.location.search);
+        const institucionId = Number(parametros.get('institucion_id') || 0);
+        if (!Number.isInteger(institucionId) || institucionId <= 0 || root.querySelector('[data-institution-focus]')) {
+            return;
+        }
+
+        const tabla = root.querySelector('.seguimiento-report-detail-panel table');
+        const fila = tabla?.querySelector('tbody tr');
+        if (!tabla || !fila) {
+            return;
+        }
+
+        const indiceInstitucion = indiceColumna(tabla, 'Institución');
+        const indiceEstado = indiceColumna(tabla, 'Estado');
+        const indiceMunicipio = indiceColumna(tabla, 'Municipio');
+        const indiceResponsable = indiceColumna(tabla, 'Responsable');
+        const indiceUltima = indiceColumna(tabla, 'Última actividad');
+        const indiceEstatus = indiceColumna(tabla, 'Estatus');
+        const indiceDias = indiceColumna(tabla, 'Días sin actividad');
+        const indiceAccion = indiceColumna(tabla, 'Próxima acción');
+
+        const nombre = textoCelda(fila, indiceInstitucion, 'Institución seleccionada');
+        const estado = textoCelda(fila, indiceEstado, '—');
+        const municipio = textoCelda(fila, indiceMunicipio, '—');
+        const responsable = textoCelda(fila, indiceResponsable, '—');
+        const ultima = textoCelda(fila, indiceUltima, 'Sin actividad registrada');
+        const estatus = textoCelda(fila, indiceEstatus, 'Sin estado');
+        const diasTexto = textoCelda(fila, indiceDias, '—');
+        const dias = diasTexto === '—' ? 'Sin actividad registrada' : diasTexto + (diasTexto === '1' ? ' día' : ' días');
+        const accion = textoCelda(fila, indiceAccion, '—');
+
+        const contexto = root.querySelector('[data-report-context]');
+        if (contexto) {
+            const ubicacion = [municipio !== '—' ? municipio : '', estado !== '—' ? estado : ''].filter(Boolean).join(', ');
+            contexto.textContent = [nombre, ubicacion, responsable !== '—' ? responsable : ''].filter(Boolean).join(' · ');
+        }
+
+        const panel = document.createElement('section');
+        panel.className = 'dashboard-panel mb-4';
+        panel.setAttribute('data-institution-focus', '');
+        panel.innerHTML =
+            '<div class="seguimiento-report-section-heading mb-3">' +
+                '<div>' +
+                    '<span class="report-eyebrow">INSTITUCIÓN SELECCIONADA</span>' +
+                    '<h3 class="panel-title mb-1"></h3>' +
+                    '<p class="page-subtitle mb-0">Estado actual y siguiente paso del seguimiento.</p>' +
+                '</div>' +
+            '</div>' +
+            '<div class="row g-3" data-institution-focus-grid></div>';
+
+        panel.querySelector('.panel-title').textContent = nombre;
+        const grid = panel.querySelector('[data-institution-focus-grid]');
+        const datos = [
+            ['Ubicación', [municipio, estado].filter(function (item) { return item && item !== '—'; }).join(', ') || '—', 'col-md-6 col-xl-4'],
+            ['Responsable', responsable, 'col-md-6 col-xl-4'],
+            ['Estatus actual', estatus, 'col-md-6 col-xl-4'],
+            ['Última actividad', ultima, 'col-md-6 col-xl-4'],
+            ['Días sin actividad', dias, 'col-md-6 col-xl-4'],
+            ['Próxima acción', accion, 'col-md-6 col-xl-4']
+        ];
+
+        datos.forEach(function (dato, indice) {
+            const columna = document.createElement('div');
+            columna.className = dato[2];
+            const caja = document.createElement('div');
+            caja.className = 'border rounded-3 p-3 h-100 bg-white';
+            const etiqueta = document.createElement('small');
+            etiqueta.className = 'd-block text-muted fw-semibold mb-1';
+            etiqueta.textContent = dato[0];
+            const valor = document.createElement('strong');
+            valor.className = 'd-block';
+            valor.textContent = dato[1];
+            if (indice === 5) {
+                valor.setAttribute('data-institution-next-action', '');
+            }
+            caja.appendChild(etiqueta);
+            caja.appendChild(valor);
+            columna.appendChild(caja);
+            grid.appendChild(columna);
+        });
+
+        const resumen = root.querySelector('[data-operational-summary]');
+        if (resumen && resumen.parentElement) {
+            resumen.parentElement.insertBefore(panel, resumen);
+        } else {
+            root.prepend(panel);
+        }
+
+        ocultarColumna(tabla, indiceInstitucion);
+        ocultarDistribucionesRedundantes(root);
+
+        const detalle = root.querySelector('.seguimiento-report-detail-panel');
+        const tituloDetalle = detalle?.querySelector('.panel-title');
+        const subtituloDetalle = detalle?.querySelector('.seguimiento-report-detail-subtitle');
+        if (tituloDetalle) {
+            tituloDetalle.textContent = 'Detalle del seguimiento';
+        }
+        if (subtituloDetalle) {
+            subtituloDetalle.textContent = 'Información operativa de la institución seleccionada.';
+        }
+    }
+
+    function ajustarAnaliticaInstitucion(root) {
+        const parametros = new URLSearchParams(window.location.search);
+        if (Number(parametros.get('institucion_id') || 0) <= 0) {
+            return;
+        }
+
+        const panel = root.querySelector('.seguimiento-report-flow-panel');
+        const titulo = panel?.querySelector('.panel-title');
+        const subtitulo = panel?.querySelector('.page-subtitle');
+        if (titulo) {
+            titulo.textContent = 'Etapa actual de vinculación';
+        }
+        if (subtitulo) {
+            subtitulo.textContent = 'Punto operativo actual de la institución seleccionada.';
+        }
+    }
+
     function sincronizarProximasAcciones(root) {
         const tabla = root.querySelector('.seguimiento-report-detail-panel table');
         if (!tabla) {
@@ -271,14 +680,27 @@
                     const titulo = datos && datos.ok && datos.flujo
                         ? String(datos.flujo.titulo || datos.flujo.accion_principal?.etiqueta || '').trim()
                         : '';
+                    const texto = titulo !== '' ? titulo : '—';
 
-                    celda.textContent = titulo !== '' ? titulo : '—';
+                    celda.textContent = texto;
                     celda.classList.remove('is-loading');
                     celda.dataset.flowNextAction = titulo;
+                    if (indiceFila === 0) {
+                        const foco = root.querySelector('[data-institution-next-action]');
+                        if (foco) {
+                            foco.textContent = texto;
+                        }
+                    }
                 })
                 .catch(function () {
                     celda.textContent = '—';
                     celda.classList.remove('is-loading');
+                    if (indiceFila === 0) {
+                        const foco = root.querySelector('[data-institution-next-action]');
+                        if (foco) {
+                            foco.textContent = '—';
+                        }
+                    }
                 });
         });
     }
@@ -400,11 +822,19 @@
         compactarAtencionVacia(root);
         refinarActividad(root);
         refinarDetalle(root);
+        crearVistaInstitucion(root);
         configurarEditarFiltros(root);
         sincronizarProximasAcciones(root);
+        window.setTimeout(function () { ajustarAnaliticaInstitucion(root); }, 500);
+        window.setTimeout(function () { ajustarAnaliticaInstitucion(root); }, 1400);
     }
 
     function iniciar() {
+        if (!esPaginaReporteSeguimiento()) {
+            return;
+        }
+
+        configurarFiltrosDependientes();
         window.setTimeout(aplicar, 0);
     }
 
