@@ -63,7 +63,8 @@ $cssOpcionalDashboard = [
     'seguimiento_expediente_correos.css',
     'reportes.css',
     'seguimiento_reportes_refinamiento.css',
-    'seguimiento_reportes_decisiones_v2.css'
+    'seguimiento_reportes_decisiones_v2.css',
+    'seguimiento_reportes_analitica.css'
 ];
 
 $jsOpcionalHead = [
@@ -110,7 +111,8 @@ $jsOpcionalHead = [
     'seguimiento_expediente_correos.js',
     'reportes_accesos.js',
     'seguimiento_reportes_refinamiento.js',
-    'seguimiento_reportes_decisiones_v2.js'
+    'seguimiento_reportes_decisiones_v2.js',
+    'seguimiento_reportes_analitica.js'
 ];
 
 ?>
