@@ -249,10 +249,35 @@
         mostrarTerritorioPendiente();
     }
 
+    function enfocarReporteSeguimientoGenerado() {
+        const parametros = new URLSearchParams(window.location.search);
+
+        if (
+            parametros.get('controller') !== 'seguimientoVinculacionReporte' ||
+            parametros.get('generar') !== '1' ||
+            parametros.get('modal') === '1'
+        ) {
+            return;
+        }
+
+        const reporte = document.querySelector(
+            'section[aria-labelledby="titulo-reporte-seguimiento"]'
+        );
+
+        if (!reporte) {
+            return;
+        }
+
+        window.setTimeout(function () {
+            reporte.scrollIntoView({ block: 'start' });
+        }, 50);
+    }
+
     function inicializar() {
         sincronizarModuloReportesSidebar();
         agregarAccesoReporteTerritorial();
         inicializarFlujoReporteTerritorial();
+        enfocarReporteSeguimientoGenerado();
     }
 
     if (document.readyState === 'loading') {
