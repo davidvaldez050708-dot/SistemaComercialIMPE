@@ -48,4 +48,34 @@
     .seguimiento-report-results .seguimiento-report-flow-panel .seguimiento-report-breakdown-list {
         grid-template-columns: 1fr;
     }
+
+    .seguimiento-report-results > .d-flex:first-child {
+        gap: 14px !important;
+    }
+
+    .seguimiento-report-results > .d-flex:first-child > .d-flex:last-child {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        flex: 0 0 100%;
+        width: 100%;
+        gap: 8px !important;
+        align-items: stretch !important;
+        justify-content: stretch !important;
+    }
+
+    .seguimiento-report-results > .d-flex:first-child > .d-flex:last-child .seguimiento-report-edit-filters,
+    .seguimiento-report-results > .d-flex:first-child > .d-flex:last-child .seguimiento-report-export {
+        width: 100%;
+        min-width: 0;
+        min-height: 46px;
+        margin: 0;
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+}
+
+@media (max-width: 479.98px) {
+    .seguimiento-report-results > .d-flex:first-child > .d-flex:last-child {
+        grid-template-columns: 1fr;
+    }
 }
