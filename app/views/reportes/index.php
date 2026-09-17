@@ -44,8 +44,8 @@ $puedeReporteSeguimiento = $puedeReporteSeguimiento ?? false;
                 <a
                     class="btn btn-system-save report-card-action"
                     href="<?= BASE_URL ?>index.php?controller=dataTerritorialReporte&action=index">
-                    <i class="bi bi-arrow-right-circle me-2"></i>
-                    Generar reporte
+                    <i class="bi bi-arrow-right-circle" aria-hidden="true"></i>
+                    <span>Generar reporte</span>
                 </a>
             </article>
         <?php endif; ?>
@@ -74,10 +74,10 @@ $puedeReporteSeguimiento = $puedeReporteSeguimiento ?? false;
                 </div>
 
                 <a
-                    class="btn btn-system-light report-card-action"
+                    class="btn btn-system-save report-card-action"
                     href="<?= BASE_URL ?>index.php?controller=seguimientoVinculacionReporte&action=index">
-                    <i class="bi bi-arrow-right-circle me-2"></i>
-                    Abrir reporte
+                    <i class="bi bi-arrow-right-circle" aria-hidden="true"></i>
+                    <span>Abrir reporte</span>
                 </a>
             </article>
         <?php endif; ?>
