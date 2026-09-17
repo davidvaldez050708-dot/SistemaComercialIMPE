@@ -114,7 +114,8 @@ $jsOpcionalHead = [
     'seguimiento_reportes_refinamiento.js',
     'seguimiento_reportes_decisiones_v2.js',
     'seguimiento_reportes_analitica.js',
-    'seguimiento_reportes_presentacion_v3.js'
+    'seguimiento_reportes_presentacion_v3.js',
+    'seguimiento_reportes_atencion_unificada.js'
 ];
 
 ?>
