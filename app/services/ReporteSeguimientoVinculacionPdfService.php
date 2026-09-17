@@ -499,6 +499,7 @@ class ReporteSeguimientoVinculacionPdfService
 
         $anchoCoordenadas = 1000;
         $altoCoordenadas = 340;
+        $altoRenderizadoPuntos = 260;
         $izquierda = 76;
         $derecha = 972;
         $superior = 24;
@@ -538,6 +539,8 @@ class ReporteSeguimientoVinculacionPdfService
         $espaciado = $this->w($documento, 'spacing');
         $this->attr($espaciado, 'w', 'w', 'before', '0');
         $this->attr($espaciado, 'w', 'w', 'after', '80');
+        $this->attr($espaciado, 'w', 'w', 'line', (string)((int)round($altoRenderizadoPuntos * 20)));
+        $this->attr($espaciado, 'w', 'w', 'lineRule', 'exact');
         $propiedades->appendChild($espaciado);
         $parrafo->appendChild($propiedades);
 
@@ -549,7 +552,7 @@ class ReporteSeguimientoVinculacionPdfService
         $anchoPuntos = max(360, min(520, round($anchoUtil / 20, 2)));
         $grupo->setAttribute(
             'style',
-            'position:relative;width:' . $anchoPuntos . 'pt;height:260pt;'
+            'position:relative;width:' . $anchoPuntos . 'pt;height:' . $altoRenderizadoPuntos . 'pt;'
         );
 
         for ($nivel = 0; $nivel <= 4; $nivel++) {
