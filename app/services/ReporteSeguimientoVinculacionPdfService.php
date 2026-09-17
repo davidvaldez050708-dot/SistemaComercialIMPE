@@ -4,6 +4,7 @@ class ReporteSeguimientoVinculacionPdfService
 {
     private const W_NS = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
     private const XML_NS = 'http://www.w3.org/XML/1998/namespace';
+    private const V_NS = 'urn:schemas-microsoft-com:vml';
     private const COLOR_PRIMARIO = '273A8A';
     private const COLOR_TEXTO = '16223B';
     private const COLOR_SECUNDARIO = '6D7480';
@@ -184,6 +185,7 @@ class ReporteSeguimientoVinculacionPdfService
         $resumenFiltros = $datosReporte['resumen_filtros'] ?? [];
         $resumenReporte = $datosReporte['resumen_reporte'] ?? [];
         $seguimientos = $datosReporte['seguimientos'] ?? [];
+        $evolucionActividad = $datosReporte['evolucion_actividad'] ?? [];
         $etiquetasEstatus = $datosReporte['etiquetas_estatus'] ?? [];
         $fechaGeneracion = trim((string)($datosReporte['fecha_generacion'] ?? ''));
         $elementos = [];
@@ -262,6 +264,60 @@ class ReporteSeguimientoVinculacionPdfService
         );
         $elementos[] = $this->crearEspaciador($documento, 120);
 
+        $elementos[] = $this->crearSaltoPagina($documento);
+        $elementos[] = $this->crearTituloSeccion($documento, 'Evolución de la actividad');
+        $elementos[] = $this->crearParrafo(
+            $documento,
+            'Actividades registradas durante el periodo seleccionado.',
+            ['tamano' => 17, 'color' => self::COLOR_SECUNDARIO, 'despues' => 90, 'mantener_siguiente' => true]
+        );
+
+        $mayorActividad = $evolucionActividad['mayor'] ?? ['etiqueta' => '—', 'total' => 0];
+        $menorActividad = $evolucionActividad['menor'] ?? ['etiqueta' => '—', 'total' => 0];
+        $variacionActividad = 'Sin comparación disponible';
+
+        if (!empty($evolucionActividad['comparacion_disponible'])) {
+            $variacion = (float)($evolucionActividad['variacion'] ?? 0);
+            $variacionActividad = ($variacion > 0 ? '+' : '') . number_format($variacion, 1) . '%';
+        }
+
+        $filasEvolucion = [
+            ['Actividades en el periodo', (string)((int)($evolucionActividad['total'] ?? 0))],
+            [
+                'Mayor actividad',
+                (string)($mayorActividad['etiqueta'] ?? '—') . ' · ' .
+                (int)($mayorActividad['total'] ?? 0) . ' actividades'
+            ],
+            [
+                'Menor actividad',
+                (string)($menorActividad['etiqueta'] ?? '—') . ' · ' .
+                (int)($menorActividad['total'] ?? 0) . ' actividades'
+            ],
+            ['Variación vs. periodo anterior', $variacionActividad]
+        ];
+        $elementos[] = $this->crearTablaSimple(
+            $documento,
+            $filasEvolucion,
+            [(int)round($anchoUtil * 0.38), (int)round($anchoUtil * 0.62)],
+            false
+        );
+        $elementos[] = $this->crearEspaciador($documento, 80);
+
+        $periodosActividad = $evolucionActividad['periodos'] ?? [];
+        $elementos = array_merge(
+            $elementos,
+            $this->crearGraficaLineaActividad($documento, $periodosActividad, $anchoUtil)
+        );
+
+        if (!empty($evolucionActividad['sin_datos'])) {
+            $elementos[] = $this->crearParrafo(
+                $documento,
+                'No se registraron actividades durante el periodo seleccionado.',
+                ['tamano' => 17, 'color' => self::COLOR_SECUNDARIO, 'despues' => 70]
+            );
+        }
+
+        $elementos[] = $this->crearEspaciador($documento, 120);
         $elementos[] = $this->crearTituloSeccion($documento, 'Detalle de seguimientos');
 
         if (empty($seguimientos)) {
@@ -337,6 +393,17 @@ class ReporteSeguimientoVinculacionPdfService
     private function crearEspaciador(DOMDocument $documento, $despues)
     {
         return $this->crearParrafo($documento, '', ['tamano' => 6, 'despues' => (int)$despues]);
+    }
+
+    private function crearSaltoPagina(DOMDocument $documento)
+    {
+        $parrafo = $this->w($documento, 'p');
+        $run = $this->w($documento, 'r');
+        $salto = $this->w($documento, 'br');
+        $this->attr($salto, 'w', 'w', 'type', 'page');
+        $run->appendChild($salto);
+        $parrafo->appendChild($run);
+        return $parrafo;
     }
 
     private function crearGraficaBarras(
@@ -416,6 +483,250 @@ class ReporteSeguimientoVinculacionPdfService
         }
 
         return [$tabla];
+    }
+
+    private function crearGraficaLineaActividad(DOMDocument $documento, array $periodos, $anchoUtil)
+    {
+        if (empty($periodos)) {
+            return [
+                $this->crearParrafo(
+                    $documento,
+                    'No se registraron actividades durante el periodo seleccionado.',
+                    ['tamano' => 17, 'color' => self::COLOR_SECUNDARIO, 'despues' => 60]
+                )
+            ];
+        }
+
+        $anchoCoordenadas = 1000;
+        $altoCoordenadas = 340;
+        $izquierda = 76;
+        $derecha = 972;
+        $superior = 24;
+        $inferior = 258;
+        $anchoGrafica = $derecha - $izquierda;
+        $altoGrafica = $inferior - $superior;
+        $totales = array_map(static function ($periodo) {
+            return max(0, (int)($periodo['total'] ?? 0));
+        }, $periodos);
+        $maximoDatos = max(0, max($totales));
+        $escalaMaxima = max(4, (int)(ceil(max(1, $maximoDatos) / 4) * 4));
+        $cantidadPeriodos = count($periodos);
+        $pasoX = $cantidadPeriodos > 1
+            ? $anchoGrafica / ($cantidadPeriodos - 1)
+            : 0;
+        $puntos = [];
+
+        foreach ($periodos as $indice => $periodo) {
+            $x = $cantidadPeriodos > 1
+                ? $izquierda + ($pasoX * $indice)
+                : $izquierda + ($anchoGrafica / 2);
+            $total = max(0, (int)($periodo['total'] ?? 0));
+            $y = $inferior - (($total / $escalaMaxima) * $altoGrafica);
+            $puntos[] = [
+                'x' => $x,
+                'y' => $y,
+                'total' => $total,
+                'etiqueta' => (string)($periodo['etiqueta'] ?? '')
+            ];
+        }
+
+        $parrafo = $this->w($documento, 'p');
+        $propiedades = $this->w($documento, 'pPr');
+        $alineacion = $this->w($documento, 'jc');
+        $this->attr($alineacion, 'w', 'w', 'val', 'center');
+        $propiedades->appendChild($alineacion);
+        $espaciado = $this->w($documento, 'spacing');
+        $this->attr($espaciado, 'w', 'w', 'before', '0');
+        $this->attr($espaciado, 'w', 'w', 'after', '80');
+        $propiedades->appendChild($espaciado);
+        $parrafo->appendChild($propiedades);
+
+        $run = $this->w($documento, 'r');
+        $pict = $this->w($documento, 'pict');
+        $grupo = $documento->createElementNS(self::V_NS, 'v:group');
+        $grupo->setAttribute('coordorigin', '0,0');
+        $grupo->setAttribute('coordsize', $anchoCoordenadas . ',' . $altoCoordenadas);
+        $anchoPuntos = max(360, min(520, round($anchoUtil / 20, 2)));
+        $grupo->setAttribute(
+            'style',
+            'position:relative;width:' . $anchoPuntos . 'pt;height:260pt;'
+        );
+
+        for ($nivel = 0; $nivel <= 4; $nivel++) {
+            $y = $superior + (($altoGrafica / 4) * $nivel);
+            $valor = (int)round($escalaMaxima * (1 - ($nivel / 4)));
+            $grupo->appendChild($this->crearVmlLinea(
+                $documento,
+                $izquierda,
+                $y,
+                $derecha,
+                $y,
+                self::COLOR_BORDE,
+                '0.6pt'
+            ));
+            $grupo->appendChild($this->crearVmlTexto(
+                $documento,
+                4,
+                $y - 11,
+                60,
+                22,
+                (string)$valor,
+                14,
+                'right',
+                self::COLOR_SECUNDARIO
+            ));
+        }
+
+        $grupo->appendChild($this->crearVmlLinea(
+            $documento,
+            $izquierda,
+            $superior,
+            $izquierda,
+            $inferior,
+            self::COLOR_SECUNDARIO,
+            '0.8pt'
+        ));
+        $grupo->appendChild($this->crearVmlLinea(
+            $documento,
+            $izquierda,
+            $inferior,
+            $derecha,
+            $inferior,
+            self::COLOR_SECUNDARIO,
+            '0.8pt'
+        ));
+
+        for ($indice = 1; $indice < count($puntos); $indice++) {
+            $anterior = $puntos[$indice - 1];
+            $actual = $puntos[$indice];
+            $grupo->appendChild($this->crearVmlLinea(
+                $documento,
+                $anterior['x'],
+                $anterior['y'],
+                $actual['x'],
+                $actual['y'],
+                self::COLOR_PRIMARIO,
+                '2.2pt'
+            ));
+        }
+
+        $saltoEtiquetas = max(1, (int)ceil($cantidadPeriodos / 8));
+        $mostrarValores = $cantidadPeriodos <= 16;
+
+        foreach ($puntos as $indice => $punto) {
+            $circulo = $documento->createElementNS(self::V_NS, 'v:oval');
+            $circulo->setAttribute(
+                'style',
+                'position:absolute;left:' . number_format($punto['x'] - 5, 2, '.', '') .
+                ';top:' . number_format($punto['y'] - 5, 2, '.', '') .
+                ';width:10;height:10;'
+            );
+            $circulo->setAttribute('fillcolor', '#' . self::COLOR_PRIMARIO);
+            $circulo->setAttribute('strokecolor', '#FFFFFF');
+            $circulo->setAttribute('strokeweight', '1.5pt');
+            $grupo->appendChild($circulo);
+
+            if ($mostrarValores) {
+                $grupo->appendChild($this->crearVmlTexto(
+                    $documento,
+                    $punto['x'] - 25,
+                    max(0, $punto['y'] - 28),
+                    50,
+                    18,
+                    (string)$punto['total'],
+                    13,
+                    'center',
+                    self::COLOR_TEXTO,
+                    true
+                ));
+            }
+
+            if ($indice % $saltoEtiquetas === 0 || $indice === $cantidadPeriodos - 1) {
+                $grupo->appendChild($this->crearVmlTexto(
+                    $documento,
+                    $punto['x'] - 55,
+                    278,
+                    110,
+                    36,
+                    $punto['etiqueta'],
+                    13,
+                    'center',
+                    self::COLOR_SECUNDARIO
+                ));
+            }
+        }
+
+        $pict->appendChild($grupo);
+        $run->appendChild($pict);
+        $parrafo->appendChild($run);
+
+        return [$parrafo];
+    }
+
+    private function crearVmlLinea(
+        DOMDocument $documento,
+        $x1,
+        $y1,
+        $x2,
+        $y2,
+        $color,
+        $grosor
+    ) {
+        $linea = $documento->createElementNS(self::V_NS, 'v:line');
+        $linea->setAttribute(
+            'from',
+            number_format((float)$x1, 2, '.', '') . ',' . number_format((float)$y1, 2, '.', '')
+        );
+        $linea->setAttribute(
+            'to',
+            number_format((float)$x2, 2, '.', '') . ',' . number_format((float)$y2, 2, '.', '')
+        );
+        $linea->setAttribute('strokecolor', '#' . (string)$color);
+        $linea->setAttribute('strokeweight', (string)$grosor);
+        return $linea;
+    }
+
+    private function crearVmlTexto(
+        DOMDocument $documento,
+        $x,
+        $y,
+        $ancho,
+        $alto,
+        $texto,
+        $tamano,
+        $alineacion,
+        $color,
+        $negrita = false
+    ) {
+        $rectangulo = $documento->createElementNS(self::V_NS, 'v:rect');
+        $rectangulo->setAttribute(
+            'style',
+            'position:absolute;left:' . number_format((float)$x, 2, '.', '') .
+            ';top:' . number_format((float)$y, 2, '.', '') .
+            ';width:' . number_format((float)$ancho, 2, '.', '') .
+            ';height:' . number_format((float)$alto, 2, '.', '') . ';'
+        );
+        $rectangulo->setAttribute('filled', 'f');
+        $rectangulo->setAttribute('stroked', 'f');
+
+        $cajaTexto = $documento->createElementNS(self::V_NS, 'v:textbox');
+        $cajaTexto->setAttribute('inset', '0,0,0,0');
+        $contenido = $this->w($documento, 'txbxContent');
+        $contenido->appendChild($this->crearParrafo(
+            $documento,
+            (string)$texto,
+            [
+                'tamano' => (int)$tamano,
+                'negrita' => (bool)$negrita,
+                'color' => (string)$color,
+                'alineacion' => (string)$alineacion,
+                'antes' => 0,
+                'despues' => 0
+            ]
+        ));
+        $cajaTexto->appendChild($contenido);
+        $rectangulo->appendChild($cajaTexto);
+        return $rectangulo;
     }
 
     private function crearTablaSimple(

@@ -3,6 +3,7 @@
 require_once __DIR__ . '/../models/SeguimientoVinculacionModel.php';
 require_once __DIR__ . '/../helpers/PermissionHelper.php';
 require_once __DIR__ . '/../services/ReporteSeguimientoVinculacionPdfService.php';
+require_once __DIR__ . '/../services/EvolucionActividadSeguimientoService.php';
 
 class SeguimientoVinculacionReporteController
 {
@@ -59,11 +60,23 @@ class SeguimientoVinculacionReporteController
             );
         }
 
+        $evolucionActividad = [];
+
+        try {
+            $evolucionActividad = (new EvolucionActividadSeguimientoService())->construir(
+                $contexto['seguimientosActividad'] ?? [],
+                $contexto['filtrosReporte']
+            );
+        } catch (Throwable $error) {
+            error_log('[reporte_evolucion_actividad_pdf] ' . $error->getMessage());
+        }
+
         $servicio = new ReporteSeguimientoVinculacionPdfService();
         $resultado = $servicio->generar([
             'resumen_filtros' => $contexto['resumenFiltros'],
             'resumen_reporte' => $contexto['resumenReporte'],
             'seguimientos' => $contexto['seguimientosReporte'],
+            'evolucion_actividad' => $evolucionActividad,
             'etiquetas_estatus' => self::ESTADOS_SEGUIMIENTO,
             'fecha_generacion' => date('d/m/Y H:i')
         ]);
@@ -207,16 +220,14 @@ class SeguimientoVinculacionReporteController
         $resumenReporte = $this->crearResumenReporte([]);
 
         if ($generarReporte && $errorFiltros === '') {
-            if (!$forzarGeneracion) {
-                $filtrosActividad = $filtrosReporte;
-                $filtrosActividad['fecha_inicial'] = '';
-                $filtrosActividad['fecha_final'] = '';
-                $filtrosActividad['tipo_actividad'] = '';
-                $seguimientosActividad = $this->aplicarFiltrosReporte(
-                    $seguimientosDisponibles,
-                    $filtrosActividad
-                );
-            }
+            $filtrosActividad = $filtrosReporte;
+            $filtrosActividad['fecha_inicial'] = '';
+            $filtrosActividad['fecha_final'] = '';
+            $filtrosActividad['tipo_actividad'] = '';
+            $seguimientosActividad = $this->aplicarFiltrosReporte(
+                $seguimientosDisponibles,
+                $filtrosActividad
+            );
 
             $seguimientosReporte = $this->aplicarFiltrosReporte(
                 $seguimientosDisponibles,
