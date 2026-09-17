@@ -19,45 +19,28 @@
         return url.toString();
     }
 
-    function agregarModuloReportesSidebar() {
+    function sincronizarModuloReportesSidebar() {
         const parametros = new URLSearchParams(window.location.search);
         const controladorActual = parametros.get('controller') || '';
-        const estaEnReportes = controladoresReporte.has(controladorActual);
-        const secciones = document.querySelectorAll('.admin-sidebar .sidebar-section');
 
-        secciones.forEach(function (seccion) {
-            const titulo = seccion.querySelector('.sidebar-section-title');
+        if (!controladoresReporte.has(controladorActual)) {
+            return;
+        }
 
-            if (!titulo || titulo.textContent.trim().toUpperCase() !== 'VINCULACIÓN') {
-                return;
-            }
-
-            const tieneModuloOrigen = seccion.querySelector(
-                'a[href*="controller=dataTerritorial"], a[href*="controller=seguimientoVinculacion"]'
+        document.querySelectorAll('.admin-sidebar').forEach(function (sidebar) {
+            const enlaceReportes = sidebar.querySelector(
+                'a.sidebar-link[href*="controller=reporte"][href*="action=index"]'
             );
 
-            if (!tieneModuloOrigen || seccion.querySelector('[data-sidebar-reportes]')) {
+            if (!enlaceReportes) {
                 return;
             }
 
-            if (estaEnReportes) {
-                seccion.querySelectorAll('.sidebar-link.active').forEach(function (enlace) {
-                    enlace.classList.remove('active');
-                });
-            }
+            sidebar.querySelectorAll('.sidebar-link.active').forEach(function (enlace) {
+                enlace.classList.remove('active');
+            });
 
-            const enlace = document.createElement('a');
-            enlace.className = 'sidebar-link' + (estaEnReportes ? ' active' : '');
-            enlace.href = construirUrl({ controller: 'reporte', action: 'index' });
-            enlace.setAttribute('data-sidebar-reportes', '');
-
-            const icono = document.createElement('i');
-            icono.className = 'bi bi-file-earmark-bar-graph';
-            icono.setAttribute('aria-hidden', 'true');
-
-            enlace.appendChild(icono);
-            enlace.appendChild(document.createTextNode('Reportes'));
-            seccion.appendChild(enlace);
+            enlaceReportes.classList.add('active');
         });
     }
 
@@ -99,7 +82,7 @@
     }
 
     function inicializar() {
-        agregarModuloReportesSidebar();
+        sincronizarModuloReportesSidebar();
         agregarAccesoReporteTerritorial();
     }
 
