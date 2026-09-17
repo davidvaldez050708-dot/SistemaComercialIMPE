@@ -36,6 +36,20 @@ class ReporteTerritorialPdfService
             $dompdf->setPaper('A4', 'portrait');
             $dompdf->render();
 
+            $canvas = $dompdf->getCanvas();
+            $fontMetrics = $dompdf->getFontMetrics();
+            $font = $fontMetrics->getFont('DejaVu Sans', 'normal');
+            $fontSize = 6.7;
+            $footerColor = [0.43, 0.45, 0.50];
+
+            $canvas->page_script(static function ($pageNumber, $pageCount, $canvas, $fontMetrics) use ($font, $fontSize, $footerColor): void {
+                $texto = 'Página ' . $pageNumber . ' de ' . $pageCount;
+                $anchoTexto = $fontMetrics->getTextWidth($texto, $font, $fontSize);
+                $x = ($canvas->get_width() - $anchoTexto) / 2;
+                $y = $canvas->get_height() - 24;
+                $canvas->text($x, $y, $texto, $font, $fontSize, $footerColor);
+            });
+
             $estado = $reporte['estado'] ?? [];
             $nombreEstado = trim((string)($estado['nombre'] ?? 'Territorio'));
             $nombreSeguro = preg_replace('/[^A-Za-z0-9_-]+/', '_', $this->sinAcentos($nombreEstado));
