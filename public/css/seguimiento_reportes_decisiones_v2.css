@@ -168,13 +168,18 @@
     .seguimiento-report-edit-modal .modal-body {
         flex: 1 1 auto;
         min-height: 0;
-        overflow: hidden !important;
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
     }
 
     .seguimiento-report-edit-modal .seguimiento-report-edit-iframe {
+        display: block;
         width: 100%;
-        height: 100%;
-        min-height: 0;
-        overflow: auto;
+        height: 1150px;
+        min-height: 1150px;
+        flex: 0 0 1150px;
+        overflow: hidden;
     }
 }
