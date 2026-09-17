@@ -70,12 +70,12 @@ $puedeReporteSeguimiento = $puedeReporteSeguimiento ?? false;
                 <div class="report-card-meta">
                     <span><i class="bi bi-funnel"></i> Filtros de seguimiento</span>
                     <span><i class="bi bi-activity"></i> Actividad e indicadores</span>
-                    <span><i class="bi bi-box-arrow-up-right"></i> Implementación existente</span>
+                    <span><i class="bi bi-file-earmark-pdf"></i> Consulta y exportación</span>
                 </div>
 
                 <a
                     class="btn btn-system-save report-card-action"
-                    href="<?= BASE_URL ?>index.php?controller=seguimientoVinculacionReporte&action=index">
+                    href="<?= BASE_URL ?>index.php?controller=seguimientoVinculacionReporte&action=index&origen=reportes">
                     <i class="bi bi-arrow-right-circle" aria-hidden="true"></i>
                     <span>Abrir reporte</span>
                 </a>
