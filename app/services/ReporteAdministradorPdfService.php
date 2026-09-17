@@ -200,25 +200,80 @@ class ReporteAdministradorPdfService
             ['tamano' => 16, 'color' => self::COLOR_SECUNDARIO, 'despues' => 160]
         );
 
-        $elementos[] = $this->crearTituloSeccion($documento, 'Resumen administrativo');
-        $filasResumen = [
-            ['Usuarios registrados', (string)((int)($resumen['usuarios_registrados'] ?? 0))],
-            ['Usuarios activos', (string)((int)($resumen['usuarios_activos'] ?? 0))],
-            ['Usuarios inactivos', (string)((int)($resumen['usuarios_inactivos'] ?? 0))],
-            ['Roles registrados', (string)((int)($resumen['roles_registrados'] ?? 0))],
-            ['Seguimientos activos', (string)((int)($resumen['total_seguimientos'] ?? 0))],
-            ['Acciones programadas', (string)((int)($resumen['acciones_pendientes'] ?? 0))],
-            ['Acciones vencidas', (string)((int)($resumen['acciones_vencidas'] ?? 0))],
-            ['Seguimientos que requieren atención', (string)((int)($resumen['requieren_atencion'] ?? 0))]
-        ];
-        $elementos[] = $this->crearTablaSimple(
+        $usuariosPorRol = [];
+        $cargaPorUsuario = [];
+        $usuariosSinAcceso = 0;
+        $mayorCarga = 0;
+
+        foreach ($usuarios as $usuario) {
+            $rol = trim((string)($usuario['rol'] ?? ''));
+            $rol = $rol !== '' ? $rol : 'Sin rol';
+            $usuariosPorRol[$rol] = ($usuariosPorRol[$rol] ?? 0) + 1;
+
+            $nombreCompleto = trim(
+                (string)($usuario['nombre'] ?? '') . ' ' .
+                (string)($usuario['apellidos'] ?? '')
+            );
+            $etiquetaCarga = $nombreCompleto !== ''
+                ? $nombreCompleto
+                : (string)($usuario['usuario'] ?? 'Usuario');
+            $totalUsuario = (int)($usuario['total_seguimientos'] ?? 0);
+            $cargaPorUsuario[] = [
+                'etiqueta' => $etiquetaCarga,
+                'valor' => $totalUsuario
+            ];
+            $mayorCarga = max($mayorCarga, $totalUsuario);
+
+            if (trim((string)($usuario['ultimo_acceso'] ?? '')) === '') {
+                $usuariosSinAcceso++;
+            }
+        }
+
+        arsort($usuariosPorRol);
+        usort($cargaPorUsuario, static function ($a, $b) {
+            return ((int)($b['valor'] ?? 0)) <=> ((int)($a['valor'] ?? 0));
+        });
+
+        $datosRoles = [];
+        foreach ($usuariosPorRol as $rol => $total) {
+            $datosRoles[] = ['etiqueta' => (string)$rol, 'valor' => (int)$total];
+        }
+
+        $elementos[] = $this->crearTituloSeccion($documento, 'RESUMEN EJECUTIVO');
+        $elementos[] = $this->crearTarjetasIndicadores(
             $documento,
-            $filasResumen,
-            [(int)round($anchoUtil * 0.72), (int)round($anchoUtil * 0.28)]
+            [
+                ['etiqueta' => 'Usuarios', 'valor' => (int)($resumen['usuarios_registrados'] ?? 0)],
+                ['etiqueta' => 'Activos', 'valor' => (int)($resumen['usuarios_activos'] ?? 0)],
+                ['etiqueta' => 'Inactivos', 'valor' => (int)($resumen['usuarios_inactivos'] ?? 0)],
+                ['etiqueta' => 'Roles', 'valor' => (int)($resumen['roles_registrados'] ?? 0)],
+                ['etiqueta' => 'Seguimientos', 'valor' => (int)($resumen['total_seguimientos'] ?? 0)],
+                ['etiqueta' => 'Pendientes', 'valor' => (int)($resumen['acciones_pendientes'] ?? 0)],
+                ['etiqueta' => 'Vencidas', 'valor' => (int)($resumen['acciones_vencidas'] ?? 0)],
+                ['etiqueta' => 'Requieren atención', 'valor' => (int)($resumen['requieren_atencion'] ?? 0)]
+            ],
+            $anchoUtil,
+            4
         );
         $elementos[] = $this->crearEspaciador($documento, 120);
 
-        $elementos[] = $this->crearTituloSeccion($documento, 'Usuarios del sistema');
+        $elementos[] = $this->crearTituloSeccion($documento, 'PERSONAS Y ACCESO');
+        $elementos[] = $this->crearSubtitulo($documento, 'Usuarios por rol');
+        $elementos[] = $this->crearGraficaBarras($documento, $datosRoles, $anchoUtil);
+        $elementos[] = $this->crearEspaciador($documento, 80);
+
+        $elementos[] = $this->crearSubtitulo($documento, 'Estado de usuarios');
+        $elementos[] = $this->crearGraficaBarras(
+            $documento,
+            [
+                ['etiqueta' => 'Activos', 'valor' => (int)($resumen['usuarios_activos'] ?? 0)],
+                ['etiqueta' => 'Inactivos', 'valor' => (int)($resumen['usuarios_inactivos'] ?? 0)]
+            ],
+            $anchoUtil
+        );
+        $elementos[] = $this->crearEspaciador($documento, 80);
+
+        $elementos[] = $this->crearSubtitulo($documento, 'Usuarios del sistema');
         $filasUsuarios = [];
         foreach ($usuarios as $usuario) {
             $filasUsuarios[] = [
@@ -237,7 +292,11 @@ class ReporteAdministradorPdfService
         );
         $elementos[] = $this->crearEspaciador($documento, 120);
 
-        $elementos[] = $this->crearTituloSeccion($documento, 'Carga de seguimiento por usuario');
+        $elementos[] = $this->crearTituloSeccion($documento, 'CARGA OPERATIVA');
+        $elementos[] = $this->crearSubtitulo($documento, 'Carga de seguimiento por usuario');
+        $elementos[] = $this->crearGraficaBarras($documento, $cargaPorUsuario, $anchoUtil);
+        $elementos[] = $this->crearEspaciador($documento, 80);
+
         $filasCarga = [];
         foreach ($usuarios as $usuario) {
             $filasCarga[] = [
@@ -250,6 +309,7 @@ class ReporteAdministradorPdfService
                 (string)((int)($usuario['mas_7_dias'] ?? 0))
             ];
         }
+        $elementos[] = $this->crearSubtitulo($documento, 'Carga de seguimiento por usuario');
         $elementos[] = $this->crearTablaDetalle(
             $documento,
             ['Usuario', 'Rol', 'Seguimientos', 'Pendientes', 'Vencidas', 'Sin actividad', '> 7 días'],
@@ -258,7 +318,22 @@ class ReporteAdministradorPdfService
         );
         $elementos[] = $this->crearEspaciador($documento, 120);
 
-        $elementos[] = $this->crearTituloSeccion($documento, 'Pendientes y seguimientos que requieren atención');
+        $elementos[] = $this->crearTituloSeccion($documento, 'ATENCIÓN REQUERIDA');
+        $elementos[] = $this->crearTarjetasIndicadores(
+            $documento,
+            [
+                ['etiqueta' => 'Acciones vencidas', 'valor' => (int)($resumen['acciones_vencidas'] ?? 0)],
+                ['etiqueta' => 'Requieren atención', 'valor' => (int)($resumen['requieren_atencion'] ?? 0)]
+            ],
+            $anchoUtil,
+            2
+        );
+        $elementos[] = $this->crearEspaciador($documento, 80);
+
+        $elementos[] = $this->crearSubtitulo(
+            $documento,
+            'Pendientes y seguimientos que requieren atención'
+        );
         if (empty($pendientes)) {
             $elementos[] = $this->crearParrafo(
                 $documento,
@@ -289,6 +364,34 @@ class ReporteAdministradorPdfService
             );
         }
 
+        $elementos[] = $this->crearEspaciador($documento, 100);
+        $elementos[] = $this->crearSubtitulo($documento, 'HALLAZGOS ADMINISTRATIVOS');
+
+        $accionesVencidas = (int)($resumen['acciones_vencidas'] ?? 0);
+        $requierenAtencion = (int)($resumen['requieren_atencion'] ?? 0);
+        $hallazgos = [
+            $accionesVencidas > 0
+                ? 'Existen ' . $accionesVencidas . ' acciones vencidas.'
+                : 'No se registran acciones vencidas.',
+            $requierenAtencion > 0
+                ? $requierenAtencion . ' seguimientos requieren atención.'
+                : 'No se registran seguimientos que requieran atención.',
+            $usuariosSinAcceso > 0
+                ? $usuariosSinAcceso . ' usuarios no tienen acceso registrado.'
+                : 'Todos los usuarios incluidos tienen acceso registrado.',
+            $mayorCarga > 0
+                ? 'La mayor carga registrada por un usuario es de ' . $mayorCarga . ' seguimientos.'
+                : 'No se registran seguimientos asignados a usuarios.'
+        ];
+
+        foreach ($hallazgos as $hallazgo) {
+            $elementos[] = $this->crearParrafo(
+                $documento,
+                '• ' . $hallazgo,
+                ['tamano' => 15, 'color' => self::COLOR_TEXTO, 'despues' => 35]
+            );
+        }
+
         return $elementos;
     }
 
@@ -308,6 +411,22 @@ class ReporteAdministradorPdfService
         );
     }
 
+    private function crearSubtitulo(DOMDocument $documento, $texto)
+    {
+        return $this->crearParrafo(
+            $documento,
+            (string)$texto,
+            [
+                'tamano' => 17,
+                'negrita' => true,
+                'color' => self::COLOR_TEXTO,
+                'antes' => 50,
+                'despues' => 50,
+                'mantener_siguiente' => true
+            ]
+        );
+    }
+
     private function crearEspaciador(DOMDocument $documento, $despues)
     {
         return $this->crearParrafo(
@@ -315,6 +434,208 @@ class ReporteAdministradorPdfService
             '',
             ['tamano' => 4, 'despues' => (int)$despues]
         );
+    }
+
+    private function crearTarjetasIndicadores(
+        DOMDocument $documento,
+        array $indicadores,
+        $anchoUtil,
+        $columnas
+    ) {
+        $columnas = max(1, (int)$columnas);
+        $anchoBase = (int)floor($anchoUtil / $columnas);
+        $anchos = array_fill(0, $columnas, $anchoBase);
+        $anchos[$columnas - 1] += $anchoUtil - array_sum($anchos);
+        $tabla = $this->crearTablaBase($documento, $anchoUtil, $anchos, true);
+
+        foreach (array_chunk($indicadores, $columnas) as $grupo) {
+            $fila = $this->crearFila($documento, false);
+            foreach ($anchos as $indice => $ancho) {
+                $indicador = $grupo[$indice] ?? ['etiqueta' => '', 'valor' => ''];
+                $fila->appendChild($this->crearCeldaIndicador(
+                    $documento,
+                    (string)($indicador['valor'] ?? ''),
+                    (string)($indicador['etiqueta'] ?? ''),
+                    $ancho
+                ));
+            }
+            $tabla->appendChild($fila);
+        }
+
+        return $tabla;
+    }
+
+    private function crearCeldaIndicador(DOMDocument $documento, $valor, $etiqueta, $ancho)
+    {
+        $celda = $this->w($documento, 'tc');
+        $propiedades = $this->w($documento, 'tcPr');
+        $anchoNodo = $this->w($documento, 'tcW');
+        $this->attr($anchoNodo, 'w', 'w', 'w', (string)$ancho);
+        $this->attr($anchoNodo, 'w', 'w', 'type', 'dxa');
+        $propiedades->appendChild($anchoNodo);
+
+        $relleno = $this->w($documento, 'shd');
+        $this->attr($relleno, 'w', 'w', 'val', 'clear');
+        $this->attr($relleno, 'w', 'w', 'fill', self::COLOR_FONDO);
+        $propiedades->appendChild($relleno);
+
+        $vertical = $this->w($documento, 'vAlign');
+        $this->attr($vertical, 'w', 'w', 'val', 'center');
+        $propiedades->appendChild($vertical);
+        $celda->appendChild($propiedades);
+
+        $celda->appendChild($this->crearParrafo(
+            $documento,
+            (string)$valor,
+            [
+                'tamano' => 24,
+                'negrita' => true,
+                'color' => self::COLOR_PRIMARIO,
+                'alineacion' => 'center',
+                'antes' => 45,
+                'despues' => 20
+            ]
+        ));
+        $celda->appendChild($this->crearParrafo(
+            $documento,
+            (string)$etiqueta,
+            [
+                'tamano' => 13,
+                'color' => self::COLOR_SECUNDARIO,
+                'alineacion' => 'center',
+                'antes' => 0,
+                'despues' => 45
+            ]
+        ));
+
+        return $celda;
+    }
+
+    private function crearGraficaBarras(DOMDocument $documento, array $datos, $anchoUtil)
+    {
+        if (empty($datos)) {
+            return $this->crearParrafo(
+                $documento,
+                'No hay información disponible.',
+                ['tamano' => 15, 'color' => self::COLOR_SECUNDARIO, 'despues' => 60]
+            );
+        }
+
+        $valores = array_map(static function ($dato) {
+            return max(0, (int)($dato['valor'] ?? 0));
+        }, $datos);
+        $maximo = max(1, max($valores));
+        $anchos = $this->anchos($anchoUtil, [32, 56, 12]);
+        $tabla = $this->crearTablaBase($documento, $anchoUtil, $anchos, false);
+
+        foreach ($datos as $dato) {
+            $etiqueta = (string)($dato['etiqueta'] ?? '—');
+            $valor = max(0, (int)($dato['valor'] ?? 0));
+            $fila = $this->crearFila($documento, false);
+            $fila->appendChild($this->crearCelda(
+                $documento,
+                $etiqueta,
+                $anchos[0],
+                ['tamano' => 14, 'color' => self::COLOR_TEXTO]
+            ));
+
+            $celdaBarra = $this->crearCelda(
+                $documento,
+                '',
+                $anchos[1],
+                ['tamano' => 4, 'color' => self::COLOR_TEXTO]
+            );
+            $parrafoExistente = $celdaBarra->getElementsByTagNameNS(self::W_NS, 'p')->item(0);
+            if ($parrafoExistente instanceof DOMNode) {
+                $celdaBarra->removeChild($parrafoExistente);
+            }
+
+            if ($valor <= 0) {
+                $barra = $this->crearTablaBase($documento, $anchos[1], [$anchos[1]], false);
+                $filaBarra = $this->crearFila($documento, false);
+                $filaBarra->appendChild($this->crearCeldaBarra(
+                    $documento,
+                    $anchos[1],
+                    self::COLOR_FONDO_PRIMARIO
+                ));
+                $barra->appendChild($filaBarra);
+            } elseif ($valor >= $maximo) {
+                $barra = $this->crearTablaBase($documento, $anchos[1], [$anchos[1]], false);
+                $filaBarra = $this->crearFila($documento, false);
+                $filaBarra->appendChild($this->crearCeldaBarra(
+                    $documento,
+                    $anchos[1],
+                    self::COLOR_PRIMARIO
+                ));
+                $barra->appendChild($filaBarra);
+            } else {
+                $relleno = max(1, (int)round($anchos[1] * ($valor / $maximo)));
+                $vacio = max(1, $anchos[1] - $relleno);
+                $barra = $this->crearTablaBase(
+                    $documento,
+                    $anchos[1],
+                    [$relleno, $vacio],
+                    false
+                );
+                $filaBarra = $this->crearFila($documento, false);
+                $filaBarra->appendChild($this->crearCeldaBarra(
+                    $documento,
+                    $relleno,
+                    self::COLOR_PRIMARIO
+                ));
+                $filaBarra->appendChild($this->crearCeldaBarra(
+                    $documento,
+                    $vacio,
+                    self::COLOR_FONDO_PRIMARIO
+                ));
+                $barra->appendChild($filaBarra);
+            }
+
+            $celdaBarra->appendChild($barra);
+            $celdaBarra->appendChild($this->crearParrafo(
+                $documento,
+                '',
+                ['tamano' => 4, 'despues' => 0]
+            ));
+            $fila->appendChild($celdaBarra);
+            $fila->appendChild($this->crearCelda(
+                $documento,
+                (string)$valor,
+                $anchos[2],
+                [
+                    'tamano' => 14,
+                    'negrita' => true,
+                    'color' => self::COLOR_TEXTO,
+                    'alineacion' => 'right'
+                ]
+            ));
+            $tabla->appendChild($fila);
+        }
+
+        return $tabla;
+    }
+
+    private function crearCeldaBarra(DOMDocument $documento, $ancho, $color)
+    {
+        $celda = $this->w($documento, 'tc');
+        $propiedades = $this->w($documento, 'tcPr');
+        $anchoNodo = $this->w($documento, 'tcW');
+        $this->attr($anchoNodo, 'w', 'w', 'w', (string)$ancho);
+        $this->attr($anchoNodo, 'w', 'w', 'type', 'dxa');
+        $propiedades->appendChild($anchoNodo);
+
+        $relleno = $this->w($documento, 'shd');
+        $this->attr($relleno, 'w', 'w', 'val', 'clear');
+        $this->attr($relleno, 'w', 'w', 'fill', (string)$color);
+        $propiedades->appendChild($relleno);
+        $celda->appendChild($propiedades);
+        $celda->appendChild($this->crearParrafo(
+            $documento,
+            ' ',
+            ['tamano' => 4, 'antes' => 0, 'despues' => 0]
+        ));
+
+        return $celda;
     }
 
     private function crearTablaSimple(DOMDocument $documento, array $filas, array $anchos)
@@ -388,7 +709,7 @@ class ReporteAdministradorPdfService
         return $tabla;
     }
 
-    private function crearTablaBase(DOMDocument $documento, $anchoTotal, array $anchos)
+    private function crearTablaBase(DOMDocument $documento, $anchoTotal, array $anchos, $bordes = true)
     {
         $tabla = $this->w($documento, 'tbl');
         $propiedades = $this->w($documento, 'tblPr');
@@ -401,15 +722,17 @@ class ReporteAdministradorPdfService
         $this->attr($layout, 'w', 'w', 'type', 'fixed');
         $propiedades->appendChild($layout);
 
-        $bordesNodo = $this->w($documento, 'tblBorders');
-        foreach (['top', 'left', 'bottom', 'right', 'insideH', 'insideV'] as $lado) {
-            $borde = $this->w($documento, $lado);
-            $this->attr($borde, 'w', 'w', 'val', 'single');
-            $this->attr($borde, 'w', 'w', 'sz', '2');
-            $this->attr($borde, 'w', 'w', 'color', self::COLOR_BORDE);
-            $bordesNodo->appendChild($borde);
+        if ($bordes) {
+            $bordesNodo = $this->w($documento, 'tblBorders');
+            foreach (['top', 'left', 'bottom', 'right', 'insideH', 'insideV'] as $lado) {
+                $borde = $this->w($documento, $lado);
+                $this->attr($borde, 'w', 'w', 'val', 'single');
+                $this->attr($borde, 'w', 'w', 'sz', '2');
+                $this->attr($borde, 'w', 'w', 'color', self::COLOR_BORDE);
+                $bordesNodo->appendChild($borde);
+            }
+            $propiedades->appendChild($bordesNodo);
         }
-        $propiedades->appendChild($bordesNodo);
         $tabla->appendChild($propiedades);
 
         $grid = $this->w($documento, 'tblGrid');
