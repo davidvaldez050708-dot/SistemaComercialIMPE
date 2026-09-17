@@ -303,6 +303,17 @@ switch ($controller) {
         break;
 
 
+    case 'seguimientoReporteAnalitica':
+
+        require_once __DIR__ .
+            '/app/controllers/SeguimientoReporteAnaliticaController.php';
+
+        $controllerInstance =
+            new SeguimientoReporteAnaliticaController();
+
+        break;
+
+
     case 'seguimientoFlujo':
 
         require_once __DIR__ .
