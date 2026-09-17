@@ -1,0 +1,108 @@
+.seguimiento-report-results .seguimiento-report-results-heading-v2 {
+    margin-bottom: 14px !important;
+}
+
+.seguimiento-report-results .seguimiento-report-main-title-v2 {
+    margin-bottom: 3px;
+    font-size: 20px;
+    line-height: 1.25;
+}
+
+.seguimiento-report-results [data-operational-summary] {
+    margin-bottom: 18px !important;
+}
+
+.seguimiento-report-results [data-operational-summary] .seguimiento-report-section-heading {
+    margin-bottom: 10px;
+}
+
+.seguimiento-report-results [data-operational-summary] .panel-title {
+    margin-bottom: 2px !important;
+    font-size: 16px;
+}
+
+.seguimiento-report-results [data-operational-summary] .page-subtitle {
+    font-size: 11.5px;
+}
+
+.seguimiento-report-results .seguimiento-report-attention-compact-empty {
+    margin-bottom: 18px !important;
+    padding: 0 !important;
+    overflow: hidden;
+}
+
+.seguimiento-report-results .seguimiento-report-attention-compact-empty .seguimiento-report-attention-empty {
+    margin: 0;
+    padding: 11px 14px;
+    border: 0;
+    border-radius: inherit;
+}
+
+.seguimiento-report-results .seguimiento-report-attention-compact-empty .seguimiento-report-attention-empty p {
+    margin-top: 2px;
+    margin-bottom: 0;
+    font-size: 11px;
+}
+
+.seguimiento-report-results .seguimiento-report-attention-list .seguimiento-report-attention-row {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.seguimiento-report-results .seguimiento-report-activity-panel {
+    padding: 18px 20px 14px;
+}
+
+.seguimiento-report-results .seguimiento-report-activity-panel > .d-flex {
+    margin-bottom: 8px !important;
+}
+
+.seguimiento-report-results .seguimiento-report-chart-wrap-v2 {
+    max-height: 245px;
+    overflow: hidden;
+}
+
+.seguimiento-report-results .seguimiento-report-chart-wrap-v2 svg {
+    display: block;
+    width: 100%;
+    height: 245px;
+}
+
+.seguimiento-report-results .seguimiento-report-detail-panel .table-panel-header {
+    padding-top: 14px;
+    padding-bottom: 10px;
+}
+
+.seguimiento-report-results .seguimiento-report-detail-subtitle {
+    margin-top: 3px;
+    font-size: 11px;
+}
+
+.seguimiento-report-results .seguimiento-report-detail-panel .users-table th,
+.seguimiento-report-results .seguimiento-report-detail-panel .users-table td {
+    padding-top: 10px;
+    padding-bottom: 10px;
+}
+
+@media (max-width: 991.98px) {
+    .seguimiento-report-results .seguimiento-report-chart-wrap-v2,
+    .seguimiento-report-results .seguimiento-report-chart-wrap-v2 svg {
+        max-height: 230px;
+        height: 230px;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .seguimiento-report-results .seguimiento-report-main-title-v2 {
+        font-size: 18px;
+    }
+
+    .seguimiento-report-results .seguimiento-report-activity-panel {
+        padding: 16px;
+    }
+
+    .seguimiento-report-results .seguimiento-report-chart-wrap-v2,
+    .seguimiento-report-results .seguimiento-report-chart-wrap-v2 svg {
+        max-height: 215px;
+        height: 215px;
+    }
+}
