@@ -20,7 +20,7 @@ class ReporteSeguimientoVinculacionPdfService
         $this->templatePath = $this->rootPath . DIRECTORY_SEPARATOR .
             'storage' . DIRECTORY_SEPARATOR . 'templates' . DIRECTORY_SEPARATOR .
             'reportes' . DIRECTORY_SEPARATOR . 'seguimiento_vinculacion' . DIRECTORY_SEPARATOR .
-            'Plantilla reporte.docx';
+            'Plantilla_Reporte_Seguimiento.docx';
     }
 
     public function generar(array $datosReporte)
