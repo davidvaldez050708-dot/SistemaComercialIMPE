@@ -60,7 +60,8 @@ $cssOpcionalDashboard = [
     'seguimiento_expediente_actividad.css',
     'seguimiento_estado_compacto.css',
     'seguimiento_expediente_oficios_refinamiento.css',
-    'seguimiento_expediente_correos.css'
+    'seguimiento_expediente_correos.css',
+    'reportes.css'
 ];
 
 $jsOpcionalHead = [
@@ -104,7 +105,8 @@ $jsOpcionalHead = [
     'firma_correo_perfil.js',
     'correo_firma_envio.js',
     'seguimiento_expediente_oficios_refinamiento.js',
-    'seguimiento_expediente_correos.js'
+    'seguimiento_expediente_correos.js',
+    'reportes_accesos.js'
 ];
 
 ?>
