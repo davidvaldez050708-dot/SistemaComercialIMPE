@@ -264,7 +264,6 @@ class ReporteSeguimientoVinculacionPdfService
         );
         $elementos[] = $this->crearEspaciador($documento, 120);
 
-        $elementos[] = $this->crearSaltoPagina($documento);
         $elementos[] = $this->crearTituloSeccion($documento, 'Evolución de la actividad');
         $elementos[] = $this->crearParrafo(
             $documento,
