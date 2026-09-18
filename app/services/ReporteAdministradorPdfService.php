@@ -183,47 +183,14 @@ class ReporteAdministradorPdfService
         $resumen = $datosReporte['resumen'] ?? [];
         $usuarios = $datosReporte['usuarios'] ?? [];
         $pendientes = $datosReporte['pendientes'] ?? [];
+        $datosRoles = is_array($datosReporte['usuarios_por_rol'] ?? null)
+            ? $datosReporte['usuarios_por_rol']
+            : [];
+        $hallazgos = is_array($datosReporte['hallazgos'] ?? null)
+            ? $datosReporte['hallazgos']
+            : [];
         $fechaGeneracion = trim((string)($datosReporte['fecha_generacion'] ?? ''));
         $elementos = [];
-
-        $usuariosPorRol = [];
-        $cargaPorUsuario = [];
-        $usuariosSinAcceso = 0;
-        $mayorCarga = 0;
-
-        foreach ($usuarios as $usuario) {
-            $rol = trim((string)($usuario['rol'] ?? ''));
-            $rol = $rol !== '' ? $rol : 'Sin rol';
-            $usuariosPorRol[$rol] = ($usuariosPorRol[$rol] ?? 0) + 1;
-
-            $nombreCompleto = trim(
-                (string)($usuario['nombre'] ?? '') . ' ' .
-                (string)($usuario['apellidos'] ?? '')
-            );
-            $etiquetaCarga = $nombreCompleto !== ''
-                ? $nombreCompleto
-                : (string)($usuario['usuario'] ?? 'Usuario');
-            $totalUsuario = (int)($usuario['total_seguimientos'] ?? 0);
-            $cargaPorUsuario[] = [
-                'etiqueta' => $etiquetaCarga,
-                'valor' => $totalUsuario
-            ];
-            $mayorCarga = max($mayorCarga, $totalUsuario);
-
-            if (trim((string)($usuario['ultimo_acceso'] ?? '')) === '') {
-                $usuariosSinAcceso++;
-            }
-        }
-
-        arsort($usuariosPorRol);
-        usort($cargaPorUsuario, static function ($a, $b) {
-            return ((int)($b['valor'] ?? 0)) <=> ((int)($a['valor'] ?? 0));
-        });
-
-        $datosRoles = [];
-        foreach ($usuariosPorRol as $rol => $total) {
-            $datosRoles[] = ['etiqueta' => (string)$rol, 'valor' => (int)$total];
-        }
 
         $elementos[] = $this->crearTituloSeccion($documento, 'RESUMEN EJECUTIVO');
         $elementos[] = $this->crearTarjetasIndicadores(
@@ -339,23 +306,6 @@ class ReporteAdministradorPdfService
 
         $elementos[] = $this->crearEspaciador($documento, 100);
         $elementos[] = $this->crearTituloSeccion($documento, 'HALLAZGOS ADMINISTRATIVOS');
-
-        $accionesVencidas = (int)($resumen['acciones_vencidas'] ?? 0);
-        $requierenAtencion = (int)($resumen['requieren_atencion'] ?? 0);
-        $hallazgos = [
-            $accionesVencidas > 0
-                ? 'Existen ' . $accionesVencidas . ' acciones vencidas.'
-                : 'No se registran acciones vencidas.',
-            $requierenAtencion > 0
-                ? $requierenAtencion . ' seguimientos requieren atención.'
-                : 'No se registran seguimientos que requieran atención.',
-            $usuariosSinAcceso > 0
-                ? $usuariosSinAcceso . ' usuarios no tienen acceso registrado.'
-                : 'Todos los usuarios incluidos tienen acceso registrado.',
-            $mayorCarga > 0
-                ? 'La mayor carga registrada por un usuario es de ' . $mayorCarga . ' seguimientos.'
-                : 'No se registran seguimientos asignados a usuarios.'
-        ];
 
         foreach ($hallazgos as $hallazgo) {
             $elementos[] = $this->crearParrafo(
