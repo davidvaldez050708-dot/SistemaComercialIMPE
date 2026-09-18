@@ -346,34 +346,16 @@
 
     document.addEventListener('DOMContentLoaded', function () {
         const filas = Array.from(document.querySelectorAll('[data-linkage-follow-row]'));
-        const ids = filas.map(function (fila) {
+
+        // La bandeja ya llega completa desde PHP. Evitamos precargar todos los
+        // paneles al entrar y reservamos la red para el seguimiento que el
+        // usuario realmente va a abrir.
+        filas.forEach(function (fila) {
             const seguimientoId = Number(
                 fila.querySelector('[data-work-follow-id]')?.getAttribute('data-work-follow-id') || 0
             );
-
             estabilizarFila(fila, seguimientoId);
-            return seguimientoId;
-        }).filter(function (seguimientoId) {
-            return seguimientoId > 0;
         });
-
-        let indice = 0;
-        const trabajadores = Math.min(2, ids.length);
-
-        const siguiente = async function () {
-            const posicion = indice++;
-
-            if (posicion >= ids.length) {
-                return;
-            }
-
-            await precargar(ids[posicion]);
-            await siguiente();
-        };
-
-        for (let trabajador = 0; trabajador < trabajadores; trabajador += 1) {
-            void siguiente();
-        }
 
         document.addEventListener('pointerover', function (event) {
             const boton = event.target.closest?.('[data-work-follow]');
@@ -388,6 +370,13 @@
                 void precargar(Number(boton.getAttribute('data-work-follow-id') || 0));
             }
         });
+
+        document.addEventListener('pointerdown', function (event) {
+            const boton = event.target.closest?.('[data-work-follow]');
+            if (boton) {
+                void precargar(Number(boton.getAttribute('data-work-follow-id') || 0));
+            }
+        }, { passive: true });
 
         document.addEventListener('impe:interaction-informative-saved', function (evento) {
             const seguimientoId = Number(
