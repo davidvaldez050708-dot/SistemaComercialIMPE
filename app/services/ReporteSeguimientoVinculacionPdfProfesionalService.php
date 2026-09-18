@@ -162,7 +162,11 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
         $html = '<table class="scope"><tr>';
         $html .= '<td><span>Alcance</span><strong>' . $this->e($alcance) . '</strong></td>';
         $html .= '<td><span>Responsable del alcance</span><strong>' . $this->e($responsable !== '' ? $responsable : 'Varios responsables') . '</strong></td>';
-        $html .= '<td class="scope-total"><span>Seguimientos</span><strong>' . $total . '</strong></td>';
+        if ($individual) {
+            $html .= '<td class="scope-total"><span>Tipo de reporte</span><strong>Institución individual</strong></td>';
+        } else {
+            $html .= '<td class="scope-total"><span>Seguimientos</span><strong>' . $total . '</strong></td>';
+        }
         $html .= '</tr></table>';
         return $html;
     }
@@ -959,7 +963,7 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
             '.scope{width:100%;table-layout:fixed;border-collapse:collapse;background:#F7F9FC;border:1px solid #D7DFEA;margin-bottom:12px}' .
             '.scope td{padding:8px 10px;vertical-align:middle;text-align:left;border-right:1px solid #D7DFEA}.scope td:last-child{border-right:0}' .
             '.scope span,.info span,.metric span,.mini span,.call-summary span,.operational span{display:block;color:#6D7480;font-size:6pt;margin-bottom:2px}' .
-            '.scope strong{font-size:7.1pt;color:#16223B}.scope-total{width:92px;text-align:left}.scope-total strong{font-size:9.5pt;color:#273A8A}' .
+            '.scope strong{font-size:7.1pt;color:#16223B}.scope-total{width:118px;text-align:left}.scope-total strong{font-size:7.2pt;color:#273A8A}' .
             '.report-section{margin:0 0 15px}.keep{page-break-inside:avoid}' .
             '.section-title{border-left:3px solid #273A8A;padding-left:8px;margin:0 0 11px;page-break-inside:avoid;page-break-after:avoid}' .
             '.section-title h2{font-size:10.7pt;color:#16223B;margin:0;font-weight:800}' .
