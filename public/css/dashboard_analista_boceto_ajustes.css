@@ -343,3 +343,204 @@
         grid-template-columns: 38px minmax(0, 1fr) auto;
     }
 }
+
+
+/* =========================================================
+   INICIO DEL ANALISTA · LEGIBILIDAD
+   Recupera presencia visual sin alterar la estructura del dashboard.
+   ========================================================= */
+@media (min-width: 768px) {
+    .analyst-dashboard-v2 .analyst-kpi-panel {
+        min-height: 130px;
+        padding: 19px 20px;
+    }
+
+    .analyst-dashboard-v2 .analyst-kpi-heading h2 {
+        font-size: 13px;
+    }
+
+    .analyst-dashboard-v2 .analyst-kpi-heading p {
+        font-size: 11px;
+    }
+
+    .analyst-dashboard-v2 .analyst-metric-card {
+        min-height: 82px;
+        padding: 5px 19px 0;
+    }
+
+    .analyst-dashboard-v2 .analyst-metric-card .metric-value {
+        font-size: 24px;
+    }
+
+    .analyst-dashboard-v2 .analyst-metric-card .metric-label {
+        font-size: 11px;
+    }
+
+    .analyst-dashboard-v2 .analyst-metric-help {
+        margin-top: 6px;
+        font-size: 10px;
+    }
+
+    .analyst-dashboard-v2 .analyst-kpi-action {
+        min-height: 82px;
+    }
+
+    .analyst-dashboard-v2 .analyst-kpi-action a {
+        min-height: 52px;
+        font-size: 11px;
+    }
+
+    .analyst-dashboard-v2 .analyst-main-grid > .dashboard-panel {
+        min-height: 280px;
+        padding: 18px 20px;
+    }
+
+    .analyst-dashboard-v2 .analyst-panel-heading {
+        margin-bottom: 13px;
+    }
+
+    .analyst-dashboard-v2 .analyst-panel-heading .panel-title {
+        font-size: 15px;
+    }
+
+    .analyst-dashboard-v2 .analyst-section-kicker {
+        font-size: 9.5px;
+    }
+
+    .analyst-dashboard-v2 .analyst-panel-link {
+        font-size: 10px;
+    }
+
+    .analyst-dashboard-v2 .analyst-attention-item {
+        min-height: 86px;
+        padding: 12px 13px 12px 18px;
+    }
+
+    .analyst-dashboard-v2 .analyst-attention-topline > strong {
+        font-size: 12px;
+    }
+
+    .analyst-dashboard-v2 .analyst-priority-pill {
+        min-height: 22px;
+        font-size: 9px;
+    }
+
+    .analyst-dashboard-v2 .analyst-attention-meta,
+    .analyst-dashboard-v2 .analyst-attention-route {
+        font-size: 10px;
+    }
+
+    .analyst-dashboard-v2 .analyst-work-button {
+        min-height: 36px;
+        font-size: 11px;
+    }
+
+    .analyst-dashboard-v2 .analyst-upcoming-item {
+        min-height: 64px;
+        padding: 9px 0;
+    }
+
+    .analyst-dashboard-v2 .analyst-upcoming-icon {
+        height: 44px;
+    }
+
+    .analyst-dashboard-v2 .analyst-upcoming-date strong {
+        font-size: 10px;
+    }
+
+    .analyst-dashboard-v2 .analyst-upcoming-date small {
+        font-size: 9px;
+    }
+
+    .analyst-dashboard-v2 .analyst-upcoming-item > div > strong {
+        font-size: 11px;
+    }
+
+    .analyst-dashboard-v2 .analyst-upcoming-item > div > span {
+        font-size: 10px;
+    }
+
+    .analyst-dashboard-v2 .analyst-bottom-grid > .dashboard-panel,
+    .analyst-dashboard-v2 .analyst-progress-panel {
+        padding: 18px 19px;
+    }
+
+    .analyst-dashboard-v2 .analyst-progress-step {
+        min-height: 136px;
+    }
+
+    .analyst-dashboard-v2 .analyst-progress-step strong {
+        font-size: 22px;
+    }
+
+    .analyst-dashboard-v2 .analyst-progress-step > strong + span {
+        font-size: 10px;
+    }
+
+    .analyst-dashboard-v2 .analyst-month-caption {
+        font-size: 9px !important;
+    }
+
+    .analyst-dashboard-v2 .analyst-interaction-total {
+        font-size: 10px;
+    }
+
+    .analyst-dashboard-v2 .analyst-interaction-total strong {
+        font-size: 11px;
+    }
+
+    .analyst-dashboard-v2 .analyst-activity-item {
+        min-height: 49px;
+        padding: 8px 0;
+        grid-template-columns: 32px minmax(0, 1fr) auto;
+    }
+
+    .analyst-dashboard-v2 .analyst-activity-icon {
+        width: 32px;
+        min-width: 32px;
+        height: 32px;
+        font-size: 12px;
+    }
+
+    .analyst-dashboard-v2 .analyst-activity-copy strong {
+        font-size: 10px;
+    }
+
+    .analyst-dashboard-v2 .analyst-activity-copy .analyst-activity-channel,
+    .analyst-dashboard-v2 .analyst-activity-copy .analyst-activity-result,
+    .analyst-dashboard-v2 .analyst-activity-copy .analyst-activity-count,
+    .analyst-dashboard-v2 .analyst-activity-item time {
+        font-size: 9px;
+    }
+
+    .analyst-dashboard-v2 .analyst-territory-item {
+        min-height: 54px;
+        padding: 7px 0;
+        grid-template-columns: 38px minmax(0, 1fr) auto auto;
+        gap: 9px;
+    }
+
+    .analyst-dashboard-v2 .analyst-territory-icon,
+    .analyst-dashboard-v2 .analyst-territory-icon.has-state-image {
+        width: 38px;
+        min-width: 38px;
+        height: 38px;
+    }
+
+    .analyst-dashboard-v2 .analyst-territory-item strong {
+        font-size: 10px;
+    }
+
+    .analyst-dashboard-v2 .analyst-territory-item div > span,
+    .analyst-dashboard-v2 .analyst-territory-count {
+        font-size: 9px;
+    }
+
+    .analyst-dashboard-v2 .analyst-territory-item.is-active .analyst-territory-count {
+        font-size: 9.5px;
+    }
+
+    .analyst-dashboard-v2 .analyst-territory-item:not(.is-active) .analyst-territory-count::after {
+        font-size: 9px;
+    }
+}
