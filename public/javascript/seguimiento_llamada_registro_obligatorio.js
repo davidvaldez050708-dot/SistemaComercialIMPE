@@ -71,6 +71,48 @@
             offcanvas.querySelector('[data-call-registration-required-note]')?.remove();
         };
 
+        const bloquearCanalLlamada = function (formulario) {
+            const canal = formulario?.querySelector('select[name="canal"]');
+            if (!canal) {
+                return;
+            }
+
+            if (canal.value !== 'LLAMADA') {
+                canal.value = 'LLAMADA';
+                canal.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+
+            canal.disabled = true;
+            canal.dataset.callChannelLocked = '1';
+            canal.setAttribute(
+                'title',
+                'Esta interacción corresponde a una llamada realizada desde el sistema.'
+            );
+
+            let canalOculto = formulario.querySelector('[data-call-locked-channel]');
+            if (!canalOculto) {
+                canalOculto = document.createElement('input');
+                canalOculto.type = 'hidden';
+                canalOculto.name = 'canal';
+                canalOculto.value = 'LLAMADA';
+                canalOculto.setAttribute('data-call-locked-channel', '');
+                formulario.appendChild(canalOculto);
+            }
+        };
+
+        const liberarCanalLlamada = function () {
+            const formulario = offcanvas.querySelector('[data-work-interaction-form]');
+            const canal = formulario?.querySelector('select[name="canal"]');
+
+            formulario?.querySelector('[data-call-locked-channel]')?.remove();
+
+            if (canal?.dataset.callChannelLocked === '1') {
+                canal.disabled = false;
+                delete canal.dataset.callChannelLocked;
+                canal.removeAttribute('title');
+            }
+        };
+
         const establecerPendiente = function (valor) {
             const nuevoValor = Boolean(valor);
 
@@ -100,6 +142,7 @@
                 }
 
                 limpiarAvisoFormulario();
+                liberarCanalLlamada();
             }
 
             document.dispatchEvent(new CustomEvent('impe:call-registration-pending-changed', {
@@ -140,14 +183,11 @@
             }
 
             window.setTimeout(function () {
-                const canal = formulario.querySelector('[name="canal"]');
+                const canal = formulario.querySelector('select[name="canal"]');
                 const fechaInicio = formulario.querySelector('[name="fecha_inicio"]');
                 const resultado = formulario.querySelector('[name="resultado"]');
 
-                if (canal && canal.value !== 'LLAMADA') {
-                    canal.value = 'LLAMADA';
-                    canal.dispatchEvent(new Event('change', { bubbles: true }));
-                }
+                bloquearCanalLlamada(formulario);
 
                 if (fechaInicio && String(fechaInicio.value || '').trim() === '') {
                     fechaInicio.value = fechaLocalAhora();
