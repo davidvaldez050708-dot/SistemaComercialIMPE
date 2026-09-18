@@ -28,7 +28,14 @@ class SeguimientoFlujoController
         $this->agendaReunionService = new AgendaReunionService();
         $this->reunionFechaGuardService = new ReunionFechaGuardService();
         $this->reunionResultadoService = new ReunionResultadoService();
-        $this->rutaOperativaService = new SeguimientoRutaOperativaService();
+        $this->rutaOperativaService = new SeguimientoRutaOperativaService(
+            $this->service,
+            $this->postEnvioService,
+            $this->seguimientoCorreoService,
+            $this->agendaReunionService,
+            $this->reunionFechaGuardService,
+            $this->reunionResultadoService
+        );
     }
 
     public function estado()
