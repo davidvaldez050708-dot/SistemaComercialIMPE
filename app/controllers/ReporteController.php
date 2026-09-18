@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../helpers/PermissionHelper.php';
+require_once __DIR__ . '/../models/UsuarioModel.php';
 
 class ReporteController
 {
@@ -9,6 +10,11 @@ class ReporteController
         $puedeReporteTerritorial = tienePermiso('data_territorial.ver');
         $puedeReporteSeguimiento = tienePermiso('seguimientos_vinculacion.ver');
         $puedeReporteAdministrador = (int)($_SESSION['rol_id'] ?? 0) === 1;
+        $rolesReporteAdministrador = [];
+
+        if ($puedeReporteAdministrador) {
+            $rolesReporteAdministrador = (new UsuarioModel())->obtenerRolesActivos();
+        }
 
         if (!$puedeReporteTerritorial && !$puedeReporteSeguimiento && !$puedeReporteAdministrador) {
             http_response_code(403);
