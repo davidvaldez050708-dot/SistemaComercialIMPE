@@ -4,6 +4,7 @@ require_once __DIR__ . '/../models/SeguimientoVinculacionModel.php';
 require_once __DIR__ . '/../helpers/PermissionHelper.php';
 require_once __DIR__ . '/../services/ReporteSeguimientoVinculacionPdfService.php';
 require_once __DIR__ . '/../services/ReporteSeguimientoVinculacionPdfProfesionalService.php';
+require_once __DIR__ . '/../services/ReporteSeguimientoInstitucionDetalleService.php';
 require_once __DIR__ . '/../services/EvolucionActividadSeguimientoService.php';
 require_once __DIR__ . '/../services/SeguimientoReporteAnaliticaService.php';
 require_once __DIR__ . '/../services/SeguimientoFlujoService.php';
@@ -194,6 +195,26 @@ class SeguimientoVinculacionReporteController
                 : []
         );
 
+        $detalleInstitucion = [];
+        $seguimientosReporte = is_array($contexto['seguimientosReporte'] ?? null)
+            ? $contexto['seguimientosReporte']
+            : [];
+
+        if (
+            (int)($contexto['filtrosReporte']['institucion_id'] ?? 0) > 0 &&
+            count($seguimientosReporte) === 1
+        ) {
+            try {
+                $detalleInstitucion = (new ReporteSeguimientoInstitucionDetalleService())->construir(
+                    (int)($seguimientosReporte[0]['id'] ?? 0),
+                    (int)($_SESSION['usuario_id'] ?? 0),
+                    (string)($contexto['modoSeguimiento'] ?? 'analista')
+                );
+            } catch (Throwable $error) {
+                error_log('[reporte_detalle_institucion_pdf] ' . $error->getMessage());
+            }
+        }
+
         $datosPdf = [
             'resumen_filtros' => $contexto['resumenFiltros'],
             'filtros_reporte' => $contexto['filtrosReporte'],
@@ -202,6 +223,7 @@ class SeguimientoVinculacionReporteController
             'evolucion_actividad' => $evolucionActividad,
             'analitica' => $analitica,
             'flujo_individual' => $flujoIndividual,
+            'detalle_institucion' => $detalleInstitucion,
             'etiquetas_estatus' => self::ESTADOS_SEGUIMIENTO,
             'fecha_generacion' => date('Y-m-d H:i:s'),
             'generado_por' => trim(
