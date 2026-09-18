@@ -29,7 +29,8 @@ class AgendaReunionRepository
                        COALESCE(NULLIF(TRIM(s.correo_verificado),''), NULLIF(TRIM(s.correo_fuente),'')) AS contacto_correo,
                        m.nombre AS municipio_nombre,
                        TRIM(CONCAT(COALESCE(a.nombre,''),' ',COALESCE(a.apellidos,''))) AS analista_nombre,
-                       TRIM(CONCAT(COALESCE(k.nombre,''),' ',COALESCE(k.apellidos,''))) AS cuenta_clave_nombre
+                       TRIM(CONCAT(COALESCE(k.nombre,''),' ',COALESCE(k.apellidos,''))) AS cuenta_clave_nombre,
+                       COALESCE(k.correo,'') AS cuenta_clave_correo
                 FROM reuniones_vinculacion r
                 JOIN seguimientos_vinculacion s ON s.id=r.seguimiento_id
                 LEFT JOIN municipios m ON m.id=s.municipio_id
@@ -135,7 +136,8 @@ class AgendaReunionRepository
                        COALESCE(NULLIF(TRIM(s.correo_verificado),''), NULLIF(TRIM(s.correo_fuente),'')) AS contacto_correo,
                        m.nombre AS municipio_nombre,
                        TRIM(CONCAT(COALESCE(a.nombre,''),' ',COALESCE(a.apellidos,''))) AS analista_nombre,
-                       TRIM(CONCAT(COALESCE(k.nombre,''),' ',COALESCE(k.apellidos,''))) AS cuenta_clave_nombre
+                       TRIM(CONCAT(COALESCE(k.nombre,''),' ',COALESCE(k.apellidos,''))) AS cuenta_clave_nombre,
+                       COALESCE(k.correo,'') AS cuenta_clave_correo
                 FROM reuniones_vinculacion r
                 JOIN seguimientos_vinculacion s ON s.id=r.seguimiento_id
                 LEFT JOIN municipios m ON m.id=s.municipio_id
