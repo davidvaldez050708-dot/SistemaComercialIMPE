@@ -20,3 +20,71 @@
     color: var(--color-primary);
     font-size: 12px;
 }
+
+
+/* Vista previa de la Ecard que se adjunta al correo de reunión. */
+.agenda-ecard-preview {
+    display: grid;
+    gap: 9px;
+    padding: 12px;
+    border: 1px solid #dbe4ef;
+    border-radius: 12px;
+    background: #f8fafc;
+}
+
+.agenda-ecard-preview-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    color: #40516d;
+    font-size: 11px;
+    line-height: 1.35;
+}
+
+.agenda-ecard-preview-heading span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 700;
+}
+
+.agenda-ecard-preview-heading i {
+    color: var(--color-primary);
+}
+
+.agenda-ecard-preview-heading strong {
+    color: #13233a;
+    font-size: 11px;
+    text-align: right;
+}
+
+.agenda-ecard-preview img {
+    display: block;
+    width: 100%;
+    max-width: 420px;
+    height: auto;
+    margin: 0 auto;
+    border: 1px solid #d9e2ec;
+    border-radius: 10px;
+    background: #ffffff;
+    box-shadow: 0 6px 18px rgba(15, 38, 66, 0.08);
+}
+
+.agenda-ecard-preview small {
+    color: #6b7789;
+    font-size: 10px;
+    line-height: 1.45;
+}
+
+@media (max-width: 575.98px) {
+    .agenda-ecard-preview-heading {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 3px;
+    }
+
+    .agenda-ecard-preview-heading strong {
+        text-align: left;
+    }
+}
