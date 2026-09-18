@@ -44,6 +44,7 @@ class EcardReunionService
                 : 'Presidente',
             'equipo_yulissa' => $esSergio,
             'evento' => $this->resolverEvento($reunion),
+            'sede' => $this->resolverSede($reunion),
             'modalidad' => $this->etiquetaModalidad($reunion['modalidad'] ?? ''),
             'enlace' => trim((string)($reunion['zoom_url'] ?? ''))
         ];
@@ -75,6 +76,7 @@ class EcardReunionService
 
         $meta = $this->metadatos($reunion);
         $evento = trim((string)$meta['evento']);
+        $sede = trim((string)$meta['sede']);
         $modalidad = trim((string)$meta['modalidad']);
         $enlace = trim((string)$meta['enlace']);
 
@@ -92,11 +94,10 @@ class EcardReunionService
         $firma = sha1(implode('|', [
             $meta['template'],
             $evento,
+            $sede,
             $fecha->format('Y-m-d H:i:s'),
             $modalidad,
-            $enlace,
-            trim((string)($reunion['ubicacion'] ?? '')),
-            trim((string)($reunion['nombre_entidad'] ?? ''))
+            $enlace
         ]));
         $nombreArchivo = 'reunion_' . $reunionId . '_' . substr($firma, 0, 12) . '.jpg';
         $ruta = $directorio . DIRECTORY_SEPARATOR . $nombreArchivo;
@@ -107,6 +108,7 @@ class EcardReunionService
                 $meta,
                 $fecha,
                 $evento,
+                $sede,
                 $modalidad,
                 $enlace
             );
@@ -128,6 +130,7 @@ class EcardReunionService
             'ponente' => $meta['ponente'],
             'cargo' => $meta['cargo'],
             'evento' => $evento,
+            'sede' => $sede,
             'modalidad' => $modalidad,
             'enlace' => $enlace
         ];
@@ -194,19 +197,29 @@ class EcardReunionService
 
     private function resolverEvento(array $reunion)
     {
-        $ubicacion = trim((string)($reunion['ubicacion'] ?? ''));
         $objetivo = trim((string)($reunion['objetivo'] ?? ''));
         $entidad = trim((string)($reunion['nombre_entidad'] ?? ''));
-
-        if ($ubicacion !== '') {
-            return $ubicacion;
-        }
 
         if ($objetivo !== '') {
             return $objetivo;
         }
 
         return $entidad !== '' ? $entidad : 'Reunión de vinculación';
+    }
+
+    private function resolverSede(array $reunion)
+    {
+        $ubicacion = trim((string)($reunion['ubicacion'] ?? ''));
+        if ($ubicacion !== '') {
+            return $ubicacion;
+        }
+
+        $modalidad = strtoupper(trim((string)($reunion['modalidad'] ?? '')));
+        if ($modalidad === 'VIRTUAL') {
+            return 'En línea';
+        }
+
+        return 'Por confirmar';
     }
 
     private function etiquetaModalidad($valor)
@@ -222,7 +235,7 @@ class EcardReunionService
         return $mapa[$modalidad] ?? ($modalidad !== '' ? ucfirst(strtolower($modalidad)) : 'Por confirmar');
     }
 
-    private function crearImagen($ruta, array $meta, DateTime $fecha, $evento, $modalidad, $enlace)
+    private function crearImagen($ruta, array $meta, DateTime $fecha, $evento, $sede, $modalidad, $enlace)
     {
         $ancho = 900;
         $alto = 1050;
@@ -268,23 +281,23 @@ class EcardReunionService
         $esSergio = strtolower((string)$meta['template']) === strtolower(self::TEMPLATE_SERGIO);
 
         $titulo = $esSergio ? 'Reunión Informativa' : 'Reunión';
-        $this->texto($imagen, $titulo, 54, 54, 85, $blanco, $fuenteNormal);
+        $this->texto($imagen, $titulo, 52, 54, 82, $blanco, $fuenteNormal);
         imageline($imagen, 55, 112, 845, 112, $blanco);
 
-        if ($esSergio) {
-            $this->textoCentrado($imagen, 'ACUERDO 286', 38, 155, $blanco, $fuenteBold);
-            $this->textoCentrado($imagen, 'Te invitamos a nuestra reunión informativa', 22, 210, $blanco, $fuenteNormal);
-        } else {
-            $this->textoCentrado($imagen, 'Comprometidos con el', 22, 180, $blanco, $fuenteNormal);
-            $this->textoCentrado($imagen, 'crecimiento profesional.', 26, 215, $blanco, $fuenteBold);
-        }
-
-        $this->textoCentrado($imagen, 'SEDE / EVENTO', 15, 290, $blanco, $fuenteBold);
-        $lineasEvento = $this->envolverTexto($evento, 650, 30, $fuenteBold, 2);
-        $yEvento = count($lineasEvento) > 1 ? 323 : 338;
+        $this->textoCentrado($imagen, 'NOMBRE DEL EVENTO', 14, 153, $blanco, $fuenteBold);
+        $lineasEvento = $this->envolverTexto($evento, 720, 30, $fuenteBold, 2);
+        $yEvento = count($lineasEvento) > 1 ? 190 : 207;
         foreach ($lineasEvento as $linea) {
             $this->textoCentrado($imagen, $linea, 30, $yEvento, $blanco, $fuenteBold);
-            $yEvento += 38;
+            $yEvento += 37;
+        }
+
+        $this->textoCentrado($imagen, 'SEDE', 14, 292, $blanco, $fuenteBold);
+        $lineasSede = $this->envolverTexto($sede, 700, 22, $fuenteNormal, 2);
+        $ySede = count($lineasSede) > 1 ? 326 : 340;
+        foreach ($lineasSede as $linea) {
+            $this->textoCentrado($imagen, $linea, 22, $ySede, $blanco, $fuenteNormal);
+            $ySede += 29;
         }
 
         imagefilledrectangle($imagen, 55, 450, 845, 725, $grisFondo);
@@ -310,7 +323,9 @@ class EcardReunionService
         $this->texto($imagen, 'LINK / ACCESO', 14, 520, 584, $grisTexto, $fuenteBold);
         $acceso = $enlace !== ''
             ? $enlace
-            : 'No aplica · reunión presencial';
+            : (strtolower($modalidad) === 'presencial'
+                ? 'No aplica · reunión presencial'
+                : 'Por confirmar');
         $lineasAcceso = $this->envolverTexto($acceso, 290, 15, $fuenteNormal, 4);
         $yAcceso = 616;
         foreach ($lineasAcceso as $linea) {
@@ -342,7 +357,8 @@ class EcardReunionService
 
         $this->texto($imagen, 'EDUCACIÓN', 22, 680, 995, $blanco, $fuenteBold);
 
-        $guardado = imagejpeg($imagen, $ruta, 91);
+        imageinterlace($imagen, true);
+        $guardado = imagejpeg($imagen, $ruta, 96);
         imagedestroy($imagen);
 
         if (!$guardado || !is_file($ruta)) {
@@ -364,52 +380,76 @@ class EcardReunionService
         $fuenteBold
     ) {
         $foto = $this->buscarFotoPonente($template);
-        $x = 92;
-        $y = 758;
-        $tam = 128;
+        $x = 72;
+        $y = 748;
+        $maxAncho = 170;
+        $maxAlto = 150;
 
-        imagefilledellipse($imagen, $x + 64, $y + 64, 136, 136, $grisFondo);
+        // El retrato se coloca completo, conservando su proporción original.
+        // No se recorta el rostro ni se altera el archivo fuente.
+        imagefilledrectangle(
+            $imagen,
+            $x - 5,
+            $y - 5,
+            $x + $maxAncho + 5,
+            $y + $maxAlto + 5,
+            $grisFondo
+        );
 
         if ($foto !== '') {
             $origen = $this->cargarImagen($foto);
             if ($origen) {
                 $w = imagesx($origen);
                 $h = imagesy($origen);
-                $lado = min($w, $h);
-                $sx = (int)(($w - $lado) / 2);
-                $sy = (int)(($h - $lado) / 2);
-                imagecopyresampled(
-                    $imagen,
-                    $origen,
-                    $x,
-                    $y,
-                    $sx,
-                    $sy,
-                    $tam,
-                    $tam,
-                    $lado,
-                    $lado
-                );
+
+                if ($w > 0 && $h > 0) {
+                    $escala = min($maxAncho / $w, $maxAlto / $h);
+                    $destinoAncho = max(1, (int)round($w * $escala));
+                    $destinoAlto = max(1, (int)round($h * $escala));
+                    $destinoX = $x + (int)(($maxAncho - $destinoAncho) / 2);
+                    $destinoY = $y + (int)(($maxAlto - $destinoAlto) / 2);
+
+                    imagecopyresampled(
+                        $imagen,
+                        $origen,
+                        $destinoX,
+                        $destinoY,
+                        0,
+                        0,
+                        $destinoAncho,
+                        $destinoAlto,
+                        $w,
+                        $h
+                    );
+                }
+
                 imagedestroy($origen);
             }
         } else {
-            imagefilledellipse($imagen, $x + 64, $y + 64, 118, 118, $navy);
+            imagefilledellipse(
+                $imagen,
+                $x + (int)($maxAncho / 2),
+                $y + (int)($maxAlto / 2),
+                118,
+                118,
+                $navy
+            );
             $iniciales = strtoupper(substr(trim($ponente), 0, 1) . 'P');
             $this->textoCentradoEnCaja(
                 $imagen,
                 $iniciales,
                 29,
                 $x,
-                $y + 48,
-                $tam,
+                $y + 64,
+                $maxAncho,
                 imagecolorallocate($imagen, 255, 255, 255),
                 $fuenteBold
             );
         }
 
-        $this->texto($imagen, $ponente, 31, 255, 798, $navy, $fuenteBold);
-        $this->texto($imagen, $cargo, 22, 255, 838, $grisTexto, $fuenteNormal);
-        $this->texto($imagen, 'Reunión institucional', 15, 255, 875, $grisTexto, $fuenteBold);
+        $this->texto($imagen, $ponente, 31, 275, 798, $navy, $fuenteBold);
+        $this->texto($imagen, $cargo, 22, 275, 838, $grisTexto, $fuenteNormal);
+        $this->texto($imagen, 'Reunión institucional', 15, 275, 875, $grisTexto, $fuenteBold);
     }
 
     private function buscarFotoPonente($template)
