@@ -470,6 +470,11 @@
             }
 
             finishing = true;
+
+            const duracionLocal = timerStartedAt
+                ? Math.max(0, Math.floor((Date.now() - timerStartedAt) / 1000))
+                : 0;
+
             stopStatusPolling();
             stopTimer();
             activeCall = false;
@@ -481,8 +486,28 @@
             }
 
             const finalCall = call || lastCallState || {};
-            const finalStatus = String(finalCall.status || 'failed');
-            const duration = Math.max(0, Number(finalCall.duration || 0));
+            let finalStatus = String(finalCall.status || 'failed');
+            const duracionProveedor = Math.max(0, Number(finalCall.duration || 0));
+            const duration = Math.max(duracionProveedor, duracionLocal);
+
+            if (
+                duration > 0 &&
+                (finalStatus === 'in-progress' || finalStatus === 'ringing' || finalStatus === '')
+            ) {
+                finalStatus = 'completed';
+            }
+
+            const callIdWithRec = String(finalCall.call_id_with_rec || '').trim();
+            const marcadaComoGrabada =
+                Boolean(finalCall.is_recorded) ||
+                String(finalCall.is_recorded || '') === '1';
+
+            let recordingState = 'none';
+            if (callIdWithRec !== '') {
+                recordingState = 'available';
+            } else if (finalStatus === 'completed' && duration > 0) {
+                recordingState = marcadaComoGrabada ? 'processing' : 'processing';
+            }
 
             els.status.textContent = label || etiquetaEstado(finalStatus);
             els.start.disabled = !widgetReady;
@@ -500,12 +525,17 @@
                 start_time: finalCall.start_time || null,
                 end_time: finalCall.end_time || null,
                 to: finalCall.destination || currentPhone,
-                call_id_with_rec: finalCall.call_id_with_rec || ''
+                is_recorded: marcadaComoGrabada,
+                recording_state: recordingState,
+                call_id_with_rec: callIdWithRec
             };
 
             let estadoTexto = 'La llamada terminó. Registra el resultado para conservar la gestión.';
             if (duration > 0) {
-                estadoTexto = 'Conversación: ' + formatDuration(duration) + '. La grabación se genera automáticamente en Zadarma.';
+                estadoTexto = 'Conversación: ' + formatDuration(duration) +
+                    (recordingState === 'available'
+                        ? '. La grabación ya fue confirmada por Zadarma.'
+                        : '. La grabación se está procesando en Zadarma.');
             } else if (finalStatus === 'busy') {
                 estadoTexto = 'La línea estaba ocupada. Registra el resultado para conservar el intento.';
             } else if (finalStatus === 'no-answer') {
@@ -646,12 +676,23 @@
                     ? 'Sin respuesta'
                     : (metadata.status === 'busy' ? 'Ocupado' : 'Finalizada'));
 
+            const recordingState = String(metadata.recording_state || 'none');
+            const textoGrabacion = recordingState === 'available'
+                ? ' · grabación disponible.'
+                : (recordingState === 'processing'
+                    ? ' · grabación procesándose.'
+                    : '.');
+
+            aviso.dataset.callDurationSeconds = String(
+                Math.max(0, Number(metadata.duration || 0))
+            );
+            aviso.dataset.callRecordingState = recordingState;
             aviso.innerHTML =
                 '<div class="alert alert-light border mb-1 py-2 px-3 small">' +
                     '<i class="bi bi-telephone-check me-1"></i>' +
                     '<strong>Llamada real vinculada.</strong> ' +
                     estado + ' · ' + formatDuration(metadata.duration) +
-                    (metadata.duration > 0 ? ' · grabación Zadarma disponible al procesarse.' : '.') +
+                    textoGrabacion +
                 '</div>';
         };
 
@@ -787,9 +828,9 @@
                 });
                 const data = await response.json();
 
-                if ([404, 409].includes(response.status) && attempt < 5) {
+                if ([404, 409].includes(response.status) && attempt < 12) {
                     linkingMetadata = false;
-                    await sleep(600);
+                    await sleep(750);
                     void vincularMetadata(attempt + 1);
                     return;
                 }
