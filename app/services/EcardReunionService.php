@@ -409,11 +409,34 @@ class EcardReunionService
 
     private function buscarFotoPonente($template)
     {
+        $esSergio = strtoupper((string)$template) === self::TEMPLATE_SERGIO;
+        $configFoto = $this->config(
+            $esSergio
+                ? 'ECARD_REUNION_SERGIO_FOTO'
+                : 'ECARD_REUNION_MANUEL_FOTO',
+            ''
+        );
+
+        if ($configFoto !== '') {
+            $rutaConfig = $configFoto;
+
+            if (!preg_match('/^(?:[A-Za-z]:[\\\\\/]|\/)/', $rutaConfig)) {
+                $rutaConfig = $this->rootPath . DIRECTORY_SEPARATOR .
+                    ltrim(
+                        str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $rutaConfig),
+                        DIRECTORY_SEPARATOR
+                    );
+            }
+
+            if (is_file($rutaConfig)) {
+                return $rutaConfig;
+            }
+        }
+
         if (!$this->connection) {
             return '';
         }
 
-        $esSergio = strtoupper((string)$template) === self::TEMPLATE_SERGIO;
         $nombre = $esSergio ? '%sergio%' : '%manuel%';
         $apellido = '%porcayo%';
 
