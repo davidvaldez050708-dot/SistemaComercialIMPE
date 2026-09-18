@@ -1,22 +1,29 @@
-/* Ajuste visual del resumen de Territorios y asignaciones.
-   Mantiene el componente metric-card alineado con el resto del sistema. */
+/* Resumen de Territorios y asignaciones.
+   Reutiliza la tarjeta métrica estándar del sistema. */
 
 .territory-summary-card {
     min-height: 104px;
     padding: 18px;
     gap: 14px;
 
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+
+    background: var(--color-surface);
     box-shadow: 0 8px 18px rgba(28, 46, 74, 0.03);
+
     transition: border-color 0.18s ease, box-shadow 0.18s ease;
 }
 
 .territory-summary-card::before {
     display: none;
+    content: none;
 }
 
 .territory-summary-card:hover {
     transform: none;
     border-color: var(--color-border);
+    background: var(--color-surface);
     box-shadow: 0 8px 18px rgba(28, 46, 74, 0.03);
 }
 
@@ -31,13 +38,15 @@
 }
 
 .territory-summary-card .metric-value {
-    font-size: 28px;
+    font-size: 26px;
     font-weight: 800;
+    letter-spacing: normal;
     line-height: 1;
 }
 
 .territory-summary-card .metric-label {
     margin-top: 7px;
+    color: var(--color-text-secondary);
     font-size: 12px;
     font-weight: 700;
     line-height: 1.25;
@@ -403,7 +412,7 @@
     }
 
     .territory-summary-card .metric-value {
-        font-size: 28px;
+        font-size: 26px;
     }
 
     .territory-summary-card .metric-label {
