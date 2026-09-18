@@ -4,6 +4,14 @@ $rolesReporteAdministrador = is_array($rolesReporteAdministrador ?? null)
     : [];
 ?>
 
+<style>
+#formReporteUsuarios .form-check-label {
+    font-family: inherit;
+    font-size: 13px;
+    line-height: 1.2;
+}
+</style>
+
 <section class="report-module report-territorial-module">
     <a
         class="linkage-back-link territorial-back-link"
