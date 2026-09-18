@@ -1502,9 +1502,12 @@ class SeguimientoVinculacionModel
                     seguimientos.nombre_entidad,
                     seguimientos.tipo_entidad,
                     seguimientos.estado_seguimiento,
+                    seguimientos.datos_verificados,
                     seguimientos.ultima_interaccion_at,
                     seguimientos.fecha_inicio,
                     seguimientos.proxima_accion_at,
+                    seguimientos.created_at,
+                    seguimientos.updated_at,
                     seguimientos.analista_id,
                     seguimientos.municipio_id,
                     (
