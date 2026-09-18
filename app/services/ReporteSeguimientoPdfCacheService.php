@@ -68,6 +68,8 @@ class ReporteSeguimientoPdfCacheService
             return;
         }
 
+        $this->limpiarExpirados();
+
         $rutaPdf = $this->ruta($clave, 'pdf');
         $rutaMeta = $this->ruta($clave, 'json');
 
@@ -90,6 +92,23 @@ class ReporteSeguimientoPdfCacheService
 
         @rename($pdfTemporal, $rutaPdf);
         @rename($metaTemporal, $rutaMeta);
+    }
+
+    private function limpiarExpirados(): void
+    {
+        $archivos = @glob($this->directorio . DIRECTORY_SEPARATOR . '*.{pdf,json}', GLOB_BRACE);
+        if (!is_array($archivos)) {
+            return;
+        }
+
+        $limite = time() - (self::TTL_SEGUNDOS * 4);
+
+        foreach ($archivos as $archivo) {
+            $modificado = @filemtime($archivo);
+            if ($modificado && $modificado < $limite) {
+                @unlink($archivo);
+            }
+        }
     }
 
     private function asegurarDirectorio(): bool
