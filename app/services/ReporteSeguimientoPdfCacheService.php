@@ -96,8 +96,14 @@ class ReporteSeguimientoPdfCacheService
 
     private function limpiarExpirados(): void
     {
-        $archivos = @glob($this->directorio . DIRECTORY_SEPARATOR . '*.{pdf,json}', GLOB_BRACE);
-        if (!is_array($archivos)) {
+        $pdfs = @glob($this->directorio . DIRECTORY_SEPARATOR . '*.pdf');
+        $metas = @glob($this->directorio . DIRECTORY_SEPARATOR . '*.json');
+        $archivos = array_merge(
+            is_array($pdfs) ? $pdfs : [],
+            is_array($metas) ? $metas : []
+        );
+
+        if (empty($archivos)) {
             return;
         }
 
