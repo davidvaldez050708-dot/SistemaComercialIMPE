@@ -33,7 +33,7 @@
 
 .report-catalog-grid {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     align-items: stretch;
     gap: 14px;
 }
@@ -467,7 +467,7 @@
 
 @media (max-width: 991.98px) {
     .report-catalog-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
     }
 
     .report-two-column {
