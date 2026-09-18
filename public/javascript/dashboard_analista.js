@@ -82,28 +82,15 @@
             destino.dataset.routeReady = '1';
         };
 
-        const obtenerCache = function (seguimientoId) {
-            try {
-                return window.IMPE_SEGUIMIENTO_RUTA_CACHE?.obtener?.(seguimientoId) || null;
-            } catch (error) {
-                return null;
-            }
-        };
-
         const procesar = async function (elemento) {
             const seguimientoId = Number(elemento.dataset.seguimientoId || 0);
             if (seguimientoId <= 0) {
                 return;
             }
 
-            // La cache se usa únicamente para pintar de inmediato. Siempre consultamos
-            // después el estado autoritativo porque Cuenta Clave puede haber cambiado la
-            // reunión desde otra sesión y la ruta guardada podría haber quedado obsoleta.
-            const cache = obtenerCache(seguimientoId);
-            if (cache) {
-                pintar(elemento, cache);
-            }
-
+            // En Inicio no pintamos datos de caché antes de consultar al servidor.
+            // Es preferible conservar el estado "Consultando ruta..." unos milisegundos
+            // antes que mostrar una ruta anterior y sustituirla después.
             try {
                 const respuesta = await fetch(
                     endpoint + encodeURIComponent(seguimientoId),
@@ -124,12 +111,6 @@
 
                 pintar(elemento, datos.flujo);
             } catch (error) {
-                // Si ya había cache visible, la conservamos como respaldo en vez de
-                // sustituirla por un mensaje genérico.
-                if (cache) {
-                    return;
-                }
-
                 const destino = elemento.querySelector('[data-route-action]');
                 if (destino) {
                     destino.textContent = 'Abre el seguimiento para consultar la ruta actual';
