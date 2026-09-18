@@ -441,10 +441,14 @@ class ReporteAdministradorPdfService
             $logoXml . '</w:tc>' .
             '<w:tc><w:tcPr><w:tcW w:w="' . $anchoTexto . '" w:type="dxa"/><w:vAlign w:val="center"/></w:tcPr>' .
             $this->parrafoHeaderXml('Sistema de Gestión Comercial', 13, self::COLOR_PRIMARIO, true) .
-            $this->parrafoHeaderXml('Reporte Administrativo de Usuarios', 23, self::COLOR_TEXTO, true) .
+            $this->parrafoHeaderXml('Reporte Administrativo de Usuarios', 21, self::COLOR_TEXTO, true) .
             $this->parrafoHeaderXml('Usuarios, carga de seguimiento y pendientes operativos', 14, self::COLOR_SECUNDARIO, false) .
             $meta .
             '</w:tc></w:tr></w:tbl>' .
+            '<w:p><w:pPr>' .
+            '<w:spacing w:before="90" w:after="90"/>' .
+            '<w:pBdr><w:bottom w:val="single" w:sz="16" w:space="0" w:color="' . self::COLOR_PRIMARIO . '"/></w:pBdr>' .
+            '</w:pPr><w:r><w:t></w:t></w:r></w:p>' .
             '</w:hdr>';
 
         $zip->addFromString('word/header1.xml', $header);
@@ -519,7 +523,7 @@ class ReporteAdministradorPdfService
             $documento,
             (string)$texto,
             [
-                'tamano' => 20,
+                'tamano' => 19,
                 'negrita' => true,
                 'color' => self::COLOR_TEXTO,
                 'antes' => 80,
