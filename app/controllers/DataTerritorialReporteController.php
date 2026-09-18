@@ -77,6 +77,12 @@ class DataTerritorialReporteController
             die((string)($reporte['mensaje'] ?? 'No fue posible preparar el reporte territorial.'));
         }
 
+        $reporte['generado_por'] = trim(
+            (string)($_SESSION['nombre'] ?? '') . ' ' .
+            (string)($_SESSION['apellidos'] ?? '')
+        );
+        $reporte['generado_por_rol'] = (string)($_SESSION['rol'] ?? '');
+
         $resultadoPdf = (new ReporteTerritorialPdfService())->generar($reporte);
         if (($resultadoPdf['ok'] ?? false) !== true) {
             error_log('[reporte_territorial_pdf] ' . (string)($resultadoPdf['mensaje_tecnico'] ?? $resultadoPdf['mensaje'] ?? 'Error sin detalle.'));
