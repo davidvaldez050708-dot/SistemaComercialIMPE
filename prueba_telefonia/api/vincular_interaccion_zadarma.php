@@ -1,6 +1,8 @@
 <?php
 session_start();
 
+require_once dirname(__DIR__, 2) . '/app/services/ZadarmaCallLookupService.php';
+
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 
@@ -102,11 +104,14 @@ if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
 $seguimientoId = (int)($_POST['seguimiento_id'] ?? 0);
 $interaccionId = (int)($_POST['interaccion_id'] ?? 0);
 $pbxCallId = trim((string)($_POST['pbx_call_id'] ?? ''));
+$destino = trim((string)($_POST['destination'] ?? ''));
+$desdeUnix = max(0, (int)($_POST['since'] ?? 0));
+$duracionCliente = max(0, (int)($_POST['duration_client'] ?? 0));
 
 if (
     $seguimientoId <= 0 ||
     $interaccionId <= 0 ||
-    !preg_match('/^out_[a-fA-F0-9]{32,64}$/', $pbxCallId)
+    ($pbxCallId !== '' && !preg_match('/^out_[a-fA-F0-9]{32,64}$/', $pbxCallId))
 ) {
     responderJson([
         'ok' => false,
@@ -122,10 +127,6 @@ if (!is_file($configPath)) {
     responderJson(['ok' => false, 'mensaje' => 'Falta config/zadarma_config.php.'], 500);
 }
 
-if (!is_file($logPath)) {
-    responderJson(['ok' => false, 'mensaje' => 'Todavía no se recibió el registro de la llamada Zadarma.'], 404);
-}
-
 $config = require $configPath;
 $extension = trim((string)($config['pbx_extension'] ?? ''));
 
@@ -133,44 +134,117 @@ if (!preg_match('/^\d{3,6}$/', $extension)) {
     responderJson(['ok' => false, 'mensaje' => 'La extensión Zadarma no está configurada correctamente.'], 500);
 }
 
-$lineas = file($logPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
+$lineas = is_file($logPath)
+    ? (file($logPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [])
+    : [];
 $inicio = null;
 $respuesta = null;
 $fin = null;
 $grabacion = null;
 
-foreach ($lineas as $linea) {
-    $fila = json_decode($linea, true);
-    if (!is_array($fila)) {
-        continue;
-    }
+if ($pbxCallId !== '') {
+    foreach ($lineas as $linea) {
+        $fila = json_decode($linea, true);
+        if (!is_array($fila)) {
+            continue;
+        }
 
-    if (!hash_equals($pbxCallId, trim((string)($fila['pbx_call_id'] ?? '')))) {
-        continue;
-    }
+        if (!hash_equals($pbxCallId, trim((string)($fila['pbx_call_id'] ?? '')))) {
+            continue;
+        }
 
-    $evento = (string)($fila['event'] ?? '');
-    if ($evento === 'NOTIFY_OUT_START') {
-        $inicio = $fila;
-    } elseif ($evento === 'NOTIFY_ANSWER') {
-        $respuesta = $fila;
-    } elseif ($evento === 'NOTIFY_OUT_END') {
-        $fin = $fila;
-    } elseif ($evento === 'NOTIFY_RECORD') {
-        $grabacion = $fila;
+        $evento = (string)($fila['event'] ?? '');
+        if ($evento === 'NOTIFY_OUT_START') {
+            $inicio = $fila;
+        } elseif ($evento === 'NOTIFY_ANSWER') {
+            $respuesta = $fila;
+        } elseif ($evento === 'NOTIFY_OUT_END') {
+            $fin = $fila;
+        } elseif ($evento === 'NOTIFY_RECORD') {
+            $grabacion = $fila;
+        }
     }
+}
+
+$estadistica = null;
+if (!$inicio || !$fin || $pbxCallId === '') {
+    try {
+        $lookup = new ZadarmaCallLookupService();
+
+        if ($pbxCallId !== '') {
+            $estadistica = $lookup->buscarPorPbxCallId($pbxCallId);
+        } elseif ($destino !== '') {
+            $estadistica = $lookup->buscarSalienteReciente(
+                $extension,
+                $destino,
+                $desdeUnix > 0 ? $desdeUnix : (time() - 300)
+            );
+        }
+
+        if ($estadistica) {
+            $pbxCallId = trim((string)($estadistica['pbx_call_id'] ?? $pbxCallId));
+            $callStart = trim((string)($estadistica['callstart'] ?? ''));
+            $segundos = max(0, (int)($estadistica['seconds'] ?? 0));
+            $inicioTimestamp = $callStart !== '' ? strtotime($callStart) : false;
+
+            if (!$inicio) {
+                $inicio = [
+                    'event' => 'STATISTICS_OUT_START',
+                    'internal' => $extension,
+                    'destination' => (string)($estadistica['destination'] ?? $destino),
+                    'call_start' => $callStart,
+                    'pbx_call_id' => $pbxCallId,
+                ];
+            }
+
+            if (!$fin) {
+                $fin = [
+                    'event' => 'STATISTICS_OUT_END',
+                    'internal' => $extension,
+                    'destination' => (string)($estadistica['destination'] ?? $destino),
+                    'call_start' => $callStart,
+                    'pbx_call_id' => $pbxCallId,
+                    'duration' => (string)$segundos,
+                    'disposition' => (string)($estadistica['disposition'] ?? ''),
+                    'is_recorded' => !empty($estadistica['is_recorded']) ? '1' : '0',
+                    'call_id_with_rec' => (string)($estadistica['call_id'] ?? ''),
+                    'received_at' => $inicioTimestamp !== false
+                        ? date('c', $inicioTimestamp + $segundos)
+                        : date('c'),
+                ];
+            }
+        }
+    } catch (Throwable $error) {
+        error_log('[zadarma_vincular_estadisticas] ' . $error->getMessage());
+    }
+}
+
+if ($pbxCallId === '' || !preg_match('/^out_[a-fA-F0-9]{32,64}$/', $pbxCallId)) {
+    responderJson([
+        'ok' => false,
+        'mensaje' => 'Zadarma todavía está publicando el identificador de la llamada.'
+    ], 409);
 }
 
 if (!$inicio) {
-    responderJson(['ok' => false, 'mensaje' => 'No se encontró el inicio de esta llamada Zadarma.'], 404);
+    responderJson([
+        'ok' => false,
+        'mensaje' => 'Zadarma todavía está publicando el inicio de la llamada.'
+    ], 409);
 }
 
 if (trim((string)($inicio['internal'] ?? '')) !== $extension) {
-    responderJson(['ok' => false, 'mensaje' => 'La llamada no corresponde a la extensión asignada al Analista.'], 403);
+    responderJson([
+        'ok' => false,
+        'mensaje' => 'La llamada no corresponde a la extensión asignada al Analista.'
+    ], 403);
 }
 
 if (!$fin) {
-    responderJson(['ok' => false, 'mensaje' => 'La llamada todavía no termina de procesarse en Zadarma.'], 409);
+    responderJson([
+        'ok' => false,
+        'mensaje' => 'La llamada todavía no termina de procesarse en Zadarma.'
+    ], 409);
 }
 
 try {
@@ -233,7 +307,11 @@ try {
 
     $fechaInicio = fechaMysqlLocal($inicio['call_start'] ?? null) ?? date('Y-m-d H:i:s');
     $fechaFin = fechaMysqlDesdeIso($fin['received_at'] ?? null);
-    $duracion = duracionConversacion($respuesta, $fin);
+    $duracion = max(
+        duracionConversacion($respuesta, $fin),
+        max(0, (int)($fin['duration'] ?? 0)),
+        $duracionCliente
+    );
 
     if ($fechaFin === null && $duracion > 0) {
         try {
