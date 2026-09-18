@@ -260,6 +260,23 @@
     background: #f3f7fd;
 }
 
+.agenda-event.is-vencida {
+    border-color: #efc8c3;
+    background: #fff5f3;
+    box-shadow: inset 3px 0 0 #b42318;
+}
+
+.agenda-event.is-vencida:hover,
+.agenda-event.is-vencida:focus {
+    border-color: #e3aaa3;
+    background: #fff0ee;
+}
+
+.agenda-event.is-vencida .agenda-event-time,
+.agenda-event.is-vencida small {
+    color: #b42318;
+}
+
 .agenda-side-card {
     padding: 16px;
     position: sticky;
@@ -320,6 +337,25 @@
 .agenda-pending-item:hover {
     border-color: #cbd8ec;
     background: var(--color-primary-soft);
+}
+
+.agenda-pending-item.is-vencida {
+    border-color: #efc8c3;
+    background: #fff8f6;
+}
+
+.agenda-pending-item.is-vencida:hover {
+    border-color: #e3aaa3;
+    background: #fff0ee;
+}
+
+.agenda-pending-item.is-vencida .agenda-pending-status {
+    background: #fff0ee;
+    color: #b42318;
+}
+
+.agenda-pending-item.is-vencida .agenda-pending-copy small {
+    color: #b42318;
 }
 
 .agenda-pending-status {
@@ -490,6 +526,12 @@
 .agenda-status-pill.is-correo-enviado {
     background: #eaf7f4;
     color: #087866;
+}
+
+.agenda-status-pill.is-vencida {
+    border: 1px solid #efc8c3;
+    background: #fff0ee;
+    color: #b42318;
 }
 
 .agenda-action-box {
