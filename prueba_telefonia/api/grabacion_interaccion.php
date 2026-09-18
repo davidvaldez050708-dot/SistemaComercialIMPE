@@ -91,7 +91,7 @@ if ($excluirGrabacion) {
     exit('Esta llamada se conserva únicamente en el historial telefónico.');
 }
 
-if ($duracion <= 0) {
+if ($duracion <= 0 && $proveedor !== 'ZADARMA') {
     http_response_code(404);
     exit('Esta llamada no tiene una grabación asociada.');
 }
