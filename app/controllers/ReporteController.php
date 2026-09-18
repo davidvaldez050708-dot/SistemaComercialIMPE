@@ -18,30 +18,36 @@ class ReporteController
         }
 
         $datosService = new ReporteAdministradorDataService();
-
-        try {
-            $rolesSeleccionados = $datosService->resolverRolesSeleccionados($_GET);
-        } catch (InvalidArgumentException $error) {
-            http_response_code(400);
-            die($error->getMessage());
-        }
-
         $rolesReporteAdministrador = $datosService->obtenerRolesDisponibles();
-        $reporteAdministrador = $datosService->prepararDatos($rolesSeleccionados);
+        $rolesSeleccionados = null;
+        $reporteAdministrador = null;
+        $urlExportarPdf = '';
+        $reporteGenerado = (string)($_GET['generar'] ?? '') === '1';
 
-        $parametrosPdf = [
-            'controller' => 'reporteAdministrador',
-            'action' => 'exportarPdf',
-            'filtrar_roles' => 1
-        ];
+        if ($reporteGenerado) {
+            try {
+                $rolesSeleccionados = $datosService->resolverRolesSeleccionados($_GET);
+            } catch (InvalidArgumentException $error) {
+                http_response_code(400);
+                die($error->getMessage());
+            }
 
-        if ($rolesSeleccionados === null) {
-            $parametrosPdf['todos_roles'] = 1;
-        } else {
-            $parametrosPdf['roles'] = $rolesSeleccionados;
+            $reporteAdministrador = $datosService->prepararDatos($rolesSeleccionados);
+
+            $parametrosPdf = [
+                'controller' => 'reporteAdministrador',
+                'action' => 'exportarPdf',
+                'filtrar_roles' => 1
+            ];
+
+            if ($rolesSeleccionados === null) {
+                $parametrosPdf['todos_roles'] = 1;
+            } else {
+                $parametrosPdf['roles'] = $rolesSeleccionados;
+            }
+
+            $urlExportarPdf = BASE_URL . 'index.php?' . http_build_query($parametrosPdf);
         }
-
-        $urlExportarPdf = BASE_URL . 'index.php?' . http_build_query($parametrosPdf);
 
         $tituloPagina = 'Reportes';
         $subtituloPagina = 'Selecciona los roles que deseas incluir en el reporte administrativo.';
