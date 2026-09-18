@@ -323,8 +323,9 @@
                                 selectModalidad(reunion.modalidad) +
                             '</div>' +
                             '<div class="col-12">' +
-                                '<label class="form-label">Objetivo</label>' +
+                                '<label class="form-label">Nombre del evento / objetivo</label>' +
                                 '<input class="form-control system-form-control" type="text" name="objetivo" maxlength="500" value="' + escapar(reunion.objetivo || '') + '" required>' +
+                                '<small class="form-text">Este texto aparecerá como nombre del evento en la Ecard.</small>' +
                             '</div>' +
                             '<div class="col-12">' +
                                 '<label class="form-label">Notas para Cuenta Clave</label>' +
