@@ -2,7 +2,8 @@
 $rolesReporteAdministrador = is_array($rolesReporteAdministrador ?? null)
     ? $rolesReporteAdministrador
     : [];
-$reporteAdministrador = is_array($reporteAdministrador ?? null)
+$reporteCargado = is_array($reporteAdministrador ?? null);
+$reporteAdministrador = $reporteCargado
     ? $reporteAdministrador
     : [];
 $rolesSeleccionados = is_array($rolesSeleccionados ?? null)
@@ -102,6 +103,7 @@ foreach ($estadoUsuarios as $datoEstado) {
             <input type="hidden" name="controller" value="reporte">
             <input type="hidden" name="action" value="usuarios">
             <input type="hidden" name="filtrar_roles" value="1">
+            <input type="hidden" name="generar" value="1">
 
             <div class="report-filter-field">
                 <label class="form-label fw-semibold mb-2">
@@ -170,17 +172,23 @@ foreach ($estadoUsuarios as $datoEstado) {
             </div>
 
             <div class="d-flex justify-content-end mt-3">
-                <a
+                <button
                     class="btn btn-system-primary"
-                    id="reporteUsuariosGenerarPdf"
-                    href="<?= $texto($urlExportarPdf) ?>">
+                    type="submit">
                     <i class="bi bi-bar-chart me-2"></i>
                     Generar reporte
-                </a>
+                </button>
             </div>
         </form>
     </section>
 
+    <?php if (!$reporteCargado): ?>
+        <section class="dashboard-panel data-empty-state report-empty-state">
+            <span><i class="bi bi-file-earmark-bar-graph"></i></span>
+            <strong>Selecciona los roles y genera el reporte para consultar la información.</strong>
+            <p>La información administrativa aparecerá aquí antes de que decidas exportarla a PDF.</p>
+        </section>
+    <?php else: ?>
     <div class="territorial-section-title">
         <h2>RESUMEN EJECUTIVO</h2>
         <p>Indicadores administrativos calculados con el mismo alcance utilizado por el reporte PDF.</p>
@@ -458,6 +466,16 @@ foreach ($estadoUsuarios as $datoEstado) {
             <?php endforeach; ?>
         </div>
     </section>
+
+    <div class="d-flex justify-content-end mb-4">
+        <a
+            class="btn btn-system-save report-export-action"
+            href="<?= $texto($urlExportarPdf) ?>">
+            <i class="bi bi-file-earmark-pdf"></i>
+            Exportar PDF
+        </a>
+    </div>
+    <?php endif; ?>
 </section>
 
 <script>
@@ -466,9 +484,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const todos = document.getElementById('reporteUsuariosTodosRoles');
     const roles = Array.from(document.querySelectorAll('.js-reporte-rol'));
     const error = document.getElementById('reporteUsuariosRolesError');
-    const generarPdf = document.getElementById('reporteUsuariosGenerarPdf');
 
-    if (!formulario || !todos || !generarPdf) {
+    if (!formulario || !todos) {
         return;
     }
 
@@ -484,23 +501,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    function habilitarGenerarPdf() {
-        generarPdf.classList.remove('disabled');
-        generarPdf.removeAttribute('aria-disabled');
-        generarPdf.removeAttribute('tabindex');
-    }
-
-    function deshabilitarGenerarPdf() {
-        generarPdf.classList.add('disabled');
-        generarPdf.setAttribute('aria-disabled', 'true');
-        generarPdf.setAttribute('tabindex', '-1');
-    }
-
-    function enviarFiltros() {
-        formulario.submit();
-    }
-
-    function aplicarEstadoTodos(enviar) {
+    function aplicarEstadoTodos() {
         const usarTodos = todos.checked;
 
         roles.forEach(function (checkbox) {
@@ -513,29 +514,21 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (usarTodos) {
             ocultarError();
-            habilitarGenerarPdf();
+            return;
+        }
 
-            if (enviar) {
-                enviarFiltros();
-            }
+        const hayRolSeleccionado = roles.some(function (checkbox) {
+            return checkbox.checked;
+        });
+
+        if (hayRolSeleccionado) {
+            ocultarError();
         } else {
-            const hayRolSeleccionado = roles.some(function (checkbox) {
-                return checkbox.checked;
-            });
-
-            if (!hayRolSeleccionado) {
-                mostrarError();
-                deshabilitarGenerarPdf();
-            } else {
-                ocultarError();
-                habilitarGenerarPdf();
-            }
+            mostrarError();
         }
     }
 
-    todos.addEventListener('change', function () {
-        aplicarEstadoTodos(true);
-    });
+    todos.addEventListener('change', aplicarEstadoTodos);
 
     roles.forEach(function (checkbox) {
         checkbox.addEventListener('change', function () {
@@ -543,24 +536,25 @@ document.addEventListener('DOMContentLoaded', function () {
                 return rolCheckbox.checked;
             });
 
-            if (!hayRolSeleccionado) {
+            if (hayRolSeleccionado) {
+                ocultarError();
+            } else {
                 mostrarError();
-                deshabilitarGenerarPdf();
-                return;
             }
-
-            ocultarError();
-            habilitarGenerarPdf();
-            enviarFiltros();
         });
     });
 
-    generarPdf.addEventListener('click', function (event) {
-        if (generarPdf.getAttribute('aria-disabled') === 'true') {
+    formulario.addEventListener('submit', function (event) {
+        const hayRolSeleccionado = roles.some(function (checkbox) {
+            return checkbox.checked && !checkbox.disabled;
+        });
+
+        if (!todos.checked && !hayRolSeleccionado) {
             event.preventDefault();
+            mostrarError();
         }
     });
 
-    aplicarEstadoTodos(false);
+    aplicarEstadoTodos();
 });
 </script>
