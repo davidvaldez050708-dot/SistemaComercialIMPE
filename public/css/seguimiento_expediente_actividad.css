@@ -1,5 +1,6 @@
 /* =========================================================
-   ACTIVIDAD DEL EXPEDIENTE · CRONOLOGÍA COMPACTA
+   ACTIVIDAD DEL EXPEDIENTE
+   Misma jerarquía visual que el historial de llamadas.
    ========================================================= */
 
 .linkage-expediente-activity {
@@ -12,140 +13,318 @@
     font-weight: 800;
 }
 
-.linkage-expediente-activity .linkage-history-list {
-    position: relative;
+/* Lista de actividades como tarjetas compactas. */
+.linkage-expediente-enhanced
+[data-expediente-pane="interacciones"]
+.linkage-expediente-activity
+.linkage-history-list {
+    position: static;
     width: 100%;
-    max-width: 1180px;
+    max-width: none;
     margin: 0;
-    gap: 0 !important;
-    overflow: hidden;
-    border: 1px solid #e1e7ef;
-    border-radius: 13px;
-    background: #ffffff;
+    display: grid !important;
+    gap: 8px !important;
+    overflow: visible;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
 }
 
-.linkage-expediente-activity .linkage-history-list::before {
-    content: '';
-    position: absolute;
-    top: 26px;
-    bottom: 26px;
-    left: 29px;
-    width: 1px;
-    background: #e3e8f0;
-    pointer-events: none;
+.linkage-expediente-enhanced
+[data-expediente-pane="interacciones"]
+.linkage-expediente-activity
+.linkage-history-list::before {
+    display: none !important;
+    content: none !important;
 }
 
-.linkage-expediente-activity .linkage-history-item {
+.linkage-expediente-enhanced
+[data-expediente-pane="interacciones"]
+.linkage-expediente-activity
+.linkage-history-item {
     position: relative;
+    min-width: 0;
     width: 100%;
     min-height: 0;
     margin: 0;
-    padding: 12px 14px !important;
+    padding: 10px 11px !important;
     display: grid !important;
     grid-template-columns: 32px minmax(0, 1fr) !important;
-    column-gap: 11px !important;
-    row-gap: 2px !important;
+    grid-template-rows: auto !important;
+    column-gap: 10px !important;
+    row-gap: 0 !important;
     align-items: start !important;
-    border: 0 !important;
-    border-bottom: 1px solid #e7ebf1 !important;
-    border-radius: 0 !important;
-    background: #ffffff !important;
+    border: 1px solid #e0e6ef !important;
+    border-radius: 11px !important;
+    background: #fbfcfe !important;
     box-shadow: none !important;
 }
 
-.linkage-expediente-activity .linkage-history-item:last-child {
-    border-bottom: 0 !important;
+.linkage-expediente-enhanced
+[data-expediente-pane="interacciones"]
+.linkage-expediente-activity
+.linkage-history-item:hover {
+    border-color: #d8e0eb !important;
+    background: #fafcff !important;
 }
 
-.linkage-expediente-activity .linkage-history-item:hover {
-    background: #fbfcfe !important;
-}
-
-.linkage-expediente-activity .linkage-expediente-history-icon {
+/* Icono */
+.linkage-expediente-enhanced
+[data-expediente-pane="interacciones"]
+.linkage-expediente-activity
+.linkage-expediente-history-icon {
     position: relative;
     z-index: 1;
     width: 32px;
     height: 32px;
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+    align-self: start !important;
     display: inline-grid;
     place-items: center;
-    border: 1px solid #dce4ef;
+    border: 1px solid #dce5f2;
     border-radius: 9px;
-    background: #f8fafc;
+    background: #ffffff;
     color: var(--color-primary);
     font-size: 12px;
 }
 
-.linkage-expediente-activity .linkage-history-item[data-activity-visual-type="inicio"] .linkage-expediente-history-icon,
-.linkage-expediente-activity .linkage-history-item[data-activity-visual-type="seguimiento"] .linkage-expediente-history-icon {
+.linkage-expediente-activity
+.linkage-history-item[data-activity-visual-type="inicio"]
+.linkage-expediente-history-icon,
+.linkage-expediente-activity
+.linkage-history-item[data-activity-visual-type="seguimiento"]
+.linkage-expediente-history-icon {
     border-color: #d7e0ef;
     background: #f1f5fb;
     color: var(--color-primary);
 }
 
-.linkage-expediente-activity .linkage-history-item[data-activity-visual-type="verificacion"] .linkage-expediente-history-icon,
-.linkage-expediente-activity .linkage-history-item[data-activity-visual-type="convenio"] .linkage-expediente-history-icon {
+.linkage-expediente-activity
+.linkage-history-item[data-activity-visual-type="verificacion"]
+.linkage-expediente-history-icon,
+.linkage-expediente-activity
+.linkage-history-item[data-activity-visual-type="convenio"]
+.linkage-expediente-history-icon {
     border-color: #c9e6dd;
     background: #f0f8f5;
     color: #14735f;
 }
 
-.linkage-expediente-activity .linkage-history-item[data-activity-visual-type="reunion"] .linkage-expediente-history-icon {
+.linkage-expediente-activity
+.linkage-history-item[data-activity-visual-type="reunion"]
+.linkage-expediente-history-icon {
     border-color: #d7e1f0;
     background: #f5f7fc;
     color: #35548a;
 }
 
-.linkage-expediente-activity .linkage-history-item[data-activity-visual-type="correo"] .linkage-expediente-history-icon,
-.linkage-expediente-activity .linkage-history-item[data-activity-visual-type="oficio"] .linkage-expediente-history-icon {
+.linkage-expediente-activity
+.linkage-history-item[data-activity-visual-type="correo"]
+.linkage-expediente-history-icon,
+.linkage-expediente-activity
+.linkage-history-item[data-activity-visual-type="oficio"]
+.linkage-expediente-history-icon {
     border-color: #dde3eb;
     background: #fafbfd;
     color: #50627a;
 }
 
-.linkage-expediente-activity .linkage-history-item > div {
+/*
+ * Un único contenedor evita que los refinamientos antiguos de
+ * interacciones distribuyan cabecera, detalle y estados en columnas.
+ */
+.linkage-expediente-enhanced
+[data-expediente-pane="interacciones"]
+.linkage-expediente-activity
+.linkage-history-item > .linkage-activity-content {
     min-width: 0;
+    width: 100%;
     grid-column: 2 !important;
+    grid-row: 1 !important;
     display: grid !important;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: start;
-    gap: 3px 14px !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: auto auto auto !important;
+    gap: 7px !important;
+    align-items: initial !important;
+    text-align: left !important;
 }
 
-.linkage-expediente-activity .linkage-history-item > div strong {
+/* Cabecera: igual que Llamadas. */
+.linkage-expediente-enhanced
+[data-expediente-pane="interacciones"]
+.linkage-expediente-activity
+.linkage-activity-content > .linkage-activity-header {
     min-width: 0;
-    color: var(--color-text-primary);
-    font-size: 12.2px !important;
-    font-weight: 800;
-    line-height: 1.35;
+    width: 100%;
+    grid-column: 1 !important;
+    grid-row: auto !important;
+    display: flex !important;
+    align-items: flex-start !important;
+    justify-content: space-between !important;
+    gap: 10px !important;
+    text-align: left !important;
 }
 
-.linkage-expediente-activity .linkage-history-item > div span {
-    align-self: start;
-    color: var(--color-text-secondary);
+.linkage-expediente-enhanced
+[data-expediente-pane="interacciones"]
+.linkage-expediente-activity
+.linkage-activity-title {
+    min-width: 0;
+    margin: 0;
+    color: var(--color-text-primary) !important;
+    font-size: 11.5px !important;
+    font-weight: 800 !important;
+    line-height: 1.35 !important;
+    text-align: left !important;
+}
+
+.linkage-expediente-enhanced
+[data-expediente-pane="interacciones"]
+.linkage-expediente-activity
+.linkage-activity-date {
+    flex: 0 0 auto;
+    margin: 0;
+    color: var(--color-text-secondary) !important;
     font-size: 9.8px !important;
-    font-weight: 650;
-    line-height: 1.4;
-    white-space: nowrap;
+    font-weight: 650 !important;
+    line-height: 1.4 !important;
+    text-align: right !important;
+    white-space: nowrap !important;
 }
 
-.linkage-expediente-activity .linkage-history-item > p {
-    grid-column: 2 !important;
-    max-width: 900px;
-    margin: 2px 0 0 !important;
-    color: #536174;
-    font-size: 11.2px !important;
-    font-weight: 600;
+/* Contacto / detalle */
+.linkage-expediente-enhanced
+[data-expediente-pane="interacciones"]
+.linkage-expediente-activity
+.linkage-activity-content > .linkage-activity-detail {
+    min-width: 0;
+    width: 100%;
+    max-width: none;
+    grid-column: 1 !important;
+    grid-row: auto !important;
+    margin: 0 !important;
+    padding: 6px 0 1px;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 4px !important;
+    text-align: left !important;
+}
+
+.linkage-expediente-enhanced
+[data-expediente-pane="interacciones"]
+.linkage-expediente-activity
+.linkage-activity-detail-row {
+    min-width: 0;
+    width: 100%;
+    display: grid !important;
+    grid-template-columns: 58px minmax(0, 1fr) !important;
+    gap: 8px !important;
+    align-items: baseline !important;
+}
+
+.linkage-expediente-enhanced
+[data-expediente-pane="interacciones"]
+.linkage-expediente-activity
+.linkage-activity-detail-row > .linkage-activity-detail-label {
+    min-width: 0;
+    margin: 0;
+    color: #7a8492 !important;
+    font-size: 9.5px !important;
+    font-weight: 800 !important;
     line-height: 1.45 !important;
+    text-align: left !important;
+    white-space: nowrap !important;
+}
+
+.linkage-expediente-enhanced
+[data-expediente-pane="interacciones"]
+.linkage-expediente-activity
+.linkage-activity-detail-row > .linkage-activity-detail-value {
+    min-width: 0;
+    margin: 0;
+    color: #445166 !important;
+    font-size: 10.6px !important;
+    font-weight: 600 !important;
+    line-height: 1.45 !important;
+    text-align: left !important;
+    white-space: pre-line !important;
     overflow-wrap: anywhere;
+}
+
+/* Pie: resultados y clasificación. */
+.linkage-expediente-enhanced
+[data-expediente-pane="interacciones"]
+.linkage-expediente-activity
+.linkage-activity-content > .linkage-activity-footer {
+    min-width: 0;
+    width: 100%;
+    grid-column: 1 !important;
+    grid-row: auto !important;
+    padding-top: 7px;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    flex-wrap: wrap !important;
+    gap: 5px !important;
+    border-top: 1px solid #edf1f5;
+    text-align: left !important;
+}
+
+.linkage-expediente-enhanced
+[data-expediente-pane="interacciones"]
+.linkage-expediente-activity
+.linkage-activity-footer > .linkage-activity-badge {
+    width: auto !important;
+    min-width: 0 !important;
+    min-height: 24px;
+    margin: 0;
+    padding: 4px 7px;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border: 1px solid #dce3ec;
+    border-radius: 999px;
+    background: #f8fafc;
+    color: #5a6678 !important;
+    font-size: 9.4px !important;
+    font-weight: 800 !important;
+    line-height: 1 !important;
+    text-align: left !important;
+    white-space: nowrap !important;
+}
+
+.linkage-expediente-activity .linkage-activity-badge.is-result {
+    border-color: #d7e1f0 !important;
+    background: #f3f6fb !important;
+    color: var(--color-primary) !important;
+}
+
+.linkage-expediente-activity .linkage-activity-badge.is-contact {
+    border-color: #cbe7df !important;
+    background: #f0faf7 !important;
+    color: #14735f !important;
+}
+
+.linkage-expediente-activity .linkage-activity-badge.is-warning {
+    border-color: #ead9ad !important;
+    background: #fff9ec !important;
+    color: #8a6515 !important;
+}
+
+.linkage-expediente-activity .linkage-activity-badge.is-system {
+    border-color: #dfe4eb !important;
+    background: #f6f7f9 !important;
+    color: #697487 !important;
 }
 
 .linkage-expediente-activity .linkage-history-item.is-history-hidden {
     display: none !important;
 }
 
+/* Pie de paginación visual. */
 .linkage-expediente-activity .linkage-activity-more {
     width: 100%;
-    max-width: 1180px;
     margin-top: 10px;
     padding-top: 10px;
     display: flex;
@@ -168,7 +347,7 @@
     font-weight: 750;
 }
 
-/* El estado vacío de observaciones no debe dominar el Resumen. */
+/* Estado vacío del Resumen. */
 .linkage-expediente-pane[data-expediente-pane="resumen"] .linkage-empty-message {
     min-height: 68px !important;
     margin-top: 4px;
@@ -183,28 +362,37 @@
         padding: 14px;
     }
 
-    .linkage-expediente-activity .linkage-history-list::before {
-        left: 27px;
-    }
-
-    .linkage-expediente-activity .linkage-history-item {
-        padding: 11px 12px !important;
+    .linkage-expediente-enhanced
+    [data-expediente-pane="interacciones"]
+    .linkage-expediente-activity
+    .linkage-history-item {
+        padding: 9px !important;
         grid-template-columns: 30px minmax(0, 1fr) !important;
         column-gap: 9px !important;
     }
 
-    .linkage-expediente-activity .linkage-expediente-history-icon {
+    .linkage-expediente-enhanced
+    [data-expediente-pane="interacciones"]
+    .linkage-expediente-activity
+    .linkage-expediente-history-icon {
         width: 30px;
         height: 30px;
     }
 
-    .linkage-expediente-activity .linkage-history-item > div {
-        grid-template-columns: 1fr;
-        gap: 2px !important;
+    .linkage-expediente-enhanced
+    [data-expediente-pane="interacciones"]
+    .linkage-expediente-activity
+    .linkage-activity-content > .linkage-activity-header {
+        flex-direction: column !important;
+        gap: 3px !important;
     }
 
-    .linkage-expediente-activity .linkage-history-item > div span {
-        white-space: normal;
+    .linkage-expediente-enhanced
+    [data-expediente-pane="interacciones"]
+    .linkage-expediente-activity
+    .linkage-activity-date {
+        text-align: left !important;
+        white-space: normal !important;
     }
 
     .linkage-expediente-activity .linkage-activity-more {
@@ -217,314 +405,25 @@
     }
 }
 
-
-/* Jerarquía de cada evento: título, fecha/resultado, contacto y detalle. */
-.linkage-expediente-activity .linkage-activity-header {
-    min-width: 0;
-    grid-column: 2 !important;
-    display: flex !important;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 10px 14px !important;
-}
-
-.linkage-expediente-activity .linkage-activity-header > strong {
-    min-width: 0;
-}
-
-.linkage-expediente-activity .linkage-activity-meta {
-    flex: 0 0 auto;
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    flex-wrap: wrap;
-    gap: 5px;
-}
-
-.linkage-expediente-activity .linkage-activity-date {
-    color: var(--color-text-secondary);
-    font-size: 9.8px !important;
-    font-weight: 650;
-    line-height: 1.4;
-    white-space: nowrap;
-}
-
-.linkage-expediente-activity .linkage-activity-badge {
-    min-height: 22px;
-    padding: 4px 7px;
-    display: inline-flex;
-    align-items: center;
-    border: 1px solid #dce3ec;
-    border-radius: 999px;
-    background: #f8fafc;
-    color: #5c6878;
-    font-size: 9px !important;
-    font-weight: 800;
-    line-height: 1;
-    white-space: nowrap;
-}
-
-.linkage-expediente-activity .linkage-activity-badge.is-contact {
-    border-color: #cbe7df;
-    background: #f0faf7;
-    color: #14735f;
-}
-
-.linkage-expediente-activity .linkage-activity-badge.is-warning {
-    border-color: #ead9ad;
-    background: #fff9ec;
-    color: #8a6515;
-}
-
-.linkage-expediente-activity .linkage-activity-badge.is-system {
-    border-color: #dfe4eb;
-    background: #f6f7f9;
-    color: #697487;
-}
-
-.linkage-expediente-activity .linkage-history-item > .linkage-activity-detail {
-    grid-column: 2 !important;
-    grid-template-columns: minmax(0, 1fr) !important;
-    max-width: 900px;
-    margin-top: 3px;
-    display: grid !important;
-    gap: 4px !important;
-}
-
-.linkage-expediente-activity .linkage-activity-detail-row {
-    min-width: 0;
-    display: grid;
-    grid-template-columns: 58px minmax(0, 1fr);
-    gap: 8px;
-    align-items: baseline;
-}
-
-.linkage-expediente-activity .linkage-activity-detail-label {
-    color: #7a8492;
-    font-size: 9.5px !important;
-    font-weight: 800;
-    line-height: 1.45;
-}
-
-.linkage-expediente-activity .linkage-history-item > .linkage-activity-detail .linkage-activity-detail-value {
-    min-width: 0;
-    color: #536174;
-    font-size: 11.2px !important;
-    font-weight: 600;
-    line-height: 1.45;
-    white-space: pre-line !important;
-    overflow-wrap: anywhere;
-}
-
-@media (max-width: 767.98px) {
-    .linkage-expediente-activity .linkage-activity-header {
-        flex-direction: column;
-        gap: 4px !important;
-    }
-
-    .linkage-expediente-activity .linkage-activity-meta {
-        justify-content: flex-start;
-    }
-
-    .linkage-expediente-activity .linkage-activity-date {
-        white-space: normal;
-    }
-}
-
 @media (max-width: 479.98px) {
-    .linkage-expediente-activity .linkage-activity-detail-row {
-        grid-template-columns: 1fr;
-        gap: 1px;
-    }
-}
-
-
-/* =========================================================
-   ACTIVIDAD · ESTRUCTURA AISLADA V2
-   Evita que refinamientos antiguos reubiquen contacto/detalle.
-   ========================================================= */
-.linkage-expediente-enhanced
-[data-expediente-pane="interacciones"]
-.linkage-expediente-activity
-.linkage-history-item {
-    grid-template-columns: 32px minmax(0, 1fr) !important;
-    grid-template-rows: auto !important;
-    column-gap: 11px !important;
-    row-gap: 0 !important;
-    align-items: start !important;
-}
-
-.linkage-expediente-enhanced
-[data-expediente-pane="interacciones"]
-.linkage-expediente-activity
-.linkage-expediente-history-icon {
-    grid-column: 1 !important;
-    grid-row: 1 !important;
-    align-self: start !important;
-}
-
-.linkage-expediente-enhanced
-[data-expediente-pane="interacciones"]
-.linkage-expediente-activity
-.linkage-history-item > .linkage-activity-content {
-    min-width: 0;
-    grid-column: 2 !important;
-    grid-row: 1 !important;
-    display: grid !important;
-    grid-template-columns: minmax(0, 1fr) !important;
-    gap: 7px !important;
-    align-items: initial !important;
-}
-
-.linkage-expediente-enhanced
-[data-expediente-pane="interacciones"]
-.linkage-expediente-activity
-.linkage-activity-header {
-    min-width: 0;
-    display: flex !important;
-    align-items: flex-start !important;
-    justify-content: space-between !important;
-    gap: 12px !important;
-}
-
-.linkage-expediente-enhanced
-[data-expediente-pane="interacciones"]
-.linkage-expediente-activity
-.linkage-activity-title {
-    min-width: 0;
-    color: var(--color-text-primary);
-    font-size: 12.2px !important;
-    font-weight: 800 !important;
-    line-height: 1.35 !important;
-}
-
-.linkage-expediente-enhanced
-[data-expediente-pane="interacciones"]
-.linkage-expediente-activity
-.linkage-activity-date {
-    flex: 0 0 auto;
-    color: var(--color-text-secondary) !important;
-    font-size: 9.8px !important;
-    font-weight: 650 !important;
-    line-height: 1.4 !important;
-    text-align: right !important;
-    white-space: nowrap !important;
-}
-
-.linkage-expediente-enhanced
-[data-expediente-pane="interacciones"]
-.linkage-expediente-activity
-.linkage-activity-detail {
-    min-width: 0;
-    max-width: 900px;
-    display: grid !important;
-    grid-template-columns: minmax(0, 1fr) !important;
-    gap: 4px !important;
-    margin: 0 !important;
-}
-
-.linkage-expediente-enhanced
-[data-expediente-pane="interacciones"]
-.linkage-expediente-activity
-.linkage-activity-detail-row {
-    min-width: 0;
-    display: grid !important;
-    grid-template-columns: 58px minmax(0, 1fr) !important;
-    gap: 8px !important;
-    align-items: baseline !important;
-}
-
-.linkage-expediente-enhanced
-[data-expediente-pane="interacciones"]
-.linkage-expediente-activity
-.linkage-activity-detail-row > .linkage-activity-detail-label {
-    min-width: 0;
-    color: #7a8492 !important;
-    font-size: 9.5px !important;
-    font-weight: 800 !important;
-    line-height: 1.45 !important;
-    text-align: left !important;
-    white-space: nowrap !important;
-}
-
-.linkage-expediente-enhanced
-[data-expediente-pane="interacciones"]
-.linkage-expediente-activity
-.linkage-activity-detail-row > .linkage-activity-detail-value {
-    min-width: 0;
-    color: #536174 !important;
-    font-size: 11.2px !important;
-    font-weight: 600 !important;
-    line-height: 1.45 !important;
-    text-align: left !important;
-    white-space: pre-line !important;
-    overflow-wrap: anywhere;
-}
-
-.linkage-expediente-enhanced
-[data-expediente-pane="interacciones"]
-.linkage-expediente-activity
-.linkage-activity-footer {
-    min-width: 0;
-    padding-top: 6px;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: flex-start !important;
-    flex-wrap: wrap !important;
-    gap: 5px !important;
-    border-top: 1px solid #edf1f5;
-}
-
-.linkage-expediente-enhanced
-[data-expediente-pane="interacciones"]
-.linkage-expediente-activity
-.linkage-activity-footer > .linkage-activity-badge {
-    min-height: 23px;
-    padding: 4px 7px;
-    display: inline-flex !important;
-    align-items: center !important;
-    width: auto !important;
-    color: #5c6878;
-    font-size: 9.2px !important;
-    font-weight: 800 !important;
-    line-height: 1 !important;
-    text-align: left !important;
-    white-space: nowrap !important;
-}
-
-.linkage-expediente-activity .linkage-activity-badge.is-result {
-    border-color: #d7e1f0;
-    background: #f3f6fb;
-    color: var(--color-primary);
-}
-
-@media (max-width: 767.98px) {
     .linkage-expediente-enhanced
     [data-expediente-pane="interacciones"]
     .linkage-expediente-activity
     .linkage-history-item {
-        grid-template-columns: 30px minmax(0, 1fr) !important;
-        column-gap: 9px !important;
+        grid-template-columns: 28px minmax(0, 1fr) !important;
+        gap: 8px !important;
     }
 
     .linkage-expediente-enhanced
     [data-expediente-pane="interacciones"]
     .linkage-expediente-activity
-    .linkage-activity-header {
-        flex-direction: column !important;
-        gap: 3px !important;
+    .linkage-expediente-history-icon {
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        font-size: 11px;
     }
 
-    .linkage-expediente-enhanced
-    [data-expediente-pane="interacciones"]
-    .linkage-expediente-activity
-    .linkage-activity-date {
-        text-align: left !important;
-        white-space: normal !important;
-    }
-}
-
-@media (max-width: 479.98px) {
     .linkage-expediente-enhanced
     [data-expediente-pane="interacciones"]
     .linkage-expediente-activity
