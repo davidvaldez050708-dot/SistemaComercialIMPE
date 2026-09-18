@@ -626,6 +626,20 @@
 
 .territorial-report-actions .btn {
     min-height: 46px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    line-height: 1;
+    text-align: center;
+}
+
+.territorial-report-actions .btn i {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    margin-right: 0 !important;
 }
 
 .territorial-focus-card {
