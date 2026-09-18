@@ -362,7 +362,7 @@
                                     '<strong>' + escapar(valorSeguro(reunion.ecard_ponente, 'Mtro. Manuel Porcayo')) + '</strong>' +
                                 '</div>' +
                                 '<img src="' + escapar(reunion.ecard_preview_url) + '" alt="Vista previa de Ecard de reunión" loading="lazy">' +
-                                '<small>Sede/evento, fecha, hora, modalidad y acceso se generan con los datos actuales de la reunión.</small>' +
+                                '<small>Nombre del evento, sede, fecha, hora, modalidad y acceso se generan con los datos actuales de la reunión.</small>' +
                             '</div>'
                             : '') +
                         '<div class="agenda-inline-note">' +
