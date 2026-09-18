@@ -49,13 +49,11 @@
     height: auto !important;
     margin: 0;
     padding: 8px 10px !important;
-    display: grid !important;
-    grid-template-columns: 30px minmax(0, 1fr) !important;
-    grid-template-rows: auto !important;
-    column-gap: 8px !important;
-    row-gap: 0 !important;
-    align-content: start !important;
-    align-items: start !important;
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 8px !important;
+    align-content: initial !important;
+    align-items: flex-start !important;
     border: 1px solid #e0e6ef !important;
     border-radius: 11px !important;
     background: #fbfcfe !important;
@@ -79,9 +77,8 @@
     z-index: 1;
     width: 30px;
     height: 30px;
-    grid-column: 1 !important;
-    grid-row: 1 !important;
-    align-self: start !important;
+    flex: 0 0 30px !important;
+    align-self: flex-start !important;
     display: inline-grid;
     place-items: center;
     border: 1px solid #dce5f2;
@@ -141,16 +138,17 @@
 .linkage-expediente-activity
 .linkage-history-item > .linkage-activity-content {
     min-width: 0;
-    width: 100%;
-    grid-column: 2 !important;
-    grid-row: 1 !important;
-    display: grid !important;
-    grid-template-columns: minmax(0, 1fr) !important;
-    grid-template-rows: auto auto auto !important;
+    width: auto;
+    min-height: 0 !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    flex: 1 1 auto !important;
+    display: flex !important;
+    flex-direction: column !important;
     gap: 5px !important;
-    grid-auto-rows: min-content !important;
-    align-content: start !important;
-    align-items: initial !important;
+    align-content: initial !important;
+    align-items: stretch !important;
     text-align: left !important;
 }
 
@@ -161,8 +159,10 @@
 .linkage-activity-content > .linkage-activity-header {
     min-width: 0;
     width: 100%;
-    grid-column: 1 !important;
-    grid-row: auto !important;
+    min-height: 0 !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
     display: flex !important;
     align-items: flex-start !important;
     justify-content: space-between !important;
@@ -205,14 +205,14 @@
     min-width: 0;
     width: 100%;
     max-width: none;
-    grid-column: 1 !important;
-    grid-row: auto !important;
+    min-height: 0 !important;
+    height: auto !important;
     margin: 0 !important;
-    padding: 2px 0 0;
-    display: grid !important;
-    grid-template-columns: minmax(0, 1fr) !important;
+    padding: 2px 0 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
     gap: 2px !important;
-    align-content: start !important;
+    align-content: initial !important;
     text-align: left !important;
 }
 
@@ -264,9 +264,11 @@
 .linkage-activity-content > .linkage-activity-footer {
     min-width: 0;
     width: 100%;
-    grid-column: 1 !important;
-    grid-row: auto !important;
-    padding-top: 5px;
+    min-height: 0 !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 5px 0 0 !important;
+    flex: 0 0 auto !important;
     display: flex !important;
     align-items: center !important;
     justify-content: flex-start !important;
@@ -372,8 +374,7 @@
     .linkage-expediente-activity
     .linkage-history-item {
         padding: 8px 9px !important;
-        grid-template-columns: 29px minmax(0, 1fr) !important;
-        column-gap: 9px !important;
+        gap: 9px !important;
     }
 
     .linkage-expediente-enhanced
@@ -382,6 +383,7 @@
     .linkage-expediente-history-icon {
         width: 29px;
         height: 29px;
+        flex-basis: 29px !important;
     }
 
     .linkage-expediente-enhanced
@@ -415,7 +417,6 @@
     [data-expediente-pane="interacciones"]
     .linkage-expediente-activity
     .linkage-history-item {
-        grid-template-columns: 27px minmax(0, 1fr) !important;
         gap: 8px !important;
     }
 
@@ -425,6 +426,7 @@
     .linkage-expediente-history-icon {
         width: 27px;
         height: 27px;
+        flex-basis: 27px !important;
         border-radius: 8px;
         font-size: 11px;
     }
