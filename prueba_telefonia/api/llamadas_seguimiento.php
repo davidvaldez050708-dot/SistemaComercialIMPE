@@ -60,21 +60,39 @@ $marcadorFueraServicio = '[FUERA_SERVICIO]';
 $marcadorContacto = '[CONTACTO_EFECTIVO]';
 $marcadorSinContacto = '[SIN_CONTACTO_EFECTIVO]';
 
-// Zadarma entrega el aviso de grabación unos segundos después de terminar la llamada.
-// Se usa el pbx_call_id guardado en la interacción para comprobar que el audio ya existe.
-$grabacionesZadarma = [];
+// Zadarma entrega NOTIFY_RECORD cuando el audio ya está listo.
+// Conservamos también ANSWER/OUT_END para reconstruir la duración de llamadas
+// antiguas que pudieron quedar guardadas con duration=0.
+$estadoZadarma = [];
 $logPath = $root . '/storage/zadarma_webhooks.log';
 if (is_file($logPath)) {
     $lineas = file($logPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
     foreach ($lineas as $linea) {
         $fila = json_decode($linea, true);
-        if (!is_array($fila) || ($fila['event'] ?? '') !== 'NOTIFY_RECORD') {
+        if (!is_array($fila)) {
             continue;
         }
 
         $pbxCallId = trim((string)($fila['pbx_call_id'] ?? ''));
-        if ($pbxCallId !== '') {
-            $grabacionesZadarma[$pbxCallId] = true;
+        if ($pbxCallId === '') {
+            continue;
+        }
+
+        if (!isset($estadoZadarma[$pbxCallId])) {
+            $estadoZadarma[$pbxCallId] = [
+                'respuesta' => null,
+                'fin' => null,
+                'grabacion' => false,
+            ];
+        }
+
+        $evento = (string)($fila['event'] ?? '');
+        if ($evento === 'NOTIFY_ANSWER') {
+            $estadoZadarma[$pbxCallId]['respuesta'] = $fila;
+        } elseif ($evento === 'NOTIFY_OUT_END') {
+            $estadoZadarma[$pbxCallId]['fin'] = $fila;
+        } elseif ($evento === 'NOTIFY_RECORD') {
+            $estadoZadarma[$pbxCallId]['grabacion'] = true;
         }
     }
 }
@@ -94,6 +112,30 @@ foreach ($modelo->obtenerInteraccionesSeguimiento($seguimientoId) as $interaccio
     $proveedor = strtoupper(trim((string)($interaccion['proveedor_externo'] ?? '')));
     $idExterno = trim((string)($interaccion['id_externo'] ?? ''));
     $duracion = max(0, (int)($interaccion['duracion_segundos'] ?? 0));
+
+    if ($proveedor === 'ZADARMA' && $duracion <= 0 && isset($estadoZadarma[$idExterno])) {
+        $metaZadarma = $estadoZadarma[$idExterno];
+        $finZadarma = is_array($metaZadarma['fin'] ?? null) ? $metaZadarma['fin'] : null;
+        $respuestaZadarma = is_array($metaZadarma['respuesta'] ?? null)
+            ? $metaZadarma['respuesta']
+            : null;
+
+        $duracion = max(0, (int)($finZadarma['duration'] ?? 0));
+
+        if ($duracion <= 0 && $respuestaZadarma && $finZadarma) {
+            $inicioConversacion = strtotime((string)($respuestaZadarma['received_at'] ?? ''));
+            $finConversacion = strtotime((string)($finZadarma['received_at'] ?? ''));
+
+            if (
+                $inicioConversacion !== false &&
+                $finConversacion !== false &&
+                $finConversacion > $inicioConversacion
+            ) {
+                $duracion = max(1, $finConversacion - $inicioConversacion);
+            }
+        }
+    }
+
     $resultado = strtoupper(trim((string)($interaccion['resultado'] ?? '')));
     $notas = trim((string)($interaccion['notas'] ?? ''));
     $resultadoTelefonico = $resultado;
@@ -138,7 +180,7 @@ foreach ($modelo->obtenerInteraccionesSeguimiento($seguimientoId) as $interaccio
         $proveedor === 'ZADARMA' &&
         $duracion > 0 &&
         preg_match('/^out_[a-fA-F0-9]{32,64}$/', $idExterno) &&
-        isset($grabacionesZadarma[$idExterno]);
+        !empty($estadoZadarma[$idExterno]['grabacion']);
 
     $puedeTenerGrabacion =
         !$excluirGrabacion &&
