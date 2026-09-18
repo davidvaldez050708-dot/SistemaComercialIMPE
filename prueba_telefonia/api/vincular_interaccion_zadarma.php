@@ -52,6 +52,35 @@ function fechaMysqlLocal(?string $valor): ?string
     return $fecha->format('Y-m-d H:i:s');
 }
 
+function duracionConversacion(?array $respuesta, ?array $fin): int
+{
+    if (!$fin) {
+        return 0;
+    }
+
+    $duracionProveedor = max(0, (int)($fin['duration'] ?? 0));
+    if ($duracionProveedor > 0) {
+        return $duracionProveedor;
+    }
+
+    if (!$respuesta) {
+        return 0;
+    }
+
+    $inicio = strtotime((string)($respuesta['received_at'] ?? ''));
+    $finTimestamp = strtotime((string)($fin['received_at'] ?? ''));
+
+    if (
+        $inicio === false ||
+        $finTimestamp === false ||
+        $finTimestamp <= $inicio
+    ) {
+        return 0;
+    }
+
+    return max(1, $finTimestamp - $inicio);
+}
+
 $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
 $rolId = (int)($_SESSION['rol_id'] ?? 0);
 
@@ -106,6 +135,7 @@ if (!preg_match('/^\d{3,6}$/', $extension)) {
 
 $lineas = file($logPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
 $inicio = null;
+$respuesta = null;
 $fin = null;
 $grabacion = null;
 
@@ -122,6 +152,8 @@ foreach ($lineas as $linea) {
     $evento = (string)($fila['event'] ?? '');
     if ($evento === 'NOTIFY_OUT_START') {
         $inicio = $fila;
+    } elseif ($evento === 'NOTIFY_ANSWER') {
+        $respuesta = $fila;
     } elseif ($evento === 'NOTIFY_OUT_END') {
         $fin = $fila;
     } elseif ($evento === 'NOTIFY_RECORD') {
@@ -201,7 +233,7 @@ try {
 
     $fechaInicio = fechaMysqlLocal($inicio['call_start'] ?? null) ?? date('Y-m-d H:i:s');
     $fechaFin = fechaMysqlDesdeIso($fin['received_at'] ?? null);
-    $duracion = max(0, (int)($fin['duration'] ?? 0));
+    $duracion = duracionConversacion($respuesta, $fin);
 
     if ($fechaFin === null && $duracion > 0) {
         try {
