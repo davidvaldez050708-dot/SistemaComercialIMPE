@@ -479,12 +479,16 @@
                     const estadoAudio = document.createElement('span');
                     estadoAudio.className = llamada.tiene_grabacion
                         ? 'linkage-call-audio-state is-available'
-                        : 'linkage-call-audio-state';
+                        : (llamada.grabacion_procesando
+                            ? 'linkage-call-audio-state is-processing'
+                            : 'linkage-call-audio-state');
                     estadoAudio.innerHTML = llamada.tiene_grabacion
                         ? '<i class="bi bi-record-circle"></i><span>Grabación</span>'
-                        : (llamada.excluir_grabacion
-                            ? '<i class="bi bi-mic-mute"></i><span>Solo historial</span>'
-                            : '<i class="bi bi-mic-mute"></i><span>Sin grabación</span>');
+                        : (llamada.grabacion_procesando
+                            ? '<i class="bi bi-hourglass-split"></i><span>Procesando grabación</span>'
+                            : (llamada.excluir_grabacion
+                                ? '<i class="bi bi-mic-mute"></i><span>Solo historial</span>'
+                                : '<i class="bi bi-mic-mute"></i><span>Sin grabación</span>'));
                     derecha.appendChild(estadoAudio);
 
                     cabecera.appendChild(identidad);
@@ -551,6 +555,9 @@
                     return tarjeta;
                 };
 
+                let reintentosGrabacion = 0;
+                let temporizadorGrabacion = null;
+
                 const cargar = function () {
                     fetch(
                         'prueba_telefonia/api/llamadas_seguimiento.php?seguimiento_id=' +
@@ -573,6 +580,9 @@
                             const llamadas = Array.isArray(data.llamadas) ? data.llamadas : [];
                             const grabaciones = llamadas.filter(function (llamada) {
                                 return Boolean(llamada.tiene_grabacion && llamada.grabacion_url);
+                            });
+                            const hayGrabacionesProcesando = llamadas.some(function (llamada) {
+                                return Boolean(llamada.grabacion_procesando);
                             });
                             const contactadas = llamadas.filter(function (llamada) {
                                 return ['CONTACTADO', 'SOLICITO_LLAMAR_DESPUES', 'MENSAJE_ENVIADO']
@@ -601,13 +611,25 @@
 
                             if (grabaciones.length === 0) {
                                 audioList.appendChild(crearEstadoVacio(
-                                    'No hay conversaciones grabadas disponibles.',
-                                    'bi-mic-mute'
+                                    hayGrabacionesProcesando
+                                        ? 'Zadarma todavía está procesando la grabación de la llamada.'
+                                        : 'No hay conversaciones grabadas disponibles.',
+                                    hayGrabacionesProcesando
+                                        ? 'bi-hourglass-split'
+                                        : 'bi-mic-mute'
                                 ));
                             } else {
                                 grabaciones.forEach(function (llamada) {
                                     audioList.appendChild(crearTarjetaAudio(llamada));
                                 });
+                            }
+
+                            window.clearTimeout(temporizadorGrabacion);
+                            if (hayGrabacionesProcesando && reintentosGrabacion < 6) {
+                                reintentosGrabacion++;
+                                temporizadorGrabacion = window.setTimeout(cargar, 7000);
+                            } else if (!hayGrabacionesProcesando) {
+                                reintentosGrabacion = 0;
                             }
                         })
                         .catch(function (error) {
