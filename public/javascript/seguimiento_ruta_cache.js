@@ -1,20 +1,35 @@
 (function () {
     'use strict';
 
-    const PREFIJO = 'impe:seguimiento:ruta:v2:';
-    const VIGENCIA_MS = 30 * 60 * 1000;
+    const PREFIJO_PERSISTENTE_ANTERIOR = 'impe:seguimiento:ruta:';
+    const VIGENCIA_MS = 20 * 1000;
     const memoria = new Map();
     const fetchOriginal = window.fetch.bind(window);
+
+    const limpiarPersistenciaAnterior = function () {
+        try {
+            const borrar = [];
+            for (let indice = 0; indice < window.sessionStorage.length; indice += 1) {
+                const item = window.sessionStorage.key(indice);
+                if (item && item.startsWith(PREFIJO_PERSISTENTE_ANTERIOR)) {
+                    borrar.push(item);
+                }
+            }
+            borrar.forEach(function (item) {
+                window.sessionStorage.removeItem(item);
+            });
+        } catch (error) {
+            // La ruta operativa ya no depende de almacenamiento persistente.
+        }
+    };
+
+    limpiarPersistenciaAnterior();
 
     const estilos = document.createElement('style');
     estilos.textContent =
         '[data-linkage-follow-row] [data-row-next-action]:not([data-route-next-ready="1"]){visibility:hidden;}' +
         '[data-route-summary-count]:not([data-route-summary-count="en_seguimiento"]):not([data-route-summary-ready="1"]){visibility:hidden;}';
     document.head.appendChild(estilos);
-
-    const clave = function (seguimientoId) {
-        return PREFIJO + String(Number(seguimientoId) || 0);
-    };
 
     const guardar = function (seguimientoId, flujo) {
         seguimientoId = Number(seguimientoId || flujo?.seguimiento_id || 0);
@@ -28,12 +43,6 @@
         };
 
         memoria.set(seguimientoId, registro);
-
-        try {
-            window.sessionStorage.setItem(clave(seguimientoId), JSON.stringify(registro));
-        } catch (error) {
-            // La caché en memoria sigue funcionando si sessionStorage no está disponible.
-        }
     };
 
     const obtenerRegistro = function (seguimientoId) {
@@ -42,16 +51,7 @@
             return null;
         }
 
-        let registro = memoria.get(seguimientoId) || null;
-
-        if (!registro) {
-            try {
-                const raw = window.sessionStorage.getItem(clave(seguimientoId));
-                registro = raw ? JSON.parse(raw) : null;
-            } catch (error) {
-                registro = null;
-            }
-        }
+        const registro = memoria.get(seguimientoId) || null;
 
         if (
             !registro ||
@@ -59,15 +59,9 @@
             (Date.now() - Number(registro.guardado_at || 0)) > VIGENCIA_MS
         ) {
             memoria.delete(seguimientoId);
-            try {
-                window.sessionStorage.removeItem(clave(seguimientoId));
-            } catch (error) {
-                // Sin acción.
-            }
             return null;
         }
 
-        memoria.set(seguimientoId, registro);
         return registro;
     };
 
@@ -80,6 +74,17 @@
         return registro
             ? Math.max(0, Date.now() - Number(registro.guardado_at || 0))
             : null;
+    };
+
+    const invalidar = function (seguimientoId) {
+        seguimientoId = Number(seguimientoId || 0);
+
+        if (seguimientoId > 0) {
+            memoria.delete(seguimientoId);
+            return;
+        }
+
+        memoria.clear();
     };
 
     const etiquetaEtapa = function (pasoActual, tituloFlujo, fila) {
@@ -463,6 +468,7 @@
         obtener: obtener,
         edad: edad,
         guardar: guardar,
+        invalidar: invalidar,
         aplicarFila: aplicarFila,
         renderizarPanel: renderizarPanel
     };
