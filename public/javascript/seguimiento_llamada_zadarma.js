@@ -499,14 +499,21 @@
 
             const callIdWithRec = String(finalCall.call_id_with_rec || '').trim();
             const marcadaComoGrabada =
-                Boolean(finalCall.is_recorded) ||
+                finalCall.is_recorded === true ||
                 String(finalCall.is_recorded || '') === '1';
+            const grabacionLista =
+                finalCall.record_ready === true ||
+                String(finalCall.record_ready || '') === '1';
 
             let recordingState = 'none';
-            if (callIdWithRec !== '') {
+            if (grabacionLista) {
                 recordingState = 'available';
-            } else if (finalStatus === 'completed' && duration > 0) {
-                recordingState = marcadaComoGrabada ? 'processing' : 'processing';
+            } else if (
+                finalStatus === 'completed' &&
+                duration > 0 &&
+                (marcadaComoGrabada || callIdWithRec !== '' || duracionLocal > 0)
+            ) {
+                recordingState = 'processing';
             }
 
             els.status.textContent = label || etiquetaEstado(finalStatus);
@@ -526,6 +533,7 @@
                 end_time: finalCall.end_time || null,
                 to: finalCall.destination || currentPhone,
                 is_recorded: marcadaComoGrabada,
+                record_ready: grabacionLista,
                 recording_state: recordingState,
                 call_id_with_rec: callIdWithRec
             };
