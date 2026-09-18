@@ -416,3 +416,158 @@
         font-size: 11px;
     }
 }
+
+
+/* Historial telefónico: separa fecha, contacto, detalle y resultado. */
+.linkage-call-history-identity {
+    min-width: 0;
+}
+
+.linkage-call-history-date {
+    flex: 0 0 auto;
+    color: var(--color-text-secondary);
+    font-size: 9.8px;
+    font-weight: 650;
+    line-height: 1.4;
+    white-space: nowrap;
+}
+
+.linkage-call-detail {
+    display: grid;
+    gap: 4px;
+    padding: 6px 0 1px;
+}
+
+.linkage-call-detail.is-audio {
+    margin: 7px 0 1px;
+    padding: 7px 0;
+    border-top: 1px solid #edf1f5;
+}
+
+.linkage-call-detail-row {
+    min-width: 0;
+    display: grid;
+    grid-template-columns: 58px minmax(0, 1fr);
+    gap: 8px;
+    align-items: baseline;
+}
+
+.linkage-call-detail-label {
+    color: #7a8492;
+    font-size: 9.5px;
+    font-weight: 800;
+    line-height: 1.45;
+}
+
+.linkage-call-detail-value {
+    min-width: 0;
+    color: #445166;
+    font-size: 10.6px;
+    font-weight: 600;
+    line-height: 1.45;
+    white-space: pre-line;
+    overflow-wrap: anywhere;
+}
+
+.linkage-call-history-footer {
+    min-width: 0;
+    padding-top: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 9px;
+    border-top: 1px solid #edf1f5;
+}
+
+.linkage-call-result-group {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+.linkage-call-result-badge {
+    min-height: 24px;
+    padding: 4px 7px;
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid #dce3ec;
+    border-radius: 999px;
+    background: #f8fafc;
+    color: #5a6678;
+    font-size: 9.4px;
+    font-weight: 800;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.linkage-call-result-badge.is-result {
+    border-color: #d7e1f0;
+    background: #f3f6fb;
+    color: var(--color-primary);
+}
+
+.linkage-call-result-badge.is-contact {
+    border-color: #cbe7df;
+    background: #f0faf7;
+    color: #14735f;
+}
+
+.linkage-call-result-badge.is-no-contact {
+    border-color: #ead9ad;
+    background: #fff9ec;
+    color: #8a6515;
+}
+
+.linkage-call-history-user {
+    color: #7a8492;
+    font-size: 9.3px;
+    font-weight: 650;
+    white-space: nowrap;
+}
+
+.linkage-call-audio-card-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.linkage-call-audio-card-heading > div:first-child {
+    min-width: 0;
+}
+
+.linkage-call-audio-card-meta {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+@media (max-width: 767.98px) {
+    .linkage-call-history-date {
+        white-space: normal;
+    }
+
+    .linkage-call-history-footer,
+    .linkage-call-audio-card-heading {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .linkage-call-history-meta,
+    .linkage-call-audio-card-meta {
+        width: 100%;
+        justify-content: flex-start;
+    }
+}
+
+@media (max-width: 479.98px) {
+    .linkage-call-detail-row {
+        grid-template-columns: 1fr;
+        gap: 1px;
+    }
+}
