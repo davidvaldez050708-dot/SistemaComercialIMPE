@@ -7,6 +7,7 @@ $root = dirname(__DIR__, 2);
 require_once $root . '/app/helpers/PermissionHelper.php';
 require_once $root . '/app/models/RolModel.php';
 require_once $root . '/app/models/SeguimientoVinculacionModel.php';
+require_once $root . '/app/services/ZadarmaCallLookupService.php';
 
 if (!isset($_SESSION['usuario_id'])) {
     http_response_code(401);
@@ -107,6 +108,9 @@ $resultadosConContacto = [
     'MENSAJE_ENVIADO',
 ];
 
+$zadarmaLookup = null;
+$zadarmaLookupDisponible = true;
+
 foreach ($modelo->obtenerInteraccionesSeguimiento($seguimientoId) as $interaccion) {
     if (strtoupper((string)($interaccion['canal'] ?? '')) !== 'LLAMADA_IP') {
         continue;
@@ -180,11 +184,44 @@ foreach ($modelo->obtenerInteraccionesSeguimiento($seguimientoId) as $interaccio
         $duracion > 0 &&
         preg_match('/^CA[a-fA-F0-9]{32}$/', $idExterno);
 
-    $grabacionZadarma =
+    $zadarmaValida =
         $proveedor === 'ZADARMA' &&
         $duracion > 0 &&
-        preg_match('/^out_[a-fA-F0-9]{32,64}$/', $idExterno) &&
+        preg_match('/^out_[a-fA-F0-9]{32,64}$/', $idExterno);
+
+    $zadarmaGrabada = $zadarmaValida &&
+        (
+            !empty($estadoZadarma[$idExterno]['grabada']) ||
+            !empty($estadoZadarma[$idExterno]['grabacion'])
+        );
+
+    if ($zadarmaValida && !$zadarmaGrabada && $zadarmaLookupDisponible) {
+        try {
+            if (!$zadarmaLookup) {
+                $zadarmaLookup = new ZadarmaCallLookupService();
+            }
+
+            $estadisticaZadarma = $zadarmaLookup->buscarPorPbxCallId($idExterno);
+            $zadarmaGrabada = !empty($estadisticaZadarma['is_recorded']);
+        } catch (Throwable $error) {
+            $zadarmaLookupDisponible = false;
+            error_log('[llamadas_seguimiento_zadarma_stats] ' . $error->getMessage());
+        }
+    }
+
+    $grabacionWebhookLista =
+        $zadarmaValida &&
         !empty($estadoZadarma[$idExterno]['grabacion']);
+
+    $fechaFinZadarma = strtotime((string)($interaccion['fecha_fin'] ?? ''));
+    $edadGrabacion = $fechaFinZadarma !== false
+        ? max(0, time() - $fechaFinZadarma)
+        : 0;
+
+    $grabacionZadarma =
+        $zadarmaValida &&
+        $zadarmaGrabada &&
+        ($grabacionWebhookLista || $edadGrabacion >= 45);
 
     $puedeTenerGrabacion =
         !$excluirGrabacion &&
@@ -193,11 +230,9 @@ foreach ($modelo->obtenerInteraccionesSeguimiento($seguimientoId) as $interaccio
 
     $grabacionProcesando =
         !$excluirGrabacion &&
-        $proveedor === 'ZADARMA' &&
-        $duracion > 0 &&
-        preg_match('/^out_[a-fA-F0-9]{32,64}$/', $idExterno) &&
-        !$grabacionZadarma &&
-        !empty($estadoZadarma[$idExterno]['grabada']);
+        $zadarmaValida &&
+        $zadarmaGrabada &&
+        !$grabacionZadarma;
 
     $nombreUsuario = trim(
         (string)($interaccion['nombre'] ?? '') . ' ' .
