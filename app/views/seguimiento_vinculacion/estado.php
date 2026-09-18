@@ -285,43 +285,67 @@ if (!empty($seguimientosSinMunicipio)) {
 </div>
 
 <section class="metric-grid linkage-summary-grid" aria-label="Resumen de seguimiento">
-    <article class="metric-card linkage-summary-card">
+    <article
+        class="metric-card linkage-summary-card"
+        data-route-summary-card="en_seguimiento"
+        title="Seguimientos activos del territorio.">
         <div class="metric-icon">
             <i class="bi bi-kanban"></i>
         </div>
         <div>
-            <p class="metric-value" data-summary-count="en_seguimiento"><?= (int)$resumen['en_seguimiento'] ?></p>
+            <p
+                class="metric-value"
+                data-route-summary-count="en_seguimiento"
+                <?= !empty($resumenRutaInicial['completo']) ? 'data-route-summary-ready="1"' : '' ?>><?= (int)($resumenRutaInicial['en_seguimiento'] ?? $resumen['en_seguimiento'] ?? 0) ?></p>
             <p class="metric-label">En seguimiento</p>
         </div>
     </article>
 
-    <article class="metric-card linkage-summary-card">
+    <article
+        class="metric-card linkage-summary-card"
+        data-route-summary-card="gestion_previa"
+        title="Instituciones entre los pasos 1 y 10 de la ruta.">
         <div class="metric-icon">
-            <i class="bi bi-telephone"></i>
+            <i class="bi bi-list-check"></i>
         </div>
         <div>
-            <p class="metric-value" data-summary-count="contactando"><?= (int)$resumen['contactando'] ?></p>
-            <p class="metric-label">Contactando</p>
+            <p
+                class="metric-value"
+                data-route-summary-count="gestion_previa"
+                <?= !empty($resumenRutaInicial['completo']) ? 'data-route-summary-ready="1"' : '' ?>><?= (int)($resumenRutaInicial['gestion_previa'] ?? 0) ?></p>
+            <p class="metric-label">Gestión previa</p>
         </div>
     </article>
 
-    <article class="metric-card linkage-summary-card">
+    <article
+        class="metric-card linkage-summary-card"
+        data-route-summary-card="reuniones_acuerdos"
+        title="Instituciones en los pasos 11 y 12 de la ruta.">
         <div class="metric-icon">
-            <i class="bi bi-patch-check"></i>
+            <i class="bi bi-calendar-check"></i>
         </div>
         <div>
-            <p class="metric-value" data-summary-count="datos_verificados"><?= (int)$resumen['datos_verificados'] ?></p>
-            <p class="metric-label">Datos verificados</p>
+            <p
+                class="metric-value"
+                data-route-summary-count="reuniones_acuerdos"
+                <?= !empty($resumenRutaInicial['completo']) ? 'data-route-summary-ready="1"' : '' ?>><?= (int)($resumenRutaInicial['reuniones_acuerdos'] ?? 0) ?></p>
+            <p class="metric-label">Reuniones y acuerdos</p>
         </div>
     </article>
 
-    <article class="metric-card linkage-summary-card">
+    <article
+        class="metric-card linkage-summary-card"
+        data-route-summary-card="convenio"
+        title="Instituciones en el paso 13 de la ruta.">
         <div class="metric-icon">
-            <i class="bi bi-hourglass-split"></i>
+            <i class="bi bi-file-earmark-check"></i>
         </div>
         <div>
-            <p class="metric-value" data-summary-count="esperando_respuesta"><?= (int)$resumen['esperando_respuesta'] ?></p>
-            <p class="metric-label">Esperando respuesta</p>
+            <p
+                class="metric-value"
+                data-route-summary-count="convenio"
+                <?= !empty($resumenRutaInicial['completo']) ? 'data-route-summary-ready="1"' : '' ?>><?= (int)($resumenRutaInicial['convenio'] ?? 0) ?></p>
+            <p class="metric-label">Convenio</p>
         </div>
     </article>
 </section>
