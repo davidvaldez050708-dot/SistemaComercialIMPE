@@ -7,15 +7,30 @@
         return;
     }
 
-    const PREFIJO = 'impe:seguimiento:panel:v2:' + usuarioId + ':';
-    const VIGENCIA_MS = 30 * 1000;
+    const PREFIJO_PERSISTENTE_ANTERIOR = 'impe:seguimiento:panel:';
+    const VIGENCIA_MS = 15 * 1000;
     const memoria = new Map();
     const enCurso = new Map();
     const fetchBase = window.fetch.bind(window);
 
-    const clave = function (seguimientoId) {
-        return PREFIJO + String(Number(seguimientoId) || 0);
+    const limpiarPersistenciaAnterior = function () {
+        try {
+            const borrar = [];
+            for (let indice = 0; indice < window.sessionStorage.length; indice += 1) {
+                const item = window.sessionStorage.key(indice);
+                if (item && item.startsWith(PREFIJO_PERSISTENTE_ANTERIOR)) {
+                    borrar.push(item);
+                }
+            }
+            borrar.forEach(function (item) {
+                window.sessionStorage.removeItem(item);
+            });
+        } catch (error) {
+            // El panel ya no depende de almacenamiento persistente.
+        }
     };
+
+    limpiarPersistenciaAnterior();
 
     const guardar = function (seguimientoId, datos) {
         seguimientoId = Number(seguimientoId || datos?.seguimiento?.id || 0);
@@ -30,12 +45,6 @@
         };
 
         memoria.set(seguimientoId, registro);
-
-        try {
-            window.sessionStorage.setItem(clave(seguimientoId), JSON.stringify(registro));
-        } catch (error) {
-            // La caché en memoria sigue disponible durante esta página.
-        }
     };
 
     const obtenerRegistro = function (seguimientoId) {
@@ -45,16 +54,7 @@
             return null;
         }
 
-        let registro = memoria.get(seguimientoId) || null;
-
-        if (!registro) {
-            try {
-                const raw = window.sessionStorage.getItem(clave(seguimientoId));
-                registro = raw ? JSON.parse(raw) : null;
-            } catch (error) {
-                registro = null;
-            }
-        }
+        const registro = memoria.get(seguimientoId) || null;
 
         if (
             !registro ||
@@ -63,15 +63,9 @@
             (Date.now() - Number(registro.guardado_at || 0)) > VIGENCIA_MS
         ) {
             memoria.delete(seguimientoId);
-            try {
-                window.sessionStorage.removeItem(clave(seguimientoId));
-            } catch (error) {
-                // Sin acción.
-            }
             return null;
         }
 
-        memoria.set(seguimientoId, registro);
         return registro;
     };
 
@@ -84,49 +78,10 @@
 
         if (seguimientoId > 0) {
             memoria.delete(seguimientoId);
-            try {
-                window.sessionStorage.removeItem(clave(seguimientoId));
-            } catch (error) {
-                // Sin acción.
-            }
             return;
         }
 
         memoria.clear();
-
-        try {
-            const borrar = [];
-            for (let indice = 0; indice < window.sessionStorage.length; indice += 1) {
-                const item = window.sessionStorage.key(indice);
-                if (item && item.startsWith(PREFIJO)) {
-                    borrar.push(item);
-                }
-            }
-            borrar.forEach(function (item) {
-                window.sessionStorage.removeItem(item);
-            });
-        } catch (error) {
-            // Sin acción.
-        }
-    };
-
-    const limpiarVersionAnterior = function () {
-        const prefijoAnterior = 'impe:seguimiento:panel:v1:' + usuarioId + ':';
-
-        try {
-            const borrar = [];
-            for (let indice = 0; indice < window.sessionStorage.length; indice += 1) {
-                const item = window.sessionStorage.key(indice);
-                if (item && item.startsWith(prefijoAnterior)) {
-                    borrar.push(item);
-                }
-            }
-            borrar.forEach(function (item) {
-                window.sessionStorage.removeItem(item);
-            });
-        } catch (error) {
-            // Sin acción.
-        }
     };
 
     const urlDe = function (entrada) {
@@ -383,7 +338,6 @@
         precargar: precargar
     };
 
-    limpiarVersionAnterior();
 
     document.addEventListener('DOMContentLoaded', function () {
         const filas = Array.from(document.querySelectorAll('[data-linkage-follow-row]'));
