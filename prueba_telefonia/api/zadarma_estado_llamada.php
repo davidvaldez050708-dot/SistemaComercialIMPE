@@ -250,6 +250,7 @@ responderJson([
         'disposition' => $disposition,
         'status_code' => $fin['status_code'] ?? null,
         'is_recorded' => $isRecorded,
+        'record_ready' => $grabacion !== null,
         'call_id_with_rec' => $callIdWithRec,
     ]
 ]);
