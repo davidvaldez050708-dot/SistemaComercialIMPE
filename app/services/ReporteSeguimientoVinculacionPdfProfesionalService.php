@@ -70,6 +70,7 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
         $analitica = is_array($datos['analitica'] ?? null) ? $datos['analitica'] : [];
         $evolucion = is_array($datos['evolucion_actividad'] ?? null) ? $datos['evolucion_actividad'] : [];
         $flujo = is_array($datos['flujo_individual'] ?? null) ? $datos['flujo_individual'] : [];
+        $detalleInstitucion = is_array($datos['detalle_institucion'] ?? null) ? $datos['detalle_institucion'] : [];
         $etiquetas = is_array($datos['etiquetas_estatus'] ?? null) ? $datos['etiquetas_estatus'] : [];
         $fecha = $this->fecha((string)($datos['fecha_generacion'] ?? ''));
         $generadoPor = trim((string)($datos['generado_por'] ?? ''));
@@ -82,11 +83,27 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
         $html .= $this->encabezado($fecha, $generadoPor, $generadoPorRol, (string)($filtros['Periodo'] ?? 'Todos'));
         $html .= $this->contexto($filtros, $responsable, count($seguimientos), $individual);
 
-        if ($individual) {
-            $html .= $this->ficha($seguimientos[0], $flujo);
+        $total = (int)($resumen['total'] ?? count($seguimientos));
+        if ($total <= 0) {
+            $html .= '<section class="report-section keep">' . $this->titulo('Resultado de la consulta');
+            $html .= $this->vacio('No se encontraron seguimientos con los criterios seleccionados.');
+            return $html . '</section></body></html>';
         }
 
-        $total = (int)($resumen['total'] ?? count($seguimientos));
+        if ($individual) {
+            $html .= $this->ficha($seguimientos[0], $flujo, $detalleInstitucion);
+            $html .= $this->resumenIndividual($analitica, $detalleInstitucion);
+            $html .= $this->contactoInstitucional($detalleInstitucion);
+            $html .= $this->rutaIndividual($flujo);
+            $html .= $this->contacto($analitica);
+            $html .= $this->actividad($evolucion);
+            $html .= $this->historialIndividual($detalleInstitucion);
+            $html .= $this->reunionesIndividual($detalleInstitucion);
+            $html .= $this->documentacionIndividual($detalleInstitucion);
+            $html .= $this->observacionesIndividual($detalleInstitucion);
+            return $html . '</body></html>';
+        }
+
         $interacciones = (int)($analitica['interacciones'] ?? 0);
         $promedio = $this->decimal($analitica['promedio_por_seguimiento'] ?? 0, 1);
         $atencion = (int)($analitica['atencion']['total'] ?? 0);
@@ -99,22 +116,11 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
         $html .= $this->metric('Requieren atención', (string)$atencion);
         $html .= '</tr></table></section>';
 
-        if ($total <= 0) {
-            $html .= '<section class="report-section keep">' . $this->titulo('Resultado de la consulta');
-            $html .= $this->vacio('No se encontraron seguimientos con los criterios seleccionados.');
-            return $html . '</section></body></html>';
-        }
-
         $html .= $this->atencion($analitica['atencion']['casos'] ?? []);
         $html .= $this->contacto($analitica);
         $html .= $this->actividad($evolucion);
-
-        if (!$individual) {
-            $html .= $this->distribuciones($resumen, $etiquetas);
-            $html .= $this->detalle($seguimientos);
-        } else {
-            $html .= $this->lecturaIndividual($seguimientos[0], $flujo);
-        }
+        $html .= $this->distribuciones($resumen, $etiquetas);
+        $html .= $this->detalle($seguimientos);
 
         return $html . '</body></html>';
     }
@@ -183,12 +189,13 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
         return count($responsables) > 1 ? 'Varios responsables' : '';
     }
 
-    private function ficha(array $s, array $flujo): string
+    private function ficha(array $s, array $flujo, array $detalle): string
     {
+        $detalleSeguimiento = is_array($detalle['seguimiento'] ?? null) ? $detalle['seguimiento'] : [];
         $nombre = trim((string)($s['nombre_entidad'] ?? 'Institución seleccionada'));
         $ubicacion = implode(', ', array_values(array_filter([
-            trim((string)($s['municipio'] ?? '')),
-            trim((string)($s['estado_nombre'] ?? ''))
+            trim((string)($s['municipio'] ?? $detalleSeguimiento['municipio'] ?? '')),
+            trim((string)($detalleSeguimiento['estado_nombre'] ?? $s['estado_nombre'] ?? ''))
         ])));
         $responsable = trim((string)($s['responsable_nombre'] ?? ''));
 
@@ -199,22 +206,23 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
 
         $accion = trim((string)($flujo['accion_principal']['etiqueta'] ?? ''));
         if ($accion === '') {
-            $accion = trim((string)($s['proxima_accion_label'] ?? '—'));
+            $accion = trim((string)($flujo['titulo'] ?? $s['proxima_accion_label'] ?? '—'));
         }
 
-        $pasoActual = (int)($flujo['paso_actual'] ?? 0);
-        $totalPasos = (int)($flujo['total_pasos'] ?? 0);
-        $paso = $pasoActual > 0 && $totalPasos > 0
-            ? 'Paso ' . $pasoActual . ' de ' . $totalPasos
-            : 'Ruta operativa';
+        $pasoActual = max(1, (int)($flujo['paso_actual'] ?? 1));
+        $totalPasos = max($pasoActual, (int)($flujo['total_pasos'] ?? 13));
+        $paso = 'Paso ' . $pasoActual . ' de ' . $totalPasos;
 
-        $ultima = trim((string)($s['ultima_interaccion_at'] ?? '')) !== ''
-            ? (string)($s['ultima_actividad_label'] ?? '—')
-            : 'Sin actividad registrada';
-        $dias = $s['dias_sin_actividad'] ?? null;
+        $ultimaHumana = is_array($detalle['ultima_interaccion_humana'] ?? null)
+            ? $detalle['ultima_interaccion_humana']
+            : [];
+        $ultimaFecha = trim((string)($ultimaHumana['fecha_inicio'] ?? ''));
+        $ultimaCanal = $this->canalLabel((string)($ultimaHumana['canal'] ?? ''));
+        $ultima = $ultimaFecha !== '' ? $this->fechaDato($ultimaFecha) : 'Sin contacto humano registrado';
+        $dias = $this->diasDesde($ultimaFecha);
         $diasLabel = $dias === null
-            ? 'Sin actividad registrada'
-            : ((int)$dias . ((int)$dias === 1 ? ' día' : ' días'));
+            ? 'Sin contacto humano'
+            : ($dias . ($dias === 1 ? ' día' : ' días'));
 
         $html = '<section class="report-section institution keep">';
         $html .= '<table class="institution-head"><tr><td><span>Institución seleccionada</span>';
@@ -226,11 +234,259 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
         $html .= $this->info('Etapa de vinculación', $etapa, true);
         $html .= $this->info('Acción actual', $accion, true);
         $html .= '</tr><tr>';
-        $html .= $this->info('Última actividad', $ultima, false);
-        $html .= $this->info('Días sin actividad', $diasLabel, false);
-        $html .= $this->info('Último canal', (string)($s['canal_label'] ?? '—'), false);
-        $html .= '</tr></table></section>';
-        return $html;
+        $html .= $this->info('Último contacto humano', $ultima, false);
+        $html .= $this->info('Días desde último contacto', $diasLabel, false);
+        $html .= $this->info('Último canal humano', $ultimaCanal !== '' ? $ultimaCanal : '—', false);
+        $html .= '</tr></table>';
+
+        $descripcion = trim((string)($flujo['descripcion'] ?? ''));
+        if ($descripcion !== '') {
+            $html .= '<div class="flow-note">' . $this->e($descripcion) . '</div>';
+        }
+
+        return $html . '</section>';
+    }
+
+    private function resumenIndividual(array $analitica, array $detalle): string
+    {
+        $ultima = is_array($detalle['ultima_interaccion_humana'] ?? null)
+            ? $detalle['ultima_interaccion_humana']
+            : [];
+        $fechaUltima = trim((string)($ultima['fecha_inicio'] ?? ''));
+        $dias = $this->diasDesde($fechaUltima);
+        $llamadas = is_array($analitica['llamadas'] ?? null) ? $analitica['llamadas'] : [];
+
+        $html = '<section class="report-section keep">' . $this->titulo('Panorama de la relación');
+        $html .= '<table class="metrics individual-metrics"><tr>';
+        $html .= $this->metric('Interacciones registradas', (string)(int)($analitica['interacciones'] ?? 0));
+        $html .= $this->metric('Último contacto', $fechaUltima !== '' ? $this->fechaSoloDia($fechaUltima) : '—');
+        $html .= $this->metric('Días sin contacto', $dias === null ? '—' : (string)$dias);
+        $html .= $this->metric('Tasa de contacto', $this->decimal($llamadas['tasa_contacto'] ?? 0, 1) . '%');
+        return $html . '</tr></table></section>';
+    }
+
+    private function contactoInstitucional(array $detalle): string
+    {
+        $contacto = is_array($detalle['contacto'] ?? null) ? $detalle['contacto'] : [];
+        $seguimiento = is_array($detalle['seguimiento'] ?? null) ? $detalle['seguimiento'] : [];
+
+        $filas = [
+            ['Persona de contacto', trim((string)($contacto['nombre'] ?? '')), 'Cargo / área', trim((string)($contacto['cargo'] ?? ''))],
+            ['Teléfono', trim((string)($contacto['telefono'] ?? '')), 'WhatsApp', trim((string)($contacto['whatsapp'] ?? ''))],
+            ['Correo', trim((string)($contacto['correo'] ?? '')), 'Sitio web', trim((string)($contacto['sitio_web'] ?? ''))],
+            ['Actividad / giro', trim((string)($contacto['actividad_giro'] ?? '')), 'Datos de contacto', ($contacto['datos_verificados'] ?? false) ? 'Verificados' : 'Pendientes de verificación']
+        ];
+
+        $direccion = trim((string)($contacto['direccion'] ?? ''));
+        $hayDato = $direccion !== '';
+        foreach ($filas as $fila) {
+            if ($fila[1] !== '' || $fila[3] !== '') {
+                $hayDato = true;
+                break;
+            }
+        }
+
+        if (!$hayDato) {
+            return '';
+        }
+
+        $html = '<section class="report-section keep">' . $this->titulo('Datos institucionales y contacto');
+        $html .= '<table class="profile-table">';
+        foreach ($filas as $fila) {
+            if ($fila[1] === '' && $fila[3] === '') {
+                continue;
+            }
+            $html .= '<tr><td class="profile-label">' . $this->e($fila[0]) . '</td><td class="profile-value">' .
+                $this->e($fila[1] !== '' ? $fila[1] : '—') . '</td>';
+            $html .= '<td class="profile-label">' . $this->e($fila[2]) . '</td><td class="profile-value">' .
+                $this->e($fila[3] !== '' ? $fila[3] : '—') . '</td></tr>';
+        }
+        if ($direccion !== '') {
+            $html .= '<tr><td class="profile-label">Dirección</td><td class="profile-value" colspan="3">' .
+                $this->e($direccion) . '</td></tr>';
+        }
+        return $html . '</table></section>';
+    }
+
+    private function rutaIndividual(array $flujo): string
+    {
+        $actual = max(1, min(13, (int)($flujo['paso_actual'] ?? 1)));
+        $porcentaje = round(($actual / 13) * 100, 1);
+        $milestones = [
+            [2, 'Investigación'],
+            [4, 'Verificación'],
+            [7, 'Envío'],
+            [9, 'Respuesta'],
+            [12, 'Reunión'],
+            [13, 'Convenio']
+        ];
+
+        $html = '<section class="report-section keep">' . $this->titulo('Ruta de vinculación');
+        $html .= '<div class="route-progress"><div class="route-fill" style="width:' .
+            number_format($porcentaje, 1, '.', '') . '%"></div></div>';
+        $html .= '<table class="route-milestones"><tr>';
+        foreach ($milestones as $milestone) {
+            $estado = $actual >= $milestone[0] ? ' done' : '';
+            if ($actual === $milestone[0]) {
+                $estado .= ' current';
+            }
+            $html .= '<td class="' . trim($estado) . '"><strong>' . $milestone[0] .
+                '</strong><span>' . $this->e($milestone[1]) . '</span></td>';
+        }
+        $html .= '</tr></table>';
+        return $html . '</section>';
+    }
+
+    private function historialIndividual(array $detalle): string
+    {
+        $interacciones = is_array($detalle['interacciones_recientes'] ?? null)
+            ? $detalle['interacciones_recientes']
+            : [];
+
+        if (empty($interacciones)) {
+            return '';
+        }
+
+        $html = '<section class="report-section history-section">' . $this->titulo('Historial reciente de contacto');
+        $html .= '<table class="data-table history-table"><thead><tr>';
+        $html .= '<th>Fecha</th><th>Canal</th><th>Resultado</th><th>Registro</th><th>Responsable</th>';
+        $html .= '</tr></thead><tbody>';
+
+        foreach ($interacciones as $interaccion) {
+            $responsable = trim(
+                (string)($interaccion['nombre'] ?? '') . ' ' .
+                (string)($interaccion['apellidos'] ?? '')
+            );
+            $html .= '<tr><td>' . $this->e($this->fechaDato((string)($interaccion['fecha_inicio'] ?? ''))) . '</td>';
+            $html .= '<td>' . $this->e($this->canalLabel((string)($interaccion['canal'] ?? ''))) . '</td>';
+            $html .= '<td>' . $this->e($this->resultadoLabel((string)($interaccion['resultado'] ?? ''))) . '</td>';
+            $html .= '<td>' . $this->e($this->resumirTexto((string)($interaccion['notas'] ?? ''), 145)) . '</td>';
+            $html .= '<td>' . $this->e($responsable !== '' ? $responsable : '—') . '</td></tr>';
+        }
+
+        return $html . '</tbody></table></section>';
+    }
+
+    private function reunionesIndividual(array $detalle): string
+    {
+        $reuniones = is_array($detalle['reuniones'] ?? null) ? $detalle['reuniones'] : [];
+        $post = is_array($detalle['post_envio'] ?? null) ? $detalle['post_envio'] : [];
+
+        if (empty($reuniones) && trim((string)($post['reunion_fecha'] ?? '')) === '') {
+            return '';
+        }
+
+        $html = '<section class="report-section">' . $this->titulo('Reuniones y acuerdos');
+        $html .= '<table class="data-table"><thead><tr><th>Fecha</th><th>Modalidad</th><th>Estado / resultado</th><th>Objetivo o acuerdo</th><th>Cuenta Clave</th></tr></thead><tbody>';
+
+        if (!empty($reuniones)) {
+            foreach (array_slice($reuniones, 0, 4) as $reunion) {
+                $notas = trim((string)($reunion['objetivo'] ?? ''));
+                if ($notas === '') {
+                    $notas = trim((string)($reunion['notas_kam'] ?? $reunion['notas_analista'] ?? ''));
+                }
+                $html .= '<tr><td>' . $this->e($this->fechaDato((string)($reunion['fecha_propuesta'] ?? ''))) . '</td>';
+                $html .= '<td>' . $this->e($this->modalidadLabel((string)($reunion['modalidad'] ?? ''))) . '</td>';
+                $html .= '<td>' . $this->e($this->estadoReunionLabel((string)($reunion['estado'] ?? ''))) . '</td>';
+                $html .= '<td>' . $this->e($this->resumirTexto($notas, 125)) . '</td>';
+                $html .= '<td>' . $this->e(trim((string)($reunion['cuenta_clave_nombre'] ?? '')) ?: '—') . '</td></tr>';
+            }
+        } else {
+            $resultado = trim((string)($post['reunion_resultado'] ?? ''));
+            $detalleResultado = trim((string)($post['reunion_resultado_notas'] ?? $post['reunion_notas'] ?? ''));
+            $html .= '<tr><td>' . $this->e($this->fechaDato((string)($post['reunion_fecha'] ?? ''))) . '</td>';
+            $html .= '<td>' . $this->e($this->modalidadLabel((string)($post['reunion_modalidad'] ?? ''))) . '</td>';
+            $html .= '<td>' . $this->e($this->resultadoReunionLabel($resultado)) . '</td>';
+            $html .= '<td>' . $this->e($this->resumirTexto($detalleResultado, 125)) . '</td><td>—</td></tr>';
+        }
+
+        return $html . '</tbody></table></section>';
+    }
+
+    private function documentacionIndividual(array $detalle): string
+    {
+        $oficios = is_array($detalle['oficios'] ?? null) ? $detalle['oficios'] : [];
+        $post = is_array($detalle['post_envio'] ?? null) ? $detalle['post_envio'] : [];
+
+        $hayPost = trim((string)($post['respuesta_at'] ?? '')) !== '' ||
+            trim((string)($post['seguimiento_correo_at'] ?? '')) !== '' ||
+            trim((string)($post['convenio_formalizado_at'] ?? '')) !== '';
+
+        if (empty($oficios) && !$hayPost) {
+            return '';
+        }
+
+        $html = '<section class="report-section">' . $this->titulo('Documentación y avance formal');
+
+        if (!empty($oficios)) {
+            $html .= '<table class="data-table docs-table"><thead><tr><th>Documento</th><th>Destinatario</th><th>Estado</th><th>Generado</th><th>Enviado</th></tr></thead><tbody>';
+            foreach (array_slice($oficios, 0, 3) as $oficio) {
+                $destinatario = trim((string)($oficio['destinatario_nombre'] ?? ''));
+                $cargo = trim((string)($oficio['destinatario_cargo'] ?? ''));
+                if ($cargo !== '') {
+                    $destinatario .= ($destinatario !== '' ? ' · ' : '') . $cargo;
+                }
+                $html .= '<tr><td><strong>' . $this->e(trim((string)($oficio['folio'] ?? 'Oficio'))) . '</strong></td>';
+                $html .= '<td>' . $this->e($destinatario !== '' ? $destinatario : '—') . '</td>';
+                $html .= '<td>' . $this->e($this->estadoOficioLabel((string)($oficio['estado_oficio'] ?? ''))) . '</td>';
+                $html .= '<td>' . $this->e($this->fechaDato((string)($oficio['fecha_generacion'] ?? ''))) . '</td>';
+                $html .= '<td>' . $this->e($this->fechaDato((string)($oficio['fecha_envio'] ?? ''))) . '</td></tr>';
+            }
+            $html .= '</tbody></table>';
+        }
+
+        $timeline = [];
+        if (trim((string)($post['respuesta_at'] ?? '')) !== '') {
+            $timeline[] = ['Respuesta recibida', $this->fechaDato((string)$post['respuesta_at']), $this->respuestaTipoLabel((string)($post['respuesta_tipo'] ?? ''))];
+        }
+        if (trim((string)($post['seguimiento_correo_at'] ?? '')) !== '') {
+            $timeline[] = ['Seguimiento por correo', $this->fechaDato((string)$post['seguimiento_correo_at']), $this->resumirTexto((string)($post['seguimiento_correo_notas'] ?? ''), 110)];
+        }
+        if (trim((string)($post['reunion_realizada_at'] ?? '')) !== '') {
+            $timeline[] = ['Reunión realizada', $this->fechaDato((string)$post['reunion_realizada_at']), $this->resultadoReunionLabel((string)($post['reunion_resultado'] ?? ''))];
+        }
+        if (trim((string)($post['convenio_formalizado_at'] ?? '')) !== '') {
+            $detalleConvenio = trim((string)($post['convenio_referencia'] ?? ''));
+            if (trim((string)($post['convenio_fecha'] ?? '')) !== '') {
+                $detalleConvenio .= ($detalleConvenio !== '' ? ' · ' : '') . $this->fechaSoloDia((string)$post['convenio_fecha']);
+            }
+            $timeline[] = ['Convenio formalizado', $this->fechaDato((string)$post['convenio_formalizado_at']), $detalleConvenio];
+        }
+
+        if (!empty($timeline)) {
+            $html .= '<table class="formal-timeline">';
+            foreach ($timeline as $evento) {
+                $html .= '<tr><td class="formal-dot">●</td><td><strong>' . $this->e($evento[0]) . '</strong>';
+                $html .= '<span>' . $this->e($evento[1]) . ($evento[2] !== '' ? ' · ' . $evento[2] : '') . '</span></td></tr>';
+            }
+            $html .= '</table>';
+        }
+
+        return $html . '</section>';
+    }
+
+    private function observacionesIndividual(array $detalle): string
+    {
+        $observaciones = is_array($detalle['observaciones'] ?? null) ? $detalle['observaciones'] : [];
+        if (empty($observaciones)) {
+            return '';
+        }
+
+        $html = '<section class="report-section observations-section">' . $this->titulo('Observaciones recientes');
+        foreach (array_slice($observaciones, 0, 3) as $observacion) {
+            $autor = trim(
+                (string)($observacion['nombre'] ?? '') . ' ' .
+                (string)($observacion['apellidos'] ?? '')
+            );
+            $texto = trim((string)($observacion['observacion'] ?? ''));
+            if ($texto === '') {
+                continue;
+            }
+            $html .= '<div class="observation"><strong>' . $this->e($autor !== '' ? $autor : 'Equipo de vinculación') . '</strong>';
+            $html .= '<span>' . $this->e($this->fechaDato((string)($observacion['created_at'] ?? ''))) . '</span>';
+            $html .= '<p>' . $this->e($this->resumirTexto($texto, 220)) . '</p></div>';
+        }
+        return $html . '</section>';
     }
 
     private function atencion(array $casos): string
@@ -416,15 +672,7 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
 
     private function lecturaIndividual(array $s, array $flujo): string
     {
-        $etapa = trim((string)($flujo['ventana']['actual']['titulo'] ?? $flujo['titulo'] ?? $s['estado_label'] ?? '—'));
-        $accion = trim((string)($flujo['accion_principal']['etiqueta'] ?? $s['proxima_accion_label'] ?? '—'));
-
-        $html = '<section class="report-section keep">' . $this->titulo('Lectura operativa');
-        $html .= '<table class="operational"><tr>';
-        $html .= $this->opMetric('Etapa actual', $etapa);
-        $html .= $this->opMetric('Acción actual', $accion);
-        $html .= $this->opMetric('Último canal', (string)($s['canal_label'] ?? '—'));
-        return $html . '</tr></table></section>';
+        return '';
     }
 
     private function bars(array $datos, string $mensaje): string
@@ -471,6 +719,156 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
     private function opMetric(string $label, string $value): string
     {
         return '<td><span>' . $this->e($label) . '</span><strong>' . $this->e($value) . '</strong></td>';
+    }
+
+    private function fechaDato(string $valor): string
+    {
+        $valor = trim($valor);
+        if ($valor === '') {
+            return '—';
+        }
+
+        try {
+            return (new DateTime($valor))->format('d/m/Y H:i');
+        } catch (Throwable $error) {
+            return $valor;
+        }
+    }
+
+    private function fechaSoloDia(string $valor): string
+    {
+        $valor = trim($valor);
+        if ($valor === '') {
+            return '—';
+        }
+
+        try {
+            return (new DateTime($valor))->format('d/m/Y');
+        } catch (Throwable $error) {
+            return $valor;
+        }
+    }
+
+    private function diasDesde(string $valor)
+    {
+        $valor = trim($valor);
+        if ($valor === '') {
+            return null;
+        }
+
+        try {
+            $fecha = (new DateTimeImmutable($valor))->setTime(0, 0);
+            $hoy = (new DateTimeImmutable('today'))->setTime(0, 0);
+            return $fecha >= $hoy ? 0 : (int)$fecha->diff($hoy)->days;
+        } catch (Throwable $error) {
+            return null;
+        }
+    }
+
+    private function canalLabel(string $canal): string
+    {
+        $canal = strtoupper(trim($canal));
+        $labels = [
+            'LLAMADA_IP' => 'Llamada',
+            'LLAMADA' => 'Llamada',
+            'CORREO' => 'Correo',
+            'WHATSAPP' => 'WhatsApp',
+            'NOTA' => 'Nota'
+        ];
+        return $labels[$canal] ?? ($canal !== '' ? ucfirst(strtolower(str_replace('_', ' ', $canal))) : '');
+    }
+
+    private function resultadoLabel(string $resultado): string
+    {
+        $resultado = strtoupper(trim($resultado));
+        $labels = [
+            'CONTACTADO' => 'Contactado',
+            'SIN_RESPUESTA' => 'Sin respuesta',
+            'NUMERO_INCORRECTO' => 'Número incorrecto',
+            'SOLICITO_LLAMAR_DESPUES' => 'Volver a llamar',
+            'MENSAJE_ENVIADO' => 'Mensaje enviado',
+            'CORREO_ENVIADO' => 'Correo enviado',
+            'OTRO' => 'Otro'
+        ];
+        return $labels[$resultado] ?? ($resultado !== '' ? ucfirst(strtolower(str_replace('_', ' ', $resultado))) : '—');
+    }
+
+    private function modalidadLabel(string $modalidad): string
+    {
+        $modalidad = strtoupper(trim($modalidad));
+        $labels = [
+            'VIRTUAL' => 'Virtual',
+            'PRESENCIAL' => 'Presencial',
+            'HIBRIDA' => 'Híbrida'
+        ];
+        return $labels[$modalidad] ?? ($modalidad !== '' ? ucfirst(strtolower($modalidad)) : '—');
+    }
+
+    private function estadoReunionLabel(string $estado): string
+    {
+        $estado = strtoupper(trim($estado));
+        $labels = [
+            'SOLICITADA' => 'Solicitada',
+            'CONFIRMADA' => 'Confirmada',
+            'CORREO_ENVIADO' => 'Confirmación enviada',
+            'CAMBIO_SOLICITADO' => 'Cambio solicitado',
+            'REALIZADA' => 'Realizada',
+            'CANCELADA' => 'Cancelada'
+        ];
+        return $labels[$estado] ?? ($estado !== '' ? ucfirst(strtolower(str_replace('_', ' ', $estado))) : '—');
+    }
+
+    private function resultadoReunionLabel(string $resultado): string
+    {
+        $resultado = strtoupper(trim($resultado));
+        $labels = [
+            'AVANZAR_CONVENIO' => 'Avanzar a convenio',
+            'REQUIERE_SEGUIMIENTO' => 'Requiere seguimiento',
+            'NO_INTERESADO' => 'No interesado'
+        ];
+        return $labels[$resultado] ?? ($resultado !== '' ? ucfirst(strtolower(str_replace('_', ' ', $resultado))) : '—');
+    }
+
+    private function respuestaTipoLabel(string $tipo): string
+    {
+        $tipo = strtoupper(trim($tipo));
+        $labels = [
+            'INTERESADO' => 'Interesado',
+            'MAS_INFORMACION' => 'Solicita más información',
+            'QUIERE_REUNION' => 'Solicita reunión',
+            'CONTACTAR_DESPUES' => 'Contactar después',
+            'NO_INTERESADO' => 'No interesado'
+        ];
+        return $labels[$tipo] ?? ($tipo !== '' ? ucfirst(strtolower(str_replace('_', ' ', $tipo))) : '');
+    }
+
+    private function estadoOficioLabel(string $estado): string
+    {
+        $estado = strtoupper(trim($estado));
+        $labels = [
+            'BORRADOR' => 'Borrador',
+            'GENERADO' => 'Generado',
+            'ENVIADO' => 'Enviado'
+        ];
+        return $labels[$estado] ?? ($estado !== '' ? ucfirst(strtolower(str_replace('_', ' ', $estado))) : '—');
+    }
+
+    private function resumirTexto(string $texto, int $limite): string
+    {
+        $texto = trim(preg_replace('/\\s+/u', ' ', $texto) ?? '');
+        if ($texto === '') {
+            return '—';
+        }
+
+        if (function_exists('mb_strlen') && function_exists('mb_substr')) {
+            return mb_strlen($texto, 'UTF-8') > $limite
+                ? rtrim(mb_substr($texto, 0, $limite - 1, 'UTF-8')) . '…'
+                : $texto;
+        }
+
+        return strlen($texto) > $limite
+            ? rtrim(substr($texto, 0, $limite - 1)) . '…'
+            : $texto;
     }
 
     private function vacio(string $texto): string
@@ -581,7 +979,7 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
             '.barrow{width:100%;table-layout:fixed;border-collapse:collapse;margin-bottom:5px}.barlabel{width:37%;font-size:6pt;padding-right:6px}.bararea{width:53%}.barvalue{width:10%;text-align:right;font-weight:700;font-size:6pt}.track{height:6px;background:#E9EDF4;overflow:hidden}.fill{height:6px;background:#273A8A}' .
             '.status{display:inline-block;background:#EDF2FA;color:#273A8A;padding:2px 5px;font-weight:700;font-size:5.5pt}.detail-section .section-title{page-break-after:avoid}' .
             '.operational{width:100%;table-layout:fixed;border-collapse:collapse;background:#F8FAFC;border:1px solid #E5E9EF}.operational td{width:33.33%;padding:8px;border-right:1px solid #E5E9EF}.operational td:last-child{border-right:0}.operational strong{display:block;font-size:7.2pt}' .
-            '.empty{border-left:3px solid #E5E9EF;background:#F8FAFC;padding:8px 10px;color:#6D7480;font-size:6.4pt}.empty.compact{padding:6px 8px}';
+            '.empty{border-left:3px solid #E5E9EF;background:#F8FAFC;padding:8px 10px;color:#6D7480;font-size:6.4pt}.empty.compact{padding:6px 8px}.flow-note{margin-top:7px;padding:7px 9px;background:#F8FAFC;border-left:2px solid #D3DCE8;color:#4F5968;font-size:6.3pt;line-height:1.4}.individual-metrics .metric{background:#F7F9FC}.individual-metrics .metric strong{font-size:11.5pt}.profile-table{width:100%;border-collapse:collapse;border:1px solid #D7DFEA}.profile-table td{padding:6px 7px;border-bottom:1px solid #E5E9EF;vertical-align:top}.profile-label{width:16%;background:#F7F9FC;color:#6D7480;font-size:5.8pt}.profile-value{width:34%;font-size:6.6pt;font-weight:600;color:#16223B}.route-progress{height:7px;background:#E7ECF3;margin:2px 2px 8px;overflow:hidden}.route-fill{height:7px;background:#273A8A}.route-milestones{width:100%;table-layout:fixed;border-collapse:collapse}.route-milestones td{text-align:center;color:#8B94A2;font-size:5.4pt;padding:2px 3px}.route-milestones td strong{display:block;width:15px;height:15px;line-height:15px;margin:0 auto 3px;border-radius:50%;background:#E7ECF3;color:#6D7480;font-size:5.5pt}.route-milestones td.done{color:#273A8A;font-weight:700}.route-milestones td.done strong{background:#273A8A;color:#FFFFFF}.route-milestones td.current strong{background:#0A8F7A}.history-table th:first-child{width:15%}.history-table th:nth-child(2){width:10%}.history-table th:nth-child(3){width:15%}.history-table th:nth-child(4){width:42%}.history-table th:nth-child(5){width:18%}.docs-table th:first-child{width:16%}.docs-table th:nth-child(2){width:30%}.docs-table th:nth-child(3){width:14%}.docs-table th:nth-child(4),.docs-table th:nth-child(5){width:20%}.formal-timeline{width:100%;border-collapse:collapse;margin-top:7px;background:#F8FAFC}.formal-timeline td{padding:5px 7px;border-bottom:1px solid #E5E9EF;vertical-align:top}.formal-timeline .formal-dot{width:12px;color:#0A8F7A;padding-right:0}.formal-timeline strong{display:block;font-size:6.5pt}.formal-timeline span{display:block;color:#6D7480;font-size:5.8pt;margin-top:1px}.observation{border:1px solid #D7DFEA;background:#FFFFFF;padding:7px 8px;margin-bottom:5px;page-break-inside:avoid}.observation strong{font-size:6.4pt;color:#16223B}.observation span{float:right;color:#8B94A2;font-size:5.5pt}.observation p{margin:4px 0 0;color:#4F5968;font-size:6.2pt;line-height:1.4}';
     }
 
 }
