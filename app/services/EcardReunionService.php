@@ -114,6 +114,8 @@ class EcardReunionService
             if (!($resultado['ok'] ?? false)) {
                 return $resultado;
             }
+
+            $this->limpiarVersionesAnteriores($directorio, $reunionId, $ruta);
         }
 
         return [
@@ -129,6 +131,26 @@ class EcardReunionService
             'modalidad' => $modalidad,
             'enlace' => $enlace
         ];
+    }
+
+    private function limpiarVersionesAnteriores($directorio, $reunionId, $rutaActual)
+    {
+        $patron = rtrim((string)$directorio, DIRECTORY_SEPARATOR) .
+            DIRECTORY_SEPARATOR . 'reunion_' . (int)$reunionId . '_*.jpg';
+        $actual = realpath((string)$rutaActual);
+
+        foreach (glob($patron) ?: [] as $ruta) {
+            $real = realpath($ruta);
+
+            if (
+                $real !== false &&
+                $actual !== false &&
+                $real !== $actual &&
+                is_file($real)
+            ) {
+                @unlink($real);
+            }
+        }
     }
 
     private function resolverTemplate(array $reunion)
