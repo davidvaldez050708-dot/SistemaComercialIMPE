@@ -151,10 +151,19 @@
                 return;
             }
 
-            const seguimiento = obtenerSeguimiento(seguimientoId);
+            const seguimientoCache = obtenerSeguimiento(seguimientoId);
+            const fechaFila = String(celda.dataset.nextScheduleAt || '').trim();
+            const seguimiento = seguimientoCache || (
+                fechaFila !== ''
+                    ? {
+                        proxima_accion_at: fechaFila,
+                        proxima_accion_fecha_label: String(
+                            celda.dataset.nextSchedule || ''
+                        ).trim()
+                    }
+                    : null
+            );
 
-            // Si todavía no se abrió/precargó el panel, conserva la fecha
-            // renderizada por PHP. Así no desaparece el vencimiento inicial.
             if (!seguimiento) {
                 return;
             }
