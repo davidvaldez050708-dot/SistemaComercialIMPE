@@ -487,6 +487,10 @@
         const filas = Array.from(document.querySelectorAll('[data-linkage-follow-row]'));
 
         filas.forEach(function (fila) {
+            if (fila.dataset.routeInitialReady === '1') {
+                return;
+            }
+
             const seguimientoId = Number(
                 fila.querySelector('[data-work-follow-id]')?.getAttribute('data-work-follow-id') || 0
             );
