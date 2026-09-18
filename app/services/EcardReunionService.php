@@ -278,7 +278,7 @@ class EcardReunionService
         $acceso = $enlace !== ''
             ? $enlace
             : 'No aplica · reunión presencial';
-        $lineasAcceso = $this->envolverTexto($acceso, 290, 15, $fuenteNormal, 3);
+        $lineasAcceso = $this->envolverTexto($acceso, 290, 15, $fuenteNormal, 4);
         $yAcceso = 616;
         foreach ($lineasAcceso as $linea) {
             $this->texto($imagen, $linea, 15, 520, $yAcceso, $navy, $fuenteNormal);
@@ -561,6 +561,31 @@ class EcardReunionService
         $actual = '';
 
         foreach ($palabras as $palabra) {
+            if ($this->medirTexto($palabra, $tamano, $fuente) > $maxAncho) {
+                if ($actual !== '') {
+                    $lineas[] = $actual;
+                    $actual = '';
+                }
+
+                $fragmentos = $this->fragmentarPalabra(
+                    $palabra,
+                    $maxAncho,
+                    $tamano,
+                    $fuente
+                );
+
+                foreach ($fragmentos as $fragmento) {
+                    if (count($lineas) >= $maxLineas - 1) {
+                        $actual = $fragmento;
+                        break 2;
+                    }
+
+                    $lineas[] = $fragmento;
+                }
+
+                continue;
+            }
+
             $candidata = $actual === '' ? $palabra : $actual . ' ' . $palabra;
 
             if ($actual !== '' && $this->medirTexto($candidata, $tamano, $fuente) > $maxAncho) {
@@ -594,6 +619,37 @@ class EcardReunionService
         }
 
         return $lineas;
+    }
+
+    private function fragmentarPalabra($palabra, $maxAncho, $tamano, $fuente)
+    {
+        $caracteres = preg_split('//u', (string)$palabra, -1, PREG_SPLIT_NO_EMPTY);
+        if (!is_array($caracteres) || empty($caracteres)) {
+            return [(string)$palabra];
+        }
+
+        $fragmentos = [];
+        $actual = '';
+
+        foreach ($caracteres as $caracter) {
+            $candidata = $actual . $caracter;
+
+            if (
+                $actual !== '' &&
+                $this->medirTexto($candidata, $tamano, $fuente) > $maxAncho
+            ) {
+                $fragmentos[] = $actual;
+                $actual = $caracter;
+            } else {
+                $actual = $candidata;
+            }
+        }
+
+        if ($actual !== '') {
+            $fragmentos[] = $actual;
+        }
+
+        return $fragmentos;
     }
 
     private function normalizarTexto($texto)
