@@ -27,7 +27,7 @@ class ReporteTerritorialPdfService
 
         try {
             $options = new Options();
-            $options->set('isRemoteEnabled', false);
+            $options->set('isRemoteEnabled', true);
             $options->set('isHtml5ParserEnabled', true);
             $options->set('defaultFont', 'DejaVu Sans');
 
@@ -39,15 +39,15 @@ class ReporteTerritorialPdfService
             $canvas = $dompdf->getCanvas();
             $fontMetrics = $dompdf->getFontMetrics();
             $font = $fontMetrics->getFont('DejaVu Sans', 'normal');
-            $fontSize = 6.7;
-            $footerColor = [0.43, 0.45, 0.50];
+            $bold = $fontMetrics->getFont('DejaVu Sans', 'bold');
 
-            $canvas->page_script(static function ($pageNumber, $pageCount, $canvas, $fontMetrics) use ($font, $fontSize, $footerColor): void {
-                $texto = 'Página ' . $pageNumber . ' de ' . $pageCount;
-                $anchoTexto = $fontMetrics->getTextWidth($texto, $font, $fontSize);
-                $x = ($canvas->get_width() - $anchoTexto) / 2;
+            $canvas->page_script(static function ($pageNumber, $pageCount, $canvas, $fontMetrics) use ($font, $bold): void {
                 $y = $canvas->get_height() - 24;
-                $canvas->text($x, $y, $texto, $font, $fontSize, $footerColor);
+                $canvas->line(46, $y - 7, $canvas->get_width() - 46, $y - 7, [0.90, 0.91, 0.94], 0.5);
+                $canvas->text(46, $y, 'Grupo Porcayo · Sistema de Gestión Comercial', $bold, 6.4, [0.15, 0.23, 0.54]);
+                $pagina = 'Página ' . $pageNumber . ' de ' . $pageCount;
+                $ancho = $fontMetrics->getTextWidth($pagina, $font, 6.4);
+                $canvas->text($canvas->get_width() - 46 - $ancho, $y, $pagina, $font, 6.4, [0.43, 0.45, 0.50]);
             });
 
             $estado = $reporte['estado'] ?? [];
@@ -70,22 +70,25 @@ class ReporteTerritorialPdfService
 
     private function construirHtml(array $reporte): string
     {
-        $estado = $reporte['estado'] ?? [];
-        $actividad = $reporte['actividad_economica'] ?? [];
-        $poder = $reporte['poder_adquisitivo'] ?? [];
-        $rezago = $reporte['rezago_educativo'] ?? [];
-        $perfil = $reporte['perfil_educativo'] ?? [];
-        $indicadores = $reporte['indicadores_educativos'] ?? [];
-        $priorizacion = $reporte['priorizacion_municipal'] ?? [];
-        $secretarias = $reporte['secretarias'] ?? [];
-        $fuentes = $reporte['fuentes'] ?? [];
-        $calculos = $reporte['calculos'] ?? [];
-        $lecturas = $reporte['lecturas'] ?? [];
-        $fechaGeneracion = $this->fecha((string)($reporte['fecha_generacion'] ?? ''));
+        $estado = is_array($reporte['estado'] ?? null) ? $reporte['estado'] : [];
+        $actividad = is_array($reporte['actividad_economica'] ?? null) ? $reporte['actividad_economica'] : [];
+        $poder = is_array($reporte['poder_adquisitivo'] ?? null) ? $reporte['poder_adquisitivo'] : [];
+        $rezago = is_array($reporte['rezago_educativo'] ?? null) ? $reporte['rezago_educativo'] : [];
+        $perfil = is_array($reporte['perfil_educativo'] ?? null) ? $reporte['perfil_educativo'] : [];
+        $indicadores = is_array($reporte['indicadores_educativos'] ?? null) ? $reporte['indicadores_educativos'] : [];
+        $priorizacion = is_array($reporte['priorizacion_municipal'] ?? null) ? $reporte['priorizacion_municipal'] : [];
+        $secretarias = is_array($reporte['secretarias'] ?? null) ? $reporte['secretarias'] : [];
+        $fuentes = is_array($reporte['fuentes'] ?? null) ? $reporte['fuentes'] : [];
+        $calculos = is_array($reporte['calculos'] ?? null) ? $reporte['calculos'] : [];
+        $lecturas = is_array($reporte['lecturas'] ?? null) ? $reporte['lecturas'] : [];
 
+        $fechaGeneracion = $this->fecha((string)($reporte['fecha_generacion'] ?? ''));
+        $generadoPor = trim((string)($reporte['generado_por'] ?? ''));
+        $generadoPorRol = trim((string)($reporte['generado_por_rol'] ?? ''));
+        $nombreEstado = trim((string)($estado['nombre'] ?? 'Territorio'));
         $logo = $this->logoDataUri();
-        $mapaEstado = $this->mapaEstadoData($estado['mapa_estado'] ?? '');
-        $nombreEstado = $this->e($estado['nombre'] ?? 'Territorio');
+        $mapa = $this->mapaEstadoData($estado['mapa_estado'] ?? '');
+
         $poblacion = $this->numero($estado['poblacion'] ?? null);
         $municipios = $this->numero($estado['total_municipios'] ?? $estado['municipios_cargados'] ?? null);
         $establecimientos = $this->numero($actividad['total_establecimientos'] ?? null);
@@ -95,115 +98,140 @@ class ReporteTerritorialPdfService
 
         $html = '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><style>' . $this->css() . '</style></head><body>';
         $html .= '<div class="top-rule"></div>';
+
         $html .= '<table class="header"><tr><td class="brand">';
         if ($logo !== '') {
             $html .= '<img src="' . $logo . '" alt="Grupo Porcayo">';
         }
-        $html .= '</td><td class="header-copy"><div class="eyebrow">SISTEMA COMERCIAL</div><h1>Reporte de Información Territorial</h1><p>' . $nombreEstado . ' · Generado ' . $this->e($fechaGeneracion) . '</p></td><td class="state-map">';
-        if (($mapaEstado['src'] ?? '') !== '') {
-            $html .= '<img src="' . $this->e($mapaEstado['src']) . '" alt="Mapa de ' . $nombreEstado . '" width="' . (int)($mapaEstado['width'] ?? 0) . '" height="' . (int)($mapaEstado['height'] ?? 0) . '">';
+        $html .= '</td><td class="header-copy">';
+        $html .= '<div class="system-name">Sistema de Gestión Comercial</div>';
+        $html .= '<h1>Reporte de Información Territorial</h1>';
+        $html .= '<table class="header-meta">';
+        if ($generadoPor !== '') {
+            $html .= '<tr><td>Generado por</td><th>' . $this->e($generadoPor) . '</th></tr>';
         }
-        $html .= '</td></tr></table>';
+        if ($generadoPorRol !== '') {
+            $html .= '<tr><td>Rol</td><th>' . $this->e($generadoPorRol) . '</th></tr>';
+        }
+        $html .= '<tr><td>Fecha</td><th>' . $this->e($fechaGeneracion) . '</th></tr>';
+        $html .= '<tr><td>Territorio</td><th>' . $this->e($nombreEstado) . '</th></tr>';
+        $html .= '</table></td></tr></table><div class="header-rule"></div>';
 
-        $html .= '<div class="section-title first"><span>RESUMEN EJECUTIVO</span><h2>Panorama territorial</h2></div>';
+        $html .= '<table class="scope"><tr>';
+        $html .= '<td><span>Territorio</span><strong>' . $this->e($nombreEstado) . '</strong></td>';
+        $html .= '<td><span>Última actualización</span><strong>' . $this->e($this->fecha((string)($estado['fecha_actualizacion'] ?? ''))) . '</strong></td>';
+        $html .= '<td><span>Tipo de reporte</span><strong>Información territorial</strong></td>';
+        $html .= '</tr></table>';
+
+        $html .= '<section class="report-section territory-focus keep"><table class="territory-head"><tr><td>';
+        $html .= '<span>Territorio seleccionado</span><h2>' . $this->e($nombreEstado) . '</h2>';
+        $capital = trim((string)($estado['capital'] ?? ''));
+        $html .= '<p>' . ($capital !== '' ? 'Capital: ' . $this->e($capital) : 'Ficha territorial') . '</p></td>';
+        if (($mapa['src'] ?? '') !== '') {
+            $html .= '<td class="territory-map"><img src="' . $this->e($mapa['src']) . '" alt="Mapa de ' . $this->e($nombreEstado) . '"></td>';
+        }
+        $html .= '</tr></table>';
+
+        $html .= '<table class="territory-grid"><tr>';
+        $html .= $this->focusInfo('Capital', $estado['capital'] ?? '—');
+        $html .= $this->focusInfo('Titular del gobierno', $estado['titular_gobierno'] ?? '—');
+        $html .= $this->focusInfo('Periodo de gobierno', $estado['periodo_gobierno'] ?? '—');
+        $html .= '</tr><tr>';
+        $html .= $this->focusInfo('Secretarías activas', $calculos['total_secretarias_activas'] ?? '—');
+        $html .= $this->focusInfo('Teléfono', $estado['telefono'] ?? '—');
+        $html .= $this->focusInfo('Población promedio / municipio', $calculos['poblacion_promedio_municipio'] ?? '—');
+        $html .= '</tr></table></section>';
+
+        $html .= '<section class="report-section keep">' . $this->sectionTitle('Panorama territorial');
         $html .= '<table class="metrics"><tr>';
         $html .= $this->metric('Población', $poblacion, 'habitantes');
         $html .= $this->metric('Municipios', $municipios, 'registrados');
         $html .= $this->metric('Establecimientos', $establecimientos, 'DENUE');
-        $html .= $this->metric('Est. / 10 mil hab.', $densidad, 'cálculo territorial');
-        $html .= '</tr></table>';
+        $html .= $this->metric('Est. / 10 mil hab.', $densidad, 'densidad territorial');
+        $html .= '</tr></table></section>';
 
-        $html .= '<div class="section-title"><span>FICHA TERRITORIAL</span><h2>Datos generales del Estado</h2></div>';
-        $html .= '<table class="info-table">';
-        $html .= $this->infoRow('Capital', $estado['capital'] ?? null, 'Titular del gobierno', $estado['titular_gobierno'] ?? null);
-        $html .= $this->infoRow('Cargo', $estado['cargo_titular'] ?? null, 'Periodo de gobierno', $estado['periodo_gobierno'] ?? null);
-        $html .= $this->infoRow('Partido político', $estado['partido_politico'] ?? null, 'Teléfono', $estado['telefono'] ?? null);
-        $html .= $this->infoRow('Secretarías activas', $calculos['total_secretarias_activas'] ?? null, 'Última actualización', $this->fecha((string)($estado['fecha_actualizacion'] ?? '')));
-        $html .= '</table>';
-
-        $html .= '<div class="section-title"><span>ACTIVIDAD ECONÓMICA</span><h2>Distribución y concentración</h2></div>';
+        $html .= '<section class="report-section activity-section">' . $this->sectionTitle('Actividad económica');
         if (!empty($actividad['sectores'])) {
             $sectorPrincipal = $calculos['sector_principal'] ?? null;
-            $concentracionTop5 = $calculos['concentracion_top_5_sectores'] ?? null;
-            $participacionNacional = $calculos['participacion_establecimientos_nacional'] ?? null;
-
             $html .= '<table class="mini-metrics"><tr>';
-            $html .= $this->miniMetric('Sector principal', is_array($sectorPrincipal) ? ($sectorPrincipal['nombre_sector'] ?? '—') : '—');
-            $html .= $this->miniMetric('Concentración Top 5', $concentracionTop5 !== null ? $this->decimal($concentracionTop5, 2) . '%' : '—');
-            $html .= $this->miniMetric('Participación nacional', $participacionNacional !== null ? $this->decimal($participacionNacional, 2) . '%' : '—');
+            $html .= $this->miniMetric('Sector con mayor presencia', is_array($sectorPrincipal) ? ($sectorPrincipal['nombre_sector'] ?? '—') : '—');
+            $html .= $this->miniMetric('Concentración Top 5', ($calculos['concentracion_top_5_sectores'] ?? null) !== null ? $this->decimal($calculos['concentracion_top_5_sectores'], 2) . '%' : '—');
+            $html .= $this->miniMetric('Participación nacional', ($calculos['participacion_establecimientos_nacional'] ?? null) !== null ? $this->decimal($calculos['participacion_establecimientos_nacional'], 2) . '%' : '—');
             $html .= '</tr></table>';
+
+            $html .= $this->sectorChart(array_slice(array_values($actividad['sectores']), 0, 5));
 
             $html .= '<table class="data-table"><thead><tr><th>Sector</th><th class="num">Establecimientos</th><th class="num">Participación</th></tr></thead><tbody>';
             foreach (array_slice(array_values($actividad['sectores']), 0, 8) as $sector) {
-                $html .= '<tr><td>' . $this->e($sector['nombre_sector'] ?? '—') . '</td><td class="num">' . $this->numero($sector['establecimientos'] ?? null) . '</td><td class="num">' . $this->decimal($sector['porcentaje'] ?? 0, 2) . '%</td></tr>';
+                $html .= '<tr><td>' . $this->e($sector['nombre_sector'] ?? '—') . '</td>';
+                $html .= '<td class="num">' . $this->numero($sector['establecimientos'] ?? null) . '</td>';
+                $html .= '<td class="num">' . $this->decimal($sector['porcentaje'] ?? 0, 2) . '%</td></tr>';
             }
             $html .= '</tbody></table>';
         } else {
             $html .= $this->emptyBlock('No hay actividad económica oficial registrada para este territorio.');
         }
+        $html .= '</section>';
 
-        if (trim((string)($estado['actividad_economica'] ?? '')) !== '') {
-            $html .= '<div class="note"><strong>Contexto económico registrado</strong><br>' . nl2br($this->e($estado['actividad_economica'])) . '</div>';
-        }
-
-        $html .= '<div class="section-title"><span>CONDICIONES SOCIOECONÓMICAS</span><h2>Poder adquisitivo y pobreza laboral</h2></div>';
+        $html .= '<section class="report-section keep">' . $this->sectionTitle('Condiciones socioeconómicas');
         if (($poder['disponible'] ?? false) === true) {
-            $periodoPoder = 'T' . (int)($poder['trimestre'] ?? 0) . ' ' . (int)($poder['anio'] ?? 0);
+            $periodo = 'T' . (int)($poder['trimestre'] ?? 0) . ' ' . (int)($poder['anio'] ?? 0);
             $html .= '<table class="metrics two"><tr>';
-            $html .= $this->metric('Ingreso laboral real per cápita', '$' . $this->decimal($poder['ingreso_laboral_real_per_capita'] ?? 0, 2), $periodoPoder);
-            $html .= $this->metric('Pobreza laboral', $this->decimal($poder['pobreza_laboral'] ?? 0, 2) . '%', $periodoPoder);
+            $html .= $this->metric('Ingreso laboral real per cápita', '$' . $this->decimal($poder['ingreso_laboral_real_per_capita'] ?? 0, 2), $periodo);
+            $html .= $this->metric('Pobreza laboral', $this->decimal($poder['pobreza_laboral'] ?? 0, 2) . '%', $periodo);
             $html .= '</tr></table>';
 
             if (is_array($poder['referencia_nacional'] ?? null)) {
-                $html .= '<div class="comparison">Referencia nacional del mismo periodo: ingreso <strong>$' . $this->decimal($poder['referencia_nacional']['ingreso_laboral_real_per_capita'] ?? 0, 2) . '</strong> y pobreza laboral <strong>' . $this->decimal($poder['referencia_nacional']['pobreza_laboral'] ?? 0, 2) . '%</strong>. Diferencias del Estado: <strong>' . $this->diferenciaMoneda($poder['diferencia_ingreso_nacional'] ?? null) . '</strong> en ingreso y <strong>' . $this->diferenciaPuntos($poder['diferencia_pobreza_nacional'] ?? null) . '</strong> en pobreza laboral.</div>';
+                $html .= '<table class="comparison-grid"><tr>';
+                $html .= '<td><span>Diferencia de ingreso vs. nacional</span><strong>' . $this->e($this->diferenciaMoneda($poder['diferencia_ingreso_nacional'] ?? null)) . '</strong></td>';
+                $html .= '<td><span>Diferencia de pobreza vs. nacional</span><strong>' . $this->e($this->diferenciaPuntos($poder['diferencia_pobreza_nacional'] ?? null)) . '</strong></td>';
+                $html .= '</tr></table>';
             }
         } else {
             $html .= $this->emptyBlock('No hay indicadores oficiales de poder adquisitivo disponibles.');
         }
+        $html .= '</section>';
 
-        if (trim((string)($estado['poder_adquisitivo'] ?? '')) !== '') {
-            $html .= '<div class="note"><strong>Contexto registrado sobre poder adquisitivo</strong><br>' . nl2br($this->e($estado['poder_adquisitivo'])) . '</div>';
-        }
-
-        $html .= '<div class="section-title"><span>EDUCACIÓN</span><h2>Rezago y perfil educativo</h2></div>';
+        $html .= '<section class="report-section keep">' . $this->sectionTitle('Perfil educativo');
         if (($rezago['disponible'] ?? false) === true || ($perfil['disponible'] ?? false) === true) {
             $html .= '<table class="metrics two"><tr>';
-            if (($rezago['disponible'] ?? false) === true) {
-                $html .= $this->metric('Rezago educativo', $this->decimal($rezago['porcentaje'] ?? 0, 2) . '%', (string)($rezago['anio'] ?? ''));
-            } else {
-                $html .= $this->metric('Rezago educativo', '—', 'Sin dato oficial');
-            }
-            if (($perfil['disponible'] ?? false) === true) {
-                $html .= $this->metric($perfil['nombre_indicador'] ?? 'Perfil educativo', $this->decimal($perfil['porcentaje'] ?? 0, 2) . '%', (string)($perfil['anio'] ?? ''));
-            } else {
-                $html .= $this->metric('Perfil educativo', '—', 'Sin dato compatible');
-            }
+            $html .= $this->metric(
+                'Rezago educativo',
+                ($rezago['disponible'] ?? false) === true ? $this->decimal($rezago['porcentaje'] ?? 0, 2) . '%' : '—',
+                ($rezago['disponible'] ?? false) === true ? (string)($rezago['anio'] ?? '') : 'Sin dato oficial'
+            );
+            $html .= $this->metric(
+                (string)($perfil['nombre_indicador'] ?? 'Perfil educativo'),
+                ($perfil['disponible'] ?? false) === true ? $this->decimal($perfil['porcentaje'] ?? 0, 2) . '%' : '—',
+                ($perfil['disponible'] ?? false) === true ? (string)($perfil['anio'] ?? '') : 'Sin dato compatible'
+            );
             $html .= '</tr></table>';
 
-            if (($rezago['disponible'] ?? false) === true && ($rezago['diferencia_nacional'] ?? null) !== null) {
-                $html .= '<div class="comparison">Rezago educativo frente a referencia nacional del mismo año: <strong>' . $this->diferenciaPuntos($rezago['diferencia_nacional']) . '</strong>.</div>';
-            }
-
-            if (($perfil['disponible'] ?? false) === true) {
-                $html .= '<div class="comparison">Base del indicador educativo: <strong>' . $this->numero($perfil['poblacion_base'] ?? null) . '</strong> personas; cantidad registrada: <strong>' . $this->numero($perfil['cantidad_personas'] ?? null) . '</strong>.</div>';
-            }
+            $html .= '<table class="comparison-grid"><tr>';
+            $html .= '<td><span>Diferencia de rezago vs. nacional</span><strong>' . $this->e($this->diferenciaPuntos($rezago['diferencia_nacional'] ?? null)) . '</strong></td>';
+            $html .= '<td><span>Población base del perfil</span><strong>' . $this->numero($perfil['poblacion_base'] ?? null) . '</strong></td>';
+            $html .= '</tr></table>';
         } else {
             $html .= $this->emptyBlock('No hay indicadores educativos oficiales suficientes para este apartado.');
         }
 
         if (!empty($indicadores)) {
-            $html .= '<table class="data-table compact"><thead><tr><th>Indicador registrado</th><th class="num">Valor</th><th class="num">Periodo</th></tr></thead><tbody>';
+            $html .= '<table class="data-table compact"><thead><tr><th>Indicador</th><th class="num">Valor</th><th class="num">Periodo</th></tr></thead><tbody>';
             foreach ($indicadores as $indicador) {
                 $porcentaje = $indicador['porcentaje'] ?? null;
                 $valorIndicador = $porcentaje !== null && $porcentaje !== ''
                     ? $this->decimal($porcentaje, 2) . '%'
-                    : $this->e($indicador['valor'] ?? '—') . (trim((string)($indicador['unidad'] ?? '')) !== '' ? ' ' . $this->e($indicador['unidad']) : '');
-                $html .= '<tr><td>' . $this->e($indicador['situacion'] ?? '—') . '</td><td class="num">' . $valorIndicador . '</td><td class="num">' . $this->e($indicador['periodo'] ?? '—') . '</td></tr>';
+                    : $this->valor($indicador['valor'] ?? null) .
+                        (trim((string)($indicador['unidad'] ?? '')) !== '' ? ' ' . $this->e($indicador['unidad']) : '');
+                $html .= '<tr><td>' . $this->e($indicador['situacion'] ?? '—') . '</td>';
+                $html .= '<td class="num">' . $valorIndicador . '</td>';
+                $html .= '<td class="num">' . $this->e($indicador['periodo'] ?? '—') . '</td></tr>';
             }
             $html .= '</tbody></table>';
         }
+        $html .= '</section>';
 
-        $html .= '<div class="section-title page-break-avoid"><span>LECTURA TERRITORIAL</span><h2>Cálculos derivados de la información disponible</h2></div>';
+        $html .= '<section class="report-section keep">' . $this->sectionTitle('Lectura territorial');
         if (!empty($lecturas)) {
             $html .= '<div class="insights">';
             foreach ($lecturas as $lectura) {
@@ -213,63 +241,148 @@ class ReporteTerritorialPdfService
         } else {
             $html .= $this->emptyBlock('Aún no hay datos suficientes para generar cálculos complementarios.');
         }
+        $html .= '</section>';
 
-        $recomendados = $priorizacion['recomendados'] ?? [];
+        $recomendados = is_array($priorizacion['recomendados'] ?? null) ? $priorizacion['recomendados'] : [];
         if (!empty($recomendados)) {
-            $html .= '<div class="section-title"><span>MUNICIPIOS</span><h2>Municipios destacados en la priorización territorial</h2></div>';
-            $html .= '<p class="section-copy">La clasificación retoma la priorización ya calculada por Información territorial; no sustituye la decisión del Analista.</p>';
-            $html .= '<table class="data-table"><thead><tr><th>Municipio</th><th class="num">Población</th><th class="num">Prioridad</th><th class="num">Ranking</th></tr></thead><tbody>';
+            $conteos = is_array($priorizacion['conteos'] ?? null) ? $priorizacion['conteos'] : [];
+            $html .= '<section class="report-section table-section">' . $this->sectionTitle('Priorización municipal');
+            $html .= '<table class="priority-summary"><tr>';
+            $html .= $this->priorityMetric('ATACAR', (int)($conteos['ALTA'] ?? 0), 'Prioridad alta');
+            $html .= $this->priorityMetric('OFRECER', (int)($conteos['MEDIA'] ?? 0), 'Prioridad media');
+            $html .= $this->priorityMetric('OBSERVAR', (int)($conteos['BAJA'] ?? 0), 'Prioridad baja');
+            $html .= '</tr></table>';
+
+            $html .= '<table class="data-table priority-table"><thead><tr><th>Municipio</th><th>Estrategia</th><th>Puntaje</th><th class="num">Población</th><th class="num">Ranking</th></tr></thead><tbody>';
             foreach ($recomendados as $municipio) {
                 $ranking = ($municipio['ranking'] ?? null) !== null
                     ? ((int)$municipio['ranking'] . ' de ' . (int)($municipio['total_ranking'] ?? 0))
                     : '—';
-                $html .= '<tr><td>' . $this->e($municipio['nombre'] ?? '—') . '</td><td class="num">' . $this->numero($municipio['poblacion'] ?? null) . '</td><td class="num">' . $this->e($municipio['prioridad'] ?? '—') . '</td><td class="num">' . $this->e($ranking) . '</td></tr>';
+                $puntaje = max(0, min(100, (int)($municipio['puntaje'] ?? 0)));
+                $html .= '<tr><td><strong>' . $this->e($municipio['nombre'] ?? '—') . '</strong><small>Prioridad ' . $this->e($municipio['prioridad'] ?? '—') . '</small></td>';
+                $html .= '<td><span class="strategy">' . $this->e($municipio['accion'] ?? '—') . '</span></td>';
+                $html .= '<td><div class="score"><strong>' . $puntaje . '</strong><span><i style="width:' . $puntaje . '%"></i></span></div></td>';
+                $html .= '<td class="num">' . $this->numero($municipio['poblacion'] ?? null) . '</td>';
+                $html .= '<td class="num">' . $this->e($ranking) . '</td></tr>';
             }
-            $html .= '</tbody></table>';
+            $html .= '</tbody></table></section>';
         }
 
-        $secretariasActivas = array_values(array_filter($secretarias, static fn(array $secretaria): bool => (int)($secretaria['estado'] ?? 0) === 1));
+        $secretariasActivas = array_values(array_filter(
+            $secretarias,
+            static function ($secretaria) {
+                return (int)($secretaria['estado'] ?? 0) === 1;
+            }
+        ));
+
         if (!empty($secretariasActivas)) {
-            $html .= '<div class="section-title"><span>ESTRUCTURA INSTITUCIONAL</span><h2>Secretarías registradas</h2></div>';
+            $html .= '<section class="report-section table-section">' . $this->sectionTitle('Estructura institucional');
             $html .= '<table class="data-table compact"><thead><tr><th>Secretaría</th><th>Titular</th><th>Contacto</th></tr></thead><tbody>';
             foreach ($secretariasActivas as $secretaria) {
                 $contacto = trim((string)($secretaria['correo'] ?? ''));
                 if ($contacto === '') {
                     $contacto = trim((string)($secretaria['telefono'] ?? ''));
                 }
-                $html .= '<tr><td>' . $this->e($secretaria['nombre'] ?? '—') . '</td><td>' . $this->e($secretaria['titular'] ?? '—') . '</td><td>' . $this->e($contacto !== '' ? $contacto : '—') . '</td></tr>';
+                $html .= '<tr><td><strong>' . $this->e($secretaria['nombre'] ?? '—') . '</strong></td>';
+                $html .= '<td>' . $this->e($secretaria['titular'] ?? '—') . '</td>';
+                $html .= '<td>' . $this->e($contacto !== '' ? $contacto : '—') . '</td></tr>';
             }
-            $html .= '</tbody></table>';
+            $html .= '</tbody></table></section>';
         }
 
-        $html .= '<div class="section-title"><span>FUENTES</span><h2>Fuentes y periodos de referencia</h2></div>';
+        $html .= '<section class="report-section table-section">' . $this->sectionTitle('Fuentes y periodos de referencia');
         $html .= '<table class="data-table compact"><thead><tr><th>Sección</th><th>Fuente</th><th class="num">Periodo</th></tr></thead><tbody>';
         $hayFuente = false;
+
         foreach ($fuentes as $seccion => $fuente) {
             if (!is_array($fuente) || trim((string)($fuente['fuente'] ?? '')) === '') {
                 continue;
             }
             $hayFuente = true;
-            $html .= '<tr><td>' . $this->e($this->etiquetaSeccion((string)$seccion)) . '</td><td>' . $this->e($fuente['fuente'] ?? '—') . '</td><td class="num">' . $this->e($fuente['periodo'] ?? '—') . '</td></tr>';
+            $html .= '<tr><td>' . $this->e($this->etiquetaSeccion((string)$seccion)) . '</td>';
+            $html .= '<td>' . $this->e($fuente['fuente'] ?? '—') . '</td>';
+            $html .= '<td class="num">' . $this->e($fuente['periodo'] ?? '—') . '</td></tr>';
         }
+
         if (($perfil['disponible'] ?? false) === true && trim((string)($perfil['fuente'] ?? '')) !== '') {
             $hayFuente = true;
             $html .= '<tr><td>Perfil educativo</td><td>' . $this->e($perfil['fuente']) . '</td><td class="num">' . $this->e($perfil['anio'] ?? '—') . '</td></tr>';
         }
+
         if (!$hayFuente) {
             $html .= '<tr><td colspan="3">No hay fuentes registradas para mostrar.</td></tr>';
         }
-        $html .= '</tbody></table>';
 
-        $html .= '<div class="footer-note">Los cálculos complementarios se derivan de los datos disponibles en Información territorial y acompañan, pero no sustituyen, los valores ni las fuentes oficiales registradas.</div>';
-        $html .= '</body></html>';
-
-        return $html;
+        $html .= '</tbody></table></section>';
+        return $html . '</body></html>';
     }
 
     private function css(): string
     {
-        return '@page{margin:24mm 16mm 18mm 16mm}body{font-family:"DejaVu Sans",sans-serif;color:#252525;font-size:8.3pt;line-height:1.38;margin:0}.top-rule{height:4px;background:#273A8A;margin:-24mm -16mm 18px}.header{width:100%;border-collapse:collapse;table-layout:fixed;margin-bottom:14px}.brand{width:120px;vertical-align:middle;padding-right:10px}.brand img{height:58px;width:auto;max-width:112px}.header-copy{text-align:left;vertical-align:middle;padding:0 10px 0 2px}.eyebrow,.section-title span{color:#273A8A;font-size:6.7pt;font-weight:700;letter-spacing:.08em}.header h1{font-size:17pt;color:#16223B;margin:3px 0}.header p{color:#6D7480;margin:0;font-size:7.4pt}.state-map{width:255px;text-align:right;vertical-align:middle;page-break-inside:avoid}.state-map img{display:inline-block}.section-title{border-bottom:1px solid #E5E9EF;padding-bottom:5px;margin:16px 0 9px}.section-title.first{margin-top:10px}.section-title h2{font-size:11pt;color:#16223B;margin:2px 0 0}.metrics,.mini-metrics,.info-table,.data-table{width:100%;border-collapse:collapse}.metrics{table-layout:fixed;margin-bottom:9px;border-collapse:separate;border-spacing:3px 0}.metric{border:1px solid #E5E9EF;background:#FFFFFF;padding:11px 10px;vertical-align:top}.metric .label{font-size:6.8pt;color:#6D7480;margin-bottom:5px}.metric .value{font-size:13pt;color:#16223B;font-weight:700}.metric .meta{font-size:6.6pt;color:#8B94A2;margin-top:3px}.metrics.two .metric{width:50%}.info-table{border-top:1px solid #E5E9EF;border-bottom:1px solid #E5E9EF}.info-table td{border-bottom:1px solid #E5E9EF;padding:7px 8px;vertical-align:top}.info-label{width:17%;color:#6D7480;font-size:6.8pt;background:#F8FAFC}.info-value{width:33%;font-weight:600;color:#252525;background:#FFFFFF}.mini-metrics{table-layout:fixed;margin-bottom:9px;border-collapse:separate;border-spacing:3px 0}.mini-metric{width:33.33%;border:1px solid #E5E9EF;background:#F8FAFC;padding:8px}.mini-metric small{display:block;color:#6D7480;font-size:6.6pt;margin-bottom:3px}.mini-metric strong{color:#16223B;font-size:8pt}.data-table{margin:6px 0 10px;font-size:7.2pt;border-top:1px solid #E5E9EF}.data-table th{background:#EDF2FA;color:#273A8A;text-align:left;padding:7px 8px;border:0;border-bottom:1px solid #D9E2EF;font-weight:700}.data-table td{padding:6px 8px;border:0;border-bottom:1px solid #E5E9EF;vertical-align:top;background:#FFFFFF}.data-table .num{text-align:right}.data-table.compact{font-size:7pt}.note,.comparison,.empty,.footer-note{border:0;border-left:2px solid #E5E9EF;background:#F8FAFC;padding:8px 10px;margin:8px 0;color:#4F5968}.comparison strong{color:#16223B}.empty{color:#6D7480}.insights{border:0;background:#F8FAFC;padding:4px 10px}.insight{display:table;width:100%;border-bottom:1px solid #E5E9EF;padding:7px 0}.insight:last-child{border-bottom:0}.insight span,.insight p{display:table-cell;vertical-align:top}.insight span{width:14px;color:#273A8A;font-weight:700}.insight p{margin:0}.section-copy{color:#6D7480;font-size:7.1pt;margin:-3px 0 7px}.footer-note{margin-top:16px;font-size:6.7pt;color:#6D7480;border-left:0;padding-left:0;background:#FFFFFF}.page-break-avoid{page-break-after:avoid}';
+        return '@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap");' .
+            '@page{margin:18mm 14mm 17mm 14mm}' .
+            'body{font-family:"Manrope","DejaVu Sans",sans-serif;color:#252525;font-size:8pt;line-height:1.35;margin:0}' .
+            '.top-rule{height:4px;background:#273A8A;margin:-18mm -14mm 10px}' .
+            '.header{width:100%;border-collapse:collapse;table-layout:fixed;margin-bottom:6px}.brand{width:175px;vertical-align:middle}.brand img{display:block;width:146px;height:auto;max-width:146px}' .
+            '.header-copy{vertical-align:middle;text-align:right;padding-left:10px}.system-name{font-size:6.3pt;color:#273A8A;font-weight:800;letter-spacing:.035em;margin-bottom:2px}' .
+            '.header h1{font-size:11.8pt;line-height:1.1;color:#16223B;margin:0 0 6px;font-weight:800;white-space:nowrap}.header-meta{margin-left:auto;border-collapse:collapse;font-size:6.1pt;line-height:1.2}' .
+            '.header-meta td{color:#6D7480;text-align:right;padding:.5px 0 .5px 10px}.header-meta th{color:#16223B;text-align:right;padding:.5px 0 .5px 7px;font-weight:700}.header-rule{height:2px;background:#273A8A;margin:0 0 10px}' .
+            '.scope{width:100%;table-layout:fixed;border-collapse:collapse;background:#F7F9FC;border:1px solid #D7DFEA;margin-bottom:12px}.scope td{padding:8px 10px;vertical-align:middle;text-align:left;border-right:1px solid #D7DFEA}.scope td:last-child{border-right:0}.scope span,.focus-info span,.metric .label,.mini-metric small,.comparison-grid span,.priority-summary span{display:block;color:#6D7480;font-size:6pt;margin-bottom:2px}.scope strong{font-size:7.1pt;color:#16223B}' .
+            '.report-section{margin:0 0 15px}.keep{page-break-inside:avoid}.section-title{border-left:3px solid #273A8A;padding-left:8px;margin:0 0 11px;page-break-inside:avoid;page-break-after:avoid}.section-title h2{font-size:10.7pt;color:#16223B;margin:0;font-weight:800}' .
+            '.territory-focus{border:1px solid #E5E9EF;padding:9px 10px;background:#FFFFFF}.territory-head{width:100%;border-collapse:collapse}.territory-head td{vertical-align:middle}.territory-head span{color:#0A8F7A;font-size:6.2pt;font-weight:800;letter-spacing:.04em}.territory-head h2{font-size:12.6pt;margin:2px 0;color:#16223B}.territory-head p{margin:0;color:#6D7480;font-size:6.8pt}.territory-map{width:120px;text-align:right}.territory-map img{max-width:105px;max-height:65px}' .
+            '.territory-grid{width:100%;table-layout:fixed;border-collapse:separate;border-spacing:4px;margin-top:7px}.focus-info{width:33.33%;border:1px solid #E5E9EF;padding:7px 8px;vertical-align:middle;background:#F9FBFE}.focus-info strong{display:block;font-size:7.2pt;color:#16223B}' .
+            '.metrics,.mini-metrics,.comparison-grid,.priority-summary{width:100%;table-layout:fixed;border-collapse:separate;border-spacing:4px 0}.metric{background:#F9FBFE;border:1px solid #D3DCE8;padding:9px;vertical-align:middle}.metric .value{display:block;color:#16223B;font-size:12.5pt;font-weight:800;margin-top:2px}.metric .meta{display:block;color:#8B94A2;font-size:5.7pt;margin-top:2px}.metrics.two .metric{width:50%}' .
+            '.mini-metric{width:33.33%;border:1px solid #D3DCE8;background:#F5F8FC;padding:7px 8px}.mini-metric strong{display:block;font-size:7.5pt;color:#16223B}.comparison-grid{margin-top:6px}.comparison-grid td{width:50%;padding:7px 8px;border:1px solid #D9E1EB;background:#FFFFFF}.comparison-grid strong{display:block;color:#16223B;font-size:7.2pt}' .
+            '.sector-chart{margin:7px 0 9px;padding:7px 8px;border:1px solid #D9E1EB;background:#FBFCFE}.chart-row{width:100%;border-collapse:collapse;margin-bottom:5px}.chart-label{width:35%;padding-right:7px;font-size:5.9pt}.chart-track-cell{width:55%}.chart-value{width:10%;text-align:right;font-size:5.9pt;font-weight:700}.chart-track{height:6px;background:#E9EDF4;overflow:hidden}.chart-fill{height:6px;background:#273A8A}' .
+            '.data-table{width:100%;border-collapse:collapse;font-size:6.25pt;page-break-inside:auto;margin-top:7px}.data-table thead{display:table-header-group}.data-table tr{page-break-inside:avoid;page-break-after:auto}.data-table th{background:#273A8A;color:#FFFFFF;text-align:left;padding:6px 7px;font-weight:700}.data-table td{padding:6px 7px;border-bottom:1px solid #E5E9EF;vertical-align:top}.data-table tbody tr:nth-child(even){background:#F8FAFC}.data-table small{display:block;color:#6D7480;font-size:5.4pt;margin-top:2px}.data-table .num{text-align:right}.data-table.compact{font-size:6pt}' .
+            '.insights{border:1px solid #D9E1EB;background:#F8FAFC;padding:3px 9px}.insight{display:table;width:100%;border-bottom:1px solid #E5E9EF;padding:6px 0}.insight:last-child{border-bottom:0}.insight span,.insight p{display:table-cell;vertical-align:top}.insight span{width:14px;color:#273A8A;font-weight:800}.insight p{margin:0;color:#4F5968;font-size:6.2pt}' .
+            '.priority-summary{margin-bottom:7px}.priority-summary td{width:33.33%;padding:7px 8px;border:1px solid #D9E1EB;background:#F8FAFC}.priority-summary strong{display:block;color:#16223B;font-size:9pt}.priority-summary em{display:block;color:#8B94A2;font-size:5.4pt;font-style:normal}.strategy{display:inline-block;padding:2px 5px;background:#EDF2FA;color:#273A8A;font-size:5.5pt;font-weight:800}.score{display:table;width:100%}.score strong,.score span{display:table-cell;vertical-align:middle}.score strong{width:23px;color:#16223B;font-size:6pt}.score span{height:5px;background:#E9EDF4;overflow:hidden}.score i{display:block;height:5px;background:#273A8A}' .
+            '.empty{border-left:3px solid #E5E9EF;background:#F8FAFC;padding:8px 10px;color:#6D7480;font-size:6.4pt}.table-section{page-break-inside:auto}';
+    }
+
+    private function sectionTitle(string $titulo): string
+    {
+        return '<div class="section-title"><h2>' . $this->e($titulo) . '</h2></div>';
+    }
+
+    private function focusInfo(string $label, $value): string
+    {
+        $mostrar = $value === null || trim((string)$value) === ''
+            ? '—'
+            : (is_numeric($value) ? $this->numero($value) : (string)$value);
+
+        return '<td class="focus-info"><span>' . $this->e($label) . '</span><strong>' .
+            $this->e($mostrar) . '</strong></td>';
+    }
+
+    private function sectorChart(array $sectores): string
+    {
+        if (empty($sectores)) {
+            return '';
+        }
+
+        $maximo = 1;
+        foreach ($sectores as $sector) {
+            $maximo = max($maximo, (int)($sector['establecimientos'] ?? 0));
+        }
+
+        $html = '<div class="sector-chart">';
+        foreach ($sectores as $sector) {
+            $valor = max(0, (int)($sector['establecimientos'] ?? 0));
+            $ancho = min(100, max(2, ($valor / $maximo) * 100));
+            $html .= '<table class="chart-row"><tr>';
+            $html .= '<td class="chart-label">' . $this->e($sector['nombre_sector'] ?? '—') . '</td>';
+            $html .= '<td class="chart-track-cell"><div class="chart-track"><div class="chart-fill" style="width:' .
+                number_format($ancho, 2, '.', '') . '%"></div></div></td>';
+            $html .= '<td class="chart-value">' . $this->numero($valor) . '</td></tr></table>';
+        }
+        return $html . '</div>';
+    }
+
+    private function priorityMetric(string $accion, int $total, string $meta): string
+    {
+        return '<td><span>' . $this->e($accion) . '</span><strong>' . $total .
+            '</strong><em>' . $this->e($meta) . '</em></td>';
     }
 
     private function metric(string $label, string $value, string $meta): string
