@@ -63,6 +63,35 @@ function timestampRegistro(array $registro): int
     return 0;
 }
 
+function duracionConversacion(?array $respuesta, ?array $fin): int
+{
+    if (!$fin) {
+        return 0;
+    }
+
+    $duracionProveedor = max(0, (int)($fin['duration'] ?? 0));
+    if ($duracionProveedor > 0) {
+        return $duracionProveedor;
+    }
+
+    if (!$respuesta) {
+        return 0;
+    }
+
+    $inicioConversacion = strtotime((string)($respuesta['received_at'] ?? ''));
+    $finConversacion = strtotime((string)($fin['received_at'] ?? ''));
+
+    if (
+        $inicioConversacion === false ||
+        $finConversacion === false ||
+        $finConversacion <= $inicioConversacion
+    ) {
+        return 0;
+    }
+
+    return max(1, $finConversacion - $inicioConversacion);
+}
+
 $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
 $rolId = (int)($_SESSION['rol_id'] ?? 0);
 
@@ -181,7 +210,7 @@ $endTime = null;
 
 if ($fin) {
     $disposition = strtolower(trim((string)($fin['disposition'] ?? '')));
-    $duration = max(0, (int)($fin['duration'] ?? 0));
+    $duration = duracionConversacion($respuesta, $fin);
     $isRecorded = (string)($fin['is_recorded'] ?? '') === '1';
     $callIdWithRec = trim((string)($fin['call_id_with_rec'] ?? ''));
     $endTime = $fin['received_at'] ?? null;
