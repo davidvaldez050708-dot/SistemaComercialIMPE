@@ -446,7 +446,7 @@ class ReporteAdministradorPdfService
             $meta .
             '</w:tc></w:tr></w:tbl>' .
             '<w:p><w:pPr>' .
-            '<w:spacing w:before="90" w:after="90"/>' .
+            '<w:spacing w:before="60" w:after="90"/>' .
             '<w:pBdr><w:bottom w:val="single" w:sz="16" w:space="0" w:color="' . self::COLOR_PRIMARIO . '"/></w:pBdr>' .
             '</w:pPr><w:r><w:t></w:t></w:r></w:p>' .
             '</w:hdr>';
