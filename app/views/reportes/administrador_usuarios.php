@@ -189,6 +189,15 @@ foreach ($estadoUsuarios as $datoEstado) {
             <p>La información administrativa aparecerá aquí antes de que decidas exportarla a PDF.</p>
         </section>
     <?php else: ?>
+    <div class="d-flex justify-content-end mb-4">
+        <a
+            class="btn btn-system-save report-export-action"
+            href="<?= $texto($urlExportarPdf) ?>">
+            <i class="bi bi-file-earmark-pdf"></i>
+            Exportar PDF
+        </a>
+    </div>
+
     <div class="territorial-section-title">
         <h2>RESUMEN EJECUTIVO</h2>
         <p>Indicadores administrativos calculados con el mismo alcance utilizado por el reporte PDF.</p>
@@ -467,14 +476,6 @@ foreach ($estadoUsuarios as $datoEstado) {
         </div>
     </section>
 
-    <div class="d-flex justify-content-end mb-4">
-        <a
-            class="btn btn-system-save report-export-action"
-            href="<?= $texto($urlExportarPdf) ?>">
-            <i class="bi bi-file-earmark-pdf"></i>
-            Exportar PDF
-        </a>
-    </div>
     <?php endif; ?>
 </section>
 
