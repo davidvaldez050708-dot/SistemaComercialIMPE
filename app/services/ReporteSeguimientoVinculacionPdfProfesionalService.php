@@ -551,7 +551,7 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
             'body{font-family:"Manrope","DejaVu Sans",sans-serif;color:#252525;font-size:8pt;line-height:1.35;margin:0}' .
             '.top-rule{height:4px;background:#273A8A;margin:-18mm -14mm 10px}' .
             '.header{width:100%;border-collapse:collapse;table-layout:fixed;margin-bottom:6px}' .
-            '.brand{width:185px;vertical-align:middle}.brand img{display:block;width:158px;height:auto;max-width:158px}' .
+            '.brand{width:175px;vertical-align:middle}.brand img{display:block;width:146px;height:auto;max-width:146px}' .
             '.header-copy{vertical-align:middle;text-align:right;padding-left:10px}' .
             '.system-name{font-size:6.3pt;color:#273A8A;font-weight:800;letter-spacing:.035em;margin-bottom:2px}' .
             '.header h1{font-size:11.8pt;line-height:1.1;color:#16223B;margin:0 0 6px;font-weight:800;white-space:nowrap}' .
