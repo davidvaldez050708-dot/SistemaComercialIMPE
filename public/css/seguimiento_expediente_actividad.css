@@ -216,3 +216,123 @@
         width: 100%;
     }
 }
+
+
+/* Jerarquía de cada evento: título, fecha/resultado, contacto y detalle. */
+.linkage-expediente-activity .linkage-activity-header {
+    min-width: 0;
+    grid-column: 2 !important;
+    display: flex !important;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px 14px !important;
+}
+
+.linkage-expediente-activity .linkage-activity-header > strong {
+    min-width: 0;
+}
+
+.linkage-expediente-activity .linkage-activity-meta {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+.linkage-expediente-activity .linkage-activity-date {
+    color: var(--color-text-secondary);
+    font-size: 9.8px !important;
+    font-weight: 650;
+    line-height: 1.4;
+    white-space: nowrap;
+}
+
+.linkage-expediente-activity .linkage-activity-badge {
+    min-height: 22px;
+    padding: 4px 7px;
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid #dce3ec;
+    border-radius: 999px;
+    background: #f8fafc;
+    color: #5c6878;
+    font-size: 9px !important;
+    font-weight: 800;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.linkage-expediente-activity .linkage-activity-badge.is-contact {
+    border-color: #cbe7df;
+    background: #f0faf7;
+    color: #14735f;
+}
+
+.linkage-expediente-activity .linkage-activity-badge.is-warning {
+    border-color: #ead9ad;
+    background: #fff9ec;
+    color: #8a6515;
+}
+
+.linkage-expediente-activity .linkage-activity-badge.is-system {
+    border-color: #dfe4eb;
+    background: #f6f7f9;
+    color: #697487;
+}
+
+.linkage-expediente-activity .linkage-activity-detail {
+    grid-column: 2 !important;
+    max-width: 900px;
+    margin-top: 3px;
+    display: grid;
+    gap: 4px;
+}
+
+.linkage-expediente-activity .linkage-activity-detail-row {
+    min-width: 0;
+    display: grid;
+    grid-template-columns: 58px minmax(0, 1fr);
+    gap: 8px;
+    align-items: baseline;
+}
+
+.linkage-expediente-activity .linkage-activity-detail-label {
+    color: #7a8492;
+    font-size: 9.5px !important;
+    font-weight: 800;
+    line-height: 1.45;
+}
+
+.linkage-expediente-activity .linkage-activity-detail-value {
+    min-width: 0;
+    color: #536174;
+    font-size: 11.2px !important;
+    font-weight: 600;
+    line-height: 1.45;
+    white-space: pre-line;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 767.98px) {
+    .linkage-expediente-activity .linkage-activity-header {
+        flex-direction: column;
+        gap: 4px !important;
+    }
+
+    .linkage-expediente-activity .linkage-activity-meta {
+        justify-content: flex-start;
+    }
+
+    .linkage-expediente-activity .linkage-activity-date {
+        white-space: normal;
+    }
+}
+
+@media (max-width: 479.98px) {
+    .linkage-expediente-activity .linkage-activity-detail-row {
+        grid-template-columns: 1fr;
+        gap: 1px;
+    }
+}
