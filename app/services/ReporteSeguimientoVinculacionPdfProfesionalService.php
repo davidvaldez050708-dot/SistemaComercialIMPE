@@ -481,8 +481,8 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
     private function logo(): string
     {
         foreach ([
-            dirname(__DIR__, 2) . '/public/img/brand/porcayo-grupo8.png',
-            dirname(__DIR__, 2) . '/public/img/brand/porcayo-grupo.png'
+            dirname(__DIR__, 2) . '/public/img/brand/porcayo-grupo.png',
+            dirname(__DIR__, 2) . '/public/img/brand/porcayo-grupo8.png'
         ] as $ruta) {
             if (is_file($ruta) && is_readable($ruta)) {
                 $contenido = file_get_contents($ruta);
@@ -551,10 +551,10 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
             'body{font-family:"Manrope","DejaVu Sans",sans-serif;color:#252525;font-size:8pt;line-height:1.35;margin:0}' .
             '.top-rule{height:4px;background:#273A8A;margin:-18mm -14mm 10px}' .
             '.header{width:100%;border-collapse:collapse;table-layout:fixed;margin-bottom:6px}' .
-            '.brand{width:205px;vertical-align:middle}.brand img{display:block;width:178px;height:auto;max-width:178px}' .
+            '.brand{width:185px;vertical-align:middle}.brand img{display:block;width:158px;height:auto;max-width:158px}' .
             '.header-copy{vertical-align:middle;text-align:right;padding-left:10px}' .
             '.system-name{font-size:6.3pt;color:#273A8A;font-weight:800;letter-spacing:.035em;margin-bottom:2px}' .
-            '.header h1{font-size:14pt;line-height:1.12;color:#16223B;margin:0 0 6px;font-weight:800}' .
+            '.header h1{font-size:11.8pt;line-height:1.1;color:#16223B;margin:0 0 6px;font-weight:800;white-space:nowrap}' .
             '.header-meta{margin-left:auto;border-collapse:collapse;font-size:6.1pt;line-height:1.2}' .
             '.header-meta td{color:#6D7480;text-align:right;padding:.5px 0 .5px 10px}.header-meta th{color:#16223B;text-align:right;padding:.5px 0 .5px 7px;font-weight:700}' .
             '.header-rule{height:2px;background:#273A8A;margin:0 0 10px}' .
