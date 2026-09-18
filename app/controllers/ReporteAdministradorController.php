@@ -23,10 +23,33 @@ class ReporteAdministradorController
         try {
             $modeloUsuario = new UsuarioModel();
             $modeloReporte = new ReporteAdministradorModel();
+            $rolesSeleccionados = $this->obtenerRolesSeleccionados($modeloUsuario);
 
-            $conteoUsuarios = $modeloUsuario->contarUsuarios();
-            $usuarios = $modeloReporte->obtenerUsuariosConSeguimiento();
-            $pendientes = $modeloReporte->obtenerSeguimientosQueRequierenAtencion();
+            $usuarios = $modeloReporte->obtenerUsuariosConSeguimiento($rolesSeleccionados ?? []);
+            $pendientes = $modeloReporte->obtenerSeguimientosQueRequierenAtencion($rolesSeleccionados ?? []);
+
+            if ($rolesSeleccionados === null) {
+                $conteoUsuarios = $modeloUsuario->contarUsuarios();
+                $rolesRegistrados = $modeloUsuario->contarRoles();
+            } else {
+                $usuariosActivos = 0;
+                $usuariosInactivos = 0;
+
+                foreach ($usuarios as $usuario) {
+                    if ((int)($usuario['estado'] ?? 0) === 1) {
+                        $usuariosActivos++;
+                    } else {
+                        $usuariosInactivos++;
+                    }
+                }
+
+                $conteoUsuarios = [
+                    'registrados' => count($usuarios),
+                    'activos' => $usuariosActivos,
+                    'inactivos' => $usuariosInactivos
+                ];
+                $rolesRegistrados = count($rolesSeleccionados);
+            }
 
             $totalSeguimientos = 0;
             $accionesPendientes = 0;
@@ -62,7 +85,7 @@ class ReporteAdministradorController
                     'usuarios_registrados' => (int)($conteoUsuarios['registrados'] ?? 0),
                     'usuarios_activos' => (int)($conteoUsuarios['activos'] ?? 0),
                     'usuarios_inactivos' => (int)($conteoUsuarios['inactivos'] ?? 0),
-                    'roles_registrados' => $modeloUsuario->contarRoles(),
+                    'roles_registrados' => $rolesRegistrados,
                     'total_seguimientos' => $totalSeguimientos,
                     'acciones_pendientes' => $accionesPendientes,
                     'acciones_vencidas' => $accionesVencidas,
@@ -102,6 +125,68 @@ class ReporteAdministradorController
             error_log('[reporte_administrador_pdf] ' . $error->getMessage());
             $this->responderError('No fue posible generar el reporte administrativo.');
         }
+    }
+
+    private function obtenerRolesSeleccionados(UsuarioModel $modeloUsuario)
+    {
+        if (!isset($_GET['filtrar_roles'])) {
+            return null;
+        }
+
+        if ((string)($_GET['todos_roles'] ?? '') === '1') {
+            return null;
+        }
+
+        $rolesRecibidos = $_GET['roles'] ?? [];
+
+        if (!is_array($rolesRecibidos) || empty($rolesRecibidos)) {
+            $this->responderSolicitudInvalida(
+                'Selecciona al menos un rol o la opción Todos los roles.'
+            );
+        }
+
+        $rolesSeleccionados = [];
+
+        foreach ($rolesRecibidos as $rolId) {
+            if (!is_scalar($rolId) || preg_match('/^\d+$/', (string)$rolId) !== 1) {
+                $this->responderSolicitudInvalida('Se recibió un rol no válido.');
+            }
+
+            $rolId = (int)$rolId;
+
+            if ($rolId <= 0) {
+                $this->responderSolicitudInvalida('Se recibió un rol no válido.');
+            }
+
+            $rolesSeleccionados[] = $rolId;
+        }
+
+        $rolesSeleccionados = array_values(array_unique($rolesSeleccionados));
+        $rolesDisponibles = $modeloUsuario->obtenerRolesActivos();
+        $idsDisponibles = array_map(
+            static function ($rol) {
+                return (int)($rol['id'] ?? 0);
+            },
+            $rolesDisponibles
+        );
+
+        foreach ($rolesSeleccionados as $rolId) {
+            if (!in_array($rolId, $idsDisponibles, true)) {
+                $this->responderSolicitudInvalida(
+                    'Uno de los roles seleccionados no está disponible.'
+                );
+            }
+        }
+
+        return $rolesSeleccionados;
+    }
+
+    private function responderSolicitudInvalida($mensaje)
+    {
+        http_response_code(400);
+        header('Content-Type: text/plain; charset=utf-8');
+        echo (string)$mensaje;
+        exit;
     }
 
     private function validarAdministrador()
