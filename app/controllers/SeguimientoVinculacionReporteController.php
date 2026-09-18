@@ -3,7 +3,15 @@
 require_once __DIR__ . '/../models/SeguimientoVinculacionModel.php';
 require_once __DIR__ . '/../helpers/PermissionHelper.php';
 require_once __DIR__ . '/../services/ReporteSeguimientoVinculacionPdfService.php';
+require_once __DIR__ . '/../services/ReporteSeguimientoVinculacionPdfProfesionalService.php';
 require_once __DIR__ . '/../services/EvolucionActividadSeguimientoService.php';
+require_once __DIR__ . '/../services/SeguimientoReporteAnaliticaService.php';
+require_once __DIR__ . '/../services/SeguimientoFlujoService.php';
+require_once __DIR__ . '/../services/SeguimientoPostEnvioService.php';
+require_once __DIR__ . '/../services/SeguimientoCorreoService.php';
+require_once __DIR__ . '/../services/AgendaReunionService.php';
+require_once __DIR__ . '/../services/ReunionFechaGuardService.php';
+require_once __DIR__ . '/../services/ReunionResultadoService.php';
 
 class SeguimientoVinculacionReporteController
 {
@@ -149,7 +157,6 @@ class SeguimientoVinculacionReporteController
         }
 
         $evolucionActividad = [];
-
         try {
             $evolucionActividad = (new EvolucionActividadSeguimientoService())->construir(
                 $contexto['seguimientosActividad'] ?? [],
@@ -159,15 +166,58 @@ class SeguimientoVinculacionReporteController
             error_log('[reporte_evolucion_actividad_pdf] ' . $error->getMessage());
         }
 
-        $servicio = new ReporteSeguimientoVinculacionPdfService();
-        $resultado = $servicio->generar([
+        $seguimientoIds = array_values(array_filter(array_map(
+            static function ($seguimiento) {
+                return (int)($seguimiento['id'] ?? 0);
+            },
+            is_array($contexto['seguimientosReporte'] ?? null)
+                ? $contexto['seguimientosReporte']
+                : []
+        )));
+
+        $analitica = [];
+        try {
+            $analitica = (new SeguimientoReporteAnaliticaService())->construir(
+                $seguimientoIds,
+                (int)($_SESSION['usuario_id'] ?? 0),
+                (string)($contexto['modoSeguimiento'] ?? 'analista'),
+                (string)($contexto['filtrosReporte']['fecha_inicial'] ?? ''),
+                (string)($contexto['filtrosReporte']['fecha_final'] ?? '')
+            );
+        } catch (Throwable $error) {
+            error_log('[reporte_analitica_pdf] ' . $error->getMessage());
+        }
+
+        $flujoIndividual = $this->construirFlujoOperativoIndividual(
+            is_array($contexto['seguimientosReporte'] ?? null)
+                ? $contexto['seguimientosReporte']
+                : []
+        );
+
+        $datosPdf = [
             'resumen_filtros' => $contexto['resumenFiltros'],
+            'filtros_reporte' => $contexto['filtrosReporte'],
             'resumen_reporte' => $contexto['resumenReporte'],
             'seguimientos' => $contexto['seguimientosReporte'],
             'evolucion_actividad' => $evolucionActividad,
+            'analitica' => $analitica,
+            'flujo_individual' => $flujoIndividual,
             'etiquetas_estatus' => self::ESTADOS_SEGUIMIENTO,
-            'fecha_generacion' => date('d/m/Y H:i')
-        ]);
+            'fecha_generacion' => date('Y-m-d H:i:s')
+        ];
+
+        $servicio = new ReporteSeguimientoVinculacionPdfProfesionalService();
+        $resultado = $servicio->generar($datosPdf);
+
+        if (!($resultado['ok'] ?? false)) {
+            error_log(
+                '[reporte_seguimiento_pdf_profesional] ' .
+                (string)($resultado['mensaje_tecnico'] ?? $resultado['mensaje'] ?? 'Error sin detalle.')
+            );
+
+            // Respaldo temporal mientras se valida el nuevo diseño en cada entorno.
+            $resultado = (new ReporteSeguimientoVinculacionPdfService())->generar($datosPdf);
+        }
 
         if (!($resultado['ok'] ?? false)) {
             error_log(
@@ -190,6 +240,127 @@ class SeguimientoVinculacionReporteController
         header('X-Content-Type-Options: nosniff');
         echo $contenidoPdf;
         exit;
+    }
+
+    private function construirFlujoOperativoIndividual(array $seguimientos)
+    {
+        if (count($seguimientos) !== 1) {
+            return [];
+        }
+
+        $seguimiento = $seguimientos[0];
+        $seguimientoId = (int)($seguimiento['id'] ?? 0);
+        $analistaId = (int)($seguimiento['analista_id'] ?? 0);
+
+        if ($seguimientoId <= 0 || $analistaId <= 0) {
+            return [];
+        }
+
+        try {
+            $postEnvio = (new SeguimientoPostEnvioService())->obtenerFlujoSiAplica(
+                $seguimientoId,
+                $analistaId
+            );
+
+            if (($postEnvio['ok'] ?? false) && ($postEnvio['aplica'] ?? false)) {
+                $flujo = is_array($postEnvio['flujo'] ?? null)
+                    ? $postEnvio['flujo']
+                    : [];
+
+                $flujo = (new AgendaReunionService())->ajustarFlujoAnalista(
+                    $seguimientoId,
+                    $analistaId,
+                    $flujo
+                );
+                $flujo = (new SeguimientoCorreoService())->ajustarFlujo(
+                    $seguimientoId,
+                    $analistaId,
+                    $flujo
+                );
+                $flujo = (new ReunionFechaGuardService())->ajustarFlujo(
+                    $seguimientoId,
+                    $analistaId,
+                    $flujo
+                );
+                $flujo = (new ReunionResultadoService())->ajustarFlujo(
+                    $seguimientoId,
+                    $analistaId,
+                    $flujo
+                );
+
+                return is_array($flujo) ? $flujo : [];
+            }
+
+            $resultado = (new SeguimientoFlujoService())->obtenerEstado(
+                $seguimientoId,
+                $analistaId
+            );
+            $flujo = is_array($resultado['flujo'] ?? null)
+                ? $resultado['flujo']
+                : [];
+
+            return $this->ajustarPasoInicialPdf($flujo, $seguimiento);
+        } catch (Throwable $error) {
+            error_log('[reporte_flujo_individual_pdf] ' . $error->getMessage());
+            return [];
+        }
+    }
+
+    private function ajustarPasoInicialPdf(array $flujo, array $seguimiento)
+    {
+        if ((int)($flujo['paso_actual'] ?? 0) !== 2) {
+            return $flujo;
+        }
+
+        if (strtoupper(trim((string)($seguimiento['estado_seguimiento'] ?? ''))) !== 'NUEVO') {
+            return $flujo;
+        }
+
+        if (
+            (int)($seguimiento['datos_verificados'] ?? 0) === 1 ||
+            trim((string)($seguimiento['ultima_interaccion_at'] ?? '')) !== ''
+        ) {
+            return $flujo;
+        }
+
+        $creado = trim((string)($seguimiento['created_at'] ?? ''));
+        $actualizado = trim((string)($seguimiento['updated_at'] ?? ''));
+
+        if ($creado !== '' && $actualizado !== '') {
+            try {
+                if (new DateTime($actualizado) > new DateTime($creado)) {
+                    return $flujo;
+                }
+            } catch (Throwable $error) {
+                // Conserva el criterio de NUEVO sin actividad si no puede comparar marcas.
+            }
+        }
+
+        $totalPasos = max(13, (int)($flujo['total_pasos'] ?? 13));
+        $flujo['paso_actual'] = 1;
+        $flujo['total_pasos'] = $totalPasos;
+        $flujo['porcentaje'] = (int)round((1 / $totalPasos) * 100);
+        $flujo['titulo'] = 'Iniciar investigación';
+        $flujo['accion_principal'] = [
+            'codigo' => 'COMPLETAR_DATOS',
+            'etiqueta' => 'Comenzar investigación',
+            'icono' => 'bi-search'
+        ];
+        $flujo['ventana'] = [
+            'anterior' => null,
+            'actual' => [
+                'numero' => 1,
+                'clave' => 'INICIO',
+                'titulo' => 'Seguimiento iniciado'
+            ],
+            'siguiente' => [
+                'numero' => 2,
+                'clave' => 'INVESTIGACION',
+                'titulo' => 'Investigación de datos'
+            ]
+        ];
+
+        return $flujo;
     }
 
     private function construirContextoReporte($forzarGeneracion)
