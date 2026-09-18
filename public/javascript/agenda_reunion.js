@@ -355,8 +355,18 @@
                             '<label class="form-label">Mensaje</label>' +
                             '<textarea class="form-control system-form-control" name="cuerpo" rows="9" required>' + escapar(reunion.correo_sugerido_cuerpo || '') + '</textarea>' +
                         '</div>' +
+                        (String(reunion.ecard_preview_url || '').trim() !== ''
+                            ? '<div class="agenda-ecard-preview">' +
+                                '<div class="agenda-ecard-preview-heading">' +
+                                    '<span><i class="bi bi-image"></i> Ecard incluida en el correo</span>' +
+                                    '<strong>' + escapar(valorSeguro(reunion.ecard_ponente, 'Mtro. Manuel Porcayo')) + '</strong>' +
+                                '</div>' +
+                                '<img src="' + escapar(reunion.ecard_preview_url) + '" alt="Vista previa de Ecard de reunión" loading="lazy">' +
+                                '<small>Sede/evento, fecha, hora, modalidad y acceso se generan con los datos actuales de la reunión.</small>' +
+                            '</div>'
+                            : '') +
                         '<div class="agenda-inline-note">' +
-                            '<i class="bi bi-info-circle"></i> Mientras activamos Hostinger Mail API, envía este mensaje desde el correo corporativo y después registra aquí que fue enviado.' +
+                            '<i class="bi bi-info-circle"></i> El sistema enviará el mensaje, la Ecard institucional y el enlace de acceso. Si tienes firma configurada, también se incluirá.' +
                         '</div>' +
                         '<div class="agenda-action-row">' +
                             '<button class="btn btn-system-light" type="button" data-copy-email><i class="bi bi-copy"></i> Copiar mensaje</button>' +
