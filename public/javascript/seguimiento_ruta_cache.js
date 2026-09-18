@@ -45,6 +45,16 @@
         memoria.set(seguimientoId, registro);
     };
 
+    const rutasIniciales = window.IMPE_SEGUIMIENTO_RUTAS_INICIALES || {};
+    Object.keys(rutasIniciales).forEach(function (clave) {
+        const seguimientoId = Number(clave || 0);
+        const flujo = rutasIniciales[clave];
+
+        if (seguimientoId > 0 && flujo && typeof flujo === 'object') {
+            guardar(seguimientoId, flujo);
+        }
+    });
+
     const obtenerRegistro = function (seguimientoId) {
         seguimientoId = Number(seguimientoId || 0);
         if (seguimientoId <= 0) {
