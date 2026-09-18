@@ -228,9 +228,10 @@
             pintarFechasFilas();
         };
 
-        [250, 650, 1200, 2200, 3600].forEach(function (demora) {
-            window.setTimeout(refrescarFilas, demora);
-        });
+        refrescarFilas();
+
+        // Mantiene Hoy/Mañana/Vencida actualizado sin nuevas peticiones.
+        window.setInterval(refrescarFilas, 60 * 1000);
 
         document.addEventListener('impe:flow-row-updated', function () {
             window.setTimeout(refrescarFilas, 0);
