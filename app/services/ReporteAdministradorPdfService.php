@@ -384,25 +384,12 @@ class ReporteAdministradorPdfService
         $anchoLogo = (int)round($anchoTotal * 0.34);
         $anchoTexto = max(1, $anchoTotal - $anchoLogo);
 
-        $anchoLogoPuntos = 110.0;
-        $altoLogoPuntos = 42.0;
         $contenidoLogo = $zip->getFromName('word/media/image1.png');
 
         if (is_string($contenidoLogo) && $contenidoLogo !== '') {
-            $dimensiones = @getimagesizefromstring($contenidoLogo);
-            if (
-                is_array($dimensiones) &&
-                (int)($dimensiones[0] ?? 0) > 0 &&
-                (int)($dimensiones[1] ?? 0) > 0
-            ) {
-                $altoLogoPuntos = $anchoLogoPuntos *
-                    ((int)$dimensiones[1] / (int)$dimensiones[0]);
-                $altoLogoPuntos = max(24.0, min(58.0, $altoLogoPuntos));
-            }
-
             $rels = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' .
                 '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' .
-                '<Relationship Id="rIdLogo" ' .
+                '<Relationship Id="rId1" ' .
                 'Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" ' .
                 'Target="media/image1.png"/>' .
                 '</Relationships>';
@@ -412,12 +399,22 @@ class ReporteAdministradorPdfService
         $logoXml = '';
         if (is_string($contenidoLogo) && $contenidoLogo !== '') {
             $logoXml =
-                '<w:p><w:pPr><w:jc w:val="left"/><w:spacing w:before="0" w:after="0"/></w:pPr>' .
-                '<w:r><w:pict><v:rect stroked="f" style="width:' .
-                number_format($anchoLogoPuntos, 1, '.', '') . 'pt;height:' .
-                number_format($altoLogoPuntos, 1, '.', '') . 'pt">' .
-                '<v:imagedata r:id="rIdLogo" o:title="Grupo Porcayo"/>' .
-                '</v:rect></w:pict></w:r></w:p>';
+                '<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:before="0" w:after="0"/></w:pPr>' .
+                '<w:r><w:drawing>' .
+                '<wp:inline distB="114300" distT="114300" distL="114300" distR="114300">' .
+                '<wp:extent cx="1243013" cy="1137428"/>' .
+                '<wp:effectExtent b="0" l="0" r="0" t="0"/>' .
+                '<wp:docPr id="1" name="image1.png"/>' .
+                '<a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">' .
+                '<pic:pic><pic:nvPicPr><pic:cNvPr id="0" name="image1.png"/>' .
+                '<pic:cNvPicPr preferRelativeResize="0"/></pic:nvPicPr>' .
+                '<pic:blipFill><a:blip r:embed="rId1"/><a:srcRect b="0" l="0" r="0" t="0"/>' .
+                '<a:stretch><a:fillRect/></a:stretch></pic:blipFill>' .
+                '<pic:spPr><a:xfrm><a:off x="0" y="0"/>' .
+                '<a:ext cx="1243013" cy="1137428"/></a:xfrm>' .
+                '<a:prstGeom prst="rect"/><a:ln/></pic:spPr></pic:pic>' .
+                '</a:graphicData></a:graphic>' .
+                '</wp:inline></w:drawing></w:r></w:p>';
         }
 
         $meta = '';
@@ -433,8 +430,9 @@ class ReporteAdministradorPdfService
             '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' .
             '<w:hdr xmlns:w="' . self::W_NS . '" ' .
             'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" ' .
-            'xmlns:v="urn:schemas-microsoft-com:vml" ' .
-            'xmlns:o="urn:schemas-microsoft-com:office:office">' .
+            'xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" ' .
+            'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" ' .
+            'xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">' .
             '<w:tbl><w:tblPr><w:tblW w:w="' . $anchoTotal . '" w:type="dxa"/>' .
             '<w:tblLayout w:type="fixed"/><w:tblBorders>' .
             '<w:bottom w:val="single" w:sz="16" w:space="7" w:color="' . self::COLOR_PRIMARIO . '"/>' .
