@@ -179,7 +179,13 @@ class EcardReunionService
         }
 
         // Respaldo funcional mientras se fija el ID/correo de Yulissa en config.
-        if ($cuentaClaveNombre !== '' && strpos($cuentaClaveNombre, 'yulissa') !== false) {
+        if (
+            $cuentaClaveNombre !== '' &&
+            (
+                strpos($cuentaClaveNombre, 'yulissa') !== false ||
+                strpos($cuentaClaveNombre, 'yulisa') !== false
+            )
+        ) {
             return self::TEMPLATE_SERGIO;
         }
 
