@@ -282,12 +282,13 @@
     color: #697487;
 }
 
-.linkage-expediente-activity .linkage-activity-detail {
+.linkage-expediente-activity .linkage-history-item > .linkage-activity-detail {
     grid-column: 2 !important;
+    grid-template-columns: minmax(0, 1fr) !important;
     max-width: 900px;
     margin-top: 3px;
-    display: grid;
-    gap: 4px;
+    display: grid !important;
+    gap: 4px !important;
 }
 
 .linkage-expediente-activity .linkage-activity-detail-row {
@@ -305,13 +306,13 @@
     line-height: 1.45;
 }
 
-.linkage-expediente-activity .linkage-activity-detail-value {
+.linkage-expediente-activity .linkage-history-item > .linkage-activity-detail .linkage-activity-detail-value {
     min-width: 0;
     color: #536174;
     font-size: 11.2px !important;
     font-weight: 600;
     line-height: 1.45;
-    white-space: pre-line;
+    white-space: pre-line !important;
     overflow-wrap: anywhere;
 }
 
