@@ -419,7 +419,9 @@ class EcardReunionService
             $esSergio
                 ? 'ECARD_REUNION_SERGIO_FOTO'
                 : 'ECARD_REUNION_MANUEL_FOTO',
-            ''
+            $esSergio
+                ? 'public/img/ecards/sergio-lopez-porcayo.jpg'
+                : 'public/img/ecards/manuel-porcayo.jpg'
         );
 
         if ($configFoto !== '') {
