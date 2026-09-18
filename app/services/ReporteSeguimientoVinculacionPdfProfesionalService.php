@@ -481,8 +481,8 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
     private function logo(): string
     {
         foreach ([
-            dirname(__DIR__, 2) . '/public/img/brand/porcayo-grupo.png',
-            dirname(__DIR__, 2) . '/public/img/brand/porcayo-grupo8.png'
+            dirname(__DIR__, 2) . '/public/img/brand/porcayo-grupo8.png',
+            dirname(__DIR__, 2) . '/public/img/brand/porcayo-grupo.png'
         ] as $ruta) {
             if (is_file($ruta) && is_readable($ruta)) {
                 $contenido = file_get_contents($ruta);
@@ -549,21 +549,21 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
         return '@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap");' .
             '@page{margin:18mm 14mm 17mm 14mm}' .
             'body{font-family:"Manrope","DejaVu Sans",sans-serif;color:#252525;font-size:8pt;line-height:1.35;margin:0}' .
-            '.top-rule{height:4px;background:#273A8A;margin:-18mm -14mm 14px}' .
-            '.header{width:100%;border-collapse:collapse;table-layout:fixed;margin-bottom:8px}' .
-            '.brand{width:180px;vertical-align:middle}.brand img{width:145px;height:auto;max-height:88px}' .
-            '.header-copy{vertical-align:middle;text-align:right;padding-left:12px}' .
-            '.system-name{font-size:7pt;color:#273A8A;font-weight:800;letter-spacing:.04em;margin-bottom:3px}' .
-            '.header h1{font-size:16.5pt;line-height:1.16;color:#16223B;margin:0 0 8px;font-weight:800}' .
-            '.header-meta{margin-left:auto;border-collapse:collapse;font-size:6.4pt}' .
-            '.header-meta td{color:#6D7480;text-align:right;padding:1px 0 1px 12px}.header-meta th{color:#16223B;text-align:right;padding:1px 0 1px 8px;font-weight:700}' .
-            '.header-rule{height:2px;background:#273A8A;margin:0 0 9px}' .
+            '.top-rule{height:4px;background:#273A8A;margin:-18mm -14mm 10px}' .
+            '.header{width:100%;border-collapse:collapse;table-layout:fixed;margin-bottom:6px}' .
+            '.brand{width:205px;vertical-align:middle}.brand img{display:block;width:178px;height:auto;max-width:178px}' .
+            '.header-copy{vertical-align:middle;text-align:right;padding-left:10px}' .
+            '.system-name{font-size:6.3pt;color:#273A8A;font-weight:800;letter-spacing:.035em;margin-bottom:2px}' .
+            '.header h1{font-size:14pt;line-height:1.12;color:#16223B;margin:0 0 6px;font-weight:800}' .
+            '.header-meta{margin-left:auto;border-collapse:collapse;font-size:6.1pt;line-height:1.2}' .
+            '.header-meta td{color:#6D7480;text-align:right;padding:.5px 0 .5px 10px}.header-meta th{color:#16223B;text-align:right;padding:.5px 0 .5px 7px;font-weight:700}' .
+            '.header-rule{height:2px;background:#273A8A;margin:0 0 10px}' .
             '.scope{width:100%;table-layout:fixed;border-collapse:collapse;background:#F8FAFC;border:1px solid #E5E9EF;margin-bottom:12px}' .
             '.scope td{padding:7px 9px;vertical-align:middle;border-right:1px solid #E5E9EF}.scope td:last-child{border-right:0}' .
             '.scope span,.info span,.metric span,.mini span,.call-summary span,.operational span{display:block;color:#6D7480;font-size:6pt;margin-bottom:2px}' .
             '.scope strong{font-size:7.1pt;color:#16223B}.scope-total{width:75px;text-align:center}.scope-total strong{font-size:10.5pt;color:#273A8A}' .
-            '.report-section{margin:0 0 13px}.keep{page-break-inside:avoid}' .
-            '.section-title{border-left:3px solid #273A8A;padding-left:8px;margin:0 0 7px;page-break-inside:avoid;page-break-after:avoid}' .
+            '.report-section{margin:0 0 15px}.keep{page-break-inside:avoid}' .
+            '.section-title{border-left:3px solid #273A8A;padding-left:8px;margin:0 0 11px;page-break-inside:avoid;page-break-after:avoid}' .
             '.section-title h2{font-size:10.7pt;color:#16223B;margin:0;font-weight:800}' .
             '.metrics{width:100%;table-layout:fixed;border-collapse:separate;border-spacing:4px 0}' .
             '.metric{width:25%;background:#FFFFFF;border:1px solid #E5E9EF;padding:9px;vertical-align:middle}.metric strong{display:block;color:#16223B;font-size:13pt;font-weight:800;margin-top:2px}' .
