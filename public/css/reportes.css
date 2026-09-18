@@ -585,3 +585,407 @@
         width: 100%;
     }
 }
+
+
+/* Reporte territorial: misma jerarquía visual que Seguimiento de Vinculación. */
+.report-territorial-module .territorial-back-link {
+    display: inline-flex;
+    margin-bottom: 22px;
+}
+
+.territorial-report-toolbar {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 20px;
+    margin-bottom: 22px;
+}
+
+.territorial-report-title h1 {
+    margin: 0 0 5px;
+    color: var(--color-navy);
+    font-size: clamp(22px, 2vw, 29px);
+    font-weight: 800;
+    line-height: 1.18;
+}
+
+.territorial-report-title p {
+    margin: 0;
+    color: var(--color-text-soft);
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.territorial-report-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    flex: 0 0 auto;
+}
+
+.territorial-report-actions .btn {
+    min-height: 46px;
+}
+
+.territorial-focus-card {
+    padding: 18px 20px;
+}
+
+.territorial-focus-main {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    margin-bottom: 16px;
+}
+
+.territorial-focus-copy {
+    min-width: 0;
+}
+
+.territorial-focus-copy h2 {
+    margin: 2px 0 4px;
+    color: var(--color-navy);
+    font-size: 19px;
+    font-weight: 800;
+}
+
+.territorial-focus-copy p {
+    margin: 0;
+    color: var(--color-text-soft);
+    font-size: 12px;
+}
+
+.territorial-focus-map {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 150px;
+    height: 92px;
+    padding: 6px 10px;
+    border-left: 1px solid var(--color-border);
+}
+
+.territorial-focus-map img {
+    display: block;
+    max-width: 130px;
+    max-height: 80px;
+    object-fit: contain;
+}
+
+.territorial-focus-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    background: var(--color-bg);
+}
+
+.territorial-focus-grid > div {
+    min-width: 0;
+    min-height: 70px;
+    padding: 11px 13px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    border-right: 1px solid var(--color-border);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.territorial-focus-grid > div:nth-child(3n) {
+    border-right: 0;
+}
+
+.territorial-focus-grid > div:nth-last-child(-n + 3) {
+    border-bottom: 0;
+}
+
+.territorial-focus-grid span {
+    display: block;
+    margin-bottom: 4px;
+    color: var(--color-text-soft);
+    font-size: 10.5px;
+    font-weight: 700;
+}
+
+.territorial-focus-grid strong {
+    color: var(--color-text);
+    font-size: 12.5px;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+.territorial-section-title {
+    margin: 0 0 13px;
+    padding-left: 10px;
+    border-left: 3px solid var(--color-primary);
+}
+
+.territorial-section-title h2 {
+    margin: 0;
+    color: var(--color-navy);
+    font-size: 19px;
+    font-weight: 800;
+}
+
+.territorial-section-title p {
+    margin: 3px 0 0;
+    color: var(--color-text-soft);
+    font-size: 11.5px;
+}
+
+.report-territorial-generated .report-summary-grid .metric-card {
+    border-color: #d3dce8;
+    background: #f9fbfe;
+}
+
+.report-territorial-generated .report-section {
+    padding: 18px 20px;
+}
+
+.report-territorial-generated .report-section-heading {
+    margin-bottom: 14px;
+    padding-left: 9px;
+    border-left: 3px solid var(--color-primary);
+}
+
+.report-territorial-generated .report-section-heading > div > span {
+    display: none;
+}
+
+.report-territorial-generated .report-section-heading h3 {
+    font-size: 16px;
+}
+
+.report-territorial-generated .report-section-heading p {
+    max-width: 780px;
+    margin-top: 4px;
+    font-size: 11.5px;
+}
+
+.territorial-bar-chart {
+    padding: 13px 14px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: #fbfcfe;
+}
+
+.territorial-bar-row + .territorial-bar-row {
+    margin-top: 10px;
+}
+
+.territorial-bar-label {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 14px;
+    margin-bottom: 5px;
+    font-size: 11px;
+}
+
+.territorial-bar-label span {
+    min-width: 0;
+    color: var(--color-text);
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.territorial-bar-label strong {
+    flex: 0 0 auto;
+    color: var(--color-navy);
+    font-size: 11px;
+}
+
+.territorial-bar-track {
+    height: 7px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #e9edf4;
+}
+
+.territorial-bar-track > span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--color-primary);
+}
+
+.territorial-strategy-pill {
+    display: inline-flex;
+    align-items: center;
+    min-height: 25px;
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .02em;
+}
+
+.territorial-score {
+    display: grid;
+    grid-template-columns: 28px minmax(70px, 1fr);
+    align-items: center;
+    gap: 8px;
+    min-width: 110px;
+}
+
+.territorial-score > strong {
+    color: var(--color-navy);
+    font-size: 11px;
+}
+
+.territorial-score > span {
+    display: block;
+    height: 6px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #e9edf4;
+}
+
+.territorial-score > span > i {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--color-primary);
+}
+
+.territorial-filter-modal .modal-dialog {
+    max-width: 560px;
+}
+
+.territorial-filter-modal .modal-content {
+    border: 0;
+    border-radius: 18px;
+    overflow: hidden;
+}
+
+.territorial-filter-modal .modal-header {
+    align-items: flex-start;
+    padding: 20px 22px 17px;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.territorial-filter-modal .modal-title {
+    margin: 0;
+    color: var(--color-navy);
+    font-size: 19px;
+    font-weight: 800;
+}
+
+.territorial-filter-modal .modal-header p {
+    margin: 4px 0 0;
+    color: var(--color-text-soft);
+    font-size: 12px;
+}
+
+.territorial-filter-modal .modal-body {
+    padding: 20px 22px;
+}
+
+.territorial-filter-modal .modal-footer {
+    gap: 9px;
+    padding: 14px 22px;
+    border-top: 1px solid var(--color-border);
+}
+
+@media (max-width: 991.98px) {
+    .territorial-focus-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .territorial-focus-grid > div,
+    .territorial-focus-grid > div:nth-child(3n) {
+        border-right: 1px solid var(--color-border);
+        border-bottom: 1px solid var(--color-border);
+    }
+
+    .territorial-focus-grid > div:nth-child(2n) {
+        border-right: 0;
+    }
+
+    .territorial-focus-grid > div:nth-last-child(-n + 2) {
+        border-bottom: 0;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .territorial-report-toolbar {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .territorial-report-actions {
+        display: grid;
+        grid-template-columns: 1fr;
+        width: 100%;
+    }
+
+    .territorial-report-actions .btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .territorial-focus-main {
+        align-items: flex-start;
+    }
+
+    .territorial-focus-map {
+        flex-basis: 110px;
+        height: 78px;
+    }
+
+    .territorial-focus-map img {
+        max-width: 92px;
+        max-height: 66px;
+    }
+
+    .territorial-focus-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .territorial-focus-grid > div,
+    .territorial-focus-grid > div:nth-child(2n),
+    .territorial-focus-grid > div:nth-child(3n) {
+        border-right: 0;
+        border-bottom: 1px solid var(--color-border);
+    }
+
+    .territorial-focus-grid > div:last-child {
+        border-bottom: 0;
+    }
+
+    .territorial-score {
+        min-width: 90px;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .territorial-focus-main {
+        flex-direction: column;
+    }
+
+    .territorial-focus-map {
+        width: 100%;
+        height: 70px;
+        padding: 8px 0 0;
+        border-top: 1px solid var(--color-border);
+        border-left: 0;
+    }
+
+    .territorial-filter-modal .modal-dialog {
+        margin: 0;
+        min-height: 100%;
+        max-width: none;
+    }
+
+    .territorial-filter-modal .modal-content {
+        min-height: 100vh;
+        border-radius: 0;
+    }
+}
