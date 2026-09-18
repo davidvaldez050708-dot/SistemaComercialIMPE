@@ -187,6 +187,14 @@ class AgendaReunionService
             return $this->error('La solicitud ya no está pendiente de confirmación.', 409);
         }
 
+        $fechaPropuesta = trim((string)($reunion['fecha_propuesta'] ?? ''));
+        if ($fechaPropuesta === '' || strtotime($fechaPropuesta) <= time()) {
+            return $this->error(
+                'La fecha propuesta ya venció. Solicita al Analista una nueva fecha antes de confirmar.',
+                409
+            );
+        }
+
         $modalidad = strtoupper((string)($reunion['modalidad'] ?? 'VIRTUAL'));
         $zoomUrl = trim((string)($datos['zoom_url'] ?? ''));
         $ubicacion = trim((string)($datos['ubicacion'] ?? ''));
