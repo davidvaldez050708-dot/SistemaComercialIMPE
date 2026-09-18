@@ -34,9 +34,18 @@
         const obtenerResumenLlamada = function (formulario) {
             const resumenTecnico = formulario?.querySelector('[data-twilio-call-summary]');
             const texto = normalizarTexto(resumenTecnico?.textContent || '');
-            const duracion = texto.match(/\b\d{2}:\d{2}\b/)?.[0] || '';
-            const tieneGrabacion = /grabaci[oó]n disponible/i.test(texto);
-            const sinGrabacion = /sin grabaci[oó]n/i.test(texto);
+            const segundos = Math.max(
+                0,
+                Number(resumenTecnico?.dataset.callDurationSeconds || 0)
+            );
+            const duracionTexto = texto.match(/\b\d{2}:\d{2}\b/)?.[0] || '';
+            const duracion = segundos > 0
+                ? String(Math.floor(segundos / 60)).padStart(2, '0') + ':' +
+                    String(segundos % 60).padStart(2, '0')
+                : duracionTexto;
+            const estadoGrabacion = String(
+                resumenTecnico?.dataset.callRecordingState || ''
+            ).trim();
 
             let titulo = 'Llamada finalizada';
 
@@ -44,9 +53,11 @@
                 titulo += ' · ' + duracion;
             }
 
-            if (tieneGrabacion) {
+            if (estadoGrabacion === 'available') {
                 titulo += ' · Grabación disponible';
-            } else if (sinGrabacion || texto !== '') {
+            } else if (estadoGrabacion === 'processing') {
+                titulo += ' · Grabación procesándose';
+            } else if (estadoGrabacion === 'none' && texto !== '') {
                 titulo += ' · Sin grabación';
             }
 
