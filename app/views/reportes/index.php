@@ -20,9 +20,9 @@ $puedeReporteAdministrador = $puedeReporteAdministrador ?? false;
 
     <div class="report-catalog-grid">
         <?php if ($puedeReporteTerritorial): ?>
-            <article class="dashboard-panel report-catalog-card">
+            <article class="dashboard-panel report-catalog-card report-catalog-card--territorial">
                 <div class="report-card-heading">
-                    <span class="metric-icon">
+                    <span class="metric-icon report-card-icon">
                         <i class="bi bi-map"></i>
                     </span>
                     <div>
@@ -31,7 +31,7 @@ $puedeReporteAdministrador = $puedeReporteAdministrador ?? false;
                     </div>
                 </div>
 
-                <p>
+                <p class="report-card-description">
                     Integra datos generales del Estado, actividad económica, poder adquisitivo,
                     educación, priorización municipal, cálculos derivados y fuentes oficiales.
                 </p>
@@ -48,13 +48,16 @@ $puedeReporteAdministrador = $puedeReporteAdministrador ?? false;
                     <i class="bi bi-arrow-right-circle" aria-hidden="true"></i>
                     <span>Generar reporte</span>
                 </a>
+                <span class="report-card-decoration report-card-decoration--territorial" aria-hidden="true">
+                    <i class="bi bi-map-fill"></i>
+                </span>
             </article>
         <?php endif; ?>
 
         <?php if ($puedeReporteSeguimiento): ?>
-            <article class="dashboard-panel report-catalog-card">
+            <article class="dashboard-panel report-catalog-card report-catalog-card--seguimiento">
                 <div class="report-card-heading">
-                    <span class="metric-icon">
+                    <span class="metric-icon report-card-icon">
                         <i class="bi bi-kanban"></i>
                     </span>
                     <div>
@@ -63,7 +66,7 @@ $puedeReporteAdministrador = $puedeReporteAdministrador ?? false;
                     </div>
                 </div>
 
-                <p>
+                <p class="report-card-description">
                     Consulta el generador de reportes de Seguimiento de vinculación con sus filtros,
                     indicadores y exportación actualmente implementados.
                 </p>
@@ -80,13 +83,16 @@ $puedeReporteAdministrador = $puedeReporteAdministrador ?? false;
                     <i class="bi bi-arrow-right-circle" aria-hidden="true"></i>
                     <span>Abrir reporte</span>
                 </a>
+                <span class="report-card-decoration report-card-decoration--seguimiento" aria-hidden="true">
+                    <i class="bi bi-bar-chart-fill"></i>
+                </span>
             </article>
         <?php endif; ?>
 
         <?php if ($puedeReporteAdministrador): ?>
-            <article class="dashboard-panel report-catalog-card">
+            <article class="dashboard-panel report-catalog-card report-catalog-card--usuarios">
                 <div class="report-card-heading">
-                    <span class="metric-icon">
+                    <span class="metric-icon report-card-icon">
                         <i class="bi bi-people"></i>
                     </span>
                     <div>
@@ -95,7 +101,7 @@ $puedeReporteAdministrador = $puedeReporteAdministrador ?? false;
                     </div>
                 </div>
 
-                <p>
+                <p class="report-card-description">
                     Consolida la información de usuarios del sistema, su estado, último acceso,
                     carga de seguimientos, acciones programadas y casos que requieren atención.
                 </p>
@@ -112,6 +118,9 @@ $puedeReporteAdministrador = $puedeReporteAdministrador ?? false;
                     <i class="bi bi-arrow-right-circle" aria-hidden="true"></i>
                     <span>Generar reporte</span>
                 </a>
+                <span class="report-card-decoration report-card-decoration--usuarios" aria-hidden="true">
+                    <i class="bi bi-people-fill"></i>
+                </span>
             </article>
         <?php endif; ?>
     </div>
