@@ -160,6 +160,56 @@ $proximaAccionBandeja = function ($seguimiento) use ($formatearProximaAccion) {
     return $formatearProximaAccion($fecha);
 };
 
+$descripcionProximaAccionFila = function ($fecha) use ($formatearFecha) {
+    $fecha = trim((string)$fecha);
+
+    if ($fecha === '') {
+        return [
+            'texto' => '',
+            'vencida' => false
+        ];
+    }
+
+    try {
+        $fechaObjeto = new DateTime($fecha);
+        $ahora = new DateTime();
+        $hoy = (clone $ahora)->setTime(0, 0, 0);
+        $manana = (clone $hoy)->modify('+1 day');
+        $fechaDia = (clone $fechaObjeto)->setTime(0, 0, 0);
+
+        if ($fechaObjeto < $ahora) {
+            return [
+                'texto' => $formatearFecha($fecha),
+                'vencida' => true
+            ];
+        }
+
+        if ($fechaDia == $hoy) {
+            return [
+                'texto' => 'Hoy · ' . $fechaObjeto->format('H:i'),
+                'vencida' => false
+            ];
+        }
+
+        if ($fechaDia == $manana) {
+            return [
+                'texto' => 'Mañana · ' . $fechaObjeto->format('H:i'),
+                'vencida' => false
+            ];
+        }
+
+        return [
+            'texto' => $formatearFecha($fecha),
+            'vencida' => false
+        ];
+    } catch (Throwable $error) {
+        return [
+            'texto' => '',
+            'vencida' => false
+        ];
+    }
+};
+
 $nombreAnalista = function ($seguimiento) use ($texto) {
     return $texto(trim(
         ($seguimiento['analista_nombre'] ?? '') . ' ' .
@@ -451,13 +501,31 @@ if (!empty($seguimientosSinMunicipio)) {
                         $seguimiento['analista_nombre'] ?? '',
                         $seguimiento['analista_apellidos'] ?? ''
                     ]));
+                    $rutaLista = (int)($seguimiento['ruta_lista'] ?? 0) === 1;
+                    $rutaPaso = (int)($seguimiento['ruta_paso'] ?? 0);
+                    $rutaTitulo = trim((string)($seguimiento['ruta_titulo'] ?? ''));
+                    $rutaEtapa = trim((string)($seguimiento['ruta_etapa_label'] ?? ''));
+                    $etapaFila = $rutaLista && $rutaEtapa !== ''
+                        ? $rutaEtapa
+                        : $etiquetaEstado($seguimiento['estado_seguimiento'] ?? '');
+                    $accionFila = $rutaLista && $rutaTitulo !== ''
+                        ? $rutaTitulo
+                        : $proximaAccionBandeja($seguimiento);
+                    $agendaFila = $descripcionProximaAccionFila(
+                        $seguimiento['proxima_accion_at'] ?? ''
+                    );
                     ?>
                     <tr
                         data-linkage-follow-row
                         data-search="<?= $texto($textoBusquedaFila) ?>"
                         data-stage="<?= $texto($seguimiento['estado_seguimiento'] ?? '') ?>"
+                        data-internal-stage="<?= $texto($seguimiento['estado_seguimiento'] ?? '') ?>"
                         data-municipality="<?= (int)($seguimiento['municipio_id'] ?? 0) ?>"
-                        data-analyst="<?= (int)($seguimiento['analista_id'] ?? 0) ?>">
+                        data-analyst="<?= (int)($seguimiento['analista_id'] ?? 0) ?>"
+                        <?= $rutaLista ? 'data-route-initial-ready="1"' : '' ?>
+                        <?= $rutaPaso > 0 ? 'data-flow-step="' . $rutaPaso . '"' : '' ?>
+                        <?= $rutaTitulo !== '' ? 'data-flow-title="' . $texto($rutaTitulo) . '"' : '' ?>
+                        <?= $rutaEtapa !== '' ? 'data-flow-stage-label="' . $texto($rutaEtapa) . '"' : '' ?>>
                         <td>
                             <strong><?= $texto($seguimiento['nombre_entidad'] ?? '') ?></strong>
                         </td>
@@ -485,11 +553,20 @@ if (!empty($seguimientosSinMunicipio)) {
                             </small>
                         </td>
                         <td>
-                            <span class="linkage-stage-badge" data-row-stage-label>
-                                <?= $texto($etiquetaEstado($seguimiento['estado_seguimiento'] ?? '')) ?>
+                            <span
+                                class="linkage-stage-badge"
+                                data-row-stage-label
+                                <?= $rutaLista ? 'data-route-stage-ready="1"' : '' ?>
+                                <?= $rutaPaso > 0 ? 'title="Paso ' . $rutaPaso . ' de 13"' : '' ?>>
+                                <?= $texto($etapaFila) ?>
                             </span>
                         </td>
-                        <td data-row-next-action><?= $texto($proximaAccionBandeja($seguimiento)) ?></td>
+                        <td
+                            data-row-next-action
+                            <?= $rutaLista ? 'data-route-next-ready="1"' : '' ?>
+                            <?= $rutaTitulo !== '' ? 'data-flow-next-action="' . $texto($rutaTitulo) . '"' : '' ?>
+                            <?= $agendaFila['texto'] !== '' ? 'data-next-schedule="' . $texto($agendaFila['texto']) . '"' : '' ?>
+                            <?= $agendaFila['vencida'] ? 'data-next-overdue="1"' : '' ?>><?= $texto($accionFila) ?></td>
                         <td data-row-folio>
                             <?= (string)($seguimiento['estado_seguimiento'] ?? '') !== 'DESCARTADO' &&
                                 trim((string)($seguimiento['folio'] ?? '')) !== ''
