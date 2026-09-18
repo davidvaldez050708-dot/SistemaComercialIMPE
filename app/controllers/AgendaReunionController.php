@@ -102,6 +102,44 @@ class AgendaReunionController
         require_once __DIR__ . '/../views/layout/dashboard_footer.php';
     }
 
+    public function ecardPreview()
+    {
+        $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
+        $rolId = (int)($_SESSION['rol_id'] ?? 0);
+        $reunionId = (int)($_GET['reunion_id'] ?? 0);
+
+        $resultado = $this->service->obtenerEcard(
+            $usuarioId,
+            $rolId,
+            $reunionId
+        );
+
+        if (!($resultado['ok'] ?? false)) {
+            http_response_code((int)($resultado['codigo_http'] ?? 500));
+            header('Content-Type: text/plain; charset=utf-8');
+            echo (string)($resultado['mensaje'] ?? 'No fue posible generar la Ecard.');
+            exit;
+        }
+
+        $ruta = (string)($resultado['ruta'] ?? '');
+        if ($ruta === '' || !is_file($ruta)) {
+            http_response_code(404);
+            header('Content-Type: text/plain; charset=utf-8');
+            echo 'La Ecard no está disponible.';
+            exit;
+        }
+
+        header('Content-Type: ' . (string)($resultado['mime'] ?? 'image/jpeg'));
+        header('Content-Length: ' . filesize($ruta));
+        header('Content-Disposition: inline; filename="' .
+            basename((string)($resultado['archivo'] ?? 'ecard_reunion.jpg')) . '"');
+        header('Cache-Control: private, no-store, no-cache, must-revalidate');
+        header('Pragma: no-cache');
+
+        readfile($ruta);
+        exit;
+    }
+
     public function expedienteSeguimiento()
     {
         header('Content-Type: application/json; charset=utf-8');
