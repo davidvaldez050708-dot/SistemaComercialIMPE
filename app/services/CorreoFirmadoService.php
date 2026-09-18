@@ -6,6 +6,7 @@ require_once __DIR__ . '/CorreoSalidaInstitucionalService.php';
 require_once __DIR__ . '/AgendaReunionRepository.php';
 require_once __DIR__ . '/AgendaReunionService.php';
 require_once __DIR__ . '/ReprogramacionReunionService.php';
+require_once __DIR__ . '/EcardReunionService.php';
 
 class CorreoFirmadoService
 {
@@ -14,6 +15,7 @@ class CorreoFirmadoService
     private $agendaRepo;
     private $agendaService;
     private $reprogramacionService;
+    private $ecardService;
 
     public function __construct()
     {
@@ -23,6 +25,7 @@ class CorreoFirmadoService
         $this->agendaRepo = new AgendaReunionRepository();
         $this->agendaService = new AgendaReunionService();
         $this->reprogramacionService = new ReprogramacionReunionService();
+        $this->ecardService = new EcardReunionService($this->connection);
     }
 
     public function enviarSeguimiento($seguimientoId, $usuarioId, $asunto, $cuerpo)
@@ -160,13 +163,28 @@ class CorreoFirmadoService
             return $this->error('No fue posible identificar al remitente.', 404);
         }
 
+        $ecard = $this->ecardService->generar($reunion);
+        if (!($ecard['ok'] ?? false)) {
+            return $this->error(
+                (string)($ecard['mensaje'] ?? 'No fue posible generar la Ecard de la reunión.'),
+                500
+            );
+        }
+
         $envio = $this->sender->enviar([
             'remitente' => (string)($usuario['correo'] ?? ''),
             'nombre_remitente' => $this->nombreUsuario($usuario),
             'destinatario' => $destinatario,
             'nombre_destinatario' => (string)($reunion['contacto_nombre'] ?? ''),
             'asunto' => $asunto,
-            'cuerpo' => $cuerpo
+            'cuerpo' => $cuerpo,
+            'imagenes_embebidas' => [[
+                'ruta' => (string)$ecard['ruta'],
+                'cid' => (string)$ecard['cid'],
+                'nombre' => (string)$ecard['archivo'],
+                'mime' => (string)$ecard['mime']
+            ]],
+            'html_adicional' => $this->construirBloqueEcardCorreo($ecard, $reunion)
         ]);
 
         if (!($envio['ok'] ?? false)) {
@@ -202,8 +220,45 @@ class CorreoFirmadoService
             ? 'Correo de reprogramación enviado. La nueva fecha quedó formalmente agendada.'
             : 'Correo de reunión enviado. La reunión quedó formalmente agendada y el flujo avanzó al paso 12.';
         $resultado['firma_incluida'] = (bool)($envio['firma_incluida'] ?? false);
+        $resultado['ecard_incluida'] = true;
+        $resultado['ecard_template'] = (string)($ecard['template'] ?? 'manuel');
+        $resultado['ecard_ponente'] = (string)($ecard['ponente'] ?? '');
 
         return $resultado;
+    }
+
+    private function construirBloqueEcardCorreo($ecard, $reunion)
+    {
+        $cid = htmlspecialchars(
+            (string)($ecard['cid'] ?? EcardReunionService::CID),
+            ENT_QUOTES,
+            'UTF-8'
+        );
+        $ponente = htmlspecialchars(
+            (string)($ecard['ponente'] ?? ''),
+            ENT_QUOTES,
+            'UTF-8'
+        );
+        $enlace = trim((string)($reunion['zoom_url'] ?? ''));
+        $html = '<div style="margin-top:24px;padding-top:18px;border-top:1px solid #e2e8f0;">';
+        $html .= '<div style="margin-bottom:10px;font-size:12px;font-weight:700;color:#40516d;">';
+        $html .= 'Ecard de reunión · ' . $ponente;
+        $html .= '</div>';
+        $html .= '<img src="cid:' . $cid . '" alt="Ecard de reunión" ';
+        $html .= 'style="display:block;width:100%;max-width:600px;height:auto;border:0;border-radius:10px;">';
+
+        if ($enlace !== '' && filter_var($enlace, FILTER_VALIDATE_URL)) {
+            $seguro = htmlspecialchars($enlace, ENT_QUOTES, 'UTF-8');
+            $html .= '<div style="margin-top:16px;">';
+            $html .= '<a href="' . $seguro . '" target="_blank" rel="noopener" ';
+            $html .= 'style="display:inline-block;background:#062a4e;color:#ffffff;text-decoration:none;';
+            $html .= 'font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;';
+            $html .= 'padding:11px 18px;border-radius:7px;">Unirse a la reunión</a>';
+            $html .= '</div>';
+        }
+
+        $html .= '</div>';
+        return $html;
     }
 
     private function obtenerSeguimiento($seguimientoId, $usuarioId)
