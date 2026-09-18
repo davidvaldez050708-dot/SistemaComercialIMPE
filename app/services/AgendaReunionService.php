@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/AgendaReunionRepository.php';
+require_once __DIR__ . '/EcardReunionService.php';
 
 class AgendaReunionService
 {
@@ -8,10 +9,12 @@ class AgendaReunionService
     public const ROL_CUENTA_CLAVE = 6;
 
     private $repo;
+    private $ecardService;
 
     public function __construct()
     {
         $this->repo = new AgendaReunionRepository();
+        $this->ecardService = new EcardReunionService($this->repo->connection());
     }
 
     public function puedeAcceder($rolId)
@@ -22,6 +25,32 @@ class AgendaReunionService
     public function tablaDisponible()
     {
         return $this->repo->tablaDisponible();
+    }
+
+    public function obtenerEcard($usuarioId, $rolId, $reunionId)
+    {
+        $usuarioId = (int)$usuarioId;
+        $rolId = (int)$rolId;
+        $reunionId = (int)$reunionId;
+
+        if (!$this->puedeAcceder($rolId) || $usuarioId <= 0 || $reunionId <= 0) {
+            return $this->error('No tienes acceso a la Ecard solicitada.', 403);
+        }
+
+        $reunion = $this->repo->reunion($reunionId, $usuarioId, $rolId);
+        if (!$reunion) {
+            return $this->error('No fue posible localizar la reunión.', 404);
+        }
+
+        $resultado = $this->ecardService->generar($reunion);
+        if (!($resultado['ok'] ?? false)) {
+            return $this->error(
+                (string)($resultado['mensaje'] ?? 'No fue posible generar la Ecard.'),
+                500
+            );
+        }
+
+        return $resultado;
     }
 
     public function resolverMesContexto($usuarioId, $rolId, $reunionId = 0, $seguimientoId = 0)
@@ -438,6 +467,16 @@ class AgendaReunionService
         $correo = $this->correoSugerido($fila);
         $fila['correo_sugerido_asunto'] = $correo['asunto'];
         $fila['correo_sugerido_cuerpo'] = $correo['cuerpo'];
+
+        $ecard = $this->ecardService->metadatos($fila);
+        $fila['ecard_template'] = (string)($ecard['template'] ?? 'manuel');
+        $fila['ecard_ponente'] = (string)($ecard['ponente'] ?? 'Mtro. Manuel Porcayo');
+        $fila['ecard_cargo'] = (string)($ecard['cargo'] ?? 'Presidente');
+        $fila['ecard_evento'] = (string)($ecard['evento'] ?? '');
+        $fila['ecard_preview_url'] =
+            'index.php?controller=agendaReunion&action=ecardPreview&reunion_id=' .
+            (int)$fila['id'];
+
         return $fila;
     }
 
