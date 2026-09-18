@@ -96,6 +96,7 @@ class SeguimientoVinculacionController
         $rutasIniciales = $this->enriquecerSeguimientosConRutaInicial($seguimientos);
         $seguimientos = $rutasIniciales['seguimientos'];
         $seguimientosRutaInicial = $rutasIniciales['rutas'];
+        $resumenRutaInicial = $this->calcularResumenRutaInicial($seguimientos);
 
         $totalSeguimientosReales = (int)($resumenTotalSeguimientos['en_seguimiento'] ?? 0);
         $totalResultadosFiltrados = count($seguimientos);
@@ -1958,6 +1959,43 @@ class SeguimientoVinculacionController
             'seguimientos' => $seguimientos,
             'rutas' => $rutas
         ];
+    }
+
+    private function calcularResumenRutaInicial($seguimientos)
+    {
+        $conteos = [
+            'en_seguimiento' => 0,
+            'gestion_previa' => 0,
+            'reuniones_acuerdos' => 0,
+            'convenio' => 0,
+            'completo' => true
+        ];
+
+        foreach (is_array($seguimientos) ? $seguimientos : [] as $seguimiento) {
+            $estado = strtoupper(trim((string)($seguimiento['estado_seguimiento'] ?? '')));
+
+            if ($estado === 'DESCARTADO') {
+                continue;
+            }
+
+            $conteos['en_seguimiento']++;
+            $paso = (int)($seguimiento['ruta_paso'] ?? 0);
+
+            if ($paso < 1 || $paso > 13) {
+                $conteos['completo'] = false;
+                continue;
+            }
+
+            if ($paso <= 10) {
+                $conteos['gestion_previa']++;
+            } elseif ($paso <= 12) {
+                $conteos['reuniones_acuerdos']++;
+            } else {
+                $conteos['convenio']++;
+            }
+        }
+
+        return $conteos;
     }
 
     private function etiquetarEtapaRutaInicial($pasoActual, $tituloFlujo, $estadoInterno)
