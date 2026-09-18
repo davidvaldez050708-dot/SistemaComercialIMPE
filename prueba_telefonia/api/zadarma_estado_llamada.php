@@ -1,6 +1,8 @@
 <?php
 session_start();
 
+require_once dirname(__DIR__, 2) . '/app/services/ZadarmaCallLookupService.php';
+
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
@@ -108,6 +110,7 @@ if ($rolId !== 4) {
 
 $destino = trim((string)($_GET['destination'] ?? ''));
 $desdeSolicitado = (int)($_GET['since'] ?? 0);
+$forzarFinal = (int)($_GET['final'] ?? 0) === 1;
 
 if ($destino === '' || strlen(soloDigitos($destino)) < 8) {
     responderJson(['ok' => false, 'mensaje' => 'Destino telefónico no válido.'], 422);
@@ -177,6 +180,54 @@ foreach ($registros as $registro) {
     $inicioSeleccionado = $registro;
 }
 
+if ($pbxCallId === '' && $forzarFinal) {
+    try {
+        $estadistica = (new ZadarmaCallLookupService())->buscarSalienteReciente(
+            $extension,
+            $destino,
+            $desdeSolicitado > 0 ? $desdeSolicitado : (time() - 300)
+        );
+
+        if ($estadistica) {
+            $disposition = strtolower((string)($estadistica['disposition'] ?? ''));
+            $status = 'failed';
+
+            if ($disposition === 'answered') {
+                $status = 'completed';
+            } elseif ($disposition === 'busy') {
+                $status = 'busy';
+            } elseif (in_array($disposition, ['no answer', 'no-answer', 'no_answer'], true)) {
+                $status = 'no-answer';
+            } elseif (in_array($disposition, ['cancel', 'cancelled', 'canceled'], true)) {
+                $status = 'canceled';
+            }
+
+            responderJson([
+                'ok' => true,
+                'call' => [
+                    'provider' => 'ZADARMA',
+                    'source' => 'statistics',
+                    'pbx_call_id' => (string)($estadistica['pbx_call_id'] ?? ''),
+                    'status' => $status,
+                    'destination' => (string)($estadistica['destination'] ?? $destino),
+                    'internal' => $extension,
+                    'start_time' => $estadistica['callstart'] ?? null,
+                    'answer_time' => null,
+                    'end_time' => null,
+                    'duration' => max(0, (int)($estadistica['seconds'] ?? 0)),
+                    'disposition' => $disposition,
+                    'status_code' => null,
+                    'is_recorded' => !empty($estadistica['is_recorded']),
+                    'record_ready' => false,
+                    'call_id_with_rec' => (string)($estadistica['call_id'] ?? ''),
+                ],
+            ]);
+        }
+    } catch (Throwable $error) {
+        error_log('[zadarma_estado_estadisticas] ' . $error->getMessage());
+    }
+}
+
 if ($pbxCallId === '') {
     responderJson(['ok' => true, 'call' => null]);
 }
@@ -233,6 +284,32 @@ if ($fin) {
 if ($grabacion) {
     $isRecorded = true;
     $callIdWithRec = trim((string)($grabacion['call_id_with_rec'] ?? $callIdWithRec));
+}
+
+if ($forzarFinal && !$fin) {
+    try {
+        $estadistica = (new ZadarmaCallLookupService())->buscarPorPbxCallId($pbxCallId);
+        if ($estadistica) {
+            $disposition = strtolower((string)($estadistica['disposition'] ?? ''));
+            $duration = max($duration, (int)($estadistica['seconds'] ?? 0));
+            $isRecorded = $isRecorded || !empty($estadistica['is_recorded']);
+            $callIdWithRec = trim((string)($estadistica['call_id'] ?? $callIdWithRec));
+
+            if ($disposition === 'answered') {
+                $status = 'completed';
+            } elseif ($disposition === 'busy') {
+                $status = 'busy';
+            } elseif (in_array($disposition, ['no answer', 'no-answer', 'no_answer'], true)) {
+                $status = 'no-answer';
+            } elseif (in_array($disposition, ['cancel', 'cancelled', 'canceled'], true)) {
+                $status = 'canceled';
+            } else {
+                $status = 'failed';
+            }
+        }
+    } catch (Throwable $error) {
+        error_log('[zadarma_estado_estadistica_final] ' . $error->getMessage());
+    }
 }
 
 responderJson([
