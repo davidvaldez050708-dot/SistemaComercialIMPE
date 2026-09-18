@@ -1525,35 +1525,26 @@ class SeguimientoVinculacionModel
                     usuarios.nombre AS analista_nombre,
                     usuarios.apellidos AS analista_apellidos,
                     usuarios.foto_perfil AS analista_foto,
-                    oficio_reciente.folio,
-                    interaccion_reciente.canal AS ultimo_canal
+                    (
+                        SELECT MAX(oficios_consulta.folio)
+                        FROM oficios_vinculacion oficios_consulta
+                        WHERE oficios_consulta.seguimiento_id = seguimientos.id
+                          AND oficios_consulta.folio IS NOT NULL
+                          AND oficios_consulta.folio <> ''
+                    ) AS folio,
+                    (
+                        SELECT interacciones_canal.canal
+                        FROM interacciones_vinculacion interacciones_canal
+                        WHERE interacciones_canal.seguimiento_id = seguimientos.id
+                        ORDER BY interacciones_canal.fecha_inicio DESC,
+                                 interacciones_canal.id DESC
+                        LIMIT 1
+                    ) AS ultimo_canal
                 FROM seguimientos_vinculacion seguimientos
                 LEFT JOIN municipios
                     ON municipios.id = seguimientos.municipio_id
                 INNER JOIN usuarios
-                    ON usuarios.id = seguimientos.analista_id
-                LEFT JOIN (
-                    SELECT
-                        seguimiento_id,
-                        MAX(folio) AS folio
-                    FROM oficios_vinculacion
-                    WHERE folio IS NOT NULL
-                        AND folio <> ''
-                    GROUP BY seguimiento_id
-                ) oficio_reciente
-                    ON oficio_reciente.seguimiento_id = seguimientos.id
-                LEFT JOIN (
-                    SELECT
-                        seguimiento_id,
-                        SUBSTRING_INDEX(
-                            GROUP_CONCAT(canal ORDER BY fecha_inicio DESC, id DESC),
-                            ',',
-                            1
-                        ) AS canal
-                    FROM interacciones_vinculacion
-                    GROUP BY seguimiento_id
-                ) interaccion_reciente
-                    ON interaccion_reciente.seguimiento_id = seguimientos.id";
+                    ON usuarios.id = seguimientos.analista_id";
     }
 
     private function consultaDetalleSeguimientoBase()
