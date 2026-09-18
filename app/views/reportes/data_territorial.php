@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/../../helpers/AvatarHelper.php';
+
 $territorios = $territorios ?? [];
 $estadoId = $estadoId ?? 0;
 $generarReporte = $generarReporte ?? false;
