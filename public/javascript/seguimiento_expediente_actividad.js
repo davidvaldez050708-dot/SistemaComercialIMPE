@@ -142,53 +142,34 @@
             };
 
             const estructurarActividad = function (item, titulo, detalle, metadata) {
-                const cabecera = titulo?.parentElement;
-                if (!cabecera) {
+                if (!item || !titulo) {
                     return;
                 }
 
-                cabecera.classList.add('linkage-activity-header');
-
+                const tituloTexto = String(titulo.textContent || 'Actividad').trim();
                 const metaInfo = descomponerMeta(metadata?.textContent || '');
-                metadata?.remove();
+                const informacion = descomponerDetalle(detalle);
 
-                const meta = document.createElement('div');
-                meta.className = 'linkage-activity-meta';
+                const contenido = document.createElement('div');
+                contenido.className = 'linkage-activity-content';
+
+                const cabecera = document.createElement('div');
+                cabecera.className = 'linkage-activity-header';
+
+                const tituloNuevo = document.createElement('strong');
+                tituloNuevo.className = 'linkage-activity-title';
+                tituloNuevo.textContent = tituloTexto;
+                cabecera.appendChild(tituloNuevo);
 
                 if (metaInfo.fecha) {
                     const fecha = document.createElement('span');
                     fecha.className = 'linkage-activity-date';
                     fecha.textContent = metaInfo.fecha;
-                    meta.appendChild(fecha);
+                    cabecera.appendChild(fecha);
                 }
 
-                metaInfo.estados.forEach(function (estado) {
-                    const badge = document.createElement('span');
-                    const normalizado = normalizar(estado);
-                    badge.className = 'linkage-activity-badge';
+                contenido.appendChild(cabecera);
 
-                    if (normalizado === 'contacto efectivo') {
-                        badge.classList.add('is-contact');
-                    } else if (
-                        normalizado === 'sin contacto' ||
-                        normalizado === 'sin respuesta'
-                    ) {
-                        badge.classList.add('is-warning');
-                    } else if (normalizado === 'sistema') {
-                        badge.classList.add('is-system');
-                    }
-
-                    badge.textContent = estado;
-                    meta.appendChild(badge);
-                });
-
-                cabecera.appendChild(meta);
-
-                if (!detalle) {
-                    return;
-                }
-
-                const informacion = descomponerDetalle(detalle);
                 const cuerpo = document.createElement('div');
                 cuerpo.className = 'linkage-activity-detail';
 
@@ -209,10 +190,39 @@
                 }
 
                 if (cuerpo.children.length > 0) {
-                    detalle.replaceWith(cuerpo);
-                } else {
-                    detalle.remove();
+                    contenido.appendChild(cuerpo);
                 }
+
+                if (metaInfo.estados.length > 0) {
+                    const pie = document.createElement('div');
+                    pie.className = 'linkage-activity-footer';
+
+                    metaInfo.estados.forEach(function (estado) {
+                        const badge = document.createElement('span');
+                        const normalizado = normalizar(estado);
+                        badge.className = 'linkage-activity-badge';
+
+                        if (normalizado === 'contacto efectivo') {
+                            badge.classList.add('is-contact');
+                        } else if (
+                            normalizado === 'sin contacto' ||
+                            normalizado === 'sin respuesta'
+                        ) {
+                            badge.classList.add('is-warning');
+                        } else if (normalizado === 'sistema') {
+                            badge.classList.add('is-system');
+                        } else {
+                            badge.classList.add('is-result');
+                        }
+
+                        badge.textContent = estado;
+                        pie.appendChild(badge);
+                    });
+
+                    contenido.appendChild(pie);
+                }
+
+                item.replaceChildren(contenido);
             };
 
             const nav = document.querySelector('.linkage-detail-tabs');
