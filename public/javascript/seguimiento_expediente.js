@@ -44,6 +44,101 @@
                 : (reserva !== undefined ? String(reserva) : '—');
         };
 
+        const humanizarCodigoActividad = function (valor, mapa) {
+            const codigo = String(valor || '').trim().toUpperCase();
+
+            if (!codigo) {
+                return '';
+            }
+
+            if (mapa && mapa[codigo]) {
+                return mapa[codigo];
+            }
+
+            const limpio = codigo
+                .replace(/[_-]+/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim()
+                .toLowerCase();
+
+            return limpio
+                ? limpio.charAt(0).toUpperCase() + limpio.slice(1)
+                : '';
+        };
+
+        const canalesActividad = {
+            LLAMADA_IP: 'Llamada',
+            LLAMADA: 'Llamada',
+            WHATSAPP: 'WhatsApp',
+            CORREO: 'Correo',
+            NOTA: 'Nota',
+            SISTEMA: 'Sistema'
+        };
+
+        const resultadosActividad = {
+            CONTACTADO: 'Contactado',
+            NO_CONTESTO: 'No contestó',
+            OCUPADO: 'Ocupado',
+            NUMERO_INCORRECTO: 'Número incorrecto',
+            SOLICITO_LLAMAR_DESPUES: 'Solicitó llamar después',
+            MENSAJE_ENVIADO: 'Mensaje enviado',
+            CORREO_ENVIADO: 'Correo enviado',
+            SIN_RESPUESTA: 'Sin respuesta',
+            OTRO: 'Otro'
+        };
+
+        const marcadoresActividad = {
+            CONTACTO_EFECTIVO: 'Contacto efectivo',
+            SIN_CONTACTO_EFECTIVO: 'Sin contacto',
+            AVANZAR_CONVENIO: 'Avanzar a convenio',
+            REQUIERE_SEGUIMIENTO: 'Requiere seguimiento',
+            NO_INTERESADO: 'No interesado',
+            BUZON_VOZ: 'Buzón de voz',
+            FUERA_SERVICIO: 'Fuera de servicio'
+        };
+
+        const estadoUltimaActividad = function (actividad) {
+            const notas = String(actividad?.notas || '');
+
+            if (/\[CONTACTO_EFECTIVO\]/i.test(notas)) {
+                return 'Contacto efectivo';
+            }
+
+            if (/\[SIN_CONTACTO_EFECTIVO\]/i.test(notas)) {
+                return 'Sin contacto';
+            }
+
+            const resultado = String(actividad?.resultado || '').trim().toUpperCase();
+            if (!resultado || resultado === 'OTRO') {
+                return '';
+            }
+
+            return humanizarCodigoActividad(resultado, resultadosActividad);
+        };
+
+        const limpiarNotaActividad = function (valor) {
+            let nota = String(valor || '').trim();
+
+            if (!nota) {
+                return '';
+            }
+
+            // Los marcadores de contacto ya se expresan en la metadata.
+            nota = nota
+                .replace(/\[(?:CONTACTO_EFECTIVO|SIN_CONTACTO_EFECTIVO)\]/gi, ' · ')
+                .replace(/\[([A-Z0-9_-]+)\]/gi, function (_, codigo) {
+                    const etiqueta = humanizarCodigoActividad(codigo, marcadoresActividad);
+                    return etiqueta ? ' · ' + etiqueta + ' · ' : ' ';
+                })
+                .replace(/\s*·\s*·\s*/g, ' · ')
+                .replace(/(?:\s*·\s*){2,}/g, ' · ')
+                .replace(/\s+/g, ' ')
+                .replace(/^\s*·\s*|\s*·\s*$/g, '')
+                .trim();
+
+            return nota;
+        };
+
         const fechaLegible = function (valor, soloFecha) {
             const cadena = String(valor || '').trim();
             if (!cadena) {
@@ -468,10 +563,22 @@
             }
 
             const ultima = datos?.ultima_interaccion || {};
-            const ultimaMeta = ultima?.fecha_inicio
-                ? fechaLegible(ultima.fecha_inicio) + ' · ' + texto(ultima.canal, 'Sistema')
+            const ultimaCanal = humanizarCodigoActividad(
+                ultima?.canal || 'SISTEMA',
+                canalesActividad
+            );
+            const ultimaEstado = estadoUltimaActividad(ultima);
+            const ultimaMetaPartes = ultima?.fecha_inicio
+                ? [fechaLegible(ultima.fecha_inicio), ultimaCanal, ultimaEstado].filter(Boolean)
+                : [];
+            const ultimaMeta = ultimaMetaPartes.length > 0
+                ? ultimaMetaPartes.join(' · ')
                 : 'Sin actividad reciente';
-            const ultimaNota = texto(ultima?.notas, 'Todavía no hay una actividad reciente registrada.');
+            const ultimaNotaLimpia = limpiarNotaActividad(ultima?.notas);
+            const ultimaNota = texto(
+                ultimaNotaLimpia,
+                'Todavía no hay una actividad reciente registrada.'
+            );
 
             tarjeta.innerHTML =
                 '<div class="linkage-expediente-route-heading">' +
