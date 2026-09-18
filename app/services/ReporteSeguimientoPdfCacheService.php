@@ -2,7 +2,7 @@
 
 class ReporteSeguimientoPdfCacheService
 {
-    private const TTL_SEGUNDOS = 45;
+    private const TTL_SEGUNDOS = 8;
 
     private $directorio;
 
