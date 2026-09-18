@@ -43,9 +43,19 @@
                 ? String(Math.floor(segundos / 60)).padStart(2, '0') + ':' +
                     String(segundos % 60).padStart(2, '0')
                 : duracionTexto;
-            const estadoGrabacion = String(
+            let estadoGrabacion = String(
                 resumenTecnico?.dataset.callRecordingState || ''
             ).trim();
+
+            if (estadoGrabacion === '') {
+                if (/grabaci[oó]n disponible/i.test(texto)) {
+                    estadoGrabacion = 'available';
+                } else if (/grabaci[oó]n.*proces/i.test(texto)) {
+                    estadoGrabacion = 'processing';
+                } else if (/sin grabaci[oó]n/i.test(texto)) {
+                    estadoGrabacion = 'none';
+                }
+            }
 
             let titulo = 'Llamada finalizada';
 
