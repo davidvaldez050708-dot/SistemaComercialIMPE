@@ -415,12 +415,59 @@ class AgendaReunionService
         $fila['analista_id'] = (int)($fila['analista_id'] ?? 0);
         $fila['cuenta_clave_id'] = (int)($fila['cuenta_clave_id'] ?? 0);
         $fila['duracion_minutos'] = (int)($fila['duracion_minutos'] ?? 60);
-        $fila['estado_etiqueta'] = $this->etiquetaEstado((string)($fila['estado'] ?? ''));
+
+        $estado = strtoupper(trim((string)($fila['estado'] ?? 'SOLICITADA')));
+        $estadoVisual = $this->resolverEstadoVisual(
+            $estado,
+            (string)($fila['fecha_propuesta'] ?? '')
+        );
+
+        $fila['esta_vencida'] = (bool)$estadoVisual['vencida'];
+        $fila['estado_visual'] = (string)$estadoVisual['clase'];
+        $fila['estado_etiqueta'] = (string)$estadoVisual['etiqueta'];
         $fila['fecha_legible'] = $this->fechaLegible((string)($fila['fecha_propuesta'] ?? ''));
+
         $correo = $this->correoSugerido($fila);
         $fila['correo_sugerido_asunto'] = $correo['asunto'];
         $fila['correo_sugerido_cuerpo'] = $correo['cuerpo'];
         return $fila;
+    }
+
+    private function resolverEstadoVisual($estado, $fechaPropuesta)
+    {
+        $estado = strtoupper(trim((string)$estado));
+        $vencida = false;
+
+        try {
+            $fecha = trim((string)$fechaPropuesta) !== ''
+                ? new DateTime((string)$fechaPropuesta)
+                : null;
+            $vencida = $fecha instanceof DateTime &&
+                $fecha <= new DateTime() &&
+                in_array($estado, ['SOLICITADA', 'CONFIRMADA', 'CORREO_ENVIADO'], true);
+        } catch (Throwable $error) {
+            $vencida = false;
+        }
+
+        if ($vencida) {
+            $etiquetas = [
+                'SOLICITADA' => 'Vencida · pendiente KAM',
+                'CONFIRMADA' => 'Vencida · confirmación pendiente',
+                'CORREO_ENVIADO' => 'Vencida · pendiente de registrar'
+            ];
+
+            return [
+                'vencida' => true,
+                'clase' => 'vencida',
+                'etiqueta' => $etiquetas[$estado] ?? 'Vencida'
+            ];
+        }
+
+        return [
+            'vencida' => false,
+            'clase' => strtolower(str_replace('_', '-', $estado !== '' ? $estado : 'SOLICITADA')),
+            'etiqueta' => $this->etiquetaEstado($estado)
+        ];
     }
 
     private function correoSugerido($r)
