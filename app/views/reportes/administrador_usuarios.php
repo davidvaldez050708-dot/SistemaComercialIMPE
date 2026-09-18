@@ -172,6 +172,7 @@ foreach ($estadoUsuarios as $datoEstado) {
             <div class="d-flex justify-content-end mt-3">
                 <a
                     class="btn btn-system-primary"
+                    id="reporteUsuariosGenerarPdf"
                     href="<?= $texto($urlExportarPdf) ?>">
                     <i class="bi bi-bar-chart me-2"></i>
                     Generar reporte
@@ -465,8 +466,9 @@ document.addEventListener('DOMContentLoaded', function () {
     const todos = document.getElementById('reporteUsuariosTodosRoles');
     const roles = Array.from(document.querySelectorAll('.js-reporte-rol'));
     const error = document.getElementById('reporteUsuariosRolesError');
+    const generarPdf = document.getElementById('reporteUsuariosGenerarPdf');
 
-    if (!formulario || !todos) {
+    if (!formulario || !todos || !generarPdf) {
         return;
     }
 
@@ -480,6 +482,18 @@ document.addEventListener('DOMContentLoaded', function () {
         if (error) {
             error.classList.remove('d-none');
         }
+    }
+
+    function habilitarGenerarPdf() {
+        generarPdf.classList.remove('disabled');
+        generarPdf.removeAttribute('aria-disabled');
+        generarPdf.removeAttribute('tabindex');
+    }
+
+    function deshabilitarGenerarPdf() {
+        generarPdf.classList.add('disabled');
+        generarPdf.setAttribute('aria-disabled', 'true');
+        generarPdf.setAttribute('tabindex', '-1');
     }
 
     function enviarFiltros() {
@@ -499,6 +513,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (usarTodos) {
             ocultarError();
+            habilitarGenerarPdf();
 
             if (enviar) {
                 enviarFiltros();
@@ -510,6 +525,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (!hayRolSeleccionado) {
                 mostrarError();
+                deshabilitarGenerarPdf();
+            } else {
+                ocultarError();
+                habilitarGenerarPdf();
             }
         }
     }
@@ -526,12 +545,20 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (!hayRolSeleccionado) {
                 mostrarError();
+                deshabilitarGenerarPdf();
                 return;
             }
 
             ocultarError();
+            habilitarGenerarPdf();
             enviarFiltros();
         });
+    });
+
+    generarPdf.addEventListener('click', function (event) {
+        if (generarPdf.getAttribute('aria-disabled') === 'true') {
+            event.preventDefault();
+        }
     });
 
     aplicarEstadoTodos(false);
