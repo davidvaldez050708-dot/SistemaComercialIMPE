@@ -208,9 +208,7 @@ if (!$inicio || !$fin || $pbxCallId === '') {
                     'disposition' => (string)($estadistica['disposition'] ?? ''),
                     'is_recorded' => !empty($estadistica['is_recorded']) ? '1' : '0',
                     'call_id_with_rec' => (string)($estadistica['call_id'] ?? ''),
-                    'received_at' => $inicioTimestamp !== false
-                        ? date('c', $inicioTimestamp + $segundos)
-                        : date('c'),
+                    'received_at' => date('c'),
                 ];
             }
         }
