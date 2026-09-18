@@ -201,6 +201,12 @@ $jsOpcionalHead = [
             )),
             JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
         ) ?>;
+        window.IMPE_SEGUIMIENTO_RUTAS_INICIALES = <?= json_encode(
+            is_array($seguimientosRutaInicial ?? null)
+                ? $seguimientosRutaInicial
+                : [],
+            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+        ) ?>;
     </script>
 
     <?php foreach ($jsOpcionalHead as $archivoJs): ?>
