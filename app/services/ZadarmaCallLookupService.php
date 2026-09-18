@@ -4,6 +4,7 @@ class ZadarmaCallLookupService
 {
     private $api;
     private $timezone;
+    private $estadisticasCache = [];
 
     public function __construct()
     {
@@ -101,6 +102,11 @@ class ZadarmaCallLookupService
         $fin = (new DateTimeImmutable('@' . $hastaUnix))
             ->setTimezone($this->timezone)
             ->format('Y-m-d H:i:s');
+        $clave = $inicio . '|' . $fin;
+
+        if (array_key_exists($clave, $this->estadisticasCache)) {
+            return $this->estadisticasCache[$clave];
+        }
 
         $body = $this->api->call(
             '/v1/statistics/pbx/',
@@ -116,10 +122,14 @@ class ZadarmaCallLookupService
 
         $data = json_decode((string)$body, true);
         if (!is_array($data) || ($data['status'] ?? '') !== 'success') {
+            $this->estadisticasCache[$clave] = [];
             return [];
         }
 
-        return is_array($data['stats'] ?? null) ? $data['stats'] : [];
+        $this->estadisticasCache[$clave] =
+            is_array($data['stats'] ?? null) ? $data['stats'] : [];
+
+        return $this->estadisticasCache[$clave];
     }
 
     private function normalizar(array $fila): array
