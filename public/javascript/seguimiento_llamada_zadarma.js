@@ -55,24 +55,28 @@
                 return;
             }
 
-            const original = mediaDevices.getUserMedia.bind(mediaDevices);
-            const wrapped = function (constraints) {
-                return original(constraints).then(function (stream) {
-                    if (constraints && constraints.audio) {
-                        stream.getAudioTracks().forEach(function (track) {
-                            microphoneTracks.add(track);
-                            track.enabled = !muted;
-                            track.addEventListener('ended', function () {
-                                microphoneTracks.delete(track);
-                            }, { once: true });
-                        });
-                    }
-                    return stream;
-                });
-            };
+            try {
+                const original = mediaDevices.getUserMedia.bind(mediaDevices);
+                const wrapped = function (constraints) {
+                    return original(constraints).then(function (stream) {
+                        if (constraints && constraints.audio) {
+                            stream.getAudioTracks().forEach(function (track) {
+                                microphoneTracks.add(track);
+                                track.enabled = !muted;
+                                track.addEventListener('ended', function () {
+                                    microphoneTracks.delete(track);
+                                }, { once: true });
+                            });
+                        }
+                        return stream;
+                    });
+                };
 
-            wrapped.__impeZadarmaWrapped = true;
-            mediaDevices.getUserMedia = wrapped;
+                wrapped.__impeZadarmaWrapped = true;
+                mediaDevices.getUserMedia = wrapped;
+            } catch (error) {
+                console.debug('No fue posible observar el micrófono de Zadarma.', error);
+            }
         };
 
         capturarMicrofonoZadarma();
@@ -537,7 +541,7 @@
                 .replace(/[\u0300-\u036f]/g, '')
                 .toLowerCase();
 
-            return /(llamada en curso|en llamada|conectad[oa]|hablando|conversation|connected|talking)/.test(texto);
+            return /(llamada en curso|en llamada|en conversacion|hablando|conversation|talking)/.test(texto);
         };
 
         const revisarEstadoWidgetNativo = function () {
@@ -1022,9 +1026,9 @@
                 });
                 const data = await response.json();
 
-                if ([404, 409].includes(response.status) && attempt < 12) {
+                if ([404, 409].includes(response.status) && attempt < 24) {
                     linkingMetadata = false;
-                    await sleep(750);
+                    await sleep(1000);
                     void vincularMetadata(attempt + 1);
                     return;
                 }
