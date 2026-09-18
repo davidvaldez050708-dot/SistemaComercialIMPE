@@ -16,14 +16,20 @@ class SeguimientoRutaOperativaService
     private $fechaGuardService;
     private $resultadoService;
 
-    public function __construct()
-    {
-        $this->flujoService = new SeguimientoFlujoService();
-        $this->postEnvioService = new SeguimientoPostEnvioService();
-        $this->correoService = new SeguimientoCorreoService();
-        $this->agendaService = new AgendaReunionService();
-        $this->fechaGuardService = new ReunionFechaGuardService();
-        $this->resultadoService = new ReunionResultadoService();
+    public function __construct(
+        $flujoService = null,
+        $postEnvioService = null,
+        $correoService = null,
+        $agendaService = null,
+        $fechaGuardService = null,
+        $resultadoService = null
+    ) {
+        $this->flujoService = $flujoService ?: new SeguimientoFlujoService();
+        $this->postEnvioService = $postEnvioService ?: new SeguimientoPostEnvioService();
+        $this->correoService = $correoService ?: new SeguimientoCorreoService();
+        $this->agendaService = $agendaService ?: new AgendaReunionService();
+        $this->fechaGuardService = $fechaGuardService ?: new ReunionFechaGuardService();
+        $this->resultadoService = $resultadoService ?: new ReunionResultadoService();
     }
 
     public function resolver($seguimientoId, $analistaId, $seguimientoBase = [])
