@@ -47,22 +47,56 @@ $secretarias = is_array($reporte) ? ($reporte['secretarias'] ?? []) : [];
 $fuentes = is_array($reporte) ? ($reporte['fuentes'] ?? []) : [];
 $calculos = is_array($reporte) ? ($reporte['calculos'] ?? []) : [];
 $lecturas = is_array($reporte) ? ($reporte['lecturas'] ?? []) : [];
+
+$mapaEstadoUrl = '';
+if (
+    $reporte &&
+    trim((string)($estado['mapa_estado'] ?? '')) !== '' &&
+    function_exists('obtenerUrlArchivoPublico')
+) {
+    $mapaEstadoUrl = obtenerUrlArchivoPublico(
+        $estado['mapa_estado'],
+        ['public/uploads/territorios/mapas']
+    );
+}
+
+$sectoresGrafica = array_slice(array_values($actividad['sectores'] ?? []), 0, 5);
+$maxSectorGrafica = 1;
+foreach ($sectoresGrafica as $sectorGrafica) {
+    $maxSectorGrafica = max($maxSectorGrafica, (int)($sectorGrafica['establecimientos'] ?? 0));
+}
 ?>
 
-<section class="report-module report-territorial-module">
-    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
-        <a class="linkage-back-link" href="<?= BASE_URL ?>index.php?controller=reporte&action=index">
-            <i class="bi bi-arrow-left"></i>
-            Volver a Reportes
-        </a>
+<section class="report-module report-territorial-module<?= $reporte ? ' report-territorial-generated' : '' ?>">
+    <a class="linkage-back-link territorial-back-link" href="<?= BASE_URL ?>index.php?controller=reporte&action=index">
+        <i class="bi bi-arrow-left"></i>
+        Volver a Reportes
+    </a>
 
-        <?php if ($reporte && $urlExportarPdf !== ''): ?>
-            <a class="btn btn-system-save" href="<?= $texto($urlExportarPdf) ?>">
-                <i class="bi bi-file-earmark-pdf me-2"></i>
-                Exportar PDF
-            </a>
-        <?php endif; ?>
-    </div>
+    <?php if ($reporte): ?>
+        <div class="territorial-report-toolbar">
+            <div class="territorial-report-title">
+                <h1>Reporte de Información Territorial</h1>
+                <p><?= $texto($estado['nombre'] ?? 'Territorio') ?> · Información territorial</p>
+            </div>
+            <div class="territorial-report-actions">
+                <button
+                    type="button"
+                    class="btn btn-system-light"
+                    data-bs-toggle="modal"
+                    data-bs-target="#modalCambiarTerritorio">
+                    <i class="bi bi-sliders me-2"></i>
+                    Cambiar territorio
+                </button>
+                <?php if ($urlExportarPdf !== ''): ?>
+                    <a class="btn btn-system-save" href="<?= $texto($urlExportarPdf) ?>">
+                        <i class="bi bi-file-earmark-pdf me-2"></i>
+                        Exportar PDF
+                    </a>
+                <?php endif; ?>
+            </div>
+        </div>
+    <?php endif; ?>
 
     <?php if ($errorReporte !== '' || $errorExportacionPdf !== ''): ?>
         <div class="alert alert-danger login-alert mb-3" role="alert">
@@ -71,43 +105,45 @@ $lecturas = is_array($reporte) ? ($reporte['lecturas'] ?? []) : [];
         </div>
     <?php endif; ?>
 
-    <section class="dashboard-panel report-filter-panel mb-4">
-        <div class="report-filter-heading">
-            <div>
-                <span class="report-eyebrow">INFORMACIÓN TERRITORIAL</span>
-                <h2 class="panel-title mb-1">Generar reporte territorial</h2>
-                <p class="page-subtitle mb-0">
-                    Selecciona uno de tus territorios. El reporte utiliza la información registrada y agrega cálculos complementarios sin reemplazar los datos oficiales.
-                </p>
-            </div>
-            <span class="metric-icon" aria-hidden="true"><i class="bi bi-map"></i></span>
-        </div>
-
-        <form class="report-filter-form" action="<?= BASE_URL ?>index.php" method="GET">
-            <input type="hidden" name="controller" value="dataTerritorialReporte">
-            <input type="hidden" name="action" value="index">
-            <input type="hidden" name="generar" value="1">
-
-            <div class="report-filter-field">
-                <label class="form-label" for="reporte_territorio">Territorio</label>
-                <select class="form-select" id="reporte_territorio" name="estado_id" required>
-                    <option value="">Seleccionar Estado</option>
-                    <?php foreach ($territorios as $territorio): ?>
-                        <option
-                            value="<?= (int)($territorio['id'] ?? 0) ?>"
-                            <?= (int)$estadoId === (int)($territorio['id'] ?? 0) ? 'selected' : '' ?>>
-                            <?= $texto($territorio['nombre'] ?? '') ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
+    <?php if (!$reporte): ?>
+        <section class="dashboard-panel report-filter-panel mb-4">
+            <div class="report-filter-heading">
+                <div>
+                    <span class="report-eyebrow">INFORMACIÓN TERRITORIAL</span>
+                    <h2 class="panel-title mb-1">Generar reporte territorial</h2>
+                    <p class="page-subtitle mb-0">
+                        Selecciona uno de tus territorios para preparar una lectura ejecutiva con datos registrados, comparaciones y fuentes disponibles.
+                    </p>
+                </div>
+                <span class="metric-icon" aria-hidden="true"><i class="bi bi-map"></i></span>
             </div>
 
-            <button class="btn btn-system-primary" type="submit">
-                <i class="bi bi-bar-chart me-2"></i>
-                Generar reporte
-            </button>
-        </form>
-    </section>
+            <form class="report-filter-form" action="<?= BASE_URL ?>index.php" method="GET">
+                <input type="hidden" name="controller" value="dataTerritorialReporte">
+                <input type="hidden" name="action" value="index">
+                <input type="hidden" name="generar" value="1">
+
+                <div class="report-filter-field">
+                    <label class="form-label" for="reporte_territorio">Territorio</label>
+                    <select class="form-select" id="reporte_territorio" name="estado_id" required>
+                        <option value="">Seleccionar Estado</option>
+                        <?php foreach ($territorios as $territorio): ?>
+                            <option
+                                value="<?= (int)($territorio['id'] ?? 0) ?>"
+                                <?= (int)$estadoId === (int)($territorio['id'] ?? 0) ? 'selected' : '' ?>>
+                                <?= $texto($territorio['nombre'] ?? '') ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <button class="btn btn-system-primary" type="submit">
+                    <i class="bi bi-bar-chart me-2"></i>
+                    Generar reporte
+                </button>
+            </form>
+        </section>
+    <?php endif; ?>
 
     <?php if (!$reporte): ?>
         <section class="dashboard-panel data-empty-state report-empty-state">
@@ -116,23 +152,40 @@ $lecturas = is_array($reporte) ? ($reporte['lecturas'] ?? []) : [];
             <p>Verás los datos del módulo de Información territorial junto con indicadores y comparaciones calculadas a partir de la información disponible.</p>
         </section>
     <?php else: ?>
-        <section class="report-preview" aria-label="Vista previa del reporte territorial">
-            <header class="dashboard-panel report-preview-header mb-4">
-                <div>
-                    <span class="report-eyebrow">REPORTE DE INFORMACIÓN TERRITORIAL</span>
-                    <h2><?= $texto($estado['nombre'] ?? 'Territorio') ?></h2>
-                    <p>
-                        Vista analítica generada con la información actualmente disponible en el sistema.
-                        Última actualización territorial: <?= $fecha($estado['fecha_actualizacion'] ?? null) ?>.
-                    </p>
+        <section class="report-preview territorial-report-preview" aria-label="Vista previa del reporte territorial">
+            <section class="dashboard-panel territorial-focus-card mb-4">
+                <div class="territorial-focus-main">
+                    <div class="territorial-focus-copy">
+                        <span class="report-eyebrow">TERRITORIO SELECCIONADO</span>
+                        <h2><?= $texto($estado['nombre'] ?? 'Territorio') ?></h2>
+                        <p>
+                            <?= trim((string)($estado['capital'] ?? '')) !== '' ? 'Capital: ' . $texto($estado['capital']) . ' · ' : '' ?>
+                            Última actualización: <?= $fecha($estado['fecha_actualizacion'] ?? null) ?>
+                        </p>
+                    </div>
+                    <?php if ($mapaEstadoUrl !== ''): ?>
+                        <div class="territorial-focus-map" aria-label="Mapa de <?= $texto($estado['nombre'] ?? 'territorio') ?>">
+                            <img src="<?= $texto($mapaEstadoUrl) ?>" alt="Mapa de <?= $texto($estado['nombre'] ?? 'territorio') ?>">
+                        </div>
+                    <?php endif; ?>
                 </div>
-                <div class="report-preview-badge">
-                    <i class="bi bi-shield-check"></i>
-                    <span>Datos registrados y fuentes oficiales</span>
-                </div>
-            </header>
 
-            <section class="metric-grid report-summary-grid mb-4" aria-label="Resumen territorial">
+                <div class="territorial-focus-grid">
+                    <div><span>Población</span><strong><?= $numero($estado['poblacion'] ?? null) ?></strong></div>
+                    <div><span>Municipios</span><strong><?= $numero($estado['total_municipios'] ?? $estado['municipios_cargados'] ?? null) ?></strong></div>
+                    <div><span>Capital</span><strong><?= $valor($estado['capital'] ?? null) ?></strong></div>
+                    <div><span>Secretarías activas</span><strong><?= $numero($calculos['total_secretarias_activas'] ?? null) ?></strong></div>
+                    <div><span>Periodo de gobierno</span><strong><?= $valor($estado['periodo_gobierno'] ?? null) ?></strong></div>
+                    <div><span>Estado de información</span><strong>Datos registrados y fuentes disponibles</strong></div>
+                </div>
+            </section>
+
+            <div class="territorial-section-title">
+                <h2>Panorama territorial</h2>
+                <p>Indicadores principales del territorio seleccionado.</p>
+            </div>
+
+            <section class="metric-grid report-summary-grid territorial-summary-grid mb-4" aria-label="Resumen territorial">
                 <article class="metric-card">
                     <div class="metric-icon"><i class="bi bi-people"></i></div>
                     <div>
@@ -167,7 +220,7 @@ $lecturas = is_array($reporte) ? ($reporte['lecturas'] ?? []) : [];
                 <div class="report-section-heading">
                     <div>
                         <span>FICHA TERRITORIAL</span>
-                        <h3>Datos generales del Estado</h3>
+                        <h3>Gobierno y contexto institucional</h3>
                     </div>
                 </div>
                 <dl class="report-definition-grid">
@@ -205,6 +258,28 @@ $lecturas = is_array($reporte) ? ($reporte['lecturas'] ?? []) : [];
                             <strong><?= ($calculos['participacion_establecimientos_nacional'] ?? null) !== null ? $numero($calculos['participacion_establecimientos_nacional'], 2) . ' %' : '—' ?></strong>
                         </div>
                     </div>
+
+                    <?php if (!empty($sectoresGrafica)): ?>
+                        <div class="territorial-bar-chart mt-3" aria-label="Principales sectores económicos">
+                            <?php foreach ($sectoresGrafica as $sectorGrafica): ?>
+                                <?php
+                                $establecimientosSector = (int)($sectorGrafica['establecimientos'] ?? 0);
+                                $anchoSector = $maxSectorGrafica > 0
+                                    ? max(3, ($establecimientosSector / $maxSectorGrafica) * 100)
+                                    : 0;
+                                ?>
+                                <div class="territorial-bar-row">
+                                    <div class="territorial-bar-label">
+                                        <span><?= $texto($sectorGrafica['nombre_sector'] ?? '—') ?></span>
+                                        <strong><?= $numero($establecimientosSector) ?></strong>
+                                    </div>
+                                    <div class="territorial-bar-track">
+                                        <span style="width: <?= number_format($anchoSector, 2, '.', '') ?>%"></span>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
 
                     <div class="table-responsive mt-3">
                         <table class="table users-table data-table align-middle report-table">
@@ -361,13 +436,26 @@ $lecturas = is_array($reporte) ? ($reporte['lecturas'] ?? []) : [];
                     </div>
                     <div class="table-responsive">
                         <table class="table users-table data-table align-middle report-table">
-                            <thead><tr><th>Municipio</th><th class="text-end">Población</th><th class="text-end">Prioridad</th><th class="text-end">Ranking</th></tr></thead>
+                            <thead><tr><th>Municipio</th><th>Estrategia</th><th>Puntaje</th><th class="text-end">Población</th><th class="text-end">Ranking</th></tr></thead>
                             <tbody>
                                 <?php foreach ($priorizacion['recomendados'] as $municipio): ?>
+                                    <?php
+                                    $puntajeMunicipio = max(0, min(100, (int)($municipio['puntaje'] ?? 0)));
+                                    $accionMunicipio = trim((string)($municipio['accion'] ?? ''));
+                                    ?>
                                     <tr>
-                                        <td><strong><?= $texto($municipio['nombre'] ?? '—') ?></strong></td>
+                                        <td>
+                                            <strong><?= $texto($municipio['nombre'] ?? '—') ?></strong>
+                                            <small class="d-block text-muted mt-1">Prioridad <?= $texto($municipio['prioridad'] ?? '—') ?></small>
+                                        </td>
+                                        <td><span class="territorial-strategy-pill"><?= $texto($accionMunicipio !== '' ? $accionMunicipio : '—') ?></span></td>
+                                        <td>
+                                            <div class="territorial-score">
+                                                <strong><?= $puntajeMunicipio ?></strong>
+                                                <span><i style="width: <?= $puntajeMunicipio ?>%"></i></span>
+                                            </div>
+                                        </td>
                                         <td class="text-end"><?= $numero($municipio['poblacion'] ?? null) ?></td>
-                                        <td class="text-end"><span class="status-pill status-pill-active"><?= $texto($municipio['prioridad'] ?? '—') ?></span></td>
                                         <td class="text-end"><?= ($municipio['ranking'] ?? null) !== null ? (int)$municipio['ranking'] . ' de ' . (int)($municipio['total_ranking'] ?? 0) : '—' ?></td>
                                     </tr>
                                 <?php endforeach; ?>
@@ -444,5 +532,51 @@ $lecturas = is_array($reporte) ? ($reporte['lecturas'] ?? []) : [];
                 </div>
             </section>
         </section>
+    <?php endif; ?>
+
+    <?php if ($reporte): ?>
+        <div
+            class="modal fade territorial-filter-modal"
+            id="modalCambiarTerritorio"
+            tabindex="-1"
+            aria-labelledby="modalCambiarTerritorioTitulo"
+            aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <div>
+                            <h2 class="modal-title" id="modalCambiarTerritorioTitulo">Cambiar territorio</h2>
+                            <p>Selecciona otro Estado y vuelve a generar el reporte.</p>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                    </div>
+                    <form action="<?= BASE_URL ?>index.php" method="GET">
+                        <div class="modal-body">
+                            <input type="hidden" name="controller" value="dataTerritorialReporte">
+                            <input type="hidden" name="action" value="index">
+                            <input type="hidden" name="generar" value="1">
+
+                            <label class="form-label" for="reporte_territorio_modal">Territorio</label>
+                            <select class="form-select" id="reporte_territorio_modal" name="estado_id" required>
+                                <?php foreach ($territorios as $territorio): ?>
+                                    <option
+                                        value="<?= (int)($territorio['id'] ?? 0) ?>"
+                                        <?= (int)$estadoId === (int)($territorio['id'] ?? 0) ? 'selected' : '' ?>>
+                                        <?= $texto($territorio['nombre'] ?? '') ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-system-cancel" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="submit" class="btn btn-system-save">
+                                <i class="bi bi-bar-chart me-2"></i>
+                                Generar reporte
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
     <?php endif; ?>
 </section>
