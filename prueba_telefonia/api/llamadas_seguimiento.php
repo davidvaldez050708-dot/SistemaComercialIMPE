@@ -82,6 +82,7 @@ if (is_file($logPath)) {
             $estadoZadarma[$pbxCallId] = [
                 'respuesta' => null,
                 'fin' => null,
+                'grabada' => false,
                 'grabacion' => false,
             ];
         }
@@ -91,6 +92,9 @@ if (is_file($logPath)) {
             $estadoZadarma[$pbxCallId]['respuesta'] = $fila;
         } elseif ($evento === 'NOTIFY_OUT_END') {
             $estadoZadarma[$pbxCallId]['fin'] = $fila;
+            $estadoZadarma[$pbxCallId]['grabada'] =
+                (string)($fila['is_recorded'] ?? '') === '1' ||
+                trim((string)($fila['call_id_with_rec'] ?? '')) !== '';
         } elseif ($evento === 'NOTIFY_RECORD') {
             $estadoZadarma[$pbxCallId]['grabacion'] = true;
         }
@@ -187,6 +191,14 @@ foreach ($modelo->obtenerInteraccionesSeguimiento($seguimientoId) as $interaccio
         $interaccionId > 0 &&
         ($grabacionTwilio || $grabacionZadarma);
 
+    $grabacionProcesando =
+        !$excluirGrabacion &&
+        $proveedor === 'ZADARMA' &&
+        $duracion > 0 &&
+        preg_match('/^out_[a-fA-F0-9]{32,64}$/', $idExterno) &&
+        !$grabacionZadarma &&
+        !empty($estadoZadarma[$idExterno]['grabada']);
+
     $nombreUsuario = trim(
         (string)($interaccion['nombre'] ?? '') . ' ' .
         (string)($interaccion['apellidos'] ?? '')
@@ -206,6 +218,7 @@ foreach ($modelo->obtenerInteraccionesSeguimiento($seguimientoId) as $interaccio
         'rol' => (string)($interaccion['rol'] ?? ''),
         'excluir_grabacion' => $excluirGrabacion,
         'tiene_grabacion' => (bool)$puedeTenerGrabacion,
+        'grabacion_procesando' => (bool)$grabacionProcesando,
         'grabacion_url' => $puedeTenerGrabacion
             ? 'prueba_telefonia/api/grabacion_interaccion.php?interaccion_id=' . $interaccionId
             : null
