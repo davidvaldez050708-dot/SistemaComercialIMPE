@@ -211,9 +211,10 @@
 
         const cabeceraDetalle = function (reunion) {
             const estado = escapar(valorSeguro(reunion.estado_etiqueta, 'Pendiente'));
+            const estadoVisual = String(reunion.estado_visual || '').trim() || estadoClase(reunion.estado);
             return '' +
                 '<div class="agenda-detail-card">' +
-                    '<span class="agenda-status-pill is-' + escapar(estadoClase(reunion.estado)) + '">' + estado + '</span>' +
+                    '<span class="agenda-status-pill is-' + escapar(estadoVisual) + '">' + estado + '</span>' +
                     '<strong>' + escapar(valorSeguro(reunion.nombre_entidad, 'Reunión')) + '</strong>' +
                     '<div class="agenda-detail-grid">' +
                         itemDetalle('Fecha y hora', reunion.fecha_legible) +
@@ -282,13 +283,23 @@
             '</div>';
 
             if (estado === 'SOLICITADA') {
-                html += '<div class="agenda-action-box">' +
-                    '<h6>Esperando a Cuenta Clave</h6>' +
-                    '<p>La propuesta ya fue enviada. Cuenta Clave debe confirmar la fecha y agregar los datos de Zoom.</p>' +
-                    '<div class="agenda-inline-note is-warning">' +
-                        '<i class="bi bi-hourglass-split"></i> Pendiente de confirmación KAM.' +
-                    '</div>' +
-                '</div>';
+                if (Boolean(reunion.esta_vencida)) {
+                    html += '<div class="agenda-action-box">' +
+                        '<h6>Fecha vencida sin confirmación</h6>' +
+                        '<p>La fecha propuesta ya pasó y Cuenta Clave no confirmó la reunión.</p>' +
+                        '<div class="agenda-inline-note is-danger">' +
+                            '<i class="bi bi-exclamation-triangle"></i> Requiere una nueva fecha antes de continuar.' +
+                        '</div>' +
+                    '</div>';
+                } else {
+                    html += '<div class="agenda-action-box">' +
+                        '<h6>Esperando a Cuenta Clave</h6>' +
+                        '<p>La propuesta ya fue enviada. Cuenta Clave debe confirmar la fecha y agregar los datos de Zoom.</p>' +
+                        '<div class="agenda-inline-note is-warning">' +
+                            '<i class="bi bi-hourglass-split"></i> Pendiente de confirmación KAM.' +
+                        '</div>' +
+                    '</div>';
+                }
                 return html;
             }
 
@@ -392,26 +403,37 @@
             const requiereZoom = modalidad === 'VIRTUAL' || modalidad === 'HIBRIDA';
             const requiereLugar = modalidad === 'PRESENCIAL' || modalidad === 'HIBRIDA';
 
+            if (Boolean(reunion.esta_vencida)) {
+                html += '<div class="agenda-action-box">' +
+                    '<h6>La fecha propuesta ya venció</h6>' +
+                    '<p>No es posible confirmar una reunión con una fecha pasada. Solicita al Analista una nueva propuesta.</p>' +
+                    '<div class="agenda-inline-note is-danger">' +
+                        '<i class="bi bi-exclamation-triangle"></i> Confirmación bloqueada hasta recibir una nueva fecha.' +
+                    '</div>' +
+                '</div>';
+            } else {
+                html += '<div class="agenda-action-box">' +
+                    '<h6>Confirmar propuesta</h6>' +
+                    '<p>Si la fecha funciona, genera la reunión en Zoom y adjunta el enlace antes de confirmar.</p>' +
+                    '<form data-agenda-action-form data-agenda-action="confirmar">' +
+                        '<input type="hidden" name="reunion_id" value="' + Number(reunion.id || 0) + '">' +
+                        '<div class="row g-3">' +
+                            (requiereZoom
+                                ? '<div class="col-12"><label class="form-label">Enlace de Zoom</label><input class="form-control system-form-control" type="url" name="zoom_url" maxlength="600" placeholder="https://zoom.us/j/..." required></div>'
+                                : '') +
+                            (requiereLugar
+                                ? '<div class="col-12"><label class="form-label">Lugar</label><input class="form-control system-form-control" type="text" name="ubicacion" maxlength="500" placeholder="Dirección, sala o punto de reunión" required></div>'
+                                : '') +
+                            '<div class="col-12"><label class="form-label">Nota para el Analista</label><textarea class="form-control system-form-control" name="notas_kam" rows="3" maxlength="4000" placeholder="Indicaciones, participantes u observaciones..."></textarea></div>' +
+                        '</div>' +
+                        '<div class="agenda-action-row">' +
+                            '<button class="btn btn-system-save" type="submit"><i class="bi bi-calendar-check"></i> Confirmar reunión</button>' +
+                        '</div>' +
+                    '</form>' +
+                '</div>';
+            }
+
             html += '<div class="agenda-action-box">' +
-                '<h6>Confirmar propuesta</h6>' +
-                '<p>Si la fecha funciona, genera la reunión en Zoom y adjunta el enlace antes de confirmar.</p>' +
-                '<form data-agenda-action-form data-agenda-action="confirmar">' +
-                    '<input type="hidden" name="reunion_id" value="' + Number(reunion.id || 0) + '">' +
-                    '<div class="row g-3">' +
-                        (requiereZoom
-                            ? '<div class="col-12"><label class="form-label">Enlace de Zoom</label><input class="form-control system-form-control" type="url" name="zoom_url" maxlength="600" placeholder="https://zoom.us/j/..." required></div>'
-                            : '') +
-                        (requiereLugar
-                            ? '<div class="col-12"><label class="form-label">Lugar</label><input class="form-control system-form-control" type="text" name="ubicacion" maxlength="500" placeholder="Dirección, sala o punto de reunión" required></div>'
-                            : '') +
-                        '<div class="col-12"><label class="form-label">Nota para el Analista</label><textarea class="form-control system-form-control" name="notas_kam" rows="3" maxlength="4000" placeholder="Indicaciones, participantes u observaciones..."></textarea></div>' +
-                    '</div>' +
-                    '<div class="agenda-action-row">' +
-                        '<button class="btn btn-system-save" type="submit"><i class="bi bi-calendar-check"></i> Confirmar reunión</button>' +
-                    '</div>' +
-                '</form>' +
-            '</div>' +
-            '<div class="agenda-action-box">' +
                 '<h6>¿La fecha no funciona?</h6>' +
                 '<p>Solicita al Analista que proponga otra fecha y explica el motivo.</p>' +
                 '<form data-agenda-action-form data-agenda-action="solicitarCambio">' +
