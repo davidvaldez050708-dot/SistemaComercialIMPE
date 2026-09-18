@@ -424,10 +424,18 @@ class SeguimientoVinculacionReporteController
 
         $municipiosPorEstado = [];
 
-        foreach ($territoriosPorId as $territorioId => $territorio) {
-            $municipiosPorEstado[$territorioId] = $modelo->obtenerMunicipiosActivosEstado(
-                $territorioId
-            );
+        if ($forzarGeneracion) {
+            if ($estadoId > 0 && isset($territoriosPorId[$estadoId])) {
+                $municipiosPorEstado[$estadoId] = $modelo->obtenerMunicipiosActivosEstado(
+                    $estadoId
+                );
+            }
+        } else {
+            foreach ($territoriosPorId as $territorioId => $territorio) {
+                $municipiosPorEstado[$territorioId] = $modelo->obtenerMunicipiosActivosEstado(
+                    $territorioId
+                );
+            }
         }
 
         if ($estadoId <= 0) {
