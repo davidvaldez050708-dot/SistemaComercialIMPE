@@ -35,65 +35,27 @@ class SeguimientoReporteAnaliticaService
 
         $fechaInicial = $this->normalizarFecha($fechaInicial);
         $fechaFinal = $this->normalizarFecha($fechaFinal);
-        $interacciones = $this->obtenerInteracciones(
+        $resumenInteracciones = $this->obtenerResumenInteracciones(
             $autorizados,
             $fechaInicial,
             $fechaFinal
         );
 
         $canales = [
-            'llamadas' => 0,
-            'correos' => 0,
-            'whatsapp' => 0,
-            'otros' => 0
+            'llamadas' => (int)($resumenInteracciones['llamadas'] ?? 0),
+            'correos' => (int)($resumenInteracciones['correos'] ?? 0),
+            'whatsapp' => (int)($resumenInteracciones['whatsapp'] ?? 0),
+            'otros' => (int)($resumenInteracciones['otros'] ?? 0)
         ];
         $llamadas = [
-            'total' => 0,
-            'contactadas' => 0,
-            'sin_respuesta' => 0,
-            'numero_incorrecto' => 0,
-            'volver_llamar' => 0,
-            'otros' => 0,
+            'total' => (int)($resumenInteracciones['llamadas'] ?? 0),
+            'contactadas' => (int)($resumenInteracciones['contactadas'] ?? 0),
+            'sin_respuesta' => (int)($resumenInteracciones['sin_respuesta'] ?? 0),
+            'numero_incorrecto' => (int)($resumenInteracciones['numero_incorrecto'] ?? 0),
+            'volver_llamar' => (int)($resumenInteracciones['volver_llamar'] ?? 0),
+            'otros' => (int)($resumenInteracciones['llamadas_otros'] ?? 0),
             'tasa_contacto' => 0.0
         ];
-        $seguimientosConActividad = [];
-
-        foreach ($interacciones as $interaccion) {
-            $seguimientoId = (int)($interaccion['seguimiento_id'] ?? 0);
-            if ($seguimientoId > 0) {
-                $seguimientosConActividad[$seguimientoId] = true;
-            }
-
-            $canal = strtoupper(trim((string)($interaccion['canal'] ?? '')));
-            $resultado = strtoupper(trim((string)($interaccion['resultado'] ?? '')));
-
-            if (in_array($canal, ['LLAMADA_IP', 'LLAMADA'], true)) {
-                $canales['llamadas']++;
-                $llamadas['total']++;
-
-                if ($resultado === 'CONTACTADO') {
-                    $llamadas['contactadas']++;
-                } elseif ($resultado === 'SIN_RESPUESTA') {
-                    $llamadas['sin_respuesta']++;
-                } elseif ($resultado === 'NUMERO_INCORRECTO') {
-                    $llamadas['numero_incorrecto']++;
-                } elseif ($resultado === 'SOLICITO_LLAMAR_DESPUES') {
-                    $llamadas['volver_llamar']++;
-                } else {
-                    $llamadas['otros']++;
-                }
-
-                continue;
-            }
-
-            if ($canal === 'CORREO') {
-                $canales['correos']++;
-            } elseif ($canal === 'WHATSAPP') {
-                $canales['whatsapp']++;
-            } else {
-                $canales['otros']++;
-            }
-        }
 
         if ($llamadas['total'] > 0) {
             $llamadas['tasa_contacto'] = round(
@@ -103,8 +65,8 @@ class SeguimientoReporteAnaliticaService
         }
 
         $totalSeguimientos = count($autorizados);
-        $totalInteracciones = count($interacciones);
-        $totalConActividad = count($seguimientosConActividad);
+        $totalInteracciones = (int)($resumenInteracciones['total_interacciones'] ?? 0);
+        $totalConActividad = (int)($resumenInteracciones['seguimientos_con_actividad'] ?? 0);
         $atenciones = (new SeguimientoAtencionOperativaService())->obtenerPorIds($autorizados);
         $totalAtencion = count($atenciones);
 
@@ -209,17 +171,78 @@ class SeguimientoReporteAnaliticaService
         return array_values($autorizados);
     }
 
-    private function obtenerInteracciones(array $ids, $fechaInicial, $fechaFinal)
+    private function obtenerResumenInteracciones(array $ids, $fechaInicial, $fechaFinal)
     {
         if (empty($ids)) {
-            return [];
+            return [
+                'total_interacciones' => 0,
+                'seguimientos_con_actividad' => 0,
+                'llamadas' => 0,
+                'correos' => 0,
+                'whatsapp' => 0,
+                'otros' => 0,
+                'contactadas' => 0,
+                'sin_respuesta' => 0,
+                'numero_incorrecto' => 0,
+                'volver_llamar' => 0,
+                'llamadas_otros' => 0
+            ];
         }
 
         $placeholders = implode(',', array_fill(0, count($ids), '?'));
-        $sql = "SELECT seguimiento_id, canal, resultado, fecha_inicio
+        $sql = "SELECT
+                    COUNT(*) AS total_interacciones,
+                    COUNT(DISTINCT seguimiento_id) AS seguimientos_con_actividad,
+                    SUM(CASE
+                        WHEN UPPER(TRIM(COALESCE(canal, ''))) IN ('LLAMADA_IP', 'LLAMADA')
+                        THEN 1 ELSE 0
+                    END) AS llamadas,
+                    SUM(CASE
+                        WHEN UPPER(TRIM(COALESCE(canal, ''))) = 'CORREO'
+                        THEN 1 ELSE 0
+                    END) AS correos,
+                    SUM(CASE
+                        WHEN UPPER(TRIM(COALESCE(canal, ''))) = 'WHATSAPP'
+                        THEN 1 ELSE 0
+                    END) AS whatsapp,
+                    SUM(CASE
+                        WHEN UPPER(TRIM(COALESCE(canal, ''))) NOT IN ('LLAMADA_IP', 'LLAMADA', 'CORREO', 'WHATSAPP')
+                        THEN 1 ELSE 0
+                    END) AS otros,
+                    SUM(CASE
+                        WHEN UPPER(TRIM(COALESCE(canal, ''))) IN ('LLAMADA_IP', 'LLAMADA')
+                         AND UPPER(TRIM(COALESCE(resultado, ''))) = 'CONTACTADO'
+                        THEN 1 ELSE 0
+                    END) AS contactadas,
+                    SUM(CASE
+                        WHEN UPPER(TRIM(COALESCE(canal, ''))) IN ('LLAMADA_IP', 'LLAMADA')
+                         AND UPPER(TRIM(COALESCE(resultado, ''))) = 'SIN_RESPUESTA'
+                        THEN 1 ELSE 0
+                    END) AS sin_respuesta,
+                    SUM(CASE
+                        WHEN UPPER(TRIM(COALESCE(canal, ''))) IN ('LLAMADA_IP', 'LLAMADA')
+                         AND UPPER(TRIM(COALESCE(resultado, ''))) = 'NUMERO_INCORRECTO'
+                        THEN 1 ELSE 0
+                    END) AS numero_incorrecto,
+                    SUM(CASE
+                        WHEN UPPER(TRIM(COALESCE(canal, ''))) IN ('LLAMADA_IP', 'LLAMADA')
+                         AND UPPER(TRIM(COALESCE(resultado, ''))) = 'SOLICITO_LLAMAR_DESPUES'
+                        THEN 1 ELSE 0
+                    END) AS volver_llamar,
+                    SUM(CASE
+                        WHEN UPPER(TRIM(COALESCE(canal, ''))) IN ('LLAMADA_IP', 'LLAMADA')
+                         AND UPPER(TRIM(COALESCE(resultado, ''))) NOT IN (
+                            'CONTACTADO',
+                            'SIN_RESPUESTA',
+                            'NUMERO_INCORRECTO',
+                            'SOLICITO_LLAMAR_DESPUES'
+                         )
+                        THEN 1 ELSE 0
+                    END) AS llamadas_otros
                 FROM interacciones_vinculacion
                 WHERE seguimiento_id IN ($placeholders)
                   AND UPPER(TRIM(COALESCE(canal, ''))) <> 'SISTEMA'";
+
         $parametros = array_map('intval', $ids);
         $tipos = str_repeat('i', count($parametros));
 
@@ -235,12 +258,11 @@ class SeguimientoReporteAnaliticaService
             $tipos .= 's';
         }
 
-        $sql .= " ORDER BY fecha_inicio ASC, id ASC";
         $stmt = $this->connection->prepare($sql);
         $this->vincularParametros($stmt, $tipos, $parametros);
         $stmt->execute();
 
-        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        return $stmt->get_result()->fetch_assoc() ?: [];
     }
 
     private function normalizarIds(array $ids)
