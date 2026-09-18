@@ -35,6 +35,186 @@
                 );
             };
 
+            const extraerLineasDetalle = function (nodo) {
+                if (!nodo) {
+                    return [];
+                }
+
+                const lineas = [];
+                let actual = '';
+
+                const recorrer = function (padre) {
+                    Array.from(padre.childNodes).forEach(function (hijo) {
+                        if (hijo.nodeType === Node.TEXT_NODE) {
+                            actual += String(hijo.nodeValue || '');
+                            return;
+                        }
+
+                        if (hijo.nodeName === 'BR') {
+                            if (actual.trim()) {
+                                lineas.push(actual.trim());
+                            }
+                            actual = '';
+                            return;
+                        }
+
+                        recorrer(hijo);
+                    });
+                };
+
+                recorrer(nodo);
+
+                if (actual.trim()) {
+                    lineas.push(actual.trim());
+                }
+
+                return lineas
+                    .map(fechaInternaLegible)
+                    .filter(Boolean);
+            };
+
+            const descomponerDetalle = function (nodo) {
+                const lineas = extraerLineasDetalle(nodo);
+                let contacto = '';
+
+                if (lineas.length > 0) {
+                    const coincidencia = lineas[0].match(
+                        /^(?:Persona\s+atendi[oó]|Atendi[oó]|Contacto)\s*:\s*(.+)$/i
+                    );
+
+                    if (coincidencia) {
+                        contacto = String(coincidencia[1] || '').trim();
+                        lineas.shift();
+                    }
+                }
+
+                return {
+                    contacto: contacto,
+                    detalle: lineas.join('\n').trim()
+                };
+            };
+
+            const descomponerMeta = function (texto) {
+                const partes = String(texto || '')
+                    .split('·')
+                    .map(function (parte) {
+                        return parte.trim();
+                    })
+                    .filter(Boolean);
+
+                let fecha = '';
+                if (
+                    partes.length >= 2 &&
+                    /\b\d{4}\b/.test(partes[0]) &&
+                    /^\d{1,2}:\d{2}$/.test(partes[1])
+                ) {
+                    fecha = partes.splice(0, 2).join(' · ');
+                } else if (partes.length > 0) {
+                    fecha = partes.shift();
+                }
+
+                return {
+                    fecha: fecha,
+                    estados: partes
+                };
+            };
+
+            const crearFilaDetalle = function (etiqueta, valor) {
+                const texto = String(valor || '').trim();
+                if (!texto) {
+                    return null;
+                }
+
+                const fila = document.createElement('div');
+                fila.className = 'linkage-activity-detail-row';
+
+                const label = document.createElement('span');
+                label.className = 'linkage-activity-detail-label';
+                label.textContent = etiqueta;
+
+                const contenido = document.createElement('span');
+                contenido.className = 'linkage-activity-detail-value';
+                contenido.textContent = texto;
+
+                fila.appendChild(label);
+                fila.appendChild(contenido);
+                return fila;
+            };
+
+            const estructurarActividad = function (item, titulo, detalle, metadata) {
+                const cabecera = titulo?.parentElement;
+                if (!cabecera) {
+                    return;
+                }
+
+                cabecera.classList.add('linkage-activity-header');
+
+                const metaInfo = descomponerMeta(metadata?.textContent || '');
+                metadata?.remove();
+
+                const meta = document.createElement('div');
+                meta.className = 'linkage-activity-meta';
+
+                if (metaInfo.fecha) {
+                    const fecha = document.createElement('span');
+                    fecha.className = 'linkage-activity-date';
+                    fecha.textContent = metaInfo.fecha;
+                    meta.appendChild(fecha);
+                }
+
+                metaInfo.estados.forEach(function (estado) {
+                    const badge = document.createElement('span');
+                    const normalizado = normalizar(estado);
+                    badge.className = 'linkage-activity-badge';
+
+                    if (normalizado === 'contacto efectivo') {
+                        badge.classList.add('is-contact');
+                    } else if (
+                        normalizado === 'sin contacto' ||
+                        normalizado === 'sin respuesta'
+                    ) {
+                        badge.classList.add('is-warning');
+                    } else if (normalizado === 'sistema') {
+                        badge.classList.add('is-system');
+                    }
+
+                    badge.textContent = estado;
+                    meta.appendChild(badge);
+                });
+
+                cabecera.appendChild(meta);
+
+                if (!detalle) {
+                    return;
+                }
+
+                const informacion = descomponerDetalle(detalle);
+                const cuerpo = document.createElement('div');
+                cuerpo.className = 'linkage-activity-detail';
+
+                const contacto = crearFilaDetalle('Contacto', informacion.contacto);
+                if (contacto) {
+                    cuerpo.appendChild(contacto);
+                }
+
+                const valorDetalle =
+                    informacion.detalle &&
+                    normalizar(informacion.detalle) !== 'sin detalle adicional.'
+                        ? informacion.detalle
+                        : '';
+
+                const filaDetalle = crearFilaDetalle('Detalle', valorDetalle);
+                if (filaDetalle) {
+                    cuerpo.appendChild(filaDetalle);
+                }
+
+                if (cuerpo.children.length > 0) {
+                    detalle.replaceWith(cuerpo);
+                } else {
+                    detalle.remove();
+                }
+            };
+
             const nav = document.querySelector('.linkage-detail-tabs');
             const seccionActividad =
                 document.querySelector('[data-expediente-activity-section]') ||
@@ -182,10 +362,6 @@
                     titulo.textContent = tituloSemantico;
                 }
 
-                if (detalle) {
-                    detalle.textContent = fechaInternaLegible(detalle.textContent);
-                }
-
                 const metadata = item.querySelector('div > span');
                 if (metadata) {
                     let meta = metadata.textContent.replace(/\s+/g, ' ').trim();
@@ -200,6 +376,7 @@
                     metadata.textContent = meta;
                 }
 
+                estructurarActividad(item, titulo, detalle, metadata);
                 item.dataset.activityVisualType = tipo;
 
                 let iconoNodo = item.querySelector('.linkage-expediente-history-icon');
