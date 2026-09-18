@@ -33,6 +33,10 @@
         let statusBusy = false;
         let timerInterval = null;
         let timerStartedAt = null;
+        let conversationStarted = false;
+        let muted = false;
+        let nativeStateInterval = null;
+        const microphoneTracks = new Set();
         let pendingMetadata = null;
         let awaitingInteractionSave = false;
         let linkingMetadata = false;
@@ -40,6 +44,38 @@
         let els = null;
 
         window.IMPE_ZADARMA_TELEPHONY_READY = false;
+
+        const capturarMicrofonoZadarma = function () {
+            const mediaDevices = navigator.mediaDevices;
+            if (
+                !mediaDevices ||
+                typeof mediaDevices.getUserMedia !== 'function' ||
+                mediaDevices.getUserMedia.__impeZadarmaWrapped
+            ) {
+                return;
+            }
+
+            const original = mediaDevices.getUserMedia.bind(mediaDevices);
+            const wrapped = function (constraints) {
+                return original(constraints).then(function (stream) {
+                    if (constraints && constraints.audio) {
+                        stream.getAudioTracks().forEach(function (track) {
+                            microphoneTracks.add(track);
+                            track.enabled = !muted;
+                            track.addEventListener('ended', function () {
+                                microphoneTracks.delete(track);
+                            }, { once: true });
+                        });
+                    }
+                    return stream;
+                });
+            };
+
+            wrapped.__impeZadarmaWrapped = true;
+            mediaDevices.getUserMedia = wrapped;
+        };
+
+        capturarMicrofonoZadarma();
 
         const sleep = function (ms) {
             return new Promise(function (resolve) {
@@ -315,6 +351,9 @@
                                     '<button type="button" class="btn btn-system-save" data-call-start disabled>' +
                                         '<i class="bi bi-telephone"></i> Llamar' +
                                     '</button>' +
+                                    '<button type="button" class="btn btn-system-light" data-call-mute disabled>' +
+                                        '<i class="bi bi-mic-mute"></i> Silenciar' +
+                                    '</button>' +
                                     '<button type="button" class="btn btn-outline-danger" data-call-hangup disabled>' +
                                         '<i class="bi bi-telephone-x"></i> Colgar' +
                                     '</button>' +
@@ -346,6 +385,7 @@
                 status: modalEl.querySelector('[data-call-status]'),
                 timer: modalEl.querySelector('[data-call-timer]'),
                 start: modalEl.querySelector('[data-call-start]'),
+                mute: modalEl.querySelector('[data-call-mute]'),
                 hangup: modalEl.querySelector('[data-call-hangup]'),
                 result: modalEl.querySelector('[data-call-result]'),
                 resultText: modalEl.querySelector('[data-call-result-text]'),
@@ -368,18 +408,20 @@
                 });
 
                 els.start.addEventListener('click', makeCall);
+                els.mute.addEventListener('click', toggleMute);
                 els.hangup.addEventListener('click', hangup);
                 els.register.addEventListener('click', abrirRegistroResultado);
             }
         };
 
-        const startTimer = function () {
+        const startTimer = function (segundosIniciales) {
             if (timerInterval) {
                 return;
             }
 
-            timerStartedAt = Date.now();
-            els.timer.textContent = '00:00';
+            const iniciales = Math.max(0, Number(segundosIniciales) || 0);
+            timerStartedAt = Date.now() - (iniciales * 1000);
+            els.timer.textContent = formatDuration(iniciales);
             timerInterval = window.setInterval(function () {
                 els.timer.textContent = formatDuration(
                     Math.floor((Date.now() - timerStartedAt) / 1000)
@@ -403,24 +445,150 @@
             statusBusy = false;
         };
 
+        const setMuted = function (value) {
+            muted = Boolean(value);
+
+            microphoneTracks.forEach(function (track) {
+                if (track && track.readyState === 'live') {
+                    track.enabled = !muted;
+                }
+            });
+
+            if (els?.mute) {
+                els.mute.innerHTML = muted
+                    ? '<i class="bi bi-mic"></i> Activar micrófono'
+                    : '<i class="bi bi-mic-mute"></i> Silenciar';
+            }
+        };
+
+        function toggleMute() {
+            if (!activeCall || !conversationStarted) {
+                return;
+            }
+            setMuted(!muted);
+        }
+
+        const marcarConversacionIniciada = function (segundosIniciales) {
+            if (!activeCall) {
+                return;
+            }
+
+            if (!conversationStarted) {
+                conversationStarted = true;
+                els.status.textContent = 'Llamada en curso';
+                els.mute.disabled = false;
+                startTimer(segundosIniciales || 0);
+                return;
+            }
+
+            if (!timerInterval) {
+                startTimer(segundosIniciales || 0);
+            }
+        };
+
+        const segundosWidgetNativo = function () {
+            const candidatos = document.querySelectorAll(
+                '[id*="zadarma" i], [class*="zadarma" i], ' +
+                '[id*="zdrm" i], [class*="zdrm" i], ' +
+                '[id*="webphone" i], [class*="webphone" i]'
+            );
+            let maximo = 0;
+
+            candidatos.forEach(function (elemento) {
+                if (
+                    !(elemento instanceof HTMLElement) ||
+                    elemento.closest('#modalLlamadaVinculacion')
+                ) {
+                    return;
+                }
+
+                const texto = String(elemento.textContent || '');
+                const expresion = /(?:^|\D)(\d{1,2}):([0-5]\d)(?:\D|$)/g;
+                let match;
+
+                while ((match = expresion.exec(texto)) !== null) {
+                    const segundos = (Number(match[1]) * 60) + Number(match[2]);
+                    maximo = Math.max(maximo, segundos);
+                }
+            });
+
+            return maximo;
+        };
+
+        const widgetNativoIndicaConversacion = function () {
+            const candidatos = document.querySelectorAll(
+                '[id*="zadarma" i], [class*="zadarma" i], ' +
+                '[id*="zdrm" i], [class*="zdrm" i], ' +
+                '[id*="webphone" i], [class*="webphone" i]'
+            );
+            let texto = '';
+
+            candidatos.forEach(function (elemento) {
+                if (
+                    elemento instanceof HTMLElement &&
+                    !elemento.closest('#modalLlamadaVinculacion')
+                ) {
+                    texto += ' ' + String(elemento.textContent || '');
+                }
+            });
+
+            texto = texto
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .toLowerCase();
+
+            return /(llamada en curso|en llamada|conectad[oa]|hablando|conversation|connected|talking)/.test(texto);
+        };
+
+        const revisarEstadoWidgetNativo = function () {
+            if (!activeCall || conversationStarted) {
+                return;
+            }
+
+            const segundos = segundosWidgetNativo();
+            if (segundos > 0 || widgetNativoIndicaConversacion()) {
+                marcarConversacionIniciada(segundos);
+            }
+        };
+
+        const iniciarMonitorWidgetNativo = function () {
+            if (nativeStateInterval) {
+                window.clearInterval(nativeStateInterval);
+            }
+
+            revisarEstadoWidgetNativo();
+            nativeStateInterval = window.setInterval(revisarEstadoWidgetNativo, 300);
+        };
+
+        const detenerMonitorWidgetNativo = function () {
+            if (nativeStateInterval) {
+                window.clearInterval(nativeStateInterval);
+                nativeStateInterval = null;
+            }
+        };
+
         const resetForCall = function () {
             stopTimer();
             stopStatusPolling();
+            detenerMonitorWidgetNativo();
             activeCall = false;
             hangingUp = false;
             finishing = false;
+            conversationStarted = false;
+            setMuted(false);
             currentPbxCallId = '';
             callRequestedAt = 0;
             lastCallState = null;
             els.timer.textContent = '00:00';
             els.status.textContent = widgetReady ? 'Teléfono listo' : 'Preparando teléfono…';
+            els.mute.disabled = true;
             els.hangup.disabled = true;
             els.start.disabled = !widgetReady;
             els.result.classList.add('d-none');
             els.register.classList.add('d-none');
         };
 
-        const fetchCallState = async function () {
+        const fetchCallState = async function (forzarFinal) {
             if (!currentPhone || !callRequestedAt) {
                 return null;
             }
@@ -429,6 +597,10 @@
                 destination: currentPhone,
                 since: String(callRequestedAt)
             });
+
+            if (forzarFinal) {
+                params.set('final', '1');
+            }
             const response = await fetch(estadoUrl + '?' + params.toString(), {
                 method: 'GET',
                 headers: {
@@ -476,6 +648,7 @@
                 : 0;
 
             stopStatusPolling();
+            detenerMonitorWidgetNativo();
             stopTimer();
             activeCall = false;
             hangingUp = false;
@@ -518,7 +691,9 @@
 
             els.status.textContent = label || etiquetaEstado(finalStatus);
             els.start.disabled = !widgetReady;
+            els.mute.disabled = true;
             els.hangup.disabled = true;
+            setMuted(false);
 
             if (duration > 0) {
                 els.timer.textContent = formatDuration(duration);
@@ -531,6 +706,7 @@
                 duration: duration,
                 start_time: finalCall.start_time || null,
                 end_time: finalCall.end_time || null,
+                requested_at: callRequestedAt,
                 to: finalCall.destination || currentPhone,
                 is_recorded: marcadaComoGrabada,
                 record_ready: grabacionLista,
@@ -566,8 +742,8 @@
             const status = String(call.status || '');
             els.status.textContent = etiquetaEstado(status);
 
-            if (status === 'in-progress' && !timerInterval) {
-                startTimer();
+            if (status === 'in-progress') {
+                marcarConversacionIniciada(0);
             }
 
             if (estadoEsFinal(status)) {
@@ -612,7 +788,9 @@
                 callRequestedAt = Math.floor(Date.now() / 1000);
                 els.status.textContent = 'Marcando…';
                 els.start.disabled = true;
+                els.mute.disabled = true;
                 els.hangup.disabled = false;
+                iniciarMonitorWidgetNativo();
 
                 const destino = currentPhone.replace(/^\+/, '');
                 const resultado = window.zdrmWebPhone.regToCall(destino);
@@ -654,18 +832,29 @@
                     return;
                 }
 
-                try {
-                    const call = await fetchCallState();
-                    if (call && estadoEsFinal(call.status)) {
-                        await finishCall(call, etiquetaEstado(call.status));
-                        return;
+                let finalCall = null;
+
+                for (let intento = 0; intento < 5; intento += 1) {
+                    try {
+                        const call = await fetchCallState(true);
+                        if (call) {
+                            finalCall = call;
+                            if (estadoEsFinal(call.status)) {
+                                break;
+                            }
+                        }
+                    } catch (error) {
+                        console.warn(error);
                     }
-                } catch (error) {
-                    console.warn(error);
+
+                    await sleep(900);
                 }
 
-                await finishCall(lastCallState, 'Llamada finalizada');
-            }, 6500);
+                await finishCall(
+                    finalCall || lastCallState,
+                    finalCall ? etiquetaEstado(finalCall.status) : 'Llamada finalizada'
+                );
+            }, 1200);
         }
 
         const agregarResumenTecnico = function (formulario, metadata) {
@@ -815,17 +1004,14 @@
                 return;
             }
 
-            if (!pendingMetadata.pbx_call_id) {
-                pendingMetadata = null;
-                awaitingInteractionSave = false;
-                return;
-            }
-
             linkingMetadata = true;
             const metadata = pendingMetadata;
             const formData = new FormData();
             formData.set('seguimiento_id', String(metadata.seguimiento_id));
-            formData.set('pbx_call_id', metadata.pbx_call_id);
+            formData.set('pbx_call_id', String(metadata.pbx_call_id || ''));
+            formData.set('destination', String(metadata.to || currentPhone || ''));
+            formData.set('since', String(metadata.requested_at || callRequestedAt || 0));
+            formData.set('duration_client', String(Math.max(0, Number(metadata.duration || 0))));
 
             try {
                 const response = await fetch(vincularUrl, {
