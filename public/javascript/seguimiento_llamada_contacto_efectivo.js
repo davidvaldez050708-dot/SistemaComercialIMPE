@@ -180,10 +180,25 @@
                 return;
             }
 
-            const textoLimpio = limpiarMarcadores(textoOriginal);
-            if (textoLimpio) {
-                bloque.textContent = textoLimpio;
-            } else {
+            const walker = document.createTreeWalker(
+                bloque,
+                NodeFilter.SHOW_TEXT
+            );
+            const nodos = [];
+            let nodo = walker.nextNode();
+
+            while (nodo) {
+                nodos.push(nodo);
+                nodo = walker.nextNode();
+            }
+
+            nodos.forEach(function (nodoTexto) {
+                nodoTexto.nodeValue = String(nodoTexto.nodeValue || '')
+                    .replaceAll(MARCADOR_CONTACTO, '')
+                    .replaceAll(MARCADOR_SIN_CONTACTO, '');
+            });
+
+            if (!String(bloque.textContent || '').trim()) {
                 bloque.remove();
             }
         });
