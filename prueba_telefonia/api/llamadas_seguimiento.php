@@ -111,6 +111,54 @@ $resultadosConContacto = [
 $zadarmaLookup = null;
 $zadarmaLookupDisponible = true;
 
+function descomponerNotasLlamada(string $notas, string $contactoReferencia = ''): array
+{
+    $notas = trim(str_replace(["\r\n", "\r"], "\n", $notas));
+    if ($notas === '') {
+        return ['contacto' => '', 'detalle' => ''];
+    }
+
+    $lineas = array_values(array_filter(
+        array_map('trim', explode("\n", $notas)),
+        static function ($linea) {
+            return $linea !== '';
+        }
+    ));
+
+    $contacto = '';
+    $detalle = [];
+    $prefijo = '/^(?:Persona\s+atendi[oó]|Atendi[oó]|Contacto)\s*:\s*(.*)$/iu';
+
+    if (!empty($lineas) && preg_match($prefijo, $lineas[0], $coincidencia)) {
+        $valor = trim((string)($coincidencia[1] ?? ''));
+        $contactoReferencia = trim($contactoReferencia);
+
+        if (
+            $contactoReferencia !== '' &&
+            stripos($valor, $contactoReferencia) === 0
+        ) {
+            $contacto = $contactoReferencia;
+            $resto = trim(substr($valor, strlen($contactoReferencia)));
+            if ($resto !== '') {
+                $detalle[] = $resto;
+            }
+        } else {
+            $contacto = $valor;
+        }
+
+        array_shift($lineas);
+    }
+
+    foreach ($lineas as $linea) {
+        $detalle[] = $linea;
+    }
+
+    return [
+        'contacto' => $contacto,
+        'detalle' => trim(implode("\n", $detalle)),
+    ];
+}
+
 foreach ($modelo->obtenerInteraccionesSeguimiento($seguimientoId) as $interaccion) {
     if (strtoupper((string)($interaccion['canal'] ?? '')) !== 'LLAMADA_IP') {
         continue;
@@ -178,6 +226,11 @@ foreach ($modelo->obtenerInteraccionesSeguimiento($seguimientoId) as $interaccio
         '',
         $notas
     ));
+
+    $notasEstructuradas = descomponerNotasLlamada(
+        $notasLimpias,
+        trim((string)($seguimiento['contacto_nombre'] ?? ''))
+    );
 
     $grabacionTwilio =
         $proveedor === 'TWILIO' &&
@@ -247,6 +300,8 @@ foreach ($modelo->obtenerInteraccionesSeguimiento($seguimientoId) as $interaccio
         'resultado' => $resultado,
         'resultado_telefonico' => $resultadoTelefonico,
         'contacto_efectivo' => (bool)$contactoEfectivo,
+        'contacto' => (string)($notasEstructuradas['contacto'] ?? ''),
+        'detalle' => (string)($notasEstructuradas['detalle'] ?? ''),
         'notas' => $notasLimpias,
         'proveedor' => $proveedor,
         'usuario' => $nombreUsuario,
