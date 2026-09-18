@@ -195,10 +195,15 @@ class EcardReunionService
     private function resolverEvento(array $reunion)
     {
         $ubicacion = trim((string)($reunion['ubicacion'] ?? ''));
+        $objetivo = trim((string)($reunion['objetivo'] ?? ''));
         $entidad = trim((string)($reunion['nombre_entidad'] ?? ''));
 
         if ($ubicacion !== '') {
             return $ubicacion;
+        }
+
+        if ($objetivo !== '') {
+            return $objetivo;
         }
 
         return $entidad !== '' ? $entidad : 'Reunión de vinculación';
