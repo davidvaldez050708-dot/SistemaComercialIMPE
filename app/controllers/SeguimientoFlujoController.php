@@ -6,6 +6,7 @@ require_once __DIR__ . '/../services/SeguimientoCorreoService.php';
 require_once __DIR__ . '/../services/AgendaReunionService.php';
 require_once __DIR__ . '/../services/ReunionFechaGuardService.php';
 require_once __DIR__ . '/../services/ReunionResultadoService.php';
+require_once __DIR__ . '/../services/SeguimientoRutaOperativaService.php';
 require_once __DIR__ . '/../models/SeguimientoVinculacionModel.php';
 require_once __DIR__ . '/../helpers/PermissionHelper.php';
 
@@ -17,6 +18,7 @@ class SeguimientoFlujoController
     private $agendaReunionService;
     private $reunionFechaGuardService;
     private $reunionResultadoService;
+    private $rutaOperativaService;
 
     public function __construct()
     {
@@ -26,6 +28,7 @@ class SeguimientoFlujoController
         $this->agendaReunionService = new AgendaReunionService();
         $this->reunionFechaGuardService = new ReunionFechaGuardService();
         $this->reunionResultadoService = new ReunionResultadoService();
+        $this->rutaOperativaService = new SeguimientoRutaOperativaService();
     }
 
     public function estado()
@@ -78,59 +81,13 @@ class SeguimientoFlujoController
             ], 422);
         }
 
-        $postEnvio = $this->postEnvioService->obtenerFlujoSiAplica(
+        $resultado = $this->rutaOperativaService->resolver(
             $seguimientoId,
-            $analistaId
+            $analistaId,
+            $seguimiento
         );
-
-        if (($postEnvio['ok'] ?? false) && ($postEnvio['aplica'] ?? false)) {
-            $flujo = $this->agendaReunionService->ajustarFlujoAnalista(
-                $seguimientoId,
-                $analistaId,
-                $postEnvio['flujo']
-            );
-
-            /*
-             * Mientras todavía no exista una reunión real en Agenda, la etapa
-             * de correo permanece abierta y permite varios mensajes. El envío de
-             * un primer seguimiento ya no obliga a avanzar inmediatamente.
-             */
-            $flujo = $this->seguimientoCorreoService->ajustarFlujo(
-                $seguimientoId,
-                $analistaId,
-                $flujo
-            );
-
-            $flujo = $this->reunionFechaGuardService->ajustarFlujo(
-                $seguimientoId,
-                $analistaId,
-                $flujo
-            );
-
-            $flujo = $this->reunionResultadoService->ajustarFlujo(
-                $seguimientoId,
-                $analistaId,
-                $flujo
-            );
-
-            $this->responder([
-                'ok' => true,
-                'flujo' => $flujo,
-                'modo_acceso' => $modoAcceso,
-                'solo_lectura' => $modoAcceso === 'administrador'
-            ]);
-        }
-
-        $resultado = $this->service->obtenerEstado($seguimientoId, $analistaId);
         $codigoHttp = (int)($resultado['codigo_http'] ?? 200);
         unset($resultado['codigo_http']);
-
-        if (($resultado['ok'] ?? false) && is_array($resultado['flujo'] ?? null)) {
-            $resultado['flujo'] = $this->ajustarPasoInicial(
-                $resultado['flujo'],
-                $seguimiento
-            );
-        }
 
         $resultado['modo_acceso'] = $modoAcceso;
         $resultado['solo_lectura'] = $modoAcceso === 'administrador';
@@ -336,75 +293,7 @@ class SeguimientoFlujoController
         return $modelo->obtenerSeguimientoAnalista($usuarioId, $seguimientoId);
     }
 
-    private function ajustarPasoInicial($flujo, $seguimiento)
-    {
-        if (!is_array($flujo) || !is_array($seguimiento)) {
-            return $flujo;
-        }
 
-        if ((int)($flujo['paso_actual'] ?? 0) !== 2) {
-            return $flujo;
-        }
-
-        if (strtoupper(trim((string)($seguimiento['estado_seguimiento'] ?? ''))) !== 'NUEVO') {
-            return $flujo;
-        }
-
-        if (
-            (int)($seguimiento['datos_verificados'] ?? 0) === 1 ||
-            trim((string)($seguimiento['ultima_interaccion_at'] ?? '')) !== ''
-        ) {
-            return $flujo;
-        }
-
-        $creado = trim((string)($seguimiento['created_at'] ?? ''));
-        $actualizado = trim((string)($seguimiento['updated_at'] ?? ''));
-
-        if ($creado !== '' && $actualizado !== '') {
-            try {
-                $fechaCreado = new DateTime($creado);
-                $fechaActualizado = new DateTime($actualizado);
-
-                if ($fechaActualizado > $fechaCreado) {
-                    return $flujo;
-                }
-            } catch (Throwable $error) {
-                // Si no puede comparar las marcas, conserva el criterio de NUEVO sin actividad.
-            }
-        }
-
-        $totalPasos = max(13, (int)($flujo['total_pasos'] ?? 13));
-        $flujo['paso_actual'] = 1;
-        $flujo['total_pasos'] = $totalPasos;
-        $flujo['porcentaje'] = (int)round((1 / $totalPasos) * 100);
-        $flujo['titulo'] = 'Iniciar investigación';
-        $flujo['descripcion'] =
-            'El seguimiento acaba de registrarse. Revisa la información disponible y comienza la investigación de datos para avanzar en la ruta.';
-        $flujo['faltantes'] = is_array($flujo['faltantes'] ?? null)
-            ? $flujo['faltantes']
-            : [];
-        $flujo['accion_principal'] = [
-            'codigo' => 'COMPLETAR_DATOS',
-            'etiqueta' => 'Comenzar investigación',
-            'icono' => 'bi-search'
-        ];
-        $flujo['accion_secundaria'] = null;
-        $flujo['ventana'] = [
-            'anterior' => null,
-            'actual' => [
-                'numero' => 1,
-                'clave' => 'INICIO',
-                'titulo' => 'Seguimiento iniciado'
-            ],
-            'siguiente' => [
-                'numero' => 2,
-                'clave' => 'INVESTIGACION',
-                'titulo' => 'Investigación de datos'
-            ]
-        ];
-
-        return $flujo;
-    }
 
     private function responder($datos, $codigoHttp = 200)
     {
