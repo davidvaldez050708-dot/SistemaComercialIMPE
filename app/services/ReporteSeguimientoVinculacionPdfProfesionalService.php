@@ -558,15 +558,15 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
             '.header-meta{margin-left:auto;border-collapse:collapse;font-size:6.1pt;line-height:1.2}' .
             '.header-meta td{color:#6D7480;text-align:right;padding:.5px 0 .5px 10px}.header-meta th{color:#16223B;text-align:right;padding:.5px 0 .5px 7px;font-weight:700}' .
             '.header-rule{height:2px;background:#273A8A;margin:0 0 10px}' .
-            '.scope{width:100%;table-layout:fixed;border-collapse:collapse;background:#F8FAFC;border:1px solid #E5E9EF;margin-bottom:12px}' .
-            '.scope td{padding:7px 9px;vertical-align:middle;border-right:1px solid #E5E9EF}.scope td:last-child{border-right:0}' .
+            '.scope{width:100%;table-layout:fixed;border-collapse:collapse;background:#F7F9FC;border:1px solid #D7DFEA;margin-bottom:12px}' .
+            '.scope td{padding:8px 10px;vertical-align:middle;text-align:left;border-right:1px solid #D7DFEA}.scope td:last-child{border-right:0}' .
             '.scope span,.info span,.metric span,.mini span,.call-summary span,.operational span{display:block;color:#6D7480;font-size:6pt;margin-bottom:2px}' .
-            '.scope strong{font-size:7.1pt;color:#16223B}.scope-total{width:75px;text-align:center}.scope-total strong{font-size:10.5pt;color:#273A8A}' .
+            '.scope strong{font-size:7.1pt;color:#16223B}.scope-total{width:92px;text-align:left}.scope-total strong{font-size:9.5pt;color:#273A8A}' .
             '.report-section{margin:0 0 15px}.keep{page-break-inside:avoid}' .
             '.section-title{border-left:3px solid #273A8A;padding-left:8px;margin:0 0 11px;page-break-inside:avoid;page-break-after:avoid}' .
             '.section-title h2{font-size:10.7pt;color:#16223B;margin:0;font-weight:800}' .
             '.metrics{width:100%;table-layout:fixed;border-collapse:separate;border-spacing:4px 0}' .
-            '.metric{width:25%;background:#FFFFFF;border:1px solid #E5E9EF;padding:9px;vertical-align:middle}.metric strong{display:block;color:#16223B;font-size:13pt;font-weight:800;margin-top:2px}' .
+            '.metric{width:25%;background:#F9FBFE;border:1px solid #D3DCE8;padding:9px;vertical-align:middle}.metric strong{display:block;color:#16223B;font-size:13pt;font-weight:800;margin-top:2px}' .
             '.institution{border:1px solid #E5E9EF;padding:9px 10px;background:#FFFFFF}' .
             '.institution-head{width:100%;border-collapse:collapse}.institution-head td{vertical-align:middle}.institution-head span{color:#0A8F7A;font-size:6.2pt;font-weight:800;letter-spacing:.04em}' .
             '.institution-head h2{font-size:12.6pt;margin:2px 0;color:#16223B}.institution-head p{margin:0;color:#6D7480;font-size:6.8pt}.step{text-align:right;font-size:6.4pt!important;color:#273A8A!important;font-weight:800;width:90px}' .
@@ -574,8 +574,8 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
             '.data-table{width:100%;border-collapse:collapse;font-size:6.25pt;page-break-inside:auto}.data-table thead{display:table-header-group}.data-table tr{page-break-inside:avoid;page-break-after:auto}' .
             '.data-table th{background:#273A8A;color:#FFFFFF;text-align:left;padding:6px 7px;font-weight:700}.data-table td{padding:6px 7px;border-bottom:1px solid #E5E9EF;vertical-align:top}.data-table tbody tr:nth-child(even){background:#F8FAFC}.data-table small{display:block;color:#6D7480;font-size:5.5pt;margin-top:2px}' .
             '.right{text-align:right!important}.center{text-align:center!important}.ok{border-left:3px solid #0A8F7A;background:#F8FAFC;padding:8px 10px}.ok strong{display:block;font-size:7pt}.ok span{display:block;color:#6D7480;font-size:6pt;margin-top:2px}' .
-            '.mini{width:100%;table-layout:fixed;border-collapse:separate;border-spacing:4px 0}.mini td{width:25%;border:1px solid #E5E9EF;background:#F8FAFC;padding:7px 8px}.mini strong{display:block;font-size:10.5pt;color:#16223B}' .
-            '.call-summary{width:100%;table-layout:fixed;border-collapse:collapse;margin-top:5px;border-top:1px solid #E5E9EF;border-bottom:1px solid #E5E9EF}.call-summary td{width:25%;padding:6px 8px;border-right:1px solid #E5E9EF}.call-summary td:last-child{border-right:0}.call-summary strong{display:block;font-size:7.2pt}' .
+            '.mini{width:100%;table-layout:fixed;border-collapse:separate;border-spacing:4px 0}.mini td{width:25%;border:1px solid #D3DCE8;background:#F5F8FC;padding:7px 8px}.mini strong{display:block;font-size:10.5pt;color:#16223B}' .
+            '.call-summary{width:100%;table-layout:fixed;border-collapse:collapse;margin-top:6px;border:1px solid #D9E1EB;background:#FFFFFF}.call-summary td{width:25%;padding:7px 8px;border-right:1px solid #D9E1EB}.call-summary td:last-child{border-right:0}.call-summary strong{display:block;font-size:7.2pt}' .
             '.activity-section{page-break-inside:avoid}.line-chart{display:block;width:100%;height:auto;border:1px solid #E5E9EF;background:#FFFFFF;padding:4px}' .
             '.split{width:100%;table-layout:fixed;border-collapse:separate;border-spacing:9px 0}.split td{width:50%;vertical-align:top}.split h3{font-size:7.8pt;margin:0 0 6px;color:#16223B}' .
             '.barrow{width:100%;table-layout:fixed;border-collapse:collapse;margin-bottom:5px}.barlabel{width:37%;font-size:6pt;padding-right:6px}.bararea{width:53%}.barvalue{width:10%;text-align:right;font-weight:700;font-size:6pt}.track{height:6px;background:#E9EDF4;overflow:hidden}.fill{height:6px;background:#273A8A}' .
