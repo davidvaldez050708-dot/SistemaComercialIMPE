@@ -203,7 +203,12 @@ class SeguimientoVinculacionReporteController
             'analitica' => $analitica,
             'flujo_individual' => $flujoIndividual,
             'etiquetas_estatus' => self::ESTADOS_SEGUIMIENTO,
-            'fecha_generacion' => date('Y-m-d H:i:s')
+            'fecha_generacion' => date('Y-m-d H:i:s'),
+            'generado_por' => trim(
+                (string)($_SESSION['nombre'] ?? '') . ' ' .
+                (string)($_SESSION['apellidos'] ?? '')
+            ),
+            'generado_por_rol' => (string)($_SESSION['rol'] ?? '')
         ];
 
         $servicio = new ReporteSeguimientoVinculacionPdfProfesionalService();
