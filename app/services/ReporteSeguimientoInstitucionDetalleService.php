@@ -35,43 +35,38 @@ class ReporteSeguimientoInstitucionDetalleService
             return [];
         }
 
-        $interacciones = [];
+        $interaccionesHumanas = [];
         $oficios = [];
         $observaciones = [];
 
         try {
-            $interacciones = $modelo->obtenerInteraccionesSeguimiento($seguimientoId);
+            $interaccionesHumanas = $this->obtenerInteraccionesHumanasRecientes(
+                $seguimientoId,
+                8
+            );
         } catch (Throwable $error) {
             error_log('[reporte_institucion_interacciones] ' . $error->getMessage());
         }
 
         try {
-            $oficios = $modelo->obtenerOficiosSeguimiento($seguimientoId);
+            $oficios = $this->obtenerOficiosRecientes($seguimientoId, 4);
         } catch (Throwable $error) {
             error_log('[reporte_institucion_oficios] ' . $error->getMessage());
         }
 
         try {
-            $observaciones = $modelo->obtenerUltimasObservacionesSeguimiento($seguimientoId, 5);
+            $observaciones = $modelo->obtenerUltimasObservacionesSeguimiento($seguimientoId, 4);
         } catch (Throwable $error) {
             error_log('[reporte_institucion_observaciones] ' . $error->getMessage());
         }
-
-        $interaccionesHumanas = array_values(array_filter(
-            $interacciones,
-            static function ($interaccion) {
-                return strtoupper(trim((string)($interaccion['canal'] ?? ''))) !== 'SISTEMA';
-            }
-        ));
 
         return [
             'seguimiento' => $seguimiento,
             'contacto' => $this->contacto($seguimiento),
             'ultima_interaccion_humana' => $interaccionesHumanas[0] ?? null,
-            'interacciones_recientes' => array_slice($interaccionesHumanas, 0, 8),
-            'total_interacciones_humanas' => count($interaccionesHumanas),
-            'oficios' => array_slice($oficios, 0, 4),
-            'observaciones' => array_slice($observaciones, 0, 4),
+            'interacciones_recientes' => $interaccionesHumanas,
+            'oficios' => $oficios,
+            'observaciones' => $observaciones,
             'reuniones' => $this->obtenerReuniones($seguimientoId),
             'post_envio' => $this->obtenerPostEnvio($seguimientoId)
         ];
@@ -117,6 +112,62 @@ class ReporteSeguimientoInstitucionDetalleService
             'actividad_giro' => trim((string)($seguimiento['actividad_giro'] ?? '')),
             'datos_verificados' => (int)($seguimiento['datos_verificados'] ?? 0) === 1
         ];
+    }
+
+    private function obtenerInteraccionesHumanasRecientes(
+        int $seguimientoId,
+        int $limite
+    ): array {
+        $limite = max(1, min(8, $limite));
+        $sql = "SELECT
+                    interacciones.id,
+                    interacciones.seguimiento_id,
+                    interacciones.usuario_id,
+                    interacciones.canal,
+                    interacciones.resultado,
+                    interacciones.fecha_inicio,
+                    interacciones.notas,
+                    usuarios.nombre,
+                    usuarios.apellidos
+                FROM interacciones_vinculacion interacciones
+                INNER JOIN usuarios
+                    ON usuarios.id = interacciones.usuario_id
+                WHERE interacciones.seguimiento_id = ?
+                  AND UPPER(TRIM(COALESCE(interacciones.canal, ''))) <> 'SISTEMA'
+                ORDER BY interacciones.fecha_inicio DESC, interacciones.id DESC
+                LIMIT $limite";
+
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param('i', $seguimientoId);
+        $stmt->execute();
+
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+    private function obtenerOficiosRecientes(
+        int $seguimientoId,
+        int $limite
+    ): array {
+        $limite = max(1, min(4, $limite));
+        $sql = "SELECT
+                    id,
+                    folio,
+                    destinatario_nombre,
+                    destinatario_cargo,
+                    destinatario_correo,
+                    estado_oficio,
+                    fecha_generacion,
+                    fecha_envio
+                FROM oficios_vinculacion
+                WHERE seguimiento_id = ?
+                ORDER BY created_at DESC, id DESC
+                LIMIT $limite";
+
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param('i', $seguimientoId);
+        $stmt->execute();
+
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
 
     private function obtenerReuniones(int $seguimientoId): array
