@@ -11,13 +11,15 @@ $pendientesAgenda = array_values(array_filter(
     $agendaReuniones,
     static function ($reunion) use ($esAnalistaAgenda, $esCuentaClaveAgenda) {
         $estado = (string)($reunion['estado'] ?? '');
+        $estaVencida = !empty($reunion['esta_vencida']);
 
         if ($esCuentaClaveAgenda) {
             return $estado === 'SOLICITADA';
         }
 
         if ($esAnalistaAgenda) {
-            return in_array($estado, ['CAMBIO_SOLICITADO', 'CONFIRMADA'], true);
+            return $estaVencida ||
+                in_array($estado, ['CAMBIO_SOLICITADO', 'CONFIRMADA'], true);
         }
 
         return false;
@@ -123,7 +125,10 @@ $pendientesAgenda = array_values(array_filter(
                         <div class="agenda-day-events">
                             <?php foreach (($celda['reuniones'] ?? []) as $reunion): ?>
                                 <?php
-                                $estadoClase = strtolower(str_replace('_', '-', (string)($reunion['estado'] ?? 'solicitada')));
+                                $estadoClase = trim((string)($reunion['estado_visual'] ?? ''));
+                                if ($estadoClase === '') {
+                                    $estadoClase = strtolower(str_replace('_', '-', (string)($reunion['estado'] ?? 'solicitada')));
+                                }
                                 $horaEvento = '';
                                 try {
                                     $horaEvento = (new DateTime((string)$reunion['fecha_propuesta']))->format('H:i');
@@ -162,8 +167,8 @@ $pendientesAgenda = array_values(array_filter(
                     <h3><?= $esCuentaClaveAgenda ? 'Por confirmar' : 'Requiere tu atención' ?></h3>
                     <p>
                         <?= $esCuentaClaveAgenda
-                            ? 'Solicitudes enviadas por los Analistas.'
-                            : 'Cambios solicitados o reuniones listas para confirmar por correo.' ?>
+                            ? 'Solicitudes pendientes, incluidas las que ya superaron la fecha propuesta.'
+                            : 'Reuniones vencidas, cambios solicitados o confirmaciones que requieren una acción.' ?>
                     </p>
                 </div>
             </div>
@@ -179,10 +184,10 @@ $pendientesAgenda = array_values(array_filter(
                     <?php foreach (array_slice($pendientesAgenda, 0, 6) as $reunion): ?>
                         <button
                             type="button"
-                            class="agenda-pending-item"
+                            class="agenda-pending-item<?= !empty($reunion['esta_vencida']) ? ' is-vencida' : '' ?>"
                             data-agenda-meeting="<?= (int)($reunion['id'] ?? 0) ?>">
                             <span class="agenda-pending-status">
-                                <i class="bi bi-calendar-event"></i>
+                                <i class="bi <?= !empty($reunion['esta_vencida']) ? 'bi-calendar-x' : 'bi-calendar-event' ?>"></i>
                             </span>
                             <span class="agenda-pending-copy">
                                 <strong>
