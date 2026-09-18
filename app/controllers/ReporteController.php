@@ -1,7 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../helpers/PermissionHelper.php';
-require_once __DIR__ . '/../models/UsuarioModel.php';
+require_once __DIR__ . '/../services/ReporteAdministradorDataService.php';
 
 class ReporteController
 {
@@ -17,7 +17,31 @@ class ReporteController
             die('No tienes permiso para generar este reporte.');
         }
 
-        $rolesReporteAdministrador = (new UsuarioModel())->obtenerRolesActivos();
+        $datosService = new ReporteAdministradorDataService();
+
+        try {
+            $rolesSeleccionados = $datosService->resolverRolesSeleccionados($_GET);
+        } catch (InvalidArgumentException $error) {
+            http_response_code(400);
+            die($error->getMessage());
+        }
+
+        $rolesReporteAdministrador = $datosService->obtenerRolesDisponibles();
+        $reporteAdministrador = $datosService->prepararDatos($rolesSeleccionados);
+
+        $parametrosPdf = [
+            'controller' => 'reporteAdministrador',
+            'action' => 'exportarPdf',
+            'filtrar_roles' => 1
+        ];
+
+        if ($rolesSeleccionados === null) {
+            $parametrosPdf['todos_roles'] = 1;
+        } else {
+            $parametrosPdf['roles'] = $rolesSeleccionados;
+        }
+
+        $urlExportarPdf = BASE_URL . 'index.php?' . http_build_query($parametrosPdf);
 
         $tituloPagina = 'Reportes';
         $subtituloPagina = 'Selecciona los roles que deseas incluir en el reporte administrativo.';
