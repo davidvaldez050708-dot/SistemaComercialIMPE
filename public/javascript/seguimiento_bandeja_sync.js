@@ -471,11 +471,15 @@
                 seguimientoId: seguimientoId
             };
         }).filter(function (item) {
-            return item.seguimientoId > 0;
+            return item.seguimientoId > 0 &&
+                item.fila.dataset.routeInitialReady !== '1';
         });
 
+        // Las filas precalculadas por PHP ya tienen etapa, acción y paso.
+        // Solo consultamos las que no pudieron resolverse en el servidor.
+        aplicarFiltroRuta();
+
         if (filas.length === 0) {
-            aplicarFiltroRuta();
             return;
         }
 
