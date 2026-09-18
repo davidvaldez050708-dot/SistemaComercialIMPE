@@ -473,6 +473,7 @@ class AgendaReunionService
         $fila['ecard_ponente'] = (string)($ecard['ponente'] ?? 'Mtro. Manuel Porcayo');
         $fila['ecard_cargo'] = (string)($ecard['cargo'] ?? 'Presidente');
         $fila['ecard_evento'] = (string)($ecard['evento'] ?? '');
+        $fila['ecard_sede'] = (string)($ecard['sede'] ?? '');
         $fila['ecard_preview_url'] =
             'index.php?controller=agendaReunion&action=ecardPreview&reunion_id=' .
             (int)$fila['id'];
