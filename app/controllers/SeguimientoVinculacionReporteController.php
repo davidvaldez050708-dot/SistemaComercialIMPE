@@ -5,6 +5,7 @@ require_once __DIR__ . '/../helpers/PermissionHelper.php';
 require_once __DIR__ . '/../services/ReporteSeguimientoVinculacionPdfService.php';
 require_once __DIR__ . '/../services/ReporteSeguimientoVinculacionPdfProfesionalService.php';
 require_once __DIR__ . '/../services/ReporteSeguimientoInstitucionDetalleService.php';
+require_once __DIR__ . '/../services/ReporteSeguimientoPdfCacheService.php';
 require_once __DIR__ . '/../services/EvolucionActividadSeguimientoService.php';
 require_once __DIR__ . '/../services/SeguimientoReporteAnaliticaService.php';
 require_once __DIR__ . '/../services/SeguimientoFlujoService.php';
@@ -148,6 +149,57 @@ class SeguimientoVinculacionReporteController
     public function exportarPdf()
     {
         $this->validarPermiso('seguimientos_vinculacion.ver');
+
+        $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
+        $modoSeguimientoCache = $this->resolverModoSeguimiento();
+        $filtrosCache = $this->obtenerFiltrosReporte();
+        $cachePdf = new ReporteSeguimientoPdfCacheService();
+        $claveCache = '';
+
+        try {
+            $modeloCache = new SeguimientoVinculacionModel();
+            $territoriosCache = $this->obtenerTerritoriosPorModo(
+                $modeloCache,
+                $usuarioId,
+                $modoSeguimientoCache
+            );
+            $territorioIdsCache = [];
+
+            foreach ($territoriosCache as $territorioCache) {
+                $territorioIdCache = (int)($territorioCache['id'] ?? 0);
+                if ($territorioIdCache > 0) {
+                    $territorioIdsCache[] = $territorioIdCache;
+                }
+            }
+
+            sort($territorioIdsCache);
+            $estadoSolicitado = (int)($filtrosCache['estado_id'] ?? 0);
+            $puedeUsarCache = $estadoSolicitado <= 0 ||
+                in_array($estadoSolicitado, $territorioIdsCache, true);
+
+            if ($puedeUsarCache) {
+                $claveCache = $cachePdf->crearClave([
+                    'version' => 'seguimiento-pdf-profesional-v2',
+                    'usuario_id' => $usuarioId,
+                    'rol_id' => (int)($_SESSION['rol_id'] ?? 0),
+                    'modo' => $modoSeguimientoCache,
+                    'territorios' => $territorioIdsCache,
+                    'filtros' => $filtrosCache
+                ]);
+
+                $resultadoCache = $cachePdf->obtener($claveCache);
+                if (is_array($resultadoCache)) {
+                    $this->enviarPdfDescarga(
+                        (string)$resultadoCache['contenido_pdf'],
+                        (string)$resultadoCache['nombre_archivo']
+                    );
+                }
+            }
+        } catch (Throwable $error) {
+            error_log('[reporte_seguimiento_pdf_cache_lectura] ' . $error->getMessage());
+            $claveCache = '';
+        }
+
         $contexto = $this->construirContextoReporte(true);
 
         if ((string)$contexto['errorFiltros'] !== '') {
@@ -180,7 +232,7 @@ class SeguimientoVinculacionReporteController
         try {
             $analitica = (new SeguimientoReporteAnaliticaService())->construir(
                 $seguimientoIds,
-                (int)($_SESSION['usuario_id'] ?? 0),
+                $usuarioId,
                 (string)($contexto['modoSeguimiento'] ?? 'analista'),
                 (string)($contexto['filtrosReporte']['fecha_inicial'] ?? ''),
                 (string)($contexto['filtrosReporte']['fecha_final'] ?? '')
@@ -207,7 +259,7 @@ class SeguimientoVinculacionReporteController
             try {
                 $detalleInstitucion = (new ReporteSeguimientoInstitucionDetalleService())->construir(
                     (int)($seguimientosReporte[0]['id'] ?? 0),
-                    (int)($_SESSION['usuario_id'] ?? 0),
+                    $usuarioId,
                     (string)($contexto['modoSeguimiento'] ?? 'analista')
                 );
             } catch (Throwable $error) {
@@ -242,7 +294,6 @@ class SeguimientoVinculacionReporteController
                 (string)($resultado['mensaje_tecnico'] ?? $resultado['mensaje'] ?? 'Error sin detalle.')
             );
 
-            // Respaldo temporal mientras se valida el nuevo diseño en cada entorno.
             $resultado = (new ReporteSeguimientoVinculacionPdfService())->generar($datosPdf);
         }
 
@@ -260,6 +311,19 @@ class SeguimientoVinculacionReporteController
         $contenidoPdf = (string)($resultado['contenido_pdf'] ?? '');
         $nombreArchivo = (string)($resultado['nombre_archivo'] ?? 'Reporte_Seguimiento_Vinculacion.pdf');
 
+        if ($claveCache !== '' && $contenidoPdf !== '') {
+            try {
+                $cachePdf->guardar($claveCache, $contenidoPdf, $nombreArchivo);
+            } catch (Throwable $error) {
+                error_log('[reporte_seguimiento_pdf_cache_escritura] ' . $error->getMessage());
+            }
+        }
+
+        $this->enviarPdfDescarga($contenidoPdf, $nombreArchivo);
+    }
+
+    private function enviarPdfDescarga(string $contenidoPdf, string $nombreArchivo): void
+    {
         header('Content-Type: application/pdf');
         header('Content-Disposition: attachment; filename="' . $nombreArchivo . '"');
         header('Content-Length: ' . strlen($contenidoPdf));
