@@ -442,6 +442,35 @@
                     return vacio;
                 };
 
+                const crearFilaDatoLlamada = function (etiqueta, valor) {
+                    const texto = String(valor || '').trim();
+                    if (!texto) {
+                        return null;
+                    }
+
+                    const fila = document.createElement('div');
+                    fila.className = 'linkage-call-detail-row';
+
+                    const label = document.createElement('span');
+                    label.className = 'linkage-call-detail-label';
+                    label.textContent = etiqueta;
+
+                    const contenido = document.createElement('span');
+                    contenido.className = 'linkage-call-detail-value';
+                    contenido.textContent = texto;
+
+                    fila.appendChild(label);
+                    fila.appendChild(contenido);
+                    return fila;
+                };
+
+                const crearBadgeResultado = function (texto, clase) {
+                    const badge = document.createElement('span');
+                    badge.className = 'linkage-call-result-badge' + (clase ? ' ' + clase : '');
+                    badge.textContent = texto;
+                    return badge;
+                };
+
                 const crearTarjetaHistorial = function (llamada) {
                     const tarjeta = document.createElement('article');
                     tarjeta.className = 'linkage-call-history-card';
@@ -452,28 +481,87 @@
 
                     const cuerpo = document.createElement('div');
                     cuerpo.className = 'linkage-call-recording-body';
+
                     const cabecera = document.createElement('div');
                     cabecera.className = 'linkage-call-recording-top';
 
                     const identidad = document.createElement('div');
+                    identidad.className = 'linkage-call-history-identity';
+
                     const titulo = document.createElement('strong');
-                    titulo.textContent = etiquetaResultado(llamada.resultado_telefonico || llamada.resultado);
-                    const meta = document.createElement('span');
-                    const partes = [fechaLegible(llamada.fecha_inicio)];
-                    const usuario = String(llamada.usuario || '').trim();
-                    if (usuario) {
-                        partes.push(usuario);
-                    }
-                    meta.textContent = partes.join(' · ');
+                    titulo.textContent = 'Llamada';
+
+                    const fecha = document.createElement('span');
+                    fecha.className = 'linkage-call-history-date';
+                    fecha.textContent = fechaLegible(llamada.fecha_inicio);
+
                     identidad.appendChild(titulo);
-                    identidad.appendChild(meta);
+                    cabecera.appendChild(identidad);
+                    cabecera.appendChild(fecha);
+                    cuerpo.appendChild(cabecera);
+
+                    const detalle = document.createElement('div');
+                    detalle.className = 'linkage-call-detail';
+
+                    const filaContacto = crearFilaDatoLlamada(
+                        'Contacto',
+                        llamada.contacto
+                    );
+                    if (filaContacto) {
+                        detalle.appendChild(filaContacto);
+                    }
+
+                    const detalleTexto = String(llamada.detalle || '').trim();
+                    const notasCompatibles = detalleTexto ||
+                        (!llamada.contacto ? limpiarMarcadores(llamada.notas) : '');
+                    const filaDetalle = crearFilaDatoLlamada(
+                        'Detalle',
+                        notasCompatibles
+                    );
+                    if (filaDetalle) {
+                        detalle.appendChild(filaDetalle);
+                    }
+
+                    if (detalle.children.length > 0) {
+                        cuerpo.appendChild(detalle);
+                    }
+
+                    const pie = document.createElement('div');
+                    pie.className = 'linkage-call-history-footer';
+
+                    const resultados = document.createElement('div');
+                    resultados.className = 'linkage-call-result-group';
+                    resultados.appendChild(
+                        crearBadgeResultado(
+                            etiquetaResultado(llamada.resultado_telefonico || llamada.resultado),
+                            'is-result'
+                        )
+                    );
+
+                    if (llamada.contacto_efectivo === true) {
+                        resultados.appendChild(
+                            crearBadgeResultado('Contacto efectivo', 'is-contact')
+                        );
+                    } else if (
+                        ['NO_CONTESTO', 'SIN_RESPUESTA'].includes(
+                            String(llamada.resultado || '').toUpperCase()
+                        )
+                    ) {
+                        resultados.appendChild(
+                            crearBadgeResultado('Sin contacto', 'is-no-contact')
+                        );
+                    }
+
+                    pie.appendChild(resultados);
 
                     const derecha = document.createElement('div');
                     derecha.className = 'linkage-call-history-meta';
+
                     const duracion = document.createElement('span');
                     duracion.className = 'linkage-call-recording-duration';
                     duracion.innerHTML = '<i class="bi bi-clock"></i><span></span>';
-                    duracion.querySelector('span').textContent = duracionLegible(llamada.duracion_segundos);
+                    duracion.querySelector('span').textContent =
+                        duracionLegible(llamada.duracion_segundos);
                     derecha.appendChild(duracion);
 
                     const estadoAudio = document.createElement('span');
@@ -483,7 +571,7 @@
                             ? 'linkage-call-audio-state is-processing'
                             : 'linkage-call-audio-state');
                     estadoAudio.innerHTML = llamada.tiene_grabacion
-                        ? '<i class="bi bi-record-circle"></i><span>Grabación</span>'
+                        ? '<i class="bi bi-record-circle"></i><span>Grabación disponible</span>'
                         : (llamada.grabacion_procesando
                             ? '<i class="bi bi-hourglass-split"></i><span>Procesando grabación</span>'
                             : (llamada.excluir_grabacion
@@ -491,17 +579,16 @@
                                 : '<i class="bi bi-mic-mute"></i><span>Sin grabación</span>'));
                     derecha.appendChild(estadoAudio);
 
-                    cabecera.appendChild(identidad);
-                    cabecera.appendChild(derecha);
-                    cuerpo.appendChild(cabecera);
-
-                    const notas = limpiarMarcadores(llamada.notas);
-                    if (notas) {
-                        const p = document.createElement('p');
-                        p.className = 'linkage-call-recording-notes';
-                        p.textContent = notas;
-                        cuerpo.appendChild(p);
+                    const usuario = String(llamada.usuario || '').trim();
+                    if (usuario) {
+                        const registro = document.createElement('span');
+                        registro.className = 'linkage-call-history-user';
+                        registro.textContent = 'Registró: ' + usuario;
+                        derecha.appendChild(registro);
                     }
+
+                    pie.appendChild(derecha);
+                    cuerpo.appendChild(pie);
 
                     tarjeta.appendChild(icono);
                     tarjeta.appendChild(cuerpo);
@@ -514,20 +601,52 @@
 
                     const cabecera = document.createElement('div');
                     cabecera.className = 'linkage-call-audio-card-heading';
+
                     const identidad = document.createElement('div');
                     identidad.innerHTML =
                         '<span class="linkage-call-recordings-icon"><i class="bi bi-play-circle"></i></span>' +
-                        '<div><strong></strong><span></span></div>';
-                    identidad.querySelector('strong').textContent =
-                        fechaLegible(llamada.fecha_inicio) + ' · ' +
-                        etiquetaResultado(llamada.resultado_telefonico || llamada.resultado);
-                    const meta = [String(llamada.usuario || '').trim(), duracionLegible(llamada.duracion_segundos)]
-                        .filter(Boolean)
-                        .join(' · ');
-                    identidad.querySelector('div > span').textContent = meta || 'Conversación registrada';
+                        '<div class="linkage-call-audio-identity"><strong>Llamada grabada</strong><span></span></div>';
+
+                    identidad.querySelector('.linkage-call-audio-identity > span').textContent =
+                        fechaLegible(llamada.fecha_inicio);
+
+                    const estado = document.createElement('div');
+                    estado.className = 'linkage-call-audio-card-meta';
+                    estado.appendChild(
+                        crearBadgeResultado(
+                            etiquetaResultado(llamada.resultado_telefonico || llamada.resultado),
+                            'is-result'
+                        )
+                    );
+
+                    const duracion = document.createElement('span');
+                    duracion.className = 'linkage-call-recording-duration';
+                    duracion.innerHTML = '<i class="bi bi-clock"></i><span></span>';
+                    duracion.querySelector('span').textContent =
+                        duracionLegible(llamada.duracion_segundos);
+                    estado.appendChild(duracion);
 
                     cabecera.appendChild(identidad);
+                    cabecera.appendChild(estado);
                     tarjeta.appendChild(cabecera);
+
+                    const detalle = document.createElement('div');
+                    detalle.className = 'linkage-call-detail is-audio';
+
+                    const filaContacto = crearFilaDatoLlamada('Contacto', llamada.contacto);
+                    if (filaContacto) {
+                        detalle.appendChild(filaContacto);
+                    }
+
+                    const detalleTexto = String(llamada.detalle || '').trim();
+                    const filaDetalle = crearFilaDatoLlamada('Detalle', detalleTexto);
+                    if (filaDetalle) {
+                        detalle.appendChild(filaDetalle);
+                    }
+
+                    if (detalle.children.length > 0) {
+                        tarjeta.appendChild(detalle);
+                    }
 
                     const audioWrap = document.createElement('div');
                     audioWrap.className = 'linkage-call-recording-audio';
@@ -539,10 +658,14 @@
                     audio.preload = 'none';
                     audio.controlsList = 'nodownload';
                     audio.src = String(llamada.grabacion_url || '');
-                    audio.setAttribute('aria-label', 'Grabación de llamada del ' + fechaLegible(llamada.fecha_inicio));
+                    audio.setAttribute(
+                        'aria-label',
+                        'Grabación de llamada del ' + fechaLegible(llamada.fecha_inicio)
+                    );
                     const error = document.createElement('span');
                     error.className = 'linkage-call-recording-unavailable d-none';
-                    error.innerHTML = '<i class="bi bi-exclamation-circle"></i><span>Grabación no disponible.</span>';
+                    error.innerHTML =
+                        '<i class="bi bi-exclamation-circle"></i><span>Grabación no disponible.</span>';
                     audio.addEventListener('error', function () {
                         audio.classList.add('d-none');
                         error.classList.remove('d-none');
