@@ -98,7 +98,7 @@ $claseReportes = $opcionActiva === 'reportes' ? 'active' : '';
 
         <?php endif; ?>
 
-        <?php if ($mostrarDataTerritorial || $mostrarSeguimientoVinculacion || $mostrarReportes): ?>
+        <?php if ($mostrarDataTerritorial || $mostrarSeguimientoVinculacion): ?>
 
             <div class="sidebar-section">
                 <p class="sidebar-section-title">
@@ -126,17 +126,23 @@ $claseReportes = $opcionActiva === 'reportes' ? 'active' : '';
                     </a>
 
                 <?php endif; ?>
+            </div>
 
-                <?php if ($mostrarReportes): ?>
+        <?php endif; ?>
 
-                    <a
-                        href="<?= BASE_URL ?>index.php?controller=reporte&action=index"
-                        class="sidebar-link <?= $claseReportes ?>">
-                        <i class="bi bi-file-earmark-bar-graph"></i>
-                        Reportes
-                    </a>
+        <?php if ($mostrarReportes): ?>
 
-                <?php endif; ?>
+            <div class="sidebar-section">
+                <p class="sidebar-section-title">
+                    ANÁLISIS
+                </p>
+
+                <a
+                    href="<?= BASE_URL ?>index.php?controller=reporte&action=index"
+                    class="sidebar-link <?= $claseReportes ?>">
+                    <i class="bi bi-file-earmark-bar-graph"></i>
+                    Reportes
+                </a>
             </div>
 
         <?php endif; ?>
@@ -291,7 +297,7 @@ $claseReportes = $opcionActiva === 'reportes' ? 'active' : '';
 
 
             <!-- VINCULACIÓN -->
-            <?php if ($mostrarDataTerritorial || $mostrarSeguimientoVinculacion || $mostrarReportes): ?>
+            <?php if ($mostrarDataTerritorial || $mostrarSeguimientoVinculacion): ?>
 
                 <div class="sidebar-section">
 
@@ -326,18 +332,28 @@ $claseReportes = $opcionActiva === 'reportes' ? 'active' : '';
 
                     <?php endif; ?>
 
-                    <?php if ($mostrarReportes): ?>
+                </div>
 
-                        <a
-                            href="<?= BASE_URL ?>index.php?controller=reporte&action=index"
-                            class="sidebar-link <?= $claseReportes ?>">
+            <?php endif; ?>
 
-                            <i class="bi bi-file-earmark-bar-graph"></i>
-                            Reportes
 
-                        </a>
+            <!-- ANÁLISIS -->
+            <?php if ($mostrarReportes): ?>
 
-                    <?php endif; ?>
+                <div class="sidebar-section">
+
+                    <p class="sidebar-section-title">
+                        ANÁLISIS
+                    </p>
+
+                    <a
+                        href="<?= BASE_URL ?>index.php?controller=reporte&action=index"
+                        class="sidebar-link <?= $claseReportes ?>">
+
+                        <i class="bi bi-file-earmark-bar-graph"></i>
+                        Reportes
+
+                    </a>
 
                 </div>
 
