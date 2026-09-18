@@ -70,7 +70,12 @@ class ReporteAdministradorController
                 ],
                 'usuarios' => $usuarios,
                 'pendientes' => $pendientes,
-                'fecha_generacion' => date('d/m/Y H:i')
+                'fecha_generacion' => date('d/m/Y H:i'),
+                'generado_por' => trim(
+                    (string)($_SESSION['nombre'] ?? '') . ' ' .
+                    (string)($_SESSION['apellidos'] ?? '')
+                ),
+                'generado_por_rol' => (string)($_SESSION['rol'] ?? '')
             ]);
 
             if (!($resultado['ok'] ?? false)) {

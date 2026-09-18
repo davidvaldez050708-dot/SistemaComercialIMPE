@@ -152,6 +152,8 @@ class ReporteAdministradorPdfService
 
             $sectPr = $xpath->query('./w:sectPr', $cuerpo)->item(0);
             $anchoUtil = $this->obtenerAnchoUtil($xpath, $cuerpo);
+            $this->aplicarEncabezadoInstitucional($zip, $datosReporte, $anchoUtil);
+            $this->aplicarPieInstitucional($zip, $anchoUtil);
             $elementos = $this->construirContenido($documento, $datosReporte, $anchoUtil);
 
             foreach ($elementos as $elemento) {
@@ -183,22 +185,6 @@ class ReporteAdministradorPdfService
         $pendientes = $datosReporte['pendientes'] ?? [];
         $fechaGeneracion = trim((string)($datosReporte['fecha_generacion'] ?? ''));
         $elementos = [];
-
-        $elementos[] = $this->crearParrafo(
-            $documento,
-            'Reporte Administrativo de Usuarios',
-            ['tamano' => 28, 'negrita' => true, 'color' => self::COLOR_TEXTO, 'despues' => 100]
-        );
-        $elementos[] = $this->crearParrafo(
-            $documento,
-            'Usuarios, carga de seguimiento y pendientes operativos',
-            ['tamano' => 18, 'color' => self::COLOR_SECUNDARIO, 'despues' => 40]
-        );
-        $elementos[] = $this->crearParrafo(
-            $documento,
-            'Fecha de generación: ' . ($fechaGeneracion !== '' ? $fechaGeneracion : date('d/m/Y H:i')),
-            ['tamano' => 16, 'color' => self::COLOR_SECUNDARIO, 'despues' => 160]
-        );
 
         $usuariosPorRol = [];
         $cargaPorUsuario = [];
@@ -352,7 +338,7 @@ class ReporteAdministradorPdfService
         }
 
         $elementos[] = $this->crearEspaciador($documento, 100);
-        $elementos[] = $this->crearSubtitulo($documento, 'HALLAZGOS ADMINISTRATIVOS');
+        $elementos[] = $this->crearTituloSeccion($documento, 'HALLAZGOS ADMINISTRATIVOS');
 
         $accionesVencidas = (int)($resumen['acciones_vencidas'] ?? 0);
         $requierenAtencion = (int)($resumen['requieren_atencion'] ?? 0);
@@ -382,18 +368,168 @@ class ReporteAdministradorPdfService
         return $elementos;
     }
 
+
+    private function aplicarEncabezadoInstitucional(ZipArchive $zip, array $datosReporte, $anchoUtil)
+    {
+        if ($zip->locateName('word/header1.xml') === false) {
+            return;
+        }
+
+        $fecha = trim((string)($datosReporte['fecha_generacion'] ?? ''));
+        $fecha = $fecha !== '' ? $fecha : date('d/m/Y H:i');
+        $generadoPor = trim((string)($datosReporte['generado_por'] ?? ''));
+        $rol = trim((string)($datosReporte['generado_por_rol'] ?? ''));
+
+        $anchoTotal = max(7200, (int)$anchoUtil);
+        $anchoLogo = (int)round($anchoTotal * 0.34);
+        $anchoTexto = max(1, $anchoTotal - $anchoLogo);
+
+        $anchoLogoPuntos = 110.0;
+        $altoLogoPuntos = 42.0;
+        $contenidoLogo = $zip->getFromName('word/media/image1.png');
+
+        if (is_string($contenidoLogo) && $contenidoLogo !== '') {
+            $dimensiones = @getimagesizefromstring($contenidoLogo);
+            if (
+                is_array($dimensiones) &&
+                (int)($dimensiones[0] ?? 0) > 0 &&
+                (int)($dimensiones[1] ?? 0) > 0
+            ) {
+                $altoLogoPuntos = $anchoLogoPuntos *
+                    ((int)$dimensiones[1] / (int)$dimensiones[0]);
+                $altoLogoPuntos = max(24.0, min(58.0, $altoLogoPuntos));
+            }
+
+            $rels = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' .
+                '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' .
+                '<Relationship Id="rIdLogo" ' .
+                'Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" ' .
+                'Target="media/image1.png"/>' .
+                '</Relationships>';
+            $zip->addFromString('word/_rels/header1.xml.rels', $rels);
+        }
+
+        $logoXml = '';
+        if (is_string($contenidoLogo) && $contenidoLogo !== '') {
+            $logoXml =
+                '<w:p><w:pPr><w:jc w:val="left"/><w:spacing w:before="0" w:after="0"/></w:pPr>' .
+                '<w:r><w:pict><v:rect stroked="f" style="width:' .
+                number_format($anchoLogoPuntos, 1, '.', '') . 'pt;height:' .
+                number_format($altoLogoPuntos, 1, '.', '') . 'pt">' .
+                '<v:imagedata r:id="rIdLogo" o:title="Grupo Porcayo"/>' .
+                '</v:rect></w:pict></w:r></w:p>';
+        }
+
+        $meta = '';
+        if ($generadoPor !== '') {
+            $meta .= $this->parrafoHeaderXml('Generado por: ' . $generadoPor, 12, self::COLOR_SECUNDARIO, false);
+        }
+        if ($rol !== '') {
+            $meta .= $this->parrafoHeaderXml('Rol: ' . $rol, 12, self::COLOR_SECUNDARIO, false);
+        }
+        $meta .= $this->parrafoHeaderXml('Fecha: ' . $fecha, 12, self::COLOR_SECUNDARIO, false);
+
+        $header =
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' .
+            '<w:hdr xmlns:w="' . self::W_NS . '" ' .
+            'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" ' .
+            'xmlns:v="urn:schemas-microsoft-com:vml" ' .
+            'xmlns:o="urn:schemas-microsoft-com:office:office">' .
+            '<w:tbl><w:tblPr><w:tblW w:w="' . $anchoTotal . '" w:type="dxa"/>' .
+            '<w:tblLayout w:type="fixed"/><w:tblBorders>' .
+            '<w:bottom w:val="single" w:sz="16" w:space="7" w:color="' . self::COLOR_PRIMARIO . '"/>' .
+            '</w:tblBorders></w:tblPr>' .
+            '<w:tblGrid><w:gridCol w:w="' . $anchoLogo . '"/><w:gridCol w:w="' . $anchoTexto . '"/></w:tblGrid>' .
+            '<w:tr><w:trPr><w:cantSplit/></w:trPr>' .
+            '<w:tc><w:tcPr><w:tcW w:w="' . $anchoLogo . '" w:type="dxa"/><w:vAlign w:val="center"/></w:tcPr>' .
+            $logoXml . '</w:tc>' .
+            '<w:tc><w:tcPr><w:tcW w:w="' . $anchoTexto . '" w:type="dxa"/><w:vAlign w:val="center"/></w:tcPr>' .
+            $this->parrafoHeaderXml('Sistema de Gestión Comercial', 13, self::COLOR_PRIMARIO, true) .
+            $this->parrafoHeaderXml('Reporte Administrativo de Usuarios', 23, self::COLOR_TEXTO, true) .
+            $this->parrafoHeaderXml('Usuarios, carga de seguimiento y pendientes operativos', 14, self::COLOR_SECUNDARIO, false) .
+            $meta .
+            '</w:tc></w:tr></w:tbl>' .
+            '</w:hdr>';
+
+        $zip->addFromString('word/header1.xml', $header);
+    }
+
+    private function parrafoHeaderXml($texto, $tamano, $color, $negrita)
+    {
+        return '<w:p><w:pPr><w:jc w:val="right"/>' .
+            '<w:spacing w:before="0" w:after="25"/></w:pPr><w:r><w:rPr>' .
+            ($negrita ? '<w:b/>' : '') .
+            '<w:color w:val="' . $color . '"/>' .
+            '<w:sz w:val="' . (int)$tamano . '"/><w:szCs w:val="' . (int)$tamano . '"/>' .
+            '</w:rPr><w:t xml:space="preserve">' . $this->xmlTexto($texto) . '</w:t></w:r></w:p>';
+    }
+
+    private function aplicarPieInstitucional(ZipArchive $zip, $anchoUtil)
+    {
+        $anchoTotal = max(7200, (int)$anchoUtil);
+        $anchoIzquierdo = (int)round($anchoTotal * 0.68);
+        $anchoDerecho = max(1, $anchoTotal - $anchoIzquierdo);
+
+        $pie =
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' .
+            '<w:ftr xmlns:w="' . self::W_NS . '">' .
+            '<w:tbl><w:tblPr><w:tblW w:w="' . $anchoTotal . '" w:type="dxa"/>' .
+            '<w:tblLayout w:type="fixed"/><w:tblBorders>' .
+            '<w:top w:val="single" w:sz="4" w:space="6" w:color="' . self::COLOR_BORDE . '"/>' .
+            '</w:tblBorders></w:tblPr>' .
+            '<w:tblGrid><w:gridCol w:w="' . $anchoIzquierdo . '"/><w:gridCol w:w="' . $anchoDerecho . '"/></w:tblGrid>' .
+            '<w:tr><w:trPr><w:cantSplit/></w:trPr>' .
+            '<w:tc><w:tcPr><w:tcW w:w="' . $anchoIzquierdo . '" w:type="dxa"/></w:tcPr>' .
+            '<w:p><w:pPr><w:jc w:val="left"/><w:spacing w:before="0" w:after="0"/></w:pPr>' .
+            '<w:r><w:rPr><w:b/><w:color w:val="' . self::COLOR_PRIMARIO . '"/>' .
+            '<w:sz w:val="13"/><w:szCs w:val="13"/></w:rPr>' .
+            '<w:t>Grupo Porcayo · Sistema de Gestión Comercial</w:t></w:r></w:p></w:tc>' .
+            '<w:tc><w:tcPr><w:tcW w:w="' . $anchoDerecho . '" w:type="dxa"/></w:tcPr>' .
+            '<w:p><w:pPr><w:jc w:val="right"/><w:spacing w:before="0" w:after="0"/></w:pPr>' .
+            '<w:r><w:rPr><w:color w:val="' . self::COLOR_SECUNDARIO . '"/><w:sz w:val="13"/><w:szCs w:val="13"/></w:rPr><w:t xml:space="preserve">Página </w:t></w:r>' .
+            $this->campoPieXml('PAGE') .
+            '<w:r><w:rPr><w:color w:val="' . self::COLOR_SECUNDARIO . '"/><w:sz w:val="13"/><w:szCs w:val="13"/></w:rPr><w:t xml:space="preserve"> de </w:t></w:r>' .
+            $this->campoPieXml('NUMPAGES') .
+            '</w:p></w:tc></w:tr></w:tbl></w:ftr>';
+
+        for ($indice = 0; $indice < $zip->numFiles; $indice++) {
+            $estadisticas = $zip->statIndex($indice);
+            $nombre = is_array($estadisticas) ? (string)($estadisticas['name'] ?? '') : '';
+            if (preg_match('#^word/footer\d*\.xml$#', $nombre) === 1) {
+                $zip->addFromString($nombre, $pie);
+            }
+        }
+    }
+
+    private function campoPieXml($campo)
+    {
+        $campo = strtoupper(trim((string)$campo));
+        return '<w:r><w:fldChar w:fldCharType="begin"/></w:r>' .
+            '<w:r><w:instrText xml:space="preserve"> ' . $campo . ' </w:instrText></w:r>' .
+            '<w:r><w:fldChar w:fldCharType="separate"/></w:r>' .
+            '<w:r><w:rPr><w:color w:val="' . self::COLOR_SECUNDARIO . '"/>' .
+            '<w:sz w:val="13"/><w:szCs w:val="13"/></w:rPr><w:t>1</w:t></w:r>' .
+            '<w:r><w:fldChar w:fldCharType="end"/></w:r>';
+    }
+
+    private function xmlTexto($texto)
+    {
+        return htmlspecialchars((string)$texto, ENT_QUOTES | ENT_XML1, 'UTF-8');
+    }
+
     private function crearTituloSeccion(DOMDocument $documento, $texto)
     {
         return $this->crearParrafo(
             $documento,
             (string)$texto,
             [
-                'tamano' => 21,
+                'tamano' => 20,
                 'negrita' => true,
-                'color' => self::COLOR_PRIMARIO,
+                'color' => self::COLOR_TEXTO,
                 'antes' => 80,
-                'despues' => 80,
-                'mantener_siguiente' => true
+                'despues' => 70,
+                'mantener_siguiente' => true,
+                'borde_izquierdo' => true
             ]
         );
     }
@@ -475,9 +611,9 @@ class ReporteAdministradorPdfService
             $documento,
             (string)$valor,
             [
-                'tamano' => 24,
+                'tamano' => 22,
                 'negrita' => true,
-                'color' => self::COLOR_PRIMARIO,
+                'color' => self::COLOR_TEXTO,
                 'alineacion' => 'center',
                 'antes' => 45,
                 'despues' => 20
@@ -666,8 +802,8 @@ class ReporteAdministradorPdfService
                 [
                     'tamano' => 14,
                     'negrita' => true,
-                    'color' => self::COLOR_PRIMARIO,
-                    'relleno' => self::COLOR_FONDO_PRIMARIO,
+                    'color' => 'FFFFFF',
+                    'relleno' => self::COLOR_PRIMARIO,
                     'alineacion' => 'center'
                 ]
             ));
@@ -796,6 +932,17 @@ class ReporteAdministradorPdfService
         $this->attr($espaciado, 'w', 'w', 'line', '240');
         $this->attr($espaciado, 'w', 'w', 'lineRule', 'auto');
         $propiedades->appendChild($espaciado);
+
+        if (!empty($opciones['borde_izquierdo'])) {
+            $bordes = $this->w($documento, 'pBdr');
+            $bordeIzquierdo = $this->w($documento, 'left');
+            $this->attr($bordeIzquierdo, 'w', 'w', 'val', 'single');
+            $this->attr($bordeIzquierdo, 'w', 'w', 'sz', '18');
+            $this->attr($bordeIzquierdo, 'w', 'w', 'space', '8');
+            $this->attr($bordeIzquierdo, 'w', 'w', 'color', self::COLOR_PRIMARIO);
+            $bordes->appendChild($bordeIzquierdo);
+            $propiedades->appendChild($bordes);
+        }
 
         if (!empty($opciones['alineacion'])) {
             $alineacion = $this->w($documento, 'jc');
