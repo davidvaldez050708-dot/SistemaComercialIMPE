@@ -589,6 +589,7 @@ if (!empty($seguimientosSinMunicipio)) {
                             data-row-next-action
                             <?= $rutaLista ? 'data-route-next-ready="1"' : '' ?>
                             <?= $rutaTitulo !== '' ? 'data-flow-next-action="' . $texto($rutaTitulo) . '"' : '' ?>
+                            <?= trim((string)($seguimiento['proxima_accion_at'] ?? '')) !== '' ? 'data-next-schedule-at="' . $texto($seguimiento['proxima_accion_at']) . '"' : '' ?>
                             <?= $agendaFila['texto'] !== '' ? 'data-next-schedule="' . $texto($agendaFila['texto']) . '"' : '' ?>
                             <?= $agendaFila['vencida'] ? 'data-next-overdue="1"' : '' ?>><?= $texto($accionFila) ?></td>
                         <td data-row-folio>
