@@ -582,6 +582,16 @@
     color: #765718;
 }
 
+.agenda-inline-note.is-danger {
+    border: 1px solid #efc8c3;
+    background: #fff0ee;
+    color: #9f241b;
+}
+
+.agenda-inline-note.is-danger i {
+    color: #b42318;
+}
+
 .agenda-inline-note.is-success {
     background: #eaf7f4;
     color: #087866;
