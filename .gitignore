@@ -5,6 +5,7 @@ config/mail_config.php
 config/hostinger_mail_config.php
 config/voip_config.php
 config/zadarma_config.php
+config/ecard_reunion_config.php
 
 # Archivos del sistema operativo
 .DS_Store
@@ -32,6 +33,7 @@ tmp/
 
 # Firmas personales cargadas desde Mi perfil
 /storage/mail/firmas/*
+/storage/mail/ecards/
 
 # Archivos temporales de pruebas
 prueba_correo.php
