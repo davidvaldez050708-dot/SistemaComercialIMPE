@@ -217,8 +217,8 @@ class CorreoFirmadoService
         }
 
         $resultado['mensaje'] = $esReprogramacion || (int)($reunion['es_reprogramacion'] ?? 0) === 1
-            ? 'Correo de reprogramación enviado. La nueva fecha quedó formalmente agendada.'
-            : 'Correo de reunión enviado. La reunión quedó formalmente agendada y el flujo avanzó al paso 12.';
+            ? 'Correo de reprogramación y Ecard enviados. La nueva fecha quedó formalmente agendada.'
+            : 'Correo de reunión y Ecard enviados. La reunión quedó formalmente agendada y el flujo avanzó al paso 12.';
         $resultado['firma_incluida'] = (bool)($envio['firma_incluida'] ?? false);
         $resultado['ecard_incluida'] = true;
         $resultado['ecard_template'] = (string)($ecard['template'] ?? 'manuel');
