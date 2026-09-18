@@ -24,6 +24,16 @@ class CorreoSalidaInstitucionalService
         $nombreDestinatario = trim((string)($datos['nombre_destinatario'] ?? ''));
         $asunto = trim((string)($datos['asunto'] ?? ''));
         $cuerpo = trim((string)($datos['cuerpo'] ?? ''));
+        $htmlAdicional = trim((string)($datos['html_adicional'] ?? ''));
+        $imagenesResultado = $this->normalizarImagenesEmbebidas(
+            $datos['imagenes_embebidas'] ?? []
+        );
+
+        if (!($imagenesResultado['ok'] ?? false)) {
+            return $imagenesResultado;
+        }
+
+        $imagenesEmbebidas = $imagenesResultado['imagenes'];
 
         if ($remitente === '' || !filter_var($remitente, FILTER_VALIDATE_EMAIL)) {
             return $this->error('Tu cuenta no tiene un correo válido para realizar el envío.', 422);
@@ -34,7 +44,11 @@ class CorreoSalidaInstitucionalService
         if ($asunto === '' || $cuerpo === '') {
             return $this->error('El asunto y el mensaje son obligatorios.', 422);
         }
-        if (mb_strlen($asunto) > 255 || mb_strlen($cuerpo) > 20000) {
+        if (
+            mb_strlen($asunto) > 255 ||
+            mb_strlen($cuerpo) > 20000 ||
+            mb_strlen($htmlAdicional) > 20000
+        ) {
             return $this->error('El asunto o el mensaje supera el tamaño permitido.', 422);
         }
 
@@ -49,7 +63,9 @@ class CorreoSalidaInstitucionalService
                 $asunto,
                 $cuerpo,
                 $rutaFirma,
-                $hostinger
+                $hostinger,
+                $imagenesEmbebidas,
+                $htmlAdicional
             );
         }
 
@@ -60,11 +76,23 @@ class CorreoSalidaInstitucionalService
             $nombreDestinatario,
             $asunto,
             $cuerpo,
-            $rutaFirma
+            $rutaFirma,
+            $imagenesEmbebidas,
+            $htmlAdicional
         );
     }
 
-    private function enviarHostinger($remitente, $nombreRemitente, $destinatario, $asunto, $cuerpo, $rutaFirma, $config)
+    private function enviarHostinger(
+        $remitente,
+        $nombreRemitente,
+        $destinatario,
+        $asunto,
+        $cuerpo,
+        $rutaFirma,
+        $config,
+        $imagenesEmbebidas,
+        $htmlAdicional
+    )
     {
         if (!function_exists('curl_init')) {
             return $this->error('La extensión cURL de PHP es necesaria para enviar el correo.', 500);
@@ -114,8 +142,13 @@ class CorreoSalidaInstitucionalService
             'to' => [$destinatario],
             'subject' => $asunto,
             'text' => $cuerpo,
-            'html' => $this->construirHtml($cuerpo, $firmaDisponible)
+            'html' => $this->construirHtml(
+                $cuerpo,
+                $firmaDisponible,
+                $htmlAdicional
+            )
         ];
+        $attachments = [];
 
         if ($nombreRemitente !== '') {
             $payload['displayName'] = $nombreRemitente;
@@ -124,17 +157,43 @@ class CorreoSalidaInstitucionalService
         if ($firmaDisponible) {
             $contenidoFirma = file_get_contents($rutaFirma);
             if ($contenidoFirma !== false) {
-                $payload['attachments'] = [[
+                $attachments[] = [
                     'filename' => basename($rutaFirma),
                     'content' => base64_encode($contenidoFirma),
                     'contentType' => $this->firmaService->detectarMime($rutaFirma) ?: 'image/png',
                     'cid' => self::FIRMA_CID,
                     'encoding' => 'base64'
-                ]];
+                ];
             } else {
                 $firmaDisponible = false;
-                $payload['html'] = $this->construirHtml($cuerpo, false);
+                $payload['html'] = $this->construirHtml(
+                    $cuerpo,
+                    false,
+                    $htmlAdicional
+                );
             }
+        }
+
+        foreach ($imagenesEmbebidas as $imagen) {
+            $contenido = file_get_contents($imagen['ruta']);
+            if ($contenido === false) {
+                return $this->error(
+                    'No fue posible leer una imagen que debe incluirse en el correo.',
+                    500
+                );
+            }
+
+            $attachments[] = [
+                'filename' => $imagen['nombre'],
+                'content' => base64_encode($contenido),
+                'contentType' => $imagen['mime'],
+                'cid' => $imagen['cid'],
+                'encoding' => 'base64'
+            ];
+        }
+
+        if (!empty($attachments)) {
+            $payload['attachments'] = $attachments;
         }
 
         $respuesta = $this->solicitarHostinger(
@@ -154,11 +213,22 @@ class CorreoSalidaInstitucionalService
         return [
             'ok' => true,
             'proveedor' => 'HOSTINGER_MAIL_API',
-            'firma_incluida' => $firmaDisponible
+            'firma_incluida' => $firmaDisponible,
+            'imagenes_embebidas' => count($imagenesEmbebidas)
         ];
     }
 
-    private function enviarSmtp($remitenteUsuario, $nombreRemitente, $destinatario, $nombreDestinatario, $asunto, $cuerpo, $rutaFirma)
+    private function enviarSmtp(
+        $remitenteUsuario,
+        $nombreRemitente,
+        $destinatario,
+        $nombreDestinatario,
+        $asunto,
+        $cuerpo,
+        $rutaFirma,
+        $imagenesEmbebidas,
+        $htmlAdicional
+    )
     {
         $autoload = $this->rootPath . DIRECTORY_SEPARATOR . 'vendor' . DIRECTORY_SEPARATOR . 'autoload.php';
         if (!is_file($autoload)) {
@@ -219,16 +289,31 @@ class CorreoSalidaInstitucionalService
                 );
             }
 
+            foreach ($imagenesEmbebidas as $imagen) {
+                $mail->addEmbeddedImage(
+                    $imagen['ruta'],
+                    $imagen['cid'],
+                    $imagen['nombre'],
+                    'base64',
+                    $imagen['mime']
+                );
+            }
+
             $mail->Subject = $asunto;
             $mail->isHTML(true);
-            $mail->Body = $this->construirHtml($cuerpo, $firmaDisponible);
+            $mail->Body = $this->construirHtml(
+                $cuerpo,
+                $firmaDisponible,
+                $htmlAdicional
+            );
             $mail->AltBody = $cuerpo;
             $mail->send();
 
             return [
                 'ok' => true,
                 'proveedor' => 'SMTP',
-                'firma_incluida' => $firmaDisponible
+                'firma_incluida' => $firmaDisponible,
+                'imagenes_embebidas' => count($imagenesEmbebidas)
             ];
         } catch (Throwable $error) {
             error_log('Correo institucional SMTP: ' . $error->getMessage());
@@ -236,12 +321,16 @@ class CorreoSalidaInstitucionalService
         }
     }
 
-    private function construirHtml($cuerpo, $firmaDisponible)
+    private function construirHtml($cuerpo, $firmaDisponible, $htmlAdicional = '')
     {
         $texto = htmlspecialchars((string)$cuerpo, ENT_QUOTES, 'UTF-8');
         $html = '<!DOCTYPE html><html lang="es"><body style="margin:0;padding:0;background:#ffffff;">';
         $html .= '<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.65;color:#222222;max-width:760px;">';
         $html .= nl2br($texto, false);
+
+        if (trim((string)$htmlAdicional) !== '') {
+            $html .= (string)$htmlAdicional;
+        }
 
         if ($firmaDisponible) {
             $html .= '<div style="margin-top:18px;">';
@@ -251,6 +340,67 @@ class CorreoSalidaInstitucionalService
 
         $html .= '</div></body></html>';
         return $html;
+    }
+
+    private function normalizarImagenesEmbebidas($imagenes)
+    {
+        if ($imagenes === null || $imagenes === '') {
+            $imagenes = [];
+        }
+
+        if (!is_array($imagenes)) {
+            return $this->error('Las imágenes del correo no tienen un formato válido.', 422);
+        }
+
+        $salida = [];
+        $rootReal = realpath($this->rootPath);
+
+        foreach ($imagenes as $imagen) {
+            if (!is_array($imagen)) {
+                return $this->error('Una imagen del correo no tiene un formato válido.', 422);
+            }
+
+            $ruta = trim((string)($imagen['ruta'] ?? ''));
+            $cid = trim((string)($imagen['cid'] ?? ''));
+            $nombre = basename(trim((string)($imagen['nombre'] ?? 'imagen.jpg')));
+            $mime = trim((string)($imagen['mime'] ?? ''));
+
+            if ($ruta === '' || $cid === '' || !preg_match('/^[a-zA-Z0-9._-]+$/', $cid)) {
+                return $this->error('Faltan datos de una imagen que debe incluirse en el correo.', 422);
+            }
+
+            $real = realpath($ruta);
+            if (
+                $real === false ||
+                !is_file($real) ||
+                ($rootReal !== false && strpos($real, $rootReal) !== 0)
+            ) {
+                return $this->error('Una imagen del correo no está disponible.', 422);
+            }
+
+            if ($mime === '' && function_exists('mime_content_type')) {
+                $detectado = mime_content_type($real);
+                if (is_string($detectado)) {
+                    $mime = trim($detectado);
+                }
+            }
+
+            if (strpos($mime, 'image/') !== 0) {
+                $mime = 'image/jpeg';
+            }
+
+            $salida[] = [
+                'ruta' => $real,
+                'cid' => $cid,
+                'nombre' => $nombre !== '' ? $nombre : 'imagen.jpg',
+                'mime' => $mime
+            ];
+        }
+
+        return [
+            'ok' => true,
+            'imagenes' => $salida
+        ];
     }
 
     private function solicitarHostinger($metodo, $url, $token, $payload)
