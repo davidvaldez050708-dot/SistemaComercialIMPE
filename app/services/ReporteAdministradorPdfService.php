@@ -434,9 +434,7 @@ class ReporteAdministradorPdfService
             'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" ' .
             'xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">' .
             '<w:tbl><w:tblPr><w:tblW w:w="' . $anchoTotal . '" w:type="dxa"/>' .
-            '<w:tblLayout w:type="fixed"/><w:tblBorders>' .
-            '<w:bottom w:val="single" w:sz="16" w:space="7" w:color="' . self::COLOR_PRIMARIO . '"/>' .
-            '</w:tblBorders></w:tblPr>' .
+            '<w:tblLayout w:type="fixed"/></w:tblPr>' .
             '<w:tblGrid><w:gridCol w:w="' . $anchoLogo . '"/><w:gridCol w:w="' . $anchoTexto . '"/></w:tblGrid>' .
             '<w:tr><w:trPr><w:cantSplit/></w:trPr>' .
             '<w:tc><w:tcPr><w:tcW w:w="' . $anchoLogo . '" w:type="dxa"/><w:vAlign w:val="center"/></w:tcPr>' .
