@@ -91,3 +91,15 @@ section[aria-labelledby="grafica-municipios-titulo"] > p.text-muted.mb-0 {
         grid-template-columns: 1fr;
     }
 }
+
+
+/* Mensaje vacío de Actividad reciente: misma jerarquía visual que el resto del reporte. */
+.seguimiento-report-results .seguimiento-report-activity-panel > p.text-muted,
+.seguimiento-report-results .seguimiento-report-activity-panel .seguimiento-report-chart-wrap + p.text-muted {
+    margin-top: 10px !important;
+    margin-bottom: 0 !important;
+    color: var(--color-text-soft) !important;
+    font-size: 11.5px !important;
+    font-weight: 500 !important;
+    line-height: 1.45 !important;
+}
