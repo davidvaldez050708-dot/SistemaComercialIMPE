@@ -223,6 +223,11 @@
             return respuesta.then(function (resultado) {
                 if (resultado.ok) {
                     invalidar(seguimientoId);
+                    try {
+                        window.IMPE_SEGUIMIENTO_RUTA_CACHE?.invalidar?.(seguimientoId);
+                    } catch (error) {
+                        // La operación principal ya fue guardada correctamente.
+                    }
                 }
                 return resultado;
             });
@@ -391,6 +396,11 @@
                 0
             );
             invalidar(seguimientoId);
+            try {
+                window.IMPE_SEGUIMIENTO_RUTA_CACHE?.invalidar?.(seguimientoId);
+            } catch (error) {
+                // Sin acción adicional.
+            }
         });
     });
 })();
