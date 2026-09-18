@@ -412,7 +412,7 @@ class ReporteAdministradorPdfService
                 '<a:stretch><a:fillRect/></a:stretch></pic:blipFill>' .
                 '<pic:spPr><a:xfrm><a:off x="0" y="0"/>' .
                 '<a:ext cx="1243013" cy="1137428"/></a:xfrm>' .
-                '<a:prstGeom prst="rect"/><a:ln/></pic:spPr></pic:pic>' .
+                '<a:prstGeom prst="rect"/><a:ln><a:noFill/></a:ln></pic:spPr></pic:pic>' .
                 '</a:graphicData></a:graphic>' .
                 '</wp:inline></w:drawing></w:r></w:p>';
         }
