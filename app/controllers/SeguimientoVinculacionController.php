@@ -71,13 +71,6 @@ class SeguimientoVinculacionController
         );
         $municipiosCandidatos = $modelo->obtenerMunicipiosActivosEstado($estadoId);
         $puedeCrearSeguimiento = tienePermiso('seguimientos_vinculacion.crear');
-        $resumen = $this->obtenerResumenPorModo(
-            $modelo,
-            $usuarioId,
-            $estadoId,
-            $modoSeguimiento,
-            $filtrosSeguimiento
-        );
         $resumenTotalSeguimientos = $this->obtenerResumenPorModo(
             $modelo,
             $usuarioId,
