@@ -58,7 +58,10 @@
             if (valor) {
                 valor.removeAttribute('data-summary-count');
                 valor.setAttribute('data-route-summary-count', item.clave);
-                valor.textContent = indice === 0 ? String(filas.length) : '…';
+
+                if (valor.dataset.routeSummaryReady !== '1') {
+                    valor.textContent = indice === 0 ? String(filas.length) : '…';
+                }
             }
 
             if (etiqueta) {
