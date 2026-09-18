@@ -152,9 +152,16 @@
             }
 
             const seguimiento = obtenerSeguimiento(seguimientoId);
+
+            // Si todavía no se abrió/precargó el panel, conserva la fecha
+            // renderizada por PHP. Así no desaparece el vencimiento inicial.
+            if (!seguimiento) {
+                return;
+            }
+
             const descripcion = descripcionFecha(seguimiento, true);
 
-            if (!seguimiento || descripcion.texto === '') {
+            if (descripcion.texto === '') {
                 delete celda.dataset.nextSchedule;
                 delete celda.dataset.nextOverdue;
                 return;
