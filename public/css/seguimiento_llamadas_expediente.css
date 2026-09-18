@@ -258,6 +258,16 @@
     color: var(--color-accent);
 }
 
+.linkage-call-audio-state.is-processing {
+    border-color: #ead9ad;
+    background: #fff9ec;
+    color: #8a6515;
+}
+
+.linkage-call-audio-state.is-processing i {
+    color: #a97a13;
+}
+
 .linkage-call-recording-notes {
     margin: 0;
     overflow-wrap: anywhere;
