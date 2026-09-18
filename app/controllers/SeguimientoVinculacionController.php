@@ -4,6 +4,7 @@ require_once __DIR__ . '/../models/SeguimientoVinculacionModel.php';
 require_once __DIR__ . '/../models/DataTerritorialModel.php';
 require_once __DIR__ . '/../helpers/PermissionHelper.php';
 require_once __DIR__ . '/../services/DenueService.php';
+require_once __DIR__ . '/../services/SeguimientoRutaOperativaService.php';
 
 class SeguimientoVinculacionController
 {
@@ -91,6 +92,11 @@ class SeguimientoVinculacionController
             $modoSeguimiento,
             $filtrosSeguimiento
         );
+
+        $rutasIniciales = $this->enriquecerSeguimientosConRutaInicial($seguimientos);
+        $seguimientos = $rutasIniciales['seguimientos'];
+        $seguimientosRutaInicial = $rutasIniciales['rutas'];
+
         $totalSeguimientosReales = (int)($resumenTotalSeguimientos['en_seguimiento'] ?? 0);
         $totalResultadosFiltrados = count($seguimientos);
 
@@ -1898,6 +1904,104 @@ class SeguimientoVinculacionController
             $estadoId,
             $filtros
         );
+    }
+
+    private function enriquecerSeguimientosConRutaInicial($seguimientos)
+    {
+        if (!is_array($seguimientos) || empty($seguimientos)) {
+            return [
+                'seguimientos' => is_array($seguimientos) ? $seguimientos : [],
+                'rutas' => []
+            ];
+        }
+
+        $servicioRuta = new SeguimientoRutaOperativaService();
+        $rutas = [];
+
+        foreach ($seguimientos as $indice => $seguimiento) {
+            $seguimientoId = (int)($seguimiento['id'] ?? 0);
+            $analistaId = (int)($seguimiento['analista_id'] ?? 0);
+
+            if ($seguimientoId <= 0 || $analistaId <= 0) {
+                continue;
+            }
+
+            $resultado = $servicioRuta->resolver(
+                $seguimientoId,
+                $analistaId,
+                $seguimiento
+            );
+            $flujo = is_array($resultado['flujo'] ?? null)
+                ? $resultado['flujo']
+                : null;
+
+            if (!($resultado['ok'] ?? false) || !$flujo) {
+                continue;
+            }
+
+            $pasoActual = (int)($flujo['paso_actual'] ?? 0);
+            $titulo = trim((string)($flujo['titulo'] ?? ''));
+
+            $seguimientos[$indice]['ruta_paso'] = $pasoActual;
+            $seguimientos[$indice]['ruta_titulo'] = $titulo;
+            $seguimientos[$indice]['ruta_etapa_label'] =
+                $this->etiquetarEtapaRutaInicial(
+                    $pasoActual,
+                    $titulo,
+                    (string)($seguimiento['estado_seguimiento'] ?? '')
+                );
+            $seguimientos[$indice]['ruta_lista'] = 1;
+            $rutas[$seguimientoId] = $flujo;
+        }
+
+        return [
+            'seguimientos' => $seguimientos,
+            'rutas' => $rutas
+        ];
+    }
+
+    private function etiquetarEtapaRutaInicial($pasoActual, $tituloFlujo, $estadoInterno)
+    {
+        $estadoInterno = strtoupper(trim((string)$estadoInterno));
+        $titulo = function_exists('mb_strtolower')
+            ? mb_strtolower(trim((string)$tituloFlujo), 'UTF-8')
+            : strtolower(trim((string)$tituloFlujo));
+
+        if ($estadoInterno === 'DESCARTADO') {
+            return 'Descartado';
+        }
+
+        if ((int)$pasoActual === 12) {
+            if (strpos($titulo, 'programad') !== false) {
+                return 'Reunión programada';
+            }
+
+            if (
+                strpos($titulo, 'seguimiento de acuerdos') !== false ||
+                strpos($titulo, 'dar seguimiento') !== false
+            ) {
+                return 'Seguimiento de acuerdos';
+            }
+
+            return 'Reunión y acuerdos';
+        }
+
+        $etiquetas = [
+            1 => 'Seguimiento iniciado',
+            2 => 'Investigación de datos',
+            3 => 'Contacto y validación',
+            4 => 'Datos verificados',
+            5 => 'Oficio preparado',
+            6 => 'PDF generado',
+            7 => 'Oficio / correo enviado',
+            8 => 'Esperando respuesta',
+            9 => 'Respuesta recibida',
+            10 => 'Seguimiento por correo',
+            11 => 'Reunión agendada',
+            13 => 'Convenio'
+        ];
+
+        return $etiquetas[(int)$pasoActual] ?? '';
     }
 
     private function obtenerSeguimientosPorModo($modelo, $usuarioId, $estadoId, $modo, $filtros)
