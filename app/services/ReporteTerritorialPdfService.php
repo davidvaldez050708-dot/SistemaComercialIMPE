@@ -137,9 +137,9 @@ class ReporteTerritorialPdfService
         $html .= $this->focusInfo('Titular del gobierno', $estado['titular_gobierno'] ?? '—');
         $html .= $this->focusInfo('Periodo de gobierno', $estado['periodo_gobierno'] ?? '—');
         $html .= '</tr><tr>';
-        $html .= $this->focusInfo('Secretarías activas', $calculos['total_secretarias_activas'] ?? '—');
+        $html .= $this->focusInfo('Secretarías activas', $this->numero($calculos['total_secretarias_activas'] ?? null));
         $html .= $this->focusInfo('Teléfono', $estado['telefono'] ?? '—');
-        $html .= $this->focusInfo('Población promedio / municipio', $calculos['poblacion_promedio_municipio'] ?? '—');
+        $html .= $this->focusInfo('Población promedio / municipio', $this->numero($calculos['poblacion_promedio_municipio'] ?? null));
         $html .= '</tr></table></section>';
 
         $html .= '<section class="report-section keep">' . $this->sectionTitle('Panorama territorial');
@@ -349,7 +349,7 @@ class ReporteTerritorialPdfService
     {
         $mostrar = $value === null || trim((string)$value) === ''
             ? '—'
-            : (is_numeric($value) ? $this->numero($value) : (string)$value);
+            : (string)$value;
 
         return '<td class="focus-info"><span>' . $this->e($label) . '</span><strong>' .
             $this->e($mostrar) . '</strong></td>';
