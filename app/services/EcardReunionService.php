@@ -7,7 +7,7 @@ class EcardReunionService
     public const TEMPLATE_SERGIO = 'SERGIO';
     public const TEMPLATE_MANUEL = 'MANUEL';
     public const CID = 'ecard-reunion';
-    public const VERSION = '20260919-02';
+    public const VERSION = '20260919-03';
 
     private $connection;
     private $rootPath;
@@ -285,121 +285,120 @@ class EcardReunionService
         }
 
         $blanco = imagecolorallocate($imagen, 255, 255, 255);
-        $navy = imagecolorallocate($imagen, 8, 46, 82);
+        $navy = imagecolorallocate($imagen, 3, 43, 78);
         $fuenteNormal = $this->resolverFuente(false);
         $fuenteBold = $this->resolverFuente(true);
 
-        $evento = preg_replace('/\s+/u', ' ', trim((string)$evento));
-        $sede = preg_replace('/\s+/u', ' ', trim((string)$sede));
+        $evento = preg_replace('/\\s+/u', ' ', trim((string)$evento));
+        $sede = preg_replace('/\\s+/u', ' ', trim((string)$sede));
         $modalidad = trim((string)$modalidad);
-        $enlace = trim((string)$enlace);
 
         if ($evento === '') {
             $evento = 'Reunión de vinculación';
         }
 
         /*
-         * La referencia aprobada usa un solo encabezado principal.
-         * Si existe una sede presencial diferente al nombre del evento,
-         * se añade de forma compacta sin modificar la composición.
+         * La plantilla aprobada mide 600 x 606 px.
+         * Solo se escriben los datos variables en las dos áreas libres:
+         * encabezado superior y recuadro de fecha/hora.
          */
-        $encabezado = $evento;
-        if (
-            $sede !== '' &&
-            $this->normalizarTexto($sede) !== 'en linea' &&
-            strpos($this->normalizarTexto($evento), $this->normalizarTexto($sede)) === false
-        ) {
-            $encabezado .= ' · ' . $sede;
-        }
-
-        $encabezado = mb_strtoupper($encabezado, 'UTF-8');
-        $lineasEvento = $this->envolverTextoAjustado(
-            $encabezado,
-            510,
-            22,
-            15,
+        $eventoMayus = mb_strtoupper($evento, 'UTF-8');
+        $eventoAjustado = $this->envolverTextoAjustado(
+            $eventoMayus,
+            520,
+            19,
+            13,
             $fuenteBold,
             2
         );
 
-        $tamanoEvento = (int)($lineasEvento['tamano'] ?? 18);
-        $lineas = $lineasEvento['lineas'] ?? [$encabezado];
-        $yEvento = count($lineas) > 1 ? 111 : 128;
+        $tamanoEvento = (int)($eventoAjustado['tamano'] ?? 16);
+        $lineasEvento = $eventoAjustado['lineas'] ?? [$eventoMayus];
 
-        foreach ($lineas as $linea) {
+        if (count($lineasEvento) > 1) {
+            $yEvento = 108;
+            foreach ($lineasEvento as $linea) {
+                $this->textoCentrado(
+                    $imagen,
+                    $linea,
+                    $tamanoEvento,
+                    $yEvento,
+                    $blanco,
+                    $fuenteBold
+                );
+                $yEvento += $tamanoEvento + 7;
+            }
+        } else {
             $this->textoCentrado(
                 $imagen,
-                $linea,
+                $lineasEvento[0],
                 $tamanoEvento,
-                $yEvento,
+                116,
                 $blanco,
                 $fuenteBold
             );
-            $yEvento += $tamanoEvento + 7;
+
+            $sedeNormalizada = $this->normalizarTexto($sede);
+            if (
+                $sede !== '' &&
+                $sedeNormalizada !== 'en linea' &&
+                $sedeNormalizada !== 'por confirmar'
+            ) {
+                $tamanoSede = $this->tamanoParaAncho(
+                    $sede,
+                    500,
+                    12,
+                    9,
+                    $fuenteNormal
+                );
+                $this->textoCentrado(
+                    $imagen,
+                    $sede,
+                    $tamanoSede,
+                    142,
+                    $blanco,
+                    $fuenteNormal
+                );
+            }
         }
 
         $fechaTexto = $this->fechaPlantillaManuel($fecha);
         $tamanoFecha = $this->tamanoParaAncho(
             $fechaTexto,
-            500,
-            27,
-            18,
+            470,
+            22,
+            15,
             $fuenteBold
         );
         $this->textoCentrado(
             $imagen,
             $fechaTexto,
             $tamanoFecha,
-            374,
+            382,
             $navy,
             $fuenteBold
         );
 
         $horaTexto = $this->horaPlantillaManuel($fecha);
-        if ($modalidad !== '') {
+        if ($modalidad !== '' && strtolower($modalidad) !== 'por confirmar') {
             $horaTexto .= ' · ' . mb_strtoupper($modalidad, 'UTF-8');
         }
 
         $tamanoHora = $this->tamanoParaAncho(
             $horaTexto,
-            480,
-            20,
-            14,
+            440,
+            17,
+            12,
             $fuenteNormal
         );
         $this->textoCentrado(
             $imagen,
             $horaTexto,
             $tamanoHora,
-            416,
+            414,
             $navy,
             $fuenteNormal
         );
-
-        /*
-         * El diseño original comunica Zoom mediante su icono. El enlace real
-         * se mantiene visible, en tamaño discreto, para cumplir el dato
-         * obligatorio sin alterar la composición aprobada.
-         */
-        if ($enlace !== '') {
-            $enlaceVisual = preg_replace('#^https?://#i', '', $enlace);
-            $enlaceVisual = rtrim((string)$enlaceVisual, '/');
-            $tamanoEnlace = $this->tamanoParaAncho(
-                $enlaceVisual,
-                440,
-                10,
-                8,
-                $fuenteNormal
-            );
-            $this->textoCentrado(
-                $imagen,
-                $enlaceVisual,
-                $tamanoEnlace,
-                432,
-                $navy,
-                $fuenteNormal
-            );
-        }
 
         imageinterlace($imagen, true);
         $guardado = imagejpeg($imagen, $ruta, 96);
@@ -425,10 +424,10 @@ class EcardReunionService
             'img' . DIRECTORY_SEPARATOR .
             'ecards' . DIRECTORY_SEPARATOR .
             'templates' . DIRECTORY_SEPARATOR .
-            'manuel.part*.b64';
+            'manuel-approved.part*.b64';
 
         $partes = glob($patron) ?: [];
-        if (count($partes) < 5) {
+        if (count($partes) !== 5) {
             return false;
         }
 
@@ -448,7 +447,17 @@ class EcardReunionService
             return false;
         }
 
-        return @imagecreatefromstring($binario);
+        $imagen = @imagecreatefromstring($binario);
+        if (!$imagen) {
+            return false;
+        }
+
+        if (imagesx($imagen) !== 600 || imagesy($imagen) !== 606) {
+            imagedestroy($imagen);
+            return false;
+        }
+
+        return $imagen;
     }
 
     private function fechaPlantillaManuel(DateTime $fecha)
