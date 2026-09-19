@@ -1531,9 +1531,6 @@ class SeguimientoVinculacionModel
                     CASE
                         WHEN seguimientos.proxima_accion_at IS NULL THEN NULL
                         WHEN seguimientos.estado_seguimiento = 'DATOS_VERIFICADOS' THEN NULL
-                        WHEN seguimientos.ultima_interaccion_at IS NOT NULL
-                            AND seguimientos.proxima_accion_at <= seguimientos.ultima_interaccion_at
-                        THEN NULL
                         ELSE seguimientos.proxima_accion_at
                     END AS proxima_accion_at,
                     seguimientos.created_at,
@@ -1543,9 +1540,6 @@ class SeguimientoVinculacionModel
                     CASE
                         WHEN seguimientos.proxima_accion_at IS NULL THEN NULL
                         WHEN seguimientos.estado_seguimiento = 'DATOS_VERIFICADOS' THEN NULL
-                        WHEN seguimientos.ultima_interaccion_at IS NOT NULL
-                            AND seguimientos.proxima_accion_at <= seguimientos.ultima_interaccion_at
-                        THEN NULL
                         ELSE (
                             SELECT TRIM(
                                 SUBSTRING_INDEX(
@@ -1680,10 +1674,6 @@ class SeguimientoVinculacionModel
                     CASE
                         WHEN seguimientos.proxima_accion_at IS NOT NULL
                             AND seguimientos.estado_seguimiento <> 'DATOS_VERIFICADOS'
-                            AND (
-                                seguimientos.ultima_interaccion_at IS NULL
-                                OR seguimientos.proxima_accion_at > seguimientos.ultima_interaccion_at
-                            )
                             AND seguimientos.proxima_accion_at <= NOW()
                         THEN 0
                         ELSE 1
@@ -1691,10 +1681,6 @@ class SeguimientoVinculacionModel
                     CASE
                         WHEN seguimientos.proxima_accion_at IS NOT NULL
                             AND seguimientos.estado_seguimiento <> 'DATOS_VERIFICADOS'
-                            AND (
-                                seguimientos.ultima_interaccion_at IS NULL
-                                OR seguimientos.proxima_accion_at > seguimientos.ultima_interaccion_at
-                            )
                         THEN seguimientos.proxima_accion_at
                         ELSE NULL
                     END ASC,
