@@ -7,7 +7,7 @@ class EcardReunionService
     public const TEMPLATE_SERGIO = 'SERGIO';
     public const TEMPLATE_MANUEL = 'MANUEL';
     public const CID = 'ecard-reunion';
-    public const VERSION = '20260919-01';
+    public const VERSION = '20260919-02';
 
     private $connection;
     private $rootPath;
@@ -238,6 +238,326 @@ class EcardReunionService
     }
 
     private function crearImagen($ruta, array $meta, DateTime $fecha, $evento, $sede, $modalidad, $enlace)
+    {
+        $template = strtoupper((string)($meta['template'] ?? ''));
+
+        if ($template === self::TEMPLATE_MANUEL) {
+            return $this->crearImagenManuelPlantilla(
+                $ruta,
+                $fecha,
+                $evento,
+                $sede,
+                $modalidad,
+                $enlace
+            );
+        }
+
+        return $this->crearImagenGenerica(
+            $ruta,
+            $meta,
+            $fecha,
+            $evento,
+            $sede,
+            $modalidad,
+            $enlace
+        );
+    }
+
+    /**
+     * Ecard Manuel:
+     * parte exactamente de la pieza gráfica aprobada y únicamente
+     * sobreescribe los datos variables de la reunión.
+     */
+    private function crearImagenManuelPlantilla(
+        $ruta,
+        DateTime $fecha,
+        $evento,
+        $sede,
+        $modalidad,
+        $enlace
+    ) {
+        $imagen = $this->cargarPlantillaManuel();
+
+        if (!$imagen) {
+            return $this->error(
+                'No fue posible cargar la plantilla aprobada de la Ecard de Manuel.'
+            );
+        }
+
+        $blanco = imagecolorallocate($imagen, 255, 255, 255);
+        $navy = imagecolorallocate($imagen, 8, 46, 82);
+        $fuenteNormal = $this->resolverFuente(false);
+        $fuenteBold = $this->resolverFuente(true);
+
+        $evento = preg_replace('/\s+/u', ' ', trim((string)$evento));
+        $sede = preg_replace('/\s+/u', ' ', trim((string)$sede));
+        $modalidad = trim((string)$modalidad);
+        $enlace = trim((string)$enlace);
+
+        if ($evento === '') {
+            $evento = 'Reunión de vinculación';
+        }
+
+        /*
+         * La referencia aprobada usa un solo encabezado principal.
+         * Si existe una sede presencial diferente al nombre del evento,
+         * se añade de forma compacta sin modificar la composición.
+         */
+        $encabezado = $evento;
+        if (
+            $sede !== '' &&
+            $this->normalizarTexto($sede) !== 'en linea' &&
+            strpos($this->normalizarTexto($evento), $this->normalizarTexto($sede)) === false
+        ) {
+            $encabezado .= ' · ' . $sede;
+        }
+
+        $encabezado = mb_strtoupper($encabezado, 'UTF-8');
+        $lineasEvento = $this->envolverTextoAjustado(
+            $encabezado,
+            510,
+            22,
+            15,
+            $fuenteBold,
+            2
+        );
+
+        $tamanoEvento = (int)($lineasEvento['tamano'] ?? 18);
+        $lineas = $lineasEvento['lineas'] ?? [$encabezado];
+        $yEvento = count($lineas) > 1 ? 111 : 128;
+
+        foreach ($lineas as $linea) {
+            $this->textoCentrado(
+                $imagen,
+                $linea,
+                $tamanoEvento,
+                $yEvento,
+                $blanco,
+                $fuenteBold
+            );
+            $yEvento += $tamanoEvento + 7;
+        }
+
+        $fechaTexto = $this->fechaPlantillaManuel($fecha);
+        $tamanoFecha = $this->tamanoParaAncho(
+            $fechaTexto,
+            500,
+            27,
+            18,
+            $fuenteBold
+        );
+        $this->textoCentrado(
+            $imagen,
+            $fechaTexto,
+            $tamanoFecha,
+            374,
+            $navy,
+            $fuenteBold
+        );
+
+        $horaTexto = $this->horaPlantillaManuel($fecha);
+        if ($modalidad !== '') {
+            $horaTexto .= ' · ' . mb_strtoupper($modalidad, 'UTF-8');
+        }
+
+        $tamanoHora = $this->tamanoParaAncho(
+            $horaTexto,
+            480,
+            20,
+            14,
+            $fuenteNormal
+        );
+        $this->textoCentrado(
+            $imagen,
+            $horaTexto,
+            $tamanoHora,
+            416,
+            $navy,
+            $fuenteNormal
+        );
+
+        /*
+         * El diseño original comunica Zoom mediante su icono. El enlace real
+         * se mantiene visible, en tamaño discreto, para cumplir el dato
+         * obligatorio sin alterar la composición aprobada.
+         */
+        if ($enlace !== '') {
+            $enlaceVisual = preg_replace('#^https?://#i', '', $enlace);
+            $enlaceVisual = rtrim((string)$enlaceVisual, '/');
+            $tamanoEnlace = $this->tamanoParaAncho(
+                $enlaceVisual,
+                440,
+                10,
+                8,
+                $fuenteNormal
+            );
+            $this->textoCentrado(
+                $imagen,
+                $enlaceVisual,
+                $tamanoEnlace,
+                432,
+                $navy,
+                $fuenteNormal
+            );
+        }
+
+        imageinterlace($imagen, true);
+        $guardado = imagejpeg($imagen, $ruta, 96);
+        imagedestroy($imagen);
+
+        if (!$guardado || !is_file($ruta)) {
+            return $this->error(
+                'No fue posible guardar la Ecard de Manuel.'
+            );
+        }
+
+        return ['ok' => true];
+    }
+
+    private function cargarPlantillaManuel()
+    {
+        if (!function_exists('imagecreatefromstring')) {
+            return false;
+        }
+
+        $patron = $this->rootPath . DIRECTORY_SEPARATOR .
+            'public' . DIRECTORY_SEPARATOR .
+            'img' . DIRECTORY_SEPARATOR .
+            'ecards' . DIRECTORY_SEPARATOR .
+            'templates' . DIRECTORY_SEPARATOR .
+            'manuel.part*.b64';
+
+        $partes = glob($patron) ?: [];
+        if (count($partes) < 5) {
+            return false;
+        }
+
+        natsort($partes);
+        $base64 = '';
+
+        foreach ($partes as $parte) {
+            $contenido = @file_get_contents($parte);
+            if (!is_string($contenido) || trim($contenido) === '') {
+                return false;
+            }
+            $base64 .= trim($contenido);
+        }
+
+        $binario = base64_decode($base64, true);
+        if ($binario === false || $binario === '') {
+            return false;
+        }
+
+        return @imagecreatefromstring($binario);
+    }
+
+    private function fechaPlantillaManuel(DateTime $fecha)
+    {
+        $dias = [
+            1 => 'Lunes',
+            2 => 'Martes',
+            3 => 'Miércoles',
+            4 => 'Jueves',
+            5 => 'Viernes',
+            6 => 'Sábado',
+            7 => 'Domingo'
+        ];
+        $meses = [
+            1 => 'Enero',
+            2 => 'Febrero',
+            3 => 'Marzo',
+            4 => 'Abril',
+            5 => 'Mayo',
+            6 => 'Junio',
+            7 => 'Julio',
+            8 => 'Agosto',
+            9 => 'Septiembre',
+            10 => 'Octubre',
+            11 => 'Noviembre',
+            12 => 'Diciembre'
+        ];
+
+        return ($dias[(int)$fecha->format('N')] ?? '') . ' ' .
+            $fecha->format('j') . ' de ' .
+            ($meses[(int)$fecha->format('n')] ?? '') . ', ' .
+            $fecha->format('Y');
+    }
+
+    private function horaPlantillaManuel(DateTime $fecha)
+    {
+        $hora = (int)$fecha->format('G');
+        $minuto = $fecha->format('i');
+        $periodo = $hora < 12 ? 'AM' : 'PM';
+        $hora12 = $hora % 12;
+
+        if ($hora12 === 0) {
+            $hora12 = 12;
+        }
+
+        return $hora12 . ':' . $minuto . ' ' . $periodo;
+    }
+
+    private function tamanoParaAncho($texto, $maxAncho, $inicial, $minimo, $fuente)
+    {
+        for ($tamano = (int)$inicial; $tamano >= (int)$minimo; $tamano--) {
+            if ($this->medirTexto($texto, $tamano, $fuente) <= $maxAncho) {
+                return $tamano;
+            }
+        }
+
+        return (int)$minimo;
+    }
+
+    private function envolverTextoAjustado(
+        $texto,
+        $maxAncho,
+        $tamanoInicial,
+        $tamanoMinimo,
+        $fuente,
+        $maxLineas
+    ) {
+        for (
+            $tamano = (int)$tamanoInicial;
+            $tamano >= (int)$tamanoMinimo;
+            $tamano--
+        ) {
+            $lineas = $this->envolverTexto(
+                $texto,
+                $maxAncho,
+                $tamano,
+                $fuente,
+                $maxLineas
+            );
+
+            $truncada = false;
+            foreach ($lineas as $linea) {
+                if (mb_substr((string)$linea, -1, 1, 'UTF-8') === '…') {
+                    $truncada = true;
+                    break;
+                }
+            }
+
+            if (!$truncada) {
+                return [
+                    'tamano' => $tamano,
+                    'lineas' => $lineas
+                ];
+            }
+        }
+
+        return [
+            'tamano' => (int)$tamanoMinimo,
+            'lineas' => $this->envolverTexto(
+                $texto,
+                $maxAncho,
+                $tamanoMinimo,
+                $fuente,
+                $maxLineas
+            )
+        ];
+    }
+
+    private function crearImagenGenerica($ruta, array $meta, DateTime $fecha, $evento, $sede, $modalidad, $enlace)
     {
         $ancho = 900;
         $alto = 1050;
