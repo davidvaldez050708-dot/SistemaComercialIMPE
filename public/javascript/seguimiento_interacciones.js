@@ -26,6 +26,10 @@
             'Enviar WhatsApp',
             'Enviar oficio/correo'
         ];
+        const accionesQueCierranRecordatorio = [
+            'Verificar información de contacto',
+            'Generar oficio'
+        ];
         let motivoNoInteresPendiente = '';
         let esperandoDecisionNoInteres = false;
         let toastInteraccionDiferido = false;
@@ -207,6 +211,15 @@
             const sinAccion = accion === '';
             const resultadoManual = resultado === 'OTRO';
             const fechaObligatoria = accionesConHorarioObligatorio.includes(accion);
+            const cierraRecordatorio = accionesQueCierranRecordatorio.includes(accion);
+
+            if (cierraRecordatorio) {
+                campoFechaProximaAccion.value = '';
+                campoFechaProximaAccion.disabled = true;
+                campoFechaProximaAccion.required = false;
+                actualizarEtiquetaFecha(false);
+                return;
+            }
 
             campoFechaProximaAccion.disabled = sinAccion && !resultadoManual;
             campoFechaProximaAccion.required = fechaObligatoria;
