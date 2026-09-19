@@ -1142,7 +1142,8 @@ class SeguimientoVinculacionModel
                     datos_verificados = 1,
                     datos_verificados_at = NOW(),
                     datos_verificados_por = ?,
-                    estado_seguimiento = 'DATOS_VERIFICADOS'";
+                    estado_seguimiento = 'DATOS_VERIFICADOS',
+                    proxima_accion_at = NULL";
             $parametros[] = (int)$usuarioId;
             $tipos .= 'i';
         }
@@ -1163,7 +1164,8 @@ class SeguimientoVinculacionModel
                 SET datos_verificados = 1,
                     datos_verificados_at = NOW(),
                     datos_verificados_por = ?,
-                    estado_seguimiento = 'DATOS_VERIFICADOS'
+                    estado_seguimiento = 'DATOS_VERIFICADOS',
+                    proxima_accion_at = NULL
                 WHERE id = ?
                     AND activo = 1";
 
@@ -1198,6 +1200,27 @@ class SeguimientoVinculacionModel
             $datosVerificados,
             $descartar
         );
+
+        /*
+         * Una acción programada pertenece al ciclo que la creó. Si la nueva
+         * interacción ya ocurrió después de esa fecha, o si el seguimiento
+         * avanzó a Datos verificados, ese recordatorio quedó atendido y no
+         * debe seguir apareciendo como vencido.
+         */
+        if ($estadoSeguimiento === 'DATOS_VERIFICADOS') {
+            $proximaAccionAt = null;
+        } elseif ($proximaAccionAt !== null) {
+            $fechaInteraccionTs = strtotime($fechaInicio);
+            $proximaAccionTs = strtotime((string)$proximaAccionAt);
+
+            if (
+                $fechaInteraccionTs !== false &&
+                $proximaAccionTs !== false &&
+                $proximaAccionTs <= $fechaInteraccionTs
+            ) {
+                $proximaAccionAt = null;
+            }
+        }
 
         $this->connection->begin_transaction();
 
@@ -1505,25 +1528,39 @@ class SeguimientoVinculacionModel
                     seguimientos.datos_verificados,
                     seguimientos.ultima_interaccion_at,
                     seguimientos.fecha_inicio,
-                    seguimientos.proxima_accion_at,
+                    CASE
+                        WHEN seguimientos.proxima_accion_at IS NULL THEN NULL
+                        WHEN seguimientos.estado_seguimiento = 'DATOS_VERIFICADOS' THEN NULL
+                        WHEN seguimientos.ultima_interaccion_at IS NOT NULL
+                            AND seguimientos.proxima_accion_at <= seguimientos.ultima_interaccion_at
+                        THEN NULL
+                        ELSE seguimientos.proxima_accion_at
+                    END AS proxima_accion_at,
                     seguimientos.created_at,
                     seguimientos.updated_at,
                     seguimientos.analista_id,
                     seguimientos.municipio_id,
-                    (
-                        SELECT TRIM(
-                            SUBSTRING_INDEX(
-                                SUBSTRING_INDEX(interacciones_accion.notas, 'Próxima acción: ', -1),
-                                '\n',
-                                1
+                    CASE
+                        WHEN seguimientos.proxima_accion_at IS NULL THEN NULL
+                        WHEN seguimientos.estado_seguimiento = 'DATOS_VERIFICADOS' THEN NULL
+                        WHEN seguimientos.ultima_interaccion_at IS NOT NULL
+                            AND seguimientos.proxima_accion_at <= seguimientos.ultima_interaccion_at
+                        THEN NULL
+                        ELSE (
+                            SELECT TRIM(
+                                SUBSTRING_INDEX(
+                                    SUBSTRING_INDEX(interacciones_accion.notas, 'Próxima acción: ', -1),
+                                    '\n',
+                                    1
+                                )
                             )
+                            FROM interacciones_vinculacion interacciones_accion
+                            WHERE interacciones_accion.seguimiento_id = seguimientos.id
+                                AND interacciones_accion.notas LIKE '%Próxima acción:%'
+                            ORDER BY interacciones_accion.fecha_inicio DESC, interacciones_accion.id DESC
+                            LIMIT 1
                         )
-                        FROM interacciones_vinculacion interacciones_accion
-                        WHERE interacciones_accion.seguimiento_id = seguimientos.id
-                            AND interacciones_accion.notas LIKE '%Próxima acción:%'
-                        ORDER BY interacciones_accion.fecha_inicio DESC, interacciones_accion.id DESC
-                        LIMIT 1
-                    ) AS proxima_accion_texto,
+                    END AS proxima_accion_texto,
                     municipios.nombre AS municipio,
                     usuarios.nombre AS analista_nombre,
                     usuarios.apellidos AS analista_apellidos,
@@ -1642,11 +1679,25 @@ class SeguimientoVinculacionModel
         return " ORDER BY
                     CASE
                         WHEN seguimientos.proxima_accion_at IS NOT NULL
+                            AND seguimientos.estado_seguimiento <> 'DATOS_VERIFICADOS'
+                            AND (
+                                seguimientos.ultima_interaccion_at IS NULL
+                                OR seguimientos.proxima_accion_at > seguimientos.ultima_interaccion_at
+                            )
                             AND seguimientos.proxima_accion_at <= NOW()
                         THEN 0
                         ELSE 1
                     END ASC,
-                    seguimientos.proxima_accion_at ASC,
+                    CASE
+                        WHEN seguimientos.proxima_accion_at IS NOT NULL
+                            AND seguimientos.estado_seguimiento <> 'DATOS_VERIFICADOS'
+                            AND (
+                                seguimientos.ultima_interaccion_at IS NULL
+                                OR seguimientos.proxima_accion_at > seguimientos.ultima_interaccion_at
+                            )
+                        THEN seguimientos.proxima_accion_at
+                        ELSE NULL
+                    END ASC,
                     seguimientos.ultima_interaccion_at DESC,
                     seguimientos.fecha_inicio DESC";
     }
