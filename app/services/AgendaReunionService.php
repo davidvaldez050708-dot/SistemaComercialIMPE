@@ -476,7 +476,8 @@ class AgendaReunionService
         $fila['ecard_sede'] = (string)($ecard['sede'] ?? '');
         $fila['ecard_preview_url'] =
             'index.php?controller=agendaReunion&action=ecardPreview&reunion_id=' .
-            (int)$fila['id'];
+            (int)$fila['id'] .
+            '&v=' . rawurlencode(EcardReunionService::VERSION);
 
         return $fila;
     }
