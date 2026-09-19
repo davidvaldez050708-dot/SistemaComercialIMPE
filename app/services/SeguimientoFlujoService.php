@@ -110,26 +110,17 @@ class SeguimientoFlujoService
         $cuerpoCorreo = trim((string)($seguimiento['cuerpo_correo'] ?? ''));
         $fechaEnvio = trim((string)($seguimiento['fecha_envio'] ?? ''));
         $proximaAccionAt = trim((string)($seguimiento['proxima_accion_at'] ?? ''));
-        $ultimaInteraccion = trim((string)($seguimiento['ultima_interaccion_at'] ?? ''));
 
-        if ($proximaAccionAt !== '' && $ultimaInteraccion !== '') {
-            $proximaTs = strtotime($proximaAccionAt);
-            $ultimaTs = strtotime($ultimaInteraccion);
-
-            if (
-                $proximaTs !== false &&
-                $ultimaTs !== false &&
-                $proximaTs <= $ultimaTs
-            ) {
-                $proximaAccionAt = '';
-            }
-        }
-
+        /*
+         * Solo Datos verificados cierra el recordatorio del contacto previo.
+         * En etapas posteriores la fecha puede representar una reunión o una
+         * confirmación pendiente, por lo que no se invalida por existir una
+         * interacción más reciente.
+         */
         if ($estado === 'DATOS_VERIFICADOS') {
             $proximaAccionAt = '';
         }
 
-        // El resto del flujo debe consumir la fecha vigente, no una acción ya atendida.
         $seguimiento['proxima_accion_at'] = $proximaAccionAt;
 
         $totalLlamadas = (int)($seguimiento['total_llamadas'] ?? 0);
