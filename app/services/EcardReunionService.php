@@ -7,6 +7,7 @@ class EcardReunionService
     public const TEMPLATE_SERGIO = 'SERGIO';
     public const TEMPLATE_MANUEL = 'MANUEL';
     public const CID = 'ecard-reunion';
+    public const VERSION = '20260919-01';
 
     private $connection;
     private $rootPath;
@@ -92,6 +93,7 @@ class EcardReunionService
         }
 
         $firma = sha1(implode('|', [
+            self::VERSION,
             $meta['template'],
             $evento,
             $sede,
@@ -258,14 +260,14 @@ class EcardReunionService
         imagefilledrectangle($imagen, 0, 0, $ancho, $alto, $blanco);
         imagefilledrectangle($imagen, 0, 0, $ancho, 425, $navyProfundo);
 
-        imagefilledpolygon($imagen, [
+        $this->rellenarPoligono($imagen, [
             545, 0,
             900, 0,
             900, 425,
             690, 425
         ], $tealOscuro);
 
-        imagefilledpolygon($imagen, [
+        $this->rellenarPoligono($imagen, [
             670, 0,
             900, 0,
             900, 425,
@@ -366,6 +368,20 @@ class EcardReunionService
         }
 
         return ['ok' => true];
+    }
+
+    private function rellenarPoligono($imagen, array $puntos, $color)
+    {
+        if (PHP_VERSION_ID >= 80000) {
+            return imagefilledpolygon($imagen, $puntos, $color);
+        }
+
+        return imagefilledpolygon(
+            $imagen,
+            $puntos,
+            (int)(count($puntos) / 2),
+            $color
+        );
     }
 
     private function dibujarPonente(
