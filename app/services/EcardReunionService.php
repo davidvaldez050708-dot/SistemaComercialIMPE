@@ -7,7 +7,7 @@ class EcardReunionService
     public const TEMPLATE_SERGIO = 'SERGIO';
     public const TEMPLATE_MANUEL = 'MANUEL';
     public const CID = 'ecard-reunion';
-    public const VERSION = '20260919-03';
+    public const VERSION = '20260919-04';
 
     private $connection;
     private $rootPath;
@@ -424,10 +424,10 @@ class EcardReunionService
             'img' . DIRECTORY_SEPARATOR .
             'ecards' . DIRECTORY_SEPARATOR .
             'templates' . DIRECTORY_SEPARATOR .
-            'manuel-approved.part*.b64';
+            'manuel-exact.part*.b64';
 
         $partes = glob($patron) ?: [];
-        if (count($partes) !== 5) {
+        if (count($partes) !== 17) {
             return false;
         }
 
