@@ -263,14 +263,14 @@ class EcardReunionService
             900, 0,
             900, 425,
             690, 425
-        ], 4, $tealOscuro);
+        ], $tealOscuro);
 
         imagefilledpolygon($imagen, [
             670, 0,
             900, 0,
             900, 425,
             820, 425
-        ], 4, $teal);
+        ], $teal);
 
         for ($y = 35; $y < 410; $y += 55) {
             imageline($imagen, 35, $y, 855, $y + 80, $azul);
