@@ -108,11 +108,24 @@ class AgendaReunionController
         $rolId = (int)($_SESSION['rol_id'] ?? 0);
         $reunionId = (int)($_GET['reunion_id'] ?? 0);
 
+        /*
+         * La respuesta debe ser binaria pura. Capturamos cualquier aviso de PHP/GD
+         * para impedir que texto accidental corrompa el JPEG enviado al navegador.
+         */
+        ob_start();
         $resultado = $this->service->obtenerEcard(
             $usuarioId,
             $rolId,
             $reunionId
         );
+        $salidaInesperada = (string)ob_get_clean();
+
+        if ($salidaInesperada !== '') {
+            error_log(
+                'Agenda ecardPreview salida inesperada reunion ' .
+                $reunionId . ': ' . trim($salidaInesperada)
+            );
+        }
 
         if (!($resultado['ok'] ?? false)) {
             http_response_code((int)($resultado['codigo_http'] ?? 500));
@@ -122,7 +135,7 @@ class AgendaReunionController
         }
 
         $ruta = (string)($resultado['ruta'] ?? '');
-        if ($ruta === '' || !is_file($ruta)) {
+        if ($ruta === '' || !is_file($ruta) || filesize($ruta) <= 0) {
             http_response_code(404);
             header('Content-Type: text/plain; charset=utf-8');
             echo 'La Ecard no está disponible.';
@@ -135,6 +148,7 @@ class AgendaReunionController
             basename((string)($resultado['archivo'] ?? 'ecard_reunion.jpg')) . '"');
         header('Cache-Control: private, no-store, no-cache, must-revalidate');
         header('Pragma: no-cache');
+        header('X-Content-Type-Options: nosniff');
 
         readfile($ruta);
         exit;
