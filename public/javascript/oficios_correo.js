@@ -129,29 +129,34 @@
             modal.setAttribute('aria-labelledby', 'modalConfirmarEnvioOficioTitulo');
             modal.setAttribute('aria-hidden', 'true');
             modal.innerHTML =
-                '<div class="modal-dialog modal-dialog-centered system-form-dialog">' +
-                    '<div class="modal-content system-form-modal">' +
-                        '<div class="modal-header system-form-modal-header">' +
+                '<div class="modal-dialog modal-dialog-centered system-form-dialog mail-confirm-dialog">' +
+                    '<div class="modal-content system-form-modal mail-confirm-modal">' +
+                        '<div class="modal-header system-form-modal-header mail-confirm-header">' +
                             '<div>' +
+                                '<span class="mail-confirm-eyebrow">Correo institucional</span>' +
                                 '<h5 class="system-form-modal-title" id="modalConfirmarEnvioOficioTitulo">Confirmar envío</h5>' +
-                                '<p class="system-form-modal-subtitle">Esta acción enviará el correo institucional.</p>' +
+                                '<p class="system-form-modal-subtitle">Verifica el destinatario antes de continuar.</p>' +
                             '</div>' +
                             '<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>' +
                         '</div>' +
-                        '<div class="modal-body">' +
-                            '<div class="d-flex align-items-start gap-3">' +
-                                '<span class="fs-3 text-primary"><i class="bi bi-send-check"></i></span>' +
-                                '<div>' +
-                                    '<p class="mb-2">¿Deseas enviar el correo institucional a:</p>' +
-                                    '<strong class="d-block text-break" data-mail-confirm-to>—</strong>' +
-                                    '<small class="text-muted d-block mt-2">Se adjuntará el PDF del oficio y el envío quedará registrado en el expediente.</small>' +
+                        '<div class="modal-body mail-confirm-body">' +
+                            '<div class="mail-confirm-card">' +
+                                '<span class="mail-confirm-icon" aria-hidden="true"><i class="bi bi-send-check"></i></span>' +
+                                '<div class="mail-confirm-copy">' +
+                                    '<span class="mail-confirm-label">Destinatario</span>' +
+                                    '<strong class="mail-confirm-recipient" data-mail-confirm-to>—</strong>' +
+                                    '<p class="mail-confirm-question">¿Confirmas el envío de este correo?</p>' +
                                 '</div>' +
                             '</div>' +
+                            '<div class="mail-confirm-note">' +
+                                '<i class="bi bi-file-earmark-pdf" aria-hidden="true"></i>' +
+                                '<span>Se adjuntará el PDF del oficio y el envío quedará registrado automáticamente en el expediente.</span>' +
+                            '</div>' +
                         '</div>' +
-                        '<div class="modal-footer system-form-modal-footer">' +
+                        '<div class="modal-footer system-form-modal-footer mail-confirm-footer">' +
                             '<button type="button" class="btn btn-system-cancel" data-mail-confirm-cancel>Cancelar</button>' +
                             '<button type="button" class="btn btn-system-save" data-mail-confirm-send>' +
-                                '<i class="bi bi-send me-2"></i>Sí, enviar correo' +
+                                '<i class="bi bi-send me-2"></i>Enviar correo' +
                             '</button>' +
                         '</div>' +
                     '</div>' +
