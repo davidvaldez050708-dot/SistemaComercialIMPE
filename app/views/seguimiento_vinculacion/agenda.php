@@ -274,16 +274,16 @@ $pendientesAgenda = array_values(array_filter(
                             </div>
 
                             <div class="col-12">
-                                <label class="form-label">Nombre del evento / objetivo</label>
+                                <label class="form-label">Objetivo de la reunión</label>
                                 <input
                                     class="form-control system-form-control"
                                     type="text"
                                     name="objetivo"
                                     maxlength="500"
-                                    placeholder="Ej. Acuerdo 286 · Reunión informativa"
+                                    placeholder="Ej. Presentar la propuesta de vinculación y definir próximos acuerdos"
                                     required>
                                 <div class="form-text">
-                                    Este texto aparecerá como nombre del evento en la Ecard.
+                                    Describe brevemente el propósito de la reunión. La Ecard mostrará el nombre de la institución.
                                 </div>
                             </div>
 
