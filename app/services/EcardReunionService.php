@@ -7,7 +7,7 @@ class EcardReunionService
     public const TEMPLATE_SERGIO = 'SERGIO';
     public const TEMPLATE_MANUEL = 'MANUEL';
     public const CID = 'ecard-reunion';
-    public const VERSION = '20260919-04';
+    public const VERSION = '20260919-05';
 
     private $connection;
     private $rootPath;
@@ -45,6 +45,7 @@ class EcardReunionService
                 : 'Presidente',
             'equipo_yulissa' => $esSergio,
             'evento' => $this->resolverEvento($reunion),
+            'institucion' => $this->resolverInstitucion($reunion),
             'sede' => $this->resolverSede($reunion),
             'modalidad' => $this->etiquetaModalidad($reunion['modalidad'] ?? ''),
             'enlace' => trim((string)($reunion['zoom_url'] ?? ''))
@@ -77,6 +78,7 @@ class EcardReunionService
 
         $meta = $this->metadatos($reunion);
         $evento = trim((string)$meta['evento']);
+        $institucion = trim((string)($meta['institucion'] ?? ''));
         $sede = trim((string)$meta['sede']);
         $modalidad = trim((string)$meta['modalidad']);
         $enlace = trim((string)$meta['enlace']);
@@ -96,6 +98,7 @@ class EcardReunionService
             self::VERSION,
             $meta['template'],
             $evento,
+            $institucion,
             $sede,
             $fecha->format('Y-m-d H:i:s'),
             $modalidad,
@@ -132,6 +135,7 @@ class EcardReunionService
             'ponente' => $meta['ponente'],
             'cargo' => $meta['cargo'],
             'evento' => $evento,
+            'institucion' => $institucion,
             'sede' => $sede,
             'modalidad' => $modalidad,
             'enlace' => $enlace
@@ -209,6 +213,17 @@ class EcardReunionService
         return $entidad !== '' ? $entidad : 'Reunión de vinculación';
     }
 
+    private function resolverInstitucion(array $reunion)
+    {
+        $entidad = preg_replace(
+            '/\s+/u',
+            ' ',
+            trim((string)($reunion['nombre_entidad'] ?? ''))
+        );
+
+        return $entidad !== '' ? $entidad : 'Institución por confirmar';
+    }
+
     private function resolverSede(array $reunion)
     {
         $ubicacion = trim((string)($reunion['ubicacion'] ?? ''));
@@ -245,7 +260,7 @@ class EcardReunionService
             return $this->crearImagenManuelPlantilla(
                 $ruta,
                 $fecha,
-                $evento,
+                (string)($meta['institucion'] ?? ''),
                 $sede,
                 $modalidad,
                 $enlace
@@ -271,7 +286,7 @@ class EcardReunionService
     private function crearImagenManuelPlantilla(
         $ruta,
         DateTime $fecha,
-        $evento,
+        $institucion,
         $sede,
         $modalidad,
         $enlace
@@ -280,7 +295,7 @@ class EcardReunionService
 
         if (!$imagen) {
             return $this->error(
-                'No fue posible cargar la plantilla aprobada de la Ecard de Manuel.'
+                'No fue posible cargar la plantilla HD de la Ecard de Manuel.'
             );
         }
 
@@ -289,92 +304,61 @@ class EcardReunionService
         $fuenteNormal = $this->resolverFuente(false);
         $fuenteBold = $this->resolverFuente(true);
 
-        $evento = preg_replace('/\\s+/u', ' ', trim((string)$evento));
-        $sede = preg_replace('/\\s+/u', ' ', trim((string)$sede));
+        $institucion = preg_replace(
+            '/\\s+/u',
+            ' ',
+            trim((string)$institucion)
+        );
         $modalidad = trim((string)$modalidad);
 
-        if ($evento === '') {
-            $evento = 'Reunión de vinculación';
+        if ($institucion === '') {
+            $institucion = 'Institución por confirmar';
         }
 
         /*
-         * La plantilla aprobada mide 600 x 606 px.
-         * Solo se escriben los datos variables en las dos áreas libres:
-         * encabezado superior y recuadro de fecha/hora.
+         * Plantilla HD de Manuel: 1200 x 1212 px.
+         * El encabezado superior usa exclusivamente el nombre de la
+         * institución. El objetivo de la reunión no se imprime en la Ecard.
          */
-        $eventoMayus = mb_strtoupper($evento, 'UTF-8');
-        $eventoAjustado = $this->envolverTextoAjustado(
-            $eventoMayus,
-            520,
-            19,
-            13,
+        $titulo = mb_strtoupper($institucion, 'UTF-8');
+        $tituloAjustado = $this->envolverTextoAjustado(
+            $titulo,
+            1040,
+            38,
+            26,
             $fuenteBold,
             2
         );
 
-        $tamanoEvento = (int)($eventoAjustado['tamano'] ?? 16);
-        $lineasEvento = $eventoAjustado['lineas'] ?? [$eventoMayus];
+        $tamanoTitulo = (int)($tituloAjustado['tamano'] ?? 32);
+        $lineasTitulo = $tituloAjustado['lineas'] ?? [$titulo];
+        $yTitulo = count($lineasTitulo) > 1 ? 216 : 232;
 
-        if (count($lineasEvento) > 1) {
-            $yEvento = 108;
-            foreach ($lineasEvento as $linea) {
-                $this->textoCentrado(
-                    $imagen,
-                    $linea,
-                    $tamanoEvento,
-                    $yEvento,
-                    $blanco,
-                    $fuenteBold
-                );
-                $yEvento += $tamanoEvento + 7;
-            }
-        } else {
+        foreach ($lineasTitulo as $linea) {
             $this->textoCentrado(
                 $imagen,
-                $lineasEvento[0],
-                $tamanoEvento,
-                116,
+                $linea,
+                $tamanoTitulo,
+                $yTitulo,
                 $blanco,
                 $fuenteBold
             );
-
-            $sedeNormalizada = $this->normalizarTexto($sede);
-            if (
-                $sede !== '' &&
-                $sedeNormalizada !== 'en linea' &&
-                $sedeNormalizada !== 'por confirmar'
-            ) {
-                $tamanoSede = $this->tamanoParaAncho(
-                    $sede,
-                    500,
-                    12,
-                    9,
-                    $fuenteNormal
-                );
-                $this->textoCentrado(
-                    $imagen,
-                    $sede,
-                    $tamanoSede,
-                    142,
-                    $blanco,
-                    $fuenteNormal
-                );
-            }
+            $yTitulo += $tamanoTitulo + 14;
         }
 
         $fechaTexto = $this->fechaPlantillaManuel($fecha);
         $tamanoFecha = $this->tamanoParaAncho(
             $fechaTexto,
-            470,
-            22,
-            15,
+            940,
+            44,
+            30,
             $fuenteBold
         );
         $this->textoCentrado(
             $imagen,
             $fechaTexto,
             $tamanoFecha,
-            382,
+            764,
             $navy,
             $fuenteBold
         );
@@ -386,16 +370,16 @@ class EcardReunionService
 
         $tamanoHora = $this->tamanoParaAncho(
             $horaTexto,
-            440,
-            17,
-            12,
+            880,
+            34,
+            24,
             $fuenteNormal
         );
         $this->textoCentrado(
             $imagen,
             $horaTexto,
             $tamanoHora,
-            414,
+            828,
             $navy,
             $fuenteNormal
         );
@@ -424,10 +408,10 @@ class EcardReunionService
             'img' . DIRECTORY_SEPARATOR .
             'ecards' . DIRECTORY_SEPARATOR .
             'templates' . DIRECTORY_SEPARATOR .
-            'manuel-exact.part*.b64';
+            'manuel-hq.part*.b64';
 
         $partes = glob($patron) ?: [];
-        if (count($partes) !== 17) {
+        if (count($partes) !== 6) {
             return false;
         }
 
@@ -452,7 +436,7 @@ class EcardReunionService
             return false;
         }
 
-        if (imagesx($imagen) !== 600 || imagesy($imagen) !== 606) {
+        if (imagesx($imagen) !== 1200 || imagesy($imagen) !== 1212) {
             imagedestroy($imagen);
             return false;
         }
