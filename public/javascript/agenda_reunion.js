@@ -323,9 +323,9 @@
                                 selectModalidad(reunion.modalidad) +
                             '</div>' +
                             '<div class="col-12">' +
-                                '<label class="form-label">Nombre del evento / objetivo</label>' +
+                                '<label class="form-label">Objetivo de la reunión</label>' +
                                 '<input class="form-control system-form-control" type="text" name="objetivo" maxlength="500" value="' + escapar(reunion.objetivo || '') + '" required>' +
-                                '<small class="form-text">Este texto aparecerá como nombre del evento en la Ecard.</small>' +
+                                '<small class="form-text">Describe brevemente el propósito de la reunión. La Ecard mostrará el nombre de la institución.</small>' +
                             '</div>' +
                             '<div class="col-12">' +
                                 '<label class="form-label">Notas para Cuenta Clave</label>' +
@@ -363,7 +363,7 @@
                                     '<strong>' + escapar(valorSeguro(reunion.ecard_ponente, 'Mtro. Manuel Porcayo')) + '</strong>' +
                                 '</div>' +
                                 '<img src="' + escapar(reunion.ecard_preview_url) + '" alt="Vista previa de Ecard de reunión" loading="lazy">' +
-                                '<small>Nombre del evento, sede, fecha, hora, modalidad y acceso se generan con los datos actuales de la reunión.</small>' +
+                                '<small>Institución, fecha, hora y modalidad se generan con los datos actuales de la reunión.</small>' +
                             '</div>'
                             : '') +
                         '<div class="agenda-inline-note">' +
