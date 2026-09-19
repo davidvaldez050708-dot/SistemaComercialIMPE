@@ -88,3 +88,27 @@
         text-align: left;
     }
 }
+
+
+/* Ajustes finos del modal para solicitar reunión */
+#modalAgendaSolicitud .form-text {
+    margin-top: 5px;
+    color: #7b8494;
+    font-size: 11px !important;
+    font-weight: 500;
+    line-height: 1.35;
+}
+
+#modalAgendaSolicitud [data-agenda-request-save] {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+#modalAgendaSolicitud [data-agenda-request-save] i {
+    flex: 0 0 auto;
+    margin: 0;
+    font-size: 14px;
+    line-height: 1;
+}
