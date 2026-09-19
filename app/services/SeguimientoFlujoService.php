@@ -31,6 +31,7 @@ class SeguimientoFlujoService
                     seguimientos.correo_verificado,
                     seguimientos.contacto_nombre,
                     seguimientos.contacto_cargo,
+                    seguimientos.ultima_interaccion_at,
                     seguimientos.proxima_accion_at,
                     (
                         SELECT COUNT(*)
@@ -109,6 +110,28 @@ class SeguimientoFlujoService
         $cuerpoCorreo = trim((string)($seguimiento['cuerpo_correo'] ?? ''));
         $fechaEnvio = trim((string)($seguimiento['fecha_envio'] ?? ''));
         $proximaAccionAt = trim((string)($seguimiento['proxima_accion_at'] ?? ''));
+        $ultimaInteraccion = trim((string)($seguimiento['ultima_interaccion_at'] ?? ''));
+
+        if ($proximaAccionAt !== '' && $ultimaInteraccion !== '') {
+            $proximaTs = strtotime($proximaAccionAt);
+            $ultimaTs = strtotime($ultimaInteraccion);
+
+            if (
+                $proximaTs !== false &&
+                $ultimaTs !== false &&
+                $proximaTs <= $ultimaTs
+            ) {
+                $proximaAccionAt = '';
+            }
+        }
+
+        if ($estado === 'DATOS_VERIFICADOS') {
+            $proximaAccionAt = '';
+        }
+
+        // El resto del flujo debe consumir la fecha vigente, no una acción ya atendida.
+        $seguimiento['proxima_accion_at'] = $proximaAccionAt;
+
         $totalLlamadas = (int)($seguimiento['total_llamadas'] ?? 0);
         $totalLlamadasValidacion = (int)($seguimiento['total_llamadas_validacion'] ?? 0);
 
