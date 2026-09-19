@@ -2112,9 +2112,28 @@ class SeguimientoVinculacionController
         $estado = (string)($seguimiento['estado_seguimiento'] ?? '');
         $proximaAccion = trim((string)($seguimiento['proxima_accion_at'] ?? ''));
         $proximaAccionTexto = trim((string)($seguimiento['proxima_accion_texto'] ?? ''));
+        $ultimaInteraccion = trim((string)($seguimiento['ultima_interaccion_at'] ?? ''));
         $seguimientoDescartado = $estado === 'DESCARTADO';
+        $recordatorioSuperado = false;
 
-        if ($seguimientoDescartado) {
+        if ($proximaAccion !== '' && $ultimaInteraccion !== '') {
+            $proximaTs = strtotime($proximaAccion);
+            $ultimaTs = strtotime($ultimaInteraccion);
+            $recordatorioSuperado =
+                $proximaTs !== false &&
+                $ultimaTs !== false &&
+                $proximaTs <= $ultimaTs;
+        }
+
+        /*
+         * Al entrar a Datos verificados termina el ciclo de contacto previo.
+         * También descartamos cualquier fecha anterior a la última interacción.
+         */
+        if (
+            $seguimientoDescartado ||
+            $estado === 'DATOS_VERIFICADOS' ||
+            $recordatorioSuperado
+        ) {
             $proximaAccion = '';
             $proximaAccionTexto = '';
         }
