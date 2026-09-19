@@ -112,3 +112,61 @@
     font-size: 14px;
     line-height: 1;
 }
+
+
+/* Reprogramación colapsable: evita que el formulario ocupe espacio hasta necesitarlo. */
+[data-reprogramacion-box] {
+    padding-top: 12px;
+}
+
+.agenda-reprogramacion-trigger {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.agenda-reprogramacion-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 38px;
+    padding-inline: 13px;
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.agenda-reprogramacion-toggle > i:first-child {
+    color: var(--color-primary);
+    font-size: 13px;
+}
+
+.agenda-reprogramacion-chevron {
+    margin-left: 2px;
+    color: #718096;
+    font-size: 10px;
+}
+
+.agenda-reprogramacion-panel {
+    margin-top: 12px;
+    padding: 14px;
+    border: 1px solid #dde5ef;
+    border-radius: 10px;
+    background: #f8fafc;
+}
+
+.agenda-reprogramacion-heading {
+    display: grid;
+    gap: 3px;
+    margin-bottom: 12px;
+}
+
+.agenda-reprogramacion-heading strong {
+    color: #17233a;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.agenda-reprogramacion-heading span {
+    color: #6f7c90;
+    font-size: 10px;
+    line-height: 1.45;
+}
