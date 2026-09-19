@@ -36,6 +36,31 @@
         }
 
         document.addEventListener('click', function (event) {
+            const toggleReprogramacion = event.target.closest('[data-reprogramacion-toggle]');
+            if (toggleReprogramacion) {
+                const contenedor = toggleReprogramacion.closest('[data-reprogramacion-box]');
+                const panel = contenedor?.querySelector('[data-reprogramacion-form]');
+                if (!panel) {
+                    return;
+                }
+
+                const abierto = !panel.classList.contains('d-none');
+                panel.classList.toggle('d-none', abierto);
+                toggleReprogramacion.setAttribute('aria-expanded', abierto ? 'false' : 'true');
+
+                const etiqueta = toggleReprogramacion.querySelector('[data-reprogramacion-toggle-label]');
+                if (etiqueta) {
+                    etiqueta.textContent = abierto ? 'Cambiar fecha' : 'Ocultar formulario';
+                }
+
+                const chevron = toggleReprogramacion.querySelector('[data-reprogramacion-toggle-icon]');
+                if (chevron) {
+                    chevron.classList.toggle('bi-chevron-down', abierto);
+                    chevron.classList.toggle('bi-chevron-up', !abierto);
+                }
+                return;
+            }
+
             const boton = event.target.closest('[data-agenda-meeting]');
             if (!boton) {
                 return;
@@ -210,32 +235,43 @@
 
         function formularioAnalista(reunion) {
             return '' +
-                '<h6>¿Necesitas cambiar la fecha?</h6>' +
-                '<p>Registra el motivo y propón una nueva fecha. La cita actual se conservará en el historial y Cuenta Clave deberá confirmar nuevamente.</p>' +
-                '<form data-agenda-action-form data-agenda-action="solicitarReprogramacion">' +
-                    '<input type="hidden" name="reunion_id" value="' + Number(reunion.id || 0) + '">' +
-                    '<div class="row g-3">' +
-                        '<div class="col-12">' +
-                            '<label class="form-label">Motivo de la reprogramación</label>' +
-                            '<textarea class="form-control system-form-control" name="motivo" rows="2" maxlength="4000" placeholder="Ej. La institución solicitó cambiar el horario..." required></textarea>' +
-                        '</div>' +
-                        '<div class="col-md-6">' +
-                            '<label class="form-label">Nueva fecha y hora</label>' +
-                            '<input class="form-control system-form-control" type="datetime-local" name="fecha_propuesta" required>' +
-                        '</div>' +
-                        '<div class="col-md-3">' +
-                            '<label class="form-label">Duración</label>' +
-                            selectDuracion(Number(reunion.duracion_minutos || 60)) +
-                        '</div>' +
-                        '<div class="col-md-3">' +
-                            '<label class="form-label">Modalidad</label>' +
-                            selectModalidad(String(reunion.modalidad || 'VIRTUAL')) +
-                        '</div>' +
+                '<div class="agenda-reprogramacion-trigger">' +
+                    '<button class="btn btn-system-light agenda-reprogramacion-toggle" type="button" data-reprogramacion-toggle aria-expanded="false">' +
+                        '<i class="bi bi-calendar2-week"></i>' +
+                        '<span data-reprogramacion-toggle-label>Cambiar fecha</span>' +
+                        '<i class="bi bi-chevron-down agenda-reprogramacion-chevron" data-reprogramacion-toggle-icon></i>' +
+                    '</button>' +
+                '</div>' +
+                '<div class="agenda-reprogramacion-panel d-none" data-reprogramacion-form>' +
+                    '<div class="agenda-reprogramacion-heading">' +
+                        '<strong>Reprogramar reunión</strong>' +
+                        '<span>Indica el motivo y propón una nueva fecha. Cuenta Clave deberá confirmarla nuevamente.</span>' +
                     '</div>' +
-                    '<div class="agenda-action-row">' +
-                        '<button class="btn btn-system-light" type="submit"><i class="bi bi-calendar2-week"></i> Solicitar reprogramación</button>' +
-                    '</div>' +
-                '</form>';
+                    '<form data-agenda-action-form data-agenda-action="solicitarReprogramacion">' +
+                        '<input type="hidden" name="reunion_id" value="' + Number(reunion.id || 0) + '">' +
+                        '<div class="row g-3">' +
+                            '<div class="col-12">' +
+                                '<label class="form-label">Motivo de la reprogramación</label>' +
+                                '<textarea class="form-control system-form-control" name="motivo" rows="2" maxlength="4000" placeholder="Ej. La institución solicitó cambiar el horario..." required></textarea>' +
+                            '</div>' +
+                            '<div class="col-md-6">' +
+                                '<label class="form-label">Nueva fecha y hora</label>' +
+                                '<input class="form-control system-form-control" type="datetime-local" name="fecha_propuesta" required>' +
+                            '</div>' +
+                            '<div class="col-md-3">' +
+                                '<label class="form-label">Duración</label>' +
+                                selectDuracion(Number(reunion.duracion_minutos || 60)) +
+                            '</div>' +
+                            '<div class="col-md-3">' +
+                                '<label class="form-label">Modalidad</label>' +
+                                selectModalidad(String(reunion.modalidad || 'VIRTUAL')) +
+                            '</div>' +
+                        '</div>' +
+                        '<div class="agenda-action-row">' +
+                            '<button class="btn btn-system-light" type="submit"><i class="bi bi-calendar2-week"></i> Solicitar reprogramación</button>' +
+                        '</div>' +
+                    '</form>' +
+                '</div>';
         }
 
         function formularioKam(reunion) {
