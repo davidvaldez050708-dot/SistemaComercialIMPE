@@ -27,7 +27,7 @@ class AgendaReunionService
         return $this->repo->tablaDisponible();
     }
 
-    public function obtenerEcard($usuarioId, $rolId, $reunionId)
+    public function obtenerEcard($usuarioId, $rolId, $reunionId, $template = '')
     {
         $usuarioId = (int)$usuarioId;
         $rolId = (int)$rolId;
@@ -42,7 +42,7 @@ class AgendaReunionService
             return $this->error('No fue posible localizar la reunión.', 404);
         }
 
-        $resultado = $this->ecardService->generar($reunion);
+        $resultado = $this->ecardService->generar($reunion, $template);
         if (!($resultado['ok'] ?? false)) {
             return $this->error(
                 (string)($resultado['mensaje'] ?? 'No fue posible generar la Ecard.'),
@@ -297,6 +297,7 @@ class AgendaReunionService
         $reunionId = (int)($datos['reunion_id'] ?? 0);
         $asunto = trim((string)($datos['asunto'] ?? ''));
         $cuerpo = trim((string)($datos['cuerpo'] ?? ''));
+        $ecardTemplate = strtoupper(trim((string)($datos['ecard_template'] ?? '')));
         $reunion = $this->repo->reunion($reunionId, (int)$usuarioId, (int)$rolId);
 
         if (!$reunion || (string)$reunion['estado'] !== 'CONFIRMADA') {
@@ -329,10 +330,22 @@ class AgendaReunionService
                 trim((string)($reunion['objetivo'] ?? ''))
             );
             $this->repo->actualizarProximaAccion($seguimientoId, (int)$usuarioId, (string)$reunion['fecha_propuesta']);
+            $etiquetaEcard = $ecardTemplate === 'SERGIO'
+                ? 'Sergio López Porcayo'
+                : ($ecardTemplate === 'MANUEL' ? 'Mtro. Manuel Porcayo' : '');
+
+            $notaInteraccion =
+                'Correo de confirmación de reunión registrado como enviado a ' .
+                $correo . '. Asunto: ' . $asunto;
+
+            if ($etiquetaEcard !== '') {
+                $notaInteraccion .= '. Ecard: ' . $etiquetaEcard;
+            }
+
             $this->repo->registrarInteraccion(
                 $seguimientoId,
                 (int)$usuarioId,
-                'Correo de confirmación de reunión registrado como enviado a ' . $correo . '. Asunto: ' . $asunto
+                $notaInteraccion
             );
             $db->commit();
 
@@ -470,14 +483,27 @@ class AgendaReunionService
 
         $ecard = $this->ecardService->metadatos($fila);
         $fila['ecard_template'] = (string)($ecard['template'] ?? 'manuel');
+        $fila['ecard_template_predeterminado'] =
+            (string)($ecard['template_predeterminado'] ?? $fila['ecard_template']);
         $fila['ecard_ponente'] = (string)($ecard['ponente'] ?? 'Mtro. Manuel Porcayo');
         $fila['ecard_cargo'] = (string)($ecard['cargo'] ?? 'Presidente');
         $fila['ecard_evento'] = (string)($ecard['evento'] ?? '');
         $fila['ecard_sede'] = (string)($ecard['sede'] ?? '');
-        $fila['ecard_preview_url'] =
+
+        $previewBase =
             'index.php?controller=agendaReunion&action=ecardPreview&reunion_id=' .
             (int)$fila['id'] .
             '&v=' . rawurlencode(EcardReunionService::VERSION);
+
+        $fila['ecard_preview_url'] =
+            $previewBase .
+            '&template=' . rawurlencode($fila['ecard_template']);
+        $fila['ecard_preview_url_manuel'] =
+            $previewBase . '&template=manuel';
+        $fila['ecard_preview_url_sergio'] =
+            $previewBase . '&template=sergio';
+        $fila['ecard_ponente_manuel'] = 'Mtro. Manuel Porcayo';
+        $fila['ecard_ponente_sergio'] = 'Sergio López Porcayo';
 
         return $fila;
     }
