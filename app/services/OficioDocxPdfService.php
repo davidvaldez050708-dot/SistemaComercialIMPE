@@ -140,6 +140,80 @@ class OficioDocxPdfService
         }
     }
 
+    /**
+     * Convierte un DOCX existente a PDF reutilizando el mismo conversor
+     * institucional que ya usa la generación de oficios.
+     */
+    public function convertirArchivoAPdf($rutaDocx)
+    {
+        $rutaDocx = realpath((string)$rutaDocx);
+
+        if ($rutaDocx === false || !is_file($rutaDocx)) {
+            return $this->error(
+                'No se encontró el documento que debe convertirse a PDF.',
+                'La ruta DOCX no existe.'
+            );
+        }
+
+        if (!function_exists('proc_open')) {
+            return $this->error(
+                'PHP no puede ejecutar el conversor de documentos.',
+                'proc_open no está disponible.'
+            );
+        }
+
+        $directorioTemporal = $this->rootPath . DIRECTORY_SEPARATOR .
+            'storage' . DIRECTORY_SEPARATOR . 'tmp' . DIRECTORY_SEPARATOR .
+            'documentos' . DIRECTORY_SEPARATOR . 'docx_pdf_' .
+            bin2hex(random_bytes(6));
+
+        if (
+            !mkdir($directorioTemporal, 0775, true) &&
+            !is_dir($directorioTemporal)
+        ) {
+            return $this->error(
+                'No fue posible preparar la conversión del documento.',
+                'No se pudo crear el directorio temporal.'
+            );
+        }
+
+        try {
+            $conversion = $this->convertirAPdf(
+                $rutaDocx,
+                $directorioTemporal
+            );
+
+            if (!($conversion['ok'] ?? false)) {
+                return $conversion;
+            }
+
+            $rutaPdf = (string)($conversion['ruta_pdf'] ?? '');
+            $contenido = $rutaPdf !== '' && is_file($rutaPdf)
+                ? file_get_contents($rutaPdf)
+                : false;
+
+            if ($contenido === false || $contenido === '') {
+                return $this->error(
+                    'El conversor no generó un PDF válido.',
+                    'El archivo PDF temporal está vacío o no existe.'
+                );
+            }
+
+            return [
+                'ok' => true,
+                'contenido_pdf' => $contenido,
+                'conversor' => (string)($conversion['conversor'] ?? '')
+            ];
+        } catch (Throwable $error) {
+            return $this->error(
+                'No fue posible convertir el documento a PDF.',
+                $error->getMessage()
+            );
+        } finally {
+            $this->eliminarDirectorio($directorioTemporal);
+        }
+    }
+
     private function construirReemplazos(array $vista)
     {
         $reemplazos = [
