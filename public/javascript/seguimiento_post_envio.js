@@ -432,6 +432,13 @@
                 if (proxima) {
                     proxima.textContent = 'Actualizando ruta...';
                 }
+
+                document.dispatchEvent(new CustomEvent('impe:post-envio-updated', {
+                    detail: {
+                        seguimientoId: seguimientoActualId,
+                        accion: accionActual
+                    }
+                }));
             } catch (error) {
                 console.error(error);
                 mostrarError('No fue posible comunicarse con el sistema.');
