@@ -7,7 +7,7 @@ class EcardReunionService
     public const TEMPLATE_SERGIO = 'SERGIO';
     public const TEMPLATE_MANUEL = 'MANUEL';
     public const CID = 'ecard-reunion';
-    public const VERSION = '20260920-01';
+    public const VERSION = '20260920-02';
 
     private $connection;
     private $rootPath;
@@ -321,6 +321,8 @@ class EcardReunionService
          * institución. El objetivo de la reunión no se imprime en la Ecard.
          */
         $titulo = mb_strtoupper($institucion, 'UTF-8');
+
+        // Primero intenta conservar la composición original en máximo 2 líneas.
         $tituloAjustado = $this->envolverTextoAjustado(
             $titulo,
             1040,
@@ -330,22 +332,34 @@ class EcardReunionService
             2
         );
 
+        // Si el nombre sigue siendo demasiado largo, permite una tercera línea
+        // y reduce un poco más la tipografía antes de recurrir a puntos suspensivos.
+        if ($this->lineasContienenElipsis($tituloAjustado['lineas'] ?? [])) {
+            $tituloAjustado = $this->envolverTextoAjustado(
+                $titulo,
+                1040,
+                26,
+                20,
+                $fuenteBold,
+                3
+            );
+        }
+
         $tamanoTitulo = (int)($tituloAjustado['tamano'] ?? 32);
         $lineasTitulo = $tituloAjustado['lineas'] ?? [$titulo];
-        // Centrado visual entre las dos líneas blancas del encabezado.
-        $yTitulo = count($lineasTitulo) > 1 ? 240 : 252;
 
-        foreach ($lineasTitulo as $linea) {
-            $this->textoCentrado(
-                $imagen,
-                $linea,
-                $tamanoTitulo,
-                $yTitulo,
-                $blanco,
-                $fuenteBold
-            );
-            $yTitulo += $tamanoTitulo + 14;
-        }
+        // Las líneas blancas de la plantilla HD están aprox. en Y=164 y Y=309.
+        // Se centra el bloque usando la caja real de la fuente, no una coordenada fija.
+        $this->dibujarBloqueTextoCentradoVertical(
+            $imagen,
+            $lineasTitulo,
+            $tamanoTitulo,
+            176,
+            296,
+            $blanco,
+            $fuenteBold,
+            count($lineasTitulo) >= 3 ? 7 : 11
+        );
 
         // Redibuja el badge para evitar el recorte visual del recurso base.
         $this->dibujarBadgeFechaHoraManuel(
@@ -674,6 +688,79 @@ class EcardReunionService
         }
 
         return $hora12 . ':' . $minuto . ' ' . $periodo;
+    }
+
+    private function lineasContienenElipsis(array $lineas)
+    {
+        foreach ($lineas as $linea) {
+            if (mb_substr((string)$linea, -1, 1, 'UTF-8') === '…') {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function dibujarBloqueTextoCentradoVertical(
+        $imagen,
+        array $lineas,
+        $tamano,
+        $ySuperior,
+        $yInferior,
+        $color,
+        $fuente,
+        $separacion = 10
+    ) {
+        if (empty($lineas)) {
+            return;
+        }
+
+        $metricas = [];
+        $altoTotal = 0;
+
+        foreach ($lineas as $linea) {
+            $alto = (int)$tamano;
+            $top = -(int)$tamano;
+            $bottom = 0;
+
+            if ($fuente !== '' && function_exists('imagettfbbox')) {
+                $box = imagettfbbox((float)$tamano, 0, $fuente, (string)$linea);
+                if (is_array($box)) {
+                    $top = min((int)$box[5], (int)$box[7]);
+                    $bottom = max((int)$box[1], (int)$box[3]);
+                    $alto = max(1, $bottom - $top);
+                }
+            }
+
+            $metricas[] = [
+                'linea' => (string)$linea,
+                'top' => $top,
+                'bottom' => $bottom,
+                'alto' => $alto
+            ];
+            $altoTotal += $alto;
+        }
+
+        $altoTotal += max(0, count($metricas) - 1) * (int)$separacion;
+        $zonaAlto = max(1, (int)$yInferior - (int)$ySuperior);
+        $cursorY = (int)$ySuperior + max(0, (int)(($zonaAlto - $altoTotal) / 2));
+
+        foreach ($metricas as $metrica) {
+            // imagettftext posiciona por línea base. Restar top coloca el
+            // borde superior real del glifo exactamente en cursorY.
+            $baseline = $cursorY - (int)$metrica['top'];
+
+            $this->textoCentrado(
+                $imagen,
+                $metrica['linea'],
+                $tamano,
+                $baseline,
+                $color,
+                $fuente
+            );
+
+            $cursorY += (int)$metrica['alto'] + (int)$separacion;
+        }
     }
 
     private function tamanoParaAncho($texto, $maxAncho, $inicial, $minimo, $fuente)
