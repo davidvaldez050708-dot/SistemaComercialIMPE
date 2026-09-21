@@ -34,6 +34,7 @@ tmp/
 # Firmas personales cargadas desde Mi perfil
 /storage/mail/firmas/*
 /storage/mail/ecards/
+/storage/convenios/
 
 # Archivos temporales de pruebas
 prueba_correo.php
