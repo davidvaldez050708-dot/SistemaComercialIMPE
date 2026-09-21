@@ -398,7 +398,7 @@
                 },
                 FORMALIZAR_CONVENIO: {
                     titulo: 'Formalizar convenio',
-                    subtitulo: 'Captura la referencia final para concluir la ruta del Analista.',
+                    subtitulo: 'Registra la fecha de formalización y, si aplica, las observaciones finales para concluir la ruta del Analista.',
                     campos: camposConvenio(),
                     boton: '<i class="bi bi-file-earmark-check"></i> Formalizar convenio'
                 }
