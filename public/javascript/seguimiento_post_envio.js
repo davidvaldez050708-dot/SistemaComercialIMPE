@@ -9,11 +9,13 @@
         }
 
         const urlGuardar = 'index.php?controller=seguimientoFlujo&action=registrarPostEnvio';
+        const urlBorradorConvenio = 'index.php?controller=seguimientoFlujo&action=borradorConvenio';
         const accionesPostEnvio = new Set([
             'REGISTRAR_RESPUESTA',
             'REGISTRAR_SEGUIMIENTO_CORREO',
             'AGENDAR_REUNION',
             'REGISTRAR_REUNION_REALIZADA',
+            'ENVIAR_DOCUMENTACION_CONVENIO',
             'FORMALIZAR_CONVENIO'
         ]);
         let seguimientoActualId = 0;
@@ -23,6 +25,14 @@
             const div = document.createElement('div');
             div.textContent = String(valor || '');
             return div.innerHTML;
+        };
+
+        const escaparAtributo = function (valor) {
+            return String(valor || '')
+                .replace(/&/g, '&amp;')
+                .replace(/"/g, '&quot;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
         };
 
         const asegurarModal = function () {
@@ -167,15 +177,82 @@
                 '</div>';
         };
 
+        const camposDocumentacionConvenio = function (correo) {
+            const datos = correo || {};
+            const documentos = Array.isArray(datos.documentos)
+                ? datos.documentos
+                : [];
+
+            const tarjetas = documentos.map(function (documento) {
+                const tipo = escapar(documento.tipo || 'Archivo');
+                const nombre = escapar(documento.nombre || 'Documento');
+                const detalle = escapar(documento.detalle || '');
+                const icono = String(documento.tipo || '').toUpperCase() === 'PDF'
+                    ? 'bi-file-earmark-pdf'
+                    : 'bi-file-earmark-word';
+
+                return '<div class="convenio-document-card">' +
+                    '<span class="convenio-document-icon"><i class="bi ' + icono + '"></i></span>' +
+                    '<div>' +
+                        '<strong>' + nombre + '</strong>' +
+                        '<span>' + tipo + '</span>' +
+                        '<p>' + detalle + '</p>' +
+                    '</div>' +
+                '</div>';
+            }).join('');
+
+            return '' +
+                '<div class="convenio-mail-summary">' +
+                    '<div>' +
+                        '<span class="convenio-mail-summary-label">Destinatario</span>' +
+                        '<strong>' + escapar(datos.para || '') + '</strong>' +
+                    '</div>' +
+                    '<span class="convenio-mail-summary-badge"><i class="bi bi-paperclip"></i> 2 adjuntos</span>' +
+                '</div>' +
+                '<div class="row g-3">' +
+                    '<div class="col-md-5">' +
+                        '<label class="form-label">Fecha de la carta propuesta</label>' +
+                        '<input class="form-control" type="date" name="carta_fecha" value="' +
+                            escaparAtributo(datos.carta_fecha || '') + '" required>' +
+                        '<div class="form-text convenio-field-help">Es el único dato que se modifica dentro de la carta antes de convertirla a PDF.</div>' +
+                    '</div>' +
+                    '<div class="col-md-7">' +
+                        '<label class="form-label">Para</label>' +
+                        '<input class="form-control" type="email" value="' +
+                            escaparAtributo(datos.para || '') + '" readonly>' +
+                    '</div>' +
+                    '<div class="col-12">' +
+                        '<label class="form-label">Asunto</label>' +
+                        '<input class="form-control" type="text" name="asunto" maxlength="255" value="' +
+                            escaparAtributo(datos.asunto || '') + '" required>' +
+                    '</div>' +
+                    '<div class="col-12">' +
+                        '<label class="form-label">Mensaje</label>' +
+                        '<textarea class="form-control" name="cuerpo" rows="8" maxlength="20000" required>' +
+                            escapar(datos.cuerpo || '') +
+                        '</textarea>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="convenio-documents-heading">' +
+                    '<span>Documentos que se enviarán</span>' +
+                    '<small>La carta se genera en PDF y el convenio permanece editable.</small>' +
+                '</div>' +
+                '<div class="convenio-document-grid">' + tarjetas + '</div>' +
+                '<div class="convenio-mail-note">' +
+                    '<i class="bi bi-info-circle"></i>' +
+                    '<span>El convenio se adjunta sin rellenar ni modificar su contenido para que el aliado capture sus datos.</span>' +
+                '</div>';
+        };
+
         const camposConvenio = function () {
             return '' +
                 '<div class="row g-3">' +
                     '<div class="col-md-5">' +
-                        '<label class="form-label">Fecha del convenio</label>' +
+                        '<label class="form-label">Fecha de formalización</label>' +
                         '<input class="form-control" type="date" name="convenio_fecha" required>' +
                     '</div>' +
                     '<div class="col-md-7">' +
-                        '<label class="form-label">Folio / referencia</label>' +
+                        '<label class="form-label">Folio / referencia del convenio</label>' +
                         '<input class="form-control" type="text" name="convenio_referencia" maxlength="180" placeholder="Ej. CONV-2026-015" required>' +
                     '</div>' +
                     '<div class="col-12">' +
@@ -216,22 +293,79 @@
             return mapa[codigo] || null;
         };
 
-        const abrir = function (codigo) {
-            const config = configuracion(codigo);
-
-            if (!config || seguimientoActualId <= 0) {
+        const abrir = async function (codigo) {
+            if (seguimientoActualId <= 0) {
                 return;
             }
 
             accionActual = codigo;
             const modal = asegurarModal();
             const form = modal.querySelector('[data-post-envio-form]');
+            const titulo = modal.querySelector('[data-post-envio-title]');
+            const subtitulo = modal.querySelector('[data-post-envio-subtitle]');
+            const campos = modal.querySelector('[data-post-envio-fields]');
+            const error = modal.querySelector('[data-post-envio-error]');
+            const boton = modal.querySelector('[data-post-envio-save]');
+
             form.reset();
-            modal.querySelector('[data-post-envio-title]').textContent = config.titulo;
-            modal.querySelector('[data-post-envio-subtitle]').textContent = config.subtitulo;
-            modal.querySelector('[data-post-envio-fields]').innerHTML = config.campos;
-            modal.querySelector('[data-post-envio-error]').classList.add('d-none');
-            modal.querySelector('[data-post-envio-error]').textContent = '';
+            error.classList.add('d-none');
+            error.textContent = '';
+
+            if (codigo === 'ENVIAR_DOCUMENTACION_CONVENIO') {
+                titulo.textContent = 'Enviar documentación de convenio';
+                subtitulo.textContent = 'Revisa la fecha, el mensaje y los dos archivos antes de enviarlos a la institución.';
+                campos.innerHTML =
+                    '<div class="convenio-loading">' +
+                        '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span>' +
+                        '<span>Preparando correo y documentos...</span>' +
+                    '</div>';
+                boton.innerHTML = '<i class="bi bi-send"></i> Enviar documentación';
+                boton.disabled = true;
+                bootstrap.Modal.getOrCreateInstance(modal).show();
+
+                try {
+                    const respuesta = await fetch(
+                        urlBorradorConvenio + '&seguimiento_id=' +
+                            encodeURIComponent(seguimientoActualId),
+                        {
+                            headers: { 'X-Requested-With': 'fetch' },
+                            cache: 'no-store'
+                        }
+                    );
+                    const json = await respuesta.json();
+
+                    if (!respuesta.ok || !json.ok || !json.correo) {
+                        mostrarError(
+                            json.mensaje ||
+                            'No fue posible preparar la documentación del convenio.'
+                        );
+                        campos.innerHTML = '';
+                        return;
+                    }
+
+                    campos.innerHTML = camposDocumentacionConvenio(json.correo);
+                    boton.disabled = false;
+                } catch (errorPeticion) {
+                    console.error(errorPeticion);
+                    campos.innerHTML = '';
+                    mostrarError(
+                        'No fue posible comunicarse con el sistema para preparar los documentos.'
+                    );
+                }
+
+                return;
+            }
+
+            const config = configuracion(codigo);
+            if (!config) {
+                return;
+            }
+
+            titulo.textContent = config.titulo;
+            subtitulo.textContent = config.subtitulo;
+            campos.innerHTML = config.campos;
+            boton.innerHTML = '<i class="bi bi-check2-circle"></i> Guardar avance';
+            boton.disabled = false;
             bootstrap.Modal.getOrCreateInstance(modal).show();
         };
 
@@ -327,7 +461,7 @@
 
             event.preventDefault();
             event.stopImmediatePropagation();
-            abrir(codigo);
+            void abrir(codigo);
         }, true);
 
         offcanvas.addEventListener('hidden.bs.offcanvas', function () {
