@@ -28,12 +28,19 @@ class CorreoSalidaInstitucionalService
         $imagenesResultado = $this->normalizarImagenesEmbebidas(
             $datos['imagenes_embebidas'] ?? []
         );
+        $adjuntosResultado = $this->normalizarAdjuntos(
+            $datos['adjuntos'] ?? []
+        );
 
         if (!($imagenesResultado['ok'] ?? false)) {
             return $imagenesResultado;
         }
+        if (!($adjuntosResultado['ok'] ?? false)) {
+            return $adjuntosResultado;
+        }
 
         $imagenesEmbebidas = $imagenesResultado['imagenes'];
+        $adjuntos = $adjuntosResultado['adjuntos'];
 
         if ($remitente === '' || !filter_var($remitente, FILTER_VALIDATE_EMAIL)) {
             return $this->error('Tu cuenta no tiene un correo válido para realizar el envío.', 422);
@@ -65,6 +72,7 @@ class CorreoSalidaInstitucionalService
                 $rutaFirma,
                 $hostinger,
                 $imagenesEmbebidas,
+                $adjuntos,
                 $htmlAdicional
             );
         }
@@ -78,6 +86,7 @@ class CorreoSalidaInstitucionalService
             $cuerpo,
             $rutaFirma,
             $imagenesEmbebidas,
+            $adjuntos,
             $htmlAdicional
         );
     }
@@ -91,6 +100,7 @@ class CorreoSalidaInstitucionalService
         $rutaFirma,
         $config,
         $imagenesEmbebidas,
+        $adjuntos,
         $htmlAdicional
     )
     {
@@ -192,6 +202,23 @@ class CorreoSalidaInstitucionalService
             ];
         }
 
+        foreach ($adjuntos as $adjunto) {
+            $contenido = file_get_contents($adjunto['ruta']);
+            if ($contenido === false) {
+                return $this->error(
+                    'No fue posible leer un archivo adjunto del correo.',
+                    500
+                );
+            }
+
+            $attachments[] = [
+                'filename' => $adjunto['nombre'],
+                'content' => base64_encode($contenido),
+                'contentType' => $adjunto['mime'],
+                'encoding' => 'base64'
+            ];
+        }
+
         if (!empty($attachments)) {
             $payload['attachments'] = $attachments;
         }
@@ -214,7 +241,8 @@ class CorreoSalidaInstitucionalService
             'ok' => true,
             'proveedor' => 'HOSTINGER_MAIL_API',
             'firma_incluida' => $firmaDisponible,
-            'imagenes_embebidas' => count($imagenesEmbebidas)
+            'imagenes_embebidas' => count($imagenesEmbebidas),
+            'adjuntos' => count($adjuntos)
         ];
     }
 
@@ -227,6 +255,7 @@ class CorreoSalidaInstitucionalService
         $cuerpo,
         $rutaFirma,
         $imagenesEmbebidas,
+        $adjuntos,
         $htmlAdicional
     )
     {
@@ -299,6 +328,15 @@ class CorreoSalidaInstitucionalService
                 );
             }
 
+            foreach ($adjuntos as $adjunto) {
+                $mail->addAttachment(
+                    $adjunto['ruta'],
+                    $adjunto['nombre'],
+                    'base64',
+                    $adjunto['mime']
+                );
+            }
+
             $mail->Subject = $asunto;
             $mail->isHTML(true);
             $mail->Body = $this->construirHtml(
@@ -313,7 +351,8 @@ class CorreoSalidaInstitucionalService
                 'ok' => true,
                 'proveedor' => 'SMTP',
                 'firma_incluida' => $firmaDisponible,
-                'imagenes_embebidas' => count($imagenesEmbebidas)
+                'imagenes_embebidas' => count($imagenesEmbebidas),
+                'adjuntos' => count($adjuntos)
             ];
         } catch (Throwable $error) {
             error_log('Correo institucional SMTP: ' . $error->getMessage());
@@ -400,6 +439,88 @@ class CorreoSalidaInstitucionalService
         return [
             'ok' => true,
             'imagenes' => $salida
+        ];
+    }
+
+    private function normalizarAdjuntos($adjuntos)
+    {
+        if ($adjuntos === null || $adjuntos === '') {
+            $adjuntos = [];
+        }
+
+        if (!is_array($adjuntos)) {
+            return $this->error('Los archivos adjuntos no tienen un formato válido.', 422);
+        }
+
+        if (count($adjuntos) > 8) {
+            return $this->error('El correo no puede incluir más de 8 archivos adjuntos.', 422);
+        }
+
+        $salida = [];
+        $rootReal = realpath($this->rootPath);
+        $tamanoTotal = 0;
+        $mimesPermitidos = [
+            'application/pdf',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/msword',
+            'application/octet-stream'
+        ];
+
+        foreach ($adjuntos as $adjunto) {
+            if (!is_array($adjunto)) {
+                return $this->error('Un archivo adjunto no tiene un formato válido.', 422);
+            }
+
+            $ruta = trim((string)($adjunto['ruta'] ?? ''));
+            $nombre = basename(trim((string)($adjunto['nombre'] ?? 'archivo')));
+            $mime = trim((string)($adjunto['mime'] ?? ''));
+
+            $real = $ruta !== '' ? realpath($ruta) : false;
+            if (
+                $real === false ||
+                !is_file($real) ||
+                ($rootReal !== false && strpos($real, $rootReal) !== 0)
+            ) {
+                return $this->error('Uno de los archivos adjuntos no está disponible.', 422);
+            }
+
+            $tamano = (int)filesize($real);
+            if ($tamano <= 0 || $tamano > 12 * 1024 * 1024) {
+                return $this->error('Uno de los archivos adjuntos supera el tamaño permitido.', 422);
+            }
+            $tamanoTotal += $tamano;
+            if ($tamanoTotal > 20 * 1024 * 1024) {
+                return $this->error('Los archivos adjuntos superan el tamaño total permitido.', 422);
+            }
+
+            if ($mime === '' && function_exists('mime_content_type')) {
+                $detectado = mime_content_type($real);
+                if (is_string($detectado)) {
+                    $mime = trim($detectado);
+                }
+            }
+
+            $extension = strtolower(pathinfo($nombre, PATHINFO_EXTENSION));
+            if ($extension === 'pdf') {
+                $mime = 'application/pdf';
+            } elseif ($extension === 'docx') {
+                $mime = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+            }
+
+            if (!in_array($mime, $mimesPermitidos, true)) {
+                return $this->error('Uno de los archivos adjuntos tiene un tipo no permitido.', 422);
+            }
+
+            $salida[] = [
+                'ruta' => $real,
+                'nombre' => $nombre !== '' ? $nombre : 'archivo',
+                'mime' => $mime
+            ];
+        }
+
+        return [
+            'ok' => true,
+            'adjuntos' => $salida
         ];
     }
 
