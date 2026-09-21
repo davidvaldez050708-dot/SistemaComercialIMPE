@@ -133,12 +133,19 @@ class CorreoFirmadoService
         ];
     }
 
-    public function enviarReunion($reunionId, $usuarioId, $asunto, $cuerpo, $esReprogramacion = false)
-    {
+    public function enviarReunion(
+        $reunionId,
+        $usuarioId,
+        $asunto,
+        $cuerpo,
+        $esReprogramacion = false,
+        $ecardTemplate = ''
+    ) {
         $reunionId = (int)$reunionId;
         $usuarioId = (int)$usuarioId;
         $asunto = trim((string)$asunto);
         $cuerpo = trim((string)$cuerpo);
+        $ecardTemplate = strtoupper(trim((string)$ecardTemplate));
 
         $reunion = $this->agendaRepo->reunion(
             $reunionId,
@@ -158,12 +165,23 @@ class CorreoFirmadoService
             return $this->error('Revisa el asunto y el mensaje antes de enviar.', 422);
         }
 
+        if (
+            $ecardTemplate !== '' &&
+            !in_array(
+                $ecardTemplate,
+                [EcardReunionService::TEMPLATE_SERGIO, EcardReunionService::TEMPLATE_MANUEL],
+                true
+            )
+        ) {
+            return $this->error('La Ecard seleccionada no es válida.', 422);
+        }
+
         $usuario = $this->obtenerUsuario($usuarioId);
         if (!$usuario) {
             return $this->error('No fue posible identificar al remitente.', 404);
         }
 
-        $ecard = $this->ecardService->generar($reunion);
+        $ecard = $this->ecardService->generar($reunion, $ecardTemplate);
         if (!($ecard['ok'] ?? false)) {
             return $this->error(
                 (string)($ecard['mensaje'] ?? 'No fue posible generar la Ecard de la reunión.'),
@@ -194,7 +212,8 @@ class CorreoFirmadoService
         $datos = [
             'reunion_id' => $reunionId,
             'asunto' => $asunto,
-            'cuerpo' => $cuerpo
+            'cuerpo' => $cuerpo,
+            'ecard_template' => strtoupper((string)($ecard['template'] ?? $ecardTemplate))
         ];
 
         $resultado = $esReprogramacion || (int)($reunion['es_reprogramacion'] ?? 0) === 1
