@@ -81,6 +81,10 @@ class ConvenioDocumentosService
         $lineas[] = 'Analista de Enlace Institucional';
         $lineas[] = 'Fundación Red Educativa México';
 
+        $slug = $this->nombreArchivoSeguro($institucion);
+        $nombreCarta = 'Carta_propuesta_' . $slug . '.pdf';
+        $nombreConvenio = 'Convenio_colaboracion_' . $slug . '.docx';
+
         return [
             'ok' => true,
             'correo' => [
@@ -94,13 +98,13 @@ class ConvenioDocumentosService
                 'documentos' => [
                     [
                         'tipo' => 'PDF',
-                        'nombre' => 'Carta propuesta de colaboración',
-                        'detalle' => 'El sistema actualizará únicamente la fecha antes de convertirla a PDF.'
+                        'nombre' => $nombreCarta,
+                        'detalle' => 'Se conserva la carta institucional y únicamente se actualiza la fecha antes de generar el PDF.'
                     ],
                     [
                         'tipo' => 'DOCX',
-                        'nombre' => 'Convenio de colaboración',
-                        'detalle' => 'Se enviará en Word editable para que el aliado complete sus datos.'
+                        'nombre' => $nombreConvenio,
+                        'detalle' => 'Se adjunta en Word editable, sin rellenar ni modificar su contenido, para que el aliado complete sus datos.'
                     ]
                 ]
             ]
