@@ -302,9 +302,16 @@
                         'Sergio López Porcayo · Rector Universidad IMPE' +
                     '</option>' +
                 '</select>' +
-                '<small class="form-text">Predeterminada para este seguimiento: ' +
-                    escapar(predeterminada) +
-                    '. Puedes cambiarla antes de enviar el correo.</small>' +
+                '<div class="agenda-ecard-default-note">' +
+                    '<span class="agenda-ecard-default-note-icon" aria-hidden="true">' +
+                        '<i class="bi bi-stars"></i>' +
+                    '</span>' +
+                    '<span class="agenda-ecard-default-note-copy">' +
+                        '<strong>Sugerida para este seguimiento</strong>' +
+                        '<span>' + escapar(predeterminada) + '</span>' +
+                        '<small>Puedes cambiarla antes de enviar el correo.</small>' +
+                    '</span>' +
+                '</div>' +
             '</div>';
         };
 
