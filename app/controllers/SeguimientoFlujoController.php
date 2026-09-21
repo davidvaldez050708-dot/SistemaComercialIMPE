@@ -291,6 +291,43 @@ class SeguimientoFlujoController
             $this->responder($resultado, $codigoHttp);
         }
 
+        if ($accion === 'REGISTRAR_CONVENIO_RECIBIDO') {
+            $validacionConvenio = $this->reunionResultadoService->validarFormalizacion(
+                $seguimientoId,
+                $usuarioId
+            );
+
+            if (!($validacionConvenio['ok'] ?? false)) {
+                $this->responder([
+                    'ok' => false,
+                    'mensaje' => (string)($validacionConvenio['mensaje'] ?? 'El seguimiento todavía no puede avanzar a convenio.')
+                ], (int)($validacionConvenio['codigo_http'] ?? 409));
+            }
+
+            $validacionDocumentos = $this->convenioDocumentosService->validarDocumentacionEnviada(
+                $seguimientoId,
+                $usuarioId
+            );
+
+            if (!($validacionDocumentos['ok'] ?? false)) {
+                $this->responder([
+                    'ok' => false,
+                    'mensaje' => (string)($validacionDocumentos['mensaje'] ?? 'Primero envía la documentación del convenio.')
+                ], (int)($validacionDocumentos['codigo_http'] ?? 409));
+            }
+
+            $resultado = $this->convenioDocumentosService->registrarRecibido(
+                $seguimientoId,
+                $usuarioId,
+                $_POST['convenio_recibido_fecha'] ?? '',
+                $_POST['convenio_recibido_notas'] ?? '',
+                $_FILES['convenio_archivo'] ?? null
+            );
+            $codigoHttp = (int)($resultado['codigo_http'] ?? 200);
+            unset($resultado['codigo_http']);
+            $this->responder($resultado, $codigoHttp);
+        }
+
         if ($accion === 'FORMALIZAR_CONVENIO') {
             $validacionConvenio = $this->reunionResultadoService->validarFormalizacion(
                 $seguimientoId,
@@ -314,6 +351,18 @@ class SeguimientoFlujoController
                     'ok' => false,
                     'mensaje' => (string)($validacionDocumentos['mensaje'] ?? 'Primero envía la documentación del convenio.')
                 ], (int)($validacionDocumentos['codigo_http'] ?? 409));
+            }
+
+            $validacionRecibido = $this->convenioDocumentosService->validarConvenioRecibido(
+                $seguimientoId,
+                $usuarioId
+            );
+
+            if (!($validacionRecibido['ok'] ?? false)) {
+                $this->responder([
+                    'ok' => false,
+                    'mensaje' => (string)($validacionRecibido['mensaje'] ?? 'Primero registra el convenio requisitado recibido.')
+                ], (int)($validacionRecibido['codigo_http'] ?? 409));
             }
         }
 
