@@ -463,6 +463,11 @@ class SeguimientoPostEnvioService
         if (trim((string)($actual['convenio_formalizado_at'] ?? '')) !== '') {
             throw new RuntimeException('El convenio ya fue formalizado.');
         }
+        if (trim((string)($actual['convenio_recibido_at'] ?? '')) === '') {
+            throw new RuntimeException(
+                'Primero registra el convenio requisitado que devolvió la institución.'
+            );
+        }
 
         $fecha = trim((string)($datos['convenio_fecha'] ?? ''));
         $referencia = trim((string)($datos['convenio_referencia'] ?? ''));
