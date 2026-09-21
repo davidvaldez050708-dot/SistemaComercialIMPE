@@ -7,7 +7,7 @@ class EcardReunionService
     public const TEMPLATE_SERGIO = 'SERGIO';
     public const TEMPLATE_MANUEL = 'MANUEL';
     public const CID = 'ecard-reunion';
-    public const VERSION = '20260920-08';
+    public const VERSION = '20260920-09';
 
     private $connection;
     private $rootPath;
@@ -537,6 +537,7 @@ class EcardReunionService
 
         natsort($partes);
         $base64 = '';
+
         foreach ($partes as $parte) {
             $contenido = @file_get_contents($parte);
             if (!is_string($contenido) || trim($contenido) === '') {
@@ -556,33 +557,44 @@ class EcardReunionService
         }
 
         /*
-         * Coordenadas finales para la plantilla Manuel 1200 x 1212.
-         * Se desplaza 6 px a la derecha y se aumenta el retrato para cubrir
-         * totalmente la imagen/aro que viene horneado en la plantilla.
+         * Posición final del retrato en la plantilla 1200 x 1212.
+         * Se limpia por completo la fotografía horneada y se crea una única
+         * composición: foto circular + margen blanco interior + aro azul.
          *
-         * El diámetro es impar a propósito: con 159 px el centro de la
-         * máscara cae exactamente sobre un píxel y no genera la pequeña
-         * "pestaña" horizontal que aparecía con diámetros pares.
+         * El margen blanco es intencional. Evita que la última cuerda de
+         * píxeles de la máscara circular se perciba como una "pestaña" debajo
+         * del retrato, que era el artefacto visible en la vista previa.
          */
         $centroX = 472;
         $centroY = 968;
-        $diametro = 159;
-        $centroMascara = (int)(($diametro - 1) / 2); // 79
-        $radioMascara = 78.5;
+
+        $diametroBorde = 159;
+        $radioFoto = 74.0;
+        $diametroFoto = 151;
+        $centroFoto = ($diametroFoto - 1) / 2.0;
 
         $blanco = imagecolorallocate($imagen, 255, 255, 255);
 
         /*
-         * Borra físicamente TODO el retrato original, incluido su aro doble.
-         * La caja termina antes del nombre del ponente y no toca la línea de
-         * separación de Zoom.
+         * Borra toda la zona del retrato original, incluido cualquier aro,
+         * sombra o extensión inferior de la plantilla.
          */
         imagefilledrectangle(
             $imagen,
-            378,
-            878,
-            556,
-            1058,
+            376,
+            876,
+            560,
+            1062,
+            $blanco
+        );
+
+        // Base blanca circular: garantiza un contorno interior uniforme.
+        imagefilledellipse(
+            $imagen,
+            $centroX,
+            $centroY,
+            $diametroBorde,
+            $diametroBorde,
             $blanco
         );
 
@@ -590,16 +602,12 @@ class EcardReunionService
         $oh = imagesy($origen);
         $lado = min($ow, $oh);
 
-        /*
-         * Recorte interior del 90%: elimina cualquier borde azul/halo que
-         * pudiera venir incluido en el archivo fuente y además acerca
-         * ligeramente el rostro, como en la plantilla aprobada.
-         */
+        // Acerca ligeramente el rostro sin conservar bordes del archivo fuente.
         $recorte = max(1, (int)floor($lado * 0.90));
         $sx = (int)floor(($ow - $recorte) / 2);
         $sy = (int)floor(($oh - $recorte) / 2);
 
-        $escalada = imagecreatetruecolor($diametro, $diametro);
+        $escalada = imagecreatetruecolor($diametroFoto, $diametroFoto);
         if (!$escalada) {
             imagedestroy($origen);
             return;
@@ -612,27 +620,27 @@ class EcardReunionService
             0,
             $sx,
             $sy,
-            $diametro,
-            $diametro,
+            $diametroFoto,
+            $diametroFoto,
             $recorte,
             $recorte
         );
 
-        $destinoX = $centroX - $centroMascara;
-        $destinoY = $centroY - $centroMascara;
-        $radio2 = $radioMascara * $radioMascara;
+        $destinoX = (int)round($centroX - $centroFoto);
+        $destinoY = (int)round($centroY - $centroFoto);
+        $radioFoto2 = $radioFoto * $radioFoto;
 
         /*
-         * Se copia directamente sobre el lienzo final únicamente el interior
-         * del círculo. No hay canvas transparente intermedio, por lo que no
-         * puede quedar una segunda silueta ni una franja debajo.
+         * Copia únicamente el interior del círculo fotográfico.
+         * El radio de la foto es menor al del aro, por lo que siempre queda
+         * un pequeño margen blanco entre la imagen y el borde azul.
          */
-        for ($py = 0; $py < $diametro; $py++) {
-            for ($px = 0; $px < $diametro; $px++) {
-                $dx = $px - $centroMascara;
-                $dy = $py - $centroMascara;
+        for ($py = 0; $py < $diametroFoto; $py++) {
+            for ($px = 0; $px < $diametroFoto; $px++) {
+                $dx = $px - $centroFoto;
+                $dy = $py - $centroFoto;
 
-                if (($dx * $dx) + ($dy * $dy) <= $radio2) {
+                if (($dx * $dx) + ($dy * $dy) <= $radioFoto2) {
                     imagesetpixel(
                         $imagen,
                         $destinoX + $px,
@@ -643,22 +651,25 @@ class EcardReunionService
             }
         }
 
-        // Un único aro azul limpio.
+        /*
+         * Un solo aro azul. Al quedar separado unos píxeles de la fotografía,
+         * la parte inferior ya no puede confundirse con una segunda imagen.
+         */
         $borde = imagecolorallocate($imagen, 35, 76, 150);
         imageellipse(
             $imagen,
             $centroX,
             $centroY,
-            $diametro,
-            $diametro,
+            $diametroBorde,
+            $diametroBorde,
             $borde
         );
         imageellipse(
             $imagen,
             $centroX,
             $centroY,
-            $diametro - 2,
-            $diametro - 2,
+            $diametroBorde - 2,
+            $diametroBorde - 2,
             $borde
         );
 
