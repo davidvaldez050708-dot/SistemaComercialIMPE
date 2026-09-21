@@ -468,6 +468,14 @@ class SeguimientoPostEnvioService
                 'Primero registra el convenio requisitado que devolvió la institución.'
             );
         }
+        if (
+            strtoupper(trim((string)($actual['convenio_revision_estado'] ?? ''))) !==
+            'APROBADO'
+        ) {
+            throw new RuntimeException(
+                'Primero revisa y aprueba la versión vigente del convenio.'
+            );
+        }
 
         $fecha = trim((string)($datos['convenio_fecha'] ?? ''));
         $referencia = trim((string)($datos['convenio_referencia'] ?? ''));
