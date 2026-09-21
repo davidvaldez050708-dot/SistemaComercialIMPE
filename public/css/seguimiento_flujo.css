@@ -3,9 +3,12 @@
    ========================================================= */
 
 [data-work-flow-section] {
+    min-width: 0;
+    max-width: 100%;
     gap: 12px;
     padding: 14px;
-    overflow: visible;
+    overflow: hidden;
+    box-sizing: border-box;
 }
 
 .linkage-flow-heading {
@@ -49,6 +52,8 @@
 }
 
 .linkage-flow-window {
+    min-width: 0;
+    max-width: 100%;
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 6px;
@@ -97,7 +102,10 @@
 }
 
 .linkage-flow-current {
+    min-width: 0;
+    max-width: 100%;
     padding: 11px 12px;
+    box-sizing: border-box;
     border: 1px solid var(--color-border);
     border-radius: 10px;
     background-color: #ffffff;
@@ -155,6 +163,8 @@
 }
 
 .linkage-flow-actions {
+    min-width: 0;
+    max-width: 100%;
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 8px;
@@ -166,7 +176,9 @@
 }
 
 .linkage-flow-actions .btn {
+    width: 100%;
     min-width: 0;
+    max-width: 100%;
     min-height: 38px;
     padding: 7px 10px;
     display: inline-flex;
@@ -179,6 +191,11 @@
     line-height: 1.2;
     white-space: normal;
     text-align: center;
+}
+
+.linkage-flow-actions .btn span {
+    min-width: 0;
+    overflow-wrap: anywhere;
 }
 
 .linkage-flow-actions .btn i {
