@@ -406,10 +406,19 @@
             const form = event.currentTarget;
             const boton = modal.querySelector('[data-post-envio-save]');
             const datos = new FormData(form);
+            const htmlOriginalBoton = boton.innerHTML;
+            const esEnvioDocumentacionConvenio =
+                accionActual === 'ENVIAR_DOCUMENTACION_CONVENIO';
+
             datos.set('seguimiento_id', String(seguimientoActualId));
             datos.set('accion', accionActual);
 
             boton.disabled = true;
+            if (esEnvioDocumentacionConvenio) {
+                boton.innerHTML =
+                    '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>' +
+                    'Enviando...';
+            }
             modal.querySelector('[data-post-envio-error]').classList.add('d-none');
 
             try {
@@ -444,6 +453,9 @@
                 mostrarError('No fue posible comunicarse con el sistema.');
             } finally {
                 boton.disabled = false;
+                if (esEnvioDocumentacionConvenio) {
+                    boton.innerHTML = htmlOriginalBoton;
+                }
             }
         }
 
