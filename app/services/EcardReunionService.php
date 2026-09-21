@@ -7,7 +7,7 @@ class EcardReunionService
     public const TEMPLATE_SERGIO = 'SERGIO';
     public const TEMPLATE_MANUEL = 'MANUEL';
     public const CID = 'ecard-reunion';
-    public const VERSION = '20260920-02';
+    public const VERSION = '20260920-03';
 
     private $connection;
     private $rootPath;
@@ -520,12 +520,20 @@ class EcardReunionService
         $radio = (int)($diametro / 2);
 
         $blanco = imagecolorallocate($imagen, 255, 255, 255);
+
+        /*
+         * La plantilla base todavía contiene el retrato original.
+         * Se limpia con una máscara verticalmente más amplia y ligeramente
+         * desplazada hacia abajo para borrar también el pequeño remanente
+         * que asomaba debajo de la fotografía nueva, sin invadir el texto.
+         */
+        $limpiezaCentroY = $centroY + 6;
         imagefilledellipse(
             $imagen,
             $centroX,
-            $centroY,
+            $limpiezaCentroY,
             $diametro + 18,
-            $diametro + 18,
+            $diametro + 42,
             $blanco
         );
 
