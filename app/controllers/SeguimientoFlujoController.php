@@ -219,8 +219,13 @@ class SeguimientoFlujoController
         $nombre = basename(
             str_replace(["\r", "\n", '"'], '', (string)($version['nombre_original'] ?? 'convenio'))
         );
-        $mime = trim((string)($version['mime'] ?? 'application/octet-stream'));
-        $esPdf = strtolower((string)pathinfo($nombre, PATHINFO_EXTENSION)) === 'pdf';
+        $extension = strtolower((string)pathinfo($nombre, PATHINFO_EXTENSION));
+        $esPdf = $extension === 'pdf';
+        $mime = $esPdf
+            ? 'application/pdf'
+            : ($extension === 'docx'
+                ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+                : 'application/octet-stream');
         $disposicion = ($modo === 'ver' && $esPdf) ? 'inline' : 'attachment';
 
         while (ob_get_level() > 0) {
