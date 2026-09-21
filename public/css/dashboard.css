@@ -6952,10 +6952,17 @@
 }
 
 .linkage-work-section-title {
+    min-width: 0;
+    max-width: 100%;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 10px;
+}
+
+.linkage-work-section-title h3 {
+    min-width: 0;
+    overflow-wrap: anywhere;
 }
 
 .linkage-work-next > span {
@@ -7088,12 +7095,21 @@
 }
 
 .linkage-work-list {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: 8px;
 }
 
 .linkage-work-list article {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
     padding: 9px 10px;
+    overflow: hidden;
+    box-sizing: border-box;
     border: 1px solid var(--color-border);
     border-radius: var(--radius-sm);
     background-color: #fbfcfe;
@@ -7101,7 +7117,11 @@
 
 .linkage-work-list strong,
 .linkage-work-list span {
+    min-width: 0;
+    max-width: 100%;
     display: block;
+    overflow-wrap: anywhere;
+    word-break: break-word;
 }
 
 .linkage-work-list strong {
@@ -7120,8 +7140,12 @@
 }
 
 .linkage-work-list p {
+    min-width: 0;
+    max-width: 100%;
     margin: 4px 0 0;
-    white-space: pre-line;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    white-space: pre-wrap;
 }
 
 .linkage-work-new-badge {
