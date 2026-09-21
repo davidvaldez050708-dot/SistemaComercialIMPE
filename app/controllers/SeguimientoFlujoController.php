@@ -6,6 +6,7 @@ require_once __DIR__ . '/../services/SeguimientoCorreoService.php';
 require_once __DIR__ . '/../services/AgendaReunionService.php';
 require_once __DIR__ . '/../services/ReunionFechaGuardService.php';
 require_once __DIR__ . '/../services/ReunionResultadoService.php';
+require_once __DIR__ . '/../services/ConvenioDocumentosService.php';
 require_once __DIR__ . '/../services/SeguimientoRutaOperativaService.php';
 require_once __DIR__ . '/../models/SeguimientoVinculacionModel.php';
 require_once __DIR__ . '/../helpers/PermissionHelper.php';
@@ -18,6 +19,7 @@ class SeguimientoFlujoController
     private $agendaReunionService;
     private $reunionFechaGuardService;
     private $reunionResultadoService;
+    private $convenioDocumentosService;
     private $rutaOperativaService;
 
     public function __construct()
@@ -28,13 +30,15 @@ class SeguimientoFlujoController
         $this->agendaReunionService = new AgendaReunionService();
         $this->reunionFechaGuardService = new ReunionFechaGuardService();
         $this->reunionResultadoService = new ReunionResultadoService();
+        $this->convenioDocumentosService = new ConvenioDocumentosService();
         $this->rutaOperativaService = new SeguimientoRutaOperativaService(
             $this->service,
             $this->postEnvioService,
             $this->seguimientoCorreoService,
             $this->agendaReunionService,
             $this->reunionFechaGuardService,
-            $this->reunionResultadoService
+            $this->reunionResultadoService,
+            $this->convenioDocumentosService
         );
     }
 
@@ -125,6 +129,38 @@ class SeguimientoFlujoController
         }
 
         $resultado = $this->seguimientoCorreoService->obtenerBorrador(
+            $seguimientoId,
+            $usuarioId
+        );
+        $codigoHttp = (int)($resultado['codigo_http'] ?? 200);
+        unset($resultado['codigo_http']);
+
+        $this->responder($resultado, $codigoHttp);
+    }
+
+    public function borradorConvenio()
+    {
+        header('Content-Type: application/json; charset=utf-8');
+
+        $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
+        $rolId = (int)($_SESSION['rol_id'] ?? 0);
+        $seguimientoId = (int)($_GET['seguimiento_id'] ?? 0);
+
+        if ($usuarioId <= 0 || $rolId !== 4) {
+            $this->responder([
+                'ok' => false,
+                'mensaje' => 'Solo el Analista responsable puede preparar la documentación del convenio.'
+            ], 403);
+        }
+
+        if ($seguimientoId <= 0) {
+            $this->responder([
+                'ok' => false,
+                'mensaje' => 'Selecciona un seguimiento válido.'
+            ], 422);
+        }
+
+        $resultado = $this->convenioDocumentosService->obtenerBorrador(
             $seguimientoId,
             $usuarioId
         );
@@ -230,6 +266,31 @@ class SeguimientoFlujoController
             }
         }
 
+        if ($accion === 'ENVIAR_DOCUMENTACION_CONVENIO') {
+            $validacionConvenio = $this->reunionResultadoService->validarFormalizacion(
+                $seguimientoId,
+                $usuarioId
+            );
+
+            if (!($validacionConvenio['ok'] ?? false)) {
+                $this->responder([
+                    'ok' => false,
+                    'mensaje' => (string)($validacionConvenio['mensaje'] ?? 'El seguimiento todavía no puede avanzar a convenio.')
+                ], (int)($validacionConvenio['codigo_http'] ?? 409));
+            }
+
+            $resultado = $this->convenioDocumentosService->enviar(
+                $seguimientoId,
+                $usuarioId,
+                $_POST['carta_fecha'] ?? '',
+                $_POST['asunto'] ?? '',
+                $_POST['cuerpo'] ?? ''
+            );
+            $codigoHttp = (int)($resultado['codigo_http'] ?? 200);
+            unset($resultado['codigo_http']);
+            $this->responder($resultado, $codigoHttp);
+        }
+
         if ($accion === 'FORMALIZAR_CONVENIO') {
             $validacionConvenio = $this->reunionResultadoService->validarFormalizacion(
                 $seguimientoId,
@@ -241,6 +302,18 @@ class SeguimientoFlujoController
                     'ok' => false,
                     'mensaje' => (string)($validacionConvenio['mensaje'] ?? 'El seguimiento todavía no puede avanzar a convenio.')
                 ], (int)($validacionConvenio['codigo_http'] ?? 409));
+            }
+
+            $validacionDocumentos = $this->convenioDocumentosService->validarDocumentacionEnviada(
+                $seguimientoId,
+                $usuarioId
+            );
+
+            if (!($validacionDocumentos['ok'] ?? false)) {
+                $this->responder([
+                    'ok' => false,
+                    'mensaje' => (string)($validacionDocumentos['mensaje'] ?? 'Primero envía la documentación del convenio.')
+                ], (int)($validacionDocumentos['codigo_http'] ?? 409));
             }
         }
 
