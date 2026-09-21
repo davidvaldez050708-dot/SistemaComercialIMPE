@@ -274,6 +274,40 @@
             '</select>';
         };
 
+        const selectorEcard = function (reunion) {
+            const actual = String(
+                reunion.ecard_template_predeterminado ||
+                reunion.ecard_template ||
+                'manuel'
+            ).toLowerCase();
+            const esSergio = actual === 'sergio';
+            const predeterminada = esSergio
+                ? 'Sergio López Porcayo'
+                : 'Mtro. Manuel Porcayo';
+
+            return '<div class="agenda-ecard-selector">' +
+                '<label class="form-label" for="agendaEcardTemplate' +
+                    Number(reunion.id || 0) + '">Ecard a enviar</label>' +
+                '<select class="form-select system-form-control" ' +
+                    'id="agendaEcardTemplate' + Number(reunion.id || 0) + '" ' +
+                    'name="ecard_template" data-ecard-template ' +
+                    'data-preview-manuel="' + escapar(reunion.ecard_preview_url_manuel || '') + '" ' +
+                    'data-preview-sergio="' + escapar(reunion.ecard_preview_url_sergio || '') + '" ' +
+                    'data-speaker-manuel="Mtro. Manuel Porcayo" ' +
+                    'data-speaker-sergio="Sergio López Porcayo">' +
+                    '<option value="MANUEL"' + (!esSergio ? ' selected' : '') + '>' +
+                        'Mtro. Manuel Porcayo · Presidente' +
+                    '</option>' +
+                    '<option value="SERGIO"' + (esSergio ? ' selected' : '') + '>' +
+                        'Sergio López Porcayo · Rector Universidad IMPE' +
+                    '</option>' +
+                '</select>' +
+                '<small class="form-text">Predeterminada para este seguimiento: ' +
+                    escapar(predeterminada) +
+                    '. Puedes cambiarla antes de enviar el correo.</small>' +
+            '</div>';
+        };
+
         const contenidoAnalista = function (reunion) {
             const estado = String(reunion.estado || '');
             let html = cabeceraDetalle(reunion);
@@ -343,7 +377,7 @@
             if (estado === 'CONFIRMADA') {
                 html += '<div class="agenda-action-box">' +
                     '<h6>Reunión confirmada</h6>' +
-                    '<p>Cuenta Clave ya confirmó la fecha. Envía estos datos a la institución y registra el envío para completar el paso 11.</p>' +
+                    '<p>Cuenta Clave ya confirmó la fecha. Revisa el correo y elige la Ecard que se enviará a la institución.</p>' +
                     datosConexion(reunion) +
                     '<form data-agenda-action-form data-agenda-action="marcarCorreoEnviado" class="agenda-email-preview">' +
                         '<input type="hidden" name="reunion_id" value="' + Number(reunion.id || 0) + '">' +
@@ -356,18 +390,19 @@
                             '<label class="form-label">Mensaje</label>' +
                             '<textarea class="form-control system-form-control" name="cuerpo" rows="9" required>' + escapar(reunion.correo_sugerido_cuerpo || '') + '</textarea>' +
                         '</div>' +
+                        selectorEcard(reunion) +
                         (String(reunion.ecard_preview_url || '').trim() !== ''
                             ? '<div class="agenda-ecard-preview">' +
                                 '<div class="agenda-ecard-preview-heading">' +
                                     '<span><i class="bi bi-image"></i> Ecard incluida en el correo</span>' +
-                                    '<strong>' + escapar(valorSeguro(reunion.ecard_ponente, 'Mtro. Manuel Porcayo')) + '</strong>' +
+                                    '<strong data-ecard-speaker>' + escapar(valorSeguro(reunion.ecard_ponente, 'Mtro. Manuel Porcayo')) + '</strong>' +
                                 '</div>' +
-                                '<img src="' + escapar(reunion.ecard_preview_url) + '" alt="Vista previa de Ecard de reunión" loading="lazy">' +
+                                '<img data-ecard-preview-image src="' + escapar(reunion.ecard_preview_url) + '" alt="Vista previa de Ecard de reunión" loading="lazy">' +
                                 '<small>Institución, fecha, hora y modalidad se generan con los datos actuales de la reunión.</small>' +
                             '</div>'
                             : '') +
                         '<div class="agenda-inline-note">' +
-                            '<i class="bi bi-info-circle"></i> El sistema enviará el mensaje, la Ecard institucional y el enlace de acceso. Si tienes firma configurada, también se incluirá.' +
+                            '<i class="bi bi-info-circle"></i> El sistema enviará exactamente la Ecard seleccionada junto con el mensaje y el enlace de acceso. Si tienes firma configurada, también se incluirá.' +
                         '</div>' +
                         '<div class="agenda-action-row">' +
                             '<button class="btn btn-system-light" type="button" data-copy-email><i class="bi bi-copy"></i> Copiar mensaje</button>' +
@@ -529,6 +564,31 @@
                 boton && (boton.disabled = false);
             }
         };
+
+        document.addEventListener('change', function (event) {
+            const select = event.target.closest('[data-ecard-template]');
+            if (!select) {
+                return;
+            }
+
+            const form = select.closest('form');
+            const imagen = form?.querySelector('[data-ecard-preview-image]');
+            const ponente = form?.querySelector('[data-ecard-speaker]');
+            const esSergio = String(select.value || '').toUpperCase() === 'SERGIO';
+            const url = esSergio
+                ? String(select.dataset.previewSergio || '')
+                : String(select.dataset.previewManuel || '');
+            const nombre = esSergio
+                ? String(select.dataset.speakerSergio || 'Sergio López Porcayo')
+                : String(select.dataset.speakerManuel || 'Mtro. Manuel Porcayo');
+
+            if (imagen && url !== '') {
+                imagen.src = url + '&ts=' + Date.now();
+            }
+            if (ponente) {
+                ponente.textContent = nombre;
+            }
+        });
 
         document.addEventListener('click', function (event) {
             const nuevo = event.target.closest('[data-agenda-new-request]');
