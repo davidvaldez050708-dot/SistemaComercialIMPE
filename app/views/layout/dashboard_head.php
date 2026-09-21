@@ -92,7 +92,6 @@ $jsOpcionalHead = [
     'seguimiento_bandeja_sync.js',
     'seguimiento_resumen_ruta.js',
     'seguimiento_panel_ruta.js',
-    'seguimiento_post_envio.js',
     'seguimiento_flujo_loading.js',
     'seguimiento_ruta_cache.js',
     'seguimiento_flujo_consistencia.js',
