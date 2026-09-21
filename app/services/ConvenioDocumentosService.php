@@ -711,6 +711,56 @@ class ConvenioDocumentosService
         return ['ok' => true];
     }
 
+    public function obtenerArchivoActual($seguimientoId)
+    {
+        $seguimientoId = (int)$seguimientoId;
+
+        if ($seguimientoId <= 0 || !$this->estructuraRecepcionDisponible()) {
+            return $this->error('No se encontró el documento solicitado.', 404);
+        }
+
+        $sql = "SELECT
+                    seguimiento_id,
+                    convenio_recibido_fecha AS fecha_recepcion,
+                    convenio_recibido_archivo AS archivo,
+                    convenio_recibido_nombre_original AS nombre_original,
+                    convenio_recibido_mime AS mime,
+                    convenio_recibido_tamano AS tamano
+                FROM seguimientos_vinculacion_post_envio
+                WHERE seguimiento_id = ?
+                  AND convenio_recibido_at IS NOT NULL
+                LIMIT 1";
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param('i', $seguimientoId);
+        $stmt->execute();
+        $version = $stmt->get_result()->fetch_assoc();
+
+        if (
+            !$version ||
+            trim((string)($version['archivo'] ?? '')) === ''
+        ) {
+            return $this->error('No se encontró el documento solicitado.', 404);
+        }
+
+        $ruta = $this->rutaVersionAbsoluta((string)$version['archivo']);
+        if ($ruta === null || !is_file($ruta)) {
+            return $this->error(
+                'El archivo del convenio no está disponible en el almacenamiento.',
+                404
+            );
+        }
+
+        $version['id'] = 0;
+        $version['version_num'] = 1;
+        $version['tipo'] = 'REQUISITADO';
+        $version['ruta_absoluta'] = $ruta;
+
+        return [
+            'ok' => true,
+            'version' => $version
+        ];
+    }
+
     public function obtenerArchivoVersion($versionId)
     {
         $versionId = (int)$versionId;
@@ -922,12 +972,29 @@ class ConvenioDocumentosService
         if ($versionActual) {
             $flujo['contexto']['convenio_version_actual'] = [
                 'id' => (int)$versionActual['id'],
+                'seguimiento_id' => (int)$seguimientoId,
                 'numero' => (int)$versionActual['version_num'],
                 'tipo' => (string)$versionActual['tipo'],
                 'fecha_recepcion' => (string)$versionActual['fecha_recepcion'],
                 'nombre' => (string)$versionActual['nombre_original'],
                 'mime' => (string)$versionActual['mime'],
                 'tamano' => (int)$versionActual['tamano']
+            ];
+        } else {
+            // Compatibilidad con expedientes recibidos durante la transición:
+            // la tarjeta sigue disponible aunque aún no exista una fila histórica.
+            $flujo['contexto']['convenio_version_actual'] = [
+                'id' => 0,
+                'seguimiento_id' => (int)$seguimientoId,
+                'numero' => max(
+                    1,
+                    (int)($seguimiento['convenio_version_actual'] ?? 1)
+                ),
+                'tipo' => 'REQUISITADO',
+                'fecha_recepcion' => (string)($seguimiento['convenio_recibido_fecha'] ?? ''),
+                'nombre' => (string)($seguimiento['convenio_recibido_nombre_original'] ?? 'Convenio recibido'),
+                'mime' => (string)($seguimiento['convenio_recibido_mime'] ?? ''),
+                'tamano' => (int)($seguimiento['convenio_recibido_tamano'] ?? 0)
             ];
         }
 
