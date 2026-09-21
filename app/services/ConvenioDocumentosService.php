@@ -274,6 +274,200 @@ class ConvenioDocumentosService
         ];
     }
 
+    public function registrarRecibido($seguimientoId, $usuarioId, $fechaRecepcion, $notas, $archivo)
+    {
+        $seguimientoId = (int)$seguimientoId;
+        $usuarioId = (int)$usuarioId;
+        $fechaRecepcion = trim((string)$fechaRecepcion);
+        $notas = trim((string)$notas);
+
+        if (!$this->estructuraRecepcionDisponible()) {
+            return $this->error(
+                'Falta aplicar la migración de recepción del convenio requisitado.',
+                500
+            );
+        }
+
+        $seguimiento = $this->obtenerSeguimiento($seguimientoId, $usuarioId);
+        $validacion = $this->validarEtapa($seguimiento);
+
+        if (!($validacion['ok'] ?? false)) {
+            return $validacion;
+        }
+
+        if (trim((string)($seguimiento['convenio_documentacion_enviada_at'] ?? '')) === '') {
+            return $this->error(
+                'Primero envía la carta propuesta y el convenio editable a la institución.',
+                409
+            );
+        }
+
+        if (trim((string)($seguimiento['convenio_formalizado_at'] ?? '')) !== '') {
+            return $this->error('El convenio ya fue formalizado.', 409);
+        }
+
+        if (trim((string)($seguimiento['convenio_recibido_at'] ?? '')) !== '') {
+            return $this->error(
+                'El convenio requisitado ya fue registrado en este expediente.',
+                409
+            );
+        }
+
+        if (!$this->fechaValida($fechaRecepcion)) {
+            return $this->error('Indica una fecha válida de recepción.', 422);
+        }
+
+        if ($fechaRecepcion > date('Y-m-d')) {
+            return $this->error(
+                'La fecha de recepción no puede ser posterior a la fecha actual.',
+                422
+            );
+        }
+
+        if (mb_strlen($notas) > 5000) {
+            return $this->error('Las observaciones no pueden superar 5000 caracteres.', 422);
+        }
+
+        $validacionArchivo = $this->validarArchivoRecibido($archivo);
+        if (!($validacionArchivo['ok'] ?? false)) {
+            return $validacionArchivo;
+        }
+
+        $anio = date('Y');
+        $enviadoAt = trim((string)($seguimiento['convenio_documentacion_enviada_at'] ?? ''));
+        if ($enviadoAt !== '') {
+            try {
+                $anio = (new DateTime($enviadoAt))->format('Y');
+            } catch (Throwable $error) {
+                $anio = date('Y');
+            }
+        }
+
+        $directorio = $this->storagePath . DIRECTORY_SEPARATOR . $anio .
+            DIRECTORY_SEPARATOR . 'seguimiento_' . $seguimientoId .
+            DIRECTORY_SEPARATOR . 'recibidos';
+
+        if (
+            !is_dir($directorio) &&
+            !mkdir($directorio, 0775, true) &&
+            !is_dir($directorio)
+        ) {
+            return $this->error(
+                'No fue posible preparar la carpeta del convenio recibido.',
+                500
+            );
+        }
+
+        $extension = (string)$validacionArchivo['extension'];
+        $slug = $this->nombreArchivoSeguro(
+            (string)($seguimiento['nombre_entidad'] ?? '')
+        );
+        $nombreInterno = 'Convenio_requisitado_' . $slug . '_' .
+            date('Ymd_His') . '_' . bin2hex(random_bytes(3)) . '.' . $extension;
+        $rutaAbsoluta = $directorio . DIRECTORY_SEPARATOR . $nombreInterno;
+
+        if (!move_uploaded_file((string)$archivo['tmp_name'], $rutaAbsoluta)) {
+            return $this->error(
+                'No fue posible guardar el convenio recibido.',
+                500
+            );
+        }
+
+        $relativa = 'storage/convenios/' . $anio .
+            '/seguimiento_' . $seguimientoId . '/recibidos/' . $nombreInterno;
+        $nombreOriginal = (string)$validacionArchivo['nombre_original'];
+        $mime = (string)$validacionArchivo['mime'];
+        $tamano = (int)$validacionArchivo['tamano'];
+
+        $this->connection->begin_transaction();
+
+        try {
+            $sqlPost = "UPDATE seguimientos_vinculacion_post_envio
+                        SET convenio_recibido_fecha = ?,
+                            convenio_recibido_at = NOW(),
+                            convenio_recibido_por = ?,
+                            convenio_recibido_archivo = ?,
+                            convenio_recibido_nombre_original = ?,
+                            convenio_recibido_mime = ?,
+                            convenio_recibido_tamano = ?,
+                            convenio_recibido_notas = ?
+                        WHERE seguimiento_id = ?
+                          AND convenio_recibido_at IS NULL";
+            $stmtPost = $this->connection->prepare($sqlPost);
+            $stmtPost->bind_param(
+                'sisssisi',
+                $fechaRecepcion,
+                $usuarioId,
+                $relativa,
+                $nombreOriginal,
+                $mime,
+                $tamano,
+                $notas,
+                $seguimientoId
+            );
+            $stmtPost->execute();
+
+            if ($stmtPost->affected_rows !== 1) {
+                throw new RuntimeException(
+                    'El convenio requisitado ya fue registrado o el expediente cambió.'
+                );
+            }
+
+            $notaInteraccion = 'Convenio requisitado recibido: ' .
+                $nombreOriginal . ' | Fecha de recepción: ' . $fechaRecepcion .
+                ($notas !== '' ? ' | ' . $notas : '');
+
+            $sqlInteraccion = "INSERT INTO interacciones_vinculacion (
+                                seguimiento_id,
+                                usuario_id,
+                                canal,
+                                fecha_inicio,
+                                resultado,
+                                notas
+                            ) VALUES (?, ?, 'SISTEMA', NOW(), 'OTRO', ?)";
+            $stmtInteraccion = $this->connection->prepare($sqlInteraccion);
+            $stmtInteraccion->bind_param(
+                'iis',
+                $seguimientoId,
+                $usuarioId,
+                $notaInteraccion
+            );
+            $stmtInteraccion->execute();
+
+            $sqlSeguimiento = "UPDATE seguimientos_vinculacion
+                               SET ultima_interaccion_at = NOW(),
+                                   proxima_accion_at = NULL
+                               WHERE id = ?
+                                 AND analista_id = ?
+                                 AND activo = 1";
+            $stmtSeguimiento = $this->connection->prepare($sqlSeguimiento);
+            $stmtSeguimiento->bind_param('ii', $seguimientoId, $usuarioId);
+            $stmtSeguimiento->execute();
+
+            $this->connection->commit();
+        } catch (Throwable $error) {
+            $this->connection->rollback();
+            @unlink($rutaAbsoluta);
+            error_log('No fue posible registrar el convenio recibido: ' . $error->getMessage());
+
+            return $this->error(
+                'No fue posible registrar el convenio recibido en el expediente.',
+                500
+            );
+        }
+
+        return [
+            'ok' => true,
+            'mensaje' => 'Convenio requisitado recibido y guardado en el expediente.',
+            'archivo' => [
+                'nombre' => $nombreOriginal,
+                'tipo' => strtoupper($extension),
+                'tamano' => $tamano
+            ]
+        ];
+    }
+
+
     public function validarDocumentacionEnviada($seguimientoId, $usuarioId)
     {
         if (!$this->estructuraDisponible()) {
@@ -295,6 +489,41 @@ class ConvenioDocumentosService
         if (trim((string)($seguimiento['convenio_documentacion_enviada_at'] ?? '')) === '') {
             return $this->error(
                 'Primero envía la carta propuesta y el convenio editable a la institución.',
+                409
+            );
+        }
+
+        return ['ok' => true];
+    }
+
+    public function validarConvenioRecibido($seguimientoId, $usuarioId)
+    {
+        if (!$this->estructuraRecepcionDisponible()) {
+            return $this->error(
+                'Falta aplicar la migración de recepción del convenio requisitado.',
+                500
+            );
+        }
+
+        $seguimiento = $this->obtenerSeguimiento(
+            (int)$seguimientoId,
+            (int)$usuarioId
+        );
+
+        if (!$seguimiento) {
+            return $this->error('No tienes acceso a este seguimiento.', 403);
+        }
+
+        if (trim((string)($seguimiento['convenio_recibido_at'] ?? '')) === '') {
+            return $this->error(
+                'Primero registra el convenio requisitado que devolvió la institución.',
+                409
+            );
+        }
+
+        if (trim((string)($seguimiento['convenio_recibido_archivo'] ?? '')) === '') {
+            return $this->error(
+                'El expediente no tiene asociado el archivo del convenio recibido.',
                 409
             );
         }
@@ -368,9 +597,31 @@ class ConvenioDocumentosService
             return $flujo;
         }
 
-        $flujo['titulo'] = 'Esperando convenio requisitado';
+        $recibidoAt = trim(
+            (string)($seguimiento['convenio_recibido_at'] ?? '')
+        );
+        $flujo['contexto']['convenio_recibido_at'] = $recibidoAt;
+        $flujo['contexto']['convenio_recibido_nombre_original'] = trim(
+            (string)($seguimiento['convenio_recibido_nombre_original'] ?? '')
+        );
+
+        if ($recibidoAt === '') {
+            $flujo['titulo'] = 'Esperando convenio requisitado';
+            $flujo['descripcion'] =
+                'La carta propuesta y el convenio editable ya fueron enviados. Cuando la institución devuelva el convenio con sus datos, registra el archivo recibido en el expediente.';
+            $flujo['accion_principal'] = [
+                'codigo' => 'REGISTRAR_CONVENIO_RECIBIDO',
+                'etiqueta' => 'Registrar convenio recibido',
+                'icono' => 'bi-cloud-arrow-up'
+            ];
+            $flujo['accion_secundaria'] = null;
+
+            return $flujo;
+        }
+
+        $flujo['titulo'] = 'Convenio recibido · En revisión';
         $flujo['descripcion'] =
-            'La carta propuesta y el convenio editable ya fueron enviados. Cuando la institución devuelva el convenio con sus datos y esté listo para formalizarse, registra la referencia final.';
+            'La institución ya devolvió el convenio requisitado y el archivo quedó resguardado en el expediente. Revisa la información antes de registrar la formalización.';
         $flujo['accion_principal'] = [
             'codigo' => 'FORMALIZAR_CONVENIO',
             'etiqueta' => 'Registrar convenio formalizado',
@@ -454,6 +705,7 @@ class ConvenioDocumentosService
                     p.convenio_correo_cuerpo,
                     p.convenio_carta_pdf,
                     p.convenio_docx,
+                    " . $this->camposRecepcionSql() . ",
                     u.nombre AS analista_nombre,
                     u.apellidos AS analista_apellidos,
                     u.correo AS analista_correo
@@ -472,6 +724,150 @@ class ConvenioDocumentosService
 
         return $stmt->get_result()->fetch_assoc() ?: null;
     }
+
+    private function validarArchivoRecibido($archivo)
+    {
+        if (!is_array($archivo)) {
+            return $this->error(
+                'Selecciona el archivo del convenio requisitado.',
+                422
+            );
+        }
+
+        $errorCarga = (int)($archivo['error'] ?? UPLOAD_ERR_NO_FILE);
+        if ($errorCarga !== UPLOAD_ERR_OK) {
+            $mensajes = [
+                UPLOAD_ERR_INI_SIZE => 'El archivo supera el tamaño permitido por el servidor.',
+                UPLOAD_ERR_FORM_SIZE => 'El archivo supera el tamaño permitido por el formulario.',
+                UPLOAD_ERR_PARTIAL => 'El archivo se recibió de forma incompleta.',
+                UPLOAD_ERR_NO_FILE => 'Selecciona el archivo del convenio requisitado.'
+            ];
+
+            return $this->error(
+                $mensajes[$errorCarga] ?? 'No fue posible recibir el archivo del convenio.',
+                422
+            );
+        }
+
+        $tmp = (string)($archivo['tmp_name'] ?? '');
+        if ($tmp === '' || !is_uploaded_file($tmp) || !is_file($tmp)) {
+            return $this->error(
+                'El archivo recibido no es una carga válida.',
+                422
+            );
+        }
+
+        $tamano = (int)($archivo['size'] ?? 0);
+        $maximo = 15 * 1024 * 1024;
+        if ($tamano <= 0) {
+            return $this->error('El archivo recibido está vacío.', 422);
+        }
+        if ($tamano > $maximo) {
+            return $this->error(
+                'El convenio no puede superar 15 MB.',
+                422
+            );
+        }
+
+        $nombreOriginal = basename(
+            str_replace('\\', '/', (string)($archivo['name'] ?? 'convenio'))
+        );
+        $extension = strtolower((string)pathinfo($nombreOriginal, PATHINFO_EXTENSION));
+
+        if (!in_array($extension, ['docx', 'pdf'], true)) {
+            return $this->error(
+                'El convenio recibido debe estar en formato DOCX o PDF.',
+                422
+            );
+        }
+
+        if ($extension === 'pdf') {
+            $manejador = @fopen($tmp, 'rb');
+            $firma = is_resource($manejador) ? fread($manejador, 5) : false;
+            if (is_resource($manejador)) {
+                fclose($manejador);
+            }
+
+            if ($firma !== '%PDF-') {
+                return $this->error(
+                    'El archivo seleccionado no es un PDF válido.',
+                    422
+                );
+            }
+        } else {
+            if (!class_exists('ZipArchive')) {
+                return $this->error(
+                    'PHP necesita la extensión ZIP para validar el convenio DOCX.',
+                    500
+                );
+            }
+
+            $zip = new ZipArchive();
+            $abierto = $zip->open($tmp);
+            if (
+                $abierto !== true ||
+                $zip->locateName('[Content_Types].xml') === false ||
+                $zip->locateName('word/document.xml') === false
+            ) {
+                if ($abierto === true) {
+                    $zip->close();
+                }
+                return $this->error(
+                    'El archivo seleccionado no es un DOCX válido.',
+                    422
+                );
+            }
+            $zip->close();
+        }
+
+        $mime = $extension === 'pdf'
+            ? 'application/pdf'
+            : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+
+        if (class_exists('finfo')) {
+            try {
+                $finfo = new finfo(FILEINFO_MIME_TYPE);
+                $detectado = trim((string)$finfo->file($tmp));
+                if ($detectado !== '') {
+                    $mime = $detectado;
+                }
+            } catch (Throwable $error) {
+                // La firma/estructura del archivo ya fue validada arriba.
+            }
+        }
+
+        return [
+            'ok' => true,
+            'extension' => $extension,
+            'nombre_original' => mb_substr($nombreOriginal, 0, 255),
+            'mime' => mb_substr($mime, 0, 120),
+            'tamano' => $tamano
+        ];
+    }
+
+    private function camposRecepcionSql()
+    {
+        if ($this->estructuraRecepcionDisponible()) {
+            return "p.convenio_recibido_fecha,
+                    p.convenio_recibido_at,
+                    p.convenio_recibido_por,
+                    p.convenio_recibido_archivo,
+                    p.convenio_recibido_nombre_original,
+                    p.convenio_recibido_mime,
+                    p.convenio_recibido_tamano,
+                    p.convenio_recibido_notas";
+        }
+
+        return "NULL AS convenio_recibido_fecha,
+                NULL AS convenio_recibido_at,
+                NULL AS convenio_recibido_por,
+                NULL AS convenio_recibido_archivo,
+                NULL AS convenio_recibido_nombre_original,
+                NULL AS convenio_recibido_mime,
+                NULL AS convenio_recibido_tamano,
+                NULL AS convenio_recibido_notas";
+    }
+
 
     private function prepararDocumentos($seguimientoId, $institucion, $cartaFecha)
     {
@@ -749,6 +1145,20 @@ class ConvenioDocumentosService
         $resultado = $this->connection->query(
             "SHOW COLUMNS FROM seguimientos_vinculacion_post_envio
              LIKE 'convenio_documentacion_enviada_at'"
+        );
+
+        return $resultado && $resultado->num_rows > 0;
+    }
+
+    private function estructuraRecepcionDisponible()
+    {
+        if (!$this->tablaExiste('seguimientos_vinculacion_post_envio')) {
+            return false;
+        }
+
+        $resultado = $this->connection->query(
+            "SHOW COLUMNS FROM seguimientos_vinculacion_post_envio
+             LIKE 'convenio_recibido_at'"
         );
 
         return $resultado && $resultado->num_rows > 0;
