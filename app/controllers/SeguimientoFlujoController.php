@@ -174,6 +174,7 @@ class SeguimientoFlujoController
     {
         $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
         $versionId = (int)($_GET['version_id'] ?? 0);
+        $seguimientoIdSolicitado = (int)($_GET['seguimiento_id'] ?? 0);
         $modo = strtolower(trim((string)($_GET['modo'] ?? 'descargar')));
 
         if ($usuarioId <= 0) {
@@ -182,13 +183,15 @@ class SeguimientoFlujoController
             exit;
         }
 
-        if ($versionId <= 0) {
+        if ($versionId <= 0 && $seguimientoIdSolicitado <= 0) {
             http_response_code(422);
             echo 'Selecciona un documento válido.';
             exit;
         }
 
-        $resultado = $this->convenioDocumentosService->obtenerArchivoVersion($versionId);
+        $resultado = $versionId > 0
+            ? $this->convenioDocumentosService->obtenerArchivoVersion($versionId)
+            : $this->convenioDocumentosService->obtenerArchivoActual($seguimientoIdSolicitado);
         if (!($resultado['ok'] ?? false)) {
             http_response_code((int)($resultado['codigo_http'] ?? 404));
             echo (string)($resultado['mensaje'] ?? 'No se encontró el documento.');
