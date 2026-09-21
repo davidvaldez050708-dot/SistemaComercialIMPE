@@ -170,6 +170,77 @@ class SeguimientoFlujoController
         $this->responder($resultado, $codigoHttp);
     }
 
+    public function archivoConvenio()
+    {
+        $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
+        $versionId = (int)($_GET['version_id'] ?? 0);
+        $modo = strtolower(trim((string)($_GET['modo'] ?? 'descargar')));
+
+        if ($usuarioId <= 0) {
+            http_response_code(401);
+            echo 'La sesión no está activa.';
+            exit;
+        }
+
+        if ($versionId <= 0) {
+            http_response_code(422);
+            echo 'Selecciona un documento válido.';
+            exit;
+        }
+
+        $resultado = $this->convenioDocumentosService->obtenerArchivoVersion($versionId);
+        if (!($resultado['ok'] ?? false)) {
+            http_response_code((int)($resultado['codigo_http'] ?? 404));
+            echo (string)($resultado['mensaje'] ?? 'No se encontró el documento.');
+            exit;
+        }
+
+        $version = $resultado['version'] ?? [];
+        $seguimientoId = (int)($version['seguimiento_id'] ?? 0);
+        $seguimiento = $this->obtenerSeguimientoLectura(
+            $seguimientoId,
+            $usuarioId,
+            $this->resolverModoAcceso()
+        );
+
+        if (!$seguimiento) {
+            http_response_code(403);
+            echo 'No tienes acceso a este documento.';
+            exit;
+        }
+
+        $ruta = (string)($version['ruta_absoluta'] ?? '');
+        if ($ruta === '' || !is_file($ruta)) {
+            http_response_code(404);
+            echo 'El archivo ya no está disponible.';
+            exit;
+        }
+
+        $nombre = basename(
+            str_replace(["\r", "\n", '"'], '', (string)($version['nombre_original'] ?? 'convenio'))
+        );
+        $mime = trim((string)($version['mime'] ?? 'application/octet-stream'));
+        $esPdf = strtolower((string)pathinfo($nombre, PATHINFO_EXTENSION)) === 'pdf';
+        $disposicion = ($modo === 'ver' && $esPdf) ? 'inline' : 'attachment';
+
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+
+        header('Content-Type: ' . $mime);
+        header('Content-Length: ' . (string)filesize($ruta));
+        header(
+            'Content-Disposition: ' . $disposicion . '; filename="' .
+            addcslashes($nombre, "\\\"") . '"; filename*=UTF-8\'\'' .
+            rawurlencode($nombre)
+        );
+        header('X-Content-Type-Options: nosniff');
+        header('Cache-Control: private, no-store, max-age=0');
+
+        readfile($ruta);
+        exit;
+    }
+
     public function registrarPostEnvio()
     {
         header('Content-Type: application/json; charset=utf-8');
@@ -291,7 +362,11 @@ class SeguimientoFlujoController
             $this->responder($resultado, $codigoHttp);
         }
 
-        if ($accion === 'REGISTRAR_CONVENIO_RECIBIDO') {
+        if (in_array(
+            $accion,
+            ['REGISTRAR_CONVENIO_RECIBIDO', 'REGISTRAR_CONVENIO_CORREGIDO'],
+            true
+        )) {
             $validacionConvenio = $this->reunionResultadoService->validarFormalizacion(
                 $seguimientoId,
                 $usuarioId
@@ -322,6 +397,30 @@ class SeguimientoFlujoController
                 $_POST['convenio_recibido_fecha'] ?? '',
                 $_POST['convenio_recibido_notas'] ?? '',
                 $_FILES['convenio_archivo'] ?? null
+            );
+            $codigoHttp = (int)($resultado['codigo_http'] ?? 200);
+            unset($resultado['codigo_http']);
+            $this->responder($resultado, $codigoHttp);
+        }
+
+        if ($accion === 'APROBAR_CONVENIO_RECIBIDO') {
+            $resultado = $this->convenioDocumentosService->registrarRevision(
+                $seguimientoId,
+                $usuarioId,
+                'APROBAR',
+                $_POST['convenio_revision_notas'] ?? ''
+            );
+            $codigoHttp = (int)($resultado['codigo_http'] ?? 200);
+            unset($resultado['codigo_http']);
+            $this->responder($resultado, $codigoHttp);
+        }
+
+        if ($accion === 'SOLICITAR_CORRECCIONES_CONVENIO') {
+            $resultado = $this->convenioDocumentosService->registrarRevision(
+                $seguimientoId,
+                $usuarioId,
+                'CORRECCIONES',
+                $_POST['convenio_revision_notas'] ?? ''
             );
             $codigoHttp = (int)($resultado['codigo_http'] ?? 200);
             unset($resultado['codigo_http']);
@@ -363,6 +462,18 @@ class SeguimientoFlujoController
                     'ok' => false,
                     'mensaje' => (string)($validacionRecibido['mensaje'] ?? 'Primero registra el convenio requisitado recibido.')
                 ], (int)($validacionRecibido['codigo_http'] ?? 409));
+            }
+
+            $validacionAprobado = $this->convenioDocumentosService->validarConvenioAprobado(
+                $seguimientoId,
+                $usuarioId
+            );
+
+            if (!($validacionAprobado['ok'] ?? false)) {
+                $this->responder([
+                    'ok' => false,
+                    'mensaje' => (string)($validacionAprobado['mensaje'] ?? 'Primero aprueba la versión vigente del convenio.')
+                ], (int)($validacionAprobado['codigo_http'] ?? 409));
             }
         }
 
