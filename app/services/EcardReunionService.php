@@ -7,7 +7,7 @@ class EcardReunionService
     public const TEMPLATE_SERGIO = 'SERGIO';
     public const TEMPLATE_MANUEL = 'MANUEL';
     public const CID = 'ecard-reunion';
-    public const VERSION = '20260920-07';
+    public const VERSION = '20260920-08';
 
     private $connection;
     private $rootPath;
@@ -408,12 +408,11 @@ class EcardReunionService
         );
 
         /*
-         * La plantilla contiene el retrato correcto, pero el recurso base
-         * trae unos píxeles que sobresalen por debajo del círculo. Se recorta
-         * geométricamente el área exterior y se repinta únicamente el borde.
-         * No se coloca otra fotografía encima.
+         * La plantilla base trae un aro/sombra duplicado en el retrato.
+         * Se limpia por completo esa zona y se dibuja una sola fotografía
+         * desde el recurso de Manuel, ligeramente más grande y a la derecha.
          */
-        $this->normalizarRetratoManuelPlantilla($imagen);
+        $this->dibujarRetratoManuelLimpio($imagen);
 
         imageinterlace($imagen, true);
         $guardado = imagejpeg($imagen, $ruta, 96);
@@ -556,68 +555,55 @@ class EcardReunionService
             return;
         }
 
-        $centroX = 466;
-        $centroY = 968;
-        $diametro = 148;
-        $radioDestino = (int)($diametro / 2);
-
         /*
-         * Para un lienzo par (148x148) el centro geométrico real es 73.5,
-         * no 74. Usar 74 producía una cuerda horizontal demasiado ancha en
-         * la última fila de píxeles: el pequeño "pedazo" que se veía debajo
-         * del círculo. La máscara ahora usa centro y radio de medio píxel.
+         * Coordenadas finales para la plantilla Manuel 1200 x 1212.
+         * Se desplaza 6 px a la derecha y se aumenta el retrato para cubrir
+         * totalmente la imagen/aro que viene horneado en la plantilla.
+         *
+         * El diámetro es impar a propósito: con 159 px el centro de la
+         * máscara cae exactamente sobre un píxel y no genera la pequeña
+         * "pestaña" horizontal que aparecía con diámetros pares.
          */
-        $centroMascara = ($diametro - 1) / 2;
-        $radioMascara = ($diametro - 1) / 2;
+        $centroX = 472;
+        $centroY = 968;
+        $diametro = 159;
+        $centroMascara = (int)(($diametro - 1) / 2); // 79
+        $radioMascara = 78.5;
 
         $blanco = imagecolorallocate($imagen, 255, 255, 255);
 
         /*
-         * La plantilla base contiene el retrato anterior. Una elipse mayor
-         * todavía podía dejar visibles pequeños fragmentos en el borde
-         * inferior. Se limpia toda la caja del retrato original con blanco
-         * antes de colocar la fotografía nueva. La caja se mantiene lejos de
-         * la línea vertical de Zoom y del texto del ponente.
+         * Borra físicamente TODO el retrato original, incluido su aro doble.
+         * La caja termina antes del nombre del ponente y no toca la línea de
+         * separación de Zoom.
          */
         imagefilledrectangle(
             $imagen,
             378,
-            880,
-            550,
+            878,
+            556,
             1058,
             $blanco
         );
 
-        // Suaviza las cuatro esquinas para que la limpieza se funda con el
-        // fondo blanco sin dejar artefactos del retrato anterior.
-        imagefilledellipse($imagen, 390, 892, 24, 24, $blanco);
-        imagefilledellipse($imagen, 538, 892, 24, 24, $blanco);
-        imagefilledellipse($imagen, 390, 1046, 24, 24, $blanco);
-        imagefilledellipse($imagen, 538, 1046, 24, 24, $blanco);
-
-        $tmp = imagecreatetruecolor($diametro, $diametro);
-        $escalada = imagecreatetruecolor($diametro, $diametro);
-        if (!$tmp || !$escalada) {
-            if ($tmp) {
-                imagedestroy($tmp);
-            }
-            if ($escalada) {
-                imagedestroy($escalada);
-            }
-            imagedestroy($origen);
-            return;
-        }
-
-        imagealphablending($tmp, false);
-        imagesavealpha($tmp, true);
-        $transparente = imagecolorallocatealpha($tmp, 0, 0, 0, 127);
-        imagefill($tmp, 0, 0, $transparente);
-
         $ow = imagesx($origen);
         $oh = imagesy($origen);
         $lado = min($ow, $oh);
-        $sx = (int)(($ow - $lado) / 2);
-        $sy = (int)(($oh - $lado) / 2);
+
+        /*
+         * Recorte interior del 90%: elimina cualquier borde azul/halo que
+         * pudiera venir incluido en el archivo fuente y además acerca
+         * ligeramente el rostro, como en la plantilla aprobada.
+         */
+        $recorte = max(1, (int)floor($lado * 0.90));
+        $sx = (int)floor(($ow - $recorte) / 2);
+        $sy = (int)floor(($oh - $recorte) / 2);
+
+        $escalada = imagecreatetruecolor($diametro, $diametro);
+        if (!$escalada) {
+            imagedestroy($origen);
+            return;
+        }
 
         imagecopyresampled(
             $escalada,
@@ -628,47 +614,55 @@ class EcardReunionService
             $sy,
             $diametro,
             $diametro,
-            $lado,
-            $lado
+            $recorte,
+            $recorte
         );
 
+        $destinoX = $centroX - $centroMascara;
+        $destinoY = $centroY - $centroMascara;
+        $radio2 = $radioMascara * $radioMascara;
+
+        /*
+         * Se copia directamente sobre el lienzo final únicamente el interior
+         * del círculo. No hay canvas transparente intermedio, por lo que no
+         * puede quedar una segunda silueta ni una franja debajo.
+         */
         for ($py = 0; $py < $diametro; $py++) {
             for ($px = 0; $px < $diametro; $px++) {
                 $dx = $px - $centroMascara;
                 $dy = $py - $centroMascara;
 
-                if (
-                    (($dx * $dx) + ($dy * $dy)) <=
-                    ($radioMascara * $radioMascara)
-                ) {
+                if (($dx * $dx) + ($dy * $dy) <= $radio2) {
                     imagesetpixel(
-                        $tmp,
-                        $px,
-                        $py,
+                        $imagen,
+                        $destinoX + $px,
+                        $destinoY + $py,
                         imagecolorat($escalada, $px, $py)
                     );
                 }
             }
         }
 
-        imagealphablending($imagen, true);
-        imagecopy(
+        // Un único aro azul limpio.
+        $borde = imagecolorallocate($imagen, 35, 76, 150);
+        imageellipse(
             $imagen,
-            $tmp,
-            $centroX - $radioDestino,
-            $centroY - $radioDestino,
-            0,
-            0,
+            $centroX,
+            $centroY,
             $diametro,
-            $diametro
+            $diametro,
+            $borde
+        );
+        imageellipse(
+            $imagen,
+            $centroX,
+            $centroY,
+            $diametro - 2,
+            $diametro - 2,
+            $borde
         );
 
-        $borde = imagecolorallocate($imagen, 35, 76, 150);
-        imageellipse($imagen, $centroX, $centroY, $diametro, $diametro, $borde);
-        imageellipse($imagen, $centroX, $centroY, $diametro - 2, $diametro - 2, $borde);
-
         imagedestroy($escalada);
-        imagedestroy($tmp);
         imagedestroy($origen);
     }
 
