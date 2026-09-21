@@ -35,7 +35,8 @@ class CorreoFirmadoController
             (int)$_SESSION['usuario_id'],
             (string)($_POST['asunto'] ?? ''),
             (string)($_POST['cuerpo'] ?? ''),
-            (string)($_POST['reprogramacion'] ?? '0') === '1'
+            (string)($_POST['reprogramacion'] ?? '0') === '1',
+            (string)($_POST['ecard_template'] ?? '')
         );
 
         $this->responderResultado($resultado);
