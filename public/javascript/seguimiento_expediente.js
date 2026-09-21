@@ -799,7 +799,6 @@
                     '</div>' +
                     '<div class="linkage-expediente-data-grid">' +
                         dato('Fecha del convenio', fechaLegible(post.convenio_fecha, true)) +
-                        dato('Referencia', post.convenio_referencia) +
                         dato('Registrado', fechaLegible(post.convenio_formalizado_at)) +
                         dato('Observaciones', post.convenio_notas, true) +
                     '</div>' +
