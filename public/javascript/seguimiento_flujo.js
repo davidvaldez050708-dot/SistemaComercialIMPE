@@ -45,6 +45,7 @@
                     '<p data-flow-description></p>' +
                     '<div class="linkage-flow-missing d-none" data-flow-missing></div>' +
                 '</div>' +
+                '<div class="linkage-flow-document d-none" data-flow-document></div>' +
                 '<div class="linkage-flow-actions has-single-action" data-flow-actions></div>';
 
             referencia.insertAdjacentElement('afterend', bloque);
@@ -55,6 +56,81 @@
             const div = document.createElement('div');
             div.textContent = String(valor || '');
             return div.innerHTML;
+        };
+
+        const formatearFechaConvenio = function (valor) {
+            const partes = String(valor || '').split('-');
+            if (partes.length !== 3) {
+                return String(valor || '');
+            }
+            return partes[2] + '/' + partes[1] + '/' + partes[0];
+        };
+
+        const formatearTamanoConvenio = function (bytes) {
+            const total = Number(bytes || 0);
+            if (!Number.isFinite(total) || total <= 0) {
+                return '';
+            }
+            if (total < 1024 * 1024) {
+                return Math.max(1, Math.round(total / 1024)) + ' KB';
+            }
+            return (total / (1024 * 1024)).toFixed(1) + ' MB';
+        };
+
+        const renderizarDocumentoConvenio = function (version, contexto) {
+            if (!version || Number(version.id || 0) <= 0) {
+                return '';
+            }
+
+            const id = Number(version.id);
+            const mime = String(version.mime || '').toLowerCase();
+            const nombre = escapar(version.nombre || 'Convenio recibido');
+            const numero = Number(version.numero || 1);
+            const fecha = formatearFechaConvenio(version.fecha_recepcion || '');
+            const tamano = formatearTamanoConvenio(version.tamano || 0);
+            const esPdf = mime.includes('pdf') ||
+                String(version.nombre || '').toLowerCase().endsWith('.pdf');
+            const icono = esPdf ? 'bi-file-earmark-pdf' : 'bi-file-earmark-word';
+            const estado = String(contexto?.convenio_revision_estado || '').toUpperCase();
+            const notas = String(contexto?.convenio_revision_notas || '').trim();
+            const etiquetaEstado = estado === 'APROBADO'
+                ? 'Aprobado'
+                : (estado === 'CORRECCIONES'
+                    ? 'Correcciones solicitadas'
+                    : 'Pendiente de revisión');
+            const meta = [
+                'Versión ' + numero,
+                esPdf ? 'PDF' : 'DOCX',
+                fecha ? 'Recibido ' + fecha : '',
+                tamano
+            ].filter(Boolean).join(' · ');
+            const base = 'index.php?controller=seguimientoFlujo&action=archivoConvenio&version_id=' +
+                encodeURIComponent(id);
+            const ver = esPdf
+                ? '<a class="btn btn-system-light" href="' + base + '&modo=ver" target="_blank" rel="noopener">' +
+                    '<i class="bi bi-eye"></i><span>Ver</span></a>'
+                : '';
+
+            return '' +
+                '<div class="linkage-flow-document-main">' +
+                    '<span class="linkage-flow-document-icon"><i class="bi ' + icono + '"></i></span>' +
+                    '<div class="linkage-flow-document-info">' +
+                        '<div class="linkage-flow-document-heading">' +
+                            '<strong title="' + nombre.replace(/"/g, '&quot;') + '">' + nombre + '</strong>' +
+                            '<span>' + escapar(etiquetaEstado) + '</span>' +
+                        '</div>' +
+                        '<small>' + escapar(meta) + '</small>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="linkage-flow-document-actions">' +
+                    ver +
+                    '<a class="btn btn-system-light" href="' + base + '&modo=descargar">' +
+                        '<i class="bi bi-download"></i><span>Descargar</span></a>' +
+                '</div>' +
+                (estado === 'CORRECCIONES' && notas
+                    ? '<div class="linkage-flow-document-note"><i class="bi bi-pencil-square"></i><span>' +
+                        escapar(notas) + '</span></div>'
+                    : '');
         };
 
         const etiquetaNodo = function (tipo) {
@@ -170,6 +246,7 @@
             const titulo = bloque.querySelector('[data-flow-title]');
             const descripcion = bloque.querySelector('[data-flow-description]');
             const faltantes = bloque.querySelector('[data-flow-missing]');
+            const documento = bloque.querySelector('[data-flow-document]');
             const acciones = bloque.querySelector('[data-flow-actions]');
 
             if (contador) {
@@ -209,6 +286,16 @@
                         listaFaltantes.map(function (item) {
                             return '<span class="linkage-flow-chip">' + escapar(item) + '</span>';
                         }).join('');
+            }
+
+            if (documento) {
+                const versionConvenio = flujo.contexto?.convenio_version_actual || null;
+                const htmlDocumento = renderizarDocumentoConvenio(
+                    versionConvenio,
+                    flujo.contexto || {}
+                );
+                documento.classList.toggle('d-none', htmlDocumento === '');
+                documento.innerHTML = htmlDocumento;
             }
 
             if (acciones) {
