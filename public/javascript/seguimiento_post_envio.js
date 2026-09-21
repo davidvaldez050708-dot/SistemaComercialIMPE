@@ -16,6 +16,7 @@
             'AGENDAR_REUNION',
             'REGISTRAR_REUNION_REALIZADA',
             'ENVIAR_DOCUMENTACION_CONVENIO',
+            'REGISTRAR_CONVENIO_RECIBIDO',
             'FORMALIZAR_CONVENIO'
         ]);
         let seguimientoActualId = 0;
@@ -244,6 +245,48 @@
                 '</div>';
         };
 
+        const fechaLocalHoy = function () {
+            const ahora = new Date();
+            const local = new Date(
+                ahora.getTime() - (ahora.getTimezoneOffset() * 60000)
+            );
+            return local.toISOString().slice(0, 10);
+        };
+
+        const camposConvenioRecibido = function () {
+            return '' +
+                '<div class="convenio-recepcion-intro">' +
+                    '<span class="convenio-recepcion-icon">' +
+                        '<i class="bi bi-file-earmark-arrow-up"></i>' +
+                    '</span>' +
+                    '<div>' +
+                        '<strong>Convenio requisitado por la institución</strong>' +
+                        '<p>Adjunta el archivo que devolvió el aliado. Se conservará separado del convenio editable que se envió originalmente.</p>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="row g-3">' +
+                    '<div class="col-12 convenio-recepcion-upload">' +
+                        '<label class="form-label">Archivo recibido</label>' +
+                        '<input class="form-control" type="file" name="convenio_archivo" accept=".docx,.pdf,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" required>' +
+                        '<div class="form-text">Formatos permitidos: DOCX o PDF. Tamaño máximo: 15 MB.</div>' +
+                    '</div>' +
+                    '<div class="col-md-5">' +
+                        '<label class="form-label">Fecha de recepción</label>' +
+                        '<input class="form-control" type="date" name="convenio_recibido_fecha" value="' +
+                            escaparAtributo(fechaLocalHoy()) + '" max="' +
+                            escaparAtributo(fechaLocalHoy()) + '" required>' +
+                    '</div>' +
+                    '<div class="col-12">' +
+                        '<label class="form-label">Observaciones</label>' +
+                        '<textarea class="form-control" name="convenio_recibido_notas" rows="4" maxlength="5000" placeholder="Ej. El aliado devolvió el convenio requisitado para revisión."></textarea>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="convenio-mail-note convenio-recepcion-note">' +
+                    '<i class="bi bi-shield-check"></i>' +
+                    '<span>El archivo recibido queda resguardado dentro del expediente y no reemplaza los documentos que ya fueron enviados.</span>' +
+                '</div>';
+        };
+
         const camposConvenio = function () {
             return '' +
                 '<div class="row g-3">' +
@@ -284,10 +327,17 @@
                     subtitulo: 'Documenta el resultado y los acuerdos alcanzados.',
                     campos: camposReunionRealizada()
                 },
+                REGISTRAR_CONVENIO_RECIBIDO: {
+                    titulo: 'Registrar convenio recibido',
+                    subtitulo: 'Adjunta el convenio requisitado que devolvió la institución para incorporarlo al expediente.',
+                    campos: camposConvenioRecibido(),
+                    boton: '<i class="bi bi-cloud-arrow-up"></i> Registrar convenio recibido'
+                },
                 FORMALIZAR_CONVENIO: {
                     titulo: 'Formalizar convenio',
                     subtitulo: 'Captura la referencia final para concluir la ruta del Analista.',
-                    campos: camposConvenio()
+                    campos: camposConvenio(),
+                    boton: '<i class="bi bi-file-earmark-check"></i> Formalizar convenio'
                 }
             };
             return mapa[codigo] || null;
@@ -364,7 +414,8 @@
             titulo.textContent = config.titulo;
             subtitulo.textContent = config.subtitulo;
             campos.innerHTML = config.campos;
-            boton.innerHTML = '<i class="bi bi-check2-circle"></i> Guardar avance';
+            boton.innerHTML = config.boton ||
+                '<i class="bi bi-check2-circle"></i> Guardar avance';
             boton.disabled = false;
             bootstrap.Modal.getOrCreateInstance(modal).show();
         };
@@ -409,6 +460,8 @@
             const htmlOriginalBoton = boton.innerHTML;
             const esEnvioDocumentacionConvenio =
                 accionActual === 'ENVIAR_DOCUMENTACION_CONVENIO';
+            const esRegistroConvenioRecibido =
+                accionActual === 'REGISTRAR_CONVENIO_RECIBIDO';
 
             datos.set('seguimiento_id', String(seguimientoActualId));
             datos.set('accion', accionActual);
@@ -418,6 +471,10 @@
                 boton.innerHTML =
                     '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>' +
                     'Enviando...';
+            } else if (esRegistroConvenioRecibido) {
+                boton.innerHTML =
+                    '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>' +
+                    'Registrando...';
             }
             modal.querySelector('[data-post-envio-error]').classList.add('d-none');
 
@@ -453,7 +510,10 @@
                 mostrarError('No fue posible comunicarse con el sistema.');
             } finally {
                 boton.disabled = false;
-                if (esEnvioDocumentacionConvenio) {
+                if (
+                    esEnvioDocumentacionConvenio ||
+                    esRegistroConvenioRecibido
+                ) {
                     boton.innerHTML = htmlOriginalBoton;
                 }
             }
