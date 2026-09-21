@@ -78,11 +78,20 @@
         };
 
         const renderizarDocumentoConvenio = function (version, contexto) {
-            if (!version || Number(version.id || 0) <= 0) {
+            if (!version) {
                 return '';
             }
 
-            const id = Number(version.id);
+            const id = Number(version.id || 0);
+            const seguimientoId = Number(
+                version.seguimiento_id ||
+                contexto?.seguimiento_id ||
+                0
+            );
+
+            if (id <= 0 && seguimientoId <= 0) {
+                return '';
+            }
             const mime = String(version.mime || '').toLowerCase();
             const nombre = escapar(version.nombre || 'Convenio recibido');
             const numero = Number(version.numero || 1);
@@ -104,8 +113,11 @@
                 fecha ? 'Recibido ' + fecha : '',
                 tamano
             ].filter(Boolean).join(' · ');
-            const base = 'index.php?controller=seguimientoFlujo&action=archivoConvenio&version_id=' +
-                encodeURIComponent(id);
+            const base = id > 0
+                ? 'index.php?controller=seguimientoFlujo&action=archivoConvenio&version_id=' +
+                    encodeURIComponent(id)
+                : 'index.php?controller=seguimientoFlujo&action=archivoConvenio&seguimiento_id=' +
+                    encodeURIComponent(seguimientoId);
             const ver = esPdf
                 ? '<a class="btn btn-system-light" href="' + base + '&modo=ver" target="_blank" rel="noopener">' +
                     '<i class="bi bi-eye"></i><span>Ver</span></a>'
