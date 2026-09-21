@@ -478,25 +478,21 @@ class SeguimientoPostEnvioService
         }
 
         $fecha = trim((string)($datos['convenio_fecha'] ?? ''));
-        $referencia = trim((string)($datos['convenio_referencia'] ?? ''));
         $notas = trim((string)($datos['convenio_notas'] ?? ''));
 
         if (!$this->fechaValida($fecha)) {
             throw new InvalidArgumentException('Indica una fecha válida para el convenio.');
         }
-        if ($referencia === '') {
-            throw new InvalidArgumentException('Indica el folio, referencia o nombre del convenio.');
-        }
 
         $sql = "UPDATE seguimientos_vinculacion_post_envio
                 SET convenio_fecha = ?,
-                    convenio_referencia = ?,
+                    convenio_referencia = NULL,
                     convenio_notas = ?,
                     convenio_formalizado_at = NOW(),
                     convenio_formalizado_por = ?
                 WHERE seguimiento_id = ?";
         $stmt = $this->connection->prepare($sql);
-        $stmt->bind_param('sssii', $fecha, $referencia, $notas, $usuarioId, $seguimientoId);
+        $stmt->bind_param('ssii', $fecha, $notas, $usuarioId, $seguimientoId);
         $stmt->execute();
 
         $this->registrarInteraccion(
@@ -504,7 +500,7 @@ class SeguimientoPostEnvioService
             $usuarioId,
             'SISTEMA',
             'OTRO',
-            'Convenio formalizado: ' . $referencia . ' | Fecha: ' . $fecha . ($notas !== '' ? ' | ' . $notas : '')
+            'Convenio formalizado | Fecha: ' . $fecha . ($notas !== '' ? ' | ' . $notas : '')
         );
         $this->actualizarUltimaInteraccion($seguimientoId, $usuarioId, null);
     }
