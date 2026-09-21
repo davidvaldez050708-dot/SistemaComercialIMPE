@@ -940,20 +940,47 @@ class OficioDocxPdfService
 
         if (!($conversor['ok'] ?? false)) {
             return $this->error(
-                'No se encontró un conversor DOCX a PDF en este equipo.',
-                (string)($conversor['detalle'] ?? 'Instala LibreOffice o Microsoft Word.')
+                'No se encontró un conversor DOCX a PDF disponible.',
+                (string)($conversor['detalle'] ?? 'Instala LibreOffice o habilita un conversor compatible.')
             );
         }
 
-        if (($conversor['tipo'] ?? '') === 'libreoffice') {
-            return $this->convertirConLibreOffice(
+        $tipo = (string)($conversor['tipo'] ?? '');
+        if ($tipo === 'libreoffice') {
+            $conversion = $this->convertirConLibreOffice(
                 (string)$conversor['ruta'],
                 $rutaDocx,
                 $directorioSalida
             );
+        } elseif ($tipo === 'word') {
+            $conversion = $this->convertirConWord($rutaDocx, $directorioSalida);
+        } else {
+            $conversion = $this->convertirConPhpWordDompdf($rutaDocx, $directorioSalida);
         }
 
-        return $this->convertirConWord($rutaDocx, $directorioSalida);
+        if (($conversion['ok'] ?? false) || $tipo === 'phpword_dompdf') {
+            return $conversion;
+        }
+
+        // Word/LibreOffice pueden estar instalados pero no ser automatizables
+        // desde Apache. En ese caso usamos el renderer PHP ya incluido en el proyecto.
+        if ($this->phpWordDompdfDisponible()) {
+            $fallback = $this->convertirConPhpWordDompdf($rutaDocx, $directorioSalida);
+            if ($fallback['ok'] ?? false) {
+                return $fallback;
+            }
+
+            return $this->error(
+                'No fue posible convertir el documento a PDF.',
+                trim(
+                    (string)($conversion['mensaje_tecnico'] ?? $conversion['mensaje'] ?? '') .
+                    PHP_EOL .
+                    (string)($fallback['mensaje_tecnico'] ?? $fallback['mensaje'] ?? '')
+                )
+            );
+        }
+
+        return $conversion;
     }
 
     private function detectarConversor()
@@ -985,9 +1012,9 @@ class OficioDocxPdfService
             }
         }
 
-        if (PHP_OS_FAMILY === 'Windows') {
-            $powershell = getenv('SystemRoot');
-            $rutaPowerShell = ($powershell ? rtrim($powershell, '\\/') : 'C:\\Windows') .
+        if (PHP_OS_FAMILY === 'Windows' && $this->wordInstalado()) {
+            $windows = getenv('SystemRoot') ?: 'C:\\Windows';
+            $rutaPowerShell = rtrim($windows, '\\/') .
                 '\\System32\\WindowsPowerShell\\v1.0\\powershell.exe';
 
             if (is_file($rutaPowerShell)) {
@@ -995,17 +1022,64 @@ class OficioDocxPdfService
                     'ok' => true,
                     'tipo' => 'word',
                     'ruta' => $rutaPowerShell,
-                    'detalle' => 'Se intentará convertir mediante Microsoft Word.'
+                    'detalle' => 'Microsoft Word disponible para conversión.'
                 ];
             }
+        }
+
+        if ($this->phpWordDompdfDisponible()) {
+            return [
+                'ok' => true,
+                'tipo' => 'phpword_dompdf',
+                'ruta' => '',
+                'detalle' => 'Renderer PHPWord + Dompdf disponible.'
+            ];
         }
 
         return [
             'ok' => false,
             'tipo' => '',
             'ruta' => '',
-            'detalle' => 'No se encontró LibreOffice y no hay conversor de Word disponible.'
+            'detalle' => 'No se encontró LibreOffice, Microsoft Word automatizable ni el renderer PHPWord + Dompdf.'
         ];
+    }
+
+    private function wordInstalado()
+    {
+        if (PHP_OS_FAMILY !== 'Windows') {
+            return false;
+        }
+
+        $bases = array_filter([
+            getenv('ProgramFiles'),
+            getenv('ProgramFiles(x86)'),
+            'C:\\Program Files',
+            'C:\\Program Files (x86)'
+        ]);
+
+        $relativas = [
+            'Microsoft Office\\root\\Office16\\WINWORD.EXE',
+            'Microsoft Office\\Office16\\WINWORD.EXE',
+            'Microsoft Office\\Office15\\WINWORD.EXE',
+            'Microsoft Office\\Office14\\WINWORD.EXE'
+        ];
+
+        foreach (array_unique($bases) as $base) {
+            foreach ($relativas as $relativa) {
+                if (is_file(rtrim((string)$base, '\\/') . DIRECTORY_SEPARATOR . $relativa)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private function phpWordDompdfDisponible()
+    {
+        return class_exists('PhpOffice\\PhpWord\\IOFactory') &&
+            class_exists('PhpOffice\\PhpWord\\Settings') &&
+            class_exists('Dompdf\\Dompdf');
     }
 
     private function convertirConLibreOffice($ejecutable, $rutaDocx, $directorioSalida)
@@ -1019,7 +1093,7 @@ class OficioDocxPdfService
 
         if (($resultado['codigo'] ?? 1) !== 0 || !is_file($rutaPdf)) {
             return $this->error(
-                'LibreOffice no pudo convertir el oficio a PDF.',
+                'LibreOffice no pudo convertir el documento a PDF.',
                 trim((string)($resultado['salida'] ?? ''))
             );
         }
@@ -1029,6 +1103,51 @@ class OficioDocxPdfService
             'ruta_pdf' => $rutaPdf,
             'conversor' => 'LIBREOFFICE'
         ];
+    }
+
+    private function convertirConPhpWordDompdf($rutaDocx, $directorioSalida)
+    {
+        $rutaPdf = $directorioSalida . DIRECTORY_SEPARATOR .
+            pathinfo($rutaDocx, PATHINFO_FILENAME) . '.pdf';
+
+        try {
+            $rendererPath = $this->rootPath . DIRECTORY_SEPARATOR .
+                'vendor' . DIRECTORY_SEPARATOR . 'dompdf' . DIRECTORY_SEPARATOR . 'dompdf';
+
+            if (!is_dir($rendererPath) || !$this->phpWordDompdfDisponible()) {
+                return $this->error(
+                    'No está disponible el conversor PHP de respaldo.',
+                    'PHPWord o Dompdf no están instalados correctamente.'
+                );
+            }
+
+            \PhpOffice\PhpWord\Settings::setPdfRendererName(
+                \PhpOffice\PhpWord\Settings::PDF_RENDERER_DOMPDF
+            );
+            \PhpOffice\PhpWord\Settings::setPdfRendererPath($rendererPath);
+
+            $documento = \PhpOffice\PhpWord\IOFactory::load($rutaDocx, 'Word2007');
+            $writer = \PhpOffice\PhpWord\IOFactory::createWriter($documento, 'PDF');
+            $writer->save($rutaPdf);
+
+            if (!is_file($rutaPdf) || filesize($rutaPdf) === 0) {
+                return $this->error(
+                    'El conversor PHP no generó un PDF válido.',
+                    'PHPWord + Dompdf terminó sin crear un archivo PDF utilizable.'
+                );
+            }
+
+            return [
+                'ok' => true,
+                'ruta_pdf' => $rutaPdf,
+                'conversor' => 'PHPWORD_DOMPDF'
+            ];
+        } catch (Throwable $error) {
+            return $this->error(
+                'PHPWord + Dompdf no pudo convertir el documento a PDF.',
+                $error->getMessage()
+            );
+        }
     }
 
     private function convertirConWord($rutaDocx, $directorioSalida)
@@ -1075,7 +1194,7 @@ POWERSHELL;
 
         if (($resultado['codigo'] ?? 1) !== 0 || !is_file($rutaPdf)) {
             return $this->error(
-                'Microsoft Word no pudo convertir el oficio a PDF.',
+                'Microsoft Word no pudo convertir el documento a PDF.',
                 trim((string)($resultado['salida'] ?? ''))
             );
         }
