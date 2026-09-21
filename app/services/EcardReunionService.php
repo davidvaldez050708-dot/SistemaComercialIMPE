@@ -7,7 +7,7 @@ class EcardReunionService
     public const TEMPLATE_SERGIO = 'SERGIO';
     public const TEMPLATE_MANUEL = 'MANUEL';
     public const CID = 'ecard-reunion';
-    public const VERSION = '20260919-05';
+    public const VERSION = '20260920-01';
 
     private $connection;
     private $rootPath;
@@ -332,7 +332,8 @@ class EcardReunionService
 
         $tamanoTitulo = (int)($tituloAjustado['tamano'] ?? 32);
         $lineasTitulo = $tituloAjustado['lineas'] ?? [$titulo];
-        $yTitulo = count($lineasTitulo) > 1 ? 216 : 232;
+        // Centrado visual entre las dos líneas blancas del encabezado.
+        $yTitulo = count($lineasTitulo) > 1 ? 240 : 252;
 
         foreach ($lineasTitulo as $linea) {
             $this->textoCentrado(
@@ -345,6 +346,14 @@ class EcardReunionService
             );
             $yTitulo += $tamanoTitulo + 14;
         }
+
+        // Redibuja el badge para evitar el recorte visual del recurso base.
+        $this->dibujarBadgeFechaHoraManuel(
+            $imagen,
+            $blanco,
+            $navy,
+            $fuenteBold
+        );
 
         $fechaTexto = $this->fechaPlantillaManuel($fecha);
         $tamanoFecha = $this->tamanoParaAncho(
@@ -384,6 +393,9 @@ class EcardReunionService
             $fuenteNormal
         );
 
+        // Reemplaza el retrato de la plantilla por una sola foto limpia.
+        $this->dibujarRetratoManuelLimpio($imagen);
+
         imageinterlace($imagen, true);
         $guardado = imagejpeg($imagen, $ruta, 96);
         imagedestroy($imagen);
@@ -395,6 +407,180 @@ class EcardReunionService
         }
 
         return ['ok' => true];
+    }
+
+    private function dibujarBadgeFechaHoraManuel(
+        $imagen,
+        $blanco,
+        $navy,
+        $fuenteBold
+    ) {
+        $x = 407;
+        $y = 610;
+        $ancho = 398;
+        $alto = 70;
+        $radio = 12;
+
+        imagefilledrectangle($imagen, $x + $radio, $y, $x + $ancho - $radio, $y + $alto, $navy);
+        imagefilledrectangle($imagen, $x, $y + $radio, $x + $ancho, $y + $alto - $radio, $navy);
+        imagefilledellipse($imagen, $x + $radio, $y + $radio, $radio * 2, $radio * 2, $navy);
+        imagefilledellipse($imagen, $x + $ancho - $radio, $y + $radio, $radio * 2, $radio * 2, $navy);
+        imagefilledellipse($imagen, $x + $radio, $y + $alto - $radio, $radio * 2, $radio * 2, $navy);
+        imagefilledellipse($imagen, $x + $ancho - $radio, $y + $alto - $radio, $radio * 2, $radio * 2, $navy);
+
+        $ix = $x + 25;
+        $iy = $y + 18;
+        $iw = 44;
+        $ih = 38;
+
+        imagerectangle($imagen, $ix, $iy + 5, $ix + $iw, $iy + $ih, $blanco);
+        imageline($imagen, $ix, $iy + 15, $ix + $iw, $iy + 15, $blanco);
+        imageline($imagen, $ix + 11, $iy, $ix + 11, $iy + 10, $blanco);
+        imageline($imagen, $ix + 33, $iy, $ix + 33, $iy + 10, $blanco);
+
+        foreach ([10, 22, 34] as $dx) {
+            foreach ([23, 32] as $dy) {
+                imagefilledrectangle(
+                    $imagen,
+                    $ix + $dx - 2,
+                    $iy + $dy - 2,
+                    $ix + $dx + 2,
+                    $iy + $dy + 2,
+                    $blanco
+                );
+            }
+        }
+
+        $this->texto(
+            $imagen,
+            'Fecha y hora:',
+            28,
+            $x + 92,
+            $y + 48,
+            $blanco,
+            $fuenteBold
+        );
+    }
+
+    private function dibujarRetratoManuelLimpio($imagen)
+    {
+        if (!function_exists('imagecreatefromstring')) {
+            return;
+        }
+
+        $patron = $this->rootPath . DIRECTORY_SEPARATOR .
+            'public' . DIRECTORY_SEPARATOR .
+            'img' . DIRECTORY_SEPARATOR .
+            'ecards' . DIRECTORY_SEPARATOR .
+            'templates' . DIRECTORY_SEPARATOR .
+            'manuel-portrait.part*.b64';
+
+        $partes = glob($patron) ?: [];
+        if (empty($partes)) {
+            return;
+        }
+
+        natsort($partes);
+        $base64 = '';
+        foreach ($partes as $parte) {
+            $contenido = @file_get_contents($parte);
+            if (!is_string($contenido) || trim($contenido) === '') {
+                return;
+            }
+            $base64 .= trim($contenido);
+        }
+
+        $binario = base64_decode($base64, true);
+        if ($binario === false || $binario === '') {
+            return;
+        }
+
+        $origen = @imagecreatefromstring($binario);
+        if (!$origen) {
+            return;
+        }
+
+        $centroX = 466;
+        $centroY = 968;
+        $diametro = 148;
+        $radio = (int)($diametro / 2);
+
+        $blanco = imagecolorallocate($imagen, 255, 255, 255);
+        imagefilledellipse(
+            $imagen,
+            $centroX,
+            $centroY,
+            $diametro + 18,
+            $diametro + 18,
+            $blanco
+        );
+
+        $tmp = imagecreatetruecolor($diametro, $diametro);
+        $escalada = imagecreatetruecolor($diametro, $diametro);
+        if (!$tmp || !$escalada) {
+            if ($tmp) {
+                imagedestroy($tmp);
+            }
+            if ($escalada) {
+                imagedestroy($escalada);
+            }
+            imagedestroy($origen);
+            return;
+        }
+
+        imagealphablending($tmp, false);
+        imagesavealpha($tmp, true);
+        $transparente = imagecolorallocatealpha($tmp, 0, 0, 0, 127);
+        imagefill($tmp, 0, 0, $transparente);
+
+        $ow = imagesx($origen);
+        $oh = imagesy($origen);
+        $lado = min($ow, $oh);
+        $sx = (int)(($ow - $lado) / 2);
+        $sy = (int)(($oh - $lado) / 2);
+
+        imagecopyresampled(
+            $escalada,
+            $origen,
+            0,
+            0,
+            $sx,
+            $sy,
+            $diametro,
+            $diametro,
+            $lado,
+            $lado
+        );
+
+        for ($py = 0; $py < $diametro; $py++) {
+            for ($px = 0; $px < $diametro; $px++) {
+                $dx = $px - $radio;
+                $dy = $py - $radio;
+                if (($dx * $dx + $dy * $dy) <= ($radio * $radio)) {
+                    imagesetpixel($tmp, $px, $py, imagecolorat($escalada, $px, $py));
+                }
+            }
+        }
+
+        imagealphablending($imagen, true);
+        imagecopy(
+            $imagen,
+            $tmp,
+            $centroX - $radio,
+            $centroY - $radio,
+            0,
+            0,
+            $diametro,
+            $diametro
+        );
+
+        $borde = imagecolorallocate($imagen, 35, 76, 150);
+        imageellipse($imagen, $centroX, $centroY, $diametro, $diametro, $borde);
+        imageellipse($imagen, $centroX, $centroY, $diametro - 2, $diametro - 2, $borde);
+
+        imagedestroy($escalada);
+        imagedestroy($tmp);
+        imagedestroy($origen);
     }
 
     private function cargarPlantillaManuel()
