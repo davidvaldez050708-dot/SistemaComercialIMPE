@@ -7,7 +7,7 @@ class EcardReunionService
     public const TEMPLATE_SERGIO = 'SERGIO';
     public const TEMPLATE_MANUEL = 'MANUEL';
     public const CID = 'ecard-reunion';
-    public const VERSION = '20260920-11';
+    public const VERSION = '20260920-12';
 
     private $connection;
     private $rootPath;
@@ -325,8 +325,17 @@ class EcardReunionService
         $imagen = $this->cargarPlantillaSergio();
 
         if (!$imagen) {
-            return $this->error(
-                'No fue posible cargar la plantilla de la Ecard de Sergio.'
+            /*
+             * La plantilla aprobada todavía puede no existir en instalaciones
+             * antiguas. En ese caso generamos una versión institucional completa
+             * usando el retrato oficial existente, sin recortarlo ni deformarlo,
+             * para que la vista previa y el envío nunca queden rotos.
+             */
+            return $this->crearImagenSergioFallback(
+                $ruta,
+                $fecha,
+                $institucion,
+                $modalidad
             );
         }
 
@@ -399,6 +408,270 @@ class EcardReunionService
         );
 
         imageline($imagen, 106, 642, 918, 642, $gris);
+
+        imageinterlace($imagen, true);
+        $guardado = imagejpeg($imagen, $ruta, 96);
+        imagedestroy($imagen);
+
+        if (!$guardado || !is_file($ruta)) {
+            return $this->error('No fue posible guardar la Ecard de Sergio.');
+        }
+
+        return ['ok' => true];
+    }
+
+    private function crearImagenSergioFallback(
+        $ruta,
+        DateTime $fecha,
+        $institucion,
+        $modalidad
+    ) {
+        $ancho = 1024;
+        $alto = 1024;
+        $imagen = imagecreatetruecolor($ancho, $alto);
+
+        if (!$imagen) {
+            return $this->error('No fue posible crear la Ecard de Sergio.');
+        }
+
+        $blanco = imagecolorallocate($imagen, 255, 255, 255);
+        $navy = imagecolorallocate($imagen, 3, 43, 78);
+        $navyProfundo = imagecolorallocate($imagen, 2, 30, 56);
+        $azul = imagecolorallocate($imagen, 18, 76, 124);
+        $teal = imagecolorallocate($imagen, 18, 151, 171);
+        $tealOscuro = imagecolorallocate($imagen, 10, 119, 138);
+        $grisFondo = imagecolorallocate($imagen, 246, 249, 252);
+        $gris = imagecolorallocate($imagen, 102, 112, 126);
+        $grisBorde = imagecolorallocate($imagen, 220, 228, 236);
+
+        imagefilledrectangle($imagen, 0, 0, $ancho, $alto, $blanco);
+        imagefilledrectangle($imagen, 0, 0, $ancho, 500, $navyProfundo);
+
+        $this->rellenarPoligono($imagen, [
+            610, 0,
+            1024, 0,
+            1024, 500,
+            760, 500
+        ], $tealOscuro);
+
+        $this->rellenarPoligono($imagen, [
+            770, 0,
+            1024, 0,
+            1024, 500,
+            900, 500
+        ], $teal);
+
+        for ($y = 42; $y <= 430; $y += 62) {
+            imageline($imagen, 42, $y, 930, $y + 84, $azul);
+        }
+
+        $fuenteNormal = $this->resolverFuente(false);
+        $fuenteBold = $this->resolverFuente(true);
+
+        $this->texto(
+            $imagen,
+            'Reunión Informativa',
+            48,
+            64,
+            92,
+            $blanco,
+            $fuenteNormal
+        );
+        imageline($imagen, 64, 124, 960, 124, $blanco);
+
+        $this->textoCentrado(
+            $imagen,
+            'ACUERDO 286',
+            70,
+            247,
+            $blanco,
+            $fuenteBold
+        );
+        $this->textoCentrado(
+            $imagen,
+            'Universidad IMPE',
+            24,
+            296,
+            $blanco,
+            $fuenteNormal
+        );
+
+        imagefilledrectangle($imagen, 64, 338, 960, 452, $navy);
+        $this->textoCentrado(
+            $imagen,
+            'EDUCACIÓN · VINCULACIÓN · DESARROLLO',
+            20,
+            407,
+            $blanco,
+            $fuenteBold
+        );
+
+        $institucion = preg_replace(
+            '/\\s+/u',
+            ' ',
+            trim((string)$institucion)
+        );
+        if ($institucion === '') {
+            $institucion = 'Institución por confirmar';
+        }
+
+        imagefilledrectangle($imagen, 64, 520, 960, 648, $blanco);
+        imagerectangle($imagen, 64, 520, 960, 648, $grisBorde);
+
+        $this->textoCentrado(
+            $imagen,
+            'INSTITUCIÓN',
+            14,
+            548,
+            $gris,
+            $fuenteBold
+        );
+
+        $titulo = mb_strtoupper($institucion, 'UTF-8');
+        $ajuste = $this->envolverTextoAjustado(
+            $titulo,
+            820,
+            29,
+            19,
+            $fuenteBold,
+            2
+        );
+
+        $this->dibujarBloqueTextoCentradoVertical(
+            $imagen,
+            $ajuste['lineas'] ?? [$titulo],
+            (int)($ajuste['tamano'] ?? 24),
+            558,
+            606,
+            $navy,
+            $fuenteBold,
+            5
+        );
+
+        $lineaDatos = $this->fechaPlantillaManuel($fecha) .
+            ' · ' . $this->horaPlantillaManuel($fecha);
+
+        $modalidad = trim((string)$modalidad);
+        if ($modalidad !== '' && strtolower($modalidad) !== 'por confirmar') {
+            $lineaDatos .= ' · ' . mb_strtoupper($modalidad, 'UTF-8');
+        }
+
+        $tamanoDatos = $this->tamanoParaAncho(
+            $lineaDatos,
+            820,
+            18,
+            13,
+            $fuenteNormal
+        );
+        $this->textoCentrado(
+            $imagen,
+            $lineaDatos,
+            $tamanoDatos,
+            631,
+            $gris,
+            $fuenteNormal
+        );
+
+        imagefilledrectangle($imagen, 64, 676, 960, 914, $grisFondo);
+        imagerectangle($imagen, 64, 676, 960, 914, $grisBorde);
+
+        $foto = $this->buscarFotoPonente(self::TEMPLATE_SERGIO);
+        $fotoX = 92;
+        $fotoY = 698;
+        $fotoAncho = 205;
+        $fotoAlto = 190;
+
+        imagefilledrectangle(
+            $imagen,
+            $fotoX,
+            $fotoY,
+            $fotoX + $fotoAncho,
+            $fotoY + $fotoAlto,
+            $blanco
+        );
+
+        if ($foto !== '') {
+            $origen = $this->cargarImagen($foto);
+            if ($origen) {
+                $w = imagesx($origen);
+                $h = imagesy($origen);
+
+                if ($w > 0 && $h > 0) {
+                    /*
+                     * Se usa la imagen completa. Solo se escala manteniendo su
+                     * relación de aspecto; nunca se recorta el rostro.
+                     */
+                    $escala = min($fotoAncho / $w, $fotoAlto / $h);
+                    $destinoAncho = max(1, (int)round($w * $escala));
+                    $destinoAlto = max(1, (int)round($h * $escala));
+                    $destinoX = $fotoX + (int)(($fotoAncho - $destinoAncho) / 2);
+                    $destinoY = $fotoY + (int)(($fotoAlto - $destinoAlto) / 2);
+
+                    imagecopyresampled(
+                        $imagen,
+                        $origen,
+                        $destinoX,
+                        $destinoY,
+                        0,
+                        0,
+                        $destinoAncho,
+                        $destinoAlto,
+                        $w,
+                        $h
+                    );
+                }
+
+                imagedestroy($origen);
+            }
+        }
+
+        $this->texto(
+            $imagen,
+            'Sergio López Porcayo',
+            34,
+            340,
+            760,
+            $navy,
+            $fuenteBold
+        );
+        $this->texto(
+            $imagen,
+            'Rector Universidad IMPE',
+            24,
+            340,
+            804,
+            $gris,
+            $fuenteNormal
+        );
+        $this->texto(
+            $imagen,
+            'Reunión informativa · Acuerdo 286',
+            17,
+            340,
+            848,
+            $gris,
+            $fuenteBold
+        );
+
+        imagefilledrectangle($imagen, 0, 936, 1024, 1024, $navy);
+        $this->texto(
+            $imagen,
+            'UNIVERSIDAD IMPE',
+            21,
+            64,
+            989,
+            $blanco,
+            $fuenteBold
+        );
+        $this->texto(
+            $imagen,
+            'EDUCACIÓN',
+            21,
+            790,
+            989,
+            $blanco,
+            $fuenteBold
+        );
 
         imageinterlace($imagen, true);
         $guardado = imagejpeg($imagen, $ruta, 96);
