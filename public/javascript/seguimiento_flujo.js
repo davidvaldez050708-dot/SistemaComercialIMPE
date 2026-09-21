@@ -18,6 +18,19 @@
             let bloque = offcanvas.querySelector('[data-work-flow-section]');
 
             if (bloque) {
+                if (!bloque.querySelector('[data-flow-document]')) {
+                    const acciones = bloque.querySelector('[data-flow-actions]');
+                    const documento = document.createElement('div');
+                    documento.className = 'linkage-flow-document d-none';
+                    documento.setAttribute('data-flow-document', '');
+
+                    if (acciones) {
+                        acciones.insertAdjacentElement('beforebegin', documento);
+                    } else {
+                        bloque.appendChild(documento);
+                    }
+                }
+
                 return bloque;
             }
 
@@ -301,10 +314,36 @@
             }
 
             if (documento) {
-                const versionConvenio = flujo.contexto?.convenio_version_actual || null;
+                const contextoFlujo = flujo.contexto || {};
+                let versionConvenio = contextoFlujo.convenio_version_actual || null;
+
+                if (
+                    !versionConvenio &&
+                    String(contextoFlujo.convenio_recibido_at || '').trim() !== ''
+                ) {
+                    versionConvenio = {
+                        id: 0,
+                        seguimiento_id: Number(flujo.seguimiento_id || 0),
+                        numero: 1,
+                        tipo: 'REQUISITADO',
+                        fecha_recepcion:
+                            contextoFlujo.convenio_recibido_fecha || '',
+                        nombre:
+                            contextoFlujo.convenio_recibido_nombre_original ||
+                            'Convenio recibido',
+                        mime:
+                            contextoFlujo.convenio_recibido_mime || '',
+                        tamano:
+                            Number(contextoFlujo.convenio_recibido_tamano || 0)
+                    };
+                }
+
                 const htmlDocumento = renderizarDocumentoConvenio(
                     versionConvenio,
-                    flujo.contexto || {}
+                    {
+                        ...contextoFlujo,
+                        seguimiento_id: Number(flujo.seguimiento_id || 0)
+                    }
                 );
                 documento.classList.toggle('d-none', htmlDocumento === '');
                 documento.innerHTML = htmlDocumento;
