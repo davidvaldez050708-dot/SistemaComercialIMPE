@@ -943,6 +943,15 @@ class ConvenioDocumentosService
         $flujo['contexto']['convenio_recibido_nombre_original'] = trim(
             (string)($seguimiento['convenio_recibido_nombre_original'] ?? '')
         );
+        $flujo['contexto']['convenio_recibido_fecha'] = trim(
+            (string)($seguimiento['convenio_recibido_fecha'] ?? '')
+        );
+        $flujo['contexto']['convenio_recibido_mime'] = trim(
+            (string)($seguimiento['convenio_recibido_mime'] ?? '')
+        );
+        $flujo['contexto']['convenio_recibido_tamano'] = (int)(
+            $seguimiento['convenio_recibido_tamano'] ?? 0
+        );
 
         if ($recibidoAt === '') {
             $flujo['titulo'] = 'Esperando convenio requisitado';
