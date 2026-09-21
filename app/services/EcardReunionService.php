@@ -7,7 +7,7 @@ class EcardReunionService
     public const TEMPLATE_SERGIO = 'SERGIO';
     public const TEMPLATE_MANUEL = 'MANUEL';
     public const CID = 'ecard-reunion';
-    public const VERSION = '20260920-12';
+    public const VERSION = '20260920-13';
 
     private $connection;
     private $rootPath;
@@ -325,23 +325,14 @@ class EcardReunionService
         $imagen = $this->cargarPlantillaSergio();
 
         if (!$imagen) {
-            /*
-             * La plantilla aprobada todavía puede no existir en instalaciones
-             * antiguas. En ese caso generamos una versión institucional completa
-             * usando el retrato oficial existente, sin recortarlo ni deformarlo,
-             * para que la vista previa y el envío nunca queden rotos.
-             */
-            return $this->crearImagenSergioFallback(
-                $ruta,
-                $fecha,
-                $institucion,
-                $modalidad
+            return $this->error(
+                'No fue posible cargar la plantilla aprobada de la Ecard de Sergio.'
             );
         }
 
         $blanco = imagecolorallocate($imagen, 255, 255, 255);
         $navy = imagecolorallocate($imagen, 3, 43, 78);
-        $gris = imagecolorallocate($imagen, 105, 113, 123);
+        $gris = imagecolorallocate($imagen, 83, 91, 116);
         $fuenteNormal = $this->resolverFuente(false);
         $fuenteBold = $this->resolverFuente(true);
 
@@ -355,33 +346,34 @@ class EcardReunionService
         }
 
         /*
-         * La plantilla original tiene una línea gris alrededor de Y=596.
-         * Se limpia únicamente la franja de información para conservar sin
-         * alteraciones el encabezado ACUERDO 286, el retrato y los logotipos.
+         * Plantilla aprobada de Sergio: 1254 x 1254 px.
+         * El diseño completo (encabezado, ACUERDO 286, retrato, nombre,
+         * cargo y logotipos) se conserva tal como fue aprobado. Únicamente
+         * se limpia y vuelve a dibujar la franja de datos de la reunión.
          */
-        imagefilledrectangle($imagen, 70, 526, 954, 640, $blanco);
+        imagefilledrectangle($imagen, 110, 646, 1144, 777, $blanco);
 
         $titulo = mb_strtoupper($institucion, 'UTF-8');
         $ajuste = $this->envolverTextoAjustado(
             $titulo,
-            820,
-            27,
-            18,
+            1040,
+            36,
+            24,
             $fuenteBold,
             2
         );
         $lineas = $ajuste['lineas'] ?? [$titulo];
-        $tamano = (int)($ajuste['tamano'] ?? 24);
+        $tamano = (int)($ajuste['tamano'] ?? 32);
 
         $this->dibujarBloqueTextoCentradoVertical(
             $imagen,
             $lineas,
             $tamano,
-            535,
-            585,
+            654,
+            711,
             $navy,
             $fuenteBold,
-            4
+            5
         );
 
         $fechaHora = $this->fechaPlantillaManuel($fecha) .
@@ -393,21 +385,22 @@ class EcardReunionService
         $lineaDatos = $fechaHora . ' · ' . $modalidadTexto;
         $tamanoDatos = $this->tamanoParaAncho(
             $lineaDatos,
-            820,
-            18,
-            14,
+            1000,
+            28,
+            20,
             $fuenteNormal
         );
         $this->textoCentrado(
             $imagen,
             $lineaDatos,
             $tamanoDatos,
-            622,
+            748,
             $gris,
             $fuenteNormal
         );
 
-        imageline($imagen, 106, 642, 918, 642, $gris);
+        // Restituye la línea divisoria original de la composición.
+        imageline($imagen, 130, 779, 1125, 779, $gris);
 
         imageinterlace($imagen, true);
         $guardado = imagejpeg($imagen, $ruta, 96);
@@ -690,31 +683,19 @@ class EcardReunionService
             return false;
         }
 
-        $patron = $this->rootPath . DIRECTORY_SEPARATOR .
+        $ruta = $this->rootPath . DIRECTORY_SEPARATOR .
             'public' . DIRECTORY_SEPARATOR .
             'img' . DIRECTORY_SEPARATOR .
             'ecards' . DIRECTORY_SEPARATOR .
             'templates' . DIRECTORY_SEPARATOR .
-            'sergio-template.part*.b64';
+            'sergio-approved-template.jpg';
 
-        $partes = glob($patron) ?: [];
-        if (empty($partes)) {
+        if (!is_file($ruta)) {
             return false;
         }
 
-        natsort($partes);
-        $base64 = '';
-
-        foreach ($partes as $parte) {
-            $contenido = @file_get_contents($parte);
-            if (!is_string($contenido) || trim($contenido) === '') {
-                return false;
-            }
-            $base64 .= trim($contenido);
-        }
-
-        $binario = base64_decode($base64, true);
-        if ($binario === false || $binario === '') {
+        $binario = @file_get_contents($ruta);
+        if (!is_string($binario) || $binario === '') {
             return false;
         }
 
@@ -723,7 +704,7 @@ class EcardReunionService
             return false;
         }
 
-        if (imagesx($imagen) !== 1024 || imagesy($imagen) !== 1024) {
+        if (imagesx($imagen) !== 1254 || imagesy($imagen) !== 1254) {
             imagedestroy($imagen);
             return false;
         }
