@@ -7,7 +7,7 @@ class EcardReunionService
     public const TEMPLATE_SERGIO = 'SERGIO';
     public const TEMPLATE_MANUEL = 'MANUEL';
     public const CID = 'ecard-reunion';
-    public const VERSION = '20260920-03';
+    public const VERSION = '20260920-04';
 
     private $connection;
     private $rootPath;
@@ -522,20 +522,27 @@ class EcardReunionService
         $blanco = imagecolorallocate($imagen, 255, 255, 255);
 
         /*
-         * La plantilla base todavía contiene el retrato original.
-         * Se limpia con una máscara verticalmente más amplia y ligeramente
-         * desplazada hacia abajo para borrar también el pequeño remanente
-         * que asomaba debajo de la fotografía nueva, sin invadir el texto.
+         * La plantilla base contiene el retrato anterior. Una elipse mayor
+         * todavía podía dejar visibles pequeños fragmentos en el borde
+         * inferior. Se limpia toda la caja del retrato original con blanco
+         * antes de colocar la fotografía nueva. La caja se mantiene lejos de
+         * la línea vertical de Zoom y del texto del ponente.
          */
-        $limpiezaCentroY = $centroY + 6;
-        imagefilledellipse(
+        imagefilledrectangle(
             $imagen,
-            $centroX,
-            $limpiezaCentroY,
-            $diametro + 18,
-            $diametro + 42,
+            378,
+            880,
+            550,
+            1058,
             $blanco
         );
+
+        // Suaviza las cuatro esquinas para que la limpieza se funda con el
+        // fondo blanco sin dejar artefactos del retrato anterior.
+        imagefilledellipse($imagen, 390, 892, 24, 24, $blanco);
+        imagefilledellipse($imagen, 538, 892, 24, 24, $blanco);
+        imagefilledellipse($imagen, 390, 1046, 24, 24, $blanco);
+        imagefilledellipse($imagen, 538, 1046, 24, 24, $blanco);
 
         $tmp = imagecreatetruecolor($diametro, $diametro);
         $escalada = imagecreatetruecolor($diametro, $diametro);
