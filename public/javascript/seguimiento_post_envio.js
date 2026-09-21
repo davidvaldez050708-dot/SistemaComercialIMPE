@@ -17,6 +17,9 @@
             'REGISTRAR_REUNION_REALIZADA',
             'ENVIAR_DOCUMENTACION_CONVENIO',
             'REGISTRAR_CONVENIO_RECIBIDO',
+            'REGISTRAR_CONVENIO_CORREGIDO',
+            'APROBAR_CONVENIO_RECIBIDO',
+            'SOLICITAR_CORRECCIONES_CONVENIO',
             'FORMALIZAR_CONVENIO'
         ]);
         let seguimientoActualId = 0;
@@ -253,15 +256,26 @@
             return local.toISOString().slice(0, 10);
         };
 
-        const camposConvenioRecibido = function () {
+        const camposConvenioRecibido = function (corregido) {
+            const esCorreccion = Boolean(corregido);
+            const titulo = esCorreccion
+                ? 'Nueva versión corregida del convenio'
+                : 'Convenio requisitado por la institución';
+            const detalle = esCorreccion
+                ? 'Adjunta el documento actualizado que devolvió la institución. La versión anterior permanecerá en el expediente.'
+                : 'Adjunta el archivo que devolvió el aliado. Se conservará separado del convenio editable que se envió originalmente.';
+            const placeholder = esCorreccion
+                ? 'Ej. La institución devolvió la versión con las correcciones solicitadas.'
+                : 'Ej. El aliado devolvió el convenio requisitado para revisión.';
+
             return '' +
                 '<div class="convenio-recepcion-intro">' +
                     '<span class="convenio-recepcion-icon">' +
                         '<i class="bi bi-file-earmark-arrow-up"></i>' +
                     '</span>' +
                     '<div>' +
-                        '<strong>Convenio requisitado por la institución</strong>' +
-                        '<p>Adjunta el archivo que devolvió el aliado. Se conservará separado del convenio editable que se envió originalmente.</p>' +
+                        '<strong>' + escapar(titulo) + '</strong>' +
+                        '<p>' + escapar(detalle) + '</p>' +
                     '</div>' +
                 '</div>' +
                 '<div class="row g-3">' +
@@ -278,12 +292,45 @@
                     '</div>' +
                     '<div class="col-12">' +
                         '<label class="form-label">Observaciones</label>' +
-                        '<textarea class="form-control" name="convenio_recibido_notas" rows="4" maxlength="5000" placeholder="Ej. El aliado devolvió el convenio requisitado para revisión."></textarea>' +
+                        '<textarea class="form-control" name="convenio_recibido_notas" rows="4" maxlength="5000" placeholder="' +
+                            escaparAtributo(placeholder) + '"></textarea>' +
                     '</div>' +
                 '</div>' +
                 '<div class="convenio-mail-note convenio-recepcion-note">' +
                     '<i class="bi bi-shield-check"></i>' +
-                    '<span>El archivo recibido queda resguardado dentro del expediente y no reemplaza los documentos que ya fueron enviados.</span>' +
+                    '<span>El archivo queda resguardado como una nueva versión y no reemplaza los documentos anteriores.</span>' +
+                '</div>';
+        };
+
+        const camposAprobacionConvenio = function () {
+            return '' +
+                '<div class="convenio-review-confirm">' +
+                    '<span class="convenio-review-confirm-icon">' +
+                        '<i class="bi bi-check2-circle"></i>' +
+                    '</span>' +
+                    '<div>' +
+                        '<strong>Confirmar que el convenio está correcto</strong>' +
+                        '<p>Esta decisión habilitará la formalización de la versión vigente. Si detectaste algún ajuste pendiente, cancela y usa “Solicitar correcciones”.</p>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="mt-3">' +
+                    '<label class="form-label">Observaciones de revisión <span class="text-muted">(opcional)</span></label>' +
+                    '<textarea class="form-control" name="convenio_revision_notas" rows="4" maxlength="5000" placeholder="Ej. Datos institucionales revisados y correctos."></textarea>' +
+                '</div>';
+        };
+
+        const camposCorreccionesConvenio = function () {
+            return '' +
+                '<div class="convenio-review-warning">' +
+                    '<i class="bi bi-pencil-square"></i>' +
+                    '<div>' +
+                        '<strong>Solicitar una nueva versión</strong>' +
+                        '<p>Describe con claridad qué debe corregirse. La versión actual se conservará en el expediente y el seguimiento quedará esperando el documento corregido.</p>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="mt-3">' +
+                    '<label class="form-label">Correcciones requeridas</label>' +
+                    '<textarea class="form-control" name="convenio_revision_notas" rows="5" maxlength="5000" placeholder="Ej. Corregir razón social, representante legal y domicilio..." required></textarea>' +
                 '</div>';
         };
 
@@ -330,8 +377,26 @@
                 REGISTRAR_CONVENIO_RECIBIDO: {
                     titulo: 'Registrar convenio recibido',
                     subtitulo: 'Adjunta el convenio requisitado que devolvió la institución para incorporarlo al expediente.',
-                    campos: camposConvenioRecibido(),
+                    campos: camposConvenioRecibido(false),
                     boton: '<i class="bi bi-cloud-arrow-up"></i> Registrar convenio recibido'
+                },
+                REGISTRAR_CONVENIO_CORREGIDO: {
+                    titulo: 'Registrar convenio corregido',
+                    subtitulo: 'Adjunta la nueva versión que devolvió la institución después de las correcciones.',
+                    campos: camposConvenioRecibido(true),
+                    boton: '<i class="bi bi-cloud-arrow-up"></i> Registrar nueva versión'
+                },
+                APROBAR_CONVENIO_RECIBIDO: {
+                    titulo: 'Aprobar convenio recibido',
+                    subtitulo: 'Confirma que la versión vigente está correcta antes de formalizarla.',
+                    campos: camposAprobacionConvenio(),
+                    boton: '<i class="bi bi-check2-circle"></i> Aprobar convenio'
+                },
+                SOLICITAR_CORRECCIONES_CONVENIO: {
+                    titulo: 'Solicitar correcciones',
+                    subtitulo: 'Registra los ajustes que debe realizar la institución en el convenio.',
+                    campos: camposCorreccionesConvenio(),
+                    boton: '<i class="bi bi-pencil-square"></i> Registrar correcciones'
                 },
                 FORMALIZAR_CONVENIO: {
                     titulo: 'Formalizar convenio',
@@ -461,7 +526,12 @@
             const esEnvioDocumentacionConvenio =
                 accionActual === 'ENVIAR_DOCUMENTACION_CONVENIO';
             const esRegistroConvenioRecibido =
-                accionActual === 'REGISTRAR_CONVENIO_RECIBIDO';
+                accionActual === 'REGISTRAR_CONVENIO_RECIBIDO' ||
+                accionActual === 'REGISTRAR_CONVENIO_CORREGIDO';
+            const esAprobacionConvenio =
+                accionActual === 'APROBAR_CONVENIO_RECIBIDO';
+            const esCorreccionConvenio =
+                accionActual === 'SOLICITAR_CORRECCIONES_CONVENIO';
 
             datos.set('seguimiento_id', String(seguimientoActualId));
             datos.set('accion', accionActual);
@@ -475,6 +545,14 @@
                 boton.innerHTML =
                     '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>' +
                     'Registrando...';
+            } else if (esAprobacionConvenio) {
+                boton.innerHTML =
+                    '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>' +
+                    'Aprobando...';
+            } else if (esCorreccionConvenio) {
+                boton.innerHTML =
+                    '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>' +
+                    'Guardando...';
             }
             modal.querySelector('[data-post-envio-error]').classList.add('d-none');
 
@@ -512,7 +590,9 @@
                 boton.disabled = false;
                 if (
                     esEnvioDocumentacionConvenio ||
-                    esRegistroConvenioRecibido
+                    esRegistroConvenioRecibido ||
+                    esAprobacionConvenio ||
+                    esCorreccionConvenio
                 ) {
                     boton.innerHTML = htmlOriginalBoton;
                 }
