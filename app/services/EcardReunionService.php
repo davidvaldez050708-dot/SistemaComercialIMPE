@@ -7,7 +7,7 @@ class EcardReunionService
     public const TEMPLATE_SERGIO = 'SERGIO';
     public const TEMPLATE_MANUEL = 'MANUEL';
     public const CID = 'ecard-reunion';
-    public const VERSION = '20260920-09';
+    public const VERSION = '20260920-10';
 
     private $connection;
     private $rootPath;
@@ -602,10 +602,16 @@ class EcardReunionService
         $oh = imagesy($origen);
         $lado = min($ow, $oh);
 
-        // Acerca ligeramente el rostro sin conservar bordes del archivo fuente.
-        $recorte = max(1, (int)floor($lado * 0.90));
+        /*
+         * El archivo fuente de Manuel ya trae un aro azul grueso y una franja
+         * azul rectangular en la parte inferior. Con un recorte del 90% esa
+         * franja seguía entrando en la fotografía y parecía una segunda imagen
+         * debajo del círculo. Recortamos más hacia el interior para usar solo
+         * la fotografía limpia, sin el marco original.
+         */
+        $recorte = max(1, (int)floor($lado * 0.82));
         $sx = (int)floor(($ow - $recorte) / 2);
-        $sy = (int)floor(($oh - $recorte) / 2);
+        $sy = (int)floor(($oh - $recorte) / 2) + 8;
 
         $escalada = imagecreatetruecolor($diametroFoto, $diametroFoto);
         if (!$escalada) {
