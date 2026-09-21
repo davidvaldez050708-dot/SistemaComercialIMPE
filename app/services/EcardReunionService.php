@@ -7,7 +7,7 @@ class EcardReunionService
     public const TEMPLATE_SERGIO = 'SERGIO';
     public const TEMPLATE_MANUEL = 'MANUEL';
     public const CID = 'ecard-reunion';
-    public const VERSION = '20260920-13';
+    public const VERSION = '20260920-14';
 
     private $connection;
     private $rootPath;
@@ -341,66 +341,89 @@ class EcardReunionService
             ' ',
             trim((string)$institucion)
         );
+
         if ($institucion === '') {
             $institucion = 'Institución por confirmar';
         }
 
         /*
          * Plantilla aprobada de Sergio: 1254 x 1254 px.
-         * El diseño completo (encabezado, ACUERDO 286, retrato, nombre,
-         * cargo y logotipos) se conserva tal como fue aprobado. Únicamente
-         * se limpia y vuelve a dibujar la franja de datos de la reunión.
+         * Conservamos intacto el diseño y solo limpiamos/redibujamos
+         * la franja blanca donde van institución + fecha/hora/modalidad.
          */
-        imagefilledrectangle($imagen, 110, 646, 1144, 777, $blanco);
+        imagefilledrectangle($imagen, 110, 642, 1144, 792, $blanco);
 
         $titulo = mb_strtoupper($institucion, 'UTF-8');
+
+        /*
+         * El nombre de la institución debe respirar respecto a la línea
+         * de fecha/hora. Se limita a dos líneas en tamaño normal y,
+         * para nombres excepcionalmente largos, se permiten tres líneas
+         * con una reducción adicional.
+         */
         $ajuste = $this->envolverTextoAjustado(
             $titulo,
-            1040,
-            36,
-            24,
+            1020,
+            32,
+            20,
             $fuenteBold,
             2
         );
+
+        if ($this->lineasContienenElipsis($ajuste['lineas'] ?? [])) {
+            $ajuste = $this->envolverTextoAjustado(
+                $titulo,
+                1020,
+                28,
+                18,
+                $fuenteBold,
+                3
+            );
+        }
+
         $lineas = $ajuste['lineas'] ?? [$titulo];
-        $tamano = (int)($ajuste['tamano'] ?? 32);
+        $tamano = (int)($ajuste['tamano'] ?? 28);
 
         $this->dibujarBloqueTextoCentradoVertical(
             $imagen,
             $lineas,
             $tamano,
-            654,
-            711,
+            650,
+            710,
             $navy,
             $fuenteBold,
-            5
+            count($lineas) >= 3 ? 2 : 4
         );
 
         $fechaHora = $this->fechaPlantillaManuel($fecha) .
             ' · ' . $this->horaPlantillaManuel($fecha);
+
         $modalidadTexto = mb_strtoupper(
             trim((string)$modalidad) !== '' ? (string)$modalidad : 'Por confirmar',
             'UTF-8'
         );
+
         $lineaDatos = $fechaHora . ' · ' . $modalidadTexto;
+
         $tamanoDatos = $this->tamanoParaAncho(
             $lineaDatos,
-            1000,
-            28,
-            20,
+            980,
+            24,
+            18,
             $fuenteNormal
         );
+
         $this->textoCentrado(
             $imagen,
             $lineaDatos,
             $tamanoDatos,
-            748,
+            754,
             $gris,
             $fuenteNormal
         );
 
         // Restituye la línea divisoria original de la composición.
-        imageline($imagen, 130, 779, 1125, 779, $gris);
+        imageline($imagen, 130, 780, 1125, 780, $gris);
 
         imageinterlace($imagen, true);
         $guardado = imagejpeg($imagen, $ruta, 96);
