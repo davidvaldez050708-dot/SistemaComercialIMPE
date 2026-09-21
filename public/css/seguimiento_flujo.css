@@ -3,11 +3,12 @@
    ========================================================= */
 
 [data-work-flow-section] {
+    width: 100%;
     min-width: 0;
     max-width: 100%;
     gap: 12px;
     padding: 14px;
-    overflow: hidden;
+    overflow: visible;
     box-sizing: border-box;
 }
 
@@ -224,4 +225,25 @@
     .linkage-flow-actions {
         grid-template-columns: 1fr;
     }
+}
+
+
+.linkage-flow-heading,
+.linkage-flow-progress,
+.linkage-flow-window,
+.linkage-flow-current,
+.linkage-flow-actions {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.linkage-flow-heading h3,
+.linkage-flow-current h4,
+.linkage-flow-current p {
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    word-break: break-word;
 }
