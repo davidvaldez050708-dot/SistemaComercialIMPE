@@ -6,6 +6,7 @@ require_once __DIR__ . '/SeguimientoCorreoService.php';
 require_once __DIR__ . '/AgendaReunionService.php';
 require_once __DIR__ . '/ReunionFechaGuardService.php';
 require_once __DIR__ . '/ReunionResultadoService.php';
+require_once __DIR__ . '/ConvenioDocumentosService.php';
 
 class SeguimientoRutaOperativaService
 {
@@ -15,6 +16,7 @@ class SeguimientoRutaOperativaService
     private $agendaService;
     private $fechaGuardService;
     private $resultadoService;
+    private $convenioDocumentosService;
 
     public function __construct(
         $flujoService = null,
@@ -22,7 +24,8 @@ class SeguimientoRutaOperativaService
         $correoService = null,
         $agendaService = null,
         $fechaGuardService = null,
-        $resultadoService = null
+        $resultadoService = null,
+        $convenioDocumentosService = null
     ) {
         $this->flujoService = $flujoService ?: new SeguimientoFlujoService();
         $this->postEnvioService = $postEnvioService ?: new SeguimientoPostEnvioService();
@@ -30,6 +33,7 @@ class SeguimientoRutaOperativaService
         $this->agendaService = $agendaService ?: new AgendaReunionService();
         $this->fechaGuardService = $fechaGuardService ?: new ReunionFechaGuardService();
         $this->resultadoService = $resultadoService ?: new ReunionResultadoService();
+        $this->convenioDocumentosService = $convenioDocumentosService ?: new ConvenioDocumentosService();
     }
 
     public function resolver($seguimientoId, $analistaId, $seguimientoBase = [])
@@ -68,6 +72,11 @@ class SeguimientoRutaOperativaService
                     $flujo
                 );
                 $flujo = $this->resultadoService->ajustarFlujo(
+                    $seguimientoId,
+                    $analistaId,
+                    $flujo
+                );
+                $flujo = $this->convenioDocumentosService->ajustarFlujo(
                     $seguimientoId,
                     $analistaId,
                     $flujo
