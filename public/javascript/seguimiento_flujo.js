@@ -431,6 +431,17 @@
             characterData: true
         });
 
+        document.addEventListener('impe:post-envio-updated', function (event) {
+            const idEvento = Number(event.detail?.seguimientoId || 0);
+
+            if (
+                seguimientoActualId > 0 &&
+                (idEvento === 0 || idEvento === seguimientoActualId)
+            ) {
+                programarConsulta(90);
+            }
+        });
+
         offcanvas.addEventListener('hidden.bs.offcanvas', function () {
             seguimientoActualId = 0;
             window.clearTimeout(temporizadorConsulta);
