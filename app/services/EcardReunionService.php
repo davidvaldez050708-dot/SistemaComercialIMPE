@@ -7,7 +7,7 @@ class EcardReunionService
     public const TEMPLATE_SERGIO = 'SERGIO';
     public const TEMPLATE_MANUEL = 'MANUEL';
     public const CID = 'ecard-reunion';
-    public const VERSION = '20260920-06';
+    public const VERSION = '20260920-07';
 
     private $connection;
     private $rootPath;
@@ -408,10 +408,13 @@ class EcardReunionService
         );
 
         /*
-         * La plantilla HD aprobada ya contiene el retrato correcto de Manuel.
-         * No se dibuja una segunda fotografía encima: hacerlo producía el
-         * borde/fragmento visible en la parte inferior del retrato.
+         * La plantilla contiene el retrato correcto, pero el recurso base
+         * trae unos píxeles que sobresalen por debajo del círculo. Se recorta
+         * geométricamente el área exterior y se repinta únicamente el borde.
+         * No se coloca otra fotografía encima.
          */
+        $this->normalizarRetratoManuelPlantilla($imagen);
+
         imageinterlace($imagen, true);
         $guardado = imagejpeg($imagen, $ruta, 96);
         imagedestroy($imagen);
@@ -423,6 +426,43 @@ class EcardReunionService
         }
 
         return ['ok' => true];
+    }
+
+    private function normalizarRetratoManuelPlantilla($imagen)
+    {
+        /*
+         * Coordenadas de la plantilla Manuel a 1200 x 1212.
+         * El retrato ya está horneado en la plantilla. Solo eliminamos
+         * cualquier píxel que quede fuera de un círculo perfecto.
+         */
+        $centroX = 466.0;
+        $centroY = 968.0;
+        $radio = 72.5;
+        $margen = 10;
+
+        $blanco = imagecolorallocate($imagen, 255, 255, 255);
+
+        $xMin = (int)floor($centroX - $radio - $margen);
+        $xMax = (int)ceil($centroX + $radio + $margen);
+        $yMin = (int)floor($centroY - $radio - $margen);
+        $yMax = (int)ceil($centroY + $radio + $margen);
+        $radio2 = $radio * $radio;
+
+        for ($y = $yMin; $y <= $yMax; $y++) {
+            for ($x = $xMin; $x <= $xMax; $x++) {
+                $dx = $x - $centroX;
+                $dy = $y - $centroY;
+
+                if (($dx * $dx) + ($dy * $dy) > $radio2) {
+                    imagesetpixel($imagen, $x, $y, $blanco);
+                }
+            }
+        }
+
+        // Repone un borde circular limpio después del recorte.
+        $borde = imagecolorallocate($imagen, 35, 76, 150);
+        imageellipse($imagen, 466, 968, 145, 145, $borde);
+        imageellipse($imagen, 466, 968, 143, 143, $borde);
     }
 
     private function dibujarBadgeFechaHoraManuel(
