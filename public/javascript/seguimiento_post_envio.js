@@ -339,11 +339,9 @@
                 '<div class="row g-3">' +
                     '<div class="col-md-5">' +
                         '<label class="form-label">Fecha de formalización</label>' +
-                        '<input class="form-control" type="date" name="convenio_fecha" required>' +
-                    '</div>' +
-                    '<div class="col-md-7">' +
-                        '<label class="form-label">Folio / referencia del convenio</label>' +
-                        '<input class="form-control" type="text" name="convenio_referencia" maxlength="180" placeholder="Ej. CONV-2026-015" required>' +
+                        '<input class="form-control" type="date" name="convenio_fecha" value="' +
+                            escaparAtributo(fechaLocalHoy()) + '" max="' +
+                            escaparAtributo(fechaLocalHoy()) + '" required>' +
                     '</div>' +
                     '<div class="col-12">' +
                         '<label class="form-label">Observaciones</label>' +
