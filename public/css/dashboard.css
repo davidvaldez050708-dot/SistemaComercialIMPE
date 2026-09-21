@@ -6877,6 +6877,9 @@
 
 .linkage-work-offcanvas {
     width: min(500px, calc(100vw - 18px));
+    max-width: 100vw;
+    overflow-x: hidden;
+    box-sizing: border-box;
     border-left: 1px solid var(--color-border);
     background-color: #ffffff;
 }
@@ -6910,20 +6913,34 @@
 }
 
 .linkage-work-body {
+    min-width: 0;
+    max-width: 100%;
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     align-content: start;
     gap: 12px;
+    overflow-x: hidden;
     padding: 14px 18px 18px;
+    box-sizing: border-box;
     background-color: #f8fafc;
 }
 
 .linkage-work-section {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
     display: grid;
     gap: 10px;
     padding: 13px;
+    box-sizing: border-box;
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
     background-color: #ffffff;
+}
+
+.linkage-work-section > * {
+    min-width: 0;
+    max-width: 100%;
 }
 
 .linkage-work-section h3,
