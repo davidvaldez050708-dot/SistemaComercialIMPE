@@ -7,7 +7,7 @@ class EcardReunionService
     public const TEMPLATE_SERGIO = 'SERGIO';
     public const TEMPLATE_MANUEL = 'MANUEL';
     public const CID = 'ecard-reunion';
-    public const VERSION = '20260920-10';
+    public const VERSION = '20260920-11';
 
     private $connection;
     private $rootPath;
@@ -30,20 +30,25 @@ class EcardReunionService
         }
     }
 
-    public function metadatos(array $reunion)
+    public function metadatos(array $reunion, $templateSolicitado = null)
     {
-        $template = $this->resolverTemplate($reunion);
+        $templatePredeterminado = $this->resolverTemplate($reunion);
+        $templateElegido = $this->normalizarTemplateSolicitado($templateSolicitado);
+        $template = $templateElegido !== ''
+            ? $templateElegido
+            : $templatePredeterminado;
         $esSergio = $template === self::TEMPLATE_SERGIO;
 
         return [
             'template' => strtolower($template),
+            'template_predeterminado' => strtolower($templatePredeterminado),
             'ponente' => $esSergio
                 ? 'Sergio López Porcayo'
                 : 'Mtro. Manuel Porcayo',
             'cargo' => $esSergio
                 ? 'Rector Universidad IMPE'
                 : 'Presidente',
-            'equipo_yulissa' => $esSergio,
+            'equipo_yulissa' => $templatePredeterminado === self::TEMPLATE_SERGIO,
             'evento' => $this->resolverEvento($reunion),
             'institucion' => $this->resolverInstitucion($reunion),
             'sede' => $this->resolverSede($reunion),
@@ -52,7 +57,7 @@ class EcardReunionService
         ];
     }
 
-    public function generar(array $reunion)
+    public function generar(array $reunion, $templateSolicitado = null)
     {
         if (!function_exists('imagecreatetruecolor') || !function_exists('imagejpeg')) {
             return $this->error(
@@ -76,7 +81,15 @@ class EcardReunionService
             return $this->error('La fecha de la reunión no es válida para generar la Ecard.');
         }
 
-        $meta = $this->metadatos($reunion);
+        $templateRaw = strtoupper(trim((string)$templateSolicitado));
+        if (
+            $templateRaw !== '' &&
+            !in_array($templateRaw, [self::TEMPLATE_SERGIO, self::TEMPLATE_MANUEL], true)
+        ) {
+            return $this->error('La Ecard seleccionada no es válida.');
+        }
+
+        $meta = $this->metadatos($reunion, $templateSolicitado);
         $evento = trim((string)$meta['evento']);
         $institucion = trim((string)($meta['institucion'] ?? ''));
         $sede = trim((string)$meta['sede']);
@@ -201,6 +214,17 @@ class EcardReunionService
         return self::TEMPLATE_MANUEL;
     }
 
+    private function normalizarTemplateSolicitado($valor)
+    {
+        $template = strtoupper(trim((string)$valor));
+
+        return in_array(
+            $template,
+            [self::TEMPLATE_SERGIO, self::TEMPLATE_MANUEL],
+            true
+        ) ? $template : '';
+    }
+
     private function resolverEvento(array $reunion)
     {
         $objetivo = trim((string)($reunion['objetivo'] ?? ''));
@@ -267,6 +291,15 @@ class EcardReunionService
             );
         }
 
+        if ($template === self::TEMPLATE_SERGIO) {
+            return $this->crearImagenSergioPlantilla(
+                $ruta,
+                $fecha,
+                (string)($meta['institucion'] ?? ''),
+                $modalidad
+            );
+        }
+
         return $this->crearImagenGenerica(
             $ruta,
             $meta,
@@ -276,6 +309,153 @@ class EcardReunionService
             $modalidad,
             $enlace
         );
+    }
+
+    /**
+     * Ecard Sergio:
+     * conserva íntegra la pieza "Reunión Informativa / ACUERDO 286" y agrega
+     * únicamente los datos operativos de la reunión en la franja blanca.
+     */
+    private function crearImagenSergioPlantilla(
+        $ruta,
+        DateTime $fecha,
+        $institucion,
+        $modalidad
+    ) {
+        $imagen = $this->cargarPlantillaSergio();
+
+        if (!$imagen) {
+            return $this->error(
+                'No fue posible cargar la plantilla de la Ecard de Sergio.'
+            );
+        }
+
+        $blanco = imagecolorallocate($imagen, 255, 255, 255);
+        $navy = imagecolorallocate($imagen, 3, 43, 78);
+        $gris = imagecolorallocate($imagen, 105, 113, 123);
+        $fuenteNormal = $this->resolverFuente(false);
+        $fuenteBold = $this->resolverFuente(true);
+
+        $institucion = preg_replace(
+            '/\\s+/u',
+            ' ',
+            trim((string)$institucion)
+        );
+        if ($institucion === '') {
+            $institucion = 'Institución por confirmar';
+        }
+
+        /*
+         * La plantilla original tiene una línea gris alrededor de Y=596.
+         * Se limpia únicamente la franja de información para conservar sin
+         * alteraciones el encabezado ACUERDO 286, el retrato y los logotipos.
+         */
+        imagefilledrectangle($imagen, 70, 526, 954, 640, $blanco);
+
+        $titulo = mb_strtoupper($institucion, 'UTF-8');
+        $ajuste = $this->envolverTextoAjustado(
+            $titulo,
+            820,
+            27,
+            18,
+            $fuenteBold,
+            2
+        );
+        $lineas = $ajuste['lineas'] ?? [$titulo];
+        $tamano = (int)($ajuste['tamano'] ?? 24);
+
+        $this->dibujarBloqueTextoCentradoVertical(
+            $imagen,
+            $lineas,
+            $tamano,
+            535,
+            585,
+            $navy,
+            $fuenteBold,
+            4
+        );
+
+        $fechaHora = $this->fechaPlantillaManuel($fecha) .
+            ' · ' . $this->horaPlantillaManuel($fecha);
+        $modalidadTexto = mb_strtoupper(
+            trim((string)$modalidad) !== '' ? (string)$modalidad : 'Por confirmar',
+            'UTF-8'
+        );
+        $lineaDatos = $fechaHora . ' · ' . $modalidadTexto;
+        $tamanoDatos = $this->tamanoParaAncho(
+            $lineaDatos,
+            820,
+            18,
+            14,
+            $fuenteNormal
+        );
+        $this->textoCentrado(
+            $imagen,
+            $lineaDatos,
+            $tamanoDatos,
+            622,
+            $gris,
+            $fuenteNormal
+        );
+
+        imageline($imagen, 106, 642, 918, 642, $gris);
+
+        imageinterlace($imagen, true);
+        $guardado = imagejpeg($imagen, $ruta, 96);
+        imagedestroy($imagen);
+
+        if (!$guardado || !is_file($ruta)) {
+            return $this->error('No fue posible guardar la Ecard de Sergio.');
+        }
+
+        return ['ok' => true];
+    }
+
+    private function cargarPlantillaSergio()
+    {
+        if (!function_exists('imagecreatefromstring')) {
+            return false;
+        }
+
+        $patron = $this->rootPath . DIRECTORY_SEPARATOR .
+            'public' . DIRECTORY_SEPARATOR .
+            'img' . DIRECTORY_SEPARATOR .
+            'ecards' . DIRECTORY_SEPARATOR .
+            'templates' . DIRECTORY_SEPARATOR .
+            'sergio-template.part*.b64';
+
+        $partes = glob($patron) ?: [];
+        if (empty($partes)) {
+            return false;
+        }
+
+        natsort($partes);
+        $base64 = '';
+
+        foreach ($partes as $parte) {
+            $contenido = @file_get_contents($parte);
+            if (!is_string($contenido) || trim($contenido) === '') {
+                return false;
+            }
+            $base64 .= trim($contenido);
+        }
+
+        $binario = base64_decode($base64, true);
+        if ($binario === false || $binario === '') {
+            return false;
+        }
+
+        $imagen = @imagecreatefromstring($binario);
+        if (!$imagen) {
+            return false;
+        }
+
+        if (imagesx($imagen) !== 1024 || imagesy($imagen) !== 1024) {
+            imagedestroy($imagen);
+            return false;
+        }
+
+        return $imagen;
     }
 
     /**
