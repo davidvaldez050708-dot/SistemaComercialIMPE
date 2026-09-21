@@ -7,7 +7,7 @@ class EcardReunionService
     public const TEMPLATE_SERGIO = 'SERGIO';
     public const TEMPLATE_MANUEL = 'MANUEL';
     public const CID = 'ecard-reunion';
-    public const VERSION = '20260920-05';
+    public const VERSION = '20260920-06';
 
     private $connection;
     private $rootPath;
@@ -407,9 +407,11 @@ class EcardReunionService
             $fuenteNormal
         );
 
-        // Reemplaza el retrato de la plantilla por una sola foto limpia.
-        $this->dibujarRetratoManuelLimpio($imagen);
-
+        /*
+         * La plantilla HD aprobada ya contiene el retrato correcto de Manuel.
+         * No se dibuja una segunda fotografía encima: hacerlo producía el
+         * borde/fragmento visible en la parte inferior del retrato.
+         */
         imageinterlace($imagen, true);
         $guardado = imagejpeg($imagen, $ruta, 96);
         imagedestroy($imagen);
