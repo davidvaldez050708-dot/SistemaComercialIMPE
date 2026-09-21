@@ -7,7 +7,7 @@ class EcardReunionService
     public const TEMPLATE_SERGIO = 'SERGIO';
     public const TEMPLATE_MANUEL = 'MANUEL';
     public const CID = 'ecard-reunion';
-    public const VERSION = '20260920-04';
+    public const VERSION = '20260920-05';
 
     private $connection;
     private $rootPath;
@@ -517,7 +517,16 @@ class EcardReunionService
         $centroX = 466;
         $centroY = 968;
         $diametro = 148;
-        $radio = (int)($diametro / 2);
+        $radioDestino = (int)($diametro / 2);
+
+        /*
+         * Para un lienzo par (148x148) el centro geométrico real es 73.5,
+         * no 74. Usar 74 producía una cuerda horizontal demasiado ancha en
+         * la última fila de píxeles: el pequeño "pedazo" que se veía debajo
+         * del círculo. La máscara ahora usa centro y radio de medio píxel.
+         */
+        $centroMascara = ($diametro - 1) / 2;
+        $radioMascara = ($diametro - 1) / 2;
 
         $blanco = imagecolorallocate($imagen, 255, 255, 255);
 
@@ -583,10 +592,19 @@ class EcardReunionService
 
         for ($py = 0; $py < $diametro; $py++) {
             for ($px = 0; $px < $diametro; $px++) {
-                $dx = $px - $radio;
-                $dy = $py - $radio;
-                if (($dx * $dx + $dy * $dy) <= ($radio * $radio)) {
-                    imagesetpixel($tmp, $px, $py, imagecolorat($escalada, $px, $py));
+                $dx = $px - $centroMascara;
+                $dy = $py - $centroMascara;
+
+                if (
+                    (($dx * $dx) + ($dy * $dy)) <=
+                    ($radioMascara * $radioMascara)
+                ) {
+                    imagesetpixel(
+                        $tmp,
+                        $px,
+                        $py,
+                        imagecolorat($escalada, $px, $py)
+                    );
                 }
             }
         }
@@ -595,8 +613,8 @@ class EcardReunionService
         imagecopy(
             $imagen,
             $tmp,
-            $centroX - $radio,
-            $centroY - $radio,
+            $centroX - $radioDestino,
+            $centroY - $radioDestino,
             0,
             0,
             $diametro,
