@@ -113,10 +113,13 @@ class AgendaReunionController
          * para impedir que texto accidental corrompa el JPEG enviado al navegador.
          */
         ob_start();
+        $template = (string)($_GET['template'] ?? '');
+
         $resultado = $this->service->obtenerEcard(
             $usuarioId,
             $rolId,
-            $reunionId
+            $reunionId,
+            $template
         );
         $salidaInesperada = (string)ob_get_clean();
 
