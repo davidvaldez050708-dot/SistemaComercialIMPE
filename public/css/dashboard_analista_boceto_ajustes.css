@@ -544,3 +544,55 @@
         font-size: 9px;
     }
 }
+
+/*
+ * Evita que nombres largos de instituciones en la agenda ensanchen el
+ * dashboard. El texto debe quedarse dentro de su columna y recortarse
+ * visualmente con puntos suspensivos, sin generar scroll horizontal.
+ */
+.analyst-dashboard-v2 .analyst-main-grid,
+.analyst-dashboard-v2 .analyst-main-grid > .dashboard-panel,
+.analyst-dashboard-v2 .analyst-upcoming-panel,
+.analyst-dashboard-v2 .analyst-upcoming-list,
+.analyst-dashboard-v2 .analyst-upcoming-item,
+.analyst-dashboard-v2 .analyst-upcoming-copy {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.analyst-dashboard-v2 .analyst-upcoming-panel,
+.analyst-dashboard-v2 .analyst-upcoming-list,
+.analyst-dashboard-v2 .analyst-upcoming-item {
+    overflow: hidden;
+}
+
+.analyst-dashboard-v2 .analyst-upcoming-copy {
+    width: 100%;
+    overflow: hidden;
+    align-items: stretch;
+}
+
+.analyst-dashboard-v2 .analyst-upcoming-item > div > strong {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.analyst-dashboard-v2 .analyst-upcoming-item > div > span:not(.analyst-upcoming-meeting-status) {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.analyst-dashboard-v2 .analyst-upcoming-meeting-status {
+    max-width: 100%;
+    box-sizing: border-box;
+    align-self: flex-start;
+}
+
