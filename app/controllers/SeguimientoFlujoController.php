@@ -7,6 +7,7 @@ require_once __DIR__ . '/../services/AgendaReunionService.php';
 require_once __DIR__ . '/../services/ReunionFechaGuardService.php';
 require_once __DIR__ . '/../services/ReunionResultadoService.php';
 require_once __DIR__ . '/../services/ConvenioDocumentosService.php';
+require_once __DIR__ . '/../services/OficioDocxPdfService.php';
 require_once __DIR__ . '/../services/SeguimientoRutaOperativaService.php';
 require_once __DIR__ . '/../models/SeguimientoVinculacionModel.php';
 require_once __DIR__ . '/../helpers/PermissionHelper.php';
@@ -224,9 +225,53 @@ class SeguimientoFlujoController
         );
         $extension = strtolower((string)pathinfo($nombre, PATHINFO_EXTENSION));
         $esPdf = $extension === 'pdf';
+        $esDocx = $extension === 'docx';
+
+        if ($modo === 'ver' && $esDocx) {
+            $conversor = new OficioDocxPdfService();
+            $conversion = $conversor->convertirArchivoAPdf($ruta);
+
+            if (!($conversion['ok'] ?? false)) {
+                http_response_code(500);
+                header('Content-Type: text/plain; charset=utf-8');
+                echo (string)(
+                    $conversion['mensaje'] ??
+                    'No fue posible generar la vista previa del convenio.'
+                );
+                exit;
+            }
+
+            $contenidoPdf = (string)($conversion['contenido_pdf'] ?? '');
+            if ($contenidoPdf === '') {
+                http_response_code(500);
+                header('Content-Type: text/plain; charset=utf-8');
+                echo 'La vista previa del convenio está vacía.';
+                exit;
+            }
+
+            $nombrePdf = (string)pathinfo($nombre, PATHINFO_FILENAME) . '.pdf';
+
+            while (ob_get_level() > 0) {
+                ob_end_clean();
+            }
+
+            header('Content-Type: application/pdf');
+            header('Content-Length: ' . (string)strlen($contenidoPdf));
+            header(
+                'Content-Disposition: inline; filename="' .
+                addcslashes($nombrePdf, "\\\"") . '"; filename*=UTF-8\'\'' .
+                rawurlencode($nombrePdf)
+            );
+            header('X-Content-Type-Options: nosniff');
+            header('Cache-Control: private, no-store, max-age=0');
+
+            echo $contenidoPdf;
+            exit;
+        }
+
         $mime = $esPdf
             ? 'application/pdf'
-            : ($extension === 'docx'
+            : ($esDocx
                 ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
                 : 'application/octet-stream');
         $disposicion = ($modo === 'ver' && $esPdf) ? 'inline' : 'attachment';
