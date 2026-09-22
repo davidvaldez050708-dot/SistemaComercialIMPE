@@ -572,7 +572,12 @@
             }
         }
 
-        document.addEventListener('impe:flow-row-updated', aplicarFiltroRuta);
+        document.addEventListener('impe:flow-row-updated', function () {
+            if (selectorSituacion) {
+                selectorSituacion.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            aplicarFiltroRuta();
+        });
         window.setTimeout(function () {
             selectorSituacion?.dispatchEvent(new Event('change', { bubbles: true }));
             aplicarFiltroRuta();
