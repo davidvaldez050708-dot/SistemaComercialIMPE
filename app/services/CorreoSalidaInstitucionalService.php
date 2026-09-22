@@ -463,6 +463,14 @@ class CorreoSalidaInstitucionalService
             'application/pdf',
             'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             'application/msword',
+            'application/vnd.ms-excel',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'application/vnd.ms-powerpoint',
+            'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            'text/plain',
+            'text/csv',
+            'image/png',
+            'image/jpeg',
             'application/octet-stream'
         ];
 
@@ -501,10 +509,23 @@ class CorreoSalidaInstitucionalService
             }
 
             $extension = strtolower(pathinfo($nombre, PATHINFO_EXTENSION));
-            if ($extension === 'pdf') {
-                $mime = 'application/pdf';
-            } elseif ($extension === 'docx') {
-                $mime = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+            $mimesPorExtension = [
+                'pdf' => 'application/pdf',
+                'doc' => 'application/msword',
+                'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'xls' => 'application/vnd.ms-excel',
+                'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'ppt' => 'application/vnd.ms-powerpoint',
+                'pptx' => 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+                'txt' => 'text/plain',
+                'csv' => 'text/csv',
+                'png' => 'image/png',
+                'jpg' => 'image/jpeg',
+                'jpeg' => 'image/jpeg'
+            ];
+
+            if (isset($mimesPorExtension[$extension])) {
+                $mime = $mimesPorExtension[$extension];
             }
 
             if (!in_array($mime, $mimesPermitidos, true)) {
