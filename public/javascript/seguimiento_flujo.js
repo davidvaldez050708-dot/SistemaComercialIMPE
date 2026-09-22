@@ -421,21 +421,19 @@
             if (botonTrabajo) {
                 botonTrabajo.classList.toggle('is-ally', esAliado);
                 botonTrabajo.title = esAliado
-                    ? 'Ver expediente del aliado'
+                    ? 'Trabajar con aliado'
                     : 'Trabajar seguimiento';
                 botonTrabajo.setAttribute(
                     'aria-label',
-                    esAliado ? 'Ver expediente del aliado' : 'Trabajar seguimiento'
+                    esAliado ? 'Trabajar con aliado' : 'Trabajar seguimiento'
                 );
                 const iconoTrabajo = botonTrabajo.querySelector('i');
                 const textoTrabajo = botonTrabajo.querySelector('span');
                 if (iconoTrabajo) {
-                    iconoTrabajo.className = esAliado
-                        ? 'bi bi-folder2-open'
-                        : 'bi bi-kanban';
+                    iconoTrabajo.className = 'bi bi-kanban';
                 }
                 if (textoTrabajo) {
-                    textoTrabajo.textContent = esAliado ? 'Ver expediente' : 'Trabajar';
+                    textoTrabajo.textContent = 'Trabajar';
                 }
             }
 
