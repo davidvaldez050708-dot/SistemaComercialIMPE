@@ -386,6 +386,16 @@
         offcanvas.dataset.flowTitle = titulo;
         offcanvas.dataset.flowSeguimientoId = String(seguimientoId);
         offcanvas.dataset.ally = esAliado ? '1' : '0';
+
+        const etiquetaPanel = offcanvas.querySelector('.linkage-work-header > div > span');
+        if (etiquetaPanel) {
+            etiquetaPanel.textContent = esAliado
+                ? 'Expediente de aliado'
+                : (Number(window.IMPE_CURRENT_ROLE_ID || 0) === 1
+                    ? 'Vista de seguimiento'
+                    : 'Panel de trabajo');
+        }
+
         sincronizarBotonVerificacion(offcanvas, pasoActual);
 
         const contador = bloque.querySelector('[data-flow-step-count]');
