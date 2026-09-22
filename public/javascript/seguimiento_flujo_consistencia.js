@@ -61,6 +61,33 @@
             return String(flujoGuardado(seguimientoId)?.titulo || '').trim();
         };
 
+        const esAliadoSeguimiento = function (seguimientoId) {
+            seguimientoId = Number(
+                seguimientoId ||
+                seguimientoActivoId ||
+                offcanvas.dataset.flowSeguimientoId ||
+                0
+            );
+
+            if (seguimientoId <= 0) {
+                return false;
+            }
+
+            if (
+                Number(offcanvas.dataset.flowSeguimientoId || 0) === seguimientoId &&
+                String(offcanvas.dataset.ally || '') === '1'
+            ) {
+                return true;
+            }
+
+            const fila = filaSeguimiento(seguimientoId);
+            if (String(fila?.dataset.ally || '') === '1') {
+                return true;
+            }
+
+            return Boolean(flujoGuardado(seguimientoId)?.contexto?.es_aliado);
+        };
+
         const fijarProximaAccion = function (seguimientoId, tituloExplicito) {
             seguimientoId = Number(seguimientoId || seguimientoActivoId || 0);
 
@@ -82,12 +109,17 @@
             offcanvas.dataset.flowSeguimientoId = String(seguimientoId);
             offcanvas.dataset.flowTitle = titulo;
 
-            if (!proximaAccion || String(proximaAccion.textContent || '').trim() === titulo) {
+            const esAliado = esAliadoSeguimiento(seguimientoId);
+            const textoVisible = esAliado
+                ? 'Aliado · Convenio formalizado'
+                : titulo;
+
+            if (!proximaAccion || String(proximaAccion.textContent || '').trim() === textoVisible) {
                 return true;
             }
 
             restaurando = true;
-            proximaAccion.textContent = titulo;
+            proximaAccion.textContent = textoVisible;
             window.queueMicrotask(function () {
                 restaurando = false;
             });
@@ -103,8 +135,11 @@
 
                 const titulo = tituloRutaAutoritativo(seguimientoActivoId);
                 const actual = String(proximaAccion.textContent || '').trim();
+                const esperado = esAliadoSeguimiento(seguimientoActivoId)
+                    ? 'Aliado · Convenio formalizado'
+                    : titulo;
 
-                if (titulo === '' || actual === titulo) {
+                if (titulo === '' || actual === esperado) {
                     return;
                 }
 
@@ -130,6 +165,10 @@
                 seguimientoId !== seguimientoActivoId
             ) {
                 return;
+            }
+
+            if (typeof detalle.esAliado === 'boolean') {
+                offcanvas.dataset.ally = detalle.esAliado ? '1' : '0';
             }
 
             fijarProximaAccion(seguimientoId, titulo);
@@ -160,6 +199,7 @@
             if (seguimientoAnterior > 0 && seguimientoAnterior !== seguimientoId) {
                 delete offcanvas.dataset.flowTitle;
                 delete offcanvas.dataset.flowStep;
+                delete offcanvas.dataset.ally;
             }
 
             seguimientoActivoId = seguimientoId;
