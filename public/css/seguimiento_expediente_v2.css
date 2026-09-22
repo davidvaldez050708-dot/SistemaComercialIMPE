@@ -51,6 +51,32 @@
     background: linear-gradient(180deg, #fbfcff 0%, #f7f9fd 100%);
 }
 
+.linkage-expediente-route-card.is-ally {
+    border-color: rgba(8, 120, 102, 0.2);
+    background: linear-gradient(180deg, #fbfefd 0%, #f3fbf8 100%);
+}
+
+.linkage-expediente-route-card.is-ally .linkage-expediente-eyebrow,
+.linkage-expediente-route-card.is-ally .linkage-expediente-route-heading strong {
+    color: #087866;
+}
+
+.linkage-expediente-route-card.is-ally .linkage-expediente-step-pill {
+    border-color: rgba(8, 120, 102, 0.2);
+    background: #eaf7f3;
+    color: #087866;
+}
+
+.linkage-expediente-route-card.is-ally .linkage-expediente-progress span {
+    background: #0a8f7a;
+}
+
+.linkage-expediente-route-card.is-ally .linkage-expediente-last-icon {
+    border-color: rgba(8, 120, 102, 0.18);
+    background: #ffffff;
+    color: #087866;
+}
+
 .linkage-expediente-route-heading {
     display: flex;
     align-items: flex-start;
