@@ -48,7 +48,11 @@
             [13, 'Convenio']
         ];
 
-        const situacionDesdeEstado = function (estado) {
+        const situacionDesdeEstado = function (estado, fila) {
+            if (String(fila?.dataset.ally || '') === '1') {
+                return 'ALIADO';
+            }
+
             const valor = String(estado || '').trim().toUpperCase();
 
             if (valor === 'DESCARTADO') {
@@ -68,21 +72,20 @@
             }
 
             const valorActual = String(fila.dataset.stage || '').trim().toUpperCase();
-            const valoresSituacion = ['EN_PROCESO', 'NO_LOCALIZADO', 'DESCARTADO'];
+            const valoresSituacion = ['EN_PROCESO', 'ALIADO', 'NO_LOCALIZADO', 'DESCARTADO'];
 
-            if (valoresSituacion.includes(valorActual)) {
-                if (!fila.dataset.internalStage) {
-                    fila.dataset.internalStage = valorActual;
-                }
-                return;
-            }
-
-            if (valorActual !== '') {
+            if (
+                valorActual !== '' &&
+                !valoresSituacion.includes(valorActual)
+            ) {
+                fila.dataset.internalStage = valorActual;
+            } else if (!fila.dataset.internalStage && valorActual !== 'ALIADO') {
                 fila.dataset.internalStage = valorActual;
             }
 
             const situacion = situacionDesdeEstado(
-                fila.dataset.internalStage || valorActual
+                fila.dataset.internalStage || valorActual,
+                fila
             );
 
             if (fila.dataset.stage !== situacion) {
@@ -104,7 +107,7 @@
             const estadoAnterior = String(parametros.get('estado_seguimiento') || '').toUpperCase();
             let seleccion = '';
 
-            if (['EN_PROCESO', 'NO_LOCALIZADO', 'DESCARTADO'].includes(situacionUrl)) {
+            if (['EN_PROCESO', 'ALIADO', 'NO_LOCALIZADO', 'DESCARTADO'].includes(situacionUrl)) {
                 seleccion = situacionUrl;
             } else if (estadoAnterior === 'NO_LOCALIZADO' || estadoAnterior === 'DESCARTADO') {
                 seleccion = estadoAnterior;
@@ -122,6 +125,7 @@
             selectorSituacion.innerHTML =
                 '<option value="">Todos</option>' +
                 '<option value="EN_PROCESO">En proceso</option>' +
+                '<option value="ALIADO">Aliado</option>' +
                 '<option value="NO_LOCALIZADO">No localizado</option>' +
                 '<option value="DESCARTADO">Descartado</option>';
             selectorSituacion.value = seleccion;
@@ -161,7 +165,7 @@
                         }
 
                         const valor = String(fila.dataset.stage || '').trim().toUpperCase();
-                        if (!['EN_PROCESO', 'NO_LOCALIZADO', 'DESCARTADO'].includes(valor)) {
+                        if (!['EN_PROCESO', 'ALIADO', 'NO_LOCALIZADO', 'DESCARTADO'].includes(valor)) {
                             normalizarSituacionFila(fila);
                         }
                     });
@@ -425,6 +429,10 @@
                 return 'Descartado';
             }
 
+            if (String(fila?.dataset.ally || '') === '1') {
+                return 'Aliado';
+            }
+
             if (pasoActual === 12) {
                 if (titulo.includes('programad')) {
                     return 'Reunión programada';
@@ -455,9 +463,14 @@
             }
 
             const etiqueta = etiquetaEtapaRuta(pasoActual, tituloFlujo, fila);
+            const esAliado = String(fila?.dataset.ally || '') === '1';
             fila.dataset.flowStageLabel = etiqueta;
+            fila.classList.toggle('is-ally', esAliado);
+            celda.classList.toggle('is-ally', esAliado);
             celda.textContent = etiqueta;
-            celda.title = 'Paso ' + pasoActual + ' de 13';
+            celda.title = esAliado
+                ? 'Convenio formalizado · Paso 13 de 13'
+                : 'Paso ' + pasoActual + ' de 13';
         };
 
         const filas = filasElementos.map(function (fila) {
@@ -518,9 +531,12 @@
                 const datos = await respuesta.json();
                 const titulo = String(datos?.flujo?.titulo || '').trim();
                 const pasoActual = Number(datos?.flujo?.paso_actual || 0);
+                const esAliado = Boolean(datos?.flujo?.contexto?.es_aliado);
                 const celda = item.fila.querySelector('[data-row-next-action]');
 
                 if (datos?.ok && datos?.flujo) {
+                    item.fila.dataset.ally = esAliado ? '1' : '0';
+
                     if (pasoActual > 0) {
                         item.fila.dataset.flowStep = String(pasoActual);
                         fijarEtapaRuta(item.fila, pasoActual, titulo);
@@ -530,15 +546,21 @@
                         item.fila.dataset.flowTitle = titulo;
                     }
 
-                    if (titulo !== '' && celda) {
-                        fijarAccionAutoritativa(celda, titulo);
+                    if (celda) {
+                        fijarAccionAutoritativa(
+                            celda,
+                            esAliado ? 'Sin acción pendiente' : titulo
+                        );
                     }
+
+                    normalizarSituacionFila(item.fila);
 
                     document.dispatchEvent(new CustomEvent('impe:flow-row-updated', {
                         detail: {
                             seguimientoId: item.seguimientoId,
                             pasoActual: pasoActual,
-                            titulo: titulo
+                            titulo: titulo,
+                            esAliado: esAliado
                         }
                     }));
                     aplicarFiltroRuta();
