@@ -839,12 +839,11 @@
                         encodeURIComponent(versionId)
                     : 'index.php?controller=seguimientoFlujo&action=archivoConvenio&seguimiento_id=' +
                         encodeURIComponent(idSeguimiento);
-                const botonVer = esPdf
-                    ? '<a class="btn btn-system-light" href="' + urlArchivo +
+                const botonVer =
+                    '<a class="btn btn-system-light" href="' + urlArchivo +
                         '&modo=ver" target="_blank" rel="noopener">' +
                             '<i class="bi bi-eye"></i><span>Ver</span>' +
-                        '</a>'
-                    : '';
+                        '</a>';
 
                 bloqueDocumento =
                     '<div class="linkage-expediente-convenio-document">' +
