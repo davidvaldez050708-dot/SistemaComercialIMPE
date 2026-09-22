@@ -540,18 +540,24 @@
 
             const principal = flujo.accion_principal || null;
             const etapa = texto(flujo.titulo, 'Seguimiento en curso');
-            const proxima = principal?.etiqueta
-                ? texto(principal.etiqueta)
-                : (etapa === 'Convenio formalizado' ? 'Sin acción pendiente' : etapa);
+            const esAliado = Boolean(flujo.contexto?.es_aliado);
+            const proxima = esAliado
+                ? 'Sin acción pendiente'
+                : (principal?.etiqueta ? texto(principal.etiqueta) : etapa);
             const paso = 'Paso ' + Number(flujo.paso_actual || 0) + ' de ' + Number(flujo.total_pasos || 13);
 
-            actualizarFilaResumen('etapa actual', 'Etapa actual', etapa);
+            actualizarFilaResumen(
+                'etapa actual',
+                esAliado ? 'Condición' : 'Etapa actual',
+                esAliado ? 'Aliado' : etapa
+            );
             actualizarFilaResumen('analista', 'Ruta de vinculación', paso);
             actualizarFilaResumen('proxima accion', 'Próxima acción', proxima);
 
             const badge = document.querySelector('.linkage-panel .linkage-state-pill');
             if (badge) {
-                badge.textContent = etapa;
+                badge.textContent = esAliado ? 'Aliado' : etapa;
+                badge.classList.toggle('is-ally', esAliado);
             }
 
             let tarjeta = seccionResumen.querySelector('[data-expediente-route-card]');
@@ -561,6 +567,7 @@
                 tarjeta.setAttribute('data-expediente-route-card', '');
                 seccionResumen.appendChild(tarjeta);
             }
+            tarjeta.classList.toggle('is-ally', esAliado);
 
             const ultima = datos?.ultima_interaccion || {};
             const ultimaCanal = humanizarCodigoActividad(
