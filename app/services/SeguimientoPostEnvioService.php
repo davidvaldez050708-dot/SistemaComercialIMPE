@@ -628,7 +628,14 @@ class SeguimientoPostEnvioService
                 'proxima_accion_at' => trim((string)($seguimiento['proxima_accion_at'] ?? '')),
                 'respuesta_tipo' => (string)($seguimiento['respuesta_tipo'] ?? ''),
                 'reunion_fecha' => (string)($seguimiento['reunion_fecha'] ?? ''),
-                'convenio_referencia' => (string)($seguimiento['convenio_referencia'] ?? '')
+                'convenio_referencia' => (string)($seguimiento['convenio_referencia'] ?? ''),
+                'convenio_fecha' => (string)($seguimiento['convenio_fecha'] ?? ''),
+                'convenio_formalizado_at' => (string)($seguimiento['convenio_formalizado_at'] ?? ''),
+                'es_aliado' => trim((string)($seguimiento['convenio_formalizado_at'] ?? '')) !== '',
+                'ruta_concluida' => trim((string)($seguimiento['convenio_formalizado_at'] ?? '')) !== '',
+                'situacion_comercial' => trim((string)($seguimiento['convenio_formalizado_at'] ?? '')) !== ''
+                    ? 'ALIADO'
+                    : 'EN_PROCESO'
             ]
         ];
     }
