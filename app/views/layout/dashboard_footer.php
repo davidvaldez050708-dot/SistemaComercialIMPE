@@ -161,6 +161,7 @@ $jsDashboardFooter = [
     'cambiar_password.js',
     'seguimiento_interacciones.js',
     'seguimiento_canales.js',
+    'seguimiento_correo_contacto.js',
     'oficios_vinculacion.js',
     'oficios_vista_previa.js',
     'oficios_correo.js',
