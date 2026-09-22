@@ -565,7 +565,7 @@ if (!empty($seguimientosSinMunicipio)) {
                         data-linkage-follow-row
                         data-ally="<?= $esAliado ? '1' : '0' ?>"
                         data-search="<?= $texto($textoBusquedaFila) ?>"
-                        data-stage="<?= $texto($seguimiento['estado_seguimiento'] ?? '') ?>"
+                        data-stage="<?= $texto($esAliado ? 'ALIADO' : ($seguimiento['estado_seguimiento'] ?? '')) ?>"
                         data-internal-stage="<?= $texto($seguimiento['estado_seguimiento'] ?? '') ?>"
                         data-municipality="<?= (int)($seguimiento['municipio_id'] ?? 0) ?>"
                         data-analyst="<?= (int)($seguimiento['analista_id'] ?? 0) ?>"
