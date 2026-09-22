@@ -50,21 +50,21 @@
             document.querySelectorAll('[data-work-follow]').forEach(function (boton) {
                 const fila = boton.closest('[data-linkage-follow-row]');
                 const esAliado = String(fila?.dataset.ally || '') === '1';
-                boton.title = esAliado ? 'Ver expediente del aliado' : 'Consultar seguimiento';
+                boton.title = esAliado ? 'Consultar aliado' : 'Consultar seguimiento';
                 boton.setAttribute(
                     'aria-label',
-                    esAliado ? 'Ver expediente del aliado' : 'Consultar seguimiento'
+                    esAliado ? 'Consultar aliado' : 'Consultar seguimiento'
                 );
 
                 const icono = boton.querySelector('i');
                 const texto = boton.querySelector('span');
 
                 if (icono) {
-                    icono.className = esAliado ? 'bi bi-folder2-open' : 'bi bi-eye';
+                    icono.className = 'bi bi-eye';
                 }
 
                 if (texto) {
-                    texto.textContent = esAliado ? 'Ver expediente' : 'Ver';
+                    texto.textContent = 'Ver';
                 }
             });
 
