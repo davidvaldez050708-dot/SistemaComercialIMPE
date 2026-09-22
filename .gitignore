@@ -33,6 +33,7 @@ tmp/
 
 # Firmas personales cargadas desde Mi perfil
 /storage/mail/firmas/*
+/storage/mail/temporales/
 /storage/mail/ecards/
 /storage/convenios/
 
