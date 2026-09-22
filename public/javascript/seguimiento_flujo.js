@@ -237,6 +237,7 @@
 
             const pasoActual = Number(flujo.paso_actual || 0);
             const tituloActual = String(flujo.titulo || 'Próxima acción');
+            const esAliado = Boolean(flujo.contexto?.es_aliado);
             const telefonoDisponible = String(
                 flujo.contexto?.telefono_disponible || ''
             ).trim();
@@ -263,6 +264,8 @@
             offcanvas.dataset.flowStep = String(pasoActual);
             offcanvas.dataset.flowTitle = tituloActual;
             offcanvas.dataset.flowSeguimientoId = String(Number(flujo.seguimiento_id || 0));
+            offcanvas.dataset.ally = esAliado ? '1' : '0';
+            bloque.classList.toggle('is-ally', esAliado);
             sincronizarBotonVerificacion(pasoActual);
 
             const contador = bloque.querySelector('[data-flow-step-count]');
@@ -293,6 +296,11 @@
 
             if (titulo) {
                 titulo.textContent = tituloActual;
+            }
+
+            const etiquetaActual = bloque.querySelector('.linkage-flow-current > span');
+            if (etiquetaActual) {
+                etiquetaActual.textContent = esAliado ? 'CIERRE DE RUTA' : 'PASO ACTUAL';
             }
 
             if (descripcion) {
@@ -359,9 +367,18 @@
                 );
             }
 
+            const proximaSeccion = offcanvas.querySelector('[data-work-next-section]');
+            const proximaEtiqueta = offcanvas.querySelector('[data-work-next-label]');
             const proximaAccion = offcanvas.querySelector('[data-work-next-action]');
-            if (proximaAccion && flujo.titulo) {
-                proximaAccion.textContent = flujo.titulo;
+
+            proximaSeccion?.classList.toggle('is-ally', esAliado);
+            if (proximaEtiqueta) {
+                proximaEtiqueta.textContent = esAliado ? 'CONDICIÓN' : 'PRÓXIMA ACCIÓN';
+            }
+            if (proximaAccion) {
+                proximaAccion.textContent = esAliado
+                    ? 'Aliado · Convenio formalizado'
+                    : tituloActual;
             }
 
             const botonTrabajo = document.querySelector(
@@ -369,22 +386,57 @@
             );
             const fila = botonTrabajo?.closest('[data-linkage-follow-row]');
             const proximaFila = fila?.querySelector('[data-row-next-action]');
+            const etapaFila = fila?.querySelector('[data-row-stage-label]');
 
             if (fila) {
                 fila.dataset.flowStep = String(pasoActual);
                 fila.dataset.flowTitle = tituloActual;
+                fila.dataset.ally = esAliado ? '1' : '0';
+                fila.classList.toggle('is-ally', esAliado);
             }
 
-            if (proximaFila && flujo.titulo) {
-                proximaFila.dataset.flowNextAction = String(flujo.titulo);
-                proximaFila.textContent = flujo.titulo;
+            if (etapaFila) {
+                etapaFila.classList.toggle('is-ally', esAliado);
+                if (esAliado) {
+                    etapaFila.textContent = 'Aliado';
+                    etapaFila.title = 'Convenio formalizado · Paso 13 de 13';
+                    fila.dataset.flowStageLabel = 'Aliado';
+                }
+            }
+
+            if (proximaFila) {
+                const textoFila = esAliado ? 'Sin acción pendiente' : tituloActual;
+                proximaFila.dataset.flowNextAction = textoFila;
+                proximaFila.textContent = textoFila;
+            }
+
+            if (botonTrabajo) {
+                botonTrabajo.classList.toggle('is-ally', esAliado);
+                botonTrabajo.title = esAliado
+                    ? 'Ver expediente del aliado'
+                    : 'Trabajar seguimiento';
+                botonTrabajo.setAttribute(
+                    'aria-label',
+                    esAliado ? 'Ver expediente del aliado' : 'Trabajar seguimiento'
+                );
+                const iconoTrabajo = botonTrabajo.querySelector('i');
+                const textoTrabajo = botonTrabajo.querySelector('span');
+                if (iconoTrabajo) {
+                    iconoTrabajo.className = esAliado
+                        ? 'bi bi-folder2-open'
+                        : 'bi bi-kanban';
+                }
+                if (textoTrabajo) {
+                    textoTrabajo.textContent = esAliado ? 'Ver expediente' : 'Trabajar';
+                }
             }
 
             document.dispatchEvent(new CustomEvent('impe:flow-updated', {
                 detail: {
                     seguimientoId: Number(flujo.seguimiento_id || 0),
                     pasoActual: pasoActual,
-                    titulo: tituloActual
+                    titulo: tituloActual,
+                    esAliado: esAliado
                 }
             }));
         };
