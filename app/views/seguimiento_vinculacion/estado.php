@@ -348,6 +348,22 @@ if (!empty($seguimientosSinMunicipio)) {
             <p class="metric-label">Convenio</p>
         </div>
     </article>
+
+    <article
+        class="metric-card linkage-summary-card linkage-summary-card-ally"
+        data-route-summary-card="aliados"
+        title="Instituciones con convenio formalizado y ruta del Analista concluida.">
+        <div class="metric-icon metric-icon-success">
+            <i class="bi bi-patch-check"></i>
+        </div>
+        <div>
+            <p
+                class="metric-value"
+                data-route-summary-count="aliados"
+                <?= !empty($resumenRutaInicial['completo']) ? 'data-route-summary-ready="1"' : '' ?>><?= (int)($resumenRutaInicial['aliados'] ?? 0) ?></p>
+            <p class="metric-label">Aliados</p>
+        </div>
+    </article>
 </section>
 
 <section class="dashboard-panel linkage-filters-panel">
@@ -529,18 +545,25 @@ if (!empty($seguimientosSinMunicipio)) {
                     $rutaPaso = (int)($seguimiento['ruta_paso'] ?? 0);
                     $rutaTitulo = trim((string)($seguimiento['ruta_titulo'] ?? ''));
                     $rutaEtapa = trim((string)($seguimiento['ruta_etapa_label'] ?? ''));
-                    $etapaFila = $rutaLista && $rutaEtapa !== ''
-                        ? $rutaEtapa
-                        : $etiquetaEstado($seguimiento['estado_seguimiento'] ?? '');
-                    $accionFila = $rutaLista && $rutaTitulo !== ''
-                        ? $rutaTitulo
-                        : $proximaAccionBandeja($seguimiento);
+                    $esAliado = (int)($seguimiento['es_aliado'] ?? 0) === 1;
+                    $etapaFila = $esAliado
+                        ? 'Aliado'
+                        : ($rutaLista && $rutaEtapa !== ''
+                            ? $rutaEtapa
+                            : $etiquetaEstado($seguimiento['estado_seguimiento'] ?? ''));
+                    $accionFila = $esAliado
+                        ? 'Sin acción pendiente'
+                        : ($rutaLista && $rutaTitulo !== ''
+                            ? $rutaTitulo
+                            : $proximaAccionBandeja($seguimiento));
                     $agendaFila = $descripcionProximaAccionFila(
                         $seguimiento['proxima_accion_at'] ?? ''
                     );
                     ?>
                     <tr
+                        class="<?= $esAliado ? 'is-ally' : '' ?>"
                         data-linkage-follow-row
+                        data-ally="<?= $esAliado ? '1' : '0' ?>"
                         data-search="<?= $texto($textoBusquedaFila) ?>"
                         data-stage="<?= $texto($seguimiento['estado_seguimiento'] ?? '') ?>"
                         data-internal-stage="<?= $texto($seguimiento['estado_seguimiento'] ?? '') ?>"
@@ -578,7 +601,7 @@ if (!empty($seguimientosSinMunicipio)) {
                         </td>
                         <td>
                             <span
-                                class="linkage-stage-badge"
+                                class="linkage-stage-badge <?= $esAliado ? 'is-ally' : '' ?>"
                                 data-row-stage-label
                                 <?= $rutaLista ? 'data-route-stage-ready="1"' : '' ?>
                                 <?= $rutaPaso > 0 ? 'title="Paso ' . $rutaPaso . ' de 13"' : '' ?>>
@@ -588,7 +611,7 @@ if (!empty($seguimientosSinMunicipio)) {
                         <td
                             data-row-next-action
                             <?= $rutaLista ? 'data-route-next-ready="1"' : '' ?>
-                            <?= $rutaTitulo !== '' ? 'data-flow-next-action="' . $texto($rutaTitulo) . '"' : '' ?>
+                            <?= $rutaTitulo !== '' ? 'data-flow-next-action="' . $texto($esAliado ? 'Sin acción pendiente' : $rutaTitulo) . '"' : '' ?>
                             <?= trim((string)($seguimiento['proxima_accion_at'] ?? '')) !== '' ? 'data-next-schedule-at="' . $texto($seguimiento['proxima_accion_at']) . '"' : '' ?>
                             <?= $agendaFila['texto'] !== '' ? 'data-next-schedule="' . $texto($agendaFila['texto']) . '"' : '' ?>
                             <?= $agendaFila['vencida'] ? 'data-next-overdue="1"' : '' ?>><?= $texto($accionFila) ?></td>
@@ -602,13 +625,13 @@ if (!empty($seguimientosSinMunicipio)) {
                             <div class="table-actions justify-content-end">
                                 <a
                                     href="<?= BASE_URL ?>index.php?controller=seguimientoVinculacion&action=detalle&id=<?= (int)$seguimiento['id'] ?>"
-                                    class="btn btn-system-light linkage-manage-button"
-                                    title="Trabajar seguimiento"
-                                    aria-label="Trabajar seguimiento"
+                                    class="btn btn-system-light linkage-manage-button <?= $esAliado ? 'is-ally' : '' ?>"
+                                    title="<?= $esAliado ? 'Ver expediente del aliado' : 'Trabajar seguimiento' ?>"
+                                    aria-label="<?= $esAliado ? 'Ver expediente del aliado' : 'Trabajar seguimiento' ?>"
                                     data-work-follow
                                     data-work-follow-id="<?= (int)$seguimiento['id'] ?>">
-                                    <i class="bi bi-kanban"></i>
-                                    <span>Trabajar</span>
+                                    <i class="bi <?= $esAliado ? 'bi-folder2-open' : 'bi-kanban' ?>"></i>
+                                    <span><?= $esAliado ? 'Ver expediente' : 'Trabajar' ?></span>
                                 </a>
                             </div>
                         </td>
@@ -979,7 +1002,7 @@ if (!empty($seguimientosSinMunicipio)) {
         <div class="linkage-candidate-alert d-none" data-work-alert></div>
 
         <section class="linkage-work-section linkage-work-next" data-work-next-section>
-            <span>PRÓXIMA ACCIÓN</span>
+            <span data-work-next-label>PRÓXIMA ACCIÓN</span>
             <strong data-work-next-action>—</strong>
         </section>
 
