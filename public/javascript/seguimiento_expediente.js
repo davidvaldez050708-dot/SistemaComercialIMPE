@@ -169,6 +169,20 @@
             return resultado + ' · ' + coincidencia[4] + ':' + coincidencia[5];
         };
 
+        const tamanoLegible = function (bytes) {
+            const total = Number(bytes || 0);
+
+            if (!Number.isFinite(total) || total <= 0) {
+                return '';
+            }
+
+            if (total < 1024 * 1024) {
+                return Math.max(1, Math.round(total / 1024)) + ' KB';
+            }
+
+            return (total / (1024 * 1024)).toFixed(1) + ' MB';
+        };
+
         const etiquetaModalidad = function (valor) {
             const mapa = {
                 VIRTUAL: 'Virtual',
@@ -775,6 +789,7 @@
         const renderizarConvenio = function (datos) {
             const post = datos?.post_envio || {};
             const flujo = datos?.flujo || {};
+            const documento = datos?.convenio_documento || null;
             const formalizado = texto(post.convenio_formalizado_at, '') !== '';
 
             if (!formalizado) {
@@ -794,6 +809,71 @@
                 return;
             }
 
+            let bloqueDocumento = '';
+
+            if (documento && texto(documento.nombre, '') !== '') {
+                const nombre = texto(documento.nombre, 'Convenio aprobado');
+                const mime = String(documento.mime || '').toLowerCase();
+                const esPdf = mime.includes('pdf') ||
+                    nombre.toLowerCase().endsWith('.pdf');
+                const extension = esPdf ? 'PDF' : 'DOCX';
+                const tamano = tamanoLegible(documento.tamano);
+                const fechaRecepcion = fechaLegible(
+                    documento.fecha_recepcion || documento.recibido_at,
+                    true
+                );
+                const metadatos = [
+                    'Versión ' + Math.max(1, Number(documento.version || 1)),
+                    extension,
+                    fechaRecepcion !== '—' ? 'Recibido ' + fechaRecepcion : '',
+                    tamano
+                ].filter(Boolean).join(' · ');
+                const versionId = Number(documento.id || 0);
+                const idSeguimiento = Number(
+                    documento.seguimiento_id ||
+                    datos?.seguimiento_id ||
+                    seguimientoId
+                );
+                const urlArchivo = versionId > 0
+                    ? 'index.php?controller=seguimientoFlujo&action=archivoConvenio&version_id=' +
+                        encodeURIComponent(versionId)
+                    : 'index.php?controller=seguimientoFlujo&action=archivoConvenio&seguimiento_id=' +
+                        encodeURIComponent(idSeguimiento);
+                const botonVer = esPdf
+                    ? '<a class="btn btn-system-light" href="' + urlArchivo +
+                        '&modo=ver" target="_blank" rel="noopener">' +
+                            '<i class="bi bi-eye"></i><span>Ver</span>' +
+                        '</a>'
+                    : '';
+
+                bloqueDocumento =
+                    '<div class="linkage-expediente-convenio-document">' +
+                        '<div class="linkage-expediente-convenio-document-heading">' +
+                            '<div>' +
+                                '<span class="linkage-expediente-eyebrow">Documento aprobado</span>' +
+                                '<h4>Convenio devuelto por la institución</h4>' +
+                                '<p>Versión revisada y aprobada que respalda la formalización del aliado.</p>' +
+                            '</div>' +
+                            '<span class="linkage-expediente-status is-success">Aprobado</span>' +
+                        '</div>' +
+                        '<div class="linkage-expediente-convenio-file">' +
+                            '<span class="linkage-expediente-convenio-file-icon">' +
+                                '<i class="bi ' + (esPdf ? 'bi-file-earmark-pdf' : 'bi-file-earmark-word') + '"></i>' +
+                            '</span>' +
+                            '<div class="linkage-expediente-convenio-file-info">' +
+                                '<strong title="' + escapar(nombre) + '">' + escapar(nombre) + '</strong>' +
+                                '<small>' + escapar(metadatos) + '</small>' +
+                            '</div>' +
+                            '<div class="linkage-expediente-convenio-file-actions">' +
+                                botonVer +
+                                '<a class="btn btn-system-light" href="' + urlArchivo + '&modo=descargar">' +
+                                    '<i class="bi bi-download"></i><span>Descargar</span>' +
+                                '</a>' +
+                            '</div>' +
+                        '</div>' +
+                    '</div>';
+            }
+
             paneles.convenio.innerHTML =
                 '<section class="dashboard-panel linkage-detail-panel linkage-expediente-module">' +
                     '<div class="linkage-expediente-module-heading">' +
@@ -809,6 +889,7 @@
                         dato('Registrado', fechaLegible(post.convenio_formalizado_at)) +
                         dato('Observaciones', post.convenio_notas, true) +
                     '</div>' +
+                    bloqueDocumento +
                 '</section>';
         };
 
