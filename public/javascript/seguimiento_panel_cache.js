@@ -283,7 +283,11 @@
             }
 
             const etapaEsperada = String(fila.dataset.flowStageLabel || '').trim();
-            const accionEsperada = String(fila.dataset.flowTitle || '').trim();
+            const accionEsperada = String(
+                fila.dataset.flowNextAction ||
+                fila.dataset.flowTitle ||
+                ''
+            ).trim();
             const etapa = fila.querySelector('[data-row-stage-label]');
             const accion = fila.querySelector('[data-row-next-action]');
             let cambio = false;
