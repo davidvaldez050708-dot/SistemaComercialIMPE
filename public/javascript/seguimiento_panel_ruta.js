@@ -48,24 +48,31 @@
             document.body.classList.add('impe-seguimiento-readonly');
 
             document.querySelectorAll('[data-work-follow]').forEach(function (boton) {
-                boton.title = 'Consultar seguimiento';
-                boton.setAttribute('aria-label', 'Consultar seguimiento');
+                const fila = boton.closest('[data-linkage-follow-row]');
+                const esAliado = String(fila?.dataset.ally || '') === '1';
+                boton.title = esAliado ? 'Ver expediente del aliado' : 'Consultar seguimiento';
+                boton.setAttribute(
+                    'aria-label',
+                    esAliado ? 'Ver expediente del aliado' : 'Consultar seguimiento'
+                );
 
                 const icono = boton.querySelector('i');
                 const texto = boton.querySelector('span');
 
                 if (icono) {
-                    icono.className = 'bi bi-eye';
+                    icono.className = esAliado ? 'bi bi-folder2-open' : 'bi bi-eye';
                 }
 
                 if (texto) {
-                    texto.textContent = 'Ver';
+                    texto.textContent = esAliado ? 'Ver expediente' : 'Ver';
                 }
             });
 
             const etiquetaPanel = offcanvas.querySelector('.linkage-work-header > div > span');
             if (etiquetaPanel) {
-                etiquetaPanel.textContent = 'Vista de seguimiento';
+                etiquetaPanel.textContent = String(offcanvas.dataset.ally || '') === '1'
+                    ? 'Expediente de aliado'
+                    : 'Vista de seguimiento';
             }
         };
 
@@ -77,6 +84,10 @@
 
             if (estadoInterno === 'DESCARTADO') {
                 return 'Descartado';
+            }
+
+            if (String(fila?.dataset.ally || '') === '1') {
+                return 'Aliado';
             }
 
             if (Number(pasoActual) === 12) {
@@ -120,8 +131,13 @@
                 fila.dataset.flowTitle = String(tituloFlujo).trim();
             }
 
+            const esAliado = String(fila.dataset.ally || '') === '1';
+            fila.classList.toggle('is-ally', esAliado);
+            etapa.classList.toggle('is-ally', esAliado);
             etapa.textContent = etiqueta;
-            etapa.title = 'Paso ' + Number(pasoActual) + ' de 13';
+            etapa.title = esAliado
+                ? 'Convenio formalizado · Paso 13 de 13'
+                : 'Paso ' + Number(pasoActual) + ' de 13';
             etapa.dataset.routeStageReady = '1';
         };
 
@@ -146,8 +162,12 @@
                 etapa.textContent = etiquetaAutoritativa;
 
                 const paso = Number(fila.dataset.flowStep || 0);
+                const esAliado = String(fila.dataset.ally || '') === '1';
+                etapa.classList.toggle('is-ally', esAliado);
                 if (paso > 0) {
-                    etapa.title = 'Paso ' + paso + ' de 13';
+                    etapa.title = esAliado
+                        ? 'Convenio formalizado · Paso 13 de 13'
+                        : 'Paso ' + paso + ' de 13';
                 }
                 etapa.dataset.routeStageReady = '1';
 
@@ -195,6 +215,11 @@
 
             if (!fila) {
                 return;
+            }
+
+            if (typeof detalle.esAliado === 'boolean') {
+                fila.dataset.ally = detalle.esAliado ? '1' : '0';
+                fila.classList.toggle('is-ally', detalle.esAliado);
             }
 
             protegerEtiquetaRuta(fila);
