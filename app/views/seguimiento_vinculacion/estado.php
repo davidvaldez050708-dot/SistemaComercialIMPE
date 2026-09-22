@@ -626,12 +626,12 @@ if (!empty($seguimientosSinMunicipio)) {
                                 <a
                                     href="<?= BASE_URL ?>index.php?controller=seguimientoVinculacion&action=detalle&id=<?= (int)$seguimiento['id'] ?>"
                                     class="btn btn-system-light linkage-manage-button <?= $esAliado ? 'is-ally' : '' ?>"
-                                    title="<?= $esAliado ? 'Ver expediente del aliado' : 'Trabajar seguimiento' ?>"
-                                    aria-label="<?= $esAliado ? 'Ver expediente del aliado' : 'Trabajar seguimiento' ?>"
+                                    title="<?= $esAliado ? 'Trabajar con aliado' : 'Trabajar seguimiento' ?>"
+                                    aria-label="<?= $esAliado ? 'Trabajar con aliado' : 'Trabajar seguimiento' ?>"
                                     data-work-follow
                                     data-work-follow-id="<?= (int)$seguimiento['id'] ?>">
-                                    <i class="bi <?= $esAliado ? 'bi-folder2-open' : 'bi-kanban' ?>"></i>
-                                    <span><?= $esAliado ? 'Ver expediente' : 'Trabajar' ?></span>
+                                    <i class="bi bi-kanban"></i>
+                                    <span>Trabajar</span>
                                 </a>
                             </div>
                         </td>
