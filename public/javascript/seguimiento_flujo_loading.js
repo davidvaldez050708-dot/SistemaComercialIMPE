@@ -384,7 +384,10 @@
 
             if (flujoResuelto) {
                 if (proximaAccion) {
-                    proximaAccion.textContent = tituloActual;
+                    proximaAccion.textContent =
+                        String(offcanvas.dataset.ally || '') === '1'
+                            ? 'Aliado · Convenio formalizado'
+                            : tituloActual;
                 }
                 limpiarPendiente();
                 return;
