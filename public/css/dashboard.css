@@ -6578,6 +6578,19 @@
     font-weight: 800;
 }
 
+.linkage-state-pill.is-ally {
+    gap: 5px;
+    border-color: rgba(8, 120, 102, 0.2);
+    background-color: #eaf7f3;
+    color: #087866;
+}
+
+.linkage-state-pill.is-ally::before {
+    content: "✓";
+    font-size: 10px;
+    font-weight: 900;
+}
+
 .linkage-summary-grid {
     grid-template-columns: repeat(5, minmax(0, 1fr));
     margin-bottom: 14px;
