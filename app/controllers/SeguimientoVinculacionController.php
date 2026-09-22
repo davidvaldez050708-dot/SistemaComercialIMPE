@@ -1935,14 +1935,17 @@ class SeguimientoVinculacionController
 
             $pasoActual = (int)($flujo['paso_actual'] ?? 0);
             $titulo = trim((string)($flujo['titulo'] ?? ''));
+            $esAliado = !empty($flujo['contexto']['es_aliado']);
 
             $seguimientos[$indice]['ruta_paso'] = $pasoActual;
             $seguimientos[$indice]['ruta_titulo'] = $titulo;
+            $seguimientos[$indice]['es_aliado'] = $esAliado ? 1 : 0;
             $seguimientos[$indice]['ruta_etapa_label'] =
                 $this->etiquetarEtapaRutaInicial(
                     $pasoActual,
                     $titulo,
-                    (string)($seguimiento['estado_seguimiento'] ?? '')
+                    (string)($seguimiento['estado_seguimiento'] ?? ''),
+                    $esAliado
                 );
             $seguimientos[$indice]['ruta_lista'] = 1;
             $rutas[$seguimientoId] = $flujo;
@@ -1961,6 +1964,7 @@ class SeguimientoVinculacionController
             'gestion_previa' => 0,
             'reuniones_acuerdos' => 0,
             'convenio' => 0,
+            'aliados' => 0,
             'completo' => true
         ];
 
@@ -1971,13 +1975,20 @@ class SeguimientoVinculacionController
                 continue;
             }
 
-            $conteos['en_seguimiento']++;
+            $esAliado = (int)($seguimiento['es_aliado'] ?? 0) === 1;
             $paso = (int)($seguimiento['ruta_paso'] ?? 0);
 
             if ($paso < 1 || $paso > 13) {
                 $conteos['completo'] = false;
                 continue;
             }
+
+            if ($esAliado) {
+                $conteos['aliados']++;
+                continue;
+            }
+
+            $conteos['en_seguimiento']++;
 
             if ($paso <= 10) {
                 $conteos['gestion_previa']++;
@@ -1991,7 +2002,7 @@ class SeguimientoVinculacionController
         return $conteos;
     }
 
-    private function etiquetarEtapaRutaInicial($pasoActual, $tituloFlujo, $estadoInterno)
+    private function etiquetarEtapaRutaInicial($pasoActual, $tituloFlujo, $estadoInterno, $esAliado = false)
     {
         $estadoInterno = strtoupper(trim((string)$estadoInterno));
         $titulo = function_exists('mb_strtolower')
@@ -2000,6 +2011,10 @@ class SeguimientoVinculacionController
 
         if ($estadoInterno === 'DESCARTADO') {
             return 'Descartado';
+        }
+
+        if ($esAliado) {
+            return 'Aliado';
         }
 
         if ((int)$pasoActual === 12) {
