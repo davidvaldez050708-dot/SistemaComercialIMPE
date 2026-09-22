@@ -107,6 +107,10 @@
             return 'Descartado';
         }
 
+        if (String(fila?.dataset.ally || '') === '1') {
+            return 'Aliado';
+        }
+
         if (Number(pasoActual) === 12) {
             if (titulo.includes('programad')) {
                 return 'Reunión programada';
@@ -172,9 +176,13 @@
 
         const pasoActual = Number(flujo.paso_actual || 0);
         const titulo = String(flujo.titulo || '').trim();
+        const esAliado = Boolean(flujo.contexto?.es_aliado);
         const etapa = fila.querySelector('[data-row-stage-label]');
         const proxima = fila.querySelector('[data-row-next-action]');
         let cambio = false;
+
+        fila.dataset.ally = esAliado ? '1' : '0';
+        fila.classList.toggle('is-ally', esAliado);
 
         if (pasoActual > 0) {
             if (String(fila.dataset.flowStep || '') !== String(pasoActual)) {
@@ -185,11 +193,14 @@
             const etiqueta = etiquetaEtapa(pasoActual, titulo, fila);
             if (etapa && etiqueta !== '') {
                 fila.dataset.flowStageLabel = etiqueta;
+                etapa.classList.toggle('is-ally', esAliado);
                 if (String(etapa.textContent || '').trim() !== etiqueta) {
                     etapa.textContent = etiqueta;
                     cambio = true;
                 }
-                etapa.title = 'Paso ' + pasoActual + ' de 13';
+                etapa.title = esAliado
+                    ? 'Convenio formalizado · Paso 13 de 13'
+                    : 'Paso ' + pasoActual + ' de 13';
                 etapa.dataset.routeStageReady = '1';
             }
         }
@@ -201,12 +212,30 @@
             }
 
             if (proxima) {
-                proxima.dataset.flowNextAction = titulo;
-                if (String(proxima.textContent || '').trim() !== titulo) {
-                    proxima.textContent = titulo;
+                const siguienteTexto = esAliado ? 'Sin acción pendiente' : titulo;
+                proxima.dataset.flowNextAction = siguienteTexto;
+                if (String(proxima.textContent || '').trim() !== siguienteTexto) {
+                    proxima.textContent = siguienteTexto;
                     cambio = true;
                 }
                 proxima.dataset.routeNextReady = '1';
+            }
+        }
+
+        if (boton) {
+            boton.classList.toggle('is-ally', esAliado);
+            boton.title = esAliado ? 'Ver expediente del aliado' : 'Trabajar seguimiento';
+            boton.setAttribute(
+                'aria-label',
+                esAliado ? 'Ver expediente del aliado' : 'Trabajar seguimiento'
+            );
+            const icono = boton.querySelector('i');
+            const textoBoton = boton.querySelector('span');
+            if (icono) {
+                icono.className = esAliado ? 'bi bi-folder2-open' : 'bi bi-kanban';
+            }
+            if (textoBoton) {
+                textoBoton.textContent = esAliado ? 'Ver expediente' : 'Trabajar';
             }
         }
 
@@ -215,7 +244,8 @@
                 detail: {
                     seguimientoId: seguimientoId,
                     pasoActual: pasoActual,
-                    titulo: titulo
+                    titulo: titulo,
+                    esAliado: esAliado
                 }
             }));
         }
@@ -332,6 +362,7 @@
         const pasoActual = Number(flujo.paso_actual || 0);
         const totalPasos = Number(flujo.total_pasos || 13);
         const titulo = String(flujo.titulo || 'Próxima acción');
+        const esAliado = Boolean(flujo.contexto?.es_aliado);
         const telefonoDisponible = String(flujo.contexto?.telefono_disponible || '').trim();
         let accionPrincipal = flujo.accion_principal;
         let accionSecundaria = flujo.accion_secundaria;
@@ -350,9 +381,11 @@
         }
 
         bloque.classList.remove('d-none');
+        bloque.classList.toggle('is-ally', esAliado);
         offcanvas.dataset.flowStep = String(pasoActual);
         offcanvas.dataset.flowTitle = titulo;
         offcanvas.dataset.flowSeguimientoId = String(seguimientoId);
+        offcanvas.dataset.ally = esAliado ? '1' : '0';
         sincronizarBotonVerificacion(offcanvas, pasoActual);
 
         const contador = bloque.querySelector('[data-flow-step-count]');
@@ -377,6 +410,10 @@
         }
         if (tituloElemento) {
             tituloElemento.textContent = titulo;
+        }
+        const etiquetaActual = bloque.querySelector('.linkage-flow-current > span');
+        if (etiquetaActual) {
+            etiquetaActual.textContent = esAliado ? 'CIERRE DE RUTA' : 'PASO ACTUAL';
         }
         if (descripcion) {
             descripcion.textContent = String(flujo.descripcion || '');
@@ -405,9 +442,17 @@
             );
         }
 
+        const proximaSeccion = offcanvas.querySelector('[data-work-next-section]');
+        const proximaEtiqueta = offcanvas.querySelector('[data-work-next-label]');
         const proximaAccion = offcanvas.querySelector('[data-work-next-action]');
+        proximaSeccion?.classList.toggle('is-ally', esAliado);
+        if (proximaEtiqueta) {
+            proximaEtiqueta.textContent = esAliado ? 'CONDICIÓN' : 'PRÓXIMA ACCIÓN';
+        }
         if (proximaAccion) {
-            proximaAccion.textContent = titulo;
+            proximaAccion.textContent = esAliado
+                ? 'Aliado · Convenio formalizado'
+                : titulo;
         }
 
         offcanvas.removeAttribute('data-flow-ui-pending');
@@ -420,7 +465,8 @@
                 detail: {
                     seguimientoId: seguimientoId,
                     pasoActual: pasoActual,
-                    titulo: titulo
+                    titulo: titulo,
+                    esAliado: esAliado
                 }
             }));
         }
