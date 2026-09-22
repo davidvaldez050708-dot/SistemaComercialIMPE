@@ -305,6 +305,125 @@
     text-decoration: underline;
 }
 
+
+.linkage-expediente-convenio-document {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid #e1e7ef;
+}
+
+.linkage-expediente-convenio-document-heading {
+    margin-bottom: 10px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+}
+
+.linkage-expediente-convenio-document-heading > div {
+    min-width: 0;
+}
+
+.linkage-expediente-convenio-document-heading h4 {
+    margin: 3px 0 0;
+    color: var(--color-text-primary);
+    font-size: 13.5px;
+    font-weight: 800;
+    line-height: 1.35;
+}
+
+.linkage-expediente-convenio-document-heading p {
+    margin: 3px 0 0;
+    color: var(--color-text-secondary);
+    font-size: 10.5px;
+    font-weight: 600;
+    line-height: 1.45;
+}
+
+.linkage-expediente-convenio-file {
+    min-width: 0;
+    padding: 11px 12px;
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: center;
+    border: 1px solid #dfe6ef;
+    border-radius: 11px;
+    background: #fbfcfe;
+}
+
+.linkage-expediente-convenio-file-icon {
+    width: 40px;
+    height: 40px;
+    display: inline-grid;
+    place-items: center;
+    border-radius: 10px;
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
+    font-size: 17px;
+}
+
+.linkage-expediente-convenio-file-info {
+    min-width: 0;
+}
+
+.linkage-expediente-convenio-file-info strong {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    color: var(--color-text-primary);
+    font-size: 11.5px;
+    font-weight: 800;
+    line-height: 1.35;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.linkage-expediente-convenio-file-info small {
+    display: block;
+    margin-top: 3px;
+    color: var(--color-text-secondary);
+    font-size: 9.8px;
+    font-weight: 650;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+}
+
+.linkage-expediente-convenio-file-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+}
+
+.linkage-expediente-convenio-file-actions .btn {
+    min-height: 34px;
+    padding: 6px 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    border-radius: 8px;
+    font-size: 10px;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+@media (max-width: 767.98px) {
+    .linkage-expediente-convenio-file {
+        grid-template-columns: 40px minmax(0, 1fr);
+    }
+
+    .linkage-expediente-convenio-file-actions {
+        grid-column: 1 / -1;
+        justify-content: stretch;
+    }
+
+    .linkage-expediente-convenio-file-actions .btn {
+        flex: 1 1 auto;
+    }
+}
+
 .linkage-expediente-mini-timeline {
     margin-top: 14px;
     padding: 12px 13px;
