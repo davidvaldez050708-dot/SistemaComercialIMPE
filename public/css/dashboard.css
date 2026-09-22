@@ -6922,6 +6922,18 @@
     white-space: nowrap;
 }
 
+
+.linkage-work-offcanvas[data-ally="1"] [data-work-contact-action],
+.linkage-work-offcanvas[data-ally="1"] [data-work-verify-row],
+.linkage-work-offcanvas[data-ally="1"] [data-work-contact-actions-section],
+.linkage-work-offcanvas[data-ally="1"] [data-work-interaction-section] {
+    display: none !important;
+}
+
+.linkage-work-offcanvas[data-ally="1"] .linkage-work-header > div > span {
+    color: #087866;
+}
+
 .linkage-work-offcanvas {
     width: min(500px, calc(100vw - 18px));
     max-width: 100vw;
