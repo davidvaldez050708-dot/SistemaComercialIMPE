@@ -15,7 +15,7 @@
             document.querySelectorAll('[data-linkage-follow-row]')
         );
 
-        if (tarjetas.length < 4) {
+        if (tarjetas.length < 5) {
             return;
         }
 
@@ -42,7 +42,13 @@
                 clave: 'convenio',
                 etiqueta: 'Convenio',
                 icono: 'bi-file-earmark-check',
-                ayuda: 'Instituciones en el paso 13 de la ruta.'
+                ayuda: 'Instituciones en el paso 13 que todavía no han concluido la formalización.'
+            },
+            {
+                clave: 'aliados',
+                etiqueta: 'Aliados',
+                icono: 'bi-patch-check',
+                ayuda: 'Instituciones con convenio formalizado y ruta del Analista concluida.'
             }
         ];
 
@@ -90,11 +96,18 @@
                 estadoInternoFila(fila) === 'DESCARTADO';
         };
 
+        const esAliado = function (fila) {
+            return String(fila?.dataset.ally || '') === '1';
+        };
+
         const recalcular = function (permitirParcial) {
-            const activas = filas.filter(function (fila) {
+            const validas = filas.filter(function (fila) {
                 return !estaDescartada(fila);
             });
-            const resueltas = activas.filter(function (fila) {
+            const activas = validas.filter(function (fila) {
+                return !esAliado(fila);
+            });
+            const resueltas = validas.filter(function (fila) {
                 const paso = Number(fila.dataset.flowStep || 0);
                 return paso >= 1 && paso <= 13;
             });
@@ -104,8 +117,8 @@
                 total.textContent = String(activas.length);
             }
 
-            if (!permitirParcial && resueltas.length < activas.length) {
-                ['gestion_previa', 'reuniones_acuerdos', 'convenio'].forEach(function (clave) {
+            if (!permitirParcial && resueltas.length < validas.length) {
+                ['gestion_previa', 'reuniones_acuerdos', 'convenio', 'aliados'].forEach(function (clave) {
                     const elemento = valorMetrica(clave);
                     if (elemento) {
                         elemento.textContent = '…';
@@ -117,11 +130,17 @@
             const conteos = {
                 gestion_previa: 0,
                 reuniones_acuerdos: 0,
-                convenio: 0
+                convenio: 0,
+                aliados: 0
             };
 
             resueltas.forEach(function (fila) {
                 const paso = Number(fila.dataset.flowStep || 0);
+
+                if (esAliado(fila)) {
+                    conteos.aliados += 1;
+                    return;
+                }
 
                 if (paso >= 1 && paso <= 10) {
                     conteos.gestion_previa += 1;
