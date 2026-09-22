@@ -335,6 +335,51 @@
     font-weight: 700;
 }
 
+
+[data-work-flow-section].is-ally {
+    border-color: rgba(8, 120, 102, 0.22);
+    background: linear-gradient(180deg, #ffffff 0%, #fbfefd 100%);
+}
+
+[data-work-flow-section].is-ally .linkage-flow-step-count {
+    background-color: #eaf7f3;
+    color: #087866;
+}
+
+[data-work-flow-section].is-ally .linkage-flow-progress > span {
+    background-color: #0a8f7a;
+}
+
+[data-work-flow-section].is-ally .linkage-flow-node.is-current {
+    border-color: rgba(8, 120, 102, 0.22);
+    background-color: #eaf7f3;
+}
+
+[data-work-flow-section].is-ally .linkage-flow-node.is-current span,
+[data-work-flow-section].is-ally .linkage-flow-node.is-current strong {
+    color: #087866;
+}
+
+[data-work-flow-section].is-ally .linkage-flow-current {
+    border-color: rgba(8, 120, 102, 0.2);
+    background-color: #f4fbf8;
+}
+
+[data-work-flow-section].is-ally .linkage-flow-current > span,
+[data-work-flow-section].is-ally .linkage-flow-current h4 {
+    color: #087866;
+}
+
+.linkage-work-next.is-ally {
+    border-color: rgba(8, 120, 102, 0.2);
+    background-color: #f4fbf8;
+}
+
+.linkage-work-next.is-ally > span,
+.linkage-work-next.is-ally > strong {
+    color: #087866;
+}
+
 @media (max-width: 480px) {
     .linkage-flow-window {
         grid-template-columns: 1fr;
