@@ -6937,10 +6937,19 @@
 
 
 .linkage-work-offcanvas[data-ally="1"] [data-work-contact-action],
-.linkage-work-offcanvas[data-ally="1"] [data-work-verify-row],
-.linkage-work-offcanvas[data-ally="1"] [data-work-contact-actions-section],
-.linkage-work-offcanvas[data-ally="1"] [data-work-interaction-section] {
+.linkage-work-offcanvas[data-ally="1"] [data-work-verify-row] {
     display: none !important;
+}
+
+.linkage-work-offcanvas[data-ally="1"] [data-work-contact-actions-section] h3 {
+    color: #087866;
+}
+
+.linkage-work-offcanvas[data-ally="1"] [data-work-contact-actions-section] h3::after {
+    content: " · Actividad con el aliado";
+    color: var(--color-text-secondary);
+    font-size: 10px;
+    font-weight: 700;
 }
 
 .linkage-work-offcanvas[data-ally="1"] .linkage-work-header > div > span {
