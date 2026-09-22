@@ -5,6 +5,7 @@ require_once __DIR__ . '/../models/DataTerritorialModel.php';
 require_once __DIR__ . '/../helpers/PermissionHelper.php';
 require_once __DIR__ . '/../services/DenueService.php';
 require_once __DIR__ . '/../services/SeguimientoRutaOperativaService.php';
+require_once __DIR__ . '/../services/SeguimientoCorreoContactoService.php';
 
 class SeguimientoVinculacionController
 {
@@ -564,6 +565,121 @@ class SeguimientoVinculacionController
                 'index.php?controller=seguimientoVinculacion&action=detalle&id=' .
                 $seguimientoId
         ]);
+    }
+
+    public function borradorCorreoTrabajo()
+    {
+        $this->validarPermisoJson('seguimientos_vinculacion.ver');
+
+        $modelo = new SeguimientoVinculacionModel();
+        $usuarioId = $this->obtenerUsuarioActualId();
+        $modoSeguimiento = $this->resolverModoSeguimiento();
+        $seguimientoId = (int)($_GET['id'] ?? $_GET['seguimiento_id'] ?? 0);
+        $seguimiento = $this->obtenerSeguimientoPorModo(
+            $modelo,
+            $usuarioId,
+            $seguimientoId,
+            $modoSeguimiento
+        );
+
+        if (
+            !$seguimiento ||
+            !$this->puedeOperarSeguimiento(
+                $seguimiento,
+                $usuarioId,
+                $modoSeguimiento
+            )
+        ) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'Esta acción está disponible para el Analista responsable.'
+            ], 403);
+        }
+
+        if ($this->seguimientoEstaDescartado($seguimiento)) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'El seguimiento está descartado y solo puede consultarse.'
+            ], 422);
+        }
+
+        $service = new SeguimientoCorreoContactoService();
+        $resultado = $service->obtenerBorrador($seguimientoId, $usuarioId);
+        $codigo = (int)($resultado['codigo_http'] ?? 200);
+        unset($resultado['codigo_http']);
+
+        $this->responderJson($resultado, $codigo);
+    }
+
+    public function enviarCorreoTrabajo()
+    {
+        $this->validarMetodoPostJson();
+        $this->validarPermisoJson('seguimientos_vinculacion.ver');
+
+        $modelo = new SeguimientoVinculacionModel();
+        $usuarioId = $this->obtenerUsuarioActualId();
+        $modoSeguimiento = $this->resolverModoSeguimiento();
+        $seguimientoId = (int)($_POST['seguimiento_id'] ?? 0);
+        $seguimiento = $this->obtenerSeguimientoPorModo(
+            $modelo,
+            $usuarioId,
+            $seguimientoId,
+            $modoSeguimiento
+        );
+
+        if (
+            !$seguimiento ||
+            !$this->puedeOperarSeguimiento(
+                $seguimiento,
+                $usuarioId,
+                $modoSeguimiento
+            )
+        ) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'Esta acción está disponible para el Analista responsable.'
+            ], 403);
+        }
+
+        if ($this->seguimientoEstaDescartado($seguimiento)) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'El seguimiento está descartado y solo puede consultarse.'
+            ], 422);
+        }
+
+        $service = new SeguimientoCorreoContactoService();
+        $resultado = $service->enviar(
+            $seguimientoId,
+            $usuarioId,
+            $_POST['asunto'] ?? '',
+            $_POST['cuerpo'] ?? '',
+            $_FILES['adjuntos'] ?? null
+        );
+        $codigo = (int)($resultado['codigo_http'] ?? 200);
+        unset($resultado['codigo_http']);
+
+        if (!($resultado['ok'] ?? false)) {
+            $this->responderJson($resultado, $codigo);
+        }
+
+        $seguimientoActualizado = $this->obtenerSeguimientoPorModo(
+            $modelo,
+            $usuarioId,
+            $seguimientoId,
+            $modoSeguimiento
+        );
+
+        $resultado['seguimiento'] = $this->serializarSeguimientoTrabajoConPermisos(
+            $seguimientoActualizado,
+            $usuarioId,
+            $modoSeguimiento
+        );
+        $resultado['interacciones'] = $this->serializarInteraccionesTrabajo(
+            $modelo->obtenerUltimasInteraccionesSeguimiento($seguimientoId, 3)
+        );
+
+        $this->responderJson($resultado, 200);
     }
 
     public function actualizarContactoTrabajo()
