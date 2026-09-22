@@ -1128,6 +1128,14 @@
     font-weight: 800;
 }
 
+#modalCorreoContacto .modal-footer > span {
+    max-width: 360px;
+    color: var(--color-text-secondary) !important;
+    font-size: 10.5px !important;
+    font-weight: 600;
+    line-height: 1.35;
+}
+
 @media (max-width: 767.98px) {
     #modalCorreoContacto .modal-dialog {
         width: calc(100vw - 16px);
