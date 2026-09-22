@@ -6579,7 +6579,17 @@
 }
 
 .linkage-summary-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     margin-bottom: 14px;
+}
+
+.linkage-summary-card-ally {
+    border-color: rgba(8, 120, 102, 0.18);
+    background-color: #f4fbf8;
+}
+
+.linkage-summary-card-ally .metric-value {
+    color: #087866;
 }
 
 .linkage-summary-card {
@@ -6859,6 +6869,43 @@
     border: 1px solid #d8e4f5;
     background-color: var(--color-primary-soft);
     color: var(--color-primary);
+}
+
+.linkage-stage-badge.is-ally {
+    gap: 5px;
+    border-color: rgba(8, 120, 102, 0.2);
+    background-color: #eaf7f3;
+    color: #087866;
+}
+
+.linkage-stage-badge.is-ally::before {
+    content: "✓";
+    font-size: 10px;
+    font-weight: 900;
+}
+
+.linkage-table tbody tr.is-ally > td {
+    background-color: #fbfefd;
+}
+
+.linkage-table tbody tr.is-ally > td:first-child {
+    box-shadow: inset 4px 0 0 #0a8f7a;
+}
+
+.linkage-table tbody tr.is-ally:hover > td {
+    background-color: #f4fbf8;
+}
+
+.linkage-manage-button.is-ally {
+    border-color: rgba(8, 120, 102, 0.2);
+    background-color: #ffffff;
+    color: #087866;
+}
+
+.linkage-manage-button.is-ally:hover {
+    border-color: rgba(8, 120, 102, 0.34);
+    background-color: #eaf7f3;
+    color: #07695a;
 }
 
 .linkage-manage-button {
@@ -7719,6 +7766,10 @@
 }
 
 @media (max-width: 1199.98px) {
+    .linkage-summary-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
     .linkage-territory-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
