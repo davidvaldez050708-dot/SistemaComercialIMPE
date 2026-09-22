@@ -1137,6 +1137,10 @@ if (!empty($seguimientosSinMunicipio)) {
                     <i class="bi bi-whatsapp"></i>
                     WhatsApp
                 </button>
+                <button type="button" class="btn btn-system-light" disabled title="Captura un correo válido para habilitar esta acción." data-work-email-button>
+                    <i class="bi bi-envelope"></i>
+                    Correo
+                </button>
             </div>
         </section>
 
@@ -1746,8 +1750,24 @@ document.addEventListener('DOMContentLoaded', function () {
             botonWhatsapp.title = seguimientoDescartado
                 ? 'El seguimiento está descartado'
                 : (seguimiento.whatsapp_verificado
-                ? 'Integración pendiente. WhatsApp: ' + seguimiento.whatsapp_verificado
+                ? 'Abrir WhatsApp con ' + seguimiento.whatsapp_verificado
                 : 'Captura un WhatsApp verificado para habilitar esta acción.');
+        }
+
+        const botonCorreo = document.querySelector('[data-work-email-button]');
+        const correoDisponible = seguimiento.correo_verificado || seguimiento.correo_fuente || '';
+        if (botonCorreo) {
+            botonCorreo.disabled =
+                seguimientoDescartado ||
+                !puedeOperar ||
+                !correoDisponible;
+            botonCorreo.title = seguimientoDescartado
+                ? 'El seguimiento está descartado'
+                : (!puedeOperar
+                    ? 'Acción disponible para el Analista responsable'
+                    : (correoDisponible
+                        ? 'Enviar correo a ' + correoDisponible
+                        : 'Captura un correo válido para habilitar esta acción.'));
         }
 
         const expediente = document.querySelector('[data-work-expedient]');
