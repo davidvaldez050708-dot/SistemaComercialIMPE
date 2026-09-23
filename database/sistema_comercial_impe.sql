@@ -4408,6 +4408,21 @@ INSERT INTO `usuarios` (`id`, `nombre`, `apellidos`, `telefono`, `foto_perfil`, 
 -- Índices para tablas volcadas
 --
 
+CREATE TABLE IF NOT EXISTS convocatorias (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    titulo VARCHAR(255) NOT NULL,
+    imagen VARCHAR(500) NOT NULL,
+    fecha_inicio DATE NOT NULL,
+    fecha_fin DATE NOT NULL,
+    estatus TINYINT(1) NOT NULL DEFAULT 1,
+    usuario_id INT UNSIGNED NULL,
+    fecha_creacion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    fecha_modificacion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB
+DEFAULT CHARSET=utf8mb4
+COLLATE=utf8mb4_unicode_ci;
+
 --
 -- Indices de la tabla `actividad_economica_estado`
 --
