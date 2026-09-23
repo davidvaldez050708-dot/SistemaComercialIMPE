@@ -205,7 +205,12 @@ class AgendaReunionController
 
     public function marcarCorreoEnviado()
     {
-        $this->procesarAccion('marcarCorreoEnviado');
+        header('Content-Type: application/json; charset=utf-8');
+
+        $this->responder([
+            'ok' => false,
+            'mensaje' => 'El correo de reunión debe enviarse desde el flujo de correo institucional. Actualiza la página e inténtalo nuevamente.'
+        ], 409);
     }
 
     public function solicitarReprogramacion()
@@ -230,7 +235,12 @@ class AgendaReunionController
 
     public function marcarCorreoReprogramacionEnviado()
     {
-        $this->procesarReprogramacion('marcarCorreoAnalista');
+        header('Content-Type: application/json; charset=utf-8');
+
+        $this->responder([
+            'ok' => false,
+            'mensaje' => 'El correo de reprogramación debe enviarse desde el flujo de correo institucional. Actualiza la página e inténtalo nuevamente.'
+        ], 409);
     }
 
     private function procesarAccion($metodo)
