@@ -51,11 +51,11 @@ class InteraccionRutaService
         $resultados = [
             'SIN_RESPUESTA' => 'SIN_RESPUESTA',
             'NUMERO_INCORRECTO' => 'NUMERO_INCORRECTO',
-            'CONTACTO_INCORRECTO' => 'OCUPADO',
+            'CONTACTO_INCORRECTO' => 'CONTACTO_INCORRECTO',
             'CONTACTO_CORRECTO' => 'CONTACTADO',
-            'SOLICITO_INFORMACION' => 'MENSAJE_ENVIADO',
+            'SOLICITO_INFORMACION' => 'SOLICITO_INFORMACION',
             'SOLICITO_LLAMAR_DESPUES' => 'SOLICITO_LLAMAR_DESPUES',
-            'NO_INTERESADO' => 'OTRO',
+            'NO_INTERESADO' => 'NO_INTERESADO',
             'OTRO' => 'OTRO'
         ];
         $resultado = $resultados[$resultadoFormulario] ?? '';
@@ -66,10 +66,18 @@ class InteraccionRutaService
 
         $personaAtendio = trim((string)($datos['persona_atendio'] ?? ''));
         $observacion = trim((string)($datos['observacion'] ?? ''));
-        $fechaInicio = $this->normalizarFechaHora($datos['fecha_inicio'] ?? '');
+        $fechaOriginal = trim((string)($datos['fecha_inicio'] ?? ''));
+        $fechaInicio = $this->normalizarFechaHora($fechaOriginal);
 
-        if ($fechaInicio === null) {
+        if ($fechaOriginal === '') {
             $fechaInicio = date('Y-m-d H:i:s');
+        } elseif ($fechaInicio === null) {
+            return $this->error('La fecha de interacción no es válida.', 422);
+        }
+
+        $fechaInicioTs = strtotime((string)$fechaInicio);
+        if ($fechaInicioTs === false || $fechaInicioTs > (time() + 60)) {
+            return $this->error('La fecha de interacción no puede estar en el futuro.', 422);
         }
 
         $notas = trim(implode("\n", array_filter([
