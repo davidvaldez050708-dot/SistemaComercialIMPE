@@ -143,8 +143,19 @@
                 (descargar ? '&descargar=1' : '');
         };
 
-        const urlVistaReal = function (seguimientoId) {
-            return urlVistaDocumento +
+        const nombreVistaOficio = function (estadoPdf) {
+            const folio = String(estadoPdf?.folio || '').trim();
+            const base = folio
+                .replace(/[^A-Za-z0-9_-]+/g, '_')
+                .replace(/^_+|_+$/g, '');
+
+            return 'Oficio_' + (base || 'REDMEX') + '.pdf';
+        };
+
+        const urlVistaReal = function (seguimientoId, estadoPdf) {
+            const nombre = encodeURIComponent(nombreVistaOficio(estadoPdf));
+
+            return urlVistaDocumento + '/' + nombre +
                 '?seguimiento_id=' + encodeURIComponent(seguimientoId) +
                 '&v=' + Date.now();
         };
@@ -165,7 +176,7 @@
                 return;
             }
 
-            frame.src = urlVistaReal(seguimientoId);
+            frame.src = urlVistaReal(seguimientoId, estadoPdf);
         };
 
         const configurarModalPdf = function (modal, estadoPdf, seguimientoId) {
