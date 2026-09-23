@@ -159,6 +159,16 @@ class AgendaReunionRepository
         $cuentaClaveId,
         $excluirReunionId = 0
     ) {
+        $inicioTs = strtotime((string)$fecha);
+        if ($inicioTs === false) {
+            return null;
+        }
+
+        $fechaFin = date(
+            'Y-m-d H:i:s',
+            $inicioTs + (max(1, (int)$duracion) * 60)
+        );
+
         $sql = "SELECT
                     r.id,
                     r.analista_id,
@@ -171,7 +181,7 @@ class AgendaReunionRepository
                     ON s.id = r.seguimiento_id
                 WHERE r.estado IN ('SOLICITADA','CONFIRMADA','CORREO_ENVIADO')
                   AND r.id <> ?
-                  AND r.fecha_propuesta < DATE_ADD(?, INTERVAL ? MINUTE)
+                  AND r.fecha_propuesta < ?
                   AND DATE_ADD(
                         r.fecha_propuesta,
                         INTERVAL r.duracion_minutos MINUTE
@@ -184,10 +194,9 @@ class AgendaReunionRepository
                 LIMIT 1";
         $stmt = $this->connection->prepare($sql);
         $stmt->bind_param(
-            'isisiii',
+            'issiii',
             $excluirReunionId,
-            $fecha,
-            $duracion,
+            $fechaFin,
             $fecha,
             $analistaId,
             $cuentaClaveId,
