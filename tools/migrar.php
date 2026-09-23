@@ -84,7 +84,13 @@ function migracionesAplicadas(mysqli $db): array
     }
 
     while ($fila = $resultado->fetch_assoc()) {
-        $aplicadas[(string)$fila['nombre']] = $fila;
+        $nombreRegistrado = (string)$fila['nombre'];
+        $aplicadas[$nombreRegistrado] = $fila;
+
+        $alias = aliasMigracionCompatible($nombreRegistrado);
+        if ($alias !== $nombreRegistrado && !isset($aplicadas[$alias])) {
+            $aplicadas[$alias] = $fila;
+        }
     }
 
     $resultado->free();
@@ -99,6 +105,16 @@ function checksumMigracion(string $ruta): string
 function nombreMigracion(string $ruta): string
 {
     return basename($ruta);
+}
+
+function aliasMigracionCompatible(string $nombre): string
+{
+    $aliases = [
+        '20260903_secretarias_denue.sql' =>
+            '2026_09_03_secretarias_denue.sql'
+    ];
+
+    return $aliases[$nombre] ?? $nombre;
 }
 
 function fechaMigracion(string $nombre): string
@@ -210,7 +226,7 @@ function mostrarStatus(
     echo "=== MIGRACIONES SISTEMA COMERCIAL IMPE ===\n\n";
 
     foreach ($archivos as $ruta) {
-        $nombre = nombreMigracion($ruta);
+        $nombre = aliasMigracionCompatible(nombreMigracion($ruta));
         $checksum = checksumMigracion($ruta);
         $registro = $aplicadas[$nombre] ?? null;
 
@@ -255,7 +271,7 @@ if (str_starts_with($comando, '--baseline=')) {
     $marcadas = 0;
 
     foreach ($archivos as $ruta) {
-        $nombre = nombreMigracion($ruta);
+        $nombre = aliasMigracionCompatible(nombreMigracion($ruta));
         $fecha = fechaMigracion($nombre);
 
         if ($fecha === '' || strcmp($fecha, $corte) > 0) {
