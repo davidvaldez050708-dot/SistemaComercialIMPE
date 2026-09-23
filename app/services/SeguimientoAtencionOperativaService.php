@@ -56,6 +56,27 @@ class SeguimientoAtencionOperativaService
     private function obtener($condicion, $tipos, array $parametros)
     {
         $usaReuniones = $this->tablaExiste('reuniones_vinculacion');
+        $usaPostEnvio = $this->tablaExiste(
+            'seguimientos_vinculacion_post_envio'
+        );
+        $camposPostEnvio = $usaPostEnvio
+            ? ",
+                post.convenio_formalizado_at,
+                CASE
+                    WHEN post.convenio_formalizado_at IS NOT NULL
+                    THEN 'ALIADO'
+                    ELSE 'EN_PROCESO'
+                END AS situacion_comercial"
+            : ",
+                NULL AS convenio_formalizado_at,
+                'EN_PROCESO' AS situacion_comercial";
+        $joinPostEnvio = $usaPostEnvio
+            ? "LEFT JOIN seguimientos_vinculacion_post_envio post
+                   ON post.seguimiento_id = seguimientos.id"
+            : "";
+        $filtroAliados = $usaPostEnvio
+            ? " AND post.convenio_formalizado_at IS NULL"
+            : "";
         $camposReunion = $usaReuniones
             ? ",
                 (
@@ -99,13 +120,16 @@ class SeguimientoAtencionOperativaService
                     seguimientos.fecha_inicio,
                     municipios.nombre AS municipio,
                     estados.nombre_corto AS estado_nombre
+                    {$camposPostEnvio}
                     {$camposReunion}
                 FROM seguimientos_vinculacion seguimientos
                 LEFT JOIN municipios ON municipios.id = seguimientos.municipio_id
                 LEFT JOIN estados ON estados.id = seguimientos.estado_id
+                {$joinPostEnvio}
                 WHERE {$condicion}
                   AND seguimientos.activo = 1
-                  AND seguimientos.estado_seguimiento <> 'DESCARTADO'";
+                  AND seguimientos.estado_seguimiento <> 'DESCARTADO'
+                  {$filtroAliados}";
 
         $filas = $this->obtenerFilas($sql, $tipos, $parametros);
         $ahora = new DateTimeImmutable();
@@ -114,6 +138,18 @@ class SeguimientoAtencionOperativaService
         $atenciones = [];
 
         foreach ($filas as $fila) {
+            /*
+             * Un convenio formalizado ya es una relación de Aliado. Puede
+             * conservar actividad informativa, pero no pendientes de la ruta.
+             */
+            if (
+                trim((string)($fila['convenio_formalizado_at'] ?? '')) !== '' ||
+                strtoupper(trim((string)($fila['situacion_comercial'] ?? ''))) ===
+                    'ALIADO'
+            ) {
+                continue;
+            }
+
             $prioridad = 0;
             $tipo = '';
             $motivo = '';
