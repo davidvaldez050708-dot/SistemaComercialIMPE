@@ -49,7 +49,7 @@ class SeguimientoFlujoService
                         FROM interacciones_vinculacion interacciones
                         WHERE interacciones.seguimiento_id = seguimientos.id
                             AND interacciones.canal = 'LLAMADA_IP'
-                            AND interacciones.resultado IN ('CONTACTADO', 'MENSAJE_ENVIADO')
+                            AND interacciones.resultado IN ('CONTACTADO', 'SOLICITO_INFORMACION', 'MENSAJE_ENVIADO')
                     ) AS total_llamadas_validacion,
                     oficio.id AS oficio_id,
                     oficio.folio,
