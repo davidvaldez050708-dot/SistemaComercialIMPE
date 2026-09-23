@@ -749,3 +749,15 @@
     color: var(--color-primary);
     font-size: 13px;
 }
+
+
+#modalSeguimientoCorreo .followup-attachments-status {
+    margin-top: 8px;
+    color: var(--color-text-muted);
+    font-size: 10px;
+    font-weight: 700;
+}
+
+#modalSeguimientoCorreo .followup-attachments-status.is-active {
+    color: var(--color-primary);
+}
