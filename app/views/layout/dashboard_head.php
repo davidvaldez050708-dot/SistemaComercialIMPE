@@ -177,6 +177,77 @@ $jsOpcionalHead = [
     <script>
         window.IMPE_CURRENT_ROLE_ID = <?= (int)($_SESSION['rol_id'] ?? 0) ?>;
         window.IMPE_CURRENT_USER_ID = <?= (int)($_SESSION['usuario_id'] ?? 0) ?>;
+        window.IMPE_CSRF_TOKEN = <?= json_encode((string)($_SESSION['csrf_token'] ?? ''), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+
+        (function () {
+            'use strict';
+
+            const token = String(window.IMPE_CSRF_TOKEN || '');
+            if (token === '') {
+                return;
+            }
+
+            const mismaProcedencia = function (valor) {
+                try {
+                    const url = new URL(
+                        valor instanceof Request ? valor.url : String(valor || ''),
+                        window.location.href
+                    );
+                    return url.origin === window.location.origin;
+                } catch (error) {
+                    return true;
+                }
+            };
+
+            const fetchOriginal = window.fetch.bind(window);
+            window.fetch = function (recurso, opciones) {
+                const configuracion = Object.assign({}, opciones || {});
+                const metodo = String(
+                    configuracion.method ||
+                    (recurso instanceof Request ? recurso.method : 'GET')
+                ).toUpperCase();
+
+                if (metodo === 'POST' && mismaProcedencia(recurso)) {
+                    const headers = new Headers(
+                        configuracion.headers ||
+                        (recurso instanceof Request ? recurso.headers : undefined)
+                    );
+                    headers.set('X-CSRF-Token', token);
+                    configuracion.headers = headers;
+                }
+
+                return fetchOriginal(recurso, configuracion);
+            };
+
+            document.addEventListener('submit', function (event) {
+                const form = event.target;
+                if (!(form instanceof HTMLFormElement)) {
+                    return;
+                }
+
+                if (String(form.method || 'GET').toUpperCase() !== 'POST') {
+                    return;
+                }
+
+                try {
+                    const action = new URL(form.action || window.location.href, window.location.href);
+                    if (action.origin !== window.location.origin) {
+                        return;
+                    }
+                } catch (error) {
+                    return;
+                }
+
+                let input = form.querySelector('input[name="csrf_token"]');
+                if (!input) {
+                    input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'csrf_token';
+                    form.appendChild(input);
+                }
+                input.value = token;
+            }, true);
+        })();
         window.IMPE_ANALISTA_REUNIONES = <?= json_encode(
             is_array($tableroAnalista['reuniones_dashboard'] ?? null)
                 ? $tableroAnalista['reuniones_dashboard']
