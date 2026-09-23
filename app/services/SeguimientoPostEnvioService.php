@@ -546,6 +546,14 @@ class SeguimientoPostEnvioService
 
     private function obtenerSeguimiento($seguimientoId, $usuarioId)
     {
+        $camposCoordinacion = $this->columnaDisponible(
+            'coordinacion_reunion_habilitada_at'
+        )
+            ? "post.coordinacion_reunion_habilitada_at,
+                    post.coordinacion_reunion_habilitada_por,"
+            : "NULL AS coordinacion_reunion_habilitada_at,
+                    NULL AS coordinacion_reunion_habilitada_por,";
+
         $sql = "SELECT
                     seguimientos.id,
                     seguimientos.analista_id,
@@ -560,8 +568,7 @@ class SeguimientoPostEnvioService
                     post.contactar_despues_at,
                     post.seguimiento_correo_notas,
                     post.seguimiento_correo_at,
-                    post.coordinacion_reunion_habilitada_at,
-                    post.coordinacion_reunion_habilitada_por,
+                    " . $camposCoordinacion . "
                     post.reunion_fecha,
                     post.reunion_modalidad,
                     post.reunion_lugar_enlace,
@@ -636,6 +643,26 @@ class SeguimientoPostEnvioService
         $stmt = $this->connection->prepare($sql);
         $stmt->bind_param('sii', $proximaAccion, $seguimientoId, $usuarioId);
         $stmt->execute();
+    }
+
+    private function columnaDisponible($columna)
+    {
+        if (!$this->tablaDisponible()) {
+            return false;
+        }
+
+        $columna = preg_replace('/[^a-zA-Z0-9_]+/', '', (string)$columna);
+        if ($columna === '') {
+            return false;
+        }
+
+        $resultado = $this->connection->query(
+            "SHOW COLUMNS FROM seguimientos_vinculacion_post_envio LIKE '" .
+            $columna .
+            "'"
+        );
+
+        return $resultado && $resultado->num_rows > 0;
     }
 
     private function tablaDisponible()
