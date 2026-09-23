@@ -95,7 +95,8 @@ class SeguimientoCorreoService
         $asunto,
         $cuerpo,
         $adjuntosExpediente = [],
-        $archivosNuevos = null
+        $archivosNuevos = null,
+        $adjuntosEsperados = null
     ) {
         $seguimientoId = (int)$seguimientoId;
         $usuarioId = (int)$usuarioId;
@@ -130,6 +131,18 @@ class SeguimientoCorreoService
 
         $adjuntos = $preparacionAdjuntos['adjuntos'] ?? [];
         $archivosCreados = $preparacionAdjuntos['archivos_creados'] ?? [];
+        $adjuntosEsperados = $adjuntosEsperados === null
+            ? count($adjuntos)
+            : max(0, (int)$adjuntosEsperados);
+
+        if ($adjuntosEsperados !== count($adjuntos)) {
+            $this->eliminarArchivos($archivosCreados);
+
+            return $this->error(
+                'No fue posible recibir todos los archivos seleccionados. Vuelve a agregarlos antes de enviar.',
+                422
+            );
+        }
 
         $resultadoEnvio = $this->enviarCorreo(
             $seguimiento,
@@ -140,6 +153,18 @@ class SeguimientoCorreoService
         if (!($resultadoEnvio['ok'] ?? false)) {
             $this->eliminarArchivos($archivosCreados);
             return $resultadoEnvio;
+        }
+
+        if (
+            isset($resultadoEnvio['adjuntos']) &&
+            (int)$resultadoEnvio['adjuntos'] !== count($adjuntos)
+        ) {
+            $this->eliminarArchivos($archivosCreados);
+
+            return $this->error(
+                'El proveedor no confirmó todos los archivos adjuntos. El envío no se registró como completado.',
+                502
+            );
         }
 
         $destinatario = trim((string)($seguimiento['destinatario_correo'] ?? ''));
@@ -158,8 +183,7 @@ class SeguimientoCorreoService
         $notasInteraccion = "Seguimiento por correo enviado\n" .
             'Para: ' . $destinatario . "\n" .
             'Asunto: ' . $asunto .
-            $detalleAdjuntos . "\n\n" .
-            $cuerpo;
+            $detalleAdjuntos;
 
         $this->connection->begin_transaction();
 
@@ -1135,27 +1159,26 @@ class SeguimientoCorreoService
 
     private function enviarCorreo($seguimiento, $asunto, $cuerpo, $adjuntos = [])
     {
-        $configHostinger = $this->cargarConfiguracionHostinger();
+        require_once __DIR__ . '/HostingerMailApiService.php';
 
-        if ($configHostinger['token'] !== '') {
-            $resultado = $this->enviarPorHostinger(
-                $seguimiento,
-                $asunto,
-                $cuerpo,
-                $configHostinger,
-                $adjuntos
+        $hostinger = new HostingerMailApiService();
+
+        if ($hostinger->estaConfigurado()) {
+            $analistaCorreo = trim((string)($seguimiento['analista_correo'] ?? ''));
+            $analistaNombre = trim(
+                (string)($seguimiento['analista_nombre'] ?? '') . ' ' .
+                (string)($seguimiento['analista_apellidos'] ?? '')
             );
+            $destinatario = trim((string)($seguimiento['destinatario_correo'] ?? ''));
 
-            if ($resultado['ok'] ?? false) {
-                return $resultado;
-            }
-
-            /*
-             * Si existe un token específico de Hostinger, mantenemos el mismo
-             * criterio del envío de oferta y reportamos el error del proveedor;
-             * no duplicamos el correo intentando otro canal después.
-             */
-            return $resultado;
+            return $hostinger->enviarOficio([
+                'remitente' => $analistaCorreo,
+                'nombre_remitente' => $analistaNombre,
+                'destinatario' => $destinatario,
+                'asunto' => $asunto,
+                'cuerpo' => $cuerpo,
+                'adjuntos' => $adjuntos
+            ]);
         }
 
         return $this->enviarPorSmtp($seguimiento, $asunto, $cuerpo, $adjuntos);
