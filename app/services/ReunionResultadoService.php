@@ -286,8 +286,27 @@ class ReunionResultadoService
     private function obtenerEstado($seguimientoId, $analistaId)
     {
         $agendaDisponible = $this->resultadoAgendaDisponible();
+        $reactivacionDisponible = $this->reactivacionRutaDisponible();
 
         if ($agendaDisponible) {
+            $joinAgenda = "LEFT JOIN reuniones_vinculacion reunion
+                    ON reunion.id = (
+                        SELECT reciente.id
+                        FROM reuniones_vinculacion reciente
+                        WHERE reciente.seguimiento_id = s.id
+                          AND reciente.estado <> 'CANCELADA'
+                        ORDER BY reciente.id DESC
+                        LIMIT 1
+                    )";
+
+            if ($reactivacionDisponible) {
+                $joinAgenda .= "
+                    AND (
+                        p.reactivacion_ruta_at IS NULL
+                        OR reunion.created_at >= p.reactivacion_ruta_at
+                    )";
+            }
+
             $sql = "SELECT
                         s.id,
                         s.estado_seguimiento,
@@ -305,15 +324,7 @@ class ReunionResultadoService
                     FROM seguimientos_vinculacion s
                     LEFT JOIN seguimientos_vinculacion_post_envio p
                         ON p.seguimiento_id = s.id
-                    LEFT JOIN reuniones_vinculacion reunion
-                        ON reunion.id = (
-                            SELECT reciente.id
-                            FROM reuniones_vinculacion reciente
-                            WHERE reciente.seguimiento_id = s.id
-                              AND reciente.estado <> 'CANCELADA'
-                            ORDER BY reciente.id DESC
-                            LIMIT 1
-                        )
+                    " . $joinAgenda . "
                     WHERE s.id = ?
                       AND s.analista_id = ?
                       AND s.activo = 1
@@ -337,6 +348,7 @@ class ReunionResultadoService
         $stmt = $this->connection->prepare($sql);
         $stmt->bind_param('ii', $seguimientoId, $analistaId);
         $stmt->execute();
+
         return $stmt->get_result()->fetch_assoc() ?: null;
     }
 
@@ -367,6 +379,23 @@ class ReunionResultadoService
             $analistaId
         );
         $stmt->execute();
+    }
+
+    private function reactivacionRutaDisponible()
+    {
+        $tabla = $this->connection->query(
+            "SHOW TABLES LIKE 'seguimientos_vinculacion_post_envio'"
+        );
+        if (!$tabla || $tabla->num_rows === 0) {
+            return false;
+        }
+
+        $resultado = $this->connection->query(
+            "SHOW COLUMNS FROM seguimientos_vinculacion_post_envio
+             LIKE 'reactivacion_ruta_at'"
+        );
+
+        return $resultado && $resultado->num_rows > 0;
     }
 
     private function resultadoAgendaDisponible()
