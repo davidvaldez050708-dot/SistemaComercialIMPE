@@ -26,99 +26,222 @@ $fotoPerfilUrl = $fotoPerfil !== ''
     ? BASE_URL . ltrim($fotoPerfil, '/')
     : '';
 
-$cssOpcionalDashboard = [
-    'dashboard_analista.css',
-    'dashboard_analista_refinamientos.css',
-    'dashboard_analista_reuniones.css',
-    'dashboard_analista_boceto.css',
-    'dashboard_analista_boceto_ajustes.css',
-    'territorios_resumen_refinamientos.css',
-    'seguimiento_filtros_layout.css',
-    'seguimiento_panel_ruta.css',
-    'seguimiento_proxima_accion_fecha.css',
-    'oficios_vista_previa.css',
-    'oficios_vista_previa_documento.css',
-    'oficios_correo_ajustes.css',
-    'oficios_selector_compacto.css',
-    'seguimiento_expediente.css',
-    'seguimiento_expediente_v2.css',
-    'seguimiento_expediente_proxima_accion.css',
-    'seguimiento_interacciones_refinamientos.css',
-    'seguimiento_llamadas_expediente.css',
-    'seguimiento_llamadas_refinamientos.css',
-    'seguimiento_llamadas_player.css',
-    'seguimiento_flujo.css',
-    'seguimiento_llamada_twilio.css',
-    'seguimiento_caller_id_usuario.css',
-    'seguimiento_llamada_flotante.css',
-    'seguimiento_llamada_registro_obligatorio.css',
-    'seguimiento_llamada_registro_compacto.css',
-    'seguimiento_llamada_contacto_efectivo.css',
-    'seguimiento_post_envio.css',
-    'agenda_reunion.css',
-    'agenda_reunion_refinamientos.css',
-    'seguimiento_expediente_actividad.css',
-    'seguimiento_estado_compacto.css',
-    'seguimiento_expediente_oficios_refinamiento.css',
-    'seguimiento_expediente_correos.css',
-    'reportes.css',
-    'seguimiento_reportes_refinamiento.css',
-    'seguimiento_reportes_decisiones_v2.css',
-    'seguimiento_reportes_analitica.css',
-    'seguimiento_reportes_presentacion_v3.css',
-    'seguimiento_reportes_institucion_operativa.css'
-];
+$controllerDashboard = strtolower(
+    trim((string)($_GET['controller'] ?? 'home'))
+);
+$actionDashboard = strtolower(
+    trim((string)($_GET['action'] ?? 'index'))
+);
+
+$esHomeDashboard = $controllerDashboard === 'home';
+$esSeguimientoEstado =
+    $controllerDashboard === 'seguimientovinculacion' &&
+    $actionDashboard === 'estado';
+$esSeguimientoDetalle =
+    $controllerDashboard === 'seguimientovinculacion' &&
+    $actionDashboard === 'detalle';
+$esAgendaDashboard = $controllerDashboard === 'agendareunion';
+$esReportesDashboard =
+    in_array(
+        $controllerDashboard,
+        [
+            'reporte',
+            'reporteadministrador',
+            'seguimientovinculacionreporte',
+            'seguimientoreporteanalitica'
+        ],
+        true
+    ) ||
+    (
+        $controllerDashboard === 'seguimientovinculacion' &&
+        $actionDashboard === 'reportes'
+    );
+$esTerritorialDashboard = in_array(
+    $controllerDashboard,
+    [
+        'territorio',
+        'dataterritorial',
+        'fuenteoficial',
+        'poblacionobjetivoeducativa'
+    ],
+    true
+);
+
+$cssOpcionalDashboard = [];
+
+if ($esHomeDashboard) {
+    $cssOpcionalDashboard = array_merge(
+        $cssOpcionalDashboard,
+        [
+            'dashboard_analista.css',
+            'dashboard_analista_refinamientos.css',
+            'dashboard_analista_reuniones.css',
+            'dashboard_analista_boceto.css',
+            'dashboard_analista_boceto_ajustes.css',
+            'territorios_resumen_refinamientos.css'
+        ]
+    );
+}
+
+if ($esSeguimientoEstado) {
+    $cssOpcionalDashboard = array_merge(
+        $cssOpcionalDashboard,
+        [
+            'seguimiento_filtros_layout.css',
+            'seguimiento_panel_ruta.css',
+            'seguimiento_proxima_accion_fecha.css',
+            'oficios_vista_previa.css',
+            'oficios_vista_previa_documento.css',
+            'oficios_correo_ajustes.css',
+            'oficios_selector_compacto.css',
+            'seguimiento_interacciones_refinamientos.css',
+            'seguimiento_llamadas_refinamientos.css',
+            'seguimiento_flujo.css',
+            'seguimiento_llamada_twilio.css',
+            'seguimiento_caller_id_usuario.css',
+            'seguimiento_llamada_flotante.css',
+            'seguimiento_llamada_registro_obligatorio.css',
+            'seguimiento_llamada_registro_compacto.css',
+            'seguimiento_llamada_contacto_efectivo.css',
+            'seguimiento_post_envio.css',
+            'seguimiento_estado_compacto.css'
+        ]
+    );
+}
+
+if ($esSeguimientoDetalle) {
+    $cssOpcionalDashboard = array_merge(
+        $cssOpcionalDashboard,
+        [
+            'seguimiento_expediente.css',
+            'seguimiento_expediente_v2.css',
+            'seguimiento_expediente_proxima_accion.css',
+            'seguimiento_expediente_actividad.css',
+            'seguimiento_expediente_oficios_refinamiento.css',
+            'seguimiento_expediente_correos.css',
+            'seguimiento_llamadas_expediente.css',
+            'seguimiento_llamadas_player.css'
+        ]
+    );
+}
+
+if ($esAgendaDashboard) {
+    $cssOpcionalDashboard = array_merge(
+        $cssOpcionalDashboard,
+        [
+            'agenda_reunion.css',
+            'agenda_reunion_refinamientos.css'
+        ]
+    );
+}
+
+if ($esReportesDashboard) {
+    $cssOpcionalDashboard = array_merge(
+        $cssOpcionalDashboard,
+        [
+            'reportes.css',
+            'seguimiento_reportes_refinamiento.css',
+            'seguimiento_reportes_decisiones_v2.css',
+            'seguimiento_reportes_analitica.css',
+            'seguimiento_reportes_presentacion_v3.css',
+            'seguimiento_reportes_institucion_operativa.css'
+        ]
+    );
+}
+
+$cssOpcionalDashboard = array_values(array_unique($cssOpcionalDashboard));
 
 $jsOpcionalHead = [
-    'seguimiento_interaccion_id_bridge.js',
-    'seguimiento_llamada_zadarma.js',
-    'seguimiento_zadarma_marcado_e164.js',
-    'seguimiento_zadarma_widget_oculto.js',
-    'seguimiento_caller_id_usuario.js',
-    'seguimiento_llamada_twilio.js',
-    'seguimiento_llamada_flotante.js',
-    'seguimiento_llamada_registro_obligatorio.js',
-    'seguimiento_llamada_registro_compacto.js',
-    'seguimiento_llamadas_expediente.js',
-    'seguimiento_llamada_contacto_efectivo.js',
-    'seguimiento_llamadas_desplegable.js',
-    'agenda_reunion.js',
-    'agenda_kam_cambio.js',
-    'reunion_fecha_guard.js',
-    'reunion_resultado.js',
-    'reprogramacion_reunion.js',
-    'agenda_correo_natural.js',
-    'agenda_historial_navegacion.js',
-    'seguimiento_bandeja_sync.js',
-    'seguimiento_resumen_ruta.js',
-    'seguimiento_panel_ruta.js',
-    'seguimiento_flujo_loading.js',
-    'seguimiento_ruta_cache.js',
-    'seguimiento_flujo_consistencia.js',
-    'seguimiento_panel_cache.js',
-    'seguimiento_proxima_accion_fecha.js',
-    'seguimiento_expediente_proxima_accion.js',
-    'seguimiento_expediente_actividad.js',
-    'seguimiento_abrir_desde_dashboard.js',
-    'dashboard_analista.js',
-    'dashboard_analista_integridad.js',
-    'dashboard_analista_refinamientos.js',
-    'dashboard_analista_navegacion_rapida.js',
-    'dashboard_analista_reuniones.js',
-    'seguimiento_resultados_humanizados.js',
-    'oficios_correo_formato.js',
-    'firma_correo_perfil.js',
-    'correo_firma_envio.js',
-    'seguimiento_expediente_oficios_refinamiento.js',
-    'seguimiento_expediente_correos.js',
-    'reportes_accesos.js',
-    'seguimiento_reportes_refinamiento.js',
-    'seguimiento_reportes_decisiones_v2.js',
-    'seguimiento_reportes_analitica.js',
-    'seguimiento_reportes_presentacion_v3.js',
-    'seguimiento_reportes_atencion_unificada.js',
-    'seguimiento_reportes_institucion_operativa.js'
+    'firma_correo_perfil.js'
 ];
+
+if ($esHomeDashboard) {
+    $jsOpcionalHead = array_merge(
+        $jsOpcionalHead,
+        [
+            'seguimiento_abrir_desde_dashboard.js',
+            'dashboard_analista.js',
+            'dashboard_analista_integridad.js',
+            'dashboard_analista_refinamientos.js',
+            'dashboard_analista_navegacion_rapida.js',
+            'dashboard_analista_reuniones.js'
+        ]
+    );
+}
+
+if ($esSeguimientoEstado) {
+    $jsOpcionalHead = array_merge(
+        $jsOpcionalHead,
+        [
+            'seguimiento_interaccion_id_bridge.js',
+            'seguimiento_llamada_zadarma.js',
+            'seguimiento_zadarma_marcado_e164.js',
+            'seguimiento_zadarma_widget_oculto.js',
+            'seguimiento_caller_id_usuario.js',
+            'seguimiento_llamada_twilio.js',
+            'seguimiento_llamada_flotante.js',
+            'seguimiento_llamada_registro_obligatorio.js',
+            'seguimiento_llamada_registro_compacto.js',
+            'seguimiento_llamada_contacto_efectivo.js',
+            'seguimiento_llamadas_desplegable.js',
+            'reunion_fecha_guard.js',
+            'reunion_resultado.js',
+            'reprogramacion_reunion.js',
+            'seguimiento_bandeja_sync.js',
+            'seguimiento_resumen_ruta.js',
+            'seguimiento_panel_ruta.js',
+            'seguimiento_proxima_accion_fecha.js',
+            'seguimiento_resultados_humanizados.js',
+            'oficios_correo_formato.js',
+            'correo_firma_envio.js'
+        ]
+    );
+}
+
+if ($esSeguimientoDetalle) {
+    $jsOpcionalHead = array_merge(
+        $jsOpcionalHead,
+        [
+            'seguimiento_llamadas_expediente.js',
+            'seguimiento_expediente_proxima_accion.js',
+            'seguimiento_expediente_actividad.js',
+            'seguimiento_resultados_humanizados.js',
+            'seguimiento_expediente_oficios_refinamiento.js',
+            'seguimiento_expediente_correos.js'
+        ]
+    );
+}
+
+if ($esAgendaDashboard) {
+    $jsOpcionalHead = array_merge(
+        $jsOpcionalHead,
+        [
+            'agenda_reunion.js',
+            'agenda_kam_cambio.js',
+            'reprogramacion_reunion.js',
+            'agenda_correo_natural.js',
+            'agenda_historial_navegacion.js',
+            'correo_firma_envio.js'
+        ]
+    );
+}
+
+if ($esReportesDashboard) {
+    $jsOpcionalHead = array_merge(
+        $jsOpcionalHead,
+        [
+            'reportes_accesos.js',
+            'seguimiento_reportes_refinamiento.js',
+            'seguimiento_reportes_decisiones_v2.js',
+            'seguimiento_reportes_analitica.js',
+            'seguimiento_reportes_presentacion_v3.js',
+            'seguimiento_reportes_atencion_unificada.js',
+            'seguimiento_reportes_institucion_operativa.js'
+        ]
+    );
+}
+
+$jsOpcionalHead = array_values(array_unique($jsOpcionalHead));
 
 ?>
 
