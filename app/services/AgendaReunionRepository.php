@@ -151,6 +151,114 @@ class AgendaReunionRepository
         return $stmt->get_result()->fetch_assoc() ?: null;
     }
 
+
+    public function conflictoHorario(
+        $fecha,
+        $duracion,
+        $analistaId,
+        $cuentaClaveId,
+        $excluirReunionId = 0
+    ) {
+        $sql = "SELECT
+                    r.id,
+                    r.analista_id,
+                    r.cuenta_clave_id,
+                    r.fecha_propuesta,
+                    r.duracion_minutos,
+                    s.nombre_entidad
+                FROM reuniones_vinculacion r
+                JOIN seguimientos_vinculacion s
+                    ON s.id = r.seguimiento_id
+                WHERE r.estado IN ('SOLICITADA','CONFIRMADA','CORREO_ENVIADO')
+                  AND r.id <> ?
+                  AND r.fecha_propuesta < DATE_ADD(?, INTERVAL ? MINUTE)
+                  AND DATE_ADD(
+                        r.fecha_propuesta,
+                        INTERVAL r.duracion_minutos MINUTE
+                  ) > ?
+                  AND (
+                        r.analista_id = ?
+                        OR (? > 0 AND r.cuenta_clave_id = ?)
+                  )
+                ORDER BY r.fecha_propuesta ASC, r.id ASC
+                LIMIT 1";
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param(
+            'isisiii',
+            $excluirReunionId,
+            $fecha,
+            $duracion,
+            $fecha,
+            $analistaId,
+            $cuentaClaveId,
+            $cuentaClaveId
+        );
+        $stmt->execute();
+
+        return $stmt->get_result()->fetch_assoc() ?: null;
+    }
+
+    public function cancelar($reunionId, $usuarioId, $rolId, $motivo)
+    {
+        $campoResponsable = (int)$rolId === 4
+            ? 'analista_id'
+            : 'cuenta_clave_id';
+
+        $sql = "UPDATE reuniones_vinculacion
+                SET estado = 'CANCELADA',
+                    cancelacion_motivo = ?,
+                    cancelada_at = NOW(),
+                    cancelada_por = ?,
+                    notificado_kam_at = NULL,
+                    notificado_analista_at = NULL
+                WHERE id = ?
+                  AND " . $campoResponsable . " = ?
+                  AND estado IN (
+                    'SOLICITADA',
+                    'CAMBIO_SOLICITADO',
+                    'CONFIRMADA',
+                    'CORREO_ENVIADO'
+                  )";
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param(
+            'siii',
+            $motivo,
+            $usuarioId,
+            $reunionId,
+            $usuarioId
+        );
+        $stmt->execute();
+
+        return $stmt->affected_rows > 0;
+    }
+
+    public function limpiarReunionPostEnvio($seguimientoId)
+    {
+        $sql = "UPDATE seguimientos_vinculacion_post_envio
+                SET reunion_fecha = NULL,
+                    reunion_modalidad = NULL,
+                    reunion_lugar_enlace = NULL,
+                    reunion_notas = NULL,
+                    reunion_agendada_at = NULL,
+                    reunion_agendada_por = NULL,
+                    reunion_resultado = NULL,
+                    reunion_resultado_notas = NULL,
+                    reunion_realizada_at = NULL,
+                    reunion_realizada_por = NULL
+                WHERE seguimiento_id = ?";
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param('i', $seguimientoId);
+        $stmt->execute();
+    }
+
+    public function cancelacionDisponible()
+    {
+        return $this->columnaPostTablaDisponible(
+            'reuniones_vinculacion',
+            'cancelada_at'
+        );
+    }
+
     public function reunion($reunionId, $usuarioId, $rolId)
     {
         $sql = "SELECT r.*, s.nombre_entidad, s.contacto_nombre, s.contacto_cargo,
@@ -184,7 +292,9 @@ class AgendaReunionRepository
     public function ultimaReunionSeguimiento($seguimientoId, $analistaId)
     {
         $sql = "SELECT * FROM reuniones_vinculacion
-                WHERE seguimiento_id=? AND analista_id=? AND estado<>'CANCELADA'
+                WHERE seguimiento_id=?
+                  AND analista_id=?
+                  AND estado NOT IN ('CANCELADA','REALIZADA')
                 ORDER BY id DESC LIMIT 1";
         $stmt = $this->connection->prepare($sql);
         $stmt->bind_param('ii', $seguimientoId, $analistaId);
@@ -316,6 +426,29 @@ class AgendaReunionRepository
         $stmt->bind_param('ii', $analistaId, $limite);
         $stmt->execute();
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+    private function columnaPostTablaDisponible($tabla, $columna)
+    {
+        $tabla = preg_replace('/[^a-zA-Z0-9_]+/', '', (string)$tabla);
+        $columna = preg_replace('/[^a-zA-Z0-9_]+/', '', (string)$columna);
+
+        if ($tabla === '' || $columna === '') {
+            return false;
+        }
+
+        $resultadoTabla = $this->connection->query(
+            "SHOW TABLES LIKE '" . $tabla . "'"
+        );
+        if (!$resultadoTabla || $resultadoTabla->num_rows === 0) {
+            return false;
+        }
+
+        $resultado = $this->connection->query(
+            "SHOW COLUMNS FROM " . $tabla . " LIKE '" . $columna . "'"
+        );
+
+        return $resultado && $resultado->num_rows > 0;
     }
 
     private function columnaPostEnvioDisponible($columna)
