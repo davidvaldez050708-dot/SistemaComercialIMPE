@@ -107,6 +107,7 @@ class HomeController
 
                     $modeloConvocatoria = new ConvocatoriaModel();
                     $resumenMarketing = $modeloConvocatoria->obtenerResumenDashboard();
+                    $coberturaMarketing = $modeloConvocatoria->obtenerCoberturaTerritorialDashboard(4);
 
                     $vistaPanel = __DIR__ . '/../views/dashboard/marketing.php';
                     break;
