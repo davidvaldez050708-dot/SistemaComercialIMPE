@@ -241,6 +241,24 @@ class AgendaReunionRepository
         return $stmt->affected_rows > 0;
     }
 
+    public function cancelarReprogramacionesPendientes($reunionId)
+    {
+        $tabla = $this->connection->query(
+            "SHOW TABLES LIKE 'reuniones_vinculacion_reprogramaciones'"
+        );
+        if (!$tabla || $tabla->num_rows === 0) {
+            return;
+        }
+
+        $sql = "UPDATE reuniones_vinculacion_reprogramaciones
+                SET estado = 'CANCELADA'
+                WHERE reunion_id = ?
+                  AND estado NOT IN ('CORREO_ENVIADO','CANCELADA')";
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param('i', $reunionId);
+        $stmt->execute();
+    }
+
     public function limpiarReunionPostEnvio($seguimientoId)
     {
         $sql = "UPDATE seguimientos_vinculacion_post_envio
