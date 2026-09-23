@@ -6,6 +6,7 @@ require_once __DIR__ . '/../helpers/PermissionHelper.php';
 require_once __DIR__ . '/../services/DenueService.php';
 require_once __DIR__ . '/../services/SeguimientoRutaOperativaService.php';
 require_once __DIR__ . '/../services/SeguimientoCorreoContactoService.php';
+require_once __DIR__ . '/../services/SeguimientoCorreoService.php';
 
 class SeguimientoVinculacionController
 {
@@ -1236,6 +1237,8 @@ class SeguimientoVinculacionController
 
         $interacciones = $modelo->obtenerInteraccionesSeguimiento($seguimientoId);
         $oficios = $modelo->obtenerOficiosSeguimiento($seguimientoId);
+        $adjuntosCorreoSeguimiento = (new SeguimientoCorreoService())
+            ->listarAdjuntosExpediente($seguimientoId);
         $observaciones = $modelo->obtenerObservacionesSeguimiento($seguimientoId);
         $puedeComentar = $modoSeguimiento === 'supervisor' &&
             tienePermiso('seguimientos_vinculacion.comentar');
@@ -1256,6 +1259,81 @@ class SeguimientoVinculacionController
         require_once __DIR__ . '/../views/layout/topbar.php';
         require_once __DIR__ . '/../views/seguimiento_vinculacion/detalle.php';
         require_once __DIR__ . '/../views/layout/dashboard_footer.php';
+    }
+
+    public function descargarAdjuntoCorreoSeguimiento()
+    {
+        $this->validarPermiso('seguimientos_vinculacion.ver');
+
+        $modelo = new SeguimientoVinculacionModel();
+        $usuarioId = $this->obtenerUsuarioActualId();
+        $modoSeguimiento = $this->resolverModoSeguimiento();
+        $adjuntoId = (int)($_GET['adjunto_id'] ?? 0);
+
+        if ($adjuntoId <= 0) {
+            http_response_code(422);
+            echo 'Selecciona un archivo válido.';
+            exit;
+        }
+
+        $service = new SeguimientoCorreoService();
+        $adjunto = $service->obtenerAdjuntoExpediente($adjuntoId);
+
+        if (!$adjunto) {
+            http_response_code(404);
+            echo 'El archivo ya no está disponible.';
+            exit;
+        }
+
+        $seguimientoId = (int)($adjunto['seguimiento_id'] ?? 0);
+        $seguimiento = $this->obtenerSeguimientoPorModo(
+            $modelo,
+            $usuarioId,
+            $seguimientoId,
+            $modoSeguimiento
+        );
+
+        if (!$seguimiento) {
+            http_response_code(403);
+            echo 'No tienes acceso a este archivo.';
+            exit;
+        }
+
+        $ruta = (string)($adjunto['ruta_absoluta'] ?? '');
+        if ($ruta === '' || !is_file($ruta)) {
+            http_response_code(404);
+            echo 'El archivo ya no está disponible.';
+            exit;
+        }
+
+        $nombre = basename(
+            str_replace(
+                ["\r", "\n", '"'],
+                '',
+                (string)($adjunto['nombre_original'] ?? 'archivo')
+            )
+        );
+        $mime = trim((string)($adjunto['mime'] ?? 'application/octet-stream'));
+        if ($mime === '') {
+            $mime = 'application/octet-stream';
+        }
+
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+
+        header('Content-Type: ' . $mime);
+        header('Content-Length: ' . (string)filesize($ruta));
+        header(
+            'Content-Disposition: attachment; filename="' .
+            addcslashes($nombre, "\\\"") . '"; filename*=UTF-8\'\'' .
+            rawurlencode($nombre)
+        );
+        header('X-Content-Type-Options: nosniff');
+        header('Cache-Control: private, no-store, max-age=0');
+
+        readfile($ruta);
+        exit;
     }
 
     public function guardarObservacion()
