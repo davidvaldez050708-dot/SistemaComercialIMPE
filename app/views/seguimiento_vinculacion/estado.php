@@ -1705,7 +1705,16 @@ document.addEventListener('DOMContentLoaded', function () {
         document.querySelector('[data-work-contact-actions-section]')?.classList.toggle('d-none', seguimientoDescartado);
         document.querySelector('[data-work-interaction-section]')?.classList.toggle('d-none', seguimientoDescartado);
         document.querySelector('[data-work-contact-action]')?.classList.toggle('d-none', seguimientoDescartado);
-        document.querySelector('[data-work-verify-row]')?.classList.toggle('d-none', seguimientoDescartado);
+
+        const filaVerificacionInicial = document.querySelector('[data-work-verify-row]');
+        if (filaVerificacionInicial) {
+            filaVerificacionInicial.classList.toggle(
+                'd-none',
+                seguimientoDescartado ||
+                Number(seguimiento.datos_verificados) !== 1
+            );
+        }
+
         document.querySelector('[data-work-reactivate-follow]')?.classList.toggle('d-none', !puedeReactivar);
         asignarTextoTrabajo('[data-work-contact-heading]', seguimientoDescartado ? 'CONTACTO REGISTRADO' : 'Contacto');
         asignarTextoTrabajo('[data-work-discard-reason]', seguimiento.motivo_descarte);
