@@ -48,7 +48,7 @@ $convocatoriasUrl = BASE_URL . 'index.php?controller=convocatoria&action=index';
         </div>
 
         <?php if (tienePermiso('convocatorias.ver')): ?>
-            <a class="btn btn-new-user" href="<?= $convocatoriasUrl ?>">
+            <a class="btn btn-system-light" href="<?= $convocatoriasUrl ?>">
                 <i class="bi bi-arrow-right-circle me-2"></i>
                 Ir a convocatorias
             </a>
