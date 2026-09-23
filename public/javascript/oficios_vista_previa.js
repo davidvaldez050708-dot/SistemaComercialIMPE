@@ -8,6 +8,7 @@
             parametros.get('action') === 'detalle';
         const seguimientoDetalleId = Number(parametros.get('id') || 0);
         const urlVistaDocumento = 'public/oficio_vista_previa_documento.php';
+        const urlPdfDocumento = 'public/oficio_pdf_documento.php';
         const urlEstadoPdf =
             'index.php?controller=oficioVinculacion&action=estadoPdf';
         const urlGenerarPdf =
@@ -137,9 +138,11 @@
             return modal;
         };
 
-        const urlPdf = function (seguimientoId, descargar) {
-            return urlVerPdf +
-                '&seguimiento_id=' + encodeURIComponent(seguimientoId) +
+        const urlPdf = function (seguimientoId, descargar, estadoPdf) {
+            const nombre = encodeURIComponent(nombreVistaOficio(estadoPdf));
+
+            return urlPdfDocumento + '/' + nombre +
+                '?seguimiento_id=' + encodeURIComponent(seguimientoId) +
                 (descargar ? '&descargar=1' : '');
         };
 
@@ -172,7 +175,7 @@
             frame.classList.remove('is-loaded');
 
             if (estadoPdf?.pdf_generado) {
-                frame.src = urlPdf(seguimientoId, false) + '&v=' + Date.now();
+                frame.src = urlPdf(seguimientoId, false, estadoPdf) + '&v=' + Date.now();
                 return;
             }
 
@@ -222,10 +225,10 @@
 
             if (pdfGenerado) {
                 if (enlaceVer) {
-                    enlaceVer.href = urlPdf(seguimientoId, false);
+                    enlaceVer.href = urlPdf(seguimientoId, false, estadoPdf);
                 }
                 if (enlaceDescargar) {
-                    enlaceDescargar.href = urlPdf(seguimientoId, true);
+                    enlaceDescargar.href = urlPdf(seguimientoId, true, estadoPdf);
                 }
             }
         };
@@ -259,13 +262,13 @@
                     ver.setAttribute('data-work-view-pdf', '');
                     ver.target = '_blank';
                     ver.rel = 'noopener';
-                    ver.href = urlPdf(seguimientoId, false);
+                    ver.href = urlPdf(seguimientoId, false, estadoPdf);
                     ver.innerHTML = '<i class="bi bi-file-earmark-pdf"></i> Ver PDF';
 
                     const descargar = document.createElement('a');
                     descargar.className = 'btn btn-system-light linkage-work-small-button';
                     descargar.setAttribute('data-work-download-pdf', '');
-                    descargar.href = urlPdf(seguimientoId, true);
+                    descargar.href = urlPdf(seguimientoId, true, estadoPdf);
                     descargar.innerHTML = '<i class="bi bi-download"></i> Descargar';
 
                     acciones.appendChild(ver);
@@ -289,13 +292,13 @@
                     ver.setAttribute('data-detail-view-pdf', '');
                     ver.target = '_blank';
                     ver.rel = 'noopener';
-                    ver.href = urlPdf(seguimientoId, false);
+                    ver.href = urlPdf(seguimientoId, false, estadoPdf);
                     ver.innerHTML = '<i class="bi bi-file-earmark-pdf me-2"></i>Ver PDF';
 
                     const descargar = document.createElement('a');
                     descargar.className = 'btn btn-system-light';
                     descargar.setAttribute('data-detail-download-pdf', '');
-                    descargar.href = urlPdf(seguimientoId, true);
+                    descargar.href = urlPdf(seguimientoId, true, estadoPdf);
                     descargar.innerHTML = '<i class="bi bi-download me-2"></i>Descargar PDF';
 
                     bloqueDetalle.appendChild(ver);
