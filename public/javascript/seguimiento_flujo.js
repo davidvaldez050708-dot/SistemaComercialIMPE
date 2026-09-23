@@ -10,6 +10,7 @@
 
         const urlEstado = 'index.php?controller=seguimientoFlujo&action=estado';
         const rolId = Number(window.IMPE_CURRENT_ROLE_ID || 0);
+        const puedeOperar = Boolean(window.IMPE_CAN_OPERATE_LINKAGE);
         let seguimientoActualId = 0;
         let temporizadorConsulta = null;
         let consultando = false;
@@ -211,7 +212,7 @@
         const sincronizarBotonVerificacion = function (pasoActual) {
             const boton = offcanvas.querySelector('[data-work-verify-contact]');
 
-            if (!boton || rolId !== 4) {
+            if (!boton || !puedeOperar) {
                 return;
             }
 
@@ -408,11 +409,22 @@
             }
 
             if (etapaFila) {
+                const etiquetaRuta = esAliado
+                    ? 'Aliado'
+                    : String(
+                        flujo.ventana?.actual?.titulo ||
+                        'Paso ' + pasoActual
+                    ).trim();
+
                 etapaFila.classList.toggle('is-ally', esAliado);
-                if (esAliado) {
-                    etapaFila.textContent = 'Aliado';
-                    etapaFila.title = 'Convenio formalizado · Paso 13 de 13';
-                    fila.dataset.flowStageLabel = 'Aliado';
+                etapaFila.textContent = etiquetaRuta;
+                etapaFila.title = esAliado
+                    ? 'Convenio formalizado · Paso 13 de 13'
+                    : 'Paso ' + pasoActual + ' de ' + Number(flujo.total_pasos || 13);
+                etapaFila.dataset.routeStageReady = '1';
+
+                if (fila) {
+                    fila.dataset.flowStageLabel = etiquetaRuta;
                 }
             }
 
@@ -446,7 +458,8 @@
                     seguimientoId: Number(flujo.seguimiento_id || 0),
                     pasoActual: pasoActual,
                     titulo: tituloActual,
-                    esAliado: esAliado
+                    esAliado: esAliado,
+                    flujo: flujo
                 }
             }));
         };
@@ -590,7 +603,7 @@
                 delete offcanvas.dataset.flowTitle;
                 offcanvas.dataset.flowSeguimientoId = String(seguimientoActualId);
                 const botonVerificar = offcanvas.querySelector('[data-work-verify-contact]');
-                if (botonVerificar && rolId === 4) {
+                if (botonVerificar && puedeOperar) {
                     botonVerificar.disabled = true;
                     botonVerificar.title = 'Consultando la ruta de validación...';
                 }
