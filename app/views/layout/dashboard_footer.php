@@ -222,7 +222,7 @@ if ($esTerritorialFooter) {
     );
 }
 
-$jsDashboardFooter = array_values(array_unique($jsDashboardFooter))
+$jsDashboardFooter = array_values(array_unique($jsDashboardFooter));
 ?>
 
 <script>
