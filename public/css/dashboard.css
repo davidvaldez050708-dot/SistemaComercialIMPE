@@ -1714,9 +1714,21 @@
 .system-form-modal-header {
     padding: 18px 22px;
 
+    display: flex;
     align-items: flex-start;
+    gap: 14px;
 
     border-bottom: 1px solid var(--color-border);
+}
+
+.system-form-modal .modal-header > :not(.btn-close) {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.system-form-modal .modal-header > .btn-close {
+    margin-left: auto !important;
+    flex: 0 0 auto;
 }
 
 .system-form-modal-title {
