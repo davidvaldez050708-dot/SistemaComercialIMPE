@@ -123,7 +123,8 @@ class CorreoFirmadoService
             $stmtInteraccion->execute();
 
             $sqlSeguimiento = "UPDATE seguimientos_vinculacion
-                               SET ultima_interaccion_at = NOW()
+                               SET ultima_interaccion_at = NOW(),
+                                   proxima_accion_at = NULL
                                WHERE id = ? AND analista_id = ? AND activo = 1";
             $stmtSeguimiento = $this->connection->prepare($sqlSeguimiento);
             $stmtSeguimiento->bind_param('ii', $seguimientoId, $usuarioId);
