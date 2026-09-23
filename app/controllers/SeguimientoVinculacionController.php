@@ -721,6 +721,16 @@ class SeguimientoVinculacionController
             'observaciones' => trim((string)($_POST['observaciones'] ?? ''))
         ];
 
+        if (
+            $datos['correo_verificado'] !== '' &&
+            !filter_var($datos['correo_verificado'], FILTER_VALIDATE_EMAIL)
+        ) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'Captura un correo de contacto válido.'
+            ], 422);
+        }
+
         if (!$modelo->actualizarContactoSeguimiento($seguimientoId, $usuarioId, $datos, false)) {
             $this->responderJson([
                 'ok' => false,
@@ -779,6 +789,25 @@ class SeguimientoVinculacionController
             $this->responderJson([
                 'ok' => false,
                 'mensaje' => 'El seguimiento está descartado y solo puede consultarse.'
+            ], 422);
+        }
+
+        $ruta = (new SeguimientoRutaOperativaService())->resolver(
+            $seguimientoId,
+            $usuarioId,
+            $seguimiento
+        );
+        $codigoAccion = strtoupper(trim((string)(
+            $ruta['flujo']['accion_principal']['codigo'] ?? ''
+        )));
+
+        if (!($ruta['ok'] ?? false) || $codigoAccion !== 'VERIFICAR_CONTACTO') {
+            $mensajeRuta = trim((string)($ruta['flujo']['descripcion'] ?? ''));
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => $mensajeRuta !== ''
+                    ? $mensajeRuta
+                    : 'El contacto todavía no cumple las condiciones para marcarse como verificado.'
             ], 422);
         }
 
@@ -855,11 +884,11 @@ class SeguimientoVinculacionController
         $mapaResultados = [
             'SIN_RESPUESTA' => 'SIN_RESPUESTA',
             'NUMERO_INCORRECTO' => 'NUMERO_INCORRECTO',
-            'CONTACTO_INCORRECTO' => 'OCUPADO',
+            'CONTACTO_INCORRECTO' => 'CONTACTO_INCORRECTO',
             'CONTACTO_CORRECTO' => 'CONTACTADO',
-            'SOLICITO_INFORMACION' => 'MENSAJE_ENVIADO',
+            'SOLICITO_INFORMACION' => 'SOLICITO_INFORMACION',
             'SOLICITO_LLAMAR_DESPUES' => 'SOLICITO_LLAMAR_DESPUES',
-            'NO_INTERESADO' => 'OTRO',
+            'NO_INTERESADO' => 'NO_INTERESADO',
             'OTRO' => 'OTRO'
         ];
         $resultado = $mapaResultados[$resultadoFormulario] ?? '';
@@ -868,10 +897,13 @@ class SeguimientoVinculacionController
             'NO_CONTESTO',
             'OCUPADO',
             'NUMERO_INCORRECTO',
+            'CONTACTO_INCORRECTO',
             'SOLICITO_LLAMAR_DESPUES',
+            'SOLICITO_INFORMACION',
             'MENSAJE_ENVIADO',
             'CORREO_ENVIADO',
             'SIN_RESPUESTA',
+            'NO_INTERESADO',
             'OTRO'
         ];
 
@@ -889,6 +921,38 @@ class SeguimientoVinculacionController
             $this->responderJson([
                 'ok' => false,
                 'mensaje' => 'La fecha de interacción es obligatoria.'
+            ], 422);
+        }
+
+        $fechaInicioTs = strtotime($fechaInicio);
+        if ($fechaInicioTs === false || $fechaInicioTs > (time() + 60)) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'La fecha de interacción no puede estar en el futuro.'
+            ], 422);
+        }
+
+        if ($proximaAccionAt !== null) {
+            $proximaAccionTs = strtotime((string)$proximaAccionAt);
+            if (
+                $proximaAccionTs === false ||
+                $proximaAccionTs <= time() ||
+                $proximaAccionTs <= $fechaInicioTs
+            ) {
+                $this->responderJson([
+                    'ok' => false,
+                    'mensaje' => 'La próxima acción debe programarse en una fecha futura.'
+                ], 422);
+            }
+        }
+
+        if (
+            $resultadoFormulario === 'SOLICITO_LLAMAR_DESPUES' &&
+            $proximaAccionAt === null
+        ) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'Indica cuándo debes volver a contactar a la institución.'
             ], 422);
         }
 
@@ -2434,12 +2498,15 @@ class SeguimientoVinculacionController
         $etiquetas = [
             'CONTACTADO' => 'Contacto correcto',
             'NO_CONTESTO' => 'No contestó',
-            'OCUPADO' => 'Contacto incorrecto',
+            'OCUPADO' => 'Ocupado',
             'NUMERO_INCORRECTO' => 'Número incorrecto',
+            'CONTACTO_INCORRECTO' => 'Contacto incorrecto',
             'SOLICITO_LLAMAR_DESPUES' => 'Solicitó volver a llamar',
-            'MENSAJE_ENVIADO' => 'Solicitó información',
+            'SOLICITO_INFORMACION' => 'Solicitó información',
+            'MENSAJE_ENVIADO' => 'Mensaje enviado',
             'CORREO_ENVIADO' => 'Correo enviado',
             'SIN_RESPUESTA' => 'Sin respuesta',
+            'NO_INTERESADO' => 'No interesado',
             'OTRO' => 'Otro'
         ];
 
