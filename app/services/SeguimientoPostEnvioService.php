@@ -567,6 +567,110 @@ class SeguimientoPostEnvioService
             : "NULL AS coordinacion_reunion_habilitada_at,
                     NULL AS coordinacion_reunion_habilitada_por,";
 
+        $reactivacionDisponible = $this->columnaDisponible('reactivacion_ruta_at');
+        $agendaDisponible = $this->tablaAgendaDisponible();
+        $agendaResultadoDisponible =
+            $agendaDisponible &&
+            $this->columnaAgendaDisponible('reunion_resultado');
+
+        if ($reactivacionDisponible) {
+            $camposReactivacion = "post.reactivacion_ruta_at,
+                    post.reactivacion_ruta_por,";
+        } else {
+            $camposReactivacion = "NULL AS reactivacion_ruta_at,
+                    NULL AS reactivacion_ruta_por,";
+        }
+
+        if ($agendaDisponible) {
+            $camposReunion = "CASE
+                        WHEN agenda.id IS NOT NULL
+                        THEN agenda.fecha_propuesta
+                        ELSE post.reunion_fecha
+                    END AS reunion_fecha,
+                    CASE
+                        WHEN agenda.id IS NOT NULL
+                        THEN agenda.modalidad
+                        ELSE post.reunion_modalidad
+                    END AS reunion_modalidad,
+                    CASE
+                        WHEN agenda.id IS NOT NULL
+                        THEN COALESCE(
+                            NULLIF(TRIM(agenda.zoom_url), ''),
+                            NULLIF(TRIM(agenda.ubicacion), '')
+                        )
+                        ELSE post.reunion_lugar_enlace
+                    END AS reunion_lugar_enlace,
+                    CASE
+                        WHEN agenda.id IS NOT NULL
+                        THEN agenda.objetivo
+                        ELSE post.reunion_notas
+                    END AS reunion_notas,
+                    CASE
+                        WHEN agenda.id IS NOT NULL THEN
+                            CASE
+                                WHEN agenda.estado IN ('CORREO_ENVIADO','REALIZADA')
+                                THEN COALESCE(
+                                    agenda.correo_confirmacion_at,
+                                    agenda.confirmada_at
+                                )
+                                ELSE NULL
+                            END
+                        ELSE post.reunion_agendada_at
+                    END AS reunion_agendada_at,";
+
+            if ($agendaResultadoDisponible) {
+                $camposReunion .= "
+                    CASE
+                        WHEN agenda.id IS NOT NULL
+                        THEN agenda.reunion_resultado
+                        ELSE post.reunion_resultado
+                    END AS reunion_resultado,
+                    CASE
+                        WHEN agenda.id IS NOT NULL
+                        THEN agenda.reunion_resultado_notas
+                        ELSE post.reunion_resultado_notas
+                    END AS reunion_resultado_notas,
+                    CASE
+                        WHEN agenda.id IS NOT NULL
+                        THEN agenda.realizada_at
+                        ELSE post.reunion_realizada_at
+                    END AS reunion_realizada_at,";
+            } else {
+                $camposReunion .= "
+                    post.reunion_resultado,
+                    post.reunion_resultado_notas,
+                    post.reunion_realizada_at,";
+            }
+
+            $filtroReactivacion = $reactivacionDisponible
+                ? " AND (
+                        post.reactivacion_ruta_at IS NULL
+                        OR agenda_reciente.created_at >= post.reactivacion_ruta_at
+                    )"
+                : "";
+
+            $joinAgenda = "LEFT JOIN reuniones_vinculacion agenda
+                    ON agenda.id = (
+                        SELECT agenda_reciente.id
+                        FROM reuniones_vinculacion agenda_reciente
+                        WHERE agenda_reciente.seguimiento_id = seguimientos.id
+                          AND agenda_reciente.estado <> 'CANCELADA'" .
+                          $filtroReactivacion . "
+                        ORDER BY agenda_reciente.id DESC
+                        LIMIT 1
+                    )";
+        } else {
+            $camposReunion = "post.reunion_fecha,
+                    post.reunion_modalidad,
+                    post.reunion_lugar_enlace,
+                    post.reunion_notas,
+                    post.reunion_agendada_at,
+                    post.reunion_resultado,
+                    post.reunion_resultado_notas,
+                    post.reunion_realizada_at,";
+            $joinAgenda = "";
+        }
+
         $sql = "SELECT
                     seguimientos.id,
                     seguimientos.analista_id,
@@ -579,17 +683,11 @@ class SeguimientoPostEnvioService
                     post.respuesta_texto,
                     post.respuesta_at,
                     post.contactar_despues_at,
+                    " . $camposReactivacion . "
                     post.seguimiento_correo_notas,
                     post.seguimiento_correo_at,
                     " . $camposCoordinacion . "
-                    post.reunion_fecha,
-                    post.reunion_modalidad,
-                    post.reunion_lugar_enlace,
-                    post.reunion_notas,
-                    post.reunion_agendada_at,
-                    post.reunion_resultado,
-                    post.reunion_resultado_notas,
-                    post.reunion_realizada_at,
+                    " . $camposReunion . "
                     post.convenio_fecha,
                     post.convenio_referencia,
                     post.convenio_notas,
@@ -605,13 +703,16 @@ class SeguimientoPostEnvioService
                     )
                 LEFT JOIN seguimientos_vinculacion_post_envio post
                     ON post.seguimiento_id = seguimientos.id
+                " . $joinAgenda . "
                 WHERE seguimientos.id = ?
                     AND seguimientos.analista_id = ?
                     AND seguimientos.activo = 1
                 LIMIT 1";
+
         $stmt = $this->connection->prepare($sql);
         $stmt->bind_param('ii', $seguimientoId, $usuarioId);
         $stmt->execute();
+
         return $stmt->get_result()->fetch_assoc() ?: null;
     }
 
@@ -656,6 +757,35 @@ class SeguimientoPostEnvioService
         $stmt = $this->connection->prepare($sql);
         $stmt->bind_param('sii', $proximaAccion, $seguimientoId, $usuarioId);
         $stmt->execute();
+    }
+
+    private function tablaAgendaDisponible()
+    {
+        $resultado = $this->connection->query(
+            "SHOW TABLES LIKE 'reuniones_vinculacion'"
+        );
+
+        return $resultado && $resultado->num_rows > 0;
+    }
+
+    private function columnaAgendaDisponible($columna)
+    {
+        if (!$this->tablaAgendaDisponible()) {
+            return false;
+        }
+
+        $columna = preg_replace('/[^a-zA-Z0-9_]+/', '', (string)$columna);
+        if ($columna === '') {
+            return false;
+        }
+
+        $resultado = $this->connection->query(
+            "SHOW COLUMNS FROM reuniones_vinculacion LIKE '" .
+            $columna .
+            "'"
+        );
+
+        return $resultado && $resultado->num_rows > 0;
     }
 
     private function columnaDisponible($columna)
