@@ -51,6 +51,7 @@ VALUES
 ('Convocatorias','convocatorias.ver','Ver convocatorias','Consultar convocatorias registradas.',1),
 ('Convocatorias','convocatorias.crear','Crear convocatorias','Registrar nuevas convocatorias.',1),
 ('Convocatorias','convocatorias.editar','Editar convocatorias','Actualizar información de convocatorias.',1),
+('Convocatorias','convocatorias.gestionar','Gestionar convocatorias','Administrar el estado y operación general de las convocatorias.',1),
 ('Convocatorias','convocatorias.descargar','Descargar imágenes','Descargar la imagen asociada a una convocatoria.',1),
 ('Convocatorias','convocatorias.cambiar_estado','Activar / desactivar convocatorias','Modificar el estado lógico de una convocatoria.',1)
 ON DUPLICATE KEY UPDATE
@@ -67,6 +68,7 @@ INNER JOIN permisos
         'convocatorias.ver',
         'convocatorias.crear',
         'convocatorias.editar',
+        'convocatorias.gestionar',
         'convocatorias.descargar',
         'convocatorias.cambiar_estado'
     )
@@ -79,6 +81,7 @@ WHERE permisos.codigo IN (
     'convocatorias.ver',
     'convocatorias.crear',
     'convocatorias.editar',
+    'convocatorias.gestionar',
     'convocatorias.descargar',
     'convocatorias.cambiar_estado'
 );
