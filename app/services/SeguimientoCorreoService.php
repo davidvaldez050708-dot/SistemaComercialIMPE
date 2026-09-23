@@ -81,13 +81,22 @@ class SeguimientoCorreoService
                 'asunto' => 'Seguimiento a propuesta de vinculación educativa' .
                     ($institucion !== '' ? ' - ' . $institucion : ''),
                 'cuerpo' => implode("\n", $lineas),
-                'total_enviados' => $totalEnviados
+                'total_enviados' => $totalEnviados,
+                'adjuntos_disponibles' => $this->listarAdjuntosDisponibles(
+                    (int)$seguimientoId
+                )
             ]
         ];
     }
 
-    public function enviar($seguimientoId, $usuarioId, $asunto, $cuerpo)
-    {
+    public function enviar(
+        $seguimientoId,
+        $usuarioId,
+        $asunto,
+        $cuerpo,
+        $adjuntosExpediente = [],
+        $archivosNuevos = null
+    ) {
         $seguimientoId = (int)$seguimientoId;
         $usuarioId = (int)$usuarioId;
         $asunto = trim((string)$asunto);
@@ -109,16 +118,47 @@ class SeguimientoCorreoService
             return $this->error('El mensaje es demasiado largo.', 422);
         }
 
-        $resultadoEnvio = $this->enviarCorreo($seguimiento, $asunto, $cuerpo);
+        $preparacionAdjuntos = $this->prepararAdjuntos(
+            $seguimientoId,
+            $usuarioId,
+            $adjuntosExpediente,
+            $archivosNuevos
+        );
+        if (!($preparacionAdjuntos['ok'] ?? false)) {
+            return $preparacionAdjuntos;
+        }
+
+        $adjuntos = $preparacionAdjuntos['adjuntos'] ?? [];
+        $archivosCreados = $preparacionAdjuntos['archivos_creados'] ?? [];
+
+        $resultadoEnvio = $this->enviarCorreo(
+            $seguimiento,
+            $asunto,
+            $cuerpo,
+            $adjuntos
+        );
         if (!($resultadoEnvio['ok'] ?? false)) {
+            $this->eliminarArchivos($archivosCreados);
             return $resultadoEnvio;
         }
 
         $destinatario = trim((string)($seguimiento['destinatario_correo'] ?? ''));
-        $notasPost = 'Asunto: ' . $asunto . "\nMensaje: " . $cuerpo;
+        $nombresAdjuntos = array_values(array_filter(array_map(
+            static function ($adjunto) {
+                return trim((string)($adjunto['nombre'] ?? ''));
+            },
+            $adjuntos
+        )));
+        $detalleAdjuntos = !empty($nombresAdjuntos)
+            ? "\nAdjuntos: " . implode(', ', $nombresAdjuntos)
+            : '';
+
+        $notasPost = 'Asunto: ' . $asunto . "\nMensaje: " . $cuerpo .
+            $detalleAdjuntos;
         $notasInteraccion = "Seguimiento por correo enviado\n" .
             'Para: ' . $destinatario . "\n" .
-            'Asunto: ' . $asunto . "\n\n" .
+            'Asunto: ' . $asunto .
+            $detalleAdjuntos . "\n\n" .
             $cuerpo;
 
         $this->connection->begin_transaction();
@@ -146,6 +186,16 @@ class SeguimientoCorreoService
             $stmtInteraccion = $this->connection->prepare($sqlInteraccion);
             $stmtInteraccion->bind_param('iis', $seguimientoId, $usuarioId, $notasInteraccion);
             $stmtInteraccion->execute();
+            $interaccionId = (int)$this->connection->insert_id;
+
+            if (!empty($adjuntos)) {
+                $this->registrarAdjuntos(
+                    $seguimientoId,
+                    $interaccionId,
+                    $usuarioId,
+                    $adjuntos
+                );
+            }
 
             $sqlSeguimiento = "UPDATE seguimientos_vinculacion
                                SET ultima_interaccion_at = NOW(),
@@ -169,7 +219,8 @@ class SeguimientoCorreoService
         return [
             'ok' => true,
             'mensaje' => 'Correo de seguimiento enviado y registrado correctamente.',
-            'total_enviados' => $this->contarCorreosSeguimiento($seguimientoId)
+            'total_enviados' => $this->contarCorreosSeguimiento($seguimientoId),
+            'adjuntos_enviados' => count($adjuntos)
         ];
     }
 
@@ -496,7 +547,512 @@ class SeguimientoCorreoService
         $stmt->execute();
     }
 
-    private function enviarCorreo($seguimiento, $asunto, $cuerpo)
+    private function listarAdjuntosDisponibles($seguimientoId)
+    {
+        $seguimientoId = (int)$seguimientoId;
+        $salida = [];
+
+        $sqlOficio = "SELECT id, folio, archivo_pdf
+                      FROM oficios_vinculacion
+                      WHERE seguimiento_id = ?
+                        AND archivo_pdf IS NOT NULL
+                        AND TRIM(archivo_pdf) <> ''
+                      ORDER BY id DESC
+                      LIMIT 1";
+        $stmtOficio = $this->connection->prepare($sqlOficio);
+        $stmtOficio->bind_param('i', $seguimientoId);
+        $stmtOficio->execute();
+        $oficio = $stmtOficio->get_result()->fetch_assoc();
+
+        if ($oficio) {
+            $rutaRelativa = trim((string)($oficio['archivo_pdf'] ?? ''));
+            $ruta = $this->rutaInternaAbsoluta($rutaRelativa);
+            if ($ruta !== null && is_file($ruta)) {
+                $folio = trim((string)($oficio['folio'] ?? ''));
+                $salida[] = [
+                    'valor' => 'oficio:' . (int)$oficio['id'],
+                    'nombre' => basename($ruta),
+                    'detalle' => $folio !== ''
+                        ? 'Oficio institucional · ' . $folio
+                        : 'Oficio institucional',
+                    'mime' => 'application/pdf',
+                    'tamano' => (int)filesize($ruta)
+                ];
+            }
+        }
+
+        if (!$this->tablaExiste('seguimientos_vinculacion_correo_adjuntos')) {
+            return $salida;
+        }
+
+        $sql = "SELECT id, archivo, nombre_original, mime, tamano
+                FROM seguimientos_vinculacion_correo_adjuntos
+                WHERE seguimiento_id = ?
+                  AND origen = 'SUBIDO'
+                ORDER BY id DESC";
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param('i', $seguimientoId);
+        $stmt->execute();
+        $resultado = $stmt->get_result();
+        $vistos = [];
+
+        while ($fila = $resultado->fetch_assoc()) {
+            $nombre = trim((string)($fila['nombre_original'] ?? ''));
+            $rutaRelativa = trim((string)($fila['archivo'] ?? ''));
+            $clave = strtolower($nombre . '|' . $rutaRelativa);
+            if ($nombre === '' || isset($vistos[$clave])) {
+                continue;
+            }
+
+            $ruta = $this->rutaInternaAbsoluta($rutaRelativa);
+            if ($ruta === null || !is_file($ruta)) {
+                continue;
+            }
+
+            $vistos[$clave] = true;
+            $salida[] = [
+                'valor' => 'archivo:' . (int)$fila['id'],
+                'nombre' => $nombre,
+                'detalle' => 'Archivo del expediente',
+                'mime' => trim((string)($fila['mime'] ?? 'application/octet-stream')),
+                'tamano' => (int)($fila['tamano'] ?? filesize($ruta))
+            ];
+
+            if (count($salida) >= 8) {
+                break;
+            }
+        }
+
+        return $salida;
+    }
+
+    private function prepararAdjuntos(
+        $seguimientoId,
+        $usuarioId,
+        $seleccionados,
+        $archivosNuevos
+    ) {
+        $seleccionados = is_array($seleccionados)
+            ? array_values(array_unique(array_filter(array_map('strval', $seleccionados))))
+            : [];
+
+        $subidos = $this->normalizarArchivosSubidos($archivosNuevos);
+        $totalSolicitado = count($seleccionados) + count($subidos);
+
+        if ($totalSolicitado > 8) {
+            return $this->error(
+                'El correo no puede incluir más de 8 archivos adjuntos.',
+                422
+            );
+        }
+
+        if (
+            $totalSolicitado > 0 &&
+            !$this->tablaExiste('seguimientos_vinculacion_correo_adjuntos')
+        ) {
+            return $this->error(
+                'Falta aplicar la migración de adjuntos de correos de seguimiento.',
+                500
+            );
+        }
+
+        $adjuntos = [];
+        $archivosCreados = [];
+        $tamanoTotal = 0;
+
+        foreach ($seleccionados as $valor) {
+            $adjunto = $this->resolverAdjuntoExpediente(
+                (int)$seguimientoId,
+                (string)$valor
+            );
+            if (!($adjunto['ok'] ?? false)) {
+                $this->eliminarArchivos($archivosCreados);
+                return $adjunto;
+            }
+
+            $item = $adjunto['adjunto'];
+            $tamanoTotal += (int)$item['tamano'];
+            $adjuntos[] = $item;
+        }
+
+        foreach ($subidos as $archivo) {
+            $validacion = $this->validarArchivoSubido($archivo);
+            if (!($validacion['ok'] ?? false)) {
+                $this->eliminarArchivos($archivosCreados);
+                return $validacion;
+            }
+
+            $guardado = $this->guardarArchivoSubido(
+                (int)$seguimientoId,
+                (int)$usuarioId,
+                $archivo,
+                $validacion
+            );
+            if (!($guardado['ok'] ?? false)) {
+                $this->eliminarArchivos($archivosCreados);
+                return $guardado;
+            }
+
+            $item = $guardado['adjunto'];
+            $archivosCreados[] = $item['ruta'];
+            $tamanoTotal += (int)$item['tamano'];
+            $adjuntos[] = $item;
+        }
+
+        if ($tamanoTotal > 20 * 1024 * 1024) {
+            $this->eliminarArchivos($archivosCreados);
+            return $this->error(
+                'Los archivos adjuntos superan el tamaño total permitido de 20 MB.',
+                422
+            );
+        }
+
+        return [
+            'ok' => true,
+            'adjuntos' => $adjuntos,
+            'archivos_creados' => $archivosCreados
+        ];
+    }
+
+    private function resolverAdjuntoExpediente($seguimientoId, $valor)
+    {
+        if (preg_match('/^oficio:(\d+)$/', $valor, $coincidencia)) {
+            $oficioId = (int)$coincidencia[1];
+            $sql = "SELECT id, folio, archivo_pdf
+                    FROM oficios_vinculacion
+                    WHERE id = ?
+                      AND seguimiento_id = ?
+                    LIMIT 1";
+            $stmt = $this->connection->prepare($sql);
+            $stmt->bind_param('ii', $oficioId, $seguimientoId);
+            $stmt->execute();
+            $fila = $stmt->get_result()->fetch_assoc();
+
+            if (!$fila) {
+                return $this->error('El oficio seleccionado ya no está disponible.', 422);
+            }
+
+            $ruta = $this->rutaInternaAbsoluta((string)$fila['archivo_pdf']);
+            if ($ruta === null || !is_file($ruta)) {
+                return $this->error('El PDF del oficio seleccionado no está disponible.', 422);
+            }
+
+            return [
+                'ok' => true,
+                'adjunto' => [
+                    'ruta' => $ruta,
+                    'archivo_relativo' => $this->rutaRelativa($ruta),
+                    'nombre' => basename($ruta),
+                    'mime' => 'application/pdf',
+                    'tamano' => (int)filesize($ruta),
+                    'origen' => 'OFICIO'
+                ]
+            ];
+        }
+
+        if (preg_match('/^archivo:(\d+)$/', $valor, $coincidencia)) {
+            $adjuntoId = (int)$coincidencia[1];
+            $sql = "SELECT archivo, nombre_original, mime, tamano
+                    FROM seguimientos_vinculacion_correo_adjuntos
+                    WHERE id = ?
+                      AND seguimiento_id = ?
+                    LIMIT 1";
+            $stmt = $this->connection->prepare($sql);
+            $stmt->bind_param('ii', $adjuntoId, $seguimientoId);
+            $stmt->execute();
+            $fila = $stmt->get_result()->fetch_assoc();
+
+            if (!$fila) {
+                return $this->error('El archivo seleccionado ya no está disponible.', 422);
+            }
+
+            $ruta = $this->rutaInternaAbsoluta((string)$fila['archivo']);
+            if ($ruta === null || !is_file($ruta)) {
+                return $this->error('El archivo seleccionado ya no está disponible.', 422);
+            }
+
+            return [
+                'ok' => true,
+                'adjunto' => [
+                    'ruta' => $ruta,
+                    'archivo_relativo' => $this->rutaRelativa($ruta),
+                    'nombre' => basename((string)$fila['nombre_original']),
+                    'mime' => trim((string)$fila['mime']) ?: 'application/octet-stream',
+                    'tamano' => (int)$fila['tamano'],
+                    'origen' => 'EXPEDIENTE'
+                ]
+            ];
+        }
+
+        return $this->error('Uno de los archivos seleccionados no es válido.', 422);
+    }
+
+    private function normalizarArchivosSubidos($archivos)
+    {
+        if (!is_array($archivos) || !isset($archivos['name'])) {
+            return [];
+        }
+
+        $nombres = is_array($archivos['name'])
+            ? $archivos['name']
+            : [$archivos['name']];
+        $salida = [];
+
+        foreach ($nombres as $indice => $nombre) {
+            $error = is_array($archivos['error'])
+                ? (int)($archivos['error'][$indice] ?? UPLOAD_ERR_NO_FILE)
+                : (int)($archivos['error'] ?? UPLOAD_ERR_NO_FILE);
+
+            if ($error === UPLOAD_ERR_NO_FILE) {
+                continue;
+            }
+
+            $salida[] = [
+                'name' => (string)$nombre,
+                'type' => is_array($archivos['type'])
+                    ? (string)($archivos['type'][$indice] ?? '')
+                    : (string)($archivos['type'] ?? ''),
+                'tmp_name' => is_array($archivos['tmp_name'])
+                    ? (string)($archivos['tmp_name'][$indice] ?? '')
+                    : (string)($archivos['tmp_name'] ?? ''),
+                'error' => $error,
+                'size' => is_array($archivos['size'])
+                    ? (int)($archivos['size'][$indice] ?? 0)
+                    : (int)($archivos['size'] ?? 0)
+            ];
+        }
+
+        return $salida;
+    }
+
+    private function validarArchivoSubido($archivo)
+    {
+        if ((int)($archivo['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+            return $this->error('No fue posible recibir uno de los archivos adjuntos.', 422);
+        }
+
+        $tmp = (string)($archivo['tmp_name'] ?? '');
+        $tamano = (int)($archivo['size'] ?? 0);
+        $nombre = basename(str_replace('\\', '/', (string)($archivo['name'] ?? 'archivo')));
+
+        if ($tmp === '' || !is_uploaded_file($tmp) || !is_file($tmp)) {
+            return $this->error('Uno de los archivos adjuntos no es una carga válida.', 422);
+        }
+        if ($tamano <= 0 || $tamano > 12 * 1024 * 1024) {
+            return $this->error('Cada archivo adjunto debe pesar como máximo 12 MB.', 422);
+        }
+
+        $extension = strtolower((string)pathinfo($nombre, PATHINFO_EXTENSION));
+        $permitidos = [
+            'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx',
+            'txt', 'csv', 'png', 'jpg', 'jpeg'
+        ];
+        if (!in_array($extension, $permitidos, true)) {
+            return $this->error('Uno de los archivos adjuntos tiene un formato no permitido.', 422);
+        }
+
+        if ($extension === 'pdf') {
+            $manejador = @fopen($tmp, 'rb');
+            $firma = is_resource($manejador) ? fread($manejador, 5) : false;
+            if (is_resource($manejador)) {
+                fclose($manejador);
+            }
+            if ($firma !== '%PDF-') {
+                return $this->error('Uno de los PDF adjuntos no es válido.', 422);
+            }
+        }
+
+        if (in_array($extension, ['png', 'jpg', 'jpeg'], true)) {
+            $imagen = @getimagesize($tmp);
+            if ($imagen === false) {
+                return $this->error('Una de las imágenes adjuntas no es válida.', 422);
+            }
+        }
+
+        $mime = $this->mimePorExtension($extension);
+        return [
+            'ok' => true,
+            'nombre' => $nombre,
+            'extension' => $extension,
+            'mime' => $mime,
+            'tamano' => $tamano
+        ];
+    }
+
+    private function guardarArchivoSubido(
+        $seguimientoId,
+        $usuarioId,
+        $archivo,
+        $validacion
+    ) {
+        $directorio = $this->rootPath . DIRECTORY_SEPARATOR . 'storage' .
+            DIRECTORY_SEPARATOR . 'seguimientos' . DIRECTORY_SEPARATOR .
+            date('Y') . DIRECTORY_SEPARATOR .
+            'seguimiento_' . (int)$seguimientoId . DIRECTORY_SEPARATOR .
+            'adjuntos_correo';
+
+        if (
+            !is_dir($directorio) &&
+            !mkdir($directorio, 0775, true) &&
+            !is_dir($directorio)
+        ) {
+            return $this->error('No fue posible preparar la carpeta de adjuntos.', 500);
+        }
+
+        $base = pathinfo((string)$validacion['nombre'], PATHINFO_FILENAME);
+        $base = $this->nombreArchivoSeguro($base);
+        $extension = (string)$validacion['extension'];
+        $nombreFisico = date('Ymd_His') . '_' .
+            bin2hex(random_bytes(4)) . '_' . $base . '.' . $extension;
+        $destino = $directorio . DIRECTORY_SEPARATOR . $nombreFisico;
+
+        if (!move_uploaded_file((string)$archivo['tmp_name'], $destino)) {
+            return $this->error('No fue posible guardar uno de los archivos adjuntos.', 500);
+        }
+
+        return [
+            'ok' => true,
+            'adjunto' => [
+                'ruta' => $destino,
+                'archivo_relativo' => $this->rutaRelativa($destino),
+                'nombre' => (string)$validacion['nombre'],
+                'mime' => (string)$validacion['mime'],
+                'tamano' => (int)$validacion['tamano'],
+                'origen' => 'SUBIDO'
+            ]
+        ];
+    }
+
+    private function registrarAdjuntos(
+        $seguimientoId,
+        $interaccionId,
+        $usuarioId,
+        $adjuntos
+    ) {
+        if (!$this->tablaExiste('seguimientos_vinculacion_correo_adjuntos')) {
+            throw new RuntimeException(
+                'Falta aplicar la migración de adjuntos de correos de seguimiento.'
+            );
+        }
+
+        $sql = "INSERT INTO seguimientos_vinculacion_correo_adjuntos (
+                    seguimiento_id,
+                    interaccion_id,
+                    usuario_id,
+                    origen,
+                    archivo,
+                    nombre_original,
+                    mime,
+                    tamano
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        $stmt = $this->connection->prepare($sql);
+
+        foreach ($adjuntos as $adjunto) {
+            $origen = strtoupper(trim((string)($adjunto['origen'] ?? 'EXPEDIENTE')));
+            $archivo = trim((string)($adjunto['archivo_relativo'] ?? ''));
+            $nombre = trim((string)($adjunto['nombre'] ?? 'archivo'));
+            $mime = trim((string)($adjunto['mime'] ?? 'application/octet-stream'));
+            $tamano = (int)($adjunto['tamano'] ?? 0);
+
+            $stmt->bind_param(
+                'iiissssi',
+                $seguimientoId,
+                $interaccionId,
+                $usuarioId,
+                $origen,
+                $archivo,
+                $nombre,
+                $mime,
+                $tamano
+            );
+            $stmt->execute();
+        }
+    }
+
+    private function mimePorExtension($extension)
+    {
+        $mapa = [
+            'pdf' => 'application/pdf',
+            'doc' => 'application/msword',
+            'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'xls' => 'application/vnd.ms-excel',
+            'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'ppt' => 'application/vnd.ms-powerpoint',
+            'pptx' => 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            'txt' => 'text/plain',
+            'csv' => 'text/csv',
+            'png' => 'image/png',
+            'jpg' => 'image/jpeg',
+            'jpeg' => 'image/jpeg'
+        ];
+
+        return $mapa[strtolower((string)$extension)] ?? 'application/octet-stream';
+    }
+
+    private function rutaInternaAbsoluta($rutaRelativa)
+    {
+        $rutaRelativa = trim(str_replace('\\', '/', (string)$rutaRelativa));
+        if ($rutaRelativa === '' || strpos($rutaRelativa, '..') !== false) {
+            return null;
+        }
+
+        $ruta = $this->rootPath . DIRECTORY_SEPARATOR .
+            str_replace('/', DIRECTORY_SEPARATOR, ltrim($rutaRelativa, '/'));
+        $real = realpath($ruta);
+        $rootReal = realpath($this->rootPath);
+
+        if (
+            $real === false ||
+            $rootReal === false ||
+            strpos($real, rtrim($rootReal, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR) !== 0
+        ) {
+            return null;
+        }
+
+        return $real;
+    }
+
+    private function rutaRelativa($ruta)
+    {
+        $rootReal = realpath($this->rootPath);
+        $real = realpath((string)$ruta);
+        if ($rootReal === false || $real === false) {
+            return '';
+        }
+
+        $prefijo = rtrim($rootReal, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
+        if (strpos($real, $prefijo) !== 0) {
+            return '';
+        }
+
+        return str_replace(DIRECTORY_SEPARATOR, '/', substr($real, strlen($prefijo)));
+    }
+
+    private function nombreArchivoSeguro($valor)
+    {
+        $valor = trim((string)$valor);
+        if (function_exists('iconv')) {
+            $ascii = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $valor);
+            if (is_string($ascii) && trim($ascii) !== '') {
+                $valor = $ascii;
+            }
+        }
+
+        $valor = preg_replace('/[^A-Za-z0-9_-]+/', '_', $valor);
+        $valor = trim((string)$valor, '_');
+        return $valor !== '' ? substr($valor, 0, 80) : 'archivo';
+    }
+
+    private function eliminarArchivos($rutas)
+    {
+        foreach (is_array($rutas) ? $rutas : [] as $ruta) {
+            if (is_string($ruta) && is_file($ruta)) {
+                @unlink($ruta);
+            }
+        }
+    }
+
+    private function enviarCorreo($seguimiento, $asunto, $cuerpo, $adjuntos = [])
     {
         $configHostinger = $this->cargarConfiguracionHostinger();
 
@@ -505,7 +1061,8 @@ class SeguimientoCorreoService
                 $seguimiento,
                 $asunto,
                 $cuerpo,
-                $configHostinger
+                $configHostinger,
+                $adjuntos
             );
 
             if ($resultado['ok'] ?? false) {
@@ -520,11 +1077,16 @@ class SeguimientoCorreoService
             return $resultado;
         }
 
-        return $this->enviarPorSmtp($seguimiento, $asunto, $cuerpo);
+        return $this->enviarPorSmtp($seguimiento, $asunto, $cuerpo, $adjuntos);
     }
 
-    private function enviarPorHostinger($seguimiento, $asunto, $cuerpo, $config)
-    {
+    private function enviarPorHostinger(
+        $seguimiento,
+        $asunto,
+        $cuerpo,
+        $config,
+        $adjuntos = []
+    ) {
         if (!function_exists('curl_init')) {
             return $this->error('La extensión cURL de PHP es necesaria para enviar el correo.', 500);
         }
@@ -580,6 +1142,26 @@ class SeguimientoCorreoService
 
         if ($nombreAnalista !== '') {
             $payload['displayName'] = $nombreAnalista;
+        }
+
+        if (!empty($adjuntos)) {
+            $payload['attachments'] = [];
+            foreach ($adjuntos as $adjunto) {
+                $contenido = @file_get_contents((string)$adjunto['ruta']);
+                if ($contenido === false) {
+                    return $this->error(
+                        'No fue posible leer uno de los archivos adjuntos.',
+                        500
+                    );
+                }
+
+                $payload['attachments'][] = [
+                    'filename' => (string)$adjunto['nombre'],
+                    'content' => base64_encode($contenido),
+                    'contentType' => (string)$adjunto['mime'],
+                    'encoding' => 'base64'
+                ];
+            }
         }
 
         return $this->solicitarHostinger(
@@ -651,7 +1233,7 @@ class SeguimientoCorreoService
         ];
     }
 
-    private function enviarPorSmtp($seguimiento, $asunto, $cuerpo)
+    private function enviarPorSmtp($seguimiento, $asunto, $cuerpo, $adjuntos = [])
     {
         $autoload = $this->rootPath . DIRECTORY_SEPARATOR . 'vendor' . DIRECTORY_SEPARATOR . 'autoload.php';
         if (!is_file($autoload)) {
@@ -710,6 +1292,14 @@ class SeguimientoCorreoService
             $mail->Subject = $asunto;
             $mail->isHTML(false);
             $mail->Body = $cuerpo;
+
+            foreach ($adjuntos as $adjunto) {
+                $mail->addAttachment(
+                    (string)$adjunto['ruta'],
+                    (string)$adjunto['nombre']
+                );
+            }
+
             $mail->send();
 
             return ['ok' => true];
