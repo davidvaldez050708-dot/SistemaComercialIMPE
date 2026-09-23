@@ -1,3 +1,4 @@
+<div class="marketing-module-typography">
 <?php
 $resumenMarketing = $resumenMarketing ?? [];
 $convocatoriasUrl = BASE_URL . 'index.php?controller=convocatoria&action=index';
@@ -55,3 +56,5 @@ $convocatoriasUrl = BASE_URL . 'index.php?controller=convocatoria&action=index';
         <?php endif; ?>
     </div>
 </section>
+
+</div>
