@@ -10,6 +10,7 @@ $modalAbierto = $modalAbierto ?? '';
 $buscar = $buscar ?? '';
 $estadoFiltro = $estadoFiltro ?? 0;
 $estatusFiltro = $estatusFiltro ?? '';
+$territorioSeleccionado = $territorioSeleccionado ?? null;
 
 $puedeCrear = tienePermiso('convocatorias.crear');
 $puedeEditar = tienePermiso('convocatorias.editar');
@@ -50,6 +51,144 @@ $datosEditar = $modalAbierto === 'editar' ? $datosFormulario : [];
     </div>
 <?php endif; ?>
 
+<?php if (!$territorioSeleccionado): ?>
+<section class="data-territorial-module convocatoria-territory-selector">
+    <section class="dashboard-panel data-territorial-selector">
+        <div class="data-selector-heading">
+            <div class="data-territorial-selector-copy">
+                <h2 class="panel-title mb-1">Seleccionar territorio</h2>
+                <p>Busca o selecciona un Estado para consultar sus convocatorias.</p>
+            </div>
+        </div>
+
+        <div class="data-territorial-toolbar convocatoria-territory-toolbar">
+            <div class="data-filter-field">
+                <label for="buscar_territorio_convocatoria">Buscar territorio</label>
+                <div class="module-search">
+                    <i class="bi bi-search"></i>
+                    <input
+                        type="search"
+                        class="form-control"
+                        id="buscar_territorio_convocatoria"
+                        placeholder="Buscar territorio..."
+                        aria-label="Buscar territorio"
+                        data-convocatoria-territory-search>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="data-territorial-cards" data-convocatoria-territory-cards>
+        <?php foreach ($estados as $estado): ?>
+            <?php
+            $nombreEstado = trim((string)($estado['nombre'] ?? ''));
+            $slugEstado = strtolower($nombreEstado);
+            $slugEstado = iconv('UTF-8', 'ASCII//TRANSLIT', $slugEstado);
+            $slugEstado = preg_replace('/[^a-z0-9]+/', '-', (string)$slugEstado);
+            $slugEstado = trim((string)$slugEstado, '-');
+
+            if ($nombreEstado === 'Ciudad de México') {
+                $slugEstado = 'ciudad-de-mexico';
+            } elseif ($nombreEstado === 'Estado de México') {
+                $slugEstado = 'estado-de-mexico';
+            } elseif ($nombreEstado === 'Michoacán') {
+                $slugEstado = 'michoacán';
+            } elseif ($nombreEstado === 'Nuevo León') {
+                $slugEstado = 'nuevo-leon';
+            } elseif ($nombreEstado === 'Querétaro') {
+                $slugEstado = 'queretaro';
+            } elseif ($nombreEstado === 'San Luis Potosí') {
+                $slugEstado = 'san-luis-potosi';
+            } elseif ($nombreEstado === 'Yucatán') {
+                $slugEstado = 'yucatan';
+            }
+
+            $imagenEstado = BASE_URL . 'public/img/estados/' . $slugEstado . '.png';
+            ?>
+            <article
+                class="dashboard-panel data-territorial-card convocatoria-territory-card"
+                data-convocatoria-territory-card
+                data-territory-name="<?= $texto(mb_strtolower($nombreEstado, 'UTF-8')) ?>">
+                <div class="data-card-heading">
+                    <h3><?= $texto($nombreEstado) ?></h3>
+                </div>
+
+                <div class="convocatoria-territory-map">
+                    <img
+                        src="<?= $texto($imagenEstado) ?>"
+                        alt="Mapa de <?= $texto($nombreEstado) ?>">
+                </div>
+
+                <a
+                    class="btn btn-system-light"
+                    href="<?= BASE_URL ?>index.php?controller=convocatoria&action=index&territorio_id=<?= (int)$estado['id'] ?>">
+                    Ver convocatorias
+                    <i class="bi bi-arrow-right ms-2"></i>
+                </a>
+            </article>
+        <?php endforeach; ?>
+    </section>
+
+    <section
+        class="dashboard-panel data-empty-state d-none"
+        data-convocatoria-territory-empty>
+        <span><i class="bi bi-map"></i></span>
+        <strong>No se encontraron territorios.</strong>
+        <p>Prueba con otro nombre de estado.</p>
+    </section>
+</section>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const search = document.querySelector('[data-convocatoria-territory-search]');
+    const cards = Array.from(document.querySelectorAll('[data-convocatoria-territory-card]'));
+    const empty = document.querySelector('[data-convocatoria-territory-empty]');
+    let timer = null;
+
+    const normalizar = function (valor) {
+        return String(valor || '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase()
+            .trim();
+    };
+
+    const aplicarFiltro = function () {
+        const term = normalizar(search?.value || '');
+        let visibles = 0;
+
+        cards.forEach(function (card) {
+            const name = normalizar(card.dataset.territoryName || '');
+            const mostrar = term === '' || name.includes(term);
+            card.classList.toggle('d-none', !mostrar);
+
+            if (mostrar) {
+                visibles++;
+            }
+        });
+
+        empty?.classList.toggle('d-none', visibles > 0);
+    };
+
+    search?.addEventListener('input', function () {
+        window.clearTimeout(timer);
+        timer = window.setTimeout(aplicarFiltro, 300);
+    });
+});
+</script>
+<?php return; ?>
+<?php endif; ?>
+
+<div class="convocatoria-territory-context">
+    <a
+        class="data-back-link"
+        href="<?= BASE_URL ?>index.php?controller=convocatoria&action=index&territorio_id=<?= (int)$territorioSeleccionado['id'] ?>">
+        <i class="bi bi-arrow-left"></i>
+        Cambiar territorio
+    </a>
+    <span><?= $texto($territorioSeleccionado['nombre'] ?? '') ?></span>
+</div>
+
 <section class="dashboard-panel users-module-panel">
     <div class="module-toolbar convocatoria-toolbar">
         <div>
@@ -79,6 +218,7 @@ $datosEditar = $modalAbierto === 'editar' ? $datosFormulario : [];
         class="convocatoria-filter-bar">
         <input type="hidden" name="controller" value="convocatoria">
         <input type="hidden" name="action" value="index">
+        <input type="hidden" name="territorio_id" value="<?= (int)$territorioSeleccionado['id'] ?>">
 
         <div class="convocatoria-filter-field convocatoria-filter-search">
             <label class="form-label login-label" for="filtro_convocatoria_buscar">Buscar convocatoria</label>
@@ -92,23 +232,6 @@ $datosEditar = $modalAbierto === 'editar' ? $datosFormulario : [];
                     placeholder="Buscar convocatoria..."
                     value="<?= $texto($buscar) ?>">
             </div>
-        </div>
-
-        <div class="convocatoria-filter-field">
-            <label class="form-label login-label" for="filtro_convocatoria_estado">Estado</label>
-            <select
-                class="form-select system-form-control"
-                id="filtro_convocatoria_estado"
-                name="estado_id">
-                <option value="0">Todos los estados</option>
-                <?php foreach ($estados as $estado): ?>
-                    <option
-                        value="<?= (int)$estado['id'] ?>"
-                        <?= (int)$estadoFiltro === (int)$estado['id'] ? 'selected' : '' ?>>
-                        <?= $texto($estado['nombre']) ?>
-                    </option>
-                <?php endforeach; ?>
-            </select>
         </div>
 
         <div class="convocatoria-filter-field">
@@ -286,6 +409,7 @@ $datosEditar = $modalAbierto === 'editar' ? $datosFormulario : [];
                 method="POST"
                 enctype="multipart/form-data"
                 novalidate>
+                <input type="hidden" name="territorio_id" value="<?= (int)$territorioSeleccionado['id'] ?>">
 
                 <div class="modal-body">
                     <?php if ($modalAbierto === 'crear' && !empty($erroresFormulario)): ?>
@@ -427,6 +551,7 @@ $datosEditar = $modalAbierto === 'editar' ? $datosFormulario : [];
                 method="POST"
                 enctype="multipart/form-data"
                 novalidate>
+                <input type="hidden" name="territorio_id" value="<?= (int)$territorioSeleccionado['id'] ?>">
 
                 <input type="hidden" name="id" id="editar_convocatoria_id">
 
@@ -535,6 +660,7 @@ $datosEditar = $modalAbierto === 'editar' ? $datosFormulario : [];
             </div>
 
             <form action="<?= BASE_URL ?>index.php?controller=convocatoria&action=cambiarEstado" method="POST">
+                <input type="hidden" name="territorio_id" value="<?= (int)$territorioSeleccionado['id'] ?>">
                 <input type="hidden" name="id" id="estado_convocatoria_id">
                 <input type="hidden" name="estado" id="estado_convocatoria_nuevo">
 
@@ -716,7 +842,6 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     const filtroBuscar = document.getElementById('filtro_convocatoria_buscar');
-    const filtroEstado = document.getElementById('filtro_convocatoria_estado');
     const filtroEstatus = document.getElementById('filtro_convocatoria_estatus');
     const limpiarFiltros = document.querySelector('[data-convocatoria-clear-filters]');
     const listadoConvocatorias = document.querySelector('[data-convocatorias-listado]');
@@ -727,7 +852,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const actualizarVisibilidadLimpiar = function () {
         const hayFiltros =
             String(filtroBuscar?.value || '').trim() !== '' ||
-            Number(filtroEstado?.value || 0) > 0 ||
             String(filtroEstatus?.value || '') !== '';
 
         limpiarFiltros?.classList.toggle('d-none', !hayFiltros);
@@ -838,7 +962,7 @@ document.addEventListener('DOMContentLoaded', function () {
             controller: 'convocatoria',
             action: 'listadoFiltrado',
             buscar: String(filtroBuscar?.value || '').trim(),
-            estado_id: String(filtroEstado?.value || '0'),
+            territorio_id: <?= json_encode((string)(int)$territorioSeleccionado['id']) ?>,
             estatus: String(filtroEstatus?.value || '')
         });
 
@@ -889,7 +1013,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     filtroBuscar?.addEventListener('input', programarBusqueda);
 
-    [filtroEstado, filtroEstatus].forEach(function (filtro) {
+    [filtroEstatus].forEach(function (filtro) {
         filtro?.addEventListener('change', function () {
             actualizarVisibilidadLimpiar();
             cargarListadoFiltrado();
@@ -902,10 +1026,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (filtroBuscar) {
             filtroBuscar.value = '';
-        }
-
-        if (filtroEstado) {
-            filtroEstado.value = '0';
         }
 
         if (filtroEstatus) {
