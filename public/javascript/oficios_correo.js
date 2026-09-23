@@ -347,17 +347,18 @@
             }
 
             if (nota) {
+                // Un correo ya enviado no necesita un segundo bloque de éxito:
+                // el estado/fecha ya aparecen en el modal y el envío se confirma
+                // mediante el toast. Conservamos esta nota solo para preparación
+                // del envío o para comunicar errores.
+                nota.classList.toggle('d-none', enviado);
                 nota.classList.remove('alert-info', 'alert-success', 'alert-danger');
 
-                if (enviado) {
-                    nota.classList.add('alert-success');
-                    nota.querySelector('span').textContent =
-                        'El correo fue enviado correctamente y quedó registrado en el expediente.';
-                } else if (errorEnvio !== '') {
+                if (!enviado && errorEnvio !== '') {
                     nota.classList.add('alert-danger');
                     nota.querySelector('span').textContent =
                         'El último intento de envío falló. Puedes corregir la configuración e intentar nuevamente.';
-                } else {
+                } else if (!enviado) {
                     nota.classList.add('alert-info');
                     nota.querySelector('span').textContent =
                         'El correo se enviará desde la cuenta SMTP institucional y adjuntará el PDF del oficio.';
@@ -531,7 +532,11 @@
                 }
 
                 if (datos.correo) {
-                    configurarModal(datos.correo);
+                    // No convertimos temporalmente el modal abierto en una
+                    // pantalla de éxito; el toast comunica el resultado y el
+                    // modal se cierra enseguida. Sí actualizamos las etiquetas
+                    // externas para reflejar que el correo ya fue enviado.
+                    actualizarEtiquetaBotones(datos.correo);
                 }
 
                 const estadoOficio = document.querySelector('[data-work-oficio-status]');
@@ -545,14 +550,13 @@
                 }
 
                 mostrarToast(datos.mensaje || 'Correo enviado correctamente.', false);
+                bootstrap.Modal.getOrCreateInstance(modal).hide();
 
-                window.setTimeout(function () {
-                    bootstrap.Modal.getOrCreateInstance(modal).hide();
-
-                    if (esDetalle) {
+                if (esDetalle) {
+                    window.setTimeout(function () {
                         window.location.reload();
-                    }
-                }, 700);
+                    }, 180);
+                }
             } catch (error) {
                 console.error(error);
                 mostrarToast(
