@@ -5,6 +5,34 @@ require_once __DIR__ . '/../helpers/PermissionHelper.php';
 
 class ConvocatoriaController
 {
+    public function listadoFiltrado()
+    {
+        $this->validarPermiso('convocatorias.ver');
+
+        $modelo = new ConvocatoriaModel();
+        $buscar = trim((string)($_GET['buscar'] ?? ''));
+        $estadoFiltro = (int)($_GET['estado_id'] ?? 0);
+        $estatusFiltro = in_array((string)($_GET['estatus'] ?? ''), ['0', '1'], true)
+            ? (string)$_GET['estatus']
+            : '';
+
+        $convocatorias = $modelo->obtenerListado(
+            $buscar,
+            $estadoFiltro,
+            $estatusFiltro
+        );
+
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(
+            [
+                'ok' => true,
+                'convocatorias' => $convocatorias
+            ],
+            JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE
+        );
+        exit;
+    }
+
     public function index()
     {
         $this->validarPermiso('convocatorias.ver');
