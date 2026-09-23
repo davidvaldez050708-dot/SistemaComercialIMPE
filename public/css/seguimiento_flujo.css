@@ -162,7 +162,7 @@
 }
 
 .linkage-flow-missing-group + .linkage-flow-missing-group {
-    margin-left: 4px;
+    margin-left: 0;
 }
 
 .linkage-flow-chip {
