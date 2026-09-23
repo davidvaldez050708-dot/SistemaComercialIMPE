@@ -139,3 +139,55 @@
         max-height: 190px;
     }
 }
+
+
+.convocatoria-territory-selector {
+    display: grid;
+    gap: 18px;
+}
+
+.convocatoria-territory-toolbar {
+    grid-template-columns: minmax(320px, 1fr);
+}
+
+.convocatoria-territory-card {
+    grid-template-rows: auto minmax(120px, 1fr) auto;
+}
+
+.convocatoria-territory-map {
+    min-height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+}
+
+.convocatoria-territory-map img {
+    width: 100%;
+    max-width: 180px;
+    height: 120px;
+    object-fit: contain;
+    display: block;
+}
+
+.convocatoria-territory-context {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 14px;
+}
+
+.convocatoria-territory-context > span {
+    color: var(--color-text-primary);
+    font-size: 14px;
+    font-weight: 800;
+}
+
+@media (max-width: 767.98px) {
+    .convocatoria-territory-context {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 6px;
+    }
+}
