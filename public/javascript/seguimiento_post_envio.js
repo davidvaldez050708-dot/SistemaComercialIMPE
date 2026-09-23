@@ -83,7 +83,7 @@
                             '<div class="modal-footer system-form-modal-footer">' +
                                 '<button type="button" class="btn btn-system-cancel" data-bs-dismiss="modal">Cancelar</button>' +
                                 '<button type="submit" class="btn btn-system-save" data-post-envio-save>' +
-                                    '<i class="bi bi-check2-circle"></i> Guardar avance' +
+                                    '<i class="bi bi-check2-circle me-2"></i>Guardar avance' +
                                 '</button>' +
                             '</div>' +
                         '</form>' +
@@ -404,31 +404,31 @@
                     titulo: 'Registrar convenio recibido',
                     subtitulo: 'Adjunta el convenio requisitado que devolvió la institución para incorporarlo al expediente.',
                     campos: camposConvenioRecibido(false),
-                    boton: '<i class="bi bi-cloud-arrow-up"></i> Registrar convenio recibido'
+                    boton: '<i class="bi bi-cloud-arrow-up me-2"></i>Registrar convenio recibido'
                 },
                 REGISTRAR_CONVENIO_CORREGIDO: {
                     titulo: 'Registrar convenio corregido',
                     subtitulo: 'Adjunta la nueva versión que devolvió la institución después de las correcciones.',
                     campos: camposConvenioRecibido(true),
-                    boton: '<i class="bi bi-cloud-arrow-up"></i> Registrar nueva versión'
+                    boton: '<i class="bi bi-cloud-arrow-up me-2"></i>Registrar nueva versión'
                 },
                 APROBAR_CONVENIO_RECIBIDO: {
                     titulo: 'Aprobar convenio recibido',
                     subtitulo: 'Confirma que la versión vigente está correcta antes de formalizarla.',
                     campos: camposAprobacionConvenio(),
-                    boton: '<i class="bi bi-check2-circle"></i> Aprobar convenio'
+                    boton: '<i class="bi bi-check2-circle me-2"></i>Aprobar convenio'
                 },
                 SOLICITAR_CORRECCIONES_CONVENIO: {
                     titulo: 'Solicitar correcciones',
                     subtitulo: 'Registra los ajustes que debe realizar la institución en el convenio.',
                     campos: camposCorreccionesConvenio(),
-                    boton: '<i class="bi bi-pencil-square"></i> Registrar correcciones'
+                    boton: '<i class="bi bi-pencil-square me-2"></i>Registrar correcciones'
                 },
                 FORMALIZAR_CONVENIO: {
                     titulo: 'Formalizar convenio',
                     subtitulo: 'Registra la fecha de formalización y, si aplica, las observaciones finales para concluir la ruta del Analista.',
                     campos: camposConvenio(),
-                    boton: '<i class="bi bi-file-earmark-check"></i> Formalizar convenio'
+                    boton: '<i class="bi bi-file-earmark-check me-2"></i>Formalizar convenio'
                 }
             };
             return mapa[codigo] || null;
@@ -460,7 +460,7 @@
                         '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span>' +
                         '<span>Preparando correo y documentos...</span>' +
                     '</div>';
-                boton.innerHTML = '<i class="bi bi-send"></i> Enviar documentación';
+                boton.innerHTML = '<i class="bi bi-send me-2"></i>Enviar documentación';
                 boton.disabled = true;
                 bootstrap.Modal.getOrCreateInstance(modal).show();
 
@@ -506,7 +506,7 @@
             subtitulo.textContent = config.subtitulo;
             campos.innerHTML = config.campos;
             boton.innerHTML = config.boton ||
-                '<i class="bi bi-check2-circle"></i> Guardar avance';
+                '<i class="bi bi-check2-circle me-2"></i>Guardar avance';
             boton.disabled = false;
             bootstrap.Modal.getOrCreateInstance(modal).show();
         };
