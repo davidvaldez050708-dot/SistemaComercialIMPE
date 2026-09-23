@@ -43,6 +43,17 @@ class ReprogramacionReunionService
             return $this->error('La reunión no está disponible para reprogramarse.', 409);
         }
 
+        $disponibilidad = $this->agendaService->validarDisponibilidadHorario(
+            $fecha,
+            $duracion,
+            (int)$reunion['analista_id'],
+            (int)$reunion['cuenta_clave_id'],
+            $reunionId
+        );
+        if (!($disponibilidad['ok'] ?? false)) {
+            return $disponibilidad;
+        }
+
         $this->connection->begin_transaction();
         try {
             $historialId = $this->insertarHistorial(
