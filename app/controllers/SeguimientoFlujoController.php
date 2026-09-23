@@ -545,7 +545,8 @@ class SeguimientoFlujoController
         ) {
             $this->reunionFechaGuardService->marcarRealizada(
                 $seguimientoId,
-                $usuarioId
+                $usuarioId,
+                $_POST
             );
 
             $this->reunionResultadoService->programarSeguimientoTrasReunion(
