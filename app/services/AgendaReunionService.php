@@ -436,6 +436,7 @@ class AgendaReunionService
             $seguimientoId = (int)$reunion['seguimiento_id'];
             $analistaId = (int)$reunion['analista_id'];
 
+            $this->repo->cancelarReprogramacionesPendientes($reunionId);
             $this->repo->limpiarReunionPostEnvio($seguimientoId);
             $this->repo->actualizarProximaAccion(
                 $seguimientoId,
