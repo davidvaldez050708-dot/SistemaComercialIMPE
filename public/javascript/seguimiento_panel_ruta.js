@@ -15,7 +15,7 @@
             [1, 'Seguimiento iniciado'],
             [2, 'Investigación de datos'],
             [3, 'Contacto y validación'],
-            [4, 'Datos verificados'],
+            [4, 'Verificación de datos'],
             [5, 'Oficio preparado'],
             [6, 'PDF generado'],
             [7, 'Oficio / correo enviado'],
