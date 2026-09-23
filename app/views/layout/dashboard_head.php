@@ -66,6 +66,7 @@ $esTerritorialDashboard = in_array(
     ],
     true
 );
+$esConvocatoriaDashboard = $controllerDashboard === 'convocatoria';
 
 $cssOpcionalDashboard = [];
 
@@ -137,6 +138,10 @@ if ($esAgendaDashboard) {
 
 if ($esSeguimientoEstado || $esSeguimientoDetalle || $esAgendaDashboard) {
     $cssOpcionalDashboard[] = 'seguimiento_estabilizacion_visual.css';
+}
+
+if ($esConvocatoriaDashboard) {
+    $cssOpcionalDashboard[] = 'convocatorias.css';
 }
 
 if ($esReportesDashboard) {
