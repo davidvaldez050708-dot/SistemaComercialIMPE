@@ -17,19 +17,14 @@ class SeguimientoInteraccionController
         header('Content-Type: application/json; charset=utf-8');
 
         $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
-        $rolId = (int)($_SESSION['rol_id'] ?? 0);
 
-        if ($usuarioId <= 0 || $rolId !== 4) {
+        if (
+            $usuarioId <= 0 ||
+            !tienePermiso('seguimientos_vinculacion.operar_propios')
+        ) {
             $this->responder([
                 'ok' => false,
-                'mensaje' => 'Solo el Analista responsable puede registrar esta interacción.'
-            ], 403);
-        }
-
-        if (!tienePermiso('seguimientos_vinculacion.ver')) {
-            $this->responder([
-                'ok' => false,
-                'mensaje' => 'No tienes permiso para registrar interacciones.'
+                'mensaje' => 'No tienes permiso para operar este seguimiento.'
             ], 403);
         }
 
