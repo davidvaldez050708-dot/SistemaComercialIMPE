@@ -19,6 +19,9 @@
 #modalSeleccionarOficio .modal-header {
     min-height: auto !important;
     padding: 15px 18px !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 14px !important;
     border-color: var(--color-border) !important;
 }
 
@@ -35,7 +38,8 @@
     width: 14px !important;
     height: 14px !important;
     padding: 8px !important;
-    margin: 0 !important;
+    margin: 0 0 0 auto !important;
+    flex: 0 0 auto !important;
     border-radius: 8px !important;
 }
 
