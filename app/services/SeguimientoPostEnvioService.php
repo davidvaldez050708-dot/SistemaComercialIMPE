@@ -149,7 +149,12 @@ class SeguimientoPostEnvioService
         ];
 
         $respuestaAt = trim((string)($seguimiento['respuesta_at'] ?? ''));
+        $respuestaTipo = strtoupper(trim((string)($seguimiento['respuesta_tipo'] ?? '')));
+        $contactarDespuesAt = trim((string)($seguimiento['contactar_despues_at'] ?? ''));
         $seguimientoCorreoAt = trim((string)($seguimiento['seguimiento_correo_at'] ?? ''));
+        $coordinacionReunionAt = trim((string)(
+            $seguimiento['coordinacion_reunion_habilitada_at'] ?? ''
+        ));
         $reunionAgendadaAt = trim((string)($seguimiento['reunion_agendada_at'] ?? ''));
         $reunionRealizadaAt = trim((string)($seguimiento['reunion_realizada_at'] ?? ''));
         $convenioAt = trim((string)($seguimiento['convenio_formalizado_at'] ?? ''));
@@ -201,15 +206,41 @@ class SeguimientoPostEnvioService
             );
         }
 
-        if ($seguimientoCorreoAt !== '') {
+        if (
+            $respuestaAt !== '' &&
+            $respuestaTipo === 'CONTACTAR_DESPUES' &&
+            $contactarDespuesAt !== '' &&
+            strtotime($contactarDespuesAt) > time()
+        ) {
+            $fechaContacto = $this->fechaLegible($contactarDespuesAt);
+
+            return $this->respuestaFlujo(
+                $pasos,
+                9,
+                'Contacto programado',
+                $fechaContacto !== ''
+                    ? 'La institución solicitó retomar el contacto el ' . $fechaContacto . '. La ruta quedará en espera hasta esa fecha.'
+                    : 'La institución solicitó retomar el contacto más adelante. La ruta quedará en espera hasta la fecha registrada.',
+                [
+                    'codigo' => 'CONTACTO_PROGRAMADO_AUN_NO_DISPONIBLE',
+                    'etiqueta' => 'Contacto programado',
+                    'icono' => 'bi-clock-history',
+                    'deshabilitada' => true
+                ],
+                null,
+                $seguimiento
+            );
+        }
+
+        if ($coordinacionReunionAt !== '') {
             return $this->respuestaFlujo(
                 $pasos,
                 11,
-                'Agendar reunión',
-                'El seguimiento por correo ya quedó registrado. El siguiente paso es definir fecha, modalidad y lugar o enlace de la reunión.',
+                'Coordinar reunión',
+                'La etapa de seguimiento ya quedó cerrada. Abre la agenda para proponer la fecha y coordinar la reunión con Cuenta Clave.',
                 [
                     'codigo' => 'AGENDAR_REUNION',
-                    'etiqueta' => 'Agendar reunión',
+                    'etiqueta' => 'Abrir agenda',
                     'icono' => 'bi-calendar-event'
                 ],
                 null,
@@ -275,8 +306,13 @@ class SeguimientoPostEnvioService
         if ($texto === '') {
             throw new InvalidArgumentException('Escribe brevemente qué respondió la institución.');
         }
-        if ($tipo === 'CONTACTAR_DESPUES' && $contactarDespues === null) {
-            throw new InvalidArgumentException('Indica cuándo debe retomarse el contacto.');
+        if ($tipo === 'CONTACTAR_DESPUES') {
+            if ($contactarDespues === null) {
+                throw new InvalidArgumentException('Indica cuándo debe retomarse el contacto.');
+            }
+            if (strtotime($contactarDespues) <= time()) {
+                throw new InvalidArgumentException('La fecha para retomar el contacto debe estar en el futuro.');
+            }
         }
 
         $sql = "UPDATE seguimientos_vinculacion_post_envio
@@ -483,6 +519,9 @@ class SeguimientoPostEnvioService
         if (!$this->fechaValida($fecha)) {
             throw new InvalidArgumentException('Indica una fecha válida para el convenio.');
         }
+        if ($fecha > date('Y-m-d')) {
+            throw new InvalidArgumentException('La fecha del convenio no puede estar en el futuro.');
+        }
 
         $sql = "UPDATE seguimientos_vinculacion_post_envio
                 SET convenio_fecha = ?,
@@ -521,6 +560,8 @@ class SeguimientoPostEnvioService
                     post.contactar_despues_at,
                     post.seguimiento_correo_notas,
                     post.seguimiento_correo_at,
+                    post.coordinacion_reunion_habilitada_at,
+                    post.coordinacion_reunion_habilitada_por,
                     post.reunion_fecha,
                     post.reunion_modalidad,
                     post.reunion_lugar_enlace,
@@ -627,6 +668,11 @@ class SeguimientoPostEnvioService
                 'estado_seguimiento' => (string)($seguimiento['estado_seguimiento'] ?? ''),
                 'proxima_accion_at' => trim((string)($seguimiento['proxima_accion_at'] ?? '')),
                 'respuesta_tipo' => (string)($seguimiento['respuesta_tipo'] ?? ''),
+                'contactar_despues_at' => (string)($seguimiento['contactar_despues_at'] ?? ''),
+                'seguimiento_correo_at' => (string)($seguimiento['seguimiento_correo_at'] ?? ''),
+                'coordinacion_reunion_habilitada_at' => (string)(
+                    $seguimiento['coordinacion_reunion_habilitada_at'] ?? ''
+                ),
                 'reunion_fecha' => (string)($seguimiento['reunion_fecha'] ?? ''),
                 'convenio_referencia' => (string)($seguimiento['convenio_referencia'] ?? ''),
                 'convenio_fecha' => (string)($seguimiento['convenio_fecha'] ?? ''),
