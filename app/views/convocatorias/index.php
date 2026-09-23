@@ -124,18 +124,12 @@ $datosEditar = $modalAbierto === 'editar' ? $datosFormulario : [];
         </div>
 
         <div class="convocatoria-filter-actions">
-            <button type="submit" class="btn btn-system-save">
-                <i class="bi bi-funnel me-2"></i>
-                Filtrar
-            </button>
-
-            <?php if ($buscar !== '' || (int)$estadoFiltro > 0 || $estatusFiltro !== ''): ?>
-                <a
-                    class="filter-clear-link"
-                    href="<?= BASE_URL ?>index.php?controller=convocatoria&action=index">
-                    Limpiar filtros
-                </a>
-            <?php endif; ?>
+            <a
+                class="filter-clear-link <?= ($buscar === '' && (int)$estadoFiltro === 0 && $estatusFiltro === '') ? 'd-none' : '' ?>"
+                href="<?= BASE_URL ?>index.php?controller=convocatoria&action=index"
+                data-convocatoria-clear-filters>
+                Limpiar filtros
+            </a>
         </div>
     </form>
 </section>
@@ -154,7 +148,7 @@ $datosEditar = $modalAbierto === 'editar' ? $datosFormulario : [];
                 </tr>
             </thead>
 
-            <tbody>
+            <tbody data-convocatorias-listado>
                 <?php if (!empty($convocatorias)): ?>
                     <?php foreach ($convocatorias as $convocatoria): ?>
                         <tr>
@@ -235,7 +229,7 @@ $datosEditar = $modalAbierto === 'editar' ? $datosFormulario : [];
                     <tr>
                         <td colspan="6">
                             <div class="empty-table-message">
-                                No hay convocatorias registradas.
+                                No se encontraron convocatorias con los filtros seleccionados.
                             </div>
                         </td>
                     </tr>
@@ -583,8 +577,7 @@ document.addEventListener('DOMContentLoaded', function () {
         return datos.convocatoria;
     };
 
-    document.querySelectorAll('.btn-ver-convocatoria').forEach(function (boton) {
-        boton.addEventListener('click', async function () {
+    const manejarVerConvocatoria = async function () {
             try {
                 const convocatoria = await cargarConvocatoria(this.dataset.id);
                 const imagen = convocatoria.imagen
@@ -627,11 +620,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 detalleContenido.innerHTML = '<div class="alert alert-danger">' + escapeHtml(error.message) + '</div>';
                 detalleOffcanvas.show();
             }
-        });
-    });
+    };
 
-    document.querySelectorAll('.btn-editar-convocatoria').forEach(function (boton) {
-        boton.addEventListener('click', async function () {
+    const manejarEditarConvocatoria = async function () {
             try {
                 const convocatoria = await cargarConvocatoria(this.dataset.id);
                 document.getElementById('editar_convocatoria_id').value = convocatoria.id || '';
@@ -653,8 +644,9 @@ document.addEventListener('DOMContentLoaded', function () {
             } catch (error) {
                 window.alert(error.message);
             }
-        });
-    });
+    };
+
+    vincularAccionesConvocatorias();
 
     document.querySelectorAll('[data-state-picker]').forEach(function (picker) {
         const search = picker.querySelector('[data-state-search]');
@@ -721,6 +713,227 @@ document.addEventListener('DOMContentLoaded', function () {
             .replace(/[\u0300-\u036f]/g, '')
             .toLowerCase()
             .trim();
+    }
+
+    const filtroBuscar = document.getElementById('filtro_convocatoria_buscar');
+    const filtroEstado = document.getElementById('filtro_convocatoria_estado');
+    const filtroEstatus = document.getElementById('filtro_convocatoria_estatus');
+    const limpiarFiltros = document.querySelector('[data-convocatoria-clear-filters]');
+    const listadoConvocatorias = document.querySelector('[data-convocatorias-listado]');
+    let temporizadorFiltro = null;
+    let controladorFiltro = null;
+    let secuenciaFiltro = 0;
+
+    const actualizarVisibilidadLimpiar = function () {
+        const hayFiltros =
+            String(filtroBuscar?.value || '').trim() !== '' ||
+            Number(filtroEstado?.value || 0) > 0 ||
+            String(filtroEstatus?.value || '') !== '';
+
+        limpiarFiltros?.classList.toggle('d-none', !hayFiltros);
+    };
+
+    const renderConvocatorias = function (convocatorias) {
+        if (!listadoConvocatorias) {
+            return;
+        }
+
+        if (!Array.isArray(convocatorias) || convocatorias.length === 0) {
+            listadoConvocatorias.innerHTML =
+                '<tr><td colspan="6"><div class="empty-table-message">' +
+                'No se encontraron convocatorias con los filtros seleccionados.' +
+                '</div></td></tr>';
+            return;
+        }
+
+        listadoConvocatorias.innerHTML = convocatorias.map(function (convocatoria) {
+            const estadoActivo = Number(convocatoria.estado) === 1;
+            const imagen = convocatoria.imagen
+                ? '<img src="' + <?= json_encode(BASE_URL) ?> +
+                    escapeHtml(String(convocatoria.imagen).replace(/^\/+/, '')) +
+                    '" alt="' + escapeHtml(convocatoria.titulo || '') +
+                    '" class="convocatoria-thumb">'
+                : '—';
+
+            const acciones = [
+                '<button type="button" class="table-action-button btn-ver-convocatoria" ' +
+                    'data-id="' + Number(convocatoria.id) + '" aria-label="Ver convocatoria">' +
+                    '<i class="bi bi-eye"></i></button>'
+            ];
+
+            <?php if ($puedeEditar): ?>
+            acciones.push(
+                '<button type="button" class="table-action-button btn-editar-convocatoria" ' +
+                'data-id="' + Number(convocatoria.id) + '" aria-label="Editar convocatoria">' +
+                '<i class="bi bi-pencil"></i></button>'
+            );
+            <?php endif; ?>
+
+            <?php if ($puedeDescargar): ?>
+            acciones.push(
+                '<a class="table-action-button" href="' +
+                <?= json_encode(BASE_URL . 'index.php?controller=convocatoria&action=descargarImagen&id=') ?> +
+                Number(convocatoria.id) +
+                '" aria-label="Descargar imagen"><i class="bi bi-download"></i></a>'
+            );
+            <?php endif; ?>
+
+            <?php if ($puedeCambiarEstado): ?>
+            acciones.push(
+                '<button type="button" class="table-action-button ' +
+                (estadoActivo ? 'table-action-warning' : 'table-action-success') +
+                '" data-bs-toggle="modal" data-bs-target="#modalEstadoConvocatoria" ' +
+                'data-id="' + Number(convocatoria.id) + '" ' +
+                'data-titulo="' + escapeHtml(convocatoria.titulo || '') + '" ' +
+                'data-estado-nuevo="' + (estadoActivo ? '0' : '1') + '" ' +
+                'aria-label="' + (estadoActivo ? 'Desactivar convocatoria' : 'Activar convocatoria') + '">' +
+                '<i class="bi ' + (estadoActivo ? 'bi-toggle-on' : 'bi-toggle-off') + '"></i></button>'
+            );
+            <?php endif; ?>
+
+            return '<tr>' +
+                '<td>' + imagen + '</td>' +
+                '<td>' + escapeHtml(convocatoria.titulo || '') + '</td>' +
+                '<td>' + escapeHtml(formatearFecha(convocatoria.fecha_inicio)) +
+                    ' — ' + escapeHtml(formatearFecha(convocatoria.fecha_termino)) + '</td>' +
+                '<td>' + escapeHtml(convocatoria.estados || 'Sin estados') + '</td>' +
+                '<td><span class="status-pill ' +
+                    (estadoActivo ? 'status-pill-active' : 'status-pill-inactive') + '">' +
+                    (estadoActivo ? 'Activa' : 'Inactiva') +
+                '</span></td>' +
+                '<td class="text-end"><div class="table-actions">' +
+                    acciones.join('') +
+                '</div></td>' +
+            '</tr>';
+        }).join('');
+
+        vincularAccionesConvocatorias();
+    };
+
+    const formatearFecha = function (fecha) {
+        if (!fecha) {
+            return '—';
+        }
+
+        const partes = String(fecha).split('-');
+        return partes.length === 3
+            ? partes[2] + '/' + partes[1] + '/' + partes[0]
+            : String(fecha);
+    };
+
+    const cargarListadoFiltrado = async function () {
+        if (!listadoConvocatorias) {
+            return;
+        }
+
+        if (controladorFiltro) {
+            controladorFiltro.abort();
+        }
+
+        const secuenciaActual = ++secuenciaFiltro;
+        controladorFiltro = new AbortController();
+        listadoConvocatorias.classList.add('opacity-50');
+
+        const params = new URLSearchParams({
+            controller: 'convocatoria',
+            action: 'listadoFiltrado',
+            buscar: String(filtroBuscar?.value || '').trim(),
+            estado_id: String(filtroEstado?.value || '0'),
+            estatus: String(filtroEstatus?.value || '')
+        });
+
+        try {
+            const respuesta = await fetch(
+                <?= json_encode(BASE_URL . 'index.php?') ?> + params.toString(),
+                {
+                    headers: {
+                        'X-Requested-With': 'fetch'
+                    },
+                    signal: controladorFiltro.signal
+                }
+            );
+
+            if (!respuesta.ok) {
+                throw new Error('No fue posible actualizar las convocatorias.');
+            }
+
+            const datos = await respuesta.json();
+
+            if (secuenciaActual !== secuenciaFiltro) {
+                return;
+            }
+
+            renderConvocatorias(datos.convocatorias || []);
+        } catch (error) {
+            if (error.name !== 'AbortError') {
+                listadoConvocatorias.innerHTML =
+                    '<tr><td colspan="6"><div class="alert alert-danger mb-0">' +
+                    escapeHtml(error.message) +
+                    '</div></td></tr>';
+            }
+        } finally {
+            if (secuenciaActual === secuenciaFiltro) {
+                listadoConvocatorias.classList.remove('opacity-50');
+            }
+        }
+    };
+
+    const programarBusqueda = function () {
+        window.clearTimeout(temporizadorFiltro);
+        actualizarVisibilidadLimpiar();
+
+        temporizadorFiltro = window.setTimeout(function () {
+            cargarListadoFiltrado();
+        }, 300);
+    };
+
+    filtroBuscar?.addEventListener('input', programarBusqueda);
+
+    [filtroEstado, filtroEstatus].forEach(function (filtro) {
+        filtro?.addEventListener('change', function () {
+            actualizarVisibilidadLimpiar();
+            cargarListadoFiltrado();
+        });
+    });
+
+    limpiarFiltros?.addEventListener('click', function (event) {
+        event.preventDefault();
+        window.clearTimeout(temporizadorFiltro);
+
+        if (filtroBuscar) {
+            filtroBuscar.value = '';
+        }
+
+        if (filtroEstado) {
+            filtroEstado.value = '0';
+        }
+
+        if (filtroEstatus) {
+            filtroEstatus.value = '';
+        }
+
+        actualizarVisibilidadLimpiar();
+        cargarListadoFiltrado();
+    });
+
+    function vincularAccionesConvocatorias() {
+        document.querySelectorAll('.btn-ver-convocatoria').forEach(function (boton) {
+            if (boton.dataset.listenerVinculado === '1') {
+                return;
+            }
+
+            boton.dataset.listenerVinculado = '1';
+            boton.addEventListener('click', manejarVerConvocatoria);
+        });
+
+        document.querySelectorAll('.btn-editar-convocatoria').forEach(function (boton) {
+            if (boton.dataset.listenerVinculado === '1') {
+                return;
+            }
+
+            boton.dataset.listenerVinculado = '1';
+            boton.addEventListener('click', manejarEditarConvocatoria);
+        });
     }
 
     const modalEstado = document.getElementById('modalEstadoConvocatoria');
