@@ -311,7 +311,7 @@ class SeguimientoExpedienteService
     private function obtenerUltimaInteraccion($seguimientoId)
     {
         $stmt = $this->connection->prepare(
-            "SELECT canal, resultado, notas, fecha_inicio
+            "SELECT id, canal, resultado, notas, fecha_inicio
              FROM interacciones_vinculacion
              WHERE seguimiento_id = ?
              ORDER BY fecha_inicio DESC, id DESC
