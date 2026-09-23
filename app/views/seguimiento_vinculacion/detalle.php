@@ -104,6 +104,30 @@ $formatearNotasInteraccion = function ($notas) {
         return '';
     }
 
+    /*
+     * Los correos de seguimiento antiguos almacenaban también el cuerpo
+     * completo dentro de la interacción. En el expediente mostramos solo el
+     * resumen operativo; el contenido íntegro pertenece al registro del correo.
+     */
+    if (strpos($notas, 'Seguimiento por correo enviado') === 0) {
+        $lineas = preg_split('/\R/u', $notas);
+        $resumen = ['Seguimiento por correo enviado'];
+
+        foreach (is_array($lineas) ? $lineas : [] as $linea) {
+            $linea = trim((string)$linea);
+
+            if (
+                strpos($linea, 'Para:') === 0 ||
+                strpos($linea, 'Asunto:') === 0 ||
+                strpos($linea, 'Adjuntos:') === 0
+            ) {
+                $resumen[] = $linea;
+            }
+        }
+
+        return implode("\n", array_values(array_unique($resumen)));
+    }
+
     $etiquetasTecnicas = [
         '[AVANZAR_CONVENIO]' => '· Avanzar a convenio',
         '[REQUIERE_SEGUIMIENTO]' => '· Requiere seguimiento',
