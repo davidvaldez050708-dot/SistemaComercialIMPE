@@ -138,9 +138,20 @@ if (isset($_SESSION['usuario_id']) && empty($_SESSION['csrf_token'])) {
 }
 
 
+/*
+ * Si cambia el catálogo base de permisos, refrescamos la sesión una sola vez.
+ * Evita que una sesión abierta conserve permisos obsoletos después de una
+ * actualización del sistema.
+ */
+$versionPermisosSistema = 2026092301;
+
 if (
     isset($_SESSION['usuario_id']) &&
-    !isset($_SESSION['permisos'])
+    (
+        !isset($_SESSION['permisos']) ||
+        (int)($_SESSION['version_permisos_sistema'] ?? 0) <
+            $versionPermisosSistema
+    )
 ) {
 
     require_once __DIR__ . '/app/models/RolModel.php';
@@ -155,6 +166,9 @@ if (
             ->obtenerCodigosPermisosPorRol(
                 (int)($_SESSION['rol_id'] ?? 0)
             );
+
+    $_SESSION['version_permisos_sistema'] =
+        $versionPermisosSistema;
 }
 
 
