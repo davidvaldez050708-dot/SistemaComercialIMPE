@@ -163,7 +163,7 @@ class SeguimientoFlujoService
             ['numero' => 1, 'clave' => 'INICIO', 'titulo' => 'Seguimiento iniciado'],
             ['numero' => 2, 'clave' => 'INVESTIGACION', 'titulo' => 'Investigación de datos'],
             ['numero' => 3, 'clave' => 'CONTACTO', 'titulo' => 'Contacto y validación'],
-            ['numero' => 4, 'clave' => 'VERIFICACION', 'titulo' => 'Datos verificados'],
+            ['numero' => 4, 'clave' => 'VERIFICACION', 'titulo' => 'Verificación de datos'],
             ['numero' => 5, 'clave' => 'OFICIO', 'titulo' => 'Oficio preparado'],
             ['numero' => 6, 'clave' => 'PDF', 'titulo' => 'PDF generado'],
             ['numero' => 7, 'clave' => 'ENVIO', 'titulo' => 'Oficio / correo enviado'],
