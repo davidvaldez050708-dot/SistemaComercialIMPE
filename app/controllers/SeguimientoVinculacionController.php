@@ -569,7 +569,7 @@ class SeguimientoVinculacionController
 
     public function borradorCorreoTrabajo()
     {
-        $this->validarPermisoJson('seguimientos_vinculacion.ver');
+        $this->validarPermisoJson('seguimientos_vinculacion.operar_propios');
 
         $modelo = new SeguimientoVinculacionModel();
         $usuarioId = $this->obtenerUsuarioActualId();
@@ -614,7 +614,7 @@ class SeguimientoVinculacionController
     public function enviarCorreoTrabajo()
     {
         $this->validarMetodoPostJson();
-        $this->validarPermisoJson('seguimientos_vinculacion.ver');
+        $this->validarPermisoJson('seguimientos_vinculacion.operar_propios');
 
         $modelo = new SeguimientoVinculacionModel();
         $usuarioId = $this->obtenerUsuarioActualId();
@@ -685,7 +685,7 @@ class SeguimientoVinculacionController
     public function actualizarContactoTrabajo()
     {
         $this->validarMetodoPostJson();
-        $this->validarPermisoJson('seguimientos_vinculacion.ver');
+        $this->validarPermisoJson('seguimientos_vinculacion.operar_propios');
 
         $modelo = new SeguimientoVinculacionModel();
         $usuarioId = $this->obtenerUsuarioActualId();
@@ -765,7 +765,7 @@ class SeguimientoVinculacionController
     public function marcarContactoVerificadoTrabajo()
     {
         $this->validarMetodoPostJson();
-        $this->validarPermisoJson('seguimientos_vinculacion.ver');
+        $this->validarPermisoJson('seguimientos_vinculacion.operar_propios');
 
         $modelo = new SeguimientoVinculacionModel();
         $usuarioId = $this->obtenerUsuarioActualId();
@@ -845,7 +845,7 @@ class SeguimientoVinculacionController
     public function registrarInteraccionTrabajo()
     {
         $this->validarMetodoPostJson();
-        $this->validarPermisoJson('seguimientos_vinculacion.ver');
+        $this->validarPermisoJson('seguimientos_vinculacion.operar_propios');
 
         $modelo = new SeguimientoVinculacionModel();
         $usuarioId = $this->obtenerUsuarioActualId();
@@ -1028,7 +1028,7 @@ class SeguimientoVinculacionController
     public function descartarSeguimientoTrabajo()
     {
         $this->validarMetodoPostJson();
-        $this->validarPermisoJson('seguimientos_vinculacion.ver');
+        $this->validarPermisoJson('seguimientos_vinculacion.operar_propios');
 
         $modelo = new SeguimientoVinculacionModel();
         $usuarioId = $this->obtenerUsuarioActualId();
@@ -1113,7 +1113,7 @@ class SeguimientoVinculacionController
     public function reactivarSeguimientoTrabajo()
     {
         $this->validarMetodoPostJson();
-        $this->validarPermisoJson('seguimientos_vinculacion.ver');
+        $this->validarPermisoJson('seguimientos_vinculacion.operar_propios');
 
         $modelo = new SeguimientoVinculacionModel();
         $usuarioId = $this->obtenerUsuarioActualId();
