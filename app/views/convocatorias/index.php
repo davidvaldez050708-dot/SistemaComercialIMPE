@@ -182,7 +182,7 @@ document.addEventListener('DOMContentLoaded', function () {
 <div class="convocatoria-territory-context">
     <a
         class="data-back-link"
-        href="<?= BASE_URL ?>index.php?controller=convocatoria&action=index&territorio_id=<?= (int)$territorioSeleccionado['id'] ?>">
+        href="<?= BASE_URL ?>index.php?controller=convocatoria&action=index">
         <i class="bi bi-arrow-left"></i>
         Cambiar territorio
     </a>
