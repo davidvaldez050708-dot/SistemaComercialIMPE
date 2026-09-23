@@ -10,7 +10,18 @@ class ConvocatoriaController
         $this->validarPermiso('convocatorias.ver');
 
         $modelo = new ConvocatoriaModel();
-        $convocatorias = $modelo->obtenerListado();
+
+        $buscar = trim((string)($_GET['buscar'] ?? ''));
+        $estadoFiltro = (int)($_GET['estado_id'] ?? 0);
+        $estatusFiltro = in_array((string)($_GET['estatus'] ?? ''), ['0', '1'], true)
+            ? (string)$_GET['estatus']
+            : '';
+
+        $convocatorias = $modelo->obtenerListado(
+            $buscar,
+            $estadoFiltro,
+            $estatusFiltro
+        );
         $estados = $modelo->obtenerEstados();
 
         $mensajeExito = $_SESSION['mensaje_convocatoria'] ?? '';
