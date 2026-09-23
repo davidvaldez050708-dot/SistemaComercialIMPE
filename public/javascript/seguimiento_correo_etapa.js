@@ -87,6 +87,7 @@
                                         '<div class="followup-new-list" data-followup-new-list></div>' +
                                     '</div>' +
                                     '<div class="followup-attachments-empty" data-followup-empty>No hay archivos adjuntos.</div>' +
+                                    '<div class="followup-attachments-status" data-followup-attachments-status>0 adjuntos seleccionados</div>' +
                                     '<small class="followup-attachments-help">Hasta 8 archivos · 12 MB por archivo · 20 MB en total.</small>' +
                                 '</section>' +
                             '</div>' +
@@ -96,7 +97,7 @@
                                 '</span>' +
                                 '<button type="button" class="btn btn-system-cancel" data-bs-dismiss="modal">Cancelar</button>' +
                                 '<button type="submit" class="btn btn-system-save" data-followup-mail-send>' +
-                                    '<i class="bi bi-send me-2"></i>Enviar correo' +
+                                    '<i class="bi bi-send me-2"></i><span data-followup-send-label>Enviar correo</span>' +
                                 '</button>' +
                             '</div>' +
                         '</form>' +
@@ -179,14 +180,30 @@
             const seleccionados = modal.querySelectorAll(
                 '[name="adjuntos_expediente[]"]:checked'
             ).length;
+            const total = seleccionados + archivosNuevos.length;
             const vacio = modal.querySelector('[data-followup-empty]');
             const nuevosBloque = modal.querySelector('[data-followup-new-block]');
+            const estado = modal.querySelector('[data-followup-attachments-status]');
+            const botonEnviar = modal.querySelector('[data-followup-mail-send]');
 
             nuevosBloque.classList.toggle('d-none', archivosNuevos.length === 0);
-            vacio.classList.toggle(
-                'd-none',
-                seleccionados + archivosNuevos.length > 0
-            );
+            vacio.classList.toggle('d-none', total > 0);
+
+            if (estado) {
+                estado.textContent = total === 1
+                    ? '1 adjunto seleccionado'
+                    : total + ' adjuntos seleccionados';
+                estado.classList.toggle('is-active', total > 0);
+            }
+
+            if (botonEnviar) {
+                const etiqueta = botonEnviar.querySelector('[data-followup-send-label]');
+                if (etiqueta) {
+                    etiqueta.textContent = total > 0
+                        ? 'Enviar correo · ' + total + (total === 1 ? ' adjunto' : ' adjuntos')
+                        : 'Enviar correo';
+                }
+            }
         };
 
         const renderizarAdjuntosExpediente = function (modal, adjuntos) {
@@ -492,7 +509,14 @@
                 }
 
                 bootstrap.Modal.getOrCreateInstance(modal).hide();
-                mostrarToast(json.mensaje || 'Correo de seguimiento enviado correctamente.');
+                const adjuntosConfirmados = Number(json.adjuntos_enviados || 0);
+                mostrarToast(
+                    adjuntosConfirmados > 0
+                        ? 'Correo enviado correctamente con ' +
+                            adjuntosConfirmados +
+                            (adjuntosConfirmados === 1 ? ' adjunto.' : ' adjuntos.')
+                        : (json.mensaje || 'Correo de seguimiento enviado correctamente.')
+                );
 
                 const proxima = offcanvas.querySelector('[data-work-next-action]');
                 if (proxima) {
