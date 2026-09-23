@@ -502,3 +502,184 @@
     }
 }
 
+
+
+/* Paso 10 · adjuntos opcionales en correo de seguimiento */
+#modalSeguimientoCorreo .followup-attachments {
+    padding: 12px 13px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: #f8fafd;
+}
+
+#modalSeguimientoCorreo .followup-attachments-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+}
+
+#modalSeguimientoCorreo .followup-attachments-head > div {
+    min-width: 0;
+}
+
+#modalSeguimientoCorreo .followup-attachments-head strong {
+    display: block;
+    color: var(--color-text-primary);
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1.35;
+}
+
+#modalSeguimientoCorreo .followup-attachments-head span {
+    display: block;
+    margin-top: 2px;
+    color: var(--color-text-secondary);
+    font-size: 10.5px;
+    font-weight: 500;
+    line-height: 1.45;
+}
+
+#modalSeguimientoCorreo .followup-upload-button {
+    flex: 0 0 auto;
+    min-height: 36px;
+    padding: 0 12px;
+    font-size: 11px;
+    font-weight: 800;
+}
+
+#modalSeguimientoCorreo [data-followup-expedient-block],
+#modalSeguimientoCorreo [data-followup-new-block] {
+    margin-top: 12px;
+}
+
+#modalSeguimientoCorreo .followup-attachments-label {
+    display: block;
+    margin-bottom: 6px;
+    color: var(--color-text-muted);
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: .045em;
+    text-transform: uppercase;
+}
+
+#modalSeguimientoCorreo .followup-expedient-list,
+#modalSeguimientoCorreo .followup-new-list {
+    display: grid;
+    gap: 7px;
+}
+
+#modalSeguimientoCorreo .followup-expedient-item,
+#modalSeguimientoCorreo .followup-new-item {
+    min-width: 0;
+    min-height: 48px;
+    display: grid;
+    grid-template-columns: auto 34px minmax(0, 1fr);
+    align-items: center;
+    gap: 9px;
+    padding: 7px 9px;
+    border: 1px solid #dfe6ef;
+    border-radius: 8px;
+    background: #ffffff;
+}
+
+#modalSeguimientoCorreo .followup-expedient-item {
+    cursor: pointer;
+}
+
+#modalSeguimientoCorreo .followup-expedient-item:has(.form-check-input:checked) {
+    border-color: #b9ccef;
+    background: #f3f7ff;
+}
+
+#modalSeguimientoCorreo .followup-expedient-item .form-check-input {
+    width: 17px;
+    height: 17px;
+    margin: 0;
+    box-shadow: none;
+}
+
+#modalSeguimientoCorreo .followup-new-item {
+    grid-template-columns: 34px minmax(0, 1fr) 30px;
+}
+
+#modalSeguimientoCorreo .followup-attachment-icon {
+    width: 34px;
+    height: 34px;
+    display: grid;
+    place-items: center;
+    border-radius: 8px;
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
+    font-size: 15px;
+}
+
+#modalSeguimientoCorreo .followup-attachment-copy {
+    min-width: 0;
+}
+
+#modalSeguimientoCorreo .followup-attachment-copy strong,
+#modalSeguimientoCorreo .followup-attachment-copy small {
+    display: block;
+}
+
+#modalSeguimientoCorreo .followup-attachment-copy strong {
+    overflow: hidden;
+    color: var(--color-text-primary);
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 1.35;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#modalSeguimientoCorreo .followup-attachment-copy small {
+    margin-top: 2px;
+    color: var(--color-text-secondary);
+    font-size: 9.5px;
+    font-weight: 500;
+    line-height: 1.35;
+}
+
+#modalSeguimientoCorreo .followup-remove-file {
+    width: 30px;
+    height: 30px;
+    display: grid;
+    place-items: center;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--color-text-muted);
+}
+
+#modalSeguimientoCorreo .followup-remove-file:hover,
+#modalSeguimientoCorreo .followup-remove-file:focus {
+    background: #f1f4f8;
+    color: var(--color-text-primary);
+}
+
+#modalSeguimientoCorreo .followup-attachments-empty {
+    margin-top: 10px;
+    color: var(--color-text-muted);
+    font-size: 10.5px;
+    font-weight: 500;
+}
+
+#modalSeguimientoCorreo .followup-attachments-help {
+    display: block;
+    margin-top: 8px;
+    color: var(--color-text-muted);
+    font-size: 9.5px;
+    font-weight: 500;
+}
+
+@media (max-width: 575.98px) {
+    #modalSeguimientoCorreo .followup-attachments-head {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    #modalSeguimientoCorreo .followup-upload-button {
+        width: 100%;
+    }
+}
