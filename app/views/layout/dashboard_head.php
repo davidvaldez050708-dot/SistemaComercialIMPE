@@ -135,6 +135,10 @@ if ($esAgendaDashboard) {
     );
 }
 
+if ($esSeguimientoEstado || $esSeguimientoDetalle || $esAgendaDashboard) {
+    $cssOpcionalDashboard[] = 'seguimiento_estabilizacion_visual.css';
+}
+
 if ($esReportesDashboard) {
     $cssOpcionalDashboard = array_merge(
         $cssOpcionalDashboard,
