@@ -49,7 +49,10 @@
                             '</div>' +
                             '<div class="modal-body">' +
                                 '<div class="alert alert-danger d-none mb-3" data-followup-mail-error></div>' +
-                                '<div class="alert alert-info d-none mb-3" data-followup-mail-info></div>' +
+                                '<div class="followup-mail-history-note d-none" data-followup-mail-info>' +
+                                    '<i class="bi bi-clock-history"></i>' +
+                                    '<span data-followup-mail-info-text></span>' +
+                                '</div>' +
                                 '<div class="mb-3">' +
                                     '<label class="form-label" for="followup_mail_to">Para</label>' +
                                     '<input class="form-control" id="followup_mail_to" type="email" readonly data-followup-mail-to>' +
@@ -406,9 +409,12 @@
 
                 const total = Number(json.correo.total_enviados || 0);
                 if (total > 0) {
-                    info.textContent = total === 1
-                        ? 'Ya se envió 1 correo de seguimiento. Puedes enviar otro si todavía necesitan coordinar detalles.'
-                        : 'Ya se enviaron ' + total + ' correos de seguimiento. Puedes continuar la conversación mientras sea necesario.';
+                    const infoTexto = info.querySelector('[data-followup-mail-info-text]');
+                    if (infoTexto) {
+                        infoTexto.textContent = total === 1
+                            ? '1 correo de seguimiento enviado anteriormente. Puedes enviar otro si aún necesitan coordinar detalles.'
+                            : total + ' correos de seguimiento enviados anteriormente. Puedes continuar la coordinación si hace falta.';
+                    }
                     info.classList.remove('d-none');
                 }
             } catch (error) {
@@ -432,15 +438,31 @@
             const boton = modal.querySelector('[data-followup-mail-send]');
             const form = event.currentTarget;
             const datos = new FormData(form);
+            const adjuntosExpediente = Array.from(
+                modal.querySelectorAll('[name="adjuntos_expediente[]"]:checked')
+            );
 
             if (!limitesAdjuntosValidos(modal)) {
                 mostrarError('Los adjuntos no pueden superar 8 archivos ni 20 MB en total.');
                 return;
             }
 
+            // Construimos explícitamente los adjuntos para evitar que un cambio
+            // dinámico del DOM deje fuera archivos seleccionados del multipart.
+            datos.delete('adjuntos_expediente[]');
+            adjuntosExpediente.forEach(function (input) {
+                datos.append('adjuntos_expediente[]', String(input.value || ''));
+            });
+
+            datos.delete('adjuntos_nuevos[]');
             archivosNuevos.forEach(function (archivo) {
                 datos.append('adjuntos_nuevos[]', archivo, archivo.name);
             });
+
+            datos.set(
+                'adjuntos_esperados',
+                String(adjuntosExpediente.length + archivosNuevos.length)
+            );
 
             if (seguimientoId <= 0) {
                 mostrarError('No se pudo identificar el seguimiento.');
