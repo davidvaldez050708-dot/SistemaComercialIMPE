@@ -366,11 +366,15 @@ class OficioVinculacionController
             '{{numero_oficio}}', '{{lugar_fecha}}', '{{destinatario}}', '{{institucion}}',
             '{{ubicacion}}', '{{municipio}}', '{{estado}}', '{{FOLIO}}', '{{FECHA}}',
             '{{DESTINATARIO_NOMBRE}}', '{{DESTINATARIO_CARGO}}', '{{INSTITUCION}}',
-            '{{ESTADO}}', '{{ANALISTA_NOMBRE}}', '{{ANALISTA_CARGO}}', '{{ANALISTA_TELEFONO}}'
+            '{{ESTADO}}', '{{ANALISTA_NOMBRE}}', '{{ANALISTA_CARGO}}',
+            '{{ANALISTA_CORREO}}', '{{ANALISTA_TELEFONO}}'
         ];
         $permitidos = array_merge($permitidos, [
             '${numero_oficio}', '${lugar_fecha}', '${destinatario}', '${institucion}',
-            '${municipio}', '${estado}', '${ubicacion}'
+            '${municipio}', '${estado}', '${ubicacion}',
+            '${FOLIO}', '${FECHA}', '${DESTINATARIO_NOMBRE}', '${DESTINATARIO_CARGO}',
+            '${INSTITUCION}', '${ESTADO}', '${ANALISTA_NOMBRE}', '${ANALISTA_CARGO}',
+            '${ANALISTA_CORREO}', '${ANALISTA_TELEFONO}'
         ]);
 
         $desconocidos = array_diff($marcadores, $permitidos);
