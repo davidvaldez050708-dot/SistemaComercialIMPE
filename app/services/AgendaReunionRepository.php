@@ -64,7 +64,13 @@ class AgendaReunionRepository
                 JOIN seguimientos_vinculacion_post_envio p ON p.seguimiento_id=s.id
                 LEFT JOIN municipios m ON m.id=s.municipio_id
                 WHERE s.analista_id=? AND s.activo=1 AND s.estado_seguimiento<>'DESCARTADO'
-                  AND p.seguimiento_correo_at IS NOT NULL AND p.reunion_agendada_at IS NULL
+                  AND p.coordinacion_reunion_habilitada_at IS NOT NULL
+                  AND p.reunion_agendada_at IS NULL
+                  AND (
+                      p.respuesta_tipo <> 'CONTACTAR_DESPUES'
+                      OR p.contactar_despues_at IS NULL
+                      OR p.contactar_despues_at <= NOW()
+                  )
                   AND NOT EXISTS (
                     SELECT 1 FROM reuniones_vinculacion r
                     WHERE r.seguimiento_id=s.id AND r.estado NOT IN ('CANCELADA','REALIZADA')
@@ -81,7 +87,14 @@ class AgendaReunionRepository
         $sql = "SELECT s.id FROM seguimientos_vinculacion s
                 JOIN seguimientos_vinculacion_post_envio p ON p.seguimiento_id=s.id
                 WHERE s.id=? AND s.analista_id=? AND s.activo=1 AND s.estado_seguimiento<>'DESCARTADO'
-                  AND p.seguimiento_correo_at IS NOT NULL AND p.reunion_agendada_at IS NULL LIMIT 1";
+                  AND p.coordinacion_reunion_habilitada_at IS NOT NULL
+                  AND p.reunion_agendada_at IS NULL
+                  AND (
+                      p.respuesta_tipo <> 'CONTACTAR_DESPUES'
+                      OR p.contactar_despues_at IS NULL
+                      OR p.contactar_despues_at <= NOW()
+                  )
+                LIMIT 1";
         $stmt = $this->connection->prepare($sql);
         $stmt->bind_param('ii', $seguimientoId, $analistaId);
         $stmt->execute();
