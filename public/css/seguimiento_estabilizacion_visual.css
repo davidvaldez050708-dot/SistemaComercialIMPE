@@ -1,0 +1,559 @@
+/*
+ * Estabilización visual final de Vinculación.
+ * Esta hoja no redefine el diseño: únicamente impone límites de ancho,
+ * wrapping y comportamiento responsive sobre Panel de trabajo, Expediente
+ * y Agenda para que datos reales largos nunca ensanchen el layout.
+ */
+
+/* =========================================================
+   REGLAS TRANSVERSALES
+   ========================================================= */
+
+.linkage-work-offcanvas,
+.linkage-work-offcanvas *,
+.linkage-detail-panel,
+.linkage-detail-panel *,
+.linkage-expediente-enhanced,
+.linkage-expediente-enhanced *,
+.agenda-page,
+.agenda-page * {
+    box-sizing: border-box;
+}
+
+.linkage-work-offcanvas,
+.linkage-detail-panel,
+.linkage-expediente-enhanced,
+.agenda-page {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.linkage-work-offcanvas img,
+.linkage-detail-panel img,
+.linkage-expediente-enhanced img,
+.agenda-page img {
+    max-width: 100%;
+    height: auto;
+}
+
+.linkage-work-offcanvas a,
+.linkage-work-offcanvas strong,
+.linkage-work-offcanvas p,
+.linkage-work-offcanvas small,
+.linkage-work-offcanvas span,
+.linkage-detail-panel a,
+.linkage-detail-panel strong,
+.linkage-detail-panel p,
+.linkage-detail-panel small,
+.linkage-expediente-enhanced a,
+.linkage-expediente-enhanced strong,
+.linkage-expediente-enhanced p,
+.linkage-expediente-enhanced small,
+.agenda-page a,
+.agenda-page strong,
+.agenda-page p,
+.agenda-page small {
+    overflow-wrap: anywhere;
+}
+
+/* =========================================================
+   PANEL LATERAL DEL ANALISTA
+   ========================================================= */
+
+.linkage-work-offcanvas {
+    --bs-offcanvas-width: min(460px, 100vw);
+    width: var(--bs-offcanvas-width);
+    max-width: 100vw;
+    overflow: hidden;
+}
+
+.linkage-work-header,
+.linkage-work-body,
+.linkage-work-header > div,
+.linkage-work-section,
+.linkage-work-form,
+.linkage-work-route-card,
+[data-work-flow-section] {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.linkage-work-header {
+    gap: 12px;
+}
+
+.linkage-work-header > div {
+    flex: 1 1 auto;
+    overflow: hidden;
+}
+
+.linkage-work-header h5,
+.linkage-work-header p {
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+.linkage-work-header .btn-close {
+    flex: 0 0 auto;
+}
+
+.linkage-work-body {
+    overflow-x: hidden;
+}
+
+.linkage-work-section-title,
+.linkage-work-route-head,
+.linkage-flow-heading {
+    min-width: 0;
+    flex-wrap: wrap;
+}
+
+.linkage-work-section-title > *,
+.linkage-work-route-head > *,
+.linkage-flow-heading > * {
+    min-width: 0;
+}
+
+.linkage-work-small-button,
+.linkage-work-verify-row .btn,
+.linkage-flow-actions .btn,
+[data-flow-action] {
+    max-width: 100%;
+    white-space: normal;
+    line-height: 1.3;
+}
+
+.linkage-work-contact-grid,
+.linkage-work-source-row {
+    min-width: 0;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.linkage-work-contact-grid > div,
+.linkage-work-source-row > div {
+    min-width: 0;
+}
+
+.linkage-work-contact-grid strong,
+.linkage-work-source-row strong,
+[data-work-next-action],
+[data-work-discard-reason] {
+    display: block;
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.linkage-work-form .row,
+.linkage-work-form [class*="col-"],
+.linkage-work-form .form-control,
+.linkage-work-form .form-select,
+.linkage-work-form textarea {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.linkage-work-form textarea {
+    resize: vertical;
+}
+
+.linkage-flow-window {
+    width: 100%;
+    min-width: 0;
+}
+
+.linkage-flow-current h4,
+.linkage-flow-current p,
+.linkage-flow-node strong {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.linkage-flow-actions {
+    min-width: 0;
+    flex-wrap: wrap;
+}
+
+.linkage-flow-actions .btn {
+    min-width: 0;
+    flex: 1 1 160px;
+}
+
+.linkage-work-list,
+.linkage-work-list > *,
+.linkage-work-activity,
+.linkage-work-activity > * {
+    min-width: 0;
+    max-width: 100%;
+}
+
+/* =========================================================
+   MODALES DE LA RUTA / CORREO / CONVENIO
+   ========================================================= */
+
+#modalSeguimientoPostEnvio .modal-dialog,
+#modalBorradorCorreoOficio .modal-dialog,
+#modalAgendaSolicitud .modal-dialog,
+#modalAgendaDetalle .modal-dialog {
+    width: calc(100% - 24px);
+    max-width: min(760px, calc(100vw - 24px));
+    margin-left: auto;
+    margin-right: auto;
+}
+
+#modalSeguimientoPostEnvio .modal-content,
+#modalBorradorCorreoOficio .modal-content,
+#modalAgendaSolicitud .modal-content,
+#modalAgendaDetalle .modal-content,
+#modalSeguimientoPostEnvio .modal-body,
+#modalBorradorCorreoOficio .modal-body,
+#modalAgendaSolicitud .modal-body,
+#modalAgendaDetalle .modal-body {
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+#modalSeguimientoPostEnvio .row,
+#modalBorradorCorreoOficio .row,
+#modalAgendaSolicitud .row,
+#modalAgendaDetalle .row,
+#modalSeguimientoPostEnvio [class*="col-"],
+#modalBorradorCorreoOficio [class*="col-"],
+#modalAgendaSolicitud [class*="col-"],
+#modalAgendaDetalle [class*="col-"] {
+    min-width: 0;
+}
+
+#modalSeguimientoPostEnvio .form-control,
+#modalSeguimientoPostEnvio .form-select,
+#modalBorradorCorreoOficio .form-control,
+#modalBorradorCorreoOficio .form-select,
+#modalAgendaSolicitud .form-control,
+#modalAgendaSolicitud .form-select,
+#modalAgendaDetalle .form-control,
+#modalAgendaDetalle .form-select {
+    min-width: 0;
+    max-width: 100%;
+}
+
+#modalSeguimientoPostEnvio .modal-header > div,
+#modalBorradorCorreoOficio .modal-header > div,
+#modalAgendaSolicitud .modal-header > div,
+#modalAgendaDetalle .modal-header > div {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+#modalSeguimientoPostEnvio .modal-title,
+#modalSeguimientoPostEnvio .modal-subtitle,
+#modalBorradorCorreoOficio .modal-title,
+#modalAgendaSolicitud .modal-title,
+#modalAgendaSolicitud .modal-subtitle,
+#modalAgendaDetalle .modal-title,
+#modalAgendaDetalle .modal-subtitle {
+    overflow-wrap: anywhere;
+}
+
+#modalSeguimientoPostEnvio .modal-footer,
+#modalBorradorCorreoOficio .modal-footer,
+#modalAgendaSolicitud .modal-footer {
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+#modalSeguimientoPostEnvio .modal-footer .btn,
+#modalBorradorCorreoOficio .modal-footer .btn,
+#modalAgendaSolicitud .modal-footer .btn {
+    min-width: 0;
+    white-space: normal;
+}
+
+/* =========================================================
+   BANDEJA / TABLA
+   ========================================================= */
+
+.linkage-table-panel,
+.linkage-municipality-cards,
+.linkage-municipality-card,
+.linkage-municipality-card-header,
+.linkage-table-panel .table-responsive {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.linkage-municipality-card-header {
+    gap: 10px;
+}
+
+.linkage-municipality-card-title {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.linkage-municipality-card-title span,
+.linkage-municipality-card-title strong {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.linkage-table.users-table td,
+.linkage-table.users-table th {
+    vertical-align: middle;
+}
+
+.linkage-table.users-table td:first-child {
+    min-width: 190px;
+    max-width: 340px;
+}
+
+.linkage-table.users-table td:first-child strong,
+.linkage-table.users-table td:first-child small {
+    overflow-wrap: anywhere;
+}
+
+.linkage-table .table-actions {
+    flex-wrap: nowrap;
+}
+
+/* =========================================================
+   EXPEDIENTE
+   ========================================================= */
+
+.linkage-detail-header,
+.linkage-detail-grid,
+.linkage-detail-panel,
+.linkage-detail-notes,
+.linkage-history-list,
+.linkage-history-item,
+.linkage-observation-list,
+.linkage-observation-item,
+.linkage-expediente-route,
+.linkage-expediente-module,
+.linkage-expediente-data-grid,
+.linkage-expediente-convenio-file,
+.linkage-expediente-mini-timeline {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.linkage-detail-header > *,
+.linkage-detail-grid > *,
+.linkage-history-item > *,
+.linkage-observation-item > *,
+.linkage-expediente-convenio-file > * {
+    min-width: 0;
+}
+
+.linkage-detail-grid .detail-row strong,
+.linkage-detail-notes p,
+.linkage-history-item p,
+.linkage-history-item strong,
+.linkage-history-item span,
+.linkage-observation-item p,
+.linkage-expediente-data-item strong,
+.linkage-expediente-data-item a {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.linkage-detail-panel .table-responsive {
+    width: 100%;
+    max-width: 100%;
+}
+
+.linkage-expediente-convenio-file-info strong {
+    max-width: 100%;
+}
+
+.linkage-expediente-convenio-file-actions {
+    min-width: 0;
+    flex-wrap: wrap;
+}
+
+.linkage-detail-tabs {
+    max-width: 100%;
+    flex-wrap: wrap;
+}
+
+/* =========================================================
+   AGENDA
+   ========================================================= */
+
+.agenda-toolbar,
+.agenda-toolbar > div,
+.agenda-toolbar-actions,
+.agenda-layout,
+.agenda-calendar-card,
+.agenda-calendar-grid,
+.agenda-day,
+.agenda-day-events,
+.agenda-event,
+.agenda-side-card,
+.agenda-pending-item,
+.agenda-pending-copy {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.agenda-toolbar {
+    flex-wrap: wrap;
+}
+
+.agenda-toolbar > div:first-child {
+    flex: 1 1 360px;
+}
+
+.agenda-toolbar h2,
+.agenda-toolbar p {
+    overflow-wrap: anywhere;
+}
+
+.agenda-toolbar-actions {
+    flex: 0 1 auto;
+    flex-wrap: wrap;
+}
+
+.agenda-event {
+    overflow: hidden;
+}
+
+.agenda-event strong,
+.agenda-event small,
+.agenda-pending-copy strong,
+.agenda-pending-copy span,
+.agenda-pending-copy small {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.agenda-inline-note,
+.agenda-ecard-default-note,
+.agenda-reprogramacion-panel {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.agenda-inline-note > *,
+.agenda-ecard-default-note-copy,
+.agenda-reprogramacion-heading {
+    min-width: 0;
+}
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+
+@media (max-width: 767.98px) {
+    .linkage-work-offcanvas {
+        --bs-offcanvas-width: 100vw;
+        width: 100vw;
+    }
+
+    .linkage-work-header,
+    .linkage-work-body {
+        padding-left: 14px;
+        padding-right: 14px;
+    }
+
+    .linkage-work-section-title {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .linkage-work-section-title .btn,
+    .linkage-work-verify-row .btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .linkage-work-contact-grid,
+    .linkage-work-source-row {
+        grid-template-columns: 1fr;
+    }
+
+    .linkage-flow-window {
+        grid-template-columns: 1fr;
+    }
+
+    .linkage-flow-node {
+        min-height: 0;
+    }
+
+    .linkage-flow-actions {
+        flex-direction: column;
+    }
+
+    .linkage-flow-actions .btn {
+        width: 100%;
+        flex-basis: auto;
+        justify-content: center;
+    }
+
+    #modalSeguimientoPostEnvio .modal-dialog,
+    #modalBorradorCorreoOficio .modal-dialog,
+    #modalAgendaSolicitud .modal-dialog,
+    #modalAgendaDetalle .modal-dialog {
+        width: calc(100% - 16px);
+        max-width: calc(100vw - 16px);
+        margin: 8px auto;
+    }
+
+    #modalSeguimientoPostEnvio .modal-footer .btn,
+    #modalBorradorCorreoOficio .modal-footer .btn,
+    #modalAgendaSolicitud .modal-footer .btn {
+        flex: 1 1 100%;
+        width: 100%;
+        justify-content: center;
+    }
+
+    .linkage-detail-tabs {
+        gap: 6px;
+    }
+
+    .linkage-expediente-convenio-file {
+        grid-template-columns: 38px minmax(0, 1fr);
+    }
+
+    .agenda-toolbar-actions {
+        width: 100%;
+    }
+
+    .agenda-toolbar-actions .agenda-new-button {
+        flex: 1 1 100%;
+        justify-content: center;
+    }
+
+    .agenda-layout {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .linkage-table.users-table td:first-child {
+        min-width: 170px;
+    }
+
+    .linkage-work-section {
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+
+    .agenda-page {
+        overflow-x: hidden;
+    }
+
+    .agenda-calendar-card {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .agenda-week-header,
+    .agenda-calendar-grid {
+        min-width: 680px;
+    }
+}
