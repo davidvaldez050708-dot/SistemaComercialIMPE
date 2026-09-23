@@ -1311,23 +1311,142 @@ class SeguimientoVinculacionModel
         return $stmt->execute() && $stmt->affected_rows > 0;
     }
 
-    public function reactivarSeguimientoTrabajo($seguimientoId, $usuarioId, $motivoReactivacion, $observacion = '')
-    {
+    public function reactivarSeguimientoTrabajo(
+        $seguimientoId,
+        $usuarioId,
+        $motivoReactivacion,
+        $observacion = ''
+    ) {
         $seguimientoId = (int)$seguimientoId;
         $usuarioId = (int)$usuarioId;
         $motivoReactivacion = trim((string)$motivoReactivacion);
         $observacion = trim((string)$observacion);
 
+        $sqlEstado = "SELECT
+                    s.datos_verificados,
+                    oficio.estado_oficio,
+                    oficio.fecha_envio,
+                    post.respuesta_tipo,
+                    post.reunion_resultado,
+                    post.convenio_formalizado_at
+                FROM seguimientos_vinculacion s
+                LEFT JOIN oficios_vinculacion oficio
+                    ON oficio.id = (
+                        SELECT reciente.id
+                        FROM oficios_vinculacion reciente
+                        WHERE reciente.seguimiento_id = s.id
+                        ORDER BY reciente.id DESC
+                        LIMIT 1
+                    )
+                LEFT JOIN seguimientos_vinculacion_post_envio post
+                    ON post.seguimiento_id = s.id
+                WHERE s.id = ?
+                  AND s.activo = 1
+                  AND s.estado_seguimiento = 'DESCARTADO'
+                LIMIT 1";
+        $stmtEstado = $this->connection->prepare($sqlEstado);
+        $stmtEstado->bind_param('i', $seguimientoId);
+        $stmtEstado->execute();
+        $estadoActual = $stmtEstado->get_result()->fetch_assoc() ?: null;
+
+        if (!$estadoActual) {
+            return false;
+        }
+
+        if (trim((string)($estadoActual['convenio_formalizado_at'] ?? '')) !== '') {
+            // Un convenio formalizado ya representa una relación de Aliado,
+            // no un seguimiento descartado que deba reiniciarse.
+            return false;
+        }
+
+        $respuestaTipo = strtoupper(trim((string)($estadoActual['respuesta_tipo'] ?? '')));
+        $resultadoReunion = strtoupper(trim((string)($estadoActual['reunion_resultado'] ?? '')));
+        $oficioEnviado =
+            trim((string)($estadoActual['fecha_envio'] ?? '')) !== '' ||
+            strtoupper(trim((string)($estadoActual['estado_oficio'] ?? ''))) === 'ENVIADO';
+        $datosVerificados = (int)($estadoActual['datos_verificados'] ?? 0) === 1;
+        $reiniciarRuta =
+            $respuestaTipo === 'NO_INTERESADO' ||
+            $resultadoReunion === 'NO_INTERESADO';
+
+        if ($reiniciarRuta) {
+            $resultadoColumna = $this->connection->query(
+                "SHOW COLUMNS FROM seguimientos_vinculacion_post_envio
+                 LIKE 'reactivacion_ruta_at'"
+            );
+
+            if (!$resultadoColumna || $resultadoColumna->num_rows === 0) {
+                // Evita reactivar hacia un estado inconsistente si falta la
+                // migración que separa el nuevo ciclo del historial anterior.
+                return false;
+            }
+        }
+
+        if ($oficioEnviado) {
+            $estadoDestino = 'ESPERANDO_RESPUESTA';
+            $etapaDestino = $reiniciarRuta
+                ? 'Esperar una nueva respuesta'
+                : 'Retomar la etapa posterior al envío';
+        } elseif ($datosVerificados) {
+            $estadoDestino = 'DATOS_VERIFICADOS';
+            $etapaDestino = 'Retomar desde datos verificados';
+        } else {
+            $estadoDestino = 'CONTACTANDO';
+            $etapaDestino = 'Retomar contacto';
+        }
+
         $notas = trim(implode("\n", array_filter([
             'Seguimiento reactivado',
             'Motivo de reactivación: ' . $motivoReactivacion,
             $observacion !== '' ? 'Observación: ' . $observacion : '',
-            'Próxima acción: Retomar contacto'
+            'Ruta reanudada desde: ' . $etapaDestino
         ])));
 
         $this->connection->begin_transaction();
 
         try {
+            if ($reiniciarRuta) {
+                $setPost = [
+                    'respuesta_tipo = NULL',
+                    'respuesta_canal = NULL',
+                    'respuesta_texto = NULL',
+                    'respuesta_at = NULL',
+                    'respuesta_por = NULL',
+                    'contactar_despues_at = NULL',
+                    'reactivacion_ruta_at = NOW()',
+                    'reactivacion_ruta_por = ' . $usuarioId,
+                    'seguimiento_correo_notas = NULL',
+                    'seguimiento_correo_at = NULL',
+                    'seguimiento_correo_por = NULL',
+                    'reunion_fecha = NULL',
+                    'reunion_modalidad = NULL',
+                    'reunion_lugar_enlace = NULL',
+                    'reunion_notas = NULL',
+                    'reunion_agendada_at = NULL',
+                    'reunion_agendada_por = NULL',
+                    'reunion_resultado = NULL',
+                    'reunion_resultado_notas = NULL',
+                    'reunion_realizada_at = NULL',
+                    'reunion_realizada_por = NULL'
+                ];
+
+                $columnaCoordinacion = $this->connection->query(
+                    "SHOW COLUMNS FROM seguimientos_vinculacion_post_envio
+                     LIKE 'coordinacion_reunion_habilitada_at'"
+                );
+                if ($columnaCoordinacion && $columnaCoordinacion->num_rows > 0) {
+                    $setPost[] = 'coordinacion_reunion_habilitada_at = NULL';
+                    $setPost[] = 'coordinacion_reunion_habilitada_por = NULL';
+                }
+
+                $sqlPost = "UPDATE seguimientos_vinculacion_post_envio
+                            SET " . implode(",\n                                ", $setPost) . "
+                            WHERE seguimiento_id = ?";
+                $stmtPost = $this->connection->prepare($sqlPost);
+                $stmtPost->bind_param('i', $seguimientoId);
+                $stmtPost->execute();
+            }
+
             $sqlInteraccion = "INSERT INTO interacciones_vinculacion (
                     seguimiento_id,
                     usuario_id,
@@ -1338,24 +1457,35 @@ class SeguimientoVinculacionModel
                 ) VALUES (?, ?, 'SISTEMA', NOW(), 'OTRO', ?)";
 
             $stmtInteraccion = $this->connection->prepare($sqlInteraccion);
-            $stmtInteraccion->bind_param('iis', $seguimientoId, $usuarioId, $notas);
+            $stmtInteraccion->bind_param(
+                'iis',
+                $seguimientoId,
+                $usuarioId,
+                $notas
+            );
             $stmtInteraccion->execute();
 
             $sqlSeguimiento = "UPDATE seguimientos_vinculacion
-                    SET estado_seguimiento = 'CONTACTANDO',
+                    SET estado_seguimiento = ?,
+                        motivo_descarte = NULL,
                         ultima_interaccion_at = NOW(),
                         proxima_accion_at = NULL
                     WHERE id = ?
-                        AND activo = 1
-                        AND estado_seguimiento = 'DESCARTADO'";
+                      AND activo = 1
+                      AND estado_seguimiento = 'DESCARTADO'";
 
             $stmtSeguimiento = $this->connection->prepare($sqlSeguimiento);
-            $stmtSeguimiento->bind_param('i', $seguimientoId);
+            $stmtSeguimiento->bind_param(
+                'si',
+                $estadoDestino,
+                $seguimientoId
+            );
             $stmtSeguimiento->execute();
 
             if ($stmtSeguimiento->affected_rows <= 0) {
-                $this->connection->rollback();
-                return false;
+                throw new RuntimeException(
+                    'El seguimiento cambió de estado antes de reactivarse.'
+                );
             }
 
             $this->connection->commit();
@@ -1363,6 +1493,10 @@ class SeguimientoVinculacionModel
             return true;
         } catch (Throwable $error) {
             $this->connection->rollback();
+            error_log(
+                'Error reactivando seguimiento de vinculación: ' .
+                $error->getMessage()
+            );
             return false;
         }
     }
