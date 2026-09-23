@@ -7,6 +7,9 @@ $mensajeError = $mensajeError ?? '';
 $erroresFormulario = $erroresFormulario ?? [];
 $datosFormulario = $datosFormulario ?? [];
 $modalAbierto = $modalAbierto ?? '';
+$buscar = $buscar ?? '';
+$estadoFiltro = $estadoFiltro ?? 0;
+$estatusFiltro = $estatusFiltro ?? '';
 
 $puedeCrear = tienePermiso('convocatorias.crear');
 $puedeEditar = tienePermiso('convocatorias.editar');
@@ -67,6 +70,74 @@ $datosEditar = $modalAbierto === 'editar' ? $datosFormulario : [];
             <?php endif; ?>
         </div>
     </div>
+</section>
+
+<section class="dashboard-panel mt-4 convocatoria-filter-panel">
+    <form
+        method="GET"
+        action="<?= BASE_URL ?>index.php"
+        class="convocatoria-filter-bar">
+        <input type="hidden" name="controller" value="convocatoria">
+        <input type="hidden" name="action" value="index">
+
+        <div class="convocatoria-filter-field convocatoria-filter-search">
+            <label class="form-label login-label" for="filtro_convocatoria_buscar">Buscar convocatoria</label>
+            <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                <input
+                    type="search"
+                    class="form-control system-form-control"
+                    id="filtro_convocatoria_buscar"
+                    name="buscar"
+                    placeholder="Buscar convocatoria..."
+                    value="<?= $texto($buscar) ?>">
+            </div>
+        </div>
+
+        <div class="convocatoria-filter-field">
+            <label class="form-label login-label" for="filtro_convocatoria_estado">Estado</label>
+            <select
+                class="form-select system-form-control"
+                id="filtro_convocatoria_estado"
+                name="estado_id">
+                <option value="0">Todos los estados</option>
+                <?php foreach ($estados as $estado): ?>
+                    <option
+                        value="<?= (int)$estado['id'] ?>"
+                        <?= (int)$estadoFiltro === (int)$estado['id'] ? 'selected' : '' ?>>
+                        <?= $texto($estado['nombre']) ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+
+        <div class="convocatoria-filter-field">
+            <label class="form-label login-label" for="filtro_convocatoria_estatus">Estatus</label>
+            <select
+                class="form-select system-form-control"
+                id="filtro_convocatoria_estatus"
+                name="estatus">
+                <option value="" <?= $estatusFiltro === '' ? 'selected' : '' ?>>Todos</option>
+                <option value="1" <?= $estatusFiltro === '1' ? 'selected' : '' ?>>Activas</option>
+                <option value="0" <?= $estatusFiltro === '0' ? 'selected' : '' ?>>Inactivas</option>
+            </select>
+        </div>
+
+        <div class="convocatoria-filter-actions">
+            <button type="submit" class="btn btn-system-save">
+                <i class="bi bi-funnel me-2"></i>
+                Filtrar
+            </button>
+
+            <?php if ($buscar !== '' || (int)$estadoFiltro > 0 || $estatusFiltro !== ''): ?>
+                <a
+                    class="filter-clear-link"
+                    href="<?= BASE_URL ?>index.php?controller=convocatoria&action=index">
+                    Limpiar filtros
+                </a>
+            <?php endif; ?>
+        </div>
+    </form>
 </section>
 
 <section class="dashboard-panel users-list-panel mt-4">
@@ -289,19 +360,39 @@ $datosEditar = $modalAbierto === 'editar' ? $datosFormulario : [];
 
                         <div class="system-form-full">
                             <label class="form-label login-label" for="crear_convocatoria_estados">Estados</label>
-                            <select
-                                class="form-select system-form-control convocatoria-estados-select"
-                                id="crear_convocatoria_estados"
-                                name="estados[]"
-                                multiple
-                                size="8"
-                                required>
-                                <?php foreach ($estados as $estado): ?>
-                                    <option value="<?= (int)$estado['id'] ?>">
-                                        <?= $texto($estado['nombre']) ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
+                            <div class="convocatoria-state-picker" data-state-picker>
+                                <input
+                                    type="search"
+                                    class="form-control system-form-control convocatoria-state-search"
+                                    placeholder="Buscar estado..."
+                                    data-state-search>
+
+                                <div class="convocatoria-state-list">
+                                    <label class="convocatoria-state-option convocatoria-state-option-all">
+                                        <input
+                                            type="checkbox"
+                                            class="form-check-input"
+                                            data-state-select-all>
+                                        <span>Seleccionar todos</span>
+                                    </label>
+
+                                    <?php foreach ($estados as $estado): ?>
+                                        <?php $estadoIdActual = (int)$estado['id']; ?>
+                                        <label
+                                            class="convocatoria-state-option"
+                                            data-state-option
+                                            data-state-name="<?= $texto(mb_strtolower((string)$estado['nombre'], 'UTF-8')) ?>">
+                                            <input
+                                                type="checkbox"
+                                                class="form-check-input"
+                                                name="estados[]"
+                                                value="<?= $estadoIdActual ?>"
+                                                <?= in_array($estadoIdActual, array_map('intval', $datosCrear['estados_ids'] ?? []), true) ? 'checked' : '' ?>>
+                                            <span><?= $texto($estado['nombre']) ?></span>
+                                        </label>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
                             <small class="form-text">Puedes seleccionar uno o varios estados.</small>
                         </div>
                     </div>
@@ -383,19 +474,39 @@ $datosEditar = $modalAbierto === 'editar' ? $datosFormulario : [];
 
                         <div class="system-form-full">
                             <label class="form-label login-label" for="editar_convocatoria_estados">Estados</label>
-                            <select
-                                class="form-select system-form-control convocatoria-estados-select"
-                                id="editar_convocatoria_estados"
-                                name="estados[]"
-                                multiple
-                                size="8"
-                                required>
-                                <?php foreach ($estados as $estado): ?>
-                                    <option value="<?= (int)$estado['id'] ?>">
-                                        <?= $texto($estado['nombre']) ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
+                            <div class="convocatoria-state-picker" data-state-picker>
+                                <input
+                                    type="search"
+                                    class="form-control system-form-control convocatoria-state-search"
+                                    placeholder="Buscar estado..."
+                                    data-state-search>
+
+                                <div class="convocatoria-state-list">
+                                    <label class="convocatoria-state-option convocatoria-state-option-all">
+                                        <input
+                                            type="checkbox"
+                                            class="form-check-input"
+                                            data-state-select-all>
+                                        <span>Seleccionar todos</span>
+                                    </label>
+
+                                    <?php foreach ($estados as $estado): ?>
+                                        <?php $estadoIdActual = (int)$estado['id']; ?>
+                                        <label
+                                            class="convocatoria-state-option"
+                                            data-state-option
+                                            data-state-name="<?= $texto(mb_strtolower((string)$estado['nombre'], 'UTF-8')) ?>">
+                                            <input
+                                                type="checkbox"
+                                                class="form-check-input"
+                                                name="estados[]"
+                                                value="<?= $estadoIdActual ?>"
+                                                >
+                                            <span><?= $texto($estado['nombre']) ?></span>
+                                        </label>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -530,9 +641,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 document.getElementById('editar_convocatoria_estado').value = String(convocatoria.estado ?? 1);
 
                 const seleccion = new Set((convocatoria.estados_ids || []).map(String));
-                document.querySelectorAll('#editar_convocatoria_estados option').forEach(function (opcion) {
-                    opcion.selected = seleccion.has(String(opcion.value));
+                const modalEditar = document.getElementById('modalEditarConvocatoria');
+
+                modalEditar.querySelectorAll('[data-state-option] input[type="checkbox"]').forEach(function (checkbox) {
+                    checkbox.checked = seleccion.has(String(checkbox.value));
                 });
+
+                actualizarSeleccionTodos(modalEditar.querySelector('[data-state-picker]'));
 
                 new bootstrap.Modal(document.getElementById('modalEditarConvocatoria')).show();
             } catch (error) {
@@ -540,6 +655,73 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
     });
+
+    document.querySelectorAll('[data-state-picker]').forEach(function (picker) {
+        const search = picker.querySelector('[data-state-search]');
+        const selectAll = picker.querySelector('[data-state-select-all]');
+        const options = Array.from(picker.querySelectorAll('[data-state-option]'));
+
+        const filterStates = function () {
+            const term = normalizarTexto(search.value);
+
+            options.forEach(function (option) {
+                const name = normalizarTexto(option.dataset.stateName || '');
+                option.hidden = term !== '' && !name.includes(term);
+            });
+
+            actualizarSeleccionTodos(picker);
+        };
+
+        search.addEventListener('input', filterStates);
+
+        selectAll.addEventListener('change', function () {
+            options.forEach(function (option) {
+                if (!option.hidden) {
+                    option.querySelector('input[type="checkbox"]').checked = selectAll.checked;
+                }
+            });
+
+            actualizarSeleccionTodos(picker);
+        });
+
+        options.forEach(function (option) {
+            option.querySelector('input[type="checkbox"]').addEventListener('change', function () {
+                actualizarSeleccionTodos(picker);
+            });
+        });
+
+        actualizarSeleccionTodos(picker);
+    });
+
+    function actualizarSeleccionTodos(picker) {
+        if (!picker) {
+            return;
+        }
+
+        const visibles = Array.from(picker.querySelectorAll('[data-state-option]'))
+            .filter(function (option) {
+                return !option.hidden;
+            })
+            .map(function (option) {
+                return option.querySelector('input[type="checkbox"]');
+            });
+
+        const selectAll = picker.querySelector('[data-state-select-all]');
+        const marcados = visibles.filter(function (checkbox) {
+            return checkbox.checked;
+        }).length;
+
+        selectAll.checked = visibles.length > 0 && marcados === visibles.length;
+        selectAll.indeterminate = marcados > 0 && marcados < visibles.length;
+    }
+
+    function normalizarTexto(valor) {
+        return String(valor || '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase()
+            .trim();
+    }
 
     const modalEstado = document.getElementById('modalEstadoConvocatoria');
     if (modalEstado) {
