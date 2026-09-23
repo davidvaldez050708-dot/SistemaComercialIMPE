@@ -338,7 +338,10 @@ class SeguimientoFlujoController
                 $_POST['asunto'] ?? '',
                 $_POST['cuerpo'] ?? '',
                 $_POST['adjuntos_expediente'] ?? [],
-                $_FILES['adjuntos_nuevos'] ?? null
+                $_FILES['adjuntos_nuevos'] ?? null,
+                isset($_POST['adjuntos_esperados'])
+                    ? (int)$_POST['adjuntos_esperados']
+                    : null
             );
             $codigoHttp = (int)($resultado['codigo_http'] ?? 200);
             unset($resultado['codigo_http']);
