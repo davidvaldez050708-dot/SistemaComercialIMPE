@@ -193,7 +193,11 @@
 }
 
 
-/* Tipografía institucional del módulo de Convocatorias. */
+/* Ajustes visuales locales para los formularios de Convocatorias. */
+.system-form-dialog {
+    max-width: 680px;
+}
+
 .system-form-modal,
 .system-form-modal input,
 .system-form-modal select,
@@ -201,10 +205,16 @@
 .system-form-modal label,
 .system-form-modal small,
 .system-form-modal span,
+.system-form-modal .form-control,
+.system-form-modal .form-select,
+.system-form-modal .form-check-input,
+.system-form-modal .form-check-label,
 .convocatoria-state-picker,
 .convocatoria-state-picker input,
 .convocatoria-state-picker label,
 .convocatoria-state-picker span,
-.convocatoria-state-search {
-    font-family: 'Manrope', sans-serif;
+.convocatoria-state-search,
+.convocatoria-state-option,
+.convocatoria-state-option-all {
+    font-family: 'Manrope', sans-serif !important;
 }
