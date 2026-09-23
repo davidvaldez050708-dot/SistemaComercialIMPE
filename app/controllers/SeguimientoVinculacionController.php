@@ -1261,6 +1261,75 @@ class SeguimientoVinculacionController
         require_once __DIR__ . '/../views/layout/dashboard_footer.php';
     }
 
+    public function verCorreoSeguimiento()
+    {
+        $this->validarPermisoJson('seguimientos_vinculacion.ver');
+
+        $modelo = new SeguimientoVinculacionModel();
+        $usuarioId = $this->obtenerUsuarioActualId();
+        $modoSeguimiento = $this->resolverModoSeguimiento();
+        $interaccionId = (int)($_GET['interaccion_id'] ?? 0);
+
+        if ($interaccionId <= 0) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'Selecciona un correo válido.'
+            ], 422);
+        }
+
+        $service = new SeguimientoCorreoService();
+        $correo = $service->obtenerCorreoPorInteraccion($interaccionId);
+
+        if (!$correo) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'No fue posible localizar el correo solicitado.'
+            ], 404);
+        }
+
+        $seguimientoId = (int)($correo['seguimiento_id'] ?? 0);
+        $seguimiento = $this->obtenerSeguimientoPorModo(
+            $modelo,
+            $usuarioId,
+            $seguimientoId,
+            $modoSeguimiento
+        );
+
+        if (!$seguimiento) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'No tienes acceso a este correo.'
+            ], 403);
+        }
+
+        $adjuntos = [];
+        foreach (is_array($correo['adjuntos'] ?? null) ? $correo['adjuntos'] : [] as $adjunto) {
+            $adjuntos[] = [
+                'id' => (int)($adjunto['id'] ?? 0),
+                'nombre' => (string)($adjunto['nombre_original'] ?? 'Archivo adjunto'),
+                'mime' => (string)($adjunto['mime'] ?? ''),
+                'tamano' => (int)($adjunto['tamano'] ?? 0),
+                'url' => BASE_URL .
+                    'index.php?controller=seguimientoVinculacion&action=descargarAdjuntoCorreoSeguimiento&adjunto_id=' .
+                    (int)($adjunto['id'] ?? 0)
+            ];
+        }
+
+        $this->responderJson([
+            'ok' => true,
+            'correo' => [
+                'interaccion_id' => (int)($correo['interaccion_id'] ?? 0),
+                'destinatario' => (string)($correo['destinatario'] ?? ''),
+                'asunto' => (string)($correo['asunto'] ?? ''),
+                'cuerpo' => (string)($correo['cuerpo'] ?? ''),
+                'proveedor' => (string)($correo['proveedor'] ?? ''),
+                'enviado_at' => (string)($correo['enviado_at'] ?? ''),
+                'adjuntos' => $adjuntos,
+                'legacy' => !empty($correo['legacy'])
+            ]
+        ]);
+    }
+
     public function descargarAdjuntoCorreoSeguimiento()
     {
         $this->validarPermiso('seguimientos_vinculacion.ver');
