@@ -81,8 +81,16 @@ if ($contenidoPdf === '') {
     $mensajeError('La vista previa del documento está vacía.', 500);
 }
 
+$folioArchivo = trim((string)($vista['folio'] ?? ''));
+$folioArchivo = preg_replace('/[^A-Za-z0-9_-]+/', '_', $folioArchivo);
+$folioArchivo = trim((string)$folioArchivo, '_');
+$nombreArchivo = 'Oficio_' . ($folioArchivo !== '' ? $folioArchivo : 'REDMEX') . '.pdf';
+
 header('Content-Type: application/pdf');
-header('Content-Disposition: inline; filename="vista_previa_oficio.pdf"');
+header(
+    'Content-Disposition: inline; filename="' . $nombreArchivo . '"; filename*=UTF-8\'\'' .
+    rawurlencode($nombreArchivo)
+);
 header('Content-Length: ' . strlen($contenidoPdf));
 header('X-Content-Type-Options: nosniff');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
