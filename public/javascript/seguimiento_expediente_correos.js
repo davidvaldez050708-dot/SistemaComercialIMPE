@@ -204,7 +204,7 @@
                 modal.querySelector('[data-mail-history-date]').textContent =
                     fechaLegible(correo.enviado_at);
                 modal.querySelector('[data-mail-history-user]').textContent =
-                    String(correo.proveedor || '').trim() || 'Sistema';
+                    String(correo.enviado_por || '').trim() || 'Sistema';
                 modal.querySelector('[data-mail-history-subject]').textContent =
                     String(correo.asunto || '').trim() || 'Sin asunto';
                 modal.querySelector('[data-mail-history-body]').textContent =
