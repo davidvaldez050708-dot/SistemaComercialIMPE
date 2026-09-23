@@ -170,6 +170,57 @@
             const selector = elemento.querySelector('#oficioSavedTemplate');
             const manual = elemento.querySelector('#oficioTemplateFile');
             const bloqueAlta = elemento.querySelector('[data-oficio-add-form]');
+            const pestañaGuardadas = elemento.querySelector('label[for="oficioSavedTemplate"]');
+            const pestañaNueva = elemento.querySelector('[data-oficio-add]');
+            const nombreBiblioteca = elemento.querySelector('#oficioLibraryName');
+            const archivoBiblioteca = elemento.querySelector('#oficioLibraryFile');
+
+            const limpiarAltaPlantilla = function () {
+                if (nombreBiblioteca) {
+                    nombreBiblioteca.value = '';
+                }
+                if (archivoBiblioteca) {
+                    archivoBiblioteca.value = '';
+                }
+            };
+
+            const mostrarPlantillasGuardadas = function (enfocar = false) {
+                bloqueAlta.classList.add('d-none');
+                pestañaGuardadas?.setAttribute('aria-selected', 'true');
+                pestañaNueva?.setAttribute('aria-selected', 'false');
+
+                if (enfocar) {
+                    selector.focus();
+                }
+            };
+
+            const mostrarNuevaPlantilla = function () {
+                bloqueAlta.classList.remove('d-none');
+                pestañaGuardadas?.setAttribute('aria-selected', 'false');
+                pestañaNueva?.setAttribute('aria-selected', 'true');
+                nombreBiblioteca?.focus();
+            };
+
+            if (pestañaGuardadas) {
+                pestañaGuardadas.setAttribute('role', 'tab');
+                pestañaGuardadas.setAttribute('tabindex', '0');
+                pestañaGuardadas.setAttribute('aria-selected', 'true');
+                pestañaGuardadas.addEventListener('click', function (event) {
+                    event.preventDefault();
+                    mostrarPlantillasGuardadas(true);
+                });
+                pestañaGuardadas.addEventListener('keydown', function (event) {
+                    if (event.key !== 'Enter' && event.key !== ' ') {
+                        return;
+                    }
+                    event.preventDefault();
+                    mostrarPlantillasGuardadas(true);
+                });
+            }
+
+            pestañaNueva?.setAttribute('role', 'tab');
+            pestañaNueva?.setAttribute('aria-selected', 'false');
+
             selector.addEventListener('change', function () {
                 if (selector.value) manual.value = '';
                 actualizarAccionEliminarPlantilla(elemento);
@@ -178,12 +229,12 @@
                 if (manual.files.length) selector.value = '';
                 actualizarAccionEliminarPlantilla(elemento);
             });
-            elemento.querySelector('[data-oficio-add]').addEventListener('click', function () {
-                bloqueAlta.classList.remove('d-none');
-                elemento.querySelector('#oficioLibraryName').focus();
+            pestañaNueva?.addEventListener('click', function () {
+                mostrarNuevaPlantilla();
             });
             elemento.querySelector('[data-oficio-add-cancel]').addEventListener('click', function () {
-                bloqueAlta.classList.add('d-none');
+                limpiarAltaPlantilla();
+                mostrarPlantillasGuardadas(true);
             });
             elemento.querySelector('#oficioLibraryFile').addEventListener('change', function () {
                 const nombre = elemento.querySelector('#oficioLibraryName');
@@ -319,6 +370,12 @@
             modal.dataset.puedeEliminarPlantillas = '0';
             actualizarAccionEliminarPlantilla(modal);
             modal.querySelector('[data-oficio-add-form]').classList.add('d-none');
+            modal.querySelector('#oficioLibraryName').value = '';
+            modal.querySelector('#oficioLibraryFile').value = '';
+            const pestañaGuardadas = modal.querySelector('label[for="oficioSavedTemplate"]');
+            const pestañaNueva = modal.querySelector('[data-oficio-add]');
+            pestañaGuardadas?.setAttribute('aria-selected', 'true');
+            pestañaNueva?.setAttribute('aria-selected', 'false');
             modal.querySelector('[data-oficio-use-selected]').disabled = !Boolean(estadoActual?.puede_generar);
         };
 
