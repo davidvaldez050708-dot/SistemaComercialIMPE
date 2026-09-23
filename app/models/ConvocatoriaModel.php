@@ -24,7 +24,7 @@ class ConvocatoriaModel
         return $this->convertirResultadoEnArreglo($resultado);
     }
 
-    public function obtenerListado()
+    public function obtenerListado($buscar = '', $estadoId = 0, $estatus = '')
     {
         $sql = "SELECT
                     convocatorias.id,
@@ -45,12 +45,47 @@ class ConvocatoriaModel
                     ON convocatoria_estados.convocatoria_id = convocatorias.id
                 LEFT JOIN estados
                     ON estados.id = convocatoria_estados.estado_id
-                GROUP BY convocatorias.id
-                ORDER BY convocatorias.created_at DESC, convocatorias.id DESC";
+                WHERE 1 = 1";
 
-        $resultado = $this->connection->query($sql);
+        $tipos = '';
+        $parametros = [];
 
-        return $this->convertirResultadoEnArreglo($resultado);
+        if ($buscar !== '') {
+            $sql .= " AND convocatorias.titulo LIKE ?";
+            $tipos .= 's';
+            $parametros[] = '%' . $buscar . '%';
+        }
+
+        if ($estadoId > 0) {
+            $sql .= " AND EXISTS (
+                        SELECT 1
+                        FROM convocatoria_estados filtro_estado
+                        WHERE filtro_estado.convocatoria_id = convocatorias.id
+                          AND filtro_estado.estado_id = ?
+                    )";
+            $tipos .= 'i';
+            $parametros[] = $estadoId;
+        }
+
+        if ($estatus === '0' || $estatus === '1') {
+            $sql .= " AND convocatorias.estado = ?";
+            $tipos .= 'i';
+            $parametros[] = (int)$estatus;
+        }
+
+        $sql .= " GROUP BY convocatorias.id
+                  ORDER BY convocatorias.created_at DESC, convocatorias.id DESC";
+
+        if ($tipos === '') {
+            $resultado = $this->connection->query($sql);
+            return $this->convertirResultadoEnArreglo($resultado);
+        }
+
+        $stmt = $this->connection->prepare($sql);
+        $this->vincularParametros($stmt, $tipos, $parametros);
+        $stmt->execute();
+
+        return $this->convertirResultadoEnArreglo($stmt->get_result());
     }
 
     public function buscarPorId($id)
@@ -287,6 +322,18 @@ class ConvocatoriaModel
                 throw new Exception('No fue posible asociar los estados.');
             }
         }
+    }
+
+    private function vincularParametros($stmt, $tipos, $parametros)
+    {
+        $referencias = [];
+        $referencias[] = &$tipos;
+
+        foreach ($parametros as $indice => $valor) {
+            $referencias[] = &$parametros[$indice];
+        }
+
+        call_user_func_array([$stmt, 'bind_param'], $referencias);
     }
 
     private function convertirResultadoEnArreglo($resultado)
