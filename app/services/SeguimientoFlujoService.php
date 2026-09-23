@@ -458,6 +458,7 @@ class SeguimientoFlujoService
             ],
             'contexto' => [
                 'estado_seguimiento' => (string)($seguimiento['estado_seguimiento'] ?? ''),
+                'datos_verificados' => (int)($seguimiento['datos_verificados'] ?? 0) === 1,
                 'telefono_disponible' => trim((string)(
                     $seguimiento['telefono_verificado'] ??
                     $seguimiento['telefono_fuente'] ??
