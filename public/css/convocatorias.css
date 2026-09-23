@@ -193,23 +193,18 @@
 }
 
 
-/* Mantiene la tipografía institucional del sistema dentro del módulo. */
-.convocatoria-state-picker,
-.convocatoria-state-picker input,
-.convocatoria-state-picker label,
-.convocatoria-state-picker span,
-.convocatoria-filter-bar,
-.convocatoria-filter-bar input,
-.convocatoria-filter-bar select,
-.convocatoria-filter-bar button,
-.convocatoria-territory-context,
-.convocatoria-territory-selector,
-.convocatoria-territory-selector input,
-.convocatoria-territory-selector a,
+/* Tipografía institucional del módulo de Convocatorias. */
 .system-form-modal,
 .system-form-modal input,
 .system-form-modal select,
 .system-form-modal button,
-.user-detail-panel {
-    font-family: inherit;
+.system-form-modal label,
+.system-form-modal small,
+.system-form-modal span,
+.convocatoria-state-picker,
+.convocatoria-state-picker input,
+.convocatoria-state-picker label,
+.convocatoria-state-picker span,
+.convocatoria-state-search {
+    font-family: 'Manrope', sans-serif;
 }
