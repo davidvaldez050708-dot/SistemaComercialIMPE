@@ -281,6 +281,22 @@
 
             sincronizarBotonVerificacion(pasoActual);
 
+            const datosVerificados = Boolean(flujo.contexto?.datos_verificados);
+            const botonContacto = offcanvas.querySelector('[data-work-toggle-contact]');
+            const filaVerificacion = offcanvas.querySelector('[data-work-verify-row]');
+
+            if (botonContacto) {
+                botonContacto.textContent = datosVerificados
+                    ? 'Actualizar datos de contacto'
+                    : 'Completar datos de contacto';
+            }
+
+            if (filaVerificacion) {
+                const mostrarVerificacion =
+                    pasoActual === 4 || datosVerificados;
+                filaVerificacion.classList.toggle('d-none', !mostrarVerificacion);
+            }
+
             const contador = bloque.querySelector('[data-flow-step-count]');
             const progreso = bloque.querySelector('[data-flow-progress]');
             const ventana = bloque.querySelector('[data-flow-window]');
@@ -326,12 +342,57 @@
 
             if (faltantes) {
                 faltantes.classList.toggle('d-none', listaFaltantes.length === 0);
-                faltantes.innerHTML = listaFaltantes.length === 0
-                    ? ''
-                    : '<span class="linkage-flow-missing-label">Falta:</span>' +
-                        listaFaltantes.map(function (item) {
-                            return '<span class="linkage-flow-chip">' + escapar(item) + '</span>';
-                        }).join('');
+
+                if (listaFaltantes.length === 0) {
+                    faltantes.innerHTML = '';
+                } else if (pasoActual <= 2) {
+                    const bloqueantes = listaFaltantes.filter(function (item) {
+                        const valor = String(item || '').toLowerCase();
+                        return valor.includes('teléfono') || valor.includes('telefono');
+                    });
+                    const pendientes = listaFaltantes.filter(function (item) {
+                        return !bloqueantes.includes(item);
+                    });
+                    const grupos = [];
+
+                    if (bloqueantes.length > 0) {
+                        grupos.push(
+                            '<span class="linkage-flow-missing-group is-required">' +
+                                '<span class="linkage-flow-missing-label">Necesario para avanzar:</span>' +
+                                bloqueantes.map(function (item) {
+                                    return '<span class="linkage-flow-chip is-required">' +
+                                        escapar(item) +
+                                    '</span>';
+                                }).join('') +
+                            '</span>'
+                        );
+                    }
+
+                    if (pendientes.length > 0) {
+                        grupos.push(
+                            '<span class="linkage-flow-missing-group is-pending">' +
+                                '<span class="linkage-flow-missing-label">Pendiente de investigación:</span>' +
+                                pendientes.map(function (item) {
+                                    return '<span class="linkage-flow-chip is-pending">' +
+                                        escapar(item) +
+                                    '</span>';
+                                }).join('') +
+                            '</span>'
+                        );
+                    }
+
+                    faltantes.innerHTML = grupos.join('');
+                } else {
+                    faltantes.innerHTML =
+                        '<span class="linkage-flow-missing-group is-required">' +
+                            '<span class="linkage-flow-missing-label">Falta para avanzar:</span>' +
+                            listaFaltantes.map(function (item) {
+                                return '<span class="linkage-flow-chip is-required">' +
+                                    escapar(item) +
+                                '</span>';
+                            }).join('') +
+                        '</span>';
+                }
             }
 
             if (documento) {
