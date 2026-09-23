@@ -329,7 +329,20 @@ class SeguimientoPostEnvioService
 
         $notas = 'Respuesta recibida [' . $this->etiquetaRespuesta($tipo) . ']: ' . $texto;
         $canalDb = $canal === 'LLAMADA' ? 'LLAMADA_IP' : $canal;
-        $this->registrarInteraccion($seguimientoId, $usuarioId, $canalDb, 'OTRO', $notas);
+        $resultadoInteraccion = [
+            'INTERESADO' => 'CONTACTADO',
+            'MAS_INFORMACION' => 'SOLICITO_INFORMACION',
+            'QUIERE_REUNION' => 'CONTACTADO',
+            'CONTACTAR_DESPUES' => 'SOLICITO_LLAMAR_DESPUES',
+            'NO_INTERESADO' => 'NO_INTERESADO'
+        ][$tipo] ?? 'OTRO';
+        $this->registrarInteraccion(
+            $seguimientoId,
+            $usuarioId,
+            $canalDb,
+            $resultadoInteraccion,
+            $notas
+        );
 
         if ($tipo === 'NO_INTERESADO') {
             $motivo = mb_substr($texto, 0, 255);
