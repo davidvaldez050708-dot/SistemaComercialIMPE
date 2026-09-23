@@ -315,6 +315,35 @@
             '</div>';
         };
 
+        const bloqueCancelacion = function (reunion) {
+            const estado = String(reunion.estado || '').toUpperCase();
+            const cancelables = new Set([
+                'SOLICITADA',
+                'CAMBIO_SOLICITADO',
+                'CONFIRMADA',
+                'CORREO_ENVIADO'
+            ]);
+
+            if (!cancelables.has(estado)) {
+                return '';
+            }
+
+            return '' +
+                '<div class="agenda-action-box">' +
+                    '<h6>Cancelar reunión</h6>' +
+                    '<p>Úsalo solo si la reunión ya no se realizará. El motivo quedará registrado en el expediente.</p>' +
+                    '<form data-agenda-action-form data-agenda-action="cancelar">' +
+                        '<input type="hidden" name="reunion_id" value="' + Number(reunion.id || 0) + '">' +
+                        '<textarea class="form-control system-form-control" name="motivo_cancelacion" rows="3" maxlength="2000" placeholder="Indica brevemente por qué se cancela la reunión..." required></textarea>' +
+                        '<div class="agenda-action-row">' +
+                            '<button class="btn btn-system-cancel" type="submit">' +
+                                '<i class="bi bi-x-circle"></i> Cancelar reunión' +
+                            '</button>' +
+                        '</div>' +
+                    '</form>' +
+                '</div>';
+        };
+
         const contenidoAnalista = function (reunion) {
             const estado = String(reunion.estado || '');
             let html = cabeceraDetalle(reunion);
@@ -341,7 +370,7 @@
                         '</div>' +
                     '</div>';
                 }
-                return html;
+                return html + bloqueCancelacion(reunion);
             }
 
             if (estado === 'CAMBIO_SOLICITADO') {
@@ -378,7 +407,7 @@
                         '</div>' +
                     '</form>' +
                 '</div>';
-                return html;
+                return html + bloqueCancelacion(reunion);
             }
 
             if (estado === 'CONFIRMADA') {
@@ -417,7 +446,7 @@
                         '</div>' +
                     '</form>' +
                 '</div>';
-                return html;
+                return html + bloqueCancelacion(reunion);
             }
 
             if (estado === 'CORREO_ENVIADO') {
@@ -429,7 +458,7 @@
                 '</div>';
             }
 
-            return html;
+            return html + bloqueCancelacion(reunion);
         };
 
         const contenidoCuentaClave = function (reunion) {
@@ -449,7 +478,7 @@
                     '<p>Esta solicitud ya fue procesada.</p>' +
                     datosConexion(reunion) +
                 '</div>';
-                return html;
+                return html + bloqueCancelacion(reunion);
             }
 
             const modalidad = String(reunion.modalidad || '').toUpperCase();
@@ -498,7 +527,7 @@
                 '</form>' +
             '</div>';
 
-            return html;
+            return html + bloqueCancelacion(reunion);
         };
 
         const abrirDetalle = function (reunionId) {
@@ -688,8 +717,9 @@
 
         if (seguimientoInicial > 0) {
             const reunionExistente = reuniones.find(function (item) {
+                const estado = String(item.estado || '').toUpperCase();
                 return Number(item.seguimiento_id || 0) === seguimientoInicial &&
-                    String(item.estado || '') !== 'CANCELADA';
+                    !['CANCELADA', 'REALIZADA'].includes(estado);
             });
 
             if (reunionExistente) {
