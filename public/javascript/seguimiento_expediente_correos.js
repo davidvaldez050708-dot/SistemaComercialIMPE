@@ -42,6 +42,17 @@
             return salida;
         };
 
+        const tamanoLegible = function (bytes) {
+            const total = Number(bytes || 0);
+            if (!Number.isFinite(total) || total <= 0) {
+                return '';
+            }
+            if (total < 1024 * 1024) {
+                return Math.max(1, Math.round(total / 1024)) + ' KB';
+            }
+            return (total / (1024 * 1024)).toFixed(1) + ' MB';
+        };
+
         const crearModal = function () {
             let modal = document.getElementById('modalDetalleCorreoExpediente');
 
