@@ -485,18 +485,31 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 detalleContenido.innerHTML =
                     imagen +
-                    '<div class="user-detail-info-row"><div class="user-detail-info-label">Título</div><div class="user-detail-info-value">' +
+                    '<div class="user-detail-tab-content active">' +
+                    '<div class="user-detail-info-row">' +
+                    '<div class="user-detail-info-icon"><i class="bi bi-card-heading"></i></div>' +
+                    '<div class="user-detail-info-label">Título</div>' +
+                    '<div class="user-detail-info-value">' +
                     escapeHtml(convocatoria.titulo || '—') +
                     '</div></div>' +
-                    '<div class="user-detail-info-row"><div class="user-detail-info-label">Periodo</div><div class="user-detail-info-value">' +
+                    '<div class="user-detail-info-row">' +
+                    '<div class="user-detail-info-icon"><i class="bi bi-calendar3"></i></div>' +
+                    '<div class="user-detail-info-label">Periodo</div>' +
+                    '<div class="user-detail-info-value">' +
                     escapeHtml((convocatoria.fecha_inicio || '—') + ' — ' + (convocatoria.fecha_termino || '—')) +
                     '</div></div>' +
-                    '<div class="user-detail-info-row"><div class="user-detail-info-label">Estados</div><div class="user-detail-info-value">' +
+                    '<div class="user-detail-info-row">' +
+                    '<div class="user-detail-info-icon"><i class="bi bi-geo-alt"></i></div>' +
+                    '<div class="user-detail-info-label">Estados</div>' +
+                    '<div class="user-detail-info-value">' +
                     escapeHtml((convocatoria.estados || []).join(', ') || '—') +
                     '</div></div>' +
-                    '<div class="user-detail-info-row"><div class="user-detail-info-label">Estatus</div><div class="user-detail-info-value">' +
+                    '<div class="user-detail-info-row">' +
+                    '<div class="user-detail-info-icon"><i class="bi bi-toggle-on"></i></div>' +
+                    '<div class="user-detail-info-label">Estatus</div>' +
+                    '<div class="user-detail-info-value">' +
                     ((Number(convocatoria.estado) === 1) ? 'Activa' : 'Inactiva') +
-                    '</div></div>';
+                    '</div></div></div>';
 
                 detalleOffcanvas.show();
             } catch (error) {
