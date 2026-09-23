@@ -1,0 +1,36 @@
+.convocatoria-toolbar {
+    grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.system-form-full {
+    grid-column: 1 / -1;
+}
+
+.convocatoria-thumb {
+    width: 58px;
+    height: 58px;
+    object-fit: cover;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: #f6f8fb;
+}
+
+.convocatoria-detail-image {
+    width: 100%;
+    max-height: 240px;
+    object-fit: contain;
+    margin-bottom: 18px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: #f8fafc;
+}
+
+.convocatoria-estados-select {
+    min-height: 180px;
+}
+
+@media (max-width: 767.98px) {
+    .convocatoria-toolbar {
+        grid-template-columns: 1fr;
+    }
+}

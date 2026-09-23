@@ -8,6 +8,7 @@ $mostrarRoles = tienePermiso('roles.ver');
 $mostrarTerritorios = tienePermiso('territorios.ver');
 $mostrarDataTerritorial = tienePermiso('data_territorial.ver');
 $mostrarSeguimientoVinculacion = tienePermiso('seguimientos_vinculacion.ver');
+$mostrarConvocatorias = tienePermiso('convocatorias.ver');
 $mostrarReportes = $mostrarDataTerritorial || $mostrarSeguimientoVinculacion;
 
 $claseInicio = $opcionActiva === 'inicio' ? 'active' : '';
@@ -19,6 +20,7 @@ $claseDataTerritorial =
 $claseSeguimientoVinculacion =
     $opcionActiva === 'seguimiento_vinculacion' ? 'active' : '';
 $claseReportes = $opcionActiva === 'reportes' ? 'active' : '';
+$claseConvocatorias = $opcionActiva === 'convocatorias' ? 'active' : '';
 
 ?>
 
@@ -94,6 +96,23 @@ $claseReportes = $opcionActiva === 'reportes' ? 'active' : '';
                     </a>
 
                 <?php endif; ?>
+            </div>
+
+        <?php endif; ?>
+
+        <?php if ($mostrarConvocatorias): ?>
+
+            <div class="sidebar-section">
+                <p class="sidebar-section-title">
+                    MARKETING
+                </p>
+
+                <a
+                    href="<?= BASE_URL ?>index.php?controller=convocatoria&action=index"
+                    class="sidebar-link <?= $claseConvocatorias ?>">
+                    <i class="bi bi-megaphone"></i>
+                    Gestión de Convocatorias
+                </a>
             </div>
 
         <?php endif; ?>
@@ -291,6 +310,25 @@ $claseReportes = $opcionActiva === 'reportes' ? 'active' : '';
 
                     <?php endif; ?>
 
+                </div>
+
+            <?php endif; ?>
+
+
+            <!-- MARKETING -->
+            <?php if ($mostrarConvocatorias): ?>
+
+                <div class="sidebar-section">
+                    <p class="sidebar-section-title">
+                        MARKETING
+                    </p>
+
+                    <a
+                        href="<?= BASE_URL ?>index.php?controller=convocatoria&action=index"
+                        class="sidebar-link <?= $claseConvocatorias ?>">
+                        <i class="bi bi-megaphone"></i>
+                        Gestión de Convocatorias
+                    </a>
                 </div>
 
             <?php endif; ?>

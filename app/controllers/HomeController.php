@@ -3,6 +3,7 @@
 require_once __DIR__ . '/../models/UsuarioModel.php';
 require_once __DIR__ . '/../models/TerritorioModel.php';
 require_once __DIR__ . '/../models/AnalistaDashboardModel.php';
+require_once __DIR__ . '/../models/ConvocatoriaModel.php';
 require_once __DIR__ . '/../services/AnalistaDashboardReunionService.php';
 require_once __DIR__ . '/../services/AnalistaDashboardIntegrityService.php';
 require_once __DIR__ . '/../services/SeguimientoAtencionOperativaService.php';
@@ -100,6 +101,17 @@ class HomeController
                 break;
 
             default:
+                if (strcasecmp((string)($_SESSION['rol'] ?? ''), 'Marketing') === 0) {
+                    $tituloPagina = 'Panel de Marketing';
+                    $subtituloPagina = 'Gestión de convocatorias y publicaciones';
+
+                    $modeloConvocatoria = new ConvocatoriaModel();
+                    $resumenMarketing = $modeloConvocatoria->obtenerResumenDashboard();
+
+                    $vistaPanel = __DIR__ . '/../views/dashboard/marketing.php';
+                    break;
+                }
+
                 $subtituloPagina = 'Rol no reconocido';
                 break;
         }

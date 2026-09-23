@@ -143,7 +143,7 @@ if (isset($_SESSION['usuario_id']) && empty($_SESSION['csrf_token'])) {
  * Evita que una sesión abierta conserve permisos obsoletos después de una
  * actualización del sistema.
  */
-$versionPermisosSistema = 2026092301;
+$versionPermisosSistema = 2026092302;
 
 if (
     isset($_SESSION['usuario_id']) &&
@@ -185,7 +185,8 @@ $controladoresProtegidosCsrf = [
     'agendaReunion',
     'correoFirmado',
     'oficioVinculacion',
-    'oficioCorreo'
+    'oficioCorreo',
+    'convocatoria'
 ];
 
 if (
@@ -463,6 +464,17 @@ switch ($controller) {
 
         $controllerInstance =
             new OficioCorreoController();
+
+        break;
+
+
+    case 'convocatoria':
+
+        require_once __DIR__ .
+            '/app/controllers/ConvocatoriaController.php';
+
+        $controllerInstance =
+            new ConvocatoriaController();
 
         break;
 
