@@ -1869,16 +1869,21 @@ document.addEventListener('DOMContentLoaded', function () {
         }).join('');
     };
 
-    const cargarPanelTrabajo = async function (seguimientoId) {
-        mostrarAlertaTrabajo('');
-        asignarTextoTrabajo('[data-work-title]', 'Cargando seguimiento...');
-        asignarTextoTrabajo('[data-work-subtitle]', '—');
-        offcanvasTrabajo?.show();
+    const cargarPanelTrabajo = async function (seguimientoId, opciones) {
+        const silencioso = Boolean(opciones?.silencioso);
+
+        if (!silencioso) {
+            mostrarAlertaTrabajo('');
+            asignarTextoTrabajo('[data-work-title]', 'Cargando seguimiento...');
+            asignarTextoTrabajo('[data-work-subtitle]', '—');
+            offcanvasTrabajo?.show();
+        }
 
         const respuesta = await fetch(urlPanelTrabajo + '&id=' + encodeURIComponent(seguimientoId), {
             headers: {
                 'X-Requested-With': 'fetch'
-            }
+            },
+            cache: 'no-store'
         });
         const datos = await respuesta.json();
 
@@ -1888,7 +1893,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
         renderizarResumenTrabajo(datos.seguimiento, Boolean(datos.puede_operar));
         renderizarInteraccionesTrabajo(datos.interacciones);
-        renderizarObservacionesTrabajo(datos.observaciones, Number(datos.observaciones_nuevas) || 0);
+        renderizarObservacionesTrabajo(
+            datos.observaciones,
+            Number(datos.observaciones_nuevas) || 0
+        );
+
+        return datos;
     };
 
     document.addEventListener('click', function (event) {
@@ -1901,6 +1911,23 @@ document.addEventListener('DOMContentLoaded', function () {
         event.preventDefault();
         cargarPanelTrabajo(botonTrabajo.dataset.workFollowId).catch(function (error) {
             mostrarErrorTrabajo(error, 'No fue posible cargar el seguimiento.');
+        });
+    });
+
+    document.addEventListener('impe:post-envio-updated', function (event) {
+        const seguimientoId = Number(event.detail?.seguimientoId || 0);
+        const seguimientoAbiertoId = Number(seguimientoTrabajoActual?.id || 0);
+
+        if (
+            seguimientoId <= 0 ||
+            seguimientoAbiertoId <= 0 ||
+            seguimientoId !== seguimientoAbiertoId
+        ) {
+            return;
+        }
+
+        cargarPanelTrabajo(seguimientoId, { silencioso: true }).catch(function (error) {
+            console.error(error);
         });
     });
 
