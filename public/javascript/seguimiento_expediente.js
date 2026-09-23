@@ -615,6 +615,14 @@
                 ultimaNotaLimpia,
                 'Todavía no hay una actividad reciente registrada.'
             );
+            const ultimaEsCorreo = String(ultima?.canal || '').toUpperCase() === 'CORREO' &&
+                String(ultima?.resultado || '').toUpperCase() === 'CORREO_ENVIADO' &&
+                Number(ultima?.id || 0) > 0;
+            const accionUltimoCorreo = ultimaEsCorreo
+                ? '<button type="button" class="btn btn-system-light linkage-expediente-last-mail" ' +
+                    'data-followup-mail-interaction="' + Number(ultima.id) + '">' +
+                    '<i class="bi bi-eye me-2"></i>Ver correo</button>'
+                : '';
 
             tarjeta.innerHTML =
                 '<div class="linkage-expediente-route-heading">' +
@@ -634,6 +642,7 @@
                         '<small>Última actividad · ' + escapar(ultimaMeta) + '</small>' +
                         '<strong>' + escapar(ultimaNota) + '</strong>' +
                     '</div>' +
+                    accionUltimoCorreo +
                 '</div>';
         };
 
