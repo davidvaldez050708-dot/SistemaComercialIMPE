@@ -39,6 +39,20 @@
                 .replace(/>/g, '&gt;');
         };
 
+        const fechaHoraLocal = function (fecha) {
+            const valor = fecha instanceof Date ? fecha : new Date();
+            const pad = function (numero) {
+                return String(numero).padStart(2, '0');
+            };
+
+            return valor.getFullYear() + '-' +
+                pad(valor.getMonth() + 1) + '-' +
+                pad(valor.getDate()) + 'T' +
+                pad(valor.getHours()) + ':' +
+                pad(valor.getMinutes());
+        };
+
+
         const asegurarModal = function () {
             let modal = document.getElementById('modalSeguimientoPostEnvio');
 
@@ -81,11 +95,25 @@
             modal.addEventListener('change', function (event) {
                 if (event.target.matches('[name="respuesta_tipo"]')) {
                     const bloque = modal.querySelector('[data-contactar-despues]');
+                    const campo = modal.querySelector('[name="contactar_despues_at"]');
+                    const requiereFecha =
+                        event.target.value === 'CONTACTAR_DESPUES';
+
                     if (bloque) {
-                        bloque.classList.toggle(
-                            'd-none',
-                            event.target.value !== 'CONTACTAR_DESPUES'
-                        );
+                        bloque.classList.toggle('d-none', !requiereFecha);
+                    }
+
+                    if (campo) {
+                        campo.required = requiereFecha;
+
+                        if (requiereFecha) {
+                            const minimo = new Date(Date.now() + (5 * 60 * 1000));
+                            campo.min = fechaHoraLocal(minimo);
+                        } else {
+                            campo.required = false;
+                            campo.removeAttribute('min');
+                            campo.value = '';
+                        }
                     }
                 }
             });
