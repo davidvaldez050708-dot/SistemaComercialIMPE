@@ -87,6 +87,9 @@ class HostingerMailApiService
         $cuerpo = (string)($datos['cuerpo'] ?? '');
         $rutaAdjunto = trim((string)($datos['ruta_adjunto'] ?? ''));
         $nombreAdjunto = trim((string)($datos['nombre_adjunto'] ?? ''));
+        $adjuntosEntrada = is_array($datos['adjuntos'] ?? null)
+            ? $datos['adjuntos']
+            : [];
 
         if ($remitente === '' || !filter_var($remitente, FILTER_VALIDATE_EMAIL)) {
             return $this->error(
@@ -112,9 +115,9 @@ class HostingerMailApiService
             );
         }
 
-        if ($rutaAdjunto === '' || !is_file($rutaAdjunto)) {
+        if (empty($adjuntosEntrada) && ($rutaAdjunto === '' || !is_file($rutaAdjunto))) {
             return $this->error(
-                'El PDF del oficio no está disponible para adjuntarlo.',
+                'El archivo adjunto no está disponible para enviarlo.',
                 422,
                 'Archivo adjunto inexistente: ' . $rutaAdjunto
             );
@@ -126,28 +129,70 @@ class HostingerMailApiService
             return $mailboxResourceId;
         }
 
-        $contenidoAdjunto = file_get_contents($rutaAdjunto);
+        $attachments = [];
 
-        if ($contenidoAdjunto === false) {
-            return $this->error(
-                'No fue posible leer el PDF del oficio.',
-                500,
-                'file_get_contents falló para: ' . $rutaAdjunto
-            );
-        }
+        if (!empty($adjuntosEntrada)) {
+            foreach ($adjuntosEntrada as $adjunto) {
+                if (!is_array($adjunto)) {
+                    return $this->error(
+                        'Uno de los archivos adjuntos no es válido.',
+                        422,
+                        'Adjunto no es un arreglo.'
+                    );
+                }
 
-        if ($nombreAdjunto === '') {
-            $nombreAdjunto = basename($rutaAdjunto);
-        }
+                $ruta = trim((string)($adjunto['ruta'] ?? ''));
+                $nombre = trim((string)($adjunto['nombre'] ?? ''));
+                $mime = trim((string)($adjunto['mime'] ?? ''));
 
-        $attachments = [
-            [
+                if ($ruta === '' || !is_file($ruta)) {
+                    return $this->error(
+                        'Uno de los archivos adjuntos ya no está disponible.',
+                        422,
+                        'Archivo adjunto inexistente: ' . $ruta
+                    );
+                }
+
+                $contenido = file_get_contents($ruta);
+                if ($contenido === false) {
+                    return $this->error(
+                        'No fue posible leer uno de los archivos adjuntos.',
+                        500,
+                        'file_get_contents falló para: ' . $ruta
+                    );
+                }
+
+                $attachments[] = [
+                    'filename' => $nombre !== '' ? $nombre : basename($ruta),
+                    'content' => base64_encode($contenido),
+                    'contentType' => $mime !== ''
+                        ? $mime
+                        : $this->detectarContentType($ruta, 'application/octet-stream'),
+                    'encoding' => 'base64'
+                ];
+            }
+        } else {
+            $contenidoAdjunto = file_get_contents($rutaAdjunto);
+
+            if ($contenidoAdjunto === false) {
+                return $this->error(
+                    'No fue posible leer el PDF del oficio.',
+                    500,
+                    'file_get_contents falló para: ' . $rutaAdjunto
+                );
+            }
+
+            if ($nombreAdjunto === '') {
+                $nombreAdjunto = basename($rutaAdjunto);
+            }
+
+            $attachments[] = [
                 'filename' => $nombreAdjunto,
                 'content' => base64_encode($contenidoAdjunto),
                 'contentType' => $this->detectarContentType($rutaAdjunto, 'application/pdf'),
                 'encoding' => 'base64'
-            ]
-        ];
+            ];
+        }
 
         $rutaFirma = $this->buscarFirmaLocal($remitente);
         $firmaDisponible = $rutaFirma !== '' && is_file($rutaFirma);
@@ -206,7 +251,10 @@ class HostingerMailApiService
             'proveedor' => 'HOSTINGER_MAIL_API',
             'remitente' => $remitente,
             'mailbox_resource_id' => $mailboxResourceId['resource_id'],
-            'firma_incluida' => $firmaDisponible
+            'firma_incluida' => $firmaDisponible,
+            'adjuntos' => count($adjuntosEntrada) > 0
+                ? count($adjuntosEntrada)
+                : 1
         ];
     }
 
