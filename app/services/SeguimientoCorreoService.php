@@ -211,6 +211,16 @@ class SeguimientoCorreoService
             return $this->error('No fue posible habilitar la coordinación de reunión.', 500);
         }
 
+        $sqlSeguimiento = "UPDATE seguimientos_vinculacion
+                           SET ultima_interaccion_at = NOW(),
+                               proxima_accion_at = NULL
+                           WHERE id = ?
+                             AND analista_id = ?
+                             AND activo = 1";
+        $stmtSeguimiento = $this->connection->prepare($sqlSeguimiento);
+        $stmtSeguimiento->bind_param('ii', $seguimientoId, $usuarioId);
+        $stmtSeguimiento->execute();
+
         return [
             'ok' => true,
             'mensaje' => 'La coordinación de reunión está lista.',
