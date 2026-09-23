@@ -90,6 +90,7 @@ class HostingerMailApiService
         $adjuntosEntrada = is_array($datos['adjuntos'] ?? null)
             ? $datos['adjuntos']
             : [];
+        $permitirSinAdjuntos = (bool)($datos['permitir_sin_adjuntos'] ?? false);
 
         if ($remitente === '' || !filter_var($remitente, FILTER_VALIDATE_EMAIL)) {
             return $this->error(
@@ -115,7 +116,11 @@ class HostingerMailApiService
             );
         }
 
-        if (empty($adjuntosEntrada) && ($rutaAdjunto === '' || !is_file($rutaAdjunto))) {
+        if (
+            !$permitirSinAdjuntos &&
+            empty($adjuntosEntrada) &&
+            ($rutaAdjunto === '' || !is_file($rutaAdjunto))
+        ) {
             return $this->error(
                 'El archivo adjunto no está disponible para enviarlo.',
                 422,
@@ -171,7 +176,7 @@ class HostingerMailApiService
                     'encoding' => 'base64'
                 ];
             }
-        } else {
+        } elseif ($rutaAdjunto !== '' && is_file($rutaAdjunto)) {
             $contenidoAdjunto = file_get_contents($rutaAdjunto);
 
             if ($contenidoAdjunto === false) {
@@ -224,9 +229,12 @@ class HostingerMailApiService
                 $cuerpo,
                 $perfilFirma,
                 $firmaDisponible
-            ),
-            'attachments' => $attachments
+            )
         ];
+
+        if (!empty($attachments)) {
+            $payload['attachments'] = $attachments;
+        }
 
         if ($nombreRemitente !== '') {
             $payload['displayName'] = $nombreRemitente;
@@ -254,7 +262,7 @@ class HostingerMailApiService
             'firma_incluida' => $firmaDisponible,
             'adjuntos' => count($adjuntosEntrada) > 0
                 ? count($adjuntosEntrada)
-                : 1
+                : (($rutaAdjunto !== '' && is_file($rutaAdjunto)) ? 1 : 0)
         ];
     }
 
