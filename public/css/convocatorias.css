@@ -198,6 +198,11 @@
     max-width: 680px;
 }
 
+/*
+ * Convocatorias usa la misma cascada tipográfica que Información Territorial.
+ * La familia base ya proviene de global.css: * { font-family: 'Manrope', sans-serif; }.
+ * No se fuerza una familia local con !important para evitar una cascada distinta.
+ */
 .system-form-modal,
 .system-form-modal input,
 .system-form-modal select,
@@ -215,6 +220,15 @@
 .convocatoria-state-picker span,
 .convocatoria-state-search,
 .convocatoria-state-option,
-.convocatoria-state-option-all {
-    font-family: 'Manrope', sans-serif !important;
+.convocatoria-state-option-all,
+.convocatoria-filter-bar,
+.convocatoria-filter-bar input,
+.convocatoria-filter-bar select,
+.convocatoria-territory-selector,
+.convocatoria-territory-selector input,
+.convocatoria-territory-selector a,
+.convocatoria-territory-context,
+.users-table,
+.user-detail-panel {
+    font-family: 'Manrope', sans-serif;
 }
