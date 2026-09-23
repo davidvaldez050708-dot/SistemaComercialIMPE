@@ -1833,11 +1833,17 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         lista.innerHTML = interacciones.map(function (interaccion) {
+            const notas = String(interaccion.notas || '').trim();
+            const esRespuestaPostEnvio = notas.indexOf('Respuesta recibida [') === 0;
+            const resultadoVisible = esRespuestaPostEnvio
+                ? 'Respuesta recibida'
+                : interaccion.resultado_label;
+
             return '<article>' +
                 '<strong>' + escaparTrabajo(interaccion.fecha_label) + '</strong>' +
                 '<span>' + escaparTrabajo(interaccion.canal_label) + ' · ' +
-                    escaparTrabajo(interaccion.resultado_label) + '</span>' +
-                (interaccion.notas ? '<p>' + escaparTrabajo(interaccion.notas) + '</p>' : '') +
+                    escaparTrabajo(resultadoVisible) + '</span>' +
+                (notas ? '<p>' + escaparTrabajo(notas) + '</p>' : '') +
             '</article>';
         }).join('');
     };
