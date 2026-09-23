@@ -66,13 +66,13 @@
             modal.tabIndex = -1;
             modal.setAttribute('aria-hidden', 'true');
             modal.innerHTML =
-                '<div class="modal-dialog modal-dialog-centered modal-lg">' +
-                    '<div class="modal-content">' +
+                '<div class="modal-dialog modal-dialog-centered modal-lg system-form-dialog">' +
+                    '<div class="modal-content system-form-modal">' +
                         '<form data-post-envio-form>' +
-                            '<div class="modal-header">' +
+                            '<div class="modal-header system-form-modal-header">' +
                                 '<div>' +
-                                    '<h5 class="modal-title" data-post-envio-title>Registrar avance</h5>' +
-                                    '<p class="mb-0 text-muted small" data-post-envio-subtitle></p>' +
+                                    '<h5 class="system-form-modal-title" data-post-envio-title>Registrar avance</h5>' +
+                                    '<p class="system-form-modal-subtitle" data-post-envio-subtitle></p>' +
                                 '</div>' +
                                 '<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>' +
                             '</div>' +
@@ -80,8 +80,8 @@
                                 '<div class="alert alert-danger d-none" data-post-envio-error></div>' +
                                 '<div data-post-envio-fields></div>' +
                             '</div>' +
-                            '<div class="modal-footer">' +
-                                '<button type="button" class="btn btn-system-light" data-bs-dismiss="modal">Cancelar</button>' +
+                            '<div class="modal-footer system-form-modal-footer">' +
+                                '<button type="button" class="btn btn-system-cancel" data-bs-dismiss="modal">Cancelar</button>' +
                                 '<button type="submit" class="btn btn-system-save" data-post-envio-save>' +
                                     '<i class="bi bi-check2-circle"></i> Guardar avance' +
                                 '</button>' +
