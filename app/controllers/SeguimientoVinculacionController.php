@@ -1323,6 +1323,10 @@ class SeguimientoVinculacionController
                 'asunto' => (string)($correo['asunto'] ?? ''),
                 'cuerpo' => (string)($correo['cuerpo'] ?? ''),
                 'proveedor' => (string)($correo['proveedor'] ?? ''),
+                'enviado_por' => trim(
+                    (string)($seguimiento['analista_nombre'] ?? '') . ' ' .
+                    (string)($seguimiento['analista_apellidos'] ?? '')
+                ),
                 'enviado_at' => (string)($correo['enviado_at'] ?? ''),
                 'adjuntos' => $adjuntos,
                 'legacy' => !empty($correo['legacy'])
