@@ -261,6 +261,73 @@ class ConvocatoriaModel
         ];
     }
 
+    public function obtenerCoberturaTerritorialDashboard($limite = 4)
+    {
+        $sqlTotalEstados = "SELECT COUNT(*) AS total_estados
+                            FROM estados
+                            WHERE estado = 1";
+
+        $resultadoTotalEstados = $this->connection->query($sqlTotalEstados);
+        $filaTotalEstados = $resultadoTotalEstados->fetch_assoc();
+        $totalEstados = (int)($filaTotalEstados['total_estados'] ?? 0);
+
+        $sqlCobertura = "SELECT
+                            COUNT(DISTINCT asociaciones.estado_id) AS estados_cubiertos
+                         FROM (
+                            SELECT DISTINCT
+                                convocatoria_estados.convocatoria_id,
+                                convocatoria_estados.estado_id
+                            FROM convocatoria_estados
+                            INNER JOIN convocatorias
+                                ON convocatorias.id = convocatoria_estados.convocatoria_id
+                            WHERE convocatorias.estado = 1
+                         ) asociaciones";
+
+        $resultadoCobertura = $this->connection->query($sqlCobertura);
+        $filaCobertura = $resultadoCobertura->fetch_assoc();
+        $estadosCubiertos = (int)($filaCobertura['estados_cubiertos'] ?? 0);
+
+        $limite = max(1, min(5, (int)$limite));
+
+        $sqlTop = "SELECT
+                        estados.id,
+                        estados.nombre,
+                        COUNT(*) AS convocatorias_activas
+                   FROM (
+                        SELECT DISTINCT
+                            convocatoria_estados.convocatoria_id,
+                            convocatoria_estados.estado_id
+                        FROM convocatoria_estados
+                        INNER JOIN convocatorias
+                            ON convocatorias.id = convocatoria_estados.convocatoria_id
+                        WHERE convocatorias.estado = 1
+                   ) asociaciones
+                   INNER JOIN estados
+                       ON estados.id = asociaciones.estado_id
+                   WHERE estados.estado = 1
+                   GROUP BY estados.id, estados.nombre
+                   ORDER BY convocatorias_activas DESC, estados.nombre ASC
+                   LIMIT " . $limite;
+
+        $resultadoTop = $this->connection->query($sqlTop);
+        $territorios = $this->convertirResultadoEnArreglo($resultadoTop);
+
+        return [
+            'total_estados' => $totalEstados,
+            'estados_cubiertos' => $estadosCubiertos,
+            'territorios' => array_map(
+                static function ($fila) {
+                    return [
+                        'id' => (int)($fila['id'] ?? 0),
+                        'nombre' => (string)($fila['nombre'] ?? ''),
+                        'convocatorias_activas' => (int)($fila['convocatorias_activas'] ?? 0)
+                    ];
+                },
+                $territorios
+            )
+        ];
+    }
+
     private function obtenerEstadosIds($convocatoriaId)
     {
         $sql = "SELECT estado_id
