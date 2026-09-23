@@ -188,6 +188,83 @@ function registrarMigracion(
     $stmt->close();
 }
 
+function esMigracionSecretariasDenueLegacy(string $nombre): bool
+{
+    return in_array(
+        $nombre,
+        [
+            '20260903_secretarias_denue.sql',
+            '2026_09_03_secretarias_denue.sql'
+        ],
+        true
+    );
+}
+
+function columnaExiste(mysqli $db, string $tabla, string $columna): bool
+{
+    $stmt = $db->prepare(
+        "SELECT COUNT(*) AS total
+         FROM information_schema.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = ?
+           AND COLUMN_NAME = ?"
+    );
+
+    if (!$stmt) {
+        throw new RuntimeException($db->error);
+    }
+
+    $stmt->bind_param('ss', $tabla, $columna);
+    $stmt->execute();
+    $fila = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    return (int)($fila['total'] ?? 0) > 0;
+}
+
+function prepararSqlMigracionCompatible(mysqli $db, string $sql, string $nombre): string
+{
+    if (!esMigracionSecretariasDenueLegacy($nombre)) {
+        return $sql;
+    }
+
+    $columnas = [
+        'fuente_datos' => "VARCHAR(30) NOT NULL DEFAULT 'Sistema'",
+        'clave_denue' => "VARCHAR(30) DEFAULT NULL",
+        'fecha_actualizacion_denue' => "DATETIME DEFAULT NULL"
+    ];
+
+    $faltantes = [];
+
+    foreach ($columnas as $columna => $definicion) {
+        if (!columnaExiste($db, 'secretarias_estatales', $columna)) {
+            $faltantes[$columna] = $definicion;
+        }
+    }
+
+    $sql = preg_replace(
+        '/\\s*ALTER\\s+TABLE\\s+`?secretarias_estatales`?\\s+ADD\\s+(?:COLUMN\\s+)?`?(fuente_datos|clave_denue|fecha_actualizacion_denue)`?\\s+[^;]+;/i',
+        '',
+        $sql
+    );
+
+    if (!empty($faltantes)) {
+        $agregados = [];
+
+        foreach ($faltantes as $columna => $definicion) {
+            $agregados[] = "ADD COLUMN `{$columna}` {$definicion}";
+        }
+
+        $sql =
+            "ALTER TABLE `secretarias_estatales`\n    " .
+            implode(",\n    ", $agregados) .
+            ";\n\n" .
+            $sql;
+    }
+
+    return $sql;
+}
+
 function ejecutarSql(mysqli $db, string $sql, string $nombre): void
 {
     if (trim($sql) === '') {
@@ -319,7 +396,7 @@ $lote = siguienteLote($db);
 $ejecutadas = 0;
 
 foreach ($archivos as $ruta) {
-    $nombre = nombreMigracion($ruta);
+    $nombre = aliasMigracionCompatible(nombreMigracion($ruta));
     $checksum = checksumMigracion($ruta);
     $registro = $aplicadas[$nombre] ?? null;
 
@@ -346,6 +423,7 @@ foreach ($archivos as $ruta) {
     echo "[EJECUTANDO] {$nombre}\n";
 
     try {
+        $sql = prepararSqlMigracionCompatible($db, $sql, $nombre);
         ejecutarSql($db, $sql, $nombre);
         registrarMigracion($db, $nombre, $checksum, $lote);
         $ejecutadas++;
