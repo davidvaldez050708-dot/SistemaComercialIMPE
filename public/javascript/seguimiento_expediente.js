@@ -123,6 +123,21 @@
                 return '';
             }
 
+            if (/^Seguimiento por correo enviado/i.test(nota)) {
+                const asunto = nota.match(/^Asunto:\s*(.+)$/mi);
+                const adjuntos = nota.match(/^Adjuntos:\s*(.+)$/mi);
+                const partes = ['Seguimiento por correo enviado'];
+
+                if (asunto && asunto[1]) {
+                    partes.push('Asunto: ' + String(asunto[1]).trim());
+                }
+                if (adjuntos && adjuntos[1]) {
+                    partes.push('Adjuntos: ' + String(adjuntos[1]).trim());
+                }
+
+                return partes.join(' · ');
+            }
+
             // Los marcadores de contacto ya se expresan en la metadata.
             nota = nota
                 .replace(/\[(?:CONTACTO_EFECTIVO|SIN_CONTACTO_EFECTIVO)\]/gi, ' · ')
