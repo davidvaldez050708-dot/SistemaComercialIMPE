@@ -232,3 +232,22 @@
 .user-detail-panel {
     font-family: 'Manrope', sans-serif;
 }
+
+
+/* Tipografía completa del módulo de Marketing y Convocatorias */
+.convocatoria-territory-selector,
+.convocatoria-territory-selector *,
+.convocatoria-territory-context,
+.convocatoria-territory-context *,
+.convocatoria-toolbar,
+.convocatoria-toolbar *,
+.convocatoria-filter-panel,
+.convocatoria-filter-panel *,
+.users-list-panel,
+.users-list-panel *,
+.user-detail-panel,
+.user-detail-panel *,
+.system-form-modal,
+.system-form-modal * {
+    font-family: 'Manrope', sans-serif;
+}
