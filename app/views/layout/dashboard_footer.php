@@ -157,27 +157,72 @@ if (is_file($voipConfigPath)) {
     }
 }
 
+$controllerDashboardFooter = strtolower(
+    trim((string)($_GET['controller'] ?? 'home'))
+);
+$actionDashboardFooter = strtolower(
+    trim((string)($_GET['action'] ?? 'index'))
+);
+
+$esSeguimientoEstadoFooter =
+    $controllerDashboardFooter === 'seguimientovinculacion' &&
+    $actionDashboardFooter === 'estado';
+$esSeguimientoDetalleFooter =
+    $controllerDashboardFooter === 'seguimientovinculacion' &&
+    $actionDashboardFooter === 'detalle';
+$esTerritorialFooter = in_array(
+    $controllerDashboardFooter,
+    [
+        'territorio',
+        'dataterritorial',
+        'fuenteoficial',
+        'poblacionobjetivoeducativa'
+    ],
+    true
+);
+
 $jsDashboardFooter = [
     'cambiar_password.js',
-    'seguimiento_interacciones.js',
-    'seguimiento_canales.js',
-    'seguimiento_correo_contacto.js',
-    'oficios_vinculacion.js',
-    'oficios_vista_previa.js',
-    'oficios_correo.js',
-    'oficios_programacion.js',
-    'seguimiento_expediente.js',
-    'seguimiento_flujo.js',
-    'seguimiento_estado_visual.js',
-    'seguimiento_correo_etapa.js',
-    'seguimiento_post_envio.js',
-    'educacion_objetivo.js',
     'mi_perfil.js',
-    'recordatorios.js',
-    'data_territorial_fuentes.js',
-    'poblacion_objetivo_educativa.js',
-    'territorios_historial.js'
+    'recordatorios.js'
 ];
+
+if ($esSeguimientoEstadoFooter) {
+    $jsDashboardFooter = array_merge(
+        $jsDashboardFooter,
+        [
+            'seguimiento_interacciones.js',
+            'seguimiento_canales.js',
+            'seguimiento_correo_contacto.js',
+            'oficios_vinculacion.js',
+            'oficios_vista_previa.js',
+            'oficios_correo.js',
+            'oficios_programacion.js',
+            'seguimiento_flujo.js',
+            'seguimiento_estado_visual.js',
+            'seguimiento_correo_etapa.js',
+            'seguimiento_post_envio.js'
+        ]
+    );
+}
+
+if ($esSeguimientoDetalleFooter) {
+    $jsDashboardFooter[] = 'seguimiento_expediente.js';
+}
+
+if ($esTerritorialFooter) {
+    $jsDashboardFooter = array_merge(
+        $jsDashboardFooter,
+        [
+            'educacion_objetivo.js',
+            'data_territorial_fuentes.js',
+            'poblacion_objetivo_educativa.js',
+            'territorios_historial.js'
+        ]
+    );
+}
+
+$jsDashboardFooter = array_values(array_unique($jsDashboardFooter))
 ?>
 
 <script>
