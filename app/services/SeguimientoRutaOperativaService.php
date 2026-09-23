@@ -56,12 +56,18 @@ class SeguimientoRutaOperativaService
             );
 
             if (($postEnvio['ok'] ?? false) && ($postEnvio['aplica'] ?? false)) {
-                $flujo = $this->agendaService->ajustarFlujoAnalista(
+                /*
+                 * Primero resolvemos si el Paso 10 ya fue cerrado de forma
+                 * explícita. Así la agenda recibe un flujo ya ubicado en el
+                 * Paso 11 y puede reflejar correctamente solicitud, cambio o
+                 * confirmación de reunión.
+                 */
+                $flujo = $this->correoService->ajustarFlujo(
                     $seguimientoId,
                     $analistaId,
                     $postEnvio['flujo']
                 );
-                $flujo = $this->correoService->ajustarFlujo(
+                $flujo = $this->agendaService->ajustarFlujoAnalista(
                     $seguimientoId,
                     $analistaId,
                     $flujo
