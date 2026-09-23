@@ -199,6 +199,13 @@ class ReunionResultadoService
                 'Seguimiento posterior a reunión [' . $resultado . ']: ' . $notas
             );
 
+            $this->actualizarResultadoAgenda(
+                $seguimientoId,
+                $analistaId,
+                $resultado,
+                $notas
+            );
+
             if ($resultado === 'AVANZAR_CONVENIO') {
                 $sqlPost = "UPDATE seguimientos_vinculacion_post_envio
                             SET reunion_resultado = 'AVANZAR_CONVENIO'
@@ -278,23 +285,104 @@ class ReunionResultadoService
 
     private function obtenerEstado($seguimientoId, $analistaId)
     {
-        $sql = "SELECT
-                    s.id,
-                    s.estado_seguimiento,
-                    s.proxima_accion_at,
-                    p.reunion_resultado,
-                    p.reunion_realizada_at
-                FROM seguimientos_vinculacion s
-                LEFT JOIN seguimientos_vinculacion_post_envio p
-                    ON p.seguimiento_id = s.id
-                WHERE s.id = ?
-                  AND s.analista_id = ?
-                  AND s.activo = 1
-                LIMIT 1";
+        $agendaDisponible = $this->resultadoAgendaDisponible();
+
+        if ($agendaDisponible) {
+            $sql = "SELECT
+                        s.id,
+                        s.estado_seguimiento,
+                        s.proxima_accion_at,
+                        CASE
+                            WHEN reunion.id IS NOT NULL
+                            THEN reunion.reunion_resultado
+                            ELSE p.reunion_resultado
+                        END AS reunion_resultado,
+                        CASE
+                            WHEN reunion.id IS NOT NULL
+                            THEN reunion.realizada_at
+                            ELSE p.reunion_realizada_at
+                        END AS reunion_realizada_at
+                    FROM seguimientos_vinculacion s
+                    LEFT JOIN seguimientos_vinculacion_post_envio p
+                        ON p.seguimiento_id = s.id
+                    LEFT JOIN reuniones_vinculacion reunion
+                        ON reunion.id = (
+                            SELECT reciente.id
+                            FROM reuniones_vinculacion reciente
+                            WHERE reciente.seguimiento_id = s.id
+                              AND reciente.estado <> 'CANCELADA'
+                            ORDER BY reciente.id DESC
+                            LIMIT 1
+                        )
+                    WHERE s.id = ?
+                      AND s.analista_id = ?
+                      AND s.activo = 1
+                    LIMIT 1";
+        } else {
+            $sql = "SELECT
+                        s.id,
+                        s.estado_seguimiento,
+                        s.proxima_accion_at,
+                        p.reunion_resultado,
+                        p.reunion_realizada_at
+                    FROM seguimientos_vinculacion s
+                    LEFT JOIN seguimientos_vinculacion_post_envio p
+                        ON p.seguimiento_id = s.id
+                    WHERE s.id = ?
+                      AND s.analista_id = ?
+                      AND s.activo = 1
+                    LIMIT 1";
+        }
+
         $stmt = $this->connection->prepare($sql);
         $stmt->bind_param('ii', $seguimientoId, $analistaId);
         $stmt->execute();
         return $stmt->get_result()->fetch_assoc() ?: null;
+    }
+
+    private function actualizarResultadoAgenda(
+        $seguimientoId,
+        $analistaId,
+        $resultado,
+        $notas
+    ) {
+        if (!$this->resultadoAgendaDisponible()) {
+            return;
+        }
+
+        $sql = "UPDATE reuniones_vinculacion
+                SET reunion_resultado = ?,
+                    reunion_resultado_notas = ?
+                WHERE seguimiento_id = ?
+                  AND analista_id = ?
+                  AND estado = 'REALIZADA'
+                ORDER BY id DESC
+                LIMIT 1";
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param(
+            'ssii',
+            $resultado,
+            $notas,
+            $seguimientoId,
+            $analistaId
+        );
+        $stmt->execute();
+    }
+
+    private function resultadoAgendaDisponible()
+    {
+        $tabla = $this->connection->query(
+            "SHOW TABLES LIKE 'reuniones_vinculacion'"
+        );
+        if (!$tabla || $tabla->num_rows === 0) {
+            return false;
+        }
+
+        $resultado = $this->connection->query(
+            "SHOW COLUMNS FROM reuniones_vinculacion LIKE 'reunion_resultado'"
+        );
+
+        return $resultado && $resultado->num_rows > 0;
     }
 
     private function registrarInteraccion($seguimientoId, $usuarioId, $notas)
