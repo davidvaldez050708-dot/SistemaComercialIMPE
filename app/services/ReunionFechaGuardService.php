@@ -100,12 +100,43 @@ class ReunionFechaGuardService
         return ['ok' => true];
     }
 
-    public function marcarRealizada($seguimientoId, $analistaId)
+    public function marcarRealizada($seguimientoId, $analistaId, $datos = [])
     {
         if (!$this->tablaDisponible()) {
             return;
         }
 
+        $resultado = strtoupper(trim((string)($datos['reunion_resultado'] ?? '')));
+        $notas = trim((string)($datos['reunion_resultado_notas'] ?? ''));
+
+        if ($this->resultadoAgendaDisponible()) {
+            $sql = "UPDATE reuniones_vinculacion
+                    SET estado = 'REALIZADA',
+                        reunion_resultado = ?,
+                        reunion_resultado_notas = ?,
+                        realizada_at = NOW(),
+                        realizada_por = ?
+                    WHERE seguimiento_id = ?
+                      AND analista_id = ?
+                      AND estado = 'CORREO_ENVIADO'
+                      AND fecha_propuesta <= NOW()
+                    ORDER BY id DESC
+                    LIMIT 1";
+
+            $stmt = $this->connection->prepare($sql);
+            $stmt->bind_param(
+                'ssiii',
+                $resultado,
+                $notas,
+                $analistaId,
+                $seguimientoId,
+                $analistaId
+            );
+            $stmt->execute();
+            return;
+        }
+
+        // Compatibilidad temporal si la migración nueva todavía no se aplicó.
         $sql = "UPDATE reuniones_vinculacion
                 SET estado = 'REALIZADA'
                 WHERE seguimiento_id = ?
@@ -143,6 +174,19 @@ class ReunionFechaGuardService
         $stmt->execute();
 
         return $stmt->get_result()->fetch_assoc() ?: null;
+    }
+
+    private function resultadoAgendaDisponible()
+    {
+        if (!$this->tablaDisponible()) {
+            return false;
+        }
+
+        $resultado = $this->connection->query(
+            "SHOW COLUMNS FROM reuniones_vinculacion LIKE 'reunion_resultado'"
+        );
+
+        return $resultado && $resultado->num_rows > 0;
     }
 
     private function tablaDisponible()
