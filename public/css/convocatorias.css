@@ -234,3 +234,64 @@
 .convocatoria-state-option-all {
     font-family: Arial, sans-serif;
 }
+
+
+.marketing-territory-coverage {
+    display: grid;
+    gap: 14px;
+}
+
+.marketing-coverage-summary {
+    display: grid;
+    gap: 4px;
+}
+
+.marketing-coverage-summary strong {
+    color: var(--color-text-primary);
+    font-size: 20px;
+    font-weight: 800;
+    line-height: 1.1;
+}
+
+.marketing-coverage-summary span {
+    color: var(--color-text-secondary);
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.marketing-coverage-list {
+    display: grid;
+}
+
+.marketing-coverage-item {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    border-top: 1px solid #edf0f4;
+    color: var(--color-text-secondary);
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.marketing-coverage-item:first-child {
+    border-top: 0;
+}
+
+.marketing-coverage-item strong {
+    color: var(--color-text-primary);
+    font-weight: 800;
+}
+
+.marketing-coverage-empty {
+    padding: 12px 0;
+    color: var(--color-text-secondary);
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.marketing-territory-coverage,
+.marketing-territory-coverage * {
+    font-family: Arial, sans-serif;
+}
