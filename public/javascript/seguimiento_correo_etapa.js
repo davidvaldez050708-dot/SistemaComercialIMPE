@@ -331,7 +331,10 @@
             error.classList.add('d-none');
             error.textContent = '';
             info.classList.add('d-none');
-            info.textContent = '';
+            const infoTexto = info.querySelector('[data-followup-mail-info-text]');
+            if (infoTexto) {
+                infoTexto.textContent = '';
+            }
         };
 
         const mostrarToast = function (mensaje) {
