@@ -197,8 +197,12 @@
             const icono = escapar(accion.icono || 'bi-arrow-right');
             const etiqueta = escapar(accion.etiqueta || 'Continuar');
             const codigo = escapar(accion.codigo);
+            const deshabilitada = Boolean(accion.deshabilitada);
+            const atributoAccion = deshabilitada
+                ? ' disabled aria-disabled="true"'
+                : ' data-flow-action="' + codigo + '"';
 
-            return '<button type="button" class="' + clase + '" data-flow-action="' + codigo + '">' +
+            return '<button type="button" class="' + clase + '"' + atributoAccion + '>' +
                 '<i class="bi ' + icono + '"></i>' +
                 '<span>' + etiqueta + '</span>' +
             '</button>';
