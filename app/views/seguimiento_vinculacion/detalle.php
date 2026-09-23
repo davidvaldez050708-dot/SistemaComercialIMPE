@@ -190,7 +190,9 @@ foreach ($interacciones as $interaccion) {
         'estado' => $etiqueta($interaccion['resultado'] ?? '', $resultados),
         'detalle' => $formatearNotasInteraccion($interaccion['notas'] ?? ''),
         'orden' => (int)($interaccion['id'] ?? 0),
-        'interaccion_id' => (int)($interaccion['id'] ?? 0)
+        'interaccion_id' => (int)($interaccion['id'] ?? 0),
+        'canal_codigo' => strtoupper(trim((string)($interaccion['canal'] ?? ''))),
+        'resultado_codigo' => strtoupper(trim((string)($interaccion['resultado'] ?? '')))
     ];
 }
 
@@ -454,10 +456,24 @@ usort($actividadExpediente, function ($eventoA, $eventoB) {
                     </p>
                     <?php
                     $interaccionActividadId = (int)($eventoActividad['interaccion_id'] ?? 0);
+                    $esCorreoEnviadoActividad =
+                        strtoupper((string)($eventoActividad['canal_codigo'] ?? '')) === 'CORREO' &&
+                        strtoupper((string)($eventoActividad['resultado_codigo'] ?? '')) === 'CORREO_ENVIADO';
                     $adjuntosActividad = $interaccionActividadId > 0
                         ? ($adjuntosCorreoPorInteraccion[$interaccionActividadId] ?? [])
                         : [];
                     ?>
+                    <?php if ($esCorreoEnviadoActividad && $interaccionActividadId > 0): ?>
+                        <div class="linkage-activity-actions">
+                            <button
+                                type="button"
+                                class="btn btn-system-light linkage-activity-view-mail"
+                                data-followup-mail-interaction="<?= $interaccionActividadId ?>">
+                                <i class="bi bi-eye me-2"></i>
+                                Ver correo
+                            </button>
+                        </div>
+                    <?php endif; ?>
                     <?php if (!empty($adjuntosActividad)): ?>
                         <div class="linkage-activity-attachments">
                             <?php foreach ($adjuntosActividad as $adjuntoActividad): ?>
