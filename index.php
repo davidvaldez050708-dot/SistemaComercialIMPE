@@ -133,6 +133,11 @@ if (!$esRutaPublica && !isset($_SESSION['usuario_id'])) {
 }
 
 
+if (isset($_SESSION['usuario_id']) && empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
+
 if (
     isset($_SESSION['usuario_id']) &&
     !isset($_SESSION['permisos'])
@@ -150,6 +155,57 @@ if (
             ->obtenerCodigosPermisosPorRol(
                 (int)($_SESSION['rol_id'] ?? 0)
             );
+}
+
+
+/*
+ * Protección CSRF de la ruta operativa de Vinculación.
+ * Los formularios/fetch del dashboard adjuntan el token de sesión
+ * automáticamente desde dashboard_head.php.
+ */
+$controladoresProtegidosCsrf = [
+    'seguimientoVinculacion',
+    'seguimientoFlujo',
+    'seguimientoInteraccion',
+    'seguimientoObservacion',
+    'agendaReunion',
+    'correoFirmado',
+    'oficioVinculacion',
+    'oficioCorreo'
+];
+
+if (
+    isset($_SESSION['usuario_id']) &&
+    strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST' &&
+    in_array($controller, $controladoresProtegidosCsrf, true)
+) {
+    $tokenSesion = (string)($_SESSION['csrf_token'] ?? '');
+    $tokenPeticion = trim((string)(
+        $_SERVER['HTTP_X_CSRF_TOKEN'] ??
+        $_POST['csrf_token'] ??
+        ''
+    ));
+
+    if (
+        $tokenSesion === '' ||
+        $tokenPeticion === '' ||
+        !hash_equals($tokenSesion, $tokenPeticion)
+    ) {
+        http_response_code(419);
+
+        if ($esPeticionFetch) {
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode([
+                'ok' => false,
+                'mensaje' => 'La sesión de seguridad cambió. Recarga la página e intenta nuevamente.'
+            ], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+        } else {
+            header('Content-Type: text/plain; charset=utf-8');
+            echo 'La sesión de seguridad cambió. Recarga la página e intenta nuevamente.';
+        }
+
+        exit;
+    }
 }
 
 
