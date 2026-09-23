@@ -57,6 +57,10 @@ class AgendaReunionRepository
 
     public function seguimientosElegibles($analistaId)
     {
+        if (!$this->columnaPostEnvioDisponible('coordinacion_reunion_habilitada_at')) {
+            return [];
+        }
+
         $sql = "SELECT s.id, s.nombre_entidad, s.contacto_nombre, s.contacto_cargo,
                        COALESCE(NULLIF(TRIM(s.correo_verificado),''), NULLIF(TRIM(s.correo_fuente),'')) AS contacto_correo,
                        m.nombre AS municipio_nombre
@@ -84,6 +88,10 @@ class AgendaReunionRepository
 
     public function seguimientoElegible($seguimientoId, $analistaId)
     {
+        if (!$this->columnaPostEnvioDisponible('coordinacion_reunion_habilitada_at')) {
+            return null;
+        }
+
         $sql = "SELECT s.id FROM seguimientos_vinculacion s
                 JOIN seguimientos_vinculacion_post_envio p ON p.seguimiento_id=s.id
                 WHERE s.id=? AND s.analista_id=? AND s.activo=1 AND s.estado_seguimiento<>'DESCARTADO'
@@ -309,4 +317,28 @@ class AgendaReunionRepository
         $stmt->execute();
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
+
+    private function columnaPostEnvioDisponible($columna)
+    {
+        $columna = preg_replace('/[^a-zA-Z0-9_]+/', '', (string)$columna);
+        if ($columna === '') {
+            return false;
+        }
+
+        $tabla = $this->connection->query(
+            "SHOW TABLES LIKE 'seguimientos_vinculacion_post_envio'"
+        );
+        if (!$tabla || $tabla->num_rows === 0) {
+            return false;
+        }
+
+        $resultado = $this->connection->query(
+            "SHOW COLUMNS FROM seguimientos_vinculacion_post_envio LIKE '" .
+            $columna .
+            "'"
+        );
+
+        return $resultado && $resultado->num_rows > 0;
+    }
+
 }
