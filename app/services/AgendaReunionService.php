@@ -27,6 +27,57 @@ class AgendaReunionService
         return $this->repo->tablaDisponible();
     }
 
+
+    public function validarDisponibilidadHorario(
+        $fecha,
+        $duracion,
+        $analistaId,
+        $cuentaClaveId,
+        $excluirReunionId = 0
+    ) {
+        $conflicto = $this->repo->conflictoHorario(
+            (string)$fecha,
+            (int)$duracion,
+            (int)$analistaId,
+            (int)$cuentaClaveId,
+            (int)$excluirReunionId
+        );
+
+        if (!$conflicto) {
+            return ['ok' => true];
+        }
+
+        $participantes = [];
+
+        if ((int)($conflicto['analista_id'] ?? 0) === (int)$analistaId) {
+            $participantes[] = 'el Analista';
+        }
+
+        if (
+            (int)$cuentaClaveId > 0 &&
+            (int)($conflicto['cuenta_clave_id'] ?? 0) === (int)$cuentaClaveId
+        ) {
+            $participantes[] = 'Cuenta Clave';
+        }
+
+        $responsable = !empty($participantes)
+            ? implode(' y ', $participantes)
+            : 'uno de los responsables';
+
+        $entidad = trim((string)($conflicto['nombre_entidad'] ?? ''));
+        $detalleEntidad = $entidad !== ''
+            ? ' con "' . $entidad . '"'
+            : '';
+
+        return $this->error(
+            'Ese horario se cruza con otra reunión activa de ' .
+            $responsable .
+            $detalleEntidad .
+            '. Selecciona otro horario.',
+            409
+        );
+    }
+
     public function obtenerEcard($usuarioId, $rolId, $reunionId, $template = '')
     {
         $usuarioId = (int)$usuarioId;
@@ -136,6 +187,27 @@ class AgendaReunionService
             return $this->error('Este seguimiento ya tiene una reunión activa en la agenda.', 409);
         }
 
+        $cuentaClaveId = $this->repo->cuentaClaveParaSeguimiento(
+            $seguimientoId,
+            (int)$usuarioId
+        );
+        if ($cuentaClaveId <= 0) {
+            return $this->error(
+                'No hay una Cuenta Clave activa vinculada al territorio del Analista.',
+                422
+            );
+        }
+
+        $disponibilidad = $this->validarDisponibilidadHorario(
+            $fecha,
+            $duracion,
+            (int)$usuarioId,
+            $cuentaClaveId
+        );
+        if (!($disponibilidad['ok'] ?? false)) {
+            return $disponibilidad;
+        }
+
         try {
             $id = $this->repo->insertarSolicitud(
                 $seguimientoId,
@@ -186,6 +258,17 @@ class AgendaReunionService
             return $this->error($error, 422);
         }
 
+        $disponibilidad = $this->validarDisponibilidadHorario(
+            $fecha,
+            $duracion,
+            (int)$reunion['analista_id'],
+            (int)$reunion['cuenta_clave_id'],
+            $reunionId
+        );
+        if (!($disponibilidad['ok'] ?? false)) {
+            return $disponibilidad;
+        }
+
         if (!$this->repo->reprogramar($reunionId, (int)$usuarioId, $fecha, $duracion, $modalidad, $objetivo, $notas)) {
             return $this->error('La reunión cambió de estado. Actualiza la agenda.', 409);
         }
@@ -222,6 +305,17 @@ class AgendaReunionService
                 'La fecha propuesta ya venció. Solicita al Analista una nueva fecha antes de confirmar.',
                 409
             );
+        }
+
+        $disponibilidad = $this->validarDisponibilidadHorario(
+            $fechaPropuesta,
+            (int)($reunion['duracion_minutos'] ?? 60),
+            (int)$reunion['analista_id'],
+            (int)$reunion['cuenta_clave_id'],
+            $reunionId
+        );
+        if (!($disponibilidad['ok'] ?? false)) {
+            return $disponibilidad;
         }
 
         $modalidad = strtoupper((string)($reunion['modalidad'] ?? 'VIRTUAL'));
@@ -286,6 +380,91 @@ class AgendaReunionService
             'mensaje' => 'Se notificó al Analista para que proponga una nueva fecha.',
             'reunion_id' => $reunionId
         ];
+    }
+
+    public function cancelar($usuarioId, $rolId, $datos)
+    {
+        $usuarioId = (int)$usuarioId;
+        $rolId = (int)$rolId;
+
+        if (!$this->puedeAcceder($rolId)) {
+            return $this->error('No tienes acceso a cancelar esta reunión.', 403);
+        }
+
+        if (!$this->repo->cancelacionDisponible()) {
+            return $this->error(
+                'Falta aplicar la migración de integridad de agenda y cancelaciones.',
+                500
+            );
+        }
+
+        $reunionId = (int)($datos['reunion_id'] ?? 0);
+        $motivo = trim((string)($datos['motivo_cancelacion'] ?? ''));
+
+        if ($motivo === '') {
+            return $this->error('Indica el motivo de la cancelación.', 422);
+        }
+        if (mb_strlen($motivo) > 2000) {
+            return $this->error('El motivo de cancelación es demasiado largo.', 422);
+        }
+
+        $reunion = $this->repo->reunion($reunionId, $usuarioId, $rolId);
+        if (
+            !$reunion ||
+            !in_array(
+                strtoupper((string)($reunion['estado'] ?? '')),
+                ['SOLICITADA', 'CAMBIO_SOLICITADO', 'CONFIRMADA', 'CORREO_ENVIADO'],
+                true
+            )
+        ) {
+            return $this->error(
+                'La reunión ya no está disponible para cancelarse.',
+                409
+            );
+        }
+
+        $db = $this->repo->connection();
+        $db->begin_transaction();
+
+        try {
+            if (!$this->repo->cancelar($reunionId, $usuarioId, $rolId, $motivo)) {
+                throw new RuntimeException(
+                    'La reunión cambió de estado. Actualiza la agenda.'
+                );
+            }
+
+            $seguimientoId = (int)$reunion['seguimiento_id'];
+            $analistaId = (int)$reunion['analista_id'];
+
+            $this->repo->limpiarReunionPostEnvio($seguimientoId);
+            $this->repo->actualizarProximaAccion(
+                $seguimientoId,
+                $analistaId,
+                null
+            );
+            $this->repo->registrarInteraccion(
+                $seguimientoId,
+                $usuarioId,
+                'Reunión cancelada. Motivo: ' . $motivo
+            );
+
+            $db->commit();
+
+            return [
+                'ok' => true,
+                'mensaje' =>
+                    'Reunión cancelada. El seguimiento vuelve a coordinación de reunión.',
+                'reunion_id' => $reunionId,
+                'seguimiento_id' => $seguimientoId
+            ];
+        } catch (Throwable $error) {
+            $db->rollback();
+
+            return $this->error(
+                $error->getMessage(),
+                $error instanceof RuntimeException ? 409 : 500
+            );
+        }
     }
 
     public function marcarCorreoEnviado($usuarioId, $rolId, $datos)
