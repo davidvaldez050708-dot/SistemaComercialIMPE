@@ -16,7 +16,6 @@ WHERE activo = 1
 DROP TRIGGER IF EXISTS trg_asignaciones_territorio_vigencia_insert;
 DROP TRIGGER IF EXISTS trg_asignaciones_territorio_vigencia_update;
 
-DELIMITER $$
 
 CREATE TRIGGER trg_asignaciones_territorio_vigencia_insert
 BEFORE INSERT ON asignaciones_territorio
@@ -43,7 +42,7 @@ BEGIN
         SIGNAL SQLSTATE '45000'
             SET MESSAGE_TEXT = 'La fecha de finalización no puede ser anterior al inicio.';
     END IF;
-END$$
+END;
 
 CREATE TRIGGER trg_asignaciones_territorio_vigencia_update
 BEFORE UPDATE ON asignaciones_territorio
@@ -70,6 +69,5 @@ BEGIN
         SIGNAL SQLSTATE '45000'
             SET MESSAGE_TEXT = 'La fecha de finalización no puede ser anterior al inicio.';
     END IF;
-END$$
+END;
 
-DELIMITER ;
