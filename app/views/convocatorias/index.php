@@ -199,7 +199,7 @@ document.addEventListener('DOMContentLoaded', function () {
             <?php if ($puedeCrear): ?>
                 <button
                     type="button"
-                    class="btn btn-new-user"
+                    class="btn btn-system-save"
                     data-bs-toggle="modal"
                     data-bs-target="#modalCrearConvocatoria">
                     <i class="bi bi-plus-circle me-2"></i>
