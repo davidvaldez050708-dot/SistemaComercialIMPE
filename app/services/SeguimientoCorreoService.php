@@ -1177,7 +1177,8 @@ class SeguimientoCorreoService
                 'destinatario' => $destinatario,
                 'asunto' => $asunto,
                 'cuerpo' => $cuerpo,
-                'adjuntos' => $adjuntos
+                'adjuntos' => $adjuntos,
+                'permitir_sin_adjuntos' => true
             ]);
         }
 
@@ -1406,7 +1407,10 @@ class SeguimientoCorreoService
 
             $mail->send();
 
-            return ['ok' => true];
+            return [
+                'ok' => true,
+                'adjuntos' => count($adjuntos)
+            ];
         } catch (Throwable $error) {
             error_log('SMTP seguimiento: ' . $error->getMessage());
             return $this->error('No fue posible enviar el correo institucional. Verifica la cuenta de correo e intenta nuevamente.', 502);
