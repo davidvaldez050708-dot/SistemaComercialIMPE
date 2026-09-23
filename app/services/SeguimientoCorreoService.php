@@ -224,6 +224,79 @@ class SeguimientoCorreoService
         ];
     }
 
+    public function listarAdjuntosExpediente($seguimientoId)
+    {
+        $seguimientoId = (int)$seguimientoId;
+
+        if (
+            $seguimientoId <= 0 ||
+            !$this->tablaExiste('seguimientos_vinculacion_correo_adjuntos')
+        ) {
+            return [];
+        }
+
+        $sql = "SELECT
+                    id,
+                    seguimiento_id,
+                    interaccion_id,
+                    origen,
+                    archivo,
+                    nombre_original,
+                    mime,
+                    tamano,
+                    created_at
+                FROM seguimientos_vinculacion_correo_adjuntos
+                WHERE seguimiento_id = ?
+                ORDER BY created_at DESC, id DESC";
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param('i', $seguimientoId);
+        $stmt->execute();
+
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+    public function obtenerAdjuntoExpediente($adjuntoId)
+    {
+        $adjuntoId = (int)$adjuntoId;
+
+        if (
+            $adjuntoId <= 0 ||
+            !$this->tablaExiste('seguimientos_vinculacion_correo_adjuntos')
+        ) {
+            return null;
+        }
+
+        $sql = "SELECT
+                    id,
+                    seguimiento_id,
+                    interaccion_id,
+                    origen,
+                    archivo,
+                    nombre_original,
+                    mime,
+                    tamano,
+                    created_at
+                FROM seguimientos_vinculacion_correo_adjuntos
+                WHERE id = ?
+                LIMIT 1";
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param('i', $adjuntoId);
+        $stmt->execute();
+        $fila = $stmt->get_result()->fetch_assoc();
+
+        if (!$fila) {
+            return null;
+        }
+
+        $ruta = $this->rutaInternaAbsoluta((string)$fila['archivo']);
+        if ($ruta === null || !is_file($ruta)) {
+            return null;
+        }
+
+        $fila['ruta_absoluta'] = $ruta;
+        return $fila;
+    }
+
     public function habilitarAgenda($seguimientoId, $usuarioId)
     {
         $seguimientoId = (int)$seguimientoId;
@@ -671,6 +744,14 @@ class SeguimientoCorreoService
             }
 
             $item = $adjunto['adjunto'];
+            if ((int)$item['tamano'] <= 0 || (int)$item['tamano'] > 12 * 1024 * 1024) {
+                $this->eliminarArchivos($archivosCreados);
+                return $this->error(
+                    'Uno de los archivos del expediente supera el límite de 12 MB.',
+                    422
+                );
+            }
+
             $tamanoTotal += (int)$item['tamano'];
             $adjuntos[] = $item;
         }
