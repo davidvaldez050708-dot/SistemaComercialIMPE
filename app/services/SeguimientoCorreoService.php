@@ -119,6 +119,13 @@ class SeguimientoCorreoService
             return $this->error('El mensaje es demasiado largo.', 422);
         }
 
+        if (!$this->tablaExiste('seguimientos_vinculacion_correos')) {
+            return $this->error(
+                'Falta aplicar la migración del historial de correos de seguimiento.',
+                500
+            );
+        }
+
         $preparacionAdjuntos = $this->prepararAdjuntos(
             $seguimientoId,
             $usuarioId,
@@ -212,6 +219,17 @@ class SeguimientoCorreoService
             $stmtInteraccion->execute();
             $interaccionId = (int)$this->connection->insert_id;
 
+            $this->registrarCorreoHistorial(
+                $seguimientoId,
+                $interaccionId,
+                $usuarioId,
+                $destinatario,
+                $asunto,
+                $cuerpo,
+                (string)($resultadoEnvio['proveedor'] ?? ''),
+                count($adjuntos)
+            );
+
             if (!empty($adjuntos)) {
                 $this->registrarAdjuntos(
                     $seguimientoId,
@@ -246,6 +264,118 @@ class SeguimientoCorreoService
             'total_enviados' => $this->contarCorreosSeguimiento($seguimientoId),
             'adjuntos_enviados' => count($adjuntos)
         ];
+    }
+
+    public function obtenerCorreoPorInteraccion($interaccionId)
+    {
+        $interaccionId = (int)$interaccionId;
+        if ($interaccionId <= 0) {
+            return null;
+        }
+
+        if ($this->tablaExiste('seguimientos_vinculacion_correos')) {
+            $sql = "SELECT *
+                    FROM seguimientos_vinculacion_correos
+                    WHERE interaccion_id = ?
+                    LIMIT 1";
+            $stmt = $this->connection->prepare($sql);
+            $stmt->bind_param('i', $interaccionId);
+            $stmt->execute();
+            $correo = $stmt->get_result()->fetch_assoc();
+
+            if ($correo) {
+                $correo['adjuntos'] = $this->listarAdjuntosPorInteraccion($interaccionId);
+                return $correo;
+            }
+        }
+
+        // Compatibilidad con correos enviados antes de crear el historial
+        // estructurado. Solo podemos reconstruir lo que quedó en notas.
+        $sqlInteraccion = "SELECT
+                                id,
+                                seguimiento_id,
+                                usuario_id,
+                                canal,
+                                resultado,
+                                notas,
+                                fecha_inicio
+                           FROM interacciones_vinculacion
+                           WHERE id = ?
+                           LIMIT 1";
+        $stmtInteraccion = $this->connection->prepare($sqlInteraccion);
+        $stmtInteraccion->bind_param('i', $interaccionId);
+        $stmtInteraccion->execute();
+        $interaccion = $stmtInteraccion->get_result()->fetch_assoc();
+
+        if (
+            !$interaccion ||
+            strtoupper(trim((string)($interaccion['canal'] ?? ''))) !== 'CORREO' ||
+            strtoupper(trim((string)($interaccion['resultado'] ?? ''))) !== 'CORREO_ENVIADO'
+        ) {
+            return null;
+        }
+
+        $notas = (string)($interaccion['notas'] ?? '');
+        $destinatario = '';
+        $asunto = '';
+        $cuerpo = '';
+
+        if (preg_match('/^Para:\s*(.+)$/mi', $notas, $m)) {
+            $destinatario = trim((string)$m[1]);
+        }
+        if (preg_match('/^Asunto:\s*(.+)$/mi', $notas, $m)) {
+            $asunto = trim((string)$m[1]);
+        }
+
+        $pos = strpos($notas, "\n\n");
+        if ($pos !== false) {
+            $cuerpo = trim(substr($notas, $pos + 2));
+        }
+
+        return [
+            'id' => 0,
+            'seguimiento_id' => (int)$interaccion['seguimiento_id'],
+            'interaccion_id' => (int)$interaccion['id'],
+            'usuario_id' => (int)$interaccion['usuario_id'],
+            'destinatario' => $destinatario,
+            'asunto' => $asunto,
+            'cuerpo' => $cuerpo,
+            'proveedor' => '',
+            'adjuntos_count' => 0,
+            'enviado_at' => $interaccion['fecha_inicio'],
+            'adjuntos' => $this->listarAdjuntosPorInteraccion($interaccionId),
+            'legacy' => true
+        ];
+    }
+
+    public function listarAdjuntosPorInteraccion($interaccionId)
+    {
+        $interaccionId = (int)$interaccionId;
+        if (
+            $interaccionId <= 0 ||
+            !$this->tablaExiste('seguimientos_vinculacion_correo_adjuntos')
+        ) {
+            return [];
+        }
+
+        $sql = "SELECT
+                    id,
+                    seguimiento_id,
+                    interaccion_id,
+                    origen,
+                    archivo,
+                    nombre_original,
+                    mime,
+                    tamano,
+                    created_at
+                FROM seguimientos_vinculacion_correo_adjuntos
+                WHERE interaccion_id = ?
+                ORDER BY id ASC";
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param('i', $interaccionId);
+        $stmt->execute();
+
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
 
     public function listarAdjuntosExpediente($seguimientoId)
@@ -1028,6 +1158,42 @@ class SeguimientoCorreoService
         ];
     }
 
+    private function registrarCorreoHistorial(
+        $seguimientoId,
+        $interaccionId,
+        $usuarioId,
+        $destinatario,
+        $asunto,
+        $cuerpo,
+        $proveedor,
+        $adjuntosCount
+    ) {
+        $sql = "INSERT INTO seguimientos_vinculacion_correos (
+                    seguimiento_id,
+                    interaccion_id,
+                    usuario_id,
+                    destinatario,
+                    asunto,
+                    cuerpo,
+                    proveedor,
+                    adjuntos_count,
+                    enviado_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param(
+            'iiissssi',
+            $seguimientoId,
+            $interaccionId,
+            $usuarioId,
+            $destinatario,
+            $asunto,
+            $cuerpo,
+            $proveedor,
+            $adjuntosCount
+        );
+        $stmt->execute();
+    }
+
     private function registrarAdjuntos(
         $seguimientoId,
         $interaccionId,
@@ -1409,6 +1575,7 @@ class SeguimientoCorreoService
 
             return [
                 'ok' => true,
+                'proveedor' => 'SMTP',
                 'adjuntos' => count($adjuntos)
             ];
         } catch (Throwable $error) {
