@@ -1,30 +1,18 @@
 <?php
 
 require_once __DIR__ . '/../../config/db_connection.php';
-require_once __DIR__ . '/SeguimientoFlujoService.php';
-require_once __DIR__ . '/SeguimientoPostEnvioService.php';
-require_once __DIR__ . '/AgendaReunionService.php';
-require_once __DIR__ . '/ReunionFechaGuardService.php';
-require_once __DIR__ . '/ReunionResultadoService.php';
+require_once __DIR__ . '/SeguimientoRutaOperativaService.php';
 
 class SeguimientoExpedienteService
 {
     private $connection;
-    private $flujoService;
-    private $postEnvioService;
-    private $agendaService;
-    private $fechaGuardService;
-    private $resultadoService;
+    private $rutaService;
 
     public function __construct()
     {
         $database = new Database();
         $this->connection = $database->connect();
-        $this->flujoService = new SeguimientoFlujoService();
-        $this->postEnvioService = new SeguimientoPostEnvioService();
-        $this->agendaService = new AgendaReunionService();
-        $this->fechaGuardService = new ReunionFechaGuardService();
-        $this->resultadoService = new ReunionResultadoService();
+        $this->rutaService = new SeguimientoRutaOperativaService();
     }
 
     public function obtener($seguimientoId, $usuarioId, $rolId)
@@ -84,7 +72,8 @@ class SeguimientoExpedienteService
     private function obtenerSeguimientoBase($seguimientoId)
     {
         $sql = "SELECT id, analista_id, estado_id, estado_seguimiento,
-                       proxima_accion_at, ultima_interaccion_at
+                       datos_verificados, proxima_accion_at,
+                       ultima_interaccion_at, created_at, updated_at
                 FROM seguimientos_vinculacion
                 WHERE id = ? AND activo = 1
                 LIMIT 1";
@@ -148,40 +137,21 @@ class SeguimientoExpedienteService
         }
 
         try {
-            $postEnvio = $this->postEnvioService->obtenerFlujoSiAplica(
+            $seguimientoBase = $this->obtenerSeguimientoBase($seguimientoId);
+            $resultado = $this->rutaService->resolver(
                 $seguimientoId,
-                $analistaId
-            );
-
-            if (($postEnvio['ok'] ?? false) && ($postEnvio['aplica'] ?? false)) {
-                $flujo = $this->agendaService->ajustarFlujoAnalista(
-                    $seguimientoId,
-                    $analistaId,
-                    $postEnvio['flujo']
-                );
-                $flujo = $this->fechaGuardService->ajustarFlujo(
-                    $seguimientoId,
-                    $analistaId,
-                    $flujo
-                );
-                $flujo = $this->resultadoService->ajustarFlujo(
-                    $seguimientoId,
-                    $analistaId,
-                    $flujo
-                );
-                return $flujo;
-            }
-
-            $resultado = $this->flujoService->obtenerEstado(
-                $seguimientoId,
-                $analistaId
+                $analistaId,
+                is_array($seguimientoBase) ? $seguimientoBase : []
             );
 
             return ($resultado['ok'] ?? false)
                 ? ($resultado['flujo'] ?? null)
                 : null;
         } catch (Throwable $error) {
-            error_log('No fue posible resolver el flujo del expediente: ' . $error->getMessage());
+            error_log(
+                'No fue posible resolver el flujo del expediente: ' .
+                $error->getMessage()
+            );
             return null;
         }
     }
