@@ -17,7 +17,6 @@ class SeguimientoObservacionController
         }
 
         $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
-        $rolId = (int)($_SESSION['rol_id'] ?? 0);
 
         if ($usuarioId <= 0) {
             $this->responder([
@@ -26,10 +25,10 @@ class SeguimientoObservacionController
             ], 401);
         }
 
-        if ($rolId !== 6 || !tienePermiso('seguimientos_vinculacion.comentar')) {
+        if (!tienePermiso('seguimientos_vinculacion.comentar')) {
             $this->responder([
                 'ok' => false,
-                'mensaje' => 'Solo Cuenta Clave puede registrar observaciones para el Analista.'
+                'mensaje' => 'No tienes permiso para registrar observaciones para el Analista.'
             ], 403);
         }
 
