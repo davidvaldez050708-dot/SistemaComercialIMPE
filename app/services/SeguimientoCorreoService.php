@@ -176,6 +176,14 @@ class SeguimientoCorreoService
     {
         $seguimientoId = (int)$seguimientoId;
         $usuarioId = (int)$usuarioId;
+
+        if (!$this->estructuraCoordinacionDisponible()) {
+            return $this->error(
+                'Falta aplicar la migración de estabilización de la ruta del Analista.',
+                500
+            );
+        }
+
         $seguimiento = $this->obtenerSeguimientoAnalista($seguimientoId, $usuarioId);
 
         $validacion = $this->validarEtapa($seguimiento);
@@ -186,14 +194,15 @@ class SeguimientoCorreoService
         $this->asegurarPostEnvio($seguimientoId);
 
         /*
-         * La agenda existente usa seguimiento_correo_at como señal de que la
-         * etapa posterior a la respuesta ya puede avanzar. Si no hubo correo
-         * adicional, este momento representa la decisión explícita del Analista
-         * de continuar a reunión; no se registra una interacción falsa.
+         * La decisión de continuar a reunión ya no se confunde con un correo
+         * realmente enviado. seguimiento_correo_at conserva únicamente el
+         * historial de correo; esta marca representa el cierre explícito del Paso 10.
          */
         $sql = "UPDATE seguimientos_vinculacion_post_envio
-                SET seguimiento_correo_at = COALESCE(seguimiento_correo_at, NOW()),
-                    seguimiento_correo_por = COALESCE(seguimiento_correo_por, ?)
+                SET coordinacion_reunion_habilitada_at =
+                        COALESCE(coordinacion_reunion_habilitada_at, NOW()),
+                    coordinacion_reunion_habilitada_por =
+                        COALESCE(coordinacion_reunion_habilitada_por, ?)
                 WHERE seguimiento_id = ?";
         $stmt = $this->connection->prepare($sql);
         $stmt->bind_param('ii', $usuarioId, $seguimientoId);
@@ -220,12 +229,64 @@ class SeguimientoCorreoService
             return $flujo;
         }
 
+        if (!$this->estructuraCoordinacionDisponible()) {
+            return $flujo;
+        }
+
         $seguimiento = $this->obtenerEstadoEtapa((int)$seguimientoId, (int)$usuarioId);
         if (!$seguimiento || trim((string)($seguimiento['respuesta_at'] ?? '')) === '') {
             return $flujo;
         }
 
+        if ($this->contactoDiferidoPendiente($seguimiento)) {
+            return $flujo;
+        }
+
         if (trim((string)($seguimiento['reunion_agendada_at'] ?? '')) !== '') {
+            return $flujo;
+        }
+
+        $totalPasos = max(13, (int)($flujo['total_pasos'] ?? 13));
+        $coordinacionAt = trim((string)(
+            $seguimiento['coordinacion_reunion_habilitada_at'] ?? ''
+        ));
+
+        if ($coordinacionAt !== '') {
+            $flujo['paso_actual'] = 11;
+            $flujo['total_pasos'] = $totalPasos;
+            $flujo['porcentaje'] = (int)round((11 / $totalPasos) * 100);
+            $flujo['titulo'] = 'Coordinar reunión';
+            $flujo['descripcion'] =
+                'La etapa de seguimiento quedó cerrada. Abre la agenda para proponer una fecha y coordinar la reunión con Cuenta Clave.';
+            $flujo['faltantes'] = [];
+            $flujo['accion_principal'] = [
+                'codigo' => 'AGENDAR_REUNION',
+                'etiqueta' => 'Abrir agenda',
+                'icono' => 'bi-calendar3'
+            ];
+            $flujo['accion_secundaria'] = null;
+            $flujo['ventana'] = [
+                'anterior' => [
+                    'numero' => 10,
+                    'clave' => 'SEGUIMIENTO_CORREO',
+                    'titulo' => 'Seguimiento por correo'
+                ],
+                'actual' => [
+                    'numero' => 11,
+                    'clave' => 'REUNION_AGENDADA',
+                    'titulo' => 'Reunión agendada'
+                ],
+                'siguiente' => [
+                    'numero' => 12,
+                    'clave' => 'REUNION_REALIZADA',
+                    'titulo' => 'Reunión realizada'
+                ]
+            ];
+            if (!is_array($flujo['contexto'] ?? null)) {
+                $flujo['contexto'] = [];
+            }
+            $flujo['contexto']['coordinacion_reunion_habilitada_at'] = $coordinacionAt;
+
             return $flujo;
         }
 
@@ -234,7 +295,6 @@ class SeguimientoCorreoService
         }
 
         $totalEnviados = $this->contarCorreosSeguimiento((int)$seguimientoId);
-        $totalPasos = max(13, (int)($flujo['total_pasos'] ?? 13));
 
         $flujo['paso_actual'] = 10;
         $flujo['total_pasos'] = $totalPasos;
@@ -277,6 +337,7 @@ class SeguimientoCorreoService
             $flujo['contexto'] = [];
         }
         $flujo['contexto']['correos_seguimiento_enviados'] = $totalEnviados;
+        $flujo['contexto']['coordinacion_reunion_habilitada_at'] = '';
 
         return $flujo;
     }
@@ -294,6 +355,12 @@ class SeguimientoCorreoService
         }
         if (trim((string)($seguimiento['respuesta_at'] ?? '')) === '') {
             return $this->error('Primero registra la respuesta de la institución.', 409);
+        }
+        if ($this->contactoDiferidoPendiente($seguimiento)) {
+            return $this->error(
+                'La institución solicitó retomar el contacto en la fecha programada. Aún no corresponde continuar esta etapa.',
+                409
+            );
         }
         if (trim((string)($seguimiento['reunion_agendada_at'] ?? '')) !== '') {
             return $this->error('La reunión ya fue formalmente agendada.', 409);
@@ -327,6 +394,7 @@ class SeguimientoCorreoService
                     p.respuesta_at,
                     p.respuesta_tipo,
                     p.respuesta_texto,
+                    p.contactar_despues_at,
                     p.seguimiento_correo_at,
                     p.reunion_agendada_at,
                     u.nombre AS analista_nombre,
@@ -355,7 +423,12 @@ class SeguimientoCorreoService
             return null;
         }
 
-        $sql = "SELECT p.respuesta_at, p.reunion_agendada_at
+        $sql = "SELECT
+                    p.respuesta_at,
+                    p.respuesta_tipo,
+                    p.contactar_despues_at,
+                    p.coordinacion_reunion_habilitada_at,
+                    p.reunion_agendada_at
                 FROM seguimientos_vinculacion s
                 JOIN seguimientos_vinculacion_post_envio p ON p.seguimiento_id = s.id
                 WHERE s.id = ? AND s.analista_id = ? AND s.activo = 1
@@ -649,6 +722,38 @@ class SeguimientoCorreoService
                 '/'
             )
         ];
+    }
+
+    private function contactoDiferidoPendiente($seguimiento)
+    {
+        if (
+            strtoupper(trim((string)($seguimiento['respuesta_tipo'] ?? ''))) !==
+            'CONTACTAR_DESPUES'
+        ) {
+            return false;
+        }
+
+        $fecha = trim((string)($seguimiento['contactar_despues_at'] ?? ''));
+        if ($fecha === '') {
+            return false;
+        }
+
+        $timestamp = strtotime($fecha);
+        return $timestamp !== false && $timestamp > time();
+    }
+
+    private function estructuraCoordinacionDisponible()
+    {
+        if (!$this->tablaExiste('seguimientos_vinculacion_post_envio')) {
+            return false;
+        }
+
+        $resultado = $this->connection->query(
+            "SHOW COLUMNS FROM seguimientos_vinculacion_post_envio
+             LIKE 'coordinacion_reunion_habilitada_at'"
+        );
+
+        return $resultado && $resultado->num_rows > 0;
     }
 
     private function tablaExiste($tabla)
