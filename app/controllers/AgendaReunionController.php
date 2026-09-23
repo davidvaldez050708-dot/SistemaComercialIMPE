@@ -198,6 +198,11 @@ class AgendaReunionController
         $this->procesarAccion('confirmar');
     }
 
+    public function cancelar()
+    {
+        $this->procesarAccion('cancelar');
+    }
+
     public function solicitarCambio()
     {
         $this->procesarAccion('solicitarCambio');
