@@ -33,6 +33,7 @@
         let motivoNoInteresPendiente = '';
         let esperandoDecisionNoInteres = false;
         let toastInteraccionDiferido = false;
+        let proximaAccionEditadaManualmente = false;
 
         if (
             !selectorResultado ||
@@ -265,9 +266,15 @@
                     break;
                 case 'CONTACTO_CORRECTO':
                 case 'SOLICITO_INFORMACION':
+                    /*
+                     * La ruta operativa decide el siguiente paso real. Si el
+                     * contacto todavía no está verificado, no adelantamos una
+                     * acción de verificación: primero pueden faltar persona,
+                     * cargo o correo.
+                     */
                     accionSugerida = contactoEstaVerificado()
                         ? 'Generar oficio'
-                        : 'Verificar información de contacto';
+                        : '';
                     break;
                 case 'SOLICITO_LLAMAR_DESPUES':
                     accionSugerida = 'Volver a llamar';
@@ -283,7 +290,11 @@
                     break;
             }
 
-            if (!conservarSeleccionManual && !esRutaAvanzada()) {
+            if (
+                !conservarSeleccionManual &&
+                !esRutaAvanzada() &&
+                !proximaAccionEditadaManualmente
+            ) {
                 selectorProximaAccion.value = accionSugerida;
             }
 
@@ -441,10 +452,18 @@
             }
         };
 
-        selectorResultado.addEventListener('change', aplicarResultadoInteraccion);
-        selectorProximaAccion.addEventListener('change', actualizarFechaSegunAccion);
+        selectorResultado.addEventListener('change', function () {
+            proximaAccionEditadaManualmente = false;
+            aplicarResultadoInteraccion();
+        });
+
+        selectorProximaAccion.addEventListener('change', function () {
+            proximaAccionEditadaManualmente = true;
+            actualizarFechaSegunAccion();
+        });
 
         formulario.addEventListener('reset', function () {
+            proximaAccionEditadaManualmente = false;
             window.setTimeout(function () {
                 aplicarModoRuta();
                 aplicarResultadoInteraccion();
