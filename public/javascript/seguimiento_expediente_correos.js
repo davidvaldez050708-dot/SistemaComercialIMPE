@@ -69,7 +69,7 @@
                                 '<div><span>Destinatario</span><strong data-mail-history-to>—</strong></div>' +
                                 '<div><span>Fecha de envío</span><strong data-mail-history-date>—</strong></div>' +
                                 '<div><span>Enviado por</span><strong data-mail-history-user>—</strong></div>' +
-                                '<div><span>Adjunto</span><strong data-mail-history-attachment>—</strong></div>' +
+                                '<div><span>Adjuntos</span><strong data-mail-history-attachment>—</strong></div>' +
                             '</div>' +
                             '<div class="linkage-mail-modal-field">' +
                                 '<span>Asunto</span>' +
@@ -78,6 +78,10 @@
                             '<div class="linkage-mail-modal-field is-body">' +
                                 '<span>Mensaje</span>' +
                                 '<div data-mail-history-body>—</div>' +
+                            '</div>' +
+                            '<div class="linkage-mail-modal-attachments d-none" data-mail-history-attachments-block>' +
+                                '<span>Archivos adjuntos</span>' +
+                                '<div data-mail-history-attachments-list></div>' +
                             '</div>' +
                         '</div>' +
                         '<div class="modal-footer">' +
@@ -88,6 +92,46 @@
             document.body.appendChild(modal);
 
             return modal;
+        };
+
+        const renderizarAdjuntosModal = function (modal, adjuntos) {
+            const bloque = modal.querySelector('[data-mail-history-attachments-block]');
+            const lista = modal.querySelector('[data-mail-history-attachments-list]');
+            const resumen = modal.querySelector('[data-mail-history-attachment]');
+            const archivos = Array.isArray(adjuntos) ? adjuntos : [];
+
+            lista.innerHTML = '';
+
+            if (archivos.length === 0) {
+                bloque.classList.add('d-none');
+                resumen.textContent = 'Sin adjuntos';
+                return;
+            }
+
+            resumen.textContent = archivos.length === 1
+                ? '1 archivo'
+                : archivos.length + ' archivos';
+
+            archivos.forEach(function (archivo) {
+                const enlace = document.createElement('a');
+                enlace.className = 'linkage-mail-modal-attachment';
+                enlace.href = String(archivo.url || '#');
+                enlace.innerHTML =
+                    '<i class="bi bi-paperclip"></i>' +
+                    '<span><strong></strong><small></small></span>' +
+                    '<i class="bi bi-download"></i>';
+
+                enlace.querySelector('strong').textContent =
+                    String(archivo.nombre || 'Archivo adjunto');
+                enlace.querySelector('small').textContent =
+                    archivo.tamano
+                        ? tamanoLegible(archivo.tamano)
+                        : 'Descargar';
+
+                lista.appendChild(enlace);
+            });
+
+            bloque.classList.remove('d-none');
         };
 
         const abrirDetalle = function (correo) {
@@ -102,14 +146,65 @@
                 fechaLegible(correo.fecha_envio);
             modal.querySelector('[data-mail-history-user]').textContent =
                 String(correo.enviado_por || '').trim() || 'Sistema';
-            modal.querySelector('[data-mail-history-attachment]').textContent =
-                String(correo.adjunto_nombre || '').trim() || 'Sin adjunto registrado';
+            const adjuntoPrimario = String(correo.adjunto_nombre || '').trim();
+            renderizarAdjuntosModal(
+                modal,
+                adjuntoPrimario
+                    ? [{
+                        nombre: adjuntoPrimario,
+                        tamano: Number(correo.adjunto_tamano || 0),
+                        url: String(correo.adjunto_url || '#')
+                    }]
+                    : []
+            );
             modal.querySelector('[data-mail-history-subject]').textContent =
                 String(correo.asunto || '').trim() || 'Sin asunto';
             modal.querySelector('[data-mail-history-body]').textContent =
                 String(correo.cuerpo || '').trim() || 'Sin contenido registrado.';
 
             bootstrap.Modal.getOrCreateInstance(modal).show();
+        };
+
+        const abrirCorreoSeguimiento = async function (interaccionId) {
+            const modal = crearModal();
+
+            try {
+                const respuesta = await fetch(
+                    'index.php?controller=seguimientoVinculacion&action=verCorreoSeguimiento&interaccion_id=' +
+                    encodeURIComponent(interaccionId),
+                    {
+                        headers: { 'X-Requested-With': 'fetch' },
+                        cache: 'no-store'
+                    }
+                );
+                const datos = await respuesta.json();
+
+                if (!respuesta.ok || !datos.ok || !datos.correo) {
+                    throw new Error(datos.mensaje || 'No fue posible consultar el correo.');
+                }
+
+                const correo = datos.correo;
+                modal.querySelector('.linkage-mail-modal-eyebrow').textContent =
+                    'CORREO DE SEGUIMIENTO';
+                modal.querySelector('.modal-title').textContent =
+                    'Correo enviado';
+                modal.querySelector('[data-mail-history-to]').textContent =
+                    String(correo.destinatario || '').trim() || '—';
+                modal.querySelector('[data-mail-history-date]').textContent =
+                    fechaLegible(correo.enviado_at);
+                modal.querySelector('[data-mail-history-user]').textContent =
+                    String(correo.proveedor || '').trim() || 'Sistema';
+                modal.querySelector('[data-mail-history-subject]').textContent =
+                    String(correo.asunto || '').trim() || 'Sin asunto';
+                modal.querySelector('[data-mail-history-body]').textContent =
+                    String(correo.cuerpo || '').trim() ||
+                    'El contenido completo no quedó disponible para este correo histórico.';
+
+                renderizarAdjuntosModal(modal, correo.adjuntos || []);
+                bootstrap.Modal.getOrCreateInstance(modal).show();
+            } catch (error) {
+                console.error(error);
+            }
         };
 
         const renderizar = function (seccion, correos) {
@@ -294,6 +389,19 @@
         };
 
         document.addEventListener('click', function (event) {
+            const botonSeguimiento = event.target.closest('[data-followup-mail-interaction]');
+
+            if (botonSeguimiento) {
+                event.preventDefault();
+                const interaccionId = Number(
+                    botonSeguimiento.getAttribute('data-followup-mail-interaction') || 0
+                );
+                if (interaccionId > 0) {
+                    abrirCorreoSeguimiento(interaccionId);
+                }
+                return;
+            }
+
             const boton = event.target.closest('[data-mail-history-index]');
 
             if (!boton) {
