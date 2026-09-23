@@ -13,7 +13,8 @@
         const puedeOperar = Boolean(window.IMPE_CAN_OPERATE_LINKAGE);
         let seguimientoActualId = 0;
         let temporizadorConsulta = null;
-        let consultando = false;
+        let controladorConsulta = null;
+        let secuenciaConsulta = 0;
 
         const crearBloque = function () {
             let bloque = offcanvas.querySelector('[data-work-flow-section]');
@@ -526,20 +527,33 @@
         };
 
         const consultar = async function () {
-            if (!seguimientoActualId || consultando) {
+            const seguimientoIdConsulta = Number(seguimientoActualId || 0);
+
+            if (!seguimientoIdConsulta) {
                 return;
             }
 
-            consultando = true;
+            controladorConsulta?.abort();
+            controladorConsulta = new AbortController();
+            const controladorActual = controladorConsulta;
+            const secuenciaActual = ++secuenciaConsulta;
 
             try {
                 const respuesta = await fetch(
-                    urlEstado + '&seguimiento_id=' + encodeURIComponent(seguimientoActualId),
+                    urlEstado + '&seguimiento_id=' + encodeURIComponent(seguimientoIdConsulta),
                     {
                         headers: { 'X-Requested-With': 'fetch' },
-                        cache: 'no-store'
+                        cache: 'no-store',
+                        signal: controladorActual.signal
                     }
                 );
+
+                if (
+                    secuenciaActual !== secuenciaConsulta ||
+                    seguimientoIdConsulta !== Number(seguimientoActualId || 0)
+                ) {
+                    return;
+                }
 
                 if (respuesta.status === 403) {
                     offcanvas.querySelector('[data-work-flow-section]')?.classList.add('d-none');
@@ -547,22 +561,84 @@
                 }
 
                 const datos = await respuesta.json();
+                const seguimientoRespuesta = Number(datos?.flujo?.seguimiento_id || 0);
 
-                if (!datos.ok || !datos.flujo) {
+                if (
+                    !datos.ok ||
+                    !datos.flujo ||
+                    seguimientoRespuesta !== seguimientoIdConsulta ||
+                    secuenciaActual !== secuenciaConsulta ||
+                    seguimientoIdConsulta !== Number(seguimientoActualId || 0)
+                ) {
                     return;
                 }
 
                 renderizar(datos.flujo);
             } catch (error) {
-                console.error(error);
+                if (error?.name !== 'AbortError') {
+                    console.error(error);
+                }
             } finally {
-                consultando = false;
+                if (controladorConsulta === controladorActual) {
+                    controladorConsulta = null;
+                }
             }
         };
 
         const programarConsulta = function (demora) {
             window.clearTimeout(temporizadorConsulta);
-            temporizadorConsulta = window.setTimeout(consultar, demora || 180);
+            const espera = Number.isFinite(Number(demora))
+                ? Math.max(0, Number(demora))
+                : 180;
+            temporizadorConsulta = window.setTimeout(consultar, espera);
+        };
+
+        const prepararRutaParaCarga = function () {
+            const bloque = crearBloque();
+
+            if (!bloque) {
+                return;
+            }
+
+            bloque.classList.remove('is-ally');
+            bloque.classList.remove('d-none');
+
+            const contador = bloque.querySelector('[data-flow-step-count]');
+            const progreso = bloque.querySelector('[data-flow-progress]');
+            const ventana = bloque.querySelector('[data-flow-window]');
+            const titulo = bloque.querySelector('[data-flow-title]');
+            const descripcion = bloque.querySelector('[data-flow-description]');
+            const faltantes = bloque.querySelector('[data-flow-missing]');
+            const documento = bloque.querySelector('[data-flow-document]');
+            const acciones = bloque.querySelector('[data-flow-actions]');
+
+            if (contador) {
+                contador.textContent = 'Consultando...';
+            }
+            if (progreso) {
+                progreso.style.width = '0%';
+            }
+            if (ventana) {
+                ventana.innerHTML = '';
+            }
+            if (titulo) {
+                titulo.textContent = 'Consultando ruta...';
+            }
+            if (descripcion) {
+                descripcion.textContent = 'Actualizando el estado del seguimiento.';
+            }
+            if (faltantes) {
+                faltantes.innerHTML = '';
+                faltantes.classList.add('d-none');
+            }
+            if (documento) {
+                documento.innerHTML = '';
+                documento.classList.add('d-none');
+            }
+            if (acciones) {
+                acciones.innerHTML = '';
+                acciones.classList.add('has-single-action');
+            }
         };
 
         const mostrarAviso = function (mensaje) {
@@ -657,19 +733,46 @@
             const botonTrabajo = event.target.closest('[data-work-follow]');
 
             if (botonTrabajo) {
-                seguimientoActualId = Number(
+                const nuevoSeguimientoId = Number(
                     botonTrabajo.getAttribute('data-work-follow-id') || 0
                 );
+
+                if (nuevoSeguimientoId !== seguimientoActualId) {
+                    controladorConsulta?.abort();
+                    controladorConsulta = null;
+                    secuenciaConsulta += 1;
+                }
+
+                seguimientoActualId = nuevoSeguimientoId;
                 delete offcanvas.dataset.flowStep;
                 delete offcanvas.dataset.flowTitle;
+                delete offcanvas.dataset.ally;
                 offcanvas.dataset.flowSeguimientoId = String(seguimientoActualId);
+
+                const cacheRuta = window.IMPE_SEGUIMIENTO_RUTA_CACHE;
+                const flujoGuardado = cacheRuta?.obtener?.(seguimientoActualId) || null;
+
+                if (
+                    flujoGuardado &&
+                    typeof cacheRuta?.renderizarPanel === 'function'
+                ) {
+                    cacheRuta.renderizarPanel(
+                        seguimientoActualId,
+                        flujoGuardado,
+                        false
+                    );
+                } else {
+                    prepararRutaParaCarga();
+                }
+
                 const botonVerificar = offcanvas.querySelector('[data-work-verify-contact]');
                 if (botonVerificar && puedeOperar) {
                     botonVerificar.disabled = true;
                     botonVerificar.title = 'Consultando la ruta de validación...';
                 }
-                crearBloque();
-                programarConsulta(260);
+
+                // La ruta se consulta de inmediato; ya no esperamos 260 ms.
+                programarConsulta(0);
                 return;
             }
 
@@ -719,6 +822,9 @@
         offcanvas.addEventListener('hidden.bs.offcanvas', function () {
             seguimientoActualId = 0;
             window.clearTimeout(temporizadorConsulta);
+            controladorConsulta?.abort();
+            controladorConsulta = null;
+            secuenciaConsulta += 1;
             delete offcanvas.dataset.flowStep;
             delete offcanvas.dataset.flowTitle;
             delete offcanvas.dataset.flowSeguimientoId;
