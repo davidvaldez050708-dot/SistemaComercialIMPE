@@ -787,11 +787,16 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
         $resultado = strtoupper(trim($resultado));
         $labels = [
             'CONTACTADO' => 'Contactado',
+            'NO_CONTESTO' => 'No contestó',
+            'OCUPADO' => 'Ocupado',
             'SIN_RESPUESTA' => 'Sin respuesta',
             'NUMERO_INCORRECTO' => 'Número incorrecto',
+            'CONTACTO_INCORRECTO' => 'Contacto incorrecto',
             'SOLICITO_LLAMAR_DESPUES' => 'Volver a llamar',
+            'SOLICITO_INFORMACION' => 'Solicitó información',
             'MENSAJE_ENVIADO' => 'Mensaje enviado',
             'CORREO_ENVIADO' => 'Correo enviado',
+            'NO_INTERESADO' => 'No interesado',
             'OTRO' => 'Otro'
         ];
         return $labels[$resultado] ?? ($resultado !== '' ? ucfirst(strtolower(str_replace('_', ' ', $resultado))) : '—');
