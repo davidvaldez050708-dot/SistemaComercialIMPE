@@ -142,6 +142,21 @@ $proximaAccion = trim((string)($seguimiento['proxima_accion_at'] ?? '')) !== ''
  * histórico sin inventar eventos que nunca fueron almacenados.
  */
 $actividadExpediente = [];
+$adjuntosCorreoPorInteraccion = [];
+
+foreach (($adjuntosCorreoSeguimiento ?? []) as $adjuntoCorreo) {
+    $interaccionIdAdjunto = (int)($adjuntoCorreo['interaccion_id'] ?? 0);
+
+    if ($interaccionIdAdjunto <= 0) {
+        continue;
+    }
+
+    if (!isset($adjuntosCorreoPorInteraccion[$interaccionIdAdjunto])) {
+        $adjuntosCorreoPorInteraccion[$interaccionIdAdjunto] = [];
+    }
+
+    $adjuntosCorreoPorInteraccion[$interaccionIdAdjunto][] = $adjuntoCorreo;
+}
 
 foreach ($interacciones as $interaccion) {
     $actividadExpediente[] = [
@@ -150,7 +165,8 @@ foreach ($interacciones as $interaccion) {
         'fecha' => trim((string)($interaccion['fecha_inicio'] ?? '')),
         'estado' => $etiqueta($interaccion['resultado'] ?? '', $resultados),
         'detalle' => $formatearNotasInteraccion($interaccion['notas'] ?? ''),
-        'orden' => (int)($interaccion['id'] ?? 0)
+        'orden' => (int)($interaccion['id'] ?? 0),
+        'interaccion_id' => (int)($interaccion['id'] ?? 0)
     ];
 }
 
@@ -412,6 +428,25 @@ usort($actividadExpediente, function ($eventoA, $eventoB) {
                                 : 'Sin detalle adicional.'
                         )) ?>
                     </p>
+                    <?php
+                    $interaccionActividadId = (int)($eventoActividad['interaccion_id'] ?? 0);
+                    $adjuntosActividad = $interaccionActividadId > 0
+                        ? ($adjuntosCorreoPorInteraccion[$interaccionActividadId] ?? [])
+                        : [];
+                    ?>
+                    <?php if (!empty($adjuntosActividad)): ?>
+                        <div class="linkage-activity-attachments">
+                            <?php foreach ($adjuntosActividad as $adjuntoActividad): ?>
+                                <a
+                                    class="linkage-activity-attachment"
+                                    href="<?= BASE_URL ?>index.php?controller=seguimientoVinculacion&action=descargarAdjuntoCorreoSeguimiento&adjunto_id=<?= (int)($adjuntoActividad['id'] ?? 0) ?>">
+                                    <i class="bi bi-paperclip"></i>
+                                    <span><?= $texto($adjuntoActividad['nombre_original'] ?? 'Archivo adjunto') ?></span>
+                                    <small>Descargar</small>
+                                </a>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
                 </article>
             <?php endforeach; ?>
         </div>
