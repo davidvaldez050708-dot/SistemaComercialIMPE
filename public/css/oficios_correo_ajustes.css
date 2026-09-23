@@ -608,103 +608,98 @@
 
 /* =========================================================
    Confirmación de envío de correo institucional
-   Mantiene la jerarquía visual del sistema y reduce el
-   aspecto genérico del modal de Bootstrap.
+   Usa la misma escala visual de los modales del sistema.
    ========================================================= */
 
 #modalConfirmarEnvioOficio .mail-confirm-dialog {
-    width: min(640px, calc(100vw - 32px));
-    max-width: 640px;
+    width: min(520px, calc(100vw - 32px));
+    max-width: 520px;
 }
 
 #modalConfirmarEnvioOficio .mail-confirm-modal {
     overflow: hidden;
-    border: 1px solid rgba(148, 163, 184, 0.28);
-    border-radius: 18px;
+    border: none;
+    border-radius: 12px;
     background: #ffffff;
-    box-shadow: 0 26px 64px rgba(15, 23, 42, 0.24);
+    box-shadow: 0 18px 45px rgba(22, 34, 59, 0.14);
 }
 
 #modalConfirmarEnvioOficio .mail-confirm-header {
-    min-height: 106px;
-    padding: 22px 26px 20px;
-    border-bottom: 1px solid #dfe6ef;
+    min-height: auto;
+    padding: 18px 22px;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    border-bottom: 1px solid var(--color-border);
     background: #ffffff;
 }
 
+#modalConfirmarEnvioOficio .mail-confirm-header > :not(.btn-close) {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
 #modalConfirmarEnvioOficio .mail-confirm-eyebrow {
-    display: inline-flex;
-    align-items: center;
-    min-height: 24px;
-    margin-bottom: 4px;
-    color: #1f4db8;
-    font-size: 11.5px;
+    display: block;
+    margin: 0 0 4px;
+    color: var(--color-primary);
+    font-size: 10px;
     font-weight: 800;
-    letter-spacing: 0.08em;
-    line-height: 1;
+    letter-spacing: 0.055em;
+    line-height: 1.2;
     text-transform: uppercase;
 }
 
 #modalConfirmarEnvioOficio .system-form-modal-title {
     margin: 0;
-    color: #111827;
-    font-size: 23px;
-    font-weight: 780;
-    line-height: 1.2;
-    letter-spacing: -0.02em;
+    color: var(--color-text-primary);
+    font-size: 16px;
+    font-weight: 800;
+    line-height: 1.3;
+    letter-spacing: 0;
 }
 
 #modalConfirmarEnvioOficio .system-form-modal-subtitle {
-    margin: 5px 0 0;
-    color: #68758a;
-    font-size: 13.5px;
+    margin: 4px 0 0;
+    color: var(--color-text-secondary);
+    font-size: 11px;
     font-weight: 500;
-    line-height: 1.45;
+    line-height: 1.4;
 }
 
 #modalConfirmarEnvioOficio .btn-close {
-    width: 18px;
-    height: 18px;
-    margin: 0;
-    padding: 10px;
-    border-radius: 9px;
-    opacity: 0.72;
-    transition: background-color 0.18s ease, opacity 0.18s ease;
-}
-
-#modalConfirmarEnvioOficio .btn-close:hover {
-    background: #f2f5f9;
-    opacity: 1;
+    margin: 0 0 0 auto !important;
+    flex: 0 0 auto;
 }
 
 #modalConfirmarEnvioOficio .mail-confirm-body {
-    padding: 24px 26px 22px;
-    background: #fbfcfe;
+    padding: 22px;
+    background: #ffffff;
 }
 
 #modalConfirmarEnvioOficio .mail-confirm-card {
     display: grid;
-    grid-template-columns: 52px minmax(0, 1fr);
-    gap: 16px;
+    grid-template-columns: 40px minmax(0, 1fr);
+    gap: 12px;
     align-items: center;
-    padding: 18px 19px;
-    border: 1px solid #d9e3f0;
-    border-radius: 14px;
-    background: #ffffff;
-    box-shadow: 0 8px 22px rgba(30, 64, 175, 0.055);
+    padding: 14px;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    background: #fbfcfe;
+    box-shadow: none;
 }
 
 #modalConfirmarEnvioOficio .mail-confirm-icon {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 52px;
-    height: 52px;
-    border: 1px solid #d5e4ff;
-    border-radius: 14px;
-    background: #eef5ff;
-    color: #1d5be3;
-    font-size: 23px;
+    width: 40px;
+    height: 40px;
+    border: 1px solid #d8e4f5;
+    border-radius: 8px;
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
+    font-size: 18px;
 }
 
 #modalConfirmarEnvioOficio .mail-confirm-copy {
@@ -713,11 +708,11 @@
 
 #modalConfirmarEnvioOficio .mail-confirm-label {
     display: block;
-    margin-bottom: 3px;
-    color: #718096;
-    font-size: 11.5px;
-    font-weight: 750;
-    letter-spacing: 0.055em;
+    margin-bottom: 2px;
+    color: var(--color-text-secondary);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
     line-height: 1.25;
     text-transform: uppercase;
 }
@@ -725,31 +720,31 @@
 #modalConfirmarEnvioOficio .mail-confirm-recipient {
     display: block;
     overflow-wrap: anywhere;
-    color: #172033;
-    font-size: 17px;
-    font-weight: 760;
-    line-height: 1.4;
+    color: var(--color-text-primary);
+    font-size: 14px;
+    font-weight: 800;
+    line-height: 1.35;
 }
 
 #modalConfirmarEnvioOficio .mail-confirm-question {
-    margin: 6px 0 0;
-    color: #4d5f78;
-    font-size: 13.5px;
+    margin: 4px 0 0;
+    color: var(--color-text-secondary);
+    font-size: 12px;
     font-weight: 500;
-    line-height: 1.45;
+    line-height: 1.4;
 }
 
 #modalConfirmarEnvioOficio .mail-confirm-note {
     display: flex;
     align-items: flex-start;
-    gap: 10px;
-    margin-top: 14px;
-    padding: 12px 14px;
-    border: 1px solid #e1e7ef;
-    border-radius: 11px;
+    gap: 8px;
+    margin-top: 12px;
+    padding: 9px 11px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
     background: #f6f8fb;
-    color: #61708a;
-    font-size: 12.5px;
+    color: #5f6875;
+    font-size: 12px;
     font-weight: 500;
     line-height: 1.45;
 }
@@ -757,23 +752,19 @@
 #modalConfirmarEnvioOficio .mail-confirm-note i {
     flex: 0 0 auto;
     margin-top: 1px;
-    color: #49627f;
-    font-size: 15px;
+    color: var(--color-primary);
+    font-size: 14px;
 }
 
 #modalConfirmarEnvioOficio .mail-confirm-footer {
-    gap: 10px;
-    padding: 16px 26px 18px;
-    border-top: 1px solid #dfe6ef;
+    gap: 8px;
+    padding: 14px 22px;
+    border-top: 1px solid var(--color-border);
     background: #ffffff;
 }
 
 #modalConfirmarEnvioOficio .mail-confirm-footer .btn {
-    min-width: 138px;
-    min-height: 44px;
-    border-radius: 10px;
-    font-size: 13.5px;
-    font-weight: 750;
+    min-width: 120px;
 }
 
 @media (max-width: 575.98px) {
@@ -785,21 +776,20 @@
     #modalConfirmarEnvioOficio .mail-confirm-header,
     #modalConfirmarEnvioOficio .mail-confirm-body,
     #modalConfirmarEnvioOficio .mail-confirm-footer {
-        padding-left: 18px;
-        padding-right: 18px;
+        padding-left: 16px;
+        padding-right: 16px;
     }
 
     #modalConfirmarEnvioOficio .mail-confirm-card {
-        grid-template-columns: 44px minmax(0, 1fr);
-        gap: 12px;
-        padding: 15px;
+        grid-template-columns: 36px minmax(0, 1fr);
+        gap: 10px;
+        padding: 12px;
     }
 
     #modalConfirmarEnvioOficio .mail-confirm-icon {
-        width: 44px;
-        height: 44px;
-        border-radius: 12px;
-        font-size: 20px;
+        width: 36px;
+        height: 36px;
+        font-size: 16px;
     }
 
     #modalConfirmarEnvioOficio .mail-confirm-footer .btn {
