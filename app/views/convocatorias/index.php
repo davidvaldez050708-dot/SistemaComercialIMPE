@@ -123,7 +123,6 @@ $datosEditar = $modalAbierto === 'editar' ? $datosFormulario : [];
                     class="btn btn-system-light"
                     href="<?= BASE_URL ?>index.php?controller=convocatoria&action=index&territorio_id=<?= (int)$estado['id'] ?>">
                     Ver convocatorias
-                    <i class="bi bi-arrow-right ms-2"></i>
                 </a>
             </article>
         <?php endforeach; ?>
