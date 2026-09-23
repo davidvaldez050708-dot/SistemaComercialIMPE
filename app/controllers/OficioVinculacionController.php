@@ -40,7 +40,7 @@ class OficioVinculacionController
         }
 
         $esAnalistaResponsable =
-            (int)($_SESSION['rol_id'] ?? 0) === 4 &&
+            tienePermiso('seguimientos_vinculacion.operar_propios') &&
             (int)($estado['analista_id'] ?? 0) === $usuarioId;
 
         $estado['es_analista_responsable'] = $esAnalistaResponsable;
@@ -62,7 +62,7 @@ class OficioVinculacionController
         $this->validarMetodoPostJson();
         $this->validarPermisoJson('oficios.generar');
 
-        if ((int)($_SESSION['rol_id'] ?? 0) !== 4) {
+        if (!tienePermiso('seguimientos_vinculacion.operar_propios')) {
             $this->responderJson([
                 'ok' => false,
                 'mensaje' => 'El oficio solo puede ser generado por el Analista responsable.'
@@ -499,7 +499,7 @@ class OficioVinculacionController
         $this->validarMetodoPostJson();
         $this->validarPermisoJson('oficios.generar');
 
-        if ((int)($_SESSION['rol_id'] ?? 0) !== 4) {
+        if (!tienePermiso('seguimientos_vinculacion.operar_propios')) {
             $this->responderJson([
                 'ok' => false,
                 'mensaje' => 'El PDF solo puede ser generado por el Analista responsable.'
@@ -577,7 +577,7 @@ class OficioVinculacionController
     private function completarPermisosPdf($estadoPdf, $usuarioId)
     {
         $esAnalistaResponsable =
-            (int)($_SESSION['rol_id'] ?? 0) === 4 &&
+            tienePermiso('seguimientos_vinculacion.operar_propios') &&
             (int)($estadoPdf['analista_id'] ?? 0) === (int)$usuarioId;
         $tieneFolio = trim((string)($estadoPdf['folio'] ?? '')) !== '';
         $pdfGenerado = !empty($estadoPdf['pdf_generado']);
