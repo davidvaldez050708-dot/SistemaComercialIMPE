@@ -45,6 +45,22 @@ class CorreoFirmadoService
         if (trim((string)($seguimiento['respuesta_at'] ?? '')) === '') {
             return $this->error('Primero registra la respuesta de la institución.', 409);
         }
+        if (
+            strtoupper(trim((string)($seguimiento['respuesta_tipo'] ?? ''))) ===
+                'CONTACTAR_DESPUES' &&
+            trim((string)($seguimiento['contactar_despues_at'] ?? '')) !== ''
+        ) {
+            $contactarDespuesTs = strtotime(
+                (string)$seguimiento['contactar_despues_at']
+            );
+
+            if ($contactarDespuesTs !== false && $contactarDespuesTs > time()) {
+                return $this->error(
+                    'La institución solicitó retomar el contacto en la fecha programada. Aún no corresponde enviar el seguimiento.',
+                    409
+                );
+            }
+        }
         if (trim((string)($seguimiento['reunion_agendada_at'] ?? '')) !== '') {
             return $this->error('La reunión ya fue formalmente agendada.', 409);
         }
@@ -293,6 +309,8 @@ class CorreoFirmadoService
                         NULLIF(TRIM(s.correo_fuente), '')
                     ) AS destinatario_correo,
                     p.respuesta_at,
+                    p.respuesta_tipo,
+                    p.contactar_despues_at,
                     p.reunion_agendada_at
                 FROM seguimientos_vinculacion s
                 JOIN seguimientos_vinculacion_post_envio p
