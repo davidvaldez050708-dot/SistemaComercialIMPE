@@ -300,6 +300,8 @@ $jsOpcionalHead = array_values(array_unique($jsOpcionalHead));
     <script>
         window.IMPE_CURRENT_ROLE_ID = <?= (int)($_SESSION['rol_id'] ?? 0) ?>;
         window.IMPE_CURRENT_USER_ID = <?= (int)($_SESSION['usuario_id'] ?? 0) ?>;
+        window.IMPE_CAN_OPERATE_LINKAGE = <?= tienePermiso('seguimientos_vinculacion.operar_propios') ? 'true' : 'false' ?>;
+        window.IMPE_CAN_SUPERVISE_LINKAGE = <?= tienePermiso('seguimientos_vinculacion.supervisar') ? 'true' : 'false' ?>;
         window.IMPE_CSRF_TOKEN = <?= json_encode((string)($_SESSION['csrf_token'] ?? ''), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 
         (function () {
