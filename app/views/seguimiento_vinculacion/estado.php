@@ -1030,7 +1030,7 @@ if (!empty($seguimientosSinMunicipio)) {
             <div class="linkage-work-section-title">
                 <h3 data-work-contact-heading>Contacto</h3>
                 <button type="button" class="btn btn-system-light linkage-work-small-button" data-work-toggle-contact data-work-contact-action>
-                    Completar y verificar contacto
+                    Completar datos de contacto
                 </button>
             </div>
 
@@ -1091,7 +1091,7 @@ if (!empty($seguimientosSinMunicipio)) {
                     </div>
                 </div>
 
-                <span class="linkage-work-form-title">DATOS VERIFICADOS</span>
+                <span class="linkage-work-form-title">DATOS DE CONTACTO</span>
                 <div class="row g-2">
                     <div class="col-12 col-md-6">
                         <label class="form-label" for="work_telefono_verificado">Teléfono verificado</label>
