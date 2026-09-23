@@ -11,7 +11,7 @@ class ConvocatoriaController
 
         $modelo = new ConvocatoriaModel();
         $buscar = trim((string)($_GET['buscar'] ?? ''));
-        $estadoFiltro = (int)($_GET['estado_id'] ?? 0);
+        $estadoFiltro = (int)($_GET['territorio_id'] ?? ($_GET['estado_id'] ?? 0));
         $estatusFiltro = in_array((string)($_GET['estatus'] ?? ''), ['0', '1'], true)
             ? (string)$_GET['estatus']
             : '';
@@ -38,19 +38,30 @@ class ConvocatoriaController
         $this->validarPermiso('convocatorias.ver');
 
         $modelo = new ConvocatoriaModel();
+        $estados = $modelo->obtenerEstados();
+
+        $territorioId = (int)($_GET['territorio_id'] ?? 0);
+        $territorioSeleccionado = $this->obtenerTerritorioSeleccionado(
+            $estados,
+            $territorioId
+        );
 
         $buscar = trim((string)($_GET['buscar'] ?? ''));
-        $estadoFiltro = (int)($_GET['estado_id'] ?? 0);
         $estatusFiltro = in_array((string)($_GET['estatus'] ?? ''), ['0', '1'], true)
             ? (string)$_GET['estatus']
             : '';
 
-        $convocatorias = $modelo->obtenerListado(
-            $buscar,
-            $estadoFiltro,
-            $estatusFiltro
-        );
-        $estados = $modelo->obtenerEstados();
+        $estadoFiltro = $territorioSeleccionado
+            ? (int)$territorioSeleccionado['id']
+            : 0;
+
+        $convocatorias = $territorioSeleccionado
+            ? $modelo->obtenerListado(
+                $buscar,
+                $estadoFiltro,
+                $estatusFiltro
+            )
+            : [];
 
         $mensajeExito = $_SESSION['mensaje_convocatoria'] ?? '';
         $mensajeError = $_SESSION['error_convocatoria'] ?? '';
@@ -83,6 +94,7 @@ class ConvocatoriaController
         $this->validarMetodoPost();
 
         $modelo = new ConvocatoriaModel();
+        $territorioId = (int)($_POST['territorio_id'] ?? 0);
         $datos = $this->limpiarDatos($_POST);
         $estadosIds = $this->limpiarEstados($_POST['estados'] ?? []);
         $errores = $this->validarDatos($datos, $estadosIds, true);
@@ -99,6 +111,7 @@ class ConvocatoriaController
             }
 
             $datos['estados_ids'] = $estadosIds;
+            $datos['territorio_id'] = $territorioId;
             $this->volverConErrores('crear', $errores, $datos);
         }
 
@@ -115,7 +128,7 @@ class ConvocatoriaController
             $_SESSION['error_convocatoria'] = 'No fue posible registrar la convocatoria.';
         }
 
-        $this->redirigir();
+        $this->redirigir($territorioId);
     }
 
     public function actualizar()
@@ -124,6 +137,7 @@ class ConvocatoriaController
         $this->validarMetodoPost();
 
         $modelo = new ConvocatoriaModel();
+        $territorioId = (int)($_POST['territorio_id'] ?? 0);
         $id = (int)($_POST['id'] ?? 0);
         $convocatoriaOriginal = $modelo->buscarPorId($id);
 
@@ -149,6 +163,7 @@ class ConvocatoriaController
             $datos['id'] = $id;
             $datos['imagen'] = $convocatoriaOriginal['imagen'];
             $datos['estados_ids'] = $estadosIds;
+            $datos['territorio_id'] = $territorioId;
             $this->volverConErrores('editar', $errores, $datos);
         }
 
@@ -173,7 +188,7 @@ class ConvocatoriaController
             $_SESSION['error_convocatoria'] = 'No fue posible actualizar la convocatoria.';
         }
 
-        $this->redirigir();
+        $this->redirigir($territorioId);
     }
 
     public function cambiarEstado()
@@ -182,6 +197,7 @@ class ConvocatoriaController
         $this->validarMetodoPost();
 
         $modelo = new ConvocatoriaModel();
+        $territorioId = (int)($_POST['territorio_id'] ?? 0);
         $id = (int)($_POST['id'] ?? 0);
         $estado = in_array((string)($_POST['estado'] ?? ''), ['0', '1'], true)
             ? (int)$_POST['estado']
@@ -200,7 +216,7 @@ class ConvocatoriaController
             $_SESSION['error_convocatoria'] = 'No fue posible actualizar el estado de la convocatoria.';
         }
 
-        $this->redirigir();
+        $this->redirigir($territorioId);
     }
 
     public function descargarImagen()
@@ -263,6 +279,21 @@ class ConvocatoriaController
             JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE
         );
         exit;
+    }
+
+    private function obtenerTerritorioSeleccionado($estados, $territorioId)
+    {
+        if ($territorioId <= 0) {
+            return null;
+        }
+
+        foreach ($estados as $estado) {
+            if ((int)($estado['id'] ?? 0) === $territorioId) {
+                return $estado;
+            }
+        }
+
+        return null;
     }
 
     private function limpiarDatos($origen)
@@ -470,9 +501,15 @@ class ConvocatoriaController
         $this->redirigir();
     }
 
-    private function redirigir()
+    private function redirigir($territorioId = 0)
     {
-        header('Location: ' . BASE_URL . 'index.php?controller=convocatoria&action=index');
+        $url = BASE_URL . 'index.php?controller=convocatoria&action=index';
+
+        if ((int)$territorioId > 0) {
+            $url .= '&territorio_id=' . (int)$territorioId;
+        }
+
+        header('Location: ' . $url);
         exit;
     }
 }
