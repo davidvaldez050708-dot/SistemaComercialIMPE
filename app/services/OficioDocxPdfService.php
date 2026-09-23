@@ -332,12 +332,20 @@ class OficioDocxPdfService
     {
         return [
             'numero_oficio' => trim((string)($vista['folio'] ?? '')),
+            'folio' => trim((string)($vista['folio'] ?? '')),
             'lugar_fecha' => trim((string)($vista['lugar_fecha'] ?? $vista['fecha'] ?? '')),
+            'fecha' => trim((string)($vista['fecha'] ?? '')),
             'destinatario' => $this->mayusculas($vista['destinatario_nombre'] ?? ''),
+            'destinatario_nombre' => $this->mayusculas($vista['destinatario_nombre'] ?? ''),
+            'destinatario_cargo' => $this->mayusculas($vista['destinatario_cargo'] ?? ''),
             'institucion' => $this->mayusculas($vista['institucion'] ?? ''),
             'municipio' => $this->mayusculas($vista['municipio'] ?? ''),
             'estado' => $this->mayusculas($vista['estado'] ?? ''),
-            'ubicacion' => $this->mayusculas($vista['ubicacion'] ?? '')
+            'ubicacion' => $this->mayusculas($vista['ubicacion'] ?? ''),
+            'analista_nombre' => trim((string)($vista['analista_nombre'] ?? '')),
+            'analista_cargo' => 'Analista de Enlace Institucional',
+            'analista_correo' => trim((string)($vista['analista_correo'] ?? '')),
+            'analista_telefono' => trim((string)($vista['analista_telefono'] ?? ''))
         ];
     }
 
