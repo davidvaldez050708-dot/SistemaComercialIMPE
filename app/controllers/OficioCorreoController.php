@@ -51,7 +51,7 @@ class OficioCorreoController
         $this->validarMetodoPostJson();
         $this->validarPermisoJson('oficios.generar');
 
-        if ((int)($_SESSION['rol_id'] ?? 0) !== 4) {
+        if (!tienePermiso('seguimientos_vinculacion.operar_propios')) {
             $this->responderJson([
                 'ok' => false,
                 'mensaje' => 'El borrador solo puede ser preparado por el Analista responsable.'
@@ -99,7 +99,7 @@ class OficioCorreoController
         $this->validarMetodoPostJson();
         $this->validarPermisoJson('oficios.enviar');
 
-        if ((int)($_SESSION['rol_id'] ?? 0) !== 4) {
+        if (!tienePermiso('seguimientos_vinculacion.operar_propios')) {
             $this->responderJson([
                 'ok' => false,
                 'mensaje' => 'El correo solo puede ser enviado por el Analista responsable.'
@@ -228,7 +228,7 @@ class OficioCorreoController
         $this->validarMetodoPostJson();
         $this->validarPermisoJson('oficios.enviar');
 
-        if ((int)($_SESSION['rol_id'] ?? 0) !== 4) {
+        if (!tienePermiso('seguimientos_vinculacion.operar_propios')) {
             $this->responderJson([
                 'ok' => false,
                 'mensaje' => 'La programación solo puede realizarla el Analista responsable.'
@@ -269,7 +269,7 @@ class OficioCorreoController
 
     private function sincronizarDestinatarioActual($seguimientoId, $usuarioId)
     {
-        if ((int)($_SESSION['rol_id'] ?? 0) !== 4) {
+        if (!tienePermiso('seguimientos_vinculacion.operar_propios')) {
             return;
         }
 
@@ -289,7 +289,7 @@ class OficioCorreoController
     private function completarPermisosCorreo($correo, $usuarioId)
     {
         $esAnalistaResponsable =
-            (int)($_SESSION['rol_id'] ?? 0) === 4 &&
+            tienePermiso('seguimientos_vinculacion.operar_propios') &&
             (int)($correo['analista_id'] ?? 0) === (int)$usuarioId;
         $enviado = !empty($correo['enviado']);
         $guardado = !empty($correo['guardado']);
@@ -337,7 +337,7 @@ class OficioCorreoController
     private function completarPermisosProgramacion($programacion, $usuarioId)
     {
         $esAnalistaResponsable =
-            (int)($_SESSION['rol_id'] ?? 0) === 4 &&
+            tienePermiso('seguimientos_vinculacion.operar_propios') &&
             (int)($programacion['analista_id'] ?? 0) === (int)$usuarioId;
 
         $programacion['es_analista_responsable'] = $esAnalistaResponsable;
