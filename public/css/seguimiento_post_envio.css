@@ -683,3 +683,46 @@
         width: 100%;
     }
 }
+
+
+/* Corrección de altura del modal de correo de seguimiento.
+   El <form> envuelve header/body/footer, por lo que debe asumir el layout
+   flex para mantener las acciones siempre visibles. */
+#modalSeguimientoCorreo .modal-content {
+    max-height: calc(100vh - 40px);
+    overflow: hidden;
+}
+
+#modalSeguimientoCorreo [data-followup-mail-form] {
+    width: 100%;
+    max-height: calc(100vh - 40px);
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+#modalSeguimientoCorreo .modal-header,
+#modalSeguimientoCorreo .modal-footer {
+    flex: 0 0 auto;
+}
+
+#modalSeguimientoCorreo .modal-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+#modalSeguimientoCorreo .system-form-modal-footer {
+    position: relative;
+    z-index: 2;
+    background: #ffffff;
+    box-shadow: 0 -1px 0 var(--color-border);
+}
+
+@media (max-width: 575.98px) {
+    #modalSeguimientoCorreo .modal-content,
+    #modalSeguimientoCorreo [data-followup-mail-form] {
+        max-height: calc(100vh - 20px);
+    }
+}
