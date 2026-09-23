@@ -325,7 +325,10 @@
                 proximaAccion.textContent = textoCarga;
             }
 
-            window.setTimeout(prepararBloqueRuta, 0);
+            // Limpiamos la ruta anterior en el mismo evento de clic, antes
+            // de que el offcanvas llegue a mostrarse. Así nunca queda visible
+            // durante un frame la información del seguimiento anterior.
+            prepararBloqueRuta();
 
             temporizadorRespaldo = window.setTimeout(function () {
                 if (offcanvas.hasAttribute('data-flow-ui-pending')) {
