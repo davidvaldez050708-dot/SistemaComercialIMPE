@@ -439,3 +439,60 @@
         gap: 1px !important;
     }
 }
+
+
+/* Adjuntos asociados a correos de seguimiento */
+.linkage-activity-attachments {
+    margin-top: 9px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+}
+
+.linkage-activity-attachment {
+    min-width: 0;
+    max-width: 100%;
+    min-height: 32px;
+    padding: 6px 9px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    background: #f8fafd;
+    color: var(--color-primary);
+    font-size: 10.5px;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.linkage-activity-attachment:hover,
+.linkage-activity-attachment:focus {
+    border-color: #c8d7eb;
+    background: #f1f5fa;
+    color: var(--color-primary);
+}
+
+.linkage-activity-attachment span {
+    overflow: hidden;
+    max-width: 280px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.linkage-activity-attachment small {
+    color: var(--color-text-muted);
+    font-size: 9px;
+    font-weight: 600;
+}
+
+@media (max-width: 575.98px) {
+    .linkage-activity-attachment {
+        width: 100%;
+    }
+
+    .linkage-activity-attachment span {
+        flex: 1 1 auto;
+        max-width: none;
+    }
+}
