@@ -201,7 +201,7 @@
 /*
  * Tipografía de Marketing y Convocatorias.
  * La referencia real del sistema proviene de global.css:
- * * { font-family: 'Manrope', sans-serif; }
+ * * { font-family: Arial, sans-serif; }
  */
 .marketing-module-typography,
 .marketing-module-typography *,
@@ -232,5 +232,5 @@
 .convocatoria-state-search,
 .convocatoria-state-option,
 .convocatoria-state-option-all {
-    font-family: 'Manrope', sans-serif;
+    font-family: Arial, sans-serif;
 }
