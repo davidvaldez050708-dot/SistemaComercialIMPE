@@ -642,23 +642,23 @@ class SeguimientoPostEnvioService
                     post.reunion_realizada_at,";
             }
 
-            $filtroReactivacion = $reactivacionDisponible
-                ? " AND (
-                        post.reactivacion_ruta_at IS NULL
-                        OR agenda_reciente.created_at >= post.reactivacion_ruta_at
-                    )"
-                : "";
-
             $joinAgenda = "LEFT JOIN reuniones_vinculacion agenda
                     ON agenda.id = (
                         SELECT agenda_reciente.id
                         FROM reuniones_vinculacion agenda_reciente
                         WHERE agenda_reciente.seguimiento_id = seguimientos.id
-                          AND agenda_reciente.estado <> 'CANCELADA'" .
-                          $filtroReactivacion . "
+                          AND agenda_reciente.estado <> 'CANCELADA'
                         ORDER BY agenda_reciente.id DESC
                         LIMIT 1
                     )";
+
+            if ($reactivacionDisponible) {
+                $joinAgenda .= "
+                    AND (
+                        post.reactivacion_ruta_at IS NULL
+                        OR agenda.created_at >= post.reactivacion_ruta_at
+                    )";
+            }
         } else {
             $camposReunion = "post.reunion_fecha,
                     post.reunion_modalidad,
