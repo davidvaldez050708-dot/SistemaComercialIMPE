@@ -22,8 +22,21 @@ class RolModel
             !$this->existePermisoPorCodigo('data_territorial.ver') ||
             !$this->existePermisoPorCodigo('data_territorial.actualizar_oficial');
         $permisosSeguimientoVinculacionBaseFaltantes =
+            !$this->existePermisoPorCodigo('seguimientos_vinculacion.operar_propios') ||
             !$this->existePermisoPorCodigo('seguimientos_vinculacion.supervisar') ||
             !$this->existePermisoPorCodigo('seguimientos_vinculacion.comentar') ||
+            !$this->rolTienePermisoActivo(
+                'Analista de Datos',
+                'seguimientos_vinculacion.crear'
+            ) ||
+            !$this->rolTienePermisoActivo(
+                'Analista de Datos',
+                'seguimientos_vinculacion.editar'
+            ) ||
+            !$this->rolTienePermisoActivo(
+                'Analista de Datos',
+                'seguimientos_vinculacion.operar_propios'
+            ) ||
             !$this->rolTienePermisoActivo(
                 'Cuenta Clave',
                 'seguimientos_vinculacion.supervisar'
@@ -380,6 +393,9 @@ class RolModel
                 'reuniones.ver',
                 'reuniones.solicitar',
                 'seguimientos_vinculacion.ver',
+                'seguimientos_vinculacion.crear',
+                'seguimientos_vinculacion.editar',
+                'seguimientos_vinculacion.operar_propios',
                 'convenios.ver'
             ],
             'Finanzas' => [
@@ -633,7 +649,10 @@ class RolModel
     {
         $asignaciones = [
             'Analista de Datos' => [
-                'seguimientos_vinculacion.ver'
+                'seguimientos_vinculacion.ver',
+                'seguimientos_vinculacion.crear',
+                'seguimientos_vinculacion.editar',
+                'seguimientos_vinculacion.operar_propios'
             ],
             'Cuenta Clave' => [
                 'seguimientos_vinculacion.ver',
@@ -717,6 +736,7 @@ class RolModel
             ['modulo' => 'Seguimientos de vinculación', 'codigo' => 'seguimientos_vinculacion.ver', 'nombre' => 'Ver seguimientos de vinculación', 'descripcion' => 'Consultar seguimientos de vinculación institucional.'],
             ['modulo' => 'Seguimientos de vinculación', 'codigo' => 'seguimientos_vinculacion.crear', 'nombre' => 'Crear seguimientos de vinculación', 'descripcion' => 'Registrar seguimientos de vinculación institucional.'],
             ['modulo' => 'Seguimientos de vinculación', 'codigo' => 'seguimientos_vinculacion.editar', 'nombre' => 'Editar seguimientos de vinculación', 'descripcion' => 'Actualizar seguimientos de vinculación institucional.'],
+            ['modulo' => 'Seguimientos de vinculación', 'codigo' => 'seguimientos_vinculacion.operar_propios', 'nombre' => 'Operar seguimientos propios', 'descripcion' => 'Ejecutar la ruta operativa únicamente en seguimientos donde el usuario es el Analista responsable.'],
             ['modulo' => 'Seguimientos de vinculación', 'codigo' => 'seguimientos_vinculacion.supervisar', 'nombre' => 'Supervisar seguimientos de vinculación', 'descripcion' => 'Revisar los seguimientos de los Analistas asociados.'],
             ['modulo' => 'Seguimientos de vinculación', 'codigo' => 'seguimientos_vinculacion.comentar', 'nombre' => 'Comentar seguimientos de vinculación', 'descripcion' => 'Agregar observaciones internas para los Analistas asociados.'],
             ['modulo' => 'Finanzas', 'codigo' => 'pagos.ver', 'nombre' => 'Ver pagos', 'descripcion' => 'Consultar pagos registrados.'],
