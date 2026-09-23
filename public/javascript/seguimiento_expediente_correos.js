@@ -67,11 +67,11 @@
             modal.setAttribute('aria-hidden', 'true');
             modal.innerHTML =
                 '<div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">' +
-                    '<div class="modal-content">' +
-                        '<div class="modal-header">' +
+                    '<div class="modal-content system-form-modal">' +
+                        '<div class="modal-header system-form-modal-header">' +
                             '<div>' +
                                 '<span class="linkage-mail-modal-eyebrow">CORREO REGISTRADO</span>' +
-                                '<h2 class="modal-title fs-5">Detalle del correo</h2>' +
+                                '<h2 class="system-form-modal-title">Detalle del correo</h2>' +
                             '</div>' +
                             '<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>' +
                         '</div>' +
@@ -95,7 +95,7 @@
                                 '<div data-mail-history-attachments-list></div>' +
                             '</div>' +
                         '</div>' +
-                        '<div class="modal-footer">' +
+                        '<div class="modal-footer system-form-modal-footer">' +
                             '<button type="button" class="btn btn-system-cancel" data-bs-dismiss="modal">Cerrar</button>' +
                         '</div>' +
                     '</div>' +
