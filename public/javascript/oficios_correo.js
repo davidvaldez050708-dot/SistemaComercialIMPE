@@ -304,6 +304,14 @@
             const guardado = Boolean(correo?.guardado);
             const enviado = Boolean(correo?.enviado);
             const errorEnvio = String(correo?.error_envio || '').trim();
+            const cuerpoModal = modal.querySelector('.modal-body');
+
+            // Al abrir el correo desde cero, siempre empieza desde la parte
+            // superior. Si el modal ya está visible (por ejemplo después de
+            // guardar el borrador), conservamos la posición del Analista.
+            if (!modal.classList.contains('show') && cuerpoModal) {
+                cuerpoModal.scrollTop = 0;
+            }
 
             campoPara.value = String(correo?.para || '');
             campoAsunto.value = String(correo?.asunto || '');
