@@ -236,3 +236,46 @@
         padding: 9px 10px;
     }
 }
+
+
+/* Cuando Agenda se abre desde un expediente, el seguimiento ya está definido. */
+#modalAgendaSolicitud .agenda-follow-select-wrap {
+    position: relative;
+}
+
+#modalAgendaSolicitud [data-agenda-follow-field].is-locked
+[data-agenda-follow-select] {
+    padding-right: 42px;
+    pointer-events: none;
+    cursor: default;
+    border-color: #dbe3ee;
+    background-color: #f7f9fc;
+    color: #34445e;
+    opacity: 1;
+}
+
+#modalAgendaSolicitud .agenda-follow-lock {
+    position: absolute;
+    top: 50%;
+    right: 14px;
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transform: translateY(-50%);
+    color: #718096;
+    font-size: 12px;
+    pointer-events: none;
+}
+
+#modalAgendaSolicitud [data-agenda-follow-locked-note] {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #748196;
+}
+
+#modalAgendaSolicitud [data-agenda-follow-field].is-locked
+.form-select {
+    background-image: none;
+}
