@@ -12,6 +12,17 @@ class ConvocatoriaModel
         $this->connection = $database->connect();
     }
 
+    public function desactivarConvocatoriasVencidas()
+    {
+        $sql = "UPDATE convocatorias
+                SET estado = 0,
+                    updated_at = NOW()
+                WHERE estado = 1
+                  AND fecha_termino < CURDATE()";
+
+        return $this->connection->query($sql);
+    }
+
     public function obtenerEstados()
     {
         $sql = "SELECT id, nombre
