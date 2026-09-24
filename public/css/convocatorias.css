@@ -221,7 +221,20 @@
 
 /* Ajustes visuales locales para los formularios de Convocatorias. */
 .system-form-dialog {
-    max-width: 580px;
+    max-width: 540px;
+}
+
+.system-form-modal .form-control,
+.system-form-modal .form-select {
+    min-height: 38px;
+}
+
+.system-form-modal input[type="file"].system-form-control {
+    line-height: 26px;
+}
+
+.system-form-modal input[type="file"].system-form-control::file-selector-button {
+    height: 36px;
 }
 
 /*
