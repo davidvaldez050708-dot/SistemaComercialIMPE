@@ -7,6 +7,7 @@ require_once __DIR__ . '/../services/DenueService.php';
 require_once __DIR__ . '/../services/SeguimientoRutaOperativaService.php';
 require_once __DIR__ . '/../services/SeguimientoCorreoContactoService.php';
 require_once __DIR__ . '/../services/SeguimientoCorreoService.php';
+require_once __DIR__ . '/../services/SeguimientoActividadPresentacionService.php';
 
 class SeguimientoVinculacionController
 {
@@ -1236,6 +1237,16 @@ class SeguimientoVinculacionController
         }
 
         $interacciones = $modelo->obtenerInteraccionesSeguimiento($seguimientoId);
+        $presentadorActividad = new SeguimientoActividadPresentacionService();
+        $interaccionesPresentadas = array_map(
+            function ($interaccion) use ($presentadorActividad) {
+                return array_merge(
+                    $interaccion,
+                    $presentadorActividad->presentar($interaccion)
+                );
+            },
+            $interacciones
+        );
         $oficios = $modelo->obtenerOficiosSeguimiento($seguimientoId);
         $adjuntosCorreoSeguimiento = (new SeguimientoCorreoService())
             ->listarAdjuntosExpediente($seguimientoId);
@@ -2523,19 +2534,36 @@ class SeguimientoVinculacionController
 
     private function serializarInteraccionesTrabajo($interacciones)
     {
-        return array_map(function ($interaccion) {
-            $resultado = (string)($interaccion['resultado'] ?? '');
-            $notas = (string)($interaccion['notas'] ?? '');
+        $presentador = new SeguimientoActividadPresentacionService();
+
+        return array_map(function ($interaccion) use ($presentador) {
+            $presentacion = $presentador->presentar($interaccion);
 
             return [
                 'id' => (int)($interaccion['id'] ?? 0),
                 'canal' => (string)($interaccion['canal'] ?? ''),
-                'canal_label' => $this->etiquetarCanal((string)($interaccion['canal'] ?? '')),
-                'resultado' => $resultado,
-                'resultado_label' => $this->etiquetarResultadoInteraccion($resultado, $notas),
-                'fecha_inicio' => (string)($interaccion['fecha_inicio'] ?? ''),
-                'fecha_label' => $this->formatearFechaTrabajo($interaccion['fecha_inicio'] ?? ''),
-                'notas' => $notas
+                'canal_label' => $this->etiquetarCanal(
+                    (string)($interaccion['canal'] ?? '')
+                ),
+                'resultado' => (string)($interaccion['resultado'] ?? ''),
+                'resultado_label' => (string)(
+                    $presentacion['resultado_label'] ?? ''
+                ),
+                'fecha_inicio' => (string)(
+                    $interaccion['fecha_inicio'] ?? ''
+                ),
+                'fecha_label' => $this->formatearFechaTrabajo(
+                    $interaccion['fecha_inicio'] ?? ''
+                ),
+                'titulo' => (string)($presentacion['titulo'] ?? 'Actividad'),
+                'resumen' => (string)($presentacion['resumen'] ?? ''),
+                'tipo_visual' => (string)(
+                    $presentacion['tipo_visual'] ?? 'actividad'
+                ),
+                'detalles' => is_array($presentacion['detalles'] ?? null)
+                    ? $presentacion['detalles']
+                    : [],
+                'notas' => (string)($interaccion['notas'] ?? '')
             ];
         }, $interacciones);
     }
