@@ -96,7 +96,9 @@ class SeguimientoCorreoService
         $cuerpo,
         $adjuntosExpediente = [],
         $archivosNuevos = null,
-        $adjuntosEsperados = null
+        $adjuntosEsperados = null,
+        $adjuntosExpedienteEsperados = null,
+        $adjuntosNuevosEsperados = null
     ) {
         $seguimientoId = (int)$seguimientoId;
         $usuarioId = (int)$usuarioId;
@@ -126,10 +128,40 @@ class SeguimientoCorreoService
             );
         }
 
+        $seleccionadosExpediente = is_array($adjuntosExpediente)
+            ? array_values(array_filter($adjuntosExpediente, static function ($valor) {
+                return trim((string)$valor) !== '';
+            }))
+            : [];
+        $archivosRecibidos = $this->normalizarArchivosSubidos($archivosNuevos);
+
+        $esperadosExpediente = $adjuntosExpedienteEsperados === null
+            ? count($seleccionadosExpediente)
+            : max(0, (int)$adjuntosExpedienteEsperados);
+        $esperadosNuevos = $adjuntosNuevosEsperados === null
+            ? count($archivosRecibidos)
+            : max(0, (int)$adjuntosNuevosEsperados);
+
+        if ($esperadosExpediente !== count($seleccionadosExpediente)) {
+            return $this->error(
+                'No fue posible recibir todos los archivos seleccionados desde el expediente. Vuelve a seleccionarlos.',
+                422
+            );
+        }
+
+        if ($esperadosNuevos !== count($archivosRecibidos)) {
+            return $this->error(
+                'El navegador seleccionó ' . $esperadosNuevos .
+                ' archivo(s) nuevo(s), pero el servidor recibió ' .
+                count($archivosRecibidos) . '. Vuelve a agregarlos antes de enviar.',
+                422
+            );
+        }
+
         $preparacionAdjuntos = $this->prepararAdjuntos(
             $seguimientoId,
             $usuarioId,
-            $adjuntosExpediente,
+            $seleccionadosExpediente,
             $archivosNuevos
         );
         if (!($preparacionAdjuntos['ok'] ?? false)) {
@@ -146,7 +178,9 @@ class SeguimientoCorreoService
             $this->eliminarArchivos($archivosCreados);
 
             return $this->error(
-                'No fue posible recibir todos los archivos seleccionados. Vuelve a agregarlos antes de enviar.',
+                'Se intentaron enviar ' . $adjuntosEsperados .
+                ' archivo(s), pero el servidor preparó ' . count($adjuntos) .
+                '. El correo no se enviará hasta que coincidan.',
                 422
             );
         }
