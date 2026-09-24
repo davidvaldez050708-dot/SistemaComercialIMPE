@@ -627,3 +627,56 @@
         width: 100%;
     }
 }
+
+
+/* Estados operativos compactos del detalle de reunión. */
+#modalAgendaDetalle .agenda-status-line {
+    width: fit-content;
+    max-width: 100%;
+    margin-top: 14px;
+    padding: 6px 9px;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    border: 1px solid #dbe4f1;
+    border-radius: 999px;
+    background: #f7f9fc;
+    color: #536176;
+    font-size: 10px;
+    font-weight: 750;
+    line-height: 1.25;
+}
+
+#modalAgendaDetalle .agenda-status-line i {
+    flex: 0 0 auto;
+    color: var(--color-primary);
+    font-size: 11px;
+    line-height: 1;
+}
+
+#modalAgendaDetalle .agenda-status-line.is-sent {
+    border-color: #d4e7e2;
+    background: #f3faf8;
+    color: #3d645c;
+}
+
+#modalAgendaDetalle .agenda-status-line.is-sent i {
+    color: #14816f;
+}
+
+/* Da aire entre Zoom/Lugar y el estado siguiente. */
+#modalAgendaDetalle .agenda-detail-grid + .agenda-status-line {
+    margin-top: 15px;
+}
+
+#modalAgendaDetalle .agenda-status-line + .agenda-action-row {
+    margin-top: 12px;
+}
+
+@media (max-width: 575.98px) {
+    #modalAgendaDetalle .agenda-status-line {
+        width: 100%;
+        justify-content: flex-start;
+        border-radius: 8px;
+    }
+}
