@@ -238,6 +238,18 @@ class ConvenioDocumentosService
             $stmtInteraccion = $this->connection->prepare($sqlInteraccion);
             $stmtInteraccion->bind_param('iis', $seguimientoId, $usuarioId, $nota);
             $stmtInteraccion->execute();
+            $interaccionId = (int)$this->connection->insert_id;
+
+            $this->registrarCorreoConvenioHistorial(
+                $seguimientoId,
+                $interaccionId,
+                $usuarioId,
+                $destinatario,
+                $asunto,
+                $cuerpo,
+                (string)($resultadoEnvio['proveedor'] ?? ''),
+                $documentos
+            );
 
             $sqlSeguimiento = "UPDATE seguimientos_vinculacion
                                SET ultima_interaccion_at = NOW(),
@@ -271,6 +283,113 @@ class ConvenioDocumentosService
                 'convenio' => $documentos['convenio_docx_nombre']
             ]
         ];
+    }
+
+    private function registrarCorreoConvenioHistorial(
+        $seguimientoId,
+        $interaccionId,
+        $usuarioId,
+        $destinatario,
+        $asunto,
+        $cuerpo,
+        $proveedor,
+        array $documentos
+    ) {
+        if (!$this->tablaExiste('seguimientos_vinculacion_correos')) {
+            return;
+        }
+
+        $sql = "INSERT INTO seguimientos_vinculacion_correos (
+                    seguimiento_id,
+                    interaccion_id,
+                    usuario_id,
+                    destinatario,
+                    asunto,
+                    cuerpo,
+                    proveedor,
+                    adjuntos_count,
+                    enviado_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, 2, NOW())";
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param(
+            'iiissss',
+            $seguimientoId,
+            $interaccionId,
+            $usuarioId,
+            $destinatario,
+            $asunto,
+            $cuerpo,
+            $proveedor
+        );
+        $stmt->execute();
+
+        if (!$this->tablaExiste('seguimientos_vinculacion_correo_adjuntos')) {
+            return;
+        }
+
+        $adjuntos = [
+            [
+                'archivo' => (string)($documentos['carta_pdf_relativa'] ?? ''),
+                'nombre' => (string)($documentos['carta_pdf_nombre'] ?? ''),
+                'mime' => 'application/pdf',
+                'tamano' => @filesize((string)($documentos['carta_pdf_absoluta'] ?? '')) ?: 0
+            ],
+            [
+                'archivo' => (string)($documentos['convenio_docx_relativa'] ?? ''),
+                'nombre' => (string)($documentos['convenio_docx_nombre'] ?? ''),
+                'mime' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'tamano' => @filesize((string)($documentos['convenio_docx_absoluta'] ?? '')) ?: 0
+            ]
+        ];
+
+        $sqlAdjunto = "INSERT INTO seguimientos_vinculacion_correo_adjuntos (
+                            seguimiento_id,
+                            interaccion_id,
+                            usuario_id,
+                            origen,
+                            archivo,
+                            nombre_original,
+                            mime,
+                            tamano,
+                            created_at
+                        ) VALUES (?, ?, ?, 'CONVENIO', ?, ?, ?, ?, NOW())";
+        $stmtAdjunto = $this->connection->prepare($sqlAdjunto);
+
+        foreach ($adjuntos as $adjunto) {
+            if ($adjunto['archivo'] === '' || $adjunto['nombre'] === '') {
+                continue;
+            }
+
+            $stmtAdjunto->bind_param(
+                'iiisssi',
+                $seguimientoId,
+                $interaccionId,
+                $usuarioId,
+                $adjunto['archivo'],
+                $adjunto['nombre'],
+                $adjunto['mime'],
+                $adjunto['tamano']
+            );
+            $stmtAdjunto->execute();
+        }
+    }
+
+    private function tablaExiste($tabla)
+    {
+        $permitidas = [
+            'seguimientos_vinculacion_correos',
+            'seguimientos_vinculacion_correo_adjuntos'
+        ];
+
+        if (!in_array((string)$tabla, $permitidas, true)) {
+            return false;
+        }
+
+        $resultado = $this->connection->query(
+            "SHOW TABLES LIKE '" . $this->connection->real_escape_string((string)$tabla) . "'"
+        );
+
+        return $resultado && $resultado->num_rows > 0;
     }
 
     public function registrarRecibido($seguimientoId, $usuarioId, $fechaRecepcion, $notas, $archivo)
