@@ -223,7 +223,7 @@
     min-width: 0;
     width: 100%;
     display: grid !important;
-    grid-template-columns: 54px minmax(0, 1fr) !important;
+    grid-template-columns: minmax(96px, 118px) minmax(0, 1fr) !important;
     gap: 6px !important;
     align-items: baseline !important;
 }
