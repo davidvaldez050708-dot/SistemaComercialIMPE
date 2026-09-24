@@ -298,7 +298,7 @@ class SeguimientoActividadPresentacionService
             $presentacion['titulo'] = 'Nueva propuesta de reunión enviada';
             $presentacion['tipo_visual'] = 'reunion';
             $presentacion['resultado_label'] = 'Pendiente de confirmación';
-            $presentacion['resumen'] = 'Nueva fecha enviada a Cuenta Clave';
+            $presentacion['resumen'] = 'Fecha propuesta: ' . trim($m[1]);
             $presentacion['detalles'] = [
                 $this->detalle('Fecha propuesta', $m[1])
             ];
