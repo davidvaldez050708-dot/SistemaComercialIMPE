@@ -325,7 +325,12 @@
     color: #697487 !important;
 }
 
-.linkage-expediente-activity .linkage-history-item.is-history-hidden {
+/* La regla base de las tarjetas usa display:flex !important con mayor
+ * especificidad. La ocultación debe igualarla para que la paginación funcione. */
+.linkage-expediente-enhanced
+[data-expediente-pane="interacciones"]
+.linkage-expediente-activity
+.linkage-history-item.is-history-hidden {
     display: none !important;
 }
 
