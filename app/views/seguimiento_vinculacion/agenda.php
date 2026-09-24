@@ -231,7 +231,7 @@ $pendientesAgenda = array_values(array_filter(
                     </div>
 
                     <div class="modal-body">
-                        <div class="alert alert-danger d-none agenda-form-error" data-agenda-form-error></div>
+                        <div class="d-none agenda-form-error" data-agenda-form-error></div>
 
                         <div class="agenda-context-card d-none" data-agenda-follow-context></div>
 
@@ -352,7 +352,7 @@ $pendientesAgenda = array_values(array_filter(
                     </div>
 
                     <div class="modal-body">
-                        <div class="alert alert-danger d-none agenda-form-error" data-agenda-mail-error></div>
+                        <div class="d-none agenda-form-error" data-agenda-mail-error></div>
 
                         <input type="hidden" name="reunion_id" data-agenda-mail-reunion-id>
                         <input type="hidden" name="motivo_cancelacion" data-agenda-mail-cancel-reason>
