@@ -729,23 +729,35 @@ class AgendaReunionService
     {
         $institucion = trim((string)($r['nombre_entidad'] ?? 'la institución'));
         $contacto = trim((string)($r['contacto_nombre'] ?? ''));
+        $objetivo = trim((string)($r['objetivo'] ?? ''));
+
         $lineas = [
-            $contacto !== '' ? 'Estimado/a ' . $contacto . ':' : 'Buen día:',
+            $contacto !== '' ? 'Buen día, ' . $contacto . ':' : 'Buen día:',
             '',
-            'Agradecemos su interés en continuar con el proceso de vinculación.',
-            'Por este medio confirmamos la reunión acordada con ' . $institucion . '.',
+            'Por este medio confirmamos la reunión de vinculación con ' .
+                $institucion . '.',
             '',
-            'Fecha y hora: ' . $this->fechaLegible((string)($r['fecha_propuesta'] ?? '')),
-            'Modalidad: ' . $this->etiquetaModalidad((string)($r['modalidad'] ?? ''))
+            'Fecha y hora: ' .
+                $this->fechaLegible((string)($r['fecha_propuesta'] ?? '')),
+            'Modalidad: ' .
+                $this->etiquetaModalidad((string)($r['modalidad'] ?? ''))
         ];
+
         if (trim((string)($r['zoom_url'] ?? '')) !== '') {
             $lineas[] = 'Enlace de Zoom: ' . trim((string)$r['zoom_url']);
         }
+
         if (trim((string)($r['ubicacion'] ?? '')) !== '') {
             $lineas[] = 'Lugar: ' . trim((string)$r['ubicacion']);
         }
+
+        if ($objetivo !== '') {
+            $lineas[] = '';
+            $lineas[] = 'Tema: ' . rtrim($objetivo, '. ') . '.';
+        }
+
         $lineas[] = '';
-        $lineas[] = 'Quedamos atentos y agradecemos su tiempo.';
+        $lineas[] = 'Quedamos atentos a cualquier comentario y agradecemos su tiempo.';
         $lineas[] = '';
         $lineas[] = 'Saludos cordiales.';
 
