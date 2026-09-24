@@ -160,8 +160,12 @@ $proximaAccionBandeja = function ($seguimiento) use ($formatearProximaAccion) {
     return $formatearProximaAccion($fecha);
 };
 
-$descripcionProximaAccionFila = function ($fecha) use ($formatearFecha) {
+$descripcionProximaAccionFila = function (
+    $fecha,
+    $accionRuta = ''
+) use ($formatearFecha) {
     $fecha = trim((string)$fecha);
+    $accionRuta = trim((string)$accionRuta);
 
     if ($fecha === '') {
         return [
@@ -176,8 +180,17 @@ $descripcionProximaAccionFila = function ($fecha) use ($formatearFecha) {
         $hoy = (clone $ahora)->setTime(0, 0, 0);
         $manana = (clone $hoy)->modify('+1 day');
         $fechaDia = (clone $fechaObjeto)->setTime(0, 0, 0);
+        $reunionEnCurso = strcasecmp(
+            $accionRuta,
+            'Reunión en curso'
+        ) === 0;
 
-        if ($fechaObjeto < $ahora) {
+        /*
+         * En el paso 12, proxima_accion_at conserva la hora de inicio de la
+         * reunión. Si la ruta ya determinó que sigue en curso, esa hora no es
+         * una acción vencida: solo es la referencia del inicio programado.
+         */
+        if ($fechaObjeto < $ahora && !$reunionEnCurso) {
             return [
                 'texto' => $formatearFecha($fecha),
                 'vencida' => true
@@ -557,7 +570,8 @@ if (!empty($seguimientosSinMunicipio)) {
                             ? $rutaTitulo
                             : $proximaAccionBandeja($seguimiento));
                     $agendaFila = $descripcionProximaAccionFila(
-                        $seguimiento['proxima_accion_at'] ?? ''
+                        $seguimiento['proxima_accion_at'] ?? '',
+                        $rutaLista ? $rutaTitulo : ''
                     );
                     ?>
                     <tr
