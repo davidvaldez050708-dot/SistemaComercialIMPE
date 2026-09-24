@@ -111,21 +111,20 @@ $formatearNotasInteraccion = function ($notas) {
      */
     if (strpos($notas, 'Seguimiento por correo enviado') === 0) {
         $lineas = preg_split('/\R/u', $notas);
-        $resumen = ['Seguimiento por correo enviado'];
+        $asunto = '';
 
         foreach (is_array($lineas) ? $lineas : [] as $linea) {
             $linea = trim((string)$linea);
 
-            if (
-                strpos($linea, 'Para:') === 0 ||
-                strpos($linea, 'Asunto:') === 0 ||
-                strpos($linea, 'Adjuntos:') === 0
-            ) {
-                $resumen[] = $linea;
+            if (strpos($linea, 'Asunto:') === 0) {
+                $asunto = trim(substr($linea, strlen('Asunto:')));
+                break;
             }
         }
 
-        return implode("\n", array_values(array_unique($resumen)));
+        return $asunto !== ''
+            ? 'Asunto: ' . $asunto
+            : 'Seguimiento por correo enviado';
     }
 
     $etiquetasTecnicas = [
@@ -474,19 +473,7 @@ usort($actividadExpediente, function ($eventoA, $eventoB) {
                             </button>
                         </div>
                     <?php endif; ?>
-                    <?php if (!empty($adjuntosActividad)): ?>
-                        <div class="linkage-activity-attachments">
-                            <?php foreach ($adjuntosActividad as $adjuntoActividad): ?>
-                                <a
-                                    class="linkage-activity-attachment"
-                                    href="<?= BASE_URL ?>index.php?controller=seguimientoVinculacion&action=descargarAdjuntoCorreoSeguimiento&adjunto_id=<?= (int)($adjuntoActividad['id'] ?? 0) ?>">
-                                    <i class="bi bi-paperclip"></i>
-                                    <span><?= $texto($adjuntoActividad['nombre_original'] ?? 'Archivo adjunto') ?></span>
-                                    <small>Descargar</small>
-                                </a>
-                            <?php endforeach; ?>
-                        </div>
-                    <?php endif; ?>
+
                 </article>
             <?php endforeach; ?>
         </div>
