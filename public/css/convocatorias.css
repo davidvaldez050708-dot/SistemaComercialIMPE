@@ -195,7 +195,7 @@
 
 /* Ajustes visuales locales para los formularios de Convocatorias. */
 .system-form-dialog {
-    max-width: 680px;
+    max-width: 610px;
 }
 
 /*
@@ -232,7 +232,7 @@
 .convocatoria-state-search,
 .convocatoria-state-option,
 .convocatoria-state-option-all {
-    font-family: Arial, sans-serif;
+    font-family: 'Manrope', sans-serif;
 }
 
 
