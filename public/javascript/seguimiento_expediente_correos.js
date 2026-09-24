@@ -146,6 +146,14 @@
         };
 
         const abrirDetalle = function (correo) {
+            if (
+                String(correo.origen || '').toUpperCase() === 'SEGUIMIENTO' &&
+                Number(correo.interaccion_id || 0) > 0
+            ) {
+                abrirCorreoSeguimiento(Number(correo.interaccion_id));
+                return;
+            }
+
             const modal = crearModal();
             const destino = [
                 String(correo.destinatario_nombre || '').trim(),
@@ -266,7 +274,7 @@
                     '<div class="linkage-mail-history-empty">' +
                         '<span><i class="bi bi-envelope"></i></span>' +
                         '<div><strong>Aún no hay correos registrados</strong>' +
-                        '<p>Cuando envíes un correo relacionado con este oficio, aparecerá aquí.</p></div>' +
+                        '<p>Cuando envíes un correo desde este expediente, aparecerá aquí.</p></div>' +
                     '</div>';
                 return;
             }
