@@ -2,17 +2,21 @@
 
 require_once __DIR__ . '/../../config/db_connection.php';
 require_once __DIR__ . '/SeguimientoRutaOperativaService.php';
+require_once __DIR__ . '/SeguimientoActividadPresentacionService.php';
 
 class SeguimientoExpedienteService
 {
     private $connection;
     private $rutaService;
+    private $actividadPresentacionService;
 
     public function __construct()
     {
         $database = new Database();
         $this->connection = $database->connect();
         $this->rutaService = new SeguimientoRutaOperativaService();
+        $this->actividadPresentacionService =
+            new SeguimientoActividadPresentacionService();
     }
 
     public function obtener($seguimientoId, $usuarioId, $rolId)
@@ -311,7 +315,7 @@ class SeguimientoExpedienteService
     private function obtenerUltimaInteraccion($seguimientoId)
     {
         $stmt = $this->connection->prepare(
-            "SELECT id, canal, resultado, notas, fecha_inicio
+            "SELECT *
              FROM interacciones_vinculacion
              WHERE seguimiento_id = ?
              ORDER BY fecha_inicio DESC, id DESC
@@ -319,7 +323,17 @@ class SeguimientoExpedienteService
         );
         $stmt->bind_param('i', $seguimientoId);
         $stmt->execute();
-        return $stmt->get_result()->fetch_assoc() ?: null;
+
+        $interaccion = $stmt->get_result()->fetch_assoc() ?: null;
+
+        if (!$interaccion) {
+            return null;
+        }
+
+        return array_merge(
+            $interaccion,
+            $this->actividadPresentacionService->presentar($interaccion)
+        );
     }
 
     private function tablaDisponible($tabla)
