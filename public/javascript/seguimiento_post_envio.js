@@ -128,6 +128,14 @@
                     const nota = modal.querySelector(
                         '[data-reunion-resultado-ayuda]'
                     );
+                    const bloqueContexto = modal.querySelector(
+                        '[data-reunion-seguimiento-contexto]'
+                    );
+                    const camposContexto = bloqueContexto
+                        ? bloqueContexto.querySelectorAll(
+                            'input, textarea, select'
+                        )
+                        : [];
                     const requiereSeguimiento =
                         resultado === 'REQUIERE_SEGUIMIENTO';
 
@@ -137,6 +145,20 @@
                             !requiereSeguimiento
                         );
                     }
+
+                    if (bloqueContexto) {
+                        bloqueContexto.classList.toggle(
+                            'd-none',
+                            !requiereSeguimiento
+                        );
+                    }
+
+                    camposContexto.forEach(function (campo) {
+                        campo.required = requiereSeguimiento;
+                        if (!requiereSeguimiento) {
+                            campo.value = '';
+                        }
+                    });
 
                     if (campoFecha) {
                         campoFecha.required = requiereSeguimiento;
@@ -262,6 +284,41 @@
                     '<div class="col-12">' +
                         '<div class="reunion-resultado-ayuda" data-reunion-resultado-ayuda>' +
                             'Selecciona el resultado que corresponda a lo acordado durante la reunión.' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="col-12 d-none" data-reunion-seguimiento-contexto>' +
+                        '<div class="reunion-followup-plan">' +
+                            '<div class="reunion-followup-plan-heading">' +
+                                '<strong>Definir el seguimiento</strong>' +
+                                '<span>Deja claro qué debe ocurrir antes de la próxima revisión.</span>' +
+                            '</div>' +
+                            '<div class="row g-3">' +
+                                '<div class="col-12">' +
+                                    '<label class="form-label">Pendiente acordado</label>' +
+                                    '<textarea class="form-control" name="reunion_seguimiento_objetivo" rows="2" maxlength="1200" placeholder="Ej. La institución revisará la propuesta con Dirección y confirmará si desea avanzar."></textarea>' +
+                                '</div>' +
+                                '<div class="col-md-6">' +
+                                    '<label class="form-label">Pendiente de</label>' +
+                                    '<select class="form-select" name="reunion_seguimiento_pendiente_de">' +
+                                        '<option value="">Selecciona una opción</option>' +
+                                        '<option value="INSTITUCION">Institución</option>' +
+                                        '<option value="FUNDACION">Fundación Red</option>' +
+                                        '<option value="AMBOS">Ambos</option>' +
+                                    '</select>' +
+                                '</div>' +
+                                '<div class="col-md-6">' +
+                                    '<label class="form-label">Acción prevista</label>' +
+                                    '<select class="form-select" name="reunion_seguimiento_accion">' +
+                                        '<option value="">Selecciona una opción</option>' +
+                                        '<option value="LLAMAR">Llamar</option>' +
+                                        '<option value="ENVIAR_CORREO">Enviar correo</option>' +
+                                        '<option value="ESPERAR_RESPUESTA">Esperar respuesta</option>' +
+                                        '<option value="REVISAR_DOCUMENTACION">Revisar documentación</option>' +
+                                        '<option value="CONFIRMAR_AUTORIZACION">Confirmar autorización</option>' +
+                                        '<option value="OTRO">Otra acción</option>' +
+                                    '</select>' +
+                                '</div>' +
+                            '</div>' +
                         '</div>' +
                     '</div>' +
                     '<div class="col-12">' +
