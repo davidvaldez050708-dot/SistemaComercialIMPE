@@ -183,27 +183,23 @@ class ReunionResultadoService
             $accionEtiqueta;
 
         $detalleContexto = $objetivo !== ''
-            ? ' Pendiente: ' . $objetivo . '.'
+            ? 'Pendiente: ' . $objetivo . '.'
             : '';
-        if ($accionEtiqueta !== '') {
-            $detalleContexto .= ' Acción prevista: ' .
-                $accionEtiqueta . '.';
-        }
         if ($pendienteEtiqueta !== '') {
-            $detalleContexto .= ' Pendiente de: ' .
-                $pendienteEtiqueta . '.';
+            $detalleContexto .= ($detalleContexto !== '' ? ' ' : '') .
+                'Pendiente de: ' . $pendienteEtiqueta . '.';
         }
 
         if (!$disponible) {
             $flujo['titulo'] = $accionEtiqueta !== ''
                 ? 'Seguimiento programado · ' . $accionEtiqueta
                 : 'Seguimiento de acuerdos programado';
-            $flujo['descripcion'] = $fechaLegible !== ''
-                ? 'La reunión ya fue realizada y requiere seguimiento.' .
-                    $detalleContexto .
-                    ' Próxima revisión: ' . $fechaLegible . '.'
-                : 'La reunión ya fue realizada y requiere seguimiento.' .
-                    $detalleContexto;
+            $flujo['descripcion'] = $detalleContexto;
+            if ($fechaLegible !== '') {
+                $flujo['descripcion'] .=
+                    ($flujo['descripcion'] !== '' ? ' ' : '') .
+                    'Próxima revisión: ' . $fechaLegible . '.';
+            }
             $flujo['accion_principal'] = [
                 'codigo' => 'SEGUIMIENTO_REUNION_AUN_NO_DISPONIBLE',
                 'etiqueta' => 'Registrar seguimiento',
@@ -217,9 +213,9 @@ class ReunionResultadoService
         $flujo['titulo'] = $accionEtiqueta !== ''
             ? 'Dar seguimiento · ' . $accionEtiqueta
             : 'Dar seguimiento a acuerdos';
-        $flujo['descripcion'] =
-            'Ya corresponde revisar el pendiente acordado en la reunión.' .
-            $detalleContexto;
+        $flujo['descripcion'] = $detalleContexto !== ''
+            ? $detalleContexto
+            : 'Revisa el pendiente acordado en la reunión y registra el resultado.';
         $flujo['accion_principal'] = [
             'codigo' => 'REGISTRAR_SEGUIMIENTO_REUNION',
             'etiqueta' => 'Registrar seguimiento',
@@ -672,7 +668,7 @@ class ReunionResultadoService
     {
         $mapa = [
             'INSTITUCION' => 'Institución',
-            'FUNDACION' => 'Fundación Red',
+            'FUNDACION' => 'Equipo interno',
             'AMBOS' => 'Ambos'
         ];
 
