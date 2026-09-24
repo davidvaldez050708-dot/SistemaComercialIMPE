@@ -1918,6 +1918,28 @@
     color: var(--color-text-primary) !important;
 }
 
+
+/* Espaciado uniforme entre iconos y texto en acciones de modales. */
+.system-form-modal .btn-system-save,
+.system-form-modal .btn-system-cancel,
+.system-form-modal .btn-system-light,
+.system-form-modal .btn-system-danger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.system-form-modal .btn-system-save > i,
+.system-form-modal .btn-system-cancel > i,
+.system-form-modal .btn-system-light > i,
+.system-form-modal .btn-system-danger > i {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    flex: 0 0 auto;
+    line-height: 1;
+}
+
 /* =========================================================
    GESTION DE ROLES Y PERMISOS
    ========================================================= */
