@@ -97,6 +97,11 @@ class ConvocatoriaController
         $territorioId = (int)($_POST['territorio_id'] ?? 0);
         $datos = $this->limpiarDatos($_POST);
         $estadosIds = $this->limpiarEstados($_POST['estados'] ?? []);
+
+        if ($territorioId > 0 && !in_array($territorioId, $estadosIds, true)) {
+            $estadosIds[] = $territorioId;
+        }
+
         $errores = $this->validarDatos($datos, $estadosIds, true);
 
         $imagen = $this->procesarImagen('');
