@@ -472,12 +472,19 @@
                     '<i class="bi bi-pencil-square"></i>' +
                     '<div>' +
                         '<strong>Solicitar una nueva versión</strong>' +
-                        '<p>Describe con claridad qué debe corregirse. La versión actual se conservará en el expediente y el seguimiento quedará esperando el documento corregido. Después de registrar las correcciones, comunícate con la institución desde la sección “Contactar” del panel para notificarle los ajustes solicitados; puedes hacerlo por correo desde esa misma sección.</p>' +
+                        '<p>Describe con claridad qué debe corregirse. La versión actual se conservará en el expediente y el seguimiento quedará esperando el documento corregido.</p>' +
                     '</div>' +
                 '</div>' +
                 '<div class="mt-3">' +
                     '<label class="form-label">Correcciones requeridas</label>' +
                     '<textarea class="form-control" name="convenio_revision_notas" rows="5" maxlength="5000" placeholder="Ej. Corregir razón social, representante legal y domicilio..." required></textarea>' +
+                '</div>' +
+                '<div class="convenio-correcciones-contacto">' +
+                    '<span class="convenio-correcciones-contacto-icon"><i class="bi bi-envelope"></i></span>' +
+                    '<div>' +
+                        '<strong>Después, notifica a la institución</strong>' +
+                        '<p>Al registrar las correcciones, ve a <b>Contactar → Correo</b>. El sistema preparará un correo con estos ajustes para que puedas revisarlo, agregar detalles y enviarlo.</p>' +
+                    '</div>' +
                 '</div>';
         };
 
