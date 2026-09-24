@@ -109,6 +109,8 @@ class HomeController
                     $modeloConvocatoria->desactivarConvocatoriasVencidas();
                     $resumenMarketing = $modeloConvocatoria->obtenerResumenDashboard();
                     $coberturaMarketing = $modeloConvocatoria->obtenerCoberturaTerritorialDashboard(4);
+                    $estadosSinConvocatoria = $modeloConvocatoria
+                        ->obtenerEstadosSinConvocatoriaActivaDashboard();
 
                     $periodoPublicaciones = (int)($_GET['periodo_publicaciones'] ?? 30);
                     if (!in_array($periodoPublicaciones, [7, 30, 90], true)) {
