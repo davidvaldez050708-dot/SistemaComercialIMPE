@@ -82,11 +82,43 @@
                 return;
             }
 
-            let bloque = contenedor.querySelector('[data-reunion-followup-date]');
+            let bloque = contenedor.querySelector(
+                '[data-reunion-seguimiento-fecha]'
+            );
+            const bloqueFijo = Boolean(bloque);
+
+            if (!bloque) {
+                bloque = contenedor.querySelector(
+                    '[data-reunion-followup-date]'
+                );
+            }
+
             const requiere = select.value === 'REQUIERE_SEGUIMIENTO';
 
             if (!requiere) {
-                bloque?.remove();
+                if (bloqueFijo && bloque) {
+                    bloque.classList.add('d-none');
+                    const input = bloque.querySelector(
+                        '[name="reunion_seguimiento_fecha"]'
+                    );
+                    if (input) {
+                        input.required = false;
+                        input.value = '';
+                    }
+                } else {
+                    bloque?.remove();
+                }
+                return;
+            }
+
+            if (bloqueFijo && bloque) {
+                bloque.classList.remove('d-none');
+                const input = bloque.querySelector(
+                    '[name="reunion_seguimiento_fecha"]'
+                );
+                if (input) {
+                    input.required = true;
+                }
                 return;
             }
 
@@ -94,15 +126,20 @@
                 return;
             }
 
+            /*
+             * Compatibilidad con vistas anteriores que todavía no incluyen
+             * el campo dentro de camposReunionRealizada().
+             */
             bloque = document.createElement('div');
             bloque.className = 'mt-3';
             bloque.setAttribute('data-reunion-followup-date', '');
             bloque.innerHTML =
-                '<label class="form-label">Próximo seguimiento</label>' +
-                '<input class="form-control" type="datetime-local" name="reunion_seguimiento_fecha" required>' +
-                '<div class="form-text">La reunión quedará registrada como realizada, pero el caso permanecerá en el paso 12 hasta atender este seguimiento.</div>';
+                '<label class="form-label">Dar seguimiento el</label>' +
+                '<input class="form-control" type="datetime-local" name="reunion_seguimiento_fecha" required>';
 
-            const ayuda = contenedor.querySelector('[data-reunion-no-realizada-help]');
+            const ayuda = contenedor.querySelector(
+                '[data-reunion-no-realizada-help]'
+            );
             if (ayuda) {
                 ayuda.insertAdjacentElement('beforebegin', bloque);
             } else {
