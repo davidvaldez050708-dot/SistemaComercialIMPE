@@ -229,7 +229,6 @@ class AnalistaDashboardReunionService
                     $prioridad = 100;
                     $tipo = 'atrasado';
                     $motivo = 'Reunión pendiente de registrar';
-                    $fechaReferencia = $fin;
                 } elseif ($fecha <= $limite24h) {
                     $prioridad = 55;
                     $motivo = 'Reunión próxima';
