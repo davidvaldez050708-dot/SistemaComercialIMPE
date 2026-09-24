@@ -37,6 +37,8 @@ class ReunionFechaGuardService
         $flujo['contexto']['reunion_duracion_minutos'] = $duracion;
         $flujo['contexto']['reunion_disponible'] = $disponible;
         $flujo['contexto']['reunion_en_curso'] = $enCurso;
+        $flujo['contexto']['reunion_iniciada'] =
+            (int)($reunion['iniciada'] ?? 0) === 1;
 
         $flujo['accion_secundaria'] = [
             'codigo' => 'AGENDAR_REUNION',
@@ -70,17 +72,25 @@ class ReunionFechaGuardService
                 ? 'La reunión inició a las ' .
                     (new DateTime($fecha))->format('H:i') .
                     ' y está programada por ' . $duracion .
-                    ' min. Podrás registrar el resultado a partir de ' .
-                    $finLegible . '.'
-                : 'La reunión se encuentra en curso. Podrás registrar el resultado cuando finalice el tiempo programado.';
-        } else {
-            $flujo['titulo'] = 'Reunión programada';
-            $flujo['descripcion'] = $fechaLegible !== ''
-                ? 'La reunión está programada para ' . $fechaLegible .
-                    ' y durará aproximadamente ' . $duracion .
-                    ' min. Podrás registrar el resultado al finalizar.'
-                : 'La reunión todavía no ha ocurrido. Podrás registrar el resultado cuando finalice el horario programado.';
+                    ' min. Si termina antes de ' . $finLegible .
+                    ', puedes finalizarla y registrar el resultado en ese momento.'
+                : 'La reunión se encuentra en curso. Si ya terminó, puedes finalizarla y registrar el resultado ahora.';
+
+            $flujo['accion_principal'] = [
+                'codigo' => 'REGISTRAR_REUNION_REALIZADA',
+                'etiqueta' => 'Finalizar y registrar reunión',
+                'icono' => 'bi-check2-circle'
+            ];
+
+            return $flujo;
         }
+
+        $flujo['titulo'] = 'Reunión programada';
+        $flujo['descripcion'] = $fechaLegible !== ''
+            ? 'La reunión está programada para ' . $fechaLegible .
+                ' y durará aproximadamente ' . $duracion .
+                ' min. Podrás registrar el resultado cuando la reunión haya iniciado.'
+            : 'La reunión todavía no ha iniciado. Podrás registrar el resultado cuando comience.';
 
         $flujo['accion_principal'] = [
             'codigo' => 'REUNION_AUN_NO_DISPONIBLE',
@@ -109,28 +119,16 @@ class ReunionFechaGuardService
             ];
         }
 
-        if ((int)($reunion['disponible'] ?? 0) !== 1) {
+        if ((int)($reunion['iniciada'] ?? 0) !== 1) {
             $fechaLegible = $this->fechaLegible(
                 (string)($reunion['fecha_propuesta'] ?? '')
             );
-            $finLegible = $this->fechaLegible(
-                (string)($reunion['fecha_fin'] ?? '')
-            );
-            $enCurso = (int)($reunion['en_curso'] ?? 0) === 1;
 
             return [
                 'ok' => false,
-                'mensaje' => $enCurso
-                    ? (
-                        $finLegible !== ''
-                            ? 'La reunión sigue en curso. Podrás registrar el resultado al finalizar el horario programado: ' . $finLegible . '.'
-                            : 'La reunión sigue en curso. Podrás registrar el resultado cuando finalice.'
-                    )
-                    : (
-                        $fechaLegible !== ''
-                            ? 'La reunión está programada para ' . $fechaLegible . '. No puede registrarse antes del horario programado.'
-                            : 'La reunión todavía no puede registrarse como realizada.'
-                    ),
+                'mensaje' => $fechaLegible !== ''
+                    ? 'La reunión está programada para ' . $fechaLegible . '. No puede registrarse antes de que inicie.'
+                    : 'La reunión todavía no puede registrarse como realizada.',
                 'codigo_http' => 409
             ];
         }
@@ -157,10 +155,7 @@ class ReunionFechaGuardService
                     WHERE seguimiento_id = ?
                       AND analista_id = ?
                       AND estado = 'CORREO_ENVIADO'
-                      AND DATE_ADD(
-                          fecha_propuesta,
-                          INTERVAL COALESCE(NULLIF(duracion_minutos, 0), 60) MINUTE
-                      ) <= NOW()
+                      AND fecha_propuesta <= NOW()
                     ORDER BY id DESC
                     LIMIT 1";
 
@@ -207,6 +202,10 @@ class ReunionFechaGuardService
                         fecha_propuesta,
                         INTERVAL COALESCE(NULLIF(duracion_minutos, 0), 60) MINUTE
                     ) AS fecha_fin,
+                    CASE
+                        WHEN fecha_propuesta <= NOW()
+                        THEN 1 ELSE 0
+                    END AS iniciada,
                     CASE
                         WHEN fecha_propuesta <= NOW()
                          AND DATE_ADD(
