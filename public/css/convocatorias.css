@@ -500,3 +500,13 @@
     }
 }
 
+
+
+/* Alinea los textos del bloque de Gestión en Marketing con el subtítulo institucional. */
+.marketing-module-typography > .dashboard-panel:not(.marketing-territory-coverage) .panel-title,
+.marketing-module-typography > .dashboard-panel:not(.marketing-territory-coverage) .panel-subtitle {
+    color: var(--color-text-secondary);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.4;
+}
