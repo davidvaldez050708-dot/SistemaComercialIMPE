@@ -116,6 +116,59 @@
                         }
                     }
                 }
+
+                if (event.target.matches('[name="reunion_resultado"]')) {
+                    const resultado = String(event.target.value || '');
+                    const bloqueFecha = modal.querySelector(
+                        '[data-reunion-seguimiento-fecha]'
+                    );
+                    const campoFecha = modal.querySelector(
+                        '[name="reunion_seguimiento_fecha"]'
+                    );
+                    const nota = modal.querySelector(
+                        '[data-reunion-resultado-ayuda]'
+                    );
+                    const requiereSeguimiento =
+                        resultado === 'REQUIERE_SEGUIMIENTO';
+
+                    if (bloqueFecha) {
+                        bloqueFecha.classList.toggle(
+                            'd-none',
+                            !requiereSeguimiento
+                        );
+                    }
+
+                    if (campoFecha) {
+                        campoFecha.required = requiereSeguimiento;
+
+                        if (requiereSeguimiento) {
+                            const minimo = new Date(
+                                Date.now() + (5 * 60 * 1000)
+                            );
+                            campoFecha.min = fechaHoraLocal(minimo);
+                        } else {
+                            campoFecha.required = false;
+                            campoFecha.removeAttribute('min');
+                            campoFecha.value = '';
+                        }
+                    }
+
+                    if (nota) {
+                        if (resultado === 'AVANZAR_CONVENIO') {
+                            nota.textContent =
+                                'Al guardar, la ruta avanzará al Paso 13 para iniciar el proceso de convenio.';
+                        } else if (resultado === 'REQUIERE_SEGUIMIENTO') {
+                            nota.textContent =
+                                'La reunión quedará registrada y el seguimiento permanecerá en el Paso 12 hasta la fecha que indiques.';
+                        } else if (resultado === 'NO_INTERESADO') {
+                            nota.textContent =
+                                'Al guardar, el seguimiento se cerrará como no interesado. Los acuerdos quedarán en el expediente.';
+                        } else {
+                            nota.textContent =
+                                'Selecciona el resultado que corresponda a lo acordado durante la reunión.';
+                        }
+                    }
+                }
             });
 
             return modal;
@@ -201,6 +254,15 @@
                             '<option value="REQUIERE_SEGUIMIENTO">Requiere seguimiento adicional</option>' +
                             '<option value="NO_INTERESADO">No interesado</option>' +
                         '</select>' +
+                    '</div>' +
+                    '<div class="col-md-6 d-none" data-reunion-seguimiento-fecha>' +
+                        '<label class="form-label">Dar seguimiento el</label>' +
+                        '<input class="form-control" type="datetime-local" name="reunion_seguimiento_fecha">' +
+                    '</div>' +
+                    '<div class="col-12">' +
+                        '<div class="reunion-resultado-ayuda" data-reunion-resultado-ayuda>' +
+                            'Selecciona el resultado que corresponda a lo acordado durante la reunión.' +
+                        '</div>' +
                     '</div>' +
                     '<div class="col-12">' +
                         '<label class="form-label">Acuerdos y resultado</label>' +
@@ -398,7 +460,8 @@
                 REGISTRAR_REUNION_REALIZADA: {
                     titulo: 'Registrar reunión realizada',
                     subtitulo: 'Documenta el resultado y los acuerdos alcanzados.',
-                    campos: camposReunionRealizada()
+                    campos: camposReunionRealizada(),
+                    boton: '<i class="bi bi-check2-circle"></i>Finalizar reunión'
                 },
                 REGISTRAR_CONVENIO_RECIBIDO: {
                     titulo: 'Registrar convenio recibido',
