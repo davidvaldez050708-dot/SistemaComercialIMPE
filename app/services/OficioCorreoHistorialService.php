@@ -31,7 +31,12 @@ class OficioCorreoHistorialService
                 ? $this->consultarHistorialPersistente($seguimientoId)
                 : $this->consultarHistorialLegado($seguimientoId);
             $correosSeguimiento = $this->consultarCorreosSeguimiento($seguimientoId);
-            $correos = array_merge($correosOficio, $correosSeguimiento);
+            $correosReunion = $this->consultarCorreosReunion($seguimientoId);
+            $correos = array_merge(
+                $correosOficio,
+                $correosSeguimiento,
+                $correosReunion
+            );
 
             usort($correos, static function ($correoA, $correoB) {
                 $fechaA = strtotime((string)($correoA['fecha_envio'] ?? '')) ?: 0;
@@ -165,6 +170,62 @@ class OficioCorreoHistorialService
 
         while ($fila = $resultado->fetch_assoc()) {
             $correos[] = $this->normalizarCorreo($fila);
+        }
+
+        return $correos;
+    }
+
+    private function consultarCorreosReunion($seguimientoId)
+    {
+        if (!$this->tablaExiste('reuniones_vinculacion')) {
+            return [];
+        }
+
+        $sql = "SELECT
+                    reunion.id,
+                    reunion.correo_confirmacion_asunto AS asunto,
+                    reunion.correo_confirmacion_cuerpo AS cuerpo,
+                    reunion.correo_confirmacion_at AS fecha_envio,
+                    reunion.correo_confirmacion_por AS usuario_id,
+                    COALESCE(
+                        NULLIF(TRIM(seguimiento.correo_verificado), ''),
+                        NULLIF(TRIM(seguimiento.correo_fuente), '')
+                    ) AS destinatario,
+                    COALESCE(seguimiento.contacto_nombre, '') AS destinatario_nombre,
+                    TRIM(CONCAT(COALESCE(usuario.nombre, ''), ' ', COALESCE(usuario.apellidos, ''))) AS enviado_por_nombre
+                FROM reuniones_vinculacion reunion
+                INNER JOIN seguimientos_vinculacion seguimiento
+                    ON seguimiento.id = reunion.seguimiento_id
+                LEFT JOIN usuarios usuario
+                    ON usuario.id = reunion.correo_confirmacion_por
+                WHERE reunion.seguimiento_id = ?
+                  AND reunion.correo_confirmacion_at IS NOT NULL
+                  AND NULLIF(TRIM(reunion.correo_confirmacion_asunto), '') IS NOT NULL
+                ORDER BY reunion.correo_confirmacion_at DESC, reunion.id DESC";
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param('i', $seguimientoId);
+        $stmt->execute();
+        $resultado = $stmt->get_result();
+        $correos = [];
+
+        while ($fila = $resultado->fetch_assoc()) {
+            $correos[] = [
+                'id' => (int)($fila['id'] ?? 0),
+                'interaccion_id' => 0,
+                'origen' => 'REUNION',
+                'oficio_id' => 0,
+                'folio' => '',
+                'destinatario' => trim((string)($fila['destinatario'] ?? '')),
+                'destinatario_nombre' => trim((string)($fila['destinatario_nombre'] ?? '')),
+                'asunto' => trim((string)($fila['asunto'] ?? '')),
+                'cuerpo' => (string)($fila['cuerpo'] ?? ''),
+                'adjunto_nombre' => '',
+                'adjuntos_count' => 0,
+                'estado' => 'ENVIADO',
+                'error_envio' => '',
+                'fecha_envio' => trim((string)($fila['fecha_envio'] ?? '')),
+                'enviado_por' => trim((string)($fila['enviado_por_nombre'] ?? ''))
+            ];
         }
 
         return $correos;
