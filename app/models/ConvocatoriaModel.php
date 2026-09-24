@@ -339,6 +339,28 @@ class ConvocatoriaModel
         ];
     }
 
+    public function obtenerEstadosSinConvocatoriaActivaDashboard()
+    {
+        $sql = "SELECT
+                    estados.id,
+                    estados.nombre
+                FROM estados
+                WHERE estados.estado = 1
+                  AND NOT EXISTS (
+                      SELECT 1
+                      FROM convocatoria_estados
+                      INNER JOIN convocatorias
+                          ON convocatorias.id = convocatoria_estados.convocatoria_id
+                      WHERE convocatoria_estados.estado_id = estados.id
+                        AND convocatorias.estado = 1
+                  )
+                ORDER BY estados.nombre ASC";
+
+        $resultado = $this->connection->query($sql);
+
+        return $this->convertirResultadoEnArreglo($resultado);
+    }
+
     public function obtenerPublicacionesPorPeriodoDashboard($dias = 30)
     {
         $diasPermitidos = [7, 30, 90];
