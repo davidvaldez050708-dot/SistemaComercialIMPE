@@ -366,6 +366,53 @@ class SeguimientoCorreoService
             $cuerpo = trim(substr($notas, $pos + 2));
         }
 
+        $adjuntos = $this->listarAdjuntosPorInteraccion($interaccionId);
+
+        // Los envíos de documentación de convenio anteriores al historial
+        // estructurado conservaron asunto/cuerpo y rutas de archivos en
+        // seguimientos_vinculacion_post_envio. Recuperamos esos datos reales
+        // en lugar de mostrar el correo como incompleto.
+        if (stripos($notas, 'Documentación de convenio enviada') === 0) {
+            $sqlConvenio = "SELECT
+                                convenio_destinatario,
+                                convenio_correo_asunto,
+                                convenio_correo_cuerpo,
+                                convenio_carta_pdf,
+                                convenio_docx
+                            FROM seguimientos_vinculacion_post_envio
+                            WHERE seguimiento_id = ?
+                            LIMIT 1";
+            $stmtConvenio = $this->connection->prepare($sqlConvenio);
+            $seguimientoLegacyId = (int)$interaccion['seguimiento_id'];
+            $stmtConvenio->bind_param('i', $seguimientoLegacyId);
+            $stmtConvenio->execute();
+            $convenio = $stmtConvenio->get_result()->fetch_assoc();
+
+            if ($convenio) {
+                $destinatarioGuardado = trim((string)($convenio['convenio_destinatario'] ?? ''));
+                $asuntoGuardado = trim((string)($convenio['convenio_correo_asunto'] ?? ''));
+                $cuerpoGuardado = trim((string)($convenio['convenio_correo_cuerpo'] ?? ''));
+
+                if ($destinatarioGuardado !== '') {
+                    $destinatario = $destinatarioGuardado;
+                }
+                if ($asuntoGuardado !== '') {
+                    $asunto = $asuntoGuardado;
+                }
+                if ($cuerpoGuardado !== '') {
+                    $cuerpo = $cuerpoGuardado;
+                }
+
+                if (empty($adjuntos)) {
+                    $adjuntos = $this->construirAdjuntosConvenioLegacy(
+                        $seguimientoLegacyId,
+                        $interaccionId,
+                        $convenio
+                    );
+                }
+            }
+        }
+
         return [
             'id' => 0,
             'seguimiento_id' => (int)$interaccion['seguimiento_id'],
@@ -377,9 +424,51 @@ class SeguimientoCorreoService
             'proveedor' => '',
             'adjuntos_count' => 0,
             'enviado_at' => $interaccion['fecha_inicio'],
-            'adjuntos' => $this->listarAdjuntosPorInteraccion($interaccionId),
+            'adjuntos' => $adjuntos,
             'legacy' => true
         ];
+    }
+
+    private function construirAdjuntosConvenioLegacy($seguimientoId, $interaccionId, array $convenio)
+    {
+        $adjuntos = [];
+        $archivos = [
+            [
+                'ruta' => trim((string)($convenio['convenio_carta_pdf'] ?? '')),
+                'nombre' => 'Carta_propuesta_colaboracion.pdf',
+                'mime' => 'application/pdf'
+            ],
+            [
+                'ruta' => trim((string)($convenio['convenio_docx'] ?? '')),
+                'nombre' => 'Convenio_colaboracion.docx',
+                'mime' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+            ]
+        ];
+
+        foreach ($archivos as $archivo) {
+            if ($archivo['ruta'] === '') {
+                continue;
+            }
+
+            $rutaAbsoluta = $this->rutaInternaAbsoluta($archivo['ruta']);
+            if ($rutaAbsoluta === null || !is_file($rutaAbsoluta)) {
+                continue;
+            }
+
+            $adjuntos[] = [
+                'id' => 0,
+                'seguimiento_id' => (int)$seguimientoId,
+                'interaccion_id' => (int)$interaccionId,
+                'origen' => 'CONVENIO_LEGACY',
+                'archivo' => $archivo['ruta'],
+                'nombre_original' => $archivo['nombre'],
+                'mime' => $archivo['mime'],
+                'tamano' => (int)filesize($rutaAbsoluta),
+                'created_at' => null
+            ];
+        }
+
+        return $adjuntos;
     }
 
     public function listarAdjuntosPorInteraccion($interaccionId)
