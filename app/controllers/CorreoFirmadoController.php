@@ -60,6 +60,52 @@ class CorreoFirmadoController
         $this->responderResultado($resultado);
     }
 
+    public function enviarCancelacionReunion()
+    {
+        $this->validarAgendaPost();
+
+        $resultado = $this->service->enviarCancelacionReunion(
+            (int)($_POST['reunion_id'] ?? 0),
+            (int)$_SESSION['usuario_id'],
+            (int)$_SESSION['rol_id'],
+            (string)($_POST['asunto'] ?? ''),
+            (string)($_POST['cuerpo'] ?? ''),
+            (string)($_POST['motivo_cancelacion'] ?? '')
+        );
+
+        $this->responderResultado($resultado);
+    }
+
+    private function validarAgendaPost()
+    {
+        $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
+        $rolId = (int)($_SESSION['rol_id'] ?? 0);
+
+        if (
+            $usuarioId <= 0 ||
+            !in_array(
+                $rolId,
+                [
+                    AgendaReunionService::ROL_ANALISTA,
+                    AgendaReunionService::ROL_CUENTA_CLAVE
+                ],
+                true
+            )
+        ) {
+            $this->responder([
+                'ok' => false,
+                'mensaje' => 'No tienes acceso a este envío.'
+            ], 403);
+        }
+
+        if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
+            $this->responder([
+                'ok' => false,
+                'mensaje' => 'Método no permitido.'
+            ], 405);
+        }
+    }
+
     private function validarAnalistaPost()
     {
         $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
