@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../services/CorreoFirmadoService.php';
+require_once __DIR__ . '/../services/SeguimientoCorreoService.php';
 require_once __DIR__ . '/../services/AgendaReunionService.php';
 
 class CorreoFirmadoController
@@ -16,11 +17,28 @@ class CorreoFirmadoController
     {
         $this->validarAnalistaPost();
 
-        $resultado = $this->service->enviarSeguimiento(
+        /*
+         * Compatibilidad con clientes antiguos: el seguimiento por correo
+         * utiliza una sola implementación para que adjuntos, historial y
+         * validaciones no diverjan entre endpoints.
+         */
+        $service = new SeguimientoCorreoService();
+        $resultado = $service->enviar(
             (int)($_POST['seguimiento_id'] ?? 0),
             (int)$_SESSION['usuario_id'],
             (string)($_POST['asunto'] ?? ''),
-            (string)($_POST['cuerpo'] ?? '')
+            (string)($_POST['cuerpo'] ?? ''),
+            $_POST['adjuntos_expediente'] ?? [],
+            $_FILES['adjuntos_nuevos'] ?? null,
+            isset($_POST['adjuntos_esperados'])
+                ? (int)$_POST['adjuntos_esperados']
+                : null,
+            isset($_POST['adjuntos_expediente_esperados'])
+                ? (int)$_POST['adjuntos_expediente_esperados']
+                : null,
+            isset($_POST['adjuntos_nuevos_esperados'])
+                ? (int)$_POST['adjuntos_nuevos_esperados']
+                : null
         );
 
         $this->responderResultado($resultado);
