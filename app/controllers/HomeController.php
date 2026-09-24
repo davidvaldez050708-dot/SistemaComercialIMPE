@@ -114,7 +114,7 @@ class HomeController
                         $periodoPublicaciones = 30;
                     }
 
-                    $publicacionesPorEstado = $modeloConvocatoria
+                    $totalPublicacionesPeriodo = $modeloConvocatoria
                         ->obtenerPublicacionesPorPeriodoDashboard($periodoPublicaciones);
 
                     $vistaPanel = __DIR__ . '/../views/dashboard/marketing.php';
