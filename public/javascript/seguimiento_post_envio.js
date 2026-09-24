@@ -302,7 +302,7 @@
                                     '<select class="form-select" name="reunion_seguimiento_pendiente_de">' +
                                         '<option value="">Selecciona una opción</option>' +
                                         '<option value="INSTITUCION">Institución</option>' +
-                                        '<option value="FUNDACION">Fundación Red</option>' +
+                                        '<option value="FUNDACION">Equipo interno</option>' +
                                         '<option value="AMBOS">Ambos</option>' +
                                     '</select>' +
                                 '</div>' +
