@@ -613,3 +613,32 @@
         width: 100%;
     }
 }
+
+
+/* Compacta únicamente la gráfica de publicaciones totales. */
+.marketing-publications-chart {
+    gap: 12px;
+    padding-top: 14px;
+    padding-bottom: 14px;
+}
+
+.marketing-publications-plot {
+    min-height: 120px;
+    max-width: 360px;
+    width: 100%;
+    margin: 0 auto;
+    padding-top: 4px;
+}
+
+.marketing-publications-column {
+    grid-template-rows: 18px 78px auto;
+}
+
+.marketing-publications-bar-space {
+    width: 54px;
+    height: 78px;
+}
+
+.marketing-publications-empty {
+    padding: 24px 12px;
+}
