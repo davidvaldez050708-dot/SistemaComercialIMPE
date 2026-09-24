@@ -106,6 +106,7 @@ class HomeController
                     $subtituloPagina = 'Gestión de convocatorias y publicaciones';
 
                     $modeloConvocatoria = new ConvocatoriaModel();
+                    $modeloConvocatoria->desactivarConvocatoriasVencidas();
                     $resumenMarketing = $modeloConvocatoria->obtenerResumenDashboard();
                     $coberturaMarketing = $modeloConvocatoria->obtenerCoberturaTerritorialDashboard(4);
 
