@@ -171,6 +171,14 @@
                             '</div>' +
                             '<div class="modal-body">' +
                                 '<div class="alert alert-danger d-none" data-reunion-followup-error></div>' +
+                                '<div class="reunion-followup-context d-none" data-followup-current-context>' +
+                                    '<span class="reunion-followup-context-kicker">Pendiente acordado en la reunión</span>' +
+                                    '<strong data-followup-current-objective>—</strong>' +
+                                    '<div class="reunion-followup-context-meta">' +
+                                        '<span><b>Acción:</b> <span data-followup-current-action>—</span></span>' +
+                                        '<span><b>Pendiente de:</b> <span data-followup-current-owner>—</span></span>' +
+                                    '</div>' +
+                                '</div>' +
                                 '<div class="row g-3">' +
                                     '<div class="col-md-6">' +
                                         '<label class="form-label">Resultado del seguimiento</label>' +
@@ -184,6 +192,41 @@
                                     '<div class="col-md-6 d-none" data-followup-next-date>' +
                                         '<label class="form-label">Nueva fecha de seguimiento</label>' +
                                         '<input class="form-control" type="datetime-local" name="seguimiento_reunion_fecha">' +
+                                    '</div>' +
+                                    '<div class="col-12 d-none" data-followup-next-context>' +
+                                        '<div class="reunion-followup-plan">' +
+                                            '<div class="reunion-followup-plan-heading">' +
+                                                '<strong>Definir el siguiente pendiente</strong>' +
+                                                '<span>Actualiza qué deberá resolverse antes de la nueva revisión.</span>' +
+                                            '</div>' +
+                                            '<div class="row g-3">' +
+                                                '<div class="col-12">' +
+                                                    '<label class="form-label">Pendiente acordado</label>' +
+                                                    '<textarea class="form-control" name="seguimiento_reunion_objetivo" rows="2" maxlength="1200" placeholder="Ej. La institución enviará la autorización interna para continuar."></textarea>' +
+                                                '</div>' +
+                                                '<div class="col-md-6">' +
+                                                    '<label class="form-label">Pendiente de</label>' +
+                                                    '<select class="form-select" name="seguimiento_reunion_pendiente_de">' +
+                                                        '<option value="">Selecciona una opción</option>' +
+                                                        '<option value="INSTITUCION">Institución</option>' +
+                                                        '<option value="FUNDACION">Fundación Red</option>' +
+                                                        '<option value="AMBOS">Ambos</option>' +
+                                                    '</select>' +
+                                                '</div>' +
+                                                '<div class="col-md-6">' +
+                                                    '<label class="form-label">Acción prevista</label>' +
+                                                    '<select class="form-select" name="seguimiento_reunion_accion">' +
+                                                        '<option value="">Selecciona una opción</option>' +
+                                                        '<option value="LLAMAR">Llamar</option>' +
+                                                        '<option value="ENVIAR_CORREO">Enviar correo</option>' +
+                                                        '<option value="ESPERAR_RESPUESTA">Esperar respuesta</option>' +
+                                                        '<option value="REVISAR_DOCUMENTACION">Revisar documentación</option>' +
+                                                        '<option value="CONFIRMAR_AUTORIZACION">Confirmar autorización</option>' +
+                                                        '<option value="OTRO">Otra acción</option>' +
+                                                    '</select>' +
+                                                '</div>' +
+                                            '</div>' +
+                                        '</div>' +
                                     '</div>' +
                                     '<div class="col-12">' +
                                         '<label class="form-label">Resultado y acuerdos</label>' +
@@ -204,17 +247,49 @@
 
             modal.querySelector('[name="seguimiento_reunion_resultado"]')
                 ?.addEventListener('change', function (event) {
-                    const bloque = modal.querySelector('[data-followup-next-date]');
-                    const input = bloque?.querySelector('[name="seguimiento_reunion_fecha"]');
-                    const requiere = event.target.value === 'REQUIERE_SEGUIMIENTO';
+                    const bloque = modal.querySelector(
+                        '[data-followup-next-date]'
+                    );
+                    const input = bloque?.querySelector(
+                        '[name="seguimiento_reunion_fecha"]'
+                    );
+                    const contexto = modal.querySelector(
+                        '[data-followup-next-context]'
+                    );
+                    const camposContexto = contexto
+                        ? contexto.querySelectorAll(
+                            'input, textarea, select'
+                        )
+                        : [];
+                    const requiere =
+                        event.target.value === 'REQUIERE_SEGUIMIENTO';
 
                     bloque?.classList.toggle('d-none', !requiere);
+                    contexto?.classList.toggle('d-none', !requiere);
+
                     if (input) {
                         input.required = requiere;
-                        if (!requiere) {
+                        if (requiere) {
+                            const minimo = new Date(
+                                Date.now() + (5 * 60 * 1000)
+                            );
+                            const offset = minimo.getTimezoneOffset();
+                            const local = new Date(
+                                minimo.getTime() - offset * 60000
+                            );
+                            input.min = local.toISOString().slice(0, 16);
+                        } else {
                             input.value = '';
+                            input.removeAttribute('min');
                         }
                     }
+
+                    camposContexto.forEach(function (campo) {
+                        campo.required = requiere;
+                        if (!requiere) {
+                            campo.value = '';
+                        }
+                    });
                 });
 
             modal.querySelector('[data-reunion-followup-form]')
@@ -223,7 +298,69 @@
             return modal;
         };
 
-        const abrirSeguimiento = function () {
+        const cargarContextoSeguimiento = async function (modal) {
+            const tarjeta = modal.querySelector(
+                '[data-followup-current-context]'
+            );
+
+            if (!tarjeta || seguimientoActualId <= 0) {
+                return;
+            }
+
+            tarjeta.classList.add('d-none');
+
+            try {
+                const respuesta = await fetch(
+                    'index.php?controller=seguimientoFlujo&action=estado&seguimiento_id=' +
+                    encodeURIComponent(seguimientoActualId),
+                    {
+                        headers: {
+                            'X-Requested-With': 'fetch'
+                        }
+                    }
+                );
+                const json = await respuesta.json();
+
+                if (!respuesta.ok || !json.ok) {
+                    return;
+                }
+
+                const contexto = json.flujo?.contexto || {};
+                const objetivo = String(
+                    contexto.seguimiento_reunion_objetivo || ''
+                ).trim();
+                const accion = String(
+                    contexto.seguimiento_reunion_accion_label || ''
+                ).trim();
+                const pendiente = String(
+                    contexto.seguimiento_reunion_pendiente_de_label || ''
+                ).trim();
+
+                if (objetivo === '' && accion === '' && pendiente === '') {
+                    return;
+                }
+
+                const objetivoEl = tarjeta.querySelector(
+                    '[data-followup-current-objective]'
+                );
+                const accionEl = tarjeta.querySelector(
+                    '[data-followup-current-action]'
+                );
+                const pendienteEl = tarjeta.querySelector(
+                    '[data-followup-current-owner]'
+                );
+
+                if (objetivoEl) objetivoEl.textContent = objetivo || '—';
+                if (accionEl) accionEl.textContent = accion || '—';
+                if (pendienteEl) pendienteEl.textContent = pendiente || '—';
+
+                tarjeta.classList.remove('d-none');
+            } catch (error) {
+                console.error(error);
+            }
+        };
+
+        const abrirSeguimiento = async function () {
             if (seguimientoActualId <= 0) {
                 return;
             }
@@ -233,6 +370,9 @@
             const error = modal.querySelector('[data-reunion-followup-error]');
             const fechaBloque = modal.querySelector('[data-followup-next-date]');
             const fechaInput = fechaBloque?.querySelector('[name="seguimiento_reunion_fecha"]');
+            const contextoSiguiente = modal.querySelector(
+                '[data-followup-next-context]'
+            );
 
             form?.reset();
             error?.classList.add('d-none');
@@ -240,10 +380,18 @@
                 error.textContent = '';
             }
             fechaBloque?.classList.add('d-none');
+            contextoSiguiente?.classList.add('d-none');
             if (fechaInput) {
                 fechaInput.required = false;
+                fechaInput.removeAttribute('min');
             }
+            contextoSiguiente
+                ?.querySelectorAll('input, textarea, select')
+                .forEach(function (campo) {
+                    campo.required = false;
+                });
 
+            await cargarContextoSeguimiento(modal);
             bootstrap.Modal.getOrCreateInstance(modal).show();
         };
 
