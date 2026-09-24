@@ -374,24 +374,6 @@ class ConvenioDocumentosService
         }
     }
 
-    private function tablaExiste($tabla)
-    {
-        $permitidas = [
-            'seguimientos_vinculacion_correos',
-            'seguimientos_vinculacion_correo_adjuntos'
-        ];
-
-        if (!in_array((string)$tabla, $permitidas, true)) {
-            return false;
-        }
-
-        $resultado = $this->connection->query(
-            "SHOW TABLES LIKE '" . $this->connection->real_escape_string((string)$tabla) . "'"
-        );
-
-        return $resultado && $resultado->num_rows > 0;
-    }
-
     public function registrarRecibido($seguimientoId, $usuarioId, $fechaRecepcion, $notas, $archivo)
     {
         $seguimientoId = (int)$seguimientoId;
