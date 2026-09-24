@@ -222,17 +222,22 @@
                     contenido.appendChild(pie);
                 }
 
-                // PHP agrega acciones y adjuntos de correo cuando corresponden.
-                // El refinamiento visual no debe eliminarlos al reconstruir la
-                // tarjeta de actividad.
+                // Los correos tienen una única acción compacta.
+                // Si ya existe un pie de estados, "Ver correo" vive en esa
+                // misma línea; así la tarjeta no crece innecesariamente.
                 const accionesCorreo = item.querySelector('.linkage-activity-actions');
-                const adjuntosCorreo = item.querySelector('.linkage-activity-attachments');
 
                 if (accionesCorreo) {
-                    contenido.appendChild(accionesCorreo);
-                }
-                if (adjuntosCorreo) {
-                    contenido.appendChild(adjuntosCorreo);
+                    const pieExistente = contenido.querySelector('.linkage-activity-footer');
+
+                    if (pieExistente) {
+                        pieExistente.appendChild(accionesCorreo);
+                    } else {
+                        const pieAccion = document.createElement('div');
+                        pieAccion.className = 'linkage-activity-footer';
+                        pieAccion.appendChild(accionesCorreo);
+                        contenido.appendChild(pieAccion);
+                    }
                 }
 
                 item.replaceChildren(contenido);
