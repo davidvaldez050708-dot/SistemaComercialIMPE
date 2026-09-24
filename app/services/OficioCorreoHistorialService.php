@@ -27,9 +27,22 @@ class OficioCorreoHistorialService
         }
 
         try {
-            $correos = $this->tablaHistorialDisponible()
+            $correosOficio = $this->tablaHistorialDisponible()
                 ? $this->consultarHistorialPersistente($seguimientoId)
                 : $this->consultarHistorialLegado($seguimientoId);
+            $correosSeguimiento = $this->consultarCorreosSeguimiento($seguimientoId);
+            $correos = array_merge($correosOficio, $correosSeguimiento);
+
+            usort($correos, static function ($correoA, $correoB) {
+                $fechaA = strtotime((string)($correoA['fecha_envio'] ?? '')) ?: 0;
+                $fechaB = strtotime((string)($correoB['fecha_envio'] ?? '')) ?: 0;
+
+                if ($fechaA === $fechaB) {
+                    return (int)($correoB['id'] ?? 0) <=> (int)($correoA['id'] ?? 0);
+                }
+
+                return $fechaB <=> $fechaA;
+            });
 
             return [
                 'ok' => true,
@@ -157,6 +170,96 @@ class OficioCorreoHistorialService
         return $correos;
     }
 
+    private function consultarCorreosSeguimiento($seguimientoId)
+    {
+        if (!$this->tablaExiste('seguimientos_vinculacion_correos')) {
+            return [];
+        }
+
+        $tieneAdjuntos = $this->tablaExiste(
+            'seguimientos_vinculacion_correo_adjuntos'
+        );
+        $joinAdjuntos = $tieneAdjuntos
+            ? "LEFT JOIN (
+                    SELECT interaccion_id,
+                        COUNT(*) AS adjuntos_count,
+                        GROUP_CONCAT(nombre_original ORDER BY id SEPARATOR ' · ') AS adjuntos_nombres
+                    FROM seguimientos_vinculacion_correo_adjuntos
+                    GROUP BY interaccion_id
+                ) adjuntos ON adjuntos.interaccion_id = correo.interaccion_id"
+            : '';
+        $camposAdjuntos = $tieneAdjuntos
+            ? "COALESCE(adjuntos.adjuntos_count, correo.adjuntos_count, 0) AS adjuntos_count,
+               COALESCE(adjuntos.adjuntos_nombres, '') AS adjuntos_nombres,"
+            : "COALESCE(correo.adjuntos_count, 0) AS adjuntos_count,
+               '' AS adjuntos_nombres,";
+
+        $sql = "SELECT
+                    correo.id,
+                    correo.interaccion_id,
+                    correo.destinatario,
+                    correo.asunto,
+                    correo.cuerpo,
+                    correo.enviado_at,
+                    " . $camposAdjuntos . "
+                    TRIM(CONCAT(COALESCE(usuario.nombre, ''), ' ', COALESCE(usuario.apellidos, ''))) AS enviado_por_nombre,
+                    COALESCE(seguimiento.contacto_nombre, '') AS destinatario_nombre
+                FROM seguimientos_vinculacion_correos correo
+                INNER JOIN seguimientos_vinculacion seguimiento
+                    ON seguimiento.id = correo.seguimiento_id
+                LEFT JOIN usuarios usuario
+                    ON usuario.id = correo.usuario_id
+                " . $joinAdjuntos . "
+                WHERE correo.seguimiento_id = ?
+                ORDER BY correo.enviado_at DESC, correo.id DESC";
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param('i', $seguimientoId);
+        $stmt->execute();
+        $resultado = $stmt->get_result();
+        $correos = [];
+
+        while ($fila = $resultado->fetch_assoc()) {
+            $adjuntosCount = (int)($fila['adjuntos_count'] ?? 0);
+            $nombres = trim((string)($fila['adjuntos_nombres'] ?? ''));
+
+            $correos[] = [
+                'id' => (int)($fila['id'] ?? 0),
+                'interaccion_id' => (int)($fila['interaccion_id'] ?? 0),
+                'origen' => 'SEGUIMIENTO',
+                'oficio_id' => 0,
+                'folio' => '',
+                'destinatario' => trim((string)($fila['destinatario'] ?? '')),
+                'destinatario_nombre' => trim((string)($fila['destinatario_nombre'] ?? '')),
+                'asunto' => trim((string)($fila['asunto'] ?? '')),
+                'cuerpo' => (string)($fila['cuerpo'] ?? ''),
+                'adjunto_nombre' => $adjuntosCount === 1
+                    ? $nombres
+                    : ($adjuntosCount > 1 ? $adjuntosCount . ' archivos' : ''),
+                'adjuntos_count' => $adjuntosCount,
+                'estado' => 'ENVIADO',
+                'error_envio' => '',
+                'fecha_envio' => trim((string)($fila['enviado_at'] ?? '')),
+                'enviado_por' => trim((string)($fila['enviado_por_nombre'] ?? ''))
+            ];
+        }
+
+        return $correos;
+    }
+
+    private function tablaExiste($tabla)
+    {
+        $tabla = preg_replace('/[^a-zA-Z0-9_]+/', '', (string)$tabla);
+
+        try {
+            $resultado = $this->connection->query(
+                "SHOW TABLES LIKE '" . $tabla . "'"
+            );
+            return $resultado && $resultado->num_rows > 0;
+        } catch (Throwable $error) {
+            return false;
+        }
+    }
+
     private function consultarHistorialLegado($seguimientoId)
     {
         $sql = "SELECT
@@ -197,6 +300,8 @@ class OficioCorreoHistorialService
     {
         return [
             'id' => (int)($fila['id'] ?? 0),
+            'interaccion_id' => 0,
+            'origen' => 'OFICIO',
             'oficio_id' => (int)($fila['oficio_id'] ?? 0),
             'folio' => trim((string)($fila['folio'] ?? '')),
             'destinatario' => trim((string)($fila['destinatario'] ?? '')),
