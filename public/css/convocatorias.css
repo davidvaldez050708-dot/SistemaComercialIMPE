@@ -647,6 +647,6 @@
 /* Limita el ancho del cuadro de publicaciones totales. */
 .marketing-publications-chart {
     width: min(100%, 620px);
-    margin-left: auto;
+    margin-left: 0;
     margin-right: auto;
 }
