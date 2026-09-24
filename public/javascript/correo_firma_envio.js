@@ -216,10 +216,10 @@
             return;
         }
 
+        // El correo de seguimiento tiene su propio flujo en
+        // seguimiento_correo_etapa.js porque soporta adjuntos, historial y
+        // validación de la etapa. Este módulo se limita a agenda/reunión.
         if (form.matches('[data-followup-mail-form]')) {
-            event.preventDefault();
-            event.stopImmediatePropagation();
-            enviarSeguimiento(form);
             return;
         }
 
