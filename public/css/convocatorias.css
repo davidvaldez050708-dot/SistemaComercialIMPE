@@ -669,3 +669,198 @@
         transition: none;
     }
 }
+
+
+/* Distribuye publicaciones y cobertura pendiente en la fila inferior. */
+.marketing-bottom-grid {
+    display: grid;
+    grid-template-columns: minmax(360px, 620px) minmax(0, 1fr);
+    gap: 18px;
+    align-items: stretch;
+}
+
+.marketing-bottom-grid .marketing-publications-chart {
+    width: 100%;
+    margin: 0;
+}
+
+.marketing-pending-coverage {
+    min-width: 0;
+    display: grid;
+    gap: 16px;
+}
+
+.marketing-pending-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+}
+
+.marketing-pending-heading h2 {
+    margin: 2px 0 2px;
+    color: var(--color-text-primary);
+    font-size: 14px;
+    font-weight: 800;
+}
+
+.marketing-pending-heading p {
+    margin: 0;
+    color: var(--color-text-secondary);
+    font-size: 10px;
+    font-weight: 600;
+}
+
+.marketing-pending-content {
+    min-width: 0;
+    display: grid;
+    grid-template-columns: minmax(180px, .7fr) minmax(260px, 1.3fr);
+    gap: 18px;
+    align-items: center;
+}
+
+.marketing-pending-summary {
+    display: grid;
+    gap: 10px;
+}
+
+.marketing-pending-count {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.marketing-pending-icon {
+    width: 44px;
+    height: 44px;
+    flex: 0 0 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    background-color: #fff0f2;
+    color: #ef476f;
+    font-size: 20px;
+}
+
+.marketing-pending-count div {
+    display: grid;
+    gap: 2px;
+}
+
+.marketing-pending-count strong {
+    color: var(--color-text-primary);
+    font-size: 20px;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.marketing-pending-count div span {
+    color: var(--color-text-secondary);
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.marketing-pending-progress {
+    height: 8px;
+    overflow: hidden;
+    border-radius: 999px;
+    background-color: var(--color-primary);
+}
+
+.marketing-pending-progress > span {
+    height: 100%;
+    display: block;
+    border-radius: inherit;
+    background-color: #ef476f;
+}
+
+.marketing-pending-summary p {
+    margin: 0;
+    color: var(--color-text-secondary);
+    font-size: 10px;
+    font-weight: 600;
+}
+
+.marketing-pending-summary p strong {
+    color: var(--color-text-primary);
+    font-weight: 800;
+}
+
+.marketing-pending-list {
+    max-height: 150px;
+    overflow-y: auto;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px 14px;
+    padding-right: 4px;
+}
+
+.marketing-pending-item {
+    min-width: 0;
+    display: grid;
+    grid-template-columns: 22px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 7px;
+}
+
+.marketing-pending-item > span {
+    width: 20px;
+    height: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background-color: var(--color-primary-soft);
+    color: var(--color-primary);
+    font-size: 8px;
+    font-weight: 800;
+}
+
+.marketing-pending-item > strong {
+    overflow: hidden;
+    color: var(--color-text-primary);
+    font-size: 9px;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.marketing-pending-item > small {
+    padding: 3px 7px;
+    border-radius: 999px;
+    background-color: #f1f4f8;
+    color: var(--color-text-secondary);
+    font-size: 8px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.marketing-pending-empty {
+    grid-column: 1 / -1;
+    padding: 26px 10px;
+    color: var(--color-text-secondary);
+    font-size: 10px;
+    font-weight: 600;
+    text-align: center;
+}
+
+@media (max-width: 1199.98px) {
+    .marketing-bottom-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .marketing-bottom-grid .marketing-publications-chart {
+        max-width: 620px;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .marketing-pending-content {
+        grid-template-columns: 1fr;
+    }
+
+    .marketing-pending-list {
+        grid-template-columns: 1fr;
+    }
+}
