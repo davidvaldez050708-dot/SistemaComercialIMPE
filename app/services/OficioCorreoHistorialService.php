@@ -32,11 +32,14 @@ class OficioCorreoHistorialService
                 : $this->consultarHistorialLegado($seguimientoId);
             $correosSeguimiento = $this->consultarCorreosSeguimiento($seguimientoId);
             $correosReunion = $this->consultarCorreosReunion($seguimientoId);
+            $correosConvenio = $this->consultarCorreoConvenioLegado($seguimientoId);
             $correos = array_merge(
                 $correosOficio,
                 $correosSeguimiento,
-                $correosReunion
+                $correosReunion,
+                $correosConvenio
             );
+            $correos = $this->eliminarDuplicados($correos);
 
             usort($correos, static function ($correoA, $correoB) {
                 $fechaA = strtotime((string)($correoA['fecha_envio'] ?? '')) ?: 0;
@@ -229,6 +232,104 @@ class OficioCorreoHistorialService
         }
 
         return $correos;
+    }
+
+    private function consultarCorreoConvenioLegado($seguimientoId)
+    {
+        if (
+            !$this->tablaExiste('seguimientos_vinculacion_post_envio') ||
+            !$this->columnaExiste('seguimientos_vinculacion_post_envio', 'convenio_documentacion_enviada_at')
+        ) {
+            return [];
+        }
+
+        $sql = "SELECT
+                    p.seguimiento_id AS id,
+                    p.convenio_destinatario AS destinatario,
+                    p.convenio_correo_asunto AS asunto,
+                    p.convenio_correo_cuerpo AS cuerpo,
+                    p.convenio_documentacion_enviada_at AS fecha_envio,
+                    p.convenio_documentacion_enviada_por AS usuario_id,
+                    p.convenio_carta_pdf,
+                    p.convenio_docx,
+                    COALESCE(s.contacto_nombre, '') AS destinatario_nombre,
+                    TRIM(CONCAT(COALESCE(u.nombre, ''), ' ', COALESCE(u.apellidos, ''))) AS enviado_por_nombre
+                FROM seguimientos_vinculacion_post_envio p
+                INNER JOIN seguimientos_vinculacion s ON s.id = p.seguimiento_id
+                LEFT JOIN usuarios u ON u.id = p.convenio_documentacion_enviada_por
+                WHERE p.seguimiento_id = ?
+                  AND p.convenio_documentacion_enviada_at IS NOT NULL
+                  AND NULLIF(TRIM(p.convenio_correo_asunto), '') IS NOT NULL
+                LIMIT 1";
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param('i', $seguimientoId);
+        $stmt->execute();
+        $fila = $stmt->get_result()->fetch_assoc();
+
+        if (!$fila) {
+            return [];
+        }
+
+        $adjuntos = array_values(array_filter([
+            basename(str_replace('\\', '/', (string)($fila['convenio_carta_pdf'] ?? ''))),
+            basename(str_replace('\\', '/', (string)($fila['convenio_docx'] ?? '')))
+        ]));
+
+        return [[
+            'id' => (int)($fila['id'] ?? 0),
+            'interaccion_id' => 0,
+            'origen' => 'CONVENIO',
+            'oficio_id' => 0,
+            'folio' => '',
+            'destinatario' => trim((string)($fila['destinatario'] ?? '')),
+            'destinatario_nombre' => trim((string)($fila['destinatario_nombre'] ?? '')),
+            'asunto' => trim((string)($fila['asunto'] ?? '')),
+            'cuerpo' => (string)($fila['cuerpo'] ?? ''),
+            'adjunto_nombre' => count($adjuntos) > 1
+                ? count($adjuntos) . ' archivos'
+                : ($adjuntos[0] ?? ''),
+            'adjuntos_count' => count($adjuntos),
+            'estado' => 'ENVIADO',
+            'error_envio' => '',
+            'fecha_envio' => trim((string)($fila['fecha_envio'] ?? '')),
+            'enviado_por' => trim((string)($fila['enviado_por_nombre'] ?? ''))
+        ]];
+    }
+
+    private function eliminarDuplicados(array $correos)
+    {
+        $resultado = [];
+        $vistos = [];
+
+        foreach ($correos as $correo) {
+            $clave = strtolower(trim((string)($correo['destinatario'] ?? ''))) . '|' .
+                strtolower(trim((string)($correo['asunto'] ?? ''))) . '|' .
+                trim((string)($correo['fecha_envio'] ?? ''));
+
+            if (isset($vistos[$clave])) {
+                continue;
+            }
+
+            $vistos[$clave] = true;
+            $resultado[] = $correo;
+        }
+
+        return $resultado;
+    }
+
+    private function columnaExiste($tabla, $columna)
+    {
+        $tabla = preg_replace('/[^a-zA-Z0-9_]+/', '', (string)$tabla);
+        $columna = preg_replace('/[^a-zA-Z0-9_]+/', '', (string)$columna);
+
+        try {
+            $resultado = $this->connection->query(
+                "SHOW COLUMNS FROM `" . $tabla . "` LIKE '" . $columna . "'"
+            );
+            return $resultado && $resultado->num_rows > 0;
+        } catch (Throwable $error) {
+            return false;
+        }
     }
 
     private function consultarCorreosSeguimiento($seguimientoId)
