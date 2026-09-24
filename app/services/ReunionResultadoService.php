@@ -14,13 +14,18 @@ class ReunionResultadoService
 
     public function validarResultadoReunion($datos)
     {
-        $resultado = strtoupper(trim((string)($datos['reunion_resultado'] ?? '')));
+        $resultado = strtoupper(
+            trim((string)($datos['reunion_resultado'] ?? ''))
+        );
 
         if ($resultado !== 'REQUIERE_SEGUIMIENTO') {
             return ['ok' => true];
         }
 
-        $fecha = $this->normalizarFechaHora($datos['reunion_seguimiento_fecha'] ?? '');
+        $fecha = $this->normalizarFechaHora(
+            $datos['reunion_seguimiento_fecha'] ?? ''
+        );
+
         if ($fecha === null) {
             return $this->error(
                 'Indica cuándo debe realizarse el seguimiento de los acuerdos.',
@@ -35,22 +40,42 @@ class ReunionResultadoService
             );
         }
 
-        return [
-            'ok' => true,
-            'fecha_seguimiento' => $fecha
-        ];
+        $contexto = $this->validarContextoSeguimiento(
+            $datos,
+            'reunion'
+        );
+
+        if (!($contexto['ok'] ?? false)) {
+            return $contexto;
+        }
+
+        $contexto['fecha_seguimiento'] = $fecha;
+
+        return $contexto;
     }
 
-    public function programarSeguimientoTrasReunion($seguimientoId, $analistaId, $datos)
-    {
-        $resultado = strtoupper(trim((string)($datos['reunion_resultado'] ?? '')));
+    public function programarSeguimientoTrasReunion(
+        $seguimientoId,
+        $analistaId,
+        $datos
+    ) {
+        $resultado = strtoupper(
+            trim((string)($datos['reunion_resultado'] ?? ''))
+        );
 
         if ($resultado !== 'REQUIERE_SEGUIMIENTO') {
             return;
         }
 
-        $fecha = $this->normalizarFechaHora($datos['reunion_seguimiento_fecha'] ?? '');
-        if ($fecha === null) {
+        $fecha = $this->normalizarFechaHora(
+            $datos['reunion_seguimiento_fecha'] ?? ''
+        );
+        $contexto = $this->extraerContextoSeguimiento(
+            $datos,
+            'reunion'
+        );
+
+        if ($fecha === null || $contexto['objetivo'] === '') {
             return;
         }
 
@@ -60,13 +85,28 @@ class ReunionResultadoService
                 WHERE id = ?
                   AND analista_id = ?";
         $stmt = $this->connection->prepare($sql);
-        $stmt->bind_param('sii', $fecha, $seguimientoId, $analistaId);
+        $stmt->bind_param(
+            'sii',
+            $fecha,
+            $seguimientoId,
+            $analistaId
+        );
         $stmt->execute();
+
+        $this->actualizarContextoSeguimiento(
+            $seguimientoId,
+            $contexto
+        );
 
         $this->registrarInteraccion(
             $seguimientoId,
             $analistaId,
-            'Seguimiento de acuerdos programado para ' . $fecha . '.'
+            'Seguimiento de acuerdos programado para ' . $fecha .
+            '. Pendiente: ' . $contexto['objetivo'] .
+            '. Acción prevista: ' .
+            $this->etiquetaAccionSeguimiento($contexto['accion']) .
+            '. Pendiente de: ' .
+            $this->etiquetaPendienteDe($contexto['pendiente_de']) . '.'
         );
     }
 
