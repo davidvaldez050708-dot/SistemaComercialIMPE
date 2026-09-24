@@ -320,3 +320,73 @@
         max-height: calc(100vh - 20px);
     }
 }
+
+
+/* Estado pendiente de reunión: mismo lenguaje visual neutro del sistema. */
+.agenda-inline-note.is-pending {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    border: 1px solid #dbe4f1;
+    background: #f5f7fb;
+    color: #40516d;
+    font-weight: 650;
+}
+
+.agenda-inline-note.is-pending i {
+    flex: 0 0 auto;
+    color: var(--color-primary);
+    font-size: 12px;
+}
+
+/* Detalle de reunión: evita que el diálogo desplace toda la página. */
+#modalAgendaDetalle .modal-dialog {
+    margin-top: 20px;
+    margin-bottom: 20px;
+}
+
+#modalAgendaDetalle .modal-content {
+    max-height: calc(100vh - 40px);
+    overflow: hidden;
+}
+
+#modalAgendaDetalle .modal-header {
+    flex: 0 0 auto;
+}
+
+#modalAgendaDetalle .modal-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+/* El estado SOLICITADA debe caber de forma cómoda en pantallas de escritorio. */
+#modalAgendaDetalle .agenda-detail-card {
+    margin-bottom: 12px;
+    padding: 11px 14px;
+}
+
+#modalAgendaDetalle .agenda-action-box {
+    margin-top: 12px;
+    padding-top: 12px;
+}
+
+#modalAgendaDetalle .agenda-action-box > p {
+    margin-bottom: 9px;
+}
+
+#modalAgendaDetalle .agenda-inline-note {
+    padding: 8px 10px;
+}
+
+@media (max-width: 575.98px) {
+    #modalAgendaDetalle .modal-dialog {
+        margin-top: 10px;
+        margin-bottom: 10px;
+    }
+
+    #modalAgendaDetalle .modal-content {
+        max-height: calc(100vh - 20px);
+    }
+}
