@@ -523,24 +523,22 @@ usort($actividadExpediente, function ($eventoA, $eventoB) {
                             <td><?= $texto($formatearFecha($oficio['fecha_generacion'] ?? '')) ?></td>
                             <td><?= $texto($formatearFecha($oficio['fecha_envio'] ?? '')) ?></td>
                             <td class="text-end">
-                                <div class="d-inline-flex gap-2">
+                                <div class="d-inline-flex gap-2 linkage-oficio-document-actions">
                                     <a
-                                        class="btn btn-system-light"
+                                        class="linkage-oficio-document-button"
                                         href="<?= BASE_URL ?>public/oficio_pdf_documento.php?seguimiento_id=<?= (int)($seguimiento['id'] ?? 0) ?>"
                                         target="_blank"
                                         rel="noopener"
                                         title="Ver oficio PDF"
                                         aria-label="Ver oficio PDF">
                                         <i class="bi bi-eye"></i>
-                                        <span>Ver PDF</span>
                                     </a>
                                     <a
-                                        class="btn btn-system-light"
+                                        class="linkage-oficio-document-button"
                                         href="<?= BASE_URL ?>public/oficio_pdf_documento.php?seguimiento_id=<?= (int)($seguimiento['id'] ?? 0) ?>&descargar=1"
                                         title="Descargar oficio PDF"
                                         aria-label="Descargar oficio PDF">
                                         <i class="bi bi-download"></i>
-                                        <span>Descargar</span>
                                     </a>
                                 </div>
                             </td>
