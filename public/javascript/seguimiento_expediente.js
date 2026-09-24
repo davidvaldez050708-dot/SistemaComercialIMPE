@@ -599,21 +599,33 @@
             tarjeta.classList.toggle('is-ally', esAliado);
 
             const ultima = datos?.ultima_interaccion || {};
-            const ultimaCanal = humanizarCodigoActividad(
-                ultima?.canal || 'SISTEMA',
-                canalesActividad
+            const ultimaTitulo = texto(
+                ultima?.titulo,
+                humanizarCodigoActividad(
+                    ultima?.canal || 'SISTEMA',
+                    canalesActividad
+                )
             );
-            const ultimaEstado = estadoUltimaActividad(ultima);
+            const ultimaEstado = texto(
+                ultima?.resultado_label,
+                estadoUltimaActividad(ultima)
+            );
             const ultimaMetaPartes = ultima?.fecha_inicio
-                ? [fechaLegible(ultima.fecha_inicio), ultimaCanal, ultimaEstado].filter(Boolean)
+                ? [
+                    fechaLegible(ultima.fecha_inicio),
+                    ultimaTitulo
+                ].filter(Boolean)
                 : [];
             const ultimaMeta = ultimaMetaPartes.length > 0
                 ? ultimaMetaPartes.join(' · ')
                 : 'Sin actividad reciente';
-            const ultimaNotaLimpia = limpiarNotaActividad(ultima?.notas);
             const ultimaNota = texto(
-                ultimaNotaLimpia,
-                'Todavía no hay una actividad reciente registrada.'
+                ultima?.resumen,
+                texto(
+                    limpiarNotaActividad(ultima?.notas),
+                    ultimaEstado ||
+                        'Todavía no hay una actividad reciente registrada.'
+                )
             );
             const ultimaEsCorreo = String(ultima?.canal || '').toUpperCase() === 'CORREO' &&
                 String(ultima?.resultado || '').toUpperCase() === 'CORREO_ENVIADO' &&
