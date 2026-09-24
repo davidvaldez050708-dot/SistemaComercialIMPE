@@ -391,8 +391,8 @@
                     html += '<div class="agenda-action-box">' +
                         '<h6>Esperando a Cuenta Clave</h6>' +
                         '<p>La propuesta ya fue enviada. Cuenta Clave debe confirmar la fecha y agregar los datos de Zoom.</p>' +
-                        '<div class="agenda-inline-note is-warning">' +
-                            '<i class="bi bi-hourglass-split"></i> Pendiente de confirmación KAM.' +
+                        '<div class="agenda-inline-note is-pending">' +
+                            '<i class="bi bi-clock-history"></i> Pendiente de confirmación de Cuenta Clave.' +
                         '</div>' +
                     '</div>';
                 }
