@@ -472,7 +472,7 @@
                     '<i class="bi bi-pencil-square"></i>' +
                     '<div>' +
                         '<strong>Solicitar una nueva versión</strong>' +
-                        '<p>Describe con claridad qué debe corregirse. La versión actual se conservará en el expediente y el seguimiento quedará esperando el documento corregido.</p>' +
+                        '<p>Describe con claridad qué debe corregirse. La versión actual se conservará en el expediente y el seguimiento quedará esperando el documento corregido. Después de registrar las correcciones, comunícate con la institución desde la sección “Contactar” del panel para notificarle los ajustes solicitados; puedes hacerlo por correo desde esa misma sección.</p>' +
                     '</div>' +
                 '</div>' +
                 '<div class="mt-3">' +
