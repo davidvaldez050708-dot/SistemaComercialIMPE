@@ -731,3 +731,29 @@
 #modalAgendaCorreo .agenda-form-error {
     margin-bottom: 12px;
 }
+
+
+/* Solicitud vencida: salida operativa sin convertirla en una alerta roja. */
+#modalAgendaDetalle .agenda-status-line.is-expired {
+    border-color: #eadfcb;
+    background: #fbf8f2;
+    color: #765f3f;
+}
+
+#modalAgendaDetalle .agenda-status-line.is-expired i {
+    color: #9b7440;
+}
+
+#modalAgendaDetalle .agenda-expired-proposal-form {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid #e4e9f0;
+}
+
+#modalAgendaDetalle .agenda-expired-proposal-form .agenda-action-row {
+    margin-top: 12px;
+}
+
+#modalAgendaDetalle .agenda-expired-proposal-form .btn-system-save {
+    min-height: 38px;
+}
