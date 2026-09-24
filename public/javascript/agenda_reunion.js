@@ -613,12 +613,35 @@
 
             if (estado === 'SOLICITADA') {
                 if (Boolean(reunion.esta_vencida)) {
-                    html += '<div class="agenda-action-box">' +
+                    html += '<div class="agenda-action-box agenda-expired-proposal">' +
                         '<h6>Fecha vencida sin confirmación</h6>' +
-                        '<p>La fecha propuesta ya pasó y Cuenta Clave no confirmó la reunión.</p>' +
-                        '<div class="agenda-inline-note is-danger">' +
-                            '<i class="bi bi-exclamation-triangle"></i> Requiere una nueva fecha antes de continuar.' +
+                        '<p>La fecha propuesta ya pasó antes de que Cuenta Clave la confirmara. Propón otro horario para continuar.</p>' +
+                        '<div class="agenda-status-line is-expired">' +
+                            '<i class="bi bi-clock-history"></i>' +
+                            '<span>Se requiere una nueva propuesta</span>' +
                         '</div>' +
+                        '<form data-agenda-action-form data-agenda-action="reproponerFechaVencida" class="agenda-expired-proposal-form">' +
+                            '<input type="hidden" name="reunion_id" value="' + Number(reunion.id || 0) + '">' +
+                            '<div class="row g-3">' +
+                                '<div class="col-md-6">' +
+                                    '<label class="form-label">Nueva fecha y hora</label>' +
+                                    '<input class="form-control system-form-control" type="datetime-local" name="fecha_propuesta" required>' +
+                                '</div>' +
+                                '<div class="col-md-3">' +
+                                    '<label class="form-label">Duración</label>' +
+                                    selectDuracion(reunion.duracion_minutos) +
+                                '</div>' +
+                                '<div class="col-md-3">' +
+                                    '<label class="form-label">Modalidad</label>' +
+                                    selectModalidad(reunion.modalidad) +
+                                '</div>' +
+                            '</div>' +
+                            '<div class="agenda-action-row">' +
+                                '<button class="btn btn-system-save" type="submit">' +
+                                    '<i class="bi bi-send"></i> Enviar nueva propuesta' +
+                                '</button>' +
+                            '</div>' +
+                        '</form>' +
                     '</div>';
                 } else {
                     html += '<div class="agenda-action-box">' +
