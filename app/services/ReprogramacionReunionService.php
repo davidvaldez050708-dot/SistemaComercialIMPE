@@ -183,12 +183,12 @@ class ReprogramacionReunionService
             return $disponibilidad;
         }
 
+        $esReprogramacion =
+            (int)($reunion['es_reprogramacion'] ?? 0) === 1;
+
         $this->connection->begin_transaction();
 
         try {
-            $esReprogramacion =
-                (int)($reunion['es_reprogramacion'] ?? 0) === 1;
-
             if ($esReprogramacion) {
                 $stmt = $this->connection->prepare(
                     "UPDATE reuniones_vinculacion_reprogramaciones
@@ -213,36 +213,60 @@ class ReprogramacionReunionService
                 );
             }
 
-            $sql = "UPDATE reuniones_vinculacion
-                    SET fecha_propuesta=?,
-                        duracion_minutos=?,
-                        modalidad=?,
-                        estado='SOLICITADA',
-                        reprogramacion_solicitada_at=NOW(),
-                        reprogramacion_solicitada_por=?,
-                        confirmada_at=NULL,
-                        confirmada_por=NULL,
-                        correo_confirmacion_asunto=NULL,
-                        correo_confirmacion_cuerpo=NULL,
-                        correo_confirmacion_at=NULL,
-                        correo_confirmacion_por=NULL,
-                        notificado_kam_at=NULL,
-                        notificado_analista_at=NULL
-                    WHERE id=?
-                      AND analista_id=?
-                      AND estado='SOLICITADA'
-                      AND fecha_propuesta <= NOW()";
+            if ($esReprogramacion) {
+                $sql = "UPDATE reuniones_vinculacion
+                        SET fecha_propuesta=?,
+                            duracion_minutos=?,
+                            modalidad=?,
+                            estado='SOLICITADA',
+                            reprogramacion_solicitada_at=NOW(),
+                            reprogramacion_solicitada_por=?,
+                            confirmada_at=NULL,
+                            confirmada_por=NULL,
+                            correo_confirmacion_asunto=NULL,
+                            correo_confirmacion_cuerpo=NULL,
+                            correo_confirmacion_at=NULL,
+                            correo_confirmacion_por=NULL,
+                            notificado_kam_at=NULL,
+                            notificado_analista_at=NULL
+                        WHERE id=?
+                          AND analista_id=?
+                          AND estado='SOLICITADA'
+                          AND fecha_propuesta <= NOW()";
 
-            $stmt = $this->connection->prepare($sql);
-            $stmt->bind_param(
-                'sisiii',
-                $fecha,
-                $duracion,
-                $modalidad,
-                $usuarioId,
-                $reunionId,
-                $usuarioId
-            );
+                $stmt = $this->connection->prepare($sql);
+                $stmt->bind_param(
+                    'sisiii',
+                    $fecha,
+                    $duracion,
+                    $modalidad,
+                    $usuarioId,
+                    $reunionId,
+                    $usuarioId
+                );
+            } else {
+                $sql = "UPDATE reuniones_vinculacion
+                        SET fecha_propuesta=?,
+                            duracion_minutos=?,
+                            modalidad=?,
+                            estado='SOLICITADA',
+                            notificado_kam_at=NULL,
+                            notificado_analista_at=NULL
+                        WHERE id=?
+                          AND analista_id=?
+                          AND estado='SOLICITADA'
+                          AND fecha_propuesta <= NOW()";
+
+                $stmt = $this->connection->prepare($sql);
+                $stmt->bind_param(
+                    'sisii',
+                    $fecha,
+                    $duracion,
+                    $modalidad,
+                    $reunionId,
+                    $usuarioId
+                );
+            }
             $stmt->execute();
 
             if ($stmt->affected_rows <= 0) {
