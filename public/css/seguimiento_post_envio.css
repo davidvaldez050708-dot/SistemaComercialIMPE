@@ -777,3 +777,81 @@
 #modalSeguimientoPostEnvio [data-reunion-seguimiento-fecha] {
     transition: opacity .15s ease;
 }
+
+
+/* Seguimientos posteriores a reunión: contexto operativo compacto. */
+#modalSeguimientoPostEnvio .reunion-followup-plan,
+#modalSeguimientoAcuerdos .reunion-followup-plan {
+    padding: 14px;
+    border: 1px solid #dfe6ef;
+    border-radius: 10px;
+    background: #f8fafc;
+}
+
+#modalSeguimientoPostEnvio .reunion-followup-plan-heading,
+#modalSeguimientoAcuerdos .reunion-followup-plan-heading {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-bottom: 12px;
+}
+
+#modalSeguimientoPostEnvio .reunion-followup-plan-heading strong,
+#modalSeguimientoAcuerdos .reunion-followup-plan-heading strong {
+    color: #1f2937;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+#modalSeguimientoPostEnvio .reunion-followup-plan-heading span,
+#modalSeguimientoAcuerdos .reunion-followup-plan-heading span {
+    color: #748196;
+    font-size: 11px;
+    line-height: 1.45;
+}
+
+#modalSeguimientoAcuerdos .reunion-followup-context {
+    margin-bottom: 18px;
+    padding: 14px 16px;
+    border: 1px solid #dbe5f1;
+    border-radius: 10px;
+    background: #f7f9fc;
+}
+
+#modalSeguimientoAcuerdos .reunion-followup-context-kicker {
+    display: block;
+    margin-bottom: 5px;
+    color: #77859a;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+
+#modalSeguimientoAcuerdos .reunion-followup-context > strong {
+    display: block;
+    color: #202938;
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+#modalSeguimientoAcuerdos .reunion-followup-context-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 18px;
+    margin-top: 9px;
+    color: #64748b;
+    font-size: 11px;
+}
+
+#modalSeguimientoAcuerdos .reunion-followup-context-meta b {
+    color: #445168;
+    font-weight: 700;
+}
+
+@media (max-width: 767.98px) {
+    #modalSeguimientoAcuerdos .reunion-followup-context-meta {
+        flex-direction: column;
+        gap: 4px;
+    }
+}
