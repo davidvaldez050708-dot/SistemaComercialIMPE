@@ -431,6 +431,9 @@
             if (boton) {
                 boton.innerHTML = opciones.botonHtml ||
                     '<i class="bi bi-send"></i> Enviar correo';
+                boton.className = opciones.esCancelacion
+                    ? 'btn btn-system-cancel'
+                    : 'btn btn-system-save';
             }
 
             if (ecardSection) {
@@ -543,8 +546,9 @@
                 nota:
                     'La reunión se marcará como cancelada únicamente después de que este correo sea enviado correctamente.',
                 mostrarEcard: false,
+                esCancelacion: true,
                 botonHtml:
-                    '<i class="bi bi-send"></i> Enviar y cancelar reunión'
+                    '<i class="bi bi-envelope-x"></i> Enviar y cancelar reunión'
             });
 
             modalDetalle?.hide();
