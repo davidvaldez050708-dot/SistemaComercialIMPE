@@ -833,8 +833,9 @@
                 }, 350);
             } catch (error) {
                 const caja = document.createElement('div');
-                caja.className = 'alert alert-danger agenda-form-error mt-3';
-                caja.textContent = error.message || 'No fue posible guardar los cambios.';
+                caja.className = 'agenda-form-error';
+                caja.textContent =
+                    error.message || 'No fue posible guardar los cambios.';
                 form.querySelector('.agenda-form-error')?.remove();
                 form.prepend(caja);
             } finally {
