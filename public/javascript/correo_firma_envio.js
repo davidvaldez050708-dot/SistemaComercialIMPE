@@ -92,20 +92,43 @@
             return;
         }
 
-        const esReprogramacion = form.dataset.reprogramacionPreparada === '1' ||
-            String(form.getAttribute('data-agenda-action') || '') === 'marcarCorreoReprogramacionEnviado';
-        datos.set('reprogramacion', esReprogramacion ? '1' : '0');
+        const accion = String(
+            form.getAttribute('data-agenda-action') || ''
+        );
+        const esCancelacion = accion === 'enviarCancelacionReunion';
+        const esReprogramacion =
+            form.dataset.reprogramacionPreparada === '1' ||
+            accion === 'marcarCorreoReprogramacionEnviado';
+
+        if (!esCancelacion) {
+            datos.set('reprogramacion', esReprogramacion ? '1' : '0');
+        }
+
+        const endpoint = esCancelacion
+            ? 'index.php?controller=correoFirmado&action=enviarCancelacionReunion'
+            : 'index.php?controller=correoFirmado&action=enviarReunion';
 
         await ejecutarEnvio(
             form,
-            'index.php?controller=correoFirmado&action=enviarReunion',
+            endpoint,
             datos,
             function (json) {
-                mostrarToast(json.mensaje || 'Correo de reunión enviado correctamente.');
+                mostrarToast(
+                    json.mensaje ||
+                    (
+                        esCancelacion
+                            ? 'Correo de cancelación enviado correctamente.'
+                            : 'Correo de reunión enviado correctamente.'
+                    )
+                );
                 window.setTimeout(function () {
                     window.location.href =
-                        'index.php?controller=agendaReunion&action=index&reunion_id=' +
-                        encodeURIComponent(reunionId);
+                        'index.php?controller=agendaReunion&action=index' +
+                        (
+                            esCancelacion
+                                ? ''
+                                : '&reunion_id=' + encodeURIComponent(reunionId)
+                        );
                 }, 500);
             }
         );
@@ -158,7 +181,11 @@
         }
 
         const accion = String(form.getAttribute('data-agenda-action') || '');
-        if (accion !== 'marcarCorreoEnviado' && accion !== 'marcarCorreoReprogramacionEnviado') {
+        if (
+            accion !== 'marcarCorreoEnviado' &&
+            accion !== 'marcarCorreoReprogramacionEnviado' &&
+            accion !== 'enviarCancelacionReunion'
+        ) {
             return;
         }
 
@@ -211,6 +238,7 @@
             const accion = String(form.getAttribute('data-agenda-action') || '');
             const esCorreo = accion === 'marcarCorreoEnviado' ||
                 accion === 'marcarCorreoReprogramacionEnviado' ||
+                accion === 'enviarCancelacionReunion' ||
                 form.dataset.reprogramacionPreparada === '1';
 
             if (esCorreo && form.querySelector('[name="asunto"]') && form.querySelector('[name="cuerpo"]')) {
