@@ -514,3 +514,102 @@
 .marketing-module-typography > .dashboard-panel:not(.marketing-territory-coverage) .panel-title {
     font-weight: 800;
 }
+
+
+/* Gráfica dinámica de publicaciones por estado en Marketing. */
+.marketing-publications-chart {
+    display: grid;
+    gap: 18px;
+}
+
+.marketing-publications-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.marketing-publications-heading h2 {
+    margin: 0;
+    color: var(--color-text-primary);
+    font-size: 14px;
+    font-weight: 800;
+}
+
+.marketing-publications-filter {
+    width: 160px;
+}
+
+.marketing-publications-filter .system-form-control {
+    min-height: 38px;
+    font-size: 11px;
+}
+
+.marketing-publications-plot {
+    min-height: 210px;
+    display: flex;
+    align-items: stretch;
+    gap: 18px;
+    overflow-x: auto;
+    padding: 12px 8px 2px;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.marketing-publications-column {
+    min-width: 90px;
+    flex: 1 0 90px;
+    display: grid;
+    grid-template-rows: 20px 150px auto;
+    gap: 6px;
+    align-items: end;
+    justify-items: center;
+}
+
+.marketing-publications-column > strong {
+    color: var(--color-text-primary);
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.marketing-publications-bar-space {
+    width: min(70px, 78%);
+    height: 150px;
+    display: flex;
+    align-items: flex-end;
+}
+
+.marketing-publications-bar {
+    width: 100%;
+    min-height: 8px;
+    display: block;
+    border-radius: 6px 6px 0 0;
+    background-color: var(--color-primary);
+}
+
+.marketing-publications-state {
+    max-width: 110px;
+    color: var(--color-text-secondary);
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 1.25;
+    text-align: center;
+}
+
+.marketing-publications-empty {
+    padding: 34px 12px;
+    color: var(--color-text-secondary);
+    font-size: 11px;
+    font-weight: 600;
+    text-align: center;
+}
+
+@media (max-width: 575.98px) {
+    .marketing-publications-heading {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .marketing-publications-filter {
+        width: 100%;
+    }
+}
