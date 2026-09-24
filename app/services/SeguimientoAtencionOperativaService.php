@@ -98,6 +98,15 @@ class SeguimientoAtencionOperativaService
                     LIMIT 1
                 ) AS reunion_estado,
                 (
+                    SELECT reunion.duracion_minutos
+                    FROM reuniones_vinculacion reunion
+                    WHERE reunion.seguimiento_id = seguimientos.id
+                      AND reunion.analista_id = seguimientos.analista_id
+                      AND reunion.estado NOT IN ('CANCELADA', 'REALIZADA')
+                    ORDER BY reunion.id DESC
+                    LIMIT 1
+                ) AS reunion_duracion_minutos,
+                (
                     SELECT reunion.cambio_solicitado_at
                     FROM reuniones_vinculacion reunion
                     WHERE reunion.seguimiento_id = seguimientos.id
@@ -106,7 +115,7 @@ class SeguimientoAtencionOperativaService
                     ORDER BY reunion.id DESC
                     LIMIT 1
                 ) AS reunion_cambio_solicitado_at"
-            : ", NULL AS reunion_fecha, NULL AS reunion_estado, NULL AS reunion_cambio_solicitado_at";
+            : ", NULL AS reunion_fecha, NULL AS reunion_estado, NULL AS reunion_duracion_minutos, NULL AS reunion_cambio_solicitado_at";
 
         $sql = "SELECT
                     seguimientos.id,
@@ -177,8 +186,31 @@ class SeguimientoAtencionOperativaService
                         $motivo = 'Reunión pendiente de confirmación';
                     }
                     $fechaReferencia = $reunionFecha;
-                } elseif (in_array($reunionEstado, ['CONFIRMADA', 'CORREO_ENVIADO'], true) && $reunionFecha) {
+                } elseif ($reunionEstado === 'CONFIRMADA' && $reunionFecha) {
                     if ($reunionFecha < $ahora) {
+                        $prioridad = 99;
+                        $tipo = 'atrasado';
+                        $motivo = 'Confirmación pendiente de enviar';
+                    } elseif ($reunionFecha <= $limite24h) {
+                        $prioridad = 88;
+                        $tipo = 'reunion';
+                        $motivo = 'Confirmación pendiente de enviar';
+                    }
+                    $fechaReferencia = $reunionFecha;
+                } elseif ($reunionEstado === 'CORREO_ENVIADO' && $reunionFecha) {
+                    $duracion = max(
+                        1,
+                        (int)($fila['reunion_duracion_minutos'] ?? 60)
+                    );
+                    $finReunion = $reunionFecha->modify(
+                        '+' . $duracion . ' minutes'
+                    );
+
+                    if ($reunionFecha <= $ahora && $finReunion > $ahora) {
+                        $prioridad = 70;
+                        $tipo = 'reunion';
+                        $motivo = 'Reunión en curso';
+                    } elseif ($finReunion <= $ahora) {
                         $prioridad = 100;
                         $tipo = 'atrasado';
                         $motivo = 'Reunión pendiente de registrar';
