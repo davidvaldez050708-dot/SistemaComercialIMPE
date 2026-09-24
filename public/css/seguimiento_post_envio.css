@@ -761,3 +761,19 @@
 #modalSeguimientoCorreo .followup-attachments-status.is-active {
     color: var(--color-primary);
 }
+
+
+/* Resultado de reunión: ayuda contextual y seguimiento condicional. */
+#modalSeguimientoPostEnvio .reunion-resultado-ayuda {
+    padding: 9px 11px;
+    border: 1px solid #dfe6ef;
+    border-radius: 8px;
+    background: #f8fafc;
+    color: #66758b;
+    font-size: 10.5px;
+    line-height: 1.45;
+}
+
+#modalSeguimientoPostEnvio [data-reunion-seguimiento-fecha] {
+    transition: opacity .15s ease;
+}
