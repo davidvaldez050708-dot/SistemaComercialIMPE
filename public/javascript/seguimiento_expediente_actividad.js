@@ -222,6 +222,19 @@
                     contenido.appendChild(pie);
                 }
 
+                // PHP agrega acciones y adjuntos de correo cuando corresponden.
+                // El refinamiento visual no debe eliminarlos al reconstruir la
+                // tarjeta de actividad.
+                const accionesCorreo = item.querySelector('.linkage-activity-actions');
+                const adjuntosCorreo = item.querySelector('.linkage-activity-attachments');
+
+                if (accionesCorreo) {
+                    contenido.appendChild(accionesCorreo);
+                }
+                if (adjuntosCorreo) {
+                    contenido.appendChild(adjuntosCorreo);
+                }
+
                 item.replaceChildren(contenido);
             };
 
