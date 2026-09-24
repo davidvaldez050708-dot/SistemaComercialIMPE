@@ -35,7 +35,7 @@
             modal.innerHTML =
                 '<div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">' +
                     '<div class="modal-content system-form-modal">' +
-                        '<form data-followup-mail-form>' +
+                        '<form enctype="multipart/form-data" data-followup-mail-form>' +
                             '<div class="modal-header system-form-modal-header">' +
                                 '<div>' +
                                     '<h5 class="system-form-modal-title" id="modalSeguimientoCorreoTitulo">' +
@@ -79,7 +79,7 @@
                                         '<span class="followup-attachments-label">Desde el expediente</span>' +
                                         '<div class="followup-expedient-list" data-followup-expedient-list></div>' +
                                     '</div>' +
-                                    '<input class="d-none" type="file" multiple ' +
+                                    '<input class="d-none" type="file" name="adjuntos_nuevos[]" multiple ' +
                                         'accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.png,.jpg,.jpeg" ' +
                                         'data-followup-file-input>' +
                                     '<div class="d-none" data-followup-new-block>' +
@@ -113,7 +113,7 @@
 
             modal.querySelector('[data-followup-file-input]').addEventListener('change', function (event) {
                 agregarArchivosNuevos(modal, Array.from(event.target.files || []));
-                event.target.value = '';
+                sincronizarInputArchivos(modal);
             });
 
             modal.addEventListener('click', function (event) {
@@ -125,6 +125,7 @@
                 const indice = Number(quitar.getAttribute('data-followup-remove-file'));
                 if (Number.isInteger(indice) && indice >= 0) {
                     archivosNuevos.splice(indice, 1);
+                    sincronizarInputArchivos(modal);
                     renderizarArchivosNuevos(modal);
                 }
             });
@@ -153,6 +154,20 @@
                 return (valor / 1024).toFixed(1) + ' KB';
             }
             return (valor / (1024 * 1024)).toFixed(1) + ' MB';
+        };
+
+        const sincronizarInputArchivos = function (modal) {
+            const input = modal.querySelector('[data-followup-file-input]');
+            if (!input || typeof DataTransfer === 'undefined') {
+                return false;
+            }
+
+            const transferencia = new DataTransfer();
+            archivosNuevos.forEach(function (archivo) {
+                transferencia.items.add(archivo);
+            });
+            input.files = transferencia.files;
+            return true;
         };
 
         const tamanoExpedienteSeleccionado = function (modal) {
@@ -395,6 +410,10 @@
 
             limpiarMensajes();
             archivosNuevos = [];
+            const inputArchivos = modal.querySelector('[data-followup-file-input]');
+            if (inputArchivos) {
+                inputArchivos.value = '';
+            }
             para.value = 'Consultando...';
             asunto.value = '';
             cuerpo.value = '';
@@ -467,22 +486,28 @@
                 return;
             }
 
-            // Construimos explícitamente los adjuntos para evitar que un cambio
-            // dinámico del DOM deje fuera archivos seleccionados del multipart.
+            // Los checkboxes y el input file ahora son campos reales del
+            // formulario multipart. Solo usamos append manual como respaldo en
+            // navegadores sin DataTransfer.
             datos.delete('adjuntos_expediente[]');
             adjuntosExpediente.forEach(function (input) {
                 datos.append('adjuntos_expediente[]', String(input.value || ''));
             });
 
-            datos.delete('adjuntos_nuevos[]');
-            archivosNuevos.forEach(function (archivo) {
-                datos.append('adjuntos_nuevos[]', archivo, archivo.name);
-            });
+            const inputArchivos = modal.querySelector('[data-followup-file-input]');
+            const archivosInput = Array.from(inputArchivos?.files || []);
 
-            datos.set(
-                'adjuntos_esperados',
-                String(adjuntosExpediente.length + archivosNuevos.length)
-            );
+            if (archivosInput.length !== archivosNuevos.length) {
+                datos.delete('adjuntos_nuevos[]');
+                archivosNuevos.forEach(function (archivo) {
+                    datos.append('adjuntos_nuevos[]', archivo, archivo.name);
+                });
+            }
+
+            const totalEsperado = adjuntosExpediente.length + archivosNuevos.length;
+            datos.set('adjuntos_esperados', String(totalEsperado));
+            datos.set('adjuntos_expediente_esperados', String(adjuntosExpediente.length));
+            datos.set('adjuntos_nuevos_esperados', String(archivosNuevos.length));
 
             if (seguimientoId <= 0) {
                 mostrarError('No se pudo identificar el seguimiento.');
@@ -499,7 +524,8 @@
                 const respuesta = await fetch(urlGuardar, {
                     method: 'POST',
                     body: datos,
-                    headers: { 'X-Requested-With': 'fetch' }
+                    headers: { 'X-Requested-With': 'fetch' },
+                    credentials: 'same-origin'
                 });
                 const json = await respuesta.json();
 
