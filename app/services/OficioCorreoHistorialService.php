@@ -33,11 +33,21 @@ class OficioCorreoHistorialService
             $correosSeguimiento = $this->consultarCorreosSeguimiento($seguimientoId);
             $correosReunion = $this->consultarCorreosReunion($seguimientoId);
             $correosConvenio = $this->consultarCorreoConvenioLegado($seguimientoId);
+            /*
+             * Recupera también correos históricos que sí quedaron registrados
+             * como interacción CORREO_ENVIADO, aunque sean anteriores al
+             * historial estructurado de seguimientos_vinculacion_correos.
+             * Esto evita que el expediente "pierda" envíos de etapas como
+             * convenio/correcciones solamente porque fueron generados por un
+             * flujo antiguo.
+             */
+            $correosInteracciones = $this->consultarInteraccionesCorreoLegacy($seguimientoId);
             $correos = array_merge(
                 $correosOficio,
                 $correosSeguimiento,
                 $correosReunion,
-                $correosConvenio
+                $correosConvenio,
+                $correosInteracciones
             );
             $correos = $this->eliminarDuplicados($correos);
 
@@ -401,6 +411,101 @@ class OficioCorreoHistorialService
                 'estado' => 'ENVIADO',
                 'error_envio' => '',
                 'fecha_envio' => trim((string)($fila['enviado_at'] ?? '')),
+                'enviado_por' => trim((string)($fila['enviado_por_nombre'] ?? ''))
+            ];
+        }
+
+        return $correos;
+    }
+
+    private function consultarInteraccionesCorreoLegacy($seguimientoId)
+    {
+        /*
+         * interacciones_vinculacion es la bitácora transversal del expediente.
+         * Algunos envíos antiguos (y algunos flujos especializados) quedaron
+         * aquí sin fila equivalente en seguimientos_vinculacion_correos.
+         */
+        $sql = "SELECT
+                    interaccion.id,
+                    interaccion.usuario_id,
+                    interaccion.notas,
+                    interaccion.fecha_inicio,
+                    COALESCE(
+                        NULLIF(TRIM(seguimiento.correo_verificado), ''),
+                        NULLIF(TRIM(seguimiento.correo_fuente), '')
+                    ) AS destinatario_actual,
+                    COALESCE(seguimiento.contacto_nombre, '') AS destinatario_nombre,
+                    TRIM(CONCAT(COALESCE(usuario.nombre, ''), ' ', COALESCE(usuario.apellidos, ''))) AS enviado_por_nombre
+                FROM interacciones_vinculacion interaccion
+                INNER JOIN seguimientos_vinculacion seguimiento
+                    ON seguimiento.id = interaccion.seguimiento_id
+                LEFT JOIN usuarios usuario
+                    ON usuario.id = interaccion.usuario_id
+                WHERE interaccion.seguimiento_id = ?
+                  AND UPPER(TRIM(interaccion.canal)) = 'CORREO'
+                  AND UPPER(TRIM(interaccion.resultado)) = 'CORREO_ENVIADO'
+                ORDER BY interaccion.fecha_inicio DESC, interaccion.id DESC";
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param('i', $seguimientoId);
+        $stmt->execute();
+        $resultado = $stmt->get_result();
+        $correos = [];
+
+        while ($fila = $resultado->fetch_assoc()) {
+            $interaccionId = (int)($fila['id'] ?? 0);
+
+            // Si ya existe historial estructurado para esta interacción, ese
+            // registro contiene asunto/cuerpo/adjuntos completos y tiene prioridad.
+            if ($this->tablaExiste('seguimientos_vinculacion_correos')) {
+                $sqlExiste = "SELECT id
+                              FROM seguimientos_vinculacion_correos
+                              WHERE interaccion_id = ?
+                              LIMIT 1";
+                $stmtExiste = $this->connection->prepare($sqlExiste);
+                $stmtExiste->bind_param('i', $interaccionId);
+                $stmtExiste->execute();
+                if ($stmtExiste->get_result()->fetch_assoc()) {
+                    continue;
+                }
+            }
+
+            $notas = (string)($fila['notas'] ?? '');
+            $destinatario = trim((string)($fila['destinatario_actual'] ?? ''));
+            $asunto = '';
+            $cuerpo = '';
+
+            if (preg_match('/^Para:\s*(.+)$/mi', $notas, $m)) {
+                $destinatario = trim((string)$m[1]);
+            }
+            if (preg_match('/^Asunto:\s*(.+)$/mi', $notas, $m)) {
+                $asunto = trim((string)$m[1]);
+            }
+            if (preg_match('/^Mensaje:\s*(.+)$/mis', $notas, $m)) {
+                $cuerpo = trim((string)$m[1]);
+            }
+
+            if ($asunto === '') {
+                $primeraLinea = trim((string)strtok($notas, "\n"));
+                $asunto = $primeraLinea !== ''
+                    ? $primeraLinea
+                    : 'Correo enviado';
+            }
+
+            $correos[] = [
+                'id' => $interaccionId,
+                'interaccion_id' => $interaccionId,
+                'origen' => 'SEGUIMIENTO',
+                'oficio_id' => 0,
+                'folio' => '',
+                'destinatario' => $destinatario,
+                'destinatario_nombre' => trim((string)($fila['destinatario_nombre'] ?? '')),
+                'asunto' => $asunto,
+                'cuerpo' => $cuerpo,
+                'adjunto_nombre' => '',
+                'adjuntos_count' => 0,
+                'estado' => 'ENVIADO',
+                'error_envio' => '',
+                'fecha_envio' => trim((string)($fila['fecha_inicio'] ?? '')),
                 'enviado_por' => trim((string)($fila['enviado_por_nombre'] ?? ''))
             ];
         }
