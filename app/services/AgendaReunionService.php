@@ -382,7 +382,7 @@ class AgendaReunionService
         ];
     }
 
-    public function cancelar($usuarioId, $rolId, $datos)
+    public function cancelar($usuarioId, $rolId, $datos, $institucionNotificada = false)
     {
         $usuarioId = (int)$usuarioId;
         $rolId = (int)$rolId;
@@ -419,6 +419,16 @@ class AgendaReunionService
         ) {
             return $this->error(
                 'La reunión ya no está disponible para cancelarse.',
+                409
+            );
+        }
+
+        if (
+            strtoupper((string)($reunion['estado'] ?? '')) === 'CORREO_ENVIADO' &&
+            !$institucionNotificada
+        ) {
+            return $this->error(
+                'La institución ya recibió la confirmación. Envía primero el correo de cancelación desde la Agenda.',
                 409
             );
         }
