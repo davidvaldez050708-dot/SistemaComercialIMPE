@@ -535,7 +535,6 @@ if (!empty($seguimientosSinMunicipio)) {
                                 <?php if ($mostrarColumnaAnalista): ?>
                                     <th>Analista</th>
                                 <?php endif; ?>
-                                <th>Municipio</th>
                                 <th>Última actividad</th>
                                 <th>Etapa</th>
                                 <th>Próxima acción</th>
@@ -598,11 +597,6 @@ if (!empty($seguimientosSinMunicipio)) {
                         <?php if ($mostrarColumnaAnalista): ?>
                             <td><?= $nombreAnalista($seguimiento) ?></td>
                         <?php endif; ?>
-                        <td>
-                            <?= trim((string)($seguimiento['municipio'] ?? '')) !== ''
-                                ? $texto($seguimiento['municipio'])
-                                : '—' ?>
-                        </td>
                         <td>
                             <span class="linkage-activity-date" data-row-last-activity>
                                 <?= $texto($etiquetaCanal($seguimiento['ultimo_canal'] ?? '')) ?>
