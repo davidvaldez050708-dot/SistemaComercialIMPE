@@ -38,6 +38,7 @@ class ConvocatoriaController
         $this->validarPermiso('convocatorias.ver');
 
         $modelo = new ConvocatoriaModel();
+        $modelo->desactivarConvocatoriasVencidas();
         $estados = $modelo->obtenerEstados();
 
         $territorioId = (int)($_GET['territorio_id'] ?? 0);
