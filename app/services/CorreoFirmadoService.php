@@ -171,6 +171,126 @@ class CorreoFirmadoService
         return $resultado;
     }
 
+    public function enviarCancelacionReunion(
+        $reunionId,
+        $usuarioId,
+        $rolId,
+        $asunto,
+        $cuerpo,
+        $motivo
+    ) {
+        $reunionId = (int)$reunionId;
+        $usuarioId = (int)$usuarioId;
+        $rolId = (int)$rolId;
+        $asunto = trim((string)$asunto);
+        $cuerpo = trim((string)$cuerpo);
+        $motivo = trim((string)$motivo);
+
+        if (!in_array($rolId, [
+            AgendaReunionService::ROL_ANALISTA,
+            AgendaReunionService::ROL_CUENTA_CLAVE
+        ], true)) {
+            return $this->error(
+                'No tienes permiso para cancelar esta reunión.',
+                403
+            );
+        }
+
+        $reunion = $this->agendaRepo->reunion(
+            $reunionId,
+            $usuarioId,
+            $rolId
+        );
+
+        if (
+            !$reunion ||
+            strtoupper((string)($reunion['estado'] ?? '')) !== 'CORREO_ENVIADO'
+        ) {
+            return $this->error(
+                'Esta reunión ya no requiere un correo de cancelación.',
+                409
+            );
+        }
+
+        $destinatario = trim((string)($reunion['contacto_correo'] ?? ''));
+        if (
+            $destinatario === '' ||
+            !filter_var($destinatario, FILTER_VALIDATE_EMAIL)
+        ) {
+            return $this->error(
+                'La institución no tiene un correo de contacto válido.',
+                422
+            );
+        }
+
+        if ($motivo === '') {
+            return $this->error(
+                'Indica el motivo de la cancelación.',
+                422
+            );
+        }
+
+        if ($asunto === '' || $cuerpo === '') {
+            return $this->error(
+                'Revisa el asunto y el mensaje de cancelación antes de enviar.',
+                422
+            );
+        }
+
+        $usuario = $this->obtenerUsuario($usuarioId);
+        if (!$usuario) {
+            return $this->error(
+                'No fue posible identificar al remitente.',
+                404
+            );
+        }
+
+        $envio = $this->sender->enviar([
+            'remitente' => (string)($usuario['correo'] ?? ''),
+            'nombre_remitente' => $this->nombreUsuario($usuario),
+            'destinatario' => $destinatario,
+            'nombre_destinatario' =>
+                (string)($reunion['contacto_nombre'] ?? ''),
+            'asunto' => $asunto,
+            'cuerpo' => $cuerpo
+        ]);
+
+        if (!($envio['ok'] ?? false)) {
+            return $envio;
+        }
+
+        $resultado = $this->agendaService->cancelar(
+            $usuarioId,
+            $rolId,
+            [
+                'reunion_id' => $reunionId,
+                'motivo_cancelacion' => $motivo
+            ],
+            true
+        );
+
+        if (!($resultado['ok'] ?? false)) {
+            return $this->error(
+                'El correo de cancelación fue enviado, pero la Agenda no pudo marcar la reunión como cancelada. No envíes otro correo sin revisar primero el expediente.',
+                500
+            );
+        }
+
+        $this->agendaRepo->registrarInteraccion(
+            (int)($reunion['seguimiento_id'] ?? 0),
+            $usuarioId,
+            'Correo de cancelación de reunión enviado a ' .
+                $destinatario . '. Asunto: ' . $asunto
+        );
+
+        $resultado['mensaje'] =
+            'Correo de cancelación enviado. La reunión quedó cancelada y el seguimiento volvió a coordinación.';
+        $resultado['firma_incluida'] =
+            (bool)($envio['firma_incluida'] ?? false);
+
+        return $resultado;
+    }
+
     private function construirBloqueEcardCorreo($ecard, $reunion)
     {
         $cid = htmlspecialchars(
