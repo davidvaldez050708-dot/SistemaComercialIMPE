@@ -602,7 +602,7 @@ class AgendaReunionService
             $estado = (string)($fila['estado'] ?? 'SOLICITADA');
             if ((int)$rolId === self::ROL_CUENTA_CLAVE) {
                 $accion = 'Confirmar solicitud de reunión';
-                $etiqueta = 'Pendiente KAM';
+                $etiqueta = 'Pendiente de Cuenta Clave';
                 $icono = 'bi-calendar-check';
                 $estadoUi = 'proxima';
             } elseif ($estado === 'CAMBIO_SOLICITADO') {
@@ -706,7 +706,7 @@ class AgendaReunionService
 
         if ($vencida) {
             $etiquetas = [
-                'SOLICITADA' => 'Vencida · pendiente KAM',
+                'SOLICITADA' => 'Vencida · pendiente de Cuenta Clave',
                 'CONFIRMADA' => 'Vencida · confirmación pendiente',
                 'CORREO_ENVIADO' => 'Vencida · pendiente de registrar'
             ];
@@ -801,7 +801,7 @@ class AgendaReunionService
     private function etiquetaEstado($estado)
     {
         return [
-            'SOLICITADA' => 'Pendiente KAM',
+            'SOLICITADA' => 'Pendiente de Cuenta Clave',
             'CAMBIO_SOLICITADO' => 'Cambio solicitado',
             'CONFIRMADA' => 'Confirmada',
             'CORREO_ENVIADO' => 'Confirmación enviada',
