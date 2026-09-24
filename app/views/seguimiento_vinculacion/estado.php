@@ -1820,6 +1820,43 @@ document.addEventListener('DOMContentLoaded', function () {
         actualizarFilaSeguimiento(seguimiento);
     };
 
+    const resumirNotaActividadTrabajo = function (interaccion) {
+        const notas = String(interaccion?.notas || '').trim();
+        const canal = String(interaccion?.canal || '').trim().toUpperCase();
+        const resultado = String(interaccion?.resultado || '').trim().toUpperCase();
+
+        if (!notas) {
+            return '';
+        }
+
+        if (
+            canal === 'CORREO' &&
+            resultado === 'CORREO_ENVIADO' &&
+            /^Seguimiento por correo enviado/i.test(notas)
+        ) {
+            const adjuntos = notas.match(/^Adjuntos:\s*(.+)$/mi);
+            if (adjuntos && adjuntos[1]) {
+                const total = String(adjuntos[1])
+                    .split(',')
+                    .map(function (valor) { return valor.trim(); })
+                    .filter(Boolean)
+                    .length;
+
+                return total > 0
+                    ? 'Seguimiento por correo enviado · ' +
+                        total + (total === 1 ? ' adjunto' : ' adjuntos')
+                    : 'Seguimiento por correo enviado';
+            }
+
+            return 'Seguimiento por correo enviado';
+        }
+
+        const limite = 180;
+        return notas.length > limite
+            ? notas.slice(0, limite - 1).trimEnd() + '…'
+            : notas;
+    };
+
     const renderizarInteraccionesTrabajo = function (interacciones) {
         const lista = document.querySelector('[data-work-activity-list]');
 
@@ -1833,8 +1870,10 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         lista.innerHTML = interacciones.map(function (interaccion) {
-            const notas = String(interaccion.notas || '').trim();
-            const esRespuestaPostEnvio = notas.indexOf('Respuesta recibida [') === 0;
+            const notasOriginales = String(interaccion.notas || '').trim();
+            const notas = resumirNotaActividadTrabajo(interaccion);
+            const esRespuestaPostEnvio =
+                notasOriginales.indexOf('Respuesta recibida [') === 0;
             const resultadoVisible = esRespuestaPostEnvio
                 ? 'Respuesta recibida'
                 : interaccion.resultado_label;
