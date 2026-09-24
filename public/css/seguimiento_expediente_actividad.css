@@ -511,3 +511,44 @@
     font-size: 10.5px;
     font-weight: 800;
 }
+
+
+/* Correos en Actividad: el contenido completo y sus archivos viven en el modal. */
+.linkage-expediente-activity .linkage-activity-actions {
+    margin: 0 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.linkage-expediente-activity .linkage-activity-view-mail {
+    min-height: 26px;
+    padding: 3px 8px;
+    border-radius: 7px;
+    font-size: 9.5px;
+    font-weight: 800;
+}
+
+.linkage-expediente-activity
+.linkage-history-item[data-activity-visual-type="correo"]
+.linkage-activity-content {
+    gap: 3px !important;
+}
+
+.linkage-expediente-activity
+.linkage-history-item[data-activity-visual-type="correo"]
+.linkage-activity-detail {
+    padding-top: 0 !important;
+}
+
+.linkage-expediente-activity
+.linkage-history-item[data-activity-visual-type="correo"]
+.linkage-activity-footer {
+    padding-top: 4px !important;
+}
+
+@media (max-width: 575.98px) {
+    .linkage-expediente-activity .linkage-activity-actions {
+        margin-left: 0;
+    }
+}
