@@ -228,6 +228,11 @@ class AgendaReunionController
         $this->procesarReprogramacion('solicitarKam');
     }
 
+    public function reproponerFechaVencida()
+    {
+        $this->procesarReprogramacion('reproponerVencidaAnalista');
+    }
+
     public function completarReprogramacion()
     {
         $this->procesarReprogramacion('completarAnalista');
