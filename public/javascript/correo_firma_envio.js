@@ -72,40 +72,6 @@
         return form.querySelector('[type="submit"]');
     };
 
-    const seguimientoActual = function () {
-        const offcanvas = document.getElementById('offcanvasSeguimientoTrabajo');
-        return Number(offcanvas?.dataset.flowSeguimientoId || 0);
-    };
-
-    const enviarSeguimiento = async function (form) {
-        const seguimientoId = seguimientoActual();
-        if (seguimientoId <= 0) {
-            mostrarErrorFormulario(form, 'No se pudo identificar el seguimiento.');
-            return;
-        }
-
-        const datos = new FormData(form);
-        datos.set('seguimiento_id', String(seguimientoId));
-        await ejecutarEnvio(
-            form,
-            'index.php?controller=correoFirmado&action=enviarSeguimiento',
-            datos,
-            function (json) {
-                const modal = form.closest('.modal');
-                if (modal && window.bootstrap) {
-                    bootstrap.Modal.getOrCreateInstance(modal).hide();
-                }
-                mostrarToast(json.mensaje || 'Correo de seguimiento enviado correctamente.');
-
-                const offcanvas = document.getElementById('offcanvasSeguimientoTrabajo');
-                const proxima = offcanvas?.querySelector('[data-work-next-action]');
-                if (proxima) {
-                    proxima.textContent = 'Continuar seguimiento por correo';
-                }
-            }
-        );
-    };
-
     const enviarReunion = async function (form) {
         const datos = new FormData(form);
         const reunionId = Number(datos.get('reunion_id') || 0);
