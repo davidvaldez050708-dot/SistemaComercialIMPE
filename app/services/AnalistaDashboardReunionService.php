@@ -57,9 +57,20 @@ class AnalistaDashboardReunionService
                             FROM reuniones_vinculacion r_hoy
                             WHERE r_hoy.seguimiento_id = s.id
                               AND r_hoy.analista_id = s.analista_id
-                              AND r_hoy.estado IN ('SOLICITADA', 'CONFIRMADA', 'CORREO_ENVIADO')
-                              AND r_hoy.fecha_propuesta >= NOW()
                               AND DATE(r_hoy.fecha_propuesta) = CURDATE()
+                              AND (
+                                  (
+                                      r_hoy.estado IN ('SOLICITADA', 'CONFIRMADA')
+                                      AND r_hoy.fecha_propuesta >= NOW()
+                                  )
+                                  OR (
+                                      r_hoy.estado = 'CORREO_ENVIADO'
+                                      AND DATE_ADD(
+                                          r_hoy.fecha_propuesta,
+                                          INTERVAL COALESCE(NULLIF(r_hoy.duracion_minutos, 0), 60) MINUTE
+                                      ) > NOW()
+                                  )
+                              )
                         )
                     ) THEN s.id END) AS para_hoy,
                     COUNT(DISTINCT CASE WHEN (
@@ -80,8 +91,19 @@ class AnalistaDashboardReunionService
                             FROM reuniones_vinculacion r_vencida
                             WHERE r_vencida.seguimiento_id = s.id
                               AND r_vencida.analista_id = s.analista_id
-                              AND r_vencida.estado IN ('SOLICITADA', 'CONFIRMADA', 'CORREO_ENVIADO')
-                              AND r_vencida.fecha_propuesta < NOW()
+                              AND (
+                                  (
+                                      r_vencida.estado IN ('SOLICITADA', 'CONFIRMADA')
+                                      AND r_vencida.fecha_propuesta < NOW()
+                                  )
+                                  OR (
+                                      r_vencida.estado = 'CORREO_ENVIADO'
+                                      AND DATE_ADD(
+                                          r_vencida.fecha_propuesta,
+                                          INTERVAL COALESCE(NULLIF(r_vencida.duracion_minutos, 0), 60) MINUTE
+                                      ) <= NOW()
+                                  )
+                              )
                         )
                     ) THEN s.id END) AS atrasados
                 FROM seguimientos_vinculacion s
@@ -115,6 +137,7 @@ class AnalistaDashboardReunionService
                     r.id,
                     r.seguimiento_id,
                     r.fecha_propuesta,
+                    r.duracion_minutos,
                     r.estado,
                     r.cambio_solicitado_at,
                     r.updated_at,
@@ -182,11 +205,31 @@ class AnalistaDashboardReunionService
                     $prioridad = 86;
                     $motivo = 'Reunión pendiente de confirmación';
                 }
-            } elseif (in_array($estado, ['CONFIRMADA', 'CORREO_ENVIADO'], true) && $fecha) {
+            } elseif ($estado === 'CONFIRMADA' && $fecha) {
                 if ($fecha < $ahora) {
+                    $prioridad = 99;
+                    $tipo = 'atrasado';
+                    $motivo = 'Confirmación pendiente de enviar';
+                } elseif ($fecha <= $limite24h) {
+                    $prioridad = 88;
+                    $motivo = 'Confirmación pendiente de enviar';
+                }
+            } elseif ($estado === 'CORREO_ENVIADO' && $fecha) {
+                $duracion = max(
+                    1,
+                    (int)($reunion['duracion_minutos'] ?? 60)
+                );
+                $fin = $fecha->modify('+' . $duracion . ' minutes');
+
+                if ($fecha <= $ahora && $fin > $ahora) {
+                    $prioridad = 70;
+                    $tipo = 'reunion';
+                    $motivo = 'Reunión en curso';
+                } elseif ($fin <= $ahora) {
                     $prioridad = 100;
                     $tipo = 'atrasado';
                     $motivo = 'Reunión pendiente de registrar';
+                    $fechaReferencia = $fin;
                 } elseif ($fecha <= $limite24h) {
                     $prioridad = 55;
                     $motivo = 'Reunión próxima';
@@ -301,6 +344,7 @@ class AnalistaDashboardReunionService
             $mapa[(string)$seguimientoId] = [
                 'estado' => strtoupper(trim((string)($reunion['estado'] ?? ''))),
                 'fecha' => (string)($reunion['fecha_propuesta'] ?? ''),
+                'duracion_minutos' => (int)($reunion['duracion_minutos'] ?? 60),
                 'reunion_id' => (int)($reunion['id'] ?? 0)
             ];
         }
