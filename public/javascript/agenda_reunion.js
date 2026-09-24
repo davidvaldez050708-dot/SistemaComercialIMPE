@@ -674,8 +674,9 @@
                     '<h6>Reunión confirmada</h6>' +
                     '<p>Cuenta Clave confirmó la fecha y agregó los datos de acceso. Prepara el correo de confirmación para la institución.</p>' +
                     datosConexion(reunion) +
-                    '<div class="agenda-inline-note is-success">' +
-                        '<i class="bi bi-check2-circle"></i> Lista para enviar la confirmación a la institución.' +
+                    '<div class="agenda-status-line is-ready">' +
+                        '<i class="bi bi-check2-circle"></i>' +
+                        '<span>Lista para enviar confirmación</span>' +
                     '</div>' +
                     '<div class="agenda-action-row">' +
                         '<button class="btn btn-system-save" type="button" data-agenda-prepare-mail="' + Number(reunion.id || 0) + '">' +
@@ -691,7 +692,10 @@
                     '<h6>Reunión formalmente agendada</h6>' +
                     '<p>La confirmación ya fue registrada y el seguimiento puede continuar al paso 12 cuando se realice la reunión.</p>' +
                     datosConexion(reunion) +
-                    '<div class="agenda-inline-note is-success"><i class="bi bi-check2-circle"></i> Confirmación enviada a la institución.</div>' +
+                    '<div class="agenda-status-line is-sent">' +
+                        '<i class="bi bi-check2-circle"></i>' +
+                        '<span>Confirmación enviada a la institución</span>' +
+                    '</div>' +
                 '</div>';
             }
 
