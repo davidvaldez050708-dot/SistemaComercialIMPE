@@ -336,6 +336,100 @@ $pendientesAgenda = array_values(array_filter(
         </div>
     </div>
 
+
+    <div class="modal fade" id="modalAgendaCorreo" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered agenda-mail-modal-dialog">
+            <div class="modal-content system-form-modal agenda-mail-modal">
+                <form data-agenda-mail-form data-agenda-action-form data-agenda-action="marcarCorreoEnviado">
+                    <div class="modal-header">
+                        <div>
+                            <h5 class="modal-title">Correo de confirmación</h5>
+                            <p class="modal-subtitle">
+                                Revisa el mensaje y la Ecard antes de enviarlos a la institución.
+                            </p>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                    </div>
+
+                    <div class="modal-body">
+                        <div class="alert alert-danger d-none agenda-form-error" data-agenda-mail-error></div>
+
+                        <input type="hidden" name="reunion_id" data-agenda-mail-reunion-id>
+
+                        <div class="agenda-mail-recipient-card">
+                            <span>Para</span>
+                            <strong data-agenda-mail-recipient>—</strong>
+                        </div>
+
+                        <div class="agenda-mail-field">
+                            <label class="form-label">Asunto</label>
+                            <input
+                                class="form-control system-form-control"
+                                type="text"
+                                name="asunto"
+                                maxlength="255"
+                                data-agenda-mail-subject
+                                required>
+                        </div>
+
+                        <div class="agenda-mail-field">
+                            <label class="form-label">Mensaje</label>
+                            <textarea
+                                class="form-control system-form-control"
+                                name="cuerpo"
+                                rows="8"
+                                data-agenda-mail-body
+                                required></textarea>
+                        </div>
+
+                        <div data-agenda-mail-ecard></div>
+
+                        <div class="agenda-mail-note">
+                            <i class="bi bi-info-circle"></i>
+                            <span>
+                                El sistema enviará el correo, la Ecard seleccionada y el enlace de acceso a la reunión.
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-system-light" data-copy-email>
+                            <i class="bi bi-copy"></i>
+                            Copiar mensaje
+                        </button>
+                        <button type="button" class="btn btn-system-light" data-bs-dismiss="modal">
+                            Cancelar
+                        </button>
+                        <button type="submit" class="btn btn-system-save">
+                            <i class="bi bi-send"></i>
+                            Enviar correo
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalAgendaEcardVista" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered agenda-ecard-viewer-dialog">
+            <div class="modal-content system-form-modal agenda-ecard-viewer">
+                <div class="modal-header">
+                    <div>
+                        <h5 class="modal-title">Vista previa de Ecard</h5>
+                        <p class="modal-subtitle" data-agenda-ecard-viewer-speaker></p>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <img
+                        src=""
+                        alt="Vista previa de Ecard de reunión"
+                        data-agenda-ecard-viewer-image>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script type="application/json" id="agendaReunionesData">
         <?= json_encode($agendaReuniones, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE) ?>
     </script>
