@@ -159,6 +159,8 @@ $totalPublicacionesPeriodo = (int)($totalPublicacionesPeriodo ?? 0);
         <h2>Publicaciones totales</h2>
 
         <form method="GET" action="<?= BASE_URL ?>index.php" class="marketing-publications-filter">
+            <input type="hidden" name="controller" value="home">
+            <input type="hidden" name="action" value="index">
             <select
                 class="form-select system-form-control"
                 name="periodo_publicaciones"
@@ -171,18 +173,21 @@ $totalPublicacionesPeriodo = (int)($totalPublicacionesPeriodo ?? 0);
         </form>
     </div>
 
-    <div class="marketing-publications-plot">
-        <div class="marketing-publications-column">
-            <strong><?= $totalPublicacionesPeriodo ?></strong>
-            <div class="marketing-publications-bar-space" aria-hidden="true">
-                <span
-                    class="marketing-publications-bar"
-                    style="height: <?= $totalPublicacionesPeriodo > 0 ? '100' : '0' ?>%;">
-                </span>
+    <?php if ($totalPublicacionesPeriodo > 0): ?>
+        <div class="marketing-publications-plot">
+            <div class="marketing-publications-column">
+                <strong><?= $totalPublicacionesPeriodo ?></strong>
+                <div class="marketing-publications-bar-space" aria-hidden="true">
+                    <span class="marketing-publications-bar" style="height: 100%;"></span>
+                </div>
+                <span class="marketing-publications-state">Publicaciones</span>
             </div>
-            <span class="marketing-publications-state">Publicaciones</span>
         </div>
-    </div>
+    <?php else: ?>
+        <div class="marketing-publications-empty">
+            No hubo publicaciones en los últimos <?= $periodoPublicaciones ?> días.
+        </div>
+    <?php endif; ?>
 </section>
 
 </div>
