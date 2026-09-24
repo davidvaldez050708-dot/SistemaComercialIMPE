@@ -102,6 +102,26 @@
     line-height: 1.35;
 }
 
+.system-form-modal .form-text,
+.system-form-modal .convocatoria-state-option,
+.system-form-modal .convocatoria-state-option span {
+    color: var(--color-text-secondary);
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.system-form-modal input[type="file"].system-form-control {
+    line-height: 30px;
+}
+
+.system-form-modal input[type="file"].system-form-control::file-selector-button {
+    height: 42px;
+    margin-top: -1px;
+    margin-bottom: -1px;
+    display: inline-flex;
+    align-items: center;
+}
+
 .convocatoria-state-option[hidden] {
     display: none;
 }
@@ -201,7 +221,7 @@
 
 /* Ajustes visuales locales para los formularios de Convocatorias. */
 .system-form-dialog {
-    max-width: 610px;
+    max-width: 580px;
 }
 
 /*
