@@ -722,18 +722,22 @@
                     return;
                 }
 
-                bootstrap.Modal.getOrCreateInstance(modal).hide();
-                mostrarExito(json.mensaje || 'Avance guardado correctamente.');
-
+                // Bloquea visualmente la ruta antes de cerrar el modal. Así evitamos
+                // que cualquier refresco intermedio vuelva a pintar una acción anterior.
+                offcanvas.setAttribute('data-route-refreshing', 'true');
                 const proxima = offcanvas.querySelector('[data-work-next-action]');
                 if (proxima) {
                     proxima.textContent = 'Actualizando ruta...';
                 }
 
+                bootstrap.Modal.getOrCreateInstance(modal).hide();
+                mostrarExito(json.mensaje || 'Avance guardado correctamente.');
+
                 document.dispatchEvent(new CustomEvent('impe:post-envio-updated', {
                     detail: {
                         seguimientoId: seguimientoActualId,
-                        accion: accionActual
+                        accion: accionActual,
+                        serverState: json
                     }
                 }));
             } catch (error) {
