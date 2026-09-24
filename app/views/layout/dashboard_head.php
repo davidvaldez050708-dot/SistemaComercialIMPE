@@ -212,6 +212,7 @@ if ($esSeguimientoDetalle) {
         $jsOpcionalHead,
         [
             'seguimiento_llamadas_expediente.js',
+            'seguimiento_llamadas_desplegable.js',
             'seguimiento_expediente_proxima_accion.js',
             'seguimiento_expediente_actividad.js',
             'seguimiento_resultados_humanizados.js',
