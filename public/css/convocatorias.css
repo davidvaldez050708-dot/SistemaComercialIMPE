@@ -96,6 +96,12 @@
     background: #f6f8fb;
 }
 
+.system-form-modal .convocatoria-state-option,
+.system-form-modal .convocatoria-state-option span {
+    font-size: 14px;
+    line-height: 1.35;
+}
+
 .convocatoria-state-option[hidden] {
     display: none;
 }
