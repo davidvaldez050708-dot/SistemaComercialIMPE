@@ -404,6 +404,36 @@ class SeguimientoActividadPresentacionService
             return $presentacion;
         }
 
+        if (preg_match('/^Correo institucional enviado\b/ui', $notas)) {
+            $campos = $this->extraerLineasClaveValor($notas);
+            $asunto = trim((string)($campos['Asunto'] ?? ''));
+            $mensaje = trim((string)($campos['Mensaje'] ?? ''));
+            $presentacion['titulo'] = stripos($asunto, 'Correcciones al convenio') === 0
+                ? 'Correcciones de convenio enviadas'
+                : 'Correo institucional enviado';
+            $presentacion['tipo_visual'] = 'correo';
+            $presentacion['resultado_label'] = 'Correo enviado';
+            $presentacion['resumen'] = $asunto !== '' ? $asunto : 'Correo institucional enviado';
+            $presentacion['detalles'] = array_values(array_filter([
+                $this->detalle('Para', $campos['Para'] ?? ''),
+                $this->detalle('Asunto', $asunto),
+                $this->detalle('Mensaje', $mensaje)
+            ]));
+            return $presentacion;
+        }
+
+        if (preg_match('/^Correcciones solicitadas para convenio versión\s*(\d+)\s*:\s*(.+)$/ui', $notas, $m)) {
+            $presentacion['titulo'] = 'Correcciones de convenio registradas';
+            $presentacion['tipo_visual'] = 'convenio';
+            $presentacion['resultado_label'] = 'Correcciones solicitadas';
+            $presentacion['resumen'] = 'Convenio versión ' . trim($m[1]) . ' requiere ajustes';
+            $presentacion['detalles'] = [
+                $this->detalle('Versión', trim($m[1])),
+                $this->detalle('Correcciones requeridas', trim($m[2]))
+            ];
+            return $presentacion;
+        }
+
         if (preg_match('/^Seguimiento por correo enviado/i', $notas)) {
             $campos = $this->extraerLineasClaveValor($notas);
             $adjuntos = trim((string)($campos['Adjuntos'] ?? ''));
