@@ -434,8 +434,8 @@
 }
 
 #modalSeguimientoPostEnvio .convenio-review-warning {
-    border-color: #eadfd0;
-    background: #fffaf2;
+    border-color: #dfe6ef;
+    background: #f8fafd;
 }
 
 #modalSeguimientoPostEnvio .convenio-review-confirm-icon {
@@ -457,8 +457,8 @@
     display: grid;
     place-items: center;
     border-radius: 10px;
-    background: #fff2dc;
-    color: #8a5a16;
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
     font-size: 17px;
 }
 
