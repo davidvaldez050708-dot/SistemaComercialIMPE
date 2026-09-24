@@ -156,14 +156,54 @@ class ReunionResultadoService
         $flujo['contexto'] = is_array($flujo['contexto'] ?? null)
             ? $flujo['contexto']
             : [];
+        $objetivo = trim((string)(
+            $estado['reunion_seguimiento_objetivo'] ?? ''
+        ));
+        $pendienteDe = strtoupper(trim((string)(
+            $estado['reunion_seguimiento_pendiente_de'] ?? ''
+        )));
+        $accionSeguimiento = strtoupper(trim((string)(
+            $estado['reunion_seguimiento_accion'] ?? ''
+        )));
+        $pendienteEtiqueta = $this->etiquetaPendienteDe($pendienteDe);
+        $accionEtiqueta = $this->etiquetaAccionSeguimiento(
+            $accionSeguimiento
+        );
+
         $flujo['contexto']['seguimiento_reunion_fecha'] = $fecha;
         $flujo['contexto']['seguimiento_reunion_disponible'] = $disponible;
+        $flujo['contexto']['seguimiento_reunion_objetivo'] = $objetivo;
+        $flujo['contexto']['seguimiento_reunion_pendiente_de'] =
+            $pendienteDe;
+        $flujo['contexto']['seguimiento_reunion_pendiente_de_label'] =
+            $pendienteEtiqueta;
+        $flujo['contexto']['seguimiento_reunion_accion'] =
+            $accionSeguimiento;
+        $flujo['contexto']['seguimiento_reunion_accion_label'] =
+            $accionEtiqueta;
+
+        $detalleContexto = $objetivo !== ''
+            ? ' Pendiente: ' . $objetivo . '.'
+            : '';
+        if ($accionEtiqueta !== '') {
+            $detalleContexto .= ' Acción prevista: ' .
+                $accionEtiqueta . '.';
+        }
+        if ($pendienteEtiqueta !== '') {
+            $detalleContexto .= ' Pendiente de: ' .
+                $pendienteEtiqueta . '.';
+        }
 
         if (!$disponible) {
-            $flujo['titulo'] = 'Seguimiento de acuerdos programado';
+            $flujo['titulo'] = $accionEtiqueta !== ''
+                ? 'Seguimiento programado · ' . $accionEtiqueta
+                : 'Seguimiento de acuerdos programado';
             $flujo['descripcion'] = $fechaLegible !== ''
-                ? 'La reunión ya fue realizada y requiere seguimiento. La próxima revisión está programada para ' . $fechaLegible . '.'
-                : 'La reunión ya fue realizada y requiere un seguimiento posterior.';
+                ? 'La reunión ya fue realizada y requiere seguimiento.' .
+                    $detalleContexto .
+                    ' Próxima revisión: ' . $fechaLegible . '.'
+                : 'La reunión ya fue realizada y requiere seguimiento.' .
+                    $detalleContexto;
             $flujo['accion_principal'] = [
                 'codigo' => 'SEGUIMIENTO_REUNION_AUN_NO_DISPONIBLE',
                 'etiqueta' => 'Registrar seguimiento',
@@ -174,8 +214,12 @@ class ReunionResultadoService
             return $flujo;
         }
 
-        $flujo['titulo'] = 'Dar seguimiento a acuerdos';
-        $flujo['descripcion'] = 'La reunión ya fue realizada. Registra el seguimiento de los acuerdos para decidir si se avanza al convenio, se programa otro seguimiento o se cierra el caso.';
+        $flujo['titulo'] = $accionEtiqueta !== ''
+            ? 'Dar seguimiento · ' . $accionEtiqueta
+            : 'Dar seguimiento a acuerdos';
+        $flujo['descripcion'] =
+            'Ya corresponde revisar el pendiente acordado en la reunión.' .
+            $detalleContexto;
         $flujo['accion_principal'] = [
             'codigo' => 'REGISTRAR_SEGUIMIENTO_REUNION',
             'etiqueta' => 'Registrar seguimiento',
@@ -220,23 +264,52 @@ class ReunionResultadoService
         }
 
         $nuevaFecha = null;
+        $nuevoContexto = null;
+
         if ($resultado === 'REQUIERE_SEGUIMIENTO') {
-            $nuevaFecha = $this->normalizarFechaHora($datos['seguimiento_reunion_fecha'] ?? '');
-            if ($nuevaFecha === null || strtotime($nuevaFecha) <= time()) {
+            $nuevaFecha = $this->normalizarFechaHora(
+                $datos['seguimiento_reunion_fecha'] ?? ''
+            );
+            if (
+                $nuevaFecha === null ||
+                strtotime($nuevaFecha) <= time()
+            ) {
                 return $this->error(
                     'Indica una nueva fecha futura para continuar el seguimiento.',
                     422
                 );
             }
+
+            $validacionContexto = $this->validarContextoSeguimiento(
+                $datos,
+                'seguimiento'
+            );
+            if (!($validacionContexto['ok'] ?? false)) {
+                return $validacionContexto;
+            }
+
+            $nuevoContexto = [
+                'objetivo' => $validacionContexto['objetivo'],
+                'pendiente_de' => $validacionContexto['pendiente_de'],
+                'accion' => $validacionContexto['accion']
+            ];
         }
 
         $this->connection->begin_transaction();
 
         try {
+            $pendienteAtendido = trim((string)(
+                $estado['reunion_seguimiento_objetivo'] ?? ''
+            ));
+            $detalleAtendido = $pendienteAtendido !== ''
+                ? ' Pendiente atendido: ' . $pendienteAtendido . '.'
+                : '';
+
             $this->registrarInteraccion(
                 $seguimientoId,
                 $analistaId,
-                'Seguimiento posterior a reunión [' . $resultado . ']: ' . $notas
+                'Seguimiento posterior a reunión [' . $resultado . ']:' .
+                $detalleAtendido . ' Resultado: ' . $notas
             );
 
             $this->actualizarResultadoAgenda(
@@ -248,7 +321,10 @@ class ReunionResultadoService
 
             if ($resultado === 'AVANZAR_CONVENIO') {
                 $sqlPost = "UPDATE seguimientos_vinculacion_post_envio
-                            SET reunion_resultado = 'AVANZAR_CONVENIO'
+                            SET reunion_resultado = 'AVANZAR_CONVENIO',
+                                reunion_seguimiento_objetivo = NULL,
+                                reunion_seguimiento_pendiente_de = NULL,
+                                reunion_seguimiento_accion = NULL
                             WHERE seguimiento_id = ?";
                 $stmtPost = $this->connection->prepare($sqlPost);
                 $stmtPost->bind_param('i', $seguimientoId);
@@ -262,7 +338,10 @@ class ReunionResultadoService
                 );
             } elseif ($resultado === 'NO_INTERESADO') {
                 $sqlPost = "UPDATE seguimientos_vinculacion_post_envio
-                            SET reunion_resultado = 'NO_INTERESADO'
+                            SET reunion_resultado = 'NO_INTERESADO',
+                                reunion_seguimiento_objetivo = NULL,
+                                reunion_seguimiento_pendiente_de = NULL,
+                                reunion_seguimiento_accion = NULL
                             WHERE seguimiento_id = ?";
                 $stmtPost = $this->connection->prepare($sqlPost);
                 $stmtPost->bind_param('i', $seguimientoId);
@@ -284,6 +363,25 @@ class ReunionResultadoService
                     $analistaId,
                     $nuevaFecha,
                     null
+                );
+                $this->actualizarContextoSeguimiento(
+                    $seguimientoId,
+                    $nuevoContexto
+                );
+
+                $this->registrarInteraccion(
+                    $seguimientoId,
+                    $analistaId,
+                    'Nueva revisión programada para ' . $nuevaFecha .
+                    '. Pendiente: ' . $nuevoContexto['objetivo'] .
+                    '. Acción prevista: ' .
+                    $this->etiquetaAccionSeguimiento(
+                        $nuevoContexto['accion']
+                    ) .
+                    '. Pendiente de: ' .
+                    $this->etiquetaPendienteDe(
+                        $nuevoContexto['pendiente_de']
+                    ) . '.'
                 );
             }
 
@@ -360,7 +458,10 @@ class ReunionResultadoService
                             WHEN reunion.id IS NOT NULL
                             THEN reunion.realizada_at
                             ELSE p.reunion_realizada_at
-                        END AS reunion_realizada_at
+                        END AS reunion_realizada_at,
+                        p.reunion_seguimiento_objetivo,
+                        p.reunion_seguimiento_pendiente_de,
+                        p.reunion_seguimiento_accion
                     FROM seguimientos_vinculacion s
                     LEFT JOIN seguimientos_vinculacion_post_envio p
                         ON p.seguimiento_id = s.id
@@ -375,7 +476,10 @@ class ReunionResultadoService
                         s.estado_seguimiento,
                         s.proxima_accion_at,
                         p.reunion_resultado,
-                        p.reunion_realizada_at
+                        p.reunion_realizada_at,
+                        p.reunion_seguimiento_objetivo,
+                        p.reunion_seguimiento_pendiente_de,
+                        p.reunion_seguimiento_accion
                     FROM seguimientos_vinculacion s
                     LEFT JOIN seguimientos_vinculacion_post_envio p
                         ON p.seguimiento_id = s.id
