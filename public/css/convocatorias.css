@@ -510,3 +510,7 @@
     font-weight: 600;
     line-height: 1.4;
 }
+
+.marketing-module-typography > .dashboard-panel:not(.marketing-territory-coverage) .panel-title {
+    font-weight: 800;
+}
