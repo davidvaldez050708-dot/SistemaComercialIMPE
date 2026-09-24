@@ -109,6 +109,14 @@ class HomeController
                     $resumenMarketing = $modeloConvocatoria->obtenerResumenDashboard();
                     $coberturaMarketing = $modeloConvocatoria->obtenerCoberturaTerritorialDashboard(4);
 
+                    $periodoPublicaciones = (int)($_GET['periodo_publicaciones'] ?? 30);
+                    if (!in_array($periodoPublicaciones, [7, 30, 90], true)) {
+                        $periodoPublicaciones = 30;
+                    }
+
+                    $publicacionesPorEstado = $modeloConvocatoria
+                        ->obtenerPublicacionesPorPeriodoDashboard($periodoPublicaciones);
+
                     $vistaPanel = __DIR__ . '/../views/dashboard/marketing.php';
                     break;
                 }
