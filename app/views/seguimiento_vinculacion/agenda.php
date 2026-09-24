@@ -343,8 +343,8 @@ $pendientesAgenda = array_values(array_filter(
                 <form data-agenda-mail-form data-agenda-action-form data-agenda-action="marcarCorreoEnviado">
                     <div class="modal-header">
                         <div>
-                            <h5 class="modal-title">Correo de confirmación</h5>
-                            <p class="modal-subtitle">
+                            <h5 class="modal-title" data-agenda-mail-title>Correo de confirmación</h5>
+                            <p class="modal-subtitle" data-agenda-mail-subtitle>
                                 Revisa el mensaje y la Ecard antes de enviarlos a la institución.
                             </p>
                         </div>
@@ -355,6 +355,7 @@ $pendientesAgenda = array_values(array_filter(
                         <div class="alert alert-danger d-none agenda-form-error" data-agenda-mail-error></div>
 
                         <input type="hidden" name="reunion_id" data-agenda-mail-reunion-id>
+                        <input type="hidden" name="motivo_cancelacion" data-agenda-mail-cancel-reason>
 
                         <div class="agenda-mail-recipient-card">
                             <span>Para</span>
@@ -382,11 +383,13 @@ $pendientesAgenda = array_values(array_filter(
                                 required></textarea>
                         </div>
 
-                        <div data-agenda-mail-ecard></div>
+                        <div data-agenda-mail-ecard-section>
+                            <div data-agenda-mail-ecard></div>
+                        </div>
 
                         <div class="agenda-mail-note">
                             <i class="bi bi-info-circle"></i>
-                            <span>
+                            <span data-agenda-mail-note>
                                 El sistema enviará el correo, la Ecard seleccionada y el enlace de acceso a la reunión.
                             </span>
                         </div>
@@ -400,7 +403,7 @@ $pendientesAgenda = array_values(array_filter(
                         <button type="button" class="btn btn-system-light" data-bs-dismiss="modal">
                             Cancelar
                         </button>
-                        <button type="submit" class="btn btn-system-save">
+                        <button type="submit" class="btn btn-system-save" data-agenda-mail-submit>
                             <i class="bi bi-send"></i>
                             Enviar correo
                         </button>
