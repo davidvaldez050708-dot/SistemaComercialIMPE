@@ -140,7 +140,7 @@ if ($esSeguimientoEstado || $esSeguimientoDetalle || $esAgendaDashboard) {
     $cssOpcionalDashboard[] = 'seguimiento_estabilizacion_visual.css';
 }
 
-if ($esConvocatoriaDashboard) {
+if ($esConvocatoriaDashboard || $esHomeDashboard) {
     $cssOpcionalDashboard[] = 'convocatorias.css';
 }
 
