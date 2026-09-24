@@ -236,16 +236,24 @@ $pendientesAgenda = array_values(array_filter(
                         <div class="agenda-context-card d-none" data-agenda-follow-context></div>
 
                         <div class="row g-3">
-                            <div class="col-12">
+                            <div class="col-12" data-agenda-follow-field>
                                 <label class="form-label">Seguimiento</label>
-                                <select class="form-select system-form-control" name="seguimiento_id" required data-agenda-follow-select>
+                                <div class="agenda-follow-select-wrap">
+                                    <select class="form-select system-form-control" name="seguimiento_id" required data-agenda-follow-select>
                                     <option value="">Selecciona una institución</option>
                                     <?php foreach ($seguimientosElegibles as $seguimiento): ?>
                                         <option value="<?= (int)($seguimiento['id'] ?? 0) ?>">
                                             <?= htmlspecialchars((string)($seguimiento['nombre_entidad'] ?? 'Institución'), ENT_QUOTES, 'UTF-8') ?>
                                         </option>
                                     <?php endforeach; ?>
-                                </select>
+                                    </select>
+                                    <span class="agenda-follow-lock d-none" data-agenda-follow-lock aria-hidden="true">
+                                        <i class="bi bi-lock"></i>
+                                    </span>
+                                </div>
+                                <div class="form-text d-none" data-agenda-follow-locked-note>
+                                    Este seguimiento viene del expediente actual.
+                                </div>
                             </div>
 
                             <div class="col-md-6">
@@ -281,6 +289,7 @@ $pendientesAgenda = array_values(array_filter(
                                     name="objetivo"
                                     maxlength="500"
                                     placeholder="Ej. Presentar la propuesta de vinculación y definir próximos acuerdos"
+                                    data-agenda-objective
                                     required>
                                 <div class="form-text">
                                     Describe brevemente el propósito de la reunión. La Ecard mostrará el nombre de la institución.
