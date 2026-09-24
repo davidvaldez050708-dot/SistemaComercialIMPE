@@ -328,6 +328,41 @@ class ConvocatoriaModel
         ];
     }
 
+    public function obtenerPublicacionesPorPeriodoDashboard($dias = 30)
+    {
+        $diasPermitidos = [7, 30, 90];
+        $dias = in_array((int)$dias, $diasPermitidos, true) ? (int)$dias : 30;
+
+        $sql = "SELECT
+                    estados.id,
+                    estados.nombre,
+                    COUNT(DISTINCT convocatorias.id) AS publicaciones
+                FROM estados
+                LEFT JOIN convocatoria_estados
+                    ON convocatoria_estados.estado_id = estados.id
+                LEFT JOIN convocatorias
+                    ON convocatorias.id = convocatoria_estados.convocatoria_id
+                   AND convocatorias.created_at >= DATE_SUB(NOW(), INTERVAL " . $dias . " DAY)
+                WHERE estados.estado = 1
+                GROUP BY estados.id, estados.nombre
+                HAVING publicaciones > 0
+                ORDER BY publicaciones DESC, estados.nombre ASC";
+
+        $resultado = $this->connection->query($sql);
+        $filas = $this->convertirResultadoEnArreglo($resultado);
+
+        return array_map(
+            static function ($fila) {
+                return [
+                    'id' => (int)($fila['id'] ?? 0),
+                    'nombre' => (string)($fila['nombre'] ?? ''),
+                    'publicaciones' => (int)($fila['publicaciones'] ?? 0)
+                ];
+            },
+            $filas
+        );
+    }
+
     private function obtenerEstadosIds($convocatoriaId)
     {
         $sql = "SELECT estado_id
