@@ -4,6 +4,7 @@ require_once __DIR__ . '/../../helpers/AvatarHelper.php';
 
 $seguimiento = $seguimiento ?? [];
 $interacciones = $interacciones ?? [];
+$interaccionesPresentadas = $interaccionesPresentadas ?? $interacciones;
 $oficios = $oficios ?? [];
 $observaciones = $observaciones ?? [];
 $modoSeguimiento = $modoSeguimiento ?? 'analista';
@@ -181,17 +182,29 @@ foreach (($adjuntosCorreoSeguimiento ?? []) as $adjuntoCorreo) {
     $adjuntosCorreoPorInteraccion[$interaccionIdAdjunto][] = $adjuntoCorreo;
 }
 
-foreach ($interacciones as $interaccion) {
+foreach ($interaccionesPresentadas as $interaccion) {
+    $resultadoPresentado = trim((string)(
+        $interaccion['resultado_label'] ?? ''
+    ));
     $actividadExpediente[] = [
-        'tipo' => strtolower((string)($interaccion['canal'] ?? 'interaccion')),
-        'titulo' => $etiqueta($interaccion['canal'] ?? '', $canales),
+        'tipo' => trim((string)($interaccion['tipo_visual'] ?? '')) !== ''
+            ? strtolower((string)$interaccion['tipo_visual'])
+            : strtolower((string)($interaccion['canal'] ?? 'interaccion')),
+        'titulo' => trim((string)($interaccion['titulo'] ?? '')) !== ''
+            ? (string)$interaccion['titulo']
+            : $etiqueta($interaccion['canal'] ?? '', $canales),
         'fecha' => trim((string)($interaccion['fecha_inicio'] ?? '')),
-        'estado' => $etiqueta($interaccion['resultado'] ?? '', $resultados),
-        'detalle' => $formatearNotasInteraccion($interaccion['notas'] ?? ''),
+        'estado' => $resultadoPresentado !== ''
+            ? $resultadoPresentado
+            : $etiqueta($interaccion['resultado'] ?? '', $resultados),
+        'detalle' => trim((string)($interaccion['detalle_texto'] ?? '')) !== ''
+            ? (string)$interaccion['detalle_texto']
+            : $formatearNotasInteraccion($interaccion['notas'] ?? ''),
         'orden' => (int)($interaccion['id'] ?? 0),
         'interaccion_id' => (int)($interaccion['id'] ?? 0),
         'canal_codigo' => strtoupper(trim((string)($interaccion['canal'] ?? ''))),
-        'resultado_codigo' => strtoupper(trim((string)($interaccion['resultado'] ?? '')))
+        'resultado_codigo' => strtoupper(trim((string)($interaccion['resultado'] ?? ''))),
+        'presentada' => 1
     ];
 }
 
@@ -437,7 +450,8 @@ usort($actividadExpediente, function ($eventoA, $eventoB) {
             <?php foreach ($actividadExpediente as $eventoActividad): ?>
                 <article
                     class="linkage-history-item"
-                    data-activity-type="<?= $texto($eventoActividad['tipo'] ?? '') ?>">
+                    data-activity-type="<?= $texto($eventoActividad['tipo'] ?? '') ?>"
+                    <?= !empty($eventoActividad['presentada']) ? 'data-activity-presented="1"' : '' ?>>
                     <div>
                         <strong><?= $texto($eventoActividad['titulo'] ?? 'Actividad') ?></strong>
                         <span>
