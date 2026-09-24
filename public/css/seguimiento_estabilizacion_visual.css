@@ -557,3 +557,25 @@
         min-width: 680px;
     }
 }
+
+
+/* Resúmenes operativos: compactos; el detalle completo vive en Actividad. */
+[data-work-activity-list] article > span,
+[data-work-activity-list] article > p {
+    min-width: 0;
+    overflow: hidden;
+}
+
+[data-work-activity-list] article > span {
+    display: block;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+[data-work-activity-list] article > p {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    line-height: 1.45;
+}
