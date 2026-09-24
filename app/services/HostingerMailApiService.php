@@ -335,19 +335,12 @@ class HostingerMailApiService
         $remitente = strtolower(trim((string)$remitente));
         $nombreRemitente = trim((string)$nombreRemitente);
 
-        $perfil = [
+        return [
             'nombre' => $nombreRemitente,
             'cargo' => 'Analista de Enlace Institucional',
             'institucion' => 'Fundación Red Educativa México',
             'telefono' => ''
         ];
-
-        if ($remitente === 'd.institucional2@rededucativamexico.org') {
-            $perfil['nombre'] = 'Ing. Diego Israel Bahena Espin';
-            $perfil['telefono'] = '5535318203';
-        }
-
-        return $perfil;
     }
 
     private function completarFirmaTexto($cuerpo, $perfilFirma)
