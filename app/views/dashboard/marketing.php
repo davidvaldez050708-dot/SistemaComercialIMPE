@@ -154,7 +154,18 @@ $periodoPublicaciones = (int)($periodoPublicaciones ?? 30);
 $totalPublicacionesPeriodo = (int)($totalPublicacionesPeriodo ?? 0);
 ?>
 
-<section class="dashboard-panel marketing-publications-chart mt-4">
+<?php
+$estadosSinConvocatoria = is_array($estadosSinConvocatoria ?? null)
+    ? $estadosSinConvocatoria
+    : [];
+$totalSinConvocatoria = count($estadosSinConvocatoria);
+$porcentajeSinConvocatoria = $totalEstadosCobertura > 0
+    ? (int)round(($totalSinConvocatoria / $totalEstadosCobertura) * 100)
+    : 0;
+?>
+
+<div class="marketing-bottom-grid mt-4">
+<section class="dashboard-panel marketing-publications-chart">
     <div class="marketing-publications-heading">
         <h2>Publicaciones totales</h2>
 
@@ -189,5 +200,62 @@ $totalPublicacionesPeriodo = (int)($totalPublicacionesPeriodo ?? 0);
         </div>
     <?php endif; ?>
 </section>
+
+    <section class="dashboard-panel marketing-pending-coverage">
+        <div class="marketing-pending-heading">
+            <div>
+                <span class="analyst-section-kicker">COBERTURA PENDIENTE</span>
+                <h2>Estados sin convocatoria activa</h2>
+                <p>Territorios que actualmente no cuentan con convocatorias activas.</p>
+            </div>
+
+            <a class="analyst-panel-link" href="<?= $convocatoriasUrl ?>">
+                Ver territorios
+                <i class="bi bi-arrow-right"></i>
+            </a>
+        </div>
+
+        <div class="marketing-pending-content">
+            <div class="marketing-pending-summary">
+                <div class="marketing-pending-count">
+                    <span class="marketing-pending-icon">
+                        <i class="bi bi-dash-circle"></i>
+                    </span>
+                    <div>
+                        <strong><?= $totalSinConvocatoria ?> de <?= $totalEstadosCobertura ?></strong>
+                        <span>estados sin convocatoria activa</span>
+                    </div>
+                </div>
+
+                <div class="marketing-pending-progress" aria-hidden="true">
+                    <span style="width: <?= $porcentajeSinConvocatoria ?>%;"></span>
+                </div>
+
+                <p>
+                    <strong><?= $porcentajeSinConvocatoria ?>%</strong>
+                    del territorio sin convocatoria activa.
+                </p>
+            </div>
+
+            <div class="marketing-pending-list">
+                <?php if (!empty($estadosSinConvocatoria)): ?>
+                    <?php foreach ($estadosSinConvocatoria as $indice => $estadoPendiente): ?>
+                        <div class="marketing-pending-item">
+                            <span><?= $indice + 1 ?></span>
+                            <strong>
+                                <?= htmlspecialchars((string)($estadoPendiente['nombre'] ?? ''), ENT_QUOTES, 'UTF-8') ?>
+                            </strong>
+                            <small>Sin convocatoria</small>
+                        </div>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <div class="marketing-pending-empty">
+                        Todos los estados cuentan con al menos una convocatoria activa.
+                    </div>
+                <?php endif; ?>
+            </div>
+        </div>
+    </section>
+</div>
 
 </div>
