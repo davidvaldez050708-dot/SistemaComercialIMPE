@@ -67,11 +67,24 @@ $territoriosCobertura = is_array($coberturaMarketing['territorios'] ?? null)
     </div>
 </section>
 
+<?php
+$porcentajeCobertura = $totalEstadosCobertura > 0
+    ? (int)round(($estadosCubiertos / $totalEstadosCobertura) * 100)
+    : 0;
+$maxConvocatoriasTerritorio = 0;
+foreach ($territoriosCobertura as $territorioCobertura) {
+    $maxConvocatoriasTerritorio = max(
+        $maxConvocatoriasTerritorio,
+        (int)($territorioCobertura['convocatorias_activas'] ?? 0)
+    );
+}
+?>
+
 <section class="dashboard-panel marketing-territory-coverage mt-4">
-    <div class="analyst-panel-heading">
+    <div class="marketing-coverage-heading">
         <div>
             <span class="analyst-section-kicker">COBERTURA TERRITORIAL</span>
-            <h2 class="panel-title mb-0">Cobertura territorial</h2>
+            <h2 class="panel-title mb-0">Cobertura territorial de convocatorias activas</h2>
         </div>
 
         <a class="analyst-panel-link" href="<?= $convocatoriasUrl ?>">
@@ -80,27 +93,60 @@ $territoriosCobertura = is_array($coberturaMarketing['territorios'] ?? null)
         </a>
     </div>
 
-    <div class="marketing-coverage-summary">
-        <strong>
-            <?= $estadosCubiertos ?> de <?= $totalEstadosCobertura ?> estados
-        </strong>
-        <span>con convocatorias activas</span>
-    </div>
-
-    <?php if (!empty($territoriosCobertura)): ?>
-        <div class="marketing-coverage-list">
-            <?php foreach ($territoriosCobertura as $territorio): ?>
-                <div class="marketing-coverage-item">
-                    <span><?= htmlspecialchars((string)($territorio['nombre'] ?? ''), ENT_QUOTES, 'UTF-8') ?></span>
-                    <strong><?= (int)($territorio['convocatorias_activas'] ?? 0) ?></strong>
+    <div class="marketing-coverage-grid">
+        <div class="marketing-coverage-overview">
+            <div
+                class="marketing-coverage-donut"
+                style="--coverage-percent: <?= $porcentajeCobertura ?>%;">
+                <div class="marketing-coverage-donut-center">
+                    <strong><?= $estadosCubiertos ?> de <?= $totalEstadosCobertura ?></strong>
+                    <span>estados</span>
                 </div>
-            <?php endforeach; ?>
+            </div>
+
+            <div class="marketing-coverage-copy">
+                <strong>con convocatorias activas</strong>
+                <p>
+                    Actualmente existen convocatorias activas en el
+                    <?= $porcentajeCobertura ?>% del territorio nacional.
+                </p>
+            </div>
         </div>
-    <?php else: ?>
-        <div class="marketing-coverage-empty">
-            Aún no hay cobertura territorial activa.
+
+        <div class="marketing-coverage-ranking">
+            <h3>Estados con más convocatorias activas</h3>
+
+            <?php if (!empty($territoriosCobertura)): ?>
+                <div class="marketing-coverage-list">
+                    <?php foreach ($territoriosCobertura as $indice => $territorio): ?>
+                        <?php
+                        $cantidadActivas = (int)($territorio['convocatorias_activas'] ?? 0);
+                        $anchoBarra = $maxConvocatoriasTerritorio > 0
+                            ? ($cantidadActivas / $maxConvocatoriasTerritorio) * 100
+                            : 0;
+                        ?>
+                        <div class="marketing-coverage-item">
+                            <span class="marketing-coverage-position"><?= $indice + 1 ?></span>
+                            <span class="marketing-coverage-state">
+                                <?= htmlspecialchars((string)($territorio['nombre'] ?? ''), ENT_QUOTES, 'UTF-8') ?>
+                            </span>
+                            <span class="marketing-coverage-track" aria-hidden="true">
+                                <span
+                                    class="marketing-coverage-bar"
+                                    style="width: <?= number_format($anchoBarra, 2, '.', '') ?>%;">
+                                </span>
+                            </span>
+                            <strong><?= $cantidadActivas ?></strong>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            <?php else: ?>
+                <div class="marketing-coverage-empty">
+                    Aún no hay cobertura territorial activa.
+                </div>
+            <?php endif; ?>
         </div>
-    <?php endif; ?>
+    </div>
 </section>
 
 </div>
