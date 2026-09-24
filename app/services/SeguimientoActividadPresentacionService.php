@@ -188,7 +188,7 @@ class SeguimientoActividadPresentacionService
             return $presentacion;
         }
 
-        if (/^Seguimiento por correo enviado/i.test($notas)) {
+        if (preg_match('/^Seguimiento por correo enviado/i', $notas)) {
             $campos = $this->extraerLineasClaveValor($notas);
             $adjuntos = trim((string)($campos['Adjuntos'] ?? ''));
             $totalAdjuntos = $this->contarAdjuntos($adjuntos);
