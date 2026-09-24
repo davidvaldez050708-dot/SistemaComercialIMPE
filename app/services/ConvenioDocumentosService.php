@@ -81,9 +81,8 @@ class ConvenioDocumentosService
         $lineas[] = 'Analista de Enlace Institucional';
         $lineas[] = 'Fundación Red Educativa México';
 
-        $slug = $this->nombreArchivoSeguro($institucion);
-        $nombreCarta = 'Carta_propuesta_' . $slug . '.pdf';
-        $nombreConvenio = 'Convenio_colaboracion_' . $slug . '.docx';
+        $nombreCarta = 'Carta_propuesta_colaboracion.pdf';
+        $nombreConvenio = 'Convenio_colaboracion.docx';
 
         return [
             'ok' => true,
@@ -1413,9 +1412,8 @@ class ConvenioDocumentosService
             );
         }
 
-        $slug = $this->nombreArchivoSeguro($institucion);
-        $nombreCarta = 'Carta_propuesta_' . $slug . '.pdf';
-        $nombreConvenio = 'Convenio_colaboracion_' . $slug . '.docx';
+        $nombreCarta = 'Carta_propuesta_colaboracion.pdf';
+        $nombreConvenio = 'Convenio_colaboracion.docx';
         $rutaCarta = $directorio . DIRECTORY_SEPARATOR . $nombreCarta;
         $rutaConvenio = $directorio . DIRECTORY_SEPARATOR . $nombreConvenio;
         $rutaCartaDocx = $directorio . DIRECTORY_SEPARATOR .
