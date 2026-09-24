@@ -207,7 +207,13 @@ if ($esSeguimientoEstadoFooter) {
 }
 
 if ($esSeguimientoDetalleFooter) {
+    /*
+     * La estructura de pestañas debe existir antes de que Actividad aplique
+     * su presentación y paginación. Cargarlos juntos aquí evita la carrera
+     * que dejaba visibles las 30 actividades aunque el contador dijera 6.
+     */
     $jsDashboardFooter[] = 'seguimiento_expediente.js';
+    $jsDashboardFooter[] = 'seguimiento_expediente_actividad.js';
 }
 
 if ($esTerritorialFooter) {
