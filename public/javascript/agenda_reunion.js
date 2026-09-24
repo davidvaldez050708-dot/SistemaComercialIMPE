@@ -197,12 +197,38 @@
             const form = modalSolicitudEl.querySelector('[data-agenda-request-form]');
             const error = modalSolicitudEl.querySelector('[data-agenda-form-error]');
             const select = modalSolicitudEl.querySelector('[data-agenda-follow-select]');
+            const campoSeguimiento = modalSolicitudEl.querySelector('[data-agenda-follow-field]');
+            const candado = modalSolicitudEl.querySelector('[data-agenda-follow-lock]');
+            const notaBloqueada = modalSolicitudEl.querySelector('[data-agenda-follow-locked-note]');
+            const objetivo = modalSolicitudEl.querySelector('[data-agenda-objective]');
+            const vieneDelExpediente =
+                seguimientoId > 0 &&
+                seguimientosPorId.has(seguimientoId);
 
             form?.reset();
             error?.classList.add('d-none');
 
-            if (select && seguimientoId > 0 && seguimientosPorId.has(seguimientoId)) {
-                select.value = String(seguimientoId);
+            if (select) {
+                select.classList.toggle('is-context-locked', vieneDelExpediente);
+                select.setAttribute(
+                    'aria-readonly',
+                    vieneDelExpediente ? 'true' : 'false'
+                );
+                select.tabIndex = vieneDelExpediente ? -1 : 0;
+
+                if (vieneDelExpediente) {
+                    select.value = String(seguimientoId);
+                }
+            }
+
+            campoSeguimiento?.classList.toggle('is-locked', vieneDelExpediente);
+            candado?.classList.toggle('d-none', !vieneDelExpediente);
+            notaBloqueada?.classList.toggle('d-none', !vieneDelExpediente);
+
+            if (objetivo) {
+                objetivo.value = vieneDelExpediente
+                    ? 'Presentar la propuesta de vinculación educativa y definir próximos acuerdos.'
+                    : '';
             }
 
             actualizarContextoSolicitud();
