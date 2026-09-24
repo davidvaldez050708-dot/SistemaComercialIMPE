@@ -392,28 +392,160 @@
                 '</div>';
         };
 
+        const configurarModalCorreo = function (opciones) {
+            if (!modalCorreoEl) {
+                return null;
+            }
+
+            const form = modalCorreoEl.querySelector('[data-agenda-mail-form]');
+            const titulo = modalCorreoEl.querySelector('[data-agenda-mail-title]');
+            const subtitulo = modalCorreoEl.querySelector('[data-agenda-mail-subtitle]');
+            const id = modalCorreoEl.querySelector('[data-agenda-mail-reunion-id]');
+            const motivo = modalCorreoEl.querySelector('[data-agenda-mail-cancel-reason]');
+            const para = modalCorreoEl.querySelector('[data-agenda-mail-recipient]');
+            const asunto = modalCorreoEl.querySelector('[data-agenda-mail-subject]');
+            const cuerpo = modalCorreoEl.querySelector('[data-agenda-mail-body]');
+            const ecardSection = modalCorreoEl.querySelector('[data-agenda-mail-ecard-section]');
+            const ecard = modalCorreoEl.querySelector('[data-agenda-mail-ecard]');
+            const nota = modalCorreoEl.querySelector('[data-agenda-mail-note]');
+            const boton = modalCorreoEl.querySelector('[data-agenda-mail-submit]');
+            const error = modalCorreoEl.querySelector('[data-agenda-mail-error]');
+
+            form?.reset();
+            error?.classList.add('d-none');
+
+            if (form) {
+                form.setAttribute(
+                    'data-agenda-action',
+                    String(opciones.accion || 'marcarCorreoEnviado')
+                );
+            }
+            if (titulo) titulo.textContent = opciones.titulo || 'Correo';
+            if (subtitulo) subtitulo.textContent = opciones.subtitulo || '';
+            if (id) id.value = String(opciones.reunionId || '');
+            if (motivo) motivo.value = String(opciones.motivo || '');
+            if (para) para.textContent = opciones.destinatario || 'Sin correo válido';
+            if (asunto) asunto.value = opciones.asunto || '';
+            if (cuerpo) cuerpo.value = opciones.cuerpo || '';
+            if (nota) nota.textContent = opciones.nota || '';
+            if (boton) {
+                boton.innerHTML = opciones.botonHtml ||
+                    '<i class="bi bi-send"></i> Enviar correo';
+            }
+
+            if (ecardSection) {
+                ecardSection.classList.toggle(
+                    'd-none',
+                    opciones.mostrarEcard === false
+                );
+            }
+            if (ecard) {
+                ecard.innerHTML = opciones.mostrarEcard === false
+                    ? ''
+                    : String(opciones.ecardHtml || '');
+            }
+
+            return form;
+        };
+
         const abrirCorreoReunion = function (reunionId) {
             const reunion = reunionesPorId.get(Number(reunionId || 0));
             if (!reunion || !modalCorreoEl || !modalCorreo) {
                 return;
             }
 
-            const form = modalCorreoEl.querySelector('[data-agenda-mail-form]');
-            const id = modalCorreoEl.querySelector('[data-agenda-mail-reunion-id]');
-            const para = modalCorreoEl.querySelector('[data-agenda-mail-recipient]');
-            const asunto = modalCorreoEl.querySelector('[data-agenda-mail-subject]');
-            const cuerpo = modalCorreoEl.querySelector('[data-agenda-mail-body]');
-            const ecard = modalCorreoEl.querySelector('[data-agenda-mail-ecard]');
-            const error = modalCorreoEl.querySelector('[data-agenda-mail-error]');
+            configurarModalCorreo({
+                accion: 'marcarCorreoEnviado',
+                titulo: 'Correo de confirmación',
+                subtitulo:
+                    'Revisa el mensaje y la Ecard antes de enviarlos a la institución.',
+                reunionId: reunion.id,
+                destinatario: valorSeguro(
+                    reunion.contacto_correo,
+                    'Sin correo válido'
+                ),
+                asunto: String(reunion.correo_sugerido_asunto || ''),
+                cuerpo: String(reunion.correo_sugerido_cuerpo || ''),
+                nota:
+                    'El sistema enviará el correo, la Ecard seleccionada y el enlace de acceso a la reunión.',
+                mostrarEcard: true,
+                ecardHtml: ecardCorreoCompacta(reunion),
+                botonHtml: '<i class="bi bi-send"></i> Enviar correo'
+            });
 
-            form?.reset();
-            error?.classList.add('d-none');
+            modalDetalle?.hide();
+            window.setTimeout(function () {
+                modalCorreo.show();
+            }, 140);
+        };
 
-            if (id) id.value = String(reunion.id || '');
-            if (para) para.textContent = valorSeguro(reunion.contacto_correo, 'Sin correo válido');
-            if (asunto) asunto.value = String(reunion.correo_sugerido_asunto || '');
-            if (cuerpo) cuerpo.value = String(reunion.correo_sugerido_cuerpo || '');
-            if (ecard) ecard.innerHTML = ecardCorreoCompacta(reunion);
+        const correoCancelacionSugerido = function (reunion, motivo) {
+            const contacto = String(reunion.contacto_nombre || '').trim();
+            const institucion = valorSeguro(
+                reunion.nombre_entidad,
+                'la institución'
+            );
+            const fecha = valorSeguro(
+                reunion.fecha_legible,
+                'la fecha previamente acordada'
+            );
+
+            const cuerpo = [
+                contacto !== '' ? 'Buen día, ' + contacto + ':' : 'Buen día:',
+                '',
+                'Por este medio le informamos que la reunión de vinculación con ' +
+                    institucion + ' programada para ' + fecha +
+                    ' ha sido cancelada.',
+                '',
+                'Motivo: ' + String(motivo || '').trim(),
+                '',
+                'Nos pondremos en contacto para coordinar una nueva fecha, en caso de ser necesario.',
+                '',
+                'Agradecemos su comprensión.',
+                '',
+                'Saludos cordiales.'
+            ].join('\n');
+
+            return {
+                asunto: 'Cancelación de reunión de vinculación - ' + institucion,
+                cuerpo: cuerpo
+            };
+        };
+
+        const abrirCorreoCancelacion = function (reunionId, motivo) {
+            const reunion = reunionesPorId.get(Number(reunionId || 0));
+            motivo = String(motivo || '').trim();
+
+            if (
+                !reunion ||
+                !modalCorreoEl ||
+                !modalCorreo ||
+                motivo === ''
+            ) {
+                return;
+            }
+
+            const correo = correoCancelacionSugerido(reunion, motivo);
+
+            configurarModalCorreo({
+                accion: 'enviarCancelacionReunion',
+                titulo: 'Correo de cancelación',
+                subtitulo:
+                    'La institución ya recibió la confirmación. Este correo debe enviarse antes de cancelar la reunión.',
+                reunionId: reunion.id,
+                motivo: motivo,
+                destinatario: valorSeguro(
+                    reunion.contacto_correo,
+                    'Sin correo válido'
+                ),
+                asunto: correo.asunto,
+                cuerpo: correo.cuerpo,
+                nota:
+                    'La reunión se marcará como cancelada únicamente después de que este correo sea enviado correctamente.',
+                mostrarEcard: false,
+                botonHtml:
+                    '<i class="bi bi-send"></i> Enviar y cancelar reunión'
+            });
 
             modalDetalle?.hide();
             window.setTimeout(function () {
@@ -432,6 +564,23 @@
 
             if (!cancelables.has(estado)) {
                 return '';
+            }
+
+            if (estado === 'CORREO_ENVIADO') {
+                return '' +
+                    '<div class="agenda-action-box">' +
+                        '<h6>Cancelar reunión</h6>' +
+                        '<p>La institución ya recibió la confirmación. Indica el motivo y revisa el correo de cancelación antes de enviarlo.</p>' +
+                        '<form data-agenda-cancel-mail-form>' +
+                            '<input type="hidden" name="reunion_id" value="' + Number(reunion.id || 0) + '">' +
+                            '<textarea class="form-control system-form-control" name="motivo_cancelacion" rows="3" maxlength="2000" placeholder="Indica brevemente por qué se cancela la reunión..." required></textarea>' +
+                            '<div class="agenda-action-row">' +
+                                '<button class="btn btn-system-cancel" type="submit">' +
+                                    '<i class="bi bi-envelope-x"></i> Preparar correo de cancelación' +
+                                '</button>' +
+                            '</div>' +
+                        '</form>' +
+                    '</div>';
             }
 
             return '' +
@@ -818,6 +967,24 @@
             });
 
         modalDetalleEl?.addEventListener('submit', function (event) {
+            const cancelacionNotificada = event.target.closest(
+                '[data-agenda-cancel-mail-form]'
+            );
+
+            if (cancelacionNotificada) {
+                event.preventDefault();
+                const datos = new FormData(cancelacionNotificada);
+                const reunionId = Number(datos.get('reunion_id') || 0);
+                const motivo = String(
+                    datos.get('motivo_cancelacion') || ''
+                ).trim();
+
+                if (reunionId > 0 && motivo !== '') {
+                    abrirCorreoCancelacion(reunionId, motivo);
+                }
+                return;
+            }
+
             const form = event.target.closest('[data-agenda-action-form]');
             if (!form) {
                 return;
