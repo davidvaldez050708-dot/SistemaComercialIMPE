@@ -37,10 +37,17 @@
     const mostrarErrorFormulario = function (form, mensaje) {
         const modal = form.closest('.modal');
         const errorSeguimiento = modal?.querySelector('[data-followup-mail-error]');
+        const errorAgenda = modal?.querySelector('[data-agenda-mail-error]');
 
         if (errorSeguimiento) {
             errorSeguimiento.textContent = String(mensaje || 'No fue posible enviar el correo.');
             errorSeguimiento.classList.remove('d-none');
+            return;
+        }
+
+        if (errorAgenda) {
+            errorAgenda.textContent = String(mensaje || 'No fue posible enviar el correo.');
+            errorAgenda.classList.remove('d-none');
             return;
         }
 
@@ -57,9 +64,14 @@
     const limpiarError = function (form) {
         const modal = form.closest('.modal');
         const errorSeguimiento = modal?.querySelector('[data-followup-mail-error]');
+        const errorAgenda = modal?.querySelector('[data-agenda-mail-error]');
         if (errorSeguimiento) {
             errorSeguimiento.classList.add('d-none');
             errorSeguimiento.textContent = '';
+        }
+        if (errorAgenda) {
+            errorAgenda.classList.add('d-none');
+            errorAgenda.textContent = '';
         }
 
         const error = form.querySelector('[data-signed-mail-error]');
@@ -171,7 +183,10 @@
     };
 
     const revisarFormulariosAgenda = function () {
-        document.querySelectorAll('#modalAgendaDetalle [data-agenda-action-form]').forEach(function (form) {
+        document.querySelectorAll(
+            '#modalAgendaDetalle [data-agenda-action-form], ' +
+            '#modalAgendaCorreo [data-agenda-action-form]'
+        ).forEach(function (form) {
             ajustarFormularioAgenda(form);
         });
     };
@@ -189,7 +204,10 @@
             return;
         }
 
-        if (form.matches('#modalAgendaDetalle [data-agenda-action-form]')) {
+        if (
+            form.matches('#modalAgendaDetalle [data-agenda-action-form]') ||
+            form.matches('#modalAgendaCorreo [data-agenda-action-form]')
+        ) {
             const accion = String(form.getAttribute('data-agenda-action') || '');
             const esCorreo = accion === 'marcarCorreoEnviado' ||
                 accion === 'marcarCorreoReprogramacionEnviado' ||
@@ -207,16 +225,25 @@
         revisarFormulariosAgenda();
 
         const bodyAgenda = document.querySelector('#modalAgendaDetalle [data-agenda-detail-body]');
-        if (!bodyAgenda) {
-            return;
+        const modalCorreo = document.getElementById('modalAgendaCorreo');
+        const observer = new MutationObserver(revisarFormulariosAgenda);
+
+        if (bodyAgenda) {
+            observer.observe(bodyAgenda, {
+                childList: true,
+                subtree: true,
+                attributes: true,
+                attributeFilter: ['data-agenda-action', 'data-reprogramacion-preparada']
+            });
         }
 
-        const observer = new MutationObserver(revisarFormulariosAgenda);
-        observer.observe(bodyAgenda, {
-            childList: true,
-            subtree: true,
-            attributes: true,
-            attributeFilter: ['data-agenda-action', 'data-reprogramacion-preparada']
-        });
+        if (modalCorreo) {
+            observer.observe(modalCorreo, {
+                childList: true,
+                subtree: true,
+                attributes: true,
+                attributeFilter: ['data-agenda-action']
+            });
+        }
     });
 })();
