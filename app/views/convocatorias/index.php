@@ -38,10 +38,30 @@ $datosEditar = $modalAbierto === 'editar' ? $datosFormulario : [];
 ?>
 
 <?php if ($mensajeExito !== ''): ?>
-    <div class="alert alert-success login-alert" role="alert">
-        <i class="bi bi-check-circle"></i>
-        <div><?= $texto($mensajeExito) ?></div>
+    <div class="toast-container position-fixed top-0 end-0 p-3">
+        <div
+            class="toast system-toast"
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+            data-bs-delay="3200"
+            data-convocatoria-success-toast>
+            <div class="toast-body">
+                <i class="bi bi-check2-circle"></i>
+                <span><?= $texto($mensajeExito) ?></span>
+            </div>
+        </div>
     </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const toastElement = document.querySelector('[data-convocatoria-success-toast]');
+
+        if (toastElement && window.bootstrap) {
+            bootstrap.Toast.getOrCreateInstance(toastElement).show();
+        }
+    });
+    </script>
 <?php endif; ?>
 
 <?php if ($mensajeError !== ''): ?>
