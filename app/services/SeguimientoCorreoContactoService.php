@@ -39,15 +39,37 @@ class SeguimientoCorreoContactoService
             ? 'Buen día, ' . $contacto . ':'
             : 'Buen día:';
 
-        $lineas = [
-            $saludo,
-            '',
-            'Me comunico para dar seguimiento a nuestra comunicación institucional.',
-            '',
-            'Quedo atento a sus comentarios.',
-            '',
-            'Saludos cordiales,'
-        ];
+        $correccionConvenio = $this->obtenerCorreccionConvenioPendiente(
+            (int)$seguimientoId
+        );
+
+        if ($correccionConvenio !== '') {
+            $lineas = [
+                $saludo,
+                '',
+                'En seguimiento al convenio de colaboración recibido, compartimos las correcciones necesarias para continuar con el proceso:',
+                '',
+                '• ' . $correccionConvenio,
+                '',
+                'Agradeceremos realizar los ajustes y compartirnos nuevamente el convenio corregido para su revisión.',
+                '',
+                'Saludos cordiales,'
+            ];
+            $asunto = 'Correcciones al convenio de colaboración' .
+                ($institucion !== '' ? ' - ' . $institucion : '');
+        } else {
+            $lineas = [
+                $saludo,
+                '',
+                'Me comunico para dar seguimiento a nuestra comunicación institucional.',
+                '',
+                'Quedo atento a sus comentarios.',
+                '',
+                'Saludos cordiales,'
+            ];
+            $asunto = 'Seguimiento institucional' .
+                ($institucion !== '' ? ' - ' . $institucion : '');
+        }
 
         if ($analista !== '') {
             $lineas[] = $analista;
@@ -62,8 +84,7 @@ class SeguimientoCorreoContactoService
                 'para' => (string)$seguimiento['destinatario_correo'],
                 'destinatario_nombre' => $contacto,
                 'institucion' => $institucion,
-                'asunto' => 'Seguimiento institucional' .
-                    ($institucion !== '' ? ' - ' . $institucion : ''),
+                'asunto' => $asunto,
                 'cuerpo' => implode("\n", $lineas)
             ]
         ];
@@ -181,6 +202,27 @@ class SeguimientoCorreoContactoService
         } finally {
             $this->limpiarDirectorioTemporal($directorioTemporal);
         }
+    }
+
+    private function obtenerCorreccionConvenioPendiente($seguimientoId)
+    {
+        $sql = "SELECT convenio_revision_estado, convenio_revision_notas
+                FROM seguimientos_vinculacion_post_envio
+                WHERE seguimiento_id = ?
+                LIMIT 1";
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param('i', $seguimientoId);
+        $stmt->execute();
+        $fila = $stmt->get_result()->fetch_assoc();
+
+        if (!$fila) {
+            return '';
+        }
+
+        $estado = strtoupper(trim((string)($fila['convenio_revision_estado'] ?? '')));
+        $notas = trim((string)($fila['convenio_revision_notas'] ?? ''));
+
+        return $estado === 'CORRECCIONES' ? $notas : '';
     }
 
     private function obtenerSeguimientoAnalista($seguimientoId, $usuarioId)
