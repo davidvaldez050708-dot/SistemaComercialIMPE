@@ -552,10 +552,34 @@ class SeguimientoActividadPresentacionService
         if ($canal === 'WHATSAPP') {
             $presentacion['titulo'] = 'WhatsApp';
             $presentacion['tipo_visual'] = 'whatsapp';
+
+            $telefono = trim((string)(
+                $interaccion['telefono_destino'] ?? ''
+            ));
+
+            if ($telefono !== '') {
+                $presentacion['detalles'] = $this->fusionarDetalles(
+                    [$this->detalle('Teléfono', $telefono)],
+                    $presentacion['detalles']
+                );
+            }
         }
 
-        if ($canal === 'CORREO' && $presentacion['titulo'] === 'Correo') {
-            $presentacion['tipo_visual'] = 'correo';
+        if ($canal === 'CORREO') {
+            if ($presentacion['titulo'] === 'Correo') {
+                $presentacion['tipo_visual'] = 'correo';
+            }
+
+            $correo = trim((string)(
+                $interaccion['correo_destino'] ?? ''
+            ));
+
+            if ($correo !== '') {
+                $presentacion['detalles'] = $this->fusionarDetalles(
+                    [$this->detalle('Para', $correo)],
+                    $presentacion['detalles']
+                );
+            }
         }
 
         return $presentacion;
