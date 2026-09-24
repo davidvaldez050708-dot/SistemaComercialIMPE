@@ -1671,7 +1671,10 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         if (ultimaActividad && interaccionReciente) {
-            ultimaActividad.textContent = interaccionReciente.canal_label || '—';
+            ultimaActividad.textContent =
+                interaccionReciente.titulo ||
+                interaccionReciente.canal_label ||
+                '—';
         }
 
         if (ultimoCanal && interaccionReciente) {
@@ -1884,19 +1887,25 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         lista.innerHTML = interacciones.map(function (interaccion) {
-            const notasOriginales = String(interaccion.notas || '').trim();
-            const notas = resumirNotaActividadTrabajo(interaccion);
-            const esRespuestaPostEnvio =
-                notasOriginales.indexOf('Respuesta recibida [') === 0;
-            const resultadoVisible = esRespuestaPostEnvio
-                ? 'Respuesta recibida'
-                : interaccion.resultado_label;
+            const titulo = String(
+                interaccion.titulo ||
+                interaccion.canal_label ||
+                'Actividad'
+            ).trim();
+            const resumen = String(
+                interaccion.resumen ||
+                resumirNotaActividadTrabajo(interaccion) ||
+                ''
+            ).trim();
 
             return '<article>' +
                 '<strong>' + escaparTrabajo(interaccion.fecha_label) + '</strong>' +
-                '<span>' + escaparTrabajo(interaccion.canal_label) + ' · ' +
-                    escaparTrabajo(resultadoVisible) + '</span>' +
-                (notas ? '<p>' + escaparTrabajo(notas) + '</p>' : '') +
+                '<span>' + escaparTrabajo(titulo) + '</span>' +
+                (
+                    resumen && resumen !== titulo
+                        ? '<p>' + escaparTrabajo(resumen) + '</p>'
+                        : ''
+                ) +
             '</article>';
         }).join('');
     };
