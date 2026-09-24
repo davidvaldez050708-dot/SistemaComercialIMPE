@@ -75,8 +75,7 @@ class SeguimientoActividadPresentacionService
             $presentacion['tipo_visual'] = 'seguimiento';
             $presentacion['resultado_label'] = 'Seguimiento programado';
             $presentacion['resumen'] =
-                'Seguimiento programado · ' . trim($m[3]) .
-                ' · ' . trim($m[4]);
+                trim($m[3]) . ' · ' . trim($m[4]);
             $presentacion['detalles'] = [
                 $this->detalle('Pendiente', $m[2]),
                 $this->detalle('Acción prevista', $m[3]),
@@ -96,14 +95,16 @@ class SeguimientoActividadPresentacionService
             $presentacion['titulo'] = 'Seguimiento de acuerdos programado';
             $presentacion['tipo_visual'] = 'seguimiento';
             $presentacion['resultado_label'] = 'Seguimiento programado';
-            $partes = ['Seguimiento de acuerdos programado'];
+            $partes = [];
             if ($accion !== '') {
                 $partes[] = $accion;
             }
             if ($pendienteDe !== '') {
                 $partes[] = $pendienteDe;
             }
-            $presentacion['resumen'] = implode(' · ', $partes);
+            $presentacion['resumen'] = !empty($partes)
+                ? implode(' · ', $partes)
+                : 'Revisión de acuerdos pendiente';
             $presentacion['detalles'] = array_values(array_filter([
                 $this->detalle('Pendiente', $m[2] ?? ''),
                 $this->detalle('Acción prevista', $accion),
@@ -136,9 +137,9 @@ class SeguimientoActividadPresentacionService
             $presentacion['titulo'] = 'Seguimiento de acuerdos';
             $presentacion['tipo_visual'] = 'seguimiento';
             $presentacion['resultado_label'] = $etiqueta;
-            $presentacion['resumen'] =
-                'Seguimiento registrado' .
-                ($etiqueta !== '' ? ' · ' . $etiqueta : '');
+            $presentacion['resumen'] = $etiqueta !== ''
+                ? $etiqueta
+                : 'Seguimiento registrado';
             $presentacion['detalles'] = array_values(array_filter([
                 $this->detalle('Pendiente atendido', $pendiente),
                 $this->detalle('Resultado', $resultadoTexto)
@@ -179,9 +180,9 @@ class SeguimientoActividadPresentacionService
             $presentacion['titulo'] = 'Reunión realizada';
             $presentacion['tipo_visual'] = 'reunion';
             $presentacion['resultado_label'] = $etiqueta;
-            $presentacion['resumen'] =
-                'Reunión realizada' .
-                ($etiqueta !== '' ? ' · ' . $etiqueta : '');
+            $presentacion['resumen'] = $etiqueta !== ''
+                ? $etiqueta
+                : 'Resultado registrado';
             $presentacion['detalles'] = array_values(array_filter([
                 $this->detalle('Resultado', $etiqueta),
                 $this->detalle('Acuerdos', $m[2])
@@ -197,7 +198,7 @@ class SeguimientoActividadPresentacionService
             $presentacion['titulo'] = 'Reprogramación solicitada';
             $presentacion['tipo_visual'] = 'reunion';
             $presentacion['resultado_label'] = 'Reprogramación';
-            $presentacion['resumen'] = 'Reprogramación de reunión solicitada';
+            $presentacion['resumen'] = 'Nueva fecha: ' . trim($m[2]);
             $presentacion['detalles'] = [
                 $this->detalle('Fecha anterior', $m[1]),
                 $this->detalle('Nueva fecha', $m[2]),
@@ -245,7 +246,7 @@ class SeguimientoActividadPresentacionService
             $presentacion['titulo'] = 'Reunión cancelada';
             $presentacion['tipo_visual'] = 'reunion';
             $presentacion['resultado_label'] = 'Cancelada';
-            $presentacion['resumen'] = 'Reunión cancelada';
+            $presentacion['resumen'] = 'Motivo: ' . trim($m[1]);
             $presentacion['detalles'] = [
                 $this->detalle('Motivo', $m[1])
             ];
@@ -260,7 +261,7 @@ class SeguimientoActividadPresentacionService
             $presentacion['titulo'] = 'Nueva propuesta de reunión';
             $presentacion['tipo_visual'] = 'reunion';
             $presentacion['resultado_label'] = 'Pendiente de confirmación';
-            $presentacion['resumen'] = 'Nueva fecha enviada a Cuenta Clave';
+            $presentacion['resumen'] = 'Nueva fecha: ' . trim($m[1]);
             $presentacion['detalles'] = [
                 $this->detalle('Nueva fecha', $m[1]),
                 $this->detalle(
@@ -279,7 +280,9 @@ class SeguimientoActividadPresentacionService
             $presentacion['titulo'] = 'Solicitud de reunión enviada';
             $presentacion['tipo_visual'] = 'reunion';
             $presentacion['resultado_label'] = 'Pendiente de confirmación';
-            $presentacion['resumen'] = 'Solicitud de reunión enviada a Cuenta Clave';
+            $presentacion['resumen'] =
+                'Fecha propuesta: ' . trim($m[1]) . ' · ' .
+                $this->humanizarCodigo($m[2]);
             $presentacion['detalles'] = [
                 $this->detalle('Fecha propuesta', $m[1]),
                 $this->detalle('Modalidad', $this->humanizarCodigo($m[2]))
@@ -310,7 +313,7 @@ class SeguimientoActividadPresentacionService
             $presentacion['titulo'] = 'Reunión confirmada';
             $presentacion['tipo_visual'] = 'reunion';
             $presentacion['resultado_label'] = 'Confirmada';
-            $presentacion['resumen'] = 'Cuenta Clave confirmó la reunión';
+            $presentacion['resumen'] = 'Fecha y hora: ' . trim($m[1]);
             $presentacion['detalles'] = [
                 $this->detalle('Fecha y hora', $m[1])
             ];
@@ -361,9 +364,9 @@ class SeguimientoActividadPresentacionService
             $presentacion['titulo'] = 'Respuesta recibida';
             $presentacion['tipo_visual'] = 'correo';
             $presentacion['resultado_label'] = 'Respuesta recibida';
-            $presentacion['resumen'] =
-                'Respuesta recibida' .
-                ($tipo !== '' ? ' · ' . $tipo : '');
+            $presentacion['resumen'] = $tipo !== ''
+                ? $tipo
+                : 'Respuesta registrada';
             $presentacion['detalles'] = array_values(array_filter([
                 $this->detalle('Respuesta', $tipo),
                 $this->detalle('Detalle', $detalle)
@@ -378,7 +381,10 @@ class SeguimientoActividadPresentacionService
             $presentacion['titulo'] = 'Correo de seguimiento enviado';
             $presentacion['tipo_visual'] = 'correo';
             $presentacion['resultado_label'] = 'Correo enviado';
-            $presentacion['resumen'] = 'Correo de seguimiento enviado';
+            $resumenCorreo = trim((string)($campos['Asunto'] ?? ''));
+            $presentacion['resumen'] = $resumenCorreo !== ''
+                ? 'Asunto: ' . $resumenCorreo
+                : 'Correo enviado';
 
             if ($totalAdjuntos > 0) {
                 $presentacion['resumen'] .= ' · ' .
