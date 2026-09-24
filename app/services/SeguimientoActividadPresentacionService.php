@@ -169,6 +169,189 @@ class SeguimientoActividadPresentacionService
         }
 
         if (preg_match(
+            '/^Reunión realizada\s*\[([^\]]+)\]\s*:\s*(.*)$/ui',
+            $notas,
+            $m
+        )) {
+            $etiqueta = $this->etiquetaResultadoReunion(
+                strtoupper(trim($m[1]))
+            );
+            $presentacion['titulo'] = 'Reunión realizada';
+            $presentacion['tipo_visual'] = 'reunion';
+            $presentacion['resultado_label'] = $etiqueta;
+            $presentacion['resumen'] =
+                'Reunión realizada' .
+                ($etiqueta !== '' ? ' · ' . $etiqueta : '');
+            $presentacion['detalles'] = array_values(array_filter([
+                $this->detalle('Resultado', $etiqueta),
+                $this->detalle('Acuerdos', $m[2])
+            ]));
+            return $presentacion;
+        }
+
+        if (preg_match(
+            '/^Reprogramación solicitada\.\s*Fecha anterior:\s*(.+?)\s*\|\s*Nueva fecha:\s*(.+?)\s*\|\s*Motivo:\s*(.+)$/ui',
+            $notas,
+            $m
+        )) {
+            $presentacion['titulo'] = 'Reprogramación solicitada';
+            $presentacion['tipo_visual'] = 'reunion';
+            $presentacion['resultado_label'] = 'Reprogramación';
+            $presentacion['resumen'] = 'Reprogramación de reunión solicitada';
+            $presentacion['detalles'] = [
+                $this->detalle('Fecha anterior', $m[1]),
+                $this->detalle('Nueva fecha', $m[2]),
+                $this->detalle('Motivo', $m[3])
+            ];
+            return $presentacion;
+        }
+
+        if (preg_match(
+            '/^Cuenta Clave solicitó reprogramar la reunión del\s+(.+?)\.\s*Motivo:\s*(.+)$/ui',
+            $notas,
+            $m
+        )) {
+            $presentacion['titulo'] = 'Reprogramación solicitada';
+            $presentacion['tipo_visual'] = 'reunion';
+            $presentacion['resultado_label'] = 'Cambio solicitado';
+            $presentacion['resumen'] = 'Cuenta Clave solicitó una nueva fecha';
+            $presentacion['detalles'] = [
+                $this->detalle('Fecha anterior', $m[1]),
+                $this->detalle('Motivo', $m[2])
+            ];
+            return $presentacion;
+        }
+
+        if (preg_match(
+            '/^Cuenta Clave solicitó modificar la propuesta de reunión\.\s*Motivo:\s*(.+)$/ui',
+            $notas,
+            $m
+        )) {
+            $presentacion['titulo'] = 'Cambio de reunión solicitado';
+            $presentacion['tipo_visual'] = 'reunion';
+            $presentacion['resultado_label'] = 'Cambio solicitado';
+            $presentacion['resumen'] = 'Cuenta Clave solicitó modificar la propuesta';
+            $presentacion['detalles'] = [
+                $this->detalle('Motivo', $m[1])
+            ];
+            return $presentacion;
+        }
+
+        if (preg_match(
+            '/^Reunión cancelada\.\s*Motivo:\s*(.+)$/ui',
+            $notas,
+            $m
+        )) {
+            $presentacion['titulo'] = 'Reunión cancelada';
+            $presentacion['tipo_visual'] = 'reunion';
+            $presentacion['resultado_label'] = 'Cancelada';
+            $presentacion['resumen'] = 'Reunión cancelada';
+            $presentacion['detalles'] = [
+                $this->detalle('Motivo', $m[1])
+            ];
+            return $presentacion;
+        }
+
+        if (preg_match(
+            '/^La fecha propuesta venció sin confirmación de Cuenta Clave\.\s*Nueva propuesta enviada para\s+(.+?)\.?$/ui',
+            $notas,
+            $m
+        )) {
+            $presentacion['titulo'] = 'Nueva propuesta de reunión';
+            $presentacion['tipo_visual'] = 'reunion';
+            $presentacion['resultado_label'] = 'Pendiente de confirmación';
+            $presentacion['resumen'] = 'Nueva fecha enviada a Cuenta Clave';
+            $presentacion['detalles'] = [
+                $this->detalle('Nueva fecha', $m[1]),
+                $this->detalle(
+                    'Motivo',
+                    'La propuesta anterior venció sin confirmación'
+                )
+            ];
+            return $presentacion;
+        }
+
+        if (preg_match(
+            '/^Solicitud de reunión enviada a Cuenta Clave para\s+(.+?)\s*\(([^\)]+)\)\.?$/ui',
+            $notas,
+            $m
+        )) {
+            $presentacion['titulo'] = 'Solicitud de reunión enviada';
+            $presentacion['tipo_visual'] = 'reunion';
+            $presentacion['resultado_label'] = 'Pendiente de confirmación';
+            $presentacion['resumen'] = 'Solicitud de reunión enviada a Cuenta Clave';
+            $presentacion['detalles'] = [
+                $this->detalle('Fecha propuesta', $m[1]),
+                $this->detalle('Modalidad', $this->humanizarCodigo($m[2]))
+            ];
+            return $presentacion;
+        }
+
+        if (preg_match(
+            '/^Nueva propuesta de reunión enviada a Cuenta Clave para\s+(.+?)\.?$/ui',
+            $notas,
+            $m
+        )) {
+            $presentacion['titulo'] = 'Nueva propuesta de reunión enviada';
+            $presentacion['tipo_visual'] = 'reunion';
+            $presentacion['resultado_label'] = 'Pendiente de confirmación';
+            $presentacion['resumen'] = 'Nueva fecha enviada a Cuenta Clave';
+            $presentacion['detalles'] = [
+                $this->detalle('Fecha propuesta', $m[1])
+            ];
+            return $presentacion;
+        }
+
+        if (preg_match(
+            '/^Cuenta Clave confirmó la reunión para\s+(.+?)\.?$/ui',
+            $notas,
+            $m
+        )) {
+            $presentacion['titulo'] = 'Reunión confirmada';
+            $presentacion['tipo_visual'] = 'reunion';
+            $presentacion['resultado_label'] = 'Confirmada';
+            $presentacion['resumen'] = 'Cuenta Clave confirmó la reunión';
+            $presentacion['detalles'] = [
+                $this->detalle('Fecha y hora', $m[1])
+            ];
+            return $presentacion;
+        }
+
+        if (preg_match(
+            '/^Reunión agendada:\s*(.+?)\s*\|\s*([^|]+)\s*\|\s*([^|]+)(?:\s*\|\s*(.+))?$/ui',
+            $notas,
+            $m
+        )) {
+            $presentacion['titulo'] = 'Reunión agendada';
+            $presentacion['tipo_visual'] = 'reunion';
+            $presentacion['resultado_label'] = 'Agendada';
+            $presentacion['resumen'] = 'Reunión agendada';
+            $presentacion['detalles'] = array_values(array_filter([
+                $this->detalle('Fecha y hora', $m[1]),
+                $this->detalle('Modalidad', $this->humanizarCodigo($m[2])),
+                $this->detalle('Acceso / lugar', $m[3]),
+                $this->detalle('Notas', $m[4] ?? '')
+            ]));
+            return $presentacion;
+        }
+
+        if (preg_match(
+            '/^Convenio formalizado\s*\|\s*Fecha:\s*([^|]+)(?:\s*\|\s*(.+))?$/ui',
+            $notas,
+            $m
+        )) {
+            $presentacion['titulo'] = 'Convenio formalizado';
+            $presentacion['tipo_visual'] = 'convenio';
+            $presentacion['resultado_label'] = 'Formalizado';
+            $presentacion['resumen'] = 'Convenio formalizado';
+            $presentacion['detalles'] = array_values(array_filter([
+                $this->detalle('Fecha', $m[1]),
+                $this->detalle('Notas', $m[2] ?? '')
+            ]));
+            return $presentacion;
+        }
+
+        if (preg_match(
             '/^Respuesta recibida\s*\[([^\]]+)\]\s*:\s*(.*)$/ui',
             $notas,
             $m
