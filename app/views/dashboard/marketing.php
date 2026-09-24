@@ -149,4 +149,66 @@ foreach ($territoriosCobertura as $territorioCobertura) {
     </div>
 </section>
 
+<?php
+$periodoPublicaciones = (int)($periodoPublicaciones ?? 30);
+$publicacionesPorEstado = is_array($publicacionesPorEstado ?? null)
+    ? $publicacionesPorEstado
+    : [];
+$maxPublicacionesEstado = 0;
+
+foreach ($publicacionesPorEstado as $publicacionEstado) {
+    $maxPublicacionesEstado = max(
+        $maxPublicacionesEstado,
+        (int)($publicacionEstado['publicaciones'] ?? 0)
+    );
+}
+?>
+
+<section class="dashboard-panel marketing-publications-chart mt-4">
+    <div class="marketing-publications-heading">
+        <h2>Publicaciones por estado</h2>
+
+        <form method="GET" action="<?= BASE_URL ?>index.php" class="marketing-publications-filter">
+            <select
+                class="form-select system-form-control"
+                name="periodo_publicaciones"
+                aria-label="Periodo de publicaciones"
+                onchange="this.form.submit()">
+                <option value="7" <?= $periodoPublicaciones === 7 ? 'selected' : '' ?>>Últimos 7 días</option>
+                <option value="30" <?= $periodoPublicaciones === 30 ? 'selected' : '' ?>>Últimos 30 días</option>
+                <option value="90" <?= $periodoPublicaciones === 90 ? 'selected' : '' ?>>Últimos 90 días</option>
+            </select>
+        </form>
+    </div>
+
+    <?php if (!empty($publicacionesPorEstado)): ?>
+        <div class="marketing-publications-plot">
+            <?php foreach ($publicacionesPorEstado as $publicacionEstado): ?>
+                <?php
+                $cantidadPublicaciones = (int)($publicacionEstado['publicaciones'] ?? 0);
+                $alturaPublicacion = $maxPublicacionesEstado > 0
+                    ? max(12, ($cantidadPublicaciones / $maxPublicacionesEstado) * 100)
+                    : 0;
+                ?>
+                <div class="marketing-publications-column">
+                    <strong><?= $cantidadPublicaciones ?></strong>
+                    <div class="marketing-publications-bar-space" aria-hidden="true">
+                        <span
+                            class="marketing-publications-bar"
+                            style="height: <?= number_format($alturaPublicacion, 2, '.', '') ?>%;">
+                        </span>
+                    </div>
+                    <span class="marketing-publications-state">
+                        <?= htmlspecialchars((string)($publicacionEstado['nombre'] ?? ''), ENT_QUOTES, 'UTF-8') ?>
+                    </span>
+                </div>
+            <?php endforeach; ?>
+        </div>
+    <?php else: ?>
+        <div class="marketing-publications-empty">
+            No hay publicaciones registradas en este periodo.
+        </div>
+    <?php endif; ?>
+</section>
+
 </div>
