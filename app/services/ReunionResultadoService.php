@@ -573,6 +573,127 @@ class ReunionResultadoService
         $stmt->execute();
     }
 
+    private function validarContextoSeguimiento($datos, $modo)
+    {
+        $contexto = $this->extraerContextoSeguimiento($datos, $modo);
+
+        if ($contexto['objetivo'] === '') {
+            return $this->error(
+                'Describe brevemente qué pendiente deberá revisarse en el próximo seguimiento.',
+                422
+            );
+        }
+
+        $pendientesValidos = ['INSTITUCION', 'FUNDACION', 'AMBOS'];
+        if (!in_array($contexto['pendiente_de'], $pendientesValidos, true)) {
+            return $this->error(
+                'Selecciona de quién depende el pendiente.',
+                422
+            );
+        }
+
+        $accionesValidas = [
+            'LLAMAR',
+            'ENVIAR_CORREO',
+            'ESPERAR_RESPUESTA',
+            'REVISAR_DOCUMENTACION',
+            'CONFIRMAR_AUTORIZACION',
+            'OTRO'
+        ];
+        if (!in_array($contexto['accion'], $accionesValidas, true)) {
+            return $this->error(
+                'Selecciona la acción prevista para el seguimiento.',
+                422
+            );
+        }
+
+        return [
+            'ok' => true,
+            'objetivo' => $contexto['objetivo'],
+            'pendiente_de' => $contexto['pendiente_de'],
+            'accion' => $contexto['accion']
+        ];
+    }
+
+    private function extraerContextoSeguimiento($datos, $modo)
+    {
+        if ($modo === 'seguimiento') {
+            $prefijo = 'seguimiento_reunion_';
+        } else {
+            $prefijo = 'reunion_seguimiento_';
+        }
+
+        return [
+            'objetivo' => trim((string)(
+                $datos[$prefijo . 'objetivo'] ?? ''
+            )),
+            'pendiente_de' => strtoupper(trim((string)(
+                $datos[$prefijo . 'pendiente_de'] ?? ''
+            ))),
+            'accion' => strtoupper(trim((string)(
+                $datos[$prefijo . 'accion'] ?? ''
+            )))
+        ];
+    }
+
+    private function actualizarContextoSeguimiento(
+        $seguimientoId,
+        $contexto
+    ) {
+        if (!is_array($contexto)) {
+            return;
+        }
+
+        $objetivo = trim((string)($contexto['objetivo'] ?? ''));
+        $pendienteDe = strtoupper(trim((string)(
+            $contexto['pendiente_de'] ?? ''
+        )));
+        $accion = strtoupper(trim((string)(
+            $contexto['accion'] ?? ''
+        )));
+
+        $sql = "UPDATE seguimientos_vinculacion_post_envio
+                SET reunion_seguimiento_objetivo = ?,
+                    reunion_seguimiento_pendiente_de = ?,
+                    reunion_seguimiento_accion = ?
+                WHERE seguimiento_id = ?";
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param(
+            'sssi',
+            $objetivo,
+            $pendienteDe,
+            $accion,
+            $seguimientoId
+        );
+        $stmt->execute();
+    }
+
+    private function etiquetaPendienteDe($valor)
+    {
+        $mapa = [
+            'INSTITUCION' => 'Institución',
+            'FUNDACION' => 'Fundación Red',
+            'AMBOS' => 'Ambos'
+        ];
+
+        return $mapa[strtoupper(trim((string)$valor))] ?? '';
+    }
+
+    private function etiquetaAccionSeguimiento($valor)
+    {
+        $mapa = [
+            'LLAMAR' => 'Llamar',
+            'ENVIAR_CORREO' => 'Enviar correo',
+            'ESPERAR_RESPUESTA' => 'Esperar respuesta',
+            'REVISAR_DOCUMENTACION' => 'Revisar documentación',
+            'CONFIRMAR_AUTORIZACION' => 'Confirmar autorización',
+            'REVISAR_ACUERDOS' => 'Revisar acuerdos',
+            'OTRO' => 'Otra acción'
+        ];
+
+        return $mapa[strtoupper(trim((string)$valor))] ?? '';
+    }
+
     private function actualizarSeguimientoPrincipal($seguimientoId, $analistaId, $proximaAccion, $motivo)
     {
         $sql = "UPDATE seguimientos_vinculacion
