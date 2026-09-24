@@ -70,8 +70,8 @@
                     '<div class="modal-content system-form-modal">' +
                         '<div class="modal-header system-form-modal-header">' +
                             '<div>' +
-                                '<span class="linkage-mail-modal-eyebrow">CORREO REGISTRADO</span>' +
-                                '<h2 class="system-form-modal-title">Detalle del correo</h2>' +
+                                '<h2 class="system-form-modal-title">Correo enviado</h2>' +
+                                '<p class="system-form-modal-subtitle">Consulta el contenido y los archivos adjuntos de este envío.</p>' +
                             '</div>' +
                             '<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>' +
                         '</div>' +
@@ -152,6 +152,15 @@
                 String(correo.destinatario || '').trim()
             ].filter(Boolean).join(' · ');
 
+            const tituloModal = modal.querySelector('.system-form-modal-title');
+            const subtituloModal = modal.querySelector('.system-form-modal-subtitle');
+            if (tituloModal) {
+                tituloModal.textContent = 'Correo enviado';
+            }
+            if (subtituloModal) {
+                subtituloModal.textContent = 'Consulta el contenido y el archivo asociado a este envío.';
+            }
+
             modal.querySelector('[data-mail-history-to]').textContent = destino || '—';
             modal.querySelector('[data-mail-history-date]').textContent =
                 fechaLegible(correo.fecha_envio);
@@ -178,6 +187,20 @@
 
         const abrirCorreoSeguimiento = async function (interaccionId) {
             const modal = crearModal();
+            const instancia = bootstrap.Modal.getOrCreateInstance(modal);
+            const titulo = modal.querySelector('.system-form-modal-title');
+            const subtitulo = modal.querySelector('.system-form-modal-subtitle');
+
+            titulo.textContent = 'Correo enviado';
+            subtitulo.textContent = 'Consultando el contenido del correo...';
+            modal.querySelector('[data-mail-history-to]').textContent = 'Cargando...';
+            modal.querySelector('[data-mail-history-date]').textContent = '—';
+            modal.querySelector('[data-mail-history-user]').textContent = '—';
+            modal.querySelector('[data-mail-history-attachment]').textContent = '—';
+            modal.querySelector('[data-mail-history-subject]').textContent = 'Cargando...';
+            modal.querySelector('[data-mail-history-body]').textContent = '';
+            renderizarAdjuntosModal(modal, []);
+            instancia.show();
 
             try {
                 const respuesta = await fetch(
@@ -185,7 +208,8 @@
                     encodeURIComponent(interaccionId),
                     {
                         headers: { 'X-Requested-With': 'fetch' },
-                        cache: 'no-store'
+                        cache: 'no-store',
+                        credentials: 'same-origin'
                     }
                 );
                 const datos = await respuesta.json();
@@ -195,10 +219,9 @@
                 }
 
                 const correo = datos.correo;
-                modal.querySelector('.linkage-mail-modal-eyebrow').textContent =
-                    'CORREO DE SEGUIMIENTO';
-                modal.querySelector('.modal-title').textContent =
-                    'Correo enviado';
+                titulo.textContent = 'Correo enviado';
+                subtitulo.textContent =
+                    'Correo de seguimiento registrado en el expediente.';
                 modal.querySelector('[data-mail-history-to]').textContent =
                     String(correo.destinatario || '').trim() || '—';
                 modal.querySelector('[data-mail-history-date]').textContent =
@@ -212,9 +235,16 @@
                     'El contenido completo no quedó disponible para este correo histórico.';
 
                 renderizarAdjuntosModal(modal, correo.adjuntos || []);
-                bootstrap.Modal.getOrCreateInstance(modal).show();
             } catch (error) {
                 console.error(error);
+                titulo.textContent = 'No fue posible abrir el correo';
+                subtitulo.textContent =
+                    'Ocurrió un problema al consultar este registro.';
+                modal.querySelector('[data-mail-history-to]').textContent = '—';
+                modal.querySelector('[data-mail-history-subject]').textContent = '—';
+                modal.querySelector('[data-mail-history-body]').textContent =
+                    error.message || 'No fue posible consultar el correo.';
+                renderizarAdjuntosModal(modal, []);
             }
         };
 
