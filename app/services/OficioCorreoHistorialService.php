@@ -46,8 +46,8 @@ class OficioCorreoHistorialService
                 $correosOficio,
                 $correosSeguimiento,
                 $correosReunion,
-                $correosConvenio,
-                $correosInteracciones
+                $correosInteracciones,
+                $correosConvenio
             );
             $correos = $this->eliminarDuplicados($correos);
 
