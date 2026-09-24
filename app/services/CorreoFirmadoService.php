@@ -3,6 +3,7 @@
 require_once __DIR__ . '/../../config/db_connection.php';
 require_once __DIR__ . '/../models/UsuarioModel.php';
 require_once __DIR__ . '/CorreoSalidaInstitucionalService.php';
+require_once __DIR__ . '/SeguimientoCorreoService.php';
 require_once __DIR__ . '/AgendaReunionRepository.php';
 require_once __DIR__ . '/AgendaReunionService.php';
 require_once __DIR__ . '/ReprogramacionReunionService.php';
@@ -28,126 +29,33 @@ class CorreoFirmadoService
         $this->ecardService = new EcardReunionService($this->connection);
     }
 
-    public function enviarSeguimiento($seguimientoId, $usuarioId, $asunto, $cuerpo)
-    {
-        $seguimientoId = (int)$seguimientoId;
-        $usuarioId = (int)$usuarioId;
-        $asunto = trim((string)$asunto);
-        $cuerpo = trim((string)$cuerpo);
-
-        $seguimiento = $this->obtenerSeguimiento($seguimientoId, $usuarioId);
-        if (!$seguimiento) {
-            return $this->error('No tienes acceso a este seguimiento.', 403);
-        }
-        if (strtoupper(trim((string)($seguimiento['estado_seguimiento'] ?? ''))) === 'DESCARTADO') {
-            return $this->error('Este seguimiento ya fue descartado.', 409);
-        }
-        if (trim((string)($seguimiento['respuesta_at'] ?? '')) === '') {
-            return $this->error('Primero registra la respuesta de la institución.', 409);
-        }
-        if (
-            strtoupper(trim((string)($seguimiento['respuesta_tipo'] ?? ''))) ===
-                'CONTACTAR_DESPUES' &&
-            trim((string)($seguimiento['contactar_despues_at'] ?? '')) !== ''
-        ) {
-            $contactarDespuesTs = strtotime(
-                (string)$seguimiento['contactar_despues_at']
-            );
-
-            if ($contactarDespuesTs !== false && $contactarDespuesTs > time()) {
-                return $this->error(
-                    'La institución solicitó retomar el contacto en la fecha programada. Aún no corresponde enviar el seguimiento.',
-                    409
-                );
-            }
-        }
-        if (trim((string)($seguimiento['reunion_agendada_at'] ?? '')) !== '') {
-            return $this->error('La reunión ya fue formalmente agendada.', 409);
-        }
-
-        $destinatario = trim((string)($seguimiento['destinatario_correo'] ?? ''));
-        if ($destinatario === '' || !filter_var($destinatario, FILTER_VALIDATE_EMAIL)) {
-            return $this->error('El seguimiento no tiene un correo de contacto válido.', 422);
-        }
-        if ($asunto === '' || $cuerpo === '') {
-            return $this->error('El asunto y el mensaje son obligatorios.', 422);
-        }
-
-        $usuario = $this->obtenerUsuario($usuarioId);
-        if (!$usuario) {
-            return $this->error('No fue posible identificar al remitente.', 404);
-        }
-
-        $envio = $this->sender->enviar([
-            'remitente' => (string)($usuario['correo'] ?? ''),
-            'nombre_remitente' => $this->nombreUsuario($usuario),
-            'destinatario' => $destinatario,
-            'nombre_destinatario' => (string)($seguimiento['contacto_nombre'] ?? ''),
-            'asunto' => $asunto,
-            'cuerpo' => $cuerpo
-        ]);
-
-        if (!($envio['ok'] ?? false)) {
-            return $envio;
-        }
-
-        $notasPost = 'Asunto: ' . $asunto . "\nMensaje: " . $cuerpo;
-        $notasInteraccion = "Seguimiento por correo enviado\n" .
-            'Para: ' . $destinatario . "\n" .
-            'Asunto: ' . $asunto . "\n\n" .
-            $cuerpo;
-
-        $this->connection->begin_transaction();
-        try {
-            $this->asegurarPostEnvio($seguimientoId);
-
-            $sqlPost = "UPDATE seguimientos_vinculacion_post_envio
-                        SET seguimiento_correo_notas = ?,
-                            seguimiento_correo_at = NOW(),
-                            seguimiento_correo_por = ?
-                        WHERE seguimiento_id = ?";
-            $stmtPost = $this->connection->prepare($sqlPost);
-            $stmtPost->bind_param('sii', $notasPost, $usuarioId, $seguimientoId);
-            $stmtPost->execute();
-
-            $sqlInteraccion = "INSERT INTO interacciones_vinculacion (
-                                seguimiento_id,
-                                usuario_id,
-                                canal,
-                                fecha_inicio,
-                                resultado,
-                                notas
-                            ) VALUES (?, ?, 'CORREO', NOW(), 'CORREO_ENVIADO', ?)";
-            $stmtInteraccion = $this->connection->prepare($sqlInteraccion);
-            $stmtInteraccion->bind_param('iis', $seguimientoId, $usuarioId, $notasInteraccion);
-            $stmtInteraccion->execute();
-
-            $sqlSeguimiento = "UPDATE seguimientos_vinculacion
-                               SET ultima_interaccion_at = NOW(),
-                                   proxima_accion_at = NULL
-                               WHERE id = ? AND analista_id = ? AND activo = 1";
-            $stmtSeguimiento = $this->connection->prepare($sqlSeguimiento);
-            $stmtSeguimiento->bind_param('ii', $seguimientoId, $usuarioId);
-            $stmtSeguimiento->execute();
-
-            $this->connection->commit();
-        } catch (Throwable $error) {
-            $this->connection->rollback();
-            error_log('Correo firmado enviado pero no registrado: ' . $error->getMessage());
-            return $this->error(
-                'El correo fue enviado, pero no fue posible registrarlo en el expediente. Revisa el correo enviado antes de volver a intentar.',
-                500
-            );
-        }
-
-        return [
-            'ok' => true,
-            'mensaje' => !empty($envio['firma_incluida'])
-                ? 'Correo de seguimiento enviado y registrado con tu firma.'
-                : 'Correo de seguimiento enviado y registrado correctamente.',
-            'firma_incluida' => (bool)($envio['firma_incluida'] ?? false),
-            'total_enviados' => $this->contarSeguimientosCorreo($seguimientoId)
-        ];
+    public function enviarSeguimiento(
+        $seguimientoId,
+        $usuarioId,
+        $asunto,
+        $cuerpo,
+        $adjuntosExpediente = [],
+        $archivosNuevos = null,
+        $adjuntosEsperados = null,
+        $adjuntosExpedienteEsperados = null,
+        $adjuntosNuevosEsperados = null
+    ) {
+        /*
+         * Compatibilidad: todo correo de seguimiento pasa por el servicio
+         * canónico. Así adjuntos, historial y notas operativas mantienen el
+         * mismo comportamiento sin importar desde qué controlador se invoque.
+         */
+        return (new SeguimientoCorreoService())->enviar(
+            $seguimientoId,
+            $usuarioId,
+            $asunto,
+            $cuerpo,
+            $adjuntosExpediente,
+            $archivosNuevos,
+            $adjuntosEsperados,
+            $adjuntosExpedienteEsperados,
+            $adjuntosNuevosEsperados
+        );
     }
 
     public function enviarReunion(
