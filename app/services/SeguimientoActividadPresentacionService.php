@@ -338,6 +338,36 @@ class SeguimientoActividadPresentacionService
             return $presentacion;
         }
 
+        if (preg_match('/^Documentación de convenio enviada(?:\R|$)/ui', $notas)) {
+            $campos = $this->extraerLineasClaveValor($notas);
+            $presentacion['titulo'] = 'Documentación de convenio enviada';
+            $presentacion['tipo_visual'] = 'convenio';
+            $presentacion['resultado_label'] = 'Documentación enviada';
+            $presentacion['resumen'] = 'Carta propuesta y convenio editable enviados';
+            $presentacion['detalles'] = array_values(array_filter([
+                $this->detalle('Para', $campos['Para'] ?? ''),
+                $this->detalle('Carta propuesta', $campos['Carta propuesta'] ?? ''),
+                $this->detalle('Convenio editable', $campos['Convenio editable'] ?? ''),
+                $this->detalle('Fecha de carta', $campos['Fecha de carta'] ?? ''),
+                $this->detalle('Asunto', $campos['Asunto'] ?? '')
+            ]));
+            return $presentacion;
+        }
+
+        if (preg_match('/^Convenio (?:requisitado|corregido) recibido/ui', $notas)) {
+            $esCorregido = stripos($notas, 'Convenio corregido recibido') === 0;
+            $presentacion['titulo'] = $esCorregido
+                ? 'Convenio corregido recibido'
+                : 'Convenio requisitado recibido';
+            $presentacion['tipo_visual'] = 'convenio';
+            $presentacion['resultado_label'] = 'Documento recibido';
+            $presentacion['resumen'] = $esCorregido
+                ? 'Nueva versión del convenio recibida'
+                : 'Convenio requisitado recibido';
+            $presentacion['detalles'] = $this->extraerDetallesConvenioRecibido($notas);
+            return $presentacion;
+        }
+
         if (preg_match(
             '/^Convenio formalizado\s*\|\s*Fecha:\s*([^|]+)(?:\s*\|\s*(.+))?$/ui',
             $notas,
@@ -589,6 +619,28 @@ class SeguimientoActividadPresentacionService
         }
 
         return $presentacion;
+    }
+
+    private function extraerDetallesConvenioRecibido($notas)
+    {
+        $detalles = [];
+        $partes = array_map('trim', explode('|', (string)$notas));
+        $cabecera = array_shift($partes);
+
+        if (preg_match('/versión\s+(\d+)\s*:\s*(.+)$/ui', (string)$cabecera, $m)) {
+            $detalles[] = $this->detalle('Versión', $m[1]);
+            $detalles[] = $this->detalle('Archivo', $m[2]);
+        }
+
+        foreach ($partes as $parte) {
+            if (preg_match('/^([^:]+):\s*(.+)$/u', $parte, $m)) {
+                $detalles[] = $this->detalle(trim($m[1]), trim($m[2]));
+            } elseif ($parte !== '') {
+                $detalles[] = $this->detalle('Observaciones', $parte);
+            }
+        }
+
+        return array_values(array_filter($detalles));
     }
 
     private function extraerDetallesConfirmacion($notas)
