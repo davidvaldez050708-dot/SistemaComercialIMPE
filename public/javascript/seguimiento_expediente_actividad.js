@@ -75,22 +75,36 @@
 
             const descomponerDetalle = function (nodo) {
                 const lineas = extraerLineasDetalle(nodo);
-                let contacto = '';
+                const filas = [];
+                const libres = [];
 
-                if (lineas.length > 0) {
-                    const coincidencia = lineas[0].match(
-                        /^(?:Persona\s+atendi[oó]|Atendi[oó]|Contacto)\s*:\s*(.+)$/i
+                lineas.forEach(function (linea) {
+                    const coincidencia = String(linea || '').match(
+                        /^([^:]{2,32}):\s*(.+)$/
                     );
 
-                    if (coincidencia) {
-                        contacto = String(coincidencia[1] || '').trim();
-                        lineas.shift();
+                    if (!coincidencia) {
+                        libres.push(linea);
+                        return;
                     }
-                }
+
+                    const etiqueta = String(coincidencia[1] || '').trim();
+                    const valor = String(coincidencia[2] || '').trim();
+
+                    if (!etiqueta || !valor) {
+                        libres.push(linea);
+                        return;
+                    }
+
+                    filas.push({
+                        etiqueta: etiqueta,
+                        valor: valor
+                    });
+                });
 
                 return {
-                    contacto: contacto,
-                    detalle: lineas.join('\n').trim()
+                    filas: filas,
+                    detalle: libres.join('\n').trim()
                 };
             };
 
@@ -173,10 +187,16 @@
                 const cuerpo = document.createElement('div');
                 cuerpo.className = 'linkage-activity-detail';
 
-                const contacto = crearFilaDetalle('Contacto', informacion.contacto);
-                if (contacto) {
-                    cuerpo.appendChild(contacto);
-                }
+                (informacion.filas || []).forEach(function (fila) {
+                    const nodoFila = crearFilaDetalle(
+                        fila.etiqueta,
+                        fila.valor
+                    );
+
+                    if (nodoFila) {
+                        cuerpo.appendChild(nodoFila);
+                    }
+                });
 
                 const valorDetalle =
                     informacion.detalle &&
@@ -331,56 +351,72 @@
                     icono = 'bi-envelope';
                 } else if (tipoOriginal === 'nota') {
                     icono = 'bi-journal-text';
+                } else if (tipoOriginal === 'seguimiento') {
+                    tipo = 'seguimiento';
+                    icono = 'bi-clipboard-check';
+                } else if (tipoOriginal === 'reunion') {
+                    tipo = 'reunion';
+                    icono = 'bi-people';
+                } else if (tipoOriginal === 'oficio') {
+                    tipo = 'oficio';
+                    icono = 'bi-file-earmark-text';
+                } else if (tipoOriginal === 'convenio') {
+                    tipo = 'convenio';
+                    icono = 'bi-file-earmark-check';
                 } else if (tipoOriginal === 'sistema') {
                     tipo = 'sistema';
                     icono = 'bi-gear';
-                    tituloSemantico = 'Actividad del sistema';
+
+                    if (item.dataset.activityPresented !== '1') {
+                        tituloSemantico = 'Actividad del sistema';
+                    }
                 }
 
-                if (contenido.includes('nueva propuesta de reunion enviada')) {
+                if (item.dataset.activityPresented !== '1' &&
+                    contenido.includes('nueva propuesta de reunion enviada')) {
                     tipo = 'reunion';
                     icono = 'bi-calendar-plus';
                     tituloSemantico = 'Nueva propuesta de reunión enviada';
-                } else if (contenido.includes('solicitud de reunion enviada')) {
+                } else if (item.dataset.activityPresented !== '1' && contenido.includes('solicitud de reunion enviada')) {
                     tipo = 'reunion';
                     icono = 'bi-calendar-plus';
                     tituloSemantico = 'Solicitud de reunión enviada';
-                } else if (contenido.includes('solicito reprogramar')) {
+                } else if (item.dataset.activityPresented !== '1' && contenido.includes('solicito reprogramar')) {
                     tipo = 'reunion';
                     icono = 'bi-arrow-repeat';
                     tituloSemantico = 'Reprogramación solicitada';
-                } else if (
+                } else if (item.dataset.activityPresented !== '1' && 
                     contenido.includes('correo de confirmacion de reunion') &&
                     contenido.includes('enviado')
                 ) {
                     tipo = 'correo';
                     icono = 'bi-envelope-check';
                     tituloSemantico = 'Confirmación de reunión enviada';
-                } else if (contenido.includes('confirmo la reunion')) {
+                } else if (item.dataset.activityPresented !== '1' && contenido.includes('confirmo la reunion')) {
                     tipo = 'reunion';
                     icono = 'bi-calendar-check';
                     tituloSemantico = 'Reunión confirmada';
-                } else if (contenido.includes('oficio preparado')) {
+                } else if (item.dataset.activityPresented !== '1' && contenido.includes('oficio preparado')) {
                     tipo = 'oficio';
                     icono = 'bi-file-earmark-text';
                     tituloSemantico = 'Oficio preparado';
-                } else if (contenido.includes('oficio/correo enviado')) {
+                } else if (item.dataset.activityPresented !== '1' && contenido.includes('oficio/correo enviado')) {
                     tipo = 'correo';
                     icono = 'bi-send-check';
                     tituloSemantico = 'Oficio y correo enviados';
-                } else if (contenido.includes('respuesta recibida')) {
+                } else if (item.dataset.activityPresented !== '1' && contenido.includes('respuesta recibida')) {
                     tipo = 'correo';
                     icono = 'bi-reply';
                     tituloSemantico = 'Respuesta recibida';
-                } else if (contenido.includes('seguimiento reactivado')) {
+                } else if (item.dataset.activityPresented !== '1' && contenido.includes('seguimiento reactivado')) {
                     tipo = 'seguimiento';
                     icono = 'bi-arrow-counterclockwise';
                     tituloSemantico = 'Seguimiento reactivado';
-                } else if (contenido.includes('reunion realizada')) {
+                } else if (item.dataset.activityPresented !== '1' && contenido.includes('reunion realizada')) {
                     tipo = 'reunion';
                     icono = 'bi-people';
                     tituloSemantico = 'Reunión realizada';
-                } else if (contenido.includes('convenio formalizado')) {
+                } else if (item.dataset.activityPresented !== '1' && contenido.includes('convenio formalizado')) {
                     tipo = 'convenio';
                     icono = 'bi-file-earmark-check';
                     tituloSemantico = 'Convenio formalizado';
