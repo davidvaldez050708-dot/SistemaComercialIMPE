@@ -105,6 +105,183 @@ class ReprogramacionReunionService
         }
     }
 
+    public function reproponerVencidaAnalista($usuarioId, $rolId, $datos)
+    {
+        if ((int)$rolId !== AgendaReunionService::ROL_ANALISTA) {
+            return $this->error(
+                'Solo el Analista puede proponer una nueva fecha.',
+                403
+            );
+        }
+
+        if (!$this->estructuraDisponible()) {
+            return $this->error(
+                'Falta aplicar la migración de reprogramación de reuniones.',
+                500
+            );
+        }
+
+        $reunionId = (int)($datos['reunion_id'] ?? 0);
+        $fecha = $this->normalizarFechaHora(
+            $datos['fecha_propuesta'] ?? ''
+        );
+        $duracion = (int)($datos['duracion_minutos'] ?? 60);
+        $modalidad = strtoupper(
+            trim((string)($datos['modalidad'] ?? 'VIRTUAL'))
+        );
+
+        $error = $this->validarPropuesta(
+            $fecha,
+            $duracion,
+            $modalidad
+        );
+        if ($error !== '') {
+            return $this->error($error, 422);
+        }
+
+        $reunion = $this->obtenerReunion(
+            $reunionId,
+            (int)$usuarioId,
+            AgendaReunionService::ROL_ANALISTA
+        );
+
+        if (
+            !$reunion ||
+            strtoupper((string)($reunion['estado'] ?? '')) !== 'SOLICITADA'
+        ) {
+            return $this->error(
+                'La solicitud ya no está pendiente de una nueva fecha.',
+                409
+            );
+        }
+
+        $fechaActual = trim(
+            (string)($reunion['fecha_propuesta'] ?? '')
+        );
+
+        if (
+            $fechaActual === '' ||
+            strtotime($fechaActual) === false ||
+            strtotime($fechaActual) > time()
+        ) {
+            return $this->error(
+                'La fecha actual todavía no ha vencido.',
+                409
+            );
+        }
+
+        $disponibilidad =
+            $this->agendaService->validarDisponibilidadHorario(
+                $fecha,
+                $duracion,
+                (int)$reunion['analista_id'],
+                (int)$reunion['cuenta_clave_id'],
+                $reunionId
+            );
+
+        if (!($disponibilidad['ok'] ?? false)) {
+            return $disponibilidad;
+        }
+
+        $this->connection->begin_transaction();
+
+        try {
+            $esReprogramacion =
+                (int)($reunion['es_reprogramacion'] ?? 0) === 1;
+
+            if ($esReprogramacion) {
+                $stmt = $this->connection->prepare(
+                    "UPDATE reuniones_vinculacion_reprogramaciones
+                     SET estado='VENCIDA_SIN_CONFIRMAR'
+                     WHERE reunion_id=?
+                       AND estado='PENDIENTE_KAM'
+                     ORDER BY id DESC
+                     LIMIT 1"
+                );
+                $stmt->bind_param('i', $reunionId);
+                $stmt->execute();
+
+                $this->insertarHistorial(
+                    $reunion,
+                    $fecha,
+                    $duracion,
+                    $modalidad,
+                    'La fecha propuesta venció sin confirmación de Cuenta Clave.',
+                    (int)$usuarioId,
+                    'ANALISTA',
+                    'PENDIENTE_KAM'
+                );
+            }
+
+            $sql = "UPDATE reuniones_vinculacion
+                    SET fecha_propuesta=?,
+                        duracion_minutos=?,
+                        modalidad=?,
+                        estado='SOLICITADA',
+                        reprogramacion_solicitada_at=NOW(),
+                        reprogramacion_solicitada_por=?,
+                        confirmada_at=NULL,
+                        confirmada_por=NULL,
+                        correo_confirmacion_asunto=NULL,
+                        correo_confirmacion_cuerpo=NULL,
+                        correo_confirmacion_at=NULL,
+                        correo_confirmacion_por=NULL,
+                        notificado_kam_at=NULL,
+                        notificado_analista_at=NULL
+                    WHERE id=?
+                      AND analista_id=?
+                      AND estado='SOLICITADA'
+                      AND fecha_propuesta <= NOW()";
+
+            $stmt = $this->connection->prepare($sql);
+            $stmt->bind_param(
+                'sisiii',
+                $fecha,
+                $duracion,
+                $modalidad,
+                $usuarioId,
+                $reunionId,
+                $usuarioId
+            );
+            $stmt->execute();
+
+            if ($stmt->affected_rows <= 0) {
+                throw new RuntimeException(
+                    'La solicitud cambió de estado. Actualiza la agenda.'
+                );
+            }
+
+            $this->regresarPasoOnce(
+                (int)$reunion['seguimiento_id'],
+                (int)$usuarioId,
+                $fecha
+            );
+
+            $this->registrarInteraccion(
+                (int)$reunion['seguimiento_id'],
+                (int)$usuarioId,
+                'La fecha propuesta venció sin confirmación de Cuenta Clave. ' .
+                'Nueva propuesta enviada para ' . $fecha . '.'
+            );
+
+            $this->connection->commit();
+
+            return [
+                'ok' => true,
+                'mensaje' =>
+                    'Nueva fecha enviada a Cuenta Clave para confirmación.',
+                'reunion_id' => $reunionId
+            ];
+        } catch (Throwable $error) {
+            $this->connection->rollback();
+
+            return $this->error(
+                $error->getMessage(),
+                $error instanceof RuntimeException ? 409 : 500
+            );
+        }
+    }
+
     public function solicitarKam($usuarioId, $rolId, $datos)
     {
         if ((int)$rolId !== AgendaReunionService::ROL_CUENTA_CLAVE) {
