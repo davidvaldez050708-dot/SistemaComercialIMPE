@@ -462,6 +462,50 @@
     font-size: 17px;
 }
 
+#modalSeguimientoPostEnvio .convenio-correcciones-contacto {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-top: 12px;
+    padding: 11px 12px;
+    border: 1px solid #cbd9f1;
+    border-radius: var(--radius-sm);
+    background: #f3f7fd;
+}
+
+#modalSeguimientoPostEnvio .convenio-correcciones-contacto-icon {
+    flex: 0 0 auto;
+    width: 32px;
+    height: 32px;
+    display: grid;
+    place-items: center;
+    border-radius: 8px;
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
+    font-size: 14px;
+}
+
+#modalSeguimientoPostEnvio .convenio-correcciones-contacto > div {
+    min-width: 0;
+}
+
+#modalSeguimientoPostEnvio .convenio-correcciones-contacto strong {
+    display: block;
+    margin-bottom: 2px;
+    color: var(--color-primary);
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 1.35;
+}
+
+#modalSeguimientoPostEnvio .convenio-correcciones-contacto p {
+    margin: 0;
+    color: var(--color-text-secondary);
+    font-size: 10.5px;
+    font-weight: 500;
+    line-height: 1.45;
+}
+
 #modalSeguimientoPostEnvio .convenio-review-confirm > div,
 #modalSeguimientoPostEnvio .convenio-review-warning > div {
     min-width: 0;
