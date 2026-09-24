@@ -69,11 +69,19 @@
 
         const modalSolicitudEl = document.getElementById('modalAgendaSolicitud');
         const modalDetalleEl = document.getElementById('modalAgendaDetalle');
+        const modalCorreoEl = document.getElementById('modalAgendaCorreo');
+        const modalEcardVistaEl = document.getElementById('modalAgendaEcardVista');
         const modalSolicitud = modalSolicitudEl
             ? bootstrap.Modal.getOrCreateInstance(modalSolicitudEl)
             : null;
         const modalDetalle = modalDetalleEl
             ? bootstrap.Modal.getOrCreateInstance(modalDetalleEl)
+            : null;
+        const modalCorreo = modalCorreoEl
+            ? bootstrap.Modal.getOrCreateInstance(modalCorreoEl)
+            : null;
+        const modalEcardVista = modalEcardVistaEl
+            ? bootstrap.Modal.getOrCreateInstance(modalEcardVistaEl)
             : null;
 
         const escapar = function (valor) {
@@ -341,6 +349,78 @@
             '</div>';
         };
 
+        const ecardCorreoCompacta = function (reunion) {
+            const actual = String(
+                reunion.ecard_template_predeterminado ||
+                reunion.ecard_template ||
+                'manuel'
+            ).toLowerCase();
+            const esSergio = actual === 'sergio';
+            const predeterminada = esSergio
+                ? 'Sergio López Porcayo'
+                : 'Mtro. Manuel Porcayo';
+            const preview = esSergio
+                ? String(reunion.ecard_preview_url_sergio || reunion.ecard_preview_url || '')
+                : String(reunion.ecard_preview_url_manuel || reunion.ecard_preview_url || '');
+
+            return '' +
+                '<div class="agenda-mail-ecard-card">' +
+                    '<div class="agenda-mail-ecard-copy">' +
+                        '<span class="agenda-mail-ecard-kicker">Ecard incluida</span>' +
+                        '<strong data-ecard-speaker>' + escapar(predeterminada) + '</strong>' +
+                        '<small>Se generará con los datos actuales de la reunión.</small>' +
+                    '</div>' +
+                    (preview !== ''
+                        ? '<button type="button" class="agenda-mail-ecard-thumb" data-ecard-expand>' +
+                            '<img data-ecard-preview-image src="' + escapar(preview) + '" alt="Vista previa de Ecard">' +
+                            '<span><i class="bi bi-arrows-angle-expand"></i> Ver vista previa</span>' +
+                        '</button>'
+                        : '') +
+                '</div>' +
+                '<div class="agenda-ecard-selector agenda-mail-ecard-selector">' +
+                    '<label class="form-label" for="agendaMailEcardTemplate' + Number(reunion.id || 0) + '">Ecard a enviar</label>' +
+                    '<select class="form-select system-form-control" ' +
+                        'id="agendaMailEcardTemplate' + Number(reunion.id || 0) + '" ' +
+                        'name="ecard_template" data-ecard-template ' +
+                        'data-preview-manuel="' + escapar(reunion.ecard_preview_url_manuel || '') + '" ' +
+                        'data-preview-sergio="' + escapar(reunion.ecard_preview_url_sergio || '') + '" ' +
+                        'data-speaker-manuel="Mtro. Manuel Porcayo" ' +
+                        'data-speaker-sergio="Sergio López Porcayo">' +
+                        '<option value="MANUEL"' + (!esSergio ? ' selected' : '') + '>Mtro. Manuel Porcayo · Presidente</option>' +
+                        '<option value="SERGIO"' + (esSergio ? ' selected' : '') + '>Sergio López Porcayo · Rector Universidad IMPE</option>' +
+                    '</select>' +
+                '</div>';
+        };
+
+        const abrirCorreoReunion = function (reunionId) {
+            const reunion = reunionesPorId.get(Number(reunionId || 0));
+            if (!reunion || !modalCorreoEl || !modalCorreo) {
+                return;
+            }
+
+            const form = modalCorreoEl.querySelector('[data-agenda-mail-form]');
+            const id = modalCorreoEl.querySelector('[data-agenda-mail-reunion-id]');
+            const para = modalCorreoEl.querySelector('[data-agenda-mail-recipient]');
+            const asunto = modalCorreoEl.querySelector('[data-agenda-mail-subject]');
+            const cuerpo = modalCorreoEl.querySelector('[data-agenda-mail-body]');
+            const ecard = modalCorreoEl.querySelector('[data-agenda-mail-ecard]');
+            const error = modalCorreoEl.querySelector('[data-agenda-mail-error]');
+
+            form?.reset();
+            error?.classList.add('d-none');
+
+            if (id) id.value = String(reunion.id || '');
+            if (para) para.textContent = valorSeguro(reunion.contacto_correo, 'Sin correo válido');
+            if (asunto) asunto.value = String(reunion.correo_sugerido_asunto || '');
+            if (cuerpo) cuerpo.value = String(reunion.correo_sugerido_cuerpo || '');
+            if (ecard) ecard.innerHTML = ecardCorreoCompacta(reunion);
+
+            modalDetalle?.hide();
+            window.setTimeout(function () {
+                modalCorreo.show();
+            }, 140);
+        };
+
         const bloqueCancelacion = function (reunion) {
             const estado = String(reunion.estado || '').toUpperCase();
             const cancelables = new Set([
@@ -439,38 +519,16 @@
             if (estado === 'CONFIRMADA') {
                 html += '<div class="agenda-action-box">' +
                     '<h6>Reunión confirmada</h6>' +
-                    '<p>Cuenta Clave ya confirmó la fecha. Revisa el correo y elige la Ecard que se enviará a la institución.</p>' +
+                    '<p>Cuenta Clave confirmó la fecha y agregó los datos de acceso. Prepara el correo de confirmación para la institución.</p>' +
                     datosConexion(reunion) +
-                    '<form data-agenda-action-form data-agenda-action="marcarCorreoEnviado" class="agenda-email-preview">' +
-                        '<input type="hidden" name="reunion_id" value="' + Number(reunion.id || 0) + '">' +
-                        '<div class="agenda-email-recipient"><strong>Para:</strong> ' + escapar(valorSeguro(reunion.contacto_correo, 'Sin correo válido')) + '</div>' +
-                        '<div>' +
-                            '<label class="form-label">Asunto</label>' +
-                            '<input class="form-control system-form-control" type="text" name="asunto" maxlength="255" value="' + escapar(reunion.correo_sugerido_asunto || '') + '" required>' +
-                        '</div>' +
-                        '<div>' +
-                            '<label class="form-label">Mensaje</label>' +
-                            '<textarea class="form-control system-form-control" name="cuerpo" rows="9" required>' + escapar(reunion.correo_sugerido_cuerpo || '') + '</textarea>' +
-                        '</div>' +
-                        selectorEcard(reunion) +
-                        (String(reunion.ecard_preview_url || '').trim() !== ''
-                            ? '<div class="agenda-ecard-preview">' +
-                                '<div class="agenda-ecard-preview-heading">' +
-                                    '<span><i class="bi bi-image"></i> Ecard incluida en el correo</span>' +
-                                    '<strong data-ecard-speaker>' + escapar(valorSeguro(reunion.ecard_ponente, 'Mtro. Manuel Porcayo')) + '</strong>' +
-                                '</div>' +
-                                '<img data-ecard-preview-image src="' + escapar(reunion.ecard_preview_url) + '" alt="Vista previa de Ecard de reunión" loading="lazy">' +
-                                '<small>Institución, fecha, hora y modalidad se generan con los datos actuales de la reunión.</small>' +
-                            '</div>'
-                            : '') +
-                        '<div class="agenda-inline-note">' +
-                            '<i class="bi bi-info-circle"></i> El sistema enviará exactamente la Ecard seleccionada junto con el mensaje y el enlace de acceso. Si tienes firma configurada, también se incluirá.' +
-                        '</div>' +
-                        '<div class="agenda-action-row">' +
-                            '<button class="btn btn-system-light" type="button" data-copy-email><i class="bi bi-copy"></i> Copiar mensaje</button>' +
-                            '<button class="btn btn-system-save" type="submit"><i class="bi bi-envelope-check"></i> Registrar correo enviado</button>' +
-                        '</div>' +
-                    '</form>' +
+                    '<div class="agenda-inline-note is-success">' +
+                        '<i class="bi bi-check2-circle"></i> Lista para enviar la confirmación a la institución.' +
+                    '</div>' +
+                    '<div class="agenda-action-row">' +
+                        '<button class="btn btn-system-save" type="button" data-agenda-prepare-mail="' + Number(reunion.id || 0) + '">' +
+                            '<i class="bi bi-envelope"></i> Preparar correo' +
+                        '</button>' +
+                    '</div>' +
                 '</div>';
                 return html + bloqueCancelacion(reunion);
             }
@@ -665,6 +723,36 @@
                 return;
             }
 
+            const prepararCorreo = event.target.closest('[data-agenda-prepare-mail]');
+            if (prepararCorreo) {
+                abrirCorreoReunion(
+                    Number(prepararCorreo.getAttribute('data-agenda-prepare-mail') || 0)
+                );
+                return;
+            }
+
+            const ampliarEcard = event.target.closest('[data-ecard-expand]');
+            if (ampliarEcard && modalEcardVistaEl && modalEcardVista) {
+                const form = ampliarEcard.closest('form');
+                const imagenOrigen = form?.querySelector('[data-ecard-preview-image]');
+                const ponente = form?.querySelector('[data-ecard-speaker]');
+                const imagenDestino = modalEcardVistaEl.querySelector('[data-agenda-ecard-viewer-image]');
+                const textoPonente = modalEcardVistaEl.querySelector('[data-agenda-ecard-viewer-speaker]');
+
+                if (imagenDestino && imagenOrigen) {
+                    imagenDestino.src = imagenOrigen.src;
+                }
+                if (textoPonente) {
+                    textoPonente.textContent = ponente?.textContent || '';
+                }
+
+                modalCorreo?.hide();
+                window.setTimeout(function () {
+                    modalEcardVista.show();
+                }, 140);
+                return;
+            }
+
             const copiar = event.target.closest('[data-copy-email]');
             if (copiar) {
                 const form = copiar.closest('form');
@@ -677,6 +765,14 @@
                         copiar.innerHTML = '<i class="bi bi-check2"></i> Copiado';
                     });
                 }
+            }
+        });
+
+        modalEcardVistaEl?.addEventListener('hidden.bs.modal', function () {
+            if (modalCorreoEl && modalCorreo) {
+                window.setTimeout(function () {
+                    modalCorreo.show();
+                }, 100);
             }
         });
 
@@ -732,6 +828,18 @@
                 form,
                 String(form.getAttribute('data-agenda-action') || '')
             );
+        });
+
+        modalCorreoEl?.addEventListener('submit', function (event) {
+            const form = event.target.closest('[data-agenda-mail-form]');
+            if (!form) {
+                return;
+            }
+
+            // correo_firma_envio.js intercepta este formulario en captura y
+            // realiza el envío real. Evitamos que el formulario navegue si
+            // dicho módulo no estuviera disponible.
+            event.preventDefault();
         });
 
         if (reunionInicial > 0 && reunionesPorId.has(reunionInicial)) {
