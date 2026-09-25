@@ -98,6 +98,93 @@ class PerfilAdultoLaboralModel
         return $fila ? $this->normalizarFila($fila) : $this->respuestaVacia();
     }
 
+    public function guardarPerfil(
+        int $estadoId,
+        ?int $municipioId,
+        array $datos,
+        int $usuarioId
+    ): bool {
+        if ($estadoId <= 0 || $usuarioId <= 0 || !$this->tablaDisponible()) {
+            return false;
+        }
+
+        $clave = trim((string)($datos['clave_geografica'] ?? ''));
+        $anio = (int)($datos['anio'] ?? 0);
+        $p25a34 = $datos['poblacion_25_34'] ?? null;
+        $p35a44 = $datos['poblacion_35_44'] ?? null;
+        $p45a54 = $datos['poblacion_45_54'] ?? null;
+        $p25a54 = $datos['poblacion_25_54'] ?? null;
+        $pea = $datos['poblacion_economicamente_activa'] ?? null;
+        $ocupada = $datos['poblacion_ocupada'] ?? null;
+        $fuente = trim((string)($datos['fuente'] ?? ''));
+        $archivo = trim((string)($datos['archivo_origen'] ?? ''));
+        $metodologia = trim((string)($datos['metodologia'] ?? ''));
+        $tipo = trim((string)($datos['tipo_actualizacion'] ?? 'AUTOMATICA'));
+
+        foreach ([$p25a34, $p35a44, $p45a54, $p25a54] as $valor) {
+            if (!is_int($valor) || $valor < 0) {
+                return false;
+            }
+        }
+
+        if (
+            $clave === '' ||
+            $anio < 2000 ||
+            $anio > 2100 ||
+            $p25a54 !== ($p25a34 + $p35a44 + $p45a54) ||
+            ($pea !== null && (!is_int($pea) || $pea < 0)) ||
+            ($ocupada !== null && (!is_int($ocupada) || $ocupada < 0)) ||
+            $fuente === ''
+        ) {
+            return false;
+        }
+
+        $sql = "INSERT INTO perfil_adulto_laboral_oficial (
+                    estado_id, municipio_id, clave_geografica, anio,
+                    poblacion_25_34, poblacion_35_44, poblacion_45_54, poblacion_25_54,
+                    poblacion_economicamente_activa, poblacion_ocupada,
+                    fuente, archivo_origen, metodologia, fecha_consulta,
+                    tipo_actualizacion, usuario_importo_id, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?, NOW(), NOW())
+                ON DUPLICATE KEY UPDATE
+                    poblacion_25_34 = VALUES(poblacion_25_34),
+                    poblacion_35_44 = VALUES(poblacion_35_44),
+                    poblacion_45_54 = VALUES(poblacion_45_54),
+                    poblacion_25_54 = VALUES(poblacion_25_54),
+                    poblacion_economicamente_activa = VALUES(poblacion_economicamente_activa),
+                    poblacion_ocupada = VALUES(poblacion_ocupada),
+                    fuente = VALUES(fuente),
+                    archivo_origen = VALUES(archivo_origen),
+                    metodologia = VALUES(metodologia),
+                    fecha_consulta = NOW(),
+                    tipo_actualizacion = VALUES(tipo_actualizacion),
+                    usuario_importo_id = VALUES(usuario_importo_id),
+                    updated_at = NOW()";
+
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param(
+            'iisiiiiiiissssi',
+            $estadoId,
+            $municipioId,
+            $clave,
+            $anio,
+            $p25a34,
+            $p35a44,
+            $p45a54,
+            $p25a54,
+            $pea,
+            $ocupada,
+            $fuente,
+            $archivo,
+            $metodologia,
+            $tipo,
+            $usuarioId
+        );
+
+        return $stmt->execute();
+    }
+
+
     private function normalizarFila(array $fila): array
     {
         return [
