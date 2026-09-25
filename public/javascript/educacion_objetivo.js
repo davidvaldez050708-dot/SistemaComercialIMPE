@@ -58,8 +58,8 @@
             contenedor.innerHTML =
                 '<div class="data-education-target-heading">' +
                     '<div>' +
-                        '<span class="data-education-target-eyebrow">Población objetivo y oportunidad educativa</span>' +
-                        '<h4>Lectura educativa para vinculación</h4>' +
+                        '<span class="data-education-target-eyebrow">Contexto educativo del territorio</span>' +
+                        '<h4>Indicadores educativos de contexto</h4>' +
                         '<p>Los datos educativos apoyan el análisis territorial, pero no sustituyen el perfil adulto y laboral que Fundación utiliza para priorizar vinculación.</p>' +
                     '</div>' +
                     '<span class="data-education-target-period">2020</span>' +
@@ -74,8 +74,8 @@
             contenedor.innerHTML =
                 '<div class="data-education-target-heading">' +
                     '<div>' +
-                        '<span class="data-education-target-eyebrow">Población objetivo y oportunidad educativa</span>' +
-                        '<h4>Lectura educativa para vinculación</h4>' +
+                        '<span class="data-education-target-eyebrow">Contexto educativo del territorio</span>' +
+                        '<h4>Indicadores educativos de contexto</h4>' +
                         '<p>Indicadores educativos oficiales disponibles para complementar el análisis de vinculación. Los grupos juveniles se presentan como contexto, no como prioridad territorial.</p>' +
                     '</div>' +
                     '<span class="data-education-target-period">2020</span>' +
@@ -135,9 +135,9 @@
             contenedor.innerHTML =
                 '<div class="data-education-target-heading">' +
                     '<div>' +
-                        '<span class="data-education-target-eyebrow">Población objetivo y oportunidad educativa</span>' +
-                        '<h4>Lectura educativa para vinculación</h4>' +
-                        '<p>Este bloque muestra el contexto educativo disponible. La población de 15 a 24 años no se interpreta como la población objetivo principal de vinculación; el análisis adulto y laboral se incorporará como una capa independiente.</p>' +
+                        '<span class="data-education-target-eyebrow">Contexto educativo del territorio</span>' +
+                        '<h4>Indicadores educativos de contexto</h4>' +
+                        '<p>Indicadores oficiales que ayudan a comprender las condiciones educativas del estado. Complementan el análisis territorial y no determinan por sí solos la prioridad de vinculación.</p>' +
                     '</div>' +
                     '<span class="data-education-target-period">Censo ' + escapar(datos.periodo || '2020') + '</span>' +
                 '</div>' +
@@ -147,49 +147,37 @@
                         '<span>Secundaria como máxima escolaridad</span>' +
                         '<strong>' + numero(m.secundaria_completa) + '</strong>' +
                         '<b>' + porcentaje(m.secundaria_completa_pct) + ' de la población de 15 años y más</b>' +
-                        '<small>Es el grupo cuya máxima escolaridad registrada son 3 grados aprobados de secundaria. Es una referencia educativa general. No equivale por sí sola a población prospectable ni identifica simultáneamente edad, situación laboral y necesidad educativa.</small>' +
+                        '<small>Referencia general del nivel educativo registrado; no equivale por sí sola a población prospectable.</small>' +
                     '</article>' +
                     '<article class="data-education-target-card">' +
-                        '<span>15 a 17 años fuera de la escuela</span>' +
-                        '<strong>' + numero(m.fuera_15_17) + '</strong>' +
-                        '<b>' + porcentaje(m.fuera_15_17_pct) + ' del grupo de edad</b>' +
-                        '<small>Calculado como población de 15 a 17 años menos quienes reportaron asistir a la escuela.</small>' +
-                    '</article>' +
-                    '<article class="data-education-target-card">' +
-                        '<span>18 a 24 años fuera de la escuela</span>' +
-                        '<strong>' + numero(m.fuera_18_24) + '</strong>' +
-                        '<b>' + porcentaje(m.fuera_18_24_pct) + ' del grupo de edad</b>' +
-                        '<small>Se conserva como contexto educativo juvenil; no determina por sí solo la prioridad de vinculación.</small>' +
-                    '</article>' +
-                '</div>' +
-
-                '<div class="data-education-target-band">' +
-                    '<div class="data-education-target-band-copy">' +
-                        '<span>Contexto educativo juvenil</span>' +
-                        '<strong>Población de 15 a 24 años no registrada como asistente a la escuela</strong>' +
-                    '</div>' +
-                    '<div class="data-education-target-band-value">' +
-                        '<strong>' + numero(m.fuera_15_24) + '</strong>' +
-                        '<span>' + porcentaje(m.fuera_15_24_pct) + ' del grupo de 15 a 24 años</span>' +
-                    '</div>' +
-                '</div>' +
-
-                '<div class="data-education-target-context">' +
-                    '<div>' +
                         '<span>Población de 18 años y más con educación posbásica</span>' +
                         '<strong>' + numero(m.educacion_posbasica_18_mas) + '</strong>' +
-                    '</div>' +
-                    '<div>' +
+                        '<b>Contexto de continuidad educativa</b>' +
+                        '<small>Indicador estatal complementario para comprender el perfil educativo del territorio.</small>' +
+                    '</article>' +
+                    '<article class="data-education-target-card">' +
                         '<span>Grado promedio de escolaridad</span>' +
                         '<strong>' + decimal(m.grado_promedio_escolaridad) + ' años</strong>' +
-                    '</div>' +
+                        '<b>Promedio estatal registrado</b>' +
+                        '<small>Describe el contexto educativo general y no modifica por sí solo la prioridad municipal.</small>' +
+                    '</article>' +
                 '</div>' +
+
+                '<details class="data-education-youth-context">' +
+                    '<summary><span><strong>Contexto educativo juvenil</strong><small>Indicadores de 15 a 24 años · referencia complementaria</small></span><i class="bi bi-chevron-down"></i></summary>' +
+                    '<div class="data-education-youth-context-body">' +
+                        '<div><span>15 a 17 años fuera de la escuela</span><strong>' + numero(m.fuera_15_17) + '</strong><small>' + porcentaje(m.fuera_15_17_pct) + ' del grupo de edad</small></div>' +
+                        '<div><span>18 a 24 años fuera de la escuela</span><strong>' + numero(m.fuera_18_24) + '</strong><small>' + porcentaje(m.fuera_18_24_pct) + ' del grupo de edad</small></div>' +
+                        '<div><span>15 a 24 años no registrados como asistentes</span><strong>' + numero(m.fuera_15_24) + '</strong><small>' + porcentaje(m.fuera_15_24_pct) + ' del grupo de edad</small></div>' +
+                    '</div>' +
+                    '<p>Estos indicadores se conservan como contexto educativo juvenil y no determinan la prioridad de vinculación.</p>' +
+                '</details>' +
 
                 renderMunicipios(datos.municipios || []) +
 
                 '<p class="data-education-target-note">' +
                     '<strong>Importante:</strong> secundaria como máxima escolaridad y no asistencia escolar son indicadores distintos. ' +
-                    'No deben sumarse ni asumirse como las mismas personas. Estos datos describen contexto educativo y no representan por sí mismos la población objetivo de Fundación. La priorización territorial deberá incorporar por separado población adulta, situación laboral y variables compatibles con la oferta.' +
+                    'No deben sumarse ni asumirse como las mismas personas. Estos datos describen contexto educativo y no representan por sí mismos la población objetivo de Fundación. La priorización territorial se analiza por separado con población adulta, contexto laboral y tejido organizacional.' +
                 '</p>' +
                 '<div class="data-education-target-source">' +
                     '<span>Fuente: <strong>' + escapar(datos.fuente || 'INEGI') + '</strong></span>' +
