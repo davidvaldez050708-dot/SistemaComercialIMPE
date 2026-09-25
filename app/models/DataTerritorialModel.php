@@ -1336,6 +1336,43 @@ class DataTerritorialModel
         return $this->convertirResultadoEnArreglo($stmt->get_result());
     }
 
+    public function obtenerMapaMunicipiosInegi(int $estadoId): array
+    {
+        if ($estadoId <= 0) {
+            return [];
+        }
+
+        $sql = "SELECT id, clave_inegi, nombre
+                FROM municipios
+                WHERE estado_id = ?
+                    AND estado = 1
+                ORDER BY id";
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param('i', $estadoId);
+        $stmt->execute();
+
+        $mapa = [];
+
+        foreach ($this->convertirResultadoEnArreglo($stmt->get_result()) as $municipio) {
+            $clave = preg_replace('/\\D+/', '', trim((string)($municipio['clave_inegi'] ?? ''))) ?? '';
+
+            if (strlen($clave) === 5) {
+                $clave = substr($clave, 2);
+            }
+
+            if ($clave === '') {
+                continue;
+            }
+
+            $mapa[str_pad($clave, 3, '0', STR_PAD_LEFT)] = [
+                'id' => (int)$municipio['id'],
+                'nombre' => (string)($municipio['nombre'] ?? '')
+            ];
+        }
+
+        return $mapa;
+    }
+
     public function contarMunicipiosFiltrados($estadoId, $filtros = [])
     {
         $buscar = trim((string)($filtros['buscar'] ?? ''));
