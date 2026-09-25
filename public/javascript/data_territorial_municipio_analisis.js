@@ -238,28 +238,32 @@
             }
 
             const visibleCandidates = candidates.slice(0, 8);
+            const renderCandidateCards = function (items) {
+                return items.map(function (candidate) {
+                    const reading = candidate.lectura_vinculacion || {};
+                    const type = reading.tipo_entidad_etiqueta || candidate.tipo_entidad_etiqueta || 'Organización';
+                    const level = reading.nivel === 'REVISAR' ? 'Revisar' : 'Explorar';
+                    const activity = candidate.actividad || 'Actividad no especificada';
+                    const size = candidate.estrato_etiqueta || 'Tamaño no registrado';
+                    return '<article class="data-municipality-candidate-card">' +
+                        '<span class="data-municipality-candidate-icon"><i class="bi bi-building"></i></span>' +
+                        '<div class="data-municipality-candidate-copy"><strong>' + escapeHtml(candidate.nombre) + '</strong>' +
+                        '<div class="data-municipality-candidate-meta"><span>' + escapeHtml(type) + ' · ' + escapeHtml(size) + '</span>' +
+                        '<em class="data-municipality-candidate-level">' + escapeHtml(level) + '</em></div>' +
+                        '<small>' + escapeHtml(activity) + '</small>' +
+                        (reading.via ? '<div class="data-municipality-candidate-opportunity"><b>' +
+                            escapeHtml(reading.via) + '</b><p>' + escapeHtml(reading.razon || '') + '</p></div>' : '') +
+                        '</div></article>';
+                }).join('');
+            };
+
             container.innerHTML =
                 '<div class="data-municipality-candidates-heading">' +
-                    '<div><h4>Organizaciones candidatas</h4><p>Resultados preliminares según sector y tamaño.</p></div>' +
+                    '<div><h4>Organizaciones candidatas</h4><p>Resultados preliminares según sector, tamaño y posible vía de vinculación.</p></div>' +
                     '<span>Mostrando ' + visibleCandidates.length + ' de ' + candidates.length + '</span>' +
                 '</div>' +
                 '<div class="data-municipality-candidates-list">' +
-                    visibleCandidates.map(function (candidate) {
-                        const reading = candidate.lectura_vinculacion || {};
-                        const type = reading.tipo_entidad_etiqueta || candidate.tipo_entidad_etiqueta || 'Organización';
-                        const activity = candidate.actividad || 'Actividad no especificada';
-                        const size = candidate.estrato_etiqueta || 'Tamaño no registrado';
-                        return '<article class="data-municipality-candidate-card">' +
-                            '<span class="data-municipality-candidate-icon"><i class="bi bi-building"></i></span>' +
-                            '<div class="data-municipality-candidate-copy">' +
-                                '<strong>' + escapeHtml(candidate.nombre) + '</strong>' +
-                                '<span>' + escapeHtml(type) + ' · ' + escapeHtml(size) + '</span>' +
-                                '<small>' + escapeHtml(activity) + '</small>' +
-                                (reading.via ? '<div class="data-municipality-candidate-opportunity"><b>' +
-                                    escapeHtml(reading.via) + '</b><p>' + escapeHtml(reading.razon || '') + '</p></div>' : '') +
-                            '</div>' +
-                        '</article>';
-                    }).join('') +
+                    renderCandidateCards(visibleCandidates) +
                 '</div>' +
                 (candidates.length > visibleCandidates.length
                     ? '<div class="data-municipality-candidates-actions">' +
@@ -271,24 +275,6 @@
                         '<button type="button" class="data-municipality-candidates-collapse" data-hide-candidates>Ocultar resultados</button>' +
                       '</div>') +
                 '<p class="data-municipality-analysis-caption data-municipality-candidates-note">Fuente: INEGI - DENUE. Son candidatos exploratorios y requieren validación antes de incorporarse a Seguimiento.</p>';
-
-            const renderCandidateCards = function (items) {
-                return items.map(function (candidate) {
-                    const reading = candidate.lectura_vinculacion || {};
-                    const type = reading.tipo_entidad_etiqueta || candidate.tipo_entidad_etiqueta || 'Organización';
-                    const level = reading.nivel === 'REVISAR' ? 'Revisar' : 'Explorar';
-                    const activity = candidate.actividad || 'Actividad no especificada';
-                    const size = candidate.estrato_etiqueta || 'Tamaño no registrado';
-                    return '<article class="data-municipality-candidate-card">' +
-                        '<span class="data-municipality-candidate-icon"><i class="bi bi-building"></i></span>' +
-                        '<div class="data-municipality-candidate-copy"><strong>' + escapeHtml(candidate.nombre) + '</strong>' +
-                        '<span>' + escapeHtml(type) + ' · ' + escapeHtml(size) + '</span>' +
-                        '<em class="data-municipality-candidate-level">' + escapeHtml(level) + '</em><small>' + escapeHtml(activity) + '</small>' +
-                        (reading.via ? '<div class="data-municipality-candidate-opportunity"><b>' +
-                            escapeHtml(reading.via) + '</b><p>' + escapeHtml(reading.razon || '') + '</p></div>' : '') +
-                        '</div></article>';
-                }).join('');
-            };
 
             container.addEventListener('click', function (event) {
                 const showAll = event.target.closest('[data-show-all-candidates]');
