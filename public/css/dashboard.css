@@ -8510,3 +8510,215 @@
     font-size: 15px;
     line-height: 1;
 }
+
+
+/* =========================================================
+   INFORMACIÓN TERRITORIAL · ANÁLISIS MUNICIPAL
+   Misma proporción del panel de detalle territorial.
+   ========================================================= */
+.data-municipality-analysis-panel {
+    width: min(500px, calc(100vw - 18px)) !important;
+    max-width: 100%;
+}
+
+.data-municipality-analysis {
+    display: grid;
+    gap: 16px;
+}
+
+.data-municipality-analysis-identity {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.data-municipality-analysis-identity h3 {
+    margin: 0;
+    color: var(--color-text-primary);
+    font-size: 18px;
+    font-weight: 800;
+}
+
+.data-municipality-analysis-identity p {
+    margin: 4px 0 0;
+    color: var(--color-text-secondary);
+    font-size: 11px;
+    font-weight: 650;
+}
+
+.data-municipality-analysis-score {
+    flex: 0 0 auto;
+    min-width: 88px;
+    text-align: right;
+}
+
+.data-municipality-analysis-score strong {
+    display: block;
+    color: var(--color-primary);
+    font-size: 22px;
+    font-weight: 850;
+    line-height: 1;
+}
+
+.data-municipality-analysis-score span {
+    display: block;
+    margin-top: 4px;
+    color: var(--color-text-secondary);
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.data-municipality-analysis-section {
+    display: grid;
+    gap: 9px;
+}
+
+.data-municipality-analysis-section > h4 {
+    margin: 0;
+    color: var(--color-text-primary);
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.data-municipality-analysis-metrics {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+}
+
+.data-municipality-analysis-metrics > div {
+    padding: 11px 12px;
+    border-right: 1px solid var(--color-border);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.data-municipality-analysis-metrics > div:nth-child(2n) { border-right: 0; }
+.data-municipality-analysis-metrics > div:nth-last-child(-n + 2) { border-bottom: 0; }
+
+.data-municipality-analysis-metrics span,
+.data-municipality-analysis-metrics strong {
+    display: block;
+}
+
+.data-municipality-analysis-metrics span {
+    color: var(--color-text-secondary);
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.data-municipality-analysis-metrics strong {
+    margin-top: 4px;
+    color: var(--color-text-primary);
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.data-municipality-analysis-list {
+    margin: 0;
+    padding: 11px 13px 11px 28px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+    color: var(--color-text-secondary);
+    font-size: 11px;
+    font-weight: 650;
+    line-height: 1.5;
+}
+
+.data-municipality-analysis-list li + li { margin-top: 5px; }
+
+.data-municipality-analysis-warning {
+    padding: 10px 11px;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    border: 1px solid #dbe3ee;
+    border-radius: var(--radius-sm);
+    background: #f8fafc;
+    color: var(--color-text-secondary);
+    font-size: 10.5px;
+    font-weight: 650;
+    line-height: 1.5;
+}
+
+.data-municipality-analysis-warning i {
+    flex: 0 0 auto;
+    color: var(--color-primary);
+}
+
+.data-municipality-official {
+    padding: 12px;
+    display: grid;
+    grid-template-columns: 58px minmax(0, 1fr);
+    gap: 11px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+}
+
+.data-municipality-official-photo {
+    width: 58px;
+    height: 58px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: #f8fafc;
+    color: var(--color-text-secondary);
+}
+
+.data-municipality-official-photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.data-municipality-official-copy strong,
+.data-municipality-official-copy span {
+    display: block;
+}
+
+.data-municipality-official-copy strong {
+    color: var(--color-text-primary);
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.data-municipality-official-copy span {
+    margin-top: 3px;
+    color: var(--color-text-secondary);
+    font-size: 10.5px;
+    font-weight: 650;
+}
+
+.data-municipality-official-copy a {
+    margin-top: 7px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--color-primary);
+    font-size: 10.5px;
+    font-weight: 800;
+}
+
+@media (max-width: 767.98px) {
+    .data-municipality-analysis-panel {
+        width: calc(100vw - 8px) !important;
+    }
+
+    .data-municipality-analysis-identity {
+        flex-direction: column;
+    }
+
+    .data-municipality-analysis-score {
+        text-align: left;
+    }
+}
