@@ -7,6 +7,8 @@ require_once __DIR__ . '/../services/DenueService.php';
 require_once __DIR__ . '/../services/PobrezaLaboralImportService.php';
 require_once __DIR__ . '/../services/RezagoEducativoImportService.php';
 require_once __DIR__ . '/../services/InegiGeoService.php';
+require_once __DIR__ . '/../services/InegiPerfilAdultoLaboralService.php';
+require_once __DIR__ . '/../models/PerfilAdultoLaboralModel.php';
 require_once __DIR__ . '/../helpers/PermissionHelper.php';
 
 class DataTerritorialController
@@ -660,6 +662,153 @@ class DataTerritorialController
                 'municipios_procesados' => (int)($guardado['procesados'] ?? 0),
                 'total_municipios' => $totalMunicipios,
                 'fuente' => 'INEGI - Catálogo Único de Claves Geoestadísticas'
+            ]
+        ]);
+    }
+
+    public function actualizarPerfilAdultoLaboralOficial()
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->responderJson(['ok' => false, 'mensaje' => 'Método no permitido.'], 405);
+        }
+
+        $this->validarPermisoActualizacionOficialJson();
+        $estadoIdPost = trim((string)($_POST['estado_id'] ?? ''));
+
+        if ($estadoIdPost === '' || !ctype_digit($estadoIdPost) || (int)$estadoIdPost <= 0) {
+            $this->responderJson(['ok' => false, 'mensaje' => 'El territorio seleccionado no es válido.'], 422);
+        }
+
+        $modeloTerritorial = new DataTerritorialModel();
+        $estadoId = (int)$estadoIdPost;
+        $estado = $modeloTerritorial->obtenerEstado($estadoId);
+
+        if (!$estado) {
+            $this->responderJson(['ok' => false, 'mensaje' => 'El territorio seleccionado no existe o no está activo.'], 404);
+        }
+
+        $claveEstado = str_pad(trim((string)($estado['clave_inegi'] ?? '')), 2, '0', STR_PAD_LEFT);
+
+        if (!preg_match('/^\\d{2}$/', $claveEstado)) {
+            $this->responderJson(['ok' => false, 'mensaje' => 'El territorio no tiene una clave INEGI válida.'], 422);
+        }
+
+        $perfilModel = new PerfilAdultoLaboralModel();
+
+        if (!$perfilModel->tablaDisponible()) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'Falta preparar la tabla perfil_adulto_laboral_oficial antes de importar el perfil adulto/laboral.'
+            ], 503);
+        }
+
+        $servicio = new InegiPerfilAdultoLaboralService();
+        $resultado = $servicio->obtenerPorEstado($claveEstado);
+
+        if (($resultado['ok'] ?? false) !== true) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => $resultado['mensaje'] ?? 'No fue posible obtener el perfil adulto/laboral de INEGI.'
+            ], 502);
+        }
+
+        $municipiosRecibidos = is_array($resultado['municipios'] ?? null)
+            ? $resultado['municipios']
+            : [];
+        $mapaMunicipios = $modeloTerritorial->obtenerMapaMunicipiosInegi($estadoId);
+
+        if (empty($mapaMunicipios)) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'Primero actualiza el catálogo oficial de municipios para relacionar el perfil adulto/laboral.'
+            ], 409);
+        }
+
+        $usuarioId = (int)$_SESSION['usuario_id'];
+        $fuente = trim((string)($resultado['fuente'] ?? 'INEGI'));
+        $archivo = trim((string)($resultado['archivo_origen'] ?? ''));
+        $anio = (int)($resultado['periodo'] ?? 0);
+        $metodologia = json_encode(
+            $resultado['metodologia'] ?? [],
+            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+        );
+
+        $preparar = static function (array $registro) use ($fuente, $archivo, $anio, $metodologia): array {
+            $metricas = is_array($registro['metricas'] ?? null) ? $registro['metricas'] : [];
+
+            return array_merge($metricas, [
+                'clave_geografica' => (string)($registro['clave_geografica'] ?? ''),
+                'anio' => $anio,
+                'fuente' => $fuente,
+                'archivo_origen' => $archivo,
+                'metodologia' => $metodologia ?: '',
+                'tipo_actualizacion' => 'AUTOMATICA'
+            ]);
+        };
+
+        $estadoGuardado = $perfilModel->guardarPerfil(
+            $estadoId,
+            null,
+            $preparar((array)($resultado['estado'] ?? [])),
+            $usuarioId
+        );
+
+        if (!$estadoGuardado) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'No fue posible guardar el perfil adulto/laboral estatal.'
+            ], 500);
+        }
+
+        $guardados = 0;
+        $sinRelacion = [];
+
+        foreach ($municipiosRecibidos as $registro) {
+            $claveMunicipio = str_pad(
+                preg_replace('/\\D+/', '', (string)($registro['clave_municipio'] ?? '')) ?? '',
+                3,
+                '0',
+                STR_PAD_LEFT
+            );
+            $municipioLocal = $mapaMunicipios[$claveMunicipio] ?? null;
+
+            if (!$municipioLocal) {
+                $sinRelacion[] = (string)($registro['nombre'] ?? $claveMunicipio);
+                continue;
+            }
+
+            if ($perfilModel->guardarPerfil(
+                $estadoId,
+                (int)$municipioLocal['id'],
+                $preparar($registro),
+                $usuarioId
+            )) {
+                $guardados++;
+            } else {
+                $sinRelacion[] = (string)($registro['nombre'] ?? $claveMunicipio);
+            }
+        }
+
+        if ($guardados === 0) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'Se guardó el perfil estatal, pero ningún municipio pudo relacionarse por clave INEGI.'
+            ], 409);
+        }
+
+        $this->responderJson([
+            'ok' => true,
+            'mensaje' => empty($sinRelacion)
+                ? 'El perfil adulto/laboral se actualizó correctamente.'
+                : 'El perfil adulto/laboral se actualizó con algunas incidencias de relación municipal.',
+            'datos' => [
+                'estado_id' => $estadoId,
+                'estado' => (string)($estado['nombre'] ?? ''),
+                'periodo' => $anio,
+                'municipios_recibidos' => count($municipiosRecibidos),
+                'municipios_guardados' => $guardados,
+                'municipios_sin_relacion' => count($sinRelacion),
+                'fuente' => $fuente
             ]
         ]);
     }
