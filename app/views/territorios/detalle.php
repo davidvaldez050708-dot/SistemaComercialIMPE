@@ -456,6 +456,10 @@ if (!empty($movimientosTerritoriales)) {
 
                     <?php if (!empty($asesoresTerritorio)): ?>
                         <article class="territory-detail-advisors-card">
+                            <div class="territory-detail-advisors-heading">
+                                <span class="assignment-role">Asesores</span>
+                            </div>
+
                             <div class="territory-detail-analysts border-0 pt-0 mt-0">
                                 <?php foreach ($asesoresTerritorio as $asesor): ?>
                                     <?php
@@ -475,7 +479,6 @@ if (!empty($movimientosTerritoriales)) {
                                             'general'
                                         ) ?>
                                         <div class="d-flex flex-column align-items-start gap-1">
-                                            <span class="assignment-role">Asesor</span>
                                             <span class="territory-person-name">
                                                 <?= $texto($nombreAsesor) ?>
                                             </span>
