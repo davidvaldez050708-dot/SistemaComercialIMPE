@@ -192,7 +192,6 @@ if ($esSeguimientoEstado) {
             'seguimiento_zadarma_marcado_e164.js',
             'seguimiento_zadarma_widget_oculto.js',
             'seguimiento_caller_id_usuario.js',
-            'seguimiento_llamada_twilio.js',
             'seguimiento_llamada_flotante.js',
             'seguimiento_llamada_registro_obligatorio.js',
             'seguimiento_llamada_registro_compacto.js',
