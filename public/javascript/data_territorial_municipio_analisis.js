@@ -209,7 +209,9 @@
 
         button.disabled = true;
         const original = button.innerHTML;
-        button.innerHTML = '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span> Consultando DENUE…';
+        button.classList.add('is-loading');
+        button.innerHTML = '<span class="data-municipality-candidates-trigger-icon"><span class="spinner-border spinner-border-sm" aria-hidden="true"></span></span>' +
+            '<span><strong>Consultando DENUE…</strong><small>Buscando organizaciones del municipio</small></span>';
         container.innerHTML = '';
 
         try {
@@ -235,28 +237,59 @@
                 return;
             }
 
+            const visibleCandidates = candidates.slice(0, 8);
             container.innerHTML =
-                '<div class="data-municipality-analysis-section-heading"><h4>Organizaciones candidatas</h4><span>' +
-                    candidates.length + ' encontradas</span></div>' +
-                '<div class="data-municipality-analysis-factors">' +
-                    candidates.slice(0, 12).map(function (candidate) {
-                        const meta = [
-                            candidate.tipo_entidad_etiqueta,
-                            candidate.actividad,
-                            candidate.estrato_etiqueta
-                        ].filter(Boolean).join(' · ');
-                        return '<div><i class="bi bi-building-check"></i><span><strong>' +
-                            escapeHtml(candidate.nombre) + '</strong>' +
-                            (meta ? '<small style="display:block">' + escapeHtml(meta) + '</small>' : '') +
-                            '</span></div>';
+                '<div class="data-municipality-candidates-heading">' +
+                    '<div><h4>Organizaciones candidatas</h4><p>Resultados preliminares según sector y tamaño.</p></div>' +
+                    '<span>Mostrando ' + visibleCandidates.length + ' de ' + candidates.length + '</span>' +
+                '</div>' +
+                '<div class="data-municipality-candidates-list">' +
+                    visibleCandidates.map(function (candidate) {
+                        const type = candidate.tipo_entidad_etiqueta || 'Organización';
+                        const activity = candidate.actividad || 'Actividad no especificada';
+                        const size = candidate.estrato_etiqueta || 'Tamaño no registrado';
+                        return '<article class="data-municipality-candidate-card">' +
+                            '<span class="data-municipality-candidate-icon"><i class="bi bi-building"></i></span>' +
+                            '<div class="data-municipality-candidate-copy">' +
+                                '<strong>' + escapeHtml(candidate.nombre) + '</strong>' +
+                                '<span>' + escapeHtml(type) + '</span>' +
+                                '<small>' + escapeHtml(activity) + '</small>' +
+                                '<em>' + escapeHtml(size) + '</em>' +
+                            '</div>' +
+                        '</article>';
                     }).join('') +
                 '</div>' +
-                '<p class="data-municipality-analysis-caption">Fuente: INEGI - DENUE. Esta lista es exploratoria y requiere validación del analista antes de incorporarse a Seguimiento.</p>';
+                (candidates.length > visibleCandidates.length
+                    ? '<button type="button" class="data-municipality-candidates-more" data-show-all-candidates>Ver las ' +
+                        (candidates.length - visibleCandidates.length) + ' organizaciones restantes</button>'
+                    : '') +
+                '<p class="data-municipality-analysis-caption">Fuente: INEGI - DENUE. Son candidatos exploratorios y requieren validación antes de incorporarse a Seguimiento.</p>';
+
+            const showAll = container.querySelector('[data-show-all-candidates]');
+            if (showAll) {
+                showAll.addEventListener('click', function () {
+                    const list = container.querySelector('.data-municipality-candidates-list');
+                    list.innerHTML = candidates.map(function (candidate) {
+                        const type = candidate.tipo_entidad_etiqueta || 'Organización';
+                        const activity = candidate.actividad || 'Actividad no especificada';
+                        const size = candidate.estrato_etiqueta || 'Tamaño no registrado';
+                        return '<article class="data-municipality-candidate-card">' +
+                            '<span class="data-municipality-candidate-icon"><i class="bi bi-building"></i></span>' +
+                            '<div class="data-municipality-candidate-copy"><strong>' + escapeHtml(candidate.nombre) + '</strong>' +
+                            '<span>' + escapeHtml(type) + '</span><small>' + escapeHtml(activity) + '</small>' +
+                            '<em>' + escapeHtml(size) + '</em></div></article>';
+                    }).join('');
+                    const counter = container.querySelector('.data-municipality-candidates-heading > span');
+                    if (counter) counter.textContent = candidates.length + ' de ' + candidates.length;
+                    showAll.remove();
+                });
+            }
         } catch (error) {
             container.innerHTML = '<p class="data-municipality-analysis-empty">' +
                 escapeHtml(error.message || 'No fue posible consultar DENUE.') + '</p>';
         } finally {
             button.disabled = false;
+            button.classList.remove('is-loading');
             button.innerHTML = original;
         }
     });
