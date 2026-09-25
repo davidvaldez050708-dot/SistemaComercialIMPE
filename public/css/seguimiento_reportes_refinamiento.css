@@ -402,9 +402,10 @@
 }
 
 #modalGenerarReporteSeguimiento iframe {
-    height: 365px !important;
+    height: 325px !important;
     min-height: 0 !important;
     max-height: calc(100vh - 145px);
+    display: block;
 }
 
 .seguimiento-reportes-modal-page {
@@ -462,7 +463,7 @@
     }
 
     #modalGenerarReporteSeguimiento iframe {
-        height: 455px !important;
+        height: 405px !important;
     }
 }
 
