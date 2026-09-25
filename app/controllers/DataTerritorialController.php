@@ -298,7 +298,8 @@ class DataTerritorialController
                 'direccion' => $candidato['direccion'] ?? null,
                 'telefono' => $candidato['telefono'] ?? null,
                 'correo' => $candidato['correo'] ?? null,
-                'sitio_web' => $candidato['sitio_web'] ?? null
+                'sitio_web' => $candidato['sitio_web'] ?? null,
+                'lectura_vinculacion' => $candidato['lectura_vinculacion'] ?? []
             ];
         }, $resultado['resultados'] ?? []));
 
