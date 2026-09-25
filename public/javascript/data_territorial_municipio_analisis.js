@@ -252,11 +252,12 @@
                         '<em class="data-municipality-candidate-level">' + escapeHtml(level) + '</em></div>' +
                         '<small>' + escapeHtml(activity) + '</small>' +
                         '<button type="button" class="data-municipality-candidate-review" data-review-candidate ' +
-                            'data-candidate="' + escapeHtml(JSON.stringify(candidate)) + '">Revisar candidato</button>' +
+                            'data-candidate-key="' + escapeHtml(candidate.clave_origen || '') + '">Revisar candidato</button>' +
                         '</div></article>';
                 }).join('');
             };
 
+            container._territorialCandidates = candidates;
             container.innerHTML =
                 '<div class="data-municipality-candidates-heading">' +
                     '<div><h4>Organizaciones candidatas</h4><p>Resultados preliminares según sector, tamaño y posible vía de vinculación.</p></div>' +
@@ -319,12 +320,14 @@
         const button = event.target.closest('[data-review-candidate]');
         if (!button) return;
 
-        let candidate = {};
-        try {
-            candidate = JSON.parse(button.dataset.candidate || '{}');
-        } catch (error) {
-            return;
-        }
+        const candidatesContainer = button.closest('[data-municipality-candidates]');
+        const candidateKey = String(button.dataset.candidateKey || '');
+        const candidate = Array.isArray(candidatesContainer?._territorialCandidates)
+            ? candidatesContainer._territorialCandidates.find(function (item) {
+                return String(item.clave_origen || '') === candidateKey;
+            })
+            : null;
+        if (!candidate) return;
 
         const modalElement = document.getElementById('modalConfirmarSeguimientoTerritorial');
         const form = modalElement?.querySelector('[data-territorial-candidate-confirm-form]');
@@ -332,7 +335,7 @@
 
         form.reset();
         form.querySelector('[data-territorial-confirm-state]').value =
-            button.closest('[data-municipality-candidates]')?.parentElement
+            candidatesContainer?.parentElement
                 ?.querySelector('[data-load-municipality-candidates]')?.dataset.estadoId || '';
         form.querySelector('[data-territorial-confirm-key]').value = candidate.clave_origen || '';
         modalElement.querySelector('[data-territorial-confirm-name]').textContent = candidate.nombre || '—';
