@@ -134,10 +134,12 @@
                       '</div>'
                     : '') +
                 '<p class="data-municipality-analysis-caption">Lectura exploratoria del tejido local. Estos establecimientos todavía no modifican el índice ni equivalen por sí solos a prospectos calificados.</p>' +
-                '<button type="button" class="btn btn-outline-primary btn-sm" data-load-municipality-candidates ' +
+                '<button type="button" class="data-municipality-candidates-trigger" data-load-municipality-candidates ' +
                     'data-estado-id="' + escapeHtml(button.dataset.estadoId || '') + '" ' +
                     'data-municipio-id="' + escapeHtml(button.dataset.municipioId || '') + '">' +
-                    '<i class="bi bi-search"></i> Explorar organizaciones candidatas</button>' +
+                    '<span class="data-municipality-candidates-trigger-icon"><i class="bi bi-buildings"></i></span>' +
+                    '<span><strong>Explorar organizaciones</strong><small>Ver candidatos identificados en DENUE</small></span>' +
+                    '<i class="bi bi-chevron-right"></i></button>' +
                 '<div class="data-municipality-candidates" data-municipality-candidates></div>' +
               '</section>'
             : '<section class="data-municipality-analysis-section">' +
@@ -217,7 +219,8 @@
                 estado_id: button.dataset.estadoId || '',
                 municipio_id: button.dataset.municipioId || ''
             });
-            const response = await fetch(baseUrl + '?' + params.toString(), {
+            const endpoint = window.location.pathname + '?' + params.toString();
+            const response = await fetch(endpoint, {
                 headers: { 'X-Requested-With': 'fetch' }
             });
             const result = await response.json();
