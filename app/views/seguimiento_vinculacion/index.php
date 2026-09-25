@@ -200,7 +200,7 @@ $tarjetasPorPaginaSeguimiento = 12;
                         title="Configurar reporte de seguimiento"
                         src="<?= BASE_URL ?>index.php?controller=seguimientoVinculacionReporte&action=index&modal=1"
                         loading="lazy"
-                        style="display:block;width:100%;height:clamp(360px,70vh,720px);border:0;background:#fff;"></iframe>
+                        style="display:block;width:100%;height:325px;border:0;background:#fff;"></iframe>
                 </div>
             </div>
         </div>
