@@ -1170,7 +1170,68 @@ class DenueService
                 ['Entidad', 'Estado', 'entidad', 'Nombre_entidad']
             ),
             'fuente' => 'DENUE',
-            'contexto' => $ubicacion
+            'contexto' => $ubicacion,
+            'lectura_vinculacion' => $this->construirLecturaVinculacion(
+                $codigoActividad,
+                $actividad,
+                $estratoValor,
+                $nombre
+            )
+        ];
+    }
+
+    private function construirLecturaVinculacion(
+        string $codigoActividad,
+        string $actividad,
+        int $estratoValor,
+        string $nombre
+    ): array {
+        $sector = $this->obtenerSectorActividad($codigoActividad, $actividad);
+        $texto = strtolower(trim($nombre . ' ' . $actividad));
+        $tipo = $this->etiquetarTipoEntidadDenue($codigoActividad, $actividad);
+        $via = 'Organización con población laboral';
+        $razon = 'Puede concentrar personas adultas vinculadas a una misma organización.';
+        $nivel = 'EXPLORAR';
+
+        if ($sector === '93') {
+            $via = 'Alianza con institución pública';
+            $razon = 'Puede facilitar difusión o convenios dirigidos a personal y comunidad vinculada a la institución.';
+            $nivel = 'REVISAR';
+        } elseif ($sector === '61') {
+            $via = 'Alianza educativa';
+            $razon = 'Puede funcionar como aliado de difusión, continuidad educativa o vinculación institucional.';
+            $nivel = 'REVISAR';
+        } elseif ($sector === '62') {
+            $tipo = 'Institución de salud';
+            $via = 'Convenio para personal';
+            $razon = 'El valor potencial está principalmente en su plantilla adulta y no en su actividad médica.';
+            $nivel = 'REVISAR';
+        } elseif (
+            strpos($texto, 'asociaci') !== false ||
+            strpos($texto, 'camara') !== false ||
+            strpos($texto, 'organizacion') !== false ||
+            strpos($texto, 'organización') !== false
+        ) {
+            $via = 'Alianza con organización';
+            $razon = 'Puede agrupar miembros, empresas o personas a quienes difundir la oferta educativa.';
+            $nivel = 'REVISAR';
+        } elseif (in_array($sector, ['31', '48', '52', '54', '55', '56'], true)) {
+            $via = 'Convenio para colaboradores';
+            $razon = 'Su plantilla puede ser un canal para programas de bachillerato, carreras ejecutivas o titulación por experiencia.';
+            $nivel = $estratoValor >= 4 ? 'REVISAR' : 'EXPLORAR';
+        }
+
+        if ($estratoValor >= 6) {
+            $razon .= ' DENUE reporta una plantilla amplia, lo que aumenta su alcance potencial.';
+        } elseif ($estratoValor === 3) {
+            $razon .= ' Su tamaño es moderado, por lo que conviene validar el alcance antes de priorizarla.';
+        }
+
+        return [
+            'nivel' => $nivel,
+            'via' => $via,
+            'razon' => $razon,
+            'tipo_entidad_etiqueta' => $tipo
         ];
     }
 
