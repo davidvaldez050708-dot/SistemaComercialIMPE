@@ -276,12 +276,14 @@
                 return items.map(function (candidate) {
                     const reading = candidate.lectura_vinculacion || {};
                     const type = reading.tipo_entidad_etiqueta || candidate.tipo_entidad_etiqueta || 'Organización';
+                    const level = reading.nivel === 'REVISAR' ? 'Revisar' : 'Explorar';
                     const activity = candidate.actividad || 'Actividad no especificada';
                     const size = candidate.estrato_etiqueta || 'Tamaño no registrado';
                     return '<article class="data-municipality-candidate-card">' +
                         '<span class="data-municipality-candidate-icon"><i class="bi bi-building"></i></span>' +
                         '<div class="data-municipality-candidate-copy"><strong>' + escapeHtml(candidate.nombre) + '</strong>' +
-                        '<span>' + escapeHtml(type) + ' · ' + escapeHtml(size) + '</span><small>' + escapeHtml(activity) + '</small>' +
+                        '<span>' + escapeHtml(type) + ' · ' + escapeHtml(size) + '</span>' +
+                        '<em class="data-municipality-candidate-level">' + escapeHtml(level) + '</em><small>' + escapeHtml(activity) + '</small>' +
                         (reading.via ? '<div class="data-municipality-candidate-opportunity"><b>' +
                             escapeHtml(reading.via) + '</b><p>' + escapeHtml(reading.razon || '') + '</p></div>' : '') +
                         '</div></article>';
