@@ -23,6 +23,15 @@
         }
     };
 
+    const parseObject = function (value) {
+        try {
+            const parsed = JSON.parse(value || '{}');
+            return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+        } catch (error) {
+            return {};
+        }
+    };
+
     const factors = function (items) {
         if (!items.length) {
             return '<p class="data-municipality-analysis-empty">Todavía no hay factores suficientes para explicar la oportunidad.</p>';
@@ -54,6 +63,7 @@
         const totalRank = Number(button.dataset.totalRanking || 0);
         const reasons = parseList(button.dataset.motivos);
         const limitations = parseList(button.dataset.limitaciones);
+        const adultProfile = parseObject(button.dataset.perfilAdulto);
         const action = button.dataset.accion || 'OBSERVAR';
         const priority = (button.dataset.prioridad || 'BAJA').toLowerCase();
 
@@ -75,6 +85,32 @@
                 ? '<a href="' + escapeHtml(social) + '" target="_blank" rel="noopener noreferrer"><i class="bi bi-box-arrow-up-right"></i> Red social</a>'
                 : '<span>' + escapeHtml(social) + '</span>';
         }
+
+        const adultAvailable = adultProfile.disponible === true;
+        const adultPeriod = adultProfile.anio || '';
+        const adultSource = adultProfile.fuente || 'INEGI - Censo de Población y Vivienda 2020';
+        const adultHtml = adultAvailable
+            ? '<section class="data-municipality-analysis-section data-municipality-analysis-adult-section">' +
+                '<div class="data-municipality-analysis-section-heading"><h4>Perfil adulto y laboral</h4><span>INEGI · ' +
+                    escapeHtml(adultPeriod || '2020') + '</span></div>' +
+                '<div class="data-municipality-analysis-adult-grid">' +
+                    '<div><span>25–34 años</span><strong>' + number(adultProfile.poblacion_25_34) + '</strong></div>' +
+                    '<div><span>35–44 años</span><strong>' + number(adultProfile.poblacion_35_44) + '</strong></div>' +
+                    '<div><span>45–54 años</span><strong>' + number(adultProfile.poblacion_45_54) + '</strong></div>' +
+                    '<div class="data-municipality-analysis-adult-total"><span>Total 25–54</span><strong>' +
+                        number(adultProfile.poblacion_25_54) + '</strong></div>' +
+                '</div>' +
+                '<div class="data-municipality-analysis-labor-context">' +
+                    '<div><span>PEA</span><strong>' + number(adultProfile.poblacion_economicamente_activa) + '</strong></div>' +
+                    '<div><span>Población ocupada</span><strong>' + number(adultProfile.poblacion_ocupada) + '</strong></div>' +
+                '</div>' +
+                '<p class="data-municipality-analysis-caption">PEA y población ocupada son contexto laboral general de 12 años y más; no corresponden exclusivamente al grupo de 25 a 54 años. Fuente: ' +
+                    escapeHtml(adultSource) + '.</p>' +
+              '</section>'
+            : '<section class="data-municipality-analysis-section data-municipality-analysis-adult-section">' +
+                '<div class="data-municipality-analysis-section-heading"><h4>Perfil adulto y laboral</h4><span>Pendiente</span></div>' +
+                '<p class="data-municipality-analysis-empty">Este municipio todavía no cuenta con el perfil adulto/laboral oficial importado.</p>' +
+              '</section>';
 
         const methodology = limitations.length
             ? '<details class="data-municipality-analysis-methodology">' +
@@ -111,6 +147,7 @@
                     '<div class="data-municipality-analysis-section-heading"><h4>¿Por qué se prioriza?</h4><span>Lectura actual</span></div>' +
                     factors(reasons) +
                 '</section>' +
+                adultHtml +
                 '<section class="data-municipality-analysis-section data-municipality-analysis-institutional-section">' +
                     '<div class="data-municipality-analysis-section-heading"><h4>Información institucional</h4><span>Contexto</span></div>' +
                     '<div class="data-municipality-official">' +
