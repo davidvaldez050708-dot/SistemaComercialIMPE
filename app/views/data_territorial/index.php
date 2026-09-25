@@ -1492,6 +1492,39 @@ $urlPaginaTerritorio = function ($pagina) use ($buscarTerritorio, $filtroInforma
             <?= $fuenteHtml($fuentes['MUNICIPIOS'] ?? null) ?>
         </section>
 
+        <div class="modal fade" id="modalConfirmarSeguimientoTerritorial" tabindex="-1" aria-labelledby="modalConfirmarSeguimientoTerritorialTitulo" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered system-form-dialog">
+                <div class="modal-content system-form-modal">
+                    <div class="modal-header system-form-modal-header">
+                        <div>
+                            <h5 class="system-form-modal-title" id="modalConfirmarSeguimientoTerritorialTitulo">Iniciar seguimiento</h5>
+                            <p class="system-form-modal-subtitle">Revisa la información encontrada antes de crear el seguimiento.</p>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                    </div>
+                    <form data-territorial-candidate-confirm-form>
+                        <div class="modal-body">
+                            <input type="hidden" name="estado_id" data-territorial-confirm-state>
+                            <input type="hidden" name="origen" value="DENUE">
+                            <input type="hidden" name="clave_origen" data-territorial-confirm-key>
+                            <div class="linkage-confirm-summary">
+                                <div><span>Nombre</span><strong data-territorial-confirm-name>—</strong></div>
+                                <div><span>Fuente</span><strong>DENUE</strong></div>
+                                <div><span>Municipio</span><strong data-territorial-confirm-municipality>—</strong></div>
+                                <div><span>Teléfono encontrado</span><strong data-territorial-confirm-phone>—</strong></div>
+                                <div><span>Correo encontrado</span><strong data-territorial-confirm-email>—</strong></div>
+                            </div>
+                            <div class="linkage-candidate-alert d-none mt-3" data-territorial-confirm-alert></div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-system-cancel" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="submit" class="btn btn-system-save" data-territorial-confirm-submit>Confirmar e iniciar seguimiento</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
         <div
             class="offcanvas offcanvas-end user-detail-panel data-municipality-analysis-panel"
             tabindex="-1"
