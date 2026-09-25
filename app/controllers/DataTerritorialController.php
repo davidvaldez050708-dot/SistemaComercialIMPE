@@ -594,6 +594,112 @@ class DataTerritorialController
         ]);
     }
 
+    public function actualizarActividadEconomicaMunicipalOficial()
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->responderJson(['ok' => false, 'mensaje' => 'Método no permitido.'], 405);
+        }
+
+        $this->validarPermisoActualizacionOficialJson();
+        $estadoIdPost = trim((string)($_POST['estado_id'] ?? ''));
+
+        if ($estadoIdPost === '' || !ctype_digit($estadoIdPost) || (int)$estadoIdPost <= 0) {
+            $this->responderJson(['ok' => false, 'mensaje' => 'El territorio seleccionado no es válido.'], 422);
+        }
+
+        $modelo = new DataTerritorialModel();
+        $estadoId = (int)$estadoIdPost;
+        $estado = $modelo->obtenerEstado($estadoId);
+
+        if (!$estado) {
+            $this->responderJson(['ok' => false, 'mensaje' => 'El territorio seleccionado no existe o no está activo.'], 404);
+        }
+
+        $claveEstado = str_pad(trim((string)($estado['clave_inegi'] ?? '')), 2, '0', STR_PAD_LEFT);
+        if (!preg_match('/^\\d{2}$/', $claveEstado)) {
+            $this->responderJson(['ok' => false, 'mensaje' => 'El territorio no tiene una clave INEGI válida.'], 422);
+        }
+
+        $mapaMunicipios = $modelo->obtenerMapaMunicipiosInegi($estadoId);
+        if (empty($mapaMunicipios)) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'Primero actualiza el catálogo de municipios del territorio.'
+            ], 422);
+        }
+
+        $denue = new DenueService();
+        $guardados = 0;
+        $establecimientos = 0;
+        $establecimientosVinculacion = 0;
+        $errores = [];
+
+        foreach ($mapaMunicipios as $claveMunicipio => $municipio) {
+            $resultado = $denue->obtenerSectoresMunicipio($claveEstado, $claveMunicipio);
+
+            if (($resultado['ok'] ?? false) !== true) {
+                $errores[] = ($municipio['nombre'] ?? $claveMunicipio) . ': ' .
+                    ($resultado['mensaje'] ?? 'DENUE no devolvió información.');
+                continue;
+            }
+
+            $total = (int)($resultado['total_establecimientos'] ?? 0);
+            $sectores = $resultado['sectores'] ?? [];
+
+            if ($total <= 0 || !is_array($sectores) || empty($sectores)) {
+                $errores[] = ($municipio['nombre'] ?? $claveMunicipio) . ': información incompleta.';
+                continue;
+            }
+
+            try {
+                $ok = $modelo->actualizarActividadEconomicaMunicipioOficial(
+                    $estadoId,
+                    (int)$municipio['id'],
+                    $total,
+                    $sectores
+                );
+            } catch (Throwable $error) {
+                error_log($error->getMessage());
+                $ok = false;
+            }
+
+            if (!$ok) {
+                $errores[] = ($municipio['nombre'] ?? $claveMunicipio) . ': no fue posible guardar.';
+                continue;
+            }
+
+            $guardados++;
+            $establecimientos += $total;
+            $establecimientosVinculacion += (int)($resultado['establecimientos_vinculacion'] ?? 0);
+        }
+
+        if ($guardados === 0) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'No fue posible guardar el tejido económico municipal.',
+                'datos' => ['errores' => array_slice($errores, 0, 8)]
+            ], 502);
+        }
+
+        $this->responderJson([
+            'ok' => true,
+            'mensaje' => $guardados === count($mapaMunicipios)
+                ? 'El tejido económico municipal se actualizó correctamente.'
+                : 'El tejido económico municipal se actualizó parcialmente.',
+            'datos' => [
+                'estado_id' => $estadoId,
+                'estado' => $estado['nombre'],
+                'municipios_recibidos' => count($mapaMunicipios),
+                'municipios_guardados' => $guardados,
+                'municipios_con_error' => count($errores),
+                'establecimientos' => $establecimientos,
+                'establecimientos_vinculacion' => $establecimientosVinculacion,
+                'errores' => array_slice($errores, 0, 8),
+                'fuente' => 'INEGI - DENUE'
+            ]
+        ]);
+    }
+
     public function actualizarMunicipiosOficiales()
     {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
