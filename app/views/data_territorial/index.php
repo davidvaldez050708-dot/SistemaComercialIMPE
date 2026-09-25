@@ -3392,7 +3392,30 @@ document.addEventListener('DOMContentLoaded', function () {
                 body: datos.toString()
             }
         );
-        const resultado = await respuesta.json();
+        const textoRespuesta = await respuesta.text();
+        let resultado;
+
+        try {
+            resultado = JSON.parse(textoRespuesta);
+        } catch (error) {
+            const textoPlano = textoRespuesta
+                .replace(/<br\\s*\\/?>/gi, '\\n')
+                .replace(/<[^>]*>/g, ' ')
+                .replace(/&nbsp;/gi, ' ')
+                .replace(/&quot;/gi, '"')
+                .replace(/&#039;/gi, "'")
+                .replace(/&lt;/gi, '<')
+                .replace(/&gt;/gi, '>')
+                .replace(/&amp;/gi, '&')
+                .replace(/[ \\t]+/g, ' ')
+                .replace(/\\n\\s+/g, '\\n')
+                .trim();
+            const detalle = textoPlano.length > 0
+                ? textoPlano.slice(0, 900)
+                : configuracion.mensajeError;
+
+            throw new Error('El servidor devolvió un error PHP: ' + detalle);
+        }
 
         if (!respuesta.ok || resultado.ok !== true) {
             throw new Error(resultado.mensaje || configuracion.mensajeError);
