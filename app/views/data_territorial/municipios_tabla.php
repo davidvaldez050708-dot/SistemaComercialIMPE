@@ -198,6 +198,9 @@ if ($totalPaginasMunicipios <= 7) {
                             ' · Cobertura ' . $coberturaMunicipio . '%';
                         $motivosMunicipio = $priorizacionMunicipal['por_municipio'][$idMunicipio]['motivos'] ?? [];
                         $limitacionesMunicipio = $priorizacionMunicipal['por_municipio'][$idMunicipio]['limitaciones'] ?? [];
+                        $perfilAdultoMunicipio = is_array($municipio['perfil_adulto_laboral'] ?? null)
+                            ? $municipio['perfil_adulto_laboral']
+                            : ['disponible' => false];
                         $numeroFila = (($paginaMunicipios - 1) * $limiteMunicipios) + $indiceMunicipio + 1;
                     ?>
 
@@ -306,7 +309,8 @@ if ($totalPaginasMunicipios <= 7) {
                                         data-ranking="<?= (int)$rankingMunicipio ?>"
                                         data-total-ranking="<?= (int)$totalRankingMunicipio ?>"
                                         data-motivos="<?= $escMunicipio(json_encode(array_values($motivosMunicipio), JSON_UNESCAPED_UNICODE)) ?>"
-                                        data-limitaciones="<?= $escMunicipio(json_encode(array_values($limitacionesMunicipio), JSON_UNESCAPED_UNICODE)) ?>">
+                                        data-limitaciones="<?= $escMunicipio(json_encode(array_values($limitacionesMunicipio), JSON_UNESCAPED_UNICODE)) ?>"
+                                        data-perfil-adulto="<?= $escMunicipio(json_encode($perfilAdultoMunicipio, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?>">
                                         <i class="bi bi-bar-chart-line"></i>
                                     </button>
 
