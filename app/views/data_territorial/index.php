@@ -697,7 +697,24 @@ $urlPaginaTerritorio = function ($pagina) use ($buscarTerritorio, $filtroInforma
                         </div>
                     <?php endif; ?>
 
-                    <?php if ($puedeEditarGeneral): ?>
+                    <div
+            class="offcanvas offcanvas-end user-detail-panel data-municipality-analysis-panel"
+            tabindex="-1"
+            id="offcanvasAnalisisMunicipio"
+            aria-labelledby="offcanvasAnalisisMunicipioTitulo">
+            <div class="offcanvas-header user-detail-header">
+                <div>
+                    <h5 class="user-detail-title" id="offcanvasAnalisisMunicipioTitulo">Análisis del municipio</h5>
+                    <p class="user-detail-subtitle">Oportunidad territorial e información institucional</p>
+                </div>
+                <button type="button" class="btn-close user-detail-close" data-bs-dismiss="offcanvas" aria-label="Cerrar"></button>
+            </div>
+            <div class="offcanvas-body user-detail-body" id="municipioAnalisisContenido">
+                <div class="territory-loading">Selecciona un municipio para consultar su análisis.</div>
+            </div>
+        </div>
+
+        <?php if ($puedeEditarGeneral): ?>
                         <button
                             type="button"
                             class="btn btn-system-light"
