@@ -184,7 +184,7 @@
                     '<div><span>Cobertura de datos</span><strong>' + coverage + '%</strong></div>' +
                 '</div>' +
                 '<section class="data-municipality-analysis-section">' +
-                    '<div class="data-municipality-analysis-section-heading"><h4>¿Por qué se prioriza?</h4><span>Lectura actual</span></div>' +
+                    '<div class="data-municipality-analysis-section-heading"><h4>¿Qué explica esta posición?</h4><span>Factores del índice actual</span></div>' +
                     factors(reasons) +
                 '</section>' +
                 adultHtml +
