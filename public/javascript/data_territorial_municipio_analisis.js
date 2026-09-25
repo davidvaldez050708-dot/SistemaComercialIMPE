@@ -141,7 +141,7 @@
                     '<div><span>Posición</span><strong>' +
                         (rank > 0 && totalRank > 0 ? rank + ' de ' + totalRank : 'No disponible') +
                     '</strong></div>' +
-                    '<div><span>Datos del modelo actual</span><strong>' + coverage + '%</strong></div>' +
+                    '<div><span>Cobertura de datos</span><strong>' + coverage + '%</strong></div>' +
                 '</div>' +
                 '<section class="data-municipality-analysis-section">' +
                     '<div class="data-municipality-analysis-section-heading"><h4>¿Por qué se prioriza?</h4><span>Lectura actual</span></div>' +
