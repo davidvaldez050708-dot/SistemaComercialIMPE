@@ -323,3 +323,55 @@
         grid-row: 2;
     }
 }
+
+
+.data-education-youth-context {
+    margin-top: 14px;
+    border: 1px solid #dfe6ee;
+    border-radius: 14px;
+    background: #fff;
+    overflow: hidden;
+}
+.data-education-youth-context summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 15px 18px;
+    cursor: pointer;
+    list-style: none;
+}
+.data-education-youth-context summary::-webkit-details-marker { display: none; }
+.data-education-youth-context summary span {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.data-education-youth-context summary strong { font-size: .9rem; }
+.data-education-youth-context summary small { color: #748094; font-size: .76rem; font-weight: 500; }
+.data-education-youth-context[open] summary i { transform: rotate(180deg); }
+.data-education-youth-context summary i { transition: transform .2s ease; color: #748094; }
+.data-education-youth-context-body {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    border-top: 1px solid #e8edf3;
+}
+.data-education-youth-context-body > div {
+    padding: 14px 18px;
+    border-right: 1px solid #e8edf3;
+}
+.data-education-youth-context-body > div:last-child { border-right: 0; }
+.data-education-youth-context-body span,
+.data-education-youth-context-body small { display: block; color: #748094; font-size: .76rem; }
+.data-education-youth-context-body strong { display: block; margin: 4px 0 2px; font-size: 1.05rem; }
+.data-education-youth-context > p {
+    margin: 0;
+    padding: 0 18px 14px;
+    color: #748094;
+    font-size: .76rem;
+}
+@media (max-width: 760px) {
+    .data-education-youth-context-body { grid-template-columns: 1fr; }
+    .data-education-youth-context-body > div { border-right: 0; border-bottom: 1px solid #e8edf3; }
+    .data-education-youth-context-body > div:last-child { border-bottom: 0; }
+}
