@@ -2033,6 +2033,19 @@ $urlPaginaTerritorio = function ($pagina) use ($buscarTerritorio, $filtroInforma
                                             <em>Actualiza la distribución de establecimientos registrados por sector económico.</em>
                                         </span>
                                     </label>
+
+                                    <label class="data-official-option-card">
+                                        <input
+                                            class="form-check-input"
+                                            type="checkbox"
+                                            value="actividad_municipal"
+                                            data-official-option>
+                                        <span>
+                                            <strong>Tejido económico municipal</strong>
+                                            <small>Fuente: INEGI - DENUE</small>
+                                            <em>Cuantifica establecimientos y sectores para cada municipio del Estado.</em>
+                                        </span>
+                                    </label>
                                     <label class="data-official-option-card">
                                         <input
                                             class="form-check-input"
@@ -2203,6 +2216,19 @@ $urlPaginaTerritorio = function ($pagina) use ($buscarTerritorio, $filtroInforma
                                         <strong>Actividad económica</strong>
                                         <small>Fuente: INEGI - DENUE</small>
                                         <em>Actualiza la distribución de establecimientos registrados por sector económico.</em>
+                                    </span>
+                                </label>
+
+                                <label class="data-official-option-card">
+                                    <input
+                                        class="form-check-input"
+                                        type="checkbox"
+                                        value="actividad_municipal"
+                                        data-official-option>
+                                    <span>
+                                        <strong>Tejido económico municipal</strong>
+                                        <small>Fuente: INEGI - DENUE</small>
+                                        <em>Cuantifica establecimientos y sectores para cada municipio del Estado.</em>
                                     </span>
                                 </label>
 
@@ -3129,6 +3155,12 @@ document.addEventListener('DOMContentLoaded', function () {
             action: 'actualizarActividadEconomicaOficial',
             mensajeError: 'No fue posible obtener información económica.',
             pausaPosterior: 400
+        },
+        actividad_municipal: {
+            nombre: 'Tejido económico municipal',
+            action: 'actualizarActividadEconomicaMunicipalOficial',
+            mensajeError: 'No fue posible obtener el tejido económico municipal de DENUE.',
+            pausaPosterior: 500
         },
         municipios: {
             nombre: 'Municipios',
