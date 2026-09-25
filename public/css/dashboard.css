@@ -9149,3 +9149,32 @@
     font-size: .66rem;
     line-height: 1.35;
 }
+
+
+.data-municipality-candidates-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+}
+.data-municipality-candidates-actions .data-municipality-candidates-more {
+    flex: 1 1 auto;
+    margin-top: 0;
+}
+.data-municipality-candidates-collapse {
+    flex: 0 0 auto;
+    padding: 7px 10px;
+    border: 0;
+    background: transparent;
+    color: #738196;
+    font-size: .71rem;
+    font-weight: 600;
+}
+.data-municipality-candidates-collapse:hover {
+    color: #455a70;
+}
+.data-municipality-candidates-note {
+    margin-top: 12px !important;
+    padding-top: 10px;
+    border-top: 1px solid #edf0f4;
+}
