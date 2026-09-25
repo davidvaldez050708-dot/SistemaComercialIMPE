@@ -196,6 +196,8 @@ if ($totalPaginasMunicipios <= 7) {
 
                         $tooltipPrioridadMunicipio .=
                             ' · Cobertura ' . $coberturaMunicipio . '%';
+                        $motivosMunicipio = $priorizacionMunicipal['por_municipio'][$idMunicipio]['motivos'] ?? [];
+                        $limitacionesMunicipio = $priorizacionMunicipal['por_municipio'][$idMunicipio]['limitaciones'] ?? [];
                         $numeroFila = (($paginaMunicipios - 1) * $limiteMunicipios) + $indiceMunicipio + 1;
                     ?>
 
@@ -281,6 +283,32 @@ if ($totalPaginasMunicipios <= 7) {
                                         title="<?= $escMunicipio($tooltipPrioridadMunicipio) ?>">
                                         <?= $escMunicipio($estrategiaMunicipio['accion']) ?>
                                     </span>
+
+                                    <button
+                                        type="button"
+                                        class="table-action-button"
+                                        aria-label="Ver análisis de <?= $escMunicipio($nombreMunicipio) ?>"
+                                        title="Ver análisis"
+                                        data-municipio-analysis
+                                        data-bs-toggle="offcanvas"
+                                        data-bs-target="#offcanvasAnalisisMunicipio"
+                                        data-nombre="<?= $escMunicipio($nombreMunicipio) ?>"
+                                        data-clave-inegi="<?= $escMunicipio($claveInegi) ?>"
+                                        data-poblacion="<?= $escMunicipio($poblacion) ?>"
+                                        data-presidente="<?= $escMunicipio($presidente) ?>"
+                                        data-partido="<?= $escMunicipio($partido) ?>"
+                                        data-redes="<?= $escMunicipio($redes) ?>"
+                                        data-foto="<?= $escMunicipio($fotografiaUrl) ?>"
+                                        data-accion="<?= $escMunicipio($estrategiaMunicipio['accion']) ?>"
+                                        data-prioridad="<?= $escMunicipio($prioridadMunicipio) ?>"
+                                        data-puntaje="<?= (int)$puntajeMunicipio ?>"
+                                        data-cobertura="<?= (int)$coberturaMunicipio ?>"
+                                        data-ranking="<?= (int)$rankingMunicipio ?>"
+                                        data-total-ranking="<?= (int)$totalRankingMunicipio ?>"
+                                        data-motivos="<?= $escMunicipio(json_encode(array_values($motivosMunicipio), JSON_UNESCAPED_UNICODE)) ?>"
+                                        data-limitaciones="<?= $escMunicipio(json_encode(array_values($limitacionesMunicipio), JSON_UNESCAPED_UNICODE)) ?>">
+                                        <i class="bi bi-bar-chart-line"></i>
+                                    </button>
 
                                     <button
                                         type="button"
