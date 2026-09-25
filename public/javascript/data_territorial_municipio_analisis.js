@@ -245,16 +245,18 @@
                 '</div>' +
                 '<div class="data-municipality-candidates-list">' +
                     visibleCandidates.map(function (candidate) {
-                        const type = candidate.tipo_entidad_etiqueta || 'Organización';
+                        const reading = candidate.lectura_vinculacion || {};
+                        const type = reading.tipo_entidad_etiqueta || candidate.tipo_entidad_etiqueta || 'Organización';
                         const activity = candidate.actividad || 'Actividad no especificada';
                         const size = candidate.estrato_etiqueta || 'Tamaño no registrado';
                         return '<article class="data-municipality-candidate-card">' +
                             '<span class="data-municipality-candidate-icon"><i class="bi bi-building"></i></span>' +
                             '<div class="data-municipality-candidate-copy">' +
                                 '<strong>' + escapeHtml(candidate.nombre) + '</strong>' +
-                                '<span>' + escapeHtml(type) + '</span>' +
+                                '<span>' + escapeHtml(type) + ' · ' + escapeHtml(size) + '</span>' +
                                 '<small>' + escapeHtml(activity) + '</small>' +
-                                '<em>' + escapeHtml(size) + '</em>' +
+                                (reading.via ? '<div class="data-municipality-candidate-opportunity"><b>' +
+                                    escapeHtml(reading.via) + '</b><p>' + escapeHtml(reading.razon || '') + '</p></div>' : '') +
                             '</div>' +
                         '</article>';
                     }).join('') +
@@ -270,14 +272,17 @@
                 showAll.addEventListener('click', function () {
                     const list = container.querySelector('.data-municipality-candidates-list');
                     list.innerHTML = candidates.map(function (candidate) {
-                        const type = candidate.tipo_entidad_etiqueta || 'Organización';
+                        const reading = candidate.lectura_vinculacion || {};
+                        const type = reading.tipo_entidad_etiqueta || candidate.tipo_entidad_etiqueta || 'Organización';
                         const activity = candidate.actividad || 'Actividad no especificada';
                         const size = candidate.estrato_etiqueta || 'Tamaño no registrado';
                         return '<article class="data-municipality-candidate-card">' +
                             '<span class="data-municipality-candidate-icon"><i class="bi bi-building"></i></span>' +
                             '<div class="data-municipality-candidate-copy"><strong>' + escapeHtml(candidate.nombre) + '</strong>' +
-                            '<span>' + escapeHtml(type) + '</span><small>' + escapeHtml(activity) + '</small>' +
-                            '<em>' + escapeHtml(size) + '</em></div></article>';
+                            '<span>' + escapeHtml(type) + ' · ' + escapeHtml(size) + '</span><small>' + escapeHtml(activity) + '</small>' +
+                            (reading.via ? '<div class="data-municipality-candidate-opportunity"><b>' +
+                                escapeHtml(reading.via) + '</b><p>' + escapeHtml(reading.razon || '') + '</p></div>' : '') +
+                            '</div></article>';
                     }).join('');
                     const counter = container.querySelector('.data-municipality-candidates-heading > span');
                     if (counter) counter.textContent = candidates.length + ' de ' + candidates.length;
