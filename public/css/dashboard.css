@@ -9130,3 +9130,22 @@
 .data-municipality-candidates-more:hover {
     background: #f2f5f8;
 }
+
+
+.data-municipality-candidate-opportunity {
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px solid #edf0f4;
+}
+.data-municipality-candidate-opportunity b {
+    display: block;
+    color: #405a73;
+    font-size: .68rem;
+    font-weight: 700;
+}
+.data-municipality-candidate-opportunity p {
+    margin: 2px 0 0;
+    color: #7b8795;
+    font-size: .66rem;
+    line-height: 1.35;
+}
