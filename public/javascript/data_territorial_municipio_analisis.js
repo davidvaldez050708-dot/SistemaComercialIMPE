@@ -262,10 +262,15 @@
                     }).join('') +
                 '</div>' +
                 (candidates.length > visibleCandidates.length
-                    ? '<button type="button" class="data-municipality-candidates-more" data-show-all-candidates>Ver las ' +
-                        (candidates.length - visibleCandidates.length) + ' organizaciones restantes</button>'
-                    : '') +
-                '<p class="data-municipality-analysis-caption">Fuente: INEGI - DENUE. Son candidatos exploratorios y requieren validación antes de incorporarse a Seguimiento.</p>';
+                    ? '<div class="data-municipality-candidates-actions">' +
+                        '<button type="button" class="data-municipality-candidates-more" data-show-all-candidates>Ver las ' +
+                            (candidates.length - visibleCandidates.length) + ' organizaciones restantes</button>' +
+                        '<button type="button" class="data-municipality-candidates-collapse" data-hide-candidates>Ocultar resultados</button>' +
+                      '</div>'
+                    : '<div class="data-municipality-candidates-actions">' +
+                        '<button type="button" class="data-municipality-candidates-collapse" data-hide-candidates>Ocultar resultados</button>' +
+                      '</div>') +
+                '<p class="data-municipality-analysis-caption data-municipality-candidates-note">Fuente: INEGI - DENUE. Son candidatos exploratorios y requieren validación antes de incorporarse a Seguimiento.</p>';
 
             const showAll = container.querySelector('[data-show-all-candidates]');
             if (showAll) {
@@ -286,9 +291,45 @@
                     }).join('');
                     const counter = container.querySelector('.data-municipality-candidates-heading > span');
                     if (counter) counter.textContent = candidates.length + ' de ' + candidates.length;
-                    showAll.remove();
+                    showAll.textContent = 'Mostrar menos';
+                    showAll.removeAttribute('data-show-all-candidates');
+                    showAll.setAttribute('data-show-fewer-candidates', '');
                 });
             }
+
+            container.addEventListener('click', function (event) {
+                const hide = event.target.closest('[data-hide-candidates]');
+                const fewer = event.target.closest('[data-show-fewer-candidates]');
+
+                if (hide) {
+                    container.innerHTML = '';
+                    return;
+                }
+
+                if (fewer) {
+                    const list = container.querySelector('.data-municipality-candidates-list');
+                    if (list) {
+                        list.innerHTML = visibleCandidates.map(function (candidate) {
+                            const reading = candidate.lectura_vinculacion || {};
+                            const type = reading.tipo_entidad_etiqueta || candidate.tipo_entidad_etiqueta || 'Organización';
+                            const activity = candidate.actividad || 'Actividad no especificada';
+                            const size = candidate.estrato_etiqueta || 'Tamaño no registrado';
+                            return '<article class="data-municipality-candidate-card">' +
+                                '<span class="data-municipality-candidate-icon"><i class="bi bi-building"></i></span>' +
+                                '<div class="data-municipality-candidate-copy"><strong>' + escapeHtml(candidate.nombre) + '</strong>' +
+                                '<span>' + escapeHtml(type) + ' · ' + escapeHtml(size) + '</span><small>' + escapeHtml(activity) + '</small>' +
+                                (reading.via ? '<div class="data-municipality-candidate-opportunity"><b>' +
+                                    escapeHtml(reading.via) + '</b><p>' + escapeHtml(reading.razon || '') + '</p></div>' : '') +
+                                '</div></article>';
+                        }).join('');
+                    }
+                    const counter = container.querySelector('.data-municipality-candidates-heading > span');
+                    if (counter) counter.textContent = 'Mostrando ' + visibleCandidates.length + ' de ' + candidates.length;
+                    fewer.textContent = 'Ver las ' + (candidates.length - visibleCandidates.length) + ' organizaciones restantes';
+                    fewer.removeAttribute('data-show-fewer-candidates');
+                    fewer.setAttribute('data-show-all-candidates', '');
+                }
+            });
         } catch (error) {
             container.innerHTML = '<p class="data-municipality-analysis-empty">' +
                 escapeHtml(error.message || 'No fue posible consultar DENUE.') + '</p>';
