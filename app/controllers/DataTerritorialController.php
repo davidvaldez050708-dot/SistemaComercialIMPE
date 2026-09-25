@@ -140,6 +140,21 @@ class DataTerritorialController
             );
             $municipiosCargados = $modelo->contarMunicipiosActivos($estadoId);
             $priorizacionMunicipal = $modelo->obtenerPriorizacionMunicipal($estadoId, 3);
+
+            // El perfil adulto/laboral se incorpora únicamente como lectura
+            // municipal. Todavía no modifica el índice de priorización.
+            $perfilAdultoLaboralModel = new PerfilAdultoLaboralModel();
+            if ($perfilAdultoLaboralModel->tablaDisponible()) {
+                foreach ($municipios as &$municipioTerritorial) {
+                    $municipioTerritorial['perfil_adulto_laboral'] =
+                        $perfilAdultoLaboralModel->obtenerPorMunicipio(
+                            $estadoId,
+                            (int)($municipioTerritorial['id'] ?? 0)
+                        );
+                }
+                unset($municipioTerritorial);
+            }
+
             $fuentes = $modelo->obtenerFuentesPorEstado($estadoId);
         }
 
@@ -191,6 +206,18 @@ class DataTerritorialController
             ['buscar' => $buscarMunicipio]
         );
         $priorizacionMunicipal = $modelo->obtenerPriorizacionMunicipal($estadoId, 3);
+
+        $perfilAdultoLaboralModel = new PerfilAdultoLaboralModel();
+        if ($perfilAdultoLaboralModel->tablaDisponible()) {
+            foreach ($municipios as &$municipioTerritorial) {
+                $municipioTerritorial['perfil_adulto_laboral'] =
+                    $perfilAdultoLaboralModel->obtenerPorMunicipio(
+                        $estadoId,
+                        (int)($municipioTerritorial['id'] ?? 0)
+                    );
+            }
+            unset($municipioTerritorial);
+        }
         $estadoSeleccionado = $modelo->obtenerEstado($estadoId);
 
         require_once __DIR__ . '/../views/data_territorial/municipios_tabla.php';
