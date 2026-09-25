@@ -2046,6 +2046,19 @@ $urlPaginaTerritorio = function ($pagina) use ($buscarTerritorio, $filtroInforma
                                         </span>
                                     </label>
 
+                                    <label class="data-official-option-card">
+                                        <input
+                                            class="form-check-input"
+                                            type="checkbox"
+                                            value="perfil_adulto_laboral"
+                                            data-official-option>
+                                        <span>
+                                            <strong>Perfil adulto/laboral</strong>
+                                            <small>Fuente: INEGI - Censo de Población y Vivienda</small>
+                                            <em>Actualiza población de 25 a 54 años, escolaridad y contexto laboral del Estado y sus municipios.</em>
+                                        </span>
+                                    </label>
+
                                 </div>
 
                                 <div class="data-official-note">
@@ -2203,6 +2216,19 @@ $urlPaginaTerritorio = function ($pagina) use ($buscarTerritorio, $filtroInforma
                                         <strong>Municipios</strong>
                                         <small>Fuente: INEGI - Catálogo Único de Claves Geoestadísticas</small>
                                         <em>Actualiza nombre, clave INEGI y población municipal en los 32 Estados.</em>
+                                    </span>
+                                </label>
+
+                                <label class="data-official-option-card">
+                                    <input
+                                        class="form-check-input"
+                                        type="checkbox"
+                                        value="perfil_adulto_laboral"
+                                        data-official-option>
+                                    <span>
+                                        <strong>Perfil adulto/laboral</strong>
+                                        <small>Fuente: INEGI - Censo de Población y Vivienda</small>
+                                        <em>Actualiza población de 25 a 54 años, escolaridad y contexto laboral por Estado y municipio.</em>
                                     </span>
                                 </label>
 
@@ -3108,6 +3134,12 @@ document.addEventListener('DOMContentLoaded', function () {
             nombre: 'Municipios',
             action: 'actualizarMunicipiosOficiales',
             mensajeError: 'No fue posible obtener la información municipal de INEGI.',
+            pausaPosterior: 250
+        },
+        perfil_adulto_laboral: {
+            nombre: 'Perfil adulto/laboral',
+            action: 'actualizarPerfilAdultoLaboralOficial',
+            mensajeError: 'No fue posible obtener el perfil adulto/laboral de INEGI.',
             pausaPosterior: 250
         },
         poder_adquisitivo: {
