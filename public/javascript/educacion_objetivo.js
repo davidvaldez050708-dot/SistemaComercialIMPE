@@ -173,7 +173,10 @@
                     '<p>Estos indicadores se conservan como contexto educativo juvenil y no determinan la prioridad de vinculación.</p>' +
                 '</details>' +
 
-                renderMunicipios(datos.municipios || []) +
+                '<details class="data-education-youth-municipal">' +
+                    '<summary><span><strong>Detalle municipal del contexto juvenil</strong><small>Municipios con mayor población de 15 a 24 años no registrada como asistente</small></span><i class="bi bi-chevron-down"></i></summary>' +
+                    '<div class="data-education-youth-municipal-body">' + renderMunicipios(datos.municipios || []) + '</div>' +
+                '</details>' +
 
                 '<p class="data-education-target-note">' +
                     '<strong>Importante:</strong> secundaria como máxima escolaridad y no asistencia escolar son indicadores distintos. ' +
