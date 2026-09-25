@@ -1517,7 +1517,16 @@ class DataTerritorialModel
         // territorio para evitar umbrales absolutos arbitrarios entre Estados.
         $perfilAdultoPorMunicipio = [];
         $puntosAdultoPorMunicipio = [];
-        if ($this->tablaExiste('perfil_adulto_laboral_oficial')) {
+        $tablaPerfilAdultoDisponible = false;
+        $consultaTablaPerfil = $this->connection->query(
+            "SHOW TABLES LIKE 'perfil_adulto_laboral_oficial'"
+        );
+        if ($consultaTablaPerfil instanceof mysqli_result) {
+            $tablaPerfilAdultoDisponible = $consultaTablaPerfil->num_rows > 0;
+            $consultaTablaPerfil->free();
+        }
+
+        if ($tablaPerfilAdultoDisponible) {
             $sqlPerfilAdulto = "SELECT municipio_id, poblacion_25_34, poblacion_35_44,
                         poblacion_45_54, poblacion_25_54, anio
                     FROM perfil_adulto_laboral_oficial
