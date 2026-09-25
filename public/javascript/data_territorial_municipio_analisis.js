@@ -53,6 +53,10 @@
         }
 
         const name = button.dataset.nombre || 'Municipio';
+        const analysisPanel = document.getElementById('offcanvasAnalisisMunicipio');
+        if (analysisPanel) {
+            analysisPanel.dataset.municipalityName = name;
+        }
         const president = button.dataset.presidente || '';
         const party = button.dataset.partido || '';
         const social = button.dataset.redes || '';
