@@ -16,6 +16,7 @@ class InegiPerfilAdultoLaboralService
 {
     private const PERIODO = 2020;
     private const FUENTE = 'INEGI - Censo de Población y Vivienda 2020 (ITER)';
+    private const MAX_DESCARGA_BYTES = 180000000;
 
     public function obtenerPorEstado(string $claveEstado): array
     {
@@ -43,8 +44,11 @@ class InegiPerfilAdultoLaboralService
 
         $respuesta = $this->getJson($url);
 
+        // El directorio Hosted de INEGI no expone necesariamente un FeatureServer
+        // ITER por cada entidad. Cuando el servicio estatal no existe, usamos el
+        // ZIP oficial de Datos Abiertos del mismo Censo 2020.
         if (!is_array($respuesta) || !empty($respuesta['error'])) {
-            return $this->error('No fue posible consultar el perfil adulto/laboral oficial de INEGI.');
+            return $this->obtenerDesdeZipOficial($claveEstado);
         }
 
         $estado = null;
@@ -104,19 +108,267 @@ class InegiPerfilAdultoLaboralService
                 : $poblacionB <=> $poblacionA;
         });
 
+        return $this->respuestaExitosa($estado, $municipios, 'FeatureServer/0');
+    }
+
+    private function obtenerDesdeZipOficial(string $claveEstado): array
+    {
+        if (!function_exists('curl_init') || !class_exists('ZipArchive')) {
+            return $this->error(
+                'El servidor no cuenta con cURL/ZIP para leer el archivo oficial de INEGI.'
+            );
+        }
+
+        $url = 'https://www.inegi.org.mx/contenidos/programas/ccpv/2020/datosabiertos/iter/' .
+            'iter_' . $claveEstado . '_cpv2020_csv.zip';
+        $temporal = tempnam(sys_get_temp_dir(), 'inegi_adulto_');
+
+        if ($temporal === false) {
+            return $this->error('No fue posible preparar la descarga oficial de INEGI.');
+        }
+
+        $archivo = fopen($temporal, 'wb');
+        if ($archivo === false) {
+            @unlink($temporal);
+            return $this->error('No fue posible preparar el archivo temporal de INEGI.');
+        }
+
+        $bytes = 0;
+        $exceso = false;
+        $ch = curl_init();
+        curl_setopt_array($ch, [
+            CURLOPT_URL => $url,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_MAXREDIRS => 3,
+            CURLOPT_CONNECTTIMEOUT => 10,
+            CURLOPT_TIMEOUT => 90,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_USERAGENT => 'SistemaComercialIMPE/1.0',
+            CURLOPT_HTTPHEADER => ['Accept: application/zip,application/octet-stream;q=0.9,*/*;q=0.5'],
+            CURLOPT_WRITEFUNCTION => static function ($curl, $bloque) use ($archivo, &$bytes, &$exceso) {
+                $longitud = strlen((string)$bloque);
+                $bytes += $longitud;
+
+                if ($bytes > self::MAX_DESCARGA_BYTES) {
+                    $exceso = true;
+                    return 0;
+                }
+
+                $escritos = fwrite($archivo, (string)$bloque);
+                return $escritos === false ? 0 : $escritos;
+            }
+        ]);
+
+        $ok = curl_exec($ch);
+        $http = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $errorCurl = curl_error($ch);
+        unset($ch);
+        fflush($archivo);
+        fclose($archivo);
+
+        if ($exceso || $ok === false || $errorCurl !== '' || $http !== 200) {
+            @unlink($temporal);
+            return $this->error(
+                $exceso
+                    ? 'El archivo oficial de INEGI supera el tamaño permitido para la actualización.'
+                    : 'No fue posible descargar el ITER 2020 oficial para el Estado seleccionado.'
+            );
+        }
+
+        $zip = new ZipArchive();
+        if ($zip->open($temporal) !== true) {
+            @unlink($temporal);
+            return $this->error('INEGI devolvió un archivo que no pudo abrirse como ZIP.');
+        }
+
+        $entradas = [];
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $nombre = (string)$zip->getNameIndex($i);
+            if (strtolower(substr($nombre, -4)) !== '.csv') {
+                continue;
+            }
+
+            $base = strtolower(basename($nombre));
+            $peso = 0;
+            $peso += strpos($base, 'conjunto_de_datos') !== false ? 100 : 0;
+            $peso += strpos($base, 'iter') !== false ? 50 : 0;
+            $peso -= (strpos($base, 'diccionario') !== false || strpos($base, 'catalogo') !== false) ? 100 : 0;
+            $entradas[] = ['nombre' => $nombre, 'peso' => $peso];
+        }
+
+        usort($entradas, static function (array $a, array $b): int {
+            return (int)$b['peso'] <=> (int)$a['peso'];
+        });
+
+        foreach ($entradas as $entrada) {
+            $stream = $zip->getStream((string)$entrada['nombre']);
+            if ($stream === false) {
+                continue;
+            }
+
+            $resultado = $this->procesarCsvIter(
+                $stream,
+                $claveEstado,
+                basename((string)$entrada['nombre'])
+            );
+            fclose($stream);
+
+            if (($resultado['ok'] ?? false) === true) {
+                $zip->close();
+                @unlink($temporal);
+                return $resultado;
+            }
+        }
+
+        $zip->close();
+        @unlink($temporal);
+
+        return $this->error(
+            'El ZIP oficial fue descargado, pero no contiene el perfil adulto/laboral esperado.'
+        );
+    }
+
+    private function procesarCsvIter($stream, string $claveEstado, string $archivoOrigen): array
+    {
+        $cabecera = $this->buscarCabeceraIter($stream);
+        if ($cabecera === null) {
+            return $this->error('No se localizaron las variables adultas requeridas en el CSV.');
+        }
+
+        $indices = $cabecera['indices'];
+        $delimitador = $cabecera['delimitador'];
+        $estado = null;
+        $municipios = [];
+
+        while (($fila = fgetcsv($stream, 0, $delimitador)) !== false) {
+            if (!is_array($fila)) {
+                continue;
+            }
+
+            $entidad = $this->claveNumerica($fila[$indices['entidad']] ?? '', 2);
+            $municipio = $this->claveNumerica($fila[$indices['municipio']] ?? '', 3);
+            $localidad = $this->claveNumerica($fila[$indices['localidad']] ?? '', 4);
+
+            if ($entidad !== $claveEstado || $localidad !== '0000') {
+                continue;
+            }
+
+            $registro = [
+                'P_25A29' => $fila[$indices['p25a29']] ?? null,
+                'P_30A34' => $fila[$indices['p30a34']] ?? null,
+                'P_35A39' => $fila[$indices['p35a39']] ?? null,
+                'P_40A44' => $fila[$indices['p40a44']] ?? null,
+                'P_45A49' => $fila[$indices['p45a49']] ?? null,
+                'P_50A54' => $fila[$indices['p50a54']] ?? null,
+                'PEA' => $indices['pea'] === null ? null : ($fila[$indices['pea']] ?? null),
+                'POCUPADA' => $indices['pocupada'] === null ? null : ($fila[$indices['pocupada']] ?? null)
+            ];
+            $metricas = $this->metricas($registro);
+
+            if (!$this->metricasValidas($metricas)) {
+                continue;
+            }
+
+            $nombre = $municipio === '000'
+                ? trim((string)($fila[$indices['nombre_entidad']] ?? ''))
+                : trim((string)($fila[$indices['nombre_municipio']] ?? ''));
+            $registroSalida = [
+                'clave_estado' => $entidad,
+                'clave_municipio' => $municipio,
+                'clave_geografica' => $entidad . ($municipio === '000' ? '' : $municipio),
+                'nombre' => $nombre,
+                'metricas' => $metricas
+            ];
+
+            if ($municipio === '000') {
+                $estado = $registroSalida;
+            } else {
+                $municipios[] = $registroSalida;
+            }
+        }
+
+        if ($estado === null || empty($municipios)) {
+            return $this->error('No se identificaron totales estatales y municipales completos.');
+        }
+
+        usort($municipios, static function (array $a, array $b): int {
+            return (int)($b['metricas']['poblacion_25_54'] ?? 0)
+                <=> (int)($a['metricas']['poblacion_25_54'] ?? 0);
+        });
+
+        return $this->respuestaExitosa($estado, $municipios, $archivoOrigen);
+    }
+
+    private function buscarCabeceraIter($stream): ?array
+    {
+        foreach ([',', ';', "\t", '|'] as $delimitador) {
+            rewind($stream);
+
+            for ($linea = 0; $linea < 10; $linea++) {
+                $texto = fgets($stream);
+                if ($texto === false) {
+                    break;
+                }
+
+                $texto = preg_replace('/^\xEF\xBB\xBF/', '', (string)$texto);
+                $campos = str_getcsv($texto, $delimitador);
+                $mapa = [];
+
+                foreach ($campos as $indice => $campo) {
+                    $normalizado = strtoupper(trim((string)$campo));
+                    if ($normalizado !== '') {
+                        $mapa[$normalizado] = (int)$indice;
+                    }
+                }
+
+                $requeridos = [
+                    'ENTIDAD', 'MUN', 'LOC',
+                    'P_25A29', 'P_30A34', 'P_35A39',
+                    'P_40A44', 'P_45A49', 'P_50A54'
+                ];
+
+                if (count(array_intersect($requeridos, array_keys($mapa))) !== count($requeridos)) {
+                    continue;
+                }
+
+                return [
+                    'delimitador' => $delimitador,
+                    'indices' => [
+                        'entidad' => $mapa['ENTIDAD'],
+                        'municipio' => $mapa['MUN'],
+                        'localidad' => $mapa['LOC'],
+                        'nombre_entidad' => $mapa['NOM_ENT'] ?? null,
+                        'nombre_municipio' => $mapa['NOM_MUN'] ?? null,
+                        'p25a29' => $mapa['P_25A29'],
+                        'p30a34' => $mapa['P_30A34'],
+                        'p35a39' => $mapa['P_35A39'],
+                        'p40a44' => $mapa['P_40A44'],
+                        'p45a49' => $mapa['P_45A49'],
+                        'p50a54' => $mapa['P_50A54'],
+                        'pea' => $mapa['PEA'] ?? null,
+                        'pocupada' => $mapa['POCUPADA'] ?? null
+                    ]
+                ];
+            }
+        }
+
+        return null;
+    }
+
+    private function respuestaExitosa(array $estado, array $municipios, string $archivoOrigen): array
+    {
         return [
             'ok' => true,
             'fuente' => self::FUENTE,
             'periodo' => self::PERIODO,
-            'archivo_origen' => 'FeatureServer/0',
+            'archivo_origen' => $archivoOrigen,
             'compatibilidad' => 'PERFIL_ADULTO_LABORAL_VALIDADO',
             'metodologia' => [
                 'poblacion_25_34' => 'Suma de P_25A29 y P_30A34.',
                 'poblacion_35_44' => 'Suma de P_35A39 y P_40A44.',
                 'poblacion_45_54' => 'Suma de P_45A49 y P_50A54.',
                 'poblacion_25_54' => 'Suma de los seis grupos quinquenales entre 25 y 54 años.',
-                'laboral' =>
-                    'PEA y POCUPADA corresponden a la población de 12 años y más del ITER; se conservan como contexto laboral general y no como subconjunto de 25 a 54 años.'
+                'laboral' => 'PEA y POCUPADA son contexto laboral general de 12 años y más; no representan exclusivamente a la población de 25 a 54 años.'
             ],
             'estado' => $estado,
             'municipios' => $municipios,
@@ -124,6 +376,7 @@ class InegiPerfilAdultoLaboralService
             'generado_at' => date('Y-m-d H:i:s')
         ];
     }
+
 
     private function metricas(array $registro): array
     {
