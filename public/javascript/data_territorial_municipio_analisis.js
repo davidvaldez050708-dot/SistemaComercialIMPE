@@ -251,8 +251,6 @@
                         '<div class="data-municipality-candidate-meta"><span>' + escapeHtml(type) + ' · ' + escapeHtml(size) + '</span>' +
                         '<em class="data-municipality-candidate-level">' + escapeHtml(level) + '</em></div>' +
                         '<small>' + escapeHtml(activity) + '</small>' +
-                        (reading.via ? '<div class="data-municipality-candidate-opportunity"><b>' +
-                            escapeHtml(reading.via) + '</b><p>' + escapeHtml(reading.razon || '') + '</p></div>' : '') +
                         '</div></article>';
                 }).join('');
             };
