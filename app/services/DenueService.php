@@ -1188,7 +1188,35 @@ class DenueService
     ): array {
         $sector = $this->obtenerSectorActividad($codigoActividad, $actividad);
         $texto = strtolower(trim($nombre . ' ' . $actividad));
-        $tipo = $this->etiquetarTipoEntidadDenue($codigoActividad, $actividad);
+
+        // Algunos registros de DENUE no incluyen una clave SCIAN utilizable.
+        // La actividad textual sigue siendo evidencia suficiente para reconocer
+        // educación, salud y administración pública sin degradarlos a "Empresa".
+        if (
+            strpos(strtolower($actividad), 'hospital') !== false ||
+            strpos(strtolower($actividad), 'salud') !== false ||
+            strpos(strtolower($actividad), 'asistencia social') !== false
+        ) {
+            $sector = '62';
+        } elseif (
+            strpos(strtolower($actividad), 'escuela') !== false ||
+            strpos(strtolower($actividad), 'educaci') !== false
+        ) {
+            $sector = '61';
+        } elseif (
+            strpos(strtolower($actividad), 'administraci') !== false ||
+            strpos(strtolower($actividad), 'gobierno') !== false
+        ) {
+            $sector = '93';
+        }
+
+        $tipo = $sector === '62'
+            ? 'Institución de salud'
+            : ($sector === '61'
+                ? 'Institución educativa'
+                : ($sector === '93'
+                    ? 'Institución pública'
+                    : $this->etiquetarTipoEntidadDenue($codigoActividad, $actividad)));
         $via = 'Organización con población laboral';
         $razon = 'Puede concentrar personas adultas vinculadas a una misma organización.';
         $nivel = 'EXPLORAR';
