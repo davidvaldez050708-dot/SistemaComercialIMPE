@@ -384,8 +384,7 @@
                 }
             );
             const result = await response.json();
-            if (!response.ok || result.ok !== true) {
-                if (result.duplicado === true) {
+            if (result.duplicado === true) {
                     if (alert) {
                         alert.classList.remove('d-none', 'linkage-candidate-alert-error');
                         alert.innerHTML = '';
@@ -401,9 +400,10 @@
                             alert.appendChild(link);
                         }
                     }
-                    return;
-                }
+                return;
+            }
 
+            if (!response.ok || result.ok !== true) {
                 throw new Error(result.mensaje || 'No fue posible iniciar el seguimiento.');
             }
 
