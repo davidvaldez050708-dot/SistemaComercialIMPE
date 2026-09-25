@@ -140,7 +140,8 @@
                 '<p class="data-municipality-analysis-caption">Lectura exploratoria del tejido local. Estos establecimientos todavía no modifican el índice ni equivalen por sí solos a prospectos calificados.</p>' +
                 '<button type="button" class="data-municipality-candidates-trigger" data-load-municipality-candidates ' +
                     'data-estado-id="' + escapeHtml(button.dataset.estadoId || '') + '" ' +
-                    'data-municipio-id="' + escapeHtml(button.dataset.municipioId || '') + '">' +
+                    'data-municipio-id="' + escapeHtml(button.dataset.municipioId || '') + '" ' +
+                    'data-municipio-nombre="' + escapeHtml(name) + '">' +
                     '<span class="data-municipality-candidates-trigger-icon"><i class="bi bi-buildings"></i></span>' +
                     '<span><strong>Explorar organizaciones</strong><small>Ver candidatos identificados en DENUE</small></span>' +
                     '<i class="bi bi-chevron-right"></i></button>' +
@@ -344,8 +345,9 @@
         form.querySelector('[data-territorial-confirm-key]').value = candidate.clave_origen || '';
         modalElement.querySelector('[data-territorial-confirm-name]').textContent = candidate.nombre || '—';
         modalElement.querySelector('[data-territorial-confirm-municipality]').textContent =
-            document.getElementById('offcanvasAnalisisMunicipioTitulo')?.dataset.municipalityName ||
-            document.querySelector('#municipioAnalisisContenido .data-municipality-analysis-title')?.textContent ||
+            candidatesContainer?.parentElement
+                ?.querySelector('[data-load-municipality-candidates]')?.dataset.municipioNombre ||
+            document.getElementById('offcanvasAnalisisMunicipio')?.dataset.municipalityName ||
             'Municipio seleccionado';
         modalElement.querySelector('[data-territorial-confirm-phone]').textContent =
             candidate.telefono || 'Sin teléfono';
