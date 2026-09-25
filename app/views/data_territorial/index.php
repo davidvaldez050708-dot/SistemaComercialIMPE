@@ -719,6 +719,13 @@ $urlPaginaTerritorio = function ($pagina) use ($buscarTerritorio, $filtroInforma
                             Actualizar información oficial
                         </button>
                     <?php endif; ?>
+
+                    <a
+                        class="btn btn-system-save"
+                        href="<?= BASE_URL ?>index.php?controller=dataTerritorialReporte&action=index&generar=1&estado_id=<?= (int)$estadoSeleccionado['id'] ?>">
+                        <i class="bi bi-file-earmark-bar-graph me-2"></i>
+                        Generar reporte
+                    </a>
                 </div>
             </div>
         </section>
