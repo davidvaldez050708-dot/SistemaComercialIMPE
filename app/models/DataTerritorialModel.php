@@ -1512,6 +1512,75 @@ class DataTerritorialModel
         $puntosPoblacionPorMunicipio = [];
         $totalConPoblacion = count($municipiosConPoblacion);
 
+        // El primer componente verdaderamente municipal del nuevo modelo es la
+        // población objetivo de 25 a 54 años. Se compara dentro del mismo
+        // territorio para evitar umbrales absolutos arbitrarios entre Estados.
+        $perfilAdultoPorMunicipio = [];
+        $puntosAdultoPorMunicipio = [];
+        if ($this->tablaExiste('perfil_adulto_laboral_oficial')) {
+            $sqlPerfilAdulto = "SELECT municipio_id, poblacion_25_34, poblacion_35_44,
+                        poblacion_45_54, poblacion_25_54, anio
+                    FROM perfil_adulto_laboral_oficial
+                    WHERE estado_id = ?
+                        AND municipio_id IS NOT NULL
+                    ORDER BY anio DESC, id DESC";
+            $stmtPerfilAdulto = $this->connection->prepare($sqlPerfilAdulto);
+            $stmtPerfilAdulto->bind_param('i', $estadoId);
+            $stmtPerfilAdulto->execute();
+
+            foreach ($this->convertirResultadoEnArreglo($stmtPerfilAdulto->get_result()) as $filaAdulto) {
+                $municipioPerfilId = (int)($filaAdulto['municipio_id'] ?? 0);
+                if ($municipioPerfilId <= 0 || isset($perfilAdultoPorMunicipio[$municipioPerfilId])) {
+                    continue;
+                }
+
+                $perfilAdultoPorMunicipio[$municipioPerfilId] = [
+                    'poblacion_25_34' => (int)($filaAdulto['poblacion_25_34'] ?? 0),
+                    'poblacion_35_44' => (int)($filaAdulto['poblacion_35_44'] ?? 0),
+                    'poblacion_45_54' => (int)($filaAdulto['poblacion_45_54'] ?? 0),
+                    'poblacion_25_54' => (int)($filaAdulto['poblacion_25_54'] ?? 0),
+                    'anio' => (int)($filaAdulto['anio'] ?? 0)
+                ];
+            }
+        }
+
+        $rankingAdulto = [];
+        foreach ($municipiosConPoblacion as $municipioAdulto) {
+            $municipioAdultoId = (int)$municipioAdulto['id'];
+            $poblacionAdulto = (int)($perfilAdultoPorMunicipio[$municipioAdultoId]['poblacion_25_54'] ?? 0);
+            if ($poblacionAdulto > 0) {
+                $rankingAdulto[] = [
+                    'id' => $municipioAdultoId,
+                    'poblacion_25_54' => $poblacionAdulto
+                ];
+            }
+        }
+
+        usort($rankingAdulto, static function ($a, $b) {
+            return $b['poblacion_25_54'] <=> $a['poblacion_25_54'];
+        });
+
+        $totalConPerfilAdulto = count($rankingAdulto);
+        foreach ($rankingAdulto as $indiceAdulto => $filaAdulto) {
+            $posicionAdulto = $totalConPerfilAdulto > 0
+                ? ($indiceAdulto / $totalConPerfilAdulto) * 100
+                : 100;
+
+            if ($posicionAdulto < 20) {
+                $puntosAdulto = 30;
+            } elseif ($posicionAdulto < 40) {
+                $puntosAdulto = 24;
+            } elseif ($posicionAdulto < 60) {
+                $puntosAdulto = 18;
+            } elseif ($posicionAdulto < 80) {
+                $puntosAdulto = 12;
+            } else {
+                $puntosAdulto = 6;
+            }
+
+            $puntosAdultoPorMunicipio[(int)$filaAdulto['id']] = $puntosAdulto;
+        }
+
         foreach ($municipiosConPoblacion as $indice => $municipio) {
             $posicionPorcentual = $totalConPoblacion > 0
                 ? ($indice / $totalConPoblacion) * 100
@@ -1665,6 +1734,7 @@ class DataTerritorialModel
             $puntajeDisponible = 0;
             $componentes = [
                 'poblacion' => 0,
+                'adulto_25_54' => 0,
                 'institucional' => 0,
                 'educacion' => 0,
                 'economia' => 0
@@ -1678,6 +1748,15 @@ class DataTerritorialModel
                 $motivos[] = $componentes['poblacion'] >= 40
                     ? 'Alto alcance poblacional'
                     : 'Alcance poblacional dentro del territorio';
+            }
+
+            if (isset($puntosAdultoPorMunicipio[$municipioId])) {
+                $componentes['adulto_25_54'] = $puntosAdultoPorMunicipio[$municipioId];
+                $puntajeObtenido += $componentes['adulto_25_54'];
+                $puntajeDisponible += 30;
+                $motivos[] = $componentes['adulto_25_54'] >= 24
+                    ? 'Alta concentración de población de 25 a 54 años'
+                    : 'Población adulta de 25 a 54 años con presencia relevante';
             }
 
             if ($componenteEducativo['disponible']) {
@@ -1697,7 +1776,7 @@ class DataTerritorialModel
             $puntaje = $puntajeDisponible > 0
                 ? (int)round(($puntajeObtenido / $puntajeDisponible) * 100)
                 : 0;
-            $coberturaDatos = (int)round(($puntajeDisponible / 80) * 100);
+            $coberturaDatos = (int)round(($puntajeDisponible / 110) * 100);
             $porcentajeIndividual = $poblacionTotal > 0
                 ? ($poblacion / $poblacionTotal) * 100
                 : 0;
@@ -1713,12 +1792,13 @@ class DataTerritorialModel
                 'accion' => $accionesPorPrioridad['BAJA'],
                 'componentes' => $componentes,
                 'motivos' => $motivos,
-                'modelo' => 'TRANSITORIO_VINCULACION',
+                'modelo' => 'VINCULACION_ADULTO_MUNICIPAL_V1',
                 'es_provisional' => true,
                 'limitaciones' => [
                     'La información institucional no participa en el puntaje.',
-                    'El perfil adulto y laboral todavía no forma parte del índice.',
-                    'Educación y economía corresponden al contexto estatal.'
+                    'El perfil adulto 25 a 54 ya participa como componente municipal del índice.',
+                    'Educación y economía todavía corresponden al contexto estatal.',
+                    'PEA y población ocupada se muestran como contexto y todavía no generan puntaje.'
                 ],
                 'informacion_institucional' => [
                     'presidente_disponible' => trim((string)($municipio['presidente_municipal'] ?? '')) !== '',
