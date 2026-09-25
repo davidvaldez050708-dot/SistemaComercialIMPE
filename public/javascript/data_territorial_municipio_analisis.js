@@ -23,17 +23,16 @@
         }
     };
 
-    const list = function (items, emptyText) {
+    const factors = function (items) {
         if (!items.length) {
-            return '<div class="data-municipality-analysis-warning"><i class="bi bi-info-circle"></i><span>' +
-                escapeHtml(emptyText) + '</span></div>';
+            return '<p class="data-municipality-analysis-empty">Todavía no hay factores suficientes para explicar la oportunidad.</p>';
         }
 
-        return '<ul class="data-municipality-analysis-list">' +
+        return '<div class="data-municipality-analysis-factors">' +
             items.map(function (item) {
-                return '<li>' + escapeHtml(item) + '</li>';
+                return '<div><i class="bi bi-check-circle"></i><span>' + escapeHtml(item) + '</span></div>';
             }).join('') +
-            '</ul>';
+            '</div>';
     };
 
     document.addEventListener('click', function (event) {
@@ -56,58 +55,71 @@
         const reasons = parseList(button.dataset.motivos);
         const limitations = parseList(button.dataset.limitaciones);
         const action = button.dataset.accion || 'OBSERVAR';
+        const priority = (button.dataset.prioridad || 'BAJA').toLowerCase();
 
         const photoHtml = photo
             ? '<img src="' + escapeHtml(photo) + '" alt="Fotografía de ' + escapeHtml(president || name) + '">'
             : '<i class="bi bi-person"></i>';
 
-        let socialHtml = '';
+        let institutionalMeta = '';
+        if (president) {
+            institutionalMeta += '<strong>' + escapeHtml(president) + '</strong>';
+            institutionalMeta += '<span>' + escapeHtml(party ? party : 'Partido no registrado') + '</span>';
+        } else {
+            institutionalMeta += '<strong>Presidente municipal</strong><span>Información no registrada</span>';
+        }
+
         if (social) {
             const isUrl = /^https?:\/\//i.test(social);
-            socialHtml = isUrl
-                ? '<a href="' + escapeHtml(social) + '" target="_blank" rel="noopener noreferrer"><i class="bi bi-box-arrow-up-right"></i> Abrir red social</a>'
-                : '<span>Redes: ' + escapeHtml(social) + '</span>';
-        } else {
-            socialHtml = '<span>Redes sociales no registradas</span>';
+            institutionalMeta += isUrl
+                ? '<a href="' + escapeHtml(social) + '" target="_blank" rel="noopener noreferrer"><i class="bi bi-box-arrow-up-right"></i> Red social</a>'
+                : '<span>' + escapeHtml(social) + '</span>';
         }
+
+        const methodology = limitations.length
+            ? '<details class="data-municipality-analysis-methodology">' +
+                '<summary><i class="bi bi-info-circle"></i><span>Metodología actual</span><i class="bi bi-chevron-down"></i></summary>' +
+                '<div>' + limitations.map(function (item) {
+                    return '<p>' + escapeHtml(item) + '</p>';
+                }).join('') +
+                '<p>La cobertura mostrada corresponde a los componentes disponibles del modelo actual; no significa que el modelo definitivo esté completo.</p></div>' +
+              '</details>'
+            : '';
 
         content.innerHTML =
             '<div class="data-municipality-analysis">' +
-                '<div class="data-municipality-analysis-identity">' +
-                    '<div><h3>' + escapeHtml(name) + '</h3><p>Clave INEGI: ' +
-                    escapeHtml(button.dataset.claveInegi || 'No registrada') + '</p></div>' +
-                    '<div class="data-municipality-analysis-score"><strong>' + score +
-                    '/100</strong><span>Índice provisional</span></div>' +
-                '</div>' +
-                '<section class="data-municipality-analysis-section">' +
-                    '<h4>Lectura de oportunidad</h4>' +
-                    '<div class="data-municipality-analysis-metrics">' +
-                        '<div><span>Acción sugerida</span><strong>' + escapeHtml(action) + '</strong></div>' +
-                        '<div><span>Población</span><strong>' + number(button.dataset.poblacion) + '</strong></div>' +
-                        '<div><span>Ranking territorial</span><strong>' +
-                            (rank > 0 && totalRank > 0 ? rank + ' de ' + totalRank : 'No disponible') +
-                        '</strong></div>' +
-                        '<div><span>Cobertura de datos</span><strong>' + coverage + '%</strong></div>' +
-                    '</div>' +
-                    list(reasons, 'Todavía no hay factores suficientes para explicar la oportunidad del municipio.') +
-                '</section>' +
-                '<section class="data-municipality-analysis-section">' +
-                    '<h4>Alcance actual del análisis</h4>' +
-                    list(limitations, 'No hay limitaciones adicionales registradas.') +
-                '</section>' +
-                '<section class="data-municipality-analysis-section">' +
-                    '<h4>Información institucional</h4>' +
-                    '<div class="data-municipality-official">' +
-                        '<div class="data-municipality-official-photo">' + photoHtml + '</div>' +
-                        '<div class="data-municipality-official-copy">' +
-                            '<strong>' + escapeHtml(president || 'Presidente municipal no registrado') + '</strong>' +
-                            '<span>' + escapeHtml(party ? 'Partido: ' + party : 'Partido no registrado') + '</span>' +
-                            socialHtml +
+                '<header class="data-municipality-analysis-hero">' +
+                    '<div class="data-municipality-analysis-hero-copy">' +
+                        '<div class="data-municipality-analysis-kicker">Municipio · ' +
+                            escapeHtml(button.dataset.claveInegi || 'Sin clave INEGI') + '</div>' +
+                        '<div class="data-municipality-analysis-name-row">' +
+                            '<h3>' + escapeHtml(name) + '</h3>' +
+                            '<span class="data-municipality-analysis-action data-municipality-analysis-action-' + escapeHtml(priority) + '">' +
+                                escapeHtml(action) + '</span>' +
                         '</div>' +
                     '</div>' +
-                    '<div class="data-municipality-analysis-warning"><i class="bi bi-info-circle"></i>' +
-                        '<span>La información del presidente, partido y redes se conserva como contexto institucional y no aumenta el Índice de Oportunidad Municipal.</span></div>' +
+                    '<div class="data-municipality-analysis-index"><strong>' + score + '</strong><span>Índice provisional</span></div>' +
+                '</header>' +
+                '<div class="data-municipality-analysis-summary">' +
+                    '<div><span>Población</span><strong>' + number(button.dataset.poblacion) + '</strong></div>' +
+                    '<div><span>Posición</span><strong>' +
+                        (rank > 0 && totalRank > 0 ? rank + ' de ' + totalRank : 'No disponible') +
+                    '</strong></div>' +
+                    '<div><span>Datos del modelo actual</span><strong>' + coverage + '%</strong></div>' +
+                '</div>' +
+                '<section class="data-municipality-analysis-section">' +
+                    '<div class="data-municipality-analysis-section-heading"><h4>¿Por qué se prioriza?</h4><span>Lectura actual</span></div>' +
+                    factors(reasons) +
                 '</section>' +
+                '<section class="data-municipality-analysis-section data-municipality-analysis-institutional-section">' +
+                    '<div class="data-municipality-analysis-section-heading"><h4>Información institucional</h4><span>Contexto</span></div>' +
+                    '<div class="data-municipality-official">' +
+                        '<div class="data-municipality-official-photo">' + photoHtml + '</div>' +
+                        '<div class="data-municipality-official-copy">' + institutionalMeta + '</div>' +
+                    '</div>' +
+                    '<p class="data-municipality-analysis-caption">Estos datos sirven como referencia institucional y no modifican el índice.</p>' +
+                '</section>' +
+                methodology +
             '</div>';
     });
 })();
