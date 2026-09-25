@@ -602,6 +602,7 @@ class DataTerritorialController
 
         $this->validarPermisoActualizacionOficialJson();
         $estadoIdPost = trim((string)($_POST['estado_id'] ?? ''));
+        $claveMunicipioPost = trim((string)($_POST['clave_municipio'] ?? ''));
 
         if ($estadoIdPost === '' || !ctype_digit($estadoIdPost) || (int)$estadoIdPost <= 0) {
             $this->responderJson(['ok' => false, 'mensaje' => 'El territorio seleccionado no es válido.'], 422);
@@ -628,73 +629,74 @@ class DataTerritorialController
             ], 422);
         }
 
-        $denue = new DenueService();
-        $guardados = 0;
-        $establecimientos = 0;
-        $establecimientosVinculacion = 0;
-        $errores = [];
-
-        foreach ($mapaMunicipios as $claveMunicipio => $municipio) {
-            $resultado = $denue->obtenerSectoresMunicipio($claveEstado, $claveMunicipio);
-
-            if (($resultado['ok'] ?? false) !== true) {
-                $errores[] = ($municipio['nombre'] ?? $claveMunicipio) . ': ' .
-                    ($resultado['mensaje'] ?? 'DENUE no devolvió información.');
-                continue;
-            }
-
-            $total = (int)($resultado['total_establecimientos'] ?? 0);
-            $sectores = $resultado['sectores'] ?? [];
-
-            if ($total <= 0 || !is_array($sectores) || empty($sectores)) {
-                $errores[] = ($municipio['nombre'] ?? $claveMunicipio) . ': información incompleta.';
-                continue;
-            }
-
-            try {
-                $ok = $modelo->actualizarActividadEconomicaMunicipioOficial(
-                    $estadoId,
-                    (int)$municipio['id'],
-                    $total,
-                    $sectores
-                );
-            } catch (Throwable $error) {
-                error_log($error->getMessage());
-                $ok = false;
-            }
-
-            if (!$ok) {
-                $errores[] = ($municipio['nombre'] ?? $claveMunicipio) . ': no fue posible guardar.';
-                continue;
-            }
-
-            $guardados++;
-            $establecimientos += $total;
-            $establecimientosVinculacion += (int)($resultado['establecimientos_vinculacion'] ?? 0);
+        // Una petición procesa un solo municipio. El navegador encadena las
+        // peticiones para evitar mantener una conexión PHP abierta durante
+        // decenas de consultas consecutivas a DENUE.
+        if ($claveMunicipioPost === '') {
+            $this->responderJson([
+                'ok' => true,
+                'mensaje' => 'Municipios listos para actualizar.',
+                'datos' => [
+                    'estado_id' => $estadoId,
+                    'estado' => $estado['nombre'],
+                    'municipios' => array_map(function ($municipio, $clave) {
+                        return [
+                            'clave' => (string)$clave,
+                            'nombre' => (string)($municipio['nombre'] ?? '')
+                        ];
+                    }, $mapaMunicipios, array_keys($mapaMunicipios))
+                ]
+            ]);
         }
 
-        if ($guardados === 0) {
+        $claveMunicipio = str_pad(preg_replace('/\\D+/', '', $claveMunicipioPost) ?? '', 3, '0', STR_PAD_LEFT);
+        if (!preg_match('/^\\d{3}$/', $claveMunicipio) || !isset($mapaMunicipios[$claveMunicipio])) {
+            $this->responderJson(['ok' => false, 'mensaje' => 'El municipio solicitado no es válido.'], 422);
+        }
+
+        $municipio = $mapaMunicipios[$claveMunicipio];
+        $denue = new DenueService();
+        $resultado = $denue->obtenerSectoresMunicipio($claveEstado, $claveMunicipio);
+
+        if (($resultado['ok'] ?? false) !== true) {
             $this->responderJson([
                 'ok' => false,
-                'mensaje' => 'No fue posible guardar el tejido económico municipal.',
-                'datos' => ['errores' => array_slice($errores, 0, 8)]
+                'mensaje' => ($municipio['nombre'] ?? $claveMunicipio) . ': ' .
+                    ($resultado['mensaje'] ?? 'DENUE no devolvió información.')
             ], 502);
+        }
+
+        $total = (int)($resultado['total_establecimientos'] ?? 0);
+        $sectores = $resultado['sectores'] ?? [];
+        if ($total <= 0 || !is_array($sectores) || empty($sectores)) {
+            $this->responderJson(['ok' => false, 'mensaje' => 'DENUE devolvió información municipal incompleta.'], 502);
+        }
+
+        try {
+            $guardado = $modelo->actualizarActividadEconomicaMunicipioOficial(
+                $estadoId,
+                (int)$municipio['id'],
+                $total,
+                $sectores
+            );
+        } catch (Throwable $error) {
+            error_log($error->getMessage());
+            $guardado = false;
+        }
+
+        if (!$guardado) {
+            $this->responderJson(['ok' => false, 'mensaje' => 'No fue posible guardar la actividad económica municipal.'], 500);
         }
 
         $this->responderJson([
             'ok' => true,
-            'mensaje' => $guardados === count($mapaMunicipios)
-                ? 'El tejido económico municipal se actualizó correctamente.'
-                : 'El tejido económico municipal se actualizó parcialmente.',
+            'mensaje' => ($municipio['nombre'] ?? $claveMunicipio) . ' actualizado.',
             'datos' => [
-                'estado_id' => $estadoId,
-                'estado' => $estado['nombre'],
-                'municipios_recibidos' => count($mapaMunicipios),
-                'municipios_guardados' => $guardados,
-                'municipios_con_error' => count($errores),
-                'establecimientos' => $establecimientos,
-                'establecimientos_vinculacion' => $establecimientosVinculacion,
-                'errores' => array_slice($errores, 0, 8),
+                'clave_municipio' => $claveMunicipio,
+                'municipio' => $municipio['nombre'] ?? '',
+                'total_establecimientos' => $total,
+                'establecimientos_vinculacion' => (int)($resultado['establecimientos_vinculacion'] ?? 0),
+                'sectores_registrados' => count($sectores),
                 'fuente' => 'INEGI - DENUE'
             ]
         ]);
