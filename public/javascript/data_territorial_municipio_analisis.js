@@ -385,6 +385,25 @@
             );
             const result = await response.json();
             if (!response.ok || result.ok !== true) {
+                if (result.duplicado === true) {
+                    if (alert) {
+                        alert.classList.remove('d-none', 'linkage-candidate-alert-error');
+                        alert.innerHTML = '';
+                        const message = document.createElement('span');
+                        message.textContent = result.mensaje || 'Este candidato ya tiene un seguimiento registrado.';
+                        alert.appendChild(message);
+
+                        if (result.url) {
+                            const link = document.createElement('a');
+                            link.href = result.url;
+                            link.className = 'data-territorial-existing-follow-link';
+                            link.textContent = 'Abrir seguimiento existente';
+                            alert.appendChild(link);
+                        }
+                    }
+                    return;
+                }
+
                 throw new Error(result.mensaje || 'No fue posible iniciar el seguimiento.');
             }
 
