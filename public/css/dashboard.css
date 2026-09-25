@@ -8872,3 +8872,86 @@
         min-height: 0;
     }
 }
+
+
+/* Perfil adulto/laboral dentro del análisis municipal */
+.data-municipality-analysis-adult-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    border: 1px solid #e5e9f2;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.data-municipality-analysis-adult-grid > div {
+    min-width: 0;
+    padding: 10px 11px;
+    border-right: 1px solid #e5e9f2;
+}
+
+.data-municipality-analysis-adult-grid > div:nth-child(3) {
+    border-right: 0;
+}
+
+.data-municipality-analysis-adult-grid > div.data-municipality-analysis-adult-total {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    border-top: 1px solid #e5e9f2;
+    border-right: 0;
+    background: #f8f9fc;
+}
+
+.data-municipality-analysis-adult-grid span,
+.data-municipality-analysis-labor-context span {
+    display: block;
+    margin-bottom: 3px;
+    color: #7a8292;
+    font-size: 10px;
+    line-height: 1.3;
+}
+
+.data-municipality-analysis-adult-grid strong,
+.data-municipality-analysis-labor-context strong {
+    display: block;
+    color: #2f3440;
+    font-size: 13px;
+    line-height: 1.3;
+}
+
+.data-municipality-analysis-labor-context {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.data-municipality-analysis-labor-context > div {
+    padding: 9px 11px;
+    border-left: 2px solid #dfe4ef;
+    background: #fafbfc;
+}
+
+.data-municipality-analysis-adult-section .data-municipality-analysis-caption {
+    margin-top: 9px;
+}
+
+@media (max-width: 575.98px) {
+    .data-municipality-analysis-adult-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .data-municipality-analysis-adult-grid > div,
+    .data-municipality-analysis-adult-grid > div:nth-child(3) {
+        border-right: 0;
+        border-bottom: 1px solid #e5e9f2;
+    }
+
+    .data-municipality-analysis-adult-grid > div.data-municipality-analysis-adult-total {
+        grid-column: auto;
+        border-top: 0;
+        border-bottom: 0;
+    }
+}
