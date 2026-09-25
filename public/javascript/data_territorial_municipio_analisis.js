@@ -134,6 +134,11 @@
                       '</div>'
                     : '') +
                 '<p class="data-municipality-analysis-caption">Lectura exploratoria del tejido local. Estos establecimientos todavía no modifican el índice ni equivalen por sí solos a prospectos calificados.</p>' +
+                '<button type="button" class="btn btn-outline-primary btn-sm" data-load-municipality-candidates ' +
+                    'data-estado-id="' + escapeHtml(button.dataset.estadoId || '') + '" ' +
+                    'data-municipio-id="' + escapeHtml(button.dataset.municipioId || '') + '">' +
+                    '<i class="bi bi-search"></i> Explorar organizaciones candidatas</button>' +
+                '<div class="data-municipality-candidates" data-municipality-candidates></div>' +
               '</section>'
             : '<section class="data-municipality-analysis-section">' +
                 '<div class="data-municipality-analysis-section-heading"><h4>Tejido económico y organizacional</h4><span>Pendiente</span></div>' +
@@ -187,5 +192,69 @@
                 '</section>' +
                 methodology +
             '</div>';
+    });
+
+    document.addEventListener('click', async function (event) {
+        const button = event.target.closest('[data-load-municipality-candidates]');
+        if (!button) {
+            return;
+        }
+
+        const container = button.parentElement?.querySelector('[data-municipality-candidates]');
+        if (!container || button.disabled) {
+            return;
+        }
+
+        button.disabled = true;
+        const original = button.innerHTML;
+        button.innerHTML = '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span> Consultando DENUE…';
+        container.innerHTML = '';
+
+        try {
+            const params = new URLSearchParams({
+                controller: 'dataTerritorial',
+                action: 'obtenerCandidatosMunicipio',
+                estado_id: button.dataset.estadoId || '',
+                municipio_id: button.dataset.municipioId || ''
+            });
+            const response = await fetch(baseUrl + '?' + params.toString(), {
+                headers: { 'X-Requested-With': 'fetch' }
+            });
+            const result = await response.json();
+
+            if (!response.ok || result.ok !== true) {
+                throw new Error(result.mensaje || 'No fue posible consultar candidatos.');
+            }
+
+            const candidates = Array.isArray(result.datos?.candidatos) ? result.datos.candidatos : [];
+            if (!candidates.length) {
+                container.innerHTML = '<p class="data-municipality-analysis-empty">DENUE no devolvió organizaciones candidatas con los criterios actuales.</p>';
+                return;
+            }
+
+            container.innerHTML =
+                '<div class="data-municipality-analysis-section-heading"><h4>Organizaciones candidatas</h4><span>' +
+                    candidates.length + ' encontradas</span></div>' +
+                '<div class="data-municipality-analysis-factors">' +
+                    candidates.slice(0, 12).map(function (candidate) {
+                        const meta = [
+                            candidate.tipo_entidad_etiqueta,
+                            candidate.actividad,
+                            candidate.estrato_etiqueta
+                        ].filter(Boolean).join(' · ');
+                        return '<div><i class="bi bi-building-check"></i><span><strong>' +
+                            escapeHtml(candidate.nombre) + '</strong>' +
+                            (meta ? '<small style="display:block">' + escapeHtml(meta) + '</small>' : '') +
+                            '</span></div>';
+                    }).join('') +
+                '</div>' +
+                '<p class="data-municipality-analysis-caption">Fuente: INEGI - DENUE. Esta lista es exploratoria y requiere validación del analista antes de incorporarse a Seguimiento.</p>';
+        } catch (error) {
+            container.innerHTML = '<p class="data-municipality-analysis-empty">' +
+                escapeHtml(error.message || 'No fue posible consultar DENUE.') + '</p>';
+        } finally {
+            button.disabled = false;
+            button.innerHTML = original;
+        }
     });
 })();
