@@ -39,6 +39,71 @@ class DenueService
         return $this->procesarSectores($respuesta['datos'], $claveInegi);
     }
 
+    public function obtenerSectoresMunicipio(
+        string $claveEstado,
+        string $claveMunicipio
+    ): array {
+        $claveEstado = trim($claveEstado);
+        $claveMunicipio = $this->normalizarClaveMunicipal($claveMunicipio);
+
+        if (
+            !preg_match('/^\\d{2}$/', $claveEstado) ||
+            $claveMunicipio === '0' ||
+            !preg_match('/^\\d{3}$/', $claveMunicipio)
+        ) {
+            return [
+                'ok' => false,
+                'mensaje' => 'El municipio solicitado no tiene una clave INEGI válida.'
+            ];
+        }
+
+        if (!$this->configuracionDisponible()) {
+            return [
+                'ok' => false,
+                'mensaje' => 'La configuración de DENUE no está disponible.'
+            ];
+        }
+
+        // Cuantificar acepta cinco dígitos para nivel municipal:
+        // entidad (2) + municipio (3), por ejemplo 01001.
+        $claveArea = $claveEstado . $claveMunicipio;
+        $respuesta = $this->consultarCuantificar($claveArea);
+
+        if (!$respuesta['ok']) {
+            return $respuesta;
+        }
+
+        $resultado = $this->procesarSectores($respuesta['datos'], $claveArea);
+
+        if (($resultado['ok'] ?? false) !== true) {
+            return $resultado;
+        }
+
+        $sectoresVinculacion = ['31-33', '48-49', '52', '54', '55', '56', '61', '62', '81', '93'];
+        $establecimientosVinculacion = 0;
+        $detalleVinculacion = [];
+
+        foreach (($resultado['sectores'] ?? []) as $sector) {
+            if (!in_array((string)($sector['clave_sector'] ?? ''), $sectoresVinculacion, true)) {
+                continue;
+            }
+
+            $establecimientos = (int)($sector['establecimientos'] ?? 0);
+            $establecimientosVinculacion += $establecimientos;
+            $detalleVinculacion[] = $sector;
+        }
+
+        $resultado['clave_estado'] = $claveEstado;
+        $resultado['clave_municipio'] = $claveMunicipio;
+        $resultado['establecimientos_vinculacion'] = $establecimientosVinculacion;
+        $resultado['sectores_vinculacion'] = $detalleVinculacion;
+        $resultado['criterio_vinculacion'] = [
+            '31-33', '48-49', '52', '54', '55', '56', '61', '62', '81', '93'
+        ];
+
+        return $resultado;
+    }
+
     public function buscarEstablecimientos(
         string $claveEstado,
         string $termino,
