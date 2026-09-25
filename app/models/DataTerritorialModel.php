@@ -1643,25 +1643,6 @@ class DataTerritorialModel
                     : 'Alcance poblacional dentro del territorio';
             }
 
-            if (trim((string)($municipio['presidente_municipal'] ?? '')) !== '') {
-                $componentes['institucional'] += 8;
-            }
-
-            if (trim((string)($municipio['redes_sociales'] ?? '')) !== '') {
-                $componentes['institucional'] += 8;
-            }
-
-            if (trim((string)($municipio['partido_politico'] ?? '')) !== '') {
-                $componentes['institucional'] += 4;
-            }
-
-            $puntajeObtenido += $componentes['institucional'];
-            $puntajeDisponible += 20;
-
-            if ($componentes['institucional'] > 0) {
-                $motivos[] = 'Información institucional disponible';
-            }
-
             if ($componenteEducativo['disponible']) {
                 $componentes['educacion'] = (int)$componenteEducativo['puntaje'];
                 $puntajeObtenido += $componentes['educacion'];
@@ -1679,7 +1660,7 @@ class DataTerritorialModel
             $puntaje = $puntajeDisponible > 0
                 ? (int)round(($puntajeObtenido / $puntajeDisponible) * 100)
                 : 0;
-            $coberturaDatos = (int)round(($puntajeDisponible / 100) * 100);
+            $coberturaDatos = (int)round(($puntajeDisponible / 80) * 100);
             $porcentajeIndividual = $poblacionTotal > 0
                 ? ($poblacion / $poblacionTotal) * 100
                 : 0;
@@ -1694,7 +1675,19 @@ class DataTerritorialModel
                 'prioridad' => 'BAJA',
                 'accion' => $accionesPorPrioridad['BAJA'],
                 'componentes' => $componentes,
-                'motivos' => $motivos
+                'motivos' => $motivos,
+                'modelo' => 'TRANSITORIO_VINCULACION',
+                'es_provisional' => true,
+                'limitaciones' => [
+                    'La información institucional no participa en el puntaje.',
+                    'El perfil adulto y laboral todavía no forma parte del índice.',
+                    'Educación y economía corresponden al contexto estatal.'
+                ],
+                'informacion_institucional' => [
+                    'presidente_disponible' => trim((string)($municipio['presidente_municipal'] ?? '')) !== '',
+                    'partido_disponible' => trim((string)($municipio['partido_politico'] ?? '')) !== '',
+                    'redes_disponibles' => trim((string)($municipio['redes_sociales'] ?? '')) !== ''
+                ]
             ];
 
             $resultado['por_municipio'][$municipioId] = $datosPriorizacion;
@@ -1719,7 +1712,7 @@ class DataTerritorialModel
             }
 
             $puntajeObtenido = 0;
-            $puntajeDisponible = 20;
+            $puntajeDisponible = 0;
             $componentes = [
                 'poblacion' => 0,
                 'institucional' => 0,
@@ -1727,24 +1720,6 @@ class DataTerritorialModel
                 'economia' => 0
             ];
             $motivos = [];
-
-            if (trim((string)($municipio['presidente_municipal'] ?? '')) !== '') {
-                $componentes['institucional'] += 8;
-            }
-
-            if (trim((string)($municipio['redes_sociales'] ?? '')) !== '') {
-                $componentes['institucional'] += 8;
-            }
-
-            if (trim((string)($municipio['partido_politico'] ?? '')) !== '') {
-                $componentes['institucional'] += 4;
-            }
-
-            $puntajeObtenido += $componentes['institucional'];
-
-            if ($componentes['institucional'] > 0) {
-                $motivos[] = 'Información institucional disponible';
-            }
 
             if ($componenteEducativo['disponible']) {
                 $componentes['educacion'] = (int)$componenteEducativo['puntaje'];
@@ -1763,7 +1738,7 @@ class DataTerritorialModel
             $puntaje = $puntajeDisponible > 0
                 ? (int)round(($puntajeObtenido / $puntajeDisponible) * 100)
                 : 0;
-            $coberturaDatos = (int)round(($puntajeDisponible / 100) * 100);
+            $coberturaDatos = (int)round(($puntajeDisponible / 80) * 100);
             $datosPriorizacion = [
                 'puntaje' => $puntaje,
                 'puntaje_obtenido' => $puntajeObtenido,
@@ -1775,7 +1750,19 @@ class DataTerritorialModel
                 'prioridad' => 'BAJA',
                 'accion' => $accionesPorPrioridad['BAJA'],
                 'componentes' => $componentes,
-                'motivos' => $motivos
+                'motivos' => $motivos,
+                'modelo' => 'TRANSITORIO_VINCULACION',
+                'es_provisional' => true,
+                'limitaciones' => [
+                    'La información institucional no participa en el puntaje.',
+                    'El perfil adulto y laboral todavía no forma parte del índice.',
+                    'Educación y economía corresponden al contexto estatal.'
+                ],
+                'informacion_institucional' => [
+                    'presidente_disponible' => trim((string)($municipio['presidente_municipal'] ?? '')) !== '',
+                    'partido_disponible' => trim((string)($municipio['partido_politico'] ?? '')) !== '',
+                    'redes_disponibles' => trim((string)($municipio['redes_sociales'] ?? '')) !== ''
+                ]
             ];
 
             $resultado['por_municipio'][$municipioId] = $datosPriorizacion;
