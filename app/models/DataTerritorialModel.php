@@ -328,6 +328,140 @@ class DataTerritorialModel
         ];
     }
 
+    public function obtenerActividadEconomicaMunicipio(int $estadoId, int $municipioId): array
+    {
+        $vacio = [
+            'disponible' => false,
+            'total_establecimientos' => 0,
+            'establecimientos_vinculacion' => 0,
+            'sectores' => [],
+            'sectores_vinculacion' => []
+        ];
+
+        if ($estadoId <= 0 || $municipioId <= 0) {
+            return $vacio;
+        }
+
+        $tablaDisponible = false;
+        $consultaTabla = $this->connection->query(
+            "SHOW TABLES LIKE 'actividad_economica_municipio'"
+        );
+        if ($consultaTabla instanceof mysqli_result) {
+            $tablaDisponible = $consultaTabla->num_rows > 0;
+            $consultaTabla->free();
+        }
+
+        if (!$tablaDisponible) {
+            return $vacio;
+        }
+
+        $sql = "SELECT clave_sector, nombre_sector, establecimientos, porcentaje,
+                    fuente, fecha_consulta, tipo_actualizacion
+                FROM actividad_economica_municipio
+                WHERE estado_id = ? AND municipio_id = ?
+                ORDER BY establecimientos DESC, nombre_sector";
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param('ii', $estadoId, $municipioId);
+        $stmt->execute();
+        $sectores = $this->convertirResultadoEnArreglo($stmt->get_result());
+
+        if (empty($sectores)) {
+            return $vacio;
+        }
+
+        $clavesVinculacion = ['31-33', '48-49', '52', '54', '55', '56', '61', '62', '81', '93'];
+        $total = 0;
+        $totalVinculacion = 0;
+        $sectoresVinculacion = [];
+
+        foreach ($sectores as $sector) {
+            $establecimientos = (int)($sector['establecimientos'] ?? 0);
+            $total += $establecimientos;
+
+            if (in_array((string)($sector['clave_sector'] ?? ''), $clavesVinculacion, true)) {
+                $totalVinculacion += $establecimientos;
+                $sectoresVinculacion[] = $sector;
+            }
+        }
+
+        return [
+            'disponible' => true,
+            'total_establecimientos' => $total,
+            'establecimientos_vinculacion' => $totalVinculacion,
+            'sectores' => $sectores,
+            'sectores_vinculacion' => $sectoresVinculacion
+        ];
+    }
+
+    public function actualizarActividadEconomicaMunicipioOficial(
+        int $estadoId,
+        int $municipioId,
+        int $totalEstablecimientos,
+        array $sectores
+    ): bool {
+        if ($estadoId <= 0 || $municipioId <= 0 || $totalEstablecimientos <= 0 || empty($sectores)) {
+            throw new InvalidArgumentException('La información económica municipal no es válida.');
+        }
+
+        $sectoresValidados = $this->validarSectoresActividadEconomica($sectores);
+        if (array_sum(array_column($sectoresValidados, 'establecimientos')) !== $totalEstablecimientos) {
+            throw new InvalidArgumentException('El total municipal no coincide con sus sectores.');
+        }
+
+        $sumaPorcentajes = array_sum(array_column($sectoresValidados, 'porcentaje'));
+        if ($sumaPorcentajes < 99.90 || $sumaPorcentajes > 100.10) {
+            throw new InvalidArgumentException('La suma de porcentajes municipales no es válida.');
+        }
+
+        $this->connection->begin_transaction();
+        try {
+            $sql = "INSERT INTO actividad_economica_municipio (
+                        estado_id, municipio_id, clave_sector, nombre_sector,
+                        establecimientos, porcentaje, fuente, fecha_consulta,
+                        tipo_actualizacion, created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?, NOW(), NOW())
+                    ON DUPLICATE KEY UPDATE
+                        nombre_sector = VALUES(nombre_sector),
+                        establecimientos = VALUES(establecimientos),
+                        porcentaje = VALUES(porcentaje),
+                        fuente = VALUES(fuente),
+                        fecha_consulta = NOW(),
+                        tipo_actualizacion = VALUES(tipo_actualizacion),
+                        updated_at = NOW()";
+            $stmt = $this->connection->prepare($sql);
+            $fuente = 'INEGI - DENUE';
+            $tipo = 'AUTOMATICA';
+
+            foreach ($sectoresValidados as $sector) {
+                $clave = $sector['clave_sector'];
+                $nombre = $sector['nombre_sector'];
+                $establecimientos = $sector['establecimientos'];
+                $porcentaje = $sector['porcentaje'];
+                $stmt->bind_param(
+                    'iissidss',
+                    $estadoId,
+                    $municipioId,
+                    $clave,
+                    $nombre,
+                    $establecimientos,
+                    $porcentaje,
+                    $fuente,
+                    $tipo
+                );
+                if (!$stmt->execute()) {
+                    throw new Exception('No fue posible guardar la actividad económica municipal.');
+                }
+            }
+
+            $this->connection->commit();
+            return true;
+        } catch (Throwable $error) {
+            $this->connection->rollback();
+            error_log($error->getMessage());
+            return false;
+        }
+    }
+
     public function obtenerComparacionEconomicaNacional(int $estadoId): array
     {
         $respuestaVacia = [
