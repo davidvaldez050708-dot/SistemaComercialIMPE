@@ -47,6 +47,7 @@ $esReportesDashboard =
         [
             'reporte',
             'reporteadministrador',
+            'dataterritorialreporte',
             'seguimientovinculacionreporte',
             'seguimientoreporteanalitica'
         ],
