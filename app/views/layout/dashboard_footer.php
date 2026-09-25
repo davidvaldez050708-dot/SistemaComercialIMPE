@@ -223,7 +223,8 @@ if ($esTerritorialFooter) {
             'educacion_objetivo.js',
             'data_territorial_fuentes.js',
             'poblacion_objetivo_educativa.js',
-            'territorios_historial.js'
+            'territorios_historial.js',
+            'data_territorial_municipio_analisis.js'
         ]
     );
 }
