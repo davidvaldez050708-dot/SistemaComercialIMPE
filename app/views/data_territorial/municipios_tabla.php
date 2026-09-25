@@ -295,6 +295,8 @@ if ($totalPaginasMunicipios <= 7) {
                                         data-municipio-analysis
                                         data-bs-toggle="offcanvas"
                                         data-bs-target="#offcanvasAnalisisMunicipio"
+                                        data-estado-id="<?= (int)($estadoSeleccionado['id'] ?? 0) ?>"
+                                        data-municipio-id="<?= (int)$idMunicipio ?>"
                                         data-nombre="<?= $escMunicipio($nombreMunicipio) ?>"
                                         data-clave-inegi="<?= $escMunicipio($claveInegi) ?>"
                                         data-poblacion="<?= $escMunicipio($poblacion) ?>"
