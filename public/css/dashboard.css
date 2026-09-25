@@ -8955,3 +8955,60 @@
         border-bottom: 0;
     }
 }
+
+
+/* Exploración de organizaciones desde el análisis municipal */
+.data-municipality-candidates-trigger {
+    width: 100%;
+    margin-top: 12px;
+    padding: 11px 12px;
+    border: 1px solid #dbe3ed;
+    border-radius: 10px;
+    background: #fff;
+    color: #26364a;
+    display: grid;
+    grid-template-columns: 34px 1fr auto;
+    align-items: center;
+    gap: 10px;
+    text-align: left;
+    transition: border-color .15s ease, background-color .15s ease;
+}
+.data-municipality-candidates-trigger:hover {
+    border-color: #b9c7d8;
+    background: #f8fafc;
+}
+.data-municipality-candidates-trigger:disabled {
+    cursor: wait;
+    opacity: .7;
+}
+.data-municipality-candidates-trigger-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    background: #f1f5f9;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #51657c;
+}
+.data-municipality-candidates-trigger strong,
+.data-municipality-candidates-trigger small {
+    display: block;
+}
+.data-municipality-candidates-trigger strong {
+    font-size: .84rem;
+    font-weight: 650;
+}
+.data-municipality-candidates-trigger small {
+    margin-top: 2px;
+    color: #7a8798;
+    font-size: .72rem;
+    font-weight: 400;
+}
+.data-municipality-candidates-trigger > .bi-chevron-right {
+    color: #98a4b3;
+    font-size: .8rem;
+}
+.data-municipality-candidates {
+    margin-top: 12px;
+}
