@@ -3398,17 +3398,18 @@ document.addEventListener('DOMContentLoaded', function () {
         try {
             resultado = JSON.parse(textoRespuesta);
         } catch (error) {
-            const textoPlano = textoRespuesta
-                .replace(/<br\\s*\\/?>/gi, '\\n')
-                .replace(/<[^>]*>/g, ' ')
-                .replace(/&nbsp;/gi, ' ')
-                .replace(/&quot;/gi, '"')
-                .replace(/&#039;/gi, "'")
-                .replace(/&lt;/gi, '<')
-                .replace(/&gt;/gi, '>')
-                .replace(/&amp;/gi, '&')
-                .replace(/[ \\t]+/g, ' ')
-                .replace(/\\n\\s+/g, '\\n')
+            const temporalError = document.createElement('div');
+            temporalError.innerHTML = textoRespuesta
+                .replaceAll('<br>', '\n')
+                .replaceAll('<br/>', '\n')
+                .replaceAll('<br />', '\n');
+            const textoPlano = (temporalError.textContent || temporalError.innerText || '')
+                .split('\n')
+                .map(function (linea) {
+                    return linea.trim();
+                })
+                .filter(Boolean)
+                .join(' ')
                 .trim();
             const detalle = textoPlano.length > 0
                 ? textoPlano.slice(0, 900)
