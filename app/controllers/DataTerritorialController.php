@@ -242,6 +242,78 @@ class DataTerritorialController
         require_once __DIR__ . '/../views/data_territorial/municipios_tabla.php';
     }
 
+    public function obtenerCandidatosMunicipio()
+    {
+        $this->validarPermiso('data_territorial.ver');
+
+        $modelo = new DataTerritorialModel();
+        $estadoId = (int)($_GET['estado_id'] ?? 0);
+        $municipioId = (int)($_GET['municipio_id'] ?? 0);
+        $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
+        $rolId = (int)($_SESSION['rol_id'] ?? 0);
+
+        if ($estadoId <= 0 || $municipioId <= 0 ||
+            !$modelo->puedeAccederEstado($usuarioId, $rolId, $estadoId)) {
+            $this->responderJson(['ok' => false, 'mensaje' => 'No tienes acceso al territorio solicitado.'], 403);
+        }
+
+        $estado = $modelo->obtenerEstado($estadoId);
+        $mapaMunicipios = $modelo->obtenerMapaMunicipiosInegi($estadoId);
+        $municipio = null;
+        $claveMunicipio = '';
+
+        foreach ($mapaMunicipios as $clave => $item) {
+            if ((int)($item['id'] ?? 0) === $municipioId) {
+                $municipio = $item;
+                $claveMunicipio = (string)$clave;
+                break;
+            }
+        }
+
+        if (!$estado || !$municipio) {
+            $this->responderJson(['ok' => false, 'mensaje' => 'No se encontró el municipio solicitado.'], 404);
+        }
+
+        $claveEstado = str_pad(trim((string)($estado['clave_inegi'] ?? '')), 2, '0', STR_PAD_LEFT);
+        $denue = new DenueService();
+        $resultado = $denue->buscarCandidatosRecomendados($claveEstado, $claveMunicipio, 40);
+
+        if (($resultado['ok'] ?? false) !== true) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => $resultado['mensaje'] ?? 'No fue posible consultar candidatos en DENUE.'
+            ], 502);
+        }
+
+        $candidatos = array_values(array_map(function (array $candidato): array {
+            return [
+                'clave_origen' => $candidato['clave_origen'] ?? '',
+                'tipo_entidad' => $candidato['tipo_entidad'] ?? '',
+                'tipo_entidad_etiqueta' => $candidato['tipo_entidad_etiqueta'] ?? '',
+                'nombre' => $candidato['nombre'] ?? '',
+                'actividad' => $candidato['actividad'] ?? null,
+                'sector' => $candidato['sector'] ?? null,
+                'estrato_valor' => (int)($candidato['estrato_valor'] ?? 0),
+                'estrato_etiqueta' => $candidato['estrato_etiqueta'] ?? null,
+                'direccion' => $candidato['direccion'] ?? null,
+                'telefono' => $candidato['telefono'] ?? null,
+                'correo' => $candidato['correo'] ?? null,
+                'sitio_web' => $candidato['sitio_web'] ?? null
+            ];
+        }, $resultado['resultados'] ?? []));
+
+        $this->responderJson([
+            'ok' => true,
+            'datos' => [
+                'municipio' => $municipio['nombre'] ?? '',
+                'total' => count($candidatos),
+                'candidatos' => $candidatos,
+                'fuente' => 'INEGI - DENUE',
+                'nota' => 'Son candidatos exploratorios; el analista debe validar su pertinencia antes de incorporarlos a Seguimiento.'
+            ]
+        ]);
+    }
+
     public function actualizarFichaGeneral()
     {
         $this->validarPermisoEdicionGeneral();
