@@ -144,6 +144,10 @@ if ($esConvocatoriaDashboard || $esHomeDashboard) {
     $cssOpcionalDashboard[] = 'convocatorias.css';
 }
 
+if ($esTerritorialDashboard) {
+    $cssOpcionalDashboard[] = 'territorios_resumen_refinamientos.css';
+}
+
 if ($esReportesDashboard) {
     $cssOpcionalDashboard = array_merge(
         $cssOpcionalDashboard,
