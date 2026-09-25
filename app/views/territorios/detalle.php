@@ -455,11 +455,7 @@ if (!empty($movimientosTerritoriales)) {
                     <?php endif; ?>
 
                     <?php if (!empty($asesoresTerritorio)): ?>
-                        <div class="<?= $hayEquipoOperativo ? 'border-top pt-3 mt-1' : '' ?>">
-                            <div class="mb-2">
-                                <span class="assignment-role">Asesores</span>
-                            </div>
-
+                        <article class="territory-detail-advisors-card">
                             <div class="territory-detail-analysts border-0 pt-0 mt-0">
                                 <?php foreach ($asesoresTerritorio as $asesor): ?>
                                     <?php
@@ -488,7 +484,7 @@ if (!empty($movimientosTerritoriales)) {
                                     </div>
                                 <?php endforeach; ?>
                             </div>
-                        </div>
+                        </article>
                     <?php endif; ?>
                 </div>
             <?php else: ?>
