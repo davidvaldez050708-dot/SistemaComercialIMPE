@@ -310,7 +310,8 @@ if ($totalPaginasMunicipios <= 7) {
                                         data-total-ranking="<?= (int)$totalRankingMunicipio ?>"
                                         data-motivos="<?= $escMunicipio(json_encode(array_values($motivosMunicipio), JSON_UNESCAPED_UNICODE)) ?>"
                                         data-limitaciones="<?= $escMunicipio(json_encode(array_values($limitacionesMunicipio), JSON_UNESCAPED_UNICODE)) ?>"
-                                        data-perfil-adulto="<?= $escMunicipio(json_encode($perfilAdultoMunicipio, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?>">
+                                        data-perfil-adulto="<?= $escMunicipio(json_encode($perfilAdultoMunicipio, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?>"
+                                        data-actividad-economica="<?= $escMunicipio(json_encode($municipio['actividad_economica_municipal'] ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?>">
                                         <i class="bi bi-bar-chart-line"></i>
                                     </button>
 
