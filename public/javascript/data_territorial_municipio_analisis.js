@@ -251,6 +251,8 @@
                         '<div class="data-municipality-candidate-meta"><span>' + escapeHtml(type) + ' · ' + escapeHtml(size) + '</span>' +
                         '<em class="data-municipality-candidate-level">' + escapeHtml(level) + '</em></div>' +
                         '<small>' + escapeHtml(activity) + '</small>' +
+                        '<button type="button" class="data-municipality-candidate-review" data-review-candidate ' +
+                            'data-candidate="' + escapeHtml(JSON.stringify(candidate)) + '">Revisar candidato</button>' +
                         '</div></article>';
                 }).join('');
             };
@@ -310,6 +312,87 @@
             button.disabled = false;
             button.classList.remove('is-loading');
             button.innerHTML = original;
+        }
+    });
+
+    document.addEventListener('click', function (event) {
+        const button = event.target.closest('[data-review-candidate]');
+        if (!button) return;
+
+        let candidate = {};
+        try {
+            candidate = JSON.parse(button.dataset.candidate || '{}');
+        } catch (error) {
+            return;
+        }
+
+        const modalElement = document.getElementById('modalConfirmarSeguimientoTerritorial');
+        const form = modalElement?.querySelector('[data-territorial-candidate-confirm-form]');
+        if (!modalElement || !form || !window.bootstrap) return;
+
+        form.reset();
+        form.querySelector('[data-territorial-confirm-state]').value =
+            button.closest('[data-municipality-candidates]')?.parentElement
+                ?.querySelector('[data-load-municipality-candidates]')?.dataset.estadoId || '';
+        form.querySelector('[data-territorial-confirm-key]').value = candidate.clave_origen || '';
+        modalElement.querySelector('[data-territorial-confirm-name]').textContent = candidate.nombre || '—';
+        modalElement.querySelector('[data-territorial-confirm-municipality]').textContent =
+            document.getElementById('offcanvasAnalisisMunicipioTitulo')?.dataset.municipalityName ||
+            document.querySelector('#municipioAnalisisContenido .data-municipality-analysis-title')?.textContent ||
+            'Municipio seleccionado';
+        modalElement.querySelector('[data-territorial-confirm-phone]').textContent =
+            candidate.telefono || 'Sin teléfono';
+        modalElement.querySelector('[data-territorial-confirm-email]').textContent =
+            candidate.correo || 'Sin correo';
+        const alert = modalElement.querySelector('[data-territorial-confirm-alert]');
+        alert?.classList.add('d-none');
+        if (alert) alert.textContent = '';
+
+        bootstrap.Modal.getOrCreateInstance(modalElement).show();
+    });
+
+    const territorialConfirmForm = document.querySelector('[data-territorial-candidate-confirm-form]');
+    territorialConfirmForm?.addEventListener('submit', async function (event) {
+        event.preventDefault();
+        const modalElement = document.getElementById('modalConfirmarSeguimientoTerritorial');
+        const submit = territorialConfirmForm.querySelector('[data-territorial-confirm-submit]');
+        const alert = territorialConfirmForm.querySelector('[data-territorial-confirm-alert]');
+        const original = submit?.textContent || 'Confirmar e iniciar seguimiento';
+
+        if (submit) {
+            submit.disabled = true;
+            submit.textContent = 'Iniciando...';
+        }
+        alert?.classList.add('d-none');
+
+        try {
+            const response = await fetch(
+                window.location.pathname + '?controller=seguimientoVinculacion&action=crearSeguimientoDesdeCandidato',
+                {
+                    method: 'POST',
+                    headers: { 'X-Requested-With': 'fetch' },
+                    body: new FormData(territorialConfirmForm)
+                }
+            );
+            const result = await response.json();
+            if (!response.ok || result.ok !== true) {
+                throw new Error(result.mensaje || 'No fue posible iniciar el seguimiento.');
+            }
+
+            bootstrap.Modal.getInstance(modalElement)?.hide();
+            window.location.href = result.url ||
+                (window.location.pathname + '?controller=seguimientoVinculacion&action=estado');
+        } catch (error) {
+            if (alert) {
+                alert.textContent = error.message || 'No fue posible iniciar el seguimiento.';
+                alert.classList.remove('d-none');
+                alert.classList.add('linkage-candidate-alert-error');
+            }
+        } finally {
+            if (submit) {
+                submit.disabled = false;
+                submit.textContent = original;
+            }
         }
     });
 })();
