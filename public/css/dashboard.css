@@ -9207,3 +9207,19 @@
     text-transform: uppercase;
     letter-spacing: .02em;
 }
+
+
+.data-municipality-candidate-review {
+    margin-top: 7px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #506b86;
+    font-size: .68rem;
+    font-weight: 700;
+    text-align: left;
+}
+.data-municipality-candidate-review:hover {
+    color: #304c68;
+    text-decoration: underline;
+}
