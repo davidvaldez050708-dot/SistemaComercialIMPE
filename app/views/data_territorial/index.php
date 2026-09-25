@@ -3457,6 +3457,83 @@ document.addEventListener('DOMContentLoaded', function () {
         return resultado;
     };
 
+    const actualizarTejidoEconomicoMunicipal = async function (estado, onProgress) {
+        const configuracion = tiposActualizacionOficial.actividad_municipal;
+        const inicial = await actualizarEstadoOperacion(estado, 'actividad_municipal');
+        const municipios = Array.isArray(inicial.datos?.municipios) ? inicial.datos.municipios : [];
+
+        if (municipios.length === 0) {
+            throw new Error('No hay municipios disponibles para actualizar.');
+        }
+
+        const errores = [];
+        let exitosos = 0;
+        let establecimientos = 0;
+        let establecimientosVinculacion = 0;
+
+        for (let indice = 0; indice < municipios.length; indice += 1) {
+            const municipio = municipios[indice];
+            if (typeof onProgress === 'function') {
+                onProgress(indice, municipios.length, municipio);
+            }
+
+            const datos = new URLSearchParams();
+            datos.set('estado_id', String(estado.id || ''));
+            datos.set('clave_municipio', String(municipio.clave || ''));
+
+            try {
+                const respuesta = await fetch(
+                    baseUrl + '?controller=dataTerritorial&action=' + configuracion.action,
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                            'X-Requested-With': 'fetch'
+                        },
+                        body: datos.toString()
+                    }
+                );
+                const texto = await respuesta.text();
+                let resultado;
+                try {
+                    resultado = JSON.parse(texto);
+                } catch (error) {
+                    throw new Error('El servidor devolvió una respuesta no válida.');
+                }
+                if (!respuesta.ok || resultado.ok !== true) {
+                    throw new Error(resultado.mensaje || configuracion.mensajeError);
+                }
+
+                exitosos += 1;
+                establecimientos += Number(resultado.datos?.total_establecimientos || 0);
+                establecimientosVinculacion += Number(resultado.datos?.establecimientos_vinculacion || 0);
+            } catch (error) {
+                errores.push((municipio.nombre || municipio.clave) + ': ' +
+                    (error.message || configuracion.mensajeError));
+            }
+
+            if (typeof onProgress === 'function') {
+                onProgress(indice + 1, municipios.length, municipio);
+            }
+        }
+
+        if (exitosos === 0) {
+            throw new Error(errores[0] || configuracion.mensajeError);
+        }
+
+        return {
+            ok: true,
+            datos: {
+                municipios_recibidos: municipios.length,
+                municipios_guardados: exitosos,
+                municipios_con_error: errores.length,
+                establecimientos: establecimientos,
+                establecimientos_vinculacion: establecimientosVinculacion,
+                errores: errores
+            }
+        };
+    };
+
     const trimestreTexto = function (trimestre, anio) {
         const nombres = {
             1: 'Primer trimestre',
@@ -3976,8 +4053,33 @@ document.addEventListener('DOMContentLoaded', function () {
                 );
 
                 try {
-                    await actualizarEstadoOperacion(estado, tipo);
-                    resultados[tipo].exitosos += 1;
+                    if (tipo === 'actividad_municipal') {
+                        const detalle = await actualizarTejidoEconomicoMunicipal(
+                            estado,
+                            function (hechos, total, municipio) {
+                                actualizarProgresoIndividual(
+                                    procesados,
+                                    totalOperaciones,
+                                    estado.nombre + ' · ' + (municipio.nombre || municipio.clave) +
+                                        ' (' + hechos + '/' + total + ')',
+                                    configuracion.nombre
+                                );
+                            }
+                        );
+                        resultados[tipo].exitosos += 1;
+                        if (Number(detalle.datos?.municipios_con_error || 0) > 0) {
+                            (detalle.datos.errores || []).forEach(function (mensaje) {
+                                errores.push({
+                                    estado: estado.nombre || 'Estado sin nombre',
+                                    tipo: configuracion.nombre,
+                                    mensaje: mensaje
+                                });
+                            });
+                        }
+                    } else {
+                        await actualizarEstadoOperacion(estado, tipo);
+                        resultados[tipo].exitosos += 1;
+                    }
                 } catch (error) {
                     resultados[tipo].errores += 1;
                     errores.push({
@@ -4118,8 +4220,33 @@ document.addEventListener('DOMContentLoaded', function () {
                     );
 
                     try {
-                        await actualizarEstadoOperacion(estado, tipo);
-                        resultados[tipo].exitosos += 1;
+                        if (tipo === 'actividad_municipal') {
+                            const detalle = await actualizarTejidoEconomicoMunicipal(
+                                estado,
+                                function (hechos, total, municipio) {
+                                    actualizarProgresoMasivo(
+                                        procesados,
+                                        totalOperaciones,
+                                        estado.nombre + ' · ' + (municipio.nombre || municipio.clave) +
+                                            ' (' + hechos + '/' + total + ')',
+                                        configuracion.nombre
+                                    );
+                                }
+                            );
+                            resultados[tipo].exitosos += 1;
+                            if (Number(detalle.datos?.municipios_con_error || 0) > 0) {
+                                (detalle.datos.errores || []).forEach(function (mensaje) {
+                                    errores.push({
+                                        estado: estado.nombre || 'Estado sin nombre',
+                                        tipo: configuracion.nombre,
+                                        mensaje: mensaje
+                                    });
+                                });
+                            }
+                        } else {
+                            await actualizarEstadoOperacion(estado, tipo);
+                            resultados[tipo].exitosos += 1;
+                        }
                     } catch (error) {
                         resultados[tipo].errores += 1;
                         errores.push({
