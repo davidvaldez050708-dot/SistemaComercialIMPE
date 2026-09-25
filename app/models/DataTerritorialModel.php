@@ -1768,24 +1768,21 @@ class DataTerritorialModel
                     : 'Población adulta de 25 a 54 años con presencia relevante';
             }
 
+            // Educación y economía siguen disponibles como contexto estatal,
+            // pero no diferencian municipios dentro del mismo Estado. Por ello
+            // dejan de alterar el índice hasta contar con señales municipales.
             if ($componenteEducativo['disponible']) {
                 $componentes['educacion'] = (int)$componenteEducativo['puntaje'];
-                $puntajeObtenido += $componentes['educacion'];
-                $puntajeDisponible += 15;
-                $motivos[] = 'Contexto educativo estatal relevante';
             }
 
             if ($economiaDisponible) {
                 $componentes['economia'] = $puntajeEconomiaEstado;
-                $puntajeObtenido += $componentes['economia'];
-                $puntajeDisponible += $puntajeDisponibleEconomia;
-                $motivos[] = 'Contexto económico estatal favorable';
             }
 
             $puntaje = $puntajeDisponible > 0
                 ? (int)round(($puntajeObtenido / $puntajeDisponible) * 100)
                 : 0;
-            $coberturaDatos = (int)round(($puntajeDisponible / 110) * 100);
+            $coberturaDatos = (int)round(($puntajeDisponible / 80) * 100);
             $porcentajeIndividual = $poblacionTotal > 0
                 ? ($poblacion / $poblacionTotal) * 100
                 : 0;
@@ -1801,12 +1798,12 @@ class DataTerritorialModel
                 'accion' => $accionesPorPrioridad['BAJA'],
                 'componentes' => $componentes,
                 'motivos' => $motivos,
-                'modelo' => 'VINCULACION_ADULTO_MUNICIPAL_V1',
+                'modelo' => 'VINCULACION_MUNICIPAL_V2',
                 'es_provisional' => true,
                 'limitaciones' => [
                     'La información institucional no participa en el puntaje.',
-                    'El perfil adulto 25 a 54 ya participa como componente municipal del índice.',
-                    'Educación y economía todavía corresponden al contexto estatal.',
+                    'El índice compara únicamente señales que actualmente diferencian municipios: alcance poblacional y población de 25 a 54 años.',
+                    'Educación y economía se conservan como contexto estatal y no generan puntaje municipal.',
                     'PEA y población ocupada se muestran como contexto y todavía no generan puntaje.'
                 ],
                 'informacion_institucional' => [
