@@ -155,6 +155,15 @@ class DataTerritorialController
                 unset($municipioTerritorial);
             }
 
+            foreach ($municipios as &$municipioTerritorial) {
+                $municipioTerritorial['actividad_economica_municipal'] =
+                    $modelo->obtenerActividadEconomicaMunicipio(
+                        $estadoId,
+                        (int)($municipioTerritorial['id'] ?? 0)
+                    );
+            }
+            unset($municipioTerritorial);
+
             $fuentes = $modelo->obtenerFuentesPorEstado($estadoId);
         }
 
@@ -218,6 +227,16 @@ class DataTerritorialController
             }
             unset($municipioTerritorial);
         }
+
+        foreach ($municipios as &$municipioTerritorial) {
+            $municipioTerritorial['actividad_economica_municipal'] =
+                $modelo->obtenerActividadEconomicaMunicipio(
+                    $estadoId,
+                    (int)($municipioTerritorial['id'] ?? 0)
+                );
+        }
+        unset($municipioTerritorial);
+
         $estadoSeleccionado = $modelo->obtenerEstado($estadoId);
 
         require_once __DIR__ . '/../views/data_territorial/municipios_tabla.php';
