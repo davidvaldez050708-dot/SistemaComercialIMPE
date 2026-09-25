@@ -64,6 +64,7 @@
         const reasons = parseList(button.dataset.motivos);
         const limitations = parseList(button.dataset.limitaciones);
         const adultProfile = parseObject(button.dataset.perfilAdulto);
+        const economicProfile = parseObject(button.dataset.actividadEconomica);
         const action = button.dataset.accion || 'OBSERVAR';
         const priority = (button.dataset.prioridad || 'BAJA').toLowerCase();
 
@@ -112,6 +113,33 @@
                 '<p class="data-municipality-analysis-empty">Este municipio todavía no cuenta con el perfil adulto/laboral oficial importado.</p>' +
               '</section>';
 
+        const economicAvailable = economicProfile.disponible === true;
+        const economicSectors = Array.isArray(economicProfile.sectores_vinculacion)
+            ? economicProfile.sectores_vinculacion.slice(0, 4)
+            : [];
+        const economicHtml = economicAvailable
+            ? '<section class="data-municipality-analysis-section">' +
+                '<div class="data-municipality-analysis-section-heading"><h4>Tejido económico y organizacional</h4><span>DENUE</span></div>' +
+                '<div class="data-municipality-analysis-labor-context">' +
+                    '<div><span>Establecimientos registrados</span><strong>' + number(economicProfile.total_establecimientos) + '</strong></div>' +
+                    '<div><span>Sectores en observación</span><strong>' + number(economicProfile.establecimientos_vinculacion) + '</strong></div>' +
+                '</div>' +
+                (economicSectors.length
+                    ? '<div class="data-municipality-analysis-factors">' +
+                        economicSectors.map(function (sector) {
+                            return '<div><i class="bi bi-building"></i><span>' +
+                                escapeHtml(sector.nombre_sector || sector.clave_sector || 'Sector') +
+                                ' · ' + number(sector.establecimientos) + '</span></div>';
+                        }).join('') +
+                      '</div>'
+                    : '') +
+                '<p class="data-municipality-analysis-caption">Lectura exploratoria del tejido local. Estos establecimientos todavía no modifican el índice ni equivalen por sí solos a prospectos calificados.</p>' +
+              '</section>'
+            : '<section class="data-municipality-analysis-section">' +
+                '<div class="data-municipality-analysis-section-heading"><h4>Tejido económico y organizacional</h4><span>Pendiente</span></div>' +
+                '<p class="data-municipality-analysis-empty">Todavía no hay información DENUE municipal disponible.</p>' +
+              '</section>';
+
         const methodology = limitations.length
             ? '<details class="data-municipality-analysis-methodology">' +
                 '<summary><i class="bi bi-info-circle"></i><span>Metodología actual</span><i class="bi bi-chevron-down"></i></summary>' +
@@ -148,6 +176,7 @@
                     factors(reasons) +
                 '</section>' +
                 adultHtml +
+                economicHtml +
                 '<section class="data-municipality-analysis-section data-municipality-analysis-institutional-section">' +
                     '<div class="data-municipality-analysis-section-heading"><h4>Información institucional</h4><span>Contexto</span></div>' +
                     '<div class="data-municipality-official">' +
