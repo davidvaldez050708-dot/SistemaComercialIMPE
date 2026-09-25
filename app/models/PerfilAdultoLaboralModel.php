@@ -139,6 +139,61 @@ class PerfilAdultoLaboralModel
             return false;
         }
 
+        // MySQL permite múltiples NULL dentro de una llave UNIQUE. Por eso el
+        // registro estatal (municipio_id IS NULL) se actualiza explícitamente,
+        // evitando duplicados cada vez que se sincroniza la misma entidad/año.
+        if ($municipioId === null) {
+            $sqlActualizar = "UPDATE perfil_adulto_laboral_oficial
+                              SET poblacion_25_34 = ?,
+                                  poblacion_35_44 = ?,
+                                  poblacion_45_54 = ?,
+                                  poblacion_25_54 = ?,
+                                  poblacion_economicamente_activa = ?,
+                                  poblacion_ocupada = ?,
+                                  fuente = ?,
+                                  archivo_origen = ?,
+                                  metodologia = ?,
+                                  fecha_consulta = NOW(),
+                                  tipo_actualizacion = ?,
+                                  usuario_importo_id = ?,
+                                  updated_at = NOW()
+                              WHERE estado_id = ?
+                                  AND municipio_id IS NULL
+                                  AND clave_geografica = ?
+                                  AND anio = ?";
+
+            $stmtActualizar = $this->connection->prepare($sqlActualizar);
+            if (!$stmtActualizar) {
+                return false;
+            }
+
+            $stmtActualizar->bind_param(
+                'iiiiiissssiisi',
+                $p25a34,
+                $p35a44,
+                $p45a54,
+                $p25a54,
+                $pea,
+                $ocupada,
+                $fuente,
+                $archivo,
+                $metodologia,
+                $tipo,
+                $usuarioId,
+                $estadoId,
+                $clave,
+                $anio
+            );
+
+            if (!$stmtActualizar->execute()) {
+                return false;
+            }
+
+            if ($stmtActualizar->affected_rows > 0) {
+                return true;
+            }
+        }
+
         $sql = "INSERT INTO perfil_adulto_laboral_oficial (
                     estado_id, municipio_id, clave_geografica, anio,
                     poblacion_25_34, poblacion_35_44, poblacion_45_54, poblacion_25_54,
@@ -162,6 +217,10 @@ class PerfilAdultoLaboralModel
                     updated_at = NOW()";
 
         $stmt = $this->connection->prepare($sql);
+        if (!$stmt) {
+            return false;
+        }
+
         $stmt->bind_param(
             'iisiiiiiiissssi',
             $estadoId,
