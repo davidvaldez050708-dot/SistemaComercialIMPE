@@ -9223,3 +9223,15 @@
     color: #304c68;
     text-decoration: underline;
 }
+
+
+.data-territorial-existing-follow-link {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 8px;
+    font-weight: 700;
+    text-decoration: none;
+}
+.data-territorial-existing-follow-link:hover {
+    text-decoration: underline;
+}
