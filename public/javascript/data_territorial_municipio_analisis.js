@@ -272,58 +272,45 @@
                       '</div>') +
                 '<p class="data-municipality-analysis-caption data-municipality-candidates-note">Fuente: INEGI - DENUE. Son candidatos exploratorios y requieren validación antes de incorporarse a Seguimiento.</p>';
 
-            const showAll = container.querySelector('[data-show-all-candidates]');
-            if (showAll) {
-                showAll.addEventListener('click', function () {
-                    const list = container.querySelector('.data-municipality-candidates-list');
-                    list.innerHTML = candidates.map(function (candidate) {
-                        const reading = candidate.lectura_vinculacion || {};
-                        const type = reading.tipo_entidad_etiqueta || candidate.tipo_entidad_etiqueta || 'Organización';
-                        const activity = candidate.actividad || 'Actividad no especificada';
-                        const size = candidate.estrato_etiqueta || 'Tamaño no registrado';
-                        return '<article class="data-municipality-candidate-card">' +
-                            '<span class="data-municipality-candidate-icon"><i class="bi bi-building"></i></span>' +
-                            '<div class="data-municipality-candidate-copy"><strong>' + escapeHtml(candidate.nombre) + '</strong>' +
-                            '<span>' + escapeHtml(type) + ' · ' + escapeHtml(size) + '</span><small>' + escapeHtml(activity) + '</small>' +
-                            (reading.via ? '<div class="data-municipality-candidate-opportunity"><b>' +
-                                escapeHtml(reading.via) + '</b><p>' + escapeHtml(reading.razon || '') + '</p></div>' : '') +
-                            '</div></article>';
-                    }).join('');
-                    const counter = container.querySelector('.data-municipality-candidates-heading > span');
-                    if (counter) counter.textContent = candidates.length + ' de ' + candidates.length;
-                    showAll.textContent = 'Mostrar menos';
-                    showAll.removeAttribute('data-show-all-candidates');
-                    showAll.setAttribute('data-show-fewer-candidates', '');
-                });
-            }
+            const renderCandidateCards = function (items) {
+                return items.map(function (candidate) {
+                    const reading = candidate.lectura_vinculacion || {};
+                    const type = reading.tipo_entidad_etiqueta || candidate.tipo_entidad_etiqueta || 'Organización';
+                    const activity = candidate.actividad || 'Actividad no especificada';
+                    const size = candidate.estrato_etiqueta || 'Tamaño no registrado';
+                    return '<article class="data-municipality-candidate-card">' +
+                        '<span class="data-municipality-candidate-icon"><i class="bi bi-building"></i></span>' +
+                        '<div class="data-municipality-candidate-copy"><strong>' + escapeHtml(candidate.nombre) + '</strong>' +
+                        '<span>' + escapeHtml(type) + ' · ' + escapeHtml(size) + '</span><small>' + escapeHtml(activity) + '</small>' +
+                        (reading.via ? '<div class="data-municipality-candidate-opportunity"><b>' +
+                            escapeHtml(reading.via) + '</b><p>' + escapeHtml(reading.razon || '') + '</p></div>' : '') +
+                        '</div></article>';
+                }).join('');
+            };
 
             container.addEventListener('click', function (event) {
+                const showAll = event.target.closest('[data-show-all-candidates]');
                 const hide = event.target.closest('[data-hide-candidates]');
                 const fewer = event.target.closest('[data-show-fewer-candidates]');
+                const list = container.querySelector('.data-municipality-candidates-list');
+                const counter = container.querySelector('.data-municipality-candidates-heading > span');
 
                 if (hide) {
                     container.innerHTML = '';
                     return;
                 }
 
-                if (fewer) {
-                    const list = container.querySelector('.data-municipality-candidates-list');
-                    if (list) {
-                        list.innerHTML = visibleCandidates.map(function (candidate) {
-                            const reading = candidate.lectura_vinculacion || {};
-                            const type = reading.tipo_entidad_etiqueta || candidate.tipo_entidad_etiqueta || 'Organización';
-                            const activity = candidate.actividad || 'Actividad no especificada';
-                            const size = candidate.estrato_etiqueta || 'Tamaño no registrado';
-                            return '<article class="data-municipality-candidate-card">' +
-                                '<span class="data-municipality-candidate-icon"><i class="bi bi-building"></i></span>' +
-                                '<div class="data-municipality-candidate-copy"><strong>' + escapeHtml(candidate.nombre) + '</strong>' +
-                                '<span>' + escapeHtml(type) + ' · ' + escapeHtml(size) + '</span><small>' + escapeHtml(activity) + '</small>' +
-                                (reading.via ? '<div class="data-municipality-candidate-opportunity"><b>' +
-                                    escapeHtml(reading.via) + '</b><p>' + escapeHtml(reading.razon || '') + '</p></div>' : '') +
-                                '</div></article>';
-                        }).join('');
-                    }
-                    const counter = container.querySelector('.data-municipality-candidates-heading > span');
+                if (showAll && list) {
+                    list.innerHTML = renderCandidateCards(candidates);
+                    if (counter) counter.textContent = 'Mostrando ' + candidates.length + ' de ' + candidates.length;
+                    showAll.textContent = 'Mostrar menos';
+                    showAll.removeAttribute('data-show-all-candidates');
+                    showAll.setAttribute('data-show-fewer-candidates', '');
+                    return;
+                }
+
+                if (fewer && list) {
+                    list.innerHTML = renderCandidateCards(visibleCandidates);
                     if (counter) counter.textContent = 'Mostrando ' + visibleCandidates.length + ' de ' + candidates.length;
                     fewer.textContent = 'Ver las ' + (candidates.length - visibleCandidates.length) + ' organizaciones restantes';
                     fewer.removeAttribute('data-show-fewer-candidates');
