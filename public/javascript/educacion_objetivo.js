@@ -105,7 +105,7 @@
                 '<div class="data-education-target-municipal">' +
                     '<div class="data-education-target-municipal-heading">' +
                         '<strong>Contexto municipal: población de 15 a 24 años no registrada como asistente</strong>' +
-                        '<span>Top 6 del territorio</span>' +
+                        '<span>Referencia · no define la prioridad</span>' +
                     '</div>' +
                     '<div class="data-education-target-municipal-list">' +
                         lista.map(function (municipio) {
@@ -189,7 +189,7 @@
 
                 '<p class="data-education-target-note">' +
                     '<strong>Importante:</strong> secundaria como máxima escolaridad y no asistencia escolar son indicadores distintos. ' +
-                    'No deben sumarse ni asumirse como las mismas personas. Para identificar exactamente “secundaria terminada + no estudia” se requiere cruzar microdatos o el cubo censal de INEGI.' +
+                    'No deben sumarse ni asumirse como las mismas personas. Estos datos describen contexto educativo y no representan por sí mismos la población objetivo de Fundación. La priorización territorial deberá incorporar por separado población adulta, situación laboral y variables compatibles con la oferta.' +
                 '</p>' +
                 '<div class="data-education-target-source">' +
                     '<span>Fuente: <strong>' + escapar(datos.fuente || 'INEGI') + '</strong></span>' +
