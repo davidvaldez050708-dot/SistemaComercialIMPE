@@ -301,55 +301,55 @@ class InegiPerfilAdultoLaboralService
 
     private function buscarCabeceraIter($stream): ?array
     {
+        // ZipArchive::getStream() no garantiza soporte para seek/rewind.
+        // El CSV ITER inicia con su cabecera, así que la leemos una sola vez y
+        // probamos los delimitadores sobre el texto ya cargado en memoria.
+        $texto = fgets($stream);
+        if ($texto === false) {
+            return null;
+        }
+
+        $texto = preg_replace('/^\\xEF\\xBB\\xBF/', '', (string)$texto);
+
         foreach ([',', ';', "\t", '|'] as $delimitador) {
-            rewind($stream);
+            $campos = str_getcsv($texto, $delimitador);
+            $mapa = [];
 
-            for ($linea = 0; $linea < 10; $linea++) {
-                $texto = fgets($stream);
-                if ($texto === false) {
-                    break;
+            foreach ($campos as $indice => $campo) {
+                $normalizado = strtoupper(trim((string)$campo));
+                if ($normalizado !== '') {
+                    $mapa[$normalizado] = (int)$indice;
                 }
-
-                $texto = preg_replace('/^\xEF\xBB\xBF/', '', (string)$texto);
-                $campos = str_getcsv($texto, $delimitador);
-                $mapa = [];
-
-                foreach ($campos as $indice => $campo) {
-                    $normalizado = strtoupper(trim((string)$campo));
-                    if ($normalizado !== '') {
-                        $mapa[$normalizado] = (int)$indice;
-                    }
-                }
-
-                $requeridos = [
-                    'ENTIDAD', 'MUN', 'LOC',
-                    'P_25A29', 'P_30A34', 'P_35A39',
-                    'P_40A44', 'P_45A49', 'P_50A54'
-                ];
-
-                if (count(array_intersect($requeridos, array_keys($mapa))) !== count($requeridos)) {
-                    continue;
-                }
-
-                return [
-                    'delimitador' => $delimitador,
-                    'indices' => [
-                        'entidad' => $mapa['ENTIDAD'],
-                        'municipio' => $mapa['MUN'],
-                        'localidad' => $mapa['LOC'],
-                        'nombre_entidad' => $mapa['NOM_ENT'] ?? null,
-                        'nombre_municipio' => $mapa['NOM_MUN'] ?? null,
-                        'p25a29' => $mapa['P_25A29'],
-                        'p30a34' => $mapa['P_30A34'],
-                        'p35a39' => $mapa['P_35A39'],
-                        'p40a44' => $mapa['P_40A44'],
-                        'p45a49' => $mapa['P_45A49'],
-                        'p50a54' => $mapa['P_50A54'],
-                        'pea' => $mapa['PEA'] ?? null,
-                        'pocupada' => $mapa['POCUPADA'] ?? null
-                    ]
-                ];
             }
+
+            $requeridos = [
+                'ENTIDAD', 'MUN', 'LOC',
+                'P_25A29', 'P_30A34', 'P_35A39',
+                'P_40A44', 'P_45A49', 'P_50A54'
+            ];
+
+            if (count(array_intersect($requeridos, array_keys($mapa))) !== count($requeridos)) {
+                continue;
+            }
+
+            return [
+                'delimitador' => $delimitador,
+                'indices' => [
+                    'entidad' => $mapa['ENTIDAD'],
+                    'municipio' => $mapa['MUN'],
+                    'localidad' => $mapa['LOC'],
+                    'nombre_entidad' => $mapa['NOM_ENT'] ?? null,
+                    'nombre_municipio' => $mapa['NOM_MUN'] ?? null,
+                    'p25a29' => $mapa['P_25A29'],
+                    'p30a34' => $mapa['P_30A34'],
+                    'p35a39' => $mapa['P_35A39'],
+                    'p40a44' => $mapa['P_40A44'],
+                    'p45a49' => $mapa['P_45A49'],
+                    'p50a54' => $mapa['P_50A54'],
+                    'pea' => $mapa['PEA'] ?? null,
+                    'pocupada' => $mapa['POCUPADA'] ?? null
+                ]
+            ];
         }
 
         return null;
