@@ -1252,6 +1252,36 @@ class SeguimientoVinculacionModel
             );
             $stmtInteraccion->execute();
 
+            $nuevoTelefonoContacto = trim((string)($datos['nuevo_telefono_contacto'] ?? ''));
+            $nuevoContactoNombre = trim((string)($datos['nuevo_contacto_nombre'] ?? ''));
+            $nuevoContactoCargo = trim((string)($datos['nuevo_contacto_cargo'] ?? ''));
+
+            if ($nuevoTelefonoContacto !== '') {
+                $sqlContactoReferido = "UPDATE seguimientos_vinculacion
+                        SET telefono_verificado = ?,
+                            contacto_nombre = CASE
+                                WHEN ? <> '' THEN ?
+                                ELSE contacto_nombre
+                            END,
+                            contacto_cargo = CASE
+                                WHEN ? <> '' THEN ?
+                                ELSE contacto_cargo
+                            END
+                        WHERE id = ?
+                          AND activo = 1";
+                $stmtContactoReferido = $this->connection->prepare($sqlContactoReferido);
+                $stmtContactoReferido->bind_param(
+                    'sssssi',
+                    $nuevoTelefonoContacto,
+                    $nuevoContactoNombre,
+                    $nuevoContactoNombre,
+                    $nuevoContactoCargo,
+                    $nuevoContactoCargo,
+                    $seguimientoId
+                );
+                $stmtContactoReferido->execute();
+            }
+
             $sqlSeguimiento = "UPDATE seguimientos_vinculacion
                     SET ultima_interaccion_at = ?,
                         proxima_accion_at = ?,
