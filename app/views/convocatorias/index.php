@@ -66,10 +66,30 @@ $datosEditar = $modalAbierto === 'editar' ? $datosFormulario : [];
 <?php endif; ?>
 
 <?php if ($mensajeError !== ''): ?>
-    <div class="alert alert-danger login-alert" role="alert">
-        <i class="bi bi-exclamation-circle"></i>
-        <div><?= $texto($mensajeError) ?></div>
+    <div class="toast-container position-fixed top-0 end-0 p-3">
+        <div
+            class="toast system-toast"
+            role="alert"
+            aria-live="assertive"
+            aria-atomic="true"
+            data-bs-delay="4200"
+            data-convocatoria-error-toast>
+            <div class="toast-body">
+                <i class="bi bi-exclamation-circle"></i>
+                <span><?= $texto($mensajeError) ?></span>
+            </div>
+        </div>
     </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const toastElement = document.querySelector('[data-convocatoria-error-toast]');
+
+        if (toastElement && window.bootstrap) {
+            bootstrap.Toast.getOrCreateInstance(toastElement).show();
+        }
+    });
+    </script>
 <?php endif; ?>
 
 <?php if (!$territorioSeleccionado): ?>
