@@ -143,20 +143,26 @@ class ConvocatoriaModel
         $this->connection->begin_transaction();
 
         try {
+            $categoria = strcasecmp(trim((string)$datos['titulo']), 'IMJUVE') === 0
+                ? 'IMJUVE'
+                : null;
+
             $sql = "INSERT INTO convocatorias (
                         titulo,
+                        categoria,
                         imagen,
                         fecha_inicio,
                         fecha_termino,
                         estado,
                         creado_por,
                         actualizado_por
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?)";
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
             $stmt = $this->connection->prepare($sql);
             $stmt->bind_param(
-                'ssssiii',
+                'sssssiii',
                 $datos['titulo'],
+                $categoria,
                 $datos['imagen'],
                 $datos['fecha_inicio'],
                 $datos['fecha_termino'],
@@ -188,8 +194,13 @@ class ConvocatoriaModel
         $this->connection->begin_transaction();
 
         try {
+            $categoria = strcasecmp(trim((string)$datos['titulo']), 'IMJUVE') === 0
+                ? 'IMJUVE'
+                : null;
+
             $sql = "UPDATE convocatorias
                     SET titulo = ?,
+                        categoria = ?,
                         imagen = ?,
                         fecha_inicio = ?,
                         fecha_termino = ?,
@@ -199,8 +210,9 @@ class ConvocatoriaModel
 
             $stmt = $this->connection->prepare($sql);
             $stmt->bind_param(
-                'ssssiii',
+                'sssssiii',
                 $datos['titulo'],
+                $categoria,
                 $datos['imagen'],
                 $datos['fecha_inicio'],
                 $datos['fecha_termino'],
