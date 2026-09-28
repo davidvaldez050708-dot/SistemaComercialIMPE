@@ -118,7 +118,7 @@
                                         ? numero(brecha) +
                                             ' sin estudios de media superior' +
                                             (brechaPct !== null && brechaPct !== undefined
-                                                ? ' · ' + porcentaje(brechaPct)
+                                                ? ' · <b>' + porcentaje(brechaPct) + '</b>'
                                                 : '')
                                         : 'Población total del grupo') +
                                 '</small>' +
@@ -273,7 +273,7 @@
                             '<section>' +
                                 '<div class="data-education-priority-ranking-title">' +
                                     '<strong>Mayor volumen</strong>' +
-                                    '<span>Personas sin estudios de media superior</span>' +
+                                    '<span>Personas · % del grupo 25–49</span>' +
                                 '</div>' +
                                 renderLista(volumen, 'volumen') +
                             '</section>' +
@@ -317,6 +317,7 @@
                         '<span class="data-education-target-period">Censo 2020</span>' +
                     '</div>' +
 
+                    '<div class="data-education-priority-segment-label">Distribución educativa del universo 25–49</div>' +
                     '<div class="data-education-priority-cards is-segmented">' +
                         '<article class="data-education-priority-card is-focus">' +
                             '<span>Sin estudios de media superior</span>' +
@@ -336,7 +337,7 @@
                                       ) + ' del grupo de 25 a 49'
                                     : 'Requiere cruce oficial edad × escolaridad') +
                             '</b>' +
-                            '<small>Personas sin grados aprobados de educación media superior. Es el segmento de mayor brecha educativa.</small>' +
+                            '<small>Personas sin grados aprobados de educación media superior.</small>' +
                         '</article>' +
                         '<article class="data-education-priority-card">' +
                             '<span>Con media superior, sin educación superior</span>' +
