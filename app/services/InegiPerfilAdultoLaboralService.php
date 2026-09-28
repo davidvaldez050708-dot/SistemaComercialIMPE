@@ -367,6 +367,7 @@ class InegiPerfilAdultoLaboralService
                 'poblacion_25_34' => 'Suma de P_25A29 y P_30A34.',
                 'poblacion_35_44' => 'Suma de P_35A39 y P_40A44.',
                 'poblacion_45_54' => 'Suma de P_45A49 y P_50A54.',
+                'poblacion_25_49' => 'Suma de P_25A29, P_30A34, P_35A39, P_40A44 y P_45A49.',
                 'poblacion_25_54' => 'Suma de los seis grupos quinquenales entre 25 y 54 años.',
                 'laboral' => 'PEA y POCUPADA son contexto laboral general de 12 años y más; no representan exclusivamente a la población de 25 a 54 años.'
             ],
@@ -392,9 +393,22 @@ class InegiPerfilAdultoLaboralService
         $p45a54 = $this->suma([$p45a49, $p50a54]);
 
         return [
+            'poblacion_25_29' => $p25a29,
+            'poblacion_30_34' => $p30a34,
+            'poblacion_35_39' => $p35a39,
+            'poblacion_40_44' => $p40a44,
+            'poblacion_45_49' => $p45a49,
+            'poblacion_50_54' => $p50a54,
             'poblacion_25_34' => $p25a34,
             'poblacion_35_44' => $p35a44,
             'poblacion_45_54' => $p45a54,
+            'poblacion_25_49' => $this->suma([
+                $p25a29,
+                $p30a34,
+                $p35a39,
+                $p40a44,
+                $p45a49
+            ]),
             'poblacion_25_54' => $this->suma([$p25a34, $p35a44, $p45a54]),
             'poblacion_economicamente_activa' => $this->numero($registro['PEA'] ?? null),
             'poblacion_ocupada' => $this->numero($registro['POCUPADA'] ?? null)
@@ -403,7 +417,15 @@ class InegiPerfilAdultoLaboralService
 
     private function metricasValidas(array $metricas): bool
     {
-        foreach (['poblacion_25_34', 'poblacion_35_44', 'poblacion_45_54', 'poblacion_25_54'] as $clave) {
+        foreach ([
+            'poblacion_25_29',
+            'poblacion_30_34',
+            'poblacion_35_39',
+            'poblacion_40_44',
+            'poblacion_45_49',
+            'poblacion_25_49',
+            'poblacion_25_54'
+        ] as $clave) {
             if (!is_int($metricas[$clave] ?? null) || $metricas[$clave] < 0) {
                 return false;
             }
