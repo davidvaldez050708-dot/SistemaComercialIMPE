@@ -1007,6 +1007,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     headers: {
                         'X-Requested-With': 'fetch'
                     },
+                    cache: 'no-store',
                     signal: controladorFiltro.signal
                 }
             );
@@ -1047,11 +1048,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
     filtroBuscar?.addEventListener('input', programarBusqueda);
 
-    [filtroEstatus, filtroCategoria].forEach(function (filtro) {
-        filtro?.addEventListener('change', function () {
-            actualizarVisibilidadLimpiar();
-            cargarListadoFiltrado();
-        });
+    filtroEstatus?.addEventListener('change', function () {
+        actualizarVisibilidadLimpiar();
+        cargarListadoFiltrado();
+    });
+
+    filtroCategoria?.addEventListener('change', function () {
+        window.clearTimeout(temporizadorFiltro);
+        actualizarVisibilidadLimpiar();
+        cargarListadoFiltrado();
     });
 
     limpiarFiltros?.addEventListener('click', function (event) {
