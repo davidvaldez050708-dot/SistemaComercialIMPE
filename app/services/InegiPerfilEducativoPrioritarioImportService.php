@@ -225,12 +225,31 @@ class InegiPerfilEducativoPrioritarioImportService
             }
 
             if ($geoMunicipio !== '') {
-                if ($this->esTotalGeografico($geoMunicipio)) {
+                if ($this->esEstratoNoMunicipal($geoMunicipio)) {
+                    /*
+                     * El libro puede incluir hojas auxiliares por tamaño de
+                     * localidad. No reutilizamos el municipio anterior porque
+                     * eso mezclaría un estrato poblacional con un municipio.
+                     */
+                    $municipioActual = '';
+                    $municipioNombre = '';
+                } elseif ($this->esTotalGeografico($geoMunicipio)) {
                     $municipioActual = '000';
                     $municipioNombre = $estadoNombre;
                 } elseif (preg_match('/^([0-9]{3})\s+(.+)$/u', $geoMunicipio, $m)) {
-                    $municipioActual = $m[1];
-                    $municipioNombre = trim($m[2]);
+                    $codigoMunicipio = $m[1];
+                    $nombreMunicipio = trim($m[2]);
+
+                    if (
+                        $codigoMunicipio !== '000' &&
+                        !$this->esEstratoNoMunicipal($nombreMunicipio)
+                    ) {
+                        $municipioActual = $codigoMunicipio;
+                        $municipioNombre = $nombreMunicipio;
+                    } else {
+                        $municipioActual = '';
+                        $municipioNombre = '';
+                    }
                 }
             }
 
@@ -240,6 +259,7 @@ class InegiPerfilEducativoPrioritarioImportService
 
             if (
                 $estadoActual === '' ||
+                $municipioActual === '' ||
                 !in_array($grupo, self::GRUPOS, true) ||
                 $sexoActual !== 'TOTAL'
             ) {
@@ -578,6 +598,16 @@ class InegiPerfilEducativoPrioritarioImportService
         ];
 
         return strtr($valor, $mapa);
+    }
+
+    private function esEstratoNoMunicipal(string $valor): bool
+    {
+        $normalizado = mb_strtolower(trim($valor), 'UTF-8');
+
+        return preg_match(
+            '/\bhabitantes\b|tamaño\s+de\s+localidad|rango\s+de\s+poblaci[oó]n/u',
+            $normalizado
+        ) === 1;
     }
 
     private function esTotalGeografico(string $valor): bool
