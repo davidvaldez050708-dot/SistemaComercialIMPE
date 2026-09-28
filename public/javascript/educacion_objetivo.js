@@ -105,14 +105,21 @@
                 '<div class="data-education-priority-age-grid">' +
                     gruposAdultos(metricas).map(function (item) {
                         const clave = item[0].replace('–', '-');
-                        const brecha = gruposPrioridad?.[clave]?.sin_media_superior_concluida;
+                        const grupo = gruposPrioridad?.[clave] || {};
+                        const brecha = grupo.sin_estudios_media_superior ??
+                            grupo.sin_media_superior_concluida;
+                        const brechaPct = grupo.sin_estudios_media_superior_pct;
                         return (
                             '<div>' +
                                 '<span>' + escapar(item[0]) + ' años</span>' +
                                 '<strong>' + numero(item[1]) + '</strong>' +
                                 '<small>' +
                                     (brecha !== null && brecha !== undefined
-                                        ? numero(brecha) + ' sin media superior concluida'
+                                        ? numero(brecha) +
+                                            ' sin estudios de media superior' +
+                                            (brechaPct !== null && brechaPct !== undefined
+                                                ? ' · ' + porcentaje(brechaPct)
+                                                : '')
                                         : 'Población total del grupo') +
                                 '</small>' +
                             '</div>'
@@ -131,69 +138,90 @@
                 ? perfilAdulto.municipios
                 : [];
 
-            const lista = prioridadDisponible
-                ? municipiosPrioridad
+            const construirLista = function (modo) {
+                if (!prioridadDisponible) {
+                    return municipiosAdultos
+                        .filter(function (municipio) {
+                            return Number(municipio?.metricas?.poblacion_25_49 || 0) > 0;
+                        })
+                        .sort(function (a, b) {
+                            return Number(b.metricas.poblacion_25_49 || 0) -
+                                Number(a.metricas.poblacion_25_49 || 0);
+                        })
+                        .slice(0, 6)
+                        .map(function (municipio) {
+                            return {
+                                nombre: municipio.nombre,
+                                valor: Number(municipio.metricas.poblacion_25_49 || 0),
+                                porcentaje: null
+                            };
+                        });
+                }
+
+                return municipiosPrioridad
                     .filter(function (municipio) {
+                        const m = municipio?.metricas || {};
+                        return Number(m.sin_estudios_media_superior_25_49 ??
+                            m.sin_media_superior_concluida_25_49 ?? 0) > 0;
+                    })
+                    .sort(function (a, b) {
+                        const ma = a.metricas || {};
+                        const mb = b.metricas || {};
+
+                        if (modo === 'porcentaje') {
+                            return Number(
+                                mb.sin_estudios_media_superior_pct ??
+                                mb.sin_media_superior_concluida_pct ?? 0
+                            ) - Number(
+                                ma.sin_estudios_media_superior_pct ??
+                                ma.sin_media_superior_concluida_pct ?? 0
+                            );
+                        }
+
                         return Number(
-                            municipio?.metricas?.sin_media_superior_concluida_25_49 || 0
-                        ) > 0;
+                            mb.sin_estudios_media_superior_25_49 ??
+                            mb.sin_media_superior_concluida_25_49 ?? 0
+                        ) - Number(
+                            ma.sin_estudios_media_superior_25_49 ??
+                            ma.sin_media_superior_concluida_25_49 ?? 0
+                        );
                     })
                     .slice(0, 6)
                     .map(function (municipio) {
+                        const m = municipio.metricas || {};
                         return {
                             nombre: municipio.nombre,
                             valor: Number(
-                                municipio.metricas.sin_media_superior_concluida_25_49 || 0
+                                m.sin_estudios_media_superior_25_49 ??
+                                m.sin_media_superior_concluida_25_49 ?? 0
                             ),
-                            porcentaje: municipio.metricas.sin_media_superior_concluida_pct,
-                            etiqueta: 'sin media superior concluida'
-                        };
-                    })
-                : municipiosAdultos
-                    .filter(function (municipio) {
-                        return Number(municipio?.metricas?.poblacion_25_49 || 0) > 0;
-                    })
-                    .sort(function (a, b) {
-                        return Number(b.metricas.poblacion_25_49 || 0) -
-                            Number(a.metricas.poblacion_25_49 || 0);
-                    })
-                    .slice(0, 6)
-                    .map(function (municipio) {
-                        return {
-                            nombre: municipio.nombre,
-                            valor: Number(municipio.metricas.poblacion_25_49 || 0),
-                            porcentaje: null,
-                            etiqueta: 'personas de 25 a 49 años'
+                            porcentaje: Number(
+                                m.sin_estudios_media_superior_pct ??
+                                m.sin_media_superior_concluida_pct ?? 0
+                            )
                         };
                     });
+            };
 
-            if (!lista.length) {
-                return '';
-            }
+            const renderLista = function (lista, modo) {
+                if (!lista.length) {
+                    return '<div class="data-education-priority-ranking-empty">Sin datos suficientes.</div>';
+                }
 
-            const maximo = Math.max.apply(null, lista.map(function (item) {
-                return item.valor;
-            }));
+                const maximo = Math.max.apply(null, lista.map(function (item) {
+                    return modo === 'porcentaje' ? item.porcentaje : item.valor;
+                }));
 
-            return (
-                '<div class="data-education-target-municipal data-education-priority-municipal">' +
-                    '<div class="data-education-target-municipal-heading">' +
-                        '<strong>' +
-                            (prioridadDisponible
-                                ? 'Municipios con mayor brecha educativa prioritaria'
-                                : 'Municipios con mayor población de 25 a 49 años') +
-                        '</strong>' +
-                        '<span>' +
-                            (prioridadDisponible
-                                ? 'Cruce edad × escolaridad'
-                                : 'Contexto adulto · no sustituye el cruce educativo') +
-                        '</span>' +
-                    '</div>' +
+                return (
                     '<div class="data-education-target-municipal-list">' +
                         lista.map(function (item) {
+                            const medida = modo === 'porcentaje'
+                                ? item.porcentaje
+                                : item.valor;
                             const ancho = maximo > 0
-                                ? Math.max(2, (item.valor / maximo) * 100)
+                                ? Math.max(2, (medida / maximo) * 100)
                                 : 0;
+
                             return (
                                 '<div class="data-education-target-municipal-row">' +
                                     '<strong title="' + escapar(item.nombre || '') + '">' +
@@ -203,15 +231,61 @@
                                         '<span style="width:' + ancho.toFixed(2) + '%"></span>' +
                                     '</div>' +
                                     '<span>' +
-                                        numero(item.valor) +
-                                        (item.porcentaje !== null && item.porcentaje !== undefined
-                                            ? ' · ' + porcentaje(item.porcentaje)
-                                            : '') +
+                                        (modo === 'porcentaje'
+                                            ? porcentaje(item.porcentaje)
+                                            : numero(item.valor) +
+                                                (item.porcentaje !== null
+                                                    ? ' · ' + porcentaje(item.porcentaje)
+                                                    : '')) +
                                     '</span>' +
                                 '</div>'
                             );
                         }).join('') +
+                    '</div>'
+                );
+            };
+
+            const volumen = construirLista('volumen');
+            const proporcion = prioridadDisponible
+                ? construirLista('porcentaje')
+                : [];
+
+            if (!volumen.length) {
+                return '';
+            }
+
+            return (
+                '<div class="data-education-target-municipal data-education-priority-municipal">' +
+                    '<div class="data-education-target-municipal-heading">' +
+                        '<strong>' +
+                            (prioridadDisponible
+                                ? 'Prioridad municipal de población educativa'
+                                : 'Municipios con mayor población de 25 a 49 años') +
+                        '</strong>' +
+                        '<span>' +
+                            (prioridadDisponible
+                                ? 'Volumen e incidencia son criterios distintos'
+                                : 'Contexto adulto · no sustituye el cruce educativo') +
+                        '</span>' +
                     '</div>' +
+                    (prioridadDisponible
+                        ? '<div class="data-education-priority-ranking-grid">' +
+                            '<section>' +
+                                '<div class="data-education-priority-ranking-title">' +
+                                    '<strong>Mayor volumen</strong>' +
+                                    '<span>Personas sin estudios de media superior</span>' +
+                                '</div>' +
+                                renderLista(volumen, 'volumen') +
+                            '</section>' +
+                            '<section>' +
+                                '<div class="data-education-priority-ranking-title">' +
+                                    '<strong>Mayor proporción</strong>' +
+                                    '<span>% dentro de la población de 25 a 49 años</span>' +
+                                '</div>' +
+                                renderLista(proporcion, 'porcentaje') +
+                            '</section>' +
+                          '</div>'
+                        : renderLista(volumen, 'volumen')) +
                 '</div>'
             );
         };
@@ -238,46 +312,65 @@
                         '<div>' +
                             '<span class="data-education-target-eyebrow">Población educativa prioritaria</span>' +
                             '<h4>Adultos de 25 a 49 años</h4>' +
-                            '<p>Rango estadístico construido con los grupos quinquenales oficiales 25–29, 30–34, 35–39, 40–44 y 45–49. La brecha educativa sólo se muestra cuando existe el cruce oficial edad × escolaridad.</p>' +
+                            '<p>Rango estadístico construido con los grupos quinquenales oficiales 25–29, 30–34, 35–39, 40–44 y 45–49. Los segmentos educativos son mutuamente excluyentes para facilitar la priorización territorial.</p>' +
                         '</div>' +
                         '<span class="data-education-target-period">Censo 2020</span>' +
                     '</div>' +
 
-                    '<div class="data-education-priority-cards">' +
-                        '<article class="data-education-priority-card is-base">' +
-                            '<span>Población total de 25 a 49 años</span>' +
-                            '<strong>' + numero(poblacion2549) + '</strong>' +
-                            '<b>Universo adulto de referencia</b>' +
-                            '<small>Suma exacta de cinco grupos quinquenales de ITER 2020; no es una estimación educativa.</small>' +
-                        '</article>' +
+                    '<div class="data-education-priority-cards is-segmented">' +
                         '<article class="data-education-priority-card is-focus">' +
-                            '<span>Sin media superior concluida</span>' +
+                            '<span>Sin estudios de media superior</span>' +
                             '<strong>' +
                                 (prioridadDisponible
-                                    ? numero(prioridadMetricas.sin_media_superior_concluida_25_49)
+                                    ? numero(
+                                        prioridadMetricas.sin_estudios_media_superior_25_49 ??
+                                        prioridadMetricas.sin_media_superior_concluida_25_49
+                                      )
                                     : 'Pendiente') +
                             '</strong>' +
                             '<b>' +
                                 (prioridadDisponible
-                                    ? porcentaje(prioridadMetricas.sin_media_superior_concluida_pct) + ' del grupo de 25 a 49'
+                                    ? porcentaje(
+                                        prioridadMetricas.sin_estudios_media_superior_pct ??
+                                        prioridadMetricas.sin_media_superior_concluida_pct
+                                      ) + ' del grupo de 25 a 49'
                                     : 'Requiere cruce oficial edad × escolaridad') +
                             '</b>' +
-                            '<small>Indicador prioritario: personas de 25–49 que no cuentan con educación media superior concluida.</small>' +
+                            '<small>Personas sin grados aprobados de educación media superior. Es el segmento de mayor brecha educativa.</small>' +
                         '</article>' +
                         '<article class="data-education-priority-card">' +
-                            '<span>Sin educación superior</span>' +
+                            '<span>Con media superior, sin educación superior</span>' +
                             '<strong>' +
                                 (prioridadDisponible
-                                    ? numero(prioridadMetricas.sin_superior_25_49)
+                                    ? numero(prioridadMetricas.media_superior_sin_superior_25_49)
                                     : 'Pendiente') +
                             '</strong>' +
                             '<b>' +
                                 (prioridadDisponible
-                                    ? porcentaje(prioridadMetricas.sin_superior_pct) + ' del grupo de 25 a 49'
-                                    : 'No se calcula con porcentajes generales') +
+                                    ? porcentaje(prioridadMetricas.media_superior_sin_superior_pct) + ' del grupo de 25 a 49'
+                                    : 'Requiere cruce oficial edad × escolaridad') +
                             '</b>' +
-                            '<small>Segmento complementario; se presenta separado porque se superpone con quienes no concluyeron media superior.</small>' +
+                            '<small>Segmento diferenciado: ya cuenta con estudios de media superior, pero no con educación superior.</small>' +
                         '</article>' +
+                        '<article class="data-education-priority-card is-positive">' +
+                            '<span>Con educación superior</span>' +
+                            '<strong>' +
+                                (prioridadDisponible
+                                    ? numero(prioridadMetricas.con_educacion_superior_25_49)
+                                    : 'Pendiente') +
+                            '</strong>' +
+                            '<b>' +
+                                (prioridadDisponible
+                                    ? porcentaje(prioridadMetricas.con_educacion_superior_pct) + ' del grupo de 25 a 49'
+                                    : 'Requiere cruce oficial edad × escolaridad') +
+                            '</b>' +
+                            '<small>Complemento del universo 25–49 con algún nivel de educación superior registrado.</small>' +
+                        '</article>' +
+                    '</div>' +
+                    '<div class="data-education-priority-universe">' +
+                        '<span>Universo total 25–49</span>' +
+                        '<strong>' + numero(poblacion2549) + '</strong>' +
+                        '<small>Los tres segmentos anteriores no se superponen y suman este universo de referencia.</small>' +
                     '</div>' +
 
                     renderGruposAdultos(adultoMetricas, prioridadEstado) +
