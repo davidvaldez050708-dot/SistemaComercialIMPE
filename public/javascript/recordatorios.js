@@ -213,6 +213,16 @@
             const accion = String(recordatorio.accion || 'Revisar pendiente').trim();
             const etiqueta = etiquetaVisibleRecordatorio(recordatorio);
 
+            const accionNormalizada = accion.toLowerCase();
+            let tituloToast = vencida ? 'Acción vencida' : 'Próxima acción';
+
+            if (
+                accionNormalizada.includes('reunión en curso') ||
+                accionNormalizada.includes('reunion en curso')
+            ) {
+                tituloToast = 'Reunión en curso';
+            }
+
             mostrarToast({
                 id: recordatorio.id,
                 seguimiento_id: recordatorio.seguimiento_id,
@@ -220,7 +230,7 @@
                 url: recordatorio.url,
                 icono: recordatorio.icono,
                 tipo: vencida ? 'VENCIDA' : 'RECORDATORIO',
-                titulo: vencida ? 'Acción vencida' : 'Próxima acción',
+                titulo: tituloToast,
                 mensaje: accion + ' · ' + entidad + (etiqueta ? ' · ' + etiqueta : '')
             });
         };
