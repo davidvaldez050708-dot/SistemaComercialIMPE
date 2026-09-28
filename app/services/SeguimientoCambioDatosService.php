@@ -55,7 +55,8 @@ class SeguimientoCambioDatosService
             /*
              * Agregar información a un campo vacío forma parte del trabajo normal
              * del Analista. Sustituir un dato que ya existía sí se considera una
-             * modificación relevante y genera aviso a Cuenta Clave.
+             * modificación relevante (incluida su eliminación) y genera aviso
+             * a Cuenta Clave.
              *
              * Las observaciones se auditan, pero no generan aviso automático:
              * son contexto adicional, no un dato operativo que sustituya contacto.
@@ -63,7 +64,6 @@ class SeguimientoCambioDatosService
             $requiereNotificacion =
                 $campo !== 'observaciones' &&
                 $anterior !== '' &&
-                $nuevo !== '' &&
                 $destinatarioId > 0;
 
             $sql = "INSERT INTO seguimientos_vinculacion_cambios_datos (
