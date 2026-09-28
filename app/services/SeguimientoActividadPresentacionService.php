@@ -67,6 +67,50 @@ class SeguimientoActividadPresentacionService
         array $presentacion
     ) {
         if (preg_match(
+            '/^Datos del seguimiento actualizados:\s*(.+?)\.\s*(Cuenta Clave fue notificada de los cambios relevantes\.)?$/ui',
+            $notas,
+            $m
+        )) {
+            $datos = trim((string)($m[1] ?? ''));
+            $notificacion = trim((string)($m[2] ?? ''));
+
+            $presentacion['titulo'] = 'Datos de contacto actualizados';
+            $presentacion['tipo_visual'] = 'sistema';
+            $presentacion['resultado_label'] = 'Datos actualizados';
+            $presentacion['resumen'] = $datos !== ''
+                ? 'Se actualizaron datos del expediente'
+                : 'Datos del expediente actualizados';
+            $presentacion['detalles'] = array_values(array_filter([
+                $this->detalle('Datos modificados', $datos),
+                $this->detalle(
+                    'Notificación',
+                    $notificacion !== ''
+                        ? 'Cuenta Clave fue notificada'
+                        : 'Sin notificación requerida'
+                )
+            ]));
+
+            return $presentacion;
+        }
+
+        if (
+            in_array($canal, ['LLAMADA_IP', 'LLAMADA'], true) &&
+            $this->pareceInteraccionManual($notas)
+        ) {
+            $detalles = $this->extraerDetallesInteraccionManual($notas);
+
+            if (!empty($detalles)) {
+                $presentacion['titulo'] = 'Llamada';
+                $presentacion['tipo_visual'] = 'llamada';
+                $presentacion['resumen'] = $presentacion['resultado_label'] !== ''
+                    ? $presentacion['resultado_label']
+                    : 'Llamada registrada';
+                $presentacion['detalles'] = $detalles;
+
+                return $presentacion;
+            }
+        }
+        if (preg_match(
             '/^Nueva revisión programada para\s+(.+?)\.\s*Pendiente:\s*(.+?)\.\s*Acción prevista:\s*(.+?)\.\s*Pendiente de:\s*(.+?)\.?$/ui',
             $notas,
             $m
@@ -546,19 +590,39 @@ class SeguimientoActividadPresentacionService
         }
 
         if (stripos($notas, 'seguimiento reactivado') !== false) {
+            $campos = $this->extraerLineasClaveValor($notas);
             $presentacion['titulo'] = 'Seguimiento reactivado';
             $presentacion['tipo_visual'] = 'seguimiento';
             $presentacion['resultado_label'] = 'Reactivado';
             $presentacion['resumen'] = 'Seguimiento reactivado';
-            $presentacion['detalles'] = [
-                $this->detalle('Detalle', $this->limpiarMarcadores($notas))
-            ];
+            $presentacion['detalles'] = array_values(array_filter([
+                $this->detalle(
+                    'Motivo',
+                    $campos['Motivo de reactivación'] ?? ''
+                ),
+                $this->detalle(
+                    'Observación',
+                    $campos['Observación'] ?? ''
+                ),
+                $this->detalle(
+                    'Ruta retomada desde',
+                    $campos['Ruta reanudada desde'] ?? ''
+                )
+            ]));
+
+            if (empty($presentacion['detalles'])) {
+                $presentacion['detalles'] = [
+                    $this->detalle('Detalle', $this->limpiarMarcadores($notas))
+                ];
+            }
+
             return $presentacion;
         }
 
-        $presentacion['detalles'] = [
-            $this->detalle('Detalle', $this->limpiarMarcadores($notas))
-        ];
+        $detallesGenericos = $this->extraerDetallesGenericos($notas);
+        $presentacion['detalles'] = !empty($detallesGenericos)
+            ? $detallesGenericos
+            : [$this->detalle('Detalle', $this->limpiarMarcadores($notas))];
 
         return $presentacion;
     }
@@ -649,6 +713,88 @@ class SeguimientoActividadPresentacionService
         }
 
         return $presentacion;
+    }
+
+    private function pareceInteraccionManual($notas)
+    {
+        return preg_match(
+            '/^(?:Persona atendió|Resultado registrado|Contacto referido|Nuevo contacto|Cargo \/ Área|Próxima acción|Motivo de descarte):/mi',
+            (string)$notas
+        ) === 1;
+    }
+
+    private function extraerDetallesInteraccionManual($notas)
+    {
+        $detalles = [];
+        $lineas = preg_split('/\R/u', (string)$notas);
+        $mapa = [
+            'Persona atendió' => 'Persona atendió',
+            'Resultado registrado' => 'Resultado',
+            'Contacto referido' => 'Contacto referido',
+            'Nuevo contacto' => 'Nuevo contacto',
+            'Cargo / Área' => 'Cargo / Área',
+            'Próxima acción' => 'Próxima acción',
+            'Motivo de descarte' => 'Motivo de descarte'
+        ];
+
+        foreach (is_array($lineas) ? $lineas : [] as $linea) {
+            $linea = trim((string)$linea);
+            if ($linea === '') {
+                continue;
+            }
+
+            $capturada = false;
+            foreach ($mapa as $prefijo => $etiqueta) {
+                if (preg_match(
+                    '/^' . preg_quote($prefijo, '/') . ':\s*(.*)$/ui',
+                    $linea,
+                    $m
+                )) {
+                    $detalles[] = $this->detalle($etiqueta, $m[1]);
+                    $capturada = true;
+                    break;
+                }
+            }
+
+            if (!$capturada && !preg_match('/^\[[A-Z0-9_-]+\]$/u', $linea)) {
+                $limpia = $this->limpiarMarcadores($linea);
+                if ($limpia !== '') {
+                    $detalles[] = $this->detalle('Observación', $limpia);
+                }
+            }
+        }
+
+        return array_values(array_filter($detalles));
+    }
+
+    private function extraerDetallesGenericos($notas)
+    {
+        $detalles = [];
+        $lineas = preg_split('/\R/u', (string)$notas);
+        $lineas = is_array($lineas) ? $lineas : [];
+
+        if (count(array_filter(array_map('trim', $lineas))) < 2) {
+            return [];
+        }
+
+        foreach ($lineas as $linea) {
+            $linea = trim((string)$linea);
+            if ($linea === '') {
+                continue;
+            }
+
+            if (preg_match('/^([^:]{2,45}):\s*(.+)$/u', $linea, $m)) {
+                $detalles[] = $this->detalle(trim($m[1]), trim($m[2]));
+                continue;
+            }
+
+            $limpia = $this->limpiarMarcadores($linea);
+            if ($limpia !== '') {
+                $detalles[] = $this->detalle('Detalle', $limpia);
+            }
+        }
+
+        return array_values(array_filter($detalles));
     }
 
     private function extraerDetallesConvenioRecibido($notas)
