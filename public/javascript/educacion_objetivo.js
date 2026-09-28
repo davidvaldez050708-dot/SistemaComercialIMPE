@@ -19,7 +19,7 @@
         if (!document.querySelector('link[data-education-target-style]')) {
             const link = document.createElement('link');
             link.rel = 'stylesheet';
-            link.href = 'public/css/educacion_objetivo.css?v=20260928-3';
+            link.href = 'public/css/educacion_objetivo.css?v=20260928-4';
             link.setAttribute('data-education-target-style', '');
             document.head.appendChild(link);
         }
