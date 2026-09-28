@@ -304,16 +304,11 @@ class CorreoFirmadoService
             'UTF-8'
         );
         $enlace = trim((string)($reunion['zoom_url'] ?? ''));
-        $html = '<div style="margin-top:24px;padding-top:18px;border-top:1px solid #e2e8f0;">';
-        $html .= '<div style="margin-bottom:10px;font-size:12px;font-weight:700;color:#40516d;">';
-        $html .= 'Ecard de reunión · ' . $ponente;
-        $html .= '</div>';
-        $html .= '<img src="cid:' . $cid . '" alt="Ecard de reunión" ';
-        $html .= 'style="display:block;width:100%;max-width:600px;height:auto;border:0;border-radius:10px;">';
+        $html = '<div style="margin-top:20px;">';
 
         if ($enlace !== '' && filter_var($enlace, FILTER_VALIDATE_URL)) {
             $seguro = htmlspecialchars($enlace, ENT_QUOTES, 'UTF-8');
-            $html .= '<div style="margin-top:16px;">';
+            $html .= '<div style="margin-bottom:16px;">';
             $html .= '<a href="' . $seguro . '" target="_blank" rel="noopener" ';
             $html .= 'style="display:inline-block;background:#062a4e;color:#ffffff;text-decoration:none;';
             $html .= 'font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;';
@@ -321,6 +316,8 @@ class CorreoFirmadoService
             $html .= '</div>';
         }
 
+        $html .= '<img src="cid:' . $cid . '" alt="Ecard de reunión" width="500" ';
+        $html .= 'style="display:block;width:100%;max-width:500px;height:auto;border:0;border-radius:10px;">';
         $html .= '</div>';
         return $html;
     }
