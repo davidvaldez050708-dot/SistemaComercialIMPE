@@ -481,3 +481,219 @@
         border-bottom: 0 !important;
     }
 }
+
+
+/* =========================================================
+   PERFIL EDUCATIVO PRIORITARIO · ADULTOS 25 A 49
+   ========================================================= */
+.data-education-priority {
+    margin-bottom: 18px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid #e4e9f0;
+}
+
+.data-education-priority-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+    margin-bottom: 14px;
+}
+
+.data-education-priority-heading > div {
+    min-width: 0;
+}
+
+.data-education-priority-heading h4 {
+    margin: 0;
+    color: var(--color-text-primary, #121b2d);
+    font-size: 17px;
+    font-weight: 800;
+}
+
+.data-education-priority-heading p {
+    max-width: 860px;
+    margin: 5px 0 0;
+    color: var(--color-text-secondary, #657186);
+    font-size: 12px;
+    line-height: 1.55;
+}
+
+.data-education-priority-cards {
+    display: grid;
+    grid-template-columns: minmax(0, .95fr) minmax(0, 1.25fr) minmax(0, 1fr);
+    gap: 12px;
+}
+
+.data-education-priority-card {
+    min-width: 0;
+    min-height: 142px;
+    padding: 15px 16px;
+    border: 1px solid #dde4ee;
+    border-radius: 13px;
+    background: #fbfcfe;
+}
+
+.data-education-priority-card.is-base {
+    background: #f8fafc;
+}
+
+.data-education-priority-card.is-focus {
+    border-color: #bfded8;
+    background: #f4fbf9;
+    box-shadow: inset 3px 0 0 #078879;
+}
+
+.data-education-priority-card > span {
+    display: block;
+    color: var(--color-text-secondary, #657186);
+    font-size: 11px;
+    font-weight: 750;
+}
+
+.data-education-priority-card > strong {
+    display: block;
+    margin-top: 7px;
+    color: #091d45;
+    font-size: 25px;
+    font-weight: 850;
+    line-height: 1.08;
+}
+
+.data-education-priority-card.is-focus > strong {
+    color: #087d71;
+}
+
+.data-education-priority-card > b {
+    display: block;
+    margin-top: 8px;
+    color: #087d71;
+    font-size: 10.8px;
+    font-weight: 800;
+    line-height: 1.35;
+}
+
+.data-education-priority-card > small {
+    display: block;
+    margin-top: 5px;
+    color: #6d7889;
+    font-size: 10.4px;
+    line-height: 1.45;
+}
+
+.data-education-priority-age-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.data-education-priority-age-grid > div {
+    min-width: 0;
+    padding: 10px 11px;
+    border: 1px solid #e1e7ef;
+    border-radius: 10px;
+    background: #fff;
+}
+
+.data-education-priority-age-grid span,
+.data-education-priority-age-grid small {
+    display: block;
+    color: #748094;
+    font-size: 9.8px;
+    line-height: 1.35;
+}
+
+.data-education-priority-age-grid strong {
+    display: block;
+    margin: 3px 0 2px;
+    color: #172238;
+    font-size: 14px;
+    font-weight: 800;
+    line-height: 1.2;
+}
+
+.data-education-priority-method {
+    margin-top: 10px;
+    padding: 10px 12px;
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    border: 1px solid #d9e4ec;
+    border-radius: 10px;
+    background: #f8fafc;
+}
+
+.data-education-priority-method > i {
+    flex: 0 0 auto;
+    margin-top: 1px;
+    color: #087d71;
+    font-size: 14px;
+}
+
+.data-education-priority-method > div {
+    min-width: 0;
+}
+
+.data-education-priority-method strong,
+.data-education-priority-method span {
+    display: block;
+}
+
+.data-education-priority-method strong {
+    color: #263248;
+    font-size: 10.8px;
+    font-weight: 800;
+}
+
+.data-education-priority-method span {
+    margin-top: 2px;
+    color: #6d798c;
+    font-size: 10.2px;
+    line-height: 1.45;
+}
+
+.data-education-priority-source {
+    margin-top: 10px;
+    padding: 9px 11px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px 14px;
+    border: 1px solid #dde4ed;
+    border-radius: 10px;
+    background: #f8fafc;
+    color: #647186;
+    font-size: 10.2px;
+}
+
+.data-education-priority-source strong {
+    color: #172238;
+}
+
+.data-education-priority-municipal {
+    margin-top: 12px;
+}
+
+.data-education-context-general {
+    padding-top: 2px;
+}
+
+@media (max-width: 991.98px) {
+    .data-education-priority-cards {
+        grid-template-columns: 1fr;
+    }
+
+    .data-education-priority-age-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .data-education-priority-heading {
+        flex-direction: column;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .data-education-priority-age-grid {
+        grid-template-columns: 1fr;
+    }
+}
