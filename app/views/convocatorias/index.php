@@ -308,10 +308,17 @@ document.addEventListener('DOMContentLoaded', function () {
                         <tr>
                             <td>
                                 <?php if (!empty($convocatoria['imagen'])): ?>
-                                    <img
-                                        src="<?= BASE_URL . $texto($convocatoria['imagen']) ?>"
-                                        alt="<?= $texto($convocatoria['titulo']) ?>"
-                                        class="convocatoria-thumb">
+                                    <button
+                                        type="button"
+                                        class="convocatoria-thumb-button"
+                                        data-convocatoria-image="<?= BASE_URL . $texto($convocatoria['imagen']) ?>"
+                                        data-convocatoria-image-title="<?= $texto($convocatoria['titulo']) ?>"
+                                        aria-label="Ver imagen de <?= $texto($convocatoria['titulo']) ?>">
+                                        <img
+                                            src="<?= BASE_URL . $texto($convocatoria['imagen']) ?>"
+                                            alt="<?= $texto($convocatoria['titulo']) ?>"
+                                            class="convocatoria-thumb">
+                                    </button>
                                 <?php else: ?>
                                     —
                                 <?php endif; ?>
@@ -392,6 +399,29 @@ document.addEventListener('DOMContentLoaded', function () {
         </table>
     </div>
 </section>
+
+<div
+    class="modal fade"
+    id="modalImagenConvocatoria"
+    tabindex="-1"
+    aria-labelledby="modalImagenConvocatoriaTitulo"
+    aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered convocatoria-image-dialog">
+        <div class="modal-content convocatoria-image-modal">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalImagenConvocatoriaTitulo">Imagen de la convocatoria</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <img
+                    src=""
+                    alt=""
+                    class="convocatoria-image-preview"
+                    data-convocatoria-image-preview>
+            </div>
+        </div>
+    </div>
+</div>
 
 <div
     class="offcanvas offcanvas-end user-detail-panel"
@@ -712,6 +742,36 @@ document.addEventListener('DOMContentLoaded', function () {
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    const modalImagenElemento = document.getElementById('modalImagenConvocatoria');
+    const modalImagen = modalImagenElemento ? new bootstrap.Modal(modalImagenElemento) : null;
+    const imagenPreview = modalImagenElemento?.querySelector('[data-convocatoria-image-preview]');
+    const imagenTitulo = document.getElementById('modalImagenConvocatoriaTitulo');
+
+    document.addEventListener('click', function (event) {
+        const botonImagen = event.target.closest('[data-convocatoria-image]');
+
+        if (!botonImagen || !modalImagen || !imagenPreview) {
+            return;
+        }
+
+        const titulo = botonImagen.dataset.convocatoriaImageTitle || 'Convocatoria';
+        imagenPreview.src = botonImagen.dataset.convocatoriaImage || '';
+        imagenPreview.alt = titulo;
+
+        if (imagenTitulo) {
+            imagenTitulo.textContent = titulo;
+        }
+
+        modalImagen.show();
+    });
+
+    modalImagenElemento?.addEventListener('hidden.bs.modal', function () {
+        if (imagenPreview) {
+            imagenPreview.src = '';
+            imagenPreview.alt = '';
+        }
+    });
+
     const detallePanel = document.getElementById('offcanvasDetalleConvocatoria');
     const detalleContenido = document.getElementById('convocatoriaDetalleContenido');
     const detalleOffcanvas = detallePanel ? new bootstrap.Offcanvas(detallePanel) : null;
@@ -905,11 +965,18 @@ document.addEventListener('DOMContentLoaded', function () {
 
         listadoConvocatorias.innerHTML = convocatorias.map(function (convocatoria) {
             const estadoActivo = Number(convocatoria.estado) === 1;
-            const imagen = convocatoria.imagen
-                ? '<img src="' + <?= json_encode(BASE_URL) ?> +
-                    escapeHtml(String(convocatoria.imagen).replace(/^\/+/, '')) +
+            const imagenUrl = convocatoria.imagen
+                ? <?= json_encode(BASE_URL) ?> +
+                    String(convocatoria.imagen).replace(/^\/+/, '')
+                : '';
+            const imagen = imagenUrl
+                ? '<button type="button" class="convocatoria-thumb-button" ' +
+                    'data-convocatoria-image="' + escapeHtml(imagenUrl) + '" ' +
+                    'data-convocatoria-image-title="' + escapeHtml(convocatoria.titulo || '') + '" ' +
+                    'aria-label="Ver imagen de ' + escapeHtml(convocatoria.titulo || '') + '">' +
+                    '<img src="' + escapeHtml(imagenUrl) +
                     '" alt="' + escapeHtml(convocatoria.titulo || '') +
-                    '" class="convocatoria-thumb">'
+                    '" class="convocatoria-thumb"></button>'
                 : '—';
 
             const acciones = [
