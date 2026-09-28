@@ -86,6 +86,17 @@ class PerfilEducativoPrioritarioModel
             ];
 
             foreach ($filas as $fila) {
+                $nombreGeografia = trim((string)($fila['nombre_geografia'] ?? ''));
+
+                /*
+                 * Algunos libros estatales incluyen hojas auxiliares por tamaño
+                 * de localidad (p. ej. "000-499 999 habitantes"). Esas filas no
+                 * son municipios y nunca deben entrar al ranking municipal.
+                 */
+                if ($this->esEstratoNoMunicipal($nombreGeografia)) {
+                    continue;
+                }
+
                 $municipio = str_pad(
                     preg_replace('/\D+/', '', (string)($fila['clave_municipio'] ?? '')) ?? '',
                     3,
@@ -115,7 +126,7 @@ class PerfilEducativoPrioritarioModel
                         $estado = [
                             'clave_estado' => $claveEstado,
                             'clave_municipio' => '000',
-                            'nombre' => trim((string)($fila['nombre_geografia'] ?? '')),
+                            'nombre' => $nombreGeografia,
                             'grupos' => []
                         ];
                     }
@@ -125,7 +136,7 @@ class PerfilEducativoPrioritarioModel
                         $municipios[$municipio] = [
                             'clave_estado' => $claveEstado,
                             'clave_municipio' => $municipio,
-                            'nombre' => trim((string)($fila['nombre_geografia'] ?? '')),
+                            'nombre' => $nombreGeografia,
                             'grupos' => []
                         ];
                     }
@@ -236,6 +247,20 @@ class PerfilEducativoPrioritarioModel
                     : null,
             'grupos' => $desglose
         ];
+    }
+
+    private function esEstratoNoMunicipal(string $nombre): bool
+    {
+        $normalizado = mb_strtolower(trim($nombre), 'UTF-8');
+
+        if ($normalizado === '') {
+            return false;
+        }
+
+        return preg_match(
+            '/\bhabitantes\b|tamaño\s+de\s+localidad|rango\s+de\s+poblaci[oó]n/u',
+            $normalizado
+        ) === 1;
     }
 
     private function vacio(): array
