@@ -220,6 +220,8 @@ class InegiPerfilEducativoPrioritarioImportService
             if (preg_match('/^([0-9]{2})\s+(.+)$/u', $geoEstado, $m)) {
                 $estadoActual = $m[1];
                 $estadoNombre = trim($m[2]);
+                $municipioActual = '000';
+                $municipioNombre = $estadoNombre;
             }
 
             if ($geoMunicipio !== '') {
