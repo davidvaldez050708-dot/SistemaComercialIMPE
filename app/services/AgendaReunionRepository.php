@@ -443,12 +443,40 @@ class AgendaReunionRepository
 
     public function pendientesAnalista($analistaId, $limite)
     {
-        $sql = "SELECT r.id,r.seguimiento_id,r.fecha_propuesta,r.estado,s.nombre_entidad
-                FROM reuniones_vinculacion r JOIN seguimientos_vinculacion s ON s.id=r.seguimiento_id
-                WHERE r.analista_id=? AND (
-                    r.estado IN ('CAMBIO_SOLICITADO','CONFIRMADA') OR
-                    (r.estado='CORREO_ENVIADO' AND r.fecha_propuesta BETWEEN DATE_SUB(NOW(),INTERVAL 2 HOUR) AND DATE_ADD(NOW(),INTERVAL 24 HOUR))
-                ) ORDER BY r.updated_at DESC LIMIT ?";
+        $sql = "SELECT
+                    r.id,
+                    r.seguimiento_id,
+                    r.fecha_propuesta,
+                    r.duracion_minutos,
+                    r.estado,
+                    s.nombre_entidad
+                FROM reuniones_vinculacion r
+                JOIN seguimientos_vinculacion s ON s.id = r.seguimiento_id
+                WHERE r.analista_id = ?
+                  AND s.activo = 1
+                  AND s.estado_seguimiento <> 'DESCARTADO'
+                  AND (
+                    r.estado IN ('CAMBIO_SOLICITADO','CONFIRMADA')
+                    OR (
+                        r.estado = 'CORREO_ENVIADO'
+                        AND r.fecha_propuesta <= DATE_ADD(NOW(), INTERVAL 24 HOUR)
+                    )
+                  )
+                ORDER BY
+                    CASE
+                        WHEN r.estado = 'CORREO_ENVIADO'
+                             AND DATE_ADD(
+                                 r.fecha_propuesta,
+                                 INTERVAL COALESCE(NULLIF(r.duracion_minutos, 0), 60) MINUTE
+                             ) <= NOW()
+                        THEN 0
+                        WHEN r.estado = 'CONFIRMADA' AND r.fecha_propuesta <= NOW()
+                        THEN 1
+                        ELSE 2
+                    END ASC,
+                    r.fecha_propuesta ASC,
+                    r.updated_at DESC
+                LIMIT ?";
         $stmt = $this->connection->prepare($sql);
         $stmt->bind_param('ii', $analistaId, $limite);
         $stmt->execute();
