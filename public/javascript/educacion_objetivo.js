@@ -286,7 +286,12 @@
                         ? '<div class="data-education-priority-method">' +
                             '<i class="bi bi-shield-check"></i>' +
                             '<div><strong>Dato educativo exacto protegido</strong>' +
-                            '<span>El sistema no extrapola P18YM_PB ni porcentajes estatales. El valor aparecerá al cargar el tabulado oficial B2020_07_08_M de INEGI.</span></div>' +
+                            '<span>' +
+                                escapar(
+                                    perfilPrioritario?.actualizacion_automatica?.mensaje ||
+                                    'El sistema busca automáticamente una fuente oficial compatible de INEGI y no extrapola porcentajes generales cuando el cruce edad × escolaridad no está disponible.'
+                                ) +
+                            '</span></div>' +
                           '</div>'
                         : '') +
 
