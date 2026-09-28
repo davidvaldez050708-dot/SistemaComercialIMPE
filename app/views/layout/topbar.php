@@ -3,7 +3,6 @@
 require_once __DIR__ . '/../../helpers/AvatarHelper.php';
 require_once __DIR__ . '/../../helpers/ReminderHelper.php';
 
-$recordatoriosSeguimiento = [];
 $rolTopbarId = (int)($_SESSION['rol_id'] ?? 0);
 $esAnalistaDatos = $rolTopbarId === 4;
 $esCuentaClave = $rolTopbarId === 6;
@@ -12,14 +11,14 @@ $agendaDisponible = is_file(ROOT_PATH . '/app/controllers/AgendaReunionControlle
 $mostrarAgendaReuniones = $mostrarCentroAvisos && $agendaDisponible;
 $trabajarNotificacionId = (int)($_GET['trabajar_id'] ?? 0);
 
-if ($esAnalistaDatos) {
-    $recordatoriosSeguimiento = obtenerRecordatoriosSeguimientoAnalista(
-        (int)($_SESSION['usuario_id'] ?? 0),
-        8
-    );
-}
-
-$totalRecordatoriosSeguimiento = count($recordatoriosSeguimiento);
+/*
+ * La campana se hidrata únicamente desde ReminderController.
+ * Antes se precargaban aquí recordatorios genéricos de seguimiento y,
+ * al terminar el fetch del frontend, eran sustituidos por la fuente
+ * operativa completa (agenda + reuniones + acuerdos + seguimiento).
+ * Eso provocaba un "flash" de estados antiguos al recargar.
+ */
+$totalRecordatoriosSeguimiento = 0;
 
 ?>
 
@@ -87,57 +86,12 @@ $totalRecordatoriosSeguimiento = count($recordatoriosSeguimiento);
                             <span>Reuniones, confirmaciones y acciones próximas.</span>
                         </div>
 
-                        <div data-reminder-content>
-                            <?php if (!empty($recordatoriosSeguimiento)): ?>
-                                <div class="topbar-reminder-list">
-                                    <?php foreach ($recordatoriosSeguimiento as $recordatorio): ?>
-                                        <?php
-                                        $accionRecordatorio = trim(
-                                            (string)($recordatorio['proxima_accion_texto'] ?? '')
-                                        );
-                                        $estadoRecordatorio = (string)(
-                                            $recordatorio['recordatorio']['estado'] ?? 'normal'
-                                        );
-                                        $etiquetaRecordatorio = (string)(
-                                            $recordatorio['recordatorio']['etiqueta'] ?? ''
-                                        );
-                                        $recordatorioId = (int)($recordatorio['id'] ?? 0);
-                                        $recordatorioEstadoId = (int)($recordatorio['estado_id'] ?? 0);
-                                        $urlRecordatorioTopbar = $recordatorioEstadoId > 0
-                                            ? BASE_URL . 'index.php?controller=seguimientoVinculacion&action=estado&estado_id=' .
-                                                $recordatorioEstadoId . '&trabajar_id=' . $recordatorioId
-                                            : BASE_URL . 'index.php?controller=seguimientoVinculacion&action=detalle&id=' .
-                                                $recordatorioId;
-                                        ?>
-                                        <a
-                                            class="topbar-reminder-item"
-                                            href="<?= htmlspecialchars($urlRecordatorioTopbar, ENT_QUOTES, 'UTF-8') ?>">
-                                            <span class="topbar-reminder-icon">
-                                                <i class="bi <?= htmlspecialchars(iconoAccionRecordatorioSeguimiento($accionRecordatorio), ENT_QUOTES, 'UTF-8') ?>"></i>
-                                            </span>
-
-                                            <span class="topbar-reminder-copy">
-                                                <strong>
-                                                    <?= htmlspecialchars((string)($recordatorio['nombre_entidad'] ?? 'Seguimiento'), ENT_QUOTES, 'UTF-8') ?>
-                                                </strong>
-                                                <span>
-                                                    <?= htmlspecialchars($accionRecordatorio, ENT_QUOTES, 'UTF-8') ?>
-                                                </span>
-                                            </span>
-
-                                            <span class="topbar-reminder-time is-<?= htmlspecialchars($estadoRecordatorio, ENT_QUOTES, 'UTF-8') ?>">
-                                                <?= htmlspecialchars($etiquetaRecordatorio, ENT_QUOTES, 'UTF-8') ?>
-                                            </span>
-                                        </a>
-                                    <?php endforeach; ?>
-                                </div>
-                            <?php else: ?>
-                                <div class="topbar-reminder-empty">
-                                    <i class="bi bi-check2-circle"></i>
-                                    <strong>Sin notificaciones pendientes</strong>
-                                    <span>No tienes acciones o reuniones pendientes.</span>
-                                </div>
-                            <?php endif; ?>
+                        <div data-reminder-content aria-live="polite" aria-busy="true">
+                            <div class="topbar-reminder-empty">
+                                <i class="bi bi-arrow-repeat"></i>
+                                <strong>Actualizando notificaciones</strong>
+                                <span>Consultando reuniones y acciones pendientes.</span>
+                            </div>
                         </div>
                     </div>
                 </div>
