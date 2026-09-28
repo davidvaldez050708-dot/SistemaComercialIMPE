@@ -8,6 +8,7 @@ require_once __DIR__ . '/../services/SeguimientoRutaOperativaService.php';
 require_once __DIR__ . '/../services/SeguimientoCorreoContactoService.php';
 require_once __DIR__ . '/../services/SeguimientoCorreoService.php';
 require_once __DIR__ . '/../services/SeguimientoActividadPresentacionService.php';
+require_once __DIR__ . '/../services/SeguimientoCambioDatosService.php';
 
 class SeguimientoVinculacionController
 {
@@ -747,9 +748,19 @@ class SeguimientoVinculacionController
             $modoSeguimiento
         );
 
+        $auditoriaCambios = (new SeguimientoCambioDatosService())->registrarCambios(
+            $seguimientoId,
+            $usuarioId,
+            $seguimiento,
+            $seguimientoActualizado
+        );
+        $notificadosCuentaClave = (int)($auditoriaCambios['notificados'] ?? 0);
+
         $this->responderJson([
             'ok' => true,
-            'mensaje' => 'Datos de contacto actualizados correctamente.',
+            'mensaje' => $notificadosCuentaClave > 0
+                ? 'Datos actualizados. Cuenta Clave fue notificada de los cambios relevantes.'
+                : 'Datos de contacto actualizados correctamente.',
             'seguimiento' => $this->serializarSeguimientoTrabajoConPermisos(
                 $seguimientoActualizado,
                 $usuarioId,
@@ -1047,9 +1058,19 @@ class SeguimientoVinculacionController
             $modoSeguimiento
         );
 
+        $auditoriaCambios = (new SeguimientoCambioDatosService())->registrarCambios(
+            $seguimientoId,
+            $usuarioId,
+            $seguimiento,
+            $seguimientoActualizado
+        );
+        $notificadosCuentaClave = (int)($auditoriaCambios['notificados'] ?? 0);
+
         $this->responderJson([
             'ok' => true,
-            'mensaje' => 'Interacción registrada correctamente.',
+            'mensaje' => $notificadosCuentaClave > 0
+                ? 'Interacción registrada. Cuenta Clave fue notificada del cambio de contacto.'
+                : 'Interacción registrada correctamente.',
             'seguimiento' => $this->serializarSeguimientoTrabajoConPermisos(
                 $seguimientoActualizado,
                 $usuarioId,
@@ -1243,6 +1264,45 @@ class SeguimientoVinculacionController
                 $modoSeguimiento
             )
         ]);
+    }
+
+    public function verCambioDatos()
+    {
+        if (!isset($_SESSION['usuario_id'])) {
+            header('Location: ' . BASE_URL . 'index.php?controller=login&action=index');
+            exit;
+        }
+
+        $usuarioId = $this->obtenerUsuarioActualId();
+        $cambioId = (int)($_GET['cambio_id'] ?? 0);
+        $cambio = (new SeguimientoCambioDatosService())->marcarLeido(
+            $cambioId,
+            $usuarioId
+        );
+
+        if (!$cambio) {
+            $_SESSION['error_seguimiento_vinculacion'] =
+                'La notificación ya no está disponible o no te pertenece.';
+            header('Location: ' . BASE_URL . 'index.php?controller=agendaReunion&action=index');
+            exit;
+        }
+
+        $seguimientoId = (int)($cambio['seguimiento_id'] ?? 0);
+
+        if (
+            $seguimientoId > 0 &&
+            tienePermiso('seguimientos_vinculacion.ver')
+        ) {
+            header(
+                'Location: ' . BASE_URL .
+                'index.php?controller=seguimientoVinculacion&action=detalle&id=' .
+                $seguimientoId
+            );
+            exit;
+        }
+
+        header('Location: ' . BASE_URL . 'index.php?controller=agendaReunion&action=index');
+        exit;
     }
 
     public function detalle()
