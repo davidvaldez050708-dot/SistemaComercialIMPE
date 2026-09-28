@@ -7,6 +7,8 @@ require_once __DIR__ . '/../app/helpers/PermissionHelper.php';
 require_once __DIR__ . '/../app/models/DataTerritorialModel.php';
 require_once __DIR__ . '/../app/services/InegiEducacionObjetivoService.php';
 require_once __DIR__ . '/../app/services/InegiEducacionPerfilDetalleService.php';
+require_once __DIR__ . '/../app/services/InegiPerfilAdultoLaboralService.php';
+require_once __DIR__ . '/../app/models/PerfilEducativoPrioritarioModel.php';
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
@@ -73,5 +75,25 @@ if (($resultado['ok'] ?? false) !== true) {
 
 $detalle = new InegiEducacionPerfilDetalleService();
 $resultado = $detalle->enriquecer($resultado, $claveInegi);
+
+/*
+ * El rango adulto 25-49 se obtiene de ITER con grupos quinquenales exactos.
+ * El cruce edad × escolaridad se consulta por separado y sólo se presenta
+ * cuando existe información oficial cargada del tabulado B2020_07_08_M.
+ * Nunca se estima a partir de porcentajes generales.
+ */
+$perfilAdulto = (new InegiPerfilAdultoLaboralService())
+    ->obtenerPorEstado($claveInegi);
+
+$resultado['perfil_adulto'] = ($perfilAdulto['ok'] ?? false) === true
+    ? $perfilAdulto
+    : [
+        'ok' => false,
+        'mensaje' => (string)($perfilAdulto['mensaje'] ?? '')
+    ];
+
+$resultado['perfil_educativo_prioritario'] =
+    (new PerfilEducativoPrioritarioModel())
+        ->obtenerPorEstado($estadoId, $claveInegi);
 
 $responder($resultado);
