@@ -607,46 +607,98 @@ class AgendaReunionService
             ? $this->repo->pendientesKam((int)$limite)
             : $this->repo->pendientesAnalista((int)$usuarioId, (int)$limite);
         $salida = [];
+        $ahora = new DateTimeImmutable();
 
         foreach ($filas as $fila) {
-            $estado = (string)($fila['estado'] ?? 'SOLICITADA');
+            $estado = strtoupper(trim((string)($fila['estado'] ?? 'SOLICITADA')));
+            $fechaTexto = trim((string)($fila['fecha_propuesta'] ?? ''));
+            $fecha = null;
+
+            if ($fechaTexto !== '') {
+                try {
+                    $fecha = new DateTimeImmutable($fechaTexto);
+                } catch (Throwable $error) {
+                    $fecha = null;
+                }
+            }
+
+            $prioridad = 4;
+
             if ((int)$rolId === self::ROL_CUENTA_CLAVE) {
                 $accion = 'Confirmar solicitud de reunión';
                 $etiqueta = 'Pendiente de Cuenta Clave';
                 $icono = 'bi-calendar-check';
                 $estadoUi = 'proxima';
+                $prioridad = 1;
             } elseif ($estado === 'CAMBIO_SOLICITADO') {
                 $accion = 'Cuenta Clave solicita cambiar la reunión';
                 $etiqueta = 'Requiere ajuste';
                 $icono = 'bi-calendar-x';
                 $estadoUi = 'vencida';
+                $prioridad = 1;
             } elseif ($estado === 'CONFIRMADA') {
-                $accion = 'Reunión confirmada · enviar correo';
-                $etiqueta = 'Lista para enviar';
                 $icono = 'bi-envelope-check';
-                $estadoUi = 'proxima';
+
+                if ($fecha && $fecha <= $ahora) {
+                    $accion = 'Confirmación pendiente de enviar';
+                    $etiqueta = 'Vencida · enviar confirmación';
+                    $estadoUi = 'vencida';
+                    $prioridad = 0;
+                } else {
+                    $accion = 'Reunión confirmada · enviar correo';
+                    $etiqueta = 'Lista para enviar';
+                    $estadoUi = 'proxima';
+                    $prioridad = 1;
+                }
+            } elseif ($estado === 'CORREO_ENVIADO') {
+                $duracion = max(1, (int)($fila['duracion_minutos'] ?? 60));
+                $fin = $fecha ? $fecha->modify('+' . $duracion . ' minutes') : null;
+                $icono = 'bi-camera-video';
+
+                if ($fin && $fin <= $ahora) {
+                    $accion = 'Reunión pendiente de registrar';
+                    $etiqueta = 'Vencida · pendiente de registrar';
+                    $estadoUi = 'vencida';
+                    $icono = 'bi-calendar-x';
+                    $prioridad = 0;
+                } elseif ($fecha && $fecha <= $ahora) {
+                    $accion = 'Reunión en curso';
+                    $etiqueta = 'En curso';
+                    $estadoUi = 'proxima';
+                    $prioridad = 1;
+                } else {
+                    $accion = 'Reunión próxima';
+                    $etiqueta = $this->fechaLegible($fechaTexto);
+                    $estadoUi = 'proxima';
+                    $prioridad = 2;
+                }
             } else {
                 $accion = 'Reunión próxima';
-                $etiqueta = $this->fechaLegible((string)$fila['fecha_propuesta']);
+                $etiqueta = $this->fechaLegible($fechaTexto);
                 $icono = 'bi-camera-video';
                 $estadoUi = 'proxima';
+                $prioridad = 2;
             }
 
             $id = (int)$fila['id'];
             $salida[] = [
                 'id' => $id,
+                'reunion_id' => $id,
+                'seguimiento_id' => (int)($fila['seguimiento_id'] ?? 0),
                 'nombre_entidad' => (string)$fila['nombre_entidad'],
                 'accion' => $accion,
-                'fecha' => (string)$fila['fecha_propuesta'],
+                'fecha' => $fechaTexto,
                 'etiqueta' => $etiqueta,
                 'estado' => $estadoUi,
                 'icono' => $icono,
+                'prioridad' => $prioridad,
                 'url' => 'index.php?controller=agendaReunion&action=index&reunion_id=' . $id
             ];
         }
 
         return ['recordatorios' => $salida, 'avisos' => []];
     }
+
 
     private function prepararReunion($fila)
     {
