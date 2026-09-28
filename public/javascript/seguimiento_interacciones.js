@@ -171,10 +171,10 @@
         contenedorContactoReferido.className = 'col-12 d-none';
         contenedorContactoReferido.setAttribute('data-work-referred-contact-wrapper', '');
         contenedorContactoReferido.innerHTML =
-            '<div class="border rounded-3 p-3 bg-light-subtle">' +
-                '<div class="mb-2">' +
-                    '<strong class="d-block">Nuevo contacto proporcionado</strong>' +
-                    '<span class="small text-muted">El teléfono original se conservará como teléfono fuente.</span>' +
+            '<div class="linkage-referred-contact-box">' +
+                '<div class="linkage-referred-contact-head">' +
+                    '<strong>Nuevo contacto proporcionado</strong>' +
+                    '<span>El teléfono original se conservará como teléfono fuente.</span>' +
                 '</div>' +
                 '<div class="row g-2">' +
                     '<div class="col-12 col-md-6">' +
