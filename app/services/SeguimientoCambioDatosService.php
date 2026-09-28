@@ -43,6 +43,7 @@ class SeguimientoCambioDatosService
         $destinatarioId = $this->resolverCuentaClave($seguimientoId);
         $cambios = 0;
         $notificados = 0;
+        $etiquetasCambiadas = [];
 
         foreach (self::CAMPOS as $campo => $etiqueta) {
             $anterior = $this->normalizarValor($antes[$campo] ?? '');
@@ -93,8 +94,43 @@ class SeguimientoCambioDatosService
             $stmt->execute();
 
             $cambios++;
+            $etiquetasCambiadas[] = $etiqueta;
+
             if ($requiereNotificacion) {
                 $notificados++;
+            }
+        }
+
+        if (!empty($etiquetasCambiadas)) {
+            $nota = 'Datos del seguimiento actualizados: ' .
+                implode(', ', array_values(array_unique($etiquetasCambiadas))) . '.';
+
+            if ($notificados > 0) {
+                $nota .= ' Cuenta Clave fue notificada de los cambios relevantes.';
+            }
+
+            try {
+                $sqlActividad = "INSERT INTO interacciones_vinculacion (
+                                    seguimiento_id,
+                                    usuario_id,
+                                    canal,
+                                    fecha_inicio,
+                                    resultado,
+                                    notas
+                                ) VALUES (?, ?, 'SISTEMA', NOW(), 'OTRO', ?)";
+                $stmtActividad = $this->connection->prepare($sqlActividad);
+                $stmtActividad->bind_param(
+                    'iis',
+                    $seguimientoId,
+                    $autorId,
+                    $nota
+                );
+                $stmtActividad->execute();
+            } catch (Throwable $error) {
+                error_log(
+                    'No fue posible registrar actividad de cambio de datos: ' .
+                    $error->getMessage()
+                );
             }
         }
 
