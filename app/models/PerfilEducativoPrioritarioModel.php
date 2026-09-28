@@ -223,28 +223,97 @@ class PerfilEducativoPrioritarioModel
                 $sinSuperior += (int)$ss;
             }
 
+            $sinMediaGrupo = $sm === null ? null : (int)$sm;
+            $sinSuperiorGrupo = $ss === null ? null : (int)$ss;
+            $mediaSinSuperiorGrupo =
+                $sinMediaGrupo !== null &&
+                $sinSuperiorGrupo !== null &&
+                $sinSuperiorGrupo >= $sinMediaGrupo
+                    ? $sinSuperiorGrupo - $sinMediaGrupo
+                    : null;
+            $conSuperiorGrupo =
+                $sinSuperiorGrupo !== null &&
+                $p >= $sinSuperiorGrupo
+                    ? $p - $sinSuperiorGrupo
+                    : null;
+
             $desglose[$edad] = [
                 'poblacion_total' => $p,
-                'sin_media_superior_concluida' => $sm === null ? null : (int)$sm,
-                'sin_superior' => $ss === null ? null : (int)$ss
+                /*
+                 * El nombre físico se conserva por compatibilidad histórica,
+                 * pero metodológicamente este valor significa personas sin
+                 * estudios de educación media superior, no "sin concluirla".
+                 */
+                'sin_media_superior_concluida' => $sinMediaGrupo,
+                'sin_estudios_media_superior' => $sinMediaGrupo,
+                'sin_estudios_media_superior_pct' =>
+                    $sinMediaGrupo !== null && $p > 0
+                        ? round(($sinMediaGrupo / $p) * 100, 2)
+                        : null,
+                'sin_superior' => $sinSuperiorGrupo,
+                'media_superior_sin_superior' => $mediaSinSuperiorGrupo,
+                'media_superior_sin_superior_pct' =>
+                    $mediaSinSuperiorGrupo !== null && $p > 0
+                        ? round(($mediaSinSuperiorGrupo / $p) * 100, 2)
+                        : null,
+                'con_educacion_superior' => $conSuperiorGrupo,
+                'con_educacion_superior_pct' =>
+                    $conSuperiorGrupo !== null && $p > 0
+                        ? round(($conSuperiorGrupo / $p) * 100, 2)
+                        : null
             ];
         }
 
         $valorMedia = $mediaCompleta ? $sinMedia : null;
         $valorSuperior = $superiorCompleta ? $sinSuperior : null;
 
+        $mediaSinSuperior =
+            $valorMedia !== null &&
+            $valorSuperior !== null &&
+            $valorSuperior >= $valorMedia
+                ? $valorSuperior - $valorMedia
+                : null;
+        $conSuperior =
+            $valorSuperior !== null &&
+            $poblacion >= $valorSuperior
+                ? $poblacion - $valorSuperior
+                : null;
+
         return [
             'poblacion_25_49' => $poblacion,
+
+            // Alias legado: se conserva para no romper consumidores antiguos.
             'sin_media_superior_concluida_25_49' => $valorMedia,
             'sin_media_superior_concluida_pct' =>
                 $valorMedia !== null && $poblacion > 0
                     ? round(($valorMedia / $poblacion) * 100, 2)
                     : null,
+
+            // Nombre metodológicamente correcto para el valor calculado.
+            'sin_estudios_media_superior_25_49' => $valorMedia,
+            'sin_estudios_media_superior_pct' =>
+                $valorMedia !== null && $poblacion > 0
+                    ? round(($valorMedia / $poblacion) * 100, 2)
+                    : null,
+
             'sin_superior_25_49' => $valorSuperior,
             'sin_superior_pct' =>
                 $valorSuperior !== null && $poblacion > 0
                     ? round(($valorSuperior / $poblacion) * 100, 2)
                     : null,
+
+            // Segmentos mutuamente excluyentes dentro del universo 25-49.
+            'media_superior_sin_superior_25_49' => $mediaSinSuperior,
+            'media_superior_sin_superior_pct' =>
+                $mediaSinSuperior !== null && $poblacion > 0
+                    ? round(($mediaSinSuperior / $poblacion) * 100, 2)
+                    : null,
+            'con_educacion_superior_25_49' => $conSuperior,
+            'con_educacion_superior_pct' =>
+                $conSuperior !== null && $poblacion > 0
+                    ? round(($conSuperior / $poblacion) * 100, 2)
+                    : null,
+
             'grupos' => $desglose
         ];
     }
