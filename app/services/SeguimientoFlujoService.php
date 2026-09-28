@@ -33,6 +33,8 @@ class SeguimientoFlujoService
                     seguimientos.contacto_cargo,
                     seguimientos.ultima_interaccion_at,
                     seguimientos.proxima_accion_at,
+                    post.reunion_resultado,
+                    post.reunion_realizada_at,
                     (
                         SELECT COUNT(*)
                         FROM interacciones_vinculacion interacciones
@@ -59,6 +61,8 @@ class SeguimientoFlujoService
                     oficio.cuerpo_correo,
                     oficio.fecha_envio
                 FROM seguimientos_vinculacion seguimientos
+                LEFT JOIN seguimientos_vinculacion_post_envio post
+                    ON post.seguimiento_id = seguimientos.id
                 LEFT JOIN oficios_vinculacion oficio
                     ON oficio.id = (
                         SELECT oficio_reciente.id
@@ -176,6 +180,34 @@ class SeguimientoFlujoService
         ];
 
         if ($estado === 'DESCARTADO') {
+            $resultadoReunion = strtoupper(trim((string)(
+                $seguimiento['reunion_resultado'] ?? ''
+            )));
+            $reunionRealizadaAt = trim((string)(
+                $seguimiento['reunion_realizada_at'] ?? ''
+            ));
+
+            if (
+                $resultadoReunion === 'NO_INTERESADO' &&
+                $reunionRealizadaAt !== ''
+            ) {
+                $respuesta = $this->construirRespuesta(
+                    $pasos,
+                    12,
+                    'Proceso cerrado después de la reunión',
+                    'La institución indicó que no continuará con la vinculación. El expediente se conserva cerrado y sin acciones operativas pendientes.',
+                    [],
+                    null,
+                    null,
+                    $seguimiento
+                );
+                $respuesta['ventana']['siguiente'] = null;
+                $respuesta['contexto']['cierre_tipo'] = 'NO_INTERESADO_REUNION';
+                $respuesta['contexto']['cierre_etapa'] = 'REUNION_REALIZADA';
+
+                return $respuesta;
+            }
+
             return $this->construirRespuesta(
                 $pasos,
                 1,
