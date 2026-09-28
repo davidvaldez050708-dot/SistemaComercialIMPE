@@ -1110,7 +1110,7 @@ if (!empty($seguimientosSinMunicipio)) {
                     <div class="col-12 col-md-6">
                         <label class="form-label" for="work_telefono_verificado">Teléfono actual de contacto</label>
                         <input class="form-control" id="work_telefono_verificado" name="telefono_verificado">
-                        <div class="form-text">Puede ser distinto al teléfono fuente; el dato original no se reemplaza.</div>
+                        <div class="form-text linkage-work-field-hint">Puede ser distinto al teléfono fuente; el dato original no se reemplaza.</div>
                     </div>
                     <div class="col-12 col-md-6">
                         <label class="form-label" for="work_whatsapp_verificado">WhatsApp</label>
