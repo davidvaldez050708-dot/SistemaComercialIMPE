@@ -35,7 +35,7 @@ class ConvocatoriaModel
         return $this->convertirResultadoEnArreglo($resultado);
     }
 
-    public function obtenerListado($buscar = '', $estadoId = 0, $estatus = '')
+    public function obtenerListado($buscar = '', $estadoId = 0, $estatus = '', $categoria = '')
     {
         $sql = "SELECT
                     convocatorias.id,
@@ -44,6 +44,7 @@ class ConvocatoriaModel
                     convocatorias.fecha_inicio,
                     convocatorias.fecha_termino,
                     convocatorias.estado,
+                    convocatorias.categoria,
                     convocatorias.created_at,
                     convocatorias.updated_at,
                     GROUP_CONCAT(
@@ -82,6 +83,12 @@ class ConvocatoriaModel
             $sql .= " AND convocatorias.estado = ?";
             $tipos .= 'i';
             $parametros[] = (int)$estatus;
+        }
+
+        if ($categoria !== '') {
+            $sql .= " AND convocatorias.categoria = ?";
+            $tipos .= 's';
+            $parametros[] = $categoria;
         }
 
         $sql .= " GROUP BY convocatorias.id
