@@ -286,7 +286,7 @@ class HostingerMailApiService
 
         if ($firmaDisponible) {
             $html .= '<div style="margin-top:18px;">';
-            $html .= '<img src="cid:' . self::FIRMA_CID . '" alt="Firma institucional" style="display:block;width:100%;max-width:720px;height:auto;border:0;">';
+            $html .= '<img src="cid:' . self::FIRMA_CID . '" alt="Firma institucional" width="480" style="display:block;width:100%;max-width:480px;height:auto;border:0;">';
             $html .= '</div>';
         }
 
