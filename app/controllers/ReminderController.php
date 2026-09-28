@@ -7,6 +7,7 @@ require_once __DIR__ . '/../services/ReminderReunionFollowupService.php';
 require_once __DIR__ . '/../services/ReminderDirectLinkService.php';
 require_once __DIR__ . '/../services/ReminderObservacionService.php';
 require_once __DIR__ . '/../services/ReminderMeetingConfirmationService.php';
+require_once __DIR__ . '/../services/SeguimientoCambioDatosService.php';
 
 class ReminderController
 {
@@ -16,6 +17,7 @@ class ReminderController
     private $reminderDirectLinkService;
     private $reminderObservacionService;
     private $reminderMeetingConfirmationService;
+    private $seguimientoCambioDatosService;
 
     public function __construct()
     {
@@ -25,6 +27,7 @@ class ReminderController
         $this->reminderDirectLinkService = new ReminderDirectLinkService();
         $this->reminderObservacionService = new ReminderObservacionService();
         $this->reminderMeetingConfirmationService = new ReminderMeetingConfirmationService();
+        $this->seguimientoCambioDatosService = new SeguimientoCambioDatosService();
     }
 
     public function pendientes()
@@ -99,6 +102,30 @@ class ReminderController
             $avisosConfirmacion,
             $avisosAgenda
         );
+
+        if ($rolId === 6) {
+            $cambiosDatos = $this->seguimientoCambioDatosService->obtenerNotificaciones(
+                $usuarioId,
+                10
+            );
+            $recordatoriosCambios = array_values(
+                $cambiosDatos['recordatorios'] ?? []
+            );
+            $avisosCambios = array_values(
+                $cambiosDatos['avisos'] ?? []
+            );
+
+            $recordatorios = array_merge(
+                $recordatoriosCambios,
+                $recordatoriosConfirmacion,
+                $recordatoriosAgenda
+            );
+            $avisos = array_values(array_merge(
+                $avisosCambios,
+                $avisosConfirmacion,
+                $avisosAgenda
+            ));
+        }
 
         if ($rolId === 4) {
             $resultado = obtenerAvisosPendientesRecordatoriosAnalista($usuarioId);
