@@ -100,6 +100,10 @@
         const estadoUltimaActividad = function (actividad) {
             const notas = String(actividad?.notas || '');
 
+            if (/Contacto referido:/i.test(notas)) {
+                return 'Contacto referido';
+            }
+
             if (/\[CONTACTO_EFECTIVO\]/i.test(notas)) {
                 return 'Contacto efectivo';
             }
