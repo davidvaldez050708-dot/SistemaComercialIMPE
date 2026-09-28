@@ -254,7 +254,15 @@
             // "Comenzar investigación" debe iniciar el contacto por llamada.
             // Mientras la telefonía IP está pendiente dejamos además el registro
             // manual de llamada para poder probar el flujo completo.
-            if (pasoActual === 1 && telefonoDisponible !== '') {
+            const estadoSeguimiento = String(
+                flujo.contexto?.estado_seguimiento || ''
+            ).trim().toUpperCase();
+
+            if (
+                pasoActual === 1 &&
+                telefonoDisponible !== '' &&
+                estadoSeguimiento !== 'DESCARTADO'
+            ) {
                 accionPrincipal = {
                     codigo: 'LLAMAR_IP',
                     etiqueta: 'Comenzar investigación',
