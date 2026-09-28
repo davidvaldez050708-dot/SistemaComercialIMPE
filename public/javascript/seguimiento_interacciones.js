@@ -166,6 +166,71 @@
             '[data-work-no-interest-reason]'
         );
 
+
+        const contenedorContactoReferido = document.createElement('div');
+        contenedorContactoReferido.className = 'col-12 d-none';
+        contenedorContactoReferido.setAttribute('data-work-referred-contact-wrapper', '');
+        contenedorContactoReferido.innerHTML =
+            '<div class="border rounded-3 p-3 bg-light-subtle">' +
+                '<div class="mb-2">' +
+                    '<strong class="d-block">Nuevo contacto proporcionado</strong>' +
+                    '<span class="small text-muted">El teléfono original se conservará como teléfono fuente.</span>' +
+                '</div>' +
+                '<div class="row g-2">' +
+                    '<div class="col-12 col-md-6">' +
+                        '<label class="form-label" for="work_referred_phone">Nuevo teléfono de contacto *</label>' +
+                        '<input class="form-control" id="work_referred_phone" name="nuevo_telefono_contacto" maxlength="80" autocomplete="tel">' +
+                    '</div>' +
+                    '<div class="col-12 col-md-6">' +
+                        '<label class="form-label" for="work_referred_name">Persona de contacto</label>' +
+                        '<input class="form-control" id="work_referred_name" name="nuevo_contacto_nombre" maxlength="180">' +
+                    '</div>' +
+                    '<div class="col-12 col-md-6">' +
+                        '<label class="form-label" for="work_referred_role">Cargo / Área</label>' +
+                        '<input class="form-control" id="work_referred_role" name="nuevo_contacto_cargo" maxlength="150">' +
+                    '</div>' +
+                '</div>' +
+            '</div>';
+
+        if (contenedorObservacion) {
+            contenedorObservacion.insertAdjacentElement('beforebegin', contenedorContactoReferido);
+        } else {
+            filaFormulario?.appendChild(contenedorContactoReferido);
+        }
+
+        const campoTelefonoReferido = contenedorContactoReferido.querySelector(
+            '[name="nuevo_telefono_contacto"]'
+        );
+        const campoNombreReferido = contenedorContactoReferido.querySelector(
+            '[name="nuevo_contacto_nombre"]'
+        );
+        const campoCargoReferido = contenedorContactoReferido.querySelector(
+            '[name="nuevo_contacto_cargo"]'
+        );
+
+        const actualizarContactoReferido = function () {
+            const resultado = String(selectorResultado.value || '').toUpperCase();
+            const canal = String(
+                formulario.querySelector('[name="canal"]')?.value || ''
+            ).toUpperCase();
+            const visible = resultado === 'CONTACTO_REFERIDO' && canal === 'LLAMADA';
+
+            contenedorContactoReferido.classList.toggle('d-none', !visible);
+
+            if (campoTelefonoReferido) {
+                campoTelefonoReferido.required = visible;
+            }
+
+            if (!visible) {
+                [campoTelefonoReferido, campoNombreReferido, campoCargoReferido]
+                    .forEach(function (campo) {
+                        if (campo) {
+                            campo.value = '';
+                        }
+                    });
+            }
+        };
+
         const pasoRutaActual = function () {
             return Number(offcanvas?.dataset.flowStep || 0);
         };
@@ -265,6 +330,7 @@
                     accionSugerida = 'Confirmar contacto de RH';
                     break;
                 case 'CONTACTO_CORRECTO':
+                case 'CONTACTO_REFERIDO':
                 case 'SOLICITO_INFORMACION':
                     /*
                      * La ruta operativa decide el siguiente paso real. Si el
@@ -454,7 +520,12 @@
 
         selectorResultado.addEventListener('change', function () {
             proximaAccionEditadaManualmente = false;
+            actualizarContactoReferido();
             aplicarResultadoInteraccion();
+        });
+
+        formulario.querySelector('[name="canal"]')?.addEventListener('change', function () {
+            actualizarContactoReferido();
         });
 
         selectorProximaAccion.addEventListener('change', function () {
@@ -466,6 +537,7 @@
             proximaAccionEditadaManualmente = false;
             window.setTimeout(function () {
                 aplicarModoRuta();
+                actualizarContactoReferido();
                 aplicarResultadoInteraccion();
             }, 0);
         });
@@ -473,12 +545,14 @@
         botonAbrirInteraccion?.addEventListener('click', function () {
             window.setTimeout(function () {
                 aplicarModoRuta();
+                actualizarContactoReferido();
                 aplicarResultadoInteraccion();
             }, 0);
         });
 
         document.addEventListener('impe:flow-updated', function () {
             aplicarModoRuta();
+            actualizarContactoReferido();
             aplicarResultadoInteraccion();
         });
 
