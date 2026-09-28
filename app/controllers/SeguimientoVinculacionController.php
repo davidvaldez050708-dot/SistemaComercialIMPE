@@ -888,6 +888,7 @@ class SeguimientoVinculacionController
             'NUMERO_INCORRECTO' => 'NUMERO_INCORRECTO',
             'CONTACTO_INCORRECTO' => 'CONTACTO_INCORRECTO',
             'CONTACTO_CORRECTO' => 'CONTACTADO',
+            'CONTACTO_REFERIDO' => 'CONTACTADO',
             'SOLICITO_INFORMACION' => 'SOLICITO_INFORMACION',
             'SOLICITO_LLAMAR_DESPUES' => 'SOLICITO_LLAMAR_DESPUES',
             'NO_INTERESADO' => 'NO_INTERESADO',
@@ -961,6 +962,37 @@ class SeguimientoVinculacionController
         $personaAtendio = trim((string)($_POST['persona_atendio'] ?? ''));
         $proximaAccion = trim((string)($_POST['proxima_accion'] ?? ''));
         $observacion = trim((string)($_POST['observacion'] ?? ''));
+        $nuevoTelefonoContacto = trim((string)($_POST['nuevo_telefono_contacto'] ?? ''));
+        $nuevoContactoNombre = trim((string)($_POST['nuevo_contacto_nombre'] ?? ''));
+        $nuevoContactoCargo = trim((string)($_POST['nuevo_contacto_cargo'] ?? ''));
+
+        if ($resultadoFormulario === 'CONTACTO_REFERIDO') {
+            if ($canalFormulario !== 'LLAMADA') {
+                $this->responderJson([
+                    'ok' => false,
+                    'mensaje' => 'El contacto referido solo puede registrarse como resultado de una llamada.'
+                ], 422);
+            }
+
+            if ($nuevoTelefonoContacto === '') {
+                $this->responderJson([
+                    'ok' => false,
+                    'mensaje' => 'Captura el nuevo teléfono proporcionado por la institución.'
+                ], 422);
+            }
+
+            if (strlen($nuevoTelefonoContacto) > 80) {
+                $this->responderJson([
+                    'ok' => false,
+                    'mensaje' => 'El nuevo teléfono de contacto es demasiado largo.'
+                ], 422);
+            }
+        } else {
+            $nuevoTelefonoContacto = '';
+            $nuevoContactoNombre = '';
+            $nuevoContactoCargo = '';
+        }
+
         $descartar = $resultadoFormulario === 'NO_INTERESADO' &&
             (int)($_POST['descartar'] ?? 0) === 1;
         $motivoDescarte = trim((string)($_POST['motivo_descarte'] ?? ''));
@@ -975,6 +1007,11 @@ class SeguimientoVinculacionController
         $notas = trim(implode("\n", array_filter([
             $personaAtendio !== '' ? 'Persona atendió: ' . $personaAtendio : '',
             $resultadoFormulario === 'NO_INTERESADO' ? 'Resultado registrado: No interesado' : '',
+            $resultadoFormulario === 'CONTACTO_REFERIDO'
+                ? 'Contacto referido: nuevo teléfono ' . $nuevoTelefonoContacto
+                : '',
+            $nuevoContactoNombre !== '' ? 'Nuevo contacto: ' . $nuevoContactoNombre : '',
+            $nuevoContactoCargo !== '' ? 'Cargo / Área: ' . $nuevoContactoCargo : '',
             $observacion,
             $proximaAccion !== '' ? 'Próxima acción: ' . $proximaAccion : '',
             $descartar ? 'Motivo de descarte: ' . $motivoDescarte : ''
@@ -990,7 +1027,10 @@ class SeguimientoVinculacionController
             'proxima_accion_at' => $proximaAccionAt,
             'datos_verificados' => (int)($seguimiento['datos_verificados'] ?? 0),
             'descartar' => $descartar ? 1 : 0,
-            'motivo_descarte' => $motivoDescarte
+            'motivo_descarte' => $motivoDescarte,
+            'nuevo_telefono_contacto' => $nuevoTelefonoContacto,
+            'nuevo_contacto_nombre' => $nuevoContactoNombre,
+            'nuevo_contacto_cargo' => $nuevoContactoCargo
         ];
 
         if (!$modelo->registrarInteraccionManual($seguimientoId, $usuarioId, $datosInteraccion)) {
