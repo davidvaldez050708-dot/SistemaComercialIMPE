@@ -10,6 +10,7 @@ $modalAbierto = $modalAbierto ?? '';
 $buscar = $buscar ?? '';
 $estadoFiltro = $estadoFiltro ?? 0;
 $estatusFiltro = $estatusFiltro ?? '';
+$categoriaFiltro = $categoriaFiltro ?? '';
 $territorioSeleccionado = $territorioSeleccionado ?? null;
 
 $puedeCrear = tienePermiso('convocatorias.crear');
@@ -265,9 +266,20 @@ document.addEventListener('DOMContentLoaded', function () {
             </select>
         </div>
 
+        <div class="convocatoria-filter-field">
+            <label class="form-label login-label" for="filtro_convocatoria_categoria">Categoría</label>
+            <select
+                class="form-select system-form-control"
+                id="filtro_convocatoria_categoria"
+                name="categoria">
+                <option value="" <?= $categoriaFiltro === '' ? 'selected' : '' ?>>Todas</option>
+                <option value="IMJUVE" <?= $categoriaFiltro === 'IMJUVE' ? 'selected' : '' ?>>IMJUVE</option>
+            </select>
+        </div>
+
         <div class="convocatoria-filter-actions">
             <a
-                class="filter-clear-link <?= ($buscar === '' && (int)$estadoFiltro === 0 && $estatusFiltro === '') ? 'd-none' : '' ?>"
+                class="filter-clear-link <?= ($buscar === '' && (int)$estadoFiltro === 0 && $estatusFiltro === '' && $categoriaFiltro === '') ? 'd-none' : '' ?>"
                 href="<?= BASE_URL ?>index.php?controller=convocatoria&action=index"
                 data-convocatoria-clear-filters>
                 Limpiar filtros
@@ -862,6 +874,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const filtroBuscar = document.getElementById('filtro_convocatoria_buscar');
     const filtroEstatus = document.getElementById('filtro_convocatoria_estatus');
+    const filtroCategoria = document.getElementById('filtro_convocatoria_categoria');
     const limpiarFiltros = document.querySelector('[data-convocatoria-clear-filters]');
     const listadoConvocatorias = document.querySelector('[data-convocatorias-listado]');
     let temporizadorFiltro = null;
@@ -871,7 +884,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const actualizarVisibilidadLimpiar = function () {
         const hayFiltros =
             String(filtroBuscar?.value || '').trim() !== '' ||
-            String(filtroEstatus?.value || '') !== '';
+            String(filtroEstatus?.value || '') !== '' ||
+            String(filtroCategoria?.value || '') !== '';
 
         limpiarFiltros?.classList.toggle('d-none', !hayFiltros);
     };
@@ -982,7 +996,8 @@ document.addEventListener('DOMContentLoaded', function () {
             action: 'listadoFiltrado',
             buscar: String(filtroBuscar?.value || '').trim(),
             territorio_id: <?= json_encode((string)(int)$territorioSeleccionado['id']) ?>,
-            estatus: String(filtroEstatus?.value || '')
+            estatus: String(filtroEstatus?.value || ''),
+            categoria: String(filtroCategoria?.value || '')
         });
 
         try {
@@ -1032,7 +1047,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     filtroBuscar?.addEventListener('input', programarBusqueda);
 
-    [filtroEstatus].forEach(function (filtro) {
+    [filtroEstatus, filtroCategoria].forEach(function (filtro) {
         filtro?.addEventListener('change', function () {
             actualizarVisibilidadLimpiar();
             cargarListadoFiltrado();
@@ -1049,6 +1064,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (filtroEstatus) {
             filtroEstatus.value = '';
+        }
+
+        if (filtroCategoria) {
+            filtroCategoria.value = '';
         }
 
         actualizarVisibilidadLimpiar();
