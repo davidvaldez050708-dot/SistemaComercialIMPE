@@ -19,7 +19,7 @@
         if (!document.querySelector('link[data-education-target-style]')) {
             const link = document.createElement('link');
             link.rel = 'stylesheet';
-            link.href = 'public/css/educacion_objetivo.css?v=20260925-2';
+            link.href = 'public/css/educacion_objetivo.css?v=20260928-3';
             link.setAttribute('data-education-target-style', '');
             document.head.appendChild(link);
         }
@@ -35,7 +35,9 @@
 
         const numero = function (valor) {
             const n = Number(valor);
-            return Number.isFinite(n) ? new Intl.NumberFormat('es-MX').format(n) : '—';
+            return Number.isFinite(n)
+                ? new Intl.NumberFormat('es-MX').format(n)
+                : '—';
         };
 
         const porcentaje = function (valor) {
@@ -58,15 +60,15 @@
             contenedor.innerHTML =
                 '<div class="data-education-target-heading">' +
                     '<div>' +
-                        '<span class="data-education-target-eyebrow">Contexto educativo del territorio</span>' +
-                        '<h4>Indicadores educativos de contexto</h4>' +
-                        '<p>Los datos educativos apoyan el análisis territorial, pero no sustituyen el perfil adulto y laboral que Fundación utiliza para priorizar vinculación.</p>' +
+                        '<span class="data-education-target-eyebrow">Población educativa prioritaria</span>' +
+                        '<h4>Perfil educativo adulto de 25 a 49 años</h4>' +
+                        '<p>Consultando población adulta y el cruce oficial de edad con escolaridad, sin estimar cifras a partir de porcentajes generales.</p>' +
                     '</div>' +
-                    '<span class="data-education-target-period">2020</span>' +
+                    '<span class="data-education-target-period">INEGI</span>' +
                 '</div>' +
                 '<div class="data-education-target-loading">' +
                     '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span>' +
-                    '<span>Consultando el Censo 2020 de INEGI...</span>' +
+                    '<span>Consultando información oficial...</span>' +
                 '</div>';
         };
 
@@ -75,10 +77,10 @@
                 '<div class="data-education-target-heading">' +
                     '<div>' +
                         '<span class="data-education-target-eyebrow">Contexto educativo del territorio</span>' +
-                        '<h4>Indicadores educativos de contexto</h4>' +
-                        '<p>Indicadores educativos oficiales disponibles para complementar el análisis de vinculación. Los grupos juveniles se presentan como contexto, no como prioridad territorial.</p>' +
+                        '<h4>Indicadores educativos</h4>' +
+                        '<p>Información educativa oficial para complementar el análisis territorial.</p>' +
                     '</div>' +
-                    '<span class="data-education-target-period">2020</span>' +
+                    '<span class="data-education-target-period">INEGI</span>' +
                 '</div>' +
                 '<div class="data-education-target-error">' +
                     '<i class="bi bi-exclamation-circle"></i>' +
@@ -86,7 +88,222 @@
                 '</div>';
         };
 
-        const renderMunicipios = function (municipios) {
+        const gruposAdultos = function (metricas) {
+            return [
+                ['25–29', metricas?.poblacion_25_29],
+                ['30–34', metricas?.poblacion_30_34],
+                ['35–39', metricas?.poblacion_35_39],
+                ['40–44', metricas?.poblacion_40_44],
+                ['45–49', metricas?.poblacion_45_49]
+            ];
+        };
+
+        const renderGruposAdultos = function (metricas, prioridad) {
+            const gruposPrioridad = prioridad?.metricas?.grupos || {};
+
+            return (
+                '<div class="data-education-priority-age-grid">' +
+                    gruposAdultos(metricas).map(function (item) {
+                        const clave = item[0].replace('–', '-');
+                        const brecha = gruposPrioridad?.[clave]?.sin_media_superior_concluida;
+                        return (
+                            '<div>' +
+                                '<span>' + escapar(item[0]) + ' años</span>' +
+                                '<strong>' + numero(item[1]) + '</strong>' +
+                                '<small>' +
+                                    (brecha !== null && brecha !== undefined
+                                        ? numero(brecha) + ' sin media superior concluida'
+                                        : 'Población total del grupo') +
+                                '</small>' +
+                            '</div>'
+                        );
+                    }).join('') +
+                '</div>'
+            );
+        };
+
+        const renderMunicipiosPrioridad = function (perfilPrioritario, perfilAdulto) {
+            const prioridadDisponible = perfilPrioritario?.disponible === true;
+            const municipiosPrioridad = Array.isArray(perfilPrioritario?.municipios)
+                ? perfilPrioritario.municipios
+                : [];
+            const municipiosAdultos = Array.isArray(perfilAdulto?.municipios)
+                ? perfilAdulto.municipios
+                : [];
+
+            const lista = prioridadDisponible
+                ? municipiosPrioridad
+                    .filter(function (municipio) {
+                        return Number(
+                            municipio?.metricas?.sin_media_superior_concluida_25_49 || 0
+                        ) > 0;
+                    })
+                    .slice(0, 6)
+                    .map(function (municipio) {
+                        return {
+                            nombre: municipio.nombre,
+                            valor: Number(
+                                municipio.metricas.sin_media_superior_concluida_25_49 || 0
+                            ),
+                            porcentaje: municipio.metricas.sin_media_superior_concluida_pct,
+                            etiqueta: 'sin media superior concluida'
+                        };
+                    })
+                : municipiosAdultos
+                    .filter(function (municipio) {
+                        return Number(municipio?.metricas?.poblacion_25_49 || 0) > 0;
+                    })
+                    .sort(function (a, b) {
+                        return Number(b.metricas.poblacion_25_49 || 0) -
+                            Number(a.metricas.poblacion_25_49 || 0);
+                    })
+                    .slice(0, 6)
+                    .map(function (municipio) {
+                        return {
+                            nombre: municipio.nombre,
+                            valor: Number(municipio.metricas.poblacion_25_49 || 0),
+                            porcentaje: null,
+                            etiqueta: 'personas de 25 a 49 años'
+                        };
+                    });
+
+            if (!lista.length) {
+                return '';
+            }
+
+            const maximo = Math.max.apply(null, lista.map(function (item) {
+                return item.valor;
+            }));
+
+            return (
+                '<div class="data-education-target-municipal data-education-priority-municipal">' +
+                    '<div class="data-education-target-municipal-heading">' +
+                        '<strong>' +
+                            (prioridadDisponible
+                                ? 'Municipios con mayor brecha educativa prioritaria'
+                                : 'Municipios con mayor población de 25 a 49 años') +
+                        '</strong>' +
+                        '<span>' +
+                            (prioridadDisponible
+                                ? 'Cruce edad × escolaridad'
+                                : 'Contexto adulto · no sustituye el cruce educativo') +
+                        '</span>' +
+                    '</div>' +
+                    '<div class="data-education-target-municipal-list">' +
+                        lista.map(function (item) {
+                            const ancho = maximo > 0
+                                ? Math.max(2, (item.valor / maximo) * 100)
+                                : 0;
+                            return (
+                                '<div class="data-education-target-municipal-row">' +
+                                    '<strong title="' + escapar(item.nombre || '') + '">' +
+                                        escapar(item.nombre || 'Municipio') +
+                                    '</strong>' +
+                                    '<div class="data-education-target-bar" aria-hidden="true">' +
+                                        '<span style="width:' + ancho.toFixed(2) + '%"></span>' +
+                                    '</div>' +
+                                    '<span>' +
+                                        numero(item.valor) +
+                                        (item.porcentaje !== null && item.porcentaje !== undefined
+                                            ? ' · ' + porcentaje(item.porcentaje)
+                                            : '') +
+                                    '</span>' +
+                                '</div>'
+                            );
+                        }).join('') +
+                    '</div>' +
+                '</div>'
+            );
+        };
+
+        const renderPrioridad = function (datos) {
+            const perfilAdulto = datos?.perfil_adulto || {};
+            const adultoEstado = perfilAdulto?.estado || {};
+            const adultoMetricas = adultoEstado?.metricas || {};
+            const perfilPrioritario = datos?.perfil_educativo_prioritario || {};
+            const prioridadEstado = perfilPrioritario?.estado || {};
+            const prioridadMetricas = prioridadEstado?.metricas || {};
+            const prioridadDisponible = perfilPrioritario?.disponible === true;
+            const meta = perfilPrioritario?.meta || {};
+            const poblacion2549 = adultoMetricas.poblacion_25_49 ??
+                prioridadMetricas.poblacion_25_49;
+
+            if (!perfilAdulto?.ok && !prioridadDisponible) {
+                return '';
+            }
+
+            return (
+                '<div class="data-education-priority">' +
+                    '<div class="data-education-priority-heading">' +
+                        '<div>' +
+                            '<span class="data-education-target-eyebrow">Población educativa prioritaria</span>' +
+                            '<h4>Adultos de 25 a 49 años</h4>' +
+                            '<p>Rango estadístico construido con los grupos quinquenales oficiales 25–29, 30–34, 35–39, 40–44 y 45–49. La brecha educativa sólo se muestra cuando existe el cruce oficial edad × escolaridad.</p>' +
+                        '</div>' +
+                        '<span class="data-education-target-period">Censo 2020</span>' +
+                    '</div>' +
+
+                    '<div class="data-education-priority-cards">' +
+                        '<article class="data-education-priority-card is-base">' +
+                            '<span>Población total de 25 a 49 años</span>' +
+                            '<strong>' + numero(poblacion2549) + '</strong>' +
+                            '<b>Universo adulto de referencia</b>' +
+                            '<small>Suma exacta de cinco grupos quinquenales de ITER 2020; no es una estimación educativa.</small>' +
+                        '</article>' +
+                        '<article class="data-education-priority-card is-focus">' +
+                            '<span>Sin media superior concluida</span>' +
+                            '<strong>' +
+                                (prioridadDisponible
+                                    ? numero(prioridadMetricas.sin_media_superior_concluida_25_49)
+                                    : 'Pendiente') +
+                            '</strong>' +
+                            '<b>' +
+                                (prioridadDisponible
+                                    ? porcentaje(prioridadMetricas.sin_media_superior_concluida_pct) + ' del grupo de 25 a 49'
+                                    : 'Requiere cruce oficial edad × escolaridad') +
+                            '</b>' +
+                            '<small>Indicador prioritario: personas de 25–49 que no cuentan con educación media superior concluida.</small>' +
+                        '</article>' +
+                        '<article class="data-education-priority-card">' +
+                            '<span>Sin educación superior</span>' +
+                            '<strong>' +
+                                (prioridadDisponible
+                                    ? numero(prioridadMetricas.sin_superior_25_49)
+                                    : 'Pendiente') +
+                            '</strong>' +
+                            '<b>' +
+                                (prioridadDisponible
+                                    ? porcentaje(prioridadMetricas.sin_superior_pct) + ' del grupo de 25 a 49'
+                                    : 'No se calcula con porcentajes generales') +
+                            '</b>' +
+                            '<small>Segmento complementario; se presenta separado porque se superpone con quienes no concluyeron media superior.</small>' +
+                        '</article>' +
+                    '</div>' +
+
+                    renderGruposAdultos(adultoMetricas, prioridadEstado) +
+
+                    (!prioridadDisponible
+                        ? '<div class="data-education-priority-method">' +
+                            '<i class="bi bi-shield-check"></i>' +
+                            '<div><strong>Dato educativo exacto protegido</strong>' +
+                            '<span>El sistema no extrapola P18YM_PB ni porcentajes estatales. El valor aparecerá al cargar el tabulado oficial B2020_07_08_M de INEGI.</span></div>' +
+                          '</div>'
+                        : '') +
+
+                    renderMunicipiosPrioridad(perfilPrioritario, perfilAdulto) +
+
+                    (prioridadDisponible
+                        ? '<div class="data-education-priority-source">' +
+                            '<span>Fuente: <strong>' + escapar(meta.fuente || 'INEGI - Censo de Población y Vivienda 2020') + '</strong></span>' +
+                            '<span>Tabulado: <strong>' + escapar(meta.referencia_fuente || 'B2020_07_08_M') + '</strong></span>' +
+                            '<span>Metodología: <strong>Cruce directo edad × escolaridad</strong></span>' +
+                          '</div>'
+                        : '') +
+                '</div>'
+            );
+        };
+
+        const renderMunicipiosJuveniles = function (municipios) {
             const lista = Array.isArray(municipios)
                 ? municipios.filter(function (municipio) {
                     return Number(municipio?.metricas?.fuera_15_24 || 0) > 0;
@@ -110,7 +327,9 @@
                     '<div class="data-education-target-municipal-list">' +
                         lista.map(function (municipio) {
                             const valor = Number(municipio.metricas.fuera_15_24 || 0);
-                            const ancho = maximo > 0 ? Math.max(2, (valor / maximo) * 100) : 0;
+                            const ancho = maximo > 0
+                                ? Math.max(2, (valor / maximo) * 100)
+                                : 0;
                             return (
                                 '<div class="data-education-target-municipal-row">' +
                                     '<strong title="' + escapar(municipio.nombre || '') + '">' +
@@ -128,65 +347,76 @@
             );
         };
 
-        const render = function (datos) {
+        const renderContexto = function (datos) {
             const estado = datos?.estado || {};
             const m = estado.metricas || {};
 
+            return (
+                '<div class="data-education-context-general">' +
+                    '<div class="data-education-target-heading">' +
+                        '<div>' +
+                            '<span class="data-education-target-eyebrow">Contexto educativo general</span>' +
+                            '<h4>Indicadores educativos de contexto</h4>' +
+                            '<p>Estos indicadores describen el entorno educativo del estado. Se mantienen separados de la población objetivo adulta para evitar interpretaciones incorrectas.</p>' +
+                        '</div>' +
+                        '<span class="data-education-target-period">Censo ' + escapar(datos.periodo || '2020') + '</span>' +
+                    '</div>' +
+
+                    '<div class="data-education-target-summary">' +
+                        '<article class="data-education-target-card is-primary">' +
+                            '<span>Población de 15 años y más con secundaria completa</span>' +
+                            '<strong>' + numero(m.secundaria_completa) + '</strong>' +
+                            '<b>' + porcentaje(m.secundaria_completa_pct) + ' de la población de 15 años y más</b>' +
+                            '<small>Variable oficial de contexto. No significa “máxima escolaridad” ni equivale a población objetivo.</small>' +
+                        '</article>' +
+                        '<article class="data-education-target-card">' +
+                            '<span>Población de 18 años y más con educación posbásica</span>' +
+                            '<strong>' + numero(m.educacion_posbasica_18_mas) + '</strong>' +
+                            '<b>Contexto de continuidad educativa</b>' +
+                            '<small>Su universo de edad es 18+; no se usa para estimar la brecha educativa de 25–49.</small>' +
+                        '</article>' +
+                        '<article class="data-education-target-card">' +
+                            '<span>Grado promedio de escolaridad</span>' +
+                            '<strong>' + decimal(m.grado_promedio_escolaridad) + ' años</strong>' +
+                            '<b>Promedio estatal registrado</b>' +
+                            '<small>Describe el contexto general y no modifica por sí solo la prioridad municipal.</small>' +
+                        '</article>' +
+                    '</div>' +
+
+                    '<details class="data-education-youth-context">' +
+                        '<summary><span><strong>Contexto educativo juvenil</strong><small>Indicadores de 15 a 24 años · referencia complementaria</small></span><i class="bi bi-chevron-down"></i></summary>' +
+                        '<div class="data-education-youth-context-body">' +
+                            '<div><span>15 a 17 años fuera de la escuela</span><strong>' + numero(m.fuera_15_17) + '</strong><small>' + porcentaje(m.fuera_15_17_pct) + ' del grupo de edad</small></div>' +
+                            '<div><span>18 a 24 años fuera de la escuela</span><strong>' + numero(m.fuera_18_24) + '</strong><small>' + porcentaje(m.fuera_18_24_pct) + ' del grupo de edad</small></div>' +
+                            '<div><span>15 a 24 años no registrados como asistentes</span><strong>' + numero(m.fuera_15_24) + '</strong><small>' + porcentaje(m.fuera_15_24_pct) + ' del grupo de edad</small></div>' +
+                        '</div>' +
+                        '<p>Estos indicadores se conservan como contexto juvenil y no se suman con la población adulta prioritaria.</p>' +
+                    '</details>' +
+
+                    '<details class="data-education-youth-municipal">' +
+                        '<summary><span><strong>Detalle municipal del contexto juvenil</strong><small>Municipios con mayor población de 15 a 24 años no registrada como asistente</small></span><i class="bi bi-chevron-down"></i></summary>' +
+                        '<div class="data-education-youth-municipal-body">' +
+                            renderMunicipiosJuveniles(datos.municipios || []) +
+                        '</div>' +
+                    '</details>' +
+
+                    '<p class="data-education-target-note">' +
+                        '<strong>Importante:</strong> edad, asistencia escolar y nivel de escolaridad son dimensiones distintas. ' +
+                        'No se suman ni se extrapolan entre universos de edad. La población prioritaria de 25–49 se calcula únicamente con el cruce oficial correspondiente.' +
+                    '</p>' +
+                    '<div class="data-education-target-source">' +
+                        '<span>Fuente: <strong>' + escapar(datos.fuente || 'INEGI') + '</strong></span>' +
+                        '<span>Periodo: <strong>' + escapar(datos.periodo || '2020') + '</strong></span>' +
+                        '<span>Tipo: <strong>Consulta oficial</strong></span>' +
+                    '</div>' +
+                '</div>'
+            );
+        };
+
+        const render = function (datos) {
             contenedor.innerHTML =
-                '<div class="data-education-target-heading">' +
-                    '<div>' +
-                        '<span class="data-education-target-eyebrow">Contexto educativo del territorio</span>' +
-                        '<h4>Indicadores educativos de contexto</h4>' +
-                        '<p>Indicadores oficiales que ayudan a comprender las condiciones educativas del estado. Complementan el análisis territorial y no determinan por sí solos la prioridad de vinculación.</p>' +
-                    '</div>' +
-                    '<span class="data-education-target-period">Censo ' + escapar(datos.periodo || '2020') + '</span>' +
-                '</div>' +
-
-                '<div class="data-education-target-summary">' +
-                    '<article class="data-education-target-card is-primary">' +
-                        '<span>Secundaria como máxima escolaridad</span>' +
-                        '<strong>' + numero(m.secundaria_completa) + '</strong>' +
-                        '<b>' + porcentaje(m.secundaria_completa_pct) + ' de la población de 15 años y más</b>' +
-                        '<small>Referencia general del nivel educativo registrado; no equivale por sí sola a población prospectable.</small>' +
-                    '</article>' +
-                    '<article class="data-education-target-card">' +
-                        '<span>Población de 18 años y más con educación posbásica</span>' +
-                        '<strong>' + numero(m.educacion_posbasica_18_mas) + '</strong>' +
-                        '<b>Contexto de continuidad educativa</b>' +
-                        '<small>Indicador estatal complementario para comprender el perfil educativo del territorio.</small>' +
-                    '</article>' +
-                    '<article class="data-education-target-card">' +
-                        '<span>Grado promedio de escolaridad</span>' +
-                        '<strong>' + decimal(m.grado_promedio_escolaridad) + ' años</strong>' +
-                        '<b>Promedio estatal registrado</b>' +
-                        '<small>Describe el contexto educativo general y no modifica por sí solo la prioridad municipal.</small>' +
-                    '</article>' +
-                '</div>' +
-
-                '<details class="data-education-youth-context">' +
-                    '<summary><span><strong>Contexto educativo juvenil</strong><small>Indicadores de 15 a 24 años · referencia complementaria</small></span><i class="bi bi-chevron-down"></i></summary>' +
-                    '<div class="data-education-youth-context-body">' +
-                        '<div><span>15 a 17 años fuera de la escuela</span><strong>' + numero(m.fuera_15_17) + '</strong><small>' + porcentaje(m.fuera_15_17_pct) + ' del grupo de edad</small></div>' +
-                        '<div><span>18 a 24 años fuera de la escuela</span><strong>' + numero(m.fuera_18_24) + '</strong><small>' + porcentaje(m.fuera_18_24_pct) + ' del grupo de edad</small></div>' +
-                        '<div><span>15 a 24 años no registrados como asistentes</span><strong>' + numero(m.fuera_15_24) + '</strong><small>' + porcentaje(m.fuera_15_24_pct) + ' del grupo de edad</small></div>' +
-                    '</div>' +
-                    '<p>Estos indicadores se conservan como contexto educativo juvenil y no determinan la prioridad de vinculación.</p>' +
-                '</details>' +
-
-                '<details class="data-education-youth-municipal">' +
-                    '<summary><span><strong>Detalle municipal del contexto juvenil</strong><small>Municipios con mayor población de 15 a 24 años no registrada como asistente</small></span><i class="bi bi-chevron-down"></i></summary>' +
-                    '<div class="data-education-youth-municipal-body">' + renderMunicipios(datos.municipios || []) + '</div>' +
-                '</details>' +
-
-                '<p class="data-education-target-note">' +
-                    '<strong>Importante:</strong> secundaria como máxima escolaridad y no asistencia escolar son indicadores distintos. ' +
-                    'No deben sumarse ni asumirse como las mismas personas. Estos datos describen contexto educativo y no representan por sí mismos la población objetivo de Fundación. La priorización territorial se analiza por separado con población adulta, contexto laboral y tejido organizacional.' +
-                '</p>' +
-                '<div class="data-education-target-source">' +
-                    '<span>Fuente: <strong>' + escapar(datos.fuente || 'INEGI') + '</strong></span>' +
-                    '<span>Periodo: <strong>' + escapar(datos.periodo || '2020') + '</strong></span>' +
-                    '<span>Tipo: <strong>Consulta oficial</strong></span>' +
-                '</div>';
+                renderPrioridad(datos) +
+                renderContexto(datos);
         };
 
         const cargar = async function () {
@@ -194,7 +424,8 @@
 
             try {
                 const respuesta = await fetch(
-                    'public/inegi_educacion_objetivo.php?estado_id=' + encodeURIComponent(estadoId),
+                    'public/inegi_educacion_objetivo.php?estado_id=' +
+                        encodeURIComponent(estadoId),
                     {
                         headers: { 'X-Requested-With': 'fetch' },
                         cache: 'no-store'
@@ -207,16 +438,24 @@
                 try {
                     datos = JSON.parse(texto);
                 } catch (error) {
-                    throw new Error('La respuesta de INEGI no pudo interpretarse correctamente.');
+                    throw new Error(
+                        'La respuesta de INEGI no pudo interpretarse correctamente.'
+                    );
                 }
 
                 if (!respuesta.ok || !datos?.ok) {
-                    throw new Error(datos?.mensaje || 'No fue posible consultar la información de INEGI.');
+                    throw new Error(
+                        datos?.mensaje ||
+                        'No fue posible consultar la información de INEGI.'
+                    );
                 }
 
                 render(datos);
             } catch (error) {
-                renderError(error.message || 'No fue posible consultar la información de INEGI.');
+                renderError(
+                    error.message ||
+                    'No fue posible consultar la información de INEGI.'
+                );
             }
         };
 
