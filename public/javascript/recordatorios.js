@@ -169,7 +169,7 @@
 
             // Desactivamos el autohide de Bootstrap porque éste pausa el contador
             // cuando el usuario mantiene el cursor o el foco sobre el toast. El
-            // temporizador propio garantiza un máximo real de 6 segundos.
+            // temporizador propio garantiza un cierre automático aunque haya hover o foco.
             const instanciaToast = new bootstrap.Toast(toast, {
                 autohide: false
             });
