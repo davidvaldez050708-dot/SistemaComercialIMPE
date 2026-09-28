@@ -219,9 +219,20 @@ class ConvocatoriaController
             ? (int)$_POST['estado']
             : null;
 
-        if ($id <= 0 || $estado === null || !$modelo->buscarPorId($id)) {
+        $convocatoria = $id > 0 ? $modelo->buscarPorId($id) : null;
+
+        if ($id <= 0 || $estado === null || !$convocatoria) {
             $_SESSION['error_convocatoria'] = 'La acción seleccionada no es válida.';
             $this->redirigir();
+        }
+
+        if (
+            $estado === 1 &&
+            !empty($convocatoria['fecha_termino']) &&
+            $convocatoria['fecha_termino'] < date('Y-m-d')
+        ) {
+            $_SESSION['error_convocatoria'] = 'No se puede activar la convocatoria porque su fecha ya expiró. Necesitas cambiar la fecha de término antes de activarla.';
+            $this->redirigir($territorioId);
         }
 
         if ($modelo->cambiarEstado($id, $estado, (int)$_SESSION['usuario_id'])) {
