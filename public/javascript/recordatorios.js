@@ -239,6 +239,10 @@
             const lista = Array.isArray(recordatorios) ? recordatorios : [];
             recordatoriosActuales = lista;
 
+            if (contenido) {
+                contenido.setAttribute('aria-busy', 'false');
+            }
+
             if (badge) {
                 if (lista.length > 0) {
                     badge.textContent = lista.length > 9 ? '9+' : String(lista.length);
