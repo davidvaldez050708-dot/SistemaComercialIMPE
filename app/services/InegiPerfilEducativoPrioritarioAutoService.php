@@ -12,6 +12,7 @@ class InegiPerfilEducativoPrioritarioAutoService
 {
     private const TTL_FALLO = 21600; // 6 horas
     private const MAX_BYTES = 33554432; // 32 MB
+    private const CACHE_VERSION = 'v2_direct_tabulados';
 
     private const PAGINAS_DESCUBRIMIENTO = [
         'https://www.inegi.org.mx/programas/ccpv/2020/#Tabulados',
@@ -54,7 +55,7 @@ class InegiPerfilEducativoPrioritarioAutoService
             return $actual;
         }
 
-        $resultado = $this->actualizarDesdeInegi();
+        $resultado = $this->actualizarDesdeInegi($claveEstado);
 
         if (($resultado['ok'] ?? false) === true) {
             $this->guardarEstadoIntento($claveEstado, [
@@ -94,13 +95,29 @@ class InegiPerfilEducativoPrioritarioAutoService
         return $actual;
     }
 
-    private function actualizarDesdeInegi(): array
+    private function actualizarDesdeInegi(string $claveEstado): array
     {
         if (!function_exists('curl_init')) {
             return $this->error('El servidor no tiene cURL habilitado.');
         }
 
         $urls = [];
+
+        /*
+         * Los tabulados del Censo 2020 sí tienen una ruta oficial estable:
+         *   /contenidos/programas/ccpv/2020/tabulados/
+         *   cpv2020_b_<abreviatura>_07_educacion.xlsx
+         *
+         * Ejemplos documentados públicamente:
+         *   cpv2020_b_eum_07_educacion.xlsx
+         *   cpv2020_b_mex_07_educacion.xlsx
+         *
+         * El archivo estatal contiene el bloque municipal que necesitamos,
+         * por lo que se intenta antes que cualquier mecanismo de descubrimiento.
+         */
+        foreach ($this->urlsTabuladoEstado($claveEstado) as $urlDirecta) {
+            $urls[] = $urlDirecta;
+        }
 
         $urlConfigurada = trim((string)getenv('INEGI_EDU_PRIORITARIO_URL'));
         if ($urlConfigurada !== '' && $this->esUrlInegi($urlConfigurada)) {
@@ -123,7 +140,7 @@ class InegiPerfilEducativoPrioritarioAutoService
 
         if (empty($urls)) {
             return $this->error(
-                'No se localizó automáticamente un XLSX/ZIP oficial identificado como B2020_07_08_M.'
+                'No se pudo construir una ruta oficial de tabulados educativos para el Estado.'
             );
         }
 
@@ -146,6 +163,62 @@ class InegiPerfilEducativoPrioritarioAutoService
                 ? $primerError
                 : 'Las descargas oficiales localizadas no tuvieron una estructura compatible.'
         );
+    }
+
+    private function urlsTabuladoEstado(string $claveEstado): array
+    {
+        $abreviaturas = [
+            '01' => 'ags',
+            '02' => 'bc',
+            '03' => 'bcs',
+            '04' => 'camp',
+            '05' => 'coah',
+            '06' => 'col',
+            '07' => 'chis',
+            '08' => 'chih',
+            '09' => 'cdmx',
+            '10' => 'dgo',
+            '11' => 'gto',
+            '12' => 'gro',
+            '13' => 'hgo',
+            '14' => 'jal',
+            '15' => 'mex',
+            '16' => 'mich',
+            '17' => 'mor',
+            '18' => 'nay',
+            '19' => 'nl',
+            '20' => 'oax',
+            '21' => 'pue',
+            '22' => 'qro',
+            '23' => 'qroo',
+            '24' => 'slp',
+            '25' => 'sin',
+            '26' => 'son',
+            '27' => 'tab',
+            '28' => 'tamps',
+            '29' => 'tlax',
+            '30' => 'ver',
+            '31' => 'yuc',
+            '32' => 'zac'
+        ];
+
+        $claveEstado = str_pad(
+            preg_replace('/\D+/', '', $claveEstado) ?? '',
+            2,
+            '0',
+            STR_PAD_LEFT
+        );
+        $abreviatura = $abreviaturas[$claveEstado] ?? '';
+
+        if ($abreviatura === '') {
+            return [];
+        }
+
+        $base = 'https://www.inegi.org.mx/contenidos/programas/ccpv/2020/tabulados/';
+
+        return [
+            $base . 'cpv2020_b_' . $abreviatura . '_07_educacion.xlsx'
+        ];
     }
 
     private function extraerEnlacesCompatibles(string $html, string $base): array
@@ -435,6 +508,7 @@ class InegiPerfilEducativoPrioritarioAutoService
 
         return $directorio .
             '/inegi_perfil_educativo_prioritario_' .
+            self::CACHE_VERSION . '_' .
             preg_replace('/\D+/', '', $claveEstado) .
             '.json';
     }
