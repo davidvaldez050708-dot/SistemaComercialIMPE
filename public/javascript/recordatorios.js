@@ -13,6 +13,11 @@
         const contenido = root.querySelector('[data-reminder-content]');
         let consultaEnCurso = false;
         let avisoMigracionMostrado = false;
+        let recordatoriosActuales = [];
+        let indiceToastRecordatorio = 0;
+
+        const INTERVALO_TOAST_RECORDATORIO = 3 * 60 * 1000;
+        const DURACION_TOAST = 7000;
 
         if (endpoint === '') {
             return;
@@ -150,7 +155,6 @@
                         '<strong>' + escapar(aviso.titulo || 'Notificación') + '</strong>' +
                         '<span>' + escapar(aviso.mensaje || '') + '</span>' +
                     '</span>' +
-                    '<button type="button" class="btn-close reminder-toast-close" aria-label="Cerrar notificación"></button>' +
                 '</div>';
 
             const url = urlRecordatorio(aviso);
@@ -171,15 +175,6 @@
             });
             let temporizadorCierre = null;
 
-            const botonCerrar = toast.querySelector('.reminder-toast-close');
-            if (botonCerrar) {
-                botonCerrar.addEventListener('click', function (evento) {
-                    evento.preventDefault();
-                    evento.stopPropagation();
-                    instanciaToast.hide();
-                });
-            }
-
             toast.addEventListener('hidden.bs.toast', function () {
                 if (temporizadorCierre !== null) {
                     window.clearTimeout(temporizadorCierre);
@@ -191,11 +186,48 @@
             instanciaToast.show();
             temporizadorCierre = window.setTimeout(function () {
                 instanciaToast.hide();
-            }, 6000);
+            }, DURACION_TOAST);
+        };
+
+        const esRecordatorioToast = function (recordatorio) {
+            const estado = estadoVisibleRecordatorio(recordatorio);
+            return ['vencida', 'proxima', 'hoy', 'manana', 'mañana'].includes(estado);
+        };
+
+        const mostrarSiguienteToastRecordatorio = function () {
+            const disponibles = recordatoriosActuales.filter(esRecordatorioToast);
+
+            if (disponibles.length === 0) {
+                return;
+            }
+
+            if (indiceToastRecordatorio >= disponibles.length) {
+                indiceToastRecordatorio = 0;
+            }
+
+            const recordatorio = disponibles[indiceToastRecordatorio];
+            indiceToastRecordatorio = (indiceToastRecordatorio + 1) % disponibles.length;
+            const estado = estadoVisibleRecordatorio(recordatorio);
+            const vencida = estado === 'vencida';
+            const entidad = String(recordatorio.nombre_entidad || 'Seguimiento').trim();
+            const accion = String(recordatorio.accion || 'Revisar pendiente').trim();
+            const etiqueta = etiquetaVisibleRecordatorio(recordatorio);
+
+            mostrarToast({
+                id: recordatorio.id,
+                seguimiento_id: recordatorio.seguimiento_id,
+                reunion_id: recordatorio.reunion_id,
+                url: recordatorio.url,
+                icono: recordatorio.icono,
+                tipo: vencida ? 'VENCIDA' : 'RECORDATORIO',
+                titulo: vencida ? 'Acción vencida' : 'Próxima acción',
+                mensaje: accion + ' · ' + entidad + (etiqueta ? ' · ' + etiqueta : '')
+            });
         };
 
         const renderizarRecordatorios = function (recordatorios) {
             const lista = Array.isArray(recordatorios) ? recordatorios : [];
+            recordatoriosActuales = lista;
 
             if (badge) {
                 if (lista.length > 0) {
@@ -292,6 +324,11 @@
 
         consultarRecordatorios();
         window.setInterval(consultarRecordatorios, 60000);
+        window.setTimeout(mostrarSiguienteToastRecordatorio, 45000);
+        window.setInterval(
+            mostrarSiguienteToastRecordatorio,
+            INTERVALO_TOAST_RECORDATORIO
+        );
 
         document.addEventListener('visibilitychange', function () {
             if (!document.hidden) {
