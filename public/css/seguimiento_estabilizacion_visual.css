@@ -159,6 +159,13 @@
     resize: vertical;
 }
 
+.linkage-work-form .linkage-work-field-hint {
+    margin-top: 4px;
+    font-size: 11px;
+    line-height: 1.35;
+    color: #7a8699;
+}
+
 .linkage-flow-window {
     width: 100%;
     min-width: 0;
