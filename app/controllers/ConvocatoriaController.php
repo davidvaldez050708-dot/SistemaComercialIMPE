@@ -15,8 +15,9 @@ class ConvocatoriaController
         $estatusFiltro = in_array((string)($_GET['estatus'] ?? ''), ['0', '1'], true)
             ? (string)$_GET['estatus']
             : '';
-        $categoriaFiltro = in_array((string)($_GET['categoria'] ?? ''), ['', 'IMJUVE'], true)
-            ? (string)$_GET['categoria']
+        $categoriaSolicitada = (string)($_GET['categoria'] ?? '');
+        $categoriaFiltro = in_array($categoriaSolicitada, ['', 'IMJUVE'], true)
+            ? $categoriaSolicitada
             : '';
 
         $convocatorias = $modelo->obtenerListado(
@@ -55,8 +56,9 @@ class ConvocatoriaController
         $estatusFiltro = in_array((string)($_GET['estatus'] ?? ''), ['0', '1'], true)
             ? (string)$_GET['estatus']
             : '';
-        $categoriaFiltro = in_array((string)($_GET['categoria'] ?? ''), ['', 'IMJUVE'], true)
-            ? (string)$_GET['categoria']
+        $categoriaSolicitada = (string)($_GET['categoria'] ?? '');
+        $categoriaFiltro = in_array($categoriaSolicitada, ['', 'IMJUVE'], true)
+            ? $categoriaSolicitada
             : '';
 
         $estadoFiltro = $territorioSeleccionado
