@@ -864,3 +864,44 @@
         grid-template-columns: 1fr;
     }
 }
+
+
+/* Vista ampliada de la imagen de una convocatoria. */
+.convocatoria-thumb-button {
+    display: inline-flex;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    border-radius: 8px;
+    cursor: zoom-in;
+}
+
+.convocatoria-thumb-button .convocatoria-thumb {
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.convocatoria-thumb-button:hover .convocatoria-thumb {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
+}
+
+.convocatoria-image-dialog {
+    max-width: min(90vw, 820px);
+}
+
+.convocatoria-image-modal .modal-body {
+    padding: 16px;
+    display: flex;
+    justify-content: center;
+    background: #f8fafc;
+}
+
+.convocatoria-image-preview {
+    display: block;
+    max-width: 100%;
+    max-height: 75vh;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    border-radius: 8px;
+}
