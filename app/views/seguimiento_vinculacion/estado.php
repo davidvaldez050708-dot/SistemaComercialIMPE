@@ -1058,7 +1058,7 @@ if (!empty($seguimientosSinMunicipio)) {
                     <strong data-work-contact-role>—</strong>
                 </div>
                 <div>
-                    <span>Teléfono</span>
+                    <span>Teléfono actual de contacto</span>
                     <strong data-work-phone>—</strong>
                 </div>
                 <div>
@@ -1108,8 +1108,9 @@ if (!empty($seguimientosSinMunicipio)) {
                 <span class="linkage-work-form-title">DATOS DE CONTACTO</span>
                 <div class="row g-2">
                     <div class="col-12 col-md-6">
-                        <label class="form-label" for="work_telefono_verificado">Teléfono de contacto</label>
+                        <label class="form-label" for="work_telefono_verificado">Teléfono actual de contacto</label>
                         <input class="form-control" id="work_telefono_verificado" name="telefono_verificado">
+                        <div class="form-text">Puede ser distinto al teléfono fuente; el dato original no se reemplaza.</div>
                     </div>
                     <div class="col-12 col-md-6">
                         <label class="form-label" for="work_whatsapp_verificado">WhatsApp</label>
