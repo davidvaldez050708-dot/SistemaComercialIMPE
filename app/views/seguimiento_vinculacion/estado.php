@@ -1187,6 +1187,7 @@ if (!empty($seguimientosSinMunicipio)) {
                             <option value="NUMERO_INCORRECTO">Número incorrecto</option>
                             <option value="CONTACTO_INCORRECTO">Contacto incorrecto</option>
                             <option value="CONTACTO_CORRECTO">Contacto correcto</option>
+                            <option value="CONTACTO_REFERIDO">Me proporcionaron otro contacto</option>
                             <option value="SOLICITO_INFORMACION">Solicitó información</option>
                             <option value="SOLICITO_LLAMAR_DESPUES">Solicitó volver a llamar</option>
                             <option value="NO_INTERESADO">No interesado</option>
