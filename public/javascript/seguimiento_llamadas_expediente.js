@@ -8,16 +8,19 @@
         };
 
         const RESULTADOS = {
-            CONTACTADO: 'Contactado',
+            CONTACTADO: 'Contacto correcto',
             NO_CONTESTO: 'No contestó',
             OCUPADO: 'Ocupado',
-            NUMERO_INCORRECTO: 'Número incorrecto',
-            SOLICITO_LLAMAR_DESPUES: 'Solicitó llamar después',
-            MENSAJE_ENVIADO: 'Solicitó información',
-            CORREO_ENVIADO: 'Correo enviado',
             SIN_RESPUESTA: 'Sin respuesta',
             BUZON_VOZ: 'Buzón de voz',
-            FUERA_SERVICIO: 'Fuera de servicio',
+            FUERA_SERVICIO: 'Fuera del área / fuera de servicio',
+            NUMERO_INCORRECTO: 'Número incorrecto',
+            CONTACTO_INCORRECTO: 'Contacto incorrecto',
+            SOLICITO_INFORMACION: 'Solicitó información',
+            SOLICITO_LLAMAR_DESPUES: 'Solicitó volver a llamar',
+            MENSAJE_ENVIADO: 'Mensaje enviado',
+            CORREO_ENVIADO: 'Correo enviado',
+            NO_INTERESADO: 'No interesado',
             OTRO: 'Otro'
         };
 
@@ -98,7 +101,7 @@
 
             const opcionesEspeciales = [
                 { valor: 'BUZON_VOZ', etiqueta: 'Buzón de voz' },
-                { valor: 'FUERA_SERVICIO', etiqueta: 'Fuera de servicio' }
+                { valor: 'FUERA_SERVICIO', etiqueta: 'Fuera del área / fuera de servicio' }
             ];
 
             const agregarOpciones = function () {
@@ -148,7 +151,7 @@
 
                 const etiqueta = valor === 'BUZON_VOZ'
                     ? 'Buzón de voz'
-                    : 'Fuera de servicio';
+                    : 'Fuera del área / fuera de servicio';
 
                 resumen.innerHTML =
                     '<i class="bi bi-telephone-check me-1"></i>' +
@@ -173,31 +176,6 @@
                 }
             });
 
-            document.addEventListener('submit', function (event) {
-                if (event.target !== formulario) {
-                    return;
-                }
-
-                const valorEspecial = String(resultado.value || '');
-                if (!['BUZON_VOZ', 'FUERA_SERVICIO'].includes(valorEspecial)) {
-                    return;
-                }
-
-                const marcador = MARCADORES[valorEspecial];
-                const observacionOriginal = limpiarMarcadores(observacion.value);
-                const resultadoOriginal = valorEspecial;
-
-                observacion.value = [marcador, observacionOriginal]
-                    .filter(Boolean)
-                    .join('\n');
-                resultado.value = 'OTRO';
-
-                window.setTimeout(function () {
-                    resultado.value = resultadoOriginal;
-                    observacion.value = observacionOriginal;
-                }, 0);
-            }, true);
-
             formulario.addEventListener('reset', function () {
                 window.setTimeout(actualizarOpciones, 0);
             });
@@ -220,7 +198,7 @@
                 if (notas.includes(MARCADORES.BUZON_VOZ)) {
                     etiqueta = 'Buzón de voz';
                 } else if (notas.includes(MARCADORES.FUERA_SERVICIO)) {
-                    etiqueta = 'Fuera de servicio';
+                    etiqueta = 'Fuera del área / fuera de servicio';
                 }
 
                 if (!etiqueta) {
