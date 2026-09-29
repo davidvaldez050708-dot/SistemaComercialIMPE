@@ -50,6 +50,8 @@ class InteraccionRutaService
         $resultadoFormulario = strtoupper(trim((string)($datos['resultado'] ?? '')));
         $resultados = [
             'SIN_RESPUESTA' => 'SIN_RESPUESTA',
+            'BUZON_VOZ' => 'BUZON_VOZ',
+            'FUERA_SERVICIO' => 'FUERA_SERVICIO',
             'NUMERO_INCORRECTO' => 'NUMERO_INCORRECTO',
             'CONTACTO_INCORRECTO' => 'CONTACTO_INCORRECTO',
             'CONTACTO_CORRECTO' => 'CONTACTADO',
@@ -255,6 +257,8 @@ class InteraccionRutaService
     {
         $etiquetas = [
             'SIN_RESPUESTA' => 'Sin respuesta',
+            'BUZON_VOZ' => 'Buzón de voz',
+            'FUERA_SERVICIO' => 'Fuera del área / fuera de servicio',
             'NUMERO_INCORRECTO' => 'Número incorrecto',
             'CONTACTO_INCORRECTO' => 'Contacto incorrecto',
             'CONTACTO_CORRECTO' => 'Contacto correcto',
