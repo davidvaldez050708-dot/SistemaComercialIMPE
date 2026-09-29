@@ -16,7 +16,7 @@
         const labels = {
             actividad: {
                 help: 'El periodo se aplica a las actividades e interacciones registradas por ti.',
-                fields: ['periodo', 'territorio', 'actividad']
+                fields: ['periodo', 'territorio']
             },
             cartera: {
                 help: 'Consulta el estado actual de tu cartera. Puedes acotar territorio, municipio, etapa o inactividad.',
