@@ -80,6 +80,23 @@
             if (endLabel) endLabel.textContent = mode === 'actividad' ? 'Actividad hasta' : 'Fecha final';
             if (help) help.textContent = labels[mode].help;
             periodShortcuts?.classList.toggle('d-none', mode !== 'actividad');
+
+            if (
+                mode === 'actividad' &&
+                startDate &&
+                endDate &&
+                startDate.value === '' &&
+                endDate.value === ''
+            ) {
+                const now = new Date();
+                const today = [
+                    now.getFullYear(),
+                    String(now.getMonth() + 1).padStart(2, '0'),
+                    String(now.getDate()).padStart(2, '0')
+                ].join('-');
+                startDate.value = today;
+                endDate.value = today;
+            }
         };
 
         const formatDate = function (date) {
