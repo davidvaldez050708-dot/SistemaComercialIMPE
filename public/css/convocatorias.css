@@ -1071,3 +1071,200 @@
         max-width: none;
     }
 }
+
+
+/* Resumen de convocatorias recientes en la selección de tipo. */
+.convocatoria-type-overview {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(360px, 430px);
+    gap: 18px;
+    align-items: start;
+    margin-top: 18px;
+}
+
+.convocatoria-type-overview .convocatoria-type-cards {
+    margin-top: 0;
+}
+
+.convocatoria-recent-panel,
+.convocatoria-recent-panel * {
+    font-family: 'Manrope', sans-serif;
+}
+
+.convocatoria-recent-panel {
+    min-width: 0;
+    padding: 16px;
+}
+
+.convocatoria-recent-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+
+.convocatoria-recent-heading h3 {
+    margin: 0;
+    color: var(--color-text-primary);
+    font-size: 13.5px;
+    font-weight: 800;
+    line-height: 1.35;
+}
+
+.convocatoria-recent-heading p {
+    margin: 3px 0 0;
+    color: var(--color-text-secondary);
+    font-size: 10.5px;
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+.convocatoria-recent-toggle {
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 0;
+    background: transparent;
+    color: var(--color-primary);
+    font-size: 10.5px;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.convocatoria-recent-list {
+    display: grid;
+}
+
+.convocatoria-recent-item {
+    min-height: 54px;
+    padding: 8px 0;
+    display: grid;
+    grid-template-columns: 38px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+    border-top: 1px solid #edf0f4;
+}
+
+.convocatoria-recent-item:first-child {
+    border-top: 0;
+}
+
+.convocatoria-recent-item:hover .convocatoria-recent-copy strong {
+    color: var(--color-primary);
+}
+
+.convocatoria-recent-icon {
+    width: 36px;
+    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-md);
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
+    font-size: 16px;
+}
+
+.convocatoria-recent-icon-bachillerato {
+    background: #fff0f5;
+    color: #c83b7a;
+}
+
+.convocatoria-recent-icon-sindicatos {
+    background: #eef8f4;
+    color: var(--color-accent);
+}
+
+.convocatoria-recent-copy {
+    min-width: 0;
+    display: grid;
+    gap: 2px;
+}
+
+.convocatoria-recent-copy strong {
+    overflow: hidden;
+    color: var(--color-text-primary);
+    font-size: 11.5px;
+    font-weight: 800;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    transition: color 0.18s ease;
+}
+
+.convocatoria-recent-copy small {
+    overflow: hidden;
+    color: var(--color-text-secondary);
+    font-size: 9.5px;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.convocatoria-process-badge {
+    min-height: 24px;
+    padding: 4px 9px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    font-size: 9.5px;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.convocatoria-process-activa {
+    background: #e6f7f2;
+    color: #07866f;
+}
+
+.convocatoria-process-proxima {
+    background: #fff1df;
+    color: #d46a13;
+}
+
+.convocatoria-process-finalizada,
+.convocatoria-process-inactiva {
+    background: #eef1f5;
+    color: #778196;
+}
+
+.convocatoria-recent-empty {
+    min-height: 118px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    color: var(--color-text-secondary);
+    font-size: 11px;
+    font-weight: 600;
+    text-align: center;
+}
+
+.convocatoria-recent-empty i {
+    color: var(--color-primary);
+    font-size: 18px;
+}
+
+@media (max-width: 1199.98px) {
+    .convocatoria-type-overview {
+        grid-template-columns: 1fr;
+    }
+
+    .convocatoria-recent-panel {
+        max-width: 620px;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .convocatoria-recent-item {
+        grid-template-columns: 34px minmax(0, 1fr);
+    }
+
+    .convocatoria-process-badge {
+        grid-column: 2;
+        justify-self: start;
+    }
+}
