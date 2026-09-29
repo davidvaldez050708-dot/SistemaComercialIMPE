@@ -32,14 +32,60 @@
         }
     };
 
-    const factors = function (items) {
+    const factors = function (items, components) {
         if (!items.length) {
             return '<p class="data-municipality-analysis-empty">Todavía no hay factores suficientes para explicar la oportunidad.</p>';
         }
 
+        const order = [
+            ['poblacion', 20],
+            ['adulto_25_49', 20],
+            ['brecha_volumen', 30],
+            ['brecha_incidencia', 20],
+            ['economia_municipal', 10]
+        ];
+
+        let componentIndex = 0;
+
         return '<div class="data-municipality-analysis-factors">' +
             items.map(function (item) {
-                return '<div><i class="bi bi-check-circle"></i><span>' + escapeHtml(item) + '</span></div>';
+                let level = 'relevant';
+                let label = 'Señal relevante';
+
+                while (
+                    componentIndex < order.length &&
+                    Number(components?.[order[componentIndex][0]] || 0) <= 0
+                ) {
+                    componentIndex++;
+                }
+
+                if (componentIndex < order.length) {
+                    const key = order[componentIndex][0];
+                    const max = order[componentIndex][1];
+                    const value = Number(components?.[key] || 0);
+                    const ratio = max > 0 ? value / max : 0;
+
+                    if (ratio >= 0.8) {
+                        level = 'strong';
+                        label = 'Señal fuerte';
+                    } else if (ratio <= 0.4) {
+                        level = 'secondary';
+                        label = 'Señal secundaria';
+                    }
+
+                    componentIndex++;
+                }
+
+                return '<div class="data-municipality-analysis-factor data-municipality-analysis-factor-' +
+                    level + '">' +
+                    '<i class="bi ' +
+                        (level === 'strong'
+                            ? 'bi-check-circle-fill'
+                            : (level === 'secondary' ? 'bi-circle' : 'bi-check-circle')) +
+                    '"></i>' +
+                    '<span>' + escapeHtml(item) + '</span>' +
+                    '<small>' + escapeHtml(label) + '</small>' +
+                '</div>';
             }).join('') +
             '</div>';
     };
@@ -66,6 +112,7 @@
         const rank = Number(button.dataset.ranking || 0);
         const totalRank = Number(button.dataset.totalRanking || 0);
         const reasons = parseList(button.dataset.motivos);
+        const components = parseObject(button.dataset.componentes);
         const limitations = parseList(button.dataset.limitaciones);
         const adultProfile = parseObject(button.dataset.perfilAdulto);
         const educationalProfile = parseObject(button.dataset.perfilEducativo);
@@ -98,20 +145,32 @@
             ? '<section class="data-municipality-analysis-section data-municipality-analysis-adult-section">' +
                 '<div class="data-municipality-analysis-section-heading"><h4>Perfil educativo prioritario</h4><span>INEGI · ' +
                     escapeHtml(educationalPeriod) + '</span></div>' +
-                '<div class="data-municipality-analysis-adult-grid">' +
-                    '<div><span>Adultos 25–49</span><strong>' +
-                        number(educationalProfile.poblacion_25_49) + '</strong></div>' +
-                    '<div><span>Sin estudios de media superior</span><strong>' +
-                        number(educationalProfile.sin_estudios_media_superior_25_49) + '</strong><small>' +
+                '<div class="data-municipality-analysis-adult-grid data-municipality-analysis-education-grid">' +
+                    '<div class="is-total"><span>Adultos 25–49</span><strong>' +
+                        number(educationalProfile.poblacion_25_49) + '</strong><small>Universo prioritario</small></div>' +
+                    '<div class="is-priority"><span>Sin estudios de media superior</span><strong>' +
+                        number(educationalProfile.sin_estudios_media_superior_25_49) + '</strong><small class="data-municipality-analysis-percentage">' +
                         (Number.isFinite(Number(educationalProfile.sin_estudios_media_superior_pct))
                             ? Number(educationalProfile.sin_estudios_media_superior_pct).toFixed(2) + ' %'
                             : '—') +
                         '</small></div>' +
                     '<div><span>Media superior sin superior</span><strong>' +
-                        number(educationalProfile.media_superior_sin_superior_25_49) + '</strong><small>' +
+                        number(educationalProfile.media_superior_sin_superior_25_49) + '</strong><small class="data-municipality-analysis-percentage">' +
                         (Number.isFinite(Number(educationalProfile.media_superior_sin_superior_pct))
                             ? Number(educationalProfile.media_superior_sin_superior_pct).toFixed(2) + ' %'
                             : '—') +
+                        '</small></div>' +
+                    '<div><span>Con educación superior</span><strong>' +
+                        number(educationalProfile.con_educacion_superior_25_49) + '</strong><small class="data-municipality-analysis-percentage">' +
+                        (
+                            Number(educationalProfile.poblacion_25_49) > 0 &&
+                            Number.isFinite(Number(educationalProfile.con_educacion_superior_25_49))
+                                ? (
+                                    Number(educationalProfile.con_educacion_superior_25_49) /
+                                    Number(educationalProfile.poblacion_25_49) * 100
+                                  ).toFixed(2) + ' %'
+                                : '—'
+                        ) +
                         '</small></div>' +
                 '</div>' +
                 '<p class="data-municipality-analysis-caption">Este bloque sí corresponde al universo prioritario de 25 a 49 años utilizado por el índice municipal. Fuente: ' +
@@ -194,9 +253,17 @@
                             '<h3>' + escapeHtml(name) + '</h3>' +
                             '<span class="data-municipality-analysis-action data-municipality-analysis-action-' + escapeHtml(priority) + '">' +
                                 escapeHtml(action) + '</span>' +
+                            '<span class="data-municipality-analysis-priority-meta">' +
+                                escapeHtml(
+                                    (priority === 'alta'
+                                        ? 'Prioridad alta'
+                                        : (priority === 'media' ? 'Prioridad media' : 'Prioridad baja')) +
+                                    (rank > 0 && totalRank > 0 ? ' · posición ' + rank + ' de ' + totalRank : '')
+                                ) +
+                            '</span>' +
                         '</div>' +
                     '</div>' +
-                    '<div class="data-municipality-analysis-index"><strong>' + score + '</strong><span>Índice de oportunidad</span></div>' +
+                    '<div class="data-municipality-analysis-index"><strong>' + score + '<em>/100</em></strong><span>Índice relativo de oportunidad</span></div>' +
                 '</header>' +
                 '<div class="data-municipality-analysis-summary">' +
                     '<div><span>Población</span><strong>' + number(button.dataset.poblacion) + '</strong></div>' +
@@ -207,7 +274,7 @@
                 '</div>' +
                 '<section class="data-municipality-analysis-section">' +
                     '<div class="data-municipality-analysis-section-heading"><h4>¿Qué explica esta posición?</h4><span>Factores del índice actual</span></div>' +
-                    factors(reasons) +
+                    factors(reasons, components) +
                 '</section>' +
                 educationalHtml +
                 laborHtml +
