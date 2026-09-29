@@ -223,7 +223,11 @@ foreach ($modelo->obtenerInteraccionesSeguimiento($seguimientoId) as $interaccio
         $excluirGrabacion = true;
     }
 
-    if (in_array($resultado, ['NO_CONTESTO', 'SIN_RESPUESTA', 'NUMERO_INCORRECTO'], true)) {
+    if (in_array(
+        $resultado,
+        ['NO_CONTESTO', 'SIN_RESPUESTA', 'BUZON_VOZ', 'FUERA_SERVICIO', 'NUMERO_INCORRECTO'],
+        true
+    )) {
         $excluirGrabacion = true;
     }
 
