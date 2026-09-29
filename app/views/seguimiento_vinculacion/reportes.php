@@ -83,6 +83,37 @@ $subtituloReporteGenerado =
     $modoSeguimiento === 'analista'
         ? ($titulosReporteAnalista[$tipoReporteActual]['subtitulo'] ?? 'Resultados calculados con los criterios seleccionados.')
         : 'Resultados calculados con los criterios seleccionados.';
+
+if (
+    $modoSeguimiento === 'analista' &&
+    $tipoReporteActual === 'institucion' &&
+    count($seguimientosReporte) === 1
+) {
+    $institucionEncabezado = $seguimientosReporte[0];
+    $nombreInstitucionEncabezado = trim((string)($institucionEncabezado['nombre_entidad'] ?? ''));
+    $ubicacionInstitucionEncabezado = implode(', ', array_values(array_filter([
+        trim((string)($institucionEncabezado['municipio'] ?? '')),
+        trim((string)($institucionEncabezado['estado_nombre'] ?? ''))
+    ])));
+
+    $subtituloReporteGenerado = trim(
+        $nombreInstitucionEncabezado .
+        ($ubicacionInstitucionEncabezado !== '' ? ' · ' . $ubicacionInstitucionEncabezado : '')
+    );
+}
+
+$fechaHoraReporte = static function ($valor) {
+    $valor = trim((string)$valor);
+    if ($valor === '') {
+        return '—';
+    }
+
+    try {
+        return (new DateTime($valor))->format('d/m/Y · H:i');
+    } catch (Throwable $error) {
+        return $valor;
+    }
+};
 $evolucionActividad = [
     'periodos' => [],
     'total' => 0,
@@ -872,14 +903,27 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
             <?php if (!empty($interaccionesInstitucion)): ?>
                 <div class="table-responsive">
                     <table class="table users-table align-middle mb-0">
-                        <thead><tr><th>Fecha</th><th>Canal</th><th>Resultado</th><th>Responsable</th></tr></thead>
+                        <thead><tr><th>Fecha</th><th>Interacción</th><th>Resultado</th><th>Resumen</th></tr></thead>
                         <tbody>
                         <?php foreach ($interaccionesInstitucion as $actividad): ?>
                             <tr>
-                                <td><?= $texto($actividad['fecha_inicio'] ?? '—') ?></td>
-                                <td><?= $texto($etiquetaCanalReporte($actividad['canal'] ?? '')) ?></td>
-                                <td><?= $texto($etiquetaResultadoReporte($actividad['resultado'] ?? '')) ?></td>
-                                <td><?= $texto(trim((string)($actividad['nombre'] ?? '') . ' ' . (string)($actividad['apellidos'] ?? ''))) ?></td>
+                                <?php
+                                $presentacionActividad = is_array($actividad['presentacion'] ?? null)
+                                    ? $actividad['presentacion']
+                                    : [];
+                                $tituloActividad = trim((string)($presentacionActividad['titulo'] ?? ''));
+                                $resultadoActividad = trim((string)($presentacionActividad['resultado_label'] ?? ''));
+                                $resumenActividad = trim((string)($presentacionActividad['resumen'] ?? ''));
+                                ?>
+                                <td class="analyst-history-date"><?= $texto($fechaHoraReporte($actividad['fecha_inicio'] ?? '')) ?></td>
+                                <td>
+                                    <strong class="analyst-history-title"><?= $texto($tituloActividad !== '' ? $tituloActividad : $etiquetaCanalReporte($actividad['canal'] ?? '')) ?></strong>
+                                    <span class="analyst-history-owner"><?= $texto(trim((string)($actividad['nombre'] ?? '') . ' ' . (string)($actividad['apellidos'] ?? ''))) ?></span>
+                                </td>
+                                <td>
+                                    <span class="analyst-history-result"><?= $texto($resultadoActividad !== '' ? $resultadoActividad : $etiquetaResultadoReporte($actividad['resultado'] ?? '')) ?></span>
+                                </td>
+                                <td class="analyst-history-summary"><?= $texto($resumenActividad !== '' ? $resumenActividad : 'Sin detalle adicional') ?></td>
                             </tr>
                         <?php endforeach; ?>
                         </tbody>
