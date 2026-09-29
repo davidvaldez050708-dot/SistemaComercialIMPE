@@ -19,7 +19,7 @@
         if (!document.querySelector('link[data-education-target-style]')) {
             const link = document.createElement('link');
             link.rel = 'stylesheet';
-            link.href = 'public/css/educacion_objetivo.css?v=20260929-3';
+            link.href = 'public/css/educacion_objetivo.css?v=20260929-4';
             link.setAttribute('data-education-target-style', '');
             document.head.appendChild(link);
         }
@@ -298,6 +298,21 @@
             const prioridadEstado = perfilPrioritario?.estado || {};
             const prioridadMetricas = prioridadEstado?.metricas || {};
             const prioridadDisponible = perfilPrioritario?.disponible === true;
+            const perfilTitulacion = datos?.perfil_titulacion_experiencia || {};
+            const titulacionDisponible =
+                perfilTitulacion?.disponible === true &&
+                Number(perfilTitulacion?.muestra_base || 0) >= 30 &&
+                Number(perfilTitulacion?.proporcion_3_mas || 0) > 0;
+            const baseEducativaTitulacion = Number(
+                prioridadMetricas.media_superior_sin_superior_25_49 || 0
+            );
+            const titulacionEstimada =
+                titulacionDisponible && baseEducativaTitulacion > 0
+                    ? Math.round(
+                        baseEducativaTitulacion *
+                        Number(perfilTitulacion.proporcion_3_mas) / 100
+                      )
+                    : null;
             const meta = perfilPrioritario?.meta || {};
             const poblacion2549 = adultoMetricas.poblacion_25_49 ??
                 prioridadMetricas.poblacion_25_49;
@@ -402,13 +417,29 @@
                                     '<span>Requiere bachillerato + trayectoria laboral comprobable</span>' +
                                 '</div>' +
                                 '<div class="data-education-titulacion-status">' +
-                                    '<span>Base educativa disponible</span>' +
+                                    '<span>' +
+                                        (titulacionDisponible
+                                            ? 'Potencial territorial estimado'
+                                            : 'Base educativa disponible') +
+                                    '</span>' +
                                     '<b>' +
-                                        (prioridadDisponible
-                                            ? numero(prioridadMetricas.media_superior_sin_superior_25_49)
-                                            : 'Pendiente') +
+                                        (titulacionDisponible && titulacionEstimada !== null
+                                            ? numero(titulacionEstimada)
+                                            : (
+                                                prioridadDisponible
+                                                    ? numero(baseEducativaTitulacion)
+                                                    : 'Pendiente'
+                                              )) +
                                     '</b>' +
-                                    '<small>La experiencia laboral de 3+ años debe estimarse con ENOE; no se infiere del Censo.</small>' +
+                                    '<small>' +
+                                        (titulacionDisponible
+                                            ? porcentaje(perfilTitulacion.proporcion_3_mas) +
+                                                ' de la base educativa presenta 3+ años de antigüedad en el empleo actual según ENOE ' +
+                                                escapar(perfilTitulacion.anio || '') +
+                                                ' T' + escapar(perfilTitulacion.trimestre || '') +
+                                                '. Estimación estatal orientativa; no equivale a elegibilidad individual.'
+                                            : 'Experiencia 3+ años: pendiente ENOE. La escolaridad por sí sola no permite estimar elegibilidad.') +
+                                    '</small>' +
                                 '</div>' +
                             '</article>' +
                         '</div>' +
