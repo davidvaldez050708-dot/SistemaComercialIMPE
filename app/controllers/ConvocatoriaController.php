@@ -21,10 +21,12 @@ class ConvocatoriaController
             : '';
         $tipoConvocatoria = strtolower(trim((string)($_GET['tipo'] ?? '')));
         $subtipoConvocatoria = strtolower(trim((string)($_GET['subtipo'] ?? '')));
+        $esChihuahua = $this->esTerritorioChihuahua($modelo, $estadoFiltro);
 
         $convocatorias = $this->esClasificacionValida(
             $tipoConvocatoria,
-            $subtipoConvocatoria
+            $subtipoConvocatoria,
+            $esChihuahua
         )
             ? $modelo->obtenerListado(
                 $buscar,
@@ -60,10 +62,19 @@ class ConvocatoriaController
             $estados,
             $territorioId
         );
+        $esChihuahua = $territorioSeleccionado &&
+            strcasecmp(trim((string)($territorioSeleccionado['nombre'] ?? '')), 'Chihuahua') === 0;
+
         $tipoConvocatoriaSolicitado = strtolower(trim((string)($_GET['tipo'] ?? '')));
+        $tiposPermitidos = ['titulacion', 'bachillerato'];
+
+        if ($esChihuahua) {
+            $tiposPermitidos[] = 'sindicatos';
+        }
+
         $tipoConvocatoria = in_array(
             $tipoConvocatoriaSolicitado,
-            ['titulacion', 'bachillerato'],
+            $tiposPermitidos,
             true
         ) ? $tipoConvocatoriaSolicitado : '';
 
@@ -78,9 +89,17 @@ class ConvocatoriaController
                 'bachillerato-286',
                 'ingles',
                 'inscripciones-abiertas'
+            ],
+            'sindicatos' => [
+                'sindicatos'
             ]
         ];
         $subtipoConvocatoriaSolicitado = strtolower(trim((string)($_GET['subtipo'] ?? '')));
+
+        if ($tipoConvocatoria === 'sindicatos' && $esChihuahua && $subtipoConvocatoriaSolicitado === '') {
+            $subtipoConvocatoriaSolicitado = 'sindicatos';
+        }
+
         $subtipoConvocatoria = (
             $tipoConvocatoria !== '' &&
             in_array(
@@ -152,6 +171,7 @@ class ConvocatoriaController
         $territorioId = (int)($_POST['territorio_id'] ?? 0);
         $tipoConvocatoria = strtolower(trim((string)($_POST['tipo'] ?? '')));
         $subtipoConvocatoria = strtolower(trim((string)($_POST['subtipo'] ?? '')));
+        $esChihuahua = $this->esTerritorioChihuahua($modelo, $territorioId);
         $datos = $this->limpiarDatos($_POST);
         $estadosIds = $this->limpiarEstados($_POST['estados'] ?? []);
 
@@ -161,7 +181,7 @@ class ConvocatoriaController
 
         $errores = $this->validarDatos($datos, $estadosIds, true);
 
-        if (!$this->esClasificacionValida($tipoConvocatoria, $subtipoConvocatoria)) {
+        if (!$this->esClasificacionValida($tipoConvocatoria, $subtipoConvocatoria, $esChihuahua)) {
             $errores[] = 'La opción de convocatoria seleccionada no es válida.';
         }
 
@@ -210,6 +230,7 @@ class ConvocatoriaController
         $territorioId = (int)($_POST['territorio_id'] ?? 0);
         $tipoConvocatoria = strtolower(trim((string)($_POST['tipo'] ?? '')));
         $subtipoConvocatoria = strtolower(trim((string)($_POST['subtipo'] ?? '')));
+        $esChihuahua = $this->esTerritorioChihuahua($modelo, $territorioId);
         $id = (int)($_POST['id'] ?? 0);
         $convocatoriaOriginal = $modelo->buscarPorId($id);
 
@@ -219,7 +240,7 @@ class ConvocatoriaController
         }
 
         if (
-            !$this->esClasificacionValida($tipoConvocatoria, $subtipoConvocatoria) ||
+            !$this->esClasificacionValida($tipoConvocatoria, $subtipoConvocatoria, $esChihuahua) ||
             (string)($convocatoriaOriginal['tipo_convocatoria'] ?? '') !== $tipoConvocatoria ||
             (string)($convocatoriaOriginal['subtipo_convocatoria'] ?? '') !== $subtipoConvocatoria
         ) {
@@ -285,6 +306,7 @@ class ConvocatoriaController
         $territorioId = (int)($_POST['territorio_id'] ?? 0);
         $tipoConvocatoria = strtolower(trim((string)($_POST['tipo'] ?? '')));
         $subtipoConvocatoria = strtolower(trim((string)($_POST['subtipo'] ?? '')));
+        $esChihuahua = $this->esTerritorioChihuahua($modelo, $territorioId);
         $id = (int)($_POST['id'] ?? 0);
         $estado = in_array((string)($_POST['estado'] ?? ''), ['0', '1'], true)
             ? (int)$_POST['estado']
@@ -298,7 +320,7 @@ class ConvocatoriaController
         }
 
         if (
-            !$this->esClasificacionValida($tipoConvocatoria, $subtipoConvocatoria) ||
+            !$this->esClasificacionValida($tipoConvocatoria, $subtipoConvocatoria, $esChihuahua) ||
             (string)($convocatoria['tipo_convocatoria'] ?? '') !== $tipoConvocatoria ||
             (string)($convocatoria['subtipo_convocatoria'] ?? '') !== $subtipoConvocatoria
         ) {
@@ -388,7 +410,7 @@ class ConvocatoriaController
         exit;
     }
 
-    private function esClasificacionValida($tipo, $subtipo)
+    private function esClasificacionValida($tipo, $subtipo, $esChihuahua = false)
     {
         $subtiposPermitidos = [
             'titulacion' => [
@@ -404,8 +426,27 @@ class ConvocatoriaController
             ]
         ];
 
+        if ($esChihuahua) {
+            $subtiposPermitidos['sindicatos'] = ['sindicatos'];
+        }
+
         return isset($subtiposPermitidos[$tipo]) &&
             in_array($subtipo, $subtiposPermitidos[$tipo], true);
+    }
+
+    private function esTerritorioChihuahua($modelo, $territorioId)
+    {
+        if ((int)$territorioId <= 0) {
+            return false;
+        }
+
+        $territorio = $this->obtenerTerritorioSeleccionado(
+            $modelo->obtenerEstados(),
+            (int)$territorioId
+        );
+
+        return $territorio &&
+            strcasecmp(trim((string)($territorio['nombre'] ?? '')), 'Chihuahua') === 0;
     }
 
     private function obtenerTerritorioSeleccionado($estados, $territorioId)
