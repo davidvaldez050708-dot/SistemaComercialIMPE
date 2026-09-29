@@ -9,6 +9,38 @@
             return;
         }
 
+        let perfilEconomico = {
+            estado: '',
+            sectores: [],
+            sectores_sobrerrepresentados: []
+        };
+
+        try {
+            const nodoPerfil = seccionEducacion.querySelector(
+                '[data-education-economic-profile]'
+            );
+            const perfilLeido = nodoPerfil
+                ? JSON.parse(nodoPerfil.textContent || '{}')
+                : {};
+
+            perfilEconomico = {
+                estado: String(perfilLeido?.estado || ''),
+                sectores: Array.isArray(perfilLeido?.sectores)
+                    ? perfilLeido.sectores
+                    : [],
+                sectores_sobrerrepresentados:
+                    Array.isArray(perfilLeido?.sectores_sobrerrepresentados)
+                        ? perfilLeido.sectores_sobrerrepresentados
+                        : []
+            };
+        } catch (error) {
+            perfilEconomico = {
+                estado: '',
+                sectores: [],
+                sectores_sobrerrepresentados: []
+            };
+        }
+
         const params = new URLSearchParams(window.location.search);
         const estadoId = Number(params.get('estado_id') || 0);
 
@@ -19,7 +51,7 @@
         if (!document.querySelector('link[data-education-target-style]')) {
             const link = document.createElement('link');
             link.rel = 'stylesheet';
-            link.href = 'public/css/educacion_objetivo.css?v=20260929-4';
+            link.href = 'public/css/educacion_objetivo.css?v=20260929-5';
             link.setAttribute('data-education-target-style', '');
             document.head.appendChild(link);
         }
@@ -290,6 +322,188 @@
             );
         };
 
+        const construirRecomendacionesOferta = function (metricas) {
+            const pctSinMedia = Number(
+                metricas?.sin_estudios_media_superior_pct ??
+                metricas?.sin_media_superior_concluida_pct ??
+                0
+            );
+            const pctMediaSinSuperior = Number(
+                metricas?.media_superior_sin_superior_pct || 0
+            );
+
+            const sectores = Array.isArray(perfilEconomico.sectores)
+                ? perfilEconomico.sectores
+                : [];
+            const sobre = Array.isArray(
+                perfilEconomico.sectores_sobrerrepresentados
+            )
+                ? perfilEconomico.sectores_sobrerrepresentados
+                : [];
+
+            const normalizarClave = function (clave) {
+                return String(clave || '').trim();
+            };
+
+            const fuerzaSector = function (claves) {
+                let fuerza = 0;
+
+                sectores.forEach(function (sector) {
+                    if (claves.includes(normalizarClave(sector.clave))) {
+                        fuerza += Math.max(0, Number(sector.porcentaje || 0));
+                    }
+                });
+
+                sobre.forEach(function (sector) {
+                    if (claves.includes(normalizarClave(sector.clave))) {
+                        fuerza += Math.max(
+                            0,
+                            Number(sector.diferencia_puntos || 0)
+                        ) * 1.5;
+                    }
+                });
+
+                return fuerza;
+            };
+
+            const sectorRelacionado = function (claves) {
+                const candidatos = sectores
+                    .filter(function (sector) {
+                        return claves.includes(normalizarClave(sector.clave));
+                    })
+                    .sort(function (a, b) {
+                        return Number(b.porcentaje || 0) -
+                            Number(a.porcentaje || 0);
+                    });
+
+                return candidatos[0]?.nombre || '';
+            };
+
+            const recomendaciones = [
+                {
+                    id: 'bachillerato',
+                    nombre: 'Bachillerato / Ruta SEP-286',
+                    oferta: 'Acreditación y continuidad de educación media superior',
+                    score: pctSinMedia * 1.3,
+                    razon:
+                        porcentaje(pctSinMedia) +
+                        ' de la población 25–49 no registra estudios de media superior.',
+                    evidencia: 'Escolaridad'
+                },
+                {
+                    id: 'ejecutivas',
+                    nombre: 'Carreras ejecutivas',
+                    oferta: 'Continuidad profesional en modalidad flexible',
+                    score:
+                        pctMediaSinSuperior * 1.15 +
+                        fuerzaSector(['52', '54', '55', '56', '61']),
+                    razon:
+                        porcentaje(pctMediaSinSuperior) +
+                        ' del grupo 25–49 tiene media superior sin educación superior.' +
+                        (
+                            sectorRelacionado(['52', '54', '55', '56', '61'])
+                                ? ' Además destaca ' +
+                                  sectorRelacionado(['52', '54', '55', '56', '61']) +
+                                  ' en la estructura económica estatal.'
+                                : ''
+                        ),
+                    evidencia: 'Escolaridad + economía'
+                },
+                {
+                    id: 'seguridad',
+                    nombre: 'Seguridad Pública',
+                    oferta: 'TSU y Licenciatura en Seguridad Pública',
+                    score:
+                        pctMediaSinSuperior +
+                        fuerzaSector(['93']) * 2.2,
+                    razon:
+                        sectorRelacionado(['93'])
+                            ? 'La presencia de ' +
+                              sectorRelacionado(['93']) +
+                              ' incrementa la afinidad territorial de esta oferta.'
+                            : 'La oferta requiere bachillerato; su afinidad se apoya principalmente en la base con media superior disponible.',
+                    evidencia: sectorRelacionado(['93'])
+                        ? 'Escolaridad + sector público'
+                        : 'Escolaridad'
+                },
+                {
+                    id: 'ciberseguridad',
+                    nombre: 'Ciberseguridad',
+                    oferta: 'Licenciatura en Ciberseguridad',
+                    score:
+                        pctMediaSinSuperior +
+                        fuerzaSector(['51', '54']) * 1.8,
+                    razon:
+                        sectorRelacionado(['51', '54'])
+                            ? 'La presencia de ' +
+                              sectorRelacionado(['51', '54']) +
+                              ' aporta afinidad adicional para una oferta tecnológica.'
+                            : 'La base con media superior permite considerarla, aunque el territorio no muestra una señal económica tecnológica fuerte.',
+                    evidencia: sectorRelacionado(['51', '54'])
+                        ? 'Escolaridad + economía'
+                        : 'Escolaridad'
+                }
+            ];
+
+            recomendaciones.sort(function (a, b) {
+                return b.score - a.score;
+            });
+
+            return recomendaciones.slice(0, 3).map(function (item, indice) {
+                return {
+                    ...item,
+                    posicion: indice + 1,
+                    nivel:
+                        indice === 0
+                            ? 'Mayor afinidad'
+                            : (indice === 1 ? 'Afinidad relevante' : 'Afinidad complementaria')
+                };
+            });
+        };
+
+        const renderRecomendacionesOferta = function (metricas) {
+            const recomendaciones = construirRecomendacionesOferta(metricas);
+            const estado = perfilEconomico.estado || 'el territorio';
+
+            return (
+                '<div class="data-education-program-opportunity">' +
+                    '<div class="data-education-program-heading">' +
+                        '<div>' +
+                            '<strong>Ofertas con mayor afinidad territorial</strong>' +
+                            '<span>Recomendación orientativa para ' +
+                                escapar(estado) +
+                                ', construida con escolaridad 25–49 y estructura económica DENUE. No representa demanda confirmada.</span>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="data-education-recommendation-list">' +
+                        recomendaciones.map(function (item) {
+                            return (
+                                '<article class="data-education-recommendation-card">' +
+                                    '<div class="data-education-recommendation-rank">' +
+                                        '<span>' + item.posicion + '</span>' +
+                                    '</div>' +
+                                    '<div class="data-education-recommendation-copy">' +
+                                        '<div class="data-education-recommendation-title">' +
+                                            '<strong>' + escapar(item.nombre) + '</strong>' +
+                                            '<span>' + escapar(item.nivel) + '</span>' +
+                                        '</div>' +
+                                        '<small>' + escapar(item.oferta) + '</small>' +
+                                        '<p>' + escapar(item.razon) + '</p>' +
+                                    '</div>' +
+                                    '<div class="data-education-recommendation-source">' +
+                                        escapar(item.evidencia) +
+                                    '</div>' +
+                                '</article>'
+                            );
+                        }).join('') +
+                    '</div>' +
+                    '<p class="data-education-program-caveat">' +
+                        '<strong>Titulación por experiencia laboral:</strong> se mantiene como oportunidad a validar directamente con aliados y población ocupada; el sistema no estima elegibilidad sin evidencia de experiencia laboral.' +
+                    '</p>' +
+                '</div>'
+            );
+        };
+
         const renderPrioridad = function (datos) {
             const perfilAdulto = datos?.perfil_adulto || {};
             const adultoEstado = perfilAdulto?.estado || {};
@@ -298,21 +512,6 @@
             const prioridadEstado = perfilPrioritario?.estado || {};
             const prioridadMetricas = prioridadEstado?.metricas || {};
             const prioridadDisponible = perfilPrioritario?.disponible === true;
-            const perfilTitulacion = datos?.perfil_titulacion_experiencia || {};
-            const titulacionDisponible =
-                perfilTitulacion?.disponible === true &&
-                Number(perfilTitulacion?.muestra_base || 0) >= 30 &&
-                Number(perfilTitulacion?.proporcion_3_mas || 0) > 0;
-            const baseEducativaTitulacion = Number(
-                prioridadMetricas.media_superior_sin_superior_25_49 || 0
-            );
-            const titulacionEstimada =
-                titulacionDisponible && baseEducativaTitulacion > 0
-                    ? Math.round(
-                        baseEducativaTitulacion *
-                        Number(perfilTitulacion.proporcion_3_mas) / 100
-                      )
-                    : null;
             const meta = perfilPrioritario?.meta || {};
             const poblacion2549 = adultoMetricas.poblacion_25_49 ??
                 prioridadMetricas.poblacion_25_49;
@@ -389,61 +588,7 @@
                         '<small>Los tres segmentos anteriores no se superponen y suman este universo de referencia.</small>' +
                     '</div>' +
 
-                    '<div class="data-education-program-opportunity">' +
-                        '<div class="data-education-program-heading">' +
-                            '<div>' +
-                                '<strong>Aplicación de la oferta educativa</strong>' +
-                                '<span>Relaciona cada línea de Fundación con el perfil territorial sin repetir las cifras principales de arriba.</span>' +
-                            '</div>' +
-                        '</div>' +
-                        '<div class="data-education-program-map">' +
-                            '<article>' +
-                                '<div>' +
-                                    '<strong>Bachillerato</strong>' +
-                                    '<span>Acuerdo 286 / certificación y modalidad en 2 años</span>' +
-                                '</div>' +
-                                '<small>Perfil relacionado: adultos sin estudios de media superior.</small>' +
-                            '</article>' +
-                            '<article>' +
-                                '<div>' +
-                                    '<strong>Continuidad profesional</strong>' +
-                                    '<span>Carreras ejecutivas, Seguridad Pública y Ciberseguridad</span>' +
-                                '</div>' +
-                                '<small>Perfil relacionado: adultos con media superior y sin educación superior.</small>' +
-                            '</article>' +
-                            '<article class="is-titulacion">' +
-                                '<div>' +
-                                    '<strong>Titulación por experiencia laboral</strong>' +
-                                    '<span>Requiere bachillerato + trayectoria laboral comprobable</span>' +
-                                '</div>' +
-                                '<div class="data-education-titulacion-status">' +
-                                    '<span>' +
-                                        (titulacionDisponible
-                                            ? 'Potencial territorial estimado'
-                                            : 'Base educativa disponible') +
-                                    '</span>' +
-                                    '<b>' +
-                                        (titulacionDisponible && titulacionEstimada !== null
-                                            ? numero(titulacionEstimada)
-                                            : (
-                                                prioridadDisponible
-                                                    ? numero(baseEducativaTitulacion)
-                                                    : 'Pendiente'
-                                              )) +
-                                    '</b>' +
-                                    '<small>' +
-                                        (titulacionDisponible
-                                            ? porcentaje(perfilTitulacion.proporcion_3_mas) +
-                                                ' de la base educativa presenta 3+ años de antigüedad en el empleo actual según ENOE ' +
-                                                escapar(perfilTitulacion.anio || '') +
-                                                ' T' + escapar(perfilTitulacion.trimestre || '') +
-                                                '. Estimación estatal orientativa; no equivale a elegibilidad individual.'
-                                            : 'Experiencia 3+ años: pendiente ENOE. La escolaridad por sí sola no permite estimar elegibilidad.') +
-                                    '</small>' +
-                                '</div>' +
-                            '</article>' +
-                        '</div>' +
-                    '</div>' +
+                    renderRecomendacionesOferta(prioridadMetricas) +
 
                     renderGruposAdultos(adultoMetricas, prioridadEstado) +
 
