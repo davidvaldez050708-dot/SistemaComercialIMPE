@@ -385,6 +385,37 @@ try {
     );
     $stmtActualizar->execute();
 
+    $verificacionEfectiva =
+        $huboRespuesta &&
+        strpos($notasInteraccion, '[VERIFICACION_EFECTIVA]') !== false;
+    $yaContabilizadaHoy = false;
+
+    if ($verificacionEfectiva) {
+        $fechaConteo = substr((string)$fechaInicio, 0, 10);
+        $sqlDuplicada = "SELECT COUNT(*) AS total
+            FROM interacciones_vinculacion
+            WHERE seguimiento_id = ?
+              AND usuario_id = ?
+              AND id <> ?
+              AND canal = 'LLAMADA_IP'
+              AND DATE(fecha_inicio) = ?
+              AND notas LIKE '%[VERIFICACION_EFECTIVA]%'
+              AND TRIM(COALESCE(proveedor_externo, '')) <> ''
+              AND TRIM(COALESCE(id_externo, '')) <> ''
+              AND COALESCE(duracion_segundos, 0) > 0";
+        $stmtDuplicada = $connection->prepare($sqlDuplicada);
+        $stmtDuplicada->bind_param(
+            'iiis',
+            $seguimientoId,
+            $usuarioId,
+            $interaccionId,
+            $fechaConteo
+        );
+        $stmtDuplicada->execute();
+        $filaDuplicada = $stmtDuplicada->get_result()->fetch_assoc() ?: [];
+        $yaContabilizadaHoy = (int)($filaDuplicada['total'] ?? 0) > 0;
+    }
+
     responderJson([
         'ok' => true,
         'mensaje' => 'La llamada Zadarma quedó vinculada con la interacción exacta.',
@@ -393,9 +424,8 @@ try {
         'duracion_segundos' => $duracion,
         'estado_zadarma' => (string)($fin['disposition'] ?? ''),
         'hubo_respuesta' => $huboRespuesta,
-        'verificacion_efectiva' =>
-            $huboRespuesta &&
-            strpos($notasInteraccion, '[VERIFICACION_EFECTIVA]') !== false,
+        'verificacion_efectiva' => $verificacionEfectiva,
+        'institucion_ya_contabilizada_hoy' => $yaContabilizadaHoy,
         'grabacion_disponible' =>
             (string)($fin['is_recorded'] ?? '') === '1' ||
             $grabacion !== null,
