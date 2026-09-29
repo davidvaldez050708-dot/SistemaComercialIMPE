@@ -158,7 +158,8 @@ if ($esReportesDashboard) {
             'seguimiento_reportes_decisiones_v2.css',
             'seguimiento_reportes_analitica.css',
             'seguimiento_reportes_presentacion_v3.css',
-            'seguimiento_reportes_institucion_operativa.css'
+            'seguimiento_reportes_institucion_operativa.css',
+            'seguimiento_reportes_modos_analista.css'
         ]
     );
 }
@@ -254,7 +255,8 @@ if ($esReportesDashboard) {
             'seguimiento_reportes_analitica.js',
             'seguimiento_reportes_presentacion_v3.js',
             'seguimiento_reportes_atencion_unificada.js',
-            'seguimiento_reportes_institucion_operativa.js'
+            'seguimiento_reportes_institucion_operativa.js',
+            'seguimiento_reportes_modos_analista.js'
         ]
     );
 }
