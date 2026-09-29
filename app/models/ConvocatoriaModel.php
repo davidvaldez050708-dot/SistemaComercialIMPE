@@ -286,6 +286,52 @@ class ConvocatoriaModel
         return $stmt->execute();
     }
 
+    public function obtenerRecientesPorTerritorio($estadoId, $limite = 12)
+    {
+        $estadoId = (int)$estadoId;
+        $limite = max(1, min(20, (int)$limite));
+
+        if ($estadoId <= 0) {
+            return [];
+        }
+
+        $sql = "SELECT
+                    convocatorias.id,
+                    convocatorias.titulo,
+                    convocatorias.tipo_convocatoria,
+                    convocatorias.subtipo_convocatoria,
+                    convocatorias.fecha_inicio,
+                    convocatorias.fecha_termino,
+                    convocatorias.estado,
+                    convocatorias.updated_at,
+                    CASE
+                        WHEN convocatorias.fecha_termino < CURDATE()
+                            THEN 'finalizada'
+                        WHEN convocatorias.estado = 1
+                            AND convocatorias.fecha_termino BETWEEN CURDATE()
+                                AND DATE_ADD(CURDATE(), INTERVAL 5 DAY)
+                            THEN 'proxima'
+                        WHEN convocatorias.estado = 1
+                            THEN 'activa'
+                        ELSE 'inactiva'
+                    END AS estado_proceso
+                FROM convocatorias
+                WHERE EXISTS (
+                    SELECT 1
+                    FROM convocatoria_estados
+                    WHERE convocatoria_estados.convocatoria_id = convocatorias.id
+                      AND convocatoria_estados.estado_id = ?
+                )
+                ORDER BY convocatorias.updated_at DESC, convocatorias.id DESC
+                LIMIT " . $limite;
+
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param('i', $estadoId);
+        $stmt->execute();
+
+        return $this->convertirResultadoEnArreglo($stmt->get_result());
+    }
+
     public function obtenerResumenDashboard()
     {
         $sql = "SELECT
