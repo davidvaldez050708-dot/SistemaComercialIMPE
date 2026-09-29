@@ -59,6 +59,65 @@ $totalRecordatoriosSeguimiento = 0;
                 </a>
             <?php endif; ?>
 
+            <?php if ($esAnalistaDatos): ?>
+                <div
+                    class="dropdown topbar-call-goal"
+                    data-topbar-call-goal
+                    data-endpoint="<?= BASE_URL ?>index.php?controller=seguimientoVinculacion&action=resumenVerificacionTelefonicaHoy">
+                    <button
+                        class="topbar-call-goal-button dropdown-toggle"
+                        type="button"
+                        data-bs-toggle="dropdown"
+                        data-bs-auto-close="outside"
+                        aria-expanded="false"
+                        aria-label="Abrir mi actividad telefónica de hoy"
+                        title="Mi actividad telefónica de hoy">
+                        <span class="topbar-call-goal-icon" aria-hidden="true">
+                            <i class="bi bi-telephone-check"></i>
+                        </span>
+                        <span class="topbar-call-goal-value">
+                            <strong data-topbar-call-effective>—</strong>
+                            <small>/25</small>
+                        </span>
+                    </button>
+
+                    <div class="dropdown-menu dropdown-menu-end topbar-call-goal-menu">
+                        <div class="topbar-call-goal-header">
+                            <div>
+                                <strong>Mi actividad telefónica</strong>
+                                <span>Resumen personal de hoy</span>
+                            </div>
+                            <span class="topbar-call-goal-pill">
+                                <b data-topbar-call-effective-menu>—</b>/25
+                            </span>
+                        </div>
+
+                        <div class="topbar-call-goal-progress" aria-hidden="true">
+                            <span data-topbar-call-progress style="width:0%"></span>
+                        </div>
+
+                        <div class="topbar-call-goal-stats">
+                            <div>
+                                <strong data-topbar-call-total>—</strong>
+                                <span>Llamadas</span>
+                            </div>
+                            <div>
+                                <strong data-topbar-call-contact>—</strong>
+                                <span>Con contacto</span>
+                            </div>
+                            <div>
+                                <strong data-topbar-call-remaining>—</strong>
+                                <span>Por verificar</span>
+                            </div>
+                        </div>
+
+                        <div class="topbar-call-goal-status" data-topbar-call-status>
+                            Actualizando avance…
+                        </div>
+                    </div>
+                </div>
+            <?php endif; ?>
+
             <?php if ($mostrarCentroAvisos): ?>
                 <div
                     class="dropdown"
