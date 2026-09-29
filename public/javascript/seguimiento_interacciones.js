@@ -369,18 +369,15 @@
 
             bloqueEvidenciaVerificacion.classList.toggle('d-none', !visible);
 
-            const telefonoActual = String(
-                document.querySelector('[data-work-contact-form] [name="telefono_verificado"]')
-                    ?.value || ''
-            ).trim();
-            const correoActual = String(
-                document.querySelector('[data-work-contact-form] [name="correo_verificado"]')
-                    ?.value || ''
-            ).trim();
-            const contactoActual = String(
-                document.querySelector('[data-work-contact-form] [name="contacto_nombre"]')
-                    ?.value || ''
-            ).trim();
+            const leerDatoVisible = function (selector) {
+                const valor = String(
+                    document.querySelector(selector)?.textContent || ''
+                ).trim();
+                return valor === '—' ? '' : valor;
+            };
+            const telefonoActual = leerDatoVisible('[data-work-phone]');
+            const correoActual = leerDatoVisible('[data-work-email]');
+            const contactoActual = leerDatoVisible('[data-work-contact-name]');
 
             [
                 [checkTelefono, telefonoActual !== '', 'phone'],
