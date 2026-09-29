@@ -2250,10 +2250,16 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             formularioInteraccion.classList.add('d-none');
-            mostrarToastSistema(
-                datos.mensaje || 'Interacción registrada correctamente.',
-                false
-            );
+            const origenLlamada = String(
+                formData.get('origen_llamada') || ''
+            ).toUpperCase();
+
+            if (origenLlamada !== 'ZADARMA') {
+                mostrarToastSistema(
+                    datos.mensaje || 'Interacción registrada correctamente.',
+                    false
+                );
+            }
 
             if (resultado === 'NO_INTERESADO' && datos.seguimiento) {
                 descartePendienteId = datos.seguimiento.id;
