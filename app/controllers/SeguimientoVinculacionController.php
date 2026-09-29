@@ -973,6 +973,10 @@ class SeguimientoVinculacionController
         $personaAtendio = trim((string)($_POST['persona_atendio'] ?? ''));
         $proximaAccion = trim((string)($_POST['proxima_accion'] ?? ''));
         $observacion = trim((string)($_POST['observacion'] ?? ''));
+        $origenLlamada = strtoupper(trim((string)($_POST['origen_llamada'] ?? 'MANUAL')));
+        if (!in_array($origenLlamada, ['ZADARMA', 'PRUEBA', 'MANUAL'], true)) {
+            $origenLlamada = 'MANUAL';
+        }
         $nuevoTelefonoContacto = trim((string)($_POST['nuevo_telefono_contacto'] ?? ''));
         $nuevoCorreoContacto = trim((string)($_POST['nuevo_correo_contacto'] ?? ''));
         $nuevoContactoNombre = trim((string)($_POST['nuevo_contacto_nombre'] ?? ''));
@@ -1099,12 +1103,15 @@ class SeguimientoVinculacionController
         }
 
         $evidenciasVerificacion = array_values(array_unique($evidenciasVerificacion));
-        $esVerificacionEfectiva =
+        $esCandidataVerificacion =
             $canalFormulario === 'LLAMADA' &&
             $resultadoAdmiteVerificacion &&
             !empty($evidenciasVerificacion);
+        $esVerificacionEfectiva =
+            $esCandidataVerificacion &&
+            $origenLlamada === 'ZADARMA';
 
-        if ($esVerificacionEfectiva && $personaAtendio === '') {
+        if ($esCandidataVerificacion && $personaAtendio === '') {
             $this->responderJson([
                 'ok' => false,
                 'mensaje' => 'Indica quién atendió la llamada para registrar una verificación efectiva.'
@@ -1134,8 +1141,19 @@ class SeguimientoVinculacionController
             $nuevoContactoNombre !== '' ? 'Nuevo contacto: ' . $nuevoContactoNombre : '',
             $nuevoContactoCargo !== '' ? 'Cargo / Área: ' . $nuevoContactoCargo : '',
             $esVerificacionEfectiva ? '[VERIFICACION_EFECTIVA]' : '',
-            $esVerificacionEfectiva
-                ? 'Verificación obtenida: ' . implode(' · ', $evidenciasVerificacion)
+            $esVerificacionEfectiva ? '[VERIFICACION_PENDIENTE_TELEFONIA]' : '',
+            $esCandidataVerificacion && $origenLlamada === 'PRUEBA'
+                ? '[REGISTRO_LLAMADA_PRUEBA]'
+                : '',
+            $esCandidataVerificacion && $origenLlamada === 'MANUAL'
+                ? '[REGISTRO_LLAMADA_MANUAL]'
+                : '',
+            $esCandidataVerificacion
+                ? (
+                    $esVerificacionEfectiva
+                        ? 'Verificación obtenida: '
+                        : 'Verificación registrada sin contabilizar: '
+                  ) . implode(' · ', $evidenciasVerificacion)
                 : '',
             $observacion,
             $proximaAccion !== '' ? 'Próxima acción: ' . $proximaAccion : '',
@@ -1201,7 +1219,9 @@ class SeguimientoVinculacionController
                 $modoSeguimiento
             ),
             'verificacion_telefonica' => [
-                'candidata' => $esVerificacionEfectiva,
+                'candidata' => $esCandidataVerificacion,
+                'contabilizable' => $esVerificacionEfectiva,
+                'origen' => $origenLlamada,
                 'evidencias' => $evidenciasVerificacion,
                 'resumen_hoy' => $modelo->obtenerResumenVerificacionTelefonicaDia(
                     $usuarioId,
