@@ -974,6 +974,7 @@ class SeguimientoVinculacionController
         $proximaAccion = trim((string)($_POST['proxima_accion'] ?? ''));
         $observacion = trim((string)($_POST['observacion'] ?? ''));
         $nuevoTelefonoContacto = trim((string)($_POST['nuevo_telefono_contacto'] ?? ''));
+        $nuevoCorreoContacto = trim((string)($_POST['nuevo_correo_contacto'] ?? ''));
         $nuevoContactoNombre = trim((string)($_POST['nuevo_contacto_nombre'] ?? ''));
         $nuevoContactoCargo = trim((string)($_POST['nuevo_contacto_cargo'] ?? ''));
 
@@ -985,10 +986,10 @@ class SeguimientoVinculacionController
                 ], 422);
             }
 
-            if ($nuevoTelefonoContacto === '') {
+            if ($nuevoTelefonoContacto === '' && $nuevoCorreoContacto === '') {
                 $this->responderJson([
                     'ok' => false,
-                    'mensaje' => 'Captura el nuevo teléfono proporcionado por la institución.'
+                    'mensaje' => 'Captura al menos el nuevo teléfono o correo proporcionado por la institución.'
                 ], 422);
             }
 
@@ -998,10 +999,109 @@ class SeguimientoVinculacionController
                     'mensaje' => 'El nuevo teléfono de contacto es demasiado largo.'
                 ], 422);
             }
+
+            if (
+                $nuevoCorreoContacto !== '' &&
+                !filter_var($nuevoCorreoContacto, FILTER_VALIDATE_EMAIL)
+            ) {
+                $this->responderJson([
+                    'ok' => false,
+                    'mensaje' => 'El nuevo correo proporcionado no tiene un formato válido.'
+                ], 422);
+            }
         } else {
             $nuevoTelefonoContacto = '';
+            $nuevoCorreoContacto = '';
             $nuevoContactoNombre = '';
             $nuevoContactoCargo = '';
+        }
+
+        /*
+         * Una llamada de verificación no se obtiene por seleccionar un resultado
+         * favorable. El servidor exige evidencia estructurada de datos confirmados
+         * o corregidos. La llamada se contabiliza en la meta diaria únicamente
+         * cuando después queda vinculada con la llamada real del proveedor.
+         */
+        $evidenciasVerificacion = [];
+        $resultadoAdmiteVerificacion = in_array(
+            $resultadoFormulario,
+            [
+                'CONTACTO_CORRECTO',
+                'CONTACTO_REFERIDO',
+                'SOLICITO_INFORMACION',
+                'SOLICITO_LLAMAR_DESPUES',
+                'NO_INTERESADO'
+            ],
+            true
+        );
+
+        $telefonoActual = trim((string)(
+            $seguimiento['telefono_verificado'] ??
+            $seguimiento['telefono_fuente'] ??
+            ''
+        ));
+        $correoActual = trim((string)(
+            $seguimiento['correo_verificado'] ??
+            $seguimiento['correo_fuente'] ??
+            ''
+        ));
+        $contactoActual = trim((string)($seguimiento['contacto_nombre'] ?? ''));
+
+        if (
+            $canalFormulario === 'LLAMADA' &&
+            $resultadoAdmiteVerificacion
+        ) {
+            if ((int)($_POST['verificacion_telefono_confirmado'] ?? 0) === 1) {
+                if ($telefonoActual === '') {
+                    $this->responderJson([
+                        'ok' => false,
+                        'mensaje' => 'No existe un teléfono registrado que pueda marcarse como confirmado.'
+                    ], 422);
+                }
+                $evidenciasVerificacion[] = 'Teléfono confirmado';
+            }
+
+            if ((int)($_POST['verificacion_correo_confirmado'] ?? 0) === 1) {
+                if ($correoActual === '') {
+                    $this->responderJson([
+                        'ok' => false,
+                        'mensaje' => 'No existe un correo registrado que pueda marcarse como confirmado.'
+                    ], 422);
+                }
+                $evidenciasVerificacion[] = 'Correo confirmado';
+            }
+
+            if ((int)($_POST['verificacion_contacto_confirmado'] ?? 0) === 1) {
+                if ($contactoActual === '') {
+                    $this->responderJson([
+                        'ok' => false,
+                        'mensaje' => 'No existe una persona de contacto registrada que pueda marcarse como confirmada.'
+                    ], 422);
+                }
+                $evidenciasVerificacion[] = 'Contacto institucional confirmado';
+            }
+
+            if ($resultadoFormulario === 'CONTACTO_REFERIDO') {
+                if ($nuevoTelefonoContacto !== '') {
+                    $evidenciasVerificacion[] = 'Nuevo teléfono proporcionado';
+                }
+                if ($nuevoCorreoContacto !== '') {
+                    $evidenciasVerificacion[] = 'Nuevo correo proporcionado';
+                }
+            }
+        }
+
+        $evidenciasVerificacion = array_values(array_unique($evidenciasVerificacion));
+        $esVerificacionEfectiva =
+            $canalFormulario === 'LLAMADA' &&
+            $resultadoAdmiteVerificacion &&
+            !empty($evidenciasVerificacion);
+
+        if ($esVerificacionEfectiva && $personaAtendio === '') {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'Indica quién atendió la llamada para registrar una verificación efectiva.'
+            ], 422);
         }
 
         $descartar = $resultadoFormulario === 'NO_INTERESADO' &&
@@ -1018,11 +1118,18 @@ class SeguimientoVinculacionController
         $notas = trim(implode("\n", array_filter([
             $personaAtendio !== '' ? 'Persona atendió: ' . $personaAtendio : '',
             $resultadoFormulario === 'NO_INTERESADO' ? 'Resultado registrado: No interesado' : '',
-            $resultadoFormulario === 'CONTACTO_REFERIDO'
+            $resultadoFormulario === 'CONTACTO_REFERIDO' && $nuevoTelefonoContacto !== ''
                 ? 'Contacto referido: nuevo teléfono ' . $nuevoTelefonoContacto
+                : '',
+            $resultadoFormulario === 'CONTACTO_REFERIDO' && $nuevoCorreoContacto !== ''
+                ? 'Contacto referido: nuevo correo ' . $nuevoCorreoContacto
                 : '',
             $nuevoContactoNombre !== '' ? 'Nuevo contacto: ' . $nuevoContactoNombre : '',
             $nuevoContactoCargo !== '' ? 'Cargo / Área: ' . $nuevoContactoCargo : '',
+            $esVerificacionEfectiva ? '[VERIFICACION_EFECTIVA]' : '',
+            $esVerificacionEfectiva
+                ? 'Verificación obtenida: ' . implode(' · ', $evidenciasVerificacion)
+                : '',
             $observacion,
             $proximaAccion !== '' ? 'Próxima acción: ' . $proximaAccion : '',
             $descartar ? 'Motivo de descarte: ' . $motivoDescarte : ''
@@ -1040,6 +1147,7 @@ class SeguimientoVinculacionController
             'descartar' => $descartar ? 1 : 0,
             'motivo_descarte' => $motivoDescarte,
             'nuevo_telefono_contacto' => $nuevoTelefonoContacto,
+            'nuevo_correo_contacto' => $nuevoCorreoContacto,
             'nuevo_contacto_nombre' => $nuevoContactoNombre,
             'nuevo_contacto_cargo' => $nuevoContactoCargo
         ];
@@ -1084,6 +1192,31 @@ class SeguimientoVinculacionController
                 $usuarioId,
                 $seguimientoActualizado,
                 $modoSeguimiento
+            ),
+            'verificacion_telefonica' => [
+                'candidata' => $esVerificacionEfectiva,
+                'evidencias' => $evidenciasVerificacion,
+                'resumen_hoy' => $modelo->obtenerResumenVerificacionTelefonicaDia(
+                    $usuarioId,
+                    date('Y-m-d')
+                )
+            ]
+        ]);
+    }
+
+    public function resumenVerificacionTelefonicaHoy()
+    {
+        $this->validarPermisoJson('seguimientos_vinculacion.operar_propios');
+
+        $usuarioId = $this->obtenerUsuarioActualId();
+        $modelo = new SeguimientoVinculacionModel();
+
+        $this->responderJson([
+            'ok' => true,
+            'fecha' => date('Y-m-d'),
+            'resumen' => $modelo->obtenerResumenVerificacionTelefonicaDia(
+                $usuarioId,
+                date('Y-m-d')
             )
         ]);
     }
