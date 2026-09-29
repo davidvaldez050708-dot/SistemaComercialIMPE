@@ -13,6 +13,68 @@ class SeguimientoVinculacionModel
         $this->connection = $database->connect();
     }
 
+    public function obtenerSeguimientoIdsConActividadPeriodo(
+        array $seguimientoIds,
+        $usuarioId,
+        $fechaInicial = '',
+        $fechaFinal = '',
+        $canal = ''
+    ) {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $seguimientoIds))));
+        $usuarioId = (int)$usuarioId;
+
+        if (empty($ids) || $usuarioId <= 0) {
+            return [];
+        }
+
+        $listaIds = implode(',', $ids);
+        $fechaInicial = trim((string)$fechaInicial);
+        $fechaFinal = trim((string)$fechaFinal);
+        $canal = strtoupper(trim((string)$canal));
+
+        $sql = "SELECT DISTINCT seguimiento_id
+            FROM interacciones_vinculacion
+            WHERE usuario_id = ?
+              AND seguimiento_id IN (" . $listaIds . ")";
+
+        $tipos = 'i';
+        $parametros = [$usuarioId];
+
+        if ($fechaInicial !== '') {
+            $sql .= " AND fecha_inicio >= ?";
+            $tipos .= 's';
+            $parametros[] = $fechaInicial . ' 00:00:00';
+        }
+
+        if ($fechaFinal !== '') {
+            $sql .= " AND fecha_inicio <= ?";
+            $tipos .= 's';
+            $parametros[] = $fechaFinal . ' 23:59:59';
+        }
+
+        if ($canal !== '') {
+            $sql .= " AND canal = ?";
+            $tipos .= 's';
+            $parametros[] = $canal;
+        }
+
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param($tipos, ...$parametros);
+        $stmt->execute();
+
+        $resultado = $stmt->get_result();
+        $idsConActividad = [];
+
+        while ($fila = $resultado->fetch_assoc()) {
+            $id = (int)($fila['seguimiento_id'] ?? 0);
+            if ($id > 0) {
+                $idsConActividad[] = $id;
+            }
+        }
+
+        return array_values(array_unique($idsConActividad));
+    }
+
     public function obtenerEstadosAsignadosAnalista($usuarioId)
     {
         $sql = "SELECT
