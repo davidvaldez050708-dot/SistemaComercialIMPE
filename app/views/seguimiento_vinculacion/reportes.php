@@ -159,13 +159,56 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
         <input type="hidden" name="controller" value="seguimientoVinculacionReporte">
         <input type="hidden" name="action" value="index">
         <input type="hidden" name="generar" value="1">
+        <input
+            type="hidden"
+            name="tipo_reporte"
+            value="<?= $texto($filtrosReporte['tipo_reporte'] ?? 'cartera') ?>"
+            data-report-type-input>
+
+        <?php if ($modoSeguimiento === 'analista'): ?>
+            <div class="report-mode-selector" data-analyst-report-modes>
+                <button
+                    type="button"
+                    class="report-mode-card"
+                    data-report-mode="actividad"
+                    aria-pressed="false">
+                    <span class="report-mode-icon"><i class="bi bi-activity"></i></span>
+                    <span>
+                        <strong>Mi actividad</strong>
+                        <small>Lo que hiciste durante un periodo.</small>
+                    </span>
+                </button>
+                <button
+                    type="button"
+                    class="report-mode-card"
+                    data-report-mode="cartera"
+                    aria-pressed="false">
+                    <span class="report-mode-icon"><i class="bi bi-kanban"></i></span>
+                    <span>
+                        <strong>Mi cartera</strong>
+                        <small>Estado actual de tus seguimientos.</small>
+                    </span>
+                </button>
+                <button
+                    type="button"
+                    class="report-mode-card"
+                    data-report-mode="institucion"
+                    aria-pressed="false">
+                    <span class="report-mode-icon"><i class="bi bi-building"></i></span>
+                    <span>
+                        <strong>Una institución</strong>
+                        <small>Expediente ejecutivo de un seguimiento.</small>
+                    </span>
+                </button>
+            </div>
+        <?php endif; ?>
 
         <?php if ($modoModalReporte): ?>
             <div class="modal-body">
         <?php endif; ?>
 
         <div class="<?= $modoModalReporte ? 'row g-3' : 'row gx-3 gy-2' ?>">
-            <div class="col-md-6 col-xl-3">
+            <div class="col-md-6 col-xl-3" data-report-field="periodo">
                 <label class="form-label" for="reporte_fecha_inicial">Fecha inicial</label>
                 <input
                     class="form-control"
@@ -175,7 +218,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                     value="<?= $texto($filtrosReporte['fecha_inicial'] ?? '') ?>">
             </div>
 
-            <div class="col-md-6 col-xl-3">
+            <div class="col-md-6 col-xl-3" data-report-field="periodo">
                 <label class="form-label" for="reporte_fecha_final">Fecha final</label>
                 <input
                     class="form-control"
@@ -185,7 +228,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                     value="<?= $texto($filtrosReporte['fecha_final'] ?? '') ?>">
             </div>
 
-            <div class="col-md-6 col-xl-3">
+            <div class="col-md-6 col-xl-3" data-report-field="territorio">
                 <label class="form-label" for="reporte_estado">Estado</label>
                 <select
                     class="form-select"
@@ -203,7 +246,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                 </select>
             </div>
 
-            <div class="col-md-6 col-xl-3">
+            <div class="col-md-6 col-xl-3" data-report-field="municipio">
                 <label class="form-label" for="reporte_municipio">Municipio</label>
                 <select
                     class="form-select"
@@ -222,7 +265,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                 </select>
             </div>
 
-            <div class="col-md-6 col-xl-4">
+            <div class="col-md-6 col-xl-4" data-report-field="institucion">
                 <label class="form-label" for="reporte_institucion">Institución</label>
                 <select class="form-select" id="reporte_institucion" name="institucion">
                     <option value="">Todas</option>
@@ -236,7 +279,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                 </select>
             </div>
 
-            <div class="col-md-6 col-xl-4">
+            <div class="col-md-6 col-xl-4<?= $modoSeguimiento === 'analista' ? ' d-none' : '' ?>" data-report-field="responsable">
                 <label class="form-label" for="reporte_responsable">Responsable</label>
                 <select class="form-select" id="reporte_responsable" name="responsable_id">
                     <option value="0">Todos</option>
@@ -250,7 +293,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                 </select>
             </div>
 
-            <div class="col-md-6 col-xl-4">
+            <div class="col-md-6 col-xl-4" data-report-field="estatus">
                 <label class="form-label" for="reporte_estatus">Etapa / Estatus</label>
                 <select class="form-select" id="reporte_estatus" name="estado_seguimiento">
                     <option value="">Todos</option>
@@ -265,7 +308,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
             </div>
 
             <?php if (!empty($canalesDisponibles)): ?>
-                <div class="col-md-6 col-xl-4">
+                <div class="col-md-6 col-xl-4" data-report-field="actividad">
                     <label class="form-label" for="reporte_actividad">Tipo de actividad / interacción</label>
                     <select class="form-select" id="reporte_actividad" name="tipo_actividad">
                         <option value="">Todos</option>
@@ -281,7 +324,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                 </div>
             <?php endif; ?>
 
-            <div class="col-md-6 col-xl-4">
+            <div class="col-md-6 col-xl-4" data-report-field="inactividad">
                 <label class="form-label" for="reporte_dias_sin_actividad">Días sin actividad</label>
                 <select class="form-select" id="reporte_dias_sin_actividad" name="dias_sin_actividad">
                     <option value="0" <?= $seleccionado($filtrosReporte['dias_sin_actividad'] ?? 0, 0) ?>>Todos</option>
@@ -293,7 +336,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
             </div>
         </div>
 
-        <div class="form-text <?= $modoModalReporte ? 'mt-3' : 'mt-2' ?>">
+        <div class="form-text <?= $modoModalReporte ? 'mt-3' : 'mt-2' ?>" data-report-mode-help>
             El periodo se aplica sobre la fecha de inicio registrada en cada seguimiento.
         </div>
 
