@@ -13,6 +13,7 @@ $estatusFiltro = $estatusFiltro ?? '';
 $categoriaFiltro = $categoriaFiltro ?? '';
 $territorioSeleccionado = $territorioSeleccionado ?? null;
 $tipoConvocatoria = $tipoConvocatoria ?? '';
+$subtipoConvocatoria = $subtipoConvocatoria ?? '';
 
 $puedeCrear = tienePermiso('convocatorias.crear');
 $puedeEditar = tienePermiso('convocatorias.editar');
@@ -272,6 +273,62 @@ document.addEventListener('DOMContentLoaded', function () {
 <?php return; ?>
 <?php endif; ?>
 
+<?php
+$opcionesSubtipo = $tipoConvocatoria === 'titulacion'
+    ? [
+        [
+            'slug' => 'ejecutivas',
+            'titulo' => 'Ejecutivas',
+            'descripcion' => 'Consulta las convocatorias correspondientes a ejecutivas.',
+            'icono' => 'bi-briefcase'
+        ],
+        [
+            'slug' => 'experiencia-laboral',
+            'titulo' => 'Titulación por experiencia laboral',
+            'descripcion' => 'Consulta las convocatorias de titulación por experiencia laboral.',
+            'icono' => 'bi-person-workspace'
+        ],
+        [
+            'slug' => 'inscripciones-abiertas',
+            'titulo' => 'Inscripciones Abiertas',
+            'descripcion' => 'Consulta las convocatorias con inscripciones abiertas.',
+            'icono' => 'bi-door-open'
+        ]
+    ]
+    : [
+        [
+            'slug' => 'bachillerato-2-anos',
+            'titulo' => 'Bachillerato en 2 años',
+            'descripcion' => 'Consulta las convocatorias correspondientes a Bachillerato en 2 años.',
+            'icono' => 'bi-calendar2-check'
+        ],
+        [
+            'slug' => 'bachillerato-286',
+            'titulo' => 'Bachillerato 286',
+            'descripcion' => 'Consulta las convocatorias correspondientes a Bachillerato 286.',
+            'icono' => 'bi-journal-text'
+        ],
+        [
+            'slug' => 'ingles',
+            'titulo' => 'Inglés',
+            'descripcion' => 'Consulta las convocatorias correspondientes a Inglés.',
+            'icono' => 'bi-translate'
+        ],
+        [
+            'slug' => 'inscripciones-abiertas',
+            'titulo' => 'Inscripciones Abiertas',
+            'descripcion' => 'Consulta las convocatorias con inscripciones abiertas.',
+            'icono' => 'bi-door-open'
+        ]
+    ];
+
+$etiquetasSubtipo = [];
+foreach ($opcionesSubtipo as $opcionSubtipo) {
+    $etiquetasSubtipo[$opcionSubtipo['slug']] = $opcionSubtipo['titulo'];
+}
+?>
+
+<?php if ($subtipoConvocatoria === ''): ?>
 <div class="convocatoria-territory-context">
     <a
         class="data-back-link"
@@ -280,6 +337,49 @@ document.addEventListener('DOMContentLoaded', function () {
         Cambiar tipo
     </a>
     <span><?= $texto($territorioSeleccionado['nombre'] ?? '') ?> · <?= $tipoConvocatoria === 'titulacion' ? 'Titulación' : 'Bachillerato' ?></span>
+</div>
+
+<section class="dashboard-panel convocatoria-type-heading">
+    <h2 class="panel-title mb-1">
+        <?= $tipoConvocatoria === 'titulacion' ? 'Opciones de Titulación' : 'Opciones de Bachillerato' ?>
+    </h2>
+    <p class="panel-subtitle mb-0">Selecciona la opción que deseas consultar para este territorio.</p>
+</section>
+
+<section class="convocatoria-type-cards convocatoria-subtype-cards">
+    <?php foreach ($opcionesSubtipo as $opcionSubtipo): ?>
+        <article class="dashboard-panel convocatoria-type-card">
+            <div class="convocatoria-type-card-icon">
+                <i class="bi <?= $texto($opcionSubtipo['icono']) ?>"></i>
+            </div>
+            <div>
+                <h3><?= $texto($opcionSubtipo['titulo']) ?></h3>
+                <p><?= $texto($opcionSubtipo['descripcion']) ?></p>
+            </div>
+            <a
+                class="btn btn-system-light"
+                href="<?= BASE_URL ?>index.php?controller=convocatoria&action=index&territorio_id=<?= (int)$territorioSeleccionado['id'] ?>&tipo=<?= $texto($tipoConvocatoria) ?>&subtipo=<?= $texto($opcionSubtipo['slug']) ?>">
+                Ver
+                <i class="bi bi-arrow-right"></i>
+            </a>
+        </article>
+    <?php endforeach; ?>
+</section>
+<?php return; ?>
+<?php endif; ?>
+
+<div class="convocatoria-territory-context">
+    <a
+        class="data-back-link"
+        href="<?= BASE_URL ?>index.php?controller=convocatoria&action=index&territorio_id=<?= (int)$territorioSeleccionado['id'] ?>&tipo=<?= $texto($tipoConvocatoria) ?>">
+        <i class="bi bi-arrow-left"></i>
+        Cambiar opción
+    </a>
+    <span>
+        <?= $texto($territorioSeleccionado['nombre'] ?? '') ?>
+        · <?= $tipoConvocatoria === 'titulacion' ? 'Titulación' : 'Bachillerato' ?>
+        · <?= $texto($etiquetasSubtipo[$subtipoConvocatoria] ?? '') ?>
+    </span>
 </div>
 
 <section class="dashboard-panel users-module-panel">
@@ -313,6 +413,7 @@ document.addEventListener('DOMContentLoaded', function () {
         <input type="hidden" name="action" value="index">
         <input type="hidden" name="territorio_id" value="<?= (int)$territorioSeleccionado['id'] ?>">
         <input type="hidden" name="tipo" value="<?= $texto($tipoConvocatoria) ?>">
+        <input type="hidden" name="subtipo" value="<?= $texto($subtipoConvocatoria) ?>">
 
         <div class="convocatoria-filter-field convocatoria-filter-search">
             <label class="form-label login-label" for="filtro_convocatoria_buscar">Buscar convocatoria</label>
@@ -354,7 +455,7 @@ document.addEventListener('DOMContentLoaded', function () {
         <div class="convocatoria-filter-actions">
             <a
                 class="filter-clear-link <?= ($buscar === '' && (int)$estadoFiltro === 0 && $estatusFiltro === '' && $categoriaFiltro === '') ? 'd-none' : '' ?>"
-                href="<?= BASE_URL ?>index.php?controller=convocatoria&action=index"
+                href="<?= BASE_URL ?>index.php?controller=convocatoria&action=index&territorio_id=<?= (int)$territorioSeleccionado['id'] ?>&tipo=<?= $texto($tipoConvocatoria) ?>&subtipo=<?= $texto($subtipoConvocatoria) ?>"
                 data-convocatoria-clear-filters>
                 Limpiar filtros
             </a>
@@ -545,6 +646,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 enctype="multipart/form-data"
                 novalidate>
                 <input type="hidden" name="territorio_id" value="<?= (int)$territorioSeleccionado['id'] ?>">
+                <input type="hidden" name="tipo" value="<?= $texto($tipoConvocatoria) ?>">
+                <input type="hidden" name="subtipo" value="<?= $texto($subtipoConvocatoria) ?>">
 
                 <div class="modal-body">
                     <?php if ($modalAbierto === 'crear' && !empty($erroresFormulario)): ?>
@@ -687,6 +790,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 enctype="multipart/form-data"
                 novalidate>
                 <input type="hidden" name="territorio_id" value="<?= (int)$territorioSeleccionado['id'] ?>">
+                <input type="hidden" name="tipo" value="<?= $texto($tipoConvocatoria) ?>">
+                <input type="hidden" name="subtipo" value="<?= $texto($subtipoConvocatoria) ?>">
 
                 <input type="hidden" name="id" id="editar_convocatoria_id">
 
@@ -796,6 +901,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
             <form action="<?= BASE_URL ?>index.php?controller=convocatoria&action=cambiarEstado" method="POST">
                 <input type="hidden" name="territorio_id" value="<?= (int)$territorioSeleccionado['id'] ?>">
+                <input type="hidden" name="tipo" value="<?= $texto($tipoConvocatoria) ?>">
+                <input type="hidden" name="subtipo" value="<?= $texto($subtipoConvocatoria) ?>">
                 <input type="hidden" name="id" id="estado_convocatoria_id">
                 <input type="hidden" name="estado" id="estado_convocatoria_nuevo">
 
@@ -1138,6 +1245,7 @@ document.addEventListener('DOMContentLoaded', function () {
             buscar: String(filtroBuscar?.value || '').trim(),
             territorio_id: <?= json_encode((string)(int)$territorioSeleccionado['id']) ?>,
             tipo: <?= json_encode($tipoConvocatoria) ?>,
+            subtipo: <?= json_encode($subtipoConvocatoria) ?>,
             estatus: String(filtroEstatus?.value || ''),
             categoria: String(filtroCategoria?.value || '')
         });
