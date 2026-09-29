@@ -336,6 +336,12 @@ try {
         $respuesta !== null ||
         in_array($disposicion, ['ANSWERED', 'ANSWER', 'CONNECTED', 'SUCCESS'], true);
 
+    $notasInteraccion = str_replace(
+        '[VERIFICACION_PENDIENTE_TELEFONIA]',
+        '',
+        $notasInteraccion
+    );
+
     if (
         strpos($notasInteraccion, '[VERIFICACION_EFECTIVA]') !== false &&
         !$huboRespuesta
