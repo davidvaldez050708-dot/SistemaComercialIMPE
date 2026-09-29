@@ -1005,3 +1005,21 @@
         grid-template-columns: 1fr;
     }
 }
+
+
+/* Chihuahua muestra un tercer tipo de convocatoria: Sindicatos. */
+.convocatoria-type-cards-three {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (max-width: 1199.98px) {
+    .convocatoria-type-cards-three {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 767.98px) {
+    .convocatoria-type-cards-three {
+        grid-template-columns: 1fr;
+    }
+}
