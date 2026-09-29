@@ -92,7 +92,11 @@ class ConvocatoriaModel
         }
 
         $sql .= " GROUP BY convocatorias.id
-                  ORDER BY convocatorias.created_at DESC, convocatorias.id DESC";
+                  ORDER BY
+                      convocatorias.estado DESC,
+                      convocatorias.fecha_inicio DESC,
+                      convocatorias.fecha_termino DESC,
+                      convocatorias.id DESC";
 
         if ($tipos === '') {
             $resultado = $this->connection->query($sql);
