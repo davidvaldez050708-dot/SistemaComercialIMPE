@@ -229,7 +229,17 @@ class SeguimientoReporteAnaliticaService
                     END) AS otros,
                     SUM(CASE
                         WHEN UPPER(TRIM(COALESCE(canal, ''))) IN ('LLAMADA_IP', 'LLAMADA')
-                         AND UPPER(TRIM(COALESCE(resultado, ''))) = 'CONTACTADO'
+                         AND (
+                            notas LIKE '%[CONTACTO_EFECTIVO]%'
+                            OR UPPER(TRIM(COALESCE(resultado, ''))) IN (
+                                'CONTACTADO',
+                                'CONTACTO_CORRECTO',
+                                'CONTACTO_REFERIDO',
+                                'SOLICITO_INFORMACION',
+                                'SOLICITO_LLAMAR_DESPUES',
+                                'NO_INTERESADO'
+                            )
+                         )
                         THEN 1 ELSE 0
                     END) AS contactadas,
                     SUM(CASE
