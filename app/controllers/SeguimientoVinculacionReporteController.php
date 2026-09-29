@@ -822,6 +822,7 @@ class SeguimientoVinculacionReporteController
         $parametros = [
             'controller' => 'seguimientoVinculacionReporte',
             'action' => 'exportarPdf',
+            'tipo_reporte' => (string)($filtros['tipo_reporte'] ?? 'cartera'),
             'fecha_inicial' => (string)$filtros['fecha_inicial'],
             'fecha_final' => (string)$filtros['fecha_final'],
             'estado_id' => (int)$filtros['estado_id'],
@@ -843,6 +844,7 @@ class SeguimientoVinculacionReporteController
             'controller' => 'seguimientoVinculacionReporte',
             'action' => 'index',
             'generar' => 1,
+            'tipo_reporte' => (string)($filtros['tipo_reporte'] ?? 'cartera'),
             'fecha_inicial' => (string)$filtros['fecha_inicial'],
             'fecha_final' => (string)$filtros['fecha_final'],
             'estado_id' => (int)$filtros['estado_id'],
@@ -866,8 +868,14 @@ class SeguimientoVinculacionReporteController
         $estadoSeguimiento = strtoupper(trim((string)($_GET['estado_seguimiento'] ?? '')));
         $tipoActividad = strtoupper(trim((string)($_GET['tipo_actividad'] ?? '')));
         $dias = (int)($_GET['dias_sin_actividad'] ?? 0);
+        $tipoReporte = strtolower(trim((string)($_GET['tipo_reporte'] ?? 'cartera')));
+
+        if (!in_array($tipoReporte, ['actividad', 'cartera', 'institucion'], true)) {
+            $tipoReporte = 'cartera';
+        }
 
         return [
+            'tipo_reporte' => $tipoReporte,
             'fecha_inicial' => $this->normalizarFecha($_GET['fecha_inicial'] ?? ''),
             'fecha_final' => $this->normalizarFecha($_GET['fecha_final'] ?? ''),
             'estado_id' => $this->enteroPositivo($_GET['estado_id'] ?? 0),
