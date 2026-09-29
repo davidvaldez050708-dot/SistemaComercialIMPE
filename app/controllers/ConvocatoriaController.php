@@ -19,13 +19,22 @@ class ConvocatoriaController
         $categoriaFiltro = in_array($categoriaSolicitada, ['', 'IMJUVE'], true)
             ? $categoriaSolicitada
             : '';
+        $tipoConvocatoria = strtolower(trim((string)($_GET['tipo'] ?? '')));
+        $subtipoConvocatoria = strtolower(trim((string)($_GET['subtipo'] ?? '')));
 
-        $convocatorias = $modelo->obtenerListado(
-            $buscar,
-            $estadoFiltro,
-            $estatusFiltro,
-            $categoriaFiltro
-        );
+        $convocatorias = $this->esClasificacionValida(
+            $tipoConvocatoria,
+            $subtipoConvocatoria
+        )
+            ? $modelo->obtenerListado(
+                $buscar,
+                $estadoFiltro,
+                $estatusFiltro,
+                $categoriaFiltro,
+                $tipoConvocatoria,
+                $subtipoConvocatoria
+            )
+            : [];
 
         header('Content-Type: application/json; charset=utf-8');
         echo json_encode(
@@ -103,7 +112,9 @@ class ConvocatoriaController
                 $buscar,
                 $estadoFiltro,
                 $estatusFiltro,
-                $categoriaFiltro
+                $categoriaFiltro,
+                $tipoConvocatoria,
+                $subtipoConvocatoria
             )
             : [];
 
@@ -139,8 +150,8 @@ class ConvocatoriaController
 
         $modelo = new ConvocatoriaModel();
         $territorioId = (int)($_POST['territorio_id'] ?? 0);
-        $tipoConvocatoria = trim((string)($_POST['tipo'] ?? ''));
-        $subtipoConvocatoria = trim((string)($_POST['subtipo'] ?? ''));
+        $tipoConvocatoria = strtolower(trim((string)($_POST['tipo'] ?? '')));
+        $subtipoConvocatoria = strtolower(trim((string)($_POST['subtipo'] ?? '')));
         $datos = $this->limpiarDatos($_POST);
         $estadosIds = $this->limpiarEstados($_POST['estados'] ?? []);
 
@@ -149,6 +160,10 @@ class ConvocatoriaController
         }
 
         $errores = $this->validarDatos($datos, $estadosIds, true);
+
+        if (!$this->esClasificacionValida($tipoConvocatoria, $subtipoConvocatoria)) {
+            $errores[] = 'La opción de convocatoria seleccionada no es válida.';
+        }
 
         $imagen = $this->procesarImagen('');
 
@@ -170,6 +185,8 @@ class ConvocatoriaController
 
         $datos['imagen'] = $imagen['ruta'];
         $datos['usuario_id'] = (int)$_SESSION['usuario_id'];
+        $datos['tipo_convocatoria'] = $tipoConvocatoria;
+        $datos['subtipo_convocatoria'] = $subtipoConvocatoria;
 
         if ($modelo->crear($datos, $estadosIds)) {
             $_SESSION['mensaje_convocatoria'] = 'Convocatoria registrada correctamente.';
@@ -191,14 +208,23 @@ class ConvocatoriaController
 
         $modelo = new ConvocatoriaModel();
         $territorioId = (int)($_POST['territorio_id'] ?? 0);
-        $tipoConvocatoria = trim((string)($_POST['tipo'] ?? ''));
-        $subtipoConvocatoria = trim((string)($_POST['subtipo'] ?? ''));
+        $tipoConvocatoria = strtolower(trim((string)($_POST['tipo'] ?? '')));
+        $subtipoConvocatoria = strtolower(trim((string)($_POST['subtipo'] ?? '')));
         $id = (int)($_POST['id'] ?? 0);
         $convocatoriaOriginal = $modelo->buscarPorId($id);
 
         if (!$convocatoriaOriginal) {
             $_SESSION['error_convocatoria'] = 'La convocatoria seleccionada no existe.';
             $this->redirigir();
+        }
+
+        if (
+            !$this->esClasificacionValida($tipoConvocatoria, $subtipoConvocatoria) ||
+            (string)($convocatoriaOriginal['tipo_convocatoria'] ?? '') !== $tipoConvocatoria ||
+            (string)($convocatoriaOriginal['subtipo_convocatoria'] ?? '') !== $subtipoConvocatoria
+        ) {
+            $_SESSION['error_convocatoria'] = 'La convocatoria no pertenece a la opción seleccionada.';
+            $this->redirigir($territorioId, $tipoConvocatoria, $subtipoConvocatoria);
         }
 
         $datos = $this->limpiarDatos($_POST);
@@ -226,6 +252,8 @@ class ConvocatoriaController
 
         $datos['imagen'] = $imagen['ruta'];
         $datos['usuario_id'] = (int)$_SESSION['usuario_id'];
+        $datos['tipo_convocatoria'] = $tipoConvocatoria;
+        $datos['subtipo_convocatoria'] = $subtipoConvocatoria;
 
         if ($modelo->actualizar($id, $datos, $estadosIds)) {
             $_SESSION['mensaje_convocatoria'] = 'Convocatoria actualizada correctamente.';
@@ -255,8 +283,8 @@ class ConvocatoriaController
 
         $modelo = new ConvocatoriaModel();
         $territorioId = (int)($_POST['territorio_id'] ?? 0);
-        $tipoConvocatoria = trim((string)($_POST['tipo'] ?? ''));
-        $subtipoConvocatoria = trim((string)($_POST['subtipo'] ?? ''));
+        $tipoConvocatoria = strtolower(trim((string)($_POST['tipo'] ?? '')));
+        $subtipoConvocatoria = strtolower(trim((string)($_POST['subtipo'] ?? '')));
         $id = (int)($_POST['id'] ?? 0);
         $estado = in_array((string)($_POST['estado'] ?? ''), ['0', '1'], true)
             ? (int)$_POST['estado']
@@ -267,6 +295,15 @@ class ConvocatoriaController
         if ($id <= 0 || $estado === null || !$convocatoria) {
             $_SESSION['error_convocatoria'] = 'La acción seleccionada no es válida.';
             $this->redirigir();
+        }
+
+        if (
+            !$this->esClasificacionValida($tipoConvocatoria, $subtipoConvocatoria) ||
+            (string)($convocatoria['tipo_convocatoria'] ?? '') !== $tipoConvocatoria ||
+            (string)($convocatoria['subtipo_convocatoria'] ?? '') !== $subtipoConvocatoria
+        ) {
+            $_SESSION['error_convocatoria'] = 'La convocatoria no pertenece a la opción seleccionada.';
+            $this->redirigir($territorioId, $tipoConvocatoria, $subtipoConvocatoria);
         }
 
         if (
@@ -349,6 +386,26 @@ class ConvocatoriaController
             JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE
         );
         exit;
+    }
+
+    private function esClasificacionValida($tipo, $subtipo)
+    {
+        $subtiposPermitidos = [
+            'titulacion' => [
+                'ejecutivas',
+                'experiencia-laboral',
+                'inscripciones-abiertas'
+            ],
+            'bachillerato' => [
+                'bachillerato-2-anos',
+                'bachillerato-286',
+                'ingles',
+                'inscripciones-abiertas'
+            ]
+        ];
+
+        return isset($subtiposPermitidos[$tipo]) &&
+            in_array($subtipo, $subtiposPermitidos[$tipo], true);
     }
 
     private function obtenerTerritorioSeleccionado($estados, $territorioId)
