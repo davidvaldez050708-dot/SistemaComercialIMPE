@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../models/ConvocatoriaModel.php';
+require_once __DIR__ . '/../models/TerritorioModel.php';
 require_once __DIR__ . '/../helpers/PermissionHelper.php';
 
 class ConvocatoriaController
@@ -21,12 +22,18 @@ class ConvocatoriaController
             : '';
         $tipoConvocatoria = strtolower(trim((string)($_GET['tipo'] ?? '')));
         $subtipoConvocatoria = strtolower(trim((string)($_GET['subtipo'] ?? '')));
-        $esChihuahua = $this->esTerritorioChihuahua($modelo, $estadoFiltro);
+        $territorioPermitido = $this->usuarioPuedeConsultarTerritorio($estadoFiltro);
+        $esChihuahua = $territorioPermitido
+            ? $this->esTerritorioChihuahua($modelo, $estadoFiltro)
+            : false;
 
-        $convocatorias = $this->esClasificacionValida(
-            $tipoConvocatoria,
-            $subtipoConvocatoria,
-            $esChihuahua
+        $convocatorias = (
+            $territorioPermitido &&
+            $this->esClasificacionValida(
+                $tipoConvocatoria,
+                $subtipoConvocatoria,
+                $esChihuahua
+            )
         )
             ? $modelo->obtenerListado(
                 $buscar,
@@ -55,7 +62,7 @@ class ConvocatoriaController
 
         $modelo = new ConvocatoriaModel();
         $modelo->desactivarConvocatoriasVencidas();
-        $estados = $modelo->obtenerEstados();
+        $estados = $this->obtenerEstadosDisponibles($modelo->obtenerEstados());
 
         $territorioId = (int)($_GET['territorio_id'] ?? 0);
         $territorioSeleccionado = $this->obtenerTerritorioSeleccionado(
@@ -406,12 +413,110 @@ class ConvocatoriaController
             return;
         }
 
+        if (!$this->convocatoriaVisibleParaUsuario($convocatoria)) {
+            http_response_code(403);
+            echo 'No tienes acceso a esta convocatoria.';
+            return;
+        }
+
         header('Content-Type: application/json; charset=utf-8');
         echo json_encode(
             ['ok' => true, 'convocatoria' => $convocatoria],
             JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE
         );
         exit;
+    }
+
+    private function tipoAsignacionTerritorialUsuario()
+    {
+        $rolId = (int)($_SESSION['rol_id'] ?? 0);
+
+        if ($rolId === 6) {
+            return 'CUENTA_CLAVE';
+        }
+
+        if ($rolId === 4) {
+            return 'ANALISTA_DATOS';
+        }
+
+        if ($rolId === 3) {
+            return 'ASESOR';
+        }
+
+        return null;
+    }
+
+    private function obtenerEstadosDisponibles($estadosGenerales)
+    {
+        $tipoAsignacion = $this->tipoAsignacionTerritorialUsuario();
+
+        if ($tipoAsignacion === null) {
+            return $estadosGenerales;
+        }
+
+        $modeloTerritorio = new TerritorioModel();
+
+        return $modeloTerritorio->obtenerEstadosAsignadosUsuario(
+            (int)($_SESSION['usuario_id'] ?? 0),
+            $tipoAsignacion
+        );
+    }
+
+    private function obtenerIdsTerritoriosPermitidos()
+    {
+        $tipoAsignacion = $this->tipoAsignacionTerritorialUsuario();
+
+        if ($tipoAsignacion === null) {
+            return null;
+        }
+
+        $modeloTerritorio = new TerritorioModel();
+        $estados = $modeloTerritorio->obtenerEstadosAsignadosUsuario(
+            (int)($_SESSION['usuario_id'] ?? 0),
+            $tipoAsignacion
+        );
+
+        return array_map(
+            static function ($estado) {
+                return (int)($estado['id'] ?? 0);
+            },
+            $estados
+        );
+    }
+
+    private function usuarioPuedeConsultarTerritorio($territorioId)
+    {
+        $territorioId = (int)$territorioId;
+
+        if ($territorioId <= 0) {
+            return false;
+        }
+
+        $permitidos = $this->obtenerIdsTerritoriosPermitidos();
+
+        if ($permitidos === null) {
+            return true;
+        }
+
+        return in_array($territorioId, $permitidos, true);
+    }
+
+    private function convocatoriaVisibleParaUsuario($convocatoria)
+    {
+        $permitidos = $this->obtenerIdsTerritoriosPermitidos();
+
+        if ($permitidos === null) {
+            return true;
+        }
+
+        $estadosConvocatoria = array_map(
+            'intval',
+            is_array($convocatoria['estados_ids'] ?? null)
+                ? $convocatoria['estados_ids']
+                : []
+        );
+
+        return !empty(array_intersect($permitidos, $estadosConvocatoria));
     }
 
     private function esClasificacionValida($tipo, $subtipo, $esChihuahua = false)
