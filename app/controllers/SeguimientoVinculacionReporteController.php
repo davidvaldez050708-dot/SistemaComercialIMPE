@@ -543,6 +543,7 @@ class SeguimientoVinculacionReporteController
                 $filtrosReporte['institucion'] = '';
                 $filtrosReporte['responsable_id'] = 0;
                 $filtrosReporte['estado_seguimiento'] = '';
+                $filtrosReporte['tipo_actividad'] = '';
                 $filtrosReporte['dias_sin_actividad'] = 0;
             } elseif ($tipoReporte === 'institucion') {
                 $filtrosReporte['fecha_inicial'] = '';
