@@ -68,6 +68,7 @@
         const reasons = parseList(button.dataset.motivos);
         const limitations = parseList(button.dataset.limitaciones);
         const adultProfile = parseObject(button.dataset.perfilAdulto);
+        const educationalProfile = parseObject(button.dataset.perfilEducativo);
         const economicProfile = parseObject(button.dataset.actividadEconomica);
         const action = button.dataset.accion || 'OBSERVAR';
         const priority = (button.dataset.prioridad || 'BAJA').toLowerCase();
@@ -91,30 +92,51 @@
                 : '<span>' + escapeHtml(social) + '</span>';
         }
 
-        const adultAvailable = adultProfile.disponible === true;
-        const adultPeriod = adultProfile.anio || '';
-        const adultSource = adultProfile.fuente || 'INEGI - Censo de Población y Vivienda 2020';
-        const adultHtml = adultAvailable
+        const educationalAvailable = educationalProfile.disponible === true;
+        const educationalPeriod = educationalProfile.anio || '2020';
+        const educationalHtml = educationalAvailable
             ? '<section class="data-municipality-analysis-section data-municipality-analysis-adult-section">' +
-                '<div class="data-municipality-analysis-section-heading"><h4>Perfil adulto y laboral</h4><span>INEGI · ' +
-                    escapeHtml(adultPeriod || '2020') + '</span></div>' +
+                '<div class="data-municipality-analysis-section-heading"><h4>Perfil educativo prioritario</h4><span>INEGI · ' +
+                    escapeHtml(educationalPeriod) + '</span></div>' +
                 '<div class="data-municipality-analysis-adult-grid">' +
-                    '<div><span>25–34 años</span><strong>' + number(adultProfile.poblacion_25_34) + '</strong></div>' +
-                    '<div><span>35–44 años</span><strong>' + number(adultProfile.poblacion_35_44) + '</strong></div>' +
-                    '<div><span>45–54 años</span><strong>' + number(adultProfile.poblacion_45_54) + '</strong></div>' +
-                    '<div class="data-municipality-analysis-adult-total"><span>Total 25–54</span><strong>' +
-                        number(adultProfile.poblacion_25_54) + '</strong></div>' +
+                    '<div><span>Adultos 25–49</span><strong>' +
+                        number(educationalProfile.poblacion_25_49) + '</strong></div>' +
+                    '<div><span>Sin estudios de media superior</span><strong>' +
+                        number(educationalProfile.sin_estudios_media_superior_25_49) + '</strong><small>' +
+                        (Number.isFinite(Number(educationalProfile.sin_estudios_media_superior_pct))
+                            ? Number(educationalProfile.sin_estudios_media_superior_pct).toFixed(2) + ' %'
+                            : '—') +
+                        '</small></div>' +
+                    '<div><span>Media superior sin superior</span><strong>' +
+                        number(educationalProfile.media_superior_sin_superior_25_49) + '</strong><small>' +
+                        (Number.isFinite(Number(educationalProfile.media_superior_sin_superior_pct))
+                            ? Number(educationalProfile.media_superior_sin_superior_pct).toFixed(2) + ' %'
+                            : '—') +
+                        '</small></div>' +
                 '</div>' +
+                '<p class="data-municipality-analysis-caption">Este bloque sí corresponde al universo prioritario de 25 a 49 años utilizado por el índice municipal. Fuente: ' +
+                    escapeHtml(educationalProfile.fuente || 'INEGI - Censo de Población y Vivienda 2020') + '.</p>' +
+              '</section>'
+            : '<section class="data-municipality-analysis-section data-municipality-analysis-adult-section">' +
+                '<div class="data-municipality-analysis-section-heading"><h4>Perfil educativo prioritario</h4><span>Pendiente</span></div>' +
+                '<p class="data-municipality-analysis-empty">Este municipio todavía no cuenta con el cruce oficial de edad × escolaridad para 25–49 años.</p>' +
+              '</section>';
+
+        const adultAvailable = adultProfile.disponible === true;
+        const adultSource = adultProfile.fuente || 'INEGI - Censo de Población y Vivienda 2020';
+        const laborHtml = adultAvailable
+            ? '<section class="data-municipality-analysis-section">' +
+                '<div class="data-municipality-analysis-section-heading"><h4>Contexto laboral municipal</h4><span>Referencia general</span></div>' +
                 '<div class="data-municipality-analysis-labor-context">' +
                     '<div><span>PEA</span><strong>' + number(adultProfile.poblacion_economicamente_activa) + '</strong></div>' +
                     '<div><span>Población ocupada</span><strong>' + number(adultProfile.poblacion_ocupada) + '</strong></div>' +
                 '</div>' +
-                '<p class="data-municipality-analysis-caption">PEA y población ocupada son contexto laboral general de 12 años y más; no corresponden exclusivamente al grupo de 25 a 54 años. Fuente: ' +
+                '<p class="data-municipality-analysis-caption">PEA y población ocupada corresponden al contexto laboral general de 12 años y más. No se usan para calcular el índice ni representan exclusivamente a la población de 25–49 años. Fuente: ' +
                     escapeHtml(adultSource) + '.</p>' +
               '</section>'
-            : '<section class="data-municipality-analysis-section data-municipality-analysis-adult-section">' +
-                '<div class="data-municipality-analysis-section-heading"><h4>Perfil adulto y laboral</h4><span>Pendiente</span></div>' +
-                '<p class="data-municipality-analysis-empty">Este municipio todavía no cuenta con el perfil adulto/laboral oficial importado.</p>' +
+            : '<section class="data-municipality-analysis-section">' +
+                '<div class="data-municipality-analysis-section-heading"><h4>Contexto laboral municipal</h4><span>Pendiente</span></div>' +
+                '<p class="data-municipality-analysis-empty">Todavía no hay contexto laboral oficial disponible para este municipio.</p>' +
               '</section>';
 
         const economicAvailable = economicProfile.disponible === true;
@@ -174,7 +196,7 @@
                                 escapeHtml(action) + '</span>' +
                         '</div>' +
                     '</div>' +
-                    '<div class="data-municipality-analysis-index"><strong>' + score + '</strong><span>Índice provisional</span></div>' +
+                    '<div class="data-municipality-analysis-index"><strong>' + score + '</strong><span>Índice de oportunidad</span></div>' +
                 '</header>' +
                 '<div class="data-municipality-analysis-summary">' +
                     '<div><span>Población</span><strong>' + number(button.dataset.poblacion) + '</strong></div>' +
@@ -187,7 +209,8 @@
                     '<div class="data-municipality-analysis-section-heading"><h4>¿Qué explica esta posición?</h4><span>Factores del índice actual</span></div>' +
                     factors(reasons) +
                 '</section>' +
-                adultHtml +
+                educationalHtml +
+                laborHtml +
                 economicHtml +
                 '<section class="data-municipality-analysis-section data-municipality-analysis-institutional-section">' +
                     '<div class="data-municipality-analysis-section-heading"><h4>Información institucional</h4><span>Contexto</span></div>' +
