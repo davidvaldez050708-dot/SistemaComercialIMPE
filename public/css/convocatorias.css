@@ -907,60 +907,89 @@
 }
 
 
-/* Selector intermedio de tipo de convocatoria. */
+/* Selector intermedio de tipo de convocatoria.
+ * Mantiene la misma escala tipográfica y visual del resto del sistema.
+ */
 .convocatoria-type-heading {
     margin-top: 18px;
-    padding: 22px 24px;
+    padding: 18px;
+    font-family: 'Manrope', sans-serif;
+}
+
+.convocatoria-type-heading .panel-title {
+    margin-bottom: 4px;
+    color: var(--color-text-primary);
+    font-size: 14px;
+    font-weight: 800;
+    line-height: 1.2;
+}
+
+.convocatoria-type-heading .panel-subtitle {
+    color: var(--color-text-secondary);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+.convocatoria-type-cards,
+.convocatoria-type-cards * {
+    font-family: 'Manrope', sans-serif;
 }
 
 .convocatoria-type-cards {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 22px;
-    margin-top: 22px;
+    gap: 18px;
+    margin-top: 18px;
 }
 
 .convocatoria-type-card {
-    min-height: 280px;
-    padding: 28px;
+    min-height: 220px;
+    padding: 18px;
     display: grid;
     grid-template-rows: auto 1fr auto;
-    gap: 22px;
+    gap: 14px;
     border-left: 7px solid var(--color-primary);
 }
 
 .convocatoria-type-card-icon {
-    width: 66px;
-    height: 66px;
+    width: 42px;
+    height: 42px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    border-radius: 16px;
+    border: 1px solid #d8e4f5;
+    border-radius: var(--radius-md);
     background: var(--color-primary-soft);
     color: var(--color-primary);
-    font-size: 30px;
+    font-size: 18px;
 }
 
 .convocatoria-type-card h3 {
-    margin: 0 0 8px;
+    margin: 0 0 5px;
     color: var(--color-text-primary);
-    font-size: 22px;
+    font-size: 13.5px;
     font-weight: 800;
+    line-height: 1.35;
 }
 
 .convocatoria-type-card p {
     margin: 0;
     color: var(--color-text-secondary);
-    font-size: 13px;
-    font-weight: 500;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.5;
 }
 
 .convocatoria-type-card .btn {
-    min-height: 48px;
+    min-height: 38px;
+    padding: 0 13px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 14px;
+    gap: 10px;
+    font-size: 12.5px;
+    font-weight: 700;
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -980,7 +1009,7 @@
     }
 
     .convocatoria-type-card {
-        min-height: 240px;
+        min-height: 210px;
     }
 }
 
@@ -991,7 +1020,7 @@
 }
 
 .convocatoria-subtype-cards .convocatoria-type-card {
-    min-height: 260px;
+    min-height: 220px;
 }
 
 @media (max-width: 1199.98px) {
