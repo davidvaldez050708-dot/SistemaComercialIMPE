@@ -268,11 +268,7 @@
                     etiqueta: 'Comenzar investigación',
                     icono: 'bi-telephone'
                 };
-                accionSecundaria = {
-                    codigo: 'REGISTRAR_LLAMADA',
-                    etiqueta: 'Registrar llamada de prueba',
-                    icono: 'bi-journal-check'
-                };
+                accionSecundaria = null;
             }
 
             offcanvas.dataset.flowStep = String(pasoActual);
