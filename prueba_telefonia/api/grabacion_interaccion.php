@@ -84,7 +84,11 @@ $notas = (string)($interaccion['notas'] ?? '');
 $excluirGrabacion =
     strpos($notas, '[BUZON_VOZ]') !== false ||
     strpos($notas, '[FUERA_SERVICIO]') !== false ||
-    in_array($resultado, ['NO_CONTESTO', 'SIN_RESPUESTA', 'NUMERO_INCORRECTO'], true);
+    in_array(
+        $resultado,
+        ['NO_CONTESTO', 'SIN_RESPUESTA', 'BUZON_VOZ', 'FUERA_SERVICIO', 'NUMERO_INCORRECTO'],
+        true
+    );
 
 if ($excluirGrabacion) {
     http_response_code(404);
