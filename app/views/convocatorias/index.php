@@ -12,6 +12,7 @@ $estadoFiltro = $estadoFiltro ?? 0;
 $estatusFiltro = $estatusFiltro ?? '';
 $categoriaFiltro = $categoriaFiltro ?? '';
 $territorioSeleccionado = $territorioSeleccionado ?? null;
+$tipoConvocatoria = $tipoConvocatoria ?? '';
 
 $puedeCrear = tienePermiso('convocatorias.crear');
 $puedeEditar = tienePermiso('convocatorias.editar');
@@ -219,6 +220,7 @@ document.addEventListener('DOMContentLoaded', function () {
 <?php return; ?>
 <?php endif; ?>
 
+<?php if ($tipoConvocatoria === ''): ?>
 <div class="convocatoria-territory-context">
     <a
         class="data-back-link"
@@ -227,6 +229,57 @@ document.addEventListener('DOMContentLoaded', function () {
         Cambiar territorio
     </a>
     <span><?= $texto($territorioSeleccionado['nombre'] ?? '') ?></span>
+</div>
+
+<section class="dashboard-panel convocatoria-type-heading">
+    <h2 class="panel-title mb-1">Seleccionar tipo de convocatoria</h2>
+    <p class="panel-subtitle mb-0">Selecciona la opción que deseas consultar para este territorio.</p>
+</section>
+
+<section class="convocatoria-type-cards">
+    <article class="dashboard-panel convocatoria-type-card">
+        <div class="convocatoria-type-card-icon">
+            <i class="bi bi-mortarboard"></i>
+        </div>
+        <div>
+            <h3>Titulación</h3>
+            <p>Consulta las convocatorias correspondientes a titulación.</p>
+        </div>
+        <a
+            class="btn btn-system-light"
+            href="<?= BASE_URL ?>index.php?controller=convocatoria&action=index&territorio_id=<?= (int)$territorioSeleccionado['id'] ?>&tipo=titulacion">
+            Ver
+            <i class="bi bi-arrow-right"></i>
+        </a>
+    </article>
+
+    <article class="dashboard-panel convocatoria-type-card">
+        <div class="convocatoria-type-card-icon">
+            <i class="bi bi-book"></i>
+        </div>
+        <div>
+            <h3>Bachillerato</h3>
+            <p>Consulta las convocatorias correspondientes a bachillerato.</p>
+        </div>
+        <a
+            class="btn btn-system-light"
+            href="<?= BASE_URL ?>index.php?controller=convocatoria&action=index&territorio_id=<?= (int)$territorioSeleccionado['id'] ?>&tipo=bachillerato">
+            Ver
+            <i class="bi bi-arrow-right"></i>
+        </a>
+    </article>
+</section>
+<?php return; ?>
+<?php endif; ?>
+
+<div class="convocatoria-territory-context">
+    <a
+        class="data-back-link"
+        href="<?= BASE_URL ?>index.php?controller=convocatoria&action=index&territorio_id=<?= (int)$territorioSeleccionado['id'] ?>">
+        <i class="bi bi-arrow-left"></i>
+        Cambiar tipo
+    </a>
+    <span><?= $texto($territorioSeleccionado['nombre'] ?? '') ?> · <?= $tipoConvocatoria === 'titulacion' ? 'Titulación' : 'Bachillerato' ?></span>
 </div>
 
 <section class="dashboard-panel users-module-panel">
@@ -259,6 +312,7 @@ document.addEventListener('DOMContentLoaded', function () {
         <input type="hidden" name="controller" value="convocatoria">
         <input type="hidden" name="action" value="index">
         <input type="hidden" name="territorio_id" value="<?= (int)$territorioSeleccionado['id'] ?>">
+        <input type="hidden" name="tipo" value="<?= $texto($tipoConvocatoria) ?>">
 
         <div class="convocatoria-filter-field convocatoria-filter-search">
             <label class="form-label login-label" for="filtro_convocatoria_buscar">Buscar convocatoria</label>
@@ -1083,6 +1137,7 @@ document.addEventListener('DOMContentLoaded', function () {
             action: 'listadoFiltrado',
             buscar: String(filtroBuscar?.value || '').trim(),
             territorio_id: <?= json_encode((string)(int)$territorioSeleccionado['id']) ?>,
+            tipo: <?= json_encode($tipoConvocatoria) ?>,
             estatus: String(filtroEstatus?.value || ''),
             categoria: String(filtroCategoria?.value || '')
         });
