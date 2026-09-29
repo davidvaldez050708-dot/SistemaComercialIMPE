@@ -379,37 +379,6 @@ if (!empty($seguimientosSinMunicipio)) {
     </article>
 </section>
 
-<?php if ($modoSeguimiento === 'analista'): ?>
-    <section
-        class="linkage-verification-daily"
-        data-call-verification-daily
-        aria-label="Meta diaria de verificaciones telefónicas">
-        <div class="linkage-verification-daily-main">
-            <span class="linkage-verification-daily-icon" aria-hidden="true">
-                <i class="bi bi-telephone-check"></i>
-            </span>
-            <div class="linkage-verification-daily-copy">
-                <div>
-                    <strong>Verificaciones telefónicas de hoy</strong>
-                    <span>Meta operativa: 25 instituciones verificadas</span>
-                </div>
-                <div class="linkage-verification-daily-value">
-                    <strong data-call-verification-count>—</strong>
-                    <span>/ 25</span>
-                </div>
-            </div>
-        </div>
-        <div class="linkage-verification-progress" aria-hidden="true">
-            <span data-call-verification-progress style="width:0%"></span>
-        </div>
-        <div class="linkage-verification-daily-meta">
-            <span><b data-call-total-count>—</b> llamadas realizadas</span>
-            <span><b data-call-contact-count>—</b> con contacto</span>
-            <span data-call-verification-remaining>Calculando avance…</span>
-        </div>
-    </section>
-<?php endif; ?>
-
 <section class="dashboard-panel linkage-filters-panel">
     <form
         class="linkage-tools-form"
