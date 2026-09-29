@@ -225,7 +225,7 @@
                     resolve();
                 }, { once: true });
                 script.addEventListener('error', function () {
-                    reject(new Error('No fue posible cargar el teléfono WebRTC de Zadarma.'));
+                    reject(new Error('No fue posible cargar el teléfono WebRTC.'));
                 }, { once: true });
                 document.head.appendChild(script);
             });
@@ -244,7 +244,7 @@
             const data = await response.json();
 
             if (!response.ok || !data.ok || !data.webrtc_key || !data.sip_login) {
-                throw new Error(data.mensaje || 'No fue posible preparar Zadarma WebRTC.');
+                throw new Error(data.mensaje || 'No fue posible preparar la telefonía WebRTC.');
             }
 
             extension = String(data.extension || '').trim();
@@ -278,7 +278,7 @@
             }
 
             if (window.location.protocol !== 'https:') {
-                throw new Error('Zadarma WebRTC requiere abrir el sistema mediante HTTPS.');
+                throw new Error('La telefonía WebRTC requiere abrir el sistema mediante HTTPS.');
             }
 
             if (!webRtcKey || !sipLogin) {
@@ -294,7 +294,7 @@
             }, 15000, 100);
 
             if (!loadersReady) {
-                throw new Error('El componente WebRTC de Zadarma no terminó de cargar.');
+                throw new Error('El componente de telefonía WebRTC no terminó de cargar.');
             }
 
             if (!widgetInitialized) {
@@ -315,7 +315,7 @@
             }, 15000, 100);
 
             if (!apiReady) {
-                throw new Error('Zadarma no publicó el control de llamadas WebRTC para este dominio.');
+                throw new Error('El proveedor de telefonía no publicó el control de llamadas WebRTC para este dominio.');
             }
 
             widgetReady = true;
@@ -346,7 +346,7 @@
                                 '<div class="linkage-call-number" data-call-number>—</div>' +
                                 '<div class="linkage-call-origin" data-call-origin>' +
                                     '<i class="bi bi-building-check" aria-hidden="true"></i>' +
-                                    '<span>Desde: <strong data-call-extension>Extensión —</strong> · Zadarma</span>' +
+                                    '<span>Desde: <strong data-call-extension>Extensión —</strong> · Telefonía IP</span>' +
                                 '</div>' +
                                 '<div class="linkage-call-state">' +
                                     '<span data-call-status>Preparando teléfono…</span>' +
@@ -618,7 +618,7 @@
             const data = await response.json();
 
             if (!response.ok || !data.ok) {
-                throw new Error(data.mensaje || 'No fue posible consultar el estado de la llamada Zadarma.');
+                throw new Error(data.mensaje || 'No fue posible consultar el estado de la llamada.');
             }
 
             return data.call || null;
@@ -723,8 +723,8 @@
             if (duration > 0) {
                 estadoTexto = 'Conversación: ' + formatDuration(duration) +
                     (recordingState === 'available'
-                        ? '. La grabación ya fue confirmada por Zadarma.'
-                        : '. La grabación se está procesando en Zadarma.');
+                        ? '. La grabación ya fue confirmada por el proveedor de telefonía.'
+                        : '. La grabación se está procesando en el proveedor de telefonía.');
             } else if (finalStatus === 'busy') {
                 estadoTexto = 'La línea estaba ocupada. Registra el resultado para conservar el intento.';
             } else if (finalStatus === 'no-answer') {
@@ -810,7 +810,7 @@
                 els.hangup.disabled = true;
                 els.start.disabled = false;
                 els.status.textContent = 'No se pudo iniciar la llamada';
-                mostrarToast(error.message || 'No fue posible iniciar la llamada con Zadarma.', true);
+                mostrarToast(error.message || 'No fue posible iniciar la llamada con el proveedor de telefonía.', true);
             }
         }
 
@@ -1009,7 +1009,7 @@
                 els.start.disabled = false;
             } catch (error) {
                 els.status.textContent = 'Telefonía no disponible';
-                mostrarToast(error.message || 'No fue posible iniciar Zadarma WebRTC.', true);
+                mostrarToast(error.message || 'No fue posible iniciar la telefonía WebRTC.', true);
             }
         };
 
@@ -1044,7 +1044,7 @@
                 }
 
                 if (!response.ok || !data.ok) {
-                    throw new Error(data.mensaje || 'No fue posible vincular los datos técnicos de la llamada Zadarma.');
+                    throw new Error(data.mensaje || 'No fue posible vincular los datos técnicos de la llamada.');
                 }
 
                 pendingMetadata = null;
@@ -1060,7 +1060,7 @@
                         : 'Llamada registrada y verificada · esta institución cuenta en la meta de hoy.';
                 } else if (feedback.tieneEvidencia === true && data.hubo_respuesta !== true) {
                     mensajeFinal =
-                        'Llamada registrada · no contabilizó como verificación porque Zadarma no confirmó una respuesta.';
+                        'Llamada registrada · no contabilizó como verificación porque el proveedor de telefonía no confirmó una respuesta.';
                 } else if (feedback.tieneEvidencia !== true) {
                     mensajeFinal =
                         'Llamada registrada · ' +
@@ -1080,7 +1080,7 @@
                 document.dispatchEvent(new CustomEvent('impe:twilio-call-linked', { detail: detail }));
             } catch (error) {
                 awaitingInteractionSave = false;
-                mostrarToast(error.message || 'La interacción se guardó, pero no fue posible vincular los datos técnicos de Zadarma.', true);
+                mostrarToast(error.message || 'La interacción se guardó, pero no fue posible vincular los datos técnicos de la llamada.', true);
             } finally {
                 linkingMetadata = false;
             }
