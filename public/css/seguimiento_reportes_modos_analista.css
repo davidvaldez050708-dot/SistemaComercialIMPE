@@ -122,3 +122,221 @@
         margin-right: 12px;
     }
 }
+
+
+/* ===== Reporte de una institución: ficha ejecutiva ===== */
+.analyst-report-output[data-report-type="institucion"] .report-filter-summary {
+    display: none;
+}
+
+.analyst-report-output[data-report-type="institucion"] > .d-flex:first-child {
+    margin-bottom: 14px !important;
+}
+
+.analyst-report-output[data-report-type="institucion"] .page-title {
+    margin-bottom: 2px;
+    font-size: 22px;
+    line-height: 1.2;
+}
+
+.analyst-report-output[data-report-type="institucion"] > .d-flex:first-child .page-subtitle {
+    max-width: 760px;
+    font-size: 11.5px;
+    line-height: 1.4;
+}
+
+.analyst-report-output[data-report-type="institucion"] .linkage-summary-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 14px !important;
+}
+
+.analyst-report-output[data-report-type="institucion"] .linkage-summary-card {
+    min-height: 84px;
+    padding: 12px 13px;
+    border-radius: 12px;
+}
+
+.analyst-report-output[data-report-type="institucion"] .linkage-summary-card .metric-icon {
+    width: 34px;
+    height: 34px;
+    flex: 0 0 34px;
+    font-size: 14px;
+}
+
+.analyst-report-output[data-report-type="institucion"] .linkage-summary-card .metric-value {
+    margin-bottom: 2px;
+    font-size: 20px;
+    line-height: 1;
+}
+
+.analyst-report-output[data-report-type="institucion"] .linkage-summary-card .metric-label {
+    font-size: 10.5px;
+    line-height: 1.25;
+}
+
+.analyst-institution-profile {
+    margin-bottom: 14px !important;
+    padding: 16px 18px !important;
+}
+
+.analyst-institution-profile .panel-title {
+    margin-bottom: 2px !important;
+    font-size: 15px;
+    line-height: 1.25;
+}
+
+.analyst-institution-profile .page-subtitle {
+    font-size: 10.8px;
+    line-height: 1.35;
+}
+
+.analyst-institution-profile .status-pill {
+    min-height: 27px;
+    padding: 5px 10px;
+    font-size: 10px;
+}
+
+.analyst-institution-profile .row {
+    --bs-gutter-x: 18px;
+    --bs-gutter-y: 12px;
+}
+
+.analyst-institution-profile .row > div {
+    min-width: 0;
+}
+
+.analyst-institution-profile .row span.text-muted {
+    margin-bottom: 3px;
+    font-size: 9.8px !important;
+    font-weight: 600;
+    line-height: 1.25;
+}
+
+.analyst-institution-profile .row strong {
+    display: block;
+    overflow-wrap: anywhere;
+    color: var(--color-text);
+    font-size: 12.5px;
+    font-weight: 700;
+    line-height: 1.35;
+}
+
+.analyst-institution-history {
+    margin-bottom: 0 !important;
+    border-radius: 12px;
+}
+
+.analyst-institution-history .table-panel-header {
+    padding: 13px 18px 10px;
+}
+
+.analyst-institution-history .panel-title {
+    font-size: 15px;
+    line-height: 1.25;
+}
+
+.analyst-institution-history .page-subtitle {
+    margin-top: 2px !important;
+    font-size: 10.5px;
+    line-height: 1.35;
+}
+
+.analyst-institution-history .users-table {
+    table-layout: fixed;
+}
+
+.analyst-institution-history .users-table th {
+    padding: 9px 18px;
+    color: var(--color-text-soft);
+    font-size: 9.8px;
+    font-weight: 700;
+}
+
+.analyst-institution-history .users-table td {
+    padding: 10px 18px;
+    color: var(--color-text);
+    font-size: 10.8px;
+    line-height: 1.35;
+    vertical-align: middle;
+}
+
+.analyst-institution-history .users-table th:nth-child(1),
+.analyst-institution-history .users-table td:nth-child(1) {
+    width: 16%;
+}
+
+.analyst-institution-history .users-table th:nth-child(2),
+.analyst-institution-history .users-table td:nth-child(2) {
+    width: 23%;
+}
+
+.analyst-institution-history .users-table th:nth-child(3),
+.analyst-institution-history .users-table td:nth-child(3) {
+    width: 18%;
+}
+
+.analyst-institution-history .users-table th:nth-child(4),
+.analyst-institution-history .users-table td:nth-child(4) {
+    width: 43%;
+}
+
+.analyst-history-date {
+    color: var(--color-text-soft) !important;
+    font-size: 10.2px !important;
+    font-weight: 650;
+    white-space: nowrap;
+}
+
+.analyst-history-title {
+    display: block;
+    margin-bottom: 2px;
+    font-size: 11px;
+    line-height: 1.25;
+}
+
+.analyst-history-owner {
+    display: block;
+    color: var(--color-text-soft);
+    font-size: 9.5px;
+    line-height: 1.25;
+}
+
+.analyst-history-result {
+    display: inline-flex;
+    align-items: center;
+    min-height: 25px;
+    padding: 4px 8px;
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    background: var(--color-bg);
+    color: var(--color-text);
+    font-size: 9.8px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.analyst-history-summary {
+    color: var(--color-text-soft) !important;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 1199.98px) {
+    .analyst-report-output[data-report-type="institucion"] .linkage-summary-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 767.98px) {
+    .analyst-report-output[data-report-type="institucion"] .linkage-summary-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .analyst-institution-profile {
+        padding: 14px !important;
+    }
+
+    .analyst-institution-history .users-table {
+        min-width: 760px;
+    }
+}
