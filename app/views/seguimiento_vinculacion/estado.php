@@ -1216,6 +1216,8 @@ if (!empty($seguimientosSinMunicipio)) {
                         <label class="form-label" for="work_interaction_result">Resultado</label>
                         <select class="form-select" id="work_interaction_result" name="resultado" required>
                             <option value="SIN_RESPUESTA">Sin respuesta</option>
+                            <option value="BUZON_VOZ">Buzón de voz</option>
+                            <option value="FUERA_SERVICIO">Fuera del área / fuera de servicio</option>
                             <option value="NUMERO_INCORRECTO">Número incorrecto</option>
                             <option value="CONTACTO_INCORRECTO">Contacto incorrecto</option>
                             <option value="CONTACTO_CORRECTO">Contacto correcto</option>
