@@ -552,6 +552,27 @@
                         );
                     }
 
+                    if (llamada.verificacion_efectiva === true) {
+                        const evidencias = Array.isArray(llamada.verificacion_evidencias)
+                            ? llamada.verificacion_evidencias.filter(Boolean)
+                            : [];
+                        const badgeVerificacion = crearBadgeResultado(
+                            'Verificación efectiva',
+                            'is-verification'
+                        );
+                        if (evidencias.length > 0) {
+                            badgeVerificacion.title = evidencias.join(' · ');
+                        }
+                        resultados.appendChild(badgeVerificacion);
+                    } else if (llamada.verificacion_pendiente_vinculo === true) {
+                        resultados.appendChild(
+                            crearBadgeResultado(
+                                'Verificación pendiente de vincular',
+                                'is-verification-pending'
+                            )
+                        );
+                    }
+
                     pie.appendChild(resultados);
 
                     const derecha = document.createElement('div');
