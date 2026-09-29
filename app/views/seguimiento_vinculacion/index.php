@@ -185,7 +185,9 @@ $tarjetasPorPaginaSeguimiento = 12;
                             Generar reporte de seguimiento
                         </h5>
                         <p class="system-form-modal-subtitle">
-                            Selecciona los criterios que deseas utilizar para personalizar el reporte.
+                            <?= $modoSeguimiento === 'analista'
+                                ? 'Elige qué necesitas consultar y después ajusta solo los criterios necesarios.'
+                                : 'Selecciona los criterios que deseas utilizar para personalizar el reporte.' ?>
                         </p>
                     </div>
                     <button
@@ -200,7 +202,7 @@ $tarjetasPorPaginaSeguimiento = 12;
                         title="Configurar reporte de seguimiento"
                         src="<?= BASE_URL ?>index.php?controller=seguimientoVinculacionReporte&action=index&modal=1"
                         loading="lazy"
-                        style="display:block;width:100%;height:325px;border:0;background:#fff;"></iframe>
+                        style="display:block;width:100%;height:470px;border:0;background:#fff;"></iframe>
                 </div>
             </div>
         </div>
