@@ -35,7 +35,14 @@ class ConvocatoriaModel
         return $this->convertirResultadoEnArreglo($resultado);
     }
 
-    public function obtenerListado($buscar = '', $estadoId = 0, $estatus = '', $categoria = '')
+    public function obtenerListado(
+        $buscar = '',
+        $estadoId = 0,
+        $estatus = '',
+        $categoria = '',
+        $tipoConvocatoria = '',
+        $subtipoConvocatoria = ''
+    )
     {
         $sql = "SELECT
                     convocatorias.id,
@@ -45,6 +52,8 @@ class ConvocatoriaModel
                     convocatorias.fecha_termino,
                     convocatorias.estado,
                     convocatorias.categoria,
+                    convocatorias.tipo_convocatoria,
+                    convocatorias.subtipo_convocatoria,
                     convocatorias.created_at,
                     convocatorias.updated_at,
                     GROUP_CONCAT(
@@ -89,6 +98,14 @@ class ConvocatoriaModel
             $sql .= " AND convocatorias.categoria = ?";
             $tipos .= 's';
             $parametros[] = $categoria;
+        }
+
+        if ($tipoConvocatoria !== '' && $subtipoConvocatoria !== '') {
+            $sql .= " AND convocatorias.tipo_convocatoria = ?
+                      AND convocatorias.subtipo_convocatoria = ?";
+            $tipos .= 'ss';
+            $parametros[] = $tipoConvocatoria;
+            $parametros[] = $subtipoConvocatoria;
         }
 
         $sql .= " GROUP BY convocatorias.id
@@ -154,19 +171,23 @@ class ConvocatoriaModel
             $sql = "INSERT INTO convocatorias (
                         titulo,
                         categoria,
+                        tipo_convocatoria,
+                        subtipo_convocatoria,
                         imagen,
                         fecha_inicio,
                         fecha_termino,
                         estado,
                         creado_por,
                         actualizado_por
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
             $stmt = $this->connection->prepare($sql);
             $stmt->bind_param(
-                'sssssiii',
+                'sssssssiii',
                 $datos['titulo'],
                 $categoria,
+                $datos['tipo_convocatoria'],
+                $datos['subtipo_convocatoria'],
                 $datos['imagen'],
                 $datos['fecha_inicio'],
                 $datos['fecha_termino'],
@@ -205,6 +226,8 @@ class ConvocatoriaModel
             $sql = "UPDATE convocatorias
                     SET titulo = ?,
                         categoria = ?,
+                        tipo_convocatoria = ?,
+                        subtipo_convocatoria = ?,
                         imagen = ?,
                         fecha_inicio = ?,
                         fecha_termino = ?,
@@ -214,9 +237,11 @@ class ConvocatoriaModel
 
             $stmt = $this->connection->prepare($sql);
             $stmt->bind_param(
-                'sssssiii',
+                'sssssssiii',
                 $datos['titulo'],
                 $categoria,
+                $datos['tipo_convocatoria'],
+                $datos['subtipo_convocatoria'],
                 $datos['imagen'],
                 $datos['fecha_inicio'],
                 $datos['fecha_termino'],
