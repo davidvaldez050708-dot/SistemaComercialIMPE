@@ -379,6 +379,37 @@ if (!empty($seguimientosSinMunicipio)) {
     </article>
 </section>
 
+<?php if ($modoSeguimiento === 'analista'): ?>
+    <section
+        class="linkage-verification-daily"
+        data-call-verification-daily
+        aria-label="Meta diaria de verificaciones telefónicas">
+        <div class="linkage-verification-daily-main">
+            <span class="linkage-verification-daily-icon" aria-hidden="true">
+                <i class="bi bi-telephone-check"></i>
+            </span>
+            <div class="linkage-verification-daily-copy">
+                <div>
+                    <strong>Verificaciones telefónicas de hoy</strong>
+                    <span>Meta operativa: 25 instituciones verificadas</span>
+                </div>
+                <div class="linkage-verification-daily-value">
+                    <strong data-call-verification-count>—</strong>
+                    <span>/ 25</span>
+                </div>
+            </div>
+        </div>
+        <div class="linkage-verification-progress" aria-hidden="true">
+            <span data-call-verification-progress style="width:0%"></span>
+        </div>
+        <div class="linkage-verification-daily-meta">
+            <span><b data-call-total-count>—</b> llamadas realizadas</span>
+            <span><b data-call-contact-count>—</b> con contacto</span>
+            <span data-call-verification-remaining>Calculando avance…</span>
+        </div>
+    </section>
+<?php endif; ?>
+
 <section class="dashboard-panel linkage-filters-panel">
     <form
         class="linkage-tools-form"
@@ -1203,6 +1234,45 @@ if (!empty($seguimientosSinMunicipio)) {
                         <label class="form-label" for="work_interaction_date">Fecha/hora</label>
                         <input class="form-control" id="work_interaction_date" name="fecha_inicio" type="datetime-local" required>
                     </div>
+
+                    <div class="col-12 d-none" data-call-verification-evidence>
+                        <div class="linkage-call-verification-box">
+                            <div class="linkage-call-verification-head">
+                                <div>
+                                    <strong>Datos verificados durante esta llamada</strong>
+                                    <span>La llamada solo podrá contar para la meta si deja evidencia verificable y queda vinculada con la llamada real.</span>
+                                </div>
+                                <span class="linkage-call-verification-badge">Meta diaria</span>
+                            </div>
+                            <div class="linkage-call-verification-options">
+                                <label data-verification-option="phone">
+                                    <input type="checkbox" name="verificacion_telefono_confirmado" value="1">
+                                    <span>
+                                        <strong>Teléfono confirmado</strong>
+                                        <small>Confirmaron que el número actual sí corresponde.</small>
+                                    </span>
+                                </label>
+                                <label data-verification-option="email">
+                                    <input type="checkbox" name="verificacion_correo_confirmado" value="1">
+                                    <span>
+                                        <strong>Correo confirmado</strong>
+                                        <small>Confirmaron que el correo actual es válido para continuar.</small>
+                                    </span>
+                                </label>
+                                <label data-verification-option="contact">
+                                    <input type="checkbox" name="verificacion_contacto_confirmado" value="1">
+                                    <span>
+                                        <strong>Contacto institucional confirmado</strong>
+                                        <small>Confirmaron a la persona o área registrada.</small>
+                                    </span>
+                                </label>
+                            </div>
+                            <p class="linkage-call-verification-note" data-call-verification-note>
+                                “Contacto correcto” por sí solo no cuenta como verificación efectiva.
+                            </p>
+                        </div>
+                    </div>
+
                     <div class="col-12 col-md-6">
                         <label class="form-label" for="work_next_action">Próxima acción</label>
                         <select class="form-select" id="work_next_action" name="proxima_accion">
