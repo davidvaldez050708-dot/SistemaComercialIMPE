@@ -511,6 +511,10 @@
     }
 
     function crearVistaInstitucion(root) {
+        if (root?.hasAttribute('data-analyst-report-output')) {
+            return;
+        }
+
         const parametros = new URLSearchParams(window.location.search);
         const institucionId = Number(parametros.get('institucion_id') || 0);
         if (!Number.isInteger(institucionId) || institucionId <= 0 || root.querySelector('[data-institution-focus]')) {
@@ -614,6 +618,10 @@
     }
 
     function ajustarAnaliticaInstitucion(root) {
+        if (root?.hasAttribute('data-analyst-report-output')) {
+            return;
+        }
+
         const parametros = new URLSearchParams(window.location.search);
         if (Number(parametros.get('institucion_id') || 0) <= 0) {
             return;
