@@ -81,3 +81,44 @@
         padding: 10px 12px;
     }
 }
+
+
+.report-period-shortcuts {
+    margin: 10px 16px 4px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 7px;
+}
+
+.report-period-shortcuts > span {
+    margin-right: 2px;
+    color: var(--color-text-secondary);
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.report-period-shortcuts .btn {
+    min-height: 30px;
+    padding: 4px 10px;
+    border: 1px solid #dfe5ee;
+    border-radius: 999px;
+    background: #fff;
+    color: var(--color-text-primary);
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.report-period-shortcuts .btn:hover,
+.report-period-shortcuts .btn.is-active {
+    border-color: rgba(46, 72, 165, .42);
+    background: #f4f7ff;
+    color: #28449c;
+}
+
+@media (max-width: 767.98px) {
+    .report-period-shortcuts {
+        margin-left: 12px;
+        margin-right: 12px;
+    }
+}
