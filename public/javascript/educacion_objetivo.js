@@ -19,7 +19,7 @@
         if (!document.querySelector('link[data-education-target-style]')) {
             const link = document.createElement('link');
             link.rel = 'stylesheet';
-            link.href = 'public/css/educacion_objetivo.css?v=20260929-1';
+            link.href = 'public/css/educacion_objetivo.css?v=20260929-2';
             link.setAttribute('data-education-target-style', '');
             document.head.appendChild(link);
         }
@@ -377,13 +377,13 @@
                     '<div class="data-education-program-opportunity">' +
                         '<div class="data-education-program-heading">' +
                             '<div>' +
-                                '<strong>Oportunidad educativa por perfil</strong>' +
-                                '<span>Lectura operativa para orientar vinculación; no representa matrícula ni elegibilidad automática.</span>' +
+                                '<strong>Oportunidad educativa por oferta</strong>' +
+                                '<span>Relaciona la oferta pública de Fundación Red Educativa México con el perfil territorial. Las cifras son población de referencia, no matrícula ni elegibilidad automática.</span>' +
                             '</div>' +
                         '</div>' +
-                        '<div class="data-education-program-grid">' +
-                            '<article>' +
-                                '<span>Bachillerato / continuidad media superior</span>' +
+                        '<div class="data-education-program-grid is-expanded">' +
+                            '<article class="is-primary">' +
+                                '<span>Bachillerato 286 / certificación</span>' +
                                 '<strong>' +
                                     (prioridadDisponible
                                         ? numero(
@@ -392,21 +392,47 @@
                                           )
                                         : 'Pendiente') +
                                 '</strong>' +
-                                '<small>Población de referencia de 25–49 sin estudios de educación media superior.</small>' +
+                                '<small>Referencia: adultos 25–49 sin estudios de educación media superior.</small>' +
                             '</article>' +
                             '<article>' +
-                                '<span>Continuidad a educación superior</span>' +
+                                '<span>Bachillerato en 2 años</span>' +
+                                '<strong>' +
+                                    (prioridadDisponible
+                                        ? numero(
+                                            prioridadMetricas.sin_estudios_media_superior_25_49 ??
+                                            prioridadMetricas.sin_media_superior_concluida_25_49
+                                          )
+                                        : 'Pendiente') +
+                                '</strong>' +
+                                '<small>Comparte el mismo universo territorial de referencia; la modalidad y requisitos son distintos.</small>' +
+                            '</article>' +
+                            '<article>' +
+                                '<span>Carreras ejecutivas</span>' +
                                 '<strong>' +
                                     (prioridadDisponible
                                         ? numero(prioridadMetricas.media_superior_sin_superior_25_49)
                                         : 'Pendiente') +
                                 '</strong>' +
-                                '<small>Población de referencia con media superior y sin educación superior.</small>' +
+                                '<small>Referencia: adultos con media superior y sin educación superior.</small>' +
+                            '</article>' +
+                            '<article>' +
+                                '<span>Seguridad pública y ciberseguridad</span>' +
+                                '<strong>' +
+                                    (prioridadDisponible
+                                        ? numero(prioridadMetricas.media_superior_sin_superior_25_49)
+                                        : 'Pendiente') +
+                                '</strong>' +
+                                '<small>Programas de TSU/licenciatura; el territorio aporta una base potencial, pero el interés ocupacional debe analizarse aparte.</small>' +
                             '</article>' +
                             '<article class="is-context">' +
-                                '<span>Titulación por experiencia</span>' +
+                                '<span>Titulación por experiencia laboral</span>' +
                                 '<strong>Requiere cruce laboral</strong>' +
-                                '<small>La escolaridad por sí sola no permite identificar elegibilidad; debe combinarse con experiencia y perfil laboral.</small>' +
+                                '<small>Exige variables adicionales como experiencia, bachillerato y trayectoria; no debe inferirse solo con escolaridad.</small>' +
+                            '</article>' +
+                            '<article class="is-context">' +
+                                '<span>Certificación de idiomas</span>' +
+                                '<strong>Oferta transversal</strong>' +
+                                '<small>No tiene un universo objetivo identificable únicamente con nivel escolar; puede complementar convenios y profesionalización.</small>' +
                             '</article>' +
                         '</div>' +
                     '</div>' +
@@ -488,61 +514,44 @@
             const m = estado.metricas || {};
 
             return (
-                '<div class="data-education-context-general">' +
-                    '<div class="data-education-context-general-heading">' +
-                        '<div>' +
-                            '<strong>Indicadores generales del Censo ' + escapar(datos.periodo || '2020') + '</strong>' +
-                            '<span>Contexto adicional; no define por sí solo la prioridad de vinculación.</span>' +
+                '<details class="data-education-subcontext">' +
+                    '<summary>' +
+                        '<span><strong>Indicadores generales del Censo ' + escapar(datos.periodo || '2020') + '</strong><small>Secundaria completa, educación posbásica y escolaridad promedio</small></span>' +
+                        '<i class="bi bi-chevron-down"></i>' +
+                    '</summary>' +
+                    '<div class="data-education-subcontext-body">' +
+                        '<div class="data-education-general-compact">' +
+                            '<div><span>Secundaria completa · 15+</span><strong>' + numero(m.secundaria_completa) + '</strong><small>' + porcentaje(m.secundaria_completa_pct) + '</small></div>' +
+                            '<div><span>Educación posbásica · 18+</span><strong>' + numero(m.educacion_posbasica_18_mas) + '</strong><small>Referencia de continuidad educativa</small></div>' +
+                            '<div><span>Escolaridad promedio</span><strong>' + decimal(m.grado_promedio_escolaridad) + ' años</strong><small>Promedio estatal</small></div>' +
                         '</div>' +
+                        '<p class="data-education-subcontext-note">Estos indicadores describen el entorno educativo general y no sustituyen el perfil prioritario de 25–49.</p>' +
                     '</div>' +
+                '</details>' +
 
-                    '<div class="data-education-target-summary">' +
-                        '<article class="data-education-target-card is-primary">' +
-                            '<span>Población de 15 años y más con secundaria completa</span>' +
-                            '<strong>' + numero(m.secundaria_completa) + '</strong>' +
-                            '<b>' + porcentaje(m.secundaria_completa_pct) + ' de la población de 15 años y más</b>' +
-                            '<small>Variable oficial de contexto. No significa “máxima escolaridad” ni equivale a población objetivo.</small>' +
-                        '</article>' +
-                        '<article class="data-education-target-card">' +
-                            '<span>Población de 18 años y más con educación posbásica</span>' +
-                            '<strong>' + numero(m.educacion_posbasica_18_mas) + '</strong>' +
-                            '<b>Contexto de continuidad educativa</b>' +
-                            '<small>Su universo de edad es 18+; no se usa para estimar la brecha educativa de 25–49.</small>' +
-                        '</article>' +
-                        '<article class="data-education-target-card">' +
-                            '<span>Grado promedio de escolaridad</span>' +
-                            '<strong>' + decimal(m.grado_promedio_escolaridad) + ' años</strong>' +
-                            '<b>Promedio estatal registrado</b>' +
-                            '<small>Describe el contexto general y no modifica por sí solo la prioridad municipal.</small>' +
-                        '</article>' +
-                    '</div>' +
-
-                    '<details class="data-education-youth-context">' +
-                        '<summary><span><strong>Contexto educativo juvenil</strong><small>Indicadores de 15 a 24 años · referencia complementaria</small></span><i class="bi bi-chevron-down"></i></summary>' +
+                '<details class="data-education-subcontext">' +
+                    '<summary>' +
+                        '<span><strong>Contexto juvenil</strong><small>Asistencia escolar de 15 a 24 años · referencia secundaria</small></span>' +
+                        '<i class="bi bi-chevron-down"></i>' +
+                    '</summary>' +
+                    '<div class="data-education-subcontext-body">' +
                         '<div class="data-education-youth-context-body">' +
-                            '<div><span>15 a 17 años fuera de la escuela</span><strong>' + numero(m.fuera_15_17) + '</strong><small>' + porcentaje(m.fuera_15_17_pct) + ' del grupo de edad</small></div>' +
-                            '<div><span>18 a 24 años fuera de la escuela</span><strong>' + numero(m.fuera_18_24) + '</strong><small>' + porcentaje(m.fuera_18_24_pct) + ' del grupo de edad</small></div>' +
-                            '<div><span>15 a 24 años no registrados como asistentes</span><strong>' + numero(m.fuera_15_24) + '</strong><small>' + porcentaje(m.fuera_15_24_pct) + ' del grupo de edad</small></div>' +
+                            '<div><span>15 a 17 años fuera de la escuela</span><strong>' + numero(m.fuera_15_17) + '</strong><small>' + porcentaje(m.fuera_15_17_pct) + ' del grupo</small></div>' +
+                            '<div><span>18 a 24 años fuera de la escuela</span><strong>' + numero(m.fuera_18_24) + '</strong><small>' + porcentaje(m.fuera_18_24_pct) + ' del grupo</small></div>' +
+                            '<div><span>15 a 24 años no registrados como asistentes</span><strong>' + numero(m.fuera_15_24) + '</strong><small>' + porcentaje(m.fuera_15_24_pct) + ' del grupo</small></div>' +
                         '</div>' +
-                        '<p>Estos indicadores se conservan como contexto juvenil y no se suman con la población adulta prioritaria.</p>' +
-                    '</details>' +
-
-                    '<details class="data-education-youth-municipal">' +
-                        '<summary><span><strong>Detalle municipal del contexto juvenil</strong><small>Municipios con mayor población de 15 a 24 años no registrada como asistente</small></span><i class="bi bi-chevron-down"></i></summary>' +
-                        '<div class="data-education-youth-municipal-body">' +
-                            renderMunicipiosJuveniles(datos.municipios || []) +
-                        '</div>' +
-                    '</details>' +
-
-                    '<p class="data-education-target-note">' +
-                        '<strong>Importante:</strong> edad, asistencia escolar y nivel de escolaridad son dimensiones distintas. ' +
-                        'No se suman ni se extrapolan entre universos de edad. La población prioritaria de 25–49 se calcula únicamente con el cruce oficial correspondiente.' +
-                    '</p>' +
-                    '<div class="data-education-target-source">' +
-                        '<span>Fuente: <strong>' + escapar(datos.fuente || 'INEGI') + '</strong></span>' +
-                        '<span>Periodo: <strong>' + escapar(datos.periodo || '2020') + '</strong></span>' +
-                        '<span>Tipo: <strong>Consulta oficial</strong></span>' +
+                        '<details class="data-education-youth-municipal">' +
+                            '<summary><span><strong>Ver detalle municipal juvenil</strong><small>Municipios con mayor población de 15 a 24 años no registrada como asistente</small></span><i class="bi bi-chevron-down"></i></summary>' +
+                            '<div class="data-education-youth-municipal-body">' +
+                                renderMunicipiosJuveniles(datos.municipios || []) +
+                            '</div>' +
+                        '</details>' +
                     '</div>' +
+                '</details>' +
+
+                '<div class="data-education-context-source">' +
+                    '<span>Fuente: <strong>' + escapar(datos.fuente || 'INEGI') + '</strong></span>' +
+                    '<span>Periodo: <strong>' + escapar(datos.periodo || '2020') + '</strong></span>' +
                 '</div>'
             );
         };
@@ -561,8 +570,8 @@
                 contexto.innerHTML =
                     '<summary>' +
                         '<span>' +
-                            '<strong>Contexto educativo complementario</strong>' +
-                            '<small>Rezago educativo oficial, indicadores generales y contexto juvenil</small>' +
+                            '<strong>Contexto educativo adicional</strong>' +
+                            '<small>Indicadores oficiales y contexto complementario para profundizar el análisis</small>' +
                         '</span>' +
                         '<i class="bi bi-chevron-down" aria-hidden="true"></i>' +
                     '</summary>' +
@@ -579,8 +588,48 @@
                 return;
             }
 
-            if (!cuerpo.contains(rezago)) {
-                cuerpo.appendChild(rezago);
+            let rezagoDetalle = cuerpo.querySelector(
+                '[data-education-official-detail]'
+            );
+
+            if (!rezagoDetalle) {
+                rezagoDetalle = document.createElement('details');
+                rezagoDetalle.className = 'data-education-subcontext';
+                rezagoDetalle.setAttribute('data-education-official-detail', '');
+
+                const porcentajeRezago = rezago.querySelector(
+                    '.data-education-metric-primary > strong'
+                )?.textContent?.trim() || 'Sin dato';
+                const personasRezago = rezago.querySelector(
+                    '.data-education-metric:not(.data-education-metric-primary) > strong'
+                )?.textContent?.trim() || 'Sin dato';
+                const periodoRezago = rezago.querySelector(
+                    '.data-education-period'
+                )?.textContent?.trim() || '';
+
+                rezagoDetalle.innerHTML =
+                    '<summary>' +
+                        '<span>' +
+                            '<strong>Rezago educativo oficial</strong>' +
+                            '<small>' +
+                                escapar(porcentajeRezago) + ' · ' +
+                                escapar(personasRezago) + ' personas' +
+                                (periodoRezago ? ' · ' + escapar(periodoRezago) : '') +
+                            '</small>' +
+                        '</span>' +
+                        '<i class="bi bi-chevron-down"></i>' +
+                    '</summary>' +
+                    '<div class="data-education-subcontext-body" data-education-official-body></div>';
+
+                cuerpo.appendChild(rezagoDetalle);
+            }
+
+            const rezagoBody = rezagoDetalle.querySelector(
+                '[data-education-official-body]'
+            );
+
+            if (rezagoBody && !rezagoBody.contains(rezago)) {
+                rezagoBody.appendChild(rezago);
             }
 
             let contextoGeneral = cuerpo.querySelector(
