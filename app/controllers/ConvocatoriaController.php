@@ -58,6 +58,29 @@ class ConvocatoriaController
             true
         ) ? $tipoConvocatoriaSolicitado : '';
 
+        $subtiposPermitidos = [
+            'titulacion' => [
+                'ejecutivas',
+                'experiencia-laboral',
+                'inscripciones-abiertas'
+            ],
+            'bachillerato' => [
+                'bachillerato-2-anos',
+                'bachillerato-286',
+                'ingles',
+                'inscripciones-abiertas'
+            ]
+        ];
+        $subtipoConvocatoriaSolicitado = strtolower(trim((string)($_GET['subtipo'] ?? '')));
+        $subtipoConvocatoria = (
+            $tipoConvocatoria !== '' &&
+            in_array(
+                $subtipoConvocatoriaSolicitado,
+                $subtiposPermitidos[$tipoConvocatoria] ?? [],
+                true
+            )
+        ) ? $subtipoConvocatoriaSolicitado : '';
+
         $buscar = trim((string)($_GET['buscar'] ?? ''));
         $estatusFiltro = in_array((string)($_GET['estatus'] ?? ''), ['0', '1'], true)
             ? (string)$_GET['estatus']
@@ -71,7 +94,11 @@ class ConvocatoriaController
             ? (int)$territorioSeleccionado['id']
             : 0;
 
-        $convocatorias = $territorioSeleccionado && $tipoConvocatoria !== ''
+        $convocatorias = (
+            $territorioSeleccionado &&
+            $tipoConvocatoria !== '' &&
+            $subtipoConvocatoria !== ''
+        )
             ? $modelo->obtenerListado(
                 $buscar,
                 $estadoFiltro,
@@ -112,6 +139,8 @@ class ConvocatoriaController
 
         $modelo = new ConvocatoriaModel();
         $territorioId = (int)($_POST['territorio_id'] ?? 0);
+        $tipoConvocatoria = trim((string)($_POST['tipo'] ?? ''));
+        $subtipoConvocatoria = trim((string)($_POST['subtipo'] ?? ''));
         $datos = $this->limpiarDatos($_POST);
         $estadosIds = $this->limpiarEstados($_POST['estados'] ?? []);
 
@@ -134,6 +163,8 @@ class ConvocatoriaController
 
             $datos['estados_ids'] = $estadosIds;
             $datos['territorio_id'] = $territorioId;
+            $datos['tipo'] = $tipoConvocatoria;
+            $datos['subtipo'] = $subtipoConvocatoria;
             $this->volverConErrores('crear', $errores, $datos);
         }
 
@@ -150,7 +181,7 @@ class ConvocatoriaController
             $_SESSION['error_convocatoria'] = 'No fue posible registrar la convocatoria.';
         }
 
-        $this->redirigir($territorioId);
+        $this->redirigir($territorioId, $tipoConvocatoria, $subtipoConvocatoria);
     }
 
     public function actualizar()
@@ -160,6 +191,8 @@ class ConvocatoriaController
 
         $modelo = new ConvocatoriaModel();
         $territorioId = (int)($_POST['territorio_id'] ?? 0);
+        $tipoConvocatoria = trim((string)($_POST['tipo'] ?? ''));
+        $subtipoConvocatoria = trim((string)($_POST['subtipo'] ?? ''));
         $id = (int)($_POST['id'] ?? 0);
         $convocatoriaOriginal = $modelo->buscarPorId($id);
 
@@ -186,6 +219,8 @@ class ConvocatoriaController
             $datos['imagen'] = $convocatoriaOriginal['imagen'];
             $datos['estados_ids'] = $estadosIds;
             $datos['territorio_id'] = $territorioId;
+            $datos['tipo'] = $tipoConvocatoria;
+            $datos['subtipo'] = $subtipoConvocatoria;
             $this->volverConErrores('editar', $errores, $datos);
         }
 
@@ -210,7 +245,7 @@ class ConvocatoriaController
             $_SESSION['error_convocatoria'] = 'No fue posible actualizar la convocatoria.';
         }
 
-        $this->redirigir($territorioId);
+        $this->redirigir($territorioId, $tipoConvocatoria, $subtipoConvocatoria);
     }
 
     public function cambiarEstado()
@@ -220,6 +255,8 @@ class ConvocatoriaController
 
         $modelo = new ConvocatoriaModel();
         $territorioId = (int)($_POST['territorio_id'] ?? 0);
+        $tipoConvocatoria = trim((string)($_POST['tipo'] ?? ''));
+        $subtipoConvocatoria = trim((string)($_POST['subtipo'] ?? ''));
         $id = (int)($_POST['id'] ?? 0);
         $estado = in_array((string)($_POST['estado'] ?? ''), ['0', '1'], true)
             ? (int)$_POST['estado']
@@ -238,7 +275,7 @@ class ConvocatoriaController
             $convocatoria['fecha_termino'] < date('Y-m-d')
         ) {
             $_SESSION['error_convocatoria'] = 'No se puede activar la convocatoria porque su fecha ya expiró. Necesitas cambiar la fecha de término antes de activarla.';
-            $this->redirigir($territorioId);
+            $this->redirigir($territorioId, $tipoConvocatoria, $subtipoConvocatoria);
         }
 
         if ($modelo->cambiarEstado($id, $estado, (int)$_SESSION['usuario_id'])) {
@@ -249,7 +286,7 @@ class ConvocatoriaController
             $_SESSION['error_convocatoria'] = 'No fue posible actualizar el estado de la convocatoria.';
         }
 
-        $this->redirigir($territorioId);
+        $this->redirigir($territorioId, $tipoConvocatoria, $subtipoConvocatoria);
     }
 
     public function descargarImagen()
@@ -531,15 +568,27 @@ class ConvocatoriaController
         $_SESSION['datos_convocatoria'] = $datos;
         $_SESSION['modal_convocatoria'] = $modal;
 
-        $this->redirigir();
+        $this->redirigir(
+            (int)($datos['territorio_id'] ?? 0),
+            (string)($datos['tipo'] ?? ''),
+            (string)($datos['subtipo'] ?? '')
+        );
     }
 
-    private function redirigir($territorioId = 0)
+    private function redirigir($territorioId = 0, $tipo = '', $subtipo = '')
     {
         $url = BASE_URL . 'index.php?controller=convocatoria&action=index';
 
         if ((int)$territorioId > 0) {
             $url .= '&territorio_id=' . (int)$territorioId;
+        }
+
+        if ($tipo !== '') {
+            $url .= '&tipo=' . rawurlencode($tipo);
+        }
+
+        if ($subtipo !== '') {
+            $url .= '&subtipo=' . rawurlencode($subtipo);
         }
 
         header('Location: ' . $url);
