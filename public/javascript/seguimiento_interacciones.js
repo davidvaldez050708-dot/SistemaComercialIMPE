@@ -21,6 +21,9 @@
         const contenedorToasts = document.querySelector('.toast-container');
         const urlInteraccionInformativa =
             'index.php?controller=seguimientoInteraccion&action=registrarInformativa';
+        const urlResumenVerificacion =
+            'index.php?controller=seguimientoVinculacion&action=resumenVerificacionTelefonicaHoy';
+        const panelVerificacionDiaria = document.querySelector('[data-call-verification-daily]');
         const accionesConHorarioObligatorio = [
             'Volver a llamar',
             'Enviar WhatsApp',
@@ -112,6 +115,96 @@
             observadorToasts.observe(contenedorToasts, { childList: true });
         }
 
+        const renderizarResumenVerificacion = function (resumen) {
+            if (!panelVerificacionDiaria || !resumen) {
+                return;
+            }
+
+            const meta = Math.max(1, Number(resumen.meta || 25));
+            const efectivas = Math.max(0, Number(resumen.verificaciones_efectivas || 0));
+            const realizadas = Math.max(0, Number(resumen.llamadas_realizadas || 0));
+            const contacto = Math.max(0, Number(resumen.llamadas_con_contacto || 0));
+            const pendientes = Math.max(
+                0,
+                Number(resumen.verificaciones_pendientes_vinculo || 0)
+            );
+            const restantes = Math.max(0, meta - efectivas);
+            const porcentaje = Math.max(0, Math.min(100, (efectivas / meta) * 100));
+
+            const nodoEfectivas = panelVerificacionDiaria.querySelector(
+                '[data-call-verification-count]'
+            );
+            const nodoRealizadas = panelVerificacionDiaria.querySelector(
+                '[data-call-total-count]'
+            );
+            const nodoContacto = panelVerificacionDiaria.querySelector(
+                '[data-call-contact-count]'
+            );
+            const nodoProgreso = panelVerificacionDiaria.querySelector(
+                '[data-call-verification-progress]'
+            );
+            const nodoRestantes = panelVerificacionDiaria.querySelector(
+                '[data-call-verification-remaining]'
+            );
+
+            if (nodoEfectivas) {
+                nodoEfectivas.textContent = String(efectivas);
+            }
+            if (nodoRealizadas) {
+                nodoRealizadas.textContent = String(realizadas);
+            }
+            if (nodoContacto) {
+                nodoContacto.textContent = String(contacto);
+            }
+            if (nodoProgreso) {
+                nodoProgreso.style.width = porcentaje.toFixed(1) + '%';
+            }
+            if (nodoRestantes) {
+                if (efectivas >= meta) {
+                    nodoRestantes.textContent = 'Meta diaria alcanzada';
+                } else if (pendientes > 0) {
+                    nodoRestantes.textContent =
+                        'Faltan ' + restantes +
+                        ' · ' + pendientes +
+                        (pendientes === 1
+                            ? ' verificación pendiente de vincular'
+                            : ' verificaciones pendientes de vincular');
+                } else {
+                    nodoRestantes.textContent =
+                        'Faltan ' + restantes +
+                        (restantes === 1 ? ' institución' : ' instituciones');
+                }
+            }
+
+            panelVerificacionDiaria.classList.toggle(
+                'is-complete',
+                efectivas >= meta
+            );
+        };
+
+        const cargarResumenVerificacion = async function () {
+            if (!panelVerificacionDiaria) {
+                return;
+            }
+
+            try {
+                const respuesta = await fetch(urlResumenVerificacion, {
+                    headers: { 'X-Requested-With': 'fetch' },
+                    cache: 'no-store'
+                });
+                const datos = await respuesta.json();
+
+                if (respuesta.ok && datos?.ok && datos?.resumen) {
+                    renderizarResumenVerificacion(datos.resumen);
+                }
+            } catch (error) {
+                console.debug(
+                    'No fue posible actualizar la meta diaria de verificaciones.',
+                    error
+                );
+            }
+        };
+
         const agregarOpcionSiFalta = function (valor, etiqueta) {
             const existe = Array.from(selectorProximaAccion.options).some(function (opcion) {
                 return opcion.value === valor;
@@ -178,8 +271,12 @@
                 '</div>' +
                 '<div class="row g-2">' +
                     '<div class="col-12 col-md-6">' +
-                        '<label class="form-label" for="work_referred_phone">Nuevo teléfono de contacto *</label>' +
+                        '<label class="form-label" for="work_referred_phone">Nuevo teléfono de contacto</label>' +
                         '<input class="form-control" id="work_referred_phone" name="nuevo_telefono_contacto" maxlength="80" autocomplete="tel">' +
+                    '</div>' +
+                    '<div class="col-12 col-md-6">' +
+                        '<label class="form-label" for="work_referred_email">Nuevo correo de contacto</label>' +
+                        '<input class="form-control" id="work_referred_email" name="nuevo_correo_contacto" type="email" maxlength="180" autocomplete="email">' +
                     '</div>' +
                     '<div class="col-12 col-md-6">' +
                         '<label class="form-label" for="work_referred_name">Persona de contacto</label>' +
@@ -201,6 +298,9 @@
         const campoTelefonoReferido = contenedorContactoReferido.querySelector(
             '[name="nuevo_telefono_contacto"]'
         );
+        const campoCorreoReferido = contenedorContactoReferido.querySelector(
+            '[name="nuevo_correo_contacto"]'
+        );
         const campoNombreReferido = contenedorContactoReferido.querySelector(
             '[name="nuevo_contacto_nombre"]'
         );
@@ -218,16 +318,107 @@
             contenedorContactoReferido.classList.toggle('d-none', !visible);
 
             if (campoTelefonoReferido) {
-                campoTelefonoReferido.required = visible;
+                campoTelefonoReferido.required = false;
             }
 
             if (!visible) {
-                [campoTelefonoReferido, campoNombreReferido, campoCargoReferido]
+                [campoTelefonoReferido, campoCorreoReferido, campoNombreReferido, campoCargoReferido]
                     .forEach(function (campo) {
                         if (campo) {
                             campo.value = '';
                         }
                     });
+            }
+        };
+
+        const bloqueEvidenciaVerificacion = formulario.querySelector(
+            '[data-call-verification-evidence]'
+        );
+        const notaEvidenciaVerificacion = formulario.querySelector(
+            '[data-call-verification-note]'
+        );
+        const checkTelefono = formulario.querySelector(
+            '[name="verificacion_telefono_confirmado"]'
+        );
+        const checkCorreo = formulario.querySelector(
+            '[name="verificacion_correo_confirmado"]'
+        );
+        const checkContacto = formulario.querySelector(
+            '[name="verificacion_contacto_confirmado"]'
+        );
+
+        const actualizarEvidenciaVerificacion = function () {
+            if (!bloqueEvidenciaVerificacion) {
+                return;
+            }
+
+            const canal = String(
+                formulario.querySelector('[name="canal"]')?.value || ''
+            ).toUpperCase();
+            const resultado = String(selectorResultado.value || '').toUpperCase();
+            const resultadosConConversacion = [
+                'CONTACTO_CORRECTO',
+                'CONTACTO_REFERIDO',
+                'SOLICITO_INFORMACION',
+                'SOLICITO_LLAMAR_DESPUES',
+                'NO_INTERESADO'
+            ];
+            const visible =
+                canal === 'LLAMADA' &&
+                resultadosConConversacion.includes(resultado);
+
+            bloqueEvidenciaVerificacion.classList.toggle('d-none', !visible);
+
+            const telefonoActual = String(
+                document.querySelector('[data-work-contact-form] [name="telefono_verificado"]')
+                    ?.value || ''
+            ).trim();
+            const correoActual = String(
+                document.querySelector('[data-work-contact-form] [name="correo_verificado"]')
+                    ?.value || ''
+            ).trim();
+            const contactoActual = String(
+                document.querySelector('[data-work-contact-form] [name="contacto_nombre"]')
+                    ?.value || ''
+            ).trim();
+
+            [
+                [checkTelefono, telefonoActual !== '', 'phone'],
+                [checkCorreo, correoActual !== '', 'email'],
+                [checkContacto, contactoActual !== '', 'contact']
+            ].forEach(function (item) {
+                const input = item[0];
+                const disponible = item[1];
+                const tipo = item[2];
+
+                if (!input) {
+                    return;
+                }
+
+                input.disabled = !disponible || !visible;
+                if (input.disabled) {
+                    input.checked = false;
+                }
+
+                const opcion = bloqueEvidenciaVerificacion.querySelector(
+                    '[data-verification-option="' + tipo + '"]'
+                );
+                opcion?.classList.toggle('is-disabled', !disponible);
+            });
+
+            if (!visible) {
+                [checkTelefono, checkCorreo, checkContacto].forEach(function (input) {
+                    if (input) {
+                        input.checked = false;
+                    }
+                });
+            }
+
+            if (notaEvidenciaVerificacion) {
+                notaEvidenciaVerificacion.textContent =
+                    resultado === 'CONTACTO_REFERIDO'
+                        ? 'El nuevo teléfono o correo registrado funciona como evidencia. También puedes marcar datos actuales que hayan sido confirmados.'
+                        : '“Contacto correcto” por sí solo no cuenta: marca únicamente los datos que realmente fueron confirmados durante la llamada.';
             }
         };
 
@@ -521,11 +712,13 @@
         selectorResultado.addEventListener('change', function () {
             proximaAccionEditadaManualmente = false;
             actualizarContactoReferido();
+            actualizarEvidenciaVerificacion();
             aplicarResultadoInteraccion();
         });
 
         formulario.querySelector('[name="canal"]')?.addEventListener('change', function () {
             actualizarContactoReferido();
+            actualizarEvidenciaVerificacion();
         });
 
         selectorProximaAccion.addEventListener('change', function () {
@@ -538,6 +731,7 @@
             window.setTimeout(function () {
                 aplicarModoRuta();
                 actualizarContactoReferido();
+                actualizarEvidenciaVerificacion();
                 aplicarResultadoInteraccion();
             }, 0);
         });
@@ -553,6 +747,7 @@
         document.addEventListener('impe:flow-updated', function () {
             aplicarModoRuta();
             actualizarContactoReferido();
+            actualizarEvidenciaVerificacion();
             aplicarResultadoInteraccion();
         });
 
@@ -640,7 +835,19 @@
             }
         });
 
+        document.addEventListener('impe:telephony-call-linked', function () {
+            window.setTimeout(cargarResumenVerificacion, 120);
+        });
+        document.addEventListener('impe:interaction-exact-id-ready', function () {
+            window.setTimeout(cargarResumenVerificacion, 120);
+        });
+        document.addEventListener('impe:interaction-informative-saved', function () {
+            window.setTimeout(cargarResumenVerificacion, 120);
+        });
+
         aplicarModoRuta();
+        actualizarEvidenciaVerificacion();
         aplicarResultadoInteraccion();
+        cargarResumenVerificacion();
     });
 })();
