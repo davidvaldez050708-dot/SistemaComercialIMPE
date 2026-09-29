@@ -1000,6 +1000,13 @@ class SeguimientoVinculacionController
                 ], 422);
             }
 
+            if (strlen($nuevoCorreoContacto) > 180) {
+                $this->responderJson([
+                    'ok' => false,
+                    'mensaje' => 'El nuevo correo de contacto es demasiado largo.'
+                ], 422);
+            }
+
             if (
                 $nuevoCorreoContacto !== '' &&
                 !filter_var($nuevoCorreoContacto, FILTER_VALIDATE_EMAIL)
