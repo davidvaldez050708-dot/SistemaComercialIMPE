@@ -51,6 +51,12 @@ class ConvocatoriaController
             $estados,
             $territorioId
         );
+        $tipoConvocatoriaSolicitado = strtolower(trim((string)($_GET['tipo'] ?? '')));
+        $tipoConvocatoria = in_array(
+            $tipoConvocatoriaSolicitado,
+            ['titulacion', 'bachillerato'],
+            true
+        ) ? $tipoConvocatoriaSolicitado : '';
 
         $buscar = trim((string)($_GET['buscar'] ?? ''));
         $estatusFiltro = in_array((string)($_GET['estatus'] ?? ''), ['0', '1'], true)
@@ -65,7 +71,7 @@ class ConvocatoriaController
             ? (int)$territorioSeleccionado['id']
             : 0;
 
-        $convocatorias = $territorioSeleccionado
+        $convocatorias = $territorioSeleccionado && $tipoConvocatoria !== ''
             ? $modelo->obtenerListado(
                 $buscar,
                 $estadoFiltro,
