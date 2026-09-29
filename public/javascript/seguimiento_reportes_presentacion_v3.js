@@ -88,6 +88,9 @@
     }
 
     function iniciar() {
+        if (document.querySelector('[data-analyst-report-output]')) {
+            return;
+        }
         if (!esReporteSeguimiento()) {
             return;
         }
