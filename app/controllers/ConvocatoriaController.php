@@ -122,6 +122,10 @@ class ConvocatoriaController
             ? (int)$territorioSeleccionado['id']
             : 0;
 
+        $convocatoriasRecientes = $territorioSeleccionado
+            ? $modelo->obtenerRecientesPorTerritorio($estadoFiltro, 12)
+            : [];
+
         $convocatorias = (
             $territorioSeleccionado &&
             $tipoConvocatoria !== '' &&
