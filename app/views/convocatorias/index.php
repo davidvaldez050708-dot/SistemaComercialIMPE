@@ -14,6 +14,8 @@ $categoriaFiltro = $categoriaFiltro ?? '';
 $territorioSeleccionado = $territorioSeleccionado ?? null;
 $tipoConvocatoria = $tipoConvocatoria ?? '';
 $subtipoConvocatoria = $subtipoConvocatoria ?? '';
+$esChihuahua = $territorioSeleccionado &&
+    strcasecmp(trim((string)($territorioSeleccionado['nombre'] ?? '')), 'Chihuahua') === 0;
 
 $puedeCrear = tienePermiso('convocatorias.crear');
 $puedeEditar = tienePermiso('convocatorias.editar');
@@ -237,7 +239,7 @@ document.addEventListener('DOMContentLoaded', function () {
     <p class="panel-subtitle mb-0">Selecciona la opción que deseas consultar para este territorio.</p>
 </section>
 
-<section class="convocatoria-type-cards">
+<section class="convocatoria-type-cards<?= $esChihuahua ? ' convocatoria-type-cards-three' : '' ?>">
     <article class="dashboard-panel convocatoria-type-card">
         <div class="convocatoria-type-card-icon">
             <i class="bi bi-mortarboard"></i>
@@ -269,13 +271,32 @@ document.addEventListener('DOMContentLoaded', function () {
             <i class="bi bi-arrow-right"></i>
         </a>
     </article>
+
+    <?php if ($esChihuahua): ?>
+        <article class="dashboard-panel convocatoria-type-card">
+            <div class="convocatoria-type-card-icon">
+                <i class="bi bi-people"></i>
+            </div>
+            <div>
+                <h3>Sindicatos</h3>
+                <p>Consulta y administra las convocatorias correspondientes a sindicatos.</p>
+            </div>
+            <a
+                class="btn btn-system-light"
+                href="<?= BASE_URL ?>index.php?controller=convocatoria&action=index&territorio_id=<?= (int)$territorioSeleccionado['id'] ?>&tipo=sindicatos&subtipo=sindicatos">
+                Ver
+                <i class="bi bi-arrow-right"></i>
+            </a>
+        </article>
+    <?php endif; ?>
 </section>
 <?php return; ?>
 <?php endif; ?>
 
 <?php
-$opcionesSubtipo = $tipoConvocatoria === 'titulacion'
-    ? [
+if ($tipoConvocatoria === 'titulacion') {
+    $etiquetaTipoConvocatoria = 'Titulación';
+    $opcionesSubtipo = [
         [
             'slug' => 'ejecutivas',
             'titulo' => 'Ejecutivas',
@@ -294,8 +315,10 @@ $opcionesSubtipo = $tipoConvocatoria === 'titulacion'
             'descripcion' => 'Consulta las convocatorias con inscripciones abiertas.',
             'icono' => 'bi-door-open'
         ]
-    ]
-    : [
+    ];
+} elseif ($tipoConvocatoria === 'bachillerato') {
+    $etiquetaTipoConvocatoria = 'Bachillerato';
+    $opcionesSubtipo = [
         [
             'slug' => 'bachillerato-2-anos',
             'titulo' => 'Bachillerato en 2 años',
@@ -321,10 +344,18 @@ $opcionesSubtipo = $tipoConvocatoria === 'titulacion'
             'icono' => 'bi-door-open'
         ]
     ];
+} else {
+    $etiquetaTipoConvocatoria = 'Sindicatos';
+    $opcionesSubtipo = [];
+}
 
 $etiquetasSubtipo = [];
 foreach ($opcionesSubtipo as $opcionSubtipo) {
     $etiquetasSubtipo[$opcionSubtipo['slug']] = $opcionSubtipo['titulo'];
+}
+
+if ($tipoConvocatoria === 'sindicatos') {
+    $etiquetasSubtipo['sindicatos'] = 'Sindicatos';
 }
 ?>
 
@@ -336,12 +367,12 @@ foreach ($opcionesSubtipo as $opcionSubtipo) {
         <i class="bi bi-arrow-left"></i>
         Cambiar tipo
     </a>
-    <span><?= $texto($territorioSeleccionado['nombre'] ?? '') ?> · <?= $tipoConvocatoria === 'titulacion' ? 'Titulación' : 'Bachillerato' ?></span>
+    <span><?= $texto($territorioSeleccionado['nombre'] ?? '') ?> · <?= $texto($etiquetaTipoConvocatoria) ?></span>
 </div>
 
 <section class="dashboard-panel convocatoria-type-heading">
     <h2 class="panel-title mb-1">
-        <?= $tipoConvocatoria === 'titulacion' ? 'Opciones de Titulación' : 'Opciones de Bachillerato' ?>
+        Opciones de <?= $texto($etiquetaTipoConvocatoria) ?>
     </h2>
     <p class="panel-subtitle mb-0">Selecciona la opción que deseas consultar para este territorio.</p>
 </section>
@@ -371,14 +402,18 @@ foreach ($opcionesSubtipo as $opcionSubtipo) {
 <div class="convocatoria-territory-context">
     <a
         class="data-back-link"
-        href="<?= BASE_URL ?>index.php?controller=convocatoria&action=index&territorio_id=<?= (int)$territorioSeleccionado['id'] ?>&tipo=<?= $texto($tipoConvocatoria) ?>">
+        href="<?= $tipoConvocatoria === 'sindicatos'
+            ? BASE_URL . 'index.php?controller=convocatoria&action=index&territorio_id=' . (int)$territorioSeleccionado['id']
+            : BASE_URL . 'index.php?controller=convocatoria&action=index&territorio_id=' . (int)$territorioSeleccionado['id'] . '&tipo=' . rawurlencode($tipoConvocatoria) ?>">
         <i class="bi bi-arrow-left"></i>
-        Cambiar opción
+        <?= $tipoConvocatoria === 'sindicatos' ? 'Cambiar tipo' : 'Cambiar opción' ?>
     </a>
     <span>
         <?= $texto($territorioSeleccionado['nombre'] ?? '') ?>
-        · <?= $tipoConvocatoria === 'titulacion' ? 'Titulación' : 'Bachillerato' ?>
-        · <?= $texto($etiquetasSubtipo[$subtipoConvocatoria] ?? '') ?>
+        · <?= $texto($etiquetaTipoConvocatoria) ?>
+        <?php if ($tipoConvocatoria !== 'sindicatos'): ?>
+            · <?= $texto($etiquetasSubtipo[$subtipoConvocatoria] ?? '') ?>
+        <?php endif; ?>
     </span>
 </div>
 
