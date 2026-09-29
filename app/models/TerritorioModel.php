@@ -169,6 +169,36 @@ class TerritorioModel
         return $this->buscarEstados($filtros);
     }
 
+    public function obtenerEstadosAsignadosUsuario($usuarioId, $tipoAsignacion)
+    {
+        $usuarioId = (int)$usuarioId;
+        $tipoAsignacion = strtoupper(trim((string)$tipoAsignacion));
+        $tiposPermitidos = ['CUENTA_CLAVE', 'ANALISTA_DATOS', 'ASESOR'];
+
+        if ($usuarioId <= 0 || !in_array($tipoAsignacion, $tiposPermitidos, true)) {
+            return [];
+        }
+
+        $sql = "SELECT DISTINCT
+                    estados.id,
+                    estados.nombre
+                FROM asignaciones_territorio asignaciones
+                INNER JOIN estados
+                    ON estados.id = asignaciones.estado_id
+                WHERE asignaciones.usuario_id = ?
+                    AND asignaciones.tipo_asignacion = ?
+                    AND asignaciones.activo = 1
+                    AND estados.estado = 1
+                    AND " . $this->condicionAsignacionVigente('asignaciones') . "
+                ORDER BY estados.nombre";
+
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param('is', $usuarioId, $tipoAsignacion);
+        $stmt->execute();
+
+        return $this->convertirResultadoEnArreglo($stmt->get_result());
+    }
+
     public function buscarEstadoPorId($id)
     {
         $sql = "SELECT
