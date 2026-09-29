@@ -818,3 +818,183 @@
     color: #087d71;
     font-weight: 800;
 }
+
+
+/* =========================================================
+   EDUCACIÓN · ENFOQUE OPERATIVO PARA VINCULACIÓN
+   ========================================================= */
+.data-education-program-opportunity {
+    margin-top: 12px;
+    padding: 13px 14px;
+    border: 1px solid #dde5ee;
+    border-radius: 12px;
+    background: #fbfcfe;
+}
+
+.data-education-program-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+
+.data-education-program-heading strong,
+.data-education-program-heading span {
+    display: block;
+}
+
+.data-education-program-heading strong {
+    color: #172238;
+    font-size: 11.5px;
+    font-weight: 850;
+}
+
+.data-education-program-heading span {
+    margin-top: 2px;
+    color: #748094;
+    font-size: 10px;
+    line-height: 1.4;
+}
+
+.data-education-program-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 9px;
+}
+
+.data-education-program-grid article {
+    min-width: 0;
+    padding: 11px 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    background: #fff;
+}
+
+.data-education-program-grid article.is-context {
+    background: #f8fafc;
+}
+
+.data-education-program-grid span,
+.data-education-program-grid small {
+    display: block;
+}
+
+.data-education-program-grid span {
+    color: #637086;
+    font-size: 10px;
+    font-weight: 750;
+}
+
+.data-education-program-grid strong {
+    display: block;
+    margin-top: 5px;
+    color: #0b234e;
+    font-size: 17px;
+    font-weight: 850;
+    line-height: 1.2;
+}
+
+.data-education-program-grid article.is-context strong {
+    font-size: 12px;
+    color: #526176;
+}
+
+.data-education-program-grid small {
+    margin-top: 5px;
+    color: #748094;
+    font-size: 9.8px;
+    line-height: 1.4;
+}
+
+.data-education-complementary-context {
+    margin-top: 14px;
+    border: 1px solid #dfe6ee;
+    border-radius: 12px;
+    background: #fff;
+    overflow: hidden;
+}
+
+.data-education-complementary-context > summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 13px 15px;
+    cursor: pointer;
+    list-style: none;
+}
+
+.data-education-complementary-context > summary::-webkit-details-marker {
+    display: none;
+}
+
+.data-education-complementary-context > summary > span {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.data-education-complementary-context > summary strong {
+    color: #25324a;
+    font-size: 12px;
+    font-weight: 850;
+}
+
+.data-education-complementary-context > summary small {
+    color: #748094;
+    font-size: 10.5px;
+    font-weight: 500;
+}
+
+.data-education-complementary-context > summary i {
+    color: #748094;
+    font-size: 13px;
+    transition: transform .2s ease;
+}
+
+.data-education-complementary-context[open] > summary i {
+    transform: rotate(180deg);
+}
+
+.data-education-complementary-context-body {
+    padding: 0 14px 14px;
+    border-top: 1px solid #e8edf3;
+}
+
+.data-education-complementary-context-body .data-education-official {
+    margin-top: 14px;
+}
+
+.data-education-context-general {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #e6ebf1;
+}
+
+.data-education-context-general-heading {
+    margin-bottom: 10px;
+}
+
+.data-education-context-general-heading strong,
+.data-education-context-general-heading span {
+    display: block;
+}
+
+.data-education-context-general-heading strong {
+    color: #172238;
+    font-size: 11.5px;
+    font-weight: 850;
+}
+
+.data-education-context-general-heading span {
+    margin-top: 2px;
+    color: #748094;
+    font-size: 10px;
+}
+
+@media (max-width: 991.98px) {
+    .data-education-program-grid {
+        grid-template-columns: 1fr;
+    }
+}
