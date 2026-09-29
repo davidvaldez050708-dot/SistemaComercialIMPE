@@ -419,6 +419,111 @@
             }
         };
 
+        const campoPersonaAtendio = formulario.querySelector(
+            '[name="persona_atendio"]'
+        );
+
+        const limpiarValidacionesVerificacion = function () {
+            [campoPersonaAtendio, campoTelefonoReferido, campoCorreoReferido].forEach(function (campo) {
+                campo?.setCustomValidity('');
+                campo?.classList.remove('is-invalid');
+            });
+        };
+
+        const marcarCampoInvalido = function (campo, mensaje) {
+            if (!campo) {
+                return;
+            }
+
+            campo.setCustomValidity(mensaje);
+            campo.classList.add('is-invalid');
+            campo.focus({ preventScroll: true });
+            campo.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            campo.reportValidity();
+        };
+
+        const validarRequisitosInteraccion = function () {
+            limpiarValidacionesVerificacion();
+
+            const canal = String(
+                formulario.querySelector('[name="canal"]')?.value || ''
+            ).toUpperCase();
+            const resultado = String(selectorResultado.value || '').toUpperCase();
+
+            if (canal !== 'LLAMADA') {
+                return true;
+            }
+
+            if (resultado === 'CONTACTO_REFERIDO') {
+                const telefonoNuevo = String(campoTelefonoReferido?.value || '').trim();
+                const correoNuevo = String(campoCorreoReferido?.value || '').trim();
+
+                if (telefonoNuevo === '' && correoNuevo === '') {
+                    const mensaje =
+                        'Captura al menos el nuevo teléfono o correo proporcionado por la institución.';
+                    mostrarToastLocal(mensaje, true);
+                    marcarCampoInvalido(campoTelefonoReferido || campoCorreoReferido, mensaje);
+                    return false;
+                }
+            }
+
+            const resultadosConConversacion = [
+                'CONTACTO_CORRECTO',
+                'CONTACTO_REFERIDO',
+                'SOLICITO_INFORMACION',
+                'SOLICITO_LLAMAR_DESPUES',
+                'NO_INTERESADO'
+            ];
+
+            if (!resultadosConConversacion.includes(resultado)) {
+                return true;
+            }
+
+            const tieneEvidencia =
+                Boolean(checkTelefono?.checked) ||
+                Boolean(checkCorreo?.checked) ||
+                Boolean(checkContacto?.checked) ||
+                (
+                    resultado === 'CONTACTO_REFERIDO' &&
+                    (
+                        String(campoTelefonoReferido?.value || '').trim() !== '' ||
+                        String(campoCorreoReferido?.value || '').trim() !== ''
+                    )
+                );
+
+            const persona = String(campoPersonaAtendio?.value || '').trim();
+
+            if (tieneEvidencia && persona === '') {
+                const mensaje =
+                    'Indica quién atendió la llamada para que esta verificación pueda contar en la meta diaria.';
+                mostrarToastLocal(mensaje, true);
+                marcarCampoInvalido(campoPersonaAtendio, mensaje);
+                return false;
+            }
+
+            if (!tieneEvidencia) {
+                mostrarToastLocal(
+                    'La llamada se guardará, pero no contará como verificación efectiva porque no se confirmó ningún dato.',
+                    false
+                );
+            }
+
+            return true;
+        };
+
+        campoPersonaAtendio?.addEventListener('input', function () {
+            campoPersonaAtendio.setCustomValidity('');
+            campoPersonaAtendio.classList.remove('is-invalid');
+        });
+        campoTelefonoReferido?.addEventListener('input', function () {
+            campoTelefonoReferido.setCustomValidity('');
+            campoTelefonoReferido.classList.remove('is-invalid');
+        });
+        campoCorreoReferido?.addEventListener('input', function () {
+            campoCorreoReferido.setCustomValidity('');
+            campoCorreoReferido.classList.remove('is-invalid');
+        });
+
         const pasoRutaActual = function () {
             return Number(offcanvas?.dataset.flowStep || 0);
         };
@@ -625,6 +730,10 @@
             event.preventDefault();
             event.stopImmediatePropagation();
 
+            if (!validarRequisitosInteraccion()) {
+                return;
+            }
+
             if (!formulario.checkValidity()) {
                 formulario.reportValidity();
                 return;
@@ -752,6 +861,12 @@
         formulario.addEventListener('submit', function (event) {
             if (esRutaAvanzada()) {
                 registrarInteraccionInformativa(event);
+                return;
+            }
+
+            if (!validarRequisitosInteraccion()) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
                 return;
             }
 
