@@ -267,7 +267,8 @@ try {
     $sqlInteraccion = "SELECT
             id,
             proveedor_externo,
-            id_externo
+            id_externo,
+            notas
         FROM interacciones_vinculacion
         WHERE id = ?
           AND seguimiento_id = ?
@@ -323,24 +324,55 @@ try {
 
     $proveedor = 'ZADARMA';
 
+    /*
+     * Una verificación declarada por el Analista solo conserva su marca de
+     * efectividad cuando Zadarma confirma que la llamada fue contestada.
+     * Con esto un resultado manual favorable no puede convertir una llamada
+     * sin respuesta en verificación efectiva.
+     */
+    $notasInteraccion = (string)($interaccion['notas'] ?? '');
+    $disposicion = strtoupper(trim((string)($fin['disposition'] ?? '')));
+    $huboRespuesta =
+        $respuesta !== null ||
+        in_array($disposicion, ['ANSWERED', 'ANSWER', 'CONNECTED', 'SUCCESS'], true);
+
+    if (
+        strpos($notasInteraccion, '[VERIFICACION_EFECTIVA]') !== false &&
+        !$huboRespuesta
+    ) {
+        $notasInteraccion = str_replace(
+            '[VERIFICACION_EFECTIVA]',
+            '',
+            $notasInteraccion
+        );
+        $notasInteraccion = preg_replace(
+            '/^Verificación obtenida:\s*.*$/miu',
+            'Verificación no contabilizada: Zadarma no registró respuesta.',
+            $notasInteraccion
+        );
+        $notasInteraccion = trim((string)$notasInteraccion);
+    }
+
     $sqlActualizar = "UPDATE interacciones_vinculacion
         SET fecha_inicio = ?,
             fecha_fin = ?,
             duracion_segundos = ?,
             proveedor_externo = ?,
-            id_externo = ?
+            id_externo = ?,
+            notas = ?
         WHERE id = ?
           AND seguimiento_id = ?
           AND usuario_id = ?
           AND canal = 'LLAMADA_IP'";
     $stmtActualizar = $connection->prepare($sqlActualizar);
     $stmtActualizar->bind_param(
-        'ssissiii',
+        'ssisssiii',
         $fechaInicio,
         $fechaFin,
         $duracion,
         $proveedor,
         $pbxCallId,
+        $notasInteraccion,
         $interaccionId,
         $seguimientoId,
         $usuarioId
@@ -354,6 +386,10 @@ try {
         'pbx_call_id' => $pbxCallId,
         'duracion_segundos' => $duracion,
         'estado_zadarma' => (string)($fin['disposition'] ?? ''),
+        'hubo_respuesta' => $huboRespuesta,
+        'verificacion_efectiva' =>
+            $huboRespuesta &&
+            strpos($notasInteraccion, '[VERIFICACION_EFECTIVA]') !== false,
         'grabacion_disponible' =>
             (string)($fin['is_recorded'] ?? '') === '1' ||
             $grabacion !== null,
