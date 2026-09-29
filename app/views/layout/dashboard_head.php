@@ -169,6 +169,10 @@ $jsOpcionalHead = [
     'firma_correo_perfil.js'
 ];
 
+if ((int)($_SESSION['rol_id'] ?? 0) === 4) {
+    $jsOpcionalHead[] = 'topbar_llamadas_analista.js';
+}
+
 if ($esHomeDashboard) {
     $jsOpcionalHead = array_merge(
         $jsOpcionalHead,
