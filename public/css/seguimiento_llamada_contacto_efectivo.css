@@ -83,3 +83,248 @@
         white-space: normal;
     }
 }
+
+
+/* =========================================================
+   META DIARIA · VERIFICACIÓN TELEFÓNICA
+   ========================================================= */
+.linkage-verification-daily {
+    margin: 12px 0 18px;
+    padding: 13px 15px;
+    border: 1px solid #dfe5ee;
+    border-radius: 12px;
+    background: #fff;
+}
+
+.linkage-verification-daily-main {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+}
+
+.linkage-verification-daily-icon {
+    flex: 0 0 auto;
+    width: 36px;
+    height: 36px;
+    display: inline-grid;
+    place-items: center;
+    border-radius: 10px;
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
+    font-size: 15px;
+}
+
+.linkage-verification-daily-copy {
+    min-width: 0;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.linkage-verification-daily-copy > div:first-child {
+    min-width: 0;
+    display: grid;
+    gap: 2px;
+}
+
+.linkage-verification-daily-copy strong {
+    color: var(--color-text-primary);
+    font-size: 11.5px;
+    font-weight: 800;
+}
+
+.linkage-verification-daily-copy span {
+    color: var(--color-text-secondary);
+    font-size: 9.5px;
+    font-weight: 650;
+}
+
+.linkage-verification-daily-value {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: baseline;
+    gap: 3px;
+}
+
+.linkage-verification-daily-value strong {
+    color: var(--color-primary);
+    font-size: 20px;
+    line-height: 1;
+}
+
+.linkage-verification-daily-value span {
+    font-size: 10px;
+    font-weight: 800;
+}
+
+.linkage-verification-progress {
+    height: 6px;
+    margin-top: 10px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #edf1f6;
+}
+
+.linkage-verification-progress > span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--color-primary);
+    transition: width .2s ease;
+}
+
+.linkage-verification-daily.is-complete {
+    border-color: #cbe7df;
+    background: #fbfefd;
+}
+
+.linkage-verification-daily.is-complete .linkage-verification-daily-icon {
+    background: #eef9f6;
+    color: #14735f;
+}
+
+.linkage-verification-daily.is-complete .linkage-verification-progress > span {
+    background: #14735f;
+}
+
+.linkage-verification-daily-meta {
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+    color: var(--color-text-secondary);
+    font-size: 9.3px;
+    font-weight: 650;
+}
+
+.linkage-verification-daily-meta b {
+    color: var(--color-text-primary);
+    font-weight: 800;
+}
+
+.linkage-call-verification-box {
+    padding: 11px 12px;
+    border: 1px solid #dfe5ee;
+    border-radius: 10px;
+    background: #fafbfd;
+}
+
+.linkage-call-verification-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.linkage-call-verification-head > div {
+    min-width: 0;
+    display: grid;
+    gap: 2px;
+}
+
+.linkage-call-verification-head strong {
+    color: var(--color-text-primary);
+    font-size: 10.8px;
+    font-weight: 800;
+}
+
+.linkage-call-verification-head span:not(.linkage-call-verification-badge) {
+    color: var(--color-text-secondary);
+    font-size: 9.2px;
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+.linkage-call-verification-badge {
+    flex: 0 0 auto;
+    padding: 3px 7px;
+    border-radius: 999px;
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
+    font-size: 8.5px;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.linkage-call-verification-options {
+    margin-top: 9px;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+}
+
+.linkage-call-verification-options label {
+    min-width: 0;
+    min-height: 54px;
+    padding: 7px 8px;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+    gap: 6px;
+    border: 1px solid #dfe5ee;
+    border-radius: 9px;
+    background: #fff;
+    cursor: pointer;
+}
+
+.linkage-call-verification-options label:has(input:checked) {
+    border-color: rgba(46, 72, 165, .35);
+    background: #f4f6ff;
+}
+
+.linkage-call-verification-options label.is-disabled {
+    opacity: .48;
+    cursor: not-allowed;
+}
+
+.linkage-call-verification-options input {
+    margin-top: 2px;
+}
+
+.linkage-call-verification-options span {
+    min-width: 0;
+    display: grid;
+    gap: 2px;
+}
+
+.linkage-call-verification-options strong {
+    color: var(--color-text-primary);
+    font-size: 9.5px;
+    font-weight: 800;
+    line-height: 1.3;
+}
+
+.linkage-call-verification-options small {
+    color: var(--color-text-secondary);
+    font-size: 8.5px;
+    font-weight: 600;
+    line-height: 1.35;
+}
+
+.linkage-call-verification-note {
+    margin: 8px 0 0;
+    color: #657187;
+    font-size: 8.8px;
+    font-weight: 650;
+    line-height: 1.4;
+}
+
+@media (max-width: 767.98px) {
+    .linkage-verification-daily-copy {
+        align-items: flex-start;
+    }
+
+    .linkage-call-verification-options {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 479.98px) {
+    .linkage-verification-daily-copy {
+        flex-direction: column;
+        gap: 7px;
+    }
+}
