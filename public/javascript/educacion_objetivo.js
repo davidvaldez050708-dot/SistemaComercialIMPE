@@ -19,7 +19,7 @@
         if (!document.querySelector('link[data-education-target-style]')) {
             const link = document.createElement('link');
             link.rel = 'stylesheet';
-            link.href = 'public/css/educacion_objetivo.css?v=20260928-4';
+            link.href = 'public/css/educacion_objetivo.css?v=20260929-1';
             link.setAttribute('data-education-target-style', '');
             document.head.appendChild(link);
         }
@@ -30,7 +30,7 @@
             contenedor = document.createElement('section');
             contenedor.className = 'data-education-target';
             contenedor.setAttribute('data-education-target', '');
-            rezago.insertAdjacentElement('afterend', contenedor);
+            rezago.insertAdjacentElement('beforebegin', contenedor);
         }
 
         const numero = function (valor) {
@@ -374,6 +374,43 @@
                         '<small>Los tres segmentos anteriores no se superponen y suman este universo de referencia.</small>' +
                     '</div>' +
 
+                    '<div class="data-education-program-opportunity">' +
+                        '<div class="data-education-program-heading">' +
+                            '<div>' +
+                                '<strong>Oportunidad educativa por perfil</strong>' +
+                                '<span>Lectura operativa para orientar vinculación; no representa matrícula ni elegibilidad automática.</span>' +
+                            '</div>' +
+                        '</div>' +
+                        '<div class="data-education-program-grid">' +
+                            '<article>' +
+                                '<span>Bachillerato / continuidad media superior</span>' +
+                                '<strong>' +
+                                    (prioridadDisponible
+                                        ? numero(
+                                            prioridadMetricas.sin_estudios_media_superior_25_49 ??
+                                            prioridadMetricas.sin_media_superior_concluida_25_49
+                                          )
+                                        : 'Pendiente') +
+                                '</strong>' +
+                                '<small>Población de referencia de 25–49 sin estudios de educación media superior.</small>' +
+                            '</article>' +
+                            '<article>' +
+                                '<span>Continuidad a educación superior</span>' +
+                                '<strong>' +
+                                    (prioridadDisponible
+                                        ? numero(prioridadMetricas.media_superior_sin_superior_25_49)
+                                        : 'Pendiente') +
+                                '</strong>' +
+                                '<small>Población de referencia con media superior y sin educación superior.</small>' +
+                            '</article>' +
+                            '<article class="is-context">' +
+                                '<span>Titulación por experiencia</span>' +
+                                '<strong>Requiere cruce laboral</strong>' +
+                                '<small>La escolaridad por sí sola no permite identificar elegibilidad; debe combinarse con experiencia y perfil laboral.</small>' +
+                            '</article>' +
+                        '</div>' +
+                    '</div>' +
+
                     renderGruposAdultos(adultoMetricas, prioridadEstado) +
 
                     (!prioridadDisponible
@@ -452,13 +489,11 @@
 
             return (
                 '<div class="data-education-context-general">' +
-                    '<div class="data-education-target-heading">' +
+                    '<div class="data-education-context-general-heading">' +
                         '<div>' +
-                            '<span class="data-education-target-eyebrow">Contexto educativo general</span>' +
-                            '<h4>Indicadores educativos de contexto</h4>' +
-                            '<p>Estos indicadores describen el entorno educativo del estado. Se mantienen separados de la población objetivo adulta para evitar interpretaciones incorrectas.</p>' +
+                            '<strong>Indicadores generales del Censo ' + escapar(datos.periodo || '2020') + '</strong>' +
+                            '<span>Contexto adicional; no define por sí solo la prioridad de vinculación.</span>' +
                         '</div>' +
-                        '<span class="data-education-target-period">Censo ' + escapar(datos.periodo || '2020') + '</span>' +
                     '</div>' +
 
                     '<div class="data-education-target-summary">' +
@@ -513,9 +548,52 @@
         };
 
         const render = function (datos) {
-            contenedor.innerHTML =
-                renderPrioridad(datos) +
-                renderContexto(datos);
+            contenedor.innerHTML = renderPrioridad(datos);
+
+            let contexto = seccionEducacion.querySelector(
+                '[data-education-complementary-context]'
+            );
+
+            if (!contexto) {
+                contexto = document.createElement('details');
+                contexto.className = 'data-education-complementary-context';
+                contexto.setAttribute('data-education-complementary-context', '');
+                contexto.innerHTML =
+                    '<summary>' +
+                        '<span>' +
+                            '<strong>Contexto educativo complementario</strong>' +
+                            '<small>Rezago educativo oficial, indicadores generales y contexto juvenil</small>' +
+                        '</span>' +
+                        '<i class="bi bi-chevron-down" aria-hidden="true"></i>' +
+                    '</summary>' +
+                    '<div class="data-education-complementary-context-body" data-education-complementary-context-body></div>';
+
+                contenedor.insertAdjacentElement('afterend', contexto);
+            }
+
+            const cuerpo = contexto.querySelector(
+                '[data-education-complementary-context-body]'
+            );
+
+            if (!cuerpo) {
+                return;
+            }
+
+            if (!cuerpo.contains(rezago)) {
+                cuerpo.appendChild(rezago);
+            }
+
+            let contextoGeneral = cuerpo.querySelector(
+                '[data-education-generated-context]'
+            );
+
+            if (!contextoGeneral) {
+                contextoGeneral = document.createElement('div');
+                contextoGeneral.setAttribute('data-education-generated-context', '');
+                cuerpo.appendChild(contextoGeneral);
+            }
+
+            contextoGeneral.innerHTML = renderContexto(datos);
         };
 
         const cargar = async function () {
