@@ -13,10 +13,13 @@
         const buttons = Array.from(root.querySelectorAll('[data-report-mode]'));
         const help = form.querySelector('[data-report-mode-help]');
         const institution = form.querySelector('#reporte_institucion');
+        const periodShortcuts = form.querySelector('[data-report-period-shortcuts]');
+        const startDate = form.querySelector('#reporte_fecha_inicial');
+        const endDate = form.querySelector('#reporte_fecha_final');
         const labels = {
             actividad: {
-                help: 'El periodo se aplica a las actividades e interacciones registradas por ti.',
-                fields: ['periodo', 'territorio']
+                help: 'El periodo se aplica a tus actividades e interacciones. Puedes filtrar también por canal.',
+                fields: ['periodo', 'territorio', 'actividad']
             },
             cartera: {
                 help: 'Consulta el estado actual de tu cartera. Puedes acotar territorio, municipio, etapa o inactividad.',
@@ -76,7 +79,43 @@
             if (startLabel) startLabel.textContent = mode === 'actividad' ? 'Actividad desde' : 'Fecha inicial';
             if (endLabel) endLabel.textContent = mode === 'actividad' ? 'Actividad hasta' : 'Fecha final';
             if (help) help.textContent = labels[mode].help;
+            periodShortcuts?.classList.toggle('d-none', mode !== 'actividad');
         };
+
+        const formatDate = function (date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return year + '-' + month + '-' + day;
+        };
+
+        periodShortcuts?.querySelectorAll('[data-report-period]').forEach(function (button) {
+            button.addEventListener('click', function () {
+                if (!startDate || !endDate) {
+                    return;
+                }
+
+                const now = new Date();
+                const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                const end = new Date(start);
+                const period = String(button.dataset.reportPeriod || '');
+
+                if (period === 'week') {
+                    const weekday = start.getDay();
+                    const diffToMonday = weekday === 0 ? 6 : weekday - 1;
+                    start.setDate(start.getDate() - diffToMonday);
+                } else if (period === 'month') {
+                    start.setDate(1);
+                }
+
+                startDate.value = formatDate(start);
+                endDate.value = formatDate(end);
+
+                periodShortcuts.querySelectorAll('[data-report-period]').forEach(function (item) {
+                    item.classList.toggle('is-active', item === button);
+                });
+            });
+        });
 
         buttons.forEach(function (button) {
             button.addEventListener('click', function () {
