@@ -246,6 +246,7 @@ class InteraccionRutaService
         }
 
         $this->connection->begin_transaction();
+        $etapaPersistencia = 'guardar la interacción';
 
         try {
             $sql = "INSERT INTO interacciones_vinculacion (
@@ -271,39 +272,42 @@ class InteraccionRutaService
             $interaccionId = (int)$this->connection->insert_id;
 
             if ($nuevoTelefonoContacto !== '' || $nuevoCorreoContacto !== '') {
+                $etapaPersistencia = 'actualizar el contacto referido';
+                $telefonoDestinoContacto = $nuevoTelefonoContacto !== ''
+                    ? $nuevoTelefonoContacto
+                    : trim((string)($seguimiento['telefono_verificado'] ?? ''));
+                $correoDestinoContacto = $nuevoCorreoContacto !== ''
+                    ? $nuevoCorreoContacto
+                    : trim((string)($seguimiento['correo_verificado'] ?? ''));
+                $nombreDestinoContacto = $nuevoContactoNombre !== ''
+                    ? $nuevoContactoNombre
+                    : trim((string)($seguimiento['contacto_nombre'] ?? ''));
+                $cargoDestinoContacto = $nuevoContactoCargo !== ''
+                    ? $nuevoContactoCargo
+                    : trim((string)($seguimiento['contacto_cargo'] ?? ''));
+
                 $sqlContacto = "UPDATE seguimientos_vinculacion
-                        SET telefono_verificado = CASE
-                                WHEN ? <> '' THEN ? ELSE telefono_verificado
-                            END,
-                            correo_verificado = CASE
-                                WHEN ? <> '' THEN ? ELSE correo_verificado
-                            END,
-                            contacto_nombre = CASE
-                                WHEN ? <> '' THEN ? ELSE contacto_nombre
-                            END,
-                            contacto_cargo = CASE
-                                WHEN ? <> '' THEN ? ELSE contacto_cargo
-                            END
+                        SET telefono_verificado = ?,
+                            correo_verificado = ?,
+                            contacto_nombre = ?,
+                            contacto_cargo = ?
                         WHERE id = ?
                           AND analista_id = ?
                           AND activo = 1";
                 $stmtContacto = $this->connection->prepare($sqlContacto);
                 $stmtContacto->bind_param(
-                    'ssssssssii',
-                    $nuevoTelefonoContacto,
-                    $nuevoTelefonoContacto,
-                    $nuevoCorreoContacto,
-                    $nuevoCorreoContacto,
-                    $nuevoContactoNombre,
-                    $nuevoContactoNombre,
-                    $nuevoContactoCargo,
-                    $nuevoContactoCargo,
+                    'ssssii',
+                    $telefonoDestinoContacto,
+                    $correoDestinoContacto,
+                    $nombreDestinoContacto,
+                    $cargoDestinoContacto,
                     $seguimientoId,
                     $usuarioId
                 );
                 $stmtContacto->execute();
             }
 
+            $etapaPersistencia = 'actualizar la fecha de última interacción';
             $sqlSeguimiento = "UPDATE seguimientos_vinculacion
                     SET ultima_interaccion_at = ?
                     WHERE id = ?
@@ -339,10 +343,13 @@ class InteraccionRutaService
             ];
         } catch (Throwable $error) {
             $this->connection->rollback();
-            error_log('Error registrando interacción informativa: ' . $error->getMessage());
+            error_log(
+                'Error registrando interacción informativa (' .
+                $etapaPersistencia . '): ' . $error->getMessage()
+            );
 
             return $this->error(
-                'No fue posible registrar la interacción.',
+                'No fue posible ' . $etapaPersistencia . '.',
                 500
             );
         }
