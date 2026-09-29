@@ -922,6 +922,15 @@
                 const resultado = formulario.querySelector('[name="resultado"]');
                 const fechaInicio = formulario.querySelector('[name="fecha_inicio"]');
 
+                let origenLlamada = formulario.querySelector('[name="origen_llamada"]');
+                if (!origenLlamada) {
+                    origenLlamada = document.createElement('input');
+                    origenLlamada.type = 'hidden';
+                    origenLlamada.name = 'origen_llamada';
+                    formulario.appendChild(origenLlamada);
+                }
+                origenLlamada.value = 'ZADARMA';
+
                 if (canal) {
                     canal.value = 'LLAMADA';
                     canal.dispatchEvent(new Event('change', { bubbles: true }));
