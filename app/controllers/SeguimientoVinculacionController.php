@@ -896,6 +896,8 @@ class SeguimientoVinculacionController
         $resultadoFormulario = strtoupper(trim((string)($_POST['resultado'] ?? '')));
         $mapaResultados = [
             'SIN_RESPUESTA' => 'SIN_RESPUESTA',
+            'BUZON_VOZ' => 'BUZON_VOZ',
+            'FUERA_SERVICIO' => 'FUERA_SERVICIO',
             'NUMERO_INCORRECTO' => 'NUMERO_INCORRECTO',
             'CONTACTO_INCORRECTO' => 'CONTACTO_INCORRECTO',
             'CONTACTO_CORRECTO' => 'CONTACTADO',
@@ -917,6 +919,8 @@ class SeguimientoVinculacionController
             'MENSAJE_ENVIADO',
             'CORREO_ENVIADO',
             'SIN_RESPUESTA',
+            'BUZON_VOZ',
+            'FUERA_SERVICIO',
             'NO_INTERESADO',
             'OTRO'
         ];
@@ -2945,6 +2949,8 @@ class SeguimientoVinculacionController
             'MENSAJE_ENVIADO' => 'Mensaje enviado',
             'CORREO_ENVIADO' => 'Correo enviado',
             'SIN_RESPUESTA' => 'Sin respuesta',
+            'BUZON_VOZ' => 'Buzón de voz',
+            'FUERA_SERVICIO' => 'Fuera del área / fuera de servicio',
             'NO_INTERESADO' => 'No interesado',
             'OTRO' => 'Otro'
         ];
