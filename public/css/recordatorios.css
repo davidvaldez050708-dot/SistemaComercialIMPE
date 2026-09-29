@@ -375,3 +375,220 @@
         width: 100%;
     }
 }
+
+
+/* =========================================================
+   META TELEFÓNICA PERSONAL · TOPBAR
+   ========================================================= */
+.topbar-call-goal {
+    position: relative;
+}
+
+.topbar-call-goal-button {
+    min-width: 76px;
+    height: 44px;
+    padding: 0 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    background: #ffffff;
+    color: var(--color-primary);
+    transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.topbar-call-goal-button:hover,
+.topbar-call-goal-button:focus {
+    border-color: rgba(5, 99, 166, 0.30);
+    background: #fafcfe;
+    color: var(--color-primary);
+    box-shadow: 0 4px 14px rgba(15, 41, 77, 0.06);
+}
+
+.topbar-call-goal-button::after {
+    display: none;
+}
+
+.topbar-call-goal-icon {
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    border-radius: 8px;
+    background: #eef4ff;
+    color: #24439a;
+    font-size: 14px;
+}
+
+.topbar-call-goal-value {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 2px;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.topbar-call-goal-value strong {
+    color: #183b8f;
+    font-size: 14px;
+    font-weight: 800;
+}
+
+.topbar-call-goal-value small {
+    color: var(--color-text-secondary);
+    font-size: 9px;
+    font-weight: 700;
+}
+
+.topbar-call-goal-menu {
+    width: min(310px, calc(100vw - 28px));
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    box-shadow: 0 16px 38px rgba(18, 40, 76, 0.12);
+}
+
+.topbar-call-goal-header {
+    padding: 14px 15px 11px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.topbar-call-goal-header > div {
+    min-width: 0;
+}
+
+.topbar-call-goal-header strong {
+    display: block;
+    color: var(--color-text-primary);
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.topbar-call-goal-header span:not(.topbar-call-goal-pill) {
+    display: block;
+    margin-top: 2px;
+    color: var(--color-text-secondary);
+    font-size: 10.5px;
+    font-weight: 600;
+}
+
+.topbar-call-goal-pill {
+    min-width: 52px;
+    height: 28px;
+    padding: 0 9px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    border-radius: 999px;
+    background: #eef4ff;
+    color: #24439a;
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.topbar-call-goal-pill b {
+    margin-right: 2px;
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.topbar-call-goal-progress {
+    height: 5px;
+    margin: 0 15px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #edf1f6;
+}
+
+.topbar-call-goal-progress > span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: #2e48a5;
+    transition: width 0.25s ease;
+}
+
+.topbar-call-goal-stats {
+    padding: 13px 15px 11px;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.topbar-call-goal-stats > div {
+    min-width: 0;
+    padding: 9px 8px;
+    border: 1px solid #e7ebf1;
+    border-radius: 9px;
+    background: #fafbfd;
+    text-align: center;
+}
+
+.topbar-call-goal-stats strong {
+    display: block;
+    color: var(--color-text-primary);
+    font-size: 16px;
+    font-weight: 800;
+    line-height: 1.1;
+}
+
+.topbar-call-goal-stats span {
+    display: block;
+    margin-top: 3px;
+    color: var(--color-text-secondary);
+    font-size: 9.5px;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+.topbar-call-goal-status {
+    padding: 9px 15px 11px;
+    border-top: 1px solid #edf0f4;
+    color: var(--color-text-secondary);
+    font-size: 10.5px;
+    font-weight: 650;
+    line-height: 1.35;
+}
+
+.topbar-call-goal.is-complete .topbar-call-goal-icon,
+.topbar-call-goal.is-complete .topbar-call-goal-pill {
+    background: #eaf8f4;
+    color: #0f7a65;
+}
+
+.topbar-call-goal.is-complete .topbar-call-goal-progress > span {
+    background: #0f8f74;
+}
+
+@media (max-width: 575.98px) {
+    .topbar-call-goal-button {
+        min-width: 58px;
+        height: 40px;
+        padding: 0 7px;
+        gap: 5px;
+    }
+
+    .topbar-call-goal-icon {
+        width: 24px;
+        height: 24px;
+        border-radius: 7px;
+        font-size: 12px;
+    }
+
+    .topbar-call-goal-value strong {
+        font-size: 12px;
+    }
+
+    .topbar-call-goal-value small {
+        font-size: 8px;
+    }
+}
