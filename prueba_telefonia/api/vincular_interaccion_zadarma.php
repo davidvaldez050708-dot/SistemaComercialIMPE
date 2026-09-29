@@ -131,7 +131,7 @@ $config = require $configPath;
 $extension = trim((string)($config['pbx_extension'] ?? ''));
 
 if (!preg_match('/^\d{3,6}$/', $extension)) {
-    responderJson(['ok' => false, 'mensaje' => 'La extensión Zadarma no está configurada correctamente.'], 500);
+    responderJson(['ok' => false, 'mensaje' => 'La extensión del proveedor de telefonía no está configurada correctamente.'], 500);
 }
 
 $lineas = is_file($logPath)
@@ -220,14 +220,14 @@ if (!$inicio || !$fin || $pbxCallId === '') {
 if ($pbxCallId === '' || !preg_match('/^out_[a-fA-F0-9]{32,64}$/', $pbxCallId)) {
     responderJson([
         'ok' => false,
-        'mensaje' => 'Zadarma todavía está publicando el identificador de la llamada.'
+        'mensaje' => 'El proveedor de telefonía todavía está publicando el identificador de la llamada.'
     ], 409);
 }
 
 if (!$inicio) {
     responderJson([
         'ok' => false,
-        'mensaje' => 'Zadarma todavía está publicando el inicio de la llamada.'
+        'mensaje' => 'El proveedor de telefonía todavía está publicando el inicio de la llamada.'
     ], 409);
 }
 
@@ -241,7 +241,7 @@ if (trim((string)($inicio['internal'] ?? '')) !== $extension) {
 if (!$fin) {
     responderJson([
         'ok' => false,
-        'mensaje' => 'La llamada todavía no termina de procesarse en Zadarma.'
+        'mensaje' => 'La llamada todavía no termina de procesarse en el proveedor de telefonía.'
     ], 409);
 }
 
@@ -353,7 +353,7 @@ try {
         );
         $notasInteraccion = preg_replace(
             '/^Verificación obtenida:\s*.*$/miu',
-            'Verificación no contabilizada: Zadarma no registró respuesta.',
+            'Verificación no contabilizada: el proveedor de telefonía no registró respuesta.',
             $notasInteraccion
         );
         $notasInteraccion = trim((string)$notasInteraccion);
@@ -418,7 +418,7 @@ try {
 
     responderJson([
         'ok' => true,
-        'mensaje' => 'La llamada Zadarma quedó vinculada con la interacción exacta.',
+        'mensaje' => 'La llamada quedó vinculada con la interacción exacta.',
         'interaccion_id' => $interaccionId,
         'pbx_call_id' => $pbxCallId,
         'duracion_segundos' => $duracion,
@@ -438,7 +438,7 @@ try {
 } catch (Throwable $e) {
     responderJson([
         'ok' => false,
-        'mensaje' => 'No se pudo vincular la llamada Zadarma con la interacción.',
+        'mensaje' => 'No se pudo vincular la llamada con la interacción.',
         'detalle' => $e->getMessage(),
     ], 500);
 }
