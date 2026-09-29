@@ -938,12 +938,15 @@
 
 .convocatoria-type-cards {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(300px, 420px));
     gap: 18px;
+    justify-content: start;
     margin-top: 18px;
 }
 
 .convocatoria-type-card {
+    width: 100%;
+    max-width: 420px;
     min-height: 168px;
     padding: 16px;
     display: grid;
@@ -1011,6 +1014,7 @@
     }
 
     .convocatoria-type-card {
+        max-width: none;
         min-height: 160px;
     }
 }
@@ -1018,39 +1022,52 @@
 
 /* Segunda selección: opciones internas de Titulación y Bachillerato. */
 .convocatoria-subtype-cards {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(280px, 360px));
 }
 
 .convocatoria-subtype-cards .convocatoria-type-card {
+    max-width: 360px;
     min-height: 178px;
 }
 
 @media (max-width: 1199.98px) {
     .convocatoria-subtype-cards {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(280px, 360px));
     }
 }
 
 @media (max-width: 767.98px) {
     .convocatoria-subtype-cards {
         grid-template-columns: 1fr;
+    }
+
+    .convocatoria-subtype-cards .convocatoria-type-card {
+        max-width: none;
     }
 }
 
 
 /* Chihuahua muestra un tercer tipo de convocatoria: Sindicatos. */
 .convocatoria-type-cards-three {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(280px, 360px));
+}
+
+.convocatoria-type-cards-three .convocatoria-type-card {
+    max-width: 360px;
 }
 
 @media (max-width: 1199.98px) {
     .convocatoria-type-cards-three {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(280px, 360px));
     }
 }
 
 @media (max-width: 767.98px) {
     .convocatoria-type-cards-three {
         grid-template-columns: 1fr;
+    }
+
+    .convocatoria-type-cards-three .convocatoria-type-card {
+        max-width: none;
     }
 }
