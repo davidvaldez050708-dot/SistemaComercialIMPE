@@ -478,6 +478,9 @@
     }
 
     function iniciar() {
+        if (document.querySelector('[data-analyst-report-output]')) {
+            return;
+        }
         window.setTimeout(aplicar, 20);
     }
 
