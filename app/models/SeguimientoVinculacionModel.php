@@ -1253,12 +1253,20 @@ class SeguimientoVinculacionModel
             $stmtInteraccion->execute();
 
             $nuevoTelefonoContacto = trim((string)($datos['nuevo_telefono_contacto'] ?? ''));
+            $nuevoCorreoContacto = trim((string)($datos['nuevo_correo_contacto'] ?? ''));
             $nuevoContactoNombre = trim((string)($datos['nuevo_contacto_nombre'] ?? ''));
             $nuevoContactoCargo = trim((string)($datos['nuevo_contacto_cargo'] ?? ''));
 
-            if ($nuevoTelefonoContacto !== '') {
+            if ($nuevoTelefonoContacto !== '' || $nuevoCorreoContacto !== '') {
                 $sqlContactoReferido = "UPDATE seguimientos_vinculacion
-                        SET telefono_verificado = ?,
+                        SET telefono_verificado = CASE
+                                WHEN ? <> '' THEN ?
+                                ELSE telefono_verificado
+                            END,
+                            correo_verificado = CASE
+                                WHEN ? <> '' THEN ?
+                                ELSE correo_verificado
+                            END,
                             contacto_nombre = CASE
                                 WHEN ? <> '' THEN ?
                                 ELSE contacto_nombre
@@ -1271,8 +1279,11 @@ class SeguimientoVinculacionModel
                           AND activo = 1";
                 $stmtContactoReferido = $this->connection->prepare($sqlContactoReferido);
                 $stmtContactoReferido->bind_param(
-                    'sssssi',
+                    'ssssssssi',
                     $nuevoTelefonoContacto,
+                    $nuevoTelefonoContacto,
+                    $nuevoCorreoContacto,
+                    $nuevoCorreoContacto,
                     $nuevoContactoNombre,
                     $nuevoContactoNombre,
                     $nuevoContactoCargo,
@@ -1529,6 +1540,99 @@ class SeguimientoVinculacionModel
             );
             return false;
         }
+    }
+
+
+    public function obtenerResumenVerificacionTelefonicaDia($usuarioId, $fecha)
+    {
+        $usuarioId = (int)$usuarioId;
+        $fecha = trim((string)$fecha);
+
+        if ($usuarioId <= 0 || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha)) {
+            return [
+                'meta' => 25,
+                'llamadas_realizadas' => 0,
+                'llamadas_vinculadas' => 0,
+                'llamadas_con_contacto' => 0,
+                'verificaciones_efectivas' => 0,
+                'verificaciones_pendientes_vinculo' => 0,
+                'restantes' => 25,
+                'cumplimiento_pct' => 0.0
+            ];
+        }
+
+        $sql = "SELECT
+                    COUNT(*) AS llamadas_realizadas,
+                    COALESCE(SUM(
+                        CASE
+                            WHEN TRIM(COALESCE(proveedor_externo, '')) <> ''
+                             AND TRIM(COALESCE(id_externo, '')) <> ''
+                             AND COALESCE(duracion_segundos, 0) > 0
+                            THEN 1 ELSE 0
+                        END
+                    ), 0) AS llamadas_vinculadas,
+                    COALESCE(SUM(
+                        CASE
+                            WHEN TRIM(COALESCE(proveedor_externo, '')) <> ''
+                             AND TRIM(COALESCE(id_externo, '')) <> ''
+                             AND COALESCE(duracion_segundos, 0) > 0
+                             AND (
+                                UPPER(TRIM(COALESCE(resultado, ''))) IN (
+                                    'CONTACTADO',
+                                    'SOLICITO_INFORMACION',
+                                    'SOLICITO_LLAMAR_DESPUES',
+                                    'NO_INTERESADO'
+                                )
+                                OR notas LIKE '%[CONTACTO_EFECTIVO]%'
+                             )
+                             AND notas NOT LIKE '%[SIN_CONTACTO_EFECTIVO]%'
+                            THEN 1 ELSE 0
+                        END
+                    ), 0) AS llamadas_con_contacto,
+                    COUNT(DISTINCT CASE
+                        WHEN notas LIKE '%[VERIFICACION_EFECTIVA]%'
+                         AND TRIM(COALESCE(proveedor_externo, '')) <> ''
+                         AND TRIM(COALESCE(id_externo, '')) <> ''
+                         AND COALESCE(duracion_segundos, 0) > 0
+                        THEN seguimiento_id
+                        ELSE NULL
+                    END) AS verificaciones_efectivas,
+                    COUNT(DISTINCT CASE
+                        WHEN notas LIKE '%[VERIFICACION_EFECTIVA]%'
+                         AND (
+                            TRIM(COALESCE(proveedor_externo, '')) = ''
+                            OR TRIM(COALESCE(id_externo, '')) = ''
+                            OR COALESCE(duracion_segundos, 0) <= 0
+                         )
+                        THEN seguimiento_id
+                        ELSE NULL
+                    END) AS verificaciones_pendientes_vinculo
+                FROM interacciones_vinculacion
+                WHERE usuario_id = ?
+                  AND canal = 'LLAMADA_IP'
+                  AND DATE(fecha_inicio) = ?";
+
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param('is', $usuarioId, $fecha);
+        $stmt->execute();
+        $fila = $stmt->get_result()->fetch_assoc() ?: [];
+
+        $meta = 25;
+        $efectivas = max(0, (int)($fila['verificaciones_efectivas'] ?? 0));
+
+        return [
+            'meta' => $meta,
+            'llamadas_realizadas' => max(0, (int)($fila['llamadas_realizadas'] ?? 0)),
+            'llamadas_vinculadas' => max(0, (int)($fila['llamadas_vinculadas'] ?? 0)),
+            'llamadas_con_contacto' => max(0, (int)($fila['llamadas_con_contacto'] ?? 0)),
+            'verificaciones_efectivas' => $efectivas,
+            'verificaciones_pendientes_vinculo' =>
+                max(0, (int)($fila['verificaciones_pendientes_vinculo'] ?? 0)),
+            'restantes' => max(0, $meta - $efectivas),
+            'cumplimiento_pct' => $meta > 0
+                ? round(($efectivas / $meta) * 100, 1)
+                : 0.0
+        ];
     }
 
     private function resolverEstadoDespuesInteraccion($canal, $resultado, $datosVerificados, $descartar)
