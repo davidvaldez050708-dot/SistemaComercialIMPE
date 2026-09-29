@@ -60,6 +60,7 @@ $marcadorBuzon = '[BUZON_VOZ]';
 $marcadorFueraServicio = '[FUERA_SERVICIO]';
 $marcadorContacto = '[CONTACTO_EFECTIVO]';
 $marcadorSinContacto = '[SIN_CONTACTO_EFECTIVO]';
+$marcadorVerificacion = '[VERIFICACION_EFECTIVA]';
 
 // Zadarma entrega NOTIFY_RECORD cuando el audio ya está listo.
 // Conservamos también ANSWER/OUT_END para reconstruir la duración de llamadas
@@ -194,6 +195,16 @@ foreach ($modelo->obtenerInteraccionesSeguimiento($seguimientoId) as $interaccio
 
     $resultado = strtoupper(trim((string)($interaccion['resultado'] ?? '')));
     $notas = trim((string)($interaccion['notas'] ?? ''));
+    $verificacionMarcada = strpos($notas, $marcadorVerificacion) !== false;
+    $evidenciasVerificacion = [];
+
+    if (preg_match('/^Verificación obtenida:\s*(.+)$/miu', $notas, $coincidenciaVerificacion)) {
+        $evidenciasVerificacion = array_values(array_filter(array_map(
+            'trim',
+            preg_split('/\s*·\s*/u', (string)($coincidenciaVerificacion[1] ?? '')) ?: []
+        )));
+    }
+
     $resultadoTelefonico = $resultado;
     $excluirGrabacion = false;
 
@@ -222,6 +233,7 @@ foreach ($modelo->obtenerInteraccionesSeguimiento($seguimientoId) as $interaccio
             $marcadorFueraServicio,
             $marcadorContacto,
             $marcadorSinContacto,
+            $marcadorVerificacion,
         ],
         '',
         $notas
@@ -241,6 +253,14 @@ foreach ($modelo->obtenerInteraccionesSeguimiento($seguimientoId) as $interaccio
         $proveedor === 'ZADARMA' &&
         $duracion > 0 &&
         preg_match('/^out_[a-fA-F0-9]{32,64}$/', $idExterno);
+
+    $llamadaTecnicaValida =
+        $duracion > 0 &&
+        $idExterno !== '' &&
+        $proveedor !== '';
+    $verificacionEfectiva =
+        $verificacionMarcada &&
+        $llamadaTecnicaValida;
 
     $zadarmaGrabada = $zadarmaValida &&
         (
@@ -300,6 +320,10 @@ foreach ($modelo->obtenerInteraccionesSeguimiento($seguimientoId) as $interaccio
         'resultado' => $resultado,
         'resultado_telefonico' => $resultadoTelefonico,
         'contacto_efectivo' => (bool)$contactoEfectivo,
+        'verificacion_efectiva' => (bool)$verificacionEfectiva,
+        'verificacion_pendiente_vinculo' =>
+            (bool)($verificacionMarcada && !$llamadaTecnicaValida),
+        'verificacion_evidencias' => $evidenciasVerificacion,
         'contacto' => (string)($notasEstructuradas['contacto'] ?? ''),
         'detalle' => (string)($notasEstructuradas['detalle'] ?? ''),
         'notas' => $notasLimpias,
