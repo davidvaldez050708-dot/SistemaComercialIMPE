@@ -905,3 +905,81 @@
     object-fit: contain;
     border-radius: 8px;
 }
+
+
+/* Selector intermedio de tipo de convocatoria. */
+.convocatoria-type-heading {
+    margin-top: 18px;
+    padding: 22px 24px;
+}
+
+.convocatoria-type-cards {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 22px;
+    margin-top: 22px;
+}
+
+.convocatoria-type-card {
+    min-height: 280px;
+    padding: 28px;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    gap: 22px;
+    border-left: 7px solid var(--color-primary);
+}
+
+.convocatoria-type-card-icon {
+    width: 66px;
+    height: 66px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 16px;
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
+    font-size: 30px;
+}
+
+.convocatoria-type-card h3 {
+    margin: 0 0 8px;
+    color: var(--color-text-primary);
+    font-size: 22px;
+    font-weight: 800;
+}
+
+.convocatoria-type-card p {
+    margin: 0;
+    color: var(--color-text-secondary);
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.convocatoria-type-card .btn {
+    min-height: 48px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .convocatoria-type-card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .convocatoria-type-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+    }
+}
+
+@media (max-width: 767.98px) {
+    .convocatoria-type-cards {
+        grid-template-columns: 1fr;
+    }
+
+    .convocatoria-type-card {
+        min-height: 240px;
+    }
+}
