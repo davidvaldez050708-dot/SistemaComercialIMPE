@@ -564,10 +564,24 @@
                             badgeVerificacion.title = evidencias.join(' · ');
                         }
                         resultados.appendChild(badgeVerificacion);
+                    } else if (llamada.registro_prueba === true) {
+                        resultados.appendChild(
+                            crearBadgeResultado(
+                                'Registro de prueba · no contabiliza',
+                                'is-verification-test'
+                            )
+                        );
+                    } else if (llamada.registro_manual === true) {
+                        resultados.appendChild(
+                            crearBadgeResultado(
+                                'Registro manual · no contabiliza',
+                                'is-verification-test'
+                            )
+                        );
                     } else if (llamada.verificacion_pendiente_vinculo === true) {
                         resultados.appendChild(
                             crearBadgeResultado(
-                                'Verificación pendiente de vincular',
+                                'Verificación en proceso',
                                 'is-verification-pending'
                             )
                         );
