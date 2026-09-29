@@ -174,6 +174,17 @@ $datosEditar = $modalAbierto === 'editar' ? $datosFormulario : [];
         <?php endforeach; ?>
     </section>
 
+    <div
+        class="convocatoria-territory-count"
+        data-convocatoria-territory-count
+        data-total-territories="<?= count($estados) ?>">
+        <?php if (!empty($estados)): ?>
+            Mostrando 1 a <?= count($estados) ?> de <?= count($estados) ?> territorios
+        <?php else: ?>
+            Mostrando 0 de 0 territorios
+        <?php endif; ?>
+    </div>
+
     <section
         class="dashboard-panel data-empty-state d-none"
         data-convocatoria-territory-empty>
@@ -188,6 +199,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const search = document.querySelector('[data-convocatoria-territory-search]');
     const cards = Array.from(document.querySelectorAll('[data-convocatoria-territory-card]'));
     const empty = document.querySelector('[data-convocatoria-territory-empty]');
+    const counter = document.querySelector('[data-convocatoria-territory-count]');
+    const totalTerritorios = cards.length;
     let timer = null;
 
     const normalizar = function (valor) {
@@ -213,6 +226,12 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         empty?.classList.toggle('d-none', visibles > 0);
+
+        if (counter) {
+            counter.textContent = visibles > 0
+                ? 'Mostrando 1 a ' + visibles + ' de ' + totalTerritorios + ' territorios'
+                : 'Mostrando 0 de ' + totalTerritorios + ' territorios';
+        }
     };
 
     search?.addEventListener('input', function () {
