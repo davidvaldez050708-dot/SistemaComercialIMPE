@@ -40,6 +40,7 @@
         let pendingMetadata = null;
         let awaitingInteractionSave = false;
         let linkingMetadata = false;
+        let pendingInteractionFeedback = null;
         let modal = null;
         let els = null;
 
@@ -1048,7 +1049,27 @@
 
                 pendingMetadata = null;
                 awaitingInteractionSave = false;
-                mostrarToast('La llamada Zadarma y su duración quedaron vinculadas al expediente.', false);
+
+                const feedback = pendingInteractionFeedback || {};
+                let mensajeFinal = 'Llamada registrada · ' +
+                    String(feedback.resultadoLabel || 'resultado guardado') + '.';
+
+                if (data.verificacion_efectiva === true) {
+                    mensajeFinal = data.institucion_ya_contabilizada_hoy === true
+                        ? 'Verificación válida · esta institución ya fue contabilizada hoy. La llamada quedó guardada en el expediente.'
+                        : 'Llamada registrada y verificada · esta institución cuenta en la meta de hoy.';
+                } else if (feedback.tieneEvidencia === true && data.hubo_respuesta !== true) {
+                    mensajeFinal =
+                        'Llamada registrada · no contabilizó como verificación porque Zadarma no confirmó una respuesta.';
+                } else if (feedback.tieneEvidencia !== true) {
+                    mensajeFinal =
+                        'Llamada registrada · ' +
+                        String(feedback.resultadoLabel || 'resultado guardado') +
+                        ' · no contabilizó como verificación porque no se confirmó ningún dato.';
+                }
+
+                pendingInteractionFeedback = null;
+                mostrarToast(mensajeFinal, false);
 
                 const detail = {
                     seguimientoId: currentSeguimientoId,
@@ -1078,8 +1099,56 @@
             );
             if (seguimientoForm === Number(pendingMetadata.seguimiento_id)) {
                 awaitingInteractionSave = true;
+
+                const resultado = String(
+                    formulario.querySelector('[name="resultado"]')?.value || ''
+                ).toUpperCase();
+                const etiquetas = {
+                    CONTACTADO: 'Contacto correcto',
+                    CONTACTO_CORRECTO: 'Contacto correcto',
+                    CONTACTO_REFERIDO: 'Me proporcionaron otro contacto',
+                    SOLICITO_INFORMACION: 'Solicitó información',
+                    SOLICITO_LLAMAR_DESPUES: 'Solicitó volver a llamar',
+                    NO_INTERESADO: 'No interesado',
+                    CONTACTO_INCORRECTO: 'Contacto incorrecto',
+                    NUMERO_INCORRECTO: 'Número incorrecto',
+                    SIN_RESPUESTA: 'Sin respuesta',
+                    BUZON_VOZ: 'Buzón de voz',
+                    FUERA_SERVICIO: 'Fuera del área / fuera de servicio',
+                    OCUPADO: 'Ocupado',
+                    OTRO: 'Otro'
+                };
+                const evidencia =
+                    Boolean(formulario.querySelector('[name="verificacion_telefono_confirmado"]')?.checked) ||
+                    Boolean(formulario.querySelector('[name="verificacion_correo_confirmado"]')?.checked) ||
+                    Boolean(formulario.querySelector('[name="verificacion_contacto_confirmado"]')?.checked) ||
+                    (
+                        resultado === 'CONTACTO_REFERIDO' &&
+                        (
+                            String(formulario.querySelector('[name="nuevo_telefono_contacto"]')?.value || '').trim() !== '' ||
+                            String(formulario.querySelector('[name="nuevo_correo_contacto"]')?.value || '').trim() !== ''
+                        )
+                    );
+
+                pendingInteractionFeedback = {
+                    resultado: resultado,
+                    resultadoLabel: etiquetas[resultado] || 'Llamada registrada',
+                    tieneEvidencia: evidencia
+                };
             }
         }, true);
+
+        document.addEventListener('impe:interaction-exact-id-ready', function (event) {
+            if (!awaitingInteractionSave || !pendingMetadata) {
+                return;
+            }
+
+            if (Number(event.detail?.seguimientoId || 0) === Number(pendingMetadata.seguimiento_id)) {
+                window.setTimeout(function () {
+                    void vincularMetadata(0);
+                }, 120);
+            }
+        });
 
         document.addEventListener('impe:interaction-informative-saved', function (event) {
             if (!awaitingInteractionSave || !pendingMetadata) {
