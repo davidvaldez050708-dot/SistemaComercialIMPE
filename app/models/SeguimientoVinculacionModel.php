@@ -1562,7 +1562,7 @@ class SeguimientoVinculacionModel
         }
 
         $sql = "SELECT
-                    COUNT(*) AS llamadas_realizadas,
+                    COUNT(*) AS registros_llamada,
                     COALESCE(SUM(
                         CASE
                             WHEN TRIM(COALESCE(proveedor_externo, '')) <> ''
@@ -1622,7 +1622,8 @@ class SeguimientoVinculacionModel
 
         return [
             'meta' => $meta,
-            'llamadas_realizadas' => max(0, (int)($fila['llamadas_realizadas'] ?? 0)),
+            'llamadas_realizadas' => max(0, (int)($fila['llamadas_vinculadas'] ?? 0)),
+            'registros_llamada' => max(0, (int)($fila['registros_llamada'] ?? 0)),
             'llamadas_vinculadas' => max(0, (int)($fila['llamadas_vinculadas'] ?? 0)),
             'llamadas_con_contacto' => max(0, (int)($fila['llamadas_con_contacto'] ?? 0)),
             'verificaciones_efectivas' => $efectivas,
