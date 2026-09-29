@@ -543,8 +543,16 @@ class SeguimientoVinculacionReporteController
                 $filtrosReporte['institucion'] = '';
                 $filtrosReporte['responsable_id'] = 0;
                 $filtrosReporte['estado_seguimiento'] = '';
-                $filtrosReporte['tipo_actividad'] = '';
                 $filtrosReporte['dias_sin_actividad'] = 0;
+
+                if (
+                    trim((string)$filtrosReporte['fecha_inicial']) === '' &&
+                    trim((string)$filtrosReporte['fecha_final']) === ''
+                ) {
+                    $hoy = date('Y-m-d');
+                    $filtrosReporte['fecha_inicial'] = $hoy;
+                    $filtrosReporte['fecha_final'] = $hoy;
+                }
             } elseif ($tipoReporte === 'institucion') {
                 $filtrosReporte['fecha_inicial'] = '';
                 $filtrosReporte['fecha_final'] = '';
@@ -574,6 +582,8 @@ class SeguimientoVinculacionReporteController
         $seguimientosReporte = [];
         $seguimientosActividad = [];
         $resumenReporte = $this->crearResumenReporte([]);
+        $analiticaReporte = [];
+        $detalleInstitucionReporte = [];
 
         if (
             $generarReporte &&
@@ -642,6 +652,42 @@ class SeguimientoVinculacionReporteController
                 $seguimientosReporte
             );
             $resumenReporte = $this->crearResumenReporte($seguimientosReporte);
+
+            $seguimientoIdsReporte = array_values(array_filter(array_map(
+                static function ($seguimiento) {
+                    return (int)($seguimiento['id'] ?? 0);
+                },
+                $seguimientosReporte
+            )));
+
+            try {
+                $analiticaReporte = (new SeguimientoReporteAnaliticaService())->construir(
+                    $seguimientoIdsReporte,
+                    $usuarioId,
+                    $modoSeguimiento,
+                    (string)($filtrosReporte['fecha_inicial'] ?? ''),
+                    (string)($filtrosReporte['fecha_final'] ?? '')
+                );
+            } catch (Throwable $error) {
+                error_log('[reporte_analitica_web] ' . $error->getMessage());
+            }
+
+            if (
+                $modoSeguimiento === 'analista' &&
+                (string)($filtrosReporte['tipo_reporte'] ?? '') === 'institucion' &&
+                count($seguimientosReporte) === 1
+            ) {
+                try {
+                    $detalleInstitucionReporte =
+                        (new ReporteSeguimientoInstitucionDetalleService())->construir(
+                            (int)($seguimientosReporte[0]['id'] ?? 0),
+                            $usuarioId,
+                            $modoSeguimiento
+                        );
+                } catch (Throwable $error) {
+                    error_log('[reporte_detalle_institucion_web] ' . $error->getMessage());
+                }
+            }
         }
 
         $estadosSeguimiento = self::ESTADOS_SEGUIMIENTO;
@@ -665,6 +711,8 @@ class SeguimientoVinculacionReporteController
             'seguimientosReporte' => $seguimientosReporte,
             'seguimientosActividad' => $seguimientosActividad,
             'resumenReporte' => $resumenReporte,
+            'analiticaReporte' => $analiticaReporte,
+            'detalleInstitucionReporte' => $detalleInstitucionReporte,
             'generarReporte' => $generarReporte,
             'errorFiltros' => $errorFiltros,
             'modoSeguimiento' => $modoSeguimiento
