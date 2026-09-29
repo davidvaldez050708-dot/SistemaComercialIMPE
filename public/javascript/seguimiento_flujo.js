@@ -688,6 +688,17 @@
                 const formulario = offcanvas.querySelector('[data-work-interaction-form]');
                 const canal = formulario?.querySelector('[name="canal"]');
 
+                if (formulario) {
+                    let origen = formulario.querySelector('[name="origen_llamada"]');
+                    if (!origen) {
+                        origen = document.createElement('input');
+                        origen.type = 'hidden';
+                        origen.name = 'origen_llamada';
+                        formulario.appendChild(origen);
+                    }
+                    origen.value = 'PRUEBA';
+                }
+
                 if (canal) {
                     // El formulario usa LLAMADA y el backend la registra como LLAMADA_IP.
                     canal.value = 'LLAMADA';
