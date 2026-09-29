@@ -388,7 +388,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                             </option>
                         <?php endforeach; ?>
                     </select>
-                    <div class="form-text">Se utiliza el canal de la última interacción registrada.</div>
+                    <div class="form-text">Filtra el reporte por el canal de interacción registrado.</div>
                 </div>
             <?php endif; ?>
 
@@ -438,7 +438,13 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
             </div>
             <div class="d-flex flex-wrap align-items-center justify-content-end gap-2">
                 <span class="status-pill status-pill-active">
-                    <?= (int)$resumenReporte['total'] ?> <?= (int)$resumenReporte['total'] === 1 ? 'seguimiento' : 'seguimientos' ?>
+                    <?php if ($modoSeguimiento === 'analista' && $tipoReporteActual === 'actividad'): ?>
+                        <?= (int)($analiticaReporte['interacciones'] ?? 0) ?> interacciones
+                    <?php elseif ($modoSeguimiento === 'analista' && $tipoReporteActual === 'institucion'): ?>
+                        1 institución
+                    <?php else: ?>
+                        <?= (int)$resumenReporte['total'] ?> <?= (int)$resumenReporte['total'] === 1 ? 'seguimiento' : 'seguimientos' ?>
+                    <?php endif; ?>
                 </span>
                 <?php if ($urlExportarPdf !== ''): ?>
                     <a class="btn btn-system-save linkage-action-button" href="<?= $texto($urlExportarPdf) ?>">
