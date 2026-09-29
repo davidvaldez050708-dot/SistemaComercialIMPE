@@ -45,12 +45,18 @@ class SeguimientoFlujoService
                         FROM interacciones_vinculacion interacciones
                         WHERE interacciones.seguimiento_id = seguimientos.id
                             AND interacciones.canal = 'LLAMADA_IP'
+                            AND TRIM(COALESCE(interacciones.proveedor_externo, '')) <> ''
+                            AND TRIM(COALESCE(interacciones.id_externo, '')) <> ''
+                            AND COALESCE(interacciones.duracion_segundos, 0) > 0
                     ) AS total_llamadas,
                     (
                         SELECT COUNT(*)
                         FROM interacciones_vinculacion interacciones
                         WHERE interacciones.seguimiento_id = seguimientos.id
                             AND interacciones.canal = 'LLAMADA_IP'
+                            AND TRIM(COALESCE(interacciones.proveedor_externo, '')) <> ''
+                            AND TRIM(COALESCE(interacciones.id_externo, '')) <> ''
+                            AND COALESCE(interacciones.duracion_segundos, 0) > 0
                             AND interacciones.resultado IN ('CONTACTADO', 'SOLICITO_INFORMACION', 'MENSAJE_ENVIADO')
                     ) AS total_llamadas_validacion,
                     oficio.id AS oficio_id,
@@ -365,11 +371,7 @@ class SeguimientoFlujoService
                     'etiqueta' => 'Realizar llamada IP',
                     'icono' => 'bi-telephone'
                 ],
-                [
-                    'codigo' => 'REGISTRAR_LLAMADA',
-                    'etiqueta' => 'Registrar llamada de prueba',
-                    'icono' => 'bi-journal-check'
-                ],
+                null,
                 $seguimiento
             );
         }
@@ -386,11 +388,7 @@ class SeguimientoFlujoService
                     'etiqueta' => 'Volver a llamar',
                     'icono' => 'bi-telephone'
                 ],
-                [
-                    'codigo' => 'REGISTRAR_LLAMADA',
-                    'etiqueta' => 'Registrar resultado',
-                    'icono' => 'bi-journal-check'
-                ],
+                null,
                 $seguimiento
             );
         }
