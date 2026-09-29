@@ -201,6 +201,12 @@ if ($totalPaginasMunicipios <= 7) {
                         $perfilAdultoMunicipio = is_array($municipio['perfil_adulto_laboral'] ?? null)
                             ? $municipio['perfil_adulto_laboral']
                             : ['disponible' => false];
+                        $perfilEducativoMunicipio = is_array(
+                            $priorizacionMunicipal['por_municipio'][$idMunicipio]['perfil_educativo']
+                            ?? null
+                        )
+                            ? $priorizacionMunicipal['por_municipio'][$idMunicipio]['perfil_educativo']
+                            : ['disponible' => false];
                         $numeroFila = (($paginaMunicipios - 1) * $limiteMunicipios) + $indiceMunicipio + 1;
                     ?>
 
@@ -313,6 +319,7 @@ if ($totalPaginasMunicipios <= 7) {
                                         data-motivos="<?= $escMunicipio(json_encode(array_values($motivosMunicipio), JSON_UNESCAPED_UNICODE)) ?>"
                                         data-limitaciones="<?= $escMunicipio(json_encode(array_values($limitacionesMunicipio), JSON_UNESCAPED_UNICODE)) ?>"
                                         data-perfil-adulto="<?= $escMunicipio(json_encode($perfilAdultoMunicipio, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?>"
+                                        data-perfil-educativo="<?= $escMunicipio(json_encode($perfilEducativoMunicipio, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?>"
                                         data-actividad-economica="<?= $escMunicipio(json_encode($municipio['actividad_economica_municipal'] ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?>">
                                         <i class="bi bi-bar-chart-line"></i>
                                     </button>
