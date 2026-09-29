@@ -69,6 +69,133 @@ class InteraccionRutaService
 
         $personaAtendio = trim((string)($datos['persona_atendio'] ?? ''));
         $observacion = trim((string)($datos['observacion'] ?? ''));
+        $origenLlamada = strtoupper(trim((string)($datos['origen_llamada'] ?? 'MANUAL')));
+        if (!in_array($origenLlamada, ['ZADARMA', 'PRUEBA', 'MANUAL'], true)) {
+            $origenLlamada = 'MANUAL';
+        }
+
+        $nuevoTelefonoContacto = trim((string)($datos['nuevo_telefono_contacto'] ?? ''));
+        $nuevoCorreoContacto = trim((string)($datos['nuevo_correo_contacto'] ?? ''));
+        $nuevoContactoNombre = trim((string)($datos['nuevo_contacto_nombre'] ?? ''));
+        $nuevoContactoCargo = trim((string)($datos['nuevo_contacto_cargo'] ?? ''));
+
+        if ($resultadoFormulario === 'CONTACTO_REFERIDO') {
+            if ($canalFormulario !== 'LLAMADA') {
+                return $this->error(
+                    'El contacto referido solo puede registrarse como resultado de una llamada.',
+                    422
+                );
+            }
+
+            if ($nuevoTelefonoContacto === '' && $nuevoCorreoContacto === '') {
+                return $this->error(
+                    'Captura al menos el nuevo teléfono o correo proporcionado por la institución.',
+                    422
+                );
+            }
+
+            if (strlen($nuevoTelefonoContacto) > 80) {
+                return $this->error('El nuevo teléfono de contacto es demasiado largo.', 422);
+            }
+
+            if (
+                $nuevoCorreoContacto !== '' &&
+                !filter_var($nuevoCorreoContacto, FILTER_VALIDATE_EMAIL)
+            ) {
+                return $this->error(
+                    'El nuevo correo proporcionado no tiene un formato válido.',
+                    422
+                );
+            }
+        } else {
+            $nuevoTelefonoContacto = '';
+            $nuevoCorreoContacto = '';
+            $nuevoContactoNombre = '';
+            $nuevoContactoCargo = '';
+        }
+
+        $resultadoAdmiteVerificacion = in_array(
+            $resultadoFormulario,
+            [
+                'CONTACTO_CORRECTO',
+                'CONTACTO_REFERIDO',
+                'SOLICITO_INFORMACION',
+                'SOLICITO_LLAMAR_DESPUES',
+                'NO_INTERESADO'
+            ],
+            true
+        );
+
+        $telefonoActual = trim((string)(
+            !empty($seguimiento['telefono_verificado'])
+                ? $seguimiento['telefono_verificado']
+                : ($seguimiento['telefono_fuente'] ?? '')
+        ));
+        $correoActual = trim((string)(
+            !empty($seguimiento['correo_verificado'])
+                ? $seguimiento['correo_verificado']
+                : ($seguimiento['correo_fuente'] ?? '')
+        ));
+        $contactoActual = trim((string)($seguimiento['contacto_nombre'] ?? ''));
+        $evidenciasVerificacion = [];
+
+        if ($canalFormulario === 'LLAMADA' && $resultadoAdmiteVerificacion) {
+            if ((int)($datos['verificacion_telefono_confirmado'] ?? 0) === 1) {
+                if ($telefonoActual === '') {
+                    return $this->error(
+                        'No existe un teléfono registrado que pueda marcarse como confirmado.',
+                        422
+                    );
+                }
+                $evidenciasVerificacion[] = 'Teléfono confirmado';
+            }
+
+            if ((int)($datos['verificacion_correo_confirmado'] ?? 0) === 1) {
+                if ($correoActual === '') {
+                    return $this->error(
+                        'No existe un correo registrado que pueda marcarse como confirmado.',
+                        422
+                    );
+                }
+                $evidenciasVerificacion[] = 'Correo confirmado';
+            }
+
+            if ((int)($datos['verificacion_contacto_confirmado'] ?? 0) === 1) {
+                if ($contactoActual === '') {
+                    return $this->error(
+                        'No existe una persona de contacto registrada que pueda marcarse como confirmada.',
+                        422
+                    );
+                }
+                $evidenciasVerificacion[] = 'Contacto institucional confirmado';
+            }
+
+            if ($resultadoFormulario === 'CONTACTO_REFERIDO') {
+                if ($nuevoTelefonoContacto !== '') {
+                    $evidenciasVerificacion[] = 'Nuevo teléfono proporcionado';
+                }
+                if ($nuevoCorreoContacto !== '') {
+                    $evidenciasVerificacion[] = 'Nuevo correo proporcionado';
+                }
+            }
+        }
+
+        $evidenciasVerificacion = array_values(array_unique($evidenciasVerificacion));
+        $esCandidataVerificacion =
+            $canalFormulario === 'LLAMADA' &&
+            $resultadoAdmiteVerificacion &&
+            !empty($evidenciasVerificacion);
+        $esVerificacionEfectiva =
+            $esCandidataVerificacion &&
+            $origenLlamada === 'ZADARMA';
+
+        if ($esCandidataVerificacion && $personaAtendio === '') {
+            return $this->error(
+                'Indica quién atendió la llamada para registrar una verificación efectiva.',
+                422
+            );
+        }
+
         $fechaOriginal = trim((string)($datos['fecha_inicio'] ?? ''));
         $fechaInicio = $this->normalizarFechaHora($fechaOriginal);
 
@@ -87,6 +214,29 @@ class InteraccionRutaService
             $personaAtendio !== '' ? 'Persona atendió: ' . $personaAtendio : '',
             $resultadoFormulario === 'NO_INTERESADO'
                 ? 'Resultado registrado: No interesado'
+                : '',
+            $resultadoFormulario === 'CONTACTO_REFERIDO' && $nuevoTelefonoContacto !== ''
+                ? 'Contacto referido: nuevo teléfono ' . $nuevoTelefonoContacto
+                : '',
+            $resultadoFormulario === 'CONTACTO_REFERIDO' && $nuevoCorreoContacto !== ''
+                ? 'Contacto referido: nuevo correo ' . $nuevoCorreoContacto
+                : '',
+            $nuevoContactoNombre !== '' ? 'Nuevo contacto: ' . $nuevoContactoNombre : '',
+            $nuevoContactoCargo !== '' ? 'Cargo / Área: ' . $nuevoContactoCargo : '',
+            $esVerificacionEfectiva ? '[VERIFICACION_EFECTIVA]' : '',
+            $esVerificacionEfectiva ? '[VERIFICACION_PENDIENTE_TELEFONIA]' : '',
+            $esCandidataVerificacion && $origenLlamada === 'PRUEBA'
+                ? '[REGISTRO_LLAMADA_PRUEBA]'
+                : '',
+            $esCandidataVerificacion && $origenLlamada === 'MANUAL'
+                ? '[REGISTRO_LLAMADA_MANUAL]'
+                : '',
+            $esCandidataVerificacion
+                ? (
+                    $esVerificacionEfectiva
+                        ? 'Verificación obtenida: '
+                        : 'Verificación registrada sin contabilizar: '
+                  ) . implode(' · ', $evidenciasVerificacion)
                 : '',
             $observacion
         ])));
@@ -120,6 +270,40 @@ class InteraccionRutaService
 
             $interaccionId = (int)$this->connection->insert_id;
 
+            if ($nuevoTelefonoContacto !== '' || $nuevoCorreoContacto !== '') {
+                $sqlContacto = "UPDATE seguimientos_vinculacion
+                        SET telefono_verificado = CASE
+                                WHEN ? <> '' THEN ? ELSE telefono_verificado
+                            END,
+                            correo_verificado = CASE
+                                WHEN ? <> '' THEN ? ELSE correo_verificado
+                            END,
+                            contacto_nombre = CASE
+                                WHEN ? <> '' THEN ? ELSE contacto_nombre
+                            END,
+                            contacto_cargo = CASE
+                                WHEN ? <> '' THEN ? ELSE contacto_cargo
+                            END
+                        WHERE id = ?
+                          AND analista_id = ?
+                          AND activo = 1";
+                $stmtContacto = $this->connection->prepare($sqlContacto);
+                $stmtContacto->bind_param(
+                    'ssssssssii',
+                    $nuevoTelefonoContacto,
+                    $nuevoTelefonoContacto,
+                    $nuevoCorreoContacto,
+                    $nuevoCorreoContacto,
+                    $nuevoContactoNombre,
+                    $nuevoContactoNombre,
+                    $nuevoContactoCargo,
+                    $nuevoContactoCargo,
+                    $seguimientoId,
+                    $usuarioId
+                );
+                $stmtContacto->execute();
+            }
+
             $sqlSeguimiento = "UPDATE seguimientos_vinculacion
                     SET ultima_interaccion_at = ?
                     WHERE id = ?
@@ -145,6 +329,12 @@ class InteraccionRutaService
                     'canal_label' => $this->etiquetarCanal($canal),
                     'resultado_label' => $this->etiquetarResultado($resultadoFormulario),
                     'notas' => $notas
+                ],
+                'verificacion_telefonica' => [
+                    'candidata' => $esCandidataVerificacion,
+                    'contabilizable' => $esVerificacionEfectiva,
+                    'origen' => $origenLlamada,
+                    'evidencias' => $evidenciasVerificacion
                 ]
             ];
         } catch (Throwable $error) {
@@ -163,6 +353,12 @@ class InteraccionRutaService
         $sql = "SELECT
                     seguimientos.id,
                     seguimientos.estado_seguimiento,
+                    seguimientos.telefono_fuente,
+                    seguimientos.correo_fuente,
+                    seguimientos.telefono_verificado,
+                    seguimientos.correo_verificado,
+                    seguimientos.contacto_nombre,
+                    seguimientos.contacto_cargo,
                     oficio.fecha_envio,
                     oficio.estado_oficio
                 FROM seguimientos_vinculacion seguimientos
