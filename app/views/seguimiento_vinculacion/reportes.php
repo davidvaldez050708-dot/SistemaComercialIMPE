@@ -430,7 +430,12 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
 </section>
 
 <?php if (!$modoModalReporte && $generarReporte && $errorFiltros === ''): ?>
-    <section aria-labelledby="titulo-reporte-seguimiento">
+    <section
+        class="seguimiento-report-results<?= $modoSeguimiento === 'analista' ? ' analyst-report-output' : '' ?>"
+        aria-labelledby="titulo-reporte-seguimiento"
+        <?= $modoSeguimiento === 'analista'
+            ? 'data-analyst-report-output data-report-type="' . $texto($tipoReporteActual) . '"'
+            : '' ?>>
         <div class="d-flex flex-wrap align-items-end justify-content-between gap-3 mb-3">
             <div>
                 <h2 class="page-title" id="titulo-reporte-seguimiento"><?= $texto($tituloReporteGenerado) ?></h2>
@@ -484,7 +489,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                 </div>
             </article>
             <article class="metric-card linkage-summary-card">
-                <div class="metric-icon"><i class="bi bi-telephone-check"></i></div>
+                <div class="metric-icon"><i class="bi bi-person-check"></i></div>
                 <div>
                     <p class="metric-value"><?= (int)($llamadasReporte['contactadas'] ?? 0) ?></p>
                     <p class="metric-label">Llamadas con contacto</p>
@@ -527,7 +532,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                 <div><p class="metric-value"><?= (int)($llamadasReporte['total'] ?? 0) ?></p><p class="metric-label">Llamadas realizadas</p></div>
             </article>
             <article class="metric-card linkage-summary-card">
-                <div class="metric-icon"><i class="bi bi-telephone-check"></i></div>
+                <div class="metric-icon"><i class="bi bi-person-check"></i></div>
                 <div><p class="metric-value"><?= (int)($llamadasReporte['contactadas'] ?? 0) ?></p><p class="metric-label">Llamadas con contacto</p></div>
             </article>
             <article class="metric-card linkage-summary-card">
@@ -542,7 +547,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
             : [];
         $seguimientoInstitucion = $seguimientosReporte[0] ?? [];
         ?>
-        <section class="dashboard-panel mb-4" aria-labelledby="ficha-institucion-reporte">
+        <section class="dashboard-panel mb-4 analyst-institution-profile" aria-labelledby="ficha-institucion-reporte">
             <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
                 <div>
                     <h3 class="panel-title mb-1" id="ficha-institucion-reporte">Ficha técnica de la institución</h3>
@@ -857,11 +862,11 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
         </section>
     <?php elseif ($modoSeguimiento === 'analista' && $tipoReporteActual === 'institucion'): ?>
         <?php $interaccionesInstitucion = is_array($detalleInstitucionReporte['interacciones_recientes'] ?? null) ? $detalleInstitucionReporte['interacciones_recientes'] : []; ?>
-        <section class="dashboard-panel p-0 overflow-hidden">
+        <section class="dashboard-panel p-0 overflow-hidden analyst-institution-history">
             <div class="table-panel-header">
                 <div>
-                    <h3 class="panel-title mb-0">Interacciones recientes con la institución</h3>
-                    <p class="page-subtitle mb-0 mt-1">Historial humano reciente del seguimiento.</p>
+                    <h3 class="panel-title mb-0">Interacciones recientes</h3>
+                    <p class="page-subtitle mb-0 mt-1">Actividad humana más reciente con esta institución.</p>
                 </div>
             </div>
             <?php if (!empty($interaccionesInstitucion)): ?>
