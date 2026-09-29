@@ -1598,7 +1598,7 @@ class SeguimientoVinculacionModel
                         ELSE NULL
                     END) AS verificaciones_efectivas,
                     COUNT(DISTINCT CASE
-                        WHEN notas LIKE '%[VERIFICACION_EFECTIVA]%'
+                        WHEN notas LIKE '%[VERIFICACION_PENDIENTE_TELEFONIA]%'
                          AND (
                             TRIM(COALESCE(proveedor_externo, '')) = ''
                             OR TRIM(COALESCE(id_externo, '')) = ''
