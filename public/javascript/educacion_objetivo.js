@@ -19,7 +19,7 @@
         if (!document.querySelector('link[data-education-target-style]')) {
             const link = document.createElement('link');
             link.rel = 'stylesheet';
-            link.href = 'public/css/educacion_objetivo.css?v=20260929-2';
+            link.href = 'public/css/educacion_objetivo.css?v=20260929-3';
             link.setAttribute('data-education-target-style', '');
             document.head.appendChild(link);
         }
@@ -377,62 +377,39 @@
                     '<div class="data-education-program-opportunity">' +
                         '<div class="data-education-program-heading">' +
                             '<div>' +
-                                '<strong>Oportunidad educativa por oferta</strong>' +
-                                '<span>Relaciona la oferta pública de Fundación Red Educativa México con el perfil territorial. Las cifras son población de referencia, no matrícula ni elegibilidad automática.</span>' +
+                                '<strong>Aplicación de la oferta educativa</strong>' +
+                                '<span>Relaciona cada línea de Fundación con el perfil territorial sin repetir las cifras principales de arriba.</span>' +
                             '</div>' +
                         '</div>' +
-                        '<div class="data-education-program-grid is-expanded">' +
-                            '<article class="is-primary">' +
-                                '<span>Bachillerato 286 / certificación</span>' +
-                                '<strong>' +
-                                    (prioridadDisponible
-                                        ? numero(
-                                            prioridadMetricas.sin_estudios_media_superior_25_49 ??
-                                            prioridadMetricas.sin_media_superior_concluida_25_49
-                                          )
-                                        : 'Pendiente') +
-                                '</strong>' +
-                                '<small>Referencia: adultos 25–49 sin estudios de educación media superior.</small>' +
+                        '<div class="data-education-program-map">' +
+                            '<article>' +
+                                '<div>' +
+                                    '<strong>Bachillerato</strong>' +
+                                    '<span>Acuerdo 286 / certificación y modalidad en 2 años</span>' +
+                                '</div>' +
+                                '<small>Perfil relacionado: adultos sin estudios de media superior.</small>' +
                             '</article>' +
                             '<article>' +
-                                '<span>Bachillerato en 2 años</span>' +
-                                '<strong>' +
-                                    (prioridadDisponible
-                                        ? numero(
-                                            prioridadMetricas.sin_estudios_media_superior_25_49 ??
-                                            prioridadMetricas.sin_media_superior_concluida_25_49
-                                          )
-                                        : 'Pendiente') +
-                                '</strong>' +
-                                '<small>Comparte el mismo universo territorial de referencia; la modalidad y requisitos son distintos.</small>' +
+                                '<div>' +
+                                    '<strong>Continuidad profesional</strong>' +
+                                    '<span>Carreras ejecutivas, Seguridad Pública y Ciberseguridad</span>' +
+                                '</div>' +
+                                '<small>Perfil relacionado: adultos con media superior y sin educación superior.</small>' +
                             '</article>' +
-                            '<article>' +
-                                '<span>Carreras ejecutivas</span>' +
-                                '<strong>' +
-                                    (prioridadDisponible
-                                        ? numero(prioridadMetricas.media_superior_sin_superior_25_49)
-                                        : 'Pendiente') +
-                                '</strong>' +
-                                '<small>Referencia: adultos con media superior y sin educación superior.</small>' +
-                            '</article>' +
-                            '<article>' +
-                                '<span>Seguridad pública y ciberseguridad</span>' +
-                                '<strong>' +
-                                    (prioridadDisponible
-                                        ? numero(prioridadMetricas.media_superior_sin_superior_25_49)
-                                        : 'Pendiente') +
-                                '</strong>' +
-                                '<small>Programas de TSU/licenciatura; el territorio aporta una base potencial, pero el interés ocupacional debe analizarse aparte.</small>' +
-                            '</article>' +
-                            '<article class="is-context">' +
-                                '<span>Titulación por experiencia laboral</span>' +
-                                '<strong>Requiere cruce laboral</strong>' +
-                                '<small>Exige variables adicionales como experiencia, bachillerato y trayectoria; no debe inferirse solo con escolaridad.</small>' +
-                            '</article>' +
-                            '<article class="is-context">' +
-                                '<span>Certificación de idiomas</span>' +
-                                '<strong>Oferta transversal</strong>' +
-                                '<small>No tiene un universo objetivo identificable únicamente con nivel escolar; puede complementar convenios y profesionalización.</small>' +
+                            '<article class="is-titulacion">' +
+                                '<div>' +
+                                    '<strong>Titulación por experiencia laboral</strong>' +
+                                    '<span>Requiere bachillerato + trayectoria laboral comprobable</span>' +
+                                '</div>' +
+                                '<div class="data-education-titulacion-status">' +
+                                    '<span>Base educativa disponible</span>' +
+                                    '<b>' +
+                                        (prioridadDisponible
+                                            ? numero(prioridadMetricas.media_superior_sin_superior_25_49)
+                                            : 'Pendiente') +
+                                    '</b>' +
+                                    '<small>La experiencia laboral de 3+ años debe estimarse con ENOE; no se infiere del Censo.</small>' +
+                                '</div>' +
                             '</article>' +
                         '</div>' +
                     '</div>' +
