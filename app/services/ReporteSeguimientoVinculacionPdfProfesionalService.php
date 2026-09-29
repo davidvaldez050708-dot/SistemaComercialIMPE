@@ -77,10 +77,16 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
         $generadoPorRol = trim((string)($datos['generado_por_rol'] ?? ''));
         $individual = (int)($filtrosRaw['institucion_id'] ?? 0) > 0 && count($seguimientos) === 1;
         $responsable = $this->responsableAlcance($seguimientos, $filtros);
+        $tipoReporte = strtolower(trim((string)($filtrosRaw['tipo_reporte'] ?? 'cartera')));
+        $tituloReporte = [
+            'actividad' => 'Mi actividad de seguimiento',
+            'cartera' => 'Mi cartera de seguimiento',
+            'institucion' => 'Reporte de institución'
+        ][$tipoReporte] ?? 'Reporte de Seguimiento de Vinculación';
 
         $html = '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><style>' . $this->css() . '</style></head><body>';
         $html .= '<div class="top-rule"></div>';
-        $html .= $this->encabezado($fecha, $generadoPor, $generadoPorRol, (string)($filtros['Periodo'] ?? 'Todos'));
+        $html .= $this->encabezado($fecha, $generadoPor, $generadoPorRol, (string)($filtros['Periodo'] ?? 'Todos'), $tituloReporte);
         $html .= $this->contexto($filtros, $responsable, count($seguimientos), $individual);
 
         $total = (int)($resumen['total'] ?? count($seguimientos));
@@ -107,25 +113,45 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
         $interacciones = (int)($analitica['interacciones'] ?? 0);
         $promedio = $this->decimal($analitica['promedio_por_seguimiento'] ?? 0, 1);
         $atencion = (int)($analitica['atencion']['total'] ?? 0);
+        $llamadas = is_array($analitica['llamadas'] ?? null) ? $analitica['llamadas'] : [];
 
-        $html .= '<section class="report-section keep">' . $this->titulo('Resumen operativo');
+        $html .= '<section class="report-section keep">' . $this->titulo(
+            $tipoReporte === 'actividad' ? 'Resumen de actividad' : 'Resumen operativo'
+        );
         $html .= '<table class="metrics"><tr>';
-        $html .= $this->metric('Seguimientos', (string)$total);
-        $html .= $this->metric('Interacciones', (string)$interacciones);
-        $html .= $this->metric('Promedio / seguimiento', $promedio);
-        $html .= $this->metric('Requieren atención', (string)$atencion);
+        if ($tipoReporte === 'actividad') {
+            $html .= $this->metric('Interacciones', (string)$interacciones);
+            $html .= $this->metric('Llamadas realizadas', (string)(int)($llamadas['total'] ?? 0));
+            $html .= $this->metric('Llamadas con contacto', (string)(int)($llamadas['contactadas'] ?? 0));
+            $html .= $this->metric('Verificaciones efectivas', (string)(int)($llamadas['verificaciones_efectivas'] ?? 0));
+        } else {
+            $html .= $this->metric('Seguimientos', (string)$total);
+            $html .= $this->metric('Interacciones', (string)$interacciones);
+            $html .= $this->metric('Promedio / seguimiento', $promedio);
+            $html .= $this->metric('Requieren atención', (string)$atencion);
+        }
         $html .= '</tr></table></section>';
 
-        $html .= $this->atencion($analitica['atencion']['casos'] ?? []);
-        $html .= $this->contacto($analitica);
-        $html .= $this->actividad($evolucion);
-        $html .= $this->distribuciones($resumen, $etiquetas);
-        $html .= $this->detalle($seguimientos);
+        if ($tipoReporte === 'actividad') {
+            $html .= $this->contacto($analitica);
+            $html .= $this->actividad($evolucion);
+        } else {
+            $html .= $this->atencion($analitica['atencion']['casos'] ?? []);
+            $html .= $this->contacto($analitica);
+            $html .= $this->distribuciones($resumen, $etiquetas);
+            $html .= $this->detalle($seguimientos);
+        }
 
         return $html . '</body></html>';
     }
 
-    private function encabezado(string $fecha, string $generadoPor, string $rol, string $periodo): string
+    private function encabezado(
+        string $fecha,
+        string $generadoPor,
+        string $rol,
+        string $periodo,
+        string $tituloReporte
+    ): string
     {
         $logo = $this->logo();
         $html = '<table class="header"><tr><td class="brand">';
@@ -134,7 +160,7 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
         }
         $html .= '</td><td class="header-copy">';
         $html .= '<div class="system-name">Sistema de Gestión Comercial</div>';
-        $html .= '<h1>Reporte de Seguimiento de Vinculación</h1>';
+        $html .= '<h1>' . $this->e($tituloReporte) . '</h1>';
         $html .= '<table class="header-meta">';
         if ($generadoPor !== '') {
             $html .= '<tr><td>Generado por</td><th>' . $this->e($generadoPor) . '</th></tr>';
@@ -262,10 +288,10 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
 
         $html = '<section class="report-section keep">' . $this->titulo('Panorama de la relación');
         $html .= '<table class="metrics individual-metrics"><tr>';
-        $html .= $this->metric('Interacciones registradas', (string)(int)($analitica['interacciones'] ?? 0));
-        $html .= $this->metric('Último contacto', $fechaUltima !== '' ? $this->fechaSoloDia($fechaUltima) : '—');
-        $html .= $this->metric('Días sin contacto', $dias === null ? '—' : (string)$dias);
-        $html .= $this->metric('Tasa de contacto', $this->decimal($llamadas['tasa_contacto'] ?? 0, 1) . '%');
+        $html .= $this->metric('Interacciones del analista', (string)(int)($analitica['interacciones'] ?? 0));
+        $html .= $this->metric('Llamadas realizadas', (string)(int)($llamadas['total'] ?? 0));
+        $html .= $this->metric('Llamadas con contacto', (string)(int)($llamadas['contactadas'] ?? 0));
+        $html .= $this->metric('Verificaciones efectivas', (string)(int)($llamadas['verificaciones_efectivas'] ?? 0));
         return $html . '</tr></table></section>';
     }
 
