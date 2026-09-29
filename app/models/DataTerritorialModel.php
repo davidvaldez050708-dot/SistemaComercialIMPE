@@ -1567,11 +1567,7 @@ class DataTerritorialModel
             'total_municipios_sin_poblacion' => 0,
             'poblacion_municipal_registrada' => 0,
             'total_municipios_clasificables' => 0,
-            'conteos' => [
-                'ALTA' => 0,
-                'MEDIA' => 0,
-                'BAJA' => 0
-            ],
+            'conteos' => ['ALTA' => 0, 'MEDIA' => 0, 'BAJA' => 0],
             'recomendados' => [],
             'por_municipio' => []
         ];
@@ -1586,19 +1582,15 @@ class DataTerritorialModel
                     redes_sociales
                 FROM municipios
                 WHERE estado_id = ?
-                    AND estado = 1
+                  AND estado = 1
                 ORDER BY
-                    CASE
-                        WHEN poblacion IS NULL OR poblacion <= 0 THEN 1
-                        ELSE 0
-                    END,
+                    CASE WHEN poblacion IS NULL OR poblacion <= 0 THEN 1 ELSE 0 END,
                     poblacion DESC,
                     nombre ASC";
 
         $stmt = $this->connection->prepare($sql);
         $stmt->bind_param('i', $estadoId);
         $stmt->execute();
-
         $municipios = $this->convertirResultadoEnArreglo($stmt->get_result());
 
         if (empty($municipios)) {
@@ -1611,16 +1603,14 @@ class DataTerritorialModel
             'BAJA' => 'OBSERVAR'
         ];
 
-        $municipiosConPoblacion = array_values(
-            array_filter(
-                $municipios,
-                function ($municipio) {
-                    return isset($municipio['poblacion']) &&
-                        is_numeric($municipio['poblacion']) &&
-                        (float)$municipio['poblacion'] > 0;
-                }
-            )
-        );
+        $municipiosConPoblacion = array_values(array_filter(
+            $municipios,
+            static function ($municipio) {
+                return isset($municipio['poblacion']) &&
+                    is_numeric($municipio['poblacion']) &&
+                    (float)$municipio['poblacion'] > 0;
+            }
+        ));
 
         $resultado['total_municipios_con_poblacion'] = count($municipiosConPoblacion);
         $resultado['total_municipios_sin_poblacion'] =
@@ -1630,395 +1620,347 @@ class DataTerritorialModel
             return $resultado;
         }
 
-        $poblacionTotal = array_sum(
-            array_map(
-                function ($municipio) {
-                    return (float)$municipio['poblacion'];
-                },
-                $municipiosConPoblacion
-            )
-        );
+        $poblacionTotal = array_sum(array_map(
+            static function ($municipio) {
+                return (float)$municipio['poblacion'];
+            },
+            $municipiosConPoblacion
+        ));
+        $resultado['poblacion_municipal_registrada'] = (int)round($poblacionTotal);
 
-        if ($poblacionTotal > 0) {
-            $resultado['poblacion_municipal_registrada'] = (int)round($poblacionTotal);
+        $municipioIdPorClave = [];
+        foreach ($municipios as $municipio) {
+            $clave = preg_replace('/\D+/', '', (string)($municipio['clave_inegi'] ?? '')) ?? '';
+            if ($clave === '') {
+                continue;
+            }
+            $claveMunicipio = str_pad(substr($clave, -3), 3, '0', STR_PAD_LEFT);
+            $municipioIdPorClave[$claveMunicipio] = (int)$municipio['id'];
         }
 
-        $puntosPoblacionPorMunicipio = [];
-        $totalConPoblacion = count($municipiosConPoblacion);
-
-        // El primer componente verdaderamente municipal del nuevo modelo es la
-        // población objetivo de 25 a 54 años. Se compara dentro del mismo
-        // territorio para evitar umbrales absolutos arbitrarios entre Estados.
-        $perfilAdultoPorMunicipio = [];
-        $puntosAdultoPorMunicipio = [];
-        $tablaPerfilAdultoDisponible = false;
-        $consultaTablaPerfil = $this->connection->query(
-            "SHOW TABLES LIKE 'perfil_adulto_laboral_oficial'"
+        $estado = $this->obtenerEstado($estadoId);
+        $claveEstado = str_pad(
+            preg_replace('/\D+/', '', (string)($estado['clave_inegi'] ?? '')) ?? '',
+            2,
+            '0',
+            STR_PAD_LEFT
         );
-        if ($consultaTablaPerfil instanceof mysqli_result) {
-            $tablaPerfilAdultoDisponible = $consultaTablaPerfil->num_rows > 0;
-            $consultaTablaPerfil->free();
-        }
 
-        if ($tablaPerfilAdultoDisponible) {
-            $sqlPerfilAdulto = "SELECT municipio_id, poblacion_25_34, poblacion_35_44,
-                        poblacion_45_54, poblacion_25_54, anio
-                    FROM perfil_adulto_laboral_oficial
-                    WHERE estado_id = ?
-                        AND municipio_id IS NOT NULL
-                    ORDER BY anio DESC, id DESC";
-            $stmtPerfilAdulto = $this->connection->prepare($sqlPerfilAdulto);
-            $stmtPerfilAdulto->bind_param('i', $estadoId);
-            $stmtPerfilAdulto->execute();
+        /*
+         * Perfil educativo municipal 25-49.
+         * Es la señal central porque coincide con el universo prioritario
+         * definido en Educación y permite distinguir volumen e incidencia.
+         */
+        $perfilEducativo = [];
+        $tablaEducativa = $this->connection->query(
+            "SHOW TABLES LIKE 'perfil_educativo_prioritario'"
+        );
 
-            foreach ($this->convertirResultadoEnArreglo($stmtPerfilAdulto->get_result()) as $filaAdulto) {
-                $municipioPerfilId = (int)($filaAdulto['municipio_id'] ?? 0);
-                if ($municipioPerfilId <= 0 || isset($perfilAdultoPorMunicipio[$municipioPerfilId])) {
+        if (
+            $tablaEducativa instanceof mysqli_result &&
+            $tablaEducativa->num_rows > 0 &&
+            preg_match('/^\d{2}$/', $claveEstado)
+        ) {
+            $tablaEducativa->free();
+
+            $sqlEducativo = "SELECT
+                    clave_municipio,
+                    MAX(nombre_geografia) AS nombre_geografia,
+                    MAX(anio) AS anio,
+                    COUNT(DISTINCT grupo_edad) AS grupos_disponibles,
+                    SUM(poblacion_total) AS poblacion_25_49,
+                    SUM(sin_media_superior_concluida) AS sin_media_superior,
+                    SUM(sin_superior) AS sin_superior
+                FROM perfil_educativo_prioritario
+                WHERE clave_estado = ?
+                  AND clave_municipio <> '000'
+                  AND grupo_edad IN ('25-29','30-34','35-39','40-44','45-49')
+                GROUP BY clave_municipio";
+
+            $stmtEducativo = $this->connection->prepare($sqlEducativo);
+            $stmtEducativo->bind_param('s', $claveEstado);
+            $stmtEducativo->execute();
+
+            foreach ($this->convertirResultadoEnArreglo($stmtEducativo->get_result()) as $fila) {
+                $claveMunicipio = str_pad(
+                    preg_replace('/\D+/', '', (string)($fila['clave_municipio'] ?? '')) ?? '',
+                    3,
+                    '0',
+                    STR_PAD_LEFT
+                );
+                $municipioId = $municipioIdPorClave[$claveMunicipio] ?? 0;
+
+                if ($municipioId <= 0 || (int)($fila['grupos_disponibles'] ?? 0) < 5) {
                     continue;
                 }
 
-                $perfilAdultoPorMunicipio[$municipioPerfilId] = [
-                    'poblacion_25_34' => (int)($filaAdulto['poblacion_25_34'] ?? 0),
-                    'poblacion_35_44' => (int)($filaAdulto['poblacion_35_44'] ?? 0),
-                    'poblacion_45_54' => (int)($filaAdulto['poblacion_45_54'] ?? 0),
-                    'poblacion_25_54' => (int)($filaAdulto['poblacion_25_54'] ?? 0),
-                    'anio' => (int)($filaAdulto['anio'] ?? 0)
+                $adultos = (int)($fila['poblacion_25_49'] ?? 0);
+                $sinMedia = (int)($fila['sin_media_superior'] ?? 0);
+                $sinSuperior = (int)($fila['sin_superior'] ?? 0);
+                $mediaSinSuperior = max(0, $sinSuperior - $sinMedia);
+
+                $perfilEducativo[$municipioId] = [
+                    'disponible' => $adultos > 0,
+                    'anio' => (int)($fila['anio'] ?? 2020),
+                    'poblacion_25_49' => $adultos,
+                    'sin_estudios_media_superior_25_49' => $sinMedia,
+                    'sin_estudios_media_superior_pct' => $adultos > 0
+                        ? round(($sinMedia / $adultos) * 100, 2)
+                        : null,
+                    'media_superior_sin_superior_25_49' => $mediaSinSuperior,
+                    'media_superior_sin_superior_pct' => $adultos > 0
+                        ? round(($mediaSinSuperior / $adultos) * 100, 2)
+                        : null,
+                    'con_educacion_superior_25_49' => max(0, $adultos - $sinSuperior),
+                    'fuente' => 'INEGI - Censo de Población y Vivienda 2020'
                 ];
             }
+        } elseif ($tablaEducativa instanceof mysqli_result) {
+            $tablaEducativa->free();
         }
 
-        $rankingAdulto = [];
-        foreach ($municipiosConPoblacion as $municipioAdulto) {
-            $municipioAdultoId = (int)$municipioAdulto['id'];
-            $poblacionAdulto = (int)($perfilAdultoPorMunicipio[$municipioAdultoId]['poblacion_25_54'] ?? 0);
-            if ($poblacionAdulto > 0) {
-                $rankingAdulto[] = [
-                    'id' => $municipioAdultoId,
-                    'poblacion_25_54' => $poblacionAdulto
-                ];
-            }
-        }
+        /*
+         * Tejido económico municipal. Se ponderan especialmente los sectores
+         * que permiten vinculación con empresas, instituciones y gobierno.
+         */
+        $economiaMunicipal = [];
+        $tablaEconomica = $this->connection->query(
+            "SHOW TABLES LIKE 'actividad_economica_municipio'"
+        );
 
-        usort($rankingAdulto, static function ($a, $b) {
-            return $b['poblacion_25_54'] <=> $a['poblacion_25_54'];
-        });
+        if ($tablaEconomica instanceof mysqli_result && $tablaEconomica->num_rows > 0) {
+            $tablaEconomica->free();
 
-        $totalConPerfilAdulto = count($rankingAdulto);
-        foreach ($rankingAdulto as $indiceAdulto => $filaAdulto) {
-            $posicionAdulto = $totalConPerfilAdulto > 0
-                ? ($indiceAdulto / $totalConPerfilAdulto) * 100
-                : 100;
+            $sqlEconomia = "SELECT
+                    municipio_id,
+                    SUM(establecimientos) AS establecimientos_total,
+                    SUM(
+                        CASE
+                            WHEN clave_sector IN ('31-33','48-49','52','54','55','56','61','62','81','93')
+                            THEN establecimientos
+                            ELSE 0
+                        END
+                    ) AS establecimientos_vinculacion
+                FROM actividad_economica_municipio
+                WHERE estado_id = ?
+                GROUP BY municipio_id";
 
-            if ($posicionAdulto < 20) {
-                $puntosAdulto = 30;
-            } elseif ($posicionAdulto < 40) {
-                $puntosAdulto = 24;
-            } elseif ($posicionAdulto < 60) {
-                $puntosAdulto = 18;
-            } elseif ($posicionAdulto < 80) {
-                $puntosAdulto = 12;
-            } else {
-                $puntosAdulto = 6;
-            }
+            $stmtEconomia = $this->connection->prepare($sqlEconomia);
+            $stmtEconomia->bind_param('i', $estadoId);
+            $stmtEconomia->execute();
 
-            $puntosAdultoPorMunicipio[(int)$filaAdulto['id']] = $puntosAdulto;
-        }
-
-        foreach ($municipiosConPoblacion as $indice => $municipio) {
-            $posicionPorcentual = $totalConPoblacion > 0
-                ? ($indice / $totalConPoblacion) * 100
-                : 100;
-
-            if ($posicionPorcentual < 20) {
-                $puntosPoblacion = 50;
-            } elseif ($posicionPorcentual < 40) {
-                $puntosPoblacion = 40;
-            } elseif ($posicionPorcentual < 60) {
-                $puntosPoblacion = 30;
-            } elseif ($posicionPorcentual < 80) {
-                $puntosPoblacion = 20;
-            } else {
-                $puntosPoblacion = 10;
-            }
-
-            $puntosPoblacionPorMunicipio[(int)$municipio['id']] = $puntosPoblacion;
-        }
-
-        $componenteEducativo = [
-            'disponible' => false,
-            'puntaje' => 0,
-            'motivo' => ''
-        ];
-        $rezagoEducativo = $this->obtenerRezagoEducativoOficialEstado($estadoId);
-
-        if (
-            ($rezagoEducativo['disponible'] ?? false) === true &&
-            ($rezagoEducativo['diferencia_nacional'] ?? null) !== null
-        ) {
-            $diferenciaEducativa = (float)$rezagoEducativo['diferencia_nacional'];
-
-            if ($diferenciaEducativa >= 5) {
-                $puntosEducacion = 15;
-            } elseif ($diferenciaEducativa >= 2) {
-                $puntosEducacion = 12;
-            } elseif ($diferenciaEducativa >= -2) {
-                $puntosEducacion = 8;
-            } else {
-                $puntosEducacion = 4;
-            }
-
-            $componenteEducativo = [
-                'disponible' => true,
-                'puntaje' => $puntosEducacion,
-                'motivo' => 'Contexto educativo estatal relevante'
-            ];
-        }
-
-        $componentePoder = [
-            'disponible' => false,
-            'puntaje' => 0
-        ];
-        $poderAdquisitivo = $this->obtenerPoderAdquisitivoEstado($estadoId);
-        $referenciaPoder = $poderAdquisitivo['referencia_nacional'] ?? null;
-
-        if (
-            ($poderAdquisitivo['disponible'] ?? false) === true &&
-            is_array($referenciaPoder) &&
-            isset(
-                $poderAdquisitivo['ingreso_laboral_real_per_capita'],
-                $poderAdquisitivo['pobreza_laboral'],
-                $referenciaPoder['ingreso_laboral_real_per_capita'],
-                $referenciaPoder['pobreza_laboral']
-            )
-        ) {
-            $ingresoEstado = (float)$poderAdquisitivo['ingreso_laboral_real_per_capita'];
-            $ingresoNacional = (float)$referenciaPoder['ingreso_laboral_real_per_capita'];
-            $pobrezaEstado = (float)$poderAdquisitivo['pobreza_laboral'];
-            $pobrezaNacional = (float)$referenciaPoder['pobreza_laboral'];
-            $puntosIngreso = 0;
-            $puntosPobreza = 0;
-
-            if ($ingresoNacional > 0) {
-                if ($ingresoEstado >= $ingresoNacional) {
-                    $puntosIngreso = 4;
-                } elseif ($ingresoEstado >= ($ingresoNacional * 0.90)) {
-                    $puntosIngreso = 2;
+            foreach ($this->convertirResultadoEnArreglo($stmtEconomia->get_result()) as $fila) {
+                $municipioId = (int)($fila['municipio_id'] ?? 0);
+                if ($municipioId <= 0) {
+                    continue;
                 }
-            }
 
-            if ($pobrezaEstado <= $pobrezaNacional) {
-                $puntosPobreza = 4;
-            } elseif (($pobrezaEstado - $pobrezaNacional) <= 5) {
-                $puntosPobreza = 2;
+                $economiaMunicipal[$municipioId] = [
+                    'establecimientos_total' => (int)($fila['establecimientos_total'] ?? 0),
+                    'establecimientos_vinculacion' =>
+                        (int)($fila['establecimientos_vinculacion'] ?? 0)
+                ];
             }
-
-            $componentePoder = [
-                'disponible' => $ingresoNacional > 0,
-                'puntaje' => $puntosIngreso + $puntosPobreza
-            ];
+        } elseif ($tablaEconomica instanceof mysqli_result) {
+            $tablaEconomica->free();
         }
 
-        $componenteActividad = [
-            'disponible' => false,
-            'puntaje' => 0
-        ];
-        $sqlActividad = "SELECT
-                    estado_id,
-                    COALESCE(SUM(establecimientos), 0) AS total_establecimientos
-                FROM actividad_economica_estado
-                GROUP BY estado_id
-                HAVING total_establecimientos > 0
-                ORDER BY total_establecimientos DESC";
+        /*
+         * Asigna puntos relativos dentro del mismo Estado. Además conserva la
+         * posición exacta para explicar el índice en lenguaje concreto.
+         */
+        $calcularRanking = static function (array $valores, int $maxPuntos): array {
+            arsort($valores, SORT_NUMERIC);
+            $total = count($valores);
+            $salida = [];
 
-        $stmtActividad = $this->connection->prepare($sqlActividad);
-        $stmtActividad->execute();
-        $estadosActividad = $this->convertirResultadoEnArreglo($stmtActividad->get_result());
-        $totalEstadosActividad = count($estadosActividad);
+            foreach (array_keys($valores) as $indice => $municipioId) {
+                $percentil = $total > 0 ? ($indice / $total) * 100 : 100;
 
-        foreach ($estadosActividad as $indice => $estadoActividad) {
-            if ((int)$estadoActividad['estado_id'] !== $estadoId) {
-                continue;
+                if ($percentil < 20) {
+                    $factor = 1.00;
+                } elseif ($percentil < 40) {
+                    $factor = 0.80;
+                } elseif ($percentil < 60) {
+                    $factor = 0.60;
+                } elseif ($percentil < 80) {
+                    $factor = 0.40;
+                } else {
+                    $factor = 0.20;
+                }
+
+                $salida[(int)$municipioId] = [
+                    'puntos' => (int)round($maxPuntos * $factor),
+                    'posicion' => $indice + 1,
+                    'total' => $total
+                ];
             }
 
-            $posicionActividad = $totalEstadosActividad > 0
-                ? ($indice / $totalEstadosActividad) * 100
-                : 100;
+            return $salida;
+        };
 
-            if ($posicionActividad < 25) {
-                $puntosActividad = 7;
-            } elseif ($posicionActividad < 50) {
-                $puntosActividad = 5;
-            } elseif ($posicionActividad < 75) {
-                $puntosActividad = 3;
-            } else {
-                $puntosActividad = 1;
-            }
+        $valoresPoblacion = [];
+        $valoresAdultos = [];
+        $valoresBrechaVolumen = [];
+        $valoresBrechaPct = [];
+        $valoresEconomia = [];
 
-            $componenteActividad = [
-                'disponible' => true,
-                'puntaje' => $puntosActividad
-            ];
-            break;
-        }
-
-        $puntajeEconomiaEstado =
-            (int)$componentePoder['puntaje'] +
-            (int)$componenteActividad['puntaje'];
-        $puntajeDisponibleEconomia =
-            ($componentePoder['disponible'] ? 8 : 0) +
-            ($componenteActividad['disponible'] ? 7 : 0);
-        $economiaDisponible = $puntajeDisponibleEconomia > 0;
-        $municipiosPriorizados = [];
-
-        foreach ($municipiosConPoblacion as $indice => $municipio) {
-            $poblacion = (float)$municipio['poblacion'];
+        foreach ($municipiosConPoblacion as $municipio) {
             $municipioId = (int)$municipio['id'];
-            $puntajeObtenido = 0;
-            $puntajeDisponible = 0;
-            $componentes = [
-                'poblacion' => 0,
-                'adulto_25_54' => 0,
-                'institucional' => 0,
-                'educacion' => 0,
-                'economia' => 0
-            ];
-            $motivos = [];
+            $valoresPoblacion[$municipioId] = (int)$municipio['poblacion'];
 
-            if (isset($puntosPoblacionPorMunicipio[$municipioId])) {
-                $componentes['poblacion'] = $puntosPoblacionPorMunicipio[$municipioId];
-                $puntajeObtenido += $componentes['poblacion'];
-                $puntajeDisponible += 50;
-                $motivos[] = $componentes['poblacion'] >= 40
-                    ? 'Alto alcance poblacional'
-                    : 'Alcance poblacional dentro del territorio';
+            if (($perfilEducativo[$municipioId]['disponible'] ?? false) === true) {
+                $valoresAdultos[$municipioId] =
+                    (int)$perfilEducativo[$municipioId]['poblacion_25_49'];
+                $valoresBrechaVolumen[$municipioId] =
+                    (int)$perfilEducativo[$municipioId]['sin_estudios_media_superior_25_49'];
+                $valoresBrechaPct[$municipioId] =
+                    (float)$perfilEducativo[$municipioId]['sin_estudios_media_superior_pct'];
             }
 
-            if (isset($puntosAdultoPorMunicipio[$municipioId])) {
-                $componentes['adulto_25_54'] = $puntosAdultoPorMunicipio[$municipioId];
-                $puntajeObtenido += $componentes['adulto_25_54'];
-                $puntajeDisponible += 30;
-                $motivos[] = $componentes['adulto_25_54'] >= 24
-                    ? 'Alta concentración de población de 25 a 54 años'
-                    : 'Población adulta de 25 a 54 años con presencia relevante';
+            if (isset($economiaMunicipal[$municipioId])) {
+                $valoresEconomia[$municipioId] =
+                    (int)$economiaMunicipal[$municipioId]['establecimientos_vinculacion'];
             }
-
-            // Educación y economía siguen disponibles como contexto estatal,
-            // pero no diferencian municipios dentro del mismo Estado. Por ello
-            // dejan de alterar el índice hasta contar con señales municipales.
-            if ($componenteEducativo['disponible']) {
-                $componentes['educacion'] = (int)$componenteEducativo['puntaje'];
-            }
-
-            if ($economiaDisponible) {
-                $componentes['economia'] = $puntajeEconomiaEstado;
-            }
-
-            $puntaje = $puntajeDisponible > 0
-                ? (int)round(($puntajeObtenido / $puntajeDisponible) * 100)
-                : 0;
-            $coberturaDatos = (int)round(($puntajeDisponible / 80) * 100);
-            $porcentajeIndividual = $poblacionTotal > 0
-                ? ($poblacion / $poblacionTotal) * 100
-                : 0;
-            $datosPriorizacion = [
-                'puntaje' => $puntaje,
-                'puntaje_obtenido' => $puntajeObtenido,
-                'puntaje_disponible' => $puntajeDisponible,
-                'cobertura_datos' => $coberturaDatos,
-                'ranking' => null,
-                'total_ranking' => $totalConPoblacion,
-                'percentil_territorial' => null,
-                'prioridad' => 'BAJA',
-                'accion' => $accionesPorPrioridad['BAJA'],
-                'componentes' => $componentes,
-                'motivos' => $motivos,
-                'modelo' => 'VINCULACION_MUNICIPAL_V2',
-                'es_provisional' => true,
-                'limitaciones' => [
-                    'La información institucional no participa en el puntaje.',
-                    'El índice compara únicamente señales que actualmente diferencian municipios: alcance poblacional y población de 25 a 54 años.',
-                    'Educación y economía se conservan como contexto estatal y no generan puntaje municipal.',
-                    'PEA y población ocupada se muestran como contexto y todavía no generan puntaje.'
-                ],
-                'informacion_institucional' => [
-                    'presidente_disponible' => trim((string)($municipio['presidente_municipal'] ?? '')) !== '',
-                    'partido_disponible' => trim((string)($municipio['partido_politico'] ?? '')) !== '',
-                    'redes_disponibles' => trim((string)($municipio['redes_sociales'] ?? '')) !== ''
-                ]
-            ];
-
-            $resultado['por_municipio'][$municipioId] = $datosPriorizacion;
-            $municipiosPriorizados[] = array_merge(
-                [
-                    'id' => $municipioId,
-                    'nombre' => (string)$municipio['nombre'],
-                    'clave_inegi' => (string)($municipio['clave_inegi'] ?? ''),
-                    'poblacion' => (int)round($poblacion),
-                    'porcentaje_poblacion' => round($porcentajeIndividual, 2),
-                    'motivo' => implode('. ', $motivos)
-                ],
-                $datosPriorizacion
-            );
         }
+
+        $rankingPoblacion = $calcularRanking($valoresPoblacion, 20);
+        $rankingAdultos = $calcularRanking($valoresAdultos, 20);
+        $rankingBrechaVolumen = $calcularRanking($valoresBrechaVolumen, 30);
+        $rankingBrechaPct = $calcularRanking($valoresBrechaPct, 20);
+        $rankingEconomia = $calcularRanking($valoresEconomia, 10);
+
+        $municipiosPriorizados = [];
 
         foreach ($municipios as $municipio) {
             $municipioId = (int)$municipio['id'];
-
-            if (isset($resultado['por_municipio'][$municipioId])) {
-                continue;
-            }
-
+            $poblacion = (int)($municipio['poblacion'] ?? 0);
             $puntajeObtenido = 0;
             $puntajeDisponible = 0;
             $componentes = [
                 'poblacion' => 0,
-                'institucional' => 0,
-                'educacion' => 0,
-                'economia' => 0
+                'adulto_25_49' => 0,
+                'brecha_volumen' => 0,
+                'brecha_incidencia' => 0,
+                'economia_municipal' => 0
             ];
             $motivos = [];
+            $perfil = $perfilEducativo[$municipioId] ?? ['disponible' => false];
+            $economia = $economiaMunicipal[$municipioId] ?? null;
 
-            if ($componenteEducativo['disponible']) {
-                $componentes['educacion'] = (int)$componenteEducativo['puntaje'];
-                $puntajeObtenido += $componentes['educacion'];
-                $puntajeDisponible += 15;
-                $motivos[] = 'Contexto educativo estatal relevante';
+            if ($poblacion > 0 && isset($rankingPoblacion[$municipioId])) {
+                $dato = $rankingPoblacion[$municipioId];
+                $componentes['poblacion'] = $dato['puntos'];
+                $puntajeObtenido += $dato['puntos'];
+                $puntajeDisponible += 20;
+                $motivos[] =
+                    'Alcance poblacional: ' .
+                    number_format($poblacion, 0, '.', ',') .
+                    ' habitantes · posición ' .
+                    $dato['posicion'] . ' de ' . $dato['total'];
             }
 
-            if ($economiaDisponible) {
-                $componentes['economia'] = $puntajeEconomiaEstado;
-                $puntajeObtenido += $componentes['economia'];
-                $puntajeDisponible += $puntajeDisponibleEconomia;
-                $motivos[] = 'Contexto económico estatal favorable';
+            if (($perfil['disponible'] ?? false) === true) {
+                if (isset($rankingAdultos[$municipioId])) {
+                    $dato = $rankingAdultos[$municipioId];
+                    $componentes['adulto_25_49'] = $dato['puntos'];
+                    $puntajeObtenido += $dato['puntos'];
+                    $puntajeDisponible += 20;
+                    $motivos[] =
+                        'Población 25–49: ' .
+                        number_format((int)$perfil['poblacion_25_49'], 0, '.', ',') .
+                        ' personas · posición ' .
+                        $dato['posicion'] . ' de ' . $dato['total'];
+                }
+
+                if (isset($rankingBrechaVolumen[$municipioId])) {
+                    $dato = $rankingBrechaVolumen[$municipioId];
+                    $componentes['brecha_volumen'] = $dato['puntos'];
+                    $puntajeObtenido += $dato['puntos'];
+                    $puntajeDisponible += 30;
+                    $motivos[] =
+                        'Sin estudios de media superior: ' .
+                        number_format(
+                            (int)$perfil['sin_estudios_media_superior_25_49'],
+                            0,
+                            '.',
+                            ','
+                        ) .
+                        ' personas · posición ' .
+                        $dato['posicion'] . ' por volumen';
+                }
+
+                if (isset($rankingBrechaPct[$municipioId])) {
+                    $dato = $rankingBrechaPct[$municipioId];
+                    $componentes['brecha_incidencia'] = $dato['puntos'];
+                    $puntajeObtenido += $dato['puntos'];
+                    $puntajeDisponible += 20;
+                    $motivos[] =
+                        'Incidencia educativa: ' .
+                        number_format(
+                            (float)$perfil['sin_estudios_media_superior_pct'],
+                            2,
+                            '.',
+                            ','
+                        ) .
+                        '% del grupo 25–49';
+                }
+            }
+
+            if ($economia !== null && isset($rankingEconomia[$municipioId])) {
+                $dato = $rankingEconomia[$municipioId];
+                $componentes['economia_municipal'] = $dato['puntos'];
+                $puntajeObtenido += $dato['puntos'];
+                $puntajeDisponible += 10;
+                $motivos[] =
+                    'Tejido para vinculación: ' .
+                    number_format(
+                        (int)$economia['establecimientos_vinculacion'],
+                        0,
+                        '.',
+                        ','
+                    ) .
+                    ' establecimientos · posición ' .
+                    $dato['posicion'] . ' de ' . $dato['total'];
             }
 
             $puntaje = $puntajeDisponible > 0
                 ? (int)round(($puntajeObtenido / $puntajeDisponible) * 100)
                 : 0;
-            $coberturaDatos = (int)round(($puntajeDisponible / 80) * 100);
+            $coberturaDatos = (int)round(($puntajeDisponible / 100) * 100);
+            $porcentajeIndividual = $poblacionTotal > 0
+                ? ($poblacion / $poblacionTotal) * 100
+                : 0;
+
             $datosPriorizacion = [
                 'puntaje' => $puntaje,
                 'puntaje_obtenido' => $puntajeObtenido,
                 'puntaje_disponible' => $puntajeDisponible,
                 'cobertura_datos' => $coberturaDatos,
                 'ranking' => null,
-                'total_ranking' => $totalConPoblacion,
+                'total_ranking' => count($municipiosConPoblacion),
                 'percentil_territorial' => null,
                 'prioridad' => 'BAJA',
                 'accion' => $accionesPorPrioridad['BAJA'],
                 'componentes' => $componentes,
                 'motivos' => $motivos,
-                'modelo' => 'TRANSITORIO_VINCULACION',
+                'perfil_educativo' => $perfil,
+                'economia_indice' => $economia,
+                'modelo' => 'VINCULACION_MUNICIPAL_V3_25_49',
                 'es_provisional' => true,
                 'limitaciones' => [
-                    'La información institucional no participa en el puntaje.',
-                    'El perfil adulto y laboral todavía no forma parte del índice.',
-                    'Educación y economía corresponden al contexto estatal.'
+                    'El índice es orientativo y compara municipios dentro del mismo Estado.',
+                    'El perfil educativo 25–49 usa el cruce oficial edad × escolaridad del Censo 2020.',
+                    'PEA y población ocupada se muestran como contexto laboral general y no generan puntaje.',
+                    'La información institucional no modifica el índice.'
                 ],
                 'informacion_institucional' => [
-                    'presidente_disponible' => trim((string)($municipio['presidente_municipal'] ?? '')) !== '',
-                    'partido_disponible' => trim((string)($municipio['partido_politico'] ?? '')) !== '',
-                    'redes_disponibles' => trim((string)($municipio['redes_sociales'] ?? '')) !== ''
+                    'presidente_disponible' =>
+                        trim((string)($municipio['presidente_municipal'] ?? '')) !== '',
+                    'partido_disponible' =>
+                        trim((string)($municipio['partido_politico'] ?? '')) !== '',
+                    'redes_disponibles' =>
+                        trim((string)($municipio['redes_sociales'] ?? '')) !== ''
                 ]
             ];
 
@@ -2028,38 +1970,40 @@ class DataTerritorialModel
                     'id' => $municipioId,
                     'nombre' => (string)$municipio['nombre'],
                     'clave_inegi' => (string)($municipio['clave_inegi'] ?? ''),
-                    'poblacion' => 0,
-                    'porcentaje_poblacion' => 0,
-                    'motivo' => implode('. ', $motivos)
+                    'poblacion' => $poblacion,
+                    'porcentaje_poblacion' => round($porcentajeIndividual, 2),
+                    'motivo' => implode('. ', array_slice($motivos, 0, 3))
                 ],
                 $datosPriorizacion
             );
         }
 
-        $ordenarMunicipiosPorOportunidad = function ($municipioA, $municipioB) {
-            $comparacionPuntaje = $municipioB['puntaje'] <=> $municipioA['puntaje'];
+        $ordenarMunicipiosPorOportunidad = static function ($municipioA, $municipioB) {
+            $comparacionPuntaje =
+                (int)$municipioB['puntaje'] <=> (int)$municipioA['puntaje'];
 
             if ($comparacionPuntaje !== 0) {
                 return $comparacionPuntaje;
             }
 
-            $comparacionPoblacion = $municipioB['poblacion'] <=> $municipioA['poblacion'];
+            $perfilA = $municipioA['perfil_educativo'] ?? [];
+            $perfilB = $municipioB['perfil_educativo'] ?? [];
+            $brechaA = (int)($perfilA['sin_estudios_media_superior_25_49'] ?? 0);
+            $brechaB = (int)($perfilB['sin_estudios_media_superior_25_49'] ?? 0);
 
-            if ($comparacionPoblacion !== 0) {
-                return $comparacionPoblacion;
+            if ($brechaA !== $brechaB) {
+                return $brechaB <=> $brechaA;
             }
 
-            return strcasecmp((string)$municipioA['nombre'], (string)$municipioB['nombre']);
+            return (int)$municipioB['poblacion'] <=> (int)$municipioA['poblacion'];
         };
 
-        $municipiosClasificables = array_values(
-            array_filter(
-                $municipiosPriorizados,
-                function ($municipio) {
-                    return (int)($municipio['poblacion'] ?? 0) > 0;
-                }
-            )
-        );
+        $municipiosClasificables = array_values(array_filter(
+            $municipiosPriorizados,
+            static function ($municipio) {
+                return (int)($municipio['poblacion'] ?? 0) > 0;
+            }
+        ));
 
         usort($municipiosClasificables, $ordenarMunicipiosPorOportunidad);
 
@@ -2069,21 +2013,27 @@ class DataTerritorialModel
             ? min($totalClasificables, max(1, (int)ceil($totalClasificables * 0.20)))
             : 0;
         $cupoOfrecer = $totalClasificables > 0
-            ? min(max(0, $totalClasificables - $cupoAtacar), (int)ceil($totalClasificables * 0.30))
+            ? min(
+                max(0, $totalClasificables - $cupoAtacar),
+                (int)ceil($totalClasificables * 0.30)
+            )
             : 0;
+
         $clasificacionPorMunicipio = [];
 
         foreach ($municipiosClasificables as $indice => $municipio) {
             $ranking = $indice + 1;
             $esCandidatoAtacar = $indice < $cupoAtacar;
             $cumpleMinimosAtacar =
-                (int)($municipio['puntaje'] ?? 0) >= 50 &&
-                (int)($municipio['cobertura_datos'] ?? 0) >= 50 &&
-                (int)($municipio['poblacion'] ?? 0) > 0;
+                (int)($municipio['puntaje'] ?? 0) >= 55 &&
+                (int)($municipio['cobertura_datos'] ?? 0) >= 70;
 
             if ($esCandidatoAtacar && $cumpleMinimosAtacar) {
                 $prioridad = 'ALTA';
-            } elseif ($esCandidatoAtacar || $indice < ($cupoAtacar + $cupoOfrecer)) {
+            } elseif (
+                $esCandidatoAtacar ||
+                $indice < ($cupoAtacar + $cupoOfrecer)
+            ) {
                 $prioridad = 'MEDIA';
             } else {
                 $prioridad = 'BAJA';
@@ -2100,11 +2050,7 @@ class DataTerritorialModel
             ];
         }
 
-        $resultado['conteos'] = [
-            'ALTA' => 0,
-            'MEDIA' => 0,
-            'BAJA' => 0
-        ];
+        $resultado['conteos'] = ['ALTA' => 0, 'MEDIA' => 0, 'BAJA' => 0];
 
         foreach ($resultado['por_municipio'] as $municipioId => $datosPriorizacion) {
             $clasificacion = $clasificacionPorMunicipio[$municipioId] ?? [
@@ -2115,72 +2061,43 @@ class DataTerritorialModel
                 'accion' => $accionesPorPrioridad['BAJA']
             ];
 
-            $resultado['por_municipio'][$municipioId] = array_merge(
-                $datosPriorizacion,
-                $clasificacion
-            );
+            $resultado['por_municipio'][$municipioId] =
+                array_merge($datosPriorizacion, $clasificacion);
             $resultado['conteos'][$clasificacion['prioridad']]++;
         }
 
         foreach ($municipiosPriorizados as &$municipioPriorizado) {
             $municipioId = (int)$municipioPriorizado['id'];
-
-            if (!isset($resultado['por_municipio'][$municipioId])) {
-                continue;
+            if (isset($resultado['por_municipio'][$municipioId])) {
+                $municipioPriorizado = array_merge(
+                    $municipioPriorizado,
+                    $resultado['por_municipio'][$municipioId]
+                );
             }
-
-            $municipioPriorizado = array_merge(
-                $municipioPriorizado,
-                $resultado['por_municipio'][$municipioId]
-            );
         }
         unset($municipioPriorizado);
 
-        usort($municipiosPriorizados, function ($municipioA, $municipioB) {
-            $ordenPrioridad = [
-                'ALTA' => 1,
-                'MEDIA' => 2,
-                'BAJA' => 3
-            ];
-            $prioridadA = $ordenPrioridad[$municipioA['prioridad'] ?? 'BAJA'] ?? 3;
-            $prioridadB = $ordenPrioridad[$municipioB['prioridad'] ?? 'BAJA'] ?? 3;
-            $comparacionPrioridad = $prioridadA <=> $prioridadB;
+        usort($municipiosPriorizados, static function ($a, $b) {
+            $rankingA = $a['ranking'] ?? PHP_INT_MAX;
+            $rankingB = $b['ranking'] ?? PHP_INT_MAX;
 
-            if ($comparacionPrioridad !== 0) {
-                return $comparacionPrioridad;
+            if ($rankingA !== $rankingB) {
+                return $rankingA <=> $rankingB;
             }
 
-            $rankingA = $municipioA['ranking'] ?? PHP_INT_MAX;
-            $rankingB = $municipioB['ranking'] ?? PHP_INT_MAX;
-            $comparacionRanking = $rankingA <=> $rankingB;
-
-            if ($comparacionRanking !== 0) {
-                return $comparacionRanking;
-            }
-
-            $comparacionPuntaje = $municipioB['puntaje'] <=> $municipioA['puntaje'];
-
-            if ($comparacionPuntaje !== 0) {
-                return $comparacionPuntaje;
-            }
-
-            $comparacionPoblacion = $municipioB['poblacion'] <=> $municipioA['poblacion'];
-
-            if ($comparacionPoblacion !== 0) {
-                return $comparacionPoblacion;
-            }
-
-            return strcasecmp((string)$municipioA['nombre'], (string)$municipioB['nombre']);
+            return strcasecmp((string)$a['nombre'], (string)$b['nombre']);
         });
 
-        $municipiosRecomendados = array_values(
-            array_filter(
-                $municipiosPriorizados,
-                function ($municipio) {
-                    return in_array($municipio['prioridad'] ?? 'BAJA', ['ALTA', 'MEDIA'], true);
-                }
-            )
-        );
+        $municipiosRecomendados = array_values(array_filter(
+            $municipiosPriorizados,
+            static function ($municipio) {
+                return in_array(
+                    $municipio['prioridad'] ?? 'BAJA',
+                    ['ALTA', 'MEDIA'],
+                    true
+                );
+            }
+        ));
 
         if (count($municipiosRecomendados) < $limiteRecomendados) {
             $municipiosRecomendados = $municipiosPriorizados;
