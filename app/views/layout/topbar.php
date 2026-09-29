@@ -73,7 +73,7 @@ $totalRecordatoriosSeguimiento = 0;
                         aria-label="Abrir mi actividad telefónica de hoy"
                         title="Mi actividad telefónica de hoy">
                         <span class="topbar-call-goal-icon" aria-hidden="true">
-                            <i class="bi bi-telephone-check"></i>
+                            <i class="bi bi-telephone-fill"></i>
                         </span>
                         <span class="topbar-call-goal-value">
                             <strong data-topbar-call-effective>—</strong>
