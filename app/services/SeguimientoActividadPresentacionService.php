@@ -733,6 +733,8 @@ class SeguimientoActividadPresentacionService
             'Contacto referido' => 'Contacto referido',
             'Nuevo contacto' => 'Nuevo contacto',
             'Cargo / Área' => 'Cargo / Área',
+            'Verificación obtenida' => 'Verificación',
+            'Verificación no contabilizada' => 'Verificación',
             'Próxima acción' => 'Próxima acción',
             'Motivo de descarte' => 'Motivo de descarte'
         ];
