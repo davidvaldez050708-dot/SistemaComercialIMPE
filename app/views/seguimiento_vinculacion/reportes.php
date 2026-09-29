@@ -24,6 +24,29 @@ $errorFiltros = $errorFiltros ?? '';
 $errorExportacionPdf = $errorExportacionPdf ?? '';
 $urlExportarPdf = $urlExportarPdf ?? '';
 $modoModalReporte = (string)($_GET['modal'] ?? '') === '1';
+$tipoReporteActual = (string)($filtrosReporte['tipo_reporte'] ?? 'cartera');
+$titulosReporteAnalista = [
+    'actividad' => [
+        'titulo' => 'Mi actividad de seguimiento',
+        'subtitulo' => 'Actividad e interacciones registradas dentro del periodo seleccionado.'
+    ],
+    'cartera' => [
+        'titulo' => 'Mi cartera de seguimiento',
+        'subtitulo' => 'Estado actual de los seguimientos incluidos en la consulta.'
+    ],
+    'institucion' => [
+        'titulo' => 'Reporte de institución',
+        'subtitulo' => 'Expediente ejecutivo del seguimiento seleccionado.'
+    ]
+];
+$tituloReporteGenerado =
+    $modoSeguimiento === 'analista'
+        ? ($titulosReporteAnalista[$tipoReporteActual]['titulo'] ?? 'Reporte de Seguimiento de Vinculación')
+        : 'Reporte de Seguimiento de Vinculación';
+$subtituloReporteGenerado =
+    $modoSeguimiento === 'analista'
+        ? ($titulosReporteAnalista[$tipoReporteActual]['subtitulo'] ?? 'Resultados calculados con los criterios seleccionados.')
+        : 'Resultados calculados con los criterios seleccionados.';
 $evolucionActividad = [
     'periodos' => [],
     'total' => 0,
@@ -365,8 +388,8 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
     <section aria-labelledby="titulo-reporte-seguimiento">
         <div class="d-flex flex-wrap align-items-end justify-content-between gap-3 mb-3">
             <div>
-                <h2 class="page-title" id="titulo-reporte-seguimiento">Reporte de Seguimiento de Vinculación</h2>
-                <p class="page-subtitle mb-0">Resultados calculados con los criterios seleccionados.</p>
+                <h2 class="page-title" id="titulo-reporte-seguimiento"><?= $texto($tituloReporteGenerado) ?></h2>
+                <p class="page-subtitle mb-0"><?= $texto($subtituloReporteGenerado) ?></p>
             </div>
             <div class="d-flex flex-wrap align-items-center justify-content-end gap-2">
                 <span class="status-pill status-pill-active">
