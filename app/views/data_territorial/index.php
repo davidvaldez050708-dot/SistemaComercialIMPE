@@ -1401,8 +1401,8 @@ $urlPaginaTerritorio = function ($pagina) use ($buscarTerritorio, $filtroInforma
                             <span>PRIORIZACIÓN SUGERIDA</span>
                             <h4 id="prioridadMunicipalTitulo">Municipios prioritarios para vinculación</h4>
                             <p>
-                                La priorización combina el Índice de Oportunidad Municipal con la posición de cada
-                                municipio dentro de su propio Estado.
+                                La priorización compara alcance poblacional, perfil educativo de 25 a 49 años,
+                                brecha de media superior y tejido económico dentro del propio Estado.
                             </p>
                         </div>
                         <div class="data-municipality-priority-help">
@@ -1486,7 +1486,7 @@ $urlPaginaTerritorio = function ($pagina) use ($buscarTerritorio, $filtroInforma
 
                     <p class="data-municipality-priority-note">
                         <i class="bi bi-info-circle" aria-hidden="true"></i>
-                        Índice calculado con información municipal, contexto estatal y ranking relativo dentro del territorio.
+                        Índice orientativo calculado con señales municipales comparables dentro del territorio; volumen e incidencia educativa se evalúan por separado.
                     </p>
 
                     <?php if ($municipiosSinPoblacion > 0): ?>
