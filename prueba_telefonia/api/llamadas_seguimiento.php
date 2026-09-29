@@ -108,8 +108,11 @@ if (is_file($logPath)) {
 
 $resultadosConContacto = [
     'CONTACTADO',
+    'CONTACTO_INCORRECTO',
+    'SOLICITO_INFORMACION',
     'SOLICITO_LLAMAR_DESPUES',
     'MENSAJE_ENVIADO',
+    'NO_INTERESADO',
 ];
 
 $zadarmaLookup = null;
