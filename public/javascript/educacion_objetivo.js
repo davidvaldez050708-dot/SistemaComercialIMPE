@@ -14,6 +14,7 @@
         // contexto adicional, cerrado por defecto.
         rezago.style.display = 'none';
 
+        let consultaEducativaTerminada = false;
         let perfilEconomico = {
             estado: '',
             sectores: [],
@@ -56,7 +57,7 @@
         if (!document.querySelector('link[data-education-target-style]')) {
             const link = document.createElement('link');
             link.rel = 'stylesheet';
-            link.href = 'public/css/educacion_objetivo.css?v=20260929-6';
+            link.href = 'public/css/educacion_objetivo.css?v=20260929-7';
             link.setAttribute('data-education-target-style', '');
             document.head.appendChild(link);
         }
@@ -121,6 +122,14 @@
 
             if (!cuerpo) {
                 return null;
+            }
+
+            if (!consultaEducativaTerminada) {
+                contexto.open = false;
+                return {
+                    contexto: contexto,
+                    cuerpo: cuerpo
+                };
             }
 
             let rezagoDetalle = cuerpo.querySelector(
@@ -799,6 +808,7 @@
 
         const render = function (datos) {
             contenedor.innerHTML = renderPrioridad(datos);
+            consultaEducativaTerminada = true;
 
             const contextoPreparado = asegurarContextoAdicional();
 
@@ -854,14 +864,19 @@
 
                 render(datos);
             } catch (error) {
+                consultaEducativaTerminada = true;
                 renderError(
                     error.message ||
                     'No fue posible consultar la información de INEGI.'
                 );
+                asegurarContextoAdicional();
             }
         };
 
-        asegurarContextoAdicional();
+        const contextoInicial = asegurarContextoAdicional();
+        if (contextoInicial?.contexto) {
+            contextoInicial.contexto.open = false;
+        }
         cargar();
     });
 })();
