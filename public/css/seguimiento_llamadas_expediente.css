@@ -571,3 +571,16 @@
         gap: 1px;
     }
 }
+
+
+.linkage-call-result-badge.is-verification {
+    border-color: #cbe7df;
+    background: #eef9f6;
+    color: #14735f;
+}
+
+.linkage-call-result-badge.is-verification-pending {
+    border-color: #d9dfeb;
+    background: #f5f7fa;
+    color: #667085;
+}
