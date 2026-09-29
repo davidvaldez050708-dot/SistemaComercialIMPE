@@ -491,7 +491,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
             </div>
         </div>
 
-        <section class="dashboard-panel mb-4" aria-label="Filtros utilizados">
+        <section class="dashboard-panel mb-4 report-filter-summary" aria-label="Filtros utilizados">
             <h3 class="panel-title">Filtros utilizados</h3>
             <div class="row g-3">
                 <?php foreach ($resumenFiltros as $nombreFiltro => $valorFiltro): ?>
