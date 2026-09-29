@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/../models/SeguimientoVinculacionModel.php';
 require_once __DIR__ . '/../../config/db_connection.php';
+require_once __DIR__ . '/SeguimientoActividadPresentacionService.php';
 
 class ReporteSeguimientoInstitucionDetalleService
 {
@@ -43,6 +44,14 @@ class ReporteSeguimientoInstitucionDetalleService
             $interaccionesHumanas = $this->obtenerInteraccionesHumanasRecientes(
                 $seguimientoId,
                 8
+            );
+            $presentadorActividad = new SeguimientoActividadPresentacionService();
+            $interaccionesHumanas = array_map(
+                static function (array $interaccion) use ($presentadorActividad) {
+                    $interaccion['presentacion'] = $presentadorActividad->presentar($interaccion);
+                    return $interaccion;
+                },
+                $interaccionesHumanas
             );
         } catch (Throwable $error) {
             error_log('[reporte_institucion_interacciones] ' . $error->getMessage());
