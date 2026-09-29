@@ -197,6 +197,12 @@ if ($totalPaginasMunicipios <= 7) {
                         $tooltipPrioridadMunicipio .=
                             ' · Cobertura ' . $coberturaMunicipio . '%';
                         $motivosMunicipio = $priorizacionMunicipal['por_municipio'][$idMunicipio]['motivos'] ?? [];
+                        $componentesMunicipio = is_array(
+                            $priorizacionMunicipal['por_municipio'][$idMunicipio]['componentes']
+                            ?? null
+                        )
+                            ? $priorizacionMunicipal['por_municipio'][$idMunicipio]['componentes']
+                            : [];
                         $limitacionesMunicipio = $priorizacionMunicipal['por_municipio'][$idMunicipio]['limitaciones'] ?? [];
                         $perfilAdultoMunicipio = is_array($municipio['perfil_adulto_laboral'] ?? null)
                             ? $municipio['perfil_adulto_laboral']
@@ -317,6 +323,7 @@ if ($totalPaginasMunicipios <= 7) {
                                         data-ranking="<?= (int)$rankingMunicipio ?>"
                                         data-total-ranking="<?= (int)$totalRankingMunicipio ?>"
                                         data-motivos="<?= $escMunicipio(json_encode(array_values($motivosMunicipio), JSON_UNESCAPED_UNICODE)) ?>"
+                                        data-componentes="<?= $escMunicipio(json_encode($componentesMunicipio, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?>"
                                         data-limitaciones="<?= $escMunicipio(json_encode(array_values($limitacionesMunicipio), JSON_UNESCAPED_UNICODE)) ?>"
                                         data-perfil-adulto="<?= $escMunicipio(json_encode($perfilAdultoMunicipio, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?>"
                                         data-perfil-educativo="<?= $escMunicipio(json_encode($perfilEducativoMunicipio, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?>"
