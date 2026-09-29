@@ -1034,6 +1034,8 @@ class SeguimientoActividadPresentacionService
             'MENSAJE_ENVIADO' => 'Mensaje enviado',
             'CORREO_ENVIADO' => 'Correo enviado',
             'SIN_RESPUESTA' => 'Sin respuesta',
+            'BUZON_VOZ' => 'Buzón de voz',
+            'FUERA_SERVICIO' => 'Fuera del área / fuera de servicio',
             'NO_INTERESADO' => 'No interesado',
             'OTRO' => 'Otro'
         ];
