@@ -1036,14 +1036,14 @@ class SeguimientoVinculacionController
         );
 
         $telefonoActual = trim((string)(
-            $seguimiento['telefono_verificado'] ??
-            $seguimiento['telefono_fuente'] ??
-            ''
+            !empty($seguimiento['telefono_verificado'])
+                ? $seguimiento['telefono_verificado']
+                : ($seguimiento['telefono_fuente'] ?? '')
         ));
         $correoActual = trim((string)(
-            $seguimiento['correo_verificado'] ??
-            $seguimiento['correo_fuente'] ??
-            ''
+            !empty($seguimiento['correo_verificado'])
+                ? $seguimiento['correo_verificado']
+                : ($seguimiento['correo_fuente'] ?? '')
         ));
         $contactoActual = trim((string)($seguimiento['contacto_nombre'] ?? ''));
 
