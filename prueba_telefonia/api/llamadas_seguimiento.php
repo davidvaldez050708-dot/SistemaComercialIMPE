@@ -61,6 +61,9 @@ $marcadorFueraServicio = '[FUERA_SERVICIO]';
 $marcadorContacto = '[CONTACTO_EFECTIVO]';
 $marcadorSinContacto = '[SIN_CONTACTO_EFECTIVO]';
 $marcadorVerificacion = '[VERIFICACION_EFECTIVA]';
+$marcadorVerificacionPendiente = '[VERIFICACION_PENDIENTE_TELEFONIA]';
+$marcadorPrueba = '[REGISTRO_LLAMADA_PRUEBA]';
+$marcadorManual = '[REGISTRO_LLAMADA_MANUAL]';
 
 // Zadarma entrega NOTIFY_RECORD cuando el audio ya está listo.
 // Conservamos también ANSWER/OUT_END para reconstruir la duración de llamadas
@@ -196,6 +199,10 @@ foreach ($modelo->obtenerInteraccionesSeguimiento($seguimientoId) as $interaccio
     $resultado = strtoupper(trim((string)($interaccion['resultado'] ?? '')));
     $notas = trim((string)($interaccion['notas'] ?? ''));
     $verificacionMarcada = strpos($notas, $marcadorVerificacion) !== false;
+    $verificacionPendienteMarcada =
+        strpos($notas, $marcadorVerificacionPendiente) !== false;
+    $registroPrueba = strpos($notas, $marcadorPrueba) !== false;
+    $registroManual = strpos($notas, $marcadorManual) !== false;
     $evidenciasVerificacion = [];
 
     if (preg_match('/^Verificación obtenida:\s*(.+)$/miu', $notas, $coincidenciaVerificacion)) {
@@ -234,6 +241,9 @@ foreach ($modelo->obtenerInteraccionesSeguimiento($seguimientoId) as $interaccio
             $marcadorContacto,
             $marcadorSinContacto,
             $marcadorVerificacion,
+            $marcadorVerificacionPendiente,
+            $marcadorPrueba,
+            $marcadorManual,
         ],
         '',
         $notas
@@ -322,7 +332,9 @@ foreach ($modelo->obtenerInteraccionesSeguimiento($seguimientoId) as $interaccio
         'contacto_efectivo' => (bool)$contactoEfectivo,
         'verificacion_efectiva' => (bool)$verificacionEfectiva,
         'verificacion_pendiente_vinculo' =>
-            (bool)($verificacionMarcada && !$llamadaTecnicaValida),
+            (bool)($verificacionPendienteMarcada && !$llamadaTecnicaValida),
+        'registro_prueba' => (bool)$registroPrueba,
+        'registro_manual' => (bool)$registroManual,
         'verificacion_evidencias' => $evidenciasVerificacion,
         'contacto' => (string)($notasEstructuradas['contacto'] ?? ''),
         'detalle' => (string)($notasEstructuradas['detalle'] ?? ''),
