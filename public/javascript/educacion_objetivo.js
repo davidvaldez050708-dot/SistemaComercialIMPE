@@ -9,6 +9,11 @@
             return;
         }
 
+        // Evita que el bloque oficial aparezca completo mientras carga
+        // la población prioritaria. Se recoloca enseguida dentro del
+        // contexto adicional, cerrado por defecto.
+        rezago.style.display = 'none';
+
         let perfilEconomico = {
             estado: '',
             sectores: [],
@@ -51,7 +56,7 @@
         if (!document.querySelector('link[data-education-target-style]')) {
             const link = document.createElement('link');
             link.rel = 'stylesheet';
-            link.href = 'public/css/educacion_objetivo.css?v=20260929-5';
+            link.href = 'public/css/educacion_objetivo.css?v=20260929-6';
             link.setAttribute('data-education-target-style', '');
             document.head.appendChild(link);
         }
@@ -87,6 +92,89 @@
             div.textContent = String(valor ?? '');
             return div.innerHTML;
         };
+
+        const asegurarContextoAdicional = function () {
+            let contexto = seccionEducacion.querySelector(
+                '[data-education-complementary-context]'
+            );
+
+            if (!contexto) {
+                contexto = document.createElement('details');
+                contexto.className = 'data-education-complementary-context';
+                contexto.setAttribute('data-education-complementary-context', '');
+                contexto.innerHTML =
+                    '<summary>' +
+                        '<span>' +
+                            '<strong>Contexto educativo adicional</strong>' +
+                            '<small>Indicadores oficiales y contexto complementario para profundizar el análisis</small>' +
+                        '</span>' +
+                        '<i class="bi bi-chevron-down" aria-hidden="true"></i>' +
+                    '</summary>' +
+                    '<div class="data-education-complementary-context-body" data-education-complementary-context-body></div>';
+
+                contenedor.insertAdjacentElement('afterend', contexto);
+            }
+
+            const cuerpo = contexto.querySelector(
+                '[data-education-complementary-context-body]'
+            );
+
+            if (!cuerpo) {
+                return null;
+            }
+
+            let rezagoDetalle = cuerpo.querySelector(
+                '[data-education-official-detail]'
+            );
+
+            if (!rezagoDetalle) {
+                rezagoDetalle = document.createElement('details');
+                rezagoDetalle.className = 'data-education-subcontext';
+                rezagoDetalle.setAttribute('data-education-official-detail', '');
+
+                const porcentajeRezago = rezago.querySelector(
+                    '.data-education-metric-primary > strong'
+                )?.textContent?.trim() || 'Sin dato';
+                const personasRezago = rezago.querySelector(
+                    '.data-education-metric:not(.data-education-metric-primary) > strong'
+                )?.textContent?.trim() || 'Sin dato';
+                const periodoRezago = rezago.querySelector(
+                    '.data-education-period'
+                )?.textContent?.trim() || '';
+
+                rezagoDetalle.innerHTML =
+                    '<summary>' +
+                        '<span>' +
+                            '<strong>Rezago educativo oficial</strong>' +
+                            '<small>' +
+                                escapar(porcentajeRezago) + ' · ' +
+                                escapar(personasRezago) + ' personas' +
+                                (periodoRezago ? ' · ' + escapar(periodoRezago) : '') +
+                            '</small>' +
+                        '</span>' +
+                        '<i class="bi bi-chevron-down"></i>' +
+                    '</summary>' +
+                    '<div class="data-education-subcontext-body" data-education-official-body></div>';
+
+                cuerpo.appendChild(rezagoDetalle);
+            }
+
+            const rezagoBody = rezagoDetalle.querySelector(
+                '[data-education-official-body]'
+            );
+
+            if (rezagoBody && !rezagoBody.contains(rezago)) {
+                rezagoBody.appendChild(rezago);
+            }
+
+            rezago.style.display = '';
+
+            return {
+                contexto: contexto,
+                cuerpo: cuerpo
+            };
+        };
+
 
         const renderCarga = function () {
             contenedor.innerHTML =
@@ -712,78 +800,13 @@
         const render = function (datos) {
             contenedor.innerHTML = renderPrioridad(datos);
 
-            let contexto = seccionEducacion.querySelector(
-                '[data-education-complementary-context]'
-            );
+            const contextoPreparado = asegurarContextoAdicional();
 
-            if (!contexto) {
-                contexto = document.createElement('details');
-                contexto.className = 'data-education-complementary-context';
-                contexto.setAttribute('data-education-complementary-context', '');
-                contexto.innerHTML =
-                    '<summary>' +
-                        '<span>' +
-                            '<strong>Contexto educativo adicional</strong>' +
-                            '<small>Indicadores oficiales y contexto complementario para profundizar el análisis</small>' +
-                        '</span>' +
-                        '<i class="bi bi-chevron-down" aria-hidden="true"></i>' +
-                    '</summary>' +
-                    '<div class="data-education-complementary-context-body" data-education-complementary-context-body></div>';
-
-                contenedor.insertAdjacentElement('afterend', contexto);
-            }
-
-            const cuerpo = contexto.querySelector(
-                '[data-education-complementary-context-body]'
-            );
-
-            if (!cuerpo) {
+            if (!contextoPreparado) {
                 return;
             }
 
-            let rezagoDetalle = cuerpo.querySelector(
-                '[data-education-official-detail]'
-            );
-
-            if (!rezagoDetalle) {
-                rezagoDetalle = document.createElement('details');
-                rezagoDetalle.className = 'data-education-subcontext';
-                rezagoDetalle.setAttribute('data-education-official-detail', '');
-
-                const porcentajeRezago = rezago.querySelector(
-                    '.data-education-metric-primary > strong'
-                )?.textContent?.trim() || 'Sin dato';
-                const personasRezago = rezago.querySelector(
-                    '.data-education-metric:not(.data-education-metric-primary) > strong'
-                )?.textContent?.trim() || 'Sin dato';
-                const periodoRezago = rezago.querySelector(
-                    '.data-education-period'
-                )?.textContent?.trim() || '';
-
-                rezagoDetalle.innerHTML =
-                    '<summary>' +
-                        '<span>' +
-                            '<strong>Rezago educativo oficial</strong>' +
-                            '<small>' +
-                                escapar(porcentajeRezago) + ' · ' +
-                                escapar(personasRezago) + ' personas' +
-                                (periodoRezago ? ' · ' + escapar(periodoRezago) : '') +
-                            '</small>' +
-                        '</span>' +
-                        '<i class="bi bi-chevron-down"></i>' +
-                    '</summary>' +
-                    '<div class="data-education-subcontext-body" data-education-official-body></div>';
-
-                cuerpo.appendChild(rezagoDetalle);
-            }
-
-            const rezagoBody = rezagoDetalle.querySelector(
-                '[data-education-official-body]'
-            );
-
-            if (rezagoBody && !rezagoBody.contains(rezago)) {
-                rezagoBody.appendChild(rezago);
-            }
+            const cuerpo = contextoPreparado.cuerpo;
 
             let contextoGeneral = cuerpo.querySelector(
                 '[data-education-generated-context]'
@@ -838,6 +861,7 @@
             }
         };
 
+        asegurarContextoAdicional();
         cargar();
     });
 })();
