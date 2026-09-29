@@ -244,190 +244,358 @@ document.addEventListener('DOMContentLoaded', function () {
 <?php endif; ?>
 
 <?php if ($tipoConvocatoria === ''): ?>
-<div class="convocatoria-territory-context">
-    <a
-        class="data-back-link"
-        href="<?= BASE_URL ?>index.php?controller=convocatoria&action=index">
-        <i class="bi bi-arrow-left"></i>
-        Cambiar territorio
-    </a>
-    <span><?= $texto($territorioSeleccionado['nombre'] ?? '') ?></span>
-</div>
+<?php
+$nombreTerritorioActual = trim((string)($territorioSeleccionado['nombre'] ?? ''));
+$slugTerritorioActual = strtolower($nombreTerritorioActual);
+$slugTerritorioActual = iconv('UTF-8', 'ASCII//TRANSLIT', $slugTerritorioActual);
+$slugTerritorioActual = preg_replace('/[^a-z0-9]+/', '-', (string)$slugTerritorioActual);
+$slugTerritorioActual = trim((string)$slugTerritorioActual, '-');
 
-<section class="dashboard-panel convocatoria-type-heading">
-    <h2 class="panel-title mb-1">Seleccionar tipo de convocatoria</h2>
-    <p class="panel-subtitle mb-0">Selecciona la opción que deseas consultar para este territorio.</p>
-</section>
+if ($nombreTerritorioActual === 'Ciudad de México') {
+    $slugTerritorioActual = 'ciudad-de-mexico';
+} elseif ($nombreTerritorioActual === 'Estado de México') {
+    $slugTerritorioActual = 'estado-de-mexico';
+} elseif ($nombreTerritorioActual === 'Michoacán') {
+    $slugTerritorioActual = 'michoacán';
+} elseif ($nombreTerritorioActual === 'Nuevo León') {
+    $slugTerritorioActual = 'nuevo-leon';
+} elseif ($nombreTerritorioActual === 'Querétaro') {
+    $slugTerritorioActual = 'queretaro';
+} elseif ($nombreTerritorioActual === 'San Luis Potosí') {
+    $slugTerritorioActual = 'san-luis-potosi';
+} elseif ($nombreTerritorioActual === 'Yucatán') {
+    $slugTerritorioActual = 'yucatan';
+}
 
-<div class="convocatoria-type-overview">
-<section class="convocatoria-type-cards<?= $esChihuahua ? ' convocatoria-type-cards-three' : '' ?>">
-    <article class="dashboard-panel convocatoria-type-card">
-        <div class="convocatoria-type-card-icon">
-            <i class="bi bi-mortarboard"></i>
+$imagenTerritorioActual = BASE_URL . 'public/img/estados/' . $slugTerritorioActual . '.png';
+$descripcionTiposTerritorio = $esChihuahua
+    ? 'Consulta las convocatorias de titulación, bachillerato y sindicatos, revisa su vigencia y mantén actualizadas las publicaciones en ' . $nombreTerritorioActual . '.'
+    : 'Consulta las convocatorias de titulación y bachillerato, revisa su vigencia y mantén actualizadas las publicaciones en ' . $nombreTerritorioActual . '.';
+?>
+
+<div class="convocatoria-overview-page">
+    <div class="convocatoria-overview-locationbar">
+        <div class="convocatoria-overview-location">
+            <i class="bi bi-geo-alt-fill"></i>
+            <strong><?= $texto($nombreTerritorioActual) ?></strong>
         </div>
-        <div>
-            <h3>Titulación</h3>
-            <p>Consulta las convocatorias correspondientes a titulación.</p>
-        </div>
+
         <a
-            class="btn btn-system-light"
-            href="<?= BASE_URL ?>index.php?controller=convocatoria&action=index&territorio_id=<?= (int)$territorioSeleccionado['id'] ?>&tipo=titulacion">
-            Ver
-            <i class="bi bi-arrow-right"></i>
+            class="convocatoria-overview-change"
+            href="<?= BASE_URL ?>index.php?controller=convocatoria&action=index">
+            <i class="bi bi-arrow-repeat"></i>
+            Cambiar territorio
         </a>
-    </article>
-
-    <article class="dashboard-panel convocatoria-type-card">
-        <div class="convocatoria-type-card-icon">
-            <i class="bi bi-book"></i>
-        </div>
-        <div>
-            <h3>Bachillerato</h3>
-            <p>Consulta las convocatorias correspondientes a bachillerato.</p>
-        </div>
-        <a
-            class="btn btn-system-light"
-            href="<?= BASE_URL ?>index.php?controller=convocatoria&action=index&territorio_id=<?= (int)$territorioSeleccionado['id'] ?>&tipo=bachillerato">
-            Ver
-            <i class="bi bi-arrow-right"></i>
-        </a>
-    </article>
-
-    <?php if ($esChihuahua): ?>
-        <article class="dashboard-panel convocatoria-type-card">
-            <div class="convocatoria-type-card-icon">
-                <i class="bi bi-people"></i>
-            </div>
-            <div>
-                <h3>Sindicatos</h3>
-                <p>Consulta y administra las convocatorias correspondientes a sindicatos.</p>
-            </div>
-            <a
-                class="btn btn-system-light"
-                href="<?= BASE_URL ?>index.php?controller=convocatoria&action=index&territorio_id=<?= (int)$territorioSeleccionado['id'] ?>&tipo=sindicatos&subtipo=sindicatos">
-                Ver
-                <i class="bi bi-arrow-right"></i>
-            </a>
-        </article>
-    <?php endif; ?>
-</section>
-
-<section class="dashboard-panel convocatoria-recent-panel">
-    <div class="convocatoria-recent-heading">
-        <div>
-            <h3>Convocatorias recientes</h3>
-            <p>Consulta rápidamente el estado de las publicaciones de este territorio.</p>
-        </div>
-
-        <?php if (count($convocatoriasRecientes) > 4): ?>
-            <button
-                type="button"
-                class="convocatoria-recent-toggle"
-                data-convocatoria-recent-toggle
-                aria-expanded="false">
-                Ver todas
-                <i class="bi bi-arrow-right"></i>
-            </button>
-        <?php endif; ?>
     </div>
 
-    <?php if (!empty($convocatoriasRecientes)): ?>
-        <div class="convocatoria-recent-list">
-            <?php foreach ($convocatoriasRecientes as $indiceReciente => $convocatoriaReciente): ?>
-                <?php
-                $tipoReciente = (string)($convocatoriaReciente['tipo_convocatoria'] ?? '');
-                $subtipoReciente = (string)($convocatoriaReciente['subtipo_convocatoria'] ?? '');
-                $estadoProceso = (string)($convocatoriaReciente['estado_proceso'] ?? 'inactiva');
+    <section class="dashboard-panel convocatoria-overview-hero">
+        <span class="convocatoria-overview-kicker">CONVOCATORIAS</span>
+        <h2>Administra las convocatorias de tu territorio</h2>
+        <p><?= $texto($descripcionTiposTerritorio) ?></p>
+    </section>
 
-                if ($tipoReciente === 'titulacion') {
-                    $tipoEtiqueta = 'Titulación';
-                    $tipoIcono = 'bi-mortarboard';
-                } elseif ($tipoReciente === 'bachillerato') {
-                    $tipoEtiqueta = 'Bachillerato';
-                    $tipoIcono = 'bi-book';
-                } else {
-                    $tipoEtiqueta = 'Sindicatos';
-                    $tipoIcono = 'bi-people';
-                }
-
-                $subtipoEtiquetasRecientes = [
-                    'ejecutivas' => 'Ejecutivas',
-                    'experiencia-laboral' => 'Experiencia laboral',
-                    'inscripciones-abiertas' => 'Inscripciones abiertas',
-                    'bachillerato-2-anos' => 'Bachillerato en 2 años',
-                    'bachillerato-286' => 'Bachillerato 286',
-                    'ingles' => 'Inglés',
-                    'sindicatos' => 'Sindicatos'
-                ];
-
-                $estadoEtiquetas = [
-                    'activa' => 'Activa',
-                    'proxima' => 'Próxima a vencer',
-                    'finalizada' => 'Finalizada',
-                    'inactiva' => 'Inactiva'
-                ];
-
-                $urlReciente = BASE_URL .
-                    'index.php?controller=convocatoria&action=index&territorio_id=' .
-                    (int)$territorioSeleccionado['id'] .
-                    '&tipo=' . rawurlencode($tipoReciente) .
-                    '&subtipo=' . rawurlencode($subtipoReciente);
-                ?>
+    <div class="convocatoria-overview-layout">
+        <main class="convocatoria-overview-main">
+            <section class="convocatoria-overview-types<?= $esChihuahua ? ' is-chihuahua' : '' ?>">
                 <a
-                    class="convocatoria-recent-item <?= $indiceReciente >= 4 ? 'd-none' : '' ?>"
-                    href="<?= $texto($urlReciente) ?>"
-                    <?= $indiceReciente >= 4 ? 'data-convocatoria-recent-extra' : '' ?>>
-                    <span class="convocatoria-recent-icon convocatoria-recent-icon-<?= $texto($tipoReciente) ?>">
-                        <i class="bi <?= $texto($tipoIcono) ?>"></i>
+                    class="dashboard-panel convocatoria-overview-type-card"
+                    href="<?= BASE_URL ?>index.php?controller=convocatoria&action=index&territorio_id=<?= (int)$territorioSeleccionado['id'] ?>&tipo=titulacion">
+                    <span class="convocatoria-overview-type-icon">
+                        <i class="bi bi-mortarboard"></i>
                     </span>
-
-                    <span class="convocatoria-recent-copy">
-                        <strong><?= $texto($convocatoriaReciente['titulo'] ?? '') ?></strong>
-                        <small>
-                            <?= $texto($tipoEtiqueta) ?>
-                            <?php if (!empty($subtipoEtiquetasRecientes[$subtipoReciente]) && $subtipoReciente !== 'sindicatos'): ?>
-                                · <?= $texto($subtipoEtiquetasRecientes[$subtipoReciente]) ?>
-                            <?php endif; ?>
-                            · <?= $texto($fechaLegible($convocatoriaReciente['fecha_termino'] ?? '')) ?>
-                        </small>
+                    <span class="convocatoria-overview-type-copy">
+                        <strong>Titulación</strong>
+                        <small>Consulta las convocatorias correspondientes a titulación.</small>
                     </span>
-
-                    <span class="convocatoria-process-badge convocatoria-process-<?= $texto($estadoProceso) ?>">
-                        <?= $texto($estadoEtiquetas[$estadoProceso] ?? 'Inactiva') ?>
+                    <span class="convocatoria-overview-type-arrow">
+                        <i class="bi bi-arrow-right"></i>
                     </span>
                 </a>
-            <?php endforeach; ?>
-        </div>
-    <?php else: ?>
-        <div class="convocatoria-recent-empty">
-            <i class="bi bi-inbox"></i>
-            <span>No hay convocatorias recientes para mostrar.</span>
-        </div>
-    <?php endif; ?>
-</section>
+
+                <a
+                    class="dashboard-panel convocatoria-overview-type-card"
+                    href="<?= BASE_URL ?>index.php?controller=convocatoria&action=index&territorio_id=<?= (int)$territorioSeleccionado['id'] ?>&tipo=bachillerato">
+                    <span class="convocatoria-overview-type-icon">
+                        <i class="bi bi-book"></i>
+                    </span>
+                    <span class="convocatoria-overview-type-copy">
+                        <strong>Bachillerato</strong>
+                        <small>Consulta las convocatorias correspondientes a bachillerato.</small>
+                    </span>
+                    <span class="convocatoria-overview-type-arrow">
+                        <i class="bi bi-arrow-right"></i>
+                    </span>
+                </a>
+
+                <?php if ($esChihuahua): ?>
+                    <a
+                        class="dashboard-panel convocatoria-overview-type-card"
+                        href="<?= BASE_URL ?>index.php?controller=convocatoria&action=index&territorio_id=<?= (int)$territorioSeleccionado['id'] ?>&tipo=sindicatos&subtipo=sindicatos">
+                        <span class="convocatoria-overview-type-icon">
+                            <i class="bi bi-people"></i>
+                        </span>
+                        <span class="convocatoria-overview-type-copy">
+                            <strong>Sindicatos</strong>
+                            <small>Consulta las convocatorias correspondientes a sindicatos.</small>
+                        </span>
+                        <span class="convocatoria-overview-type-arrow">
+                            <i class="bi bi-arrow-right"></i>
+                        </span>
+                    </a>
+                <?php endif; ?>
+            </section>
+
+            <section
+                class="dashboard-panel convocatoria-overview-recent"
+                id="convocatorias-recientes">
+                <div class="convocatoria-overview-recent-heading">
+                    <div class="convocatoria-overview-recent-title">
+                        <span><i class="bi bi-file-earmark-text"></i></span>
+                        <div>
+                            <h3>Convocatorias recientes</h3>
+                            <p>Consulta rápidamente el estado de las publicaciones de este territorio.</p>
+                        </div>
+                    </div>
+
+                    <?php if (count($convocatoriasRecientes) > 4): ?>
+                        <button
+                            type="button"
+                            class="convocatoria-overview-link"
+                            data-convocatoria-overview-all
+                            aria-expanded="false">
+                            Ver todas
+                            <i class="bi bi-arrow-right"></i>
+                        </button>
+                    <?php endif; ?>
+                </div>
+
+                <?php if (!empty($convocatoriasRecientes)): ?>
+                    <div class="convocatoria-overview-table-wrap">
+                        <table class="convocatoria-overview-table">
+                            <thead>
+                                <tr>
+                                    <th>Nombre de la convocatoria</th>
+                                    <th>Tipo</th>
+                                    <th>Fecha de publicación</th>
+                                    <th>Vigencia</th>
+                                    <th>Estado</th>
+                                    <th class="text-center">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($convocatoriasRecientes as $indiceReciente => $convocatoriaReciente): ?>
+                                    <?php
+                                    $tipoReciente = (string)($convocatoriaReciente['tipo_convocatoria'] ?? '');
+                                    $subtipoReciente = (string)($convocatoriaReciente['subtipo_convocatoria'] ?? '');
+                                    $estadoProceso = (string)($convocatoriaReciente['estado_proceso'] ?? 'inactiva');
+
+                                    if ($tipoReciente === 'titulacion') {
+                                        $tipoEtiqueta = 'Titulación';
+                                        $tipoIcono = 'bi-mortarboard';
+                                    } elseif ($tipoReciente === 'bachillerato') {
+                                        $tipoEtiqueta = 'Bachillerato';
+                                        $tipoIcono = 'bi-book';
+                                    } else {
+                                        $tipoEtiqueta = 'Sindicatos';
+                                        $tipoIcono = 'bi-people';
+                                    }
+
+                                    $estadoEtiquetas = [
+                                        'activa' => 'Activa',
+                                        'proxima' => 'Próxima a vencer',
+                                        'finalizada' => 'Finalizada',
+                                        'inactiva' => 'Inactiva'
+                                    ];
+
+                                    $urlReciente = BASE_URL .
+                                        'index.php?controller=convocatoria&action=index&territorio_id=' .
+                                        (int)$territorioSeleccionado['id'] .
+                                        '&tipo=' . rawurlencode($tipoReciente) .
+                                        '&subtipo=' . rawurlencode($subtipoReciente);
+                                    ?>
+                                    <tr
+                                        data-convocatoria-overview-row
+                                        data-process-status="<?= $texto($estadoProceso) ?>"
+                                        class="<?= $indiceReciente >= 4 ? 'd-none' : '' ?>"
+                                        <?= $indiceReciente >= 4 ? 'data-convocatoria-overview-extra' : '' ?>>
+                                        <td>
+                                            <a
+                                                class="convocatoria-overview-name"
+                                                href="<?= $texto($urlReciente) ?>">
+                                                <span class="convocatoria-overview-row-icon">
+                                                    <i class="bi <?= $texto($tipoIcono) ?>"></i>
+                                                </span>
+                                                <strong><?= $texto($convocatoriaReciente['titulo'] ?? '') ?></strong>
+                                            </a>
+                                        </td>
+                                        <td><?= $texto($tipoEtiqueta) ?></td>
+                                        <td><?= $texto($fechaLegible($convocatoriaReciente['fecha_inicio'] ?? '')) ?></td>
+                                        <td>
+                                            <?= $texto($fechaLegible($convocatoriaReciente['fecha_inicio'] ?? '')) ?>
+                                            -
+                                            <?= $texto($fechaLegible($convocatoriaReciente['fecha_termino'] ?? '')) ?>
+                                        </td>
+                                        <td>
+                                            <span class="convocatoria-process-badge convocatoria-process-<?= $texto($estadoProceso) ?>">
+                                                <?= $texto($estadoEtiquetas[$estadoProceso] ?? 'Inactiva') ?>
+                                            </span>
+                                        </td>
+                                        <td class="text-center">
+                                            <a
+                                                class="convocatoria-overview-row-action"
+                                                href="<?= $texto($urlReciente) ?>"
+                                                aria-label="Abrir <?= $texto($convocatoriaReciente['titulo'] ?? '') ?>">
+                                                <i class="bi bi-three-dots-vertical"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                <?php else: ?>
+                    <div class="convocatoria-recent-empty">
+                        <i class="bi bi-inbox"></i>
+                        <span>No hay convocatorias recientes para mostrar.</span>
+                    </div>
+                <?php endif; ?>
+            </section>
+        </main>
+
+        <aside class="convocatoria-overview-aside">
+            <section class="dashboard-panel convocatoria-overview-territory-card">
+                <div class="convocatoria-overview-territory-copy">
+                    <span class="convocatoria-overview-aside-icon">
+                        <i class="bi bi-geo-alt-fill"></i>
+                    </span>
+                    <div>
+                        <small>Territorio actual</small>
+                        <strong><?= $texto($nombreTerritorioActual) ?></strong>
+                        <a
+                            href="<?= BASE_URL ?>index.php?controller=convocatoria&action=index">
+                            <i class="bi bi-arrow-repeat"></i>
+                            Cambiar territorio
+                        </a>
+                    </div>
+                </div>
+
+                <img
+                    src="<?= $texto($imagenTerritorioActual) ?>"
+                    alt="Mapa de <?= $texto($nombreTerritorioActual) ?>"
+                    class="convocatoria-overview-territory-map">
+            </section>
+
+            <section class="dashboard-panel convocatoria-overview-help">
+                <div class="convocatoria-overview-help-heading">
+                    <span class="convocatoria-overview-aside-icon">
+                        <i class="bi bi-clipboard2"></i>
+                    </span>
+                    <div>
+                        <h3>¿Qué puedes hacer aquí?</h3>
+                        <p>Consulta las convocatorias vigentes, revisa próximas publicaciones y da seguimiento a su vigencia en tu territorio.</p>
+                    </div>
+                </div>
+
+                <div class="convocatoria-overview-help-links">
+                    <a href="<?= BASE_URL ?>index.php?controller=convocatoria&action=index&territorio_id=<?= (int)$territorioSeleccionado['id'] ?>&tipo=titulacion">
+                        <span><i class="bi bi-mortarboard"></i></span>
+                        <strong>Ver convocatorias de titulación</strong>
+                        <i class="bi bi-chevron-right"></i>
+                    </a>
+
+                    <a href="<?= BASE_URL ?>index.php?controller=convocatoria&action=index&territorio_id=<?= (int)$territorioSeleccionado['id'] ?>&tipo=bachillerato">
+                        <span><i class="bi bi-book"></i></span>
+                        <strong>Ver convocatorias de bachillerato</strong>
+                        <i class="bi bi-chevron-right"></i>
+                    </a>
+
+                    <button
+                        type="button"
+                        data-convocatoria-overview-filter="proxima">
+                        <span><i class="bi bi-clock"></i></span>
+                        <strong>Revisar próximas a vencer</strong>
+                        <i class="bi bi-chevron-right"></i>
+                    </button>
+
+                    <button
+                        type="button"
+                        data-convocatoria-overview-filter="finalizada">
+                        <span><i class="bi bi-file-earmark-text"></i></span>
+                        <strong>Consultar convocatorias finalizadas</strong>
+                        <i class="bi bi-chevron-right"></i>
+                    </button>
+
+                    <?php if ($esChihuahua): ?>
+                        <a href="<?= BASE_URL ?>index.php?controller=convocatoria&action=index&territorio_id=<?= (int)$territorioSeleccionado['id'] ?>&tipo=sindicatos&subtipo=sindicatos">
+                            <span><i class="bi bi-people"></i></span>
+                            <strong>Ver convocatorias de sindicatos</strong>
+                            <i class="bi bi-chevron-right"></i>
+                        </a>
+                    <?php endif; ?>
+                </div>
+            </section>
+        </aside>
+    </div>
 </div>
 
-<?php if (count($convocatoriasRecientes) > 4): ?>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    const boton = document.querySelector('[data-convocatoria-recent-toggle]');
-    const extras = Array.from(document.querySelectorAll('[data-convocatoria-recent-extra]'));
+    const filas = Array.from(document.querySelectorAll('[data-convocatoria-overview-row]'));
+    const extras = Array.from(document.querySelectorAll('[data-convocatoria-overview-extra]'));
+    const botonTodas = document.querySelector('[data-convocatoria-overview-all]');
+    const filtrosRapidos = Array.from(document.querySelectorAll('[data-convocatoria-overview-filter]'));
+    const panelRecientes = document.getElementById('convocatorias-recientes');
 
-    boton?.addEventListener('click', function () {
-        const expandido = boton.getAttribute('aria-expanded') === 'true';
-
-        extras.forEach(function (elemento) {
-            elemento.classList.toggle('d-none', expandido);
+    const mostrarTodas = function () {
+        filas.forEach(function (fila) {
+            fila.classList.remove('d-none');
         });
 
-        boton.setAttribute('aria-expanded', expandido ? 'false' : 'true');
-        boton.innerHTML = expandido
-            ? 'Ver todas <i class="bi bi-arrow-right"></i>'
-            : 'Ver menos <i class="bi bi-arrow-up"></i>';
+        if (botonTodas) {
+            botonTodas.setAttribute('aria-expanded', 'true');
+            botonTodas.innerHTML = 'Ver menos <i class="bi bi-arrow-up"></i>';
+        }
+    };
+
+    botonTodas?.addEventListener('click', function () {
+        const expandido = botonTodas.getAttribute('aria-expanded') === 'true';
+
+        if (expandido) {
+            extras.forEach(function (fila) {
+                fila.classList.add('d-none');
+            });
+            botonTodas.setAttribute('aria-expanded', 'false');
+            botonTodas.innerHTML = 'Ver todas <i class="bi bi-arrow-right"></i>';
+            return;
+        }
+
+        mostrarTodas();
+    });
+
+    filtrosRapidos.forEach(function (boton) {
+        boton.addEventListener('click', function () {
+            const estado = boton.dataset.convocatoriaOverviewFilter || '';
+
+            filas.forEach(function (fila) {
+                fila.classList.toggle(
+                    'd-none',
+                    fila.dataset.processStatus !== estado
+                );
+            });
+
+            if (botonTodas) {
+                botonTodas.setAttribute('aria-expanded', 'true');
+                botonTodas.innerHTML = 'Ver todas <i class="bi bi-arrow-right"></i>';
+            }
+
+            panelRecientes?.scrollIntoView({
+                behavior: 'smooth',
+                block: 'start'
+            });
+        });
     });
 });
 </script>
-<?php endif; ?>
 
 <?php return; ?>
 <?php endif; ?>
