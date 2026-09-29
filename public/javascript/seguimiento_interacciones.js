@@ -737,6 +737,7 @@
             window.setTimeout(function () {
                 aplicarModoRuta();
                 actualizarContactoReferido();
+                actualizarEvidenciaVerificacion();
                 aplicarResultadoInteraccion();
             }, 0);
         });
