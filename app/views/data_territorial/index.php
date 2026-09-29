@@ -1140,6 +1140,53 @@ $urlPaginaTerritorio = function ($pagina) use ($buscarTerritorio, $filtroInforma
         </section>
 
         <section class="dashboard-panel data-section" id="educacion">
+            <script type="application/json" data-education-economic-profile><?=
+                json_encode(
+                    [
+                        'estado' => (string)($estadoSeleccionado['nombre'] ?? ''),
+                        'sectores' => array_map(
+                            static function ($sector) {
+                                return [
+                                    'clave' => (string)($sector['clave_sector'] ?? ''),
+                                    'nombre' => (string)($sector['nombre_sector'] ?? ''),
+                                    'establecimientos' => (int)($sector['establecimientos'] ?? 0),
+                                    'porcentaje' => (float)($sector['porcentaje'] ?? 0)
+                                ];
+                            },
+                            array_slice(
+                                is_array($actividadEconomicaOficial['sectores'] ?? null)
+                                    ? $actividadEconomicaOficial['sectores']
+                                    : [],
+                                0,
+                                10
+                            )
+                        ),
+                        'sectores_sobrerrepresentados' => array_map(
+                            static function ($sector) {
+                                return [
+                                    'clave' => (string)($sector['clave_sector'] ?? ''),
+                                    'nombre' => (string)($sector['nombre_sector'] ?? ''),
+                                    'diferencia_puntos' => (float)($sector['diferencia_puntos'] ?? 0),
+                                    'indice_relativo' => (float)($sector['indice_relativo'] ?? 0)
+                                ];
+                            },
+                            array_slice(
+                                is_array($comparacionEconomicaNacional['sectores'] ?? null)
+                                    ? $comparacionEconomicaNacional['sectores']
+                                    : [],
+                                0,
+                                8
+                            )
+                        )
+                    ],
+                    JSON_UNESCAPED_UNICODE |
+                    JSON_UNESCAPED_SLASHES |
+                    JSON_HEX_TAG |
+                    JSON_HEX_AMP |
+                    JSON_HEX_APOS |
+                    JSON_HEX_QUOT
+                )
+            ?></script>
             <div class="data-section-header">
                 <div>
                     <span>INDICADORES EDUCATIVOS</span>
