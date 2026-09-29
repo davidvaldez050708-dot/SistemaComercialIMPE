@@ -4,6 +4,7 @@ require_once __DIR__ . '/../../config/db_connection.php';
 
 class SeguimientoVinculacionModel
 {
+    private $ultimoErrorInteraccion = '';
     private $connection;
 
     public function __construct()
@@ -1179,6 +1180,8 @@ class SeguimientoVinculacionModel
 
     public function registrarInteraccionManual($seguimientoId, $usuarioId, $datos)
     {
+        $this->ultimoErrorInteraccion = '';
+        $etapaPersistencia = 'guardar la interacción';
         $canal = (string)$datos['canal'];
         $resultado = $this->valorONulo($datos['resultado'] ?? '');
         $fechaInicio = (string)$datos['fecha_inicio'];
@@ -1225,6 +1228,7 @@ class SeguimientoVinculacionModel
         $this->connection->begin_transaction();
 
         try {
+            $etapaPersistencia = 'guardar la interacción';
             $sqlInteraccion = "INSERT INTO interacciones_vinculacion (
                     seguimiento_id,
                     usuario_id,
@@ -1258,41 +1262,55 @@ class SeguimientoVinculacionModel
             $nuevoContactoCargo = trim((string)($datos['nuevo_contacto_cargo'] ?? ''));
 
             if ($nuevoTelefonoContacto !== '' || $nuevoCorreoContacto !== '') {
+                $etapaPersistencia = 'actualizar el contacto referido';
+
+                $sqlContactoActual = "SELECT
+                        telefono_verificado,
+                        correo_verificado,
+                        contacto_nombre,
+                        contacto_cargo
+                    FROM seguimientos_vinculacion
+                    WHERE id = ?
+                      AND activo = 1
+                    LIMIT 1";
+                $stmtContactoActual = $this->connection->prepare($sqlContactoActual);
+                $stmtContactoActual->bind_param('i', $seguimientoId);
+                $stmtContactoActual->execute();
+                $contactoActual = $stmtContactoActual->get_result()->fetch_assoc() ?: [];
+
+                $telefonoDestinoContacto = $nuevoTelefonoContacto !== ''
+                    ? $nuevoTelefonoContacto
+                    : trim((string)($contactoActual['telefono_verificado'] ?? ''));
+                $correoDestinoContacto = $nuevoCorreoContacto !== ''
+                    ? $nuevoCorreoContacto
+                    : trim((string)($contactoActual['correo_verificado'] ?? ''));
+                $nombreDestinoContacto = $nuevoContactoNombre !== ''
+                    ? $nuevoContactoNombre
+                    : trim((string)($contactoActual['contacto_nombre'] ?? ''));
+                $cargoDestinoContacto = $nuevoContactoCargo !== ''
+                    ? $nuevoContactoCargo
+                    : trim((string)($contactoActual['contacto_cargo'] ?? ''));
+
                 $sqlContactoReferido = "UPDATE seguimientos_vinculacion
-                        SET telefono_verificado = CASE
-                                WHEN ? <> '' THEN ?
-                                ELSE telefono_verificado
-                            END,
-                            correo_verificado = CASE
-                                WHEN ? <> '' THEN ?
-                                ELSE correo_verificado
-                            END,
-                            contacto_nombre = CASE
-                                WHEN ? <> '' THEN ?
-                                ELSE contacto_nombre
-                            END,
-                            contacto_cargo = CASE
-                                WHEN ? <> '' THEN ?
-                                ELSE contacto_cargo
-                            END
+                        SET telefono_verificado = ?,
+                            correo_verificado = ?,
+                            contacto_nombre = ?,
+                            contacto_cargo = ?
                         WHERE id = ?
                           AND activo = 1";
                 $stmtContactoReferido = $this->connection->prepare($sqlContactoReferido);
                 $stmtContactoReferido->bind_param(
-                    'ssssssssi',
-                    $nuevoTelefonoContacto,
-                    $nuevoTelefonoContacto,
-                    $nuevoCorreoContacto,
-                    $nuevoCorreoContacto,
-                    $nuevoContactoNombre,
-                    $nuevoContactoNombre,
-                    $nuevoContactoCargo,
-                    $nuevoContactoCargo,
+                    'ssssi',
+                    $telefonoDestinoContacto,
+                    $correoDestinoContacto,
+                    $nombreDestinoContacto,
+                    $cargoDestinoContacto,
                     $seguimientoId
                 );
                 $stmtContactoReferido->execute();
             }
 
+            $etapaPersistencia = 'actualizar el seguimiento';
             $sqlSeguimiento = "UPDATE seguimientos_vinculacion
                     SET ultima_interaccion_at = ?,
                         proxima_accion_at = ?,
@@ -1330,8 +1348,18 @@ class SeguimientoVinculacionModel
             return true;
         } catch (Throwable $error) {
             $this->connection->rollback();
+            $this->ultimoErrorInteraccion = $etapaPersistencia;
+            error_log(
+                'Error registrarInteraccionManual (' .
+                $etapaPersistencia . '): ' . $error->getMessage()
+            );
             return false;
         }
+    }
+
+    public function obtenerUltimoErrorInteraccion()
+    {
+        return trim((string)$this->ultimoErrorInteraccion);
     }
 
     public function descartarSeguimientoTrabajo($seguimientoId, $motivoDescarte)
