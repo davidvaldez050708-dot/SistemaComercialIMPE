@@ -14,6 +14,7 @@ $categoriaFiltro = $categoriaFiltro ?? '';
 $territorioSeleccionado = $territorioSeleccionado ?? null;
 $tipoConvocatoria = $tipoConvocatoria ?? '';
 $subtipoConvocatoria = $subtipoConvocatoria ?? '';
+$convocatoriasRecientes = $convocatoriasRecientes ?? [];
 $esChihuahua = $territorioSeleccionado &&
     strcasecmp(trim((string)($territorioSeleccionado['nombre'] ?? '')), 'Chihuahua') === 0;
 
@@ -239,6 +240,7 @@ document.addEventListener('DOMContentLoaded', function () {
     <p class="panel-subtitle mb-0">Selecciona la opción que deseas consultar para este territorio.</p>
 </section>
 
+<div class="convocatoria-type-overview">
 <section class="convocatoria-type-cards<?= $esChihuahua ? ' convocatoria-type-cards-three' : '' ?>">
     <article class="dashboard-panel convocatoria-type-card">
         <div class="convocatoria-type-card-icon">
@@ -290,6 +292,124 @@ document.addEventListener('DOMContentLoaded', function () {
         </article>
     <?php endif; ?>
 </section>
+
+<section class="dashboard-panel convocatoria-recent-panel">
+    <div class="convocatoria-recent-heading">
+        <div>
+            <h3>Convocatorias recientes</h3>
+            <p>Consulta rápidamente el estado de las publicaciones de este territorio.</p>
+        </div>
+
+        <?php if (count($convocatoriasRecientes) > 4): ?>
+            <button
+                type="button"
+                class="convocatoria-recent-toggle"
+                data-convocatoria-recent-toggle
+                aria-expanded="false">
+                Ver todas
+                <i class="bi bi-arrow-right"></i>
+            </button>
+        <?php endif; ?>
+    </div>
+
+    <?php if (!empty($convocatoriasRecientes)): ?>
+        <div class="convocatoria-recent-list">
+            <?php foreach ($convocatoriasRecientes as $indiceReciente => $convocatoriaReciente): ?>
+                <?php
+                $tipoReciente = (string)($convocatoriaReciente['tipo_convocatoria'] ?? '');
+                $subtipoReciente = (string)($convocatoriaReciente['subtipo_convocatoria'] ?? '');
+                $estadoProceso = (string)($convocatoriaReciente['estado_proceso'] ?? 'inactiva');
+
+                if ($tipoReciente === 'titulacion') {
+                    $tipoEtiqueta = 'Titulación';
+                    $tipoIcono = 'bi-mortarboard';
+                } elseif ($tipoReciente === 'bachillerato') {
+                    $tipoEtiqueta = 'Bachillerato';
+                    $tipoIcono = 'bi-book';
+                } else {
+                    $tipoEtiqueta = 'Sindicatos';
+                    $tipoIcono = 'bi-people';
+                }
+
+                $subtipoEtiquetasRecientes = [
+                    'ejecutivas' => 'Ejecutivas',
+                    'experiencia-laboral' => 'Experiencia laboral',
+                    'inscripciones-abiertas' => 'Inscripciones abiertas',
+                    'bachillerato-2-anos' => 'Bachillerato en 2 años',
+                    'bachillerato-286' => 'Bachillerato 286',
+                    'ingles' => 'Inglés',
+                    'sindicatos' => 'Sindicatos'
+                ];
+
+                $estadoEtiquetas = [
+                    'activa' => 'Activa',
+                    'proxima' => 'Próxima a vencer',
+                    'finalizada' => 'Finalizada',
+                    'inactiva' => 'Inactiva'
+                ];
+
+                $urlReciente = BASE_URL .
+                    'index.php?controller=convocatoria&action=index&territorio_id=' .
+                    (int)$territorioSeleccionado['id'] .
+                    '&tipo=' . rawurlencode($tipoReciente) .
+                    '&subtipo=' . rawurlencode($subtipoReciente);
+                ?>
+                <a
+                    class="convocatoria-recent-item <?= $indiceReciente >= 4 ? 'd-none' : '' ?>"
+                    href="<?= $texto($urlReciente) ?>"
+                    <?= $indiceReciente >= 4 ? 'data-convocatoria-recent-extra' : '' ?>>
+                    <span class="convocatoria-recent-icon convocatoria-recent-icon-<?= $texto($tipoReciente) ?>">
+                        <i class="bi <?= $texto($tipoIcono) ?>"></i>
+                    </span>
+
+                    <span class="convocatoria-recent-copy">
+                        <strong><?= $texto($convocatoriaReciente['titulo'] ?? '') ?></strong>
+                        <small>
+                            <?= $texto($tipoEtiqueta) ?>
+                            <?php if (!empty($subtipoEtiquetasRecientes[$subtipoReciente]) && $subtipoReciente !== 'sindicatos'): ?>
+                                · <?= $texto($subtipoEtiquetasRecientes[$subtipoReciente]) ?>
+                            <?php endif; ?>
+                            · <?= $texto($fechaLegible($convocatoriaReciente['fecha_termino'] ?? '')) ?>
+                        </small>
+                    </span>
+
+                    <span class="convocatoria-process-badge convocatoria-process-<?= $texto($estadoProceso) ?>">
+                        <?= $texto($estadoEtiquetas[$estadoProceso] ?? 'Inactiva') ?>
+                    </span>
+                </a>
+            <?php endforeach; ?>
+        </div>
+    <?php else: ?>
+        <div class="convocatoria-recent-empty">
+            <i class="bi bi-inbox"></i>
+            <span>No hay convocatorias recientes para mostrar.</span>
+        </div>
+    <?php endif; ?>
+</section>
+</div>
+
+<?php if (count($convocatoriasRecientes) > 4): ?>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const boton = document.querySelector('[data-convocatoria-recent-toggle]');
+    const extras = Array.from(document.querySelectorAll('[data-convocatoria-recent-extra]'));
+
+    boton?.addEventListener('click', function () {
+        const expandido = boton.getAttribute('aria-expanded') === 'true';
+
+        extras.forEach(function (elemento) {
+            elemento.classList.toggle('d-none', expandido);
+        });
+
+        boton.setAttribute('aria-expanded', expandido ? 'false' : 'true');
+        boton.innerHTML = expandido
+            ? 'Ver todas <i class="bi bi-arrow-right"></i>'
+            : 'Ver menos <i class="bi bi-arrow-up"></i>';
+    });
+});
+</script>
+<?php endif; ?>
+
 <?php return; ?>
 <?php endif; ?>
 
