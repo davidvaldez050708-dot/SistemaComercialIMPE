@@ -38,7 +38,9 @@ class SeguimientoReporteAnaliticaService
         $resumenInteracciones = $this->obtenerResumenInteracciones(
             $autorizados,
             $fechaInicial,
-            $fechaFinal
+            $fechaFinal,
+            $usuarioId,
+            $modoAcceso
         );
 
         $canales = [
@@ -54,6 +56,7 @@ class SeguimientoReporteAnaliticaService
             'numero_incorrecto' => (int)($resumenInteracciones['numero_incorrecto'] ?? 0),
             'volver_llamar' => (int)($resumenInteracciones['volver_llamar'] ?? 0),
             'otros' => (int)($resumenInteracciones['llamadas_otros'] ?? 0),
+            'verificaciones_efectivas' => (int)($resumenInteracciones['verificaciones_efectivas'] ?? 0),
             'tasa_contacto' => 0.0
         ];
 
@@ -69,6 +72,14 @@ class SeguimientoReporteAnaliticaService
         $totalConActividad = (int)($resumenInteracciones['seguimientos_con_actividad'] ?? 0);
         $atenciones = (new SeguimientoAtencionOperativaService())->obtenerPorIds($autorizados);
         $totalAtencion = count($atenciones);
+        $actividadReciente = $this->obtenerActividadReciente(
+            $autorizados,
+            $fechaInicial,
+            $fechaFinal,
+            $usuarioId,
+            $modoAcceso,
+            60
+        );
 
         return [
             'seguimientos_considerados' => $totalSeguimientos,
@@ -82,6 +93,7 @@ class SeguimientoReporteAnaliticaService
                 : 0.0,
             'canales' => $canales,
             'llamadas' => $llamadas,
+            'actividad_reciente' => $actividadReciente,
             'atencion' => [
                 'total' => $totalAtencion,
                 'porcentaje' => $totalSeguimientos > 0
@@ -171,8 +183,13 @@ class SeguimientoReporteAnaliticaService
         return array_values($autorizados);
     }
 
-    private function obtenerResumenInteracciones(array $ids, $fechaInicial, $fechaFinal)
-    {
+    private function obtenerResumenInteracciones(
+        array $ids,
+        $fechaInicial,
+        $fechaFinal,
+        $usuarioId,
+        $modoAcceso
+    ) {
         if (empty($ids)) {
             return [
                 'total_interacciones' => 0,
@@ -185,7 +202,8 @@ class SeguimientoReporteAnaliticaService
                 'sin_respuesta' => 0,
                 'numero_incorrecto' => 0,
                 'volver_llamar' => 0,
-                'llamadas_otros' => 0
+                'llamadas_otros' => 0,
+                'verificaciones_efectivas' => 0
             ];
         }
 
@@ -238,13 +256,28 @@ class SeguimientoReporteAnaliticaService
                             'SOLICITO_LLAMAR_DESPUES'
                          )
                         THEN 1 ELSE 0
-                    END) AS llamadas_otros
+                    END) AS llamadas_otros,
+                    COUNT(DISTINCT CASE
+                        WHEN UPPER(TRIM(COALESCE(canal, ''))) IN ('LLAMADA_IP', 'LLAMADA')
+                         AND notas LIKE '%[VERIFICACION_EFECTIVA]%'
+                         AND TRIM(COALESCE(proveedor_externo, '')) <> ''
+                         AND TRIM(COALESCE(id_externo, '')) <> ''
+                         AND COALESCE(duracion_segundos, 0) > 0
+                        THEN CONCAT(seguimiento_id, '|', DATE(fecha_inicio))
+                        ELSE NULL
+                    END) AS verificaciones_efectivas
                 FROM interacciones_vinculacion
                 WHERE seguimiento_id IN ($placeholders)
                   AND UPPER(TRIM(COALESCE(canal, ''))) <> 'SISTEMA'";
 
         $parametros = array_map('intval', $ids);
         $tipos = str_repeat('i', count($parametros));
+
+        if ($modoAcceso === 'analista') {
+            $sql .= " AND usuario_id = ?";
+            $parametros[] = (int)$usuarioId;
+            $tipos .= 'i';
+        }
 
         if ($fechaInicial !== '') {
             $sql .= " AND fecha_inicio >= ?";
@@ -263,6 +296,67 @@ class SeguimientoReporteAnaliticaService
         $stmt->execute();
 
         return $stmt->get_result()->fetch_assoc() ?: [];
+    }
+
+    private function obtenerActividadReciente(
+        array $ids,
+        $fechaInicial,
+        $fechaFinal,
+        $usuarioId,
+        $modoAcceso,
+        $limite = 60
+    ) {
+        if (empty($ids)) {
+            return [];
+        }
+
+        $limite = max(1, min(100, (int)$limite));
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $sql = "SELECT
+                    i.id,
+                    i.seguimiento_id,
+                    i.usuario_id,
+                    i.canal,
+                    i.resultado,
+                    i.fecha_inicio,
+                    i.notas,
+                    s.nombre_entidad,
+                    TRIM(CONCAT(COALESCE(u.nombre, ''), ' ', COALESCE(u.apellidos, ''))) AS responsable_nombre
+                FROM interacciones_vinculacion i
+                INNER JOIN seguimientos_vinculacion s
+                    ON s.id = i.seguimiento_id
+                LEFT JOIN usuarios u
+                    ON u.id = i.usuario_id
+                WHERE i.seguimiento_id IN ($placeholders)
+                  AND UPPER(TRIM(COALESCE(i.canal, ''))) <> 'SISTEMA'";
+
+        $parametros = array_map('intval', $ids);
+        $tipos = str_repeat('i', count($parametros));
+
+        if ($modoAcceso === 'analista') {
+            $sql .= " AND i.usuario_id = ?";
+            $parametros[] = (int)$usuarioId;
+            $tipos .= 'i';
+        }
+
+        if ($fechaInicial !== '') {
+            $sql .= " AND i.fecha_inicio >= ?";
+            $parametros[] = $fechaInicial . ' 00:00:00';
+            $tipos .= 's';
+        }
+
+        if ($fechaFinal !== '') {
+            $sql .= " AND i.fecha_inicio <= ?";
+            $parametros[] = $fechaFinal . ' 23:59:59';
+            $tipos .= 's';
+        }
+
+        $sql .= " ORDER BY i.fecha_inicio DESC, i.id DESC LIMIT " . $limite;
+        $stmt = $this->connection->prepare($sql);
+        $this->vincularParametros($stmt, $tipos, $parametros);
+        $stmt->execute();
+
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
 
     private function normalizarIds(array $ids)
@@ -336,8 +430,10 @@ class SeguimientoReporteAnaliticaService
                 'numero_incorrecto' => 0,
                 'volver_llamar' => 0,
                 'otros' => 0,
+                'verificaciones_efectivas' => 0,
                 'tasa_contacto' => 0.0
             ],
+            'actividad_reciente' => [],
             'atencion' => [
                 'total' => 0,
                 'porcentaje' => 0.0,
