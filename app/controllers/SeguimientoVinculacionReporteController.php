@@ -534,6 +534,30 @@ class SeguimientoVinculacionReporteController
             $modoSeguimiento
         );
 
+        if ($modoSeguimiento === 'analista') {
+            $tipoReporte = (string)($filtrosReporte['tipo_reporte'] ?? 'cartera');
+
+            if ($tipoReporte === 'actividad') {
+                $filtrosReporte['municipio_id'] = 0;
+                $filtrosReporte['institucion_id'] = 0;
+                $filtrosReporte['institucion'] = '';
+                $filtrosReporte['responsable_id'] = 0;
+                $filtrosReporte['estado_seguimiento'] = '';
+                $filtrosReporte['dias_sin_actividad'] = 0;
+            } elseif ($tipoReporte === 'institucion') {
+                $filtrosReporte['fecha_inicial'] = '';
+                $filtrosReporte['fecha_final'] = '';
+                $filtrosReporte['responsable_id'] = 0;
+                $filtrosReporte['estado_seguimiento'] = '';
+                $filtrosReporte['tipo_actividad'] = '';
+                $filtrosReporte['dias_sin_actividad'] = 0;
+            } else {
+                $filtrosReporte['fecha_inicial'] = '';
+                $filtrosReporte['fecha_final'] = '';
+                $filtrosReporte['responsable_id'] = 0;
+            }
+        }
+
         $institucionesDisponibles = $this->obtenerInstitucionesDisponibles(
             $seguimientosDisponibles
         );
@@ -550,19 +574,67 @@ class SeguimientoVinculacionReporteController
         $seguimientosActividad = [];
         $resumenReporte = $this->crearResumenReporte([]);
 
+        if (
+            $generarReporte &&
+            $errorFiltros === '' &&
+            $modoSeguimiento === 'analista' &&
+            (string)($filtrosReporte['tipo_reporte'] ?? '') === 'institucion' &&
+            (int)($filtrosReporte['institucion_id'] ?? 0) <= 0
+        ) {
+            $errorFiltros = 'Selecciona una institución para generar este reporte.';
+        }
+
         if ($generarReporte && $errorFiltros === '') {
+            $seguimientosBaseReporte = $seguimientosDisponibles;
+
+            if (
+                $modoSeguimiento === 'analista' &&
+                (string)($filtrosReporte['tipo_reporte'] ?? '') === 'actividad'
+            ) {
+                $idsAccesibles = array_values(array_filter(array_map(
+                    static function ($seguimiento) {
+                        return (int)($seguimiento['id'] ?? 0);
+                    },
+                    $seguimientosDisponibles
+                )));
+                $idsConActividad = $modelo->obtenerSeguimientoIdsConActividadPeriodo(
+                    $idsAccesibles,
+                    $usuarioId,
+                    (string)$filtrosReporte['fecha_inicial'],
+                    (string)$filtrosReporte['fecha_final'],
+                    (string)$filtrosReporte['tipo_actividad']
+                );
+                $mapaActividad = array_fill_keys($idsConActividad, true);
+                $seguimientosBaseReporte = array_values(array_filter(
+                    $seguimientosDisponibles,
+                    static function ($seguimiento) use ($mapaActividad) {
+                        return isset($mapaActividad[(int)($seguimiento['id'] ?? 0)]);
+                    }
+                ));
+            }
+
             $filtrosActividad = $filtrosReporte;
             $filtrosActividad['fecha_inicial'] = '';
             $filtrosActividad['fecha_final'] = '';
             $filtrosActividad['tipo_actividad'] = '';
             $seguimientosActividad = $this->aplicarFiltrosReporte(
-                $seguimientosDisponibles,
+                $seguimientosBaseReporte,
                 $filtrosActividad
             );
 
+            $filtrosSeguimientos = $filtrosReporte;
+            if (
+                $modoSeguimiento === 'analista' &&
+                (string)($filtrosReporte['tipo_reporte'] ?? '') === 'actividad'
+            ) {
+                $filtrosSeguimientos['fecha_inicial'] = '';
+                $filtrosSeguimientos['fecha_final'] = '';
+                $filtrosSeguimientos['tipo_actividad'] = '';
+            }
+
             $seguimientosReporte = $this->aplicarFiltrosReporte(
-                $seguimientosDisponibles,
-                $filtrosReporte
+                $seguimientosBaseReporte,
+                $filtrosSeguimientos
             );
             $seguimientosReporte = array_map(
                 [$this, 'prepararSeguimientoReporte'],
