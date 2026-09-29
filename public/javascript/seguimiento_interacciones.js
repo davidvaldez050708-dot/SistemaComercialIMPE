@@ -501,13 +501,6 @@
                 return false;
             }
 
-            if (!tieneEvidencia) {
-                mostrarToastLocal(
-                    'La llamada se guardará, pero no contará como verificación efectiva porque no se confirmó ningún dato.',
-                    false
-                );
-            }
-
             return true;
         };
 
@@ -791,11 +784,17 @@
                 formulario.reset();
                 aplicarModoRuta();
                 aplicarResultadoInteraccion();
-                mostrarToastLocal(
-                    datos.mensaje ||
-                    'Interacción registrada en el expediente sin modificar la ruta.',
-                    false
-                );
+                const origenLlamada = String(
+                    formData.get('origen_llamada') || ''
+                ).toUpperCase();
+
+                if (origenLlamada !== 'ZADARMA') {
+                    mostrarToastLocal(
+                        datos.mensaje ||
+                        'Interacción registrada en el expediente sin modificar la ruta.',
+                        false
+                    );
+                }
 
                 document.dispatchEvent(new CustomEvent('impe:interaction-informative-saved', {
                     detail: {
