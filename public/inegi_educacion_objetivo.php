@@ -10,6 +10,7 @@ require_once __DIR__ . '/../app/services/InegiEducacionPerfilDetalleService.php'
 require_once __DIR__ . '/../app/services/InegiPerfilAdultoLaboralService.php';
 require_once __DIR__ . '/../app/models/PerfilEducativoPrioritarioModel.php';
 require_once __DIR__ . '/../app/services/InegiPerfilEducativoPrioritarioAutoService.php';
+require_once __DIR__ . '/../app/models/PerfilTitulacionExperienciaEnoeModel.php';
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
@@ -96,5 +97,9 @@ $resultado['perfil_adulto'] = ($perfilAdulto['ok'] ?? false) === true
 $resultado['perfil_educativo_prioritario'] =
     (new InegiPerfilEducativoPrioritarioAutoService())
         ->obtenerOActualizar($estadoId, $claveInegi);
+
+$resultado['perfil_titulacion_experiencia'] =
+    (new PerfilTitulacionExperienciaEnoeModel())
+        ->obtenerPorEstado($claveInegi);
 
 $responder($resultado);
