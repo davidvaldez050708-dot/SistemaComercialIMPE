@@ -584,3 +584,10 @@
     background: #f5f7fa;
     color: #667085;
 }
+
+
+.linkage-call-result-badge.is-verification-test {
+    border-color: #d9dfeb;
+    background: #f7f8fa;
+    color: #697386;
+}
