@@ -1230,3 +1230,111 @@
         border-top: 1px solid #e0e6ee;
     }
 }
+
+
+/* =========================================================
+   EDUCACIÓN · RECOMENDACIONES DE OFERTA POR TERRITORIO
+   ========================================================= */
+.data-education-recommendation-list {
+    display: grid;
+    gap: 8px;
+}
+
+.data-education-recommendation-card {
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 10px;
+    padding: 10px 11px;
+    border: 1px solid #e1e7ef;
+    border-radius: 10px;
+    background: #fff;
+}
+
+.data-education-recommendation-rank {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 9px;
+    background: #eef4ff;
+    color: #243f90;
+    font-size: 11px;
+    font-weight: 850;
+}
+
+.data-education-recommendation-copy {
+    min-width: 0;
+}
+
+.data-education-recommendation-title {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px 9px;
+}
+
+.data-education-recommendation-title strong {
+    color: #172238;
+    font-size: 11px;
+    font-weight: 850;
+}
+
+.data-education-recommendation-title span {
+    padding: 3px 7px;
+    border-radius: 999px;
+    background: #f1f7f5;
+    color: #087d71;
+    font-size: 9px;
+    font-weight: 800;
+}
+
+.data-education-recommendation-copy > small {
+    display: block;
+    margin-top: 2px;
+    color: #657186;
+    font-size: 9.8px;
+}
+
+.data-education-recommendation-copy > p {
+    margin: 5px 0 0;
+    color: #748094;
+    font-size: 9.8px;
+    line-height: 1.4;
+}
+
+.data-education-recommendation-source {
+    align-self: center;
+    padding: 4px 7px;
+    border-radius: 999px;
+    background: #f8fafc;
+    color: #748094;
+    font-size: 8.8px;
+    font-weight: 750;
+    white-space: nowrap;
+}
+
+.data-education-program-caveat {
+    margin: 9px 0 0;
+    padding-top: 9px;
+    border-top: 1px solid #e7ecf2;
+    color: #748094;
+    font-size: 9.7px;
+    line-height: 1.45;
+}
+
+.data-education-program-caveat strong {
+    color: #4b596e;
+}
+
+@media (max-width: 767.98px) {
+    .data-education-recommendation-card {
+        grid-template-columns: 30px minmax(0, 1fr);
+    }
+
+    .data-education-recommendation-source {
+        grid-column: 2;
+        justify-self: start;
+    }
+}
