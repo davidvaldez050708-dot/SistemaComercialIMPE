@@ -1182,9 +1182,16 @@ class SeguimientoVinculacionController
         ];
 
         if (!$modelo->registrarInteraccionManual($seguimientoId, $usuarioId, $datosInteraccion)) {
+            $etapaError = trim((string)$modelo->obtenerUltimoErrorInteraccion());
+            $mensajeError = 'No fue posible registrar la interacción.';
+
+            if ($etapaError !== '') {
+                $mensajeError = 'No fue posible ' . $etapaError . '.';
+            }
+
             $this->responderJson([
                 'ok' => false,
-                'mensaje' => 'No fue posible registrar la interacción.'
+                'mensaje' => $mensajeError
             ], 500);
         }
 
