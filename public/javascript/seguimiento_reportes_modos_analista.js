@@ -52,7 +52,14 @@
 
         const neutralValue = function (control) {
             if (!control) return;
-            if (control.tagName === 'SELECT') {
+            if (control.matches?.('[data-report-institution-input]')) {
+                control.value = '0';
+                control.dataset.reportInstitutionId = '0';
+                if (institutionLabel) {
+                    institutionLabel.textContent = 'Seleccionar institución';
+                }
+                institutionTrigger?.classList.remove('has-selection', 'is-invalid');
+            } else if (control.tagName === 'SELECT') {
                 const preferred = Array.from(control.options).find(function (option) {
                     return option.value === '0' || option.value === '';
                 });
