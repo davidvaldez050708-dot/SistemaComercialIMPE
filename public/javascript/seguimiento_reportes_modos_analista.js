@@ -158,7 +158,10 @@
             institutionTrigger?.classList.remove('is-invalid');
         };
 
-        clearFiltersButton?.addEventListener('click', clearCurrentModeFilters);
+        clearFiltersButton?.addEventListener('click', function (event) {
+            event.preventDefault();
+            clearCurrentModeFilters();
+        });
 
         buttons.forEach(function (button) {
                 const active = button.dataset.reportMode === mode;
