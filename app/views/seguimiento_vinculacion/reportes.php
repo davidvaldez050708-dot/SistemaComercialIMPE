@@ -2350,11 +2350,119 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
             <?php endif; ?>
         </section>
     <?php else: ?>
-<section class="dashboard-panel p-0 overflow-hidden">
+        <?php if ($modoSeguimiento === 'analista' && $tipoReporteActual === 'cartera'): ?>
+        <section class="dashboard-panel p-0 overflow-hidden analyst-portfolio-detail">
             <div class="table-panel-header">
                 <div>
-                    <h3 class="panel-title mb-0">Detalle del reporte</h3>
+                    <span class="report-eyebrow">DETALLE DE CARTERA</span>
+                    <h3 class="panel-title mb-0">Seguimientos incluidos</h3>
+                    <p class="page-subtitle mb-0 mt-1">Vista operativa de la etapa, última actividad humana, inactividad y próxima acción de cada institución.</p>
                 </div>
+                <span class="analyst-portfolio-detail-count"><?= count($seguimientosReporte) ?> seguimientos</span>
+            </div>
+
+            <?php if (!empty($seguimientosReporte)): ?>
+                <div class="table-responsive">
+                    <table class="table users-table align-middle mb-0 analyst-portfolio-table">
+                        <thead>
+                            <tr>
+                                <th>Institución</th>
+                                <th>Etapa actual</th>
+                                <th>Última actividad</th>
+                                <th>Inactividad</th>
+                                <th>Próxima acción</th>
+                                <th>Atención</th>
+                                <th>Folio</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($seguimientosReporte as $seguimiento): ?>
+                                <?php
+                                $etapaCodigoCartera = strtolower((string)($seguimiento['etapa_operativa_codigo'] ?? ''));
+                                $atencionCodigoCartera = strtolower((string)($seguimiento['atencion_codigo'] ?? 'en_seguimiento'));
+                                $ultimaHumanaCartera = trim((string)($seguimiento['ultima_interaccion_humana_at'] ?? ''));
+                                $diasCartera = $seguimiento['dias_sin_actividad'] ?? null;
+                                $proximaAtCartera = trim((string)($seguimiento['proxima_accion_at'] ?? ''));
+                                $proximaLabelCartera = trim((string)($seguimiento['proxima_accion_label'] ?? ''));
+                                $esCerradoCartera = in_array(
+                                    (string)($seguimiento['atencion_codigo'] ?? ''),
+                                    ['FORMALIZADO', 'DESCARTADO'],
+                                    true
+                                );
+                                ?>
+                                <tr>
+                                    <td>
+                                        <strong class="analyst-portfolio-institution-name"><?= $texto($seguimiento['nombre_entidad'] ?? '—') ?></strong>
+                                        <span class="analyst-portfolio-location">
+                                            <?= $texto(trim((string)($seguimiento['municipio'] ?? '')) !== ''
+                                                ? $seguimiento['municipio'] . ', ' . ($seguimiento['estado_nombre'] ?? '')
+                                                : ($seguimiento['estado_nombre'] ?? 'Ubicación no disponible')) ?>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="analyst-portfolio-stage-pill is-<?= $texto($etapaCodigoCartera) ?>">
+                                            <?= $texto($seguimiento['etapa_operativa_label'] ?? $seguimiento['estado_label'] ?? 'Sin etapa') ?>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <?php if ($ultimaHumanaCartera !== ''): ?>
+                                            <strong class="analyst-portfolio-date"><?= $texto($seguimiento['ultima_actividad_label'] ?? '—') ?></strong>
+                                            <span class="analyst-portfolio-subtext"><?= $texto($seguimiento['canal_label'] ?? 'Interacción') ?></span>
+                                        <?php else: ?>
+                                            <strong class="analyst-portfolio-date">Sin actividad registrada</strong>
+                                            <span class="analyst-portfolio-subtext">No existen interacciones humanas</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td>
+                                        <?php if ($diasCartera === null): ?>
+                                            <span class="analyst-portfolio-inactivity is-empty">Sin actividad</span>
+                                        <?php elseif ((int)$diasCartera > 7): ?>
+                                            <span class="analyst-portfolio-inactivity is-late"><?= (int)$diasCartera ?> días</span>
+                                        <?php else: ?>
+                                            <span class="analyst-portfolio-inactivity"><?= (int)$diasCartera ?> días</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td>
+                                        <?php if ($esCerradoCartera): ?>
+                                            <strong class="analyst-portfolio-next-action">
+                                                <?= (string)($seguimiento['atencion_codigo'] ?? '') === 'FORMALIZADO'
+                                                    ? 'Ruta concluida'
+                                                    : 'Sin acciones pendientes' ?>
+                                            </strong>
+                                        <?php elseif ($proximaLabelCartera !== '' && $proximaLabelCartera !== '—'): ?>
+                                            <strong class="analyst-portfolio-next-action"><?= $texto($proximaLabelCartera) ?></strong>
+                                            <?php if ($proximaAtCartera !== ''): ?>
+                                                <span class="analyst-portfolio-subtext"><?= $texto($fechaHoraReporte($proximaAtCartera)) ?></span>
+                                            <?php endif; ?>
+                                        <?php else: ?>
+                                            <strong class="analyst-portfolio-next-action">Sin acción programada</strong>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td>
+                                        <span class="analyst-portfolio-attention-pill is-<?= $texto($atencionCodigoCartera) ?>">
+                                            <?= $texto($seguimiento['atencion_label'] ?? 'En seguimiento') ?>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="analyst-portfolio-folio"><?= $texto(trim((string)($seguimiento['folio'] ?? '')) !== '' ? $seguimiento['folio'] : '—') ?></span>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php else: ?>
+                <div class="data-empty-state py-5">
+                    <span><i class="bi bi-search"></i></span>
+                    <strong>No se encontraron seguimientos con los criterios seleccionados.</strong>
+                    <p class="mb-0">Modifica los filtros y vuelve a generar el reporte.</p>
+                </div>
+            <?php endif; ?>
+        </section>
+        <?php else: ?>
+        <section class="dashboard-panel p-0 overflow-hidden">
+            <div class="table-panel-header">
+                <div><h3 class="panel-title mb-0">Detalle del reporte</h3></div>
             </div>
 
             <?php if (!empty($seguimientosReporte)): ?>
@@ -2362,15 +2470,8 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                     <table class="table users-table align-middle mb-0">
                         <thead>
                             <tr>
-                                <th>Institución</th>
-                                <th>Estado</th>
-                                <th>Municipio</th>
-                                <th>Responsable</th>
-                                <th>Última actividad</th>
-                                <th>Estatus</th>
-                                <th>Días sin actividad</th>
-                                <th>Próxima acción</th>
-                                <th>Folio</th>
+                                <th>Institución</th><th>Estado</th><th>Municipio</th><th>Responsable</th>
+                                <th>Última actividad</th><th>Estatus</th><th>Días sin actividad</th><th>Próxima acción</th><th>Folio</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -2380,21 +2481,11 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                                     <td><?= $texto($seguimiento['estado_nombre'] ?? '—') ?></td>
                                     <td><?= $texto(trim((string)($seguimiento['municipio'] ?? '')) !== '' ? $seguimiento['municipio'] : '—') ?></td>
                                     <td><?= $texto($seguimiento['responsable_nombre'] ?? '—') ?></td>
-                                    <td>
-                                        <?= trim((string)($seguimiento['ultima_interaccion_at'] ?? '')) !== ''
-                                            ? $texto($seguimiento['ultima_actividad_label'] ?? '—')
-                                            : 'Sin actividad registrada' ?>
-                                    </td>
-                                    <td>
-                                        <span class="status-pill status-pill-active">
-                                            <?= $texto($seguimiento['estado_label'] ?? 'Sin estado') ?>
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <?= $seguimiento['dias_sin_actividad'] === null
-                                            ? '—'
-                                            : (int)$seguimiento['dias_sin_actividad'] ?>
-                                    </td>
+                                    <td><?= trim((string)($seguimiento['ultima_interaccion_at'] ?? '')) !== ''
+                                        ? $texto($seguimiento['ultima_actividad_label'] ?? '—')
+                                        : 'Sin actividad registrada' ?></td>
+                                    <td><span class="status-pill status-pill-active"><?= $texto($seguimiento['estado_label'] ?? 'Sin estado') ?></span></td>
+                                    <td><?= $seguimiento['dias_sin_actividad'] === null ? '—' : (int)$seguimiento['dias_sin_actividad'] ?></td>
                                     <td><?= $texto($seguimiento['proxima_accion_label'] ?? '—') ?></td>
                                     <td><?= $texto(trim((string)($seguimiento['folio'] ?? '')) !== '' ? $seguimiento['folio'] : '—') ?></td>
                                 </tr>
@@ -2410,6 +2501,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                 </div>
             <?php endif; ?>
         </section>
+        <?php endif; ?>
     </section>
     <?php endif; ?>
 
