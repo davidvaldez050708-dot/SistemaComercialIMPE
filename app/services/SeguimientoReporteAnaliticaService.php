@@ -13,8 +13,14 @@ class SeguimientoReporteAnaliticaService
         $this->connection = $database->connect();
     }
 
-    public function construir(array $seguimientoIds, $usuarioId, $modoAcceso, $fechaInicial = '', $fechaFinal = '')
-    {
+    public function construir(
+        array $seguimientoIds,
+        $usuarioId,
+        $modoAcceso,
+        $fechaInicial = '',
+        $fechaFinal = '',
+        $canal = ''
+    ) {
         $seguimientoIds = $this->normalizarIds($seguimientoIds);
         $usuarioId = (int)$usuarioId;
         $modoAcceso = (string)$modoAcceso;
@@ -35,12 +41,14 @@ class SeguimientoReporteAnaliticaService
 
         $fechaInicial = $this->normalizarFecha($fechaInicial);
         $fechaFinal = $this->normalizarFecha($fechaFinal);
+        $canal = strtoupper(trim((string)$canal));
         $resumenInteracciones = $this->obtenerResumenInteracciones(
             $autorizados,
             $fechaInicial,
             $fechaFinal,
             $usuarioId,
-            $modoAcceso
+            $modoAcceso,
+            $canal
         );
 
         $canales = [
@@ -78,6 +86,7 @@ class SeguimientoReporteAnaliticaService
             $fechaFinal,
             $usuarioId,
             $modoAcceso,
+            $canal,
             60
         );
 
@@ -115,7 +124,8 @@ class SeguimientoReporteAnaliticaService
             ],
             'periodo' => [
                 'fecha_inicial' => $fechaInicial,
-                'fecha_final' => $fechaFinal
+                'fecha_final' => $fechaFinal,
+                'canal' => $canal
             ]
         ];
     }
@@ -188,7 +198,8 @@ class SeguimientoReporteAnaliticaService
         $fechaInicial,
         $fechaFinal,
         $usuarioId,
-        $modoAcceso
+        $modoAcceso,
+        $canal
     ) {
         if (empty($ids)) {
             return [
@@ -301,6 +312,8 @@ class SeguimientoReporteAnaliticaService
             $tipos .= 's';
         }
 
+        $this->agregarFiltroCanal($sql, $tipos, $parametros, $canal);
+
         $stmt = $this->connection->prepare($sql);
         $this->vincularParametros($stmt, $tipos, $parametros);
         $stmt->execute();
@@ -314,6 +327,7 @@ class SeguimientoReporteAnaliticaService
         $fechaFinal,
         $usuarioId,
         $modoAcceso,
+        $canal,
         $limite = 60
     ) {
         if (empty($ids)) {
@@ -361,12 +375,43 @@ class SeguimientoReporteAnaliticaService
             $tipos .= 's';
         }
 
+        $this->agregarFiltroCanal($sql, $tipos, $parametros, $canal, 'i.');
+
         $sql .= " ORDER BY i.fecha_inicio DESC, i.id DESC LIMIT " . $limite;
         $stmt = $this->connection->prepare($sql);
         $this->vincularParametros($stmt, $tipos, $parametros);
         $stmt->execute();
 
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+    private function agregarFiltroCanal(
+        string &$sql,
+        string &$tipos,
+        array &$parametros,
+        $canal,
+        $prefijo = ''
+    ) {
+        $canal = strtoupper(trim((string)$canal));
+        if ($canal === '') {
+            return;
+        }
+
+        $campo = $prefijo . 'canal';
+
+        if (in_array($canal, ['LLAMADA', 'LLAMADA_IP'], true)) {
+            $sql .= " AND UPPER(TRIM(COALESCE(" . $campo . ", ''))) IN ('LLAMADA', 'LLAMADA_IP')";
+            return;
+        }
+
+        if ($canal === 'NOTA') {
+            $sql .= " AND UPPER(TRIM(COALESCE(" . $campo . ", ''))) NOT IN ('SISTEMA', 'LLAMADA', 'LLAMADA_IP', 'CORREO', 'WHATSAPP')";
+            return;
+        }
+
+        $sql .= " AND UPPER(TRIM(COALESCE(" . $campo . ", ''))) = ?";
+        $parametros[] = $canal;
+        $tipos .= 's';
     }
 
     private function normalizarIds(array $ids)
@@ -451,7 +496,8 @@ class SeguimientoReporteAnaliticaService
             ],
             'periodo' => [
                 'fecha_inicial' => '',
-                'fecha_final' => ''
+                'fecha_final' => '',
+                'canal' => ''
             ]
         ];
     }
