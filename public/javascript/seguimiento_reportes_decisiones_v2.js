@@ -824,6 +824,13 @@
         }
 
         root.setAttribute('data-decision-report-v2', '');
+
+        if (root.hasAttribute('data-analyst-report-output')) {
+            ocultarFiltrosTrasGenerar();
+            configurarEditarFiltros(root);
+            return;
+        }
+
         ocultarFiltrosTrasGenerar();
         compactarEncabezado(root);
         compactarResumen(root);
