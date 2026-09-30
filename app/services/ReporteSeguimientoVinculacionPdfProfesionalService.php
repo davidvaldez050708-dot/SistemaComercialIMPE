@@ -404,12 +404,12 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
             return '';
         }
 
-        $html = '<section class="report-section history-section">' . $this->titulo('Historial reciente de contacto');
+        $html = '<section class="report-section keep history-section">' . $this->titulo('Interacciones recientes');
         $html .= '<table class="data-table history-table"><thead><tr>';
-        $html .= '<th>Fecha</th><th>Canal</th><th>Resultado</th><th>Registro</th><th>Responsable</th>';
+        $html .= '<th>Fecha</th><th>Interacción</th><th>Resultado</th><th>Resumen</th><th>Responsable</th>';
         $html .= '</tr></thead><tbody>';
 
-        foreach ($interacciones as $interaccion) {
+        foreach (array_slice($interacciones, 0, 6) as $interaccion) {
             $responsable = trim(
                 (string)($interaccion['nombre'] ?? '') . ' ' .
                 (string)($interaccion['apellidos'] ?? '')
@@ -487,73 +487,131 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
     {
         $reuniones = is_array($detalle['reuniones'] ?? null) ? $detalle['reuniones'] : [];
         $post = is_array($detalle['post_envio'] ?? null) ? $detalle['post_envio'] : [];
+        $reunion = $reuniones[0] ?? [];
 
-        if (empty($reuniones) && trim((string)($post['reunion_fecha'] ?? '')) === '') {
+        if (empty($reunion) && trim((string)($post['reunion_fecha'] ?? '')) === '') {
             return '';
         }
 
-        $html = '<section class="report-section">' . $this->titulo('Reuniones y acuerdos');
-        $html .= '<table class="data-table"><thead><tr><th>Fecha</th><th>Modalidad</th><th>Estado / resultado</th><th>Objetivo o acuerdo</th><th>Cuenta Clave</th></tr></thead><tbody>';
+        $fechaReunion = trim((string)($reunion['fecha_propuesta'] ?? $post['reunion_fecha'] ?? ''));
+        $modalidad = $this->modalidadLabel((string)($reunion['modalidad'] ?? $post['reunion_modalidad'] ?? ''));
+        $cuentaClave = trim((string)($reunion['cuenta_clave_nombre'] ?? ''));
+        $objetivo = trim((string)($reunion['objetivo'] ?? ''));
+        $resultadoCodigo = trim((string)(
+            $reunion['reunion_resultado']
+                ?? $post['reunion_resultado']
+                ?? ''
+        ));
+        $resultado = $this->resultadoReunionLabel($resultadoCodigo);
+        $resultadoAt = trim((string)(
+            $reunion['realizada_at']
+                ?? $post['reunion_realizada_at']
+                ?? ''
+        ));
+        $acuerdos = trim((string)(
+            $reunion['reunion_resultado_notas']
+                ?? $post['reunion_resultado_notas']
+                ?? $reunion['notas_kam']
+                ?? $reunion['notas_analista']
+                ?? ''
+        ));
 
-        if (!empty($reuniones)) {
-            foreach (array_slice($reuniones, 0, 4) as $reunion) {
-                $notas = trim((string)($reunion['objetivo'] ?? ''));
-                if ($notas === '') {
-                    $notas = trim((string)($reunion['notas_kam'] ?? $reunion['notas_analista'] ?? ''));
-                }
-                $html .= '<tr><td>' . $this->e($this->fechaDato((string)($reunion['fecha_propuesta'] ?? ''))) . '</td>';
-                $html .= '<td>' . $this->e($this->modalidadLabel((string)($reunion['modalidad'] ?? ''))) . '</td>';
-                $html .= '<td>' . $this->e($this->estadoReunionLabel((string)($reunion['estado'] ?? ''))) . '</td>';
-                $html .= '<td>' . $this->e($this->resumirTexto($notas, 125)) . '</td>';
-                $html .= '<td>' . $this->e(trim((string)($reunion['cuenta_clave_nombre'] ?? '')) ?: '—') . '</td></tr>';
-            }
-        } else {
-            $resultado = trim((string)($post['reunion_resultado'] ?? ''));
-            $detalleResultado = trim((string)($post['reunion_resultado_notas'] ?? $post['reunion_notas'] ?? ''));
-            $html .= '<tr><td>' . $this->e($this->fechaDato((string)($post['reunion_fecha'] ?? ''))) . '</td>';
-            $html .= '<td>' . $this->e($this->modalidadLabel((string)($post['reunion_modalidad'] ?? ''))) . '</td>';
-            $html .= '<td>' . $this->e($this->resultadoReunionLabel($resultado)) . '</td>';
-            $html .= '<td>' . $this->e($this->resumirTexto($detalleResultado, 125)) . '</td><td>—</td></tr>';
+        $html = '<section class="report-section keep meeting-executive">' . $this->titulo('Reunión y acuerdos');
+        $html .= '<table class="meeting-grid"><tr>';
+        $html .= '<td><span>Reunión</span><strong>' . $this->e($this->fechaDato($fechaReunion)) . '</strong><small>' .
+            $this->e($modalidad) . ($cuentaClave !== '' ? ' · Cuenta Clave: ' . $cuentaClave : '') . '</small></td>';
+        $html .= '<td><span>Resultado</span><strong>' . $this->e($resultado !== '—' ? $resultado : 'Sin resultado registrado') . '</strong>';
+        if ($resultadoAt !== '') {
+            $html .= '<small>Resultado registrado: ' . $this->e($this->fechaDato($resultadoAt)) . '</small>';
+        }
+        $html .= '</td></tr></table>';
+
+        if ($objetivo !== '') {
+            $html .= '<div class="meeting-note"><span>Objetivo</span><p>' .
+                $this->e($this->resumirTexto($objetivo, 180)) . '</p></div>';
+        }
+        if ($acuerdos !== '') {
+            $html .= '<div class="meeting-note key"><span>Acuerdo principal</span><p>' .
+                $this->e($this->resumirTexto($acuerdos, 260)) . '</p></div>';
         }
 
-        return $html . '</tbody></table></section>';
+        return $html . '</section>';
     }
 
     private function documentacionIndividual(array $detalle): string
     {
         $oficios = is_array($detalle['oficios'] ?? null) ? $detalle['oficios'] : [];
-        $correos = is_array($detalle['correos_recientes'] ?? null) ? $detalle['correos_recientes'] : [];
+        $correosRaw = is_array($detalle['correos_recientes'] ?? null) ? $detalle['correos_recientes'] : [];
         $post = is_array($detalle['post_envio'] ?? null) ? $detalle['post_envio'] : [];
 
+        $correos = array_values(array_filter($correosRaw, static function ($correo): bool {
+            if (!is_array($correo)) {
+                return false;
+            }
+            $presentacion = is_array($correo['presentacion'] ?? null)
+                ? $correo['presentacion']
+                : [];
+            $titulo = mb_strtolower(trim((string)($presentacion['titulo'] ?? '')), 'UTF-8');
+            $resultado = strtoupper(trim((string)($correo['resultado'] ?? '')));
+
+            if ($resultado === 'CORREO_ENVIADO') {
+                return true;
+            }
+
+            foreach ([
+                'correo institucional enviado',
+                'correo de seguimiento enviado',
+                'documentación de convenio enviada',
+                'confirmación de reunión enviada',
+                'correcciones de convenio enviadas',
+                'oficio y correo enviados'
+            ] as $permitido) {
+                if ($titulo === $permitido) {
+                    return true;
+                }
+            }
+
+            return false;
+        }));
+
         $hayPost = trim((string)($post['respuesta_at'] ?? '')) !== '' ||
-            trim((string)($post['seguimiento_correo_at'] ?? '')) !== '' ||
             trim((string)($post['convenio_formalizado_at'] ?? '')) !== '';
 
         if (empty($oficios) && empty($correos) && !$hayPost) {
             return '';
         }
 
-        $html = '<section class="report-section keep documentation-section">' . $this->titulo('Documentación y avance formal');
+        $html = '<section class="report-section keep documentation-executive">' . $this->titulo('Comunicación formal y avance');
 
-        if (!empty($oficios)) {
-            $html .= '<table class="data-table docs-table"><thead><tr><th>Documento</th><th>Destinatario</th><th>Estado</th><th>Generado</th><th>Enviado</th></tr></thead><tbody>';
-            foreach (array_slice($oficios, 0, 3) as $oficio) {
-                $destinatario = trim((string)($oficio['destinatario_nombre'] ?? ''));
-                $cargo = trim((string)($oficio['destinatario_cargo'] ?? ''));
-                if ($cargo !== '') {
-                    $destinatario .= ($destinatario !== '' ? ' · ' : '') . $cargo;
-                }
-                $html .= '<tr><td><strong>' . $this->e(trim((string)($oficio['folio'] ?? 'Oficio'))) . '</strong></td>';
-                $html .= '<td>' . $this->e($destinatario !== '' ? $destinatario : '—') . '</td>';
-                $html .= '<td>' . $this->e($this->estadoOficioLabel((string)($oficio['estado_oficio'] ?? ''))) . '</td>';
-                $html .= '<td>' . $this->e($this->fechaDato((string)($oficio['fecha_generacion'] ?? ''))) . '</td>';
-                $html .= '<td>' . $this->e($this->fechaDato((string)($oficio['fecha_envio'] ?? ''))) . '</td></tr>';
+        $oficio = $oficios[0] ?? [];
+        if (!empty($oficio)) {
+            $destinatario = trim((string)($oficio['destinatario_nombre'] ?? ''));
+            $cargo = trim((string)($oficio['destinatario_cargo'] ?? ''));
+            if ($cargo !== '') {
+                $destinatario .= ($destinatario !== '' ? ' · ' : '') . $cargo;
             }
-            $html .= '</tbody></table>';
+            $html .= '<table class="document-summary"><tr>';
+            $html .= '<td><span>Oficio</span><strong>' . $this->e(trim((string)($oficio['folio'] ?? 'Oficio'))) . '</strong><small>' .
+                $this->e($this->estadoOficioLabel((string)($oficio['estado_oficio'] ?? ''))) . ' · enviado ' .
+                $this->e($this->fechaDato((string)($oficio['fecha_envio'] ?? ''))) . '</small></td>';
+            $html .= '<td><span>Destinatario</span><strong>' . $this->e($destinatario !== '' ? $destinatario : '—') . '</strong></td>';
+            $html .= '</tr></table>';
+        }
+
+        if (trim((string)($post['respuesta_at'] ?? '')) !== '') {
+            $respuesta = $this->respuestaTipoLabel((string)($post['respuesta_tipo'] ?? ''));
+            $detalleRespuesta = trim((string)($post['respuesta_texto'] ?? ''));
+            $html .= '<div class="formal-answer"><span>Respuesta de la institución</span><strong>' .
+                $this->e($respuesta !== '' ? $respuesta : 'Respuesta registrada') . '</strong><small>' .
+                $this->e($this->fechaDato((string)$post['respuesta_at'])) . '</small>';
+            if ($detalleRespuesta !== '') {
+                $html .= '<p>' . $this->e($this->resumirTexto($detalleRespuesta, 190)) . '</p>';
+            }
+            $html .= '</div>';
         }
 
         if (!empty($correos)) {
-            $html .= '<table class="data-table docs-table"><thead><tr><th>Correo enviado</th><th>Fecha</th><th>Responsable</th></tr></thead><tbody>';
+            $html .= '<div class="email-block"><span class="email-title">Correos enviados recientes</span>';
             foreach (array_slice($correos, 0, 3) as $correo) {
                 $presentacion = is_array($correo['presentacion'] ?? null)
                     ? $correo['presentacion']
@@ -565,42 +623,32 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
                 if ($resumen === '') {
                     $resumen = 'Correo enviado';
                 }
-                $responsable = trim(
-                    (string)($correo['nombre'] ?? '') . ' ' .
-                    (string)($correo['apellidos'] ?? '')
-                );
-                $html .= '<tr><td>' . $this->e($this->resumirTexto($resumen, 120)) . '</td>';
-                $html .= '<td>' . $this->e($this->fechaDato((string)($correo['fecha_inicio'] ?? ''))) . '</td>';
-                $html .= '<td>' . $this->e($responsable !== '' ? $responsable : '—') . '</td></tr>';
+                $html .= '<div class="email-row"><span>' .
+                    $this->e($this->fechaDato((string)($correo['fecha_inicio'] ?? ''))) .
+                    '</span><strong>' . $this->e($this->resumirTexto($resumen, 100)) . '</strong></div>';
             }
-            $html .= '</tbody></table>';
+            $html .= '</div>';
         }
 
         $timeline = [];
         if (trim((string)($post['respuesta_at'] ?? '')) !== '') {
             $timeline[] = ['Respuesta recibida', $this->fechaDato((string)$post['respuesta_at']), $this->respuestaTipoLabel((string)($post['respuesta_tipo'] ?? ''))];
         }
-        if (empty($correos) && trim((string)($post['seguimiento_correo_at'] ?? '')) !== '') {
-            $timeline[] = ['Seguimiento por correo', $this->fechaDato((string)$post['seguimiento_correo_at']), 'Correo de seguimiento registrado'];
-        }
         if (trim((string)($post['reunion_realizada_at'] ?? '')) !== '') {
-            $timeline[] = ['Reunión realizada', $this->fechaDato((string)$post['reunion_realizada_at']), $this->resultadoReunionLabel((string)($post['reunion_resultado'] ?? ''))];
+            $timeline[] = ['Resultado de reunión', $this->fechaDato((string)$post['reunion_realizada_at']), $this->resultadoReunionLabel((string)($post['reunion_resultado'] ?? ''))];
         }
         if (trim((string)($post['convenio_formalizado_at'] ?? '')) !== '') {
-            $detalleConvenio = trim((string)($post['convenio_referencia'] ?? ''));
-            if (trim((string)($post['convenio_fecha'] ?? '')) !== '') {
-                $detalleConvenio .= ($detalleConvenio !== '' ? ' · ' : '') . $this->fechaSoloDia((string)$post['convenio_fecha']);
-            }
-            $timeline[] = ['Convenio formalizado', $this->fechaDato((string)$post['convenio_formalizado_at']), $detalleConvenio];
+            $timeline[] = ['Convenio formalizado', $this->fechaDato((string)$post['convenio_formalizado_at']), 'Formalización concluida'];
         }
 
         if (!empty($timeline)) {
-            $html .= '<table class="formal-timeline">';
+            $html .= '<div class="milestone-line">';
             foreach ($timeline as $evento) {
-                $html .= '<tr><td class="formal-dot">●</td><td><strong>' . $this->e($evento[0]) . '</strong>';
-                $html .= '<span>' . $this->e($evento[1]) . ($evento[2] !== '' ? ' · ' . $evento[2] : '') . '</span></td></tr>';
+                $html .= '<div class="milestone-item"><span class="formal-dot">●</span><div><strong>' .
+                    $this->e($evento[0]) . '</strong><small>' . $this->e($evento[1]) .
+                    ($evento[2] !== '' ? ' · ' . $this->e($evento[2]) : '') . '</small></div></div>';
             }
-            $html .= '</table>';
+            $html .= '</div>';
         }
 
         return $html . '</section>';
