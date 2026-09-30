@@ -67,6 +67,7 @@
         const etiquetaDesde = formulario.querySelector('label[for="reporte_fecha_inicial"]');
         const etiquetaHasta = formulario.querySelector('label[for="reporte_fecha_final"]');
         const etiquetaCanal = formulario.querySelector('label[for="reporte_actividad"]');
+        const etiquetaEstatus = formulario.querySelector('label[for="reporte_estatus"]');
         const ayudaCompacta = formulario.querySelector('[data-report-help-compact] span');
 
         if (tipoReporte === 'actividad') {
@@ -83,9 +84,15 @@
         if (etiquetaDesde) etiquetaDesde.textContent = 'Fecha inicial';
         if (etiquetaHasta) etiquetaHasta.textContent = 'Fecha final';
         if (etiquetaCanal) etiquetaCanal.textContent = 'Último canal de contacto';
+        if (etiquetaEstatus) {
+            etiquetaEstatus.textContent = tipoReporte === 'cartera'
+                ? 'Etapa actual'
+                : 'Etapa / Estatus';
+        }
         if (ayudaCompacta) {
-            ayudaCompacta.textContent =
-                'Los filtros se aplican sobre el estado actual de los seguimientos y su última interacción registrada.';
+            ayudaCompacta.textContent = tipoReporte === 'cartera'
+                ? 'Los filtros se aplican sobre el estado actual de la cartera y la última interacción humana registrada; los eventos automáticos no se cuentan.'
+                : 'Los filtros se aplican sobre el estado actual de los seguimientos y su última interacción registrada.';
         }
     }
 
