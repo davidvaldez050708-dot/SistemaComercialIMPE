@@ -1151,8 +1151,11 @@
     padding-right: 34px;
     background-position: right .85rem center;
     background-size: 12px 9px;
-    font-size: 11px;
-    font-weight: 650;
+    font-family: inherit;
+    font-size: inherit;
+    font-weight: 400;
+    line-height: 1.5;
+    color: var(--color-text-primary);
 }
 
 .report-institution-picker-search .form-control {
