@@ -105,6 +105,7 @@
         const responsable = formulario.querySelector('#reporte_responsable');
         const estatus = formulario.querySelector('#reporte_estatus');
         const canal = formulario.querySelector('#reporte_actividad');
+        const tipoReporteInput = formulario.querySelector('[data-report-type-input]');
         const parametrosIniciales = new URLSearchParams(window.location.search);
         let institucionLegacy = parametrosIniciales.get('institucion') || '';
         let institucionInicial = parametrosIniciales.get('institucion_id') || '0';
@@ -150,6 +151,7 @@
             url.search = '';
             url.searchParams.set('controller', 'seguimientoVinculacionReporte');
             url.searchParams.set('action', 'opcionesFiltros');
+            url.searchParams.set('tipo_reporte', String(tipoReporteInput?.value || 'cartera'));
             url.searchParams.set('estado_id', valor(estado, '0'));
             url.searchParams.set('municipio_id', valor(municipio, '0'));
 
