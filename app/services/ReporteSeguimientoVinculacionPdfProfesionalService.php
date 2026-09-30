@@ -673,7 +673,7 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
             return '';
         }
 
-        $html = '<section class="report-section observations-section">' . $this->titulo('Observaciones recientes');
+        $html = '<section class="report-section keep observations-section">' . $this->titulo('Observaciones recientes');
         foreach (array_slice($observaciones, 0, 3) as $observacion) {
             $autor = trim(
                 (string)($observacion['nombre'] ?? '') . ' ' .
