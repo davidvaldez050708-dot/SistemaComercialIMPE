@@ -400,20 +400,22 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
 
     private function historialIndividual(array $detalle): string
     {
-        $interacciones = is_array($detalle['interacciones_recientes'] ?? null)
-            ? $detalle['interacciones_recientes']
-            : [];
+        $interacciones = is_array($detalle['interacciones_todas'] ?? null)
+            ? $detalle['interacciones_todas']
+            : (is_array($detalle['interacciones_recientes'] ?? null)
+                ? $detalle['interacciones_recientes']
+                : []);
 
         if (empty($interacciones)) {
             return '';
         }
 
-        $html = '<section class="report-section keep history-section">' . $this->titulo('Interacciones recientes');
+        $html = '<section class="report-section history-section">' . $this->titulo('Interacciones del expediente');
         $html .= '<table class="data-table history-table"><thead><tr>';
         $html .= '<th>Fecha</th><th>Interacción</th><th>Resultado</th><th>Resumen</th><th>Responsable</th>';
         $html .= '</tr></thead><tbody>';
 
-        foreach (array_slice($interacciones, 0, 5) as $interaccion) {
+        foreach ($interacciones as $interaccion) {
             $responsable = trim(
                 (string)($interaccion['nombre'] ?? '') . ' ' .
                 (string)($interaccion['apellidos'] ?? '')
@@ -634,43 +636,12 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
     private function documentacionIndividual(array $detalle): string
     {
         $oficios = is_array($detalle['oficios'] ?? null) ? $detalle['oficios'] : [];
-        $correosRaw = is_array($detalle['correos_recientes'] ?? null) ? $detalle['correos_recientes'] : [];
+        $correos = is_array($detalle['correos_todos'] ?? null)
+            ? $detalle['correos_todos']
+            : (is_array($detalle['correos_recientes'] ?? null) ? $detalle['correos_recientes'] : []);
         $post = is_array($detalle['post_envio'] ?? null) ? $detalle['post_envio'] : [];
 
-        $correos = array_values(array_filter($correosRaw, static function ($correo): bool {
-            if (!is_array($correo)) {
-                return false;
-            }
-            $presentacion = is_array($correo['presentacion'] ?? null)
-                ? $correo['presentacion']
-                : [];
-            $titulo = mb_strtolower(trim((string)($presentacion['titulo'] ?? '')), 'UTF-8');
-            $resultado = strtoupper(trim((string)($correo['resultado'] ?? '')));
-
-            $notas = mb_strtolower(trim((string)($correo['notas'] ?? '')), 'UTF-8');
-            if (
-                strpos($notas, 'persona atendió:') === 0 ||
-                strpos($notas, 'persona atendio:') === 0 ||
-                strpos($notas, 'respuesta recibida') === 0
-            ) {
-                return false;
-            }
-
-            foreach ([
-                'correo institucional enviado',
-                'correo de seguimiento enviado',
-                'documentación de convenio enviada',
-                'confirmación de reunión enviada',
-                'correcciones de convenio enviadas',
-                'oficio y correo enviados'
-            ] as $permitido) {
-                if ($titulo === $permitido) {
-                    return true;
-                }
-            }
-
-            return $resultado === 'CORREO_ENVIADO' && $titulo === 'correo';
-        }));
+  }));
 
         $hayPost = trim((string)($post['respuesta_at'] ?? '')) !== '' ||
             trim((string)($post['convenio_formalizado_at'] ?? '')) !== '';
@@ -709,21 +680,30 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
         }
 
         if (!empty($correos)) {
-            $html .= '<div class="email-block"><span class="email-title">Correos enviados recientes</span>';
-            foreach (array_slice($correos, 0, 3) as $correo) {
+            $html .= '<div class="email-block"><span class="email-title">Actividad por correo</span>';
+            foreach ($correos as $correo) {
                 $presentacion = is_array($correo['presentacion'] ?? null)
                     ? $correo['presentacion']
                     : [];
+                $tituloCorreo = trim((string)($presentacion['titulo'] ?? ''));
                 $resumen = trim((string)($presentacion['resumen'] ?? ''));
                 if (stripos($resumen, 'Asunto: ') === 0) {
                     $resumen = trim(substr($resumen, 8));
                 }
-                if ($resumen === '') {
-                    $resumen = 'Correo enviado';
+                if ($tituloCorreo === '') {
+                    $tituloCorreo = 'Correo';
                 }
+                if ($resumen === '') {
+                    $resumen = $this->resultadoLabel((string)($correo['resultado'] ?? ''));
+                }
+
                 $html .= '<div class="email-row"><span>' .
                     $this->e($this->fechaDato((string)($correo['fecha_inicio'] ?? ''))) .
-                    '</span><strong>' . $this->e($this->resumirTexto($resumen, 100)) . '</strong></div>';
+                    '</span><div><strong>' . $this->e($tituloCorreo) . '</strong>';
+                if ($resumen !== '' && strcasecmp($resumen, $tituloCorreo) !== 0) {
+                    $html .= '<small>' . $this->e($this->resumirTexto($resumen, 130)) . '</small>';
+                }
+                $html .= '</div></div>';
             }
             $html .= '</div>';
         }
@@ -1302,8 +1282,8 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
             '.individual-page-two{padding-top:1px}.continuation-head{border-bottom:2px solid #273A8A;padding:0 0 7px;margin:0 0 10px;page-break-after:avoid}.continuation-head span{display:block;color:#6D7480;font-size:6.1pt;margin-bottom:2px}.continuation-head strong{display:block;color:#16223B;font-size:11pt;font-weight:800}' .
             '.executive-metrics{width:100%;table-layout:fixed;border-collapse:separate;border-spacing:4px 0}.executive-metrics td{width:20%;border:1px solid #D7DFEA;background:#F8FAFC;padding:7px 8px}.executive-metrics span{display:block;color:#6D7480;font-size:5.7pt;margin-bottom:2px}.executive-metrics strong{display:block;color:#16223B;font-size:9.2pt;font-weight:800}.decision-note{margin-top:5px;padding:6px 8px;background:#F8FAFC;border-left:2px solid #273A8A;color:#4F5968;font-size:6pt}' .
             '.route-summary{width:100%;border-collapse:collapse;margin-bottom:4px}.route-summary td{vertical-align:bottom}.route-summary span{display:block;color:#6D7480;font-size:5.6pt}.route-summary strong{display:block;color:#16223B;font-size:7.2pt}.route-summary .route-percent{text-align:right;color:#273A8A;font-size:11.5pt;font-weight:800}.route-executive{width:100%;table-layout:fixed;border-collapse:separate;border-spacing:4px 0;margin-top:6px}.route-executive td{width:20%;padding:6px;border:1px solid #D7DFEA;vertical-align:top}.route-executive .route-check{display:block;width:16px;height:16px;margin:0 auto 3px;border-radius:50%;background:#E7ECF3;color:#6D7480;font-size:6.8pt;font-weight:700;text-align:center;line-height:14px;overflow:hidden;vertical-align:middle}.route-executive td.done .route-check{background:#E5F5F1;color:#0A8F7A}.route-executive td.current .route-check{background:#EDF2FA;color:#273A8A}.route-executive strong{display:block;color:#16223B;font-size:6pt;line-height:1.25}.route-executive small{display:block;color:#6D7480;font-size:5.1pt;line-height:1.25;margin-top:2px}' .
-            '.meeting-executive,.documentation-executive,.individual-contact,.history-section{page-break-inside:avoid}.meeting-grid{width:100%;table-layout:fixed;border-collapse:separate;border-spacing:4px 0}.meeting-grid td{width:50%;padding:7px 8px;border:1px solid #D7DFEA;background:#F8FAFC;vertical-align:top}.meeting-grid span,.meeting-note span,.document-summary span,.formal-answer span,.email-title{display:block;color:#6D7480;font-size:5.7pt;margin-bottom:2px}.meeting-grid strong,.document-summary strong,.formal-answer strong{display:block;color:#16223B;font-size:7pt}.meeting-grid small,.document-summary small,.formal-answer small{display:block;color:#6D7480;font-size:5.4pt;margin-top:2px}.meeting-note{margin-top:5px;padding:6px 8px;border:1px solid #E5E9EF}.meeting-note.key{background:#F8FAFC;border-left:2px solid #0A8F7A}.meeting-note p,.formal-answer p{margin:2px 0 0;color:#4F5968;font-size:5.9pt;line-height:1.35}' .
-            '.document-summary{width:100%;table-layout:fixed;border-collapse:separate;border-spacing:4px 0;margin-bottom:5px}.document-summary td{width:50%;padding:7px 8px;border:1px solid #D7DFEA;background:#F8FAFC;vertical-align:top}.formal-answer{padding:6px 8px;border:1px solid #E5E9EF;margin-bottom:5px}.email-block{padding-top:2px}.email-title{font-weight:700;color:#16223B;margin-bottom:3px}.email-row{display:table;width:100%;table-layout:fixed;border-top:1px solid #E5E9EF}.email-row>span,.email-row>strong{display:table-cell;vertical-align:top;padding:4px 5px}.email-row>span{width:24%;color:#6D7480;font-size:5.4pt}.email-row>strong{width:76%;color:#16223B;font-size:5.8pt;font-weight:600}.milestone-line{display:table;width:100%;table-layout:fixed;margin-top:5px;background:#F8FAFC}.milestone-item{display:table-cell;width:33.33%;padding:5px 6px;vertical-align:top;border-right:1px solid #E5E9EF}.milestone-item:last-child{border-right:0}.milestone-item .formal-dot{display:inline-block;color:#0A8F7A;margin-right:4px}.milestone-item>div{display:inline-block;vertical-align:top;max-width:88%}.milestone-item strong{display:block;font-size:5.8pt;color:#16223B}.milestone-item small{display:block;font-size:5.1pt;color:#6D7480;margin-top:1px}' .
+            '.meeting-executive,.documentation-executive,.individual-contact{page-break-inside:avoid}.meeting-grid{width:100%;table-layout:fixed;border-collapse:separate;border-spacing:4px 0}.meeting-grid td{width:50%;padding:7px 8px;border:1px solid #D7DFEA;background:#F8FAFC;vertical-align:top}.meeting-grid span,.meeting-note span,.document-summary span,.formal-answer span,.email-title{display:block;color:#6D7480;font-size:5.7pt;margin-bottom:2px}.meeting-grid strong,.document-summary strong,.formal-answer strong{display:block;color:#16223B;font-size:7pt}.meeting-grid small,.document-summary small,.formal-answer small{display:block;color:#6D7480;font-size:5.4pt;margin-top:2px}.meeting-note{margin-top:5px;padding:6px 8px;border:1px solid #E5E9EF}.meeting-note.key{background:#F8FAFC;border-left:2px solid #0A8F7A}.meeting-note p,.formal-answer p{margin:2px 0 0;color:#4F5968;font-size:5.9pt;line-height:1.35}' .
+            '.document-summary{width:100%;table-layout:fixed;border-collapse:separate;border-spacing:4px 0;margin-bottom:5px}.document-summary td{width:50%;padding:7px 8px;border:1px solid #D7DFEA;background:#F8FAFC;vertical-align:top}.formal-answer{padding:6px 8px;border:1px solid #E5E9EF;margin-bottom:5px}.email-block{padding-top:2px}.email-title{font-weight:700;color:#16223B;margin-bottom:3px}.email-row{display:table;width:100%;table-layout:fixed;border-top:1px solid #E5E9EF}.email-row>span,.email-row>div{display:table-cell;vertical-align:top;padding:4px 5px}.email-row>span{width:24%;color:#6D7480;font-size:5.4pt}.email-row>div{width:76%}.email-row>div strong{display:block;color:#16223B;font-size:5.8pt;font-weight:700}.email-row>div small{display:block;color:#6D7480;font-size:5.2pt;line-height:1.3;margin-top:1px}.milestone-line{display:table;width:100%;table-layout:fixed;margin-top:5px;background:#F8FAFC}.milestone-item{display:table-cell;width:33.33%;padding:5px 6px;vertical-align:top;border-right:1px solid #E5E9EF}.milestone-item:last-child{border-right:0}.milestone-item .formal-dot{display:inline-block;color:#0A8F7A;margin-right:4px}.milestone-item>div{display:inline-block;vertical-align:top;max-width:88%}.milestone-item strong{display:block;font-size:5.8pt;color:#16223B}.milestone-item small{display:block;font-size:5.1pt;color:#6D7480;margin-top:1px}' .
             '.daily-activity{page-break-inside:avoid}.daily-chart-caption{display:table;width:100%;margin-bottom:4px}.daily-chart-caption strong,.daily-chart-caption span{display:table-cell;vertical-align:bottom}.daily-chart-caption strong{width:32%;color:#16223B;font-size:6.2pt}.daily-chart-caption span{color:#6D7480;font-size:5.5pt;text-align:right}.daily-chart{display:block;width:100%;height:auto;border:1px solid #E5E9EF;background:#FFFFFF;padding:3px}.individual-page-two{page-break-inside:auto}.continuation-head{display:none}' .
             '.individual-page-two .history-table{font-size:5.7pt}.individual-page-two .history-table th,.individual-page-two .history-table td{padding:4.5px 5px}.individual-page-two .history-table th:first-child{width:15%}.individual-page-two .history-table th:nth-child(2){width:15%}.individual-page-two .history-table th:nth-child(3){width:17%}.individual-page-two .history-table th:nth-child(4){width:35%}.individual-page-two .history-table th:nth-child(5){width:18%}';
     }
