@@ -391,18 +391,48 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
         $html .= '<td><span>Menor actividad</span><strong>' .
             $this->e((string)($menor['etiqueta'] ?? '—')) . '</strong><small>' .
             (int)($menor['total'] ?? 0) . ' actividades</small></td>';
+        $comparacionRango = $this->rangoComparacionActividad($evolucion);
         if (!empty($evolucion['comparacion_disponible'])) {
             $variacion = (float)($evolucion['variacion'] ?? 0);
-            $html .= '<td><span>Variación</span><strong>' .
+            $html .= '<td><span>Comparación</span><strong>' .
                 ($variacion > 0 ? '+' : '') . $this->decimal($variacion, 1) .
-                '%</strong><small>vs. periodo anterior</small></td>';
+                '%</strong><small>' .
+                (int)($evolucion['total'] ?? 0) . ' vs. ' .
+                (int)($evolucion['total_anterior'] ?? 0) .
+                ($comparacionRango !== '' ? ' · ' . $this->e($comparacionRango) : '') .
+                '</small></td>';
+        } elseif (!empty($evolucion['comparacion_periodo_disponible'])) {
+            $html .= '<td><span>Comparación</span><strong>0 anteriores</strong><small>' .
+                ($comparacionRango !== '' ? $this->e($comparacionRango) . ' · ' : '') .
+                'sin % calculable</small></td>';
         } else {
-            $html .= '<td><span>Comparación</span><strong>—</strong><small>Sin periodo comparable</small></td>';
+            $motivo = trim((string)($evolucion['comparacion_motivo'] ?? ''));
+            $html .= '<td><span>Comparación</span><strong>—</strong><small>' .
+                $this->e($motivo !== '' ? $motivo : 'Sin periodo comparable') .
+                '</small></td>';
         }
         $html .= '</tr></table>';
         $html .= '<img class="line-chart activity-line-chart" src="' .
             $this->graficaLineaDataUri($periodos) . '" alt="Evolución de actividad">';
         return $html . '</section>';
+    }
+
+    private function rangoComparacionActividad(array $evolucion): string
+    {
+        $desde = trim((string)($evolucion['comparacion_fecha_inicial'] ?? ''));
+        $hasta = trim((string)($evolucion['comparacion_fecha_final'] ?? ''));
+
+        if ($desde === '' || $hasta === '') {
+            return '';
+        }
+
+        try {
+            $inicio = new DateTimeImmutable($desde);
+            $fin = new DateTimeImmutable($hasta);
+            return $inicio->format('d/m/Y') . ' - ' . $fin->format('d/m/Y');
+        } catch (Throwable $error) {
+            return '';
+        }
     }
 
     private function coberturaActividad(array $analitica): string
