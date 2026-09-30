@@ -750,6 +750,81 @@
         input.value = origen;
     }
 
+    function ajustarAlturaIframeFiltros(iframe) {
+        if (!iframe || !iframe.contentDocument) {
+            return;
+        }
+
+        const documento = iframe.contentDocument;
+        const formulario = documento.querySelector('form[data-report-form]');
+        const cuerpo = documento.body;
+        const html = documento.documentElement;
+
+        if (!formulario || !cuerpo || !html) {
+            return;
+        }
+
+        const altoNatural = Math.max(
+            formulario.scrollHeight,
+            cuerpo.scrollHeight,
+            html.scrollHeight
+        );
+        const altoMaximo = Math.max(
+            360,
+            Math.min(620, window.innerHeight - 150)
+        );
+        const altoFinal = Math.max(
+            330,
+            Math.min(altoNatural + 2, altoMaximo)
+        );
+
+        iframe.style.height = altoFinal + 'px';
+        iframe.dataset.contentHeight = String(altoNatural);
+
+        cuerpo.style.overflowY = altoNatural > altoMaximo ? 'auto' : 'hidden';
+        html.style.overflowY = altoNatural > altoMaximo ? 'auto' : 'hidden';
+    }
+
+    function observarAlturaIframeFiltros(iframe) {
+        if (!iframe || !iframe.contentDocument) {
+            return;
+        }
+
+        const documento = iframe.contentDocument;
+        const formulario = documento.querySelector('form[data-report-form]');
+        if (!formulario) {
+            return;
+        }
+
+        iframe._reportResizeObserver?.disconnect?.();
+        iframe._reportMutationObserver?.disconnect?.();
+
+        if (typeof ResizeObserver === 'function') {
+            iframe._reportResizeObserver = new ResizeObserver(function () {
+                window.requestAnimationFrame(function () {
+                    ajustarAlturaIframeFiltros(iframe);
+                });
+            });
+            iframe._reportResizeObserver.observe(formulario);
+        }
+
+        iframe._reportMutationObserver = new MutationObserver(function () {
+            window.requestAnimationFrame(function () {
+                ajustarAlturaIframeFiltros(iframe);
+            });
+        });
+        iframe._reportMutationObserver.observe(formulario, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['class', 'style', 'hidden', 'aria-pressed']
+        });
+
+        window.requestAnimationFrame(function () {
+            ajustarAlturaIframeFiltros(iframe);
+        });
+    }
+
     function crearModalEditarFiltros() {
         let modal = document.getElementById('modalEditarFiltrosReporteSeguimiento');
         if (modal) {
@@ -782,6 +857,7 @@
         iframe?.addEventListener('load', function () {
             try {
                 asegurarOrigenEnFormularioModal(iframe);
+                observarAlturaIframeFiltros(iframe);
             } catch (error) {
                 // El formulario sigue siendo utilizable aunque no pueda conservar el origen.
             }
