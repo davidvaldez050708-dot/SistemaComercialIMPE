@@ -350,7 +350,11 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
             $inactividad = $dias === null
                 ? 'Sin actividad'
                 : ((int)$dias . ' días');
-            $proxima = trim((string)($seguimiento['proxima_accion_label'] ?? ''));
+            $proxima = trim((string)(
+                $seguimiento['accion_operativa_label'] ??
+                $seguimiento['proxima_accion_label'] ??
+                ''
+            ));
             if ($proxima === '' || $proxima === '—') {
                 $proxima = 'Sin acción programada';
             }
@@ -496,7 +500,11 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
             } elseif ($atencionCodigo === 'DESCARTADO') {
                 $proxima = 'Sin acciones pendientes';
             } else {
-                $proxima = trim((string)($seguimiento['proxima_accion_label'] ?? ''));
+                $proxima = trim((string)(
+                    $seguimiento['accion_operativa_label'] ??
+                    $seguimiento['proxima_accion_label'] ??
+                    ''
+                ));
                 if ($proxima === '' || $proxima === '—') {
                     $proxima = 'Sin acción programada';
                 }
