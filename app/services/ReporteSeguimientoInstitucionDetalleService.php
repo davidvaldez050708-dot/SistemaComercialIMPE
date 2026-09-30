@@ -43,6 +43,7 @@ class ReporteSeguimientoInstitucionDetalleService
         }
 
         $interaccionesHumanas = [];
+        $interaccionesPorDia = [];
         $correosRecientes = [];
         $oficios = [];
         $observaciones = [];
@@ -79,6 +80,12 @@ class ReporteSeguimientoInstitucionDetalleService
         }
 
         try {
+            $interaccionesPorDia = $this->obtenerInteraccionesPorDia($seguimientoId);
+        } catch (Throwable $error) {
+            error_log('[reporte_institucion_interacciones_dia] ' . $error->getMessage());
+        }
+
+        try {
             $oficios = $this->obtenerOficiosRecientes($seguimientoId, 4);
         } catch (Throwable $error) {
             error_log('[reporte_institucion_oficios] ' . $error->getMessage());
@@ -106,6 +113,7 @@ class ReporteSeguimientoInstitucionDetalleService
             'contacto' => $this->contacto($seguimiento),
             'ultima_interaccion_humana' => $interaccionesHumanas[0] ?? null,
             'interacciones_recientes' => $interaccionesHumanas,
+            'interacciones_por_dia' => $interaccionesPorDia,
             'correos_recientes' => $correosRecientes,
             'oficios' => $oficios,
             'observaciones' => $observaciones,
@@ -198,6 +206,39 @@ class ReporteSeguimientoInstitucionDetalleService
         $stmt->execute();
 
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+    private function obtenerInteraccionesPorDia(int $seguimientoId): array
+    {
+        $sql = "SELECT
+                    DATE(interacciones.fecha_inicio) AS fecha,
+                    COUNT(*) AS total
+                FROM interacciones_vinculacion interacciones
+                WHERE interacciones.seguimiento_id = ?
+                  AND UPPER(TRIM(COALESCE(interacciones.canal, ''))) <> 'SISTEMA'
+                  AND interacciones.fecha_inicio IS NOT NULL
+                GROUP BY DATE(interacciones.fecha_inicio)
+                ORDER BY DATE(interacciones.fecha_inicio) ASC";
+
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param('i', $seguimientoId);
+        $stmt->execute();
+
+        $filas = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        return array_map(static function (array $fila): array {
+            $fecha = trim((string)($fila['fecha'] ?? ''));
+            $etiqueta = $fecha;
+            try {
+                $etiqueta = (new DateTime($fecha))->format('d/m');
+            } catch (Throwable $error) {
+            }
+
+            return [
+                'fecha' => $fecha,
+                'etiqueta' => $etiqueta,
+                'total' => (int)($fila['total'] ?? 0)
+            ];
+        }, $filas);
     }
 
     private function obtenerCorreosRecientes(
