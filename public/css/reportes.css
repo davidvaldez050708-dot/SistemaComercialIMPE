@@ -1164,3 +1164,570 @@
         border-radius: 0;
     }
 }
+
+
+/* =========================================================
+   REPORTE TERRITORIAL · LECTURA EJECUTIVA UNIFICADA
+   ========================================================= */
+.report-territorial-generated .territorial-executive-context {
+    padding: 18px 20px;
+}
+
+.report-territorial-generated .territorial-executive-context .territorial-focus-main {
+    margin-bottom: 14px;
+}
+
+.report-territorial-generated .territorial-executive-context .territorial-focus-copy h2 {
+    margin: 2px 0 3px;
+    font-size: 18px;
+}
+
+.territorial-context-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.territorial-context-grid > div {
+    min-width: 0;
+    min-height: 64px;
+    padding: 11px 13px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-bg);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.territorial-context-grid span,
+.territorial-economic-metrics span,
+.territorial-priority-summary span {
+    display: block;
+    margin-bottom: 4px;
+    color: var(--color-text-soft);
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.territorial-context-grid strong {
+    color: var(--color-text);
+    font-size: 12px;
+    font-weight: 750;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+}
+
+.territorial-kpi-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.report-territorial-generated .metric-card {
+    min-width: 0;
+    min-height: 102px;
+    padding: 14px 15px;
+    gap: 12px;
+}
+
+.report-territorial-generated .metric-card .metric-icon {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+}
+
+.report-territorial-generated .metric-card .metric-icon i {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+.report-territorial-generated .metric-value {
+    margin-bottom: 2px;
+    font-size: clamp(20px, 1.65vw, 27px);
+    line-height: 1;
+}
+
+.report-territorial-generated .metric-label {
+    margin-bottom: 2px;
+    font-size: 11.2px;
+    line-height: 1.25;
+}
+
+.territorial-metric-note {
+    display: block;
+    color: var(--color-text-soft);
+    font-size: 9.2px;
+    line-height: 1.25;
+}
+
+.territorial-kpi-priority {
+    border-color: rgba(12, 143, 126, .22) !important;
+    background: rgba(12, 143, 126, .035) !important;
+}
+
+.territorial-kpi-priority .metric-icon {
+    border-color: rgba(12, 143, 126, .18) !important;
+    background: rgba(12, 143, 126, .09) !important;
+    color: var(--color-accent) !important;
+}
+
+.territorial-report-section-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+    margin-bottom: 14px;
+}
+
+.territorial-report-section-heading > div > span {
+    display: block;
+    margin-bottom: 4px;
+    color: var(--color-primary);
+    font-size: 9.5px;
+    font-weight: 850;
+    letter-spacing: .06em;
+}
+
+.territorial-report-section-heading h3 {
+    margin: 0;
+    color: var(--color-navy);
+    font-size: 17px;
+    font-weight: 800;
+    line-height: 1.25;
+}
+
+.territorial-report-section-heading p {
+    max-width: 880px;
+    margin: 4px 0 0;
+    color: var(--color-text-soft);
+    font-size: 10.8px;
+    line-height: 1.45;
+}
+
+.territorial-strategy-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.territorial-strategy-card {
+    min-width: 0;
+    display: grid;
+    grid-template-columns: 42px minmax(0, 1fr);
+    gap: 11px;
+    padding: 13px 14px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: #fbfcfe;
+}
+
+.territorial-strategy-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #d8e4f5;
+    border-radius: 11px;
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
+    font-size: 17px;
+}
+
+.territorial-strategy-icon i {
+    line-height: 1;
+}
+
+.territorial-strategy-copy {
+    min-width: 0;
+}
+
+.territorial-strategy-copy > span {
+    display: block;
+    margin-bottom: 3px;
+    color: var(--color-primary);
+    font-size: 8.7px;
+    font-weight: 850;
+    letter-spacing: .045em;
+}
+
+.territorial-strategy-copy > strong {
+    display: block;
+    color: var(--color-navy);
+    font-size: 14px;
+    font-weight: 800;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+}
+
+.territorial-strategy-copy > p {
+    margin: 2px 0 9px;
+    color: var(--color-text-soft);
+    font-size: 9.6px;
+    line-height: 1.35;
+}
+
+.territorial-strategy-meta {
+    padding-top: 8px;
+    border-top: 1px solid #e7ecf2;
+}
+
+.territorial-strategy-meta b {
+    display: block;
+    color: var(--color-text);
+    font-size: 11.5px;
+    font-weight: 800;
+}
+
+.territorial-strategy-meta small {
+    color: var(--color-text-soft);
+    font-size: 8.9px;
+}
+
+.territorial-priority-summary {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.territorial-priority-summary > div {
+    min-width: 0;
+    padding: 10px 12px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-bg);
+}
+
+.territorial-priority-summary strong {
+    display: block;
+    color: var(--color-navy);
+    font-size: 19px;
+    font-weight: 850;
+    line-height: 1;
+}
+
+.territorial-priority-summary small {
+    display: block;
+    margin-top: 3px;
+    color: var(--color-text-soft);
+    font-size: 8.9px;
+}
+
+.territorial-priority-list {
+    display: grid;
+    gap: 8px;
+}
+
+.territorial-priority-card {
+    min-width: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 125px;
+    align-items: center;
+    gap: 15px;
+    padding: 11px 13px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: #fff;
+}
+
+.territorial-priority-main {
+    min-width: 0;
+}
+
+.territorial-priority-name {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 7px;
+    margin-bottom: 4px;
+}
+
+.territorial-priority-name > strong {
+    min-width: 0;
+    color: var(--color-text);
+    font-size: 11.2px;
+    font-weight: 850;
+}
+
+.territorial-priority-main > p {
+    margin: 0;
+    color: var(--color-text-soft);
+    font-size: 9.7px;
+    line-height: 1.4;
+}
+
+.territorial-priority-tags {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 7px;
+}
+
+.territorial-priority-tags span {
+    padding: 3px 7px;
+    border-radius: 999px;
+    background: #f3f6fa;
+    color: #5d687a;
+    font-size: 8.7px;
+    font-weight: 700;
+    line-height: 1.25;
+}
+
+.territorial-priority-score {
+    min-width: 0;
+}
+
+.territorial-priority-score > strong {
+    display: block;
+    margin-bottom: 5px;
+    color: var(--color-navy);
+    font-size: 12px;
+    font-weight: 850;
+    text-align: right;
+}
+
+.territorial-priority-score > span {
+    display: block;
+    height: 7px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #e9edf4;
+}
+
+.territorial-priority-score > span > i {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--color-primary);
+}
+
+.territorial-economic-metrics {
+    display: grid;
+    grid-template-columns: 1.45fr .75fr .75fr;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+}
+
+.territorial-economic-metrics > div {
+    min-width: 0;
+    padding: 11px 13px;
+    border-right: 1px solid var(--color-border);
+}
+
+.territorial-economic-metrics > div:last-child {
+    border-right: 0;
+}
+
+.territorial-economic-metrics strong {
+    display: block;
+    color: var(--color-navy);
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+}
+
+.territorial-bar-label strong small {
+    color: var(--color-text-soft);
+    font-size: 8.8px;
+    font-weight: 600;
+}
+
+.territorial-secondary-sectors {
+    padding: 10px 12px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: #fbfcfe;
+}
+
+.territorial-secondary-sectors > span {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--color-text-soft);
+    font-size: 9.5px;
+    font-weight: 750;
+}
+
+.territorial-secondary-sectors > div {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.territorial-secondary-sectors article {
+    min-width: 0;
+    padding-right: 8px;
+}
+
+.territorial-secondary-sectors strong,
+.territorial-secondary-sectors small {
+    display: block;
+    overflow-wrap: anywhere;
+}
+
+.territorial-secondary-sectors strong {
+    color: var(--color-text);
+    font-size: 9.8px;
+    font-weight: 800;
+}
+
+.territorial-secondary-sectors small {
+    margin-top: 2px;
+    color: var(--color-text-soft);
+    font-size: 8.8px;
+}
+
+.territorial-context-columns > .dashboard-panel {
+    min-height: 0;
+}
+
+.territorial-government-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.territorial-government-grid > div,
+.territorial-government-grid > div:nth-child(4n) {
+    border-right: 1px solid var(--color-border);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.territorial-government-grid > div:nth-child(3n) {
+    border-right: 0;
+}
+
+.territorial-government-grid > div:nth-last-child(-n + 3) {
+    border-bottom: 0;
+}
+
+.territorial-compact-table th {
+    padding-top: 10px;
+    padding-bottom: 10px;
+}
+
+.territorial-compact-table td {
+    padding-top: 11px;
+    padding-bottom: 11px;
+}
+
+.territorial-insight-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 9px;
+}
+
+.territorial-insight-grid article {
+    min-width: 0;
+    display: grid;
+    grid-template-columns: 30px minmax(0, 1fr);
+    gap: 9px;
+    padding: 11px 12px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: #fbfcfe;
+}
+
+.territorial-insight-grid i {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
+    font-size: 13px;
+}
+
+.territorial-insight-grid strong {
+    display: block;
+    margin-bottom: 2px;
+    color: var(--color-navy);
+    font-size: 10.4px;
+    font-weight: 850;
+}
+
+.territorial-insight-grid p {
+    margin: 0;
+    color: var(--color-text-soft);
+    font-size: 9.6px;
+    line-height: 1.4;
+}
+
+.territorial-source-grid article {
+    background: #fbfcfe;
+}
+
+@media (max-width: 1199.98px) {
+    .territorial-kpi-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .territorial-context-grid,
+    .territorial-priority-summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 991.98px) {
+    .territorial-strategy-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .territorial-priority-card {
+        grid-template-columns: minmax(0, 1fr) 100px;
+    }
+
+    .territorial-economic-metrics {
+        grid-template-columns: 1fr;
+    }
+
+    .territorial-economic-metrics > div {
+        border-right: 0;
+        border-bottom: 1px solid var(--color-border);
+    }
+
+    .territorial-economic-metrics > div:last-child {
+        border-bottom: 0;
+    }
+
+    .territorial-secondary-sectors > div {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .territorial-kpi-grid,
+    .territorial-context-grid,
+    .territorial-priority-summary,
+    .territorial-insight-grid,
+    .territorial-government-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .territorial-government-grid > div,
+    .territorial-government-grid > div:nth-child(3n),
+    .territorial-government-grid > div:nth-child(4n) {
+        border-right: 0;
+        border-bottom: 1px solid var(--color-border);
+    }
+
+    .territorial-government-grid > div:last-child {
+        border-bottom: 0;
+    }
+
+    .territorial-priority-card {
+        grid-template-columns: 1fr;
+    }
+
+    .territorial-priority-score > strong {
+        text-align: left;
+    }
+}
