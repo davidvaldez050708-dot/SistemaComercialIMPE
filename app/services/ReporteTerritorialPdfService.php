@@ -146,7 +146,15 @@ class ReporteTerritorialPdfService
         $html .= $this->metric('Municipios', $this->numero($resumen['municipios'] ?? null), 'registrados');
         $html .= $this->metric('Establecimientos', $this->numero($resumen['establecimientos'] ?? null), 'actividad económica');
         $html .= $this->metric('Est. / 10 mil hab.', ($resumen['establecimientos_por_10000_habitantes'] ?? null) !== null ? $this->decimal($resumen['establecimientos_por_10000_habitantes'], 1) : '—', 'densidad');
-        $html .= $this->metric('ATACAR', $this->numero($resumen['prioridad_alta'] ?? 0), 'prioridad alta');
+        $html .= $this->metric(
+            'ATACAR',
+            ($resumen['priorizacion_disponible'] ?? false) === true
+                ? $this->numero($resumen['prioridad_alta'] ?? 0)
+                : '—',
+            ($resumen['priorizacion_disponible'] ?? false) === true
+                ? 'prioridad alta'
+                : 'sin datos suficientes'
+        );
         $html .= '</tr></table></section>';
 
         $html .= '<section class="report-section keep">' . $this->sectionTitle('Lectura estratégica');
