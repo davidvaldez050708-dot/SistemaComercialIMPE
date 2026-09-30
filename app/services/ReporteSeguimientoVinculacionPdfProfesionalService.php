@@ -71,6 +71,9 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
         $evolucion = is_array($datos['evolucion_actividad'] ?? null) ? $datos['evolucion_actividad'] : [];
         $flujo = is_array($datos['flujo_individual'] ?? null) ? $datos['flujo_individual'] : [];
         $detalleInstitucion = is_array($datos['detalle_institucion'] ?? null) ? $datos['detalle_institucion'] : [];
+        if (is_array($detalleInstitucion['flujo'] ?? null) && !empty($detalleInstitucion['flujo'])) {
+            $flujo = $detalleInstitucion['flujo'];
+        }
         $etiquetas = is_array($datos['etiquetas_estatus'] ?? null) ? $datos['etiquetas_estatus'] : [];
         $fecha = $this->fecha((string)($datos['fecha_generacion'] ?? ''));
         $generadoPor = trim((string)($datos['generado_por'] ?? ''));
@@ -285,13 +288,14 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
         $fechaUltima = trim((string)($ultima['fecha_inicio'] ?? ''));
         $dias = $this->diasDesde($fechaUltima);
         $llamadas = is_array($analitica['llamadas'] ?? null) ? $analitica['llamadas'] : [];
+        $canales = is_array($analitica['canales'] ?? null) ? $analitica['canales'] : [];
 
         $html = '<section class="report-section keep">' . $this->titulo('Panorama de la relación');
         $html .= '<table class="metrics individual-metrics"><tr>';
-        $html .= $this->metric('Interacciones del analista', (string)(int)($analitica['interacciones'] ?? 0));
+        $html .= $this->metric('Interacciones', (string)(int)($analitica['interacciones'] ?? 0));
         $html .= $this->metric('Llamadas realizadas', (string)(int)($llamadas['total'] ?? 0));
         $html .= $this->metric('Llamadas con contacto', (string)(int)($llamadas['contactadas'] ?? 0));
-        $html .= $this->metric('Verificaciones efectivas', (string)(int)($llamadas['verificaciones_efectivas'] ?? 0));
+        $html .= $this->metric('Correos', (string)(int)($canales['correos'] ?? 0));
         return $html . '</tr></table></section>';
     }
 
@@ -387,10 +391,29 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
                 (string)($interaccion['nombre'] ?? '') . ' ' .
                 (string)($interaccion['apellidos'] ?? '')
             );
+            $presentacion = is_array($interaccion['presentacion'] ?? null)
+                ? $interaccion['presentacion']
+                : [];
+            $titulo = trim((string)($presentacion['titulo'] ?? ''));
+            $resultado = trim((string)($presentacion['resultado_label'] ?? ''));
+            $resumen = trim((string)($presentacion['resumen'] ?? ''));
+            if (
+                strcasecmp($titulo, 'Llamada') === 0 &&
+                ($resultado === '' || strcasecmp($resultado, 'Otro') === 0)
+            ) {
+                $resultado = 'Intento registrado';
+            }
+            if (
+                strcasecmp($titulo, 'Llamada') === 0 &&
+                ($resumen === '' || strcasecmp($resumen, 'Otro') === 0)
+            ) {
+                $resumen = 'Intento telefónico registrado';
+            }
+
             $html .= '<tr><td>' . $this->e($this->fechaDato((string)($interaccion['fecha_inicio'] ?? ''))) . '</td>';
-            $html .= '<td>' . $this->e($this->canalLabel((string)($interaccion['canal'] ?? ''))) . '</td>';
-            $html .= '<td>' . $this->e($this->resultadoLabel((string)($interaccion['resultado'] ?? ''))) . '</td>';
-            $html .= '<td>' . $this->e($this->resumirTexto((string)($interaccion['notas'] ?? ''), 145)) . '</td>';
+            $html .= '<td>' . $this->e($titulo !== '' ? $titulo : $this->canalLabel((string)($interaccion['canal'] ?? ''))) . '</td>';
+            $html .= '<td>' . $this->e($resultado !== '' ? $resultado : $this->resultadoLabel((string)($interaccion['resultado'] ?? ''))) . '</td>';
+            $html .= '<td>' . $this->e($this->resumirTexto($resumen !== '' ? $resumen : (string)($interaccion['notas'] ?? ''), 145)) . '</td>';
             $html .= '<td>' . $this->e($responsable !== '' ? $responsable : '—') . '</td></tr>';
         }
 
