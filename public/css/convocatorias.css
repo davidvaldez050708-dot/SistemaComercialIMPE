@@ -2179,7 +2179,7 @@
 .marketing-recent-title h2 {
     margin: 0;
     color: var(--color-text-primary);
-    font-size: 20px;
+    font-size: 14px;
     font-weight: 800;
     line-height: 1.2;
 }
@@ -2341,7 +2341,7 @@
     }
 
     .marketing-recent-title h2 {
-        font-size: 16px;
+        font-size: 14px;
     }
 
     .marketing-recent-table-wrap {
