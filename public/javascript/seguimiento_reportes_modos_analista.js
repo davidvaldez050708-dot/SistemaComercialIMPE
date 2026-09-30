@@ -31,6 +31,7 @@
         const institutionPrev = institutionDialog?.querySelector('[data-report-institution-prev]');
         const institutionNext = institutionDialog?.querySelector('[data-report-institution-next]');
         const institutionClose = institutionDialog?.querySelector('[data-report-institution-close]');
+        const clearFiltersButton = form.querySelector('[data-report-clear-filters]');
         let institutionPage = 1;
         let institutionPages = 0;
         let institutionRequest = 0;
@@ -77,7 +78,89 @@
             inputType.value = mode;
             const visibleFields = new Set(labels[mode].fields);
 
-            buttons.forEach(function (button) {
+            const clearCurrentModeFilters = function () {
+            const mode = String(inputType.value || 'cartera');
+            const visibleFields = new Set(labels[mode]?.fields || []);
+
+            periodShortcuts?.querySelectorAll('[data-report-period]').forEach(function (button) {
+                button.classList.remove('is-active');
+            });
+
+            form.querySelectorAll('[data-report-field]').forEach(function (wrapper) {
+                const field = String(wrapper.dataset.reportField || '');
+                if (!visibleFields.has(field)) {
+                    return;
+                }
+
+                wrapper.querySelectorAll('input, select, textarea').forEach(function (control) {
+                    if (control === inputType) {
+                        return;
+                    }
+
+                    if (control.matches?.('[data-report-institution-input]')) {
+                        clearInstitutionSelection();
+                        return;
+                    }
+
+                    if (control.tagName === 'SELECT') {
+                        const preferred = Array.from(control.options).find(function (option) {
+                            return option.value === '0' || option.value === '';
+                        });
+                        if (preferred) {
+                            control.value = preferred.value;
+                        }
+                        return;
+                    }
+
+                    if (control.type === 'date' || control.type === 'search' || control.type === 'text') {
+                        control.value = '';
+                    }
+                });
+            });
+
+            clearInstitutionSelection();
+            closeInstitutionPicker();
+
+            if (institutionSearch) {
+                institutionSearch.value = '';
+            }
+            institutionList?.replaceChildren();
+            institutionEmpty?.classList.add('d-none');
+            if (institutionStatus) {
+                institutionStatus.textContent = '';
+            }
+            if (institutionSummary) {
+                institutionSummary.textContent = '';
+            }
+
+            if (institutionTrigger) {
+                institutionTrigger.disabled = true;
+                institutionTrigger.dataset.hasInstitutions = '0';
+                institutionTrigger.dataset.validatedStateId = '';
+                institutionTrigger.dataset.validatedMunicipalityId = '';
+            }
+
+            if (institutionHint && mode === 'institucion') {
+                institutionHint.textContent =
+                    'Selecciona primero un estado para consultar las instituciones disponibles.';
+            }
+
+            if (state) {
+                state.value = '0';
+                state.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+
+            if (mode === 'actividad') {
+                if (startDate) startDate.value = '';
+                if (endDate) endDate.value = '';
+            }
+
+            institutionTrigger?.classList.remove('is-invalid');
+        };
+
+        clearFiltersButton?.addEventListener('click', clearCurrentModeFilters);
+
+        buttons.forEach(function (button) {
                 const active = button.dataset.reportMode === mode;
                 button.classList.toggle('is-active', active);
                 button.setAttribute('aria-pressed', active ? 'true' : 'false');
