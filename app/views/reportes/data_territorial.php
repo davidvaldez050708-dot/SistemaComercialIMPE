@@ -48,7 +48,20 @@ $priorizacion = is_array($reporte) ? ($reporte['priorizacion_municipal'] ?? []) 
 $secretarias = is_array($reporte) ? ($reporte['secretarias'] ?? []) : [];
 $fuentes = is_array($reporte) ? ($reporte['fuentes'] ?? []) : [];
 $calculos = is_array($reporte) ? ($reporte['calculos'] ?? []) : [];
+$resumen = is_array($reporte) ? ($reporte['resumen_ejecutivo'] ?? []) : [];
 $lecturas = is_array($reporte) ? ($reporte['lecturas'] ?? []) : [];
+
+$secretariasActivas = array_values(array_filter(
+    $secretarias,
+    static fn($secretaria) => (int)($secretaria['estado'] ?? 0) === 1
+));
+$conteosPrioridad = is_array($priorizacion['conteos'] ?? null)
+    ? $priorizacion['conteos']
+    : ['ALTA' => 0, 'MEDIA' => 0, 'BAJA' => 0];
+$municipiosRecomendados = array_values($priorizacion['recomendados'] ?? []);
+$sectoresRegistrados = array_values($actividad['sectores'] ?? []);
+$sectoresGrafica = array_slice($sectoresRegistrados, 0, 5);
+$otrosSectores = array_slice($sectoresRegistrados, 5, 3);
 
 $mapaEstadoUrl = '';
 if (
@@ -62,7 +75,6 @@ if (
     );
 }
 
-$sectoresGrafica = array_slice(array_values($actividad['sectores'] ?? []), 0, 5);
 $maxSectorGrafica = 1;
 foreach ($sectoresGrafica as $sectorGrafica) {
     $maxSectorGrafica = max($maxSectorGrafica, (int)($sectorGrafica['establecimientos'] ?? 0));
@@ -155,15 +167,12 @@ foreach ($sectoresGrafica as $sectorGrafica) {
         </section>
     <?php else: ?>
         <section class="report-preview territorial-report-preview" aria-label="Vista previa del reporte territorial">
-            <section class="dashboard-panel territorial-focus-card mb-4">
+            <section class="dashboard-panel territorial-focus-card territorial-executive-context mb-4">
                 <div class="territorial-focus-main">
                     <div class="territorial-focus-copy">
-                        <span class="report-eyebrow">TERRITORIO SELECCIONADO</span>
-                        <h2><?= $texto($estado['nombre'] ?? 'Territorio') ?></h2>
-                        <p>
-                            <?= trim((string)($estado['capital'] ?? '')) !== '' ? 'Capital: ' . $texto($estado['capital']) . ' · ' : '' ?>
-                            Última actualización: <?= $fecha($estado['fecha_actualizacion'] ?? null) ?>
-                        </p>
+                        <span class="report-eyebrow">CONTEXTO DEL REPORTE</span>
+                        <h2>Territorio analizado</h2>
+                        <p>Lectura ejecutiva de la información territorial registrada y de sus referencias disponibles.</p>
                     </div>
                     <?php if ($mapaEstadoUrl !== ''): ?>
                         <div class="territorial-focus-map" aria-label="Mapa de <?= $texto($estado['nombre'] ?? 'territorio') ?>">
@@ -172,172 +181,254 @@ foreach ($sectoresGrafica as $sectorGrafica) {
                     <?php endif; ?>
                 </div>
 
-                <div class="territorial-focus-grid">
-                    <div><span>Población</span><strong><?= $numero($estado['poblacion'] ?? null) ?></strong></div>
-                    <div><span>Municipios</span><strong><?= $numero($estado['total_municipios'] ?? $estado['municipios_cargados'] ?? null) ?></strong></div>
-                    <div><span>Capital</span><strong><?= $valor($estado['capital'] ?? null) ?></strong></div>
-                    <div><span>Secretarías activas</span><strong><?= $numero($calculos['total_secretarias_activas'] ?? null) ?></strong></div>
-                    <div><span>Periodo de gobierno</span><strong><?= $valor($estado['periodo_gobierno'] ?? null) ?></strong></div>
-                    <div><span>Estado de información</span><strong>Datos registrados y fuentes disponibles</strong></div>
+                <div class="territorial-context-grid">
+                    <div>
+                        <span>Territorio</span>
+                        <strong><?= $texto($estado['nombre'] ?? 'Territorio') ?></strong>
+                    </div>
+                    <div>
+                        <span>Capital</span>
+                        <strong><?= $valor($estado['capital'] ?? null) ?></strong>
+                    </div>
+                    <div>
+                        <span>Última actualización del expediente</span>
+                        <strong><?= $fecha($estado['fecha_actualizacion'] ?? null) ?></strong>
+                    </div>
+                    <div>
+                        <span>Fuentes / referencias disponibles</span>
+                        <strong><?= $numero($resumen['fuentes_disponibles'] ?? 0) ?></strong>
+                    </div>
                 </div>
             </section>
 
-            <div class="territorial-section-title">
-                <h2>Panorama territorial</h2>
-                <p>Indicadores principales del territorio seleccionado.</p>
-            </div>
-
-            <section class="metric-grid report-summary-grid territorial-summary-grid mb-4" aria-label="Resumen territorial">
+            <section class="metric-grid territorial-kpi-grid mb-4" aria-label="Panorama territorial">
                 <article class="metric-card">
                     <div class="metric-icon"><i class="bi bi-people"></i></div>
                     <div>
-                        <p class="metric-value"><?= $numero($estado['poblacion'] ?? null) ?></p>
+                        <p class="metric-value"><?= $numero($resumen['poblacion'] ?? null) ?></p>
                         <p class="metric-label">Población</p>
+                        <small class="territorial-metric-note">Habitantes registrados</small>
                     </div>
                 </article>
                 <article class="metric-card">
                     <div class="metric-icon"><i class="bi bi-geo-alt"></i></div>
                     <div>
-                        <p class="metric-value"><?= $numero($estado['total_municipios'] ?? $estado['municipios_cargados'] ?? null) ?></p>
+                        <p class="metric-value"><?= $numero($resumen['municipios'] ?? null) ?></p>
                         <p class="metric-label">Municipios</p>
+                        <small class="territorial-metric-note">Cobertura territorial</small>
                     </div>
                 </article>
                 <article class="metric-card">
                     <div class="metric-icon"><i class="bi bi-buildings"></i></div>
                     <div>
-                        <p class="metric-value"><?= $numero($actividad['total_establecimientos'] ?? null) ?></p>
-                        <p class="metric-label">Establecimientos registrados</p>
+                        <p class="metric-value"><?= $numero($resumen['establecimientos'] ?? null) ?></p>
+                        <p class="metric-label">Establecimientos</p>
+                        <small class="territorial-metric-note">Registros económicos</small>
                     </div>
                 </article>
                 <article class="metric-card">
                     <div class="metric-icon"><i class="bi bi-calculator"></i></div>
                     <div>
-                        <p class="metric-value"><?= ($calculos['establecimientos_por_10000_habitantes'] ?? null) !== null ? $numero($calculos['establecimientos_por_10000_habitantes'], 1) : '—' ?></p>
-                        <p class="metric-label">Establecimientos por 10 mil habitantes</p>
+                        <p class="metric-value"><?= ($resumen['establecimientos_por_10000_habitantes'] ?? null) !== null ? $numero($resumen['establecimientos_por_10000_habitantes'], 1) : '—' ?></p>
+                        <p class="metric-label">Est. / 10 mil hab.</p>
+                        <small class="territorial-metric-note">Densidad registrada</small>
+                    </div>
+                </article>
+                <article class="metric-card territorial-kpi-priority">
+                    <div class="metric-icon"><i class="bi bi-bullseye"></i></div>
+                    <div>
+                        <p class="metric-value"><?= $numero($resumen['prioridad_alta'] ?? 0) ?></p>
+                        <p class="metric-label">Municipios ATACAR</p>
+                        <small class="territorial-metric-note">Prioridad alta sugerida</small>
                     </div>
                 </article>
             </section>
 
-            <section class="dashboard-panel report-section mb-4">
-                <div class="report-section-heading">
+            <section class="dashboard-panel report-section territorial-strategic-section mb-4">
+                <div class="territorial-report-section-heading">
                     <div>
-                        <span>FICHA TERRITORIAL</span>
-                        <h3>Gobierno y contexto institucional</h3>
+                        <span>LECTURA ESTRATÉGICA</span>
+                        <h3>Señales principales del territorio</h3>
+                        <p>Indicadores que permiten entender rápidamente el contexto económico, laboral y educativo.</p>
                     </div>
                 </div>
-                <dl class="report-definition-grid">
-                    <div><dt>Capital</dt><dd><?= $valor($estado['capital'] ?? null) ?></dd></div>
-                    <div><dt>Titular del gobierno</dt><dd><?= $valor($estado['titular_gobierno'] ?? null) ?></dd></div>
-                    <div><dt>Cargo</dt><dd><?= $valor($estado['cargo_titular'] ?? null) ?></dd></div>
-                    <div><dt>Partido político</dt><dd><?= $valor($estado['partido_politico'] ?? null) ?></dd></div>
-                    <div><dt>Periodo de gobierno</dt><dd><?= $valor($estado['periodo_gobierno'] ?? null) ?></dd></div>
-                    <div><dt>Secretarías activas</dt><dd><?= $numero($calculos['total_secretarias_activas'] ?? null) ?></dd></div>
-                    <div><dt>Teléfono</dt><dd><?= $valor($estado['telefono'] ?? null) ?></dd></div>
-                    <div><dt>Población promedio por municipio</dt><dd><?= $numero($calculos['poblacion_promedio_municipio'] ?? null) ?></dd></div>
-                </dl>
+
+                <div class="territorial-strategy-grid">
+                    <article class="territorial-strategy-card">
+                        <div class="territorial-strategy-icon"><i class="bi bi-buildings"></i></div>
+                        <div class="territorial-strategy-copy">
+                            <span>ECONOMÍA</span>
+                            <strong><?= $texto($resumen['sector_principal']['nombre_sector'] ?? 'Sin dato disponible') ?></strong>
+                            <p>Sector con mayor presencia registrada</p>
+                            <div class="territorial-strategy-meta">
+                                <b><?= ($resumen['concentracion_top_5'] ?? null) !== null ? $numero($resumen['concentracion_top_5'], 2) . ' %' : '—' ?></b>
+                                <small>concentración Top 5</small>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article class="territorial-strategy-card">
+                        <div class="territorial-strategy-icon"><i class="bi bi-wallet2"></i></div>
+                        <div class="territorial-strategy-copy">
+                            <span>CONDICIONES SOCIOECONÓMICAS</span>
+                            <strong><?= ($resumen['pobreza_laboral'] ?? null) !== null ? $numero($resumen['pobreza_laboral'], 2) . ' %' : '—' ?></strong>
+                            <p>Pobreza laboral registrada</p>
+                            <div class="territorial-strategy-meta">
+                                <b><?= $diferencia($resumen['diferencia_pobreza_nacional'] ?? null) ?></b>
+                                <small>vs. referencia nacional</small>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article class="territorial-strategy-card">
+                        <div class="territorial-strategy-icon"><i class="bi bi-mortarboard"></i></div>
+                        <div class="territorial-strategy-copy">
+                            <span>EDUCACIÓN</span>
+                            <strong><?= ($resumen['rezago_educativo'] ?? null) !== null ? $numero($resumen['rezago_educativo'], 2) . ' %' : '—' ?></strong>
+                            <p>Rezago educativo registrado</p>
+                            <div class="territorial-strategy-meta">
+                                <b><?= $diferencia($resumen['diferencia_rezago_nacional'] ?? null) ?></b>
+                                <small>vs. referencia nacional</small>
+                            </div>
+                        </div>
+                    </article>
+                </div>
             </section>
 
+            <?php if (($priorizacion['disponible'] ?? false) === true): ?>
+                <section class="dashboard-panel report-section territorial-priority-section mb-4">
+                    <div class="territorial-report-section-heading">
+                        <div>
+                            <span>PRIORIZACIÓN TERRITORIAL</span>
+                            <h3>Municipios destacados para vinculación</h3>
+                            <p>Priorización orientativa del módulo territorial; compara municipios dentro del mismo Estado y conserva su cobertura de datos.</p>
+                        </div>
+                    </div>
+
+                    <div class="territorial-priority-summary">
+                        <div><span>ATACAR</span><strong><?= (int)($conteosPrioridad['ALTA'] ?? 0) ?></strong><small>Prioridad alta</small></div>
+                        <div><span>OFRECER</span><strong><?= (int)($conteosPrioridad['MEDIA'] ?? 0) ?></strong><small>Prioridad media</small></div>
+                        <div><span>OBSERVAR</span><strong><?= (int)($conteosPrioridad['BAJA'] ?? 0) ?></strong><small>Seguimiento</small></div>
+                        <div><span>CLASIFICADOS</span><strong><?= (int)($priorizacion['total_municipios_clasificables'] ?? 0) ?></strong><small>Con datos para priorización</small></div>
+                    </div>
+
+                    <?php if (!empty($municipiosRecomendados)): ?>
+                        <div class="territorial-priority-list">
+                            <?php foreach ($municipiosRecomendados as $municipio): ?>
+                                <?php
+                                $puntajeMunicipio = max(0, min(100, (int)($municipio['puntaje'] ?? 0)));
+                                $accionMunicipio = trim((string)($municipio['accion'] ?? '')) ?: 'OBSERVAR';
+                                $coberturaMunicipio = max(0, min(100, (int)($municipio['cobertura_datos'] ?? 0)));
+                                $rankingMunicipio = (int)($municipio['ranking'] ?? 0);
+                                $totalRankingMunicipio = (int)($municipio['total_ranking'] ?? 0);
+                                ?>
+                                <article class="territorial-priority-card">
+                                    <div class="territorial-priority-main">
+                                        <div class="territorial-priority-name">
+                                            <strong><?= $texto($municipio['nombre'] ?? '—') ?></strong>
+                                            <span class="territorial-strategy-pill"><?= $texto($accionMunicipio) ?></span>
+                                        </div>
+                                        <p><?= $texto($municipio['motivo'] ?? 'Priorización calculada con los datos disponibles del territorio.') ?></p>
+                                        <div class="territorial-priority-tags">
+                                            <span><?= $numero($municipio['poblacion'] ?? null) ?> habitantes</span>
+                                            <span><?= $puntajeMunicipio ?>/100</span>
+                                            <span>Cobertura <?= $coberturaMunicipio ?> %</span>
+                                            <?php if ($rankingMunicipio > 0 && $totalRankingMunicipio > 0): ?>
+                                                <span>Ranking <?= $rankingMunicipio ?> de <?= $totalRankingMunicipio ?></span>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                    <div class="territorial-priority-score" aria-label="Puntaje <?= $puntajeMunicipio ?> de 100">
+                                        <strong><?= $puntajeMunicipio ?></strong>
+                                        <span><i style="width: <?= $puntajeMunicipio ?>%"></i></span>
+                                    </div>
+                                </article>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php else: ?>
+                        <p class="data-empty-text mb-0">No hay municipios priorizados para mostrar.</p>
+                    <?php endif; ?>
+                </section>
+            <?php endif; ?>
+
             <section class="dashboard-panel report-section mb-4">
-                <div class="report-section-heading">
+                <div class="territorial-report-section-heading">
                     <div>
                         <span>ACTIVIDAD ECONÓMICA</span>
-                        <h3>Distribución de establecimientos</h3>
+                        <h3>Estructura productiva registrada</h3>
+                        <p>Principales sectores y concentración de establecimientos dentro del territorio.</p>
                     </div>
                 </div>
 
-                <?php if (!empty($actividad['sectores'])): ?>
-                    <div class="report-inline-metrics">
+                <?php if (!empty($sectoresRegistrados)): ?>
+                    <div class="territorial-economic-metrics">
                         <div>
-                            <span>Sector con mayor presencia</span>
+                            <span>Sector principal</span>
                             <strong><?= $texto($calculos['sector_principal']['nombre_sector'] ?? '—') ?></strong>
                         </div>
                         <div>
-                            <span>Concentración de los 5 principales sectores</span>
+                            <span>Concentración Top 5</span>
                             <strong><?= ($calculos['concentracion_top_5_sectores'] ?? null) !== null ? $numero($calculos['concentracion_top_5_sectores'], 2) . ' %' : '—' ?></strong>
                         </div>
                         <div>
-                            <span>Participación en establecimientos nacionales</span>
+                            <span>Participación nacional</span>
                             <strong><?= ($calculos['participacion_establecimientos_nacional'] ?? null) !== null ? $numero($calculos['participacion_establecimientos_nacional'], 2) . ' %' : '—' ?></strong>
                         </div>
                     </div>
 
-                    <?php if (!empty($sectoresGrafica)): ?>
-                        <div class="territorial-bar-chart mt-3" aria-label="Principales sectores económicos">
-                            <?php foreach ($sectoresGrafica as $sectorGrafica): ?>
-                                <?php
-                                $establecimientosSector = (int)($sectorGrafica['establecimientos'] ?? 0);
-                                $anchoSector = $maxSectorGrafica > 0
-                                    ? max(3, ($establecimientosSector / $maxSectorGrafica) * 100)
-                                    : 0;
-                                ?>
-                                <div class="territorial-bar-row">
-                                    <div class="territorial-bar-label">
-                                        <span><?= $texto($sectorGrafica['nombre_sector'] ?? '—') ?></span>
-                                        <strong><?= $numero($establecimientosSector) ?></strong>
-                                    </div>
-                                    <div class="territorial-bar-track">
-                                        <span style="width: <?= number_format($anchoSector, 2, '.', '') ?>%"></span>
-                                    </div>
+                    <div class="territorial-bar-chart mt-3" aria-label="Principales sectores económicos">
+                        <?php foreach ($sectoresGrafica as $sectorGrafica): ?>
+                            <?php
+                            $establecimientosSector = (int)($sectorGrafica['establecimientos'] ?? 0);
+                            $anchoSector = $maxSectorGrafica > 0
+                                ? max(3, ($establecimientosSector / $maxSectorGrafica) * 100)
+                                : 0;
+                            ?>
+                            <div class="territorial-bar-row">
+                                <div class="territorial-bar-label">
+                                    <span><?= $texto($sectorGrafica['nombre_sector'] ?? '—') ?></span>
+                                    <strong>
+                                        <?= $numero($establecimientosSector) ?>
+                                        <small>· <?= $numero($sectorGrafica['porcentaje'] ?? 0, 2) ?> %</small>
+                                    </strong>
                                 </div>
-                            <?php endforeach; ?>
+                                <div class="territorial-bar-track"><span style="width: <?= number_format($anchoSector, 2, '.', '') ?>%"></span></div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+
+                    <?php if (!empty($otrosSectores)): ?>
+                        <div class="territorial-secondary-sectors mt-3">
+                            <span>Otros sectores registrados</span>
+                            <div>
+                                <?php foreach ($otrosSectores as $sector): ?>
+                                    <article>
+                                        <strong><?= $texto($sector['nombre_sector'] ?? '—') ?></strong>
+                                        <small><?= $numero($sector['establecimientos'] ?? null) ?> · <?= $numero($sector['porcentaje'] ?? 0, 2) ?> %</small>
+                                    </article>
+                                <?php endforeach; ?>
+                            </div>
                         </div>
                     <?php endif; ?>
-
-                    <div class="table-responsive mt-3">
-                        <table class="table users-table data-table align-middle report-table">
-                            <thead>
-                                <tr><th>Sector</th><th class="text-end">Establecimientos</th><th class="text-end">Participación</th></tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach (array_slice(array_values($actividad['sectores']), 0, 8) as $sector): ?>
-                                    <tr>
-                                        <td><strong><?= $texto($sector['nombre_sector'] ?? '—') ?></strong></td>
-                                        <td class="text-end"><?= $numero($sector['establecimientos'] ?? null) ?></td>
-                                        <td class="text-end"><?= $numero($sector['porcentaje'] ?? 0, 2) ?> %</td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    </div>
                 <?php else: ?>
                     <p class="data-empty-text mb-0">No hay actividad económica oficial registrada para este territorio.</p>
                 <?php endif; ?>
-
-                <?php if (trim((string)($estado['actividad_economica'] ?? '')) !== ''): ?>
-                    <div class="report-context-box mt-3">
-                        <span>Contexto económico registrado</span>
-                        <p><?= nl2br($texto($estado['actividad_economica'])) ?></p>
-                    </div>
-                <?php endif; ?>
             </section>
 
-            <section class="report-two-column mb-4">
+            <section class="report-two-column territorial-context-columns mb-4">
                 <article class="dashboard-panel report-section">
-                    <div class="report-section-heading">
+                    <div class="territorial-report-section-heading">
                         <div>
                             <span>CONDICIONES SOCIOECONÓMICAS</span>
                             <h3>Poder adquisitivo</h3>
                         </div>
                     </div>
-
                     <?php if (($poder['disponible'] ?? false) === true): ?>
                         <div class="report-stat-list">
-                            <div>
-                                <span>Ingreso laboral real per cápita</span>
-                                <strong>$<?= $numero($poder['ingreso_laboral_real_per_capita'] ?? 0, 2) ?></strong>
-                            </div>
-                            <div>
-                                <span>Pobreza laboral</span>
-                                <strong><?= $numero($poder['pobreza_laboral'] ?? 0, 2) ?> %</strong>
-                            </div>
-                            <div>
-                                <span>Diferencia de ingreso vs. nacional</span>
-                                <strong><?= ($poder['diferencia_ingreso_nacional'] ?? null) !== null ? '$' . $diferencia($poder['diferencia_ingreso_nacional'], '') : '—' ?></strong>
-                            </div>
-                            <div>
-                                <span>Diferencia de pobreza vs. nacional</span>
-                                <strong><?= $diferencia($poder['diferencia_pobreza_nacional'] ?? null) ?></strong>
-                            </div>
+                            <div><span>Ingreso laboral real per cápita</span><strong>$<?= $numero($poder['ingreso_laboral_real_per_capita'] ?? 0, 2) ?></strong></div>
+                            <div><span>Pobreza laboral</span><strong><?= $numero($poder['pobreza_laboral'] ?? 0, 2) ?> %</strong></div>
+                            <div><span>Diferencia de ingreso vs. nacional</span><strong><?= ($poder['diferencia_ingreso_nacional'] ?? null) !== null ? '$' . $diferencia($poder['diferencia_ingreso_nacional'], '') : '—' ?></strong></div>
+                            <div><span>Diferencia de pobreza vs. nacional</span><strong><?= $diferencia($poder['diferencia_pobreza_nacional'] ?? null) ?></strong></div>
                         </div>
                     <?php else: ?>
                         <p class="data-empty-text mb-0">No hay indicadores oficiales de poder adquisitivo disponibles.</p>
@@ -345,44 +436,32 @@ foreach ($sectoresGrafica as $sectorGrafica) {
                 </article>
 
                 <article class="dashboard-panel report-section">
-                    <div class="report-section-heading">
+                    <div class="territorial-report-section-heading">
                         <div>
                             <span>EDUCACIÓN</span>
                             <h3>Rezago y perfil educativo</h3>
                         </div>
                     </div>
-
                     <div class="report-stat-list">
-                        <div>
-                            <span>Rezago educativo</span>
-                            <strong><?= ($rezago['disponible'] ?? false) === true ? $numero($rezago['porcentaje'] ?? 0, 2) . ' %' : '—' ?></strong>
-                        </div>
-                        <div>
-                            <span>Diferencia vs. nacional</span>
-                            <strong><?= $diferencia($rezago['diferencia_nacional'] ?? null) ?></strong>
-                        </div>
-                        <div>
-                            <span><?= $texto($perfil['nombre_indicador'] ?? 'Perfil educativo') ?></span>
-                            <strong><?= ($perfil['disponible'] ?? false) === true ? $numero($perfil['porcentaje'] ?? 0, 2) . ' %' : '—' ?></strong>
-                        </div>
-                        <div>
-                            <span>Población base del perfil educativo</span>
-                            <strong><?= ($perfil['disponible'] ?? false) === true ? $numero($perfil['poblacion_base'] ?? null) : '—' ?></strong>
-                        </div>
+                        <div><span>Rezago educativo</span><strong><?= ($rezago['disponible'] ?? false) === true ? $numero($rezago['porcentaje'] ?? 0, 2) . ' %' : '—' ?></strong></div>
+                        <div><span>Diferencia vs. nacional</span><strong><?= $diferencia($rezago['diferencia_nacional'] ?? null) ?></strong></div>
+                        <div><span><?= $texto($perfil['nombre_indicador'] ?? 'Perfil educativo') ?></span><strong><?= ($perfil['disponible'] ?? false) === true ? $numero($perfil['porcentaje'] ?? 0, 2) . ' %' : '—' ?></strong></div>
+                        <div><span>Población base del perfil</span><strong><?= ($perfil['disponible'] ?? false) === true ? $numero($perfil['poblacion_base'] ?? null) : '—' ?></strong></div>
                     </div>
                 </article>
             </section>
 
             <?php if (!empty($indicadores)): ?>
                 <section class="dashboard-panel report-section mb-4">
-                    <div class="report-section-heading">
+                    <div class="territorial-report-section-heading">
                         <div>
-                            <span>INDICADORES EDUCATIVOS</span>
+                            <span>INDICADORES EDUCATIVOS COMPLEMENTARIOS</span>
                             <h3>Información registrada en el territorio</h3>
+                            <p>Indicadores adicionales conservados con su periodo de referencia.</p>
                         </div>
                     </div>
                     <div class="table-responsive">
-                        <table class="table users-table data-table align-middle report-table">
+                        <table class="table users-table data-table align-middle report-table territorial-compact-table">
                             <thead><tr><th>Indicador</th><th class="text-end">Valor</th><th class="text-end">Periodo</th></tr></thead>
                             <tbody>
                                 <?php foreach ($indicadores as $indicador): ?>
@@ -404,85 +483,35 @@ foreach ($sectoresGrafica as $sectorGrafica) {
                 </section>
             <?php endif; ?>
 
-            <section class="dashboard-panel report-section report-insight-section mb-4">
-                <div class="report-section-heading">
+            <section class="dashboard-panel report-section mb-4">
+                <div class="territorial-report-section-heading">
                     <div>
-                        <span>LECTURA TERRITORIAL</span>
-                        <h3>Cálculos derivados de los datos disponibles</h3>
-                        <p>Estos resultados complementan los valores originales y no reemplazan sus fuentes.</p>
+                        <span>CONTEXTO INSTITUCIONAL</span>
+                        <h3>Gobierno y estructura del territorio</h3>
+                        <p>Ficha institucional de referencia; no interviene en el cálculo de priorización municipal.</p>
                     </div>
                 </div>
-
-                <?php if (!empty($lecturas)): ?>
-                    <div class="report-insight-list">
-                        <?php foreach ($lecturas as $lectura): ?>
-                            <div class="report-insight-item">
-                                <i class="bi bi-calculator"></i>
-                                <p><?= $texto($lectura) ?></p>
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
-                <?php else: ?>
-                    <p class="data-empty-text mb-0">Todavía no hay suficientes datos para generar cálculos complementarios.</p>
-                <?php endif; ?>
+                <dl class="report-definition-grid territorial-government-grid">
+                    <div><dt>Capital</dt><dd><?= $valor($estado['capital'] ?? null) ?></dd></div>
+                    <div><dt>Titular del gobierno</dt><dd><?= $valor($estado['titular_gobierno'] ?? null) ?></dd></div>
+                    <div><dt>Cargo</dt><dd><?= $valor($estado['cargo_titular'] ?? null) ?></dd></div>
+                    <div><dt>Partido político</dt><dd><?= $valor($estado['partido_politico'] ?? null) ?></dd></div>
+                    <div><dt>Periodo de gobierno</dt><dd><?= $valor($estado['periodo_gobierno'] ?? null) ?></dd></div>
+                    <div><dt>Teléfono</dt><dd><?= $valor($estado['telefono'] ?? null) ?></dd></div>
+                </dl>
             </section>
 
-            <?php if (!empty($priorizacion['recomendados'])): ?>
-                <section class="dashboard-panel report-section mb-4">
-                    <div class="report-section-heading">
-                        <div>
-                            <span>MUNICIPIOS</span>
-                            <h3>Municipios destacados en la priorización territorial</h3>
-                            <p>Se reutiliza la priorización ya calculada por Información territorial para mantener consistencia con el módulo.</p>
-                        </div>
-                    </div>
-                    <div class="table-responsive">
-                        <table class="table users-table data-table align-middle report-table">
-                            <thead><tr><th>Municipio</th><th>Estrategia</th><th>Puntaje</th><th class="text-end">Población</th><th class="text-end">Ranking</th></tr></thead>
-                            <tbody>
-                                <?php foreach ($priorizacion['recomendados'] as $municipio): ?>
-                                    <?php
-                                    $puntajeMunicipio = max(0, min(100, (int)($municipio['puntaje'] ?? 0)));
-                                    $accionMunicipio = trim((string)($municipio['accion'] ?? ''));
-                                    ?>
-                                    <tr>
-                                        <td>
-                                            <strong><?= $texto($municipio['nombre'] ?? '—') ?></strong>
-                                            <small class="d-block text-muted mt-1">Prioridad <?= $texto($municipio['prioridad'] ?? '—') ?></small>
-                                        </td>
-                                        <td><span class="territorial-strategy-pill"><?= $texto($accionMunicipio !== '' ? $accionMunicipio : '—') ?></span></td>
-                                        <td>
-                                            <div class="territorial-score">
-                                                <strong><?= $puntajeMunicipio ?></strong>
-                                                <span><i style="width: <?= $puntajeMunicipio ?>%"></i></span>
-                                            </div>
-                                        </td>
-                                        <td class="text-end"><?= $numero($municipio['poblacion'] ?? null) ?></td>
-                                        <td class="text-end"><?= ($municipio['ranking'] ?? null) !== null ? (int)$municipio['ranking'] . ' de ' . (int)($municipio['total_ranking'] ?? 0) : '—' ?></td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                </section>
-            <?php endif; ?>
-
-            <?php
-            $secretariasActivas = array_values(array_filter(
-                $secretarias,
-                static fn($secretaria) => (int)($secretaria['estado'] ?? 0) === 1
-            ));
-            ?>
             <?php if (!empty($secretariasActivas)): ?>
                 <section class="dashboard-panel report-section mb-4">
-                    <div class="report-section-heading">
+                    <div class="territorial-report-section-heading">
                         <div>
                             <span>ESTRUCTURA INSTITUCIONAL</span>
                             <h3>Secretarías registradas</h3>
+                            <p>Contactos institucionales disponibles en la ficha territorial.</p>
                         </div>
                     </div>
                     <div class="table-responsive">
-                        <table class="table users-table data-table align-middle report-table">
+                        <table class="table users-table data-table align-middle report-table territorial-compact-table">
                             <thead><tr><th>Secretaría</th><th>Titular</th><th>Contacto</th></tr></thead>
                             <tbody>
                                 <?php foreach ($secretariasActivas as $secretaria): ?>
@@ -499,15 +528,41 @@ foreach ($sectoresGrafica as $sectorGrafica) {
                 </section>
             <?php endif; ?>
 
-            <section class="dashboard-panel report-section mb-4">
-                <div class="report-section-heading">
+            <section class="dashboard-panel report-section territorial-insights-section mb-4">
+                <div class="territorial-report-section-heading">
                     <div>
-                        <span>FUENTES</span>
-                        <h3>Fuentes y periodos de referencia</h3>
+                        <span>LECTURA TERRITORIAL</span>
+                        <h3>Hallazgos de los datos disponibles</h3>
+                        <p>Síntesis calculada a partir de los indicadores registrados; no reemplaza las fuentes originales.</p>
+                    </div>
+                </div>
+                <?php if (!empty($lecturas)): ?>
+                    <div class="territorial-insight-grid">
+                        <?php foreach ($lecturas as $lectura): ?>
+                            <article>
+                                <i class="bi bi-lightbulb"></i>
+                                <div>
+                                    <strong><?= $texto($lectura['titulo'] ?? 'Hallazgo') ?></strong>
+                                    <p><?= $texto($lectura['texto'] ?? '') ?></p>
+                                </div>
+                            </article>
+                        <?php endforeach; ?>
+                    </div>
+                <?php else: ?>
+                    <p class="data-empty-text mb-0">Todavía no hay suficientes datos para generar una lectura territorial.</p>
+                <?php endif; ?>
+            </section>
+
+            <section class="dashboard-panel report-section mb-4">
+                <div class="territorial-report-section-heading">
+                    <div>
+                        <span>FUENTES Y VIGENCIA</span>
+                        <h3>Periodos de referencia</h3>
+                        <p>La fecha de actualización del expediente no sustituye el periodo estadístico propio de cada fuente.</p>
                     </div>
                 </div>
 
-                <div class="report-source-grid">
+                <div class="report-source-grid territorial-source-grid">
                     <?php $fuentesMostradas = 0; ?>
                     <?php foreach ($fuentes as $seccion => $fuente): ?>
                         <?php if (!is_array($fuente) || trim((string)($fuente['fuente'] ?? '')) === '') continue; ?>
