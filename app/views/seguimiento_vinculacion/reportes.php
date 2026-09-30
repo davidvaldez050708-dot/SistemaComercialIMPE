@@ -477,124 +477,337 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                     <?php if ($modoSeguimiento === 'analista' && $tipoReporteActual === 'actividad'): ?>
                         <?= (int)($analiticaReporte['interacciones'] ?? 0) ?> interacciones
                     <?php elseif ($modoSeguimiento === 'analista' && $tipoReporteActual === 'institucion'): ?>
-                        1 institución
-                    <?php else: ?>
-                        <?= (int)$resumenReporte['total'] ?> <?= (int)$resumenReporte['total'] === 1 ? 'seguimiento' : 'seguimientos' ?>
-                    <?php endif; ?>
-                </span>
-                <?php if ($urlExportarPdf !== ''): ?>
-                    <a class="btn btn-system-save linkage-action-button" href="<?= $texto($urlExportarPdf) ?>">
-                        <i class="bi bi-file-earmark-pdf"></i>
-                        Exportar PDF
-                    </a>
-                <?php endif; ?>
-            </div>
-        </div>
-
-        <section class="dashboard-panel mb-4 report-filter-summary" aria-label="Filtros utilizados">
-            <h3 class="panel-title">Filtros utilizados</h3>
-            <div class="row g-3">
-                <?php foreach ($resumenFiltros as $nombreFiltro => $valorFiltro): ?>
-                    <div class="col-sm-6 col-lg-3">
-                        <span class="d-block text-muted small mb-1"><?= $texto($nombreFiltro) ?></span>
-                        <strong><?= $texto($valorFiltro) ?></strong>
-                    </div>
-                <?php endforeach; ?>
-            </div>
-        </section>
-
-        <?php if ($modoSeguimiento === 'analista' && $tipoReporteActual === 'actividad'): ?>
-        <section class="metric-grid linkage-summary-grid mb-4" aria-label="Indicadores de actividad del analista">
-            <article class="metric-card linkage-summary-card">
-                <div class="metric-icon"><i class="bi bi-activity"></i></div>
-                <div>
-                    <p class="metric-value"><?= (int)($analiticaReporte['interacciones'] ?? 0) ?></p>
-                    <p class="metric-label">Interacciones registradas</p>
-                </div>
-            </article>
-            <article class="metric-card linkage-summary-card">
-                <div class="metric-icon"><i class="bi bi-telephone"></i></div>
-                <div>
-                    <p class="metric-value"><?= (int)($llamadasReporte['total'] ?? 0) ?></p>
-                    <p class="metric-label">Llamadas realizadas</p>
-                </div>
-            </article>
-            <article class="metric-card linkage-summary-card">
-                <div class="metric-icon"><i class="bi bi-person-check"></i></div>
-                <div>
-                    <p class="metric-value"><?= (int)($llamadasReporte['contactadas'] ?? 0) ?></p>
-                    <p class="metric-label">Llamadas con contacto</p>
-                </div>
-            </article>
-            <article class="metric-card linkage-summary-card">
-                <div class="metric-icon"><i class="bi bi-patch-check"></i></div>
-                <div>
-                    <p class="metric-value"><?= (int)($llamadasReporte['verificaciones_efectivas'] ?? 0) ?></p>
-                    <p class="metric-label">Verificaciones efectivas</p>
-                </div>
-            </article>
-        </section>
-
-        <section class="dashboard-panel mb-4" aria-label="Desglose del trabajo realizado">
-            <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
-                <div>
-                    <h3 class="panel-title mb-1">Desglose del trabajo realizado</h3>
-                    <p class="page-subtitle mb-0">Las verificaciones efectivas se contabilizan una vez por institución y día.</p>
-                </div>
-                <span class="status-pill status-pill-active">
-                    <?= number_format((float)($llamadasReporte['tasa_contacto'] ?? 0), 1) ?>% contacto
-                </span>
-            </div>
-            <div class="row g-3">
-                <div class="col-6 col-lg-3"><strong><?= (int)($canalesReporte['correos'] ?? 0) ?></strong><span class="d-block text-muted small">Correos</span></div>
-                <div class="col-6 col-lg-3"><strong><?= (int)($canalesReporte['whatsapp'] ?? 0) ?></strong><span class="d-block text-muted small">WhatsApp</span></div>
-                <div class="col-6 col-lg-3"><strong><?= (int)($llamadasReporte['sin_respuesta'] ?? 0) ?></strong><span class="d-block text-muted small">Llamadas sin respuesta</span></div>
-                <div class="col-6 col-lg-3"><strong><?= (int)($llamadasReporte['volver_llamar'] ?? 0) ?></strong><span class="d-block text-muted small">Solicitaron llamar después</span></div>
-            </div>
-        </section>
-    <?php elseif ($modoSeguimiento === 'analista' && $tipoReporteActual === 'institucion'): ?>
-        <section class="metric-grid linkage-summary-grid mb-4" aria-label="Indicadores de la institución">
-            <article class="metric-card linkage-summary-card">
-                <div class="metric-icon"><i class="bi bi-chat-square-text"></i></div>
-                <div><p class="metric-value"><?= (int)($analiticaReporte['interacciones'] ?? 0) ?></p><p class="metric-label">Interacciones del analista</p></div>
-            </article>
-            <article class="metric-card linkage-summary-card">
-                <div class="metric-icon"><i class="bi bi-telephone"></i></div>
-                <div><p class="metric-value"><?= (int)($llamadasReporte['total'] ?? 0) ?></p><p class="metric-label">Llamadas realizadas</p></div>
-            </article>
-            <article class="metric-card linkage-summary-card">
-                <div class="metric-icon"><i class="bi bi-person-check"></i></div>
-                <div><p class="metric-value"><?= (int)($llamadasReporte['contactadas'] ?? 0) ?></p><p class="metric-label">Llamadas con contacto</p></div>
-            </article>
-            <article class="metric-card linkage-summary-card">
-                <div class="metric-icon"><i class="bi bi-patch-check"></i></div>
-                <div><p class="metric-value"><?= (int)($llamadasReporte['verificaciones_efectivas'] ?? 0) ?></p><p class="metric-label">Verificaciones efectivas</p></div>
-            </article>
-        </section>
-
         <?php
         $contactoInstitucion = is_array($detalleInstitucionReporte['contacto'] ?? null)
             ? $detalleInstitucionReporte['contacto']
             : [];
-        $seguimientoInstitucion = $seguimientosReporte[0] ?? [];
+        $seguimientoInstitucion = is_array($detalleInstitucionReporte['seguimiento'] ?? null)
+            ? $detalleInstitucionReporte['seguimiento']
+            : ($seguimientosReporte[0] ?? []);
+        $flujoInstitucion = is_array($detalleInstitucionReporte['flujo'] ?? null)
+            ? $detalleInstitucionReporte['flujo']
+            : [];
+        $hitosInstitucion = is_array($detalleInstitucionReporte['hitos'] ?? null)
+            ? $detalleInstitucionReporte['hitos']
+            : [];
+        $oficiosInstitucion = is_array($detalleInstitucionReporte['oficios'] ?? null)
+            ? $detalleInstitucionReporte['oficios']
+            : [];
+        $postEnvioInstitucion = is_array($detalleInstitucionReporte['post_envio'] ?? null)
+            ? $detalleInstitucionReporte['post_envio']
+            : [];
+        $ultimaReunionInstitucion = is_array($detalleInstitucionReporte['ultima_reunion'] ?? null)
+            ? $detalleInstitucionReporte['ultima_reunion']
+            : [];
+        $observacionesInstitucion = is_array($detalleInstitucionReporte['observaciones'] ?? null)
+            ? $detalleInstitucionReporte['observaciones']
+            : [];
+        $ultimaInteraccionInstitucion = is_array($detalleInstitucionReporte['ultima_interaccion_humana'] ?? null)
+            ? $detalleInstitucionReporte['ultima_interaccion_humana']
+            : [];
+
+        $pasoActualInstitucion = (int)($flujoInstitucion['paso_actual'] ?? 0);
+        $totalPasosInstitucion = max(1, (int)($flujoInstitucion['total_pasos'] ?? 13));
+        $porcentajeRutaInstitucion = max(
+            0,
+            min(100, (int)($flujoInstitucion['porcentaje'] ?? round(($pasoActualInstitucion / $totalPasosInstitucion) * 100)))
+        );
+        $etapaRutaInstitucion = trim((string)($flujoInstitucion['ventana']['actual']['titulo'] ?? ''));
+        if ($etapaRutaInstitucion === '') {
+            $etapaRutaInstitucion = trim((string)($seguimientoInstitucion['estado_label'] ?? 'Seguimiento'));
+        }
+
+        $accionEjecutivaInstitucion = trim((string)($flujoInstitucion['accion_principal']['etiqueta'] ?? ''));
+        $fechaReunionInstitucion = trim((string)($ultimaReunionInstitucion['fecha_propuesta'] ?? ''));
+        $estadoReunionInstitucion = strtoupper(trim((string)($ultimaReunionInstitucion['estado'] ?? '')));
+        $reunionRealizadaInstitucion = trim((string)($ultimaReunionInstitucion['realizada_at'] ?? ''));
+        $reunionVencidaInstitucion =
+            $fechaReunionInstitucion !== '' &&
+            $reunionRealizadaInstitucion === '' &&
+            !in_array($estadoReunionInstitucion, ['CANCELADA', 'CAMBIO_SOLICITADO'], true) &&
+            strtotime($fechaReunionInstitucion) !== false &&
+            strtotime($fechaReunionInstitucion) < time();
+
+        if ($reunionVencidaInstitucion) {
+            $accionEjecutivaInstitucion = 'Registrar resultado de reunión';
+        } elseif ($accionEjecutivaInstitucion === '') {
+            $accionEjecutivaInstitucion = trim((string)($seguimientoInstitucion['proxima_accion_label'] ?? ''));
+        }
+        if ($accionEjecutivaInstitucion === '') {
+            $accionEjecutivaInstitucion = 'Sin acción pendiente registrada';
+        }
+
+        $ultimaActividadInstitucion = trim((string)($ultimaInteraccionInstitucion['fecha_inicio'] ?? ''));
+        if ($ultimaActividadInstitucion === '') {
+            $ultimaActividadInstitucion = trim((string)($seguimientoInstitucion['ultima_interaccion_at'] ?? ''));
+        }
+
+        $ultimoOficioInstitucion = $oficiosInstitucion[0] ?? [];
+        $respuestaTipoInstitucion = strtoupper(trim((string)($postEnvioInstitucion['respuesta_tipo'] ?? '')));
+        $respuestaTipoLabels = [
+            'INTERESADO' => 'Interesado',
+            'MAS_INFORMACION' => 'Solicitó más información',
+            'QUIERE_REUNION' => 'Solicitó reunión',
+            'CONTACTAR_DESPUES' => 'Solicitó retomar contacto',
+            'NO_INTERESADO' => 'No interesado'
+        ];
+        $resultadoReunionInstitucion = strtoupper(trim((string)(
+            $ultimaReunionInstitucion['reunion_resultado']
+                ?? $postEnvioInstitucion['reunion_resultado']
+                ?? ''
+        )));
+        $resultadoReunionLabels = [
+            'AVANZAR_CONVENIO' => 'Avanzar a convenio',
+            'REQUIERE_SEGUIMIENTO' => 'Requiere seguimiento',
+            'NO_INTERESADO' => 'No interesado'
+        ];
+        $modalidadReunionLabels = [
+            'VIRTUAL' => 'Virtual',
+            'PRESENCIAL' => 'Presencial',
+            'HIBRIDA' => 'Híbrida'
+        ];
+        $estadoHitoLabels = [
+            'COMPLETADO' => 'Completado',
+            'EN_PROCESO' => 'En proceso',
+            'PENDIENTE' => 'Pendiente'
+        ];
         ?>
-        <section class="dashboard-panel mb-4 analyst-institution-profile" aria-labelledby="ficha-institucion-reporte">
-            <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
+
+        <section class="dashboard-panel analyst-institution-current mb-3" aria-labelledby="situacion-actual-institucion">
+            <div class="analyst-institution-section-heading">
                 <div>
-                    <h3 class="panel-title mb-1" id="ficha-institucion-reporte">Ficha técnica de la institución</h3>
-                    <p class="page-subtitle mb-0"><?= $texto($seguimientoInstitucion['nombre_entidad'] ?? 'Institución') ?></p>
+                    <span class="report-eyebrow">SITUACIÓN ACTUAL</span>
+                    <h3 class="panel-title mb-1" id="situacion-actual-institucion"><?= $texto($etapaRutaInstitucion) ?></h3>
+                    <p class="page-subtitle mb-0"><?= $texto(trim((string)($flujoInstitucion['descripcion'] ?? 'Estado operativo actual del seguimiento.'))) ?></p>
                 </div>
-                <span class="status-pill status-pill-active"><?= $texto($seguimientoInstitucion['estado_label'] ?? 'Seguimiento') ?></span>
+                <?php if ($pasoActualInstitucion > 0): ?>
+                    <span class="analyst-institution-step-pill">
+                        Paso <?= $pasoActualInstitucion ?> de <?= $totalPasosInstitucion ?>
+                    </span>
+                <?php endif; ?>
             </div>
-            <div class="row g-3">
-                <div class="col-md-4"><span class="d-block text-muted small">Ubicación</span><strong><?= $texto(trim((string)($seguimientoInstitucion['municipio'] ?? '')) !== '' ? ($seguimientoInstitucion['municipio'] . ', ' . ($seguimientoInstitucion['estado_nombre'] ?? '')) : ($seguimientoInstitucion['estado_nombre'] ?? '—')) ?></strong></div>
-                <div class="col-md-4"><span class="d-block text-muted small">Contacto</span><strong><?= $texto(trim((string)($contactoInstitucion['nombre'] ?? '')) !== '' ? $contactoInstitucion['nombre'] : '—') ?></strong></div>
-                <div class="col-md-4"><span class="d-block text-muted small">Cargo / área</span><strong><?= $texto(trim((string)($contactoInstitucion['cargo'] ?? '')) !== '' ? $contactoInstitucion['cargo'] : '—') ?></strong></div>
-                <div class="col-md-4"><span class="d-block text-muted small">Teléfono</span><strong><?= $texto(trim((string)($contactoInstitucion['telefono'] ?? '')) !== '' ? $contactoInstitucion['telefono'] : '—') ?></strong></div>
-                <div class="col-md-4"><span class="d-block text-muted small">Correo</span><strong><?= $texto(trim((string)($contactoInstitucion['correo'] ?? '')) !== '' ? $contactoInstitucion['correo'] : '—') ?></strong></div>
-                <div class="col-md-4"><span class="d-block text-muted small">Próxima acción</span><strong><?= $texto($seguimientoInstitucion['proxima_accion_label'] ?? '—') ?></strong></div>
+
+            <div class="analyst-institution-current-grid">
+                <div>
+                    <span>Última actividad</span>
+                    <strong><?= $texto($fechaHoraReporte($ultimaActividadInstitucion)) ?></strong>
+                </div>
+                <div class="<?= $reunionVencidaInstitucion ? 'is-alert' : '' ?>">
+                    <span>Próxima acción</span>
+                    <strong><?= $texto($accionEjecutivaInstitucion) ?></strong>
+                    <?php if ($reunionVencidaInstitucion): ?>
+                        <small>Reunión pendiente de registrar · <?= $texto($fechaHoraReporte($fechaReunionInstitucion)) ?></small>
+                    <?php endif; ?>
+                </div>
+                <div>
+                    <span>Responsable</span>
+                    <strong><?= $texto(trim((string)($seguimientoInstitucion['responsable_nombre'] ?? $seguimientoInstitucion['analista_nombre'] ?? '')) ?: '—') ?></strong>
+                </div>
+                <div>
+                    <span>Estado del contacto</span>
+                    <strong><?= !empty($contactoInstitucion['datos_verificados']) ? 'Datos verificados' : 'Datos por validar' ?></strong>
+                </div>
             </div>
         </section>
+
+        <section class="dashboard-panel analyst-institution-route mb-3" aria-labelledby="ruta-institucion-reporte">
+            <div class="analyst-institution-section-heading">
+                <div>
+                    <span class="report-eyebrow">RUTA DE VINCULACIÓN</span>
+                    <h3 class="panel-title mb-1" id="ruta-institucion-reporte">Avance del proceso</h3>
+                    <p class="page-subtitle mb-0"><?= $pasoActualInstitucion > 0 ? $pasoActualInstitucion . ' de ' . $totalPasosInstitucion . ' etapas alcanzadas en la ruta operativa.' : 'Seguimiento de hitos relevantes del proceso.' ?></p>
+                </div>
+                <strong class="analyst-institution-route-percent"><?= $porcentajeRutaInstitucion ?>%</strong>
+            </div>
+            <div class="analyst-institution-route-track" aria-hidden="true">
+                <span style="width: <?= $porcentajeRutaInstitucion ?>%"></span>
+            </div>
+            <div class="analyst-institution-milestones">
+                <?php foreach ($hitosInstitucion as $hito): ?>
+                    <?php
+                    $estadoHito = strtoupper(trim((string)($hito['estado'] ?? 'PENDIENTE')));
+                    $claseHito = strtolower(str_replace('_', '-', $estadoHito));
+                    ?>
+                    <article class="analyst-institution-milestone is-<?= $texto($claseHito) ?>">
+                        <span class="analyst-institution-milestone-icon">
+                            <i class="bi <?= $estadoHito === 'COMPLETADO' ? 'bi-check2' : ($estadoHito === 'EN_PROCESO' ? 'bi-arrow-right' : 'bi-dot') ?>"></i>
+                        </span>
+                        <div>
+                            <strong><?= $texto($hito['titulo'] ?? 'Hito') ?></strong>
+                            <span><?= $texto($estadoHitoLabels[$estadoHito] ?? 'Pendiente') ?></span>
+                            <?php if (trim((string)($hito['detalle'] ?? '')) !== ''): ?>
+                                <small><?= $texto($hito['detalle']) ?></small>
+                            <?php endif; ?>
+                        </div>
+                    </article>
+                <?php endforeach; ?>
+            </div>
+        </section>
+
+        <div class="row g-3 mb-3">
+            <div class="col-xl-7">
+                <section class="dashboard-panel analyst-institution-profile h-100" aria-labelledby="ficha-institucion-reporte">
+                    <div class="analyst-institution-section-heading">
+                        <div>
+                            <span class="report-eyebrow">FICHA INSTITUCIONAL</span>
+                            <h3 class="panel-title mb-1" id="ficha-institucion-reporte"><?= $texto($seguimientoInstitucion['nombre_entidad'] ?? 'Institución') ?></h3>
+                            <p class="page-subtitle mb-0">
+                                <?= $texto(trim((string)($contactoInstitucion['actividad_giro'] ?? '')) !== '' ? $contactoInstitucion['actividad_giro'] : 'Información institucional y de contacto disponible.') ?>
+                            </p>
+                        </div>
+                        <span class="status-pill status-pill-active"><?= $texto($seguimientoInstitucion['estado_label'] ?? 'Seguimiento') ?></span>
+                    </div>
+
+                    <div class="analyst-institution-profile-grid">
+                        <div><span>Ubicación</span><strong><?= $texto(trim((string)($seguimientoInstitucion['municipio'] ?? '')) !== '' ? ($seguimientoInstitucion['municipio'] . ', ' . ($seguimientoInstitucion['estado_nombre'] ?? '')) : ($seguimientoInstitucion['estado_nombre'] ?? '—')) ?></strong></div>
+                        <div><span>Contacto</span><strong><?= $texto(trim((string)($contactoInstitucion['nombre'] ?? '')) !== '' ? $contactoInstitucion['nombre'] : '—') ?></strong></div>
+                        <div><span>Cargo / área</span><strong><?= $texto(trim((string)($contactoInstitucion['cargo'] ?? '')) !== '' ? $contactoInstitucion['cargo'] : '—') ?></strong></div>
+                        <div><span>Teléfono</span><strong><?= $texto(trim((string)($contactoInstitucion['telefono'] ?? '')) !== '' ? $contactoInstitucion['telefono'] : '—') ?></strong></div>
+                        <div><span>Correo</span><strong><?= $texto(trim((string)($contactoInstitucion['correo'] ?? '')) !== '' ? $contactoInstitucion['correo'] : '—') ?></strong></div>
+                        <div><span>WhatsApp</span><strong><?= $texto(trim((string)($contactoInstitucion['whatsapp'] ?? '')) !== '' ? $contactoInstitucion['whatsapp'] : '—') ?></strong></div>
+                        <div><span>Sitio web</span><strong><?= $texto(trim((string)($contactoInstitucion['sitio_web'] ?? '')) !== '' ? $contactoInstitucion['sitio_web'] : '—') ?></strong></div>
+                        <div><span>Origen</span><strong><?= $texto(trim((string)($seguimientoInstitucion['origen'] ?? '')) !== '' ? $seguimientoInstitucion['origen'] : '—') ?></strong></div>
+                    </div>
+                </section>
+            </div>
+
+            <div class="col-xl-5">
+                <section class="dashboard-panel analyst-institution-contact-summary h-100" aria-labelledby="actividad-contacto-institucion">
+                    <div class="analyst-institution-section-heading">
+                        <div>
+                            <span class="report-eyebrow">ACTIVIDAD Y CONTACTO</span>
+                            <h3 class="panel-title mb-1" id="actividad-contacto-institucion">Resumen de interacción</h3>
+                            <p class="page-subtitle mb-0">Actividad humana registrada con esta institución.</p>
+                        </div>
+                    </div>
+                    <div class="analyst-institution-kpis">
+                        <div><strong><?= (int)($analiticaReporte['interacciones'] ?? 0) ?></strong><span>Interacciones</span></div>
+                        <div><strong><?= (int)($llamadasReporte['total'] ?? 0) ?></strong><span>Llamadas</span></div>
+                        <div><strong><?= (int)($llamadasReporte['contactadas'] ?? 0) ?></strong><span>Con contacto</span></div>
+                        <div><strong><?= (int)($canalesReporte['correos'] ?? 0) ?></strong><span>Correos</span></div>
+                    </div>
+                    <div class="analyst-institution-call-breakdown">
+                        <div><span>Sin respuesta</span><strong><?= (int)($llamadasReporte['sin_respuesta'] ?? 0) ?></strong></div>
+                        <div><span>Solicitaron llamar después</span><strong><?= (int)($llamadasReporte['volver_llamar'] ?? 0) ?></strong></div>
+                        <div><span>Tasa de contacto</span><strong><?= number_format((float)($llamadasReporte['tasa_contacto'] ?? 0), 1) ?>%</strong></div>
+                        <div><span>Verificaciones efectivas</span><strong><?= (int)($llamadasReporte['verificaciones_efectivas'] ?? 0) ?></strong></div>
+                    </div>
+                </section>
+            </div>
+        </div>
+
+        <div class="row g-3 mb-3">
+            <div class="col-xl-6">
+                <section class="dashboard-panel analyst-institution-formal h-100" aria-labelledby="comunicacion-formal-institucion">
+                    <div class="analyst-institution-section-heading">
+                        <div>
+                            <span class="report-eyebrow">COMUNICACIÓN FORMAL</span>
+                            <h3 class="panel-title mb-1" id="comunicacion-formal-institucion">Oficio y respuesta</h3>
+                        </div>
+                    </div>
+
+                    <?php if (!empty($ultimoOficioInstitucion)): ?>
+                        <div class="analyst-institution-formal-row">
+                            <span>Oficio</span>
+                            <strong><?= $texto(trim((string)($ultimoOficioInstitucion['folio'] ?? '')) !== '' ? $ultimoOficioInstitucion['folio'] : 'Folio pendiente') ?></strong>
+                            <small>
+                                <?= $texto(trim((string)($ultimoOficioInstitucion['estado_oficio'] ?? '')) !== '' ? ucfirst(strtolower((string)$ultimoOficioInstitucion['estado_oficio'])) : 'Registrado') ?>
+                                <?php if (trim((string)($ultimoOficioInstitucion['fecha_envio'] ?? '')) !== ''): ?>
+                                    · enviado <?= $texto($fechaHoraReporte($ultimoOficioInstitucion['fecha_envio'])) ?>
+                                <?php endif; ?>
+                            </small>
+                        </div>
+                    <?php else: ?>
+                        <div class="analyst-institution-formal-row is-empty">
+                            <span>Oficio</span>
+                            <strong>Aún no registrado</strong>
+                            <small>La ruta todavía no cuenta con un oficio asociado.</small>
+                        </div>
+                    <?php endif; ?>
+
+                    <div class="analyst-institution-formal-row <?= trim((string)($postEnvioInstitucion['respuesta_at'] ?? '')) === '' ? 'is-empty' : '' ?>">
+                        <span>Respuesta de la institución</span>
+                        <strong>
+                            <?= trim((string)($postEnvioInstitucion['respuesta_at'] ?? '')) !== ''
+                                ? $texto($respuestaTipoLabels[$respuestaTipoInstitucion] ?? 'Respuesta registrada')
+                                : 'Pendiente de respuesta' ?>
+                        </strong>
+                        <small>
+                            <?php if (trim((string)($postEnvioInstitucion['respuesta_texto'] ?? '')) !== ''): ?>
+                                <?= $texto($postEnvioInstitucion['respuesta_texto']) ?>
+                            <?php else: ?>
+                                Sin respuesta documentada todavía.
+                            <?php endif; ?>
+                        </small>
+                    </div>
+                </section>
+            </div>
+
+            <div class="col-xl-6">
+                <section class="dashboard-panel analyst-institution-formal h-100" aria-labelledby="reunion-convenio-institucion">
+                    <div class="analyst-institution-section-heading">
+                        <div>
+                            <span class="report-eyebrow">REUNIÓN Y FORMALIZACIÓN</span>
+                            <h3 class="panel-title mb-1" id="reunion-convenio-institucion">Avance de acuerdos</h3>
+                        </div>
+                    </div>
+
+                    <?php if (!empty($ultimaReunionInstitucion)): ?>
+                        <div class="analyst-institution-formal-row <?= $reunionVencidaInstitucion ? 'is-alert' : '' ?>">
+                            <span>Reunión más reciente</span>
+                            <strong><?= $texto($fechaHoraReporte($fechaReunionInstitucion)) ?> · <?= $texto($modalidadReunionLabels[strtoupper((string)($ultimaReunionInstitucion['modalidad'] ?? ''))] ?? ucfirst(strtolower((string)($ultimaReunionInstitucion['modalidad'] ?? 'Reunión')))) ?></strong>
+                            <small>
+                                <?= trim((string)($ultimaReunionInstitucion['objetivo'] ?? '')) !== ''
+                                    ? $texto($ultimaReunionInstitucion['objetivo'])
+                                    : $texto(ucfirst(strtolower(str_replace('_', ' ', $estadoReunionInstitucion)))) ?>
+                            </small>
+                        </div>
+                    <?php else: ?>
+                        <div class="analyst-institution-formal-row is-empty">
+                            <span>Reunión</span>
+                            <strong>Aún no programada</strong>
+                            <small>No hay reunión registrada para este seguimiento.</small>
+                        </div>
+                    <?php endif; ?>
+
+                    <div class="analyst-institution-formal-row <?= $resultadoReunionInstitucion === '' ? 'is-empty' : '' ?>">
+                        <span>Resultado / convenio</span>
+                        <strong><?= $resultadoReunionInstitucion !== '' ? $texto($resultadoReunionLabels[$resultadoReunionInstitucion] ?? 'Resultado registrado') : 'Sin resultado de reunión' ?></strong>
+                        <small>
+                            <?php if (trim((string)($postEnvioInstitucion['convenio_formalizado_at'] ?? '')) !== ''): ?>
+                                Convenio formalizado <?= $texto($fechaHoraReporte($postEnvioInstitucion['convenio_formalizado_at'])) ?>.
+                            <?php elseif ($resultadoReunionInstitucion === 'AVANZAR_CONVENIO'): ?>
+                                La relación está lista para continuar con la formalización.
+                            <?php else: ?>
+                                La formalización depende del avance y resultado de la reunión.
+                            <?php endif; ?>
+                        </small>
+                    </div>
+                </section>
+            </div>
+        </div>
+
+        <?php if (!empty($observacionesInstitucion)): ?>
+            <section class="dashboard-panel analyst-institution-observations mb-3" aria-labelledby="observaciones-institucion-reporte">
+                <div class="analyst-institution-section-heading">
+                    <div>
+                        <span class="report-eyebrow">OBSERVACIONES INTERNAS</span>
+                        <h3 class="panel-title mb-1" id="observaciones-institucion-reporte">Notas recientes de seguimiento</h3>
+                    </div>
+                </div>
+                <div class="analyst-institution-observation-list">
+                    <?php foreach (array_slice($observacionesInstitucion, 0, 3) as $observacion): ?>
+                        <article>
+                            <div>
+                                <strong><?= $texto(trim((string)($observacion['nombre'] ?? '') . ' ' . (string)($observacion['apellidos'] ?? '')) ?: 'Equipo de seguimiento') ?></strong>
+                                <span><?= $texto($fechaHoraReporte($observacion['created_at'] ?? '')) ?></span>
+                            </div>
+                            <p><?= $texto($observacion['observacion'] ?? 'Sin detalle adicional.') ?></p>
+                        </article>
+                    <?php endforeach; ?>
+                </div>
+            </section>
+        <?php endif; ?>
     <?php else: ?>
 <section class="metric-grid linkage-summary-grid mb-4" aria-label="Indicadores del reporte">
             <article class="metric-card linkage-summary-card">
