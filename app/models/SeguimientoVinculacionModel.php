@@ -35,7 +35,8 @@ class SeguimientoVinculacionModel
         $sql = "SELECT DISTINCT seguimiento_id
             FROM interacciones_vinculacion
             WHERE usuario_id = ?
-              AND seguimiento_id IN (" . $listaIds . ")";
+              AND seguimiento_id IN (" . $listaIds . ")
+              AND UPPER(TRIM(COALESCE(canal, ''))) <> 'SISTEMA'";
 
         $tipos = 'i';
         $parametros = [$usuarioId];
