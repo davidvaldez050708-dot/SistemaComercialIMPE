@@ -14,7 +14,7 @@ $mostrarReportes = $mostrarDataTerritorial || $mostrarSeguimientoVinculacion;
 $rolActualConvocatorias = strtolower(trim((string)($_SESSION['rol'] ?? '')));
 $esRolMarketing = $rolActualConvocatorias === 'marketing';
 $etiquetaMenuConvocatorias = $esRolMarketing
-    ? '<?= htmlspecialchars($etiquetaMenuConvocatorias) ?>'
+    ? 'Gestión de Convocatorias'
     : 'Convocatorias';
 
 $claseInicio = $opcionActiva === 'inicio' ? 'active' : '';
