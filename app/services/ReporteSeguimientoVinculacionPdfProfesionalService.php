@@ -94,9 +94,13 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
         $html = '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><style>' . $this->css() . '</style></head><body>';
         $html .= '<div class="top-rule"></div>';
         $html .= $this->encabezado($fecha, $generadoPor, $generadoPorRol, $periodoEncabezado, $tituloReporte);
-        $html .= $tipoReporte === 'actividad'
-            ? $this->contextoActividad($filtros, $responsable, $analitica)
-            : $this->contexto($filtros, $responsable, count($seguimientos), $individual);
+        if ($tipoReporte === 'actividad') {
+            $html .= $this->contextoActividad($filtros, $responsable, $analitica);
+        } elseif ($tipoReporte === 'cartera') {
+            $html .= $this->contextoCartera($filtros, $responsable, $resumen);
+        } else {
+            $html .= $this->contexto($filtros, $responsable, count($seguimientos), $individual);
+        }
 
         $total = (int)($resumen['total'] ?? count($seguimientos));
         if ($total <= 0) {
@@ -142,6 +146,23 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
                     $actividadReciente,
                     max(0, (int)($analitica['interacciones'] ?? count($actividadReciente)))
                 );
+            }
+
+            return $html . '</body></html>';
+        }
+
+        if ($tipoReporte === 'cartera') {
+            $html .= $this->resumenEjecutivoCartera($resumen);
+            $html .= $this->atencionCartera($resumen);
+            $html .= $this->saludCartera($resumen);
+
+            $html .= '<div class="portfolio-pdf-page-break"></div>';
+            $html .= $this->distribucionEtapasCartera($resumen);
+            $html .= $this->coberturaTerritorialCartera($resumen);
+
+            if (!empty($seguimientos)) {
+                $html .= '<div class="portfolio-pdf-page-break"></div>';
+                $html .= $this->detalleCartera($seguimientos);
             }
 
             return $html . '</body></html>';
