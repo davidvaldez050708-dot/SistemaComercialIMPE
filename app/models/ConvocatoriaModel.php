@@ -332,6 +332,42 @@ class ConvocatoriaModel
         return $this->convertirResultadoEnArreglo($stmt->get_result());
     }
 
+    public function obtenerRecientesDashboard($limite = 3)
+    {
+        $limite = max(1, min(10, (int)$limite));
+
+        $sql = "SELECT
+                    convocatorias.id,
+                    convocatorias.titulo,
+                    convocatorias.tipo_convocatoria,
+                    convocatorias.subtipo_convocatoria,
+                    convocatorias.fecha_inicio,
+                    convocatorias.fecha_termino,
+                    convocatorias.estado,
+                    convocatorias.created_at,
+                    convocatorias.updated_at,
+                    CASE
+                        WHEN convocatorias.fecha_termino < CURDATE()
+                            THEN 'finalizada'
+                        WHEN convocatorias.estado = 1
+                            AND convocatorias.fecha_termino BETWEEN CURDATE()
+                                AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)
+                            THEN 'proxima'
+                        WHEN convocatorias.estado = 1
+                            THEN 'activa'
+                        ELSE 'inactiva'
+                    END AS estado_proceso
+                FROM convocatorias
+                ORDER BY
+                    COALESCE(convocatorias.created_at, convocatorias.updated_at) DESC,
+                    convocatorias.id DESC
+                LIMIT " . $limite;
+
+        $resultado = $this->connection->query($sql);
+
+        return $this->convertirResultadoEnArreglo($resultado);
+    }
+
     public function obtenerResumenDashboard()
     {
         $sql = "SELECT
