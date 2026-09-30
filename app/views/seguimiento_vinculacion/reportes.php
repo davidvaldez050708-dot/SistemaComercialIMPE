@@ -1557,7 +1557,99 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
         </section>
     <?php endif; ?>
 
-        <?php if ($modoSeguimiento !== 'analista' || $tipoReporteActual === 'cartera'): ?>
+        <?php if ($modoSeguimiento === 'analista' && $tipoReporteActual === 'cartera'): ?>
+        <?php
+        $maxEtapaCartera = !empty($resumenReporte['por_etapa'])
+            ? max(1, max($resumenReporte['por_etapa']))
+            : 1;
+        $municipiosCartera = array_slice($resumenReporte['por_municipio'] ?? [], 0, 8, true);
+        $maxMunicipioCartera = !empty($municipiosCartera)
+            ? max(1, max($municipiosCartera))
+            : 1;
+        ?>
+        <div class="row g-3 mb-3">
+            <div class="col-xl-7">
+                <section class="dashboard-panel analyst-portfolio-stage">
+                    <div class="analyst-portfolio-section-heading">
+                        <div>
+                            <span class="report-eyebrow">AVANCE DE LA CARTERA</span>
+                            <h3 class="panel-title mb-1">Distribución por etapa actual</h3>
+                            <p class="page-subtitle mb-0">La etapa se obtiene del avance operativo real de la ruta, no únicamente del estatus técnico almacenado.</p>
+                        </div>
+                    </div>
+
+                    <?php if (!empty($resumenReporte['por_etapa'])): ?>
+                        <div class="analyst-portfolio-stage-list">
+                            <?php foreach ($resumenReporte['por_etapa'] as $codigoEtapa => $totalEtapa): ?>
+                                <?php
+                                $porcentajeEtapa = ((int)$totalEtapa / max(1, (int)$resumenReporte['total'])) * 100;
+                                $etiquetaEtapa = $estadosSeguimiento[$codigoEtapa]
+                                    ?? [
+                                        'DATOS_CONTACTO' => 'Datos de contacto',
+                                        'OFICIO_INSTITUCIONAL' => 'Oficio institucional',
+                                        'RESPUESTA_INSTITUCION' => 'Respuesta de la institución',
+                                        'REUNION' => 'Reunión',
+                                        'CONVENIO_FORMALIZACION' => 'Convenio / formalización',
+                                        'DESCARTADO' => 'Descartado'
+                                    ][$codigoEtapa]
+                                    ?? $codigoEtapa;
+                                ?>
+                                <div class="analyst-portfolio-stage-item">
+                                    <div>
+                                        <strong><?= $texto($etiquetaEtapa) ?></strong>
+                                        <span><?= (int)$totalEtapa ?> seguimiento<?= (int)$totalEtapa === 1 ? '' : 's' ?></span>
+                                    </div>
+                                    <div class="analyst-portfolio-stage-progress">
+                                        <span style="width: <?= number_format($porcentajeEtapa, 1, '.', '') ?>%"></span>
+                                    </div>
+                                    <b><?= number_format($porcentajeEtapa, 0) ?>%</b>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php else: ?>
+                        <div class="analyst-portfolio-empty">
+                            <i class="bi bi-kanban"></i>
+                            <div><strong>No hay etapas para mostrar.</strong><span>Modifica los filtros para ampliar la consulta.</span></div>
+                        </div>
+                    <?php endif; ?>
+                </section>
+            </div>
+
+            <div class="col-xl-5">
+                <section class="dashboard-panel analyst-portfolio-territory">
+                    <div class="analyst-portfolio-section-heading">
+                        <div>
+                            <span class="report-eyebrow">COBERTURA TERRITORIAL</span>
+                            <h3 class="panel-title mb-1">Seguimientos por municipio</h3>
+                            <p class="page-subtitle mb-0">Municipios donde se concentra la cartera incluida en el reporte.</p>
+                        </div>
+                    </div>
+
+                    <?php if (!empty($municipiosCartera)): ?>
+                        <div class="analyst-portfolio-territory-list">
+                            <?php foreach ($municipiosCartera as $municipioNombre => $totalMunicipio): ?>
+                                <?php $porcentajeMunicipio = ((int)$totalMunicipio / max(1, (int)$resumenReporte['total'])) * 100; ?>
+                                <div>
+                                    <div class="analyst-portfolio-territory-copy">
+                                        <strong><?= $texto($municipioNombre) ?></strong>
+                                        <span><?= (int)$totalMunicipio ?> · <?= number_format($porcentajeMunicipio, 0) ?>%</span>
+                                    </div>
+                                    <div class="analyst-portfolio-territory-progress">
+                                        <span style="width: <?= number_format($porcentajeMunicipio, 1, '.', '') ?>%"></span>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php else: ?>
+                        <div class="analyst-portfolio-empty">
+                            <i class="bi bi-geo-alt"></i>
+                            <div><strong>No hay distribución municipal disponible.</strong><span>Los seguimientos filtrados no tienen municipio registrado.</span></div>
+                        </div>
+                    <?php endif; ?>
+                </section>
+            </div>
+        </div>
+        <?php elseif ($modoSeguimiento !== 'analista'): ?>
 <div class="row g-4 mb-4">
             <div class="col-xl-6">
                 <section class="dashboard-panel h-100" aria-labelledby="grafica-estatus-titulo">
@@ -1572,9 +1664,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                                         <strong><?= (int)$totalEstatus ?></strong>
                                     </div>
                                     <div class="progress" role="img" aria-label="<?= $texto($etiquetaEstatus($codigo)) ?>: <?= (int)$totalEstatus ?>">
-                                        <div
-                                            class="progress-bar"
-                                            style="width: <?= number_format($porcentaje, 2, '.', '') ?>%"></div>
+                                        <div class="progress-bar" style="width: <?= number_format($porcentaje, 2, '.', '') ?>%"></div>
                                     </div>
                                 </div>
                             <?php endforeach; ?>
@@ -1598,9 +1688,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                                         <strong><?= (int)$totalMunicipio ?></strong>
                                     </div>
                                     <div class="progress" role="img" aria-label="<?= $texto($municipioNombre) ?>: <?= (int)$totalMunicipio ?>">
-                                        <div
-                                            class="progress-bar"
-                                            style="width: <?= number_format($porcentaje, 2, '.', '') ?>%"></div>
+                                        <div class="progress-bar" style="width: <?= number_format($porcentaje, 2, '.', '') ?>%"></div>
                                     </div>
                                 </div>
                             <?php endforeach; ?>
