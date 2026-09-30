@@ -141,6 +141,28 @@ $estadoEtiquetasMarketing = [
                             $tipoEtiqueta = 'Sindicatos';
                             $tipoIcono = 'bi-people';
                         }
+                        $territorioRecienteId = (int)($publicacionReciente['territorio_id'] ?? 0);
+                        $urlPublicacionReciente = $convocatoriasUrl;
+
+                        if ($territorioRecienteId > 0) {
+                            $urlPublicacionReciente .= '&territorio_id=' . $territorioRecienteId;
+                        }
+
+                        if ($tipoReciente !== '') {
+                            $urlPublicacionReciente .= '&tipo=' . rawurlencode($tipoReciente);
+                        }
+
+                        $subtipoReciente = (string)($publicacionReciente['subtipo_convocatoria'] ?? '');
+
+                        if ($subtipoReciente !== '') {
+                            $urlPublicacionReciente .= '&subtipo=' . rawurlencode($subtipoReciente);
+                        }
+
+                        $tituloReciente = trim((string)($publicacionReciente['titulo'] ?? ''));
+
+                        if ($tituloReciente !== '') {
+                            $urlPublicacionReciente .= '&buscar=' . rawurlencode($tituloReciente);
+                        }
                         ?>
                         <tr>
                             <td>
@@ -169,8 +191,8 @@ $estadoEtiquetasMarketing = [
                                 <?php if (tienePermiso('convocatorias.ver')): ?>
                                     <a
                                         class="marketing-recent-row-action"
-                                        href="<?= $convocatoriasUrl ?>"
-                                        aria-label="Abrir gestión de convocatorias">
+                                        href="<?= htmlspecialchars($urlPublicacionReciente, ENT_QUOTES, 'UTF-8') ?>"
+                                        aria-label="Abrir <?= htmlspecialchars($tituloReciente !== '' ? $tituloReciente : 'convocatoria', ENT_QUOTES, 'UTF-8') ?>">
                                         <i class="bi bi-three-dots-vertical"></i>
                                     </a>
                                 <?php else: ?>
