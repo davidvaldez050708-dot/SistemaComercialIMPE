@@ -385,7 +385,9 @@ class SeguimientoVinculacionReporteController
         try {
             $evolucionActividad = (new EvolucionActividadSeguimientoService())->construir(
                 $contexto['seguimientosActividad'] ?? [],
-                $contexto['filtrosReporte']
+                $contexto['filtrosReporte'],
+                $usuarioId,
+                (string)($contexto['modoSeguimiento'] ?? 'analista')
             );
         } catch (Throwable $error) {
             error_log('[reporte_evolucion_actividad_pdf] ' . $error->getMessage());
@@ -407,7 +409,10 @@ class SeguimientoVinculacionReporteController
                 $usuarioId,
                 (string)($contexto['modoSeguimiento'] ?? 'analista'),
                 (string)($contexto['filtrosReporte']['fecha_inicial'] ?? ''),
-                (string)($contexto['filtrosReporte']['fecha_final'] ?? '')
+                (string)($contexto['filtrosReporte']['fecha_final'] ?? ''),
+                (string)(($contexto['filtrosReporte']['tipo_reporte'] ?? '') === 'actividad'
+                    ? ($contexto['filtrosReporte']['tipo_actividad'] ?? '')
+                    : '')
             );
         } catch (Throwable $error) {
             error_log('[reporte_analitica_pdf] ' . $error->getMessage());
@@ -751,6 +756,18 @@ class SeguimientoVinculacionReporteController
             $seguimientosDisponibles
         );
 
+        if (
+            $modoSeguimiento === 'analista' &&
+            (string)($filtrosReporte['tipo_reporte'] ?? '') === 'actividad'
+        ) {
+            $canalesDisponibles = [
+                'LLAMADA_IP' => 'Llamada',
+                'CORREO' => 'Correo',
+                'WHATSAPP' => 'WhatsApp',
+                'NOTA' => 'Otro'
+            ];
+        }
+
         $errorFiltros = $this->validarPeriodo($filtrosReporte);
         $generarReporte = $forzarGeneracion || (string)($_GET['generar'] ?? '') === '1';
         $seguimientosReporte = [];
@@ -843,7 +860,10 @@ class SeguimientoVinculacionReporteController
                     $usuarioId,
                     $modoSeguimiento,
                     (string)($filtrosReporte['fecha_inicial'] ?? ''),
-                    (string)($filtrosReporte['fecha_final'] ?? '')
+                    (string)($filtrosReporte['fecha_final'] ?? ''),
+                    (string)(($filtrosReporte['tipo_reporte'] ?? '') === 'actividad'
+                        ? ($filtrosReporte['tipo_actividad'] ?? '')
+                        : '')
                 );
             } catch (Throwable $error) {
                 error_log('[reporte_analitica_web] ' . $error->getMessage());
@@ -1421,7 +1441,9 @@ class SeguimientoVinculacionReporteController
             'Estatus' => $filtros['estado_seguimiento'] !== ''
                 ? (self::ESTADOS_SEGUIMIENTO[$filtros['estado_seguimiento']] ?? 'Todos')
                 : 'Todos',
-            'Último canal de contacto' => $filtros['tipo_actividad'] !== ''
+            ((string)($filtros['tipo_reporte'] ?? '') === 'actividad'
+                ? 'Tipo de interacción'
+                : 'Último canal de contacto') => $filtros['tipo_actividad'] !== ''
                 ? (string)($canalesDisponibles[$filtros['tipo_actividad']] ?? 'Todos')
                 : 'Todos',
             'Días sin actividad' => (int)$filtros['dias_sin_actividad'] > 0
