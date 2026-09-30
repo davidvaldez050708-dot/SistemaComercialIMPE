@@ -237,9 +237,9 @@ foreach ($sectoresGrafica as $sectorGrafica) {
                 <article class="metric-card territorial-kpi-priority">
                     <div class="metric-icon"><i class="bi bi-bullseye"></i></div>
                     <div>
-                        <p class="metric-value"><?= $numero($resumen['prioridad_alta'] ?? 0) ?></p>
+                        <p class="metric-value"><?= ($resumen['priorizacion_disponible'] ?? false) === true ? $numero($resumen['prioridad_alta'] ?? 0) : '—' ?></p>
                         <p class="metric-label">Municipios ATACAR</p>
-                        <small class="territorial-metric-note">Prioridad alta sugerida</small>
+                        <small class="territorial-metric-note"><?= ($resumen['priorizacion_disponible'] ?? false) === true ? 'Prioridad alta sugerida' : 'Sin datos suficientes' ?></small>
                     </div>
                 </article>
             </section>
