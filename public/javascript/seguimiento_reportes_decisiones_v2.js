@@ -194,6 +194,9 @@
                     const hayInstituciones = datos.hay_instituciones === true;
 
                     if (triggerInstitucion) {
+                        triggerInstitucion.dataset.hasInstitutions = hayInstituciones ? '1' : '0';
+                        triggerInstitucion.dataset.validatedStateId = String(seleccion.estado_id || '0');
+                        triggerInstitucion.dataset.validatedMunicipalityId = String(seleccion.municipio_id || '0');
                         triggerInstitucion.disabled =
                             tipoReporte !== 'institucion' ||
                             !estadoSeleccionado ||
