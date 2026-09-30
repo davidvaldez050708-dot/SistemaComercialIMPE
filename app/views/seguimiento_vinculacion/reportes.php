@@ -474,6 +474,15 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                 <p class="page-subtitle mb-0"><?= $texto($subtituloReporteGenerado) ?></p>
             </div>
             <div class="d-flex flex-wrap align-items-center justify-content-end gap-2">
+                <?php if ($modoSeguimiento === 'analista'): ?>
+                    <button
+                        type="button"
+                        class="btn btn-system-light linkage-action-button"
+                        data-edit-report-filters>
+                        <i class="bi bi-sliders"></i>
+                        Editar filtros
+                    </button>
+                <?php endif; ?>
                 <span class="status-pill status-pill-active">
                     <?php if ($modoSeguimiento === 'analista' && $tipoReporteActual === 'actividad'): ?>
                         <?= (int)($analiticaReporte['interacciones'] ?? 0) ?> interacciones
