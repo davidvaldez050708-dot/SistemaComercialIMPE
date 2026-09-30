@@ -325,7 +325,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
 
         <div class="<?= $modoModalReporte ? 'row g-3' : 'row gx-3 gy-2' ?>">
             <div class="col-md-6 col-xl-3" data-report-field="periodo">
-                <label class="form-label" for="reporte_fecha_inicial">Fecha inicial</label>
+                <label class="form-label" for="reporte_fecha_inicial"><?= $tipoReporteActual === 'actividad' ? 'Actividad desde' : 'Fecha inicial' ?></label>
                 <input
                     class="form-control"
                     type="date"
@@ -335,7 +335,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
             </div>
 
             <div class="col-md-6 col-xl-3" data-report-field="periodo">
-                <label class="form-label" for="reporte_fecha_final">Fecha final</label>
+                <label class="form-label" for="reporte_fecha_final"><?= $tipoReporteActual === 'actividad' ? 'Actividad hasta' : 'Fecha final' ?></label>
                 <input
                     class="form-control"
                     type="date"
@@ -454,7 +454,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
 
             <?php if (!empty($canalesDisponibles)): ?>
                 <div class="col-md-6 col-xl-4" data-report-field="actividad">
-                    <label class="form-label" for="reporte_actividad">Tipo de actividad / interacción</label>
+                    <label class="form-label" for="reporte_actividad"><?= $tipoReporteActual === 'actividad' ? 'Tipo de interacción' : 'Último canal de contacto' ?></label>
                     <select class="form-select" id="reporte_actividad" name="tipo_actividad">
                         <option value="">Todos</option>
                         <?php foreach ($canalesDisponibles as $canal => $etiqueta): ?>
@@ -465,7 +465,9 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                             </option>
                         <?php endforeach; ?>
                     </select>
-                    <div class="form-text">Filtra el reporte por el canal de interacción registrado.</div>
+                    <div class="form-text"><?= $tipoReporteActual === 'actividad'
+                            ? 'Filtra por el tipo de interacción que realizaste durante el periodo.'
+                            : 'Filtra por el canal de la última interacción registrada.' ?></div>
                 </div>
             <?php endif; ?>
 
@@ -482,7 +484,13 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
         </div>
 
         <div class="form-text <?= $modoModalReporte ? 'mt-3' : 'mt-2' ?>" data-report-mode-help>
-            El periodo se aplica sobre la fecha de inicio registrada en cada seguimiento.
+            <?php if ($tipoReporteActual === 'actividad'): ?>
+                Consulta las actividades que realizaste durante el periodo y, si lo necesitas, acótalas por territorio o tipo de interacción.
+            <?php elseif ($tipoReporteActual === 'institucion'): ?>
+                Selecciona una institución para consultar su expediente ejecutivo de seguimiento.
+            <?php else: ?>
+                Consulta el estado actual de tu cartera y acota por territorio, etapa, canal o inactividad.
+            <?php endif; ?>
         </div>
 
         <?php if ($modoModalReporte): ?>
