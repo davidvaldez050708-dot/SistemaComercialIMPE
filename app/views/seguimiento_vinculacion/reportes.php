@@ -380,17 +380,47 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
             </div>
 
             <div class="col-md-6 col-xl-4" data-report-field="institucion">
-                <label class="form-label" for="reporte_institucion">Institución</label>
-                <select class="form-select" id="reporte_institucion" name="institucion">
-                    <option value="">Todas</option>
-                    <?php foreach ($institucionesDisponibles as $institucion): ?>
-                        <option
-                            value="<?= $texto($institucion) ?>"
-                            <?= $seleccionado($filtrosReporte['institucion'] ?? '', $institucion) ?>>
-                            <?= $texto($institucion) ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
+                <?php if ($modoSeguimiento === 'analista'): ?>
+                    <label class="form-label" for="reporte_institucion_selector">Institución</label>
+                    <input
+                        type="hidden"
+                        id="reporte_institucion"
+                        name="institucion_id"
+                        value="<?= (int)($filtrosReporte['institucion_id'] ?? 0) ?>"
+                        data-report-institution-input>
+                    <button
+                        type="button"
+                        class="form-select report-institution-trigger"
+                        id="reporte_institucion_selector"
+                        data-report-institution-picker
+                        <?= $estadoIdActual > 0 ? '' : 'disabled' ?>>
+                        <span
+                            class="report-institution-trigger-label"
+                            data-report-institution-label>
+                            <?= trim((string)($filtrosReporte['institucion'] ?? '')) !== ''
+                                ? $texto($filtrosReporte['institucion'])
+                                : 'Seleccionar institución' ?>
+                        </span>
+                        <i class="bi bi-chevron-down" aria-hidden="true"></i>
+                    </button>
+                    <div class="form-text report-institution-hint" data-report-institution-hint>
+                        <?= $estadoIdActual > 0
+                            ? 'Puedes acotar por municipio o elegir una institución del estado seleccionado.'
+                            : 'Selecciona primero un estado para consultar las instituciones disponibles.' ?>
+                    </div>
+                <?php else: ?>
+                    <label class="form-label" for="reporte_institucion">Institución</label>
+                    <select class="form-select" id="reporte_institucion" name="institucion">
+                        <option value="">Todas</option>
+                        <?php foreach ($institucionesDisponibles as $institucion): ?>
+                            <option
+                                value="<?= $texto($institucion) ?>"
+                                <?= $seleccionado($filtrosReporte['institucion'] ?? '', $institucion) ?>>
+                                <?= $texto($institucion) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                <?php endif; ?>
             </div>
 
             <div class="col-md-6 col-xl-4<?= $modoSeguimiento === 'analista' ? ' d-none' : '' ?>" data-report-field="responsable">
@@ -473,6 +503,77 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
             </button>
         </div>
     </form>
+
+    <?php if ($modoSeguimiento === 'analista'): ?>
+        <div class="report-institution-picker-backdrop d-none" data-report-institution-dialog aria-hidden="true">
+            <section
+                class="report-institution-picker-dialog"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="report-institution-picker-title">
+                <div class="report-institution-picker-head">
+                    <div>
+                        <span class="report-eyebrow">UNA INSTITUCIÓN</span>
+                        <h3 class="panel-title mb-1" id="report-institution-picker-title">Seleccionar institución</h3>
+                        <p class="page-subtitle mb-0" data-report-institution-context>
+                            Elige una institución del territorio seleccionado.
+                        </p>
+                    </div>
+                    <button
+                        type="button"
+                        class="report-institution-picker-close"
+                        data-report-institution-close
+                        aria-label="Cerrar selector">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+
+                <div class="report-institution-picker-search">
+                    <i class="bi bi-search" aria-hidden="true"></i>
+                    <input
+                        type="search"
+                        class="form-control"
+                        placeholder="Buscar dentro de las instituciones mostradas"
+                        autocomplete="off"
+                        data-report-institution-search>
+                </div>
+
+                <div class="report-institution-picker-status" data-report-institution-status>
+                    Selecciona un estado para consultar instituciones.
+                </div>
+
+                <div class="report-institution-picker-list" data-report-institution-list></div>
+
+                <div class="report-institution-picker-empty d-none" data-report-institution-empty>
+                    <span><i class="bi bi-building"></i></span>
+                    <strong>No encontramos instituciones con esos criterios.</strong>
+                    <small>Prueba con otro nombre o cambia el municipio seleccionado.</small>
+                </div>
+
+                <div class="report-institution-picker-footer">
+                    <span data-report-institution-page-summary></span>
+                    <div class="d-flex align-items-center gap-2">
+                        <button
+                            type="button"
+                            class="btn btn-system-light btn-sm"
+                            data-report-institution-prev
+                            disabled>
+                            <i class="bi bi-chevron-left"></i>
+                            Anterior
+                        </button>
+                        <button
+                            type="button"
+                            class="btn btn-system-light btn-sm"
+                            data-report-institution-next
+                            disabled>
+                            Siguiente
+                            <i class="bi bi-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </div>
+    <?php endif; ?>
 </section>
 
 <?php if (!$modoModalReporte && $generarReporte && $errorFiltros === ''): ?>
