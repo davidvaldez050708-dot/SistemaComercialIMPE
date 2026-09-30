@@ -397,17 +397,57 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
             $titulo = trim((string)($presentacion['titulo'] ?? ''));
             $resultado = trim((string)($presentacion['resultado_label'] ?? ''));
             $resumen = trim((string)($presentacion['resumen'] ?? ''));
-            if (
-                strcasecmp($titulo, 'Llamada') === 0 &&
-                ($resultado === '' || strcasecmp($resultado, 'Otro') === 0)
-            ) {
-                $resultado = 'Intento registrado';
-            }
-            if (
-                strcasecmp($titulo, 'Llamada') === 0 &&
-                ($resumen === '' || strcasecmp($resumen, 'Otro') === 0)
-            ) {
-                $resumen = 'Intento telefónico registrado';
+
+            if (strcasecmp($titulo, 'Llamada') === 0) {
+                $notasLlamada = (string)($interaccion['notas'] ?? '');
+                $resultadoCodigo = strtoupper(trim((string)($interaccion['resultado'] ?? '')));
+                $duracion = max(0, (int)($interaccion['duracion_segundos'] ?? 0));
+                $telefono = trim((string)($interaccion['telefono_destino'] ?? ''));
+                $contactoEfectivo = strpos($notasLlamada, '[CONTACTO_EFECTIVO]') !== false
+                    && strpos($notasLlamada, '[SIN_CONTACTO_EFECTIVO]') === false;
+                $sinContacto = strpos($notasLlamada, '[SIN_CONTACTO_EFECTIVO]') !== false;
+
+                if ($contactoEfectivo) {
+                    $resultado = 'Contacto efectivo';
+                } elseif ($sinContacto) {
+                    $resultado = 'Sin contacto';
+                } elseif ($resultadoCodigo === 'BUZON_VOZ' || strpos($notasLlamada, '[BUZON_VOZ]') !== false) {
+                    $resultado = 'Buzón de voz';
+                } elseif ($resultadoCodigo === 'FUERA_SERVICIO' || strpos($notasLlamada, '[FUERA_SERVICIO]') !== false) {
+                    $resultado = 'Fuera de servicio';
+                } elseif ($resultado === '' || strcasecmp($resultado, 'Otro') === 0) {
+                    $resultado = 'Resultado no clasificado';
+                }
+
+                if (
+                    $resumen === '' ||
+                    strcasecmp($resumen, 'Otro') === 0 ||
+                    strcasecmp($resumen, 'Llamada') === 0
+                ) {
+                    $partes = [];
+                    if ($contactoEfectivo) {
+                        $partes[] = 'Se logró contacto';
+                    } elseif ($sinContacto) {
+                        $partes[] = 'No se logró contacto';
+                    } else {
+                        $partes[] = 'Llamada registrada';
+                    }
+
+                    if ($telefono !== '') {
+                        $partes[] = 'al ' . $telefono;
+                    }
+
+                    if ($duracion > 0) {
+                        $minutos = intdiv($duracion, 60);
+                        $segundos = $duracion % 60;
+                        $partes[] = 'duración ' .
+                            ($minutos > 0
+                                ? $minutos . ' min ' . str_pad((string)$segundos, 2, '0', STR_PAD_LEFT) . ' s'
+                                : $segundos . ' s');
+                    }
+
+                    $resumen = implode(' · ', $partes);
+                }
             }
 
             $html .= '<tr><td>' . $this->e($this->fechaDato((string)($interaccion['fecha_inicio'] ?? ''))) . '</td>';
