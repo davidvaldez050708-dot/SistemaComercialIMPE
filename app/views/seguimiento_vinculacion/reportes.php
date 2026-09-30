@@ -38,35 +38,44 @@ $canalesReporte = is_array($analiticaReporte['canales'] ?? null)
 $actividadRecienteReporte = is_array($analiticaReporte['actividad_reciente'] ?? null)
     ? $analiticaReporte['actividad_reciente']
     : [];
-$rendimientoTelefonicoDiario = is_array($analiticaReporte['rendimiento_telefonico_diario'] ?? null)
-    ? $analiticaReporte['rendimiento_telefonico_diario']
+$rendimientoTelefonicoResumen = is_array($analiticaReporte['rendimiento_telefonico'] ?? null)
+    ? $analiticaReporte['rendimiento_telefonico']
+    : ['granularidad' => 'dia', 'periodos' => []];
+$rendimientoTelefonicoPeriodos = is_array($rendimientoTelefonicoResumen['periodos'] ?? null)
+    ? $rendimientoTelefonicoResumen['periodos']
+    : [];
+$rendimientoTelefonicoGranularidad = (string)($rendimientoTelefonicoResumen['granularidad'] ?? 'dia');
+$rendimientoTelefonicoHoy = is_array($analiticaReporte['rendimiento_telefonico_hoy'] ?? null)
+    ? $analiticaReporte['rendimiento_telefonico_hoy']
     : [];
 $institucionesActividadReporte = is_array($analiticaReporte['instituciones_actividad'] ?? null)
     ? $analiticaReporte['instituciones_actividad']
     : [];
+$totalInstitucionesActividadReporte = max(0, (int)($analiticaReporte['seguimientos_con_actividad'] ?? 0));
 $metaDiariaEfectivas = max(1, (int)($analiticaReporte['meta_diaria_efectivas'] ?? 25));
 $tipoInteraccionActividad = strtoupper(trim((string)($filtrosReporte['tipo_actividad'] ?? '')));
 $mostrarRendimientoTelefonico =
     $tipoInteraccionActividad === '' ||
     in_array($tipoInteraccionActividad, ['LLAMADA', 'LLAMADA_IP'], true);
-$efectivasHoyReporte = 0;
-$llamadasHoyReporte = 0;
-$contactosHoyReporte = 0;
+$efectivasHoyReporte = max(0, (int)($rendimientoTelefonicoHoy['efectivas'] ?? 0));
+$llamadasHoyReporte = max(0, (int)($rendimientoTelefonicoHoy['llamadas'] ?? 0));
+$contactosHoyReporte = max(0, (int)($rendimientoTelefonicoHoy['con_contacto'] ?? 0));
 $fechaHoyReporte = date('Y-m-d');
 $fechaInicialActividadReporte = trim((string)($filtrosReporte['fecha_inicial'] ?? ''));
 $fechaFinalActividadReporte = trim((string)($filtrosReporte['fecha_final'] ?? ''));
 $hoyIncluidoEnPeriodo =
     ($fechaInicialActividadReporte === '' || $fechaHoyReporte >= $fechaInicialActividadReporte) &&
     ($fechaFinalActividadReporte === '' || $fechaHoyReporte <= $fechaFinalActividadReporte);
-
-foreach ($rendimientoTelefonicoDiario as $diaTelefonico) {
-    if ((string)($diaTelefonico['fecha'] ?? '') === $fechaHoyReporte) {
-        $efectivasHoyReporte = (int)($diaTelefonico['efectivas'] ?? 0);
-        $llamadasHoyReporte = (int)($diaTelefonico['llamadas'] ?? 0);
-        $contactosHoyReporte = (int)($diaTelefonico['con_contacto'] ?? 0);
-        break;
-    }
-}
+$etiquetaGranularidadTelefonica = [
+    'dia' => 'día',
+    'semana' => 'semana',
+    'mes' => 'mes'
+][$rendimientoTelefonicoGranularidad] ?? 'periodo';
+$etiquetaGranularidadEvolucion = [
+    'dia' => 'día',
+    'semana' => 'semana',
+    'mes' => 'mes'
+][(string)($evolucionActividad['granularidad'] ?? 'dia')] ?? 'periodo';
 $etiquetaCanalReporte = static function ($canal) {
     $canal = strtoupper(trim((string)$canal));
     return [
@@ -749,17 +758,27 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
 
         <div class="row g-3 mb-3">
             <div class="<?= $mostrarRendimientoTelefonico ? 'col-xl-8' : 'col-12' ?>">
-                <section class="dashboard-panel analyst-activity-phone h-100" aria-labelledby="rendimiento-telefonico-actividad">
+                <section class="dashboard-panel analyst-activity-phone" aria-labelledby="rendimiento-telefonico-actividad">
                     <div class="analyst-activity-section-heading">
                         <div>
                             <span class="report-eyebrow">RENDIMIENTO TELEFÓNICO</span>
                             <h3 class="panel-title mb-1" id="rendimiento-telefonico-actividad">
-                                <?= $mostrarRendimientoTelefonico ? 'Efectividad por día' : 'Actividad filtrada por canal' ?>
+                                <?= $mostrarRendimientoTelefonico
+                                    ? 'Efectividad por ' . $etiquetaGranularidadTelefonica
+                                    : 'Actividad filtrada por canal' ?>
                             </h3>
                             <p class="page-subtitle mb-0">
-                                <?= $mostrarRendimientoTelefonico
-                                    ? 'Seguimiento diario de llamadas, contacto y verificaciones efectivas. La referencia operativa es de ' . $metaDiariaEfectivas . ' efectivas por día.'
-                                    : 'El filtro actual no corresponde a llamadas; el rendimiento telefónico no se mezcla con este resultado.' ?>
+                                <?php if ($mostrarRendimientoTelefonico): ?>
+                                    <?php if ($rendimientoTelefonicoGranularidad === 'dia'): ?>
+                                        Seguimiento diario de llamadas, contacto y efectivas contabilizadas. La referencia operativa es de <?= $metaDiariaEfectivas ?> efectivas por día.
+                                    <?php elseif ($rendimientoTelefonicoGranularidad === 'semana'): ?>
+                                        Resumen semanal de llamadas, contacto y efectivas contabilizadas. No se extrapola la meta diaria a una meta semanal.
+                                    <?php else: ?>
+                                        Resumen mensual de llamadas, contacto y efectivas contabilizadas. La meta diaria se conserva únicamente como referencia operativa.
+                                    <?php endif; ?>
+                                <?php else: ?>
+                                    El filtro actual no corresponde a llamadas; el rendimiento telefónico no se mezcla con este resultado.
+                                <?php endif; ?>
                             </p>
                         </div>
                         <?php if ($mostrarRendimientoTelefonico): ?>
@@ -773,40 +792,52 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                         <?php endif; ?>
                     </div>
 
-                    <?php if ($mostrarRendimientoTelefonico && !empty($rendimientoTelefonicoDiario)): ?>
+                    <?php if ($mostrarRendimientoTelefonico && !empty($rendimientoTelefonicoPeriodos)): ?>
                         <div class="analyst-activity-phone-head">
-                            <span>Día</span>
+                            <span><?= $texto(ucfirst($etiquetaGranularidadTelefonica)) ?></span>
                             <span>Llamadas</span>
                             <span>Contacto</span>
                             <span>Efectivas</span>
-                            <span>Avance diario</span>
+                            <span><?= $rendimientoTelefonicoGranularidad === 'dia' ? 'Avance diario' : 'Tasa contacto' ?></span>
                         </div>
                         <div class="analyst-activity-phone-days">
-                            <?php foreach ($rendimientoTelefonicoDiario as $diaTelefonico): ?>
+                            <?php foreach ($rendimientoTelefonicoPeriodos as $periodoTelefonico): ?>
                                 <?php
-                                $fechaDia = trim((string)($diaTelefonico['fecha'] ?? ''));
-                                try {
-                                    $fechaDiaLabel = (new DateTimeImmutable($fechaDia))->format('d/m/Y');
-                                } catch (Throwable $error) {
-                                    $fechaDiaLabel = $fechaDia !== '' ? $fechaDia : '—';
-                                }
-                                $efectivasDia = max(0, (int)($diaTelefonico['efectivas'] ?? 0));
-                                $cumplimientoDia = max(0, min(100, (float)($diaTelefonico['cumplimiento_pct'] ?? 0)));
+                                $fechaInicioPeriodoTelefonico = trim((string)($periodoTelefonico['fecha_inicio'] ?? ''));
+                                $fechaFinPeriodoTelefonico = trim((string)($periodoTelefonico['fecha_fin'] ?? ''));
+                                $incluyeHoyTelefonico =
+                                    $fechaInicioPeriodoTelefonico !== '' &&
+                                    $fechaFinPeriodoTelefonico !== '' &&
+                                    $fechaHoyReporte >= $fechaInicioPeriodoTelefonico &&
+                                    $fechaHoyReporte <= $fechaFinPeriodoTelefonico;
+                                $efectivasPeriodo = max(0, (int)($periodoTelefonico['efectivas'] ?? 0));
+                                $cumplimientoPeriodo = max(0, min(100, (float)($periodoTelefonico['cumplimiento_pct'] ?? 0)));
                                 ?>
-                                <div class="analyst-activity-phone-day<?= $fechaDia === $fechaHoyReporte ? ' is-today' : '' ?>">
+                                <div class="analyst-activity-phone-day<?= $incluyeHoyTelefonico ? ' is-today' : '' ?>">
                                     <div class="analyst-activity-phone-date">
-                                        <strong><?= $texto($fechaDiaLabel) ?></strong>
-                                        <?php if ($fechaDia === $fechaHoyReporte): ?><span>Hoy</span><?php endif; ?>
+                                        <strong><?= $texto($periodoTelefonico['etiqueta'] ?? '—') ?></strong>
+                                        <?php if (trim((string)($periodoTelefonico['subetiqueta'] ?? '')) !== ''): ?>
+                                            <span><?= $texto($periodoTelefonico['subetiqueta']) ?></span>
+                                        <?php elseif ($incluyeHoyTelefonico && $rendimientoTelefonicoGranularidad === 'dia'): ?>
+                                            <span>Hoy</span>
+                                        <?php endif; ?>
                                     </div>
-                                    <strong><?= (int)($diaTelefonico['llamadas'] ?? 0) ?></strong>
-                                    <strong><?= (int)($diaTelefonico['con_contacto'] ?? 0) ?></strong>
-                                    <strong class="analyst-activity-effective-value"><?= $efectivasDia ?></strong>
-                                    <div class="analyst-activity-goal">
-                                        <div>
-                                            <span style="width: <?= number_format($cumplimientoDia, 1, '.', '') ?>%"></span>
+                                    <strong><?= (int)($periodoTelefonico['llamadas'] ?? 0) ?></strong>
+                                    <strong><?= (int)($periodoTelefonico['con_contacto'] ?? 0) ?></strong>
+                                    <strong class="analyst-activity-effective-value"><?= $efectivasPeriodo ?></strong>
+                                    <?php if ($rendimientoTelefonicoGranularidad === 'dia'): ?>
+                                        <div class="analyst-activity-goal">
+                                            <div>
+                                                <span style="width: <?= number_format($cumplimientoPeriodo, 1, '.', '') ?>%"></span>
+                                            </div>
+                                            <small><?= $efectivasPeriodo ?>/<?= $metaDiariaEfectivas ?></small>
                                         </div>
-                                        <small><?= $efectivasDia ?>/<?= $metaDiariaEfectivas ?></small>
-                                    </div>
+                                    <?php else: ?>
+                                        <div class="analyst-activity-contact-rate">
+                                            <strong><?= number_format((float)($periodoTelefonico['tasa_contacto'] ?? 0), 1) ?>%</strong>
+                                            <small>contacto</small>
+                                        </div>
+                                    <?php endif; ?>
                                 </div>
                             <?php endforeach; ?>
                         </div>
@@ -829,19 +860,17 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
 
             <?php if ($mostrarRendimientoTelefonico): ?>
             <div class="col-xl-4">
-                <section class="dashboard-panel analyst-activity-composition h-100" aria-labelledby="composicion-actividad">
+                <section class="dashboard-panel analyst-activity-composition" aria-labelledby="composicion-actividad">
                     <div class="analyst-activity-section-heading">
                         <div>
                             <span class="report-eyebrow">COMPOSICIÓN DEL TRABAJO</span>
-                            <h3 class="panel-title mb-1" id="composicion-actividad">Canales y resultados</h3>
-                            <p class="page-subtitle mb-0">Distribución de las interacciones registradas en el periodo.</p>
+                            <h3 class="panel-title mb-1" id="composicion-actividad">Actividad medible</h3>
+                            <p class="page-subtitle mb-0">Llamadas y correos registrados, más los principales resultados telefónicos.</p>
                         </div>
                     </div>
-                    <div class="analyst-activity-channel-grid">
+                    <div class="analyst-activity-channel-grid analyst-activity-channel-grid--measurable">
                         <div><strong><?= (int)($canalesReporte['llamadas'] ?? 0) ?></strong><span>Llamadas</span></div>
                         <div><strong><?= (int)($canalesReporte['correos'] ?? 0) ?></strong><span>Correos</span></div>
-                        <div><strong><?= (int)($canalesReporte['whatsapp'] ?? 0) ?></strong><span>WhatsApp</span></div>
-                        <div><strong><?= (int)($canalesReporte['otros'] ?? 0) ?></strong><span>Otros</span></div>
                     </div>
                     <div class="analyst-activity-result-list">
                         <div><span>Sin respuesta</span><strong><?= (int)($llamadasReporte['sin_respuesta'] ?? 0) ?></strong></div>
@@ -1557,11 +1586,11 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
         ?>
         <div class="row g-3 mb-3">
             <div class="col-xl-7">
-                <section class="dashboard-panel analyst-activity-evolution h-100" aria-labelledby="evolucion-actividad-analista">
+                <section class="dashboard-panel analyst-activity-evolution" aria-labelledby="evolucion-actividad-analista">
                     <div class="analyst-activity-section-heading">
                         <div>
                             <span class="report-eyebrow">EVOLUCIÓN DEL PERIODO</span>
-                            <h3 class="panel-title mb-1" id="evolucion-actividad-analista">Actividad por día</h3>
+                            <h3 class="panel-title mb-1" id="evolucion-actividad-analista">Actividad por <?= $texto($etiquetaGranularidadEvolucion) ?></h3>
                             <p class="page-subtitle mb-0">Volumen de interacciones realizadas por el Analista durante el periodo seleccionado.</p>
                         </div>
                         <?php if (!empty($evolucionActividad['comparacion_disponible'])): ?>
@@ -1686,12 +1715,18 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
             </div>
 
             <div class="col-xl-5">
-                <section class="dashboard-panel analyst-activity-institutions h-100" aria-labelledby="instituciones-actividad-analista">
+                <section class="dashboard-panel analyst-activity-institutions" aria-labelledby="instituciones-actividad-analista">
                     <div class="analyst-activity-section-heading">
                         <div>
                             <span class="report-eyebrow">COBERTURA DE TRABAJO</span>
                             <h3 class="panel-title mb-1" id="instituciones-actividad-analista">Instituciones con mayor actividad</h3>
-                            <p class="page-subtitle mb-0">Dónde se concentró el trabajo registrado durante el periodo.</p>
+                            <p class="page-subtitle mb-0">
+                                <?php if ($totalInstitucionesActividadReporte > count($institucionesActividadReporte)): ?>
+                                    Principales <?= count($institucionesActividadReporte) ?> de <?= $totalInstitucionesActividadReporte ?> instituciones trabajadas en el periodo.
+                                <?php else: ?>
+                                    Instituciones con actividad registrada durante el periodo.
+                                <?php endif; ?>
+                            </p>
                         </div>
                     </div>
 
@@ -1711,7 +1746,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                                         <span><b><?= (int)($institucionActividad['llamadas'] ?? 0) ?></b> llamadas</span>
                                         <span><b><?= (int)($institucionActividad['con_contacto'] ?? 0) ?></b> contacto</span>
                                         <?php if ((int)($institucionActividad['efectivas'] ?? 0) > 0): ?>
-                                            <span class="is-effective"><b><?= (int)$institucionActividad['efectivas'] ?></b> efectivas</span>
+                                            <span class="is-effective"><b><?= (int)$institucionActividad['efectivas'] ?></b> efectivas contabilizadas</span>
                                         <?php endif; ?>
                                     </div>
                                 </article>
@@ -1794,7 +1829,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
 
                             $resultadoLabelActividad = $etiquetaResultadoReporte($resultadoActividad);
                             if ($esEfectivaActividad) {
-                                $resultadoLabelActividad = 'Llamada efectiva';
+                                $resultadoLabelActividad = 'Verificación válida';
                             } elseif ($contactoActividad) {
                                 $resultadoLabelActividad = 'Con contacto';
                             } elseif ($resultadoActividad === 'BUZON_VOZ') {
@@ -1814,7 +1849,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                                         : $segundos . ' s';
                                 }
                                 if ($esEfectivaActividad) {
-                                    $partesDetalle[] = 'verificación vinculada';
+                                    $partesDetalle[] = 'evidencia válida; la efectiva se contabiliza una vez por institución y día';
                                 } elseif ($contactoActividad) {
                                     $partesDetalle[] = 'contacto registrado';
                                 } else {
