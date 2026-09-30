@@ -97,6 +97,14 @@ class SeguimientoReporteAnaliticaService
             $modoAcceso,
             $canal
         );
+        $rendimientoTelefonico = $this->resumirRendimientoTelefonico(
+            $rendimientoTelefonicoDiario,
+            $fechaInicial,
+            $fechaFinal
+        );
+        $rendimientoTelefonicoHoy = $this->rendimientoTelefonicoHoy(
+            $rendimientoTelefonicoDiario
+        );
         $institucionesActividad = $this->obtenerInstitucionesActividad(
             $autorizados,
             $fechaInicial,
@@ -121,6 +129,8 @@ class SeguimientoReporteAnaliticaService
             'llamadas' => $llamadas,
             'actividad_reciente' => $actividadReciente,
             'rendimiento_telefonico_diario' => $rendimientoTelefonicoDiario,
+            'rendimiento_telefonico' => $rendimientoTelefonico,
+            'rendimiento_telefonico_hoy' => $rendimientoTelefonicoHoy,
             'instituciones_actividad' => $institucionesActividad,
             'meta_diaria_efectivas' => 25,
             'atencion' => [
@@ -540,6 +550,219 @@ class SeguimientoReporteAnaliticaService
         return array_values($porFecha);
     }
 
+    private function resumirRendimientoTelefonico(
+        array $diasRegistrados,
+        $fechaInicial,
+        $fechaFinal
+    ) {
+        $fechaInicial = $this->normalizarFecha($fechaInicial);
+        $fechaFinal = $this->normalizarFecha($fechaFinal);
+
+        if ($fechaInicial === '' || $fechaFinal === '') {
+            return [
+                'granularidad' => 'dia',
+                'periodos' => $diasRegistrados
+            ];
+        }
+
+        try {
+            $inicio = new DateTimeImmutable($fechaInicial);
+            $fin = new DateTimeImmutable($fechaFinal);
+        } catch (Throwable $error) {
+            return [
+                'granularidad' => 'dia',
+                'periodos' => $diasRegistrados
+            ];
+        }
+
+        if ($inicio > $fin) {
+            return [
+                'granularidad' => 'dia',
+                'periodos' => []
+            ];
+        }
+
+        $porFecha = [];
+        foreach ($diasRegistrados as $dia) {
+            $clave = trim((string)($dia['fecha'] ?? ''));
+            if ($clave !== '') {
+                $porFecha[$clave] = $dia;
+            }
+        }
+
+        $diasPeriodo = ((int)$inicio->diff($fin)->days) + 1;
+        $granularidad = $diasPeriodo <= 14
+            ? 'dia'
+            : ($diasPeriodo <= 90 ? 'semana' : 'mes');
+
+        if ($granularidad === 'dia') {
+            $periodos = [];
+            for ($fecha = $inicio; $fecha <= $fin; $fecha = $fecha->modify('+1 day')) {
+                $clave = $fecha->format('Y-m-d');
+                $base = $porFecha[$clave] ?? [
+                    'fecha' => $clave,
+                    'llamadas' => 0,
+                    'con_contacto' => 0,
+                    'efectivas' => 0,
+                    'tasa_contacto' => 0.0,
+                    'meta' => 25,
+                    'cumplimiento_pct' => 0.0
+                ];
+                $base['clave'] = $clave;
+                $base['etiqueta'] = $fecha->format('d/m/Y');
+                $base['subetiqueta'] = '';
+                $base['fecha_inicio'] = $clave;
+                $base['fecha_fin'] = $clave;
+                $periodos[] = $base;
+            }
+
+            return [
+                'granularidad' => 'dia',
+                'periodos' => $periodos
+            ];
+        }
+
+        if ($granularidad === 'semana') {
+            $periodos = [];
+            $inicioBloque = $inicio;
+            $numero = 1;
+
+            while ($inicioBloque <= $fin) {
+                $finBloque = $inicioBloque->modify('+6 days');
+                if ($finBloque > $fin) {
+                    $finBloque = $fin;
+                }
+
+                $totales = $this->sumarRendimientoEntre(
+                    $porFecha,
+                    $inicioBloque,
+                    $finBloque
+                );
+                $periodos[] = array_merge($totales, [
+                    'clave' => 'semana_' . $numero,
+                    'etiqueta' => 'Semana ' . $numero,
+                    'subetiqueta' =>
+                        $inicioBloque->format('d/m') . ' - ' . $finBloque->format('d/m'),
+                    'fecha_inicio' => $inicioBloque->format('Y-m-d'),
+                    'fecha_fin' => $finBloque->format('Y-m-d'),
+                    'meta' => null,
+                    'cumplimiento_pct' => null
+                ]);
+
+                $numero++;
+                $inicioBloque = $finBloque->modify('+1 day');
+            }
+
+            return [
+                'granularidad' => 'semana',
+                'periodos' => $periodos
+            ];
+        }
+
+        $periodos = [];
+        $mes = $inicio->modify('first day of this month');
+        $ultimoMes = $fin->modify('first day of this month');
+
+        while ($mes <= $ultimoMes) {
+            $inicioBloque = $mes < $inicio ? $inicio : $mes;
+            $finBloque = $mes->modify('last day of this month');
+            if ($finBloque > $fin) {
+                $finBloque = $fin;
+            }
+
+            $totales = $this->sumarRendimientoEntre(
+                $porFecha,
+                $inicioBloque,
+                $finBloque
+            );
+            $periodos[] = array_merge($totales, [
+                'clave' => $mes->format('Y-m'),
+                'etiqueta' => $this->mesCortoReporte((int)$mes->format('n')) . ' ' . $mes->format('Y'),
+                'subetiqueta' => '',
+                'fecha_inicio' => $inicioBloque->format('Y-m-d'),
+                'fecha_fin' => $finBloque->format('Y-m-d'),
+                'meta' => null,
+                'cumplimiento_pct' => null
+            ]);
+
+            $mes = $mes->modify('first day of next month');
+        }
+
+        return [
+            'granularidad' => 'mes',
+            'periodos' => $periodos
+        ];
+    }
+
+    private function sumarRendimientoEntre(
+        array $porFecha,
+        DateTimeImmutable $inicio,
+        DateTimeImmutable $fin
+    ) {
+        $llamadas = 0;
+        $contacto = 0;
+        $efectivas = 0;
+
+        for ($fecha = $inicio; $fecha <= $fin; $fecha = $fecha->modify('+1 day')) {
+            $fila = $porFecha[$fecha->format('Y-m-d')] ?? [];
+            $llamadas += (int)($fila['llamadas'] ?? 0);
+            $contacto += (int)($fila['con_contacto'] ?? 0);
+            $efectivas += (int)($fila['efectivas'] ?? 0);
+        }
+
+        return [
+            'llamadas' => $llamadas,
+            'con_contacto' => $contacto,
+            'efectivas' => $efectivas,
+            'tasa_contacto' => $llamadas > 0
+                ? round(($contacto / $llamadas) * 100, 1)
+                : 0.0
+        ];
+    }
+
+    private function rendimientoTelefonicoHoy(array $diasRegistrados)
+    {
+        $hoy = date('Y-m-d');
+
+        foreach ($diasRegistrados as $dia) {
+            if ((string)($dia['fecha'] ?? '') === $hoy) {
+                return [
+                    'fecha' => $hoy,
+                    'llamadas' => (int)($dia['llamadas'] ?? 0),
+                    'con_contacto' => (int)($dia['con_contacto'] ?? 0),
+                    'efectivas' => (int)($dia['efectivas'] ?? 0)
+                ];
+            }
+        }
+
+        return [
+            'fecha' => $hoy,
+            'llamadas' => 0,
+            'con_contacto' => 0,
+            'efectivas' => 0
+        ];
+    }
+
+    private function mesCortoReporte($mes)
+    {
+        $meses = [
+            1 => 'Ene',
+            2 => 'Feb',
+            3 => 'Mar',
+            4 => 'Abr',
+            5 => 'May',
+            6 => 'Jun',
+            7 => 'Jul',
+            8 => 'Ago',
+            9 => 'Sep',
+            10 => 'Oct',
+            11 => 'Nov',
+            12 => 'Dic'
+        ];
+
+        return $meses[(int)$mes] ?? '';
+    }
+
     private function obtenerInstitucionesActividad(
         array $ids,
         $fechaInicial,
@@ -740,6 +963,16 @@ class SeguimientoReporteAnaliticaService
             ],
             'actividad_reciente' => [],
             'rendimiento_telefonico_diario' => [],
+            'rendimiento_telefonico' => [
+                'granularidad' => 'dia',
+                'periodos' => []
+            ],
+            'rendimiento_telefonico_hoy' => [
+                'fecha' => date('Y-m-d'),
+                'llamadas' => 0,
+                'con_contacto' => 0,
+                'efectivas' => 0
+            ],
             'instituciones_actividad' => [],
             'meta_diaria_efectivas' => 25,
             'atencion' => [
