@@ -38,7 +38,7 @@
         let institutionSearchTimer = null;
         const labels = {
             actividad: {
-                help: 'El periodo se aplica a tus actividades e interacciones. Puedes filtrar también por canal.',
+                help: 'Consulta las actividades que realizaste durante el periodo y, si lo necesitas, acótalas por territorio o tipo de interacción.',
                 fields: ['periodo', 'territorio', 'actividad']
             },
             cartera: {
@@ -222,8 +222,32 @@
 
             const startLabel = form.querySelector('label[for="reporte_fecha_inicial"]');
             const endLabel = form.querySelector('label[for="reporte_fecha_final"]');
-            if (startLabel) startLabel.textContent = mode === 'actividad' ? 'Actividad desde' : 'Fecha inicial';
-            if (endLabel) endLabel.textContent = mode === 'actividad' ? 'Actividad hasta' : 'Fecha final';
+            const channelLabel = form.querySelector('label[for="reporte_actividad"]');
+            const compactHelp = form.querySelector('[data-report-help-compact] span');
+
+            if (startLabel) {
+                startLabel.textContent = mode === 'actividad' ? 'Actividad desde' : 'Fecha inicial';
+            }
+            if (endLabel) {
+                endLabel.textContent = mode === 'actividad' ? 'Actividad hasta' : 'Fecha final';
+            }
+            if (channelLabel) {
+                channelLabel.textContent = mode === 'actividad'
+                    ? 'Tipo de interacción'
+                    : 'Último canal de contacto';
+            }
+            if (compactHelp) {
+                if (mode === 'actividad') {
+                    compactHelp.textContent =
+                        'Las fechas corresponden a las actividades que realizaste. Estado limita las instituciones por territorio y Tipo de interacción permite consultar un canal específico.';
+                } else if (mode === 'cartera') {
+                    compactHelp.textContent =
+                        'Los filtros muestran el estado actual de tu cartera y consideran la última interacción registrada.';
+                } else {
+                    compactHelp.textContent =
+                        'Selecciona Estado y, opcionalmente, Municipio para ubicar la institución de la que necesitas el expediente.';
+                }
+            }
             if (help) help.textContent = labels[mode].help;
             periodShortcuts?.classList.toggle('d-none', mode !== 'actividad');
 
