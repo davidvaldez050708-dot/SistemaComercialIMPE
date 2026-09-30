@@ -162,7 +162,10 @@ class ConvocatoriaController
             $_SESSION['modal_convocatoria']
         );
 
-        $tituloPagina = 'Gestión de Convocatorias';
+        $rolActualConvocatorias = strtolower(trim((string)($_SESSION['rol'] ?? '')));
+        $tituloPagina = $rolActualConvocatorias === 'marketing'
+            ? 'Gestión de Convocatorias'
+            : 'Convocatorias';
         $subtituloPagina = 'Administra publicaciones y su vigencia territorial.';
         $opcionActiva = 'convocatorias';
 
