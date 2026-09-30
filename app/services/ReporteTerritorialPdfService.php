@@ -75,6 +75,7 @@ class ReporteTerritorialPdfService
         $poder = is_array($reporte['poder_adquisitivo'] ?? null) ? $reporte['poder_adquisitivo'] : [];
         $rezago = is_array($reporte['rezago_educativo'] ?? null) ? $reporte['rezago_educativo'] : [];
         $perfil = is_array($reporte['perfil_educativo'] ?? null) ? $reporte['perfil_educativo'] : [];
+        $perfil2549 = is_array($reporte['perfil_educativo_25_49'] ?? null) ? $reporte['perfil_educativo_25_49'] : [];
         $indicadores = is_array($reporte['indicadores_educativos'] ?? null) ? $reporte['indicadores_educativos'] : [];
         $priorizacion = is_array($reporte['priorizacion_municipal'] ?? null) ? $reporte['priorizacion_municipal'] : [];
         $secretarias = is_array($reporte['secretarias'] ?? null) ? $reporte['secretarias'] : [];
@@ -174,11 +175,19 @@ class ReporteTerritorialPdfService
             $this->e($this->diferenciaPuntos($resumen['diferencia_pobreza_nacional'] ?? null)) .
             ' vs. nacional</b></td>';
 
-        $html .= '<td><span>EDUCACIÓN</span><strong>' .
-            (($resumen['rezago_educativo'] ?? null) !== null ? $this->decimal($resumen['rezago_educativo'], 2) . '%' : '—') .
-            '</strong><small>Rezago educativo</small><b>' .
-            $this->e($this->diferenciaPuntos($resumen['diferencia_rezago_nacional'] ?? null)) .
-            ' vs. nacional</b></td>';
+        if (($perfil2549['disponible'] ?? false) === true) {
+            $html .= '<td><span>EDUCACIÓN</span><strong>' .
+                $this->decimal($perfil2549['sin_media_superior_25_49_pct'] ?? 0, 2) . '%' .
+                '</strong><small>25–49 sin media superior concluida</small><b>' .
+                $this->numero($perfil2549['sin_media_superior_25_49'] ?? null) .
+                ' personas</b></td>';
+        } else {
+            $html .= '<td><span>EDUCACIÓN</span><strong>' .
+                (($resumen['rezago_educativo'] ?? null) !== null ? $this->decimal($resumen['rezago_educativo'], 2) . '%' : '—') .
+                '</strong><small>Rezago educativo</small><b>' .
+                $this->e($this->diferenciaPuntos($resumen['diferencia_rezago_nacional'] ?? null)) .
+                ' vs. nacional</b></td>';
+        }
 
         $html .= '</tr></table></section>';
 
@@ -299,6 +308,44 @@ class ReporteTerritorialPdfService
         }
         $html .= '</section>';
 
+        if (($perfil2549['disponible'] ?? false) === true) {
+            $html .= '<section class="report-section keep education-priority">' .
+                $this->sectionTitle('Perfil educativo prioritario · 25 a 49 años');
+            $html .= '<p class="section-note">Universo educativo utilizado por la priorización municipal para dimensionar la brecha de media superior dentro del territorio.</p>';
+            $html .= '<table class="education-profile-grid"><tr>';
+            $html .= '<td><span>Población 25–49 con perfil</span><strong>' .
+                $this->numero($perfil2549['poblacion_25_49'] ?? null) .
+                '</strong><small>Base agregada disponible</small></td>';
+            $html .= '<td class="emphasis"><span>Sin media superior concluida</span><strong>' .
+                $this->numero($perfil2549['sin_media_superior_25_49'] ?? null) .
+                '</strong><small>' .
+                $this->decimal($perfil2549['sin_media_superior_25_49_pct'] ?? 0, 2) .
+                '% del grupo 25–49</small></td>';
+            $html .= '<td><span>Media superior, sin superior</span><strong>' .
+                $this->numero($perfil2549['media_superior_sin_superior_25_49'] ?? null) .
+                '</strong><small>' .
+                $this->decimal($perfil2549['media_superior_sin_superior_25_49_pct'] ?? 0, 2) .
+                '% del grupo 25–49</small></td>';
+            $html .= '<td><span>Con educación superior</span><strong>' .
+                $this->numero($perfil2549['con_educacion_superior_25_49'] ?? null) .
+                '</strong><small>' .
+                $this->decimal($perfil2549['con_educacion_superior_25_49_pct'] ?? 0, 2) .
+                '% del grupo 25–49</small></td>';
+            $html .= '</tr></table>';
+
+            $html .= '<div class="education-profile-note">Perfil disponible en <strong>' .
+                (int)($perfil2549['municipios_con_datos'] ?? 0) . '</strong> de <strong>' .
+                (int)($perfil2549['municipios_clasificables'] ?? 0) .
+                '</strong> municipios clasificables';
+            if (trim((string)($perfil2549['fuente'] ?? '')) !== '') {
+                $html .= ' · Fuente: ' . $this->e($perfil2549['fuente']);
+            }
+            if (($perfil2549['anio'] ?? null) !== null && (string)$perfil2549['anio'] !== '') {
+                $html .= ' · Periodo: ' . $this->e($perfil2549['anio']);
+            }
+            $html .= '.</div></section>';
+        }
+
         $html .= '<section class="report-section keep">' . $this->sectionTitle('Contexto institucional');
         $html .= '<table class="territory-grid government"><tr>';
         $html .= $this->focusInfo('Titular del gobierno', $estado['titular_gobierno'] ?? '—');
@@ -361,6 +408,15 @@ class ReporteTerritorialPdfService
             $html .= '<td class="num">' . $this->e($fuente['periodo'] ?? '—') . '</td></tr>';
         }
 
+        if (($perfil2549['disponible'] ?? false) === true && trim((string)($perfil2549['fuente'] ?? '')) !== '') {
+            $hayFuente = true;
+            $html .= '<tr><td>Perfil educativo 25–49</td><td>' .
+                $this->e($perfil2549['fuente']) .
+                '</td><td class="num">' .
+                $this->e($perfil2549['anio'] ?? '—') .
+                '</td></tr>';
+        }
+
         if (($perfil['disponible'] ?? false) === true && trim((string)($perfil['fuente'] ?? '')) !== '') {
             $hayFuente = true;
             $html .= '<tr><td>Perfil educativo</td><td>' . $this->e($perfil['fuente']) . '</td><td class="num">' . $this->e($perfil['anio'] ?? '—') . '</td></tr>';
@@ -400,7 +456,8 @@ class ReporteTerritorialPdfService
             '.metrics.compact-five{border-spacing:3px 0}.metrics.compact-five .metric{width:20%;padding:7px 5px}.metrics.compact-five .metric .value{font-size:10pt}.metrics.compact-five .metric .label{font-size:5.5pt}' .
             '.strategic-grid{width:100%;table-layout:fixed;border-collapse:separate;border-spacing:4px 0}.strategic-grid td{width:33.33%;padding:8px;border:1px solid #D9E1EB;background:#FBFCFE;vertical-align:top}.strategic-grid span{display:block;color:#273A8A;font-size:5.3pt;font-weight:800;letter-spacing:.03em;margin-bottom:3px}.strategic-grid strong{display:block;color:#16223B;font-size:8pt;line-height:1.2}.strategic-grid small{display:block;color:#6D7480;font-size:5.5pt;margin:2px 0 6px}.strategic-grid b{display:block;padding-top:5px;border-top:1px solid #E5E9EF;color:#252525;font-size:6pt}' .
             '.priority-summary.four td{width:25%}.priority-table th:first-child{width:43%}.priority-table td:first-child small{line-height:1.35}.secondary-sectors{margin-top:5px}' .
-            '.insight p strong{color:#16223B;font-size:6.2pt}';
+            '.insight p strong{color:#16223B;font-size:6.2pt}' .
+            '.education-profile-grid{width:100%;table-layout:fixed;border-collapse:separate;border-spacing:4px 0}.education-profile-grid td{width:25%;padding:8px;border:1px solid #D9E1EB;background:#FBFCFE;vertical-align:top}.education-profile-grid td.emphasis{background:#F0FAF8;border-color:#B9E2DA}.education-profile-grid span{display:block;color:#6D7480;font-size:5.5pt;margin-bottom:4px}.education-profile-grid strong{display:block;color:#16223B;font-size:9.3pt;line-height:1}.education-profile-grid td.emphasis strong{color:#087966}.education-profile-grid small{display:block;margin-top:4px;color:#6D7480;font-size:5.3pt;line-height:1.3}.education-profile-note{margin-top:6px;padding:6px 8px;border:1px solid #D9E1EB;background:#F8FAFC;color:#6D7480;font-size:5.6pt;line-height:1.35}.education-profile-note strong{color:#16223B}';
     }
 
     private function sectionTitle(string $titulo): string
