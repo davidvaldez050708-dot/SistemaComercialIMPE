@@ -1295,11 +1295,15 @@
 }
 
 .convocatoria-overview-locationbar {
+    width: 100%;
     min-height: 38px;
+    margin-left: auto;
     display: flex;
     align-items: center;
     justify-content: flex-end;
+    justify-self: stretch;
     gap: 16px;
+    text-align: right;
 }
 
 .convocatoria-overview-location {
@@ -1732,8 +1736,11 @@
 
 @media (max-width: 767.98px) {
     .convocatoria-overview-locationbar {
-        align-items: flex-start;
+        width: 100%;
+        align-items: flex-end;
+        justify-content: flex-end;
         flex-direction: column;
+        text-align: right;
     }
 
     .convocatoria-overview-types,
