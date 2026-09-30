@@ -89,6 +89,23 @@ class SeguimientoReporteAnaliticaService
             $canal,
             60
         );
+        $rendimientoTelefonicoDiario = $this->obtenerRendimientoTelefonicoDiario(
+            $autorizados,
+            $fechaInicial,
+            $fechaFinal,
+            $usuarioId,
+            $modoAcceso,
+            $canal
+        );
+        $institucionesActividad = $this->obtenerInstitucionesActividad(
+            $autorizados,
+            $fechaInicial,
+            $fechaFinal,
+            $usuarioId,
+            $modoAcceso,
+            $canal,
+            6
+        );
 
         return [
             'seguimientos_considerados' => $totalSeguimientos,
@@ -103,6 +120,9 @@ class SeguimientoReporteAnaliticaService
             'canales' => $canales,
             'llamadas' => $llamadas,
             'actividad_reciente' => $actividadReciente,
+            'rendimiento_telefonico_diario' => $rendimientoTelefonicoDiario,
+            'instituciones_actividad' => $institucionesActividad,
+            'meta_diaria_efectivas' => 25,
             'atencion' => [
                 'total' => $totalAtencion,
                 'porcentaje' => $totalSeguimientos > 0
@@ -344,6 +364,11 @@ class SeguimientoReporteAnaliticaService
                     i.resultado,
                     i.fecha_inicio,
                     i.notas,
+                    i.telefono_destino,
+                    i.correo_destino,
+                    i.duracion_segundos,
+                    i.proveedor_externo,
+                    i.id_externo,
                     s.nombre_entidad,
                     TRIM(CONCAT(COALESCE(u.nombre, ''), ' ', COALESCE(u.apellidos, ''))) AS responsable_nombre
                 FROM interacciones_vinculacion i
@@ -378,6 +403,229 @@ class SeguimientoReporteAnaliticaService
         $this->agregarFiltroCanal($sql, $tipos, $parametros, $canal, 'i.');
 
         $sql .= " ORDER BY i.fecha_inicio DESC, i.id DESC LIMIT " . $limite;
+        $stmt = $this->connection->prepare($sql);
+        $this->vincularParametros($stmt, $tipos, $parametros);
+        $stmt->execute();
+
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+    private function obtenerRendimientoTelefonicoDiario(
+        array $ids,
+        $fechaInicial,
+        $fechaFinal,
+        $usuarioId,
+        $modoAcceso,
+        $canal
+    ) {
+        $canal = strtoupper(trim((string)$canal));
+        if (
+            empty($ids) ||
+            ($canal !== '' && !in_array($canal, ['LLAMADA', 'LLAMADA_IP'], true))
+        ) {
+            return [];
+        }
+
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $sql = "SELECT
+                    DATE(fecha_inicio) AS fecha,
+                    COUNT(*) AS llamadas,
+                    COALESCE(SUM(
+                        CASE
+                            WHEN (
+                                notas LIKE '%[CONTACTO_EFECTIVO]%'
+                                OR UPPER(TRIM(COALESCE(resultado, ''))) IN (
+                                    'CONTACTADO',
+                                    'CONTACTO_CORRECTO',
+                                    'CONTACTO_REFERIDO',
+                                    'SOLICITO_INFORMACION',
+                                    'SOLICITO_LLAMAR_DESPUES',
+                                    'NO_INTERESADO'
+                                )
+                            )
+                            AND notas NOT LIKE '%[SIN_CONTACTO_EFECTIVO]%'
+                            THEN 1 ELSE 0
+                        END
+                    ), 0) AS con_contacto,
+                    COUNT(DISTINCT CASE
+                        WHEN notas LIKE '%[VERIFICACION_EFECTIVA]%'
+                         AND TRIM(COALESCE(proveedor_externo, '')) <> ''
+                         AND TRIM(COALESCE(id_externo, '')) <> ''
+                         AND COALESCE(duracion_segundos, 0) > 0
+                        THEN seguimiento_id
+                        ELSE NULL
+                    END) AS efectivas
+                FROM interacciones_vinculacion
+                WHERE seguimiento_id IN ($placeholders)
+                  AND UPPER(TRIM(COALESCE(canal, ''))) IN ('LLAMADA', 'LLAMADA_IP')";
+
+        $parametros = array_map('intval', $ids);
+        $tipos = str_repeat('i', count($parametros));
+
+        if ($modoAcceso === 'analista') {
+            $sql .= " AND usuario_id = ?";
+            $parametros[] = (int)$usuarioId;
+            $tipos .= 'i';
+        }
+
+        if ($fechaInicial !== '') {
+            $sql .= " AND fecha_inicio >= ?";
+            $parametros[] = $fechaInicial . ' 00:00:00';
+            $tipos .= 's';
+        }
+
+        if ($fechaFinal !== '') {
+            $sql .= " AND fecha_inicio <= ?";
+            $parametros[] = $fechaFinal . ' 23:59:59';
+            $tipos .= 's';
+        }
+
+        $sql .= " GROUP BY DATE(fecha_inicio) ORDER BY fecha ASC";
+        $stmt = $this->connection->prepare($sql);
+        $this->vincularParametros($stmt, $tipos, $parametros);
+        $stmt->execute();
+
+        $porFecha = [];
+        $resultado = $stmt->get_result();
+        while ($fila = $resultado->fetch_assoc()) {
+            $fecha = (string)($fila['fecha'] ?? '');
+            if ($fecha === '') {
+                continue;
+            }
+
+            $llamadas = max(0, (int)($fila['llamadas'] ?? 0));
+            $contacto = max(0, (int)($fila['con_contacto'] ?? 0));
+            $efectivas = max(0, (int)($fila['efectivas'] ?? 0));
+            $porFecha[$fecha] = [
+                'fecha' => $fecha,
+                'llamadas' => $llamadas,
+                'con_contacto' => $contacto,
+                'efectivas' => $efectivas,
+                'tasa_contacto' => $llamadas > 0
+                    ? round(($contacto / $llamadas) * 100, 1)
+                    : 0.0,
+                'meta' => 25,
+                'cumplimiento_pct' => round(min(100, ($efectivas / 25) * 100), 1)
+            ];
+        }
+
+        if ($fechaInicial !== '' && $fechaFinal !== '') {
+            try {
+                $inicio = new DateTimeImmutable($fechaInicial);
+                $fin = new DateTimeImmutable($fechaFinal);
+                $dias = ((int)$inicio->diff($fin)->days) + 1;
+
+                if ($inicio <= $fin && $dias <= 62) {
+                    $completo = [];
+                    for ($fecha = $inicio; $fecha <= $fin; $fecha = $fecha->modify('+1 day')) {
+                        $clave = $fecha->format('Y-m-d');
+                        $completo[] = $porFecha[$clave] ?? [
+                            'fecha' => $clave,
+                            'llamadas' => 0,
+                            'con_contacto' => 0,
+                            'efectivas' => 0,
+                            'tasa_contacto' => 0.0,
+                            'meta' => 25,
+                            'cumplimiento_pct' => 0.0
+                        ];
+                    }
+
+                    return $completo;
+                }
+            } catch (Throwable $error) {
+                // Si el periodo no puede expandirse, se conservan únicamente los días con datos.
+            }
+        }
+
+        return array_values($porFecha);
+    }
+
+    private function obtenerInstitucionesActividad(
+        array $ids,
+        $fechaInicial,
+        $fechaFinal,
+        $usuarioId,
+        $modoAcceso,
+        $canal,
+        $limite = 6
+    ) {
+        if (empty($ids)) {
+            return [];
+        }
+
+        $limite = max(1, min(12, (int)$limite));
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $sql = "SELECT
+                    i.seguimiento_id,
+                    s.nombre_entidad,
+                    s.municipio,
+                    COUNT(*) AS interacciones,
+                    SUM(CASE
+                        WHEN UPPER(TRIM(COALESCE(i.canal, ''))) IN ('LLAMADA', 'LLAMADA_IP')
+                        THEN 1 ELSE 0
+                    END) AS llamadas,
+                    SUM(CASE
+                        WHEN UPPER(TRIM(COALESCE(i.canal, ''))) = 'CORREO'
+                        THEN 1 ELSE 0
+                    END) AS correos,
+                    SUM(CASE
+                        WHEN UPPER(TRIM(COALESCE(i.canal, ''))) IN ('LLAMADA', 'LLAMADA_IP')
+                         AND (
+                            i.notas LIKE '%[CONTACTO_EFECTIVO]%'
+                            OR UPPER(TRIM(COALESCE(i.resultado, ''))) IN (
+                                'CONTACTADO',
+                                'CONTACTO_CORRECTO',
+                                'CONTACTO_REFERIDO',
+                                'SOLICITO_INFORMACION',
+                                'SOLICITO_LLAMAR_DESPUES',
+                                'NO_INTERESADO'
+                            )
+                         )
+                         AND i.notas NOT LIKE '%[SIN_CONTACTO_EFECTIVO]%'
+                        THEN 1 ELSE 0
+                    END) AS con_contacto,
+                    COUNT(DISTINCT CASE
+                        WHEN UPPER(TRIM(COALESCE(i.canal, ''))) IN ('LLAMADA', 'LLAMADA_IP')
+                         AND i.notas LIKE '%[VERIFICACION_EFECTIVA]%'
+                         AND TRIM(COALESCE(i.proveedor_externo, '')) <> ''
+                         AND TRIM(COALESCE(i.id_externo, '')) <> ''
+                         AND COALESCE(i.duracion_segundos, 0) > 0
+                        THEN DATE(i.fecha_inicio)
+                        ELSE NULL
+                    END) AS efectivas,
+                    MAX(i.fecha_inicio) AS ultima_actividad
+                FROM interacciones_vinculacion i
+                INNER JOIN seguimientos_vinculacion s
+                    ON s.id = i.seguimiento_id
+                WHERE i.seguimiento_id IN ($placeholders)
+                  AND UPPER(TRIM(COALESCE(i.canal, ''))) <> 'SISTEMA'";
+
+        $parametros = array_map('intval', $ids);
+        $tipos = str_repeat('i', count($parametros));
+
+        if ($modoAcceso === 'analista') {
+            $sql .= " AND i.usuario_id = ?";
+            $parametros[] = (int)$usuarioId;
+            $tipos .= 'i';
+        }
+
+        if ($fechaInicial !== '') {
+            $sql .= " AND i.fecha_inicio >= ?";
+            $parametros[] = $fechaInicial . ' 00:00:00';
+            $tipos .= 's';
+        }
+
+        if ($fechaFinal !== '') {
+            $sql .= " AND i.fecha_inicio <= ?";
+            $parametros[] = $fechaFinal . ' 23:59:59';
+            $tipos .= 's';
+        }
+
+        $this->agregarFiltroCanal($sql, $tipos, $parametros, $canal, 'i.');
+        $sql .= " GROUP BY i.seguimiento_id, s.nombre_entidad, s.municipio
+                  ORDER BY interacciones DESC, ultima_actividad DESC
+                  LIMIT " . $limite;
+
         $stmt = $this->connection->prepare($sql);
         $this->vincularParametros($stmt, $tipos, $parametros);
         $stmt->execute();
@@ -489,6 +737,9 @@ class SeguimientoReporteAnaliticaService
                 'tasa_contacto' => 0.0
             ],
             'actividad_reciente' => [],
+            'rendimiento_telefonico_diario' => [],
+            'instituciones_actividad' => [],
+            'meta_diaria_efectivas' => 25,
             'atencion' => [
                 'total' => 0,
                 'porcentaje' => 0.0,
