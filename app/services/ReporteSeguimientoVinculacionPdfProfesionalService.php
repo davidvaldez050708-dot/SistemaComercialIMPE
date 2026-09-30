@@ -145,11 +145,11 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
         $html .= '</tr></table></section>';
 
         if ($tipoReporte === 'actividad') {
-            $html .= $this->contacto($analitica);
+            $html .= $this->contacto($analitica, true);
             $html .= $this->actividad($evolucion);
         } else {
             $html .= $this->atencion($analitica['atencion']['casos'] ?? []);
-            $html .= $this->contacto($analitica);
+            $html .= $this->contacto($analitica, false);
             $html .= $this->distribuciones($resumen, $etiquetas);
             $html .= $this->detalle($seguimientos);
         }
@@ -805,17 +805,21 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
         return $html . '</section>';
     }
 
-    private function contacto(array $analitica): string
+    private function contacto(array $analitica, bool $soloCanalesMedibles = false): string
     {
         $canales = is_array($analitica['canales'] ?? null) ? $analitica['canales'] : [];
         $llamadas = is_array($analitica['llamadas'] ?? null) ? $analitica['llamadas'] : [];
 
-        $html = '<section class="report-section keep">' . $this->titulo('Actividad y contacto');
+        $html = '<section class="report-section keep">' . $this->titulo(
+            $soloCanalesMedibles ? 'Actividad medible' : 'Actividad y contacto'
+        );
         $html .= '<table class="mini"><tr>';
         $html .= $this->mini('Llamadas', (int)($canales['llamadas'] ?? 0));
         $html .= $this->mini('Correos', (int)($canales['correos'] ?? 0));
-        $html .= $this->mini('WhatsApp', (int)($canales['whatsapp'] ?? 0));
-        $html .= $this->mini('Otros', (int)($canales['otros'] ?? 0));
+        if (!$soloCanalesMedibles) {
+            $html .= $this->mini('WhatsApp', (int)($canales['whatsapp'] ?? 0));
+            $html .= $this->mini('Otros', (int)($canales['otros'] ?? 0));
+        }
         $html .= '</tr></table>';
 
         if ((int)($llamadas['total'] ?? 0) > 0) {
