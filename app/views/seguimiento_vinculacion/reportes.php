@@ -16,8 +16,15 @@ $resumenReporte = $resumenReporte ?? [
     'total' => 0,
     'sin_actividad' => 0,
     'mas_7_dias' => 0,
+    'acciones_vencidas' => 0,
+    'formalizados' => 0,
+    'descartados' => 0,
+    'en_gestion' => 0,
+    'requieren_atencion' => 0,
     'por_estatus' => [],
-    'por_municipio' => []
+    'por_etapa' => [],
+    'por_municipio' => [],
+    'prioritarios' => []
 ];
 $generarReporte = $generarReporte ?? false;
 $errorFiltros = $errorFiltros ?? '';
@@ -501,7 +508,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
             </div>
 
             <div class="col-md-6 col-xl-4" data-report-field="estatus">
-                <label class="form-label" for="reporte_estatus">Etapa / Estatus</label>
+                <label class="form-label" for="reporte_estatus"><?= $tipoReporteActual === 'cartera' ? 'Etapa actual' : 'Etapa / Estatus' ?></label>
                 <select class="form-select" id="reporte_estatus" name="estado_seguimiento">
                     <option value="">Todos</option>
                     <?php foreach ($estadosSeguimiento as $codigo => $etiqueta): ?>
@@ -529,7 +536,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                     </select>
                     <div class="form-text"><?= $tipoReporteActual === 'actividad'
                             ? 'Filtra por el tipo de interacción que realizaste durante el periodo.'
-                            : 'Filtra por el canal de la última interacción registrada.' ?></div>
+                            : 'Filtra por el canal de la última interacción humana registrada; los eventos automáticos no se consideran.' ?></div>
                 </div>
             <?php endif; ?>
 
@@ -715,6 +722,37 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                 </div>
                 <div class="analyst-activity-context-grid">
                     <?php foreach ($filtrosActividadResumen as $nombreFiltro => $valorFiltro): ?>
+                        <div>
+                            <span><?= $texto($nombreFiltro) ?></span>
+                            <strong><?= $texto($valorFiltro) ?></strong>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            </section>
+        <?php elseif ($modoSeguimiento === 'analista' && $tipoReporteActual === 'cartera'): ?>
+            <?php
+            $territorioCartera = (string)($resumenFiltros['Estado'] ?? 'Todos');
+            $municipioCartera = (string)($resumenFiltros['Municipio'] ?? 'Todos');
+            if ($municipioCartera !== 'Todos') {
+                $territorioCartera .= ' · ' . $municipioCartera;
+            }
+            $filtrosCarteraResumen = [
+                'Territorio' => $territorioCartera,
+                'Etapa actual' => (string)($resumenFiltros['Etapa'] ?? 'Todos'),
+                'Último canal humano' => (string)($resumenFiltros['Último canal de contacto'] ?? 'Todos'),
+                'Inactividad' => (string)($resumenFiltros['Días sin actividad'] ?? 'Todos')
+            ];
+            ?>
+            <section class="dashboard-panel analyst-portfolio-context mb-3" aria-label="Contexto de la cartera">
+                <div class="analyst-portfolio-section-heading">
+                    <div>
+                        <span class="report-eyebrow">CONTEXTO DEL REPORTE</span>
+                        <h3 class="panel-title mb-1">Cartera analizada</h3>
+                        <p class="page-subtitle mb-0">Fotografía actual de los seguimientos del Analista. La actividad y el canal consideran únicamente interacciones humanas.</p>
+                    </div>
+                </div>
+                <div class="analyst-portfolio-context-grid">
+                    <?php foreach ($filtrosCarteraResumen as $nombreFiltro => $valorFiltro): ?>
                         <div>
                             <span><?= $texto($nombreFiltro) ?></span>
                             <strong><?= $texto($valorFiltro) ?></strong>
