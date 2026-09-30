@@ -1599,6 +1599,12 @@
     color: #a33b2b;
 }
 
+.analyst-activity-variation.is-neutral {
+    border-color: var(--color-border);
+    background: var(--color-bg);
+    color: var(--color-text-soft);
+}
+
 .analyst-activity-variation small {
     font-size: 7.8px;
     font-weight: 650;
@@ -1606,7 +1612,7 @@
 
 .analyst-activity-evolution-summary {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 7px;
     margin-bottom: 8px;
 }
