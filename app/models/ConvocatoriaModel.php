@@ -79,6 +79,9 @@ class ConvocatoriaModel
                 $activadas[] = $convocatoria;
             }
 
+            // Genera alertas de vencimiento para convocatorias todavía activas.
+            $this->registrarNotificacionesVencimientoProximo();
+
             $this->connection->query(
                 "UPDATE convocatorias
                  SET estado = 0,
@@ -911,6 +914,132 @@ class ConvocatoriaModel
             $url
         );
         $stmt->execute();
+    }
+
+    private function registrarNotificacionesVencimientoProximo()
+    {
+        if (!$this->soportaNotificacionesConvocatorias()) {
+            return;
+        }
+
+        $resultado = $this->connection->query(
+            "SELECT
+                id,
+                titulo,
+                tipo_convocatoria,
+                subtipo_convocatoria,
+                fecha_termino,
+                DATEDIFF(fecha_termino, CURDATE()) AS dias_restantes
+             FROM convocatorias
+             WHERE estado = 1
+               AND fecha_termino BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 2 DAY)
+             ORDER BY fecha_termino ASC, id ASC"
+        );
+
+        while ($convocatoria = $resultado->fetch_assoc()) {
+            $convocatoriaId = (int)($convocatoria['id'] ?? 0);
+            $diasRestantes = (int)($convocatoria['dias_restantes'] ?? -1);
+
+            if ($convocatoriaId <= 0 || !in_array($diasRestantes, [0, 1, 2], true)) {
+                continue;
+            }
+
+            $tituloConvocatoria = trim((string)($convocatoria['titulo'] ?? 'Convocatoria'));
+            $tipo = trim((string)($convocatoria['tipo_convocatoria'] ?? ''));
+            $subtipo = trim((string)($convocatoria['subtipo_convocatoria'] ?? ''));
+            $fechaTermino = trim((string)($convocatoria['fecha_termino'] ?? ''));
+            $fechaLegible = $fechaTermino !== ''
+                ? date('d/m/Y', strtotime($fechaTermino))
+                : 'la fecha programada';
+
+            $estadosIds = $this->obtenerEstadosIds($convocatoriaId);
+            $estadosNombres = $this->obtenerNombresEstados($convocatoriaId);
+            $territorios = !empty($estadosNombres)
+                ? implode(', ', $estadosNombres)
+                : 'el territorio asociado';
+
+            if ($diasRestantes === 2) {
+                $tipoEvento = 'vencimiento_2_dias';
+                $tituloNotificacion = 'Convocatoria vence en 2 días: ' . $tituloConvocatoria;
+                $mensaje = 'La convocatoria "' . $tituloConvocatoria .
+                    '" vence en 2 días (' . $fechaLegible . '). Estado(s): ' .
+                    $territorios . '.';
+            } elseif ($diasRestantes === 1) {
+                $tipoEvento = 'vencimiento_1_dia';
+                $tituloNotificacion = 'Convocatoria vence mañana: ' . $tituloConvocatoria;
+                $mensaje = 'La convocatoria "' . $tituloConvocatoria .
+                    '" vence mañana (' . $fechaLegible . '). Estado(s): ' .
+                    $territorios . '.';
+            } else {
+                $tipoEvento = 'vencimiento_hoy';
+                $tituloNotificacion = 'Convocatoria vence hoy: ' . $tituloConvocatoria;
+                $mensaje = 'La convocatoria "' . $tituloConvocatoria .
+                    '" vence hoy (' . $fechaLegible . '). Estado(s): ' .
+                    $territorios . '.';
+            }
+
+            $baseUrl = defined('BASE_URL') ? BASE_URL : '';
+            $url = $baseUrl . 'index.php?controller=convocatoria&action=index';
+
+            if (!empty($estadosIds)) {
+                $url .= '&territorio_id=' . (int)$estadosIds[0];
+            }
+
+            if ($tipo !== '') {
+                $url .= '&tipo=' . rawurlencode($tipo);
+            }
+
+            if ($subtipo !== '') {
+                $url .= '&subtipo=' . rawurlencode($subtipo);
+            }
+
+            if ($tituloConvocatoria !== '') {
+                $url .= '&buscar=' . rawurlencode($tituloConvocatoria);
+            }
+
+            $sql = "INSERT INTO notificaciones_convocatorias (
+                        usuario_id,
+                        convocatoria_id,
+                        titulo,
+                        mensaje,
+                        url,
+                        tipo_evento,
+                        leida
+                    )
+                    SELECT
+                        usuarios.id,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        0
+                    FROM usuarios
+                    INNER JOIN roles
+                        ON roles.id = usuarios.rol_id
+                    WHERE usuarios.estado = 1
+                      AND LOWER(roles.nombre) = 'marketing'
+                      AND NOT EXISTS (
+                          SELECT 1
+                          FROM notificaciones_convocatorias existentes
+                          WHERE existentes.usuario_id = usuarios.id
+                            AND existentes.convocatoria_id = ?
+                            AND existentes.tipo_evento = ?
+                      )";
+
+            $stmt = $this->connection->prepare($sql);
+            $stmt->bind_param(
+                'issssis',
+                $convocatoriaId,
+                $tituloNotificacion,
+                $mensaje,
+                $url,
+                $tipoEvento,
+                $convocatoriaId,
+                $tipoEvento
+            );
+            $stmt->execute();
+        }
     }
 
     private function obtenerEstadosIds($convocatoriaId)
