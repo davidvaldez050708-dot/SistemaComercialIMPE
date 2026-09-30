@@ -359,7 +359,7 @@ class SeguimientoVinculacionReporteController
 
             if ($puedeUsarCache) {
                 $claveCache = $cachePdf->crearClave([
-                    'version' => 'seguimiento-pdf-profesional-v10',
+                    'version' => 'seguimiento-pdf-profesional-v11',
                     'usuario_id' => $usuarioId,
                     'rol_id' => (int)($_SESSION['rol_id'] ?? 0),
                     'modo' => $modoSeguimientoCache,
@@ -387,6 +387,24 @@ class SeguimientoVinculacionReporteController
                 (string)$contexto['errorFiltros'],
                 $contexto['filtrosReporte']
             );
+        }
+
+        $estadoPdf = (int)($contexto['filtrosReporte']['estado_id'] ?? 0);
+        if ($estadoPdf > 0) {
+            foreach (($contexto['seguimientosReporte'] ?? []) as $seguimientoPdf) {
+                if ((int)($seguimientoPdf['estado_id'] ?? 0) !== $estadoPdf) {
+                    error_log(
+                        '[reporte_seguimiento_pdf_territorio] seguimiento=' .
+                        (int)($seguimientoPdf['id'] ?? 0) .
+                        ' estado_esperado=' . $estadoPdf .
+                        ' estado_real=' . (int)($seguimientoPdf['estado_id'] ?? 0)
+                    );
+                    $this->redirigirErrorPdf(
+                        'No fue posible mantener el filtro territorial al generar el PDF.',
+                        $contexto['filtrosReporte']
+                    );
+                }
+            }
         }
 
         $evolucionActividad = [];
