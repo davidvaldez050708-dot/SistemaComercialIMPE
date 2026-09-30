@@ -8,6 +8,7 @@ require_once __DIR__ . '/../services/ReporteSeguimientoInstitucionDetalleService
 require_once __DIR__ . '/../services/ReporteSeguimientoPdfCacheService.php';
 require_once __DIR__ . '/../services/EvolucionActividadSeguimientoService.php';
 require_once __DIR__ . '/../services/SeguimientoReporteAnaliticaService.php';
+require_once __DIR__ . '/../services/ReporteSeguimientoCarteraService.php';
 require_once __DIR__ . '/../services/SeguimientoFlujoService.php';
 require_once __DIR__ . '/../services/SeguimientoPostEnvioService.php';
 require_once __DIR__ . '/../services/SeguimientoCorreoService.php';
@@ -29,10 +30,20 @@ class SeguimientoVinculacionReporteController
 
     private const CANALES = [
         'LLAMADA_IP' => 'Llamada',
+        'LLAMADA' => 'Llamada',
         'WHATSAPP' => 'WhatsApp',
         'CORREO' => 'Correo',
-        'NOTA' => 'Otro',
+        'NOTA' => 'Nota',
         'SISTEMA' => 'Sistema'
+    ];
+
+    private const ETAPAS_CARTERA = [
+        'DATOS_CONTACTO' => 'Datos de contacto',
+        'OFICIO_INSTITUCIONAL' => 'Oficio institucional',
+        'RESPUESTA_INSTITUCION' => 'Respuesta de la institución',
+        'REUNION' => 'Reunión',
+        'CONVENIO_FORMALIZACION' => 'Convenio / formalización',
+        'DESCARTADO' => 'Descartado'
     ];
 
     public function index()
@@ -734,6 +745,21 @@ class SeguimientoVinculacionReporteController
             $modoSeguimiento,
             $territoriosConsulta
         );
+
+        if (
+            $modoSeguimiento === 'analista' &&
+            (string)($filtrosReporte['tipo_reporte'] ?? 'cartera') === 'cartera'
+        ) {
+            try {
+                $seguimientosDisponibles =
+                    (new ReporteSeguimientoCarteraService())->enriquecer(
+                        $seguimientosDisponibles
+                    );
+            } catch (Throwable $error) {
+                error_log('[reporte_cartera_enriquecimiento] ' . $error->getMessage());
+            }
+        }
+
         $filtrosReporte = $this->normalizarFiltrosDependientes(
             $seguimientosDisponibles,
             $filtrosReporte,
@@ -940,7 +966,12 @@ class SeguimientoVinculacionReporteController
             }
         }
 
-        $estadosSeguimiento = self::ESTADOS_SEGUIMIENTO;
+        $estadosSeguimiento = (
+            $modoSeguimiento === 'analista' &&
+            (string)($filtrosReporte['tipo_reporte'] ?? '') === 'cartera'
+        )
+            ? self::ETAPAS_CARTERA
+            : self::ESTADOS_SEGUIMIENTO;
         $resumenFiltros = $this->crearResumenFiltros(
             $filtrosReporte,
             $territoriosPorId,
@@ -1056,9 +1087,18 @@ class SeguimientoVinculacionReporteController
 
         $estatus = (string)($filtros['estado_seguimiento'] ?? '');
         if ($estatus !== '') {
-            $coinciden = array_values(array_filter($actuales, function ($seguimiento) use ($estatus) {
-                return (string)($seguimiento['estado_seguimiento'] ?? '') === $estatus;
-            }));
+            $esCarteraAnalista =
+                $modo === 'analista' &&
+                (string)($filtros['tipo_reporte'] ?? '') === 'cartera';
+            $coinciden = array_values(array_filter(
+                $actuales,
+                function ($seguimiento) use ($estatus, $esCarteraAnalista) {
+                    $codigo = $esCarteraAnalista
+                        ? (string)($seguimiento['etapa_operativa_codigo'] ?? '')
+                        : (string)($seguimiento['estado_seguimiento'] ?? '');
+                    return $codigo === $estatus;
+                }
+            ));
 
             if (empty($coinciden)) {
                 $filtros['estado_seguimiento'] = '';
@@ -1074,7 +1114,12 @@ class SeguimientoVinculacionReporteController
 
         if ($canal !== '' && !$esActividadAnalista) {
             $coinciden = array_values(array_filter($actuales, function ($seguimiento) use ($canal) {
-                return strtoupper(trim((string)($seguimiento['ultimo_canal'] ?? ''))) === $canal;
+                $ultimoCanal = (string)(
+                    $seguimiento['ultimo_canal_humano'] ??
+                    $seguimiento['ultimo_canal'] ??
+                    ''
+                );
+                return strtoupper(trim($ultimoCanal)) === $canal;
             }));
 
             if (empty($coinciden)) {
@@ -1148,24 +1193,45 @@ class SeguimientoVinculacionReporteController
         }
 
         $estatus = [];
+        $esCarteraAnalista =
+            $modo === 'analista' &&
+            (string)($filtros['tipo_reporte'] ?? '') === 'cartera';
+
         foreach ($actuales as $seguimiento) {
-            $codigo = strtoupper(trim((string)($seguimiento['estado_seguimiento'] ?? '')));
-            if ($codigo !== '' && isset(self::ESTADOS_SEGUIMIENTO[$codigo])) {
-                $estatus[$codigo] = self::ESTADOS_SEGUIMIENTO[$codigo];
+            $codigo = strtoupper(trim((string)(
+                $esCarteraAnalista
+                    ? ($seguimiento['etapa_operativa_codigo'] ?? '')
+                    : ($seguimiento['estado_seguimiento'] ?? '')
+            )));
+            $mapaEstatus = $esCarteraAnalista
+                ? self::ETAPAS_CARTERA
+                : self::ESTADOS_SEGUIMIENTO;
+            if ($codigo !== '' && isset($mapaEstatus[$codigo])) {
+                $estatus[$codigo] = $mapaEstatus[$codigo];
             }
         }
 
         if ((string)$filtros['estado_seguimiento'] !== '') {
             $estadoSeguimiento = (string)$filtros['estado_seguimiento'];
-            $actuales = array_values(array_filter($actuales, function ($seguimiento) use ($estadoSeguimiento) {
-                return (string)($seguimiento['estado_seguimiento'] ?? '') === $estadoSeguimiento;
-            }));
+            $actuales = array_values(array_filter(
+                $actuales,
+                function ($seguimiento) use ($estadoSeguimiento, $esCarteraAnalista) {
+                    $codigo = $esCarteraAnalista
+                        ? (string)($seguimiento['etapa_operativa_codigo'] ?? '')
+                        : (string)($seguimiento['estado_seguimiento'] ?? '');
+                    return $codigo === $estadoSeguimiento;
+                }
+            ));
         }
 
         $canales = [];
         foreach ($actuales as $seguimiento) {
-            $canal = strtoupper(trim((string)($seguimiento['ultimo_canal'] ?? '')));
-            if ($canal !== '') {
+            $canal = strtoupper(trim((string)(
+                $seguimiento['ultimo_canal_humano'] ??
+                $seguimiento['ultimo_canal'] ??
+                ''
+            )));
+            if ($canal !== '' && $canal !== 'SISTEMA') {
                 $canales[$canal] = $this->etiquetarCanal($canal);
             }
         }
@@ -1558,9 +1624,13 @@ class SeguimientoVinculacionReporteController
         $canales = [];
 
         foreach ($seguimientos as $seguimiento) {
-            $canal = strtoupper(trim((string)($seguimiento['ultimo_canal'] ?? '')));
+            $canal = strtoupper(trim((string)(
+                $seguimiento['ultimo_canal_humano'] ??
+                $seguimiento['ultimo_canal'] ??
+                ''
+            )));
 
-            if ($canal !== '') {
+            if ($canal !== '' && $canal !== 'SISTEMA') {
                 $canales[$canal] = $this->etiquetarCanal($canal);
             }
         }
