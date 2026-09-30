@@ -53,9 +53,15 @@ class SeguimientoVinculacionModel
         }
 
         if ($canal !== '') {
-            $sql .= " AND canal = ?";
-            $tipos .= 's';
-            $parametros[] = $canal;
+            if (in_array($canal, ['LLAMADA', 'LLAMADA_IP'], true)) {
+                $sql .= " AND UPPER(TRIM(COALESCE(canal, ''))) IN ('LLAMADA', 'LLAMADA_IP')";
+            } elseif ($canal === 'NOTA') {
+                $sql .= " AND UPPER(TRIM(COALESCE(canal, ''))) NOT IN ('SISTEMA', 'LLAMADA', 'LLAMADA_IP', 'CORREO', 'WHATSAPP')";
+            } else {
+                $sql .= " AND UPPER(TRIM(COALESCE(canal, ''))) = ?";
+                $tipos .= 's';
+                $parametros[] = $canal;
+            }
         }
 
         $stmt = $this->connection->prepare($sql);
