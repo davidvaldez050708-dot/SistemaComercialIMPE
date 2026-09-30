@@ -184,6 +184,36 @@
                         institucion.value = '0';
                         institucion.dataset.reportInstitutionId = '0';
                     }
+
+                    const triggerInstitucion = formulario.querySelector('[data-report-institution-picker]');
+                    const hintInstitucion = formulario.querySelector('[data-report-institution-hint]');
+                    const tipoReporte = String(
+                        formulario.querySelector('[data-report-type-input]')?.value || ''
+                    );
+                    const estadoSeleccionado = String(seleccion.estado_id || '0') !== '0';
+                    const hayInstituciones = datos.hay_instituciones === true;
+
+                    if (triggerInstitucion) {
+                        triggerInstitucion.disabled =
+                            tipoReporte !== 'institucion' ||
+                            !estadoSeleccionado ||
+                            !hayInstituciones;
+                    }
+
+                    if (hintInstitucion && tipoReporte === 'institucion') {
+                        if (!estadoSeleccionado) {
+                            hintInstitucion.textContent =
+                                'Selecciona primero un estado para consultar las instituciones disponibles.';
+                        } else if (!hayInstituciones) {
+                            hintInstitucion.textContent =
+                                Number(seleccion.municipio_id || 0) > 0
+                                    ? 'No tienes instituciones con seguimiento en este municipio.'
+                                    : 'No tienes instituciones con seguimiento en este estado.';
+                        } else {
+                            hintInstitucion.textContent =
+                                'Puedes acotar por municipio o elegir una institución del estado seleccionado.';
+                        }
+                    }
                 } else {
                     reemplazarOpciones(
                         institucion,
