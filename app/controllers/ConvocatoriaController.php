@@ -176,6 +176,52 @@ class ConvocatoriaController
         require_once __DIR__ . '/../views/layout/dashboard_footer.php';
     }
 
+    public function publicacionesDelDia()
+    {
+        $this->validarPermiso('convocatorias.ver');
+
+        if (
+            strcasecmp(
+                trim((string)($_SESSION['rol'] ?? '')),
+                'Marketing'
+            ) !== 0
+        ) {
+            header('Location: ' . BASE_URL . 'index.php?controller=home&action=index');
+            exit;
+        }
+
+        $fechaSolicitada = trim((string)($_GET['fecha'] ?? date('Y-m-d')));
+        $fechaObjeto = DateTime::createFromFormat('!Y-m-d', $fechaSolicitada);
+        $fechaValida = $fechaObjeto &&
+            $fechaObjeto->format('Y-m-d') === $fechaSolicitada;
+
+        $fechaPublicaciones = $fechaValida
+            ? $fechaSolicitada
+            : date('Y-m-d');
+
+        $modelo = new ConvocatoriaModel();
+        $modelo->desactivarConvocatoriasVencidas();
+
+        $publicacionesDelDia = $modelo
+            ->obtenerPublicacionesPorFechaDashboard($fechaPublicaciones);
+
+        $fechaPublicacionesTexto = date(
+            'd/m/Y',
+            strtotime($fechaPublicaciones)
+        );
+
+        $tituloPagina = 'Publicaciones del día';
+        $subtituloPagina =
+            'Convocatorias publicadas el ' . $fechaPublicacionesTexto . '.';
+        $opcionActiva = 'inicio';
+
+        require_once __DIR__ . '/../views/layout/dashboard_head.php';
+        require_once __DIR__ . '/../views/layout/sidebar.php';
+        require_once __DIR__ . '/../views/layout/topbar.php';
+        require_once __DIR__ . '/../views/convocatorias/publicaciones_dia.php';
+        require_once __DIR__ . '/../views/layout/dashboard_footer.php';
+    }
+
     public function guardar()
     {
         $this->validarPermiso('convocatorias.crear');
