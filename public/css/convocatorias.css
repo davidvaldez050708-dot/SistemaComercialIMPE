@@ -1766,13 +1766,13 @@
 }
 
 .convocatoria-titulacion-hero {
-    min-height: 170px;
+    min-height: 118px;
     margin-top: 18px;
-    padding: 30px 32px;
+    padding: 18px 28px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 24px;
+    gap: 20px;
     overflow: hidden;
     position: relative;
     background:
@@ -1781,12 +1781,12 @@
 
 .convocatoria-titulacion-hero::after {
     content: '';
-    width: 220px;
-    height: 220px;
+    width: 170px;
+    height: 170px;
     position: absolute;
-    right: -44px;
-    top: -64px;
-    border-radius: 38px;
+    right: -34px;
+    top: -52px;
+    border-radius: 32px;
     background: rgba(216, 228, 250, .42);
     transform: rotate(45deg);
 }
@@ -1799,7 +1799,7 @@
 
 .convocatoria-titulacion-hero-copy > span {
     display: block;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
     color: #4f83ff;
     font-size: 14px;
     font-weight: 800;
@@ -1823,16 +1823,16 @@
 }
 
 .convocatoria-titulacion-hero-icon {
-    width: 132px;
-    height: 132px;
-    flex: 0 0 132px;
+    width: 88px;
+    height: 88px;
+    flex: 0 0 88px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     position: relative;
     z-index: 2;
     color: rgba(79, 131, 255, .22);
-    font-size: 104px;
+    font-size: 70px;
 }
 
 .convocatoria-titulacion-cards {
@@ -1939,7 +1939,7 @@
 @media (max-width: 767.98px) {
     .convocatoria-titulacion-hero {
         min-height: 0;
-        padding: 24px;
+        padding: 18px 20px;
     }
 
     .convocatoria-titulacion-hero-copy h2 {
