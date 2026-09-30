@@ -359,7 +359,7 @@ class SeguimientoVinculacionReporteController
 
             if ($puedeUsarCache) {
                 $claveCache = $cachePdf->crearClave([
-                    'version' => 'seguimiento-pdf-profesional-v7',
+                    'version' => 'seguimiento-pdf-profesional-v8',
                     'usuario_id' => $usuarioId,
                     'rol_id' => (int)($_SESSION['rol_id'] ?? 0),
                     'modo' => $modoSeguimientoCache,
@@ -730,6 +730,11 @@ class SeguimientoVinculacionReporteController
                 $filtrosReporte['estado_seguimiento'] = '';
                 $filtrosReporte['dias_sin_actividad'] = 0;
 
+                $canalActividad = strtoupper(trim((string)($filtrosReporte['tipo_actividad'] ?? '')));
+                if (!in_array($canalActividad, ['', 'LLAMADA', 'LLAMADA_IP', 'CORREO'], true)) {
+                    $filtrosReporte['tipo_actividad'] = '';
+                }
+
                 if (
                     trim((string)$filtrosReporte['fecha_inicial']) === '' &&
                     trim((string)$filtrosReporte['fecha_final']) === ''
@@ -770,9 +775,7 @@ class SeguimientoVinculacionReporteController
         ) {
             $canalesDisponibles = [
                 'LLAMADA_IP' => 'Llamada',
-                'CORREO' => 'Correo',
-                'WHATSAPP' => 'WhatsApp',
-                'NOTA' => 'Otro'
+                'CORREO' => 'Correo'
             ];
         }
 
@@ -1151,9 +1154,7 @@ class SeguimientoVinculacionReporteController
     {
         return [
             ['valor' => 'LLAMADA_IP', 'etiqueta' => 'Llamada'],
-            ['valor' => 'CORREO', 'etiqueta' => 'Correo'],
-            ['valor' => 'WHATSAPP', 'etiqueta' => 'WhatsApp'],
-            ['valor' => 'NOTA', 'etiqueta' => 'Otro']
+            ['valor' => 'CORREO', 'etiqueta' => 'Correo']
         ];
     }
 
