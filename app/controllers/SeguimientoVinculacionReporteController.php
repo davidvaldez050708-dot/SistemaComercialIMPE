@@ -179,7 +179,7 @@ class SeguimientoVinculacionReporteController
 
             if ($puedeUsarCache) {
                 $claveCache = $cachePdf->crearClave([
-                    'version' => 'seguimiento-pdf-profesional-v3',
+                    'version' => 'seguimiento-pdf-profesional-v4',
                     'usuario_id' => $usuarioId,
                     'rol_id' => (int)($_SESSION['rol_id'] ?? 0),
                     'modo' => $modoSeguimientoCache,
