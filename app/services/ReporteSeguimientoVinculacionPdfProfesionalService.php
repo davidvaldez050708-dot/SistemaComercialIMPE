@@ -459,13 +459,14 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
     private function documentacionIndividual(array $detalle): string
     {
         $oficios = is_array($detalle['oficios'] ?? null) ? $detalle['oficios'] : [];
+        $correos = is_array($detalle['correos_recientes'] ?? null) ? $detalle['correos_recientes'] : [];
         $post = is_array($detalle['post_envio'] ?? null) ? $detalle['post_envio'] : [];
 
         $hayPost = trim((string)($post['respuesta_at'] ?? '')) !== '' ||
             trim((string)($post['seguimiento_correo_at'] ?? '')) !== '' ||
             trim((string)($post['convenio_formalizado_at'] ?? '')) !== '';
 
-        if (empty($oficios) && !$hayPost) {
+        if (empty($oficios) && empty($correos) && !$hayPost) {
             return '';
         }
 
@@ -488,12 +489,36 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
             $html .= '</tbody></table>';
         }
 
+        if (!empty($correos)) {
+            $html .= '<table class="data-table docs-table"><thead><tr><th>Correo enviado</th><th>Fecha</th><th>Responsable</th></tr></thead><tbody>';
+            foreach (array_slice($correos, 0, 3) as $correo) {
+                $presentacion = is_array($correo['presentacion'] ?? null)
+                    ? $correo['presentacion']
+                    : [];
+                $resumen = trim((string)($presentacion['resumen'] ?? ''));
+                if (stripos($resumen, 'Asunto: ') === 0) {
+                    $resumen = trim(substr($resumen, 8));
+                }
+                if ($resumen === '') {
+                    $resumen = 'Correo enviado';
+                }
+                $responsable = trim(
+                    (string)($correo['nombre'] ?? '') . ' ' .
+                    (string)($correo['apellidos'] ?? '')
+                );
+                $html .= '<tr><td>' . $this->e($this->resumirTexto($resumen, 120)) . '</td>';
+                $html .= '<td>' . $this->e($this->fechaDato((string)($correo['fecha_inicio'] ?? ''))) . '</td>';
+                $html .= '<td>' . $this->e($responsable !== '' ? $responsable : '—') . '</td></tr>';
+            }
+            $html .= '</tbody></table>';
+        }
+
         $timeline = [];
         if (trim((string)($post['respuesta_at'] ?? '')) !== '') {
             $timeline[] = ['Respuesta recibida', $this->fechaDato((string)$post['respuesta_at']), $this->respuestaTipoLabel((string)($post['respuesta_tipo'] ?? ''))];
         }
-        if (trim((string)($post['seguimiento_correo_at'] ?? '')) !== '') {
-            $timeline[] = ['Seguimiento por correo', $this->fechaDato((string)$post['seguimiento_correo_at']), $this->resumirTexto((string)($post['seguimiento_correo_notas'] ?? ''), 110)];
+        if (empty($correos) && trim((string)($post['seguimiento_correo_at'] ?? '')) !== '') {
+            $timeline[] = ['Seguimiento por correo', $this->fechaDato((string)$post['seguimiento_correo_at']), 'Correo de seguimiento registrado'];
         }
         if (trim((string)($post['reunion_realizada_at'] ?? '')) !== '') {
             $timeline[] = ['Reunión realizada', $this->fechaDato((string)$post['reunion_realizada_at']), $this->resultadoReunionLabel((string)($post['reunion_resultado'] ?? ''))];
