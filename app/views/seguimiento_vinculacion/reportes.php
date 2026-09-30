@@ -699,54 +699,151 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
         <?php endif; ?>
 
         <?php if ($modoSeguimiento === 'analista' && $tipoReporteActual === 'actividad'): ?>
-        <section class="metric-grid linkage-summary-grid mb-4" aria-label="Indicadores de actividad del analista">
-            <article class="metric-card linkage-summary-card">
-                <div class="metric-icon"><i class="bi bi-activity"></i></div>
+        <section class="analyst-activity-kpis mb-3" aria-label="Resumen ejecutivo de actividad">
+            <article class="analyst-activity-kpi">
+                <span class="analyst-activity-kpi-icon"><i class="bi bi-activity"></i></span>
                 <div>
-                    <p class="metric-value"><?= (int)($analiticaReporte['interacciones'] ?? 0) ?></p>
-                    <p class="metric-label">Interacciones registradas</p>
+                    <strong><?= (int)($analiticaReporte['interacciones'] ?? 0) ?></strong>
+                    <span>Actividades realizadas</span>
+                    <small>Interacciones humanas del periodo</small>
                 </div>
             </article>
-            <article class="metric-card linkage-summary-card">
-                <div class="metric-icon"><i class="bi bi-telephone"></i></div>
+            <article class="analyst-activity-kpi">
+                <span class="analyst-activity-kpi-icon"><i class="bi bi-buildings"></i></span>
                 <div>
-                    <p class="metric-value"><?= (int)($llamadasReporte['total'] ?? 0) ?></p>
-                    <p class="metric-label">Llamadas realizadas</p>
+                    <strong><?= (int)($analiticaReporte['seguimientos_con_actividad'] ?? 0) ?></strong>
+                    <span>Instituciones trabajadas</span>
+                    <small>Seguimientos con actividad real</small>
                 </div>
             </article>
-            <article class="metric-card linkage-summary-card">
-                <div class="metric-icon"><i class="bi bi-person-check"></i></div>
+            <article class="analyst-activity-kpi">
+                <span class="analyst-activity-kpi-icon"><i class="bi bi-telephone"></i></span>
                 <div>
-                    <p class="metric-value"><?= (int)($llamadasReporte['contactadas'] ?? 0) ?></p>
-                    <p class="metric-label">Llamadas con contacto</p>
+                    <strong><?= (int)($llamadasReporte['total'] ?? 0) ?></strong>
+                    <span>Llamadas realizadas</span>
+                    <small>Intentos telefónicos registrados</small>
                 </div>
             </article>
-            <article class="metric-card linkage-summary-card">
-                <div class="metric-icon"><i class="bi bi-patch-check"></i></div>
+            <article class="analyst-activity-kpi">
+                <span class="analyst-activity-kpi-icon"><i class="bi bi-person-check"></i></span>
                 <div>
-                    <p class="metric-value"><?= (int)($llamadasReporte['verificaciones_efectivas'] ?? 0) ?></p>
-                    <p class="metric-label">Verificaciones efectivas</p>
+                    <strong><?= (int)($llamadasReporte['contactadas'] ?? 0) ?></strong>
+                    <span>Con contacto</span>
+                    <small><?= number_format((float)($llamadasReporte['tasa_contacto'] ?? 0), 1) ?>% de las llamadas</small>
+                </div>
+            </article>
+            <article class="analyst-activity-kpi analyst-activity-kpi--effective">
+                <span class="analyst-activity-kpi-icon"><i class="bi bi-patch-check"></i></span>
+                <div>
+                    <strong><?= (int)($llamadasReporte['verificaciones_efectivas'] ?? 0) ?></strong>
+                    <span>Llamadas efectivas</span>
+                    <small>Verificaciones válidas del periodo</small>
                 </div>
             </article>
         </section>
 
-        <section class="dashboard-panel mb-4" aria-label="Desglose del trabajo realizado">
-            <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
-                <div>
-                    <h3 class="panel-title mb-1">Desglose del trabajo realizado</h3>
-                    <p class="page-subtitle mb-0">Las verificaciones efectivas se contabilizan una vez por institución y día.</p>
-                </div>
-                <span class="status-pill status-pill-active">
-                    <?= number_format((float)($llamadasReporte['tasa_contacto'] ?? 0), 1) ?>% contacto
-                </span>
+        <div class="row g-3 mb-3">
+            <div class="<?= $mostrarRendimientoTelefonico ? 'col-xl-8' : 'col-12' ?>">
+                <section class="dashboard-panel analyst-activity-phone h-100" aria-labelledby="rendimiento-telefonico-actividad">
+                    <div class="analyst-activity-section-heading">
+                        <div>
+                            <span class="report-eyebrow">RENDIMIENTO TELEFÓNICO</span>
+                            <h3 class="panel-title mb-1" id="rendimiento-telefonico-actividad">
+                                <?= $mostrarRendimientoTelefonico ? 'Efectividad por día' : 'Actividad filtrada por canal' ?>
+                            </h3>
+                            <p class="page-subtitle mb-0">
+                                <?= $mostrarRendimientoTelefonico
+                                    ? 'Seguimiento diario de llamadas, contacto y verificaciones efectivas. La referencia operativa es de ' . $metaDiariaEfectivas . ' efectivas por día.'
+                                    : 'El filtro actual no corresponde a llamadas; el rendimiento telefónico no se mezcla con este resultado.' ?>
+                            </p>
+                        </div>
+                        <?php if ($mostrarRendimientoTelefonico): ?>
+                            <span class="analyst-activity-today-pill">
+                                Hoy: <strong><?= $efectivasHoyReporte ?></strong>/<?= $metaDiariaEfectivas ?>
+                            </span>
+                        <?php endif; ?>
+                    </div>
+
+                    <?php if ($mostrarRendimientoTelefonico && !empty($rendimientoTelefonicoDiario)): ?>
+                        <div class="analyst-activity-phone-head">
+                            <span>Día</span>
+                            <span>Llamadas</span>
+                            <span>Contacto</span>
+                            <span>Efectivas</span>
+                            <span>Avance diario</span>
+                        </div>
+                        <div class="analyst-activity-phone-days">
+                            <?php foreach ($rendimientoTelefonicoDiario as $diaTelefonico): ?>
+                                <?php
+                                $fechaDia = trim((string)($diaTelefonico['fecha'] ?? ''));
+                                try {
+                                    $fechaDiaLabel = (new DateTimeImmutable($fechaDia))->format('d/m/Y');
+                                } catch (Throwable $error) {
+                                    $fechaDiaLabel = $fechaDia !== '' ? $fechaDia : '—';
+                                }
+                                $efectivasDia = max(0, (int)($diaTelefonico['efectivas'] ?? 0));
+                                $cumplimientoDia = max(0, min(100, (float)($diaTelefonico['cumplimiento_pct'] ?? 0)));
+                                ?>
+                                <div class="analyst-activity-phone-day<?= $fechaDia === $fechaHoyReporte ? ' is-today' : '' ?>">
+                                    <div class="analyst-activity-phone-date">
+                                        <strong><?= $texto($fechaDiaLabel) ?></strong>
+                                        <?php if ($fechaDia === $fechaHoyReporte): ?><span>Hoy</span><?php endif; ?>
+                                    </div>
+                                    <strong><?= (int)($diaTelefonico['llamadas'] ?? 0) ?></strong>
+                                    <strong><?= (int)($diaTelefonico['con_contacto'] ?? 0) ?></strong>
+                                    <strong class="analyst-activity-effective-value"><?= $efectivasDia ?></strong>
+                                    <div class="analyst-activity-goal">
+                                        <div>
+                                            <span style="width: <?= number_format($cumplimientoDia, 1, '.', '') ?>%"></span>
+                                        </div>
+                                        <small><?= $efectivasDia ?>/<?= $metaDiariaEfectivas ?></small>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php elseif ($mostrarRendimientoTelefonico): ?>
+                        <div class="analyst-activity-empty">
+                            <i class="bi bi-telephone-x"></i>
+                            <span>No hay llamadas registradas dentro del periodo seleccionado.</span>
+                        </div>
+                    <?php else: ?>
+                        <div class="analyst-activity-channel-focus">
+                            <span class="analyst-activity-channel-focus-icon"><i class="bi bi-funnel"></i></span>
+                            <div>
+                                <strong>Vista enfocada en <?= $texto($resumenFiltros['Tipo de interacción'] ?? 'el canal seleccionado') ?></strong>
+                                <p>Las métricas y el historial muestran únicamente las interacciones de este tipo.</p>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+                </section>
             </div>
-            <div class="row g-3">
-                <div class="col-6 col-lg-3"><strong><?= (int)($canalesReporte['correos'] ?? 0) ?></strong><span class="d-block text-muted small">Correos</span></div>
-                <div class="col-6 col-lg-3"><strong><?= (int)($canalesReporte['whatsapp'] ?? 0) ?></strong><span class="d-block text-muted small">WhatsApp</span></div>
-                <div class="col-6 col-lg-3"><strong><?= (int)($llamadasReporte['sin_respuesta'] ?? 0) ?></strong><span class="d-block text-muted small">Llamadas sin respuesta</span></div>
-                <div class="col-6 col-lg-3"><strong><?= (int)($llamadasReporte['volver_llamar'] ?? 0) ?></strong><span class="d-block text-muted small">Solicitaron llamar después</span></div>
+
+            <?php if ($mostrarRendimientoTelefonico): ?>
+            <div class="col-xl-4">
+                <section class="dashboard-panel analyst-activity-composition h-100" aria-labelledby="composicion-actividad">
+                    <div class="analyst-activity-section-heading">
+                        <div>
+                            <span class="report-eyebrow">COMPOSICIÓN DEL TRABAJO</span>
+                            <h3 class="panel-title mb-1" id="composicion-actividad">Canales y resultados</h3>
+                            <p class="page-subtitle mb-0">Distribución de las interacciones registradas en el periodo.</p>
+                        </div>
+                    </div>
+                    <div class="analyst-activity-channel-grid">
+                        <div><strong><?= (int)($canalesReporte['llamadas'] ?? 0) ?></strong><span>Llamadas</span></div>
+                        <div><strong><?= (int)($canalesReporte['correos'] ?? 0) ?></strong><span>Correos</span></div>
+                        <div><strong><?= (int)($canalesReporte['whatsapp'] ?? 0) ?></strong><span>WhatsApp</span></div>
+                        <div><strong><?= (int)($canalesReporte['otros'] ?? 0) ?></strong><span>Otros</span></div>
+                    </div>
+                    <div class="analyst-activity-result-list">
+                        <div><span>Sin respuesta</span><strong><?= (int)($llamadasReporte['sin_respuesta'] ?? 0) ?></strong></div>
+                        <div><span>Número incorrecto</span><strong><?= (int)($llamadasReporte['numero_incorrecto'] ?? 0) ?></strong></div>
+                        <div><span>Solicitaron llamar después</span><strong><?= (int)($llamadasReporte['volver_llamar'] ?? 0) ?></strong></div>
+                        <div><span>Tasa de contacto</span><strong><?= number_format((float)($llamadasReporte['tasa_contacto'] ?? 0), 1) ?>%</strong></div>
+                    </div>
+                </section>
             </div>
-        </section>
+            <?php endif; ?>
+        </div>
     <?php elseif ($modoSeguimiento === 'analista' && $tipoReporteActual === 'institucion'): ?>
         <?php
         $contactoInstitucion = is_array($detalleInstitucionReporte['contacto'] ?? null)
