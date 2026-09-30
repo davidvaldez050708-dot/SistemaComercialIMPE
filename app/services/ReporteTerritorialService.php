@@ -64,12 +64,22 @@ class ReporteTerritorialService
             'secretarias' => $secretarias,
             'fuentes' => $fuentes,
             'calculos' => $calculos,
-            'lecturas' => $this->construirLecturas(
+            'resumen_ejecutivo' => $this->construirResumenEjecutivo(
                 $estado,
                 $actividadEconomica,
                 $poderAdquisitivo,
                 $rezagoEducativo,
                 $perfilEducativo,
+                $priorizacionMunicipal,
+                $fuentes,
+                $calculos
+            ),
+            'lecturas' => $this->construirLecturas(
+                $actividadEconomica,
+                $poderAdquisitivo,
+                $rezagoEducativo,
+                $perfilEducativo,
+                $priorizacionMunicipal,
                 $calculos
             ),
             'fecha_generacion' => date('Y-m-d H:i:s')
@@ -146,73 +156,160 @@ class ReporteTerritorialService
         ];
     }
 
-    private function construirLecturas(
+    private function construirResumenEjecutivo(
         array $estado,
         array $actividadEconomica,
         array $poderAdquisitivo,
         array $rezagoEducativo,
         array $perfilEducativo,
+        array $priorizacionMunicipal,
+        array $fuentes,
+        array $calculos
+    ): array {
+        $fuentesDisponibles = 0;
+        foreach ($fuentes as $fuente) {
+            if (is_array($fuente) && trim((string)($fuente['fuente'] ?? '')) !== '') {
+                $fuentesDisponibles++;
+            }
+        }
+
+        if (
+            ($perfilEducativo['disponible'] ?? false) === true &&
+            trim((string)($perfilEducativo['fuente'] ?? '')) !== ''
+        ) {
+            $fuentesDisponibles++;
+        }
+
+        $conteos = is_array($priorizacionMunicipal['conteos'] ?? null)
+            ? $priorizacionMunicipal['conteos']
+            : [];
+
+        return [
+            'poblacion' => max(0, (int)($estado['poblacion'] ?? 0)),
+            'municipios' => max(
+                0,
+                (int)($estado['total_municipios'] ?? $estado['municipios_cargados'] ?? 0)
+            ),
+            'establecimientos' => max(
+                0,
+                (int)($actividadEconomica['total_establecimientos'] ?? 0)
+            ),
+            'establecimientos_por_10000_habitantes' =>
+                $calculos['establecimientos_por_10000_habitantes'] ?? null,
+            'fuentes_disponibles' => $fuentesDisponibles,
+            'municipios_clasificables' => max(
+                0,
+                (int)($priorizacionMunicipal['total_municipios_clasificables'] ?? 0)
+            ),
+            'municipios_con_poblacion' => max(
+                0,
+                (int)($priorizacionMunicipal['total_municipios_con_poblacion'] ?? 0)
+            ),
+            'prioridad_alta' => max(0, (int)($conteos['ALTA'] ?? 0)),
+            'prioridad_media' => max(0, (int)($conteos['MEDIA'] ?? 0)),
+            'prioridad_baja' => max(0, (int)($conteos['BAJA'] ?? 0)),
+            'sector_principal' => $calculos['sector_principal'] ?? null,
+            'concentracion_top_5' => $calculos['concentracion_top_5_sectores'] ?? null,
+            'participacion_nacional' =>
+                $calculos['participacion_establecimientos_nacional'] ?? null,
+            'ingreso_laboral_real_per_capita' =>
+                ($poderAdquisitivo['disponible'] ?? false) === true
+                    ? ($poderAdquisitivo['ingreso_laboral_real_per_capita'] ?? null)
+                    : null,
+            'pobreza_laboral' =>
+                ($poderAdquisitivo['disponible'] ?? false) === true
+                    ? ($poderAdquisitivo['pobreza_laboral'] ?? null)
+                    : null,
+            'diferencia_ingreso_nacional' =>
+                ($poderAdquisitivo['disponible'] ?? false) === true
+                    ? ($poderAdquisitivo['diferencia_ingreso_nacional'] ?? null)
+                    : null,
+            'diferencia_pobreza_nacional' =>
+                ($poderAdquisitivo['disponible'] ?? false) === true
+                    ? ($poderAdquisitivo['diferencia_pobreza_nacional'] ?? null)
+                    : null,
+            'rezago_educativo' =>
+                ($rezagoEducativo['disponible'] ?? false) === true
+                    ? ($rezagoEducativo['porcentaje'] ?? null)
+                    : null,
+            'diferencia_rezago_nacional' =>
+                ($rezagoEducativo['disponible'] ?? false) === true
+                    ? ($rezagoEducativo['diferencia_nacional'] ?? null)
+                    : null,
+            'perfil_educativo_porcentaje' =>
+                ($perfilEducativo['disponible'] ?? false) === true
+                    ? ($perfilEducativo['porcentaje'] ?? null)
+                    : null,
+            'perfil_educativo_nombre' => (string)(
+                $perfilEducativo['nombre_indicador'] ?? 'Perfil educativo'
+            )
+        ];
+    }
+
+    private function construirLecturas(
+        array $actividadEconomica,
+        array $poderAdquisitivo,
+        array $rezagoEducativo,
+        array $perfilEducativo,
+        array $priorizacionMunicipal,
         array $calculos
     ): array {
         $lecturas = [];
-        $poblacion = (int)($estado['poblacion'] ?? 0);
-        $totalMunicipios = (int)($estado['total_municipios'] ?? 0);
-
-        if ($poblacion > 0 && $totalMunicipios > 0 && $calculos['poblacion_promedio_municipio'] !== null) {
-            $lecturas[] = sprintf(
-                'El territorio registra %s habitantes distribuidos en %s municipios; el promedio simple es de %s habitantes por municipio.',
-                number_format($poblacion, 0, '.', ','),
-                number_format($totalMunicipios, 0, '.', ','),
-                number_format((int)$calculos['poblacion_promedio_municipio'], 0, '.', ',')
-            );
-        }
-
-        $totalEstablecimientos = (int)($actividadEconomica['total_establecimientos'] ?? 0);
-        if ($totalEstablecimientos > 0 && $calculos['establecimientos_por_10000_habitantes'] !== null) {
-            $lecturas[] = sprintf(
-                'Se registran %s establecimientos, equivalentes a %s por cada 10 mil habitantes.',
-                number_format($totalEstablecimientos, 0, '.', ','),
-                number_format((float)$calculos['establecimientos_por_10000_habitantes'], 1, '.', ',')
-            );
-        }
 
         $sectorPrincipal = $calculos['sector_principal'] ?? null;
         if (is_array($sectorPrincipal)) {
-            $lecturas[] = sprintf(
-                'El sector con mayor presencia registrada es “%s”, con %s establecimientos y %s%% del total estatal registrado.',
-                (string)($sectorPrincipal['nombre_sector'] ?? 'Sin nombre'),
-                number_format((int)($sectorPrincipal['establecimientos'] ?? 0), 0, '.', ','),
-                number_format((float)($sectorPrincipal['porcentaje'] ?? 0), 2, '.', ',')
-            );
+            $lecturas[] = [
+                'titulo' => 'Estructura económica',
+                'texto' => sprintf(
+                    'El sector con mayor presencia concentra %s%% de los establecimientos registrados en el territorio.',
+                    number_format((float)($sectorPrincipal['porcentaje'] ?? 0), 2, '.', ',')
+                )
+            ];
         }
 
         if (($poderAdquisitivo['disponible'] ?? false) === true) {
             $diferenciaPobreza = $poderAdquisitivo['diferencia_pobreza_nacional'] ?? null;
             if ($diferenciaPobreza !== null) {
-                $lecturas[] = sprintf(
-                    'La pobreza laboral presenta una diferencia de %s puntos porcentuales respecto de la referencia nacional del mismo periodo.',
-                    $this->formatearDiferencia((float)$diferenciaPobreza)
-                );
+                $lecturas[] = [
+                    'titulo' => 'Condición laboral',
+                    'texto' => sprintf(
+                        'La pobreza laboral se ubica %s puntos porcentuales respecto de la referencia nacional del mismo periodo.',
+                        $this->formatearDiferencia((float)$diferenciaPobreza)
+                    )
+                ];
             }
         }
 
         if (($rezagoEducativo['disponible'] ?? false) === true) {
             $diferenciaRezago = $rezagoEducativo['diferencia_nacional'] ?? null;
             if ($diferenciaRezago !== null) {
-                $lecturas[] = sprintf(
-                    'El rezago educativo presenta una diferencia de %s puntos porcentuales frente a la referencia nacional del mismo año.',
-                    $this->formatearDiferencia((float)$diferenciaRezago)
-                );
+                $lecturas[] = [
+                    'titulo' => 'Contexto educativo',
+                    'texto' => sprintf(
+                        'El rezago educativo se ubica %s puntos porcentuales frente a la referencia nacional del mismo año.',
+                        $this->formatearDiferencia((float)$diferenciaRezago)
+                    )
+                ];
             }
         }
 
-        if (($perfilEducativo['disponible'] ?? false) === true && isset($perfilEducativo['porcentaje'])) {
-            $lecturas[] = sprintf(
-                '%s: %s%% de la población base registrada para %s.',
-                (string)($perfilEducativo['nombre_indicador'] ?? 'Indicador educativo'),
-                number_format((float)$perfilEducativo['porcentaje'], 2, '.', ','),
-                (string)($perfilEducativo['anio'] ?? 'el periodo disponible')
-            );
+        $conteos = is_array($priorizacionMunicipal['conteos'] ?? null)
+            ? $priorizacionMunicipal['conteos']
+            : [];
+        $alta = (int)($conteos['ALTA'] ?? 0);
+        $media = (int)($conteos['MEDIA'] ?? 0);
+        $clasificables = (int)($priorizacionMunicipal['total_municipios_clasificables'] ?? 0);
+
+        if (($priorizacionMunicipal['disponible'] ?? false) === true && $clasificables > 0) {
+            $lecturas[] = [
+                'titulo' => 'Cobertura municipal',
+                'texto' => sprintf(
+                    'La priorización territorial clasifica %s municipios: %s para ATACAR y %s para OFRECER; el resto queda en OBSERVAR.',
+                    number_format($clasificables, 0, '.', ','),
+                    number_format($alta, 0, '.', ','),
+                    number_format($media, 0, '.', ',')
+                )
+            ];
         }
 
         return $lecturas;
