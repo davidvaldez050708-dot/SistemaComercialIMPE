@@ -93,6 +93,7 @@
         const estado = formulario.querySelector('#reporte_estado');
         const municipio = formulario.querySelector('#reporte_municipio');
         const institucion = formulario.querySelector('#reporte_institucion');
+        const institucionVisual = institucion?.matches('[data-report-institution-input]') || false;
         const responsable = formulario.querySelector('#reporte_responsable');
         const estatus = formulario.querySelector('#reporte_estatus');
         const canal = formulario.querySelector('#reporte_actividad');
@@ -177,14 +178,22 @@
             }
 
             if (institucion) {
-                reemplazarOpciones(
-                    institucion,
-                    datos.instituciones,
-                    'Todas',
-                    String(seleccion.institucion_id || '0'),
-                    true
-                );
-                institucion.dataset.reportInstitutionId = String(seleccion.institucion_id || '0');
+                if (institucionVisual) {
+                    const seleccionInstitucion = String(seleccion.institucion_id || '0');
+                    if (seleccionInstitucion === '0') {
+                        institucion.value = '0';
+                        institucion.dataset.reportInstitutionId = '0';
+                    }
+                } else {
+                    reemplazarOpciones(
+                        institucion,
+                        datos.instituciones,
+                        'Todas',
+                        String(seleccion.institucion_id || '0'),
+                        true
+                    );
+                    institucion.dataset.reportInstitutionId = String(seleccion.institucion_id || '0');
+                }
             }
 
             if (responsable) {
@@ -273,7 +282,10 @@
         formulario.addEventListener('submit', function () {
             if (institucion) {
                 institucion.name = 'institucion_id';
-                institucion.disabled = false;
+                const tipoReporte = String(
+                    formulario.querySelector('[data-report-type-input]')?.value || ''
+                );
+                institucion.disabled = institucionVisual && tipoReporte !== 'institucion';
             }
         });
 
