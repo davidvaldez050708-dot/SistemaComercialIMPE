@@ -1300,13 +1300,14 @@
     margin-left: auto;
     display: flex;
     align-items: center;
-    justify-content: flex-end;
+    justify-content: space-between;
     justify-self: stretch;
     gap: 16px;
-    text-align: right;
 }
 
 .convocatoria-overview-location {
+    order: 2;
+    margin-left: auto;
     display: inline-flex;
     align-items: center;
     gap: 8px;
@@ -1321,6 +1322,7 @@
 }
 
 .convocatoria-overview-change {
+    order: 1;
     min-height: 34px;
     padding: 0 12px;
     display: inline-flex;
@@ -1737,10 +1739,10 @@
 @media (max-width: 767.98px) {
     .convocatoria-overview-locationbar {
         width: 100%;
-        align-items: flex-end;
-        justify-content: flex-end;
-        flex-direction: column;
-        text-align: right;
+        align-items: center;
+        justify-content: space-between;
+        flex-direction: row;
+        gap: 12px;
     }
 
     .convocatoria-overview-types,
