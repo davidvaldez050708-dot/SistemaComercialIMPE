@@ -59,6 +59,96 @@ document.addEventListener('DOMContentLoaded', function () {
         badge.classList.remove('d-none');
     };
 
+    const markAsRead = async function (id) {
+        if (!readEndpoint || Number(id || 0) <= 0) {
+            return;
+        }
+
+        const body = new URLSearchParams();
+        body.set('id', String(Number(id || 0)));
+
+        try {
+            await fetch(readEndpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                    'X-Requested-With': 'fetch'
+                },
+                body: body.toString()
+            });
+        } catch (error) {
+            // La alerta seguirá visible si no fue posible marcarla.
+        }
+    };
+
+    const showActivationToast = function (item) {
+        const toast = document.createElement('a');
+        toast.className = 'convocatoria-activation-toast';
+        toast.href = String(item.url || '#');
+        toast.innerHTML =
+            '<span class="convocatoria-activation-toast-icon"><i class="bi bi-check-circle-fill"></i></span>' +
+            '<span class="convocatoria-activation-toast-copy">' +
+                '<strong>' + escapeHtml(item.titulo || 'Convocatoria activada') + '</strong>' +
+                '<span>' + escapeHtml(item.mensaje || '') + '</span>' +
+            '</span>' +
+            '<span class="convocatoria-activation-toast-close" aria-hidden="true">&times;</span>';
+
+        toast.addEventListener('click', async function (event) {
+            const close = event.target.closest('.convocatoria-activation-toast-close');
+
+            if (close) {
+                event.preventDefault();
+                toast.remove();
+                return;
+            }
+
+            event.preventDefault();
+            await markAsRead(item.id);
+            window.location.href = toast.href;
+        });
+
+        document.body.appendChild(toast);
+
+        window.setTimeout(function () {
+            toast.classList.add('is-visible');
+        }, 30);
+
+        window.setTimeout(function () {
+            toast.classList.remove('is-visible');
+            window.setTimeout(function () {
+                toast.remove();
+            }, 220);
+        }, 8000);
+    };
+
+    const notifyUnseen = function (items) {
+        if (!Array.isArray(items)) {
+            return;
+        }
+
+        const unseen = items.filter(function (item) {
+            if (Number(item.leida || 0) !== 0 || Number(item.id || 0) <= 0) {
+                return false;
+            }
+
+            const key = 'impe_convocatoria_notificacion_' + Number(item.id);
+            try {
+                if (window.sessionStorage.getItem(key) === '1') {
+                    return false;
+                }
+                window.sessionStorage.setItem(key, '1');
+            } catch (error) {
+                // Si sessionStorage no está disponible, se muestra una sola alerta del lote.
+            }
+
+            return true;
+        });
+
+        if (unseen.length > 0) {
+            showActivationToast(unseen[0]);
+        }
+    };
+
     const render = function (items) {
         if (!content) {
             return;
@@ -111,6 +201,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             setBadge(data.no_leidas || 0);
             render(data.notificaciones || []);
+            notifyUnseen(data.notificaciones || []);
         } catch (error) {
             content.innerHTML =
                 '<div class="topbar-reminder-empty convocatoria-notification-empty">' +
@@ -130,19 +221,7 @@ document.addEventListener('DOMContentLoaded', function () {
         event.preventDefault();
 
         const destination = item.getAttribute('href') || '#';
-        const body = new URLSearchParams();
-        body.set('id', item.dataset.convocatoriaNotificationId || '0');
-
-        try {
-            await fetch(readEndpoint, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
-                body: body.toString()
-            });
-        } catch (error) {
-            // La navegación no se bloquea si el marcado de lectura falla.
-        }
-
+        await markAsRead(item.dataset.convocatoriaNotificationId || '0');
         window.location.href = destination;
     });
 
@@ -155,7 +234,10 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             try {
-                await fetch(readAllEndpoint, { method: 'POST' });
+                await fetch(readAllEndpoint, {
+                    method: 'POST',
+                    headers: { 'X-Requested-With': 'fetch' }
+                });
                 await load();
             } catch (error) {
                 // Mantener la campana operativa aunque el marcado falle.
