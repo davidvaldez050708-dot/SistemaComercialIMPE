@@ -700,6 +700,12 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                         <div><span>Dirección</span><strong><?= $texto(trim((string)($contactoInstitucion['direccion'] ?? '')) !== '' ? $contactoInstitucion['direccion'] : '—') ?></strong></div>
                         <div><span>Origen</span><strong><?= $texto(trim((string)($seguimientoInstitucion['origen'] ?? '')) !== '' ? $seguimientoInstitucion['origen'] : '—') ?></strong></div>
                     </div>
+                    <?php if (trim((string)($seguimientoInstitucion['observaciones'] ?? '')) !== ''): ?>
+                        <div class="analyst-institution-general-note">
+                            <span>Observaciones generales</span>
+                            <p><?= $texto($seguimientoInstitucion['observaciones']) ?></p>
+                        </div>
+                    <?php endif; ?>
                 </section>
             </div>
 
@@ -772,6 +778,14 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                             <?php endif; ?>
                         </small>
                     </div>
+
+                    <?php if (trim((string)($postEnvioInstitucion['seguimiento_correo_at'] ?? '')) !== ''): ?>
+                        <div class="analyst-institution-formal-row">
+                            <span>Seguimiento por correo</span>
+                            <strong><?= $texto($fechaHoraReporte($postEnvioInstitucion['seguimiento_correo_at'])) ?></strong>
+                            <small><?= $texto(trim((string)($postEnvioInstitucion['seguimiento_correo_notas'] ?? '')) !== '' ? $postEnvioInstitucion['seguimiento_correo_notas'] : 'Seguimiento por correo registrado.') ?></small>
+                        </div>
+                    <?php endif; ?>
                 </section>
             </div>
 
@@ -806,7 +820,16 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                         <span>Resultado / convenio</span>
                         <strong><?= $resultadoReunionInstitucion !== '' ? $texto($resultadoReunionLabels[$resultadoReunionInstitucion] ?? 'Resultado registrado') : 'Sin resultado de reunión' ?></strong>
                         <small>
-                            <?php if (trim((string)($postEnvioInstitucion['convenio_formalizado_at'] ?? '')) !== ''): ?>
+                            <?php
+                            $notasResultadoReunion = trim((string)(
+                                $ultimaReunionInstitucion['reunion_resultado_notas']
+                                    ?? $postEnvioInstitucion['reunion_resultado_notas']
+                                    ?? ''
+                            ));
+                            ?>
+                            <?php if ($notasResultadoReunion !== ''): ?>
+                                <?= $texto($notasResultadoReunion) ?>
+                            <?php elseif (trim((string)($postEnvioInstitucion['convenio_formalizado_at'] ?? '')) !== ''): ?>
                                 Convenio formalizado <?= $texto($fechaHoraReporte($postEnvioInstitucion['convenio_formalizado_at'])) ?>.
                             <?php elseif ($resultadoReunionInstitucion === 'AVANZAR_CONVENIO'): ?>
                                 La relación está lista para continuar con la formalización.
