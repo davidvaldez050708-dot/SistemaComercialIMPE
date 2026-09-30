@@ -881,13 +881,15 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                         <div class="analyst-institution-formal-row analyst-institution-mail-list">
                             <span>Correos enviados</span>
                             <strong>
-                                <?= count($correosInstitucion) ?> recientes
-                                <?php if ((int)($canalesReporte['correos'] ?? 0) > count($correosInstitucion)): ?>
-                                    de <?= (int)$canalesReporte['correos'] ?> registrados
+                                Mostrando los últimos <?= min(4, count($correosInstitucion)) ?>
+                                <?php if ((int)($canalesReporte['correos'] ?? 0) > 0): ?>
+                                    de <?= (int)$canalesReporte['correos'] ?> correos registrados
+                                <?php else: ?>
+                                    correos registrados
                                 <?php endif; ?>
                             </strong>
                             <div class="analyst-institution-mail-items">
-                                <?php foreach (array_slice($correosInstitucion, 0, 3) as $correoInstitucion): ?>
+                                <?php foreach (array_slice($correosInstitucion, 0, 4) as $correoInstitucion): ?>
                                     <?php
                                     $presentacionCorreo = is_array($correoInstitucion['presentacion'] ?? null)
                                         ? $correoInstitucion['presentacion']
@@ -1310,17 +1312,91 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                                 $tituloActividad = trim((string)($presentacionActividad['titulo'] ?? ''));
                                 $resultadoActividad = trim((string)($presentacionActividad['resultado_label'] ?? ''));
                                 $resumenActividad = trim((string)($presentacionActividad['resumen'] ?? ''));
-                                if (
-                                    strcasecmp($tituloActividad, 'Llamada') === 0 &&
-                                    ($resultadoActividad === '' || strcasecmp($resultadoActividad, 'Otro') === 0)
-                                ) {
-                                    $resultadoActividad = 'Intento registrado';
-                                }
-                                if (
-                                    strcasecmp($tituloActividad, 'Llamada') === 0 &&
-                                    ($resumenActividad === '' || strcasecmp($resumenActividad, 'Otro') === 0)
-                                ) {
-                                    $resumenActividad = 'Intento telefónico registrado';
+                                $esLlamadaActividad = strcasecmp($tituloActividad, 'Llamada') === 0;
+                                $notasActividad = (string)($actividad['notas'] ?? '');
+                                $resultadoCodigoActividad = strtoupper(trim((string)($actividad['resultado'] ?? '')));
+                                $duracionActividad = max(0, (int)($actividad['duracion_segundos'] ?? 0));
+                                $telefonoActividad = trim((string)($actividad['telefono_destino'] ?? ''));
+                                $detallesActividad = is_array($presentacionActividad['detalles'] ?? null)
+                                    ? $presentacionActividad['detalles']
+                                    : [];
+
+                                if ($esLlamadaActividad) {
+                                    $contactoEfectivo = strpos($notasActividad, '[CONTACTO_EFECTIVO]') !== false
+                                        && strpos($notasActividad, '[SIN_CONTACTO_EFECTIVO]') === false;
+                                    $sinContacto = strpos($notasActividad, '[SIN_CONTACTO_EFECTIVO]') !== false;
+                                    $buzonVoz = $resultadoCodigoActividad === 'BUZON_VOZ'
+                                        || strpos($notasActividad, '[BUZON_VOZ]') !== false;
+                                    $fueraServicio = $resultadoCodigoActividad === 'FUERA_SERVICIO'
+                                        || strpos($notasActividad, '[FUERA_SERVICIO]') !== false;
+
+                                    $personaActividad = '';
+                                    foreach ($detallesActividad as $detalleActividad) {
+                                        if (!is_array($detalleActividad)) {
+                                            continue;
+                                        }
+                                        $etiquetaDetalle = mb_strtolower(trim((string)($detalleActividad['etiqueta'] ?? '')), 'UTF-8');
+                                        if (in_array($etiquetaDetalle, ['persona atendió', 'contacto'], true)) {
+                                            $personaActividad = trim((string)($detalleActividad['valor'] ?? ''));
+                                            if ($personaActividad !== '') {
+                                                break;
+                                            }
+                                        }
+                                    }
+
+                                    if ($contactoEfectivo) {
+                                        $resultadoActividad = 'Contacto efectivo';
+                                    } elseif ($sinContacto) {
+                                        $resultadoActividad = 'Sin contacto';
+                                    } elseif ($buzonVoz) {
+                                        $resultadoActividad = 'Buzón de voz';
+                                    } elseif ($fueraServicio) {
+                                        $resultadoActividad = 'Fuera de servicio';
+                                    } elseif ($personaActividad !== '') {
+                                        $resultadoActividad = 'Contacto registrado';
+                                    } elseif (
+                                        $resultadoActividad === '' ||
+                                        strcasecmp($resultadoActividad, 'Otro') === 0
+                                    ) {
+                                        $resultadoActividad = 'Resultado no clasificado';
+                                    }
+
+                                    if (
+                                        $resumenActividad === '' ||
+                                        strcasecmp($resumenActividad, 'Otro') === 0 ||
+                                        strcasecmp($resumenActividad, 'Llamada') === 0
+                                    ) {
+                                        $partesResumenLlamada = [];
+
+                                        if ($personaActividad !== '') {
+                                            $partesResumenLlamada[] = 'Atendió ' . $personaActividad;
+                                        } elseif ($contactoEfectivo) {
+                                            $partesResumenLlamada[] = 'Se logró contacto';
+                                        } elseif ($sinContacto) {
+                                            $partesResumenLlamada[] = 'No se logró contacto';
+                                        } elseif ($buzonVoz) {
+                                            $partesResumenLlamada[] = 'La llamada llegó a buzón de voz';
+                                        } elseif ($fueraServicio) {
+                                            $partesResumenLlamada[] = 'La línea se registró fuera de servicio';
+                                        } else {
+                                            $partesResumenLlamada[] = 'Llamada registrada';
+                                        }
+
+                                        if ($telefonoActividad !== '') {
+                                            $partesResumenLlamada[] = 'al ' . $telefonoActividad;
+                                        }
+
+                                        if ($duracionActividad > 0) {
+                                            $minutosDuracion = intdiv($duracionActividad, 60);
+                                            $segundosDuracion = $duracionActividad % 60;
+                                            $partesResumenLlamada[] = 'duración ' .
+                                                ($minutosDuracion > 0
+                                                    ? $minutosDuracion . ' min ' . str_pad((string)$segundosDuracion, 2, '0', STR_PAD_LEFT) . ' s'
+                                                    : $segundosDuracion . ' s');
+                                        }
+
+                                        $resumenActividad = implode(' · ', $partesResumenLlamada);
+                                    }
                                 }
                                 ?>
                                 <td class="analyst-history-date"><?= $texto($fechaHoraReporte($actividad['fecha_inicio'] ?? '')) ?></td>
