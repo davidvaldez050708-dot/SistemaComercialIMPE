@@ -170,6 +170,15 @@ $jsOpcionalHead = [
     'firma_correo_perfil.js'
 ];
 
+if (
+    strcasecmp(
+        trim((string)($_SESSION['rol'] ?? '')),
+        'Marketing'
+    ) === 0
+) {
+    $jsOpcionalHead[] = 'convocatoria_notificaciones.js';
+}
+
 if ((int)($_SESSION['rol_id'] ?? 0) === 4) {
     $jsOpcionalHead[] = 'topbar_llamadas_analista.js';
 }
