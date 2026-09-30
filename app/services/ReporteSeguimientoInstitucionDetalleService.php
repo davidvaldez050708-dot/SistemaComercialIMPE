@@ -77,9 +77,13 @@ class ReporteSeguimientoInstitucionDetalleService
 
         $reuniones = $this->obtenerReuniones($seguimientoId);
         $postEnvio = $this->obtenerPostEnvio($seguimientoId);
+        $flujoUsuarioId = (int)($seguimiento['analista_id'] ?? 0);
+        if ($flujoUsuarioId <= 0) {
+            $flujoUsuarioId = $usuarioId;
+        }
         $flujo = $this->obtenerFlujoEjecutivo(
             $seguimientoId,
-            $usuarioId
+            $flujoUsuarioId
         );
 
         return [
