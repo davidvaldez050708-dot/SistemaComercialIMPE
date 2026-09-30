@@ -96,7 +96,9 @@ $etiquetaResultadoReporte = static function ($resultado) {
         'NUMERO_INCORRECTO' => 'Número incorrecto',
         'SOLICITO_LLAMAR_DESPUES' => 'Solicitó llamar después',
         'SOLICITO_INFORMACION' => 'Solicitó información',
-        'NO_INTERESADO' => 'No interesado'
+        'NO_INTERESADO' => 'No interesado',
+        'OTRO' => 'Sin clasificación',
+        'REGISTRADA' => 'Registrada'
     ][$resultado] ?? ($resultado !== '' ? ucfirst(strtolower(str_replace('_', ' ', $resultado))) : 'Registrada');
 };
 $titulosReporteAnalista = [
