@@ -42,6 +42,32 @@ document.addEventListener('DOMContentLoaded', function () {
         }).format(date);
     };
 
+    const getNotificationVisual = function (item) {
+        const eventType = String(item && item.tipo_evento ? item.tipo_evento : '');
+
+        if (eventType === 'vencimiento_hoy') {
+            return {
+                icon: 'bi-exclamation-octagon-fill',
+                tone: 'danger',
+                fallbackTitle: 'Convocatoria vence hoy'
+            };
+        }
+
+        if (eventType === 'vencimiento_1_dia' || eventType === 'vencimiento_2_dias') {
+            return {
+                icon: 'bi-clock-fill',
+                tone: 'warning',
+                fallbackTitle: 'Convocatoria próxima a vencer'
+            };
+        }
+
+        return {
+            icon: 'bi-check-circle-fill',
+            tone: 'success',
+            fallbackTitle: 'Convocatoria activada'
+        };
+    };
+
     const setBadge = function (count) {
         const total = Number(count || 0);
 
@@ -82,13 +108,14 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const showActivationToast = function (item) {
+        const visual = getNotificationVisual(item);
         const toast = document.createElement('a');
-        toast.className = 'convocatoria-activation-toast';
+        toast.className = 'convocatoria-activation-toast is-' + visual.tone;
         toast.href = String(item.url || '#');
         toast.innerHTML =
-            '<span class="convocatoria-activation-toast-icon"><i class="bi bi-check-circle-fill"></i></span>' +
+            '<span class="convocatoria-activation-toast-icon"><i class="bi ' + visual.icon + '"></i></span>' +
             '<span class="convocatoria-activation-toast-copy">' +
-                '<strong>' + escapeHtml(item.titulo || 'Convocatoria activada') + '</strong>' +
+                '<strong>' + escapeHtml(item.titulo || visual.fallbackTitle) + '</strong>' +
                 '<span>' + escapeHtml(item.mensaje || '') + '</span>' +
             '</span>' +
             '<span class="convocatoria-activation-toast-close" aria-hidden="true">&times;</span>';
@@ -159,7 +186,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 '<div class="topbar-reminder-empty convocatoria-notification-empty">' +
                     '<i class="bi bi-bell"></i>' +
                     '<strong>Sin alertas nuevas</strong>' +
-                    '<span>Las activaciones automáticas aparecerán aquí.</span>' +
+                    '<span>Las activaciones y vencimientos próximos aparecerán aquí.</span>' +
                 '</div>';
             return;
         }
@@ -167,14 +194,15 @@ document.addEventListener('DOMContentLoaded', function () {
         content.innerHTML = items.map(function (item) {
             const unread = Number(item.leida || 0) === 0;
             const url = String(item.url || '#');
+            const visual = getNotificationVisual(item);
 
             return (
                 '<a class="convocatoria-notification-item' + (unread ? ' is-unread' : '') + '"' +
                     ' href="' + escapeHtml(url) + '"' +
                     ' data-convocatoria-notification-id="' + Number(item.id || 0) + '">' +
-                    '<span class="convocatoria-notification-icon"><i class="bi bi-megaphone"></i></span>' +
+                    '<span class="convocatoria-notification-icon is-' + visual.tone + '"><i class="bi ' + visual.icon + '"></i></span>' +
                     '<span class="convocatoria-notification-copy">' +
-                        '<strong>' + escapeHtml(item.titulo || 'Convocatoria activada') + '</strong>' +
+                        '<strong>' + escapeHtml(item.titulo || visual.fallbackTitle) + '</strong>' +
                         '<span>' + escapeHtml(item.mensaje || '') + '</span>' +
                         '<small>' + escapeHtml(formatDate(item.created_at)) + '</small>' +
                     '</span>' +
