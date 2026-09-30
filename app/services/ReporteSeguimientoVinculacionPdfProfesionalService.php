@@ -94,7 +94,9 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
         $html = '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><style>' . $this->css() . '</style></head><body>';
         $html .= '<div class="top-rule"></div>';
         $html .= $this->encabezado($fecha, $generadoPor, $generadoPorRol, $periodoEncabezado, $tituloReporte);
-        $html .= $this->contexto($filtros, $responsable, count($seguimientos), $individual);
+        $html .= $tipoReporte === 'actividad'
+            ? $this->contextoActividad($filtros, $responsable, $analitica)
+            : $this->contexto($filtros, $responsable, count($seguimientos), $individual);
 
         $total = (int)($resumen['total'] ?? count($seguimientos));
         if ($total <= 0) {
@@ -122,37 +124,42 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
             return $html . '</body></html>';
         }
 
+        if ($tipoReporte === 'actividad') {
+            $html .= $this->resumenEjecutivoActividad($analitica);
+            $html .= $this->rendimientoTelefonicoActividad($analitica);
+            $html .= $this->composicionActividad($analitica);
+
+            $html .= '<div class="activity-pdf-page-break"></div>';
+            $html .= $this->evolucionActividadEjecutiva($evolucion);
+            $html .= $this->coberturaActividad($analitica);
+
+            $actividadReciente = is_array($analitica['actividad_reciente'] ?? null)
+                ? $analitica['actividad_reciente']
+                : [];
+            if (!empty($actividadReciente)) {
+                $html .= '<div class="activity-pdf-page-break"></div>';
+                $html .= $this->detalleActividad($actividadReciente);
+            }
+
+            return $html . '</body></html>';
+        }
+
         $interacciones = (int)($analitica['interacciones'] ?? 0);
         $promedio = $this->decimal($analitica['promedio_por_seguimiento'] ?? 0, 1);
         $atencion = (int)($analitica['atencion']['total'] ?? 0);
-        $llamadas = is_array($analitica['llamadas'] ?? null) ? $analitica['llamadas'] : [];
 
-        $html .= '<section class="report-section keep">' . $this->titulo(
-            $tipoReporte === 'actividad' ? 'Resumen de actividad' : 'Resumen operativo'
-        );
+        $html .= '<section class="report-section keep">' . $this->titulo('Resumen operativo');
         $html .= '<table class="metrics"><tr>';
-        if ($tipoReporte === 'actividad') {
-            $html .= $this->metric('Interacciones', (string)$interacciones);
-            $html .= $this->metric('Llamadas realizadas', (string)(int)($llamadas['total'] ?? 0));
-            $html .= $this->metric('Llamadas con contacto', (string)(int)($llamadas['contactadas'] ?? 0));
-            $html .= $this->metric('Verificaciones efectivas', (string)(int)($llamadas['verificaciones_efectivas'] ?? 0));
-        } else {
-            $html .= $this->metric('Seguimientos', (string)$total);
-            $html .= $this->metric('Interacciones', (string)$interacciones);
-            $html .= $this->metric('Promedio / seguimiento', $promedio);
-            $html .= $this->metric('Requieren atención', (string)$atencion);
-        }
+        $html .= $this->metric('Seguimientos', (string)$total);
+        $html .= $this->metric('Interacciones', (string)$interacciones);
+        $html .= $this->metric('Promedio / seguimiento', $promedio);
+        $html .= $this->metric('Requieren atención', (string)$atencion);
         $html .= '</tr></table></section>';
 
-        if ($tipoReporte === 'actividad') {
-            $html .= $this->contacto($analitica, true);
-            $html .= $this->actividad($evolucion);
-        } else {
-            $html .= $this->atencion($analitica['atencion']['casos'] ?? []);
-            $html .= $this->contacto($analitica, false);
-            $html .= $this->distribuciones($resumen, $etiquetas);
-            $html .= $this->detalle($seguimientos);
-        }
+        $html .= $this->atencion($analitica['atencion']['casos'] ?? []);
+        $html .= $this->contacto($analitica, false);
+        $html .= $this->distribuciones($resumen, $etiquetas);
+        $html .= $this->detalle($seguimientos);
 
         return $html . '</body></html>';
     }
