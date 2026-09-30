@@ -112,7 +112,7 @@
 }
 
 .seguimiento-report-edit-modal .modal-body {
-    flex: 1 1 auto;
+    flex: 0 1 auto;
     min-height: 0;
     overflow: hidden !important;
 }
@@ -120,9 +120,10 @@
 .seguimiento-report-edit-modal .seguimiento-report-edit-iframe {
     display: block;
     width: 100%;
-    height: min(610px, calc(100vh - 165px));
-    height: min(610px, calc(100dvh - 165px));
-    min-height: 500px;
+    height: 420px;
+    min-height: 0;
+    max-height: calc(100vh - 150px);
+    max-height: calc(100dvh - 150px);
     border: 0;
     background: #fff;
 }
@@ -135,9 +136,10 @@
     }
 
     .seguimiento-report-edit-modal .seguimiento-report-edit-iframe {
-        height: min(590px, calc(100vh - 150px));
-        height: min(590px, calc(100dvh - 150px));
-        min-height: 470px;
+        height: 420px;
+        min-height: 0;
+        max-height: calc(100vh - 135px);
+        max-height: calc(100dvh - 135px);
     }
 }
 
