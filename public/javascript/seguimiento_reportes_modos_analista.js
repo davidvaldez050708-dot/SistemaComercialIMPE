@@ -374,14 +374,28 @@
 
         state?.addEventListener('change', function () {
             clearInstitutionSelection();
-            const enabled = Number(state.value || 0) > 0 && String(inputType.value || '') === 'institucion';
+
             if (institutionTrigger) {
-                institutionTrigger.disabled = !enabled;
+                institutionTrigger.disabled = true;
+            }
+
+            if (institutionHint && String(inputType.value || '') === 'institucion') {
+                institutionHint.textContent = Number(state.value || 0) > 0
+                    ? 'Consultando instituciones disponibles…'
+                    : 'Selecciona primero un estado para consultar las instituciones disponibles.';
             }
         });
 
         municipality?.addEventListener('change', function () {
             clearInstitutionSelection();
+
+            if (institutionTrigger) {
+                institutionTrigger.disabled = true;
+            }
+
+            if (institutionHint && String(inputType.value || '') === 'institucion') {
+                institutionHint.textContent = 'Consultando instituciones disponibles…';
+            }
         });
 
         document.addEventListener('keydown', function (event) {
