@@ -111,19 +111,25 @@ class ReporteSeguimientoCarteraService
         $postDisponible = $this->tablaDisponible('seguimientos_vinculacion_post_envio');
         $reunionesDisponibles = $this->tablaDisponible('reuniones_vinculacion');
 
-        $camposPost = $postDisponible
-            ? "post.respuesta_at,
-               post.seguimiento_correo_at,
-               post.coordinacion_reunion_habilitada_at,
-               post.reunion_agendada_at,
-               post.reunion_realizada_at,
-               post.convenio_formalizado_at,"
-            : "NULL AS respuesta_at,
-               NULL AS seguimiento_correo_at,
-               NULL AS coordinacion_reunion_habilitada_at,
-               NULL AS reunion_agendada_at,
-               NULL AS reunion_realizada_at,
-               NULL AS convenio_formalizado_at,";
+        $camposPost = '';
+        foreach ([
+            'respuesta_at',
+            'seguimiento_correo_at',
+            'coordinacion_reunion_habilitada_at',
+            'reunion_agendada_at',
+            'reunion_realizada_at',
+            'convenio_formalizado_at'
+        ] as $columnaPost) {
+            $disponible = $postDisponible &&
+                $this->columnaDisponible(
+                    'seguimientos_vinculacion_post_envio',
+                    $columnaPost
+                );
+
+            $camposPost .= $disponible
+                ? 'post.' . $columnaPost . ' AS ' . $columnaPost . ','
+                : 'NULL AS ' . $columnaPost . ',';
+        }
 
         $joinPost = $postDisponible
             ? "LEFT JOIN seguimientos_vinculacion_post_envio post
