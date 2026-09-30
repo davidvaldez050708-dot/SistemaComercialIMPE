@@ -118,6 +118,16 @@ class SeguimientoVinculacionReporteController
                 $modoSeguimiento,
                 $territoriosConsulta
             );
+
+            if (
+                $modoSeguimiento === 'analista' &&
+                (string)($filtros['tipo_reporte'] ?? 'cartera') === 'cartera'
+            ) {
+                $seguimientos = (new ReporteSeguimientoCarteraService())->enriquecer(
+                    $seguimientos
+                );
+            }
+
             $filtros = $this->normalizarFiltrosDependientes(
                 $seguimientos,
                 $filtros,
