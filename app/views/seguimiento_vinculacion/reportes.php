@@ -38,6 +38,30 @@ $canalesReporte = is_array($analiticaReporte['canales'] ?? null)
 $actividadRecienteReporte = is_array($analiticaReporte['actividad_reciente'] ?? null)
     ? $analiticaReporte['actividad_reciente']
     : [];
+$rendimientoTelefonicoDiario = is_array($analiticaReporte['rendimiento_telefonico_diario'] ?? null)
+    ? $analiticaReporte['rendimiento_telefonico_diario']
+    : [];
+$institucionesActividadReporte = is_array($analiticaReporte['instituciones_actividad'] ?? null)
+    ? $analiticaReporte['instituciones_actividad']
+    : [];
+$metaDiariaEfectivas = max(1, (int)($analiticaReporte['meta_diaria_efectivas'] ?? 25));
+$tipoInteraccionActividad = strtoupper(trim((string)($filtrosReporte['tipo_actividad'] ?? '')));
+$mostrarRendimientoTelefonico =
+    $tipoInteraccionActividad === '' ||
+    in_array($tipoInteraccionActividad, ['LLAMADA', 'LLAMADA_IP'], true);
+$efectivasHoyReporte = 0;
+$llamadasHoyReporte = 0;
+$contactosHoyReporte = 0;
+$fechaHoyReporte = date('Y-m-d');
+
+foreach ($rendimientoTelefonicoDiario as $diaTelefonico) {
+    if ((string)($diaTelefonico['fecha'] ?? '') === $fechaHoyReporte) {
+        $efectivasHoyReporte = (int)($diaTelefonico['efectivas'] ?? 0);
+        $llamadasHoyReporte = (int)($diaTelefonico['llamadas'] ?? 0);
+        $contactosHoyReporte = (int)($diaTelefonico['con_contacto'] ?? 0);
+        break;
+    }
+}
 $etiquetaCanalReporte = static function ($canal) {
     $canal = strtoupper(trim((string)$canal));
     return [
