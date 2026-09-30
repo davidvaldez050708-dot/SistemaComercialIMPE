@@ -12,8 +12,12 @@ class EvolucionActividadSeguimientoService
         $this->connection = $database->connect();
     }
 
-    public function construir(array $seguimientos, array $filtros)
-    {
+    public function construir(
+        array $seguimientos,
+        array $filtros,
+        $usuarioId = 0,
+        $modoAcceso = ''
+    ) {
         $seguimientoIds = [];
 
         foreach ($seguimientos as $seguimiento) {
@@ -27,6 +31,11 @@ class EvolucionActividadSeguimientoService
         $fechaInicialFiltro = trim((string)($filtros['fecha_inicial'] ?? ''));
         $fechaFinalFiltro = trim((string)($filtros['fecha_final'] ?? ''));
         $canal = strtoupper(trim((string)($filtros['tipo_actividad'] ?? '')));
+        $tipoReporte = strtolower(trim((string)($filtros['tipo_reporte'] ?? '')));
+        $usuarioActividad = (
+            $tipoReporte === 'actividad' &&
+            strtolower(trim((string)$modoAcceso)) === 'analista'
+        ) ? max(0, (int)$usuarioId) : 0;
         $fechaFinalConsulta = $fechaFinalFiltro;
 
         if ($fechaInicialFiltro !== '' && $fechaFinalConsulta === '') {
@@ -37,7 +46,8 @@ class EvolucionActividadSeguimientoService
             $seguimientoIds,
             $fechaInicialFiltro,
             $fechaFinalConsulta,
-            $canal
+            $canal,
+            $usuarioActividad
         );
 
         $fechaInicial = $fechaInicialFiltro;
@@ -80,7 +90,8 @@ class EvolucionActividadSeguimientoService
             $fechaInicialFiltro,
             $fechaFinalFiltro,
             $canal,
-            $total
+            $total,
+            $usuarioActividad
         );
 
         return [
@@ -102,7 +113,8 @@ class EvolucionActividadSeguimientoService
         array $seguimientoIds,
         $fechaInicial,
         $fechaFinal,
-        $canal
+        $canal,
+        $usuarioId = 0
     ) {
         if (empty($seguimientoIds)) {
             return [];
@@ -113,7 +125,8 @@ class EvolucionActividadSeguimientoService
                     DATE(fecha_inicio) AS fecha,
                     COUNT(*) AS total
                 FROM interacciones_vinculacion
-                WHERE seguimiento_id IN ($placeholders)";
+                WHERE seguimiento_id IN ($placeholders)
+                  AND UPPER(TRIM(COALESCE(canal, ''))) <> 'SISTEMA'";
         $parametros = array_map('intval', $seguimientoIds);
         $tipos = str_repeat('i', count($parametros));
 
@@ -129,10 +142,22 @@ class EvolucionActividadSeguimientoService
             $tipos .= 's';
         }
 
+        if ((int)$usuarioId > 0) {
+            $sql .= " AND usuario_id = ?";
+            $parametros[] = (int)$usuarioId;
+            $tipos .= 'i';
+        }
+
         if ($canal !== '') {
-            $sql .= " AND canal = ?";
-            $parametros[] = $canal;
-            $tipos .= 's';
+            if (in_array($canal, ['LLAMADA', 'LLAMADA_IP'], true)) {
+                $sql .= " AND UPPER(TRIM(COALESCE(canal, ''))) IN ('LLAMADA', 'LLAMADA_IP')";
+            } elseif ($canal === 'NOTA') {
+                $sql .= " AND UPPER(TRIM(COALESCE(canal, ''))) NOT IN ('SISTEMA', 'LLAMADA', 'LLAMADA_IP', 'CORREO', 'WHATSAPP')";
+            } else {
+                $sql .= " AND UPPER(TRIM(COALESCE(canal, ''))) = ?";
+                $parametros[] = $canal;
+                $tipos .= 's';
+            }
         }
 
         $sql .= " GROUP BY DATE(fecha_inicio) ORDER BY fecha ASC";
@@ -284,7 +309,8 @@ class EvolucionActividadSeguimientoService
         $fechaInicial,
         $fechaFinal,
         $canal,
-        $totalActual
+        $totalActual,
+        $usuarioId = 0
     ) {
         if ($fechaInicial === '' || $fechaFinal === '') {
             return [
@@ -312,7 +338,8 @@ class EvolucionActividadSeguimientoService
             $seguimientoIds,
             $inicioAnterior->format('Y-m-d'),
             $finAnterior->format('Y-m-d'),
-            $canal
+            $canal,
+            $usuarioId
         );
         $totalAnterior = array_sum($conteosAnterior);
 
