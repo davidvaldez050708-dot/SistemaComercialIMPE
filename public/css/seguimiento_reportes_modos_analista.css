@@ -1144,3 +1144,54 @@
         flex-direction: column;
     }
 }
+
+
+/* ===== Refinamiento visual selector de institución ===== */
+.report-institution-trigger {
+    padding-right: 34px;
+    background-position: right .85rem center;
+    background-size: 12px 9px;
+    font-size: 11px;
+    font-weight: 650;
+}
+
+.report-institution-picker-search .form-control {
+    min-height: 38px;
+    padding-top: 7px;
+    padding-bottom: 7px;
+    padding-left: 34px;
+    border-radius: 9px;
+    font-size: 11px;
+    line-height: 1.25;
+}
+
+.report-institution-picker-search > i {
+    left: 30px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 12px;
+}
+
+.report-institution-picker-footer .btn {
+    min-height: 32px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1.15;
+}
+
+.report-institution-picker-footer .btn i {
+    font-size: 10px;
+}
+
+.report-institution-picker-status,
+.report-institution-picker-footer > span {
+    font-size: 9.5px;
+}
+
+.report-institution-option-status {
+    min-height: 22px;
+    padding: 3px 7px;
+    font-size: 8.4px;
+}
