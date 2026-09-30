@@ -868,3 +868,279 @@
         gap: 2px;
     }
 }
+
+
+/* ===== Selector progresivo de institución ===== */
+.report-institution-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    min-height: 46px;
+    text-align: left;
+    cursor: pointer;
+}
+
+.report-institution-trigger:disabled {
+    cursor: not-allowed;
+    opacity: .62;
+}
+
+.report-institution-trigger-label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.report-institution-trigger.has-selection {
+    border-color: rgba(46, 72, 165, .42);
+    background: #f8faff;
+}
+
+.report-institution-trigger.is-invalid {
+    border-color: #c75146;
+    box-shadow: 0 0 0 3px rgba(199, 81, 70, .08);
+}
+
+.report-institution-hint {
+    margin-top: 5px;
+    color: var(--color-text-secondary);
+    font-size: 10px;
+    line-height: 1.35;
+}
+
+.report-institution-picker-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1085;
+    display: grid;
+    place-items: center;
+    padding: 18px;
+    background: rgba(17, 28, 49, .44);
+    backdrop-filter: blur(2px);
+}
+
+.report-institution-picker-dialog {
+    display: flex;
+    flex-direction: column;
+    width: min(760px, 100%);
+    max-height: min(620px, calc(100vh - 36px));
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+    border-radius: 14px;
+    background: #fff;
+    box-shadow: 0 18px 55px rgba(18, 31, 53, .18);
+}
+
+.report-institution-picker-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 16px 18px 13px;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.report-institution-picker-head .report-eyebrow {
+    display: block;
+    margin-bottom: 3px;
+    color: var(--color-primary);
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: .055em;
+}
+
+.report-institution-picker-close {
+    display: inline-grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    flex: 0 0 34px;
+    border: 0;
+    border-radius: 9px;
+    background: transparent;
+    color: var(--color-text-secondary);
+    font-size: 17px;
+}
+
+.report-institution-picker-close:hover,
+.report-institution-picker-close:focus-visible {
+    background: var(--color-bg);
+    color: var(--color-text-primary);
+    outline: 0;
+}
+
+.report-institution-picker-search {
+    position: relative;
+    padding: 13px 18px 8px;
+}
+
+.report-institution-picker-search > i {
+    position: absolute;
+    left: 31px;
+    top: 50%;
+    z-index: 1;
+    transform: translateY(-33%);
+    color: var(--color-text-secondary);
+    font-size: 13px;
+}
+
+.report-institution-picker-search .form-control {
+    padding-left: 36px;
+}
+
+.report-institution-picker-status {
+    min-height: 18px;
+    padding: 0 18px 8px;
+    color: var(--color-text-secondary);
+    font-size: 10px;
+    font-weight: 600;
+}
+
+.report-institution-picker-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    min-height: 0;
+    padding: 0 18px 12px;
+    overflow-y: auto;
+}
+
+.report-institution-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-width: 0;
+    padding: 10px 11px;
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    background: #fff;
+    color: var(--color-text-primary);
+    text-align: left;
+    transition: border-color .15s ease, background-color .15s ease, box-shadow .15s ease;
+}
+
+.report-institution-option:hover,
+.report-institution-option:focus-visible {
+    border-color: rgba(46, 72, 165, .38);
+    background: #f8faff;
+    box-shadow: 0 0 0 2px rgba(46, 72, 165, .05);
+    outline: 0;
+}
+
+.report-institution-option-main {
+    min-width: 0;
+}
+
+.report-institution-option-main strong,
+.report-institution-option-main small {
+    display: block;
+}
+
+.report-institution-option-main strong {
+    overflow: hidden;
+    color: var(--color-text-primary);
+    font-size: 11px;
+    font-weight: 750;
+    line-height: 1.3;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.report-institution-option-main small {
+    margin-top: 2px;
+    color: var(--color-text-secondary);
+    font-size: 9.2px;
+    line-height: 1.3;
+}
+
+.report-institution-option-status {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    max-width: 145px;
+    flex: 0 0 auto;
+    padding: 4px 8px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #eef3fb;
+    color: #36529d;
+    font-size: 8.8px;
+    font-weight: 750;
+    line-height: 1;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.report-institution-picker-empty {
+    margin: 0 18px 12px;
+    padding: 24px 16px;
+    border: 1px dashed var(--color-border);
+    border-radius: 10px;
+    background: var(--color-bg);
+    text-align: center;
+}
+
+.report-institution-picker-empty > span {
+    display: inline-grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    margin-bottom: 7px;
+    border-radius: 10px;
+    background: #eef3fb;
+    color: #36529d;
+}
+
+.report-institution-picker-empty strong,
+.report-institution-picker-empty small {
+    display: block;
+}
+
+.report-institution-picker-empty strong {
+    font-size: 11px;
+}
+
+.report-institution-picker-empty small {
+    margin-top: 3px;
+    color: var(--color-text-secondary);
+    font-size: 9.5px;
+}
+
+.report-institution-picker-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 18px 12px;
+    border-top: 1px solid var(--color-border);
+    background: #fff;
+}
+
+.report-institution-picker-footer > span {
+    color: var(--color-text-secondary);
+    font-size: 9.5px;
+    font-weight: 650;
+}
+
+@media (max-width: 767.98px) {
+    .report-institution-picker-backdrop {
+        padding: 10px;
+    }
+
+    .report-institution-picker-dialog {
+        max-height: calc(100vh - 20px);
+        border-radius: 12px;
+    }
+
+    .report-institution-picker-list {
+        grid-template-columns: 1fr;
+    }
+
+    .report-institution-picker-footer {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}
