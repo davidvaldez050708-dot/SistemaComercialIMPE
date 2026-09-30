@@ -575,6 +575,10 @@
             return;
         }
 
+        if (root.hasAttribute('data-analyst-report-output')) {
+            return;
+        }
+
         root.setAttribute('data-decision-report-ready', '');
         root.classList.add('seguimiento-report-results');
 
