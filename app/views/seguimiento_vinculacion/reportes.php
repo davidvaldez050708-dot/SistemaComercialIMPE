@@ -86,10 +86,11 @@ $subtituloReporteGenerado =
 
 if (
     $modoSeguimiento === 'analista' &&
-    $tipoReporteActual === 'institucion' &&
-    count($seguimientosReporte) === 1
+    $tipoReporteActual === 'institucion'
 ) {
-    $institucionEncabezado = $seguimientosReporte[0];
+    $institucionEncabezado = is_array($detalleInstitucionReporte['seguimiento'] ?? null)
+        ? $detalleInstitucionReporte['seguimiento']
+        : (count($seguimientosReporte) === 1 ? $seguimientosReporte[0] : []);
     $nombreInstitucionEncabezado = trim((string)($institucionEncabezado['nombre_entidad'] ?? ''));
     $ubicacionInstitucionEncabezado = implode(', ', array_values(array_filter([
         trim((string)($institucionEncabezado['municipio'] ?? '')),
