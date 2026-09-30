@@ -1720,24 +1720,125 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
         <?php endif; ?>
 
         <?php if ($modoSeguimiento === 'analista' && $tipoReporteActual === 'actividad'): ?>
-        <section class="dashboard-panel p-0 overflow-hidden">
+        <section class="dashboard-panel p-0 overflow-hidden analyst-activity-history">
             <div class="table-panel-header">
                 <div>
-                    <h3 class="panel-title mb-0">Actividad registrada en el periodo</h3>
-                    <p class="page-subtitle mb-0 mt-1">Hasta 60 interacciones, ordenadas de la más reciente a la más antigua.</p>
+                    <span class="report-eyebrow">DETALLE DE ACTIVIDAD</span>
+                    <h3 class="panel-title mb-0">Interacciones del periodo</h3>
+                    <p class="page-subtitle mb-0 mt-1">Hasta 60 registros, de la actividad más reciente a la más antigua.</p>
                 </div>
+                <span class="analyst-activity-history-count">
+                    <?= count($actividadRecienteReporte) ?> mostradas
+                </span>
             </div>
             <?php if (!empty($actividadRecienteReporte)): ?>
                 <div class="table-responsive">
                     <table class="table users-table align-middle mb-0">
-                        <thead><tr><th>Fecha</th><th>Institución</th><th>Actividad</th><th>Resultado</th></tr></thead>
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Institución</th>
+                                <th>Interacción</th>
+                                <th>Resultado</th>
+                                <th>Detalle</th>
+                            </tr>
+                        </thead>
                         <tbody>
                         <?php foreach ($actividadRecienteReporte as $actividad): ?>
+                            <?php
+                            $canalActividad = strtoupper(trim((string)($actividad['canal'] ?? '')));
+                            $resultadoActividad = strtoupper(trim((string)($actividad['resultado'] ?? '')));
+                            $notasActividad = (string)($actividad['notas'] ?? '');
+                            $duracionActividad = max(0, (int)($actividad['duracion_segundos'] ?? 0));
+                            $esLlamadaActividad = in_array($canalActividad, ['LLAMADA', 'LLAMADA_IP'], true);
+                            $esEfectivaActividad =
+                                $esLlamadaActividad &&
+                                strpos($notasActividad, '[VERIFICACION_EFECTIVA]') !== false &&
+                                trim((string)($actividad['proveedor_externo'] ?? '')) !== '' &&
+                                trim((string)($actividad['id_externo'] ?? '')) !== '' &&
+                                $duracionActividad > 0;
+                            $contactoActividad =
+                                $esLlamadaActividad &&
+                                strpos($notasActividad, '[SIN_CONTACTO_EFECTIVO]') === false &&
+                                (
+                                    strpos($notasActividad, '[CONTACTO_EFECTIVO]') !== false ||
+                                    in_array(
+                                        $resultadoActividad,
+                                        [
+                                            'CONTACTADO',
+                                            'CONTACTO_CORRECTO',
+                                            'CONTACTO_REFERIDO',
+                                            'SOLICITO_INFORMACION',
+                                            'SOLICITO_LLAMAR_DESPUES',
+                                            'NO_INTERESADO'
+                                        ],
+                                        true
+                                    )
+                                );
+                            $iconoCanalActividad = [
+                                'LLAMADA' => 'bi-telephone',
+                                'LLAMADA_IP' => 'bi-telephone',
+                                'CORREO' => 'bi-envelope',
+                                'WHATSAPP' => 'bi-chat-dots',
+                                'NOTA' => 'bi-journal-text'
+                            ][$canalActividad] ?? 'bi-activity';
+
+                            $resultadoLabelActividad = $etiquetaResultadoReporte($resultadoActividad);
+                            if ($esEfectivaActividad) {
+                                $resultadoLabelActividad = 'Llamada efectiva';
+                            } elseif ($contactoActividad) {
+                                $resultadoLabelActividad = 'Con contacto';
+                            } elseif ($resultadoActividad === 'BUZON_VOZ') {
+                                $resultadoLabelActividad = 'Buzón de voz';
+                            } elseif ($resultadoActividad === 'FUERA_SERVICIO') {
+                                $resultadoLabelActividad = 'Fuera de servicio';
+                            }
+
+                            $detalleActividad = '';
+                            if ($esLlamadaActividad) {
+                                $partesDetalle = [];
+                                if ($duracionActividad > 0) {
+                                    $minutos = intdiv($duracionActividad, 60);
+                                    $segundos = $duracionActividad % 60;
+                                    $partesDetalle[] = $minutos > 0
+                                        ? $minutos . ' min ' . str_pad((string)$segundos, 2, '0', STR_PAD_LEFT) . ' s'
+                                        : $segundos . ' s';
+                                }
+                                if ($esEfectivaActividad) {
+                                    $partesDetalle[] = 'verificación vinculada';
+                                } elseif ($contactoActividad) {
+                                    $partesDetalle[] = 'contacto registrado';
+                                } else {
+                                    $partesDetalle[] = 'intento telefónico';
+                                }
+                                $detalleActividad = implode(' · ', $partesDetalle);
+                            } elseif ($canalActividad === 'CORREO') {
+                                $detalleActividad = 'Correo registrado en el seguimiento';
+                            } elseif ($canalActividad === 'WHATSAPP') {
+                                $detalleActividad = 'Interacción por WhatsApp';
+                            } else {
+                                $detalleActividad = 'Actividad registrada';
+                            }
+                            ?>
                             <tr>
-                                <td><?= $texto($actividad['fecha_inicio'] ?? '—') ?></td>
-                                <td><?= $texto($actividad['nombre_entidad'] ?? '—') ?></td>
-                                <td><?= $texto($etiquetaCanalReporte($actividad['canal'] ?? '')) ?></td>
-                                <td><?= $texto($etiquetaResultadoReporte($actividad['resultado'] ?? '')) ?></td>
+                                <td class="analyst-activity-history-date">
+                                    <?= $texto($fechaHoraReporte($actividad['fecha_inicio'] ?? '')) ?>
+                                </td>
+                                <td>
+                                    <strong class="analyst-activity-history-institution"><?= $texto($actividad['nombre_entidad'] ?? '—') ?></strong>
+                                </td>
+                                <td>
+                                    <span class="analyst-activity-channel">
+                                        <i class="bi <?= $texto($iconoCanalActividad) ?>"></i>
+                                        <?= $texto($etiquetaCanalReporte($canalActividad)) ?>
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="analyst-activity-result<?= $esEfectivaActividad ? ' is-effective' : ($contactoActividad ? ' is-contact' : '') ?>">
+                                        <?= $texto($resultadoLabelActividad) ?>
+                                    </span>
+                                </td>
+                                <td class="analyst-activity-history-detail"><?= $texto($detalleActividad) ?></td>
                             </tr>
                         <?php endforeach; ?>
                         </tbody>
