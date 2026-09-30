@@ -312,7 +312,18 @@
                     return;
                 }
 
-                mostrarSiguienteToastVencido();
+                const mostroVencido = mostrarSiguienteToastVencido();
+
+                if (!mostroVencido) {
+                    // Si ya no quedan vencidos, evitamos reintentos cada segundo
+                    // cuando el último toast registrado fue hace más de 8 minutos.
+                    temporizadorToastVencido = window.setTimeout(
+                        ejecutar,
+                        INTERVALO_TOAST_VENCIDO
+                    );
+                    return;
+                }
+
                 programarSiguienteToastVencido();
             }, espera);
         };
