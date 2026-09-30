@@ -43,6 +43,7 @@ $actividad = is_array($reporte) ? ($reporte['actividad_economica'] ?? []) : [];
 $poder = is_array($reporte) ? ($reporte['poder_adquisitivo'] ?? []) : [];
 $rezago = is_array($reporte) ? ($reporte['rezago_educativo'] ?? []) : [];
 $perfil = is_array($reporte) ? ($reporte['perfil_educativo'] ?? []) : [];
+$perfil2549 = is_array($reporte) ? ($reporte['perfil_educativo_25_49'] ?? []) : [];
 $indicadores = is_array($reporte) ? ($reporte['indicadores_educativos'] ?? []) : [];
 $priorizacion = is_array($reporte) ? ($reporte['priorizacion_municipal'] ?? []) : [];
 $secretarias = is_array($reporte) ? ($reporte['secretarias'] ?? []) : [];
@@ -284,12 +285,21 @@ foreach ($sectoresGrafica as $sectorGrafica) {
                         <div class="territorial-strategy-icon"><i class="bi bi-mortarboard"></i></div>
                         <div class="territorial-strategy-copy">
                             <span>EDUCACIÓN</span>
-                            <strong><?= ($resumen['rezago_educativo'] ?? null) !== null ? $numero($resumen['rezago_educativo'], 2) . ' %' : '—' ?></strong>
-                            <p>Rezago educativo registrado</p>
-                            <div class="territorial-strategy-meta">
-                                <b><?= $diferencia($resumen['diferencia_rezago_nacional'] ?? null) ?></b>
-                                <small>vs. referencia nacional</small>
-                            </div>
+                            <?php if (($perfil2549['disponible'] ?? false) === true): ?>
+                                <strong><?= $numero($perfil2549['sin_media_superior_25_49_pct'] ?? null, 2) ?> %</strong>
+                                <p>Personas de 25–49 años sin media superior concluida</p>
+                                <div class="territorial-strategy-meta">
+                                    <b><?= $numero($perfil2549['sin_media_superior_25_49'] ?? null) ?> personas</b>
+                                    <small>Perfil prioritario disponible</small>
+                                </div>
+                            <?php else: ?>
+                                <strong><?= ($resumen['rezago_educativo'] ?? null) !== null ? $numero($resumen['rezago_educativo'], 2) . ' %' : '—' ?></strong>
+                                <p>Rezago educativo registrado</p>
+                                <div class="territorial-strategy-meta">
+                                    <b><?= $diferencia($resumen['diferencia_rezago_nacional'] ?? null) ?></b>
+                                    <small>vs. referencia nacional</small>
+                                </div>
+                            <?php endif; ?>
                         </div>
                     </article>
                 </div>
@@ -451,6 +461,61 @@ foreach ($sectoresGrafica as $sectorGrafica) {
                 </article>
             </section>
 
+            <?php if (($perfil2549['disponible'] ?? false) === true): ?>
+                <section class="dashboard-panel report-section territorial-education-profile mb-4">
+                    <div class="territorial-report-section-heading">
+                        <div>
+                            <span>PERFIL EDUCATIVO PRIORITARIO</span>
+                            <h3>Población de 25 a 49 años</h3>
+                            <p>
+                                Universo educativo utilizado por la priorización municipal para dimensionar
+                                la brecha de media superior dentro del territorio.
+                            </p>
+                        </div>
+                        <span class="territorial-education-period">
+                            <?= $texto($perfil2549['anio'] ?? 'Periodo disponible') ?>
+                        </span>
+                    </div>
+
+                    <div class="territorial-education-grid">
+                        <article>
+                            <span>Población 25–49 con perfil disponible</span>
+                            <strong><?= $numero($perfil2549['poblacion_25_49'] ?? null) ?></strong>
+                            <small>Base agregada de municipios con información</small>
+                        </article>
+                        <article class="territorial-education-card-emphasis">
+                            <span>Sin media superior concluida</span>
+                            <strong><?= $numero($perfil2549['sin_media_superior_25_49'] ?? null) ?></strong>
+                            <small><?= $numero($perfil2549['sin_media_superior_25_49_pct'] ?? null, 2) ?> % del grupo 25–49</small>
+                        </article>
+                        <article>
+                            <span>Media superior, sin superior</span>
+                            <strong><?= $numero($perfil2549['media_superior_sin_superior_25_49'] ?? null) ?></strong>
+                            <small><?= $numero($perfil2549['media_superior_sin_superior_25_49_pct'] ?? null, 2) ?> % del grupo 25–49</small>
+                        </article>
+                        <article>
+                            <span>Con educación superior</span>
+                            <strong><?= $numero($perfil2549['con_educacion_superior_25_49'] ?? null) ?></strong>
+                            <small><?= $numero($perfil2549['con_educacion_superior_25_49_pct'] ?? null, 2) ?> % del grupo 25–49</small>
+                        </article>
+                    </div>
+
+                    <div class="territorial-education-note">
+                        <i class="bi bi-info-circle"></i>
+                        <span>
+                            Perfil disponible en
+                            <strong><?= (int)($perfil2549['municipios_con_datos'] ?? 0) ?></strong>
+                            de
+                            <strong><?= (int)($perfil2549['municipios_clasificables'] ?? 0) ?></strong>
+                            municipios clasificables.
+                            <?php if (trim((string)($perfil2549['fuente'] ?? '')) !== ''): ?>
+                                Fuente: <?= $texto($perfil2549['fuente']) ?>.
+                            <?php endif; ?>
+                        </span>
+                    </div>
+                </section>
+            <?php endif; ?>
+
             <?php if (!empty($indicadores)): ?>
                 <section class="dashboard-panel report-section mb-4">
                     <div class="territorial-report-section-heading">
@@ -573,6 +638,15 @@ foreach ($sectoresGrafica as $sectorGrafica) {
                             <small>Periodo: <?= $valor($fuente['periodo'] ?? null) ?></small>
                         </article>
                     <?php endforeach; ?>
+
+                    <?php if (($perfil2549['disponible'] ?? false) === true && trim((string)($perfil2549['fuente'] ?? '')) !== ''): ?>
+                        <?php $fuentesMostradas++; ?>
+                        <article>
+                            <span>PERFIL EDUCATIVO 25–49</span>
+                            <strong><?= $texto($perfil2549['fuente']) ?></strong>
+                            <small>Periodo: <?= $texto($perfil2549['anio'] ?? '—') ?></small>
+                        </article>
+                    <?php endif; ?>
 
                     <?php if (($perfil['disponible'] ?? false) === true && trim((string)($perfil['fuente'] ?? '')) !== ''): ?>
                         <?php $fuentesMostradas++; ?>
