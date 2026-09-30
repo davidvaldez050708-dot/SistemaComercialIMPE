@@ -93,8 +93,17 @@
         }
 
         if (volver) {
-            volver.href = window.location.pathname + '?controller=reporte&action=index';
-            volver.innerHTML = '<i class="bi bi-arrow-left"></i> Volver a Reportes';
+            const esAnalista = Boolean(formulario.querySelector('[data-analyst-report-modes]'));
+            const esReporteGenerado = parametros.get('generar') === '1';
+
+            if (esAnalista && esReporteGenerado) {
+                volver.href = window.location.pathname +
+                    '?controller=seguimientoVinculacionReporte&action=index&origen=reportes';
+                volver.innerHTML = '<i class="bi bi-arrow-left"></i> Volver a Reportes de Seguimiento';
+            } else {
+                volver.href = window.location.pathname + '?controller=reporte&action=index';
+                volver.innerHTML = '<i class="bi bi-arrow-left"></i> Volver a Reportes';
+            }
         }
 
         if (!formulario.querySelector('input[name="origen"]')) {
