@@ -710,6 +710,8 @@ class SeguimientoVinculacionReporteController
             } else {
                 $filtrosReporte['fecha_inicial'] = '';
                 $filtrosReporte['fecha_final'] = '';
+                $filtrosReporte['institucion_id'] = 0;
+                $filtrosReporte['institucion'] = '';
                 $filtrosReporte['responsable_id'] = 0;
             }
         }
@@ -736,10 +738,13 @@ class SeguimientoVinculacionReporteController
             $generarReporte &&
             $errorFiltros === '' &&
             $modoSeguimiento === 'analista' &&
-            (string)($filtrosReporte['tipo_reporte'] ?? '') === 'institucion' &&
-            (int)($filtrosReporte['institucion_id'] ?? 0) <= 0
+            (string)($filtrosReporte['tipo_reporte'] ?? '') === 'institucion'
         ) {
-            $errorFiltros = 'Selecciona una institución para generar este reporte.';
+            if ((int)($filtrosReporte['estado_id'] ?? 0) <= 0) {
+                $errorFiltros = 'Selecciona un estado antes de elegir la institución.';
+            } elseif ((int)($filtrosReporte['institucion_id'] ?? 0) <= 0) {
+                $errorFiltros = 'Selecciona una institución para generar este reporte.';
+            }
         }
 
         if ($generarReporte && $errorFiltros === '') {
