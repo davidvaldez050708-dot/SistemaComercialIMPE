@@ -1375,8 +1375,153 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                 </div>
             </section>
         <?php endif; ?>
+    <?php elseif ($modoSeguimiento === 'analista' && $tipoReporteActual === 'cartera'): ?>
+        <section class="analyst-portfolio-kpis mb-3" aria-label="Panorama de la cartera">
+            <article class="analyst-portfolio-kpi">
+                <span class="analyst-portfolio-kpi-icon"><i class="bi bi-kanban"></i></span>
+                <div>
+                    <strong><?= (int)($resumenReporte['total'] ?? 0) ?></strong>
+                    <span>Seguimientos en cartera</span>
+                    <small>Instituciones incluidas en la consulta</small>
+                </div>
+            </article>
+            <article class="analyst-portfolio-kpi">
+                <span class="analyst-portfolio-kpi-icon"><i class="bi bi-arrow-repeat"></i></span>
+                <div>
+                    <strong><?= (int)($resumenReporte['en_gestion'] ?? 0) ?></strong>
+                    <span>En gestión</span>
+                    <small>Seguimientos que aún requieren trabajo</small>
+                </div>
+            </article>
+            <article class="analyst-portfolio-kpi analyst-portfolio-kpi--attention">
+                <span class="analyst-portfolio-kpi-icon"><i class="bi bi-exclamation-circle"></i></span>
+                <div>
+                    <strong><?= (int)($resumenReporte['requieren_atencion'] ?? 0) ?></strong>
+                    <span>Requieren atención</span>
+                    <small>Vencidos, sin actividad o con inactividad prolongada</small>
+                </div>
+            </article>
+            <article class="analyst-portfolio-kpi analyst-portfolio-kpi--success">
+                <span class="analyst-portfolio-kpi-icon"><i class="bi bi-patch-check"></i></span>
+                <div>
+                    <strong><?= (int)($resumenReporte['formalizados'] ?? 0) ?></strong>
+                    <span>Convenios formalizados</span>
+                    <small>Ruta del Analista concluida</small>
+                </div>
+            </article>
+            <article class="analyst-portfolio-kpi analyst-portfolio-kpi--muted">
+                <span class="analyst-portfolio-kpi-icon"><i class="bi bi-slash-circle"></i></span>
+                <div>
+                    <strong><?= (int)($resumenReporte['descartados'] ?? 0) ?></strong>
+                    <span>Descartados</span>
+                    <small>Seguimientos cerrados sin continuidad</small>
+                </div>
+            </article>
+        </section>
+
+        <div class="row g-3 mb-3">
+            <div class="col-xl-7">
+                <section class="dashboard-panel analyst-portfolio-attention">
+                    <div class="analyst-portfolio-section-heading">
+                        <div>
+                            <span class="report-eyebrow">ATENCIÓN OPERATIVA</span>
+                            <h3 class="panel-title mb-1">Seguimientos que conviene revisar</h3>
+                            <p class="page-subtitle mb-0">Prioriza acciones vencidas, instituciones nunca trabajadas y seguimientos con más de 7 días sin interacción humana.</p>
+                        </div>
+                        <span class="analyst-portfolio-attention-count">
+                            <?= (int)($resumenReporte['requieren_atencion'] ?? 0) ?> por revisar
+                        </span>
+                    </div>
+
+                    <?php if (!empty($resumenReporte['prioritarios'])): ?>
+                        <div class="analyst-portfolio-priority-list">
+                            <?php foreach ($resumenReporte['prioritarios'] as $prioritario): ?>
+                                <?php
+                                $diasPrioritario = $prioritario['dias_sin_actividad'] ?? null;
+                                $codigoAtencion = (string)($prioritario['atencion_codigo'] ?? 'EN_SEGUIMIENTO');
+                                ?>
+                                <article>
+                                    <div class="analyst-portfolio-priority-main">
+                                        <strong><?= $texto($prioritario['nombre_entidad'] ?? 'Institución') ?></strong>
+                                        <span>
+                                            <?= $texto(trim((string)($prioritario['municipio'] ?? '')) !== ''
+                                                ? $prioritario['municipio']
+                                                : ($prioritario['estado_nombre'] ?? 'Ubicación no disponible')) ?>
+                                            · <?= $texto($prioritario['etapa_operativa_label'] ?? 'Sin etapa') ?>
+                                        </span>
+                                    </div>
+                                    <span class="analyst-portfolio-priority-status is-<?= strtolower($texto($codigoAtencion)) ?>">
+                                        <?= $texto($prioritario['atencion_label'] ?? 'En seguimiento') ?>
+                                    </span>
+                                    <div class="analyst-portfolio-priority-meta">
+                                        <span>
+                                            <i class="bi bi-clock-history"></i>
+                                            <?= $diasPrioritario === null
+                                                ? 'Sin actividad humana registrada'
+                                                : ((int)$diasPrioritario . ' días sin actividad') ?>
+                                        </span>
+                                        <span>
+                                            <i class="bi bi-arrow-right-circle"></i>
+                                            <?= $texto(trim((string)($prioritario['proxima_accion_label'] ?? '')) !== ''
+                                                ? $prioritario['proxima_accion_label']
+                                                : 'Sin acción programada') ?>
+                                        </span>
+                                    </div>
+                                </article>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php else: ?>
+                        <div class="analyst-portfolio-empty">
+                            <i class="bi bi-check-circle"></i>
+                            <div>
+                                <strong>No hay seguimientos con atención prioritaria.</strong>
+                                <span>La cartera filtrada no presenta acciones vencidas ni inactividad mayor a 7 días.</span>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+                </section>
+            </div>
+
+            <div class="col-xl-5">
+                <section class="dashboard-panel analyst-portfolio-health">
+                    <div class="analyst-portfolio-section-heading">
+                        <div>
+                            <span class="report-eyebrow">SALUD DE CARTERA</span>
+                            <h3 class="panel-title mb-1">Estado operativo</h3>
+                            <p class="page-subtitle mb-0">Señales que ayudan a distinguir seguimiento activo de cartera detenida.</p>
+                        </div>
+                    </div>
+                    <div class="analyst-portfolio-health-grid">
+                        <div>
+                            <span>Acciones vencidas</span>
+                            <strong><?= (int)($resumenReporte['acciones_vencidas'] ?? 0) ?></strong>
+                        </div>
+                        <div>
+                            <span>Sin actividad registrada</span>
+                            <strong><?= (int)($resumenReporte['sin_actividad'] ?? 0) ?></strong>
+                        </div>
+                        <div>
+                            <span>Más de 7 días inactivos</span>
+                            <strong><?= (int)($resumenReporte['mas_7_dias'] ?? 0) ?></strong>
+                        </div>
+                        <div>
+                            <span>En seguimiento normal</span>
+                            <strong><?= max(
+                                0,
+                                (int)($resumenReporte['en_gestion'] ?? 0) -
+                                (int)($resumenReporte['requieren_atencion'] ?? 0)
+                            ) ?></strong>
+                        </div>
+                    </div>
+                    <div class="analyst-portfolio-health-note">
+                        <i class="bi bi-info-circle"></i>
+                        <span>“Más de 7 días” solo contempla instituciones que sí tuvieron actividad humana previamente; las nunca trabajadas se muestran aparte.</span>
+                    </div>
+                </section>
+            </div>
+        </div>
     <?php else: ?>
-<section class="metric-grid linkage-summary-grid mb-4" aria-label="Indicadores del reporte">
+        <section class="metric-grid linkage-summary-grid mb-4" aria-label="Indicadores del reporte">
             <article class="metric-card linkage-summary-card">
                 <div class="metric-icon">
                     <i class="bi bi-kanban"></i>
@@ -1386,32 +1531,23 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                     <p class="metric-label">Total de seguimientos</p>
                 </div>
             </article>
-
             <article class="metric-card linkage-summary-card">
-                <div class="metric-icon metric-icon-muted">
-                    <i class="bi bi-clock-history"></i>
-                </div>
+                <div class="metric-icon metric-icon-muted"><i class="bi bi-clock-history"></i></div>
                 <div>
                     <p class="metric-value"><?= (int)$resumenReporte['sin_actividad'] ?></p>
                     <p class="metric-label">Sin actividad registrada</p>
                 </div>
             </article>
-
             <article class="metric-card linkage-summary-card">
-                <div class="metric-icon metric-icon-muted">
-                    <i class="bi bi-hourglass-split"></i>
-                </div>
+                <div class="metric-icon metric-icon-muted"><i class="bi bi-hourglass-split"></i></div>
                 <div>
                     <p class="metric-value"><?= (int)$resumenReporte['mas_7_dias'] ?></p>
                     <p class="metric-label">Más de 7 días sin actividad</p>
                 </div>
             </article>
-
             <?php foreach ($resumenReporte['por_estatus'] as $codigo => $totalEstatus): ?>
                 <article class="metric-card linkage-summary-card">
-                    <div class="metric-icon">
-                        <i class="bi bi-record-circle"></i>
-                    </div>
+                    <div class="metric-icon"><i class="bi bi-record-circle"></i></div>
                     <div>
                         <p class="metric-value"><?= (int)$totalEstatus ?></p>
                         <p class="metric-label"><?= $texto($etiquetaEstatus($codigo)) ?></p>
