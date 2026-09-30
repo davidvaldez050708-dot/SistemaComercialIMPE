@@ -1935,3 +1935,59 @@
         gap: 10px;
     }
 }
+
+
+/* Ajustes finales de Mi actividad */
+.analyst-activity-kpi-icon > i {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    line-height: 1;
+}
+
+.analyst-activity-kpi-icon > i::before {
+    display: block;
+    margin: 0;
+    line-height: 1;
+    vertical-align: 0;
+}
+
+.analyst-activity-contact-rate {
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-end;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+}
+
+.analyst-activity-contact-rate strong {
+    color: var(--color-text);
+    font-size: 10.5px;
+    font-weight: 750;
+    line-height: 1.1;
+}
+
+.analyst-activity-contact-rate small {
+    color: var(--color-text-soft);
+    font-size: 8.4px;
+    font-weight: 650;
+    line-height: 1.1;
+}
+
+.analyst-activity-channel-grid--measurable {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.analyst-activity-evolution,
+.analyst-activity-institutions {
+    height: auto !important;
+    align-self: flex-start;
+}
+
+.analyst-activity-institution-detail span.is-effective {
+    white-space: normal;
+}
