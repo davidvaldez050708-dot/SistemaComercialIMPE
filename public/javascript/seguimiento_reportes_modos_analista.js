@@ -139,7 +139,6 @@
             if (institution) {
                 institution.value = '0';
                 institution.dataset.reportInstitutionId = '0';
-                institution.dispatchEvent(new Event('change', { bubbles: true }));
             }
             if (institutionLabel) {
                 institutionLabel.textContent = 'Seleccionar institución';
