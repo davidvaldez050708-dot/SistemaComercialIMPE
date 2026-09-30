@@ -1808,9 +1808,9 @@
 .convocatoria-titulacion-hero-copy h2 {
     margin: 0;
     color: var(--color-text-primary);
-    font-size: 28px;
+    font-size: 22px;
     font-weight: 800;
-    line-height: 1.12;
+    line-height: 1.16;
 }
 
 .convocatoria-titulacion-hero-copy p {
