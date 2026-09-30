@@ -14,10 +14,15 @@
         let consultaEnCurso = false;
         let avisoMigracionMostrado = false;
         let recordatoriosActuales = [];
-        let indiceToastRecordatorio = 0;
+        let temporizadorToastVencido = null;
 
-        const INTERVALO_TOAST_RECORDATORIO = 3 * 60 * 1000;
+        const INTERVALO_TOAST_VENCIDO = 8 * 60 * 1000;
+        const REINTENTO_TOAST_OCULTO = 60 * 1000;
         const DURACION_TOAST = 7000;
+        const CLAVE_ULTIMO_TOAST_VENCIDO_AT =
+            'recordatorios:ultimo-toast-vencido-at';
+        const CLAVE_ULTIMO_TOAST_VENCIDO_ID =
+            'recordatorios:ultimo-toast-vencido-id';
 
         if (endpoint === '') {
             return;
@@ -41,6 +46,45 @@
 
         const dosDigitos = function (valor) {
             return String(valor).padStart(2, '0');
+        };
+
+        const leerSesion = function (clave) {
+            try {
+                return window.sessionStorage.getItem(clave) || '';
+            } catch (error) {
+                return '';
+            }
+        };
+
+        const guardarSesion = function (clave, valor) {
+            try {
+                window.sessionStorage.setItem(clave, String(valor));
+            } catch (error) {
+                // El recordatorio sigue funcionando aunque sessionStorage no esté disponible.
+            }
+        };
+
+        const claveRecordatorio = function (recordatorio) {
+            const reunionId = Number(recordatorio.reunion_id || 0);
+            const seguimientoId = Number(
+                recordatorio.seguimiento_id || recordatorio.id || 0
+            );
+            const accion = String(recordatorio.accion || '').trim();
+            const fecha = String(recordatorio.fecha || '').trim();
+
+            return [
+                reunionId > 0 ? 'reunion:' + reunionId : 'seguimiento:' + seguimientoId,
+                accion,
+                fecha
+            ].join('|');
+        };
+
+        const registrarToastVencido = function (recordatorio) {
+            guardarSesion(CLAVE_ULTIMO_TOAST_VENCIDO_AT, Date.now());
+            guardarSesion(
+                CLAVE_ULTIMO_TOAST_VENCIDO_ID,
+                claveRecordatorio(recordatorio)
+            );
         };
 
         const fechaRecordatorio = function (recordatorio) {
@@ -189,39 +233,40 @@
             }, DURACION_TOAST);
         };
 
-        const esRecordatorioToast = function (recordatorio) {
-            const estado = estadoVisibleRecordatorio(recordatorio);
-            return ['vencida', 'proxima', 'hoy', 'manana', 'mañana'].includes(estado);
+        const esRecordatorioVencidoRecurrente = function (recordatorio) {
+            return estadoVisibleRecordatorio(recordatorio) === 'vencida';
         };
 
-        const mostrarSiguienteToastRecordatorio = function () {
-            const disponibles = recordatoriosActuales.filter(esRecordatorioToast);
+        const mostrarSiguienteToastVencido = function () {
+            const disponibles = recordatoriosActuales.filter(
+                esRecordatorioVencidoRecurrente
+            );
 
             if (disponibles.length === 0) {
-                return;
+                return false;
             }
 
-            if (indiceToastRecordatorio >= disponibles.length) {
-                indiceToastRecordatorio = 0;
+            const ultimaClave = leerSesion(CLAVE_ULTIMO_TOAST_VENCIDO_ID);
+            let indice = 0;
+
+            if (ultimaClave !== '') {
+                const indiceAnterior = disponibles.findIndex(function (recordatorio) {
+                    return claveRecordatorio(recordatorio) === ultimaClave;
+                });
+
+                if (indiceAnterior >= 0) {
+                    indice = (indiceAnterior + 1) % disponibles.length;
+                }
             }
 
-            const recordatorio = disponibles[indiceToastRecordatorio];
-            indiceToastRecordatorio = (indiceToastRecordatorio + 1) % disponibles.length;
-            const estado = estadoVisibleRecordatorio(recordatorio);
-            const vencida = estado === 'vencida';
-            const entidad = String(recordatorio.nombre_entidad || 'Seguimiento').trim();
-            const accion = String(recordatorio.accion || 'Revisar pendiente').trim();
+            const recordatorio = disponibles[indice];
+            const entidad = String(
+                recordatorio.nombre_entidad || 'Seguimiento'
+            ).trim();
+            const accion = String(
+                recordatorio.accion || 'Revisar pendiente'
+            ).trim();
             const etiqueta = etiquetaVisibleRecordatorio(recordatorio);
-
-            const accionNormalizada = accion.toLowerCase();
-            let tituloToast = vencida ? 'Acción vencida' : 'Próxima acción';
-
-            if (
-                accionNormalizada.includes('reunión en curso') ||
-                accionNormalizada.includes('reunion en curso')
-            ) {
-                tituloToast = 'Reunión en curso';
-            }
 
             mostrarToast({
                 id: recordatorio.id,
@@ -229,10 +274,47 @@
                 reunion_id: recordatorio.reunion_id,
                 url: recordatorio.url,
                 icono: recordatorio.icono,
-                tipo: vencida ? 'VENCIDA' : 'RECORDATORIO',
-                titulo: tituloToast,
-                mensaje: accion + ' · ' + entidad + (etiqueta ? ' · ' + etiqueta : '')
+                tipo: 'VENCIDA',
+                titulo: 'Acción vencida',
+                mensaje: accion + ' · ' + entidad +
+                    (etiqueta ? ' · ' + etiqueta : '')
             });
+
+            registrarToastVencido(recordatorio);
+            return true;
+        };
+
+        const programarSiguienteToastVencido = function () {
+            if (temporizadorToastVencido !== null) {
+                window.clearTimeout(temporizadorToastVencido);
+                temporizadorToastVencido = null;
+            }
+
+            const ultimoToast = Number(
+                leerSesion(CLAVE_ULTIMO_TOAST_VENCIDO_AT)
+            );
+            const ahora = Date.now();
+            const espera = Number.isFinite(ultimoToast) && ultimoToast > 0
+                ? Math.max(
+                    1000,
+                    INTERVALO_TOAST_VENCIDO - Math.max(0, ahora - ultimoToast)
+                )
+                : INTERVALO_TOAST_VENCIDO;
+
+            temporizadorToastVencido = window.setTimeout(function ejecutar() {
+                temporizadorToastVencido = null;
+
+                if (document.hidden) {
+                    temporizadorToastVencido = window.setTimeout(
+                        ejecutar,
+                        REINTENTO_TOAST_OCULTO
+                    );
+                    return;
+                }
+
+                mostrarSiguienteToastVencido();
+                programarSiguienteToastVencido();
+            }, espera);
         };
 
         const renderizarRecordatorios = function (recordatorios) {
@@ -328,7 +410,20 @@
                     return;
                 }
 
-                (datos.avisos || []).forEach(mostrarToast);
+                let huboAvisoVencido = false;
+
+                (datos.avisos || []).forEach(function (aviso) {
+                    mostrarToast(aviso);
+
+                    if (String(aviso.tipo || '').toUpperCase() === 'VENCIDA') {
+                        registrarToastVencido(aviso);
+                        huboAvisoVencido = true;
+                    }
+                });
+
+                if (huboAvisoVencido) {
+                    programarSiguienteToastVencido();
+                }
             } catch (error) {
                 console.error('No fue posible actualizar las notificaciones.', error);
             } finally {
@@ -338,15 +433,12 @@
 
         consultarRecordatorios();
         window.setInterval(consultarRecordatorios, 60000);
-        window.setTimeout(mostrarSiguienteToastRecordatorio, 45000);
-        window.setInterval(
-            mostrarSiguienteToastRecordatorio,
-            INTERVALO_TOAST_RECORDATORIO
-        );
+        programarSiguienteToastVencido();
 
         document.addEventListener('visibilitychange', function () {
             if (!document.hidden) {
                 consultarRecordatorios();
+                programarSiguienteToastVencido();
             }
         });
     });
