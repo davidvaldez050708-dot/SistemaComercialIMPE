@@ -677,32 +677,87 @@ if ($tipoConvocatoria === 'sindicatos') {
     <span><?= $texto($territorioSeleccionado['nombre'] ?? '') ?> · <?= $texto($etiquetaTipoConvocatoria) ?></span>
 </div>
 
-<section class="dashboard-panel convocatoria-type-heading">
-    <h2 class="panel-title mb-1">
-        Opciones de <?= $texto($etiquetaTipoConvocatoria) ?>
-    </h2>
-    <p class="panel-subtitle mb-0">Selecciona la opción que deseas consultar para este territorio.</p>
-</section>
+<?php if ($tipoConvocatoria === 'titulacion'): ?>
+    <section class="dashboard-panel convocatoria-titulacion-hero">
+        <div class="convocatoria-titulacion-hero-copy">
+            <span>TITULACIÓN</span>
+            <h2>Consulta las convocatorias disponibles</h2>
+            <p>
+                Selecciona la opción que deseas consultar para el territorio de
+                <?= $texto($territorioSeleccionado['nombre'] ?? '') ?>.
+            </p>
+        </div>
 
-<section class="convocatoria-type-cards convocatoria-subtype-cards">
-    <?php foreach ($opcionesSubtipo as $opcionSubtipo): ?>
-        <article class="dashboard-panel convocatoria-type-card">
-            <div class="convocatoria-type-card-icon">
-                <i class="bi <?= $texto($opcionSubtipo['icono']) ?>"></i>
-            </div>
-            <div>
-                <h3><?= $texto($opcionSubtipo['titulo']) ?></h3>
-                <p><?= $texto($opcionSubtipo['descripcion']) ?></p>
-            </div>
-            <a
-                class="btn btn-system-light"
-                href="<?= BASE_URL ?>index.php?controller=convocatoria&action=index&territorio_id=<?= (int)$territorioSeleccionado['id'] ?>&tipo=<?= $texto($tipoConvocatoria) ?>&subtipo=<?= $texto($opcionSubtipo['slug']) ?>">
-                Ver
-                <i class="bi bi-arrow-right"></i>
-            </a>
-        </article>
-    <?php endforeach; ?>
-</section>
+        <div class="convocatoria-titulacion-hero-icon" aria-hidden="true">
+            <i class="bi bi-file-earmark-text"></i>
+        </div>
+    </section>
+
+    <section class="convocatoria-titulacion-cards">
+        <?php foreach ($opcionesSubtipo as $opcionSubtipo): ?>
+            <article class="dashboard-panel convocatoria-titulacion-card">
+                <div class="convocatoria-titulacion-card-icon">
+                    <i class="bi <?= $texto($opcionSubtipo['icono']) ?>"></i>
+                </div>
+
+                <div class="convocatoria-titulacion-card-copy">
+                    <h3><?= $texto($opcionSubtipo['titulo']) ?></h3>
+                    <p><?= $texto($opcionSubtipo['descripcion']) ?></p>
+
+                    <ul class="convocatoria-titulacion-benefits">
+                        <li>
+                            <i class="bi bi-check-circle"></i>
+                            <span>Revisa requisitos</span>
+                        </li>
+                        <li>
+                            <i class="bi bi-check-circle"></i>
+                            <span>Consulta vigencia</span>
+                        </li>
+                        <li>
+                            <i class="bi bi-check-circle"></i>
+                            <span>Descarga información</span>
+                        </li>
+                    </ul>
+                </div>
+
+                <a
+                    class="btn btn-system-light convocatoria-titulacion-card-button"
+                    href="<?= BASE_URL ?>index.php?controller=convocatoria&action=index&territorio_id=<?= (int)$territorioSeleccionado['id'] ?>&tipo=<?= $texto($tipoConvocatoria) ?>&subtipo=<?= $texto($opcionSubtipo['slug']) ?>">
+                    Ver
+                    <i class="bi bi-arrow-right"></i>
+                </a>
+            </article>
+        <?php endforeach; ?>
+    </section>
+<?php else: ?>
+    <section class="dashboard-panel convocatoria-type-heading">
+        <h2 class="panel-title mb-1">
+            Opciones de <?= $texto($etiquetaTipoConvocatoria) ?>
+        </h2>
+        <p class="panel-subtitle mb-0">Selecciona la opción que deseas consultar para este territorio.</p>
+    </section>
+
+    <section class="convocatoria-type-cards convocatoria-subtype-cards">
+        <?php foreach ($opcionesSubtipo as $opcionSubtipo): ?>
+            <article class="dashboard-panel convocatoria-type-card">
+                <div class="convocatoria-type-card-icon">
+                    <i class="bi <?= $texto($opcionSubtipo['icono']) ?>"></i>
+                </div>
+                <div>
+                    <h3><?= $texto($opcionSubtipo['titulo']) ?></h3>
+                    <p><?= $texto($opcionSubtipo['descripcion']) ?></p>
+                </div>
+                <a
+                    class="btn btn-system-light"
+                    href="<?= BASE_URL ?>index.php?controller=convocatoria&action=index&territorio_id=<?= (int)$territorioSeleccionado['id'] ?>&tipo=<?= $texto($tipoConvocatoria) ?>&subtipo=<?= $texto($opcionSubtipo['slug']) ?>">
+                    Ver
+                    <i class="bi bi-arrow-right"></i>
+                </a>
+            </article>
+        <?php endforeach; ?>
+    </section>
+<?php endif; ?>
+
 <?php return; ?>
 <?php endif; ?>
 
