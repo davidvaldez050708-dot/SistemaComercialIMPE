@@ -1377,7 +1377,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
         </div>
         <?php endif; ?>
 
-        <?php if ($modoSeguimiento !== 'analista' || $tipoReporteActual === 'actividad'): ?>
+        <?php if ($modoSeguimiento !== 'analista'): ?>
         <section class="dashboard-panel mb-4" aria-labelledby="grafica-evolucion-actividad-titulo">
             <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
                 <div>
@@ -1538,6 +1538,185 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                 <p class="text-muted mb-0">No se registraron actividades durante el periodo seleccionado.</p>
             <?php endif; ?>
         </section>
+        <?php endif; ?>
+
+        <?php if ($modoSeguimiento === 'analista' && $tipoReporteActual === 'actividad'): ?>
+        <?php
+        $periodosActividadAnalista = is_array($evolucionActividad['periodos'] ?? null)
+            ? $evolucionActividad['periodos']
+            : [];
+        ?>
+        <div class="row g-3 mb-3">
+            <div class="col-xl-7">
+                <section class="dashboard-panel analyst-activity-evolution h-100" aria-labelledby="evolucion-actividad-analista">
+                    <div class="analyst-activity-section-heading">
+                        <div>
+                            <span class="report-eyebrow">EVOLUCIÓN DEL PERIODO</span>
+                            <h3 class="panel-title mb-1" id="evolucion-actividad-analista">Actividad por día</h3>
+                            <p class="page-subtitle mb-0">Volumen de interacciones realizadas por el Analista durante el periodo seleccionado.</p>
+                        </div>
+                        <?php if (!empty($evolucionActividad['comparacion_disponible'])): ?>
+                            <?php $variacionActividadAnalista = (float)($evolucionActividad['variacion'] ?? 0); ?>
+                            <span class="analyst-activity-variation<?= $variacionActividadAnalista < 0 ? ' is-negative' : '' ?>">
+                                <?= $variacionActividadAnalista > 0 ? '+' : '' ?><?= number_format($variacionActividadAnalista, 1) ?>%
+                                <small>vs. periodo anterior</small>
+                            </span>
+                        <?php endif; ?>
+                    </div>
+
+                    <div class="analyst-activity-evolution-summary">
+                        <div>
+                            <span>Actividades</span>
+                            <strong><?= (int)($evolucionActividad['total'] ?? 0) ?></strong>
+                        </div>
+                        <div>
+                            <span>Mayor actividad</span>
+                            <strong><?= $texto($evolucionActividad['mayor']['etiqueta'] ?? '—') ?></strong>
+                            <small><?= (int)($evolucionActividad['mayor']['total'] ?? 0) ?> actividades</small>
+                        </div>
+                        <div>
+                            <span>Menor actividad</span>
+                            <strong><?= $texto($evolucionActividad['menor']['etiqueta'] ?? '—') ?></strong>
+                            <small><?= (int)($evolucionActividad['menor']['total'] ?? 0) ?> actividades</small>
+                        </div>
+                    </div>
+
+                    <?php if (!empty($periodosActividadAnalista)): ?>
+                        <?php
+                        $svgAnchoActividad = 760;
+                        $svgAltoActividad = 220;
+                        $margenIzquierdoActividad = 42;
+                        $margenDerechoActividad = 18;
+                        $margenSuperiorActividad = 18;
+                        $margenInferiorActividad = 42;
+                        $anchoAreaActividad = $svgAnchoActividad - $margenIzquierdoActividad - $margenDerechoActividad;
+                        $altoAreaActividad = $svgAltoActividad - $margenSuperiorActividad - $margenInferiorActividad;
+                        $maxActividadAnalista = max(1, max(array_map(static function ($periodo) {
+                            return (int)($periodo['total'] ?? 0);
+                        }, $periodosActividadAnalista)));
+                        $cantidadPeriodosActividad = count($periodosActividadAnalista);
+                        $pasoXActividad = $cantidadPeriodosActividad > 1
+                            ? $anchoAreaActividad / ($cantidadPeriodosActividad - 1)
+                            : 0;
+                        $puntosLineaActividad = [];
+                        $puntosActividad = [];
+
+                        foreach ($periodosActividadAnalista as $indicePeriodo => $periodoActividad) {
+                            $x = $cantidadPeriodosActividad > 1
+                                ? $margenIzquierdoActividad + ($pasoXActividad * $indicePeriodo)
+                                : $margenIzquierdoActividad + ($anchoAreaActividad / 2);
+                            $totalPeriodo = (int)($periodoActividad['total'] ?? 0);
+                            $y = $margenSuperiorActividad +
+                                $altoAreaActividad -
+                                (($totalPeriodo / $maxActividadAnalista) * $altoAreaActividad);
+                            $puntosLineaActividad[] =
+                                number_format($x, 2, '.', '') . ',' .
+                                number_format($y, 2, '.', '');
+                            $puntosActividad[] = [
+                                'x' => $x,
+                                'y' => $y,
+                                'total' => $totalPeriodo,
+                                'etiqueta' => (string)($periodoActividad['etiqueta'] ?? ''),
+                                'tooltip' => (string)($periodoActividad['tooltip'] ?? '')
+                            ];
+                        }
+                        $saltoEtiquetasActividad = max(1, (int)ceil($cantidadPeriodosActividad / 6));
+                        ?>
+                        <div class="analyst-activity-chart">
+                            <svg viewBox="0 0 <?= $svgAnchoActividad ?> <?= $svgAltoActividad ?>" width="100%" role="img" aria-label="Evolución de actividad">
+                                <?php for ($nivel = 0; $nivel <= 3; $nivel++): ?>
+                                    <?php
+                                    $valorNivel = (int)round($maxActividadAnalista * (1 - ($nivel / 3)));
+                                    $yNivel = $margenSuperiorActividad + (($altoAreaActividad / 3) * $nivel);
+                                    ?>
+                                    <line
+                                        x1="<?= $margenIzquierdoActividad ?>"
+                                        y1="<?= number_format($yNivel, 2, '.', '') ?>"
+                                        x2="<?= $svgAnchoActividad - $margenDerechoActividad ?>"
+                                        y2="<?= number_format($yNivel, 2, '.', '') ?>"
+                                        class="analyst-activity-chart-grid" />
+                                    <text
+                                        x="<?= $margenIzquierdoActividad - 8 ?>"
+                                        y="<?= number_format($yNivel + 4, 2, '.', '') ?>"
+                                        text-anchor="end"
+                                        class="analyst-activity-chart-axis">
+                                        <?= $valorNivel ?>
+                                    </text>
+                                <?php endfor; ?>
+                                <polyline
+                                    points="<?= $texto(implode(' ', $puntosLineaActividad)) ?>"
+                                    fill="none"
+                                    class="analyst-activity-chart-line" />
+                                <?php foreach ($puntosActividad as $indicePunto => $punto): ?>
+                                    <circle
+                                        cx="<?= number_format($punto['x'], 2, '.', '') ?>"
+                                        cy="<?= number_format($punto['y'], 2, '.', '') ?>"
+                                        r="4.5"
+                                        class="analyst-activity-chart-point">
+                                        <title><?= $texto($punto['tooltip']) ?> · <?= (int)$punto['total'] ?> actividades</title>
+                                    </circle>
+                                    <?php if ($indicePunto % $saltoEtiquetasActividad === 0 || $indicePunto === $cantidadPeriodosActividad - 1): ?>
+                                        <text
+                                            x="<?= number_format($punto['x'], 2, '.', '') ?>"
+                                            y="<?= $svgAltoActividad - 14 ?>"
+                                            text-anchor="middle"
+                                            class="analyst-activity-chart-axis">
+                                            <?= $texto($punto['etiqueta']) ?>
+                                        </text>
+                                    <?php endif; ?>
+                                <?php endforeach; ?>
+                            </svg>
+                        </div>
+                    <?php else: ?>
+                        <div class="analyst-activity-empty">
+                            <i class="bi bi-activity"></i>
+                            <span>No hay actividad registrada durante el periodo seleccionado.</span>
+                        </div>
+                    <?php endif; ?>
+                </section>
+            </div>
+
+            <div class="col-xl-5">
+                <section class="dashboard-panel analyst-activity-institutions h-100" aria-labelledby="instituciones-actividad-analista">
+                    <div class="analyst-activity-section-heading">
+                        <div>
+                            <span class="report-eyebrow">COBERTURA DE TRABAJO</span>
+                            <h3 class="panel-title mb-1" id="instituciones-actividad-analista">Instituciones con mayor actividad</h3>
+                            <p class="page-subtitle mb-0">Dónde se concentró el trabajo registrado durante el periodo.</p>
+                        </div>
+                    </div>
+
+                    <?php if (!empty($institucionesActividadReporte)): ?>
+                        <div class="analyst-activity-institution-list">
+                            <?php foreach ($institucionesActividadReporte as $institucionActividad): ?>
+                                <article>
+                                    <div class="analyst-activity-institution-main">
+                                        <strong><?= $texto($institucionActividad['nombre_entidad'] ?? 'Institución') ?></strong>
+                                        <span><?= $texto(trim((string)($institucionActividad['municipio'] ?? '')) !== '' ? $institucionActividad['municipio'] : 'Ubicación no disponible') ?></span>
+                                    </div>
+                                    <div class="analyst-activity-institution-total">
+                                        <strong><?= (int)($institucionActividad['interacciones'] ?? 0) ?></strong>
+                                        <span>interacciones</span>
+                                    </div>
+                                    <div class="analyst-activity-institution-detail">
+                                        <span><b><?= (int)($institucionActividad['llamadas'] ?? 0) ?></b> llamadas</span>
+                                        <span><b><?= (int)($institucionActividad['con_contacto'] ?? 0) ?></b> contacto</span>
+                                        <?php if ((int)($institucionActividad['efectivas'] ?? 0) > 0): ?>
+                                            <span class="is-effective"><b><?= (int)$institucionActividad['efectivas'] ?></b> efectivas</span>
+                                        <?php endif; ?>
+                                    </div>
+                                </article>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php else: ?>
+                        <div class="analyst-activity-empty">
+                            <i class="bi bi-buildings"></i>
+                            <span>No hay instituciones con actividad dentro del periodo.</span>
+                        </div>
+                    <?php endif; ?>
+                </section>
+            </div>
+        </div>
         <?php endif; ?>
 
         <?php if ($modoSeguimiento === 'analista' && $tipoReporteActual === 'actividad'): ?>
