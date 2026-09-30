@@ -87,9 +87,13 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
             'institucion' => 'Reporte de institución'
         ][$tipoReporte] ?? 'Reporte de Seguimiento de Vinculación';
 
+        $periodoEncabezado = $individual
+            ? 'Histórico disponible'
+            : (string)($filtros['Periodo'] ?? 'Todos');
+
         $html = '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><style>' . $this->css() . '</style></head><body>';
         $html .= '<div class="top-rule"></div>';
-        $html .= $this->encabezado($fecha, $generadoPor, $generadoPorRol, (string)($filtros['Periodo'] ?? 'Todos'), $tituloReporte);
+        $html .= $this->encabezado($fecha, $generadoPor, $generadoPorRol, $periodoEncabezado, $tituloReporte);
         $html .= $this->contexto($filtros, $responsable, count($seguimientos), $individual);
 
         $total = (int)($resumen['total'] ?? count($seguimientos));
@@ -256,8 +260,8 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
         $totalPasos = max($pasoActual, (int)($flujo['total_pasos'] ?? 13));
         $paso = 'Paso ' . $pasoActual . ' de ' . $totalPasos;
 
-        if ($pasoActual >= $totalPasos && $accion === '') {
-            $accion = 'Sin acción pendiente para Analista';
+        if ($pasoActual >= $totalPasos) {
+            $accion = 'Continuidad con Cuenta Clave';
         } elseif ($accion === '') {
             $accion = 'Sin acción pendiente registrada';
         }
@@ -557,8 +561,13 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
             $titulo = mb_strtolower(trim((string)($presentacion['titulo'] ?? '')), 'UTF-8');
             $resultado = strtoupper(trim((string)($correo['resultado'] ?? '')));
 
-            if ($resultado === 'CORREO_ENVIADO') {
-                return true;
+            $notas = mb_strtolower(trim((string)($correo['notas'] ?? '')), 'UTF-8');
+            if (
+                strpos($notas, 'persona atendió:') === 0 ||
+                strpos($notas, 'persona atendio:') === 0 ||
+                strpos($notas, 'respuesta recibida') === 0
+            ) {
+                return false;
             }
 
             foreach ([
@@ -574,7 +583,7 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
                 }
             }
 
-            return false;
+            return $resultado === 'CORREO_ENVIADO' && $titulo === 'correo';
         }));
 
         $hayPost = trim((string)($post['respuesta_at'] ?? '')) !== '' ||
