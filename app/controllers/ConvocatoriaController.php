@@ -344,6 +344,17 @@ class ConvocatoriaController
 
         if (
             $estado === 1 &&
+            !empty($convocatoria['fecha_inicio']) &&
+            $convocatoria['fecha_inicio'] > date('Y-m-d')
+        ) {
+            $_SESSION['error_convocatoria'] =
+                'La convocatoria está programada y se activará automáticamente el ' .
+                date('d/m/Y', strtotime((string)$convocatoria['fecha_inicio'])) . '.';
+            $this->redirigir($territorioId, $tipoConvocatoria, $subtipoConvocatoria);
+        }
+
+        if (
+            $estado === 1 &&
             !empty($convocatoria['fecha_termino']) &&
             $convocatoria['fecha_termino'] < date('Y-m-d')
         ) {
