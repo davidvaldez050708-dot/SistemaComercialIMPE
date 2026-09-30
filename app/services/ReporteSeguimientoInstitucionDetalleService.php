@@ -43,8 +43,10 @@ class ReporteSeguimientoInstitucionDetalleService
         }
 
         $interaccionesHumanas = [];
+        $interaccionesTodas = [];
         $interaccionesPorDia = [];
         $correosRecientes = [];
+        $correosTodos = [];
         $oficios = [];
         $observaciones = [];
 
@@ -67,6 +69,20 @@ class ReporteSeguimientoInstitucionDetalleService
 
         try {
             $presentadorActividad = $presentadorActividad ?? new SeguimientoActividadPresentacionService();
+            $interaccionesTodas = $this->obtenerInteraccionesHumanasTodas($seguimientoId);
+            $interaccionesTodas = array_map(
+                static function (array $interaccion) use ($presentadorActividad) {
+                    $interaccion['presentacion'] = $presentadorActividad->presentar($interaccion);
+                    return $interaccion;
+                },
+                $interaccionesTodas
+            );
+        } catch (Throwable $error) {
+            error_log('[reporte_institucion_interacciones_todas] ' . $error->getMessage());
+        }
+
+        try {
+            $presentadorActividad = $presentadorActividad ?? new SeguimientoActividadPresentacionService();
             $correosRecientes = $this->obtenerCorreosRecientes($seguimientoId, 4);
             $correosRecientes = array_map(
                 static function (array $interaccion) use ($presentadorActividad) {
@@ -77,6 +93,20 @@ class ReporteSeguimientoInstitucionDetalleService
             );
         } catch (Throwable $error) {
             error_log('[reporte_institucion_correos] ' . $error->getMessage());
+        }
+
+        try {
+            $presentadorActividad = $presentadorActividad ?? new SeguimientoActividadPresentacionService();
+            $correosTodos = $this->obtenerCorreosTodos($seguimientoId);
+            $correosTodos = array_map(
+                static function (array $interaccion) use ($presentadorActividad) {
+                    $interaccion['presentacion'] = $presentadorActividad->presentar($interaccion);
+                    return $interaccion;
+                },
+                $correosTodos
+            );
+        } catch (Throwable $error) {
+            error_log('[reporte_institucion_correos_todos] ' . $error->getMessage());
         }
 
         try {
@@ -113,8 +143,10 @@ class ReporteSeguimientoInstitucionDetalleService
             'contacto' => $this->contacto($seguimiento),
             'ultima_interaccion_humana' => $interaccionesHumanas[0] ?? null,
             'interacciones_recientes' => $interaccionesHumanas,
+            'interacciones_todas' => $interaccionesTodas,
             'interacciones_por_dia' => $interaccionesPorDia,
             'correos_recientes' => $correosRecientes,
+            'correos_todos' => $correosTodos,
             'oficios' => $oficios,
             'observaciones' => $observaciones,
             'reuniones' => $reuniones,
@@ -208,6 +240,37 @@ class ReporteSeguimientoInstitucionDetalleService
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
 
+    private function obtenerInteraccionesHumanasTodas(int $seguimientoId): array
+    {
+        $sql = "SELECT
+                    interacciones.id,
+                    interacciones.seguimiento_id,
+                    interacciones.usuario_id,
+                    interacciones.canal,
+                    interacciones.resultado,
+                    interacciones.fecha_inicio,
+                    interacciones.notas,
+                    interacciones.telefono_destino,
+                    interacciones.correo_destino,
+                    interacciones.duracion_segundos,
+                    interacciones.proveedor_externo,
+                    interacciones.id_externo,
+                    usuarios.nombre,
+                    usuarios.apellidos
+                FROM interacciones_vinculacion interacciones
+                INNER JOIN usuarios
+                    ON usuarios.id = interacciones.usuario_id
+                WHERE interacciones.seguimiento_id = ?
+                  AND UPPER(TRIM(COALESCE(interacciones.canal, ''))) <> 'SISTEMA'
+                ORDER BY interacciones.fecha_inicio DESC, interacciones.id DESC";
+
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param('i', $seguimientoId);
+        $stmt->execute();
+
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
     private function obtenerInteraccionesPorDia(int $seguimientoId): array
     {
         $sql = "SELECT
@@ -239,6 +302,32 @@ class ReporteSeguimientoInstitucionDetalleService
                 'total' => (int)($fila['total'] ?? 0)
             ];
         }, $filas);
+    }
+
+    private function obtenerCorreosTodos(int $seguimientoId): array
+    {
+        $sql = "SELECT
+                    interacciones.id,
+                    interacciones.seguimiento_id,
+                    interacciones.usuario_id,
+                    interacciones.canal,
+                    interacciones.resultado,
+                    interacciones.fecha_inicio,
+                    interacciones.notas,
+                    usuarios.nombre,
+                    usuarios.apellidos
+                FROM interacciones_vinculacion interacciones
+                INNER JOIN usuarios
+                    ON usuarios.id = interacciones.usuario_id
+                WHERE interacciones.seguimiento_id = ?
+                  AND UPPER(TRIM(COALESCE(interacciones.canal, ''))) = 'CORREO'
+                ORDER BY interacciones.fecha_inicio DESC, interacciones.id DESC";
+
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param('i', $seguimientoId);
+        $stmt->execute();
+
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
 
     private function obtenerCorreosRecientes(
