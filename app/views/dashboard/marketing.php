@@ -165,9 +165,29 @@ $porcentajeSinConvocatoria = $totalEstadosCobertura > 0
 ?>
 
 <div class="marketing-bottom-grid mt-4">
-<section class="dashboard-panel marketing-publications-chart">
-    <div class="marketing-publications-heading">
-        <h2>Publicaciones totales</h2>
+<section class="dashboard-panel marketing-publications-by-type">
+    <?php
+    $publicacionesPorTipoMarketing = is_array($publicacionesPorTipoMarketing ?? null)
+        ? $publicacionesPorTipoMarketing
+        : [];
+
+    $tiposPublicacionesMarketing = [
+        'bachillerato' => [
+            'titulo' => 'Bachillerato',
+            'icono' => 'bi-book'
+        ],
+        'titulacion' => [
+            'titulo' => 'Titulación',
+            'icono' => 'bi-mortarboard'
+        ]
+    ];
+    ?>
+
+    <div class="marketing-publications-types-heading">
+        <div>
+            <span class="analyst-section-kicker">PUBLICACIONES POR TIPO</span>
+            <h2>Total de publicaciones según el tipo de convocatoria.</h2>
+        </div>
 
         <form method="GET" action="<?= BASE_URL ?>index.php" class="marketing-publications-filter">
             <input type="hidden" name="controller" value="home">
@@ -184,21 +204,64 @@ $porcentajeSinConvocatoria = $totalEstadosCobertura > 0
         </form>
     </div>
 
-    <?php if ($totalPublicacionesPeriodo > 0): ?>
-        <div class="marketing-publications-plot">
-            <div class="marketing-publications-column">
-                <strong><?= $totalPublicacionesPeriodo ?></strong>
-                <div class="marketing-publications-bar-space" aria-hidden="true">
-                    <span class="marketing-publications-bar" style="height: 100%;"></span>
+    <div class="marketing-publications-type-grid">
+        <?php foreach ($tiposPublicacionesMarketing as $tipoClave => $tipoConfig): ?>
+            <?php
+            $datosTipo = is_array($publicacionesPorTipoMarketing[$tipoClave] ?? null)
+                ? $publicacionesPorTipoMarketing[$tipoClave]
+                : [];
+            $mesesTipo = is_array($datosTipo['meses'] ?? null)
+                ? $datosTipo['meses']
+                : [];
+            $valoresMes = array_map(
+                static fn($mes) => (int)($mes['total'] ?? 0),
+                $mesesTipo
+            );
+            $maxValorMes = !empty($valoresMes) ? max($valoresMes) : 0;
+            $escalaMes = max(1, $maxValorMes);
+            ?>
+
+            <article class="marketing-publication-type-card">
+                <div class="marketing-publication-type-header">
+                    <span class="marketing-publication-type-icon">
+                        <i class="bi <?= htmlspecialchars($tipoConfig['icono'], ENT_QUOTES, 'UTF-8') ?>"></i>
+                    </span>
+                    <strong><?= htmlspecialchars($tipoConfig['titulo'], ENT_QUOTES, 'UTF-8') ?></strong>
                 </div>
-                <span class="marketing-publications-state">Publicaciones</span>
-            </div>
-        </div>
-    <?php else: ?>
-        <div class="marketing-publications-empty">
-            No hubo publicaciones en los últimos <?= $periodoPublicaciones ?> días.
-        </div>
-    <?php endif; ?>
+
+                <div class="marketing-publication-type-body">
+                    <div class="marketing-publication-type-total">
+                        <strong><?= (int)($datosTipo['total'] ?? 0) ?></strong>
+                        <span>publicaciones</span>
+                    </div>
+
+                    <div class="marketing-publication-type-chart">
+                        <?php foreach ($mesesTipo as $mes): ?>
+                            <?php
+                            $cantidadMes = (int)($mes['total'] ?? 0);
+                            $alturaBarra = $cantidadMes > 0
+                                ? max(18, (int)round(($cantidadMes / $escalaMes) * 100))
+                                : 10;
+                            $esDestacado = $maxValorMes > 0 && $cantidadMes === $maxValorMes;
+                            ?>
+                            <div class="marketing-publication-type-month">
+                                <strong><?= $cantidadMes ?></strong>
+                                <div class="marketing-publication-type-bar-space" aria-hidden="true">
+                                    <span
+                                        class="<?= $esDestacado ? 'is-highlighted' : '' ?>"
+                                        style="height: <?= $alturaBarra ?>%;">
+                                    </span>
+                                </div>
+                                <small>
+                                    <?= htmlspecialchars((string)($mes['label'] ?? ''), ENT_QUOTES, 'UTF-8') ?>
+                                </small>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            </article>
+        <?php endforeach; ?>
+    </div>
 </section>
 
     <section class="dashboard-panel marketing-pending-coverage">
