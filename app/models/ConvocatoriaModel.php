@@ -471,6 +471,105 @@ class ConvocatoriaModel
         return (int)($fila['publicaciones'] ?? 0);
     }
 
+    public function obtenerPublicacionesPorTipoDashboard($dias = 30)
+    {
+        $diasPermitidos = [7, 30, 90];
+        $dias = in_array((int)$dias, $diasPermitidos, true) ? (int)$dias : 30;
+
+        $mesesNombres = [
+            '01' => 'Ene',
+            '02' => 'Feb',
+            '03' => 'Mar',
+            '04' => 'Abr',
+            '05' => 'May',
+            '06' => 'Jun',
+            '07' => 'Jul',
+            '08' => 'Ago',
+            '09' => 'Sep',
+            '10' => 'Oct',
+            '11' => 'Nov',
+            '12' => 'Dic'
+        ];
+
+        $mesActual = new DateTimeImmutable('first day of this month');
+        $mesesBase = [];
+
+        for ($i = 3; $i >= 0; $i--) {
+            $fechaMes = $mesActual->modify('-' . $i . ' months');
+            $clave = $fechaMes->format('Y-m');
+            $numeroMes = $fechaMes->format('m');
+
+            $mesesBase[$clave] = [
+                'periodo' => $clave,
+                'label' => $mesesNombres[$numeroMes] ?? $numeroMes,
+                'total' => 0
+            ];
+        }
+
+        $salida = [
+            'bachillerato' => [
+                'total' => 0,
+                'meses' => array_values($mesesBase)
+            ],
+            'titulacion' => [
+                'total' => 0,
+                'meses' => array_values($mesesBase)
+            ]
+        ];
+
+        $sqlTotales = "SELECT
+                           tipo_convocatoria,
+                           COUNT(*) AS total
+                       FROM convocatorias
+                       WHERE created_at >= DATE_SUB(NOW(), INTERVAL " . $dias . " DAY)
+                         AND tipo_convocatoria IN ('bachillerato', 'titulacion')
+                       GROUP BY tipo_convocatoria";
+
+        $resultadoTotales = $this->connection->query($sqlTotales);
+
+        while ($fila = $resultadoTotales->fetch_assoc()) {
+            $tipo = (string)($fila['tipo_convocatoria'] ?? '');
+
+            if (isset($salida[$tipo])) {
+                $salida[$tipo]['total'] = (int)($fila['total'] ?? 0);
+            }
+        }
+
+        $sqlMeses = "SELECT
+                         tipo_convocatoria,
+                         DATE_FORMAT(created_at, '%Y-%m') AS periodo,
+                         COUNT(*) AS total
+                     FROM convocatorias
+                     WHERE created_at >= DATE_FORMAT(
+                         DATE_SUB(CURDATE(), INTERVAL 3 MONTH),
+                         '%Y-%m-01'
+                     )
+                       AND tipo_convocatoria IN ('bachillerato', 'titulacion')
+                     GROUP BY tipo_convocatoria, DATE_FORMAT(created_at, '%Y-%m')
+                     ORDER BY periodo ASC";
+
+        $resultadoMeses = $this->connection->query($sqlMeses);
+
+        $indicesMeses = [];
+        foreach (array_keys($mesesBase) as $indice => $periodo) {
+            $indicesMeses[$periodo] = $indice;
+        }
+
+        while ($fila = $resultadoMeses->fetch_assoc()) {
+            $tipo = (string)($fila['tipo_convocatoria'] ?? '');
+            $periodo = (string)($fila['periodo'] ?? '');
+
+            if (!isset($salida[$tipo], $indicesMeses[$periodo])) {
+                continue;
+            }
+
+            $indiceMes = $indicesMeses[$periodo];
+            $salida[$tipo]['meses'][$indiceMes]['total'] = (int)($fila['total'] ?? 0);
+        }
+
+        return $salida;
+    }
+
     private function obtenerEstadosIds($convocatoriaId)
     {
         $sql = "SELECT estado_id
