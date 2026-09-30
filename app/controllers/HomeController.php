@@ -119,6 +119,8 @@ class HomeController
 
                     $totalPublicacionesPeriodo = $modeloConvocatoria
                         ->obtenerPublicacionesPorPeriodoDashboard($periodoPublicaciones);
+                    $publicacionesPorTipoMarketing = $modeloConvocatoria
+                        ->obtenerPublicacionesPorTipoDashboard($periodoPublicaciones);
 
                     $vistaPanel = __DIR__ . '/../views/dashboard/marketing.php';
                     break;
