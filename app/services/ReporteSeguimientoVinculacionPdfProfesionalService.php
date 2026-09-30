@@ -111,12 +111,9 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
             $html .= $this->rutaIndividual($flujo, $detalleInstitucion);
             $html .= '</div>';
 
-            $html .= '<div class="page-break"></div>';
             $html .= '<div class="individual-page individual-page-two">';
-            $html .= '<div class="continuation-head"><span>' .
-                $this->e((string)($seguimientos[0]['nombre_entidad'] ?? 'Institución')) .
-                '</span><strong>Evidencia y continuidad</strong></div>';
             $html .= $this->contactoIndividual($analitica, $detalleInstitucion);
+            $html .= $this->actividadDiariaIndividual($detalleInstitucion);
             $html .= $this->reunionesIndividual($detalleInstitucion);
             $html .= $this->documentacionIndividual($detalleInstitucion);
             $html .= $this->historialIndividual($detalleInstitucion);
@@ -416,7 +413,7 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
         $html .= '<th>Fecha</th><th>Interacción</th><th>Resultado</th><th>Resumen</th><th>Responsable</th>';
         $html .= '</tr></thead><tbody>';
 
-        foreach (array_slice($interacciones, 0, 6) as $interaccion) {
+        foreach (array_slice($interacciones, 0, 5) as $interaccion) {
             $responsable = trim(
                 (string)($interaccion['nombre'] ?? '') . ' ' .
                 (string)($interaccion['apellidos'] ?? '')
@@ -488,6 +485,95 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
         }
 
         return $html . '</tbody></table></section>';
+    }
+
+    private function actividadDiariaIndividual(array $detalle): string
+    {
+        $periodos = is_array($detalle['interacciones_por_dia'] ?? null)
+            ? $detalle['interacciones_por_dia']
+            : [];
+
+        if (empty($periodos)) {
+            return '';
+        }
+
+        $total = array_sum(array_map(static function ($periodo) {
+            return (int)($periodo['total'] ?? 0);
+        }, $periodos));
+
+        $html = '<section class="report-section keep daily-activity">' . $this->titulo('Interacciones por día');
+        $html .= '<div class="daily-chart-caption"><strong>' . $total .
+            ' interacciones registradas</strong><span>Distribución diaria de la actividad humana de esta institución.</span></div>';
+        $html .= '<img class="daily-chart" src="' .
+            $this->graficaLineaDiariaDataUri($periodos) .
+            '" alt="Interacciones por día">';
+        return $html . '</section>';
+    }
+
+    private function graficaLineaDiariaDataUri(array $periodos): string
+    {
+        $periodos = array_values(array_slice($periodos, -14));
+        $width = 960;
+        $height = 170;
+        $left = 42;
+        $right = 18;
+        $top = 16;
+        $bottom = 32;
+        $plotW = $width - $left - $right;
+        $plotH = $height - $top - $bottom;
+
+        $values = array_map(static function ($periodo) {
+            return max(0, (int)($periodo['total'] ?? 0));
+        }, $periodos);
+
+        $max = max(1, max($values));
+        $max = max(4, (int)(ceil($max / 2) * 2));
+        $count = count($periodos);
+        $stepX = $count > 1 ? $plotW / ($count - 1) : 0;
+        $points = [];
+        $grid = '';
+        $labels = '';
+
+        for ($i = 0; $i <= 4; $i++) {
+            $y = $top + ($plotH * $i / 4);
+            $value = (int)round($max * (1 - ($i / 4)));
+            $grid .= '<line x1="' . $left . '" y1="' . $y . '" x2="' . ($width - $right) .
+                '" y2="' . $y . '" stroke="#E5E9EF" stroke-width="1"/>';
+            $grid .= '<text x="' . ($left - 8) . '" y="' . ($y + 3) .
+                '" text-anchor="end" font-size="9" fill="#6D7480">' . $value . '</text>';
+        }
+
+        foreach ($periodos as $i => $periodo) {
+            $x = $count > 1 ? $left + ($stepX * $i) : $left + ($plotW / 2);
+            $total = max(0, (int)($periodo['total'] ?? 0));
+            $y = $top + $plotH - (($total / $max) * $plotH);
+            $points[] = [$x, $y, $total];
+            $labels .= '<text x="' . $x . '" y="' . ($height - 10) .
+                '" text-anchor="middle" font-size="8.5" fill="#6D7480">' .
+                $this->eSvg((string)($periodo['etiqueta'] ?? '')) . '</text>';
+        }
+
+        $polyline = implode(' ', array_map(static function ($point) {
+            return number_format($point[0], 1, '.', '') . ',' . number_format($point[1], 1, '.', '');
+        }, $points));
+
+        $dots = '';
+        foreach ($points as $point) {
+            $dots .= '<circle cx="' . $point[0] . '" cy="' . $point[1] .
+                '" r="4" fill="#273A8A" stroke="#FFFFFF" stroke-width="2"/>';
+            $dots .= '<text x="' . $point[0] . '" y="' . max(11, $point[1] - 8) .
+                '" text-anchor="middle" font-size="9" font-weight="700" fill="#16223B">' .
+                $point[2] . '</text>';
+        }
+
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' . $width . '" height="' . $height .
+            '" viewBox="0 0 ' . $width . ' ' . $height . '">' .
+            '<rect width="100%" height="100%" fill="#FFFFFF"/>' . $grid .
+            '<polyline points="' . $polyline .
+            '" fill="none" stroke="#273A8A" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>' .
+            $dots . $labels . '</svg>';
+
+        return 'data:image/svg+xml;base64,' . base64_encode($svg);
     }
 
     private function reunionesIndividual(array $detalle): string
@@ -1212,13 +1298,15 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
             '.status{display:inline-block;background:#EDF2FA;color:#273A8A;padding:2px 5px;font-weight:700;font-size:5.5pt}.detail-section .section-title{page-break-after:avoid}' .
             '.operational{width:100%;table-layout:fixed;border-collapse:collapse;background:#F8FAFC;border:1px solid #E5E9EF}.operational td{width:33.33%;padding:8px;border-right:1px solid #E5E9EF}.operational td:last-child{border-right:0}.operational strong{display:block;font-size:7.2pt}' .
             '.empty{border-left:3px solid #E5E9EF;background:#F8FAFC;padding:8px 10px;color:#6D7480;font-size:6.4pt}.empty.compact{padding:6px 8px}.flow-note{margin-top:7px;padding:7px 9px;background:#F8FAFC;border-left:2px solid #D3DCE8;color:#4F5968;font-size:6.3pt;line-height:1.4}.individual-metrics .metric{background:#F7F9FC}.individual-metrics .metric strong{font-size:11.5pt}.profile-table{width:100%;border-collapse:collapse;border:1px solid #D7DFEA}.profile-table td{padding:6px 7px;border-bottom:1px solid #E5E9EF;vertical-align:top}.profile-label{width:16%;background:#F7F9FC;color:#6D7480;font-size:5.8pt}.profile-value{width:34%;font-size:6.6pt;font-weight:600;color:#16223B}.route-progress{height:7px;background:#E7ECF3;margin:2px 2px 8px;overflow:hidden}.route-fill{height:7px;background:#273A8A}.route-milestones{width:100%;table-layout:fixed;border-collapse:collapse}.route-milestones td{text-align:center;color:#8B94A2;font-size:5.4pt;padding:3px 3px;vertical-align:top}.route-milestones .route-number{display:inline-block;min-width:19px;padding:4px 1px 3px;margin:0 auto 4px;border-radius:11px;background:#E7ECF3;color:#6D7480;font-size:6.1pt;line-height:1;text-align:center}.route-milestones td span{display:block}.route-milestones td.done{color:#273A8A;font-weight:700}.route-milestones td.done .route-number{background:#273A8A;color:#FFFFFF}.route-milestones td.current .route-number{background:#0A8F7A;color:#FFFFFF}.documentation-section{page-break-inside:avoid}.history-table th:first-child{width:15%}.history-table th:nth-child(2){width:10%}.history-table th:nth-child(3){width:15%}.history-table th:nth-child(4){width:42%}.history-table th:nth-child(5){width:18%}.docs-table th:first-child{width:16%}.docs-table th:nth-child(2){width:30%}.docs-table th:nth-child(3){width:14%}.docs-table th:nth-child(4),.docs-table th:nth-child(5){width:20%}.formal-timeline{width:100%;border-collapse:collapse;margin-top:7px;background:#F8FAFC}.formal-timeline td{padding:5px 7px;border-bottom:1px solid #E5E9EF;vertical-align:top}.formal-timeline .formal-dot{width:12px;color:#0A8F7A;padding-right:0}.formal-timeline strong{display:block;font-size:6.5pt}.formal-timeline span{display:block;color:#6D7480;font-size:5.8pt;margin-top:1px}.observation{border:1px solid #D7DFEA;background:#FFFFFF;padding:7px 8px;margin-bottom:5px;page-break-inside:avoid}.observation strong{font-size:6.4pt;color:#16223B}.observation span{float:right;color:#8B94A2;font-size:5.5pt}.observation p{margin:4px 0 0;color:#4F5968;font-size:6.2pt;line-height:1.4}' .
-            '.page-break{page-break-before:always;height:0}.individual-page{page-break-inside:auto}.individual-page .report-section{margin-bottom:10px}.individual-page .section-title{margin-bottom:7px}.individual-page .section-title h2{font-size:9.6pt}' .
+            '.page-break{display:none}.individual-page{page-break-inside:auto}.individual-page .report-section{margin-bottom:10px}.individual-page .section-title{margin-bottom:7px}.individual-page .section-title h2{font-size:9.6pt}' .
             '.individual-page-two{padding-top:1px}.continuation-head{border-bottom:2px solid #273A8A;padding:0 0 7px;margin:0 0 10px;page-break-after:avoid}.continuation-head span{display:block;color:#6D7480;font-size:6.1pt;margin-bottom:2px}.continuation-head strong{display:block;color:#16223B;font-size:11pt;font-weight:800}' .
             '.executive-metrics{width:100%;table-layout:fixed;border-collapse:separate;border-spacing:4px 0}.executive-metrics td{width:20%;border:1px solid #D7DFEA;background:#F8FAFC;padding:7px 8px}.executive-metrics span{display:block;color:#6D7480;font-size:5.7pt;margin-bottom:2px}.executive-metrics strong{display:block;color:#16223B;font-size:9.2pt;font-weight:800}.decision-note{margin-top:5px;padding:6px 8px;background:#F8FAFC;border-left:2px solid #273A8A;color:#4F5968;font-size:6pt}' .
             '.route-summary{width:100%;border-collapse:collapse;margin-bottom:4px}.route-summary td{vertical-align:bottom}.route-summary span{display:block;color:#6D7480;font-size:5.6pt}.route-summary strong{display:block;color:#16223B;font-size:7.2pt}.route-summary .route-percent{text-align:right;color:#273A8A;font-size:11.5pt;font-weight:800}.route-executive{width:100%;table-layout:fixed;border-collapse:separate;border-spacing:4px 0;margin-top:6px}.route-executive td{width:20%;padding:6px;border:1px solid #D7DFEA;vertical-align:top}.route-executive .route-check{display:inline-block;width:16px;height:16px;line-height:16px;text-align:center;border-radius:8px;background:#E7ECF3;color:#6D7480;font-size:7pt;margin-bottom:3px}.route-executive td.done .route-check{background:#E5F5F1;color:#0A8F7A}.route-executive td.current .route-check{background:#EDF2FA;color:#273A8A}.route-executive strong{display:block;color:#16223B;font-size:6pt;line-height:1.25}.route-executive small{display:block;color:#6D7480;font-size:5.1pt;line-height:1.25;margin-top:2px}' .
             '.meeting-executive,.documentation-executive,.individual-contact,.history-section{page-break-inside:avoid}.meeting-grid{width:100%;table-layout:fixed;border-collapse:separate;border-spacing:4px 0}.meeting-grid td{width:50%;padding:7px 8px;border:1px solid #D7DFEA;background:#F8FAFC;vertical-align:top}.meeting-grid span,.meeting-note span,.document-summary span,.formal-answer span,.email-title{display:block;color:#6D7480;font-size:5.7pt;margin-bottom:2px}.meeting-grid strong,.document-summary strong,.formal-answer strong{display:block;color:#16223B;font-size:7pt}.meeting-grid small,.document-summary small,.formal-answer small{display:block;color:#6D7480;font-size:5.4pt;margin-top:2px}.meeting-note{margin-top:5px;padding:6px 8px;border:1px solid #E5E9EF}.meeting-note.key{background:#F8FAFC;border-left:2px solid #0A8F7A}.meeting-note p,.formal-answer p{margin:2px 0 0;color:#4F5968;font-size:5.9pt;line-height:1.35}' .
             '.document-summary{width:100%;table-layout:fixed;border-collapse:separate;border-spacing:4px 0;margin-bottom:5px}.document-summary td{width:50%;padding:7px 8px;border:1px solid #D7DFEA;background:#F8FAFC;vertical-align:top}.formal-answer{padding:6px 8px;border:1px solid #E5E9EF;margin-bottom:5px}.email-block{padding-top:2px}.email-title{font-weight:700;color:#16223B;margin-bottom:3px}.email-row{display:table;width:100%;table-layout:fixed;border-top:1px solid #E5E9EF}.email-row>span,.email-row>strong{display:table-cell;vertical-align:top;padding:4px 5px}.email-row>span{width:24%;color:#6D7480;font-size:5.4pt}.email-row>strong{width:76%;color:#16223B;font-size:5.8pt;font-weight:600}.milestone-line{display:table;width:100%;table-layout:fixed;margin-top:5px;background:#F8FAFC}.milestone-item{display:table-cell;width:33.33%;padding:5px 6px;vertical-align:top;border-right:1px solid #E5E9EF}.milestone-item:last-child{border-right:0}.milestone-item .formal-dot{display:inline-block;color:#0A8F7A;margin-right:4px}.milestone-item>div{display:inline-block;vertical-align:top;max-width:88%}.milestone-item strong{display:block;font-size:5.8pt;color:#16223B}.milestone-item small{display:block;font-size:5.1pt;color:#6D7480;margin-top:1px}' .
+            '.daily-activity{page-break-inside:avoid}.daily-chart-caption{display:table;width:100%;margin-bottom:4px}.daily-chart-caption strong,.daily-chart-caption span{display:table-cell;vertical-align:bottom}.daily-chart-caption strong{width:32%;color:#16223B;font-size:6.2pt}.daily-chart-caption span{color:#6D7480;font-size:5.5pt;text-align:right}.daily-chart{display:block;width:100%;height:auto;border:1px solid #E5E9EF;background:#FFFFFF;padding:3px}.individual-page-two{page-break-inside:auto}.continuation-head{display:none}' .
             '.individual-page-two .history-table{font-size:5.7pt}.individual-page-two .history-table th,.individual-page-two .history-table td{padding:4.5px 5px}.individual-page-two .history-table th:first-child{width:15%}.individual-page-two .history-table th:nth-child(2){width:15%}.individual-page-two .history-table th:nth-child(3){width:17%}.individual-page-two .history-table th:nth-child(4){width:35%}.individual-page-two .history-table th:nth-child(5){width:18%}';
     }
 
 }
+
