@@ -1383,18 +1383,28 @@ class SeguimientoVinculacionReporteController
                     return false;
                 }
 
-                if (
-                    $filtros['estado_seguimiento'] !== '' &&
-                    (string)($seguimiento['estado_seguimiento'] ?? '') !== $filtros['estado_seguimiento']
-                ) {
-                    return false;
+                if ($filtros['estado_seguimiento'] !== '') {
+                    $codigoEstado = (string)(
+                        (string)($filtros['tipo_reporte'] ?? '') === 'cartera' &&
+                        isset($seguimiento['etapa_operativa_codigo'])
+                            ? ($seguimiento['etapa_operativa_codigo'] ?? '')
+                            : ($seguimiento['estado_seguimiento'] ?? '')
+                    );
+
+                    if ($codigoEstado !== $filtros['estado_seguimiento']) {
+                        return false;
+                    }
                 }
 
-                if (
-                    $filtros['tipo_actividad'] !== '' &&
-                    strtoupper((string)($seguimiento['ultimo_canal'] ?? '')) !== $filtros['tipo_actividad']
-                ) {
-                    return false;
+                if ($filtros['tipo_actividad'] !== '') {
+                    $ultimoCanal = strtoupper(trim((string)(
+                        $seguimiento['ultimo_canal_humano'] ??
+                        $seguimiento['ultimo_canal'] ??
+                        ''
+                    )));
+                    if ($ultimoCanal !== $filtros['tipo_actividad']) {
+                        return false;
+                    }
                 }
 
                 if (!$this->coincidePeriodo($seguimiento, $filtros)) {
@@ -1404,11 +1414,18 @@ class SeguimientoVinculacionReporteController
                 $diasMinimos = (int)$filtros['dias_sin_actividad'];
 
                 if ($diasMinimos > 0) {
-                    $diasSinActividad = $this->calcularDiasSinActividad(
-                        $seguimiento['ultima_interaccion_at'] ?? ''
-                    );
+                    $diasSinActividad = array_key_exists('dias_sin_actividad_humana', $seguimiento)
+                        ? $seguimiento['dias_sin_actividad_humana']
+                        : $this->calcularDiasSinActividad(
+                            $seguimiento['ultima_interaccion_humana_at'] ??
+                            $seguimiento['ultima_interaccion_at'] ??
+                            ''
+                        );
 
-                    if ($diasSinActividad !== null && $diasSinActividad <= $diasMinimos) {
+                    // "Más de X días" solo considera seguimientos que sí tuvieron
+                    // actividad humana. Los que nunca se han trabajado se reportan
+                    // por separado como "Sin actividad registrada".
+                    if ($diasSinActividad === null || (int)$diasSinActividad <= $diasMinimos) {
                         return false;
                     }
                 }
@@ -1461,16 +1478,28 @@ class SeguimientoVinculacionReporteController
             (string)($seguimiento['analista_nombre'] ?? '') . ' ' .
             (string)($seguimiento['analista_apellidos'] ?? '')
         );
-        $seguimiento['ultima_actividad_label'] = $this->formatearFechaHora(
-            $seguimiento['ultima_interaccion_at'] ?? ''
+        $fechaHumana = (string)(
+            $seguimiento['ultima_interaccion_humana_at'] ??
+            $seguimiento['ultima_interaccion_at'] ??
+            ''
         );
-        $seguimiento['dias_sin_actividad'] = $this->calcularDiasSinActividad(
-            $seguimiento['ultima_interaccion_at'] ?? ''
-        );
+        $seguimiento['ultima_actividad_label'] = $this->formatearFechaHora($fechaHumana);
+        $seguimiento['dias_sin_actividad'] = array_key_exists(
+            'dias_sin_actividad_humana',
+            $seguimiento
+        )
+            ? $seguimiento['dias_sin_actividad_humana']
+            : $this->calcularDiasSinActividad($fechaHumana);
         $seguimiento['proxima_accion_label'] = $this->obtenerProximaAccionLabel($seguimiento);
         $seguimiento['canal_label'] = $this->etiquetarCanal(
-            $seguimiento['ultimo_canal'] ?? ''
+            $seguimiento['ultimo_canal_humano'] ??
+            $seguimiento['ultimo_canal'] ??
+            ''
         );
+
+        if (isset($seguimiento['etapa_operativa_label'])) {
+            $seguimiento['estado_label'] = (string)$seguimiento['etapa_operativa_label'];
+        }
 
         return $seguimiento;
     }
@@ -1478,13 +1507,19 @@ class SeguimientoVinculacionReporteController
     private function crearResumenReporte($seguimientos)
     {
         $porEstatus = [];
+        $porEtapa = [];
         $porMunicipio = [];
         $sinActividad = 0;
         $masSieteDias = 0;
+        $accionesVencidas = 0;
+        $formalizados = 0;
+        $descartados = 0;
+        $enGestion = 0;
+        $requierenAtencion = 0;
+        $prioritarios = [];
 
         foreach ($seguimientos as $seguimiento) {
             $estado = (string)($seguimiento['estado_seguimiento'] ?? '');
-
             if ($estado !== '') {
                 if (!isset($porEstatus[$estado])) {
                     $porEstatus[$estado] = 0;
@@ -1492,8 +1527,15 @@ class SeguimientoVinculacionReporteController
                 $porEstatus[$estado]++;
             }
 
-            $municipio = trim((string)($seguimiento['municipio'] ?? ''));
+            $etapa = (string)($seguimiento['etapa_operativa_codigo'] ?? '');
+            if ($etapa !== '') {
+                if (!isset($porEtapa[$etapa])) {
+                    $porEtapa[$etapa] = 0;
+                }
+                $porEtapa[$etapa]++;
+            }
 
+            $municipio = trim((string)($seguimiento['municipio'] ?? ''));
             if ($municipio !== '') {
                 if (!isset($porMunicipio[$municipio])) {
                     $porMunicipio[$municipio] = 0;
@@ -1501,12 +1543,34 @@ class SeguimientoVinculacionReporteController
                 $porMunicipio[$municipio]++;
             }
 
-            $dias = $seguimiento['dias_sin_actividad'] ?? null;
+            $dias = $seguimiento['dias_sin_actividad'] ??
+                $seguimiento['dias_sin_actividad_humana'] ??
+                null;
 
             if ($dias === null) {
                 $sinActividad++;
             } elseif ((int)$dias > 7) {
                 $masSieteDias++;
+            }
+
+            $atencion = (string)($seguimiento['atencion_codigo'] ?? '');
+            if ($atencion === 'VENCIDA') {
+                $accionesVencidas++;
+            }
+            if (in_array($atencion, ['VENCIDA', 'SIN_ACTIVIDAD', 'INACTIVA'], true)) {
+                $requierenAtencion++;
+                $prioritarios[] = $seguimiento;
+            }
+
+            if (!empty($seguimiento['convenio_formalizado'])) {
+                $formalizados++;
+            } elseif (
+                (string)($seguimiento['etapa_operativa_codigo'] ?? '') === 'DESCARTADO' ||
+                $estado === 'DESCARTADO'
+            ) {
+                $descartados++;
+            } else {
+                $enGestion++;
             }
         }
 
@@ -1514,14 +1578,41 @@ class SeguimientoVinculacionReporteController
             $orden = array_keys(self::ESTADOS_SEGUIMIENTO);
             return array_search($a, $orden, true) <=> array_search($b, $orden, true);
         });
+
+        uksort($porEtapa, function ($a, $b) {
+            $orden = array_keys(self::ETAPAS_CARTERA);
+            $posA = array_search($a, $orden, true);
+            $posB = array_search($b, $orden, true);
+            $posA = $posA === false ? 999 : $posA;
+            $posB = $posB === false ? 999 : $posB;
+            return $posA <=> $posB;
+        });
+
         arsort($porMunicipio);
+
+        usort($prioritarios, static function ($a, $b) {
+            $orden = (int)($a['prioridad_orden'] ?? 99)
+                <=> (int)($b['prioridad_orden'] ?? 99);
+            if ($orden !== 0) {
+                return $orden;
+            }
+            return (int)($b['dias_sin_actividad'] ?? -1)
+                <=> (int)($a['dias_sin_actividad'] ?? -1);
+        });
 
         return [
             'total' => count($seguimientos),
             'sin_actividad' => $sinActividad,
             'mas_7_dias' => $masSieteDias,
+            'acciones_vencidas' => $accionesVencidas,
+            'formalizados' => $formalizados,
+            'descartados' => $descartados,
+            'en_gestion' => $enGestion,
+            'requieren_atencion' => $requierenAtencion,
             'por_estatus' => $porEstatus,
-            'por_municipio' => $porMunicipio
+            'por_etapa' => $porEtapa,
+            'por_municipio' => $porMunicipio,
+            'prioritarios' => array_slice($prioritarios, 0, 6)
         ];
     }
 
@@ -1569,8 +1660,14 @@ class SeguimientoVinculacionReporteController
             'Responsable' => (int)$filtros['responsable_id'] > 0
                 ? (string)($responsablesDisponibles[(int)$filtros['responsable_id']] ?? 'Todos')
                 : 'Todos',
-            'Estatus' => $filtros['estado_seguimiento'] !== ''
-                ? (self::ESTADOS_SEGUIMIENTO[$filtros['estado_seguimiento']] ?? 'Todos')
+            ((string)($filtros['tipo_reporte'] ?? '') === 'cartera'
+                ? 'Etapa'
+                : 'Estatus') => $filtros['estado_seguimiento'] !== ''
+                ? (
+                    (string)($filtros['tipo_reporte'] ?? '') === 'cartera'
+                        ? (self::ETAPAS_CARTERA[$filtros['estado_seguimiento']] ?? 'Todos')
+                        : (self::ESTADOS_SEGUIMIENTO[$filtros['estado_seguimiento']] ?? 'Todos')
+                )
                 : 'Todos',
             ((string)($filtros['tipo_reporte'] ?? '') === 'actividad'
                 ? 'Tipo de interacción'
