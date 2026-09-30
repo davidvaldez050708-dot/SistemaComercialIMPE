@@ -197,6 +197,7 @@ class ReporteTerritorialService
             'establecimientos_por_10000_habitantes' =>
                 $calculos['establecimientos_por_10000_habitantes'] ?? null,
             'fuentes_disponibles' => $fuentesDisponibles,
+            'priorizacion_disponible' => ($priorizacionMunicipal['disponible'] ?? false) === true,
             'municipios_clasificables' => max(
                 0,
                 (int)($priorizacionMunicipal['total_municipios_clasificables'] ?? 0)
