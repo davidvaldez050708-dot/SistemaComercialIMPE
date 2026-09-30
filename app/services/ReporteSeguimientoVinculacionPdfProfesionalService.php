@@ -641,8 +641,6 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
             : (is_array($detalle['correos_recientes'] ?? null) ? $detalle['correos_recientes'] : []);
         $post = is_array($detalle['post_envio'] ?? null) ? $detalle['post_envio'] : [];
 
-  }));
-
         $hayPost = trim((string)($post['respuesta_at'] ?? '')) !== '' ||
             trim((string)($post['convenio_formalizado_at'] ?? '')) !== '';
 
