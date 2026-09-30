@@ -19,7 +19,8 @@ class SeguimientoReporteAnaliticaService
         $modoAcceso,
         $fechaInicial = '',
         $fechaFinal = '',
-        $canal = ''
+        $canal = '',
+        $limiteActividadReciente = 60
     ) {
         $seguimientoIds = $this->normalizarIds($seguimientoIds);
         $usuarioId = (int)$usuarioId;
@@ -87,7 +88,7 @@ class SeguimientoReporteAnaliticaService
             $usuarioId,
             $modoAcceso,
             $canal,
-            60
+            max(1, min(500, (int)$limiteActividadReciente))
         );
         $rendimientoTelefonicoDiario = $this->obtenerRendimientoTelefonicoDiario(
             $autorizados,
