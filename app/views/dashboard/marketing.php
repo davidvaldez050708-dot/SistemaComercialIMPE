@@ -68,6 +68,131 @@ $territoriosCobertura = is_array($coberturaMarketing['territorios'] ?? null)
 </section>
 
 <?php
+$publicacionesRecientesMarketing = is_array($publicacionesRecientesMarketing ?? null)
+    ? $publicacionesRecientesMarketing
+    : [];
+
+$formatearFechaMarketing = static function ($fecha) {
+    $fecha = trim((string)$fecha);
+
+    if ($fecha === '') {
+        return '—';
+    }
+
+    $timestamp = strtotime($fecha);
+
+    return $timestamp !== false ? date('d/m/Y', $timestamp) : $fecha;
+};
+
+$estadoEtiquetasMarketing = [
+    'activa' => 'Activa',
+    'proxima' => 'Próxima a vencer',
+    'finalizada' => 'Finalizada',
+    'inactiva' => 'Inactiva'
+];
+?>
+
+<section class="dashboard-panel marketing-recent-publications mt-4">
+    <div class="marketing-recent-heading">
+        <div class="marketing-recent-title">
+            <span class="marketing-recent-title-icon">
+                <i class="bi bi-file-earmark-text"></i>
+            </span>
+            <div>
+                <h2>Publicaciones recientes</h2>
+                <p>Últimas convocatorias publicadas en el sistema.</p>
+            </div>
+        </div>
+
+        <?php if (tienePermiso('convocatorias.ver')): ?>
+            <a class="marketing-recent-link" href="<?= $convocatoriasUrl ?>">
+                Ver todas
+                <i class="bi bi-arrow-right"></i>
+            </a>
+        <?php endif; ?>
+    </div>
+
+    <?php if (!empty($publicacionesRecientesMarketing)): ?>
+        <div class="marketing-recent-table-wrap">
+            <table class="marketing-recent-table">
+                <thead>
+                    <tr>
+                        <th>Nombre de la convocatoria</th>
+                        <th>Tipo</th>
+                        <th>Fecha de publicación</th>
+                        <th>Vigencia</th>
+                        <th>Estado</th>
+                        <th class="text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($publicacionesRecientesMarketing as $publicacionReciente): ?>
+                        <?php
+                        $tipoReciente = (string)($publicacionReciente['tipo_convocatoria'] ?? '');
+                        $estadoProceso = (string)($publicacionReciente['estado_proceso'] ?? 'inactiva');
+
+                        if ($tipoReciente === 'titulacion') {
+                            $tipoEtiqueta = 'Titulación';
+                            $tipoIcono = 'bi-mortarboard';
+                        } elseif ($tipoReciente === 'bachillerato') {
+                            $tipoEtiqueta = 'Bachillerato';
+                            $tipoIcono = 'bi-book';
+                        } else {
+                            $tipoEtiqueta = 'Sindicatos';
+                            $tipoIcono = 'bi-people';
+                        }
+                        ?>
+                        <tr>
+                            <td>
+                                <div class="marketing-recent-name">
+                                    <span class="marketing-recent-row-icon">
+                                        <i class="bi <?= htmlspecialchars($tipoIcono, ENT_QUOTES, 'UTF-8') ?>"></i>
+                                    </span>
+                                    <strong>
+                                        <?= htmlspecialchars((string)($publicacionReciente['titulo'] ?? ''), ENT_QUOTES, 'UTF-8') ?>
+                                    </strong>
+                                </div>
+                            </td>
+                            <td><?= htmlspecialchars($tipoEtiqueta, ENT_QUOTES, 'UTF-8') ?></td>
+                            <td><?= htmlspecialchars($formatearFechaMarketing($publicacionReciente['fecha_inicio'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
+                            <td>
+                                <?= htmlspecialchars($formatearFechaMarketing($publicacionReciente['fecha_inicio'] ?? ''), ENT_QUOTES, 'UTF-8') ?>
+                                -
+                                <?= htmlspecialchars($formatearFechaMarketing($publicacionReciente['fecha_termino'] ?? ''), ENT_QUOTES, 'UTF-8') ?>
+                            </td>
+                            <td>
+                                <span class="convocatoria-process-badge convocatoria-process-<?= htmlspecialchars($estadoProceso, ENT_QUOTES, 'UTF-8') ?>">
+                                    <?= htmlspecialchars($estadoEtiquetasMarketing[$estadoProceso] ?? 'Inactiva', ENT_QUOTES, 'UTF-8') ?>
+                                </span>
+                            </td>
+                            <td class="text-center">
+                                <?php if (tienePermiso('convocatorias.ver')): ?>
+                                    <a
+                                        class="marketing-recent-row-action"
+                                        href="<?= $convocatoriasUrl ?>"
+                                        aria-label="Abrir gestión de convocatorias">
+                                        <i class="bi bi-three-dots-vertical"></i>
+                                    </a>
+                                <?php else: ?>
+                                    <span class="marketing-recent-row-action is-disabled" aria-hidden="true">
+                                        <i class="bi bi-three-dots-vertical"></i>
+                                    </span>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+    <?php else: ?>
+        <div class="marketing-recent-empty">
+            <i class="bi bi-inbox"></i>
+            <span>No hay publicaciones recientes para mostrar.</span>
+        </div>
+    <?php endif; ?>
+</section>
+
+<?php
 $porcentajeCobertura = $totalEstadosCobertura > 0
     ? (int)round(($estadosCubiertos / $totalEstadosCobertura) * 100)
     : 0;
