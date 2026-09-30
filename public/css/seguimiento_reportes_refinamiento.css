@@ -409,22 +409,38 @@
 }
 
 .seguimiento-reportes-modal-page {
+    height: 100vh;
+    height: 100dvh;
     overflow: hidden !important;
+}
+
+.seguimiento-reportes-modal-page .admin-shell,
+.seguimiento-reportes-modal-page .admin-main,
+.seguimiento-reportes-modal-page .admin-content,
+.seguimiento-reportes-modal-page > section {
+    min-height: 0 !important;
+}
+
+.seguimiento-reportes-modal-page > section {
+    height: 100%;
 }
 
 .seguimiento-reportes-modal-page .seguimiento-report-modal-form {
     display: flex;
     flex-direction: column;
-    height: auto;
+    height: 100vh;
+    height: 100dvh;
     min-height: 0;
+    overflow: hidden;
     background: #fff;
 }
 
 .seguimiento-reportes-modal-page .seguimiento-report-modal-form > .modal-body {
-    flex: 0 0 auto;
+    flex: 1 1 auto;
     min-height: 0;
-    padding: 14px 20px 9px !important;
-    overflow: visible;
+    padding: 16px 20px 12px !important;
+    overflow-x: hidden;
+    overflow-y: auto;
 }
 
 .seguimiento-reportes-modal-page .seguimiento-report-modal-grid .form-label {
@@ -437,11 +453,13 @@
 }
 
 .seguimiento-reportes-modal-page .seguimiento-report-modal-form > .modal-footer {
+    position: relative;
+    z-index: 2;
     flex: 0 0 auto;
     justify-content: flex-end;
     gap: 8px;
     margin-top: 0 !important;
-    padding: 10px 20px 11px;
+    padding: 12px 20px 13px;
     border-top: 1px solid var(--color-border);
     background: #fff;
 }
