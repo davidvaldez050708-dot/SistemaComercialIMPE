@@ -149,7 +149,7 @@ $totalRecordatoriosSeguimiento = 0;
                         <div class="topbar-reminder-header convocatoria-notification-header">
                             <div>
                                 <strong>Alertas de convocatorias</strong>
-                                <span>Activaciones automáticas por fecha de inicio.</span>
+                                <span>Activaciones automáticas y vencimientos próximos.</span>
                             </div>
                             <button
                                 type="button"
