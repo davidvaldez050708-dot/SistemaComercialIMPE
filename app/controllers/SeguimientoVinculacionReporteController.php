@@ -146,6 +146,151 @@ class SeguimientoVinculacionReporteController
         }
     }
 
+    public function institucionesSelector()
+    {
+        $this->validarPermiso('seguimientos_vinculacion.ver');
+        header('Content-Type: application/json; charset=UTF-8');
+        header('Cache-Control: private, no-store, max-age=0');
+
+        try {
+            $modelo = new SeguimientoVinculacionModel();
+            $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
+            $modoSeguimiento = $this->resolverModoSeguimiento();
+            $estadoId = max(0, (int)($_GET['estado_id'] ?? 0));
+            $municipioId = max(0, (int)($_GET['municipio_id'] ?? 0));
+            $pagina = max(1, (int)($_GET['pagina'] ?? 1));
+            $limite = 12;
+            $busqueda = trim((string)($_GET['q'] ?? ''));
+
+            if ($modoSeguimiento !== 'analista') {
+                http_response_code(403);
+                echo json_encode([
+                    'ok' => false,
+                    'mensaje' => 'Este selector está disponible para el flujo del Analista.'
+                ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                return;
+            }
+
+            if ($estadoId <= 0) {
+                echo json_encode([
+                    'ok' => true,
+                    'instituciones' => [],
+                    'pagina' => 1,
+                    'paginas' => 0,
+                    'total' => 0,
+                    'mensaje' => 'Selecciona un estado para consultar instituciones.'
+                ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                return;
+            }
+
+            $territorios = $this->obtenerTerritoriosPorModo(
+                $modelo,
+                $usuarioId,
+                $modoSeguimiento
+            );
+            $territorio = null;
+
+            foreach ($territorios as $item) {
+                if ((int)($item['id'] ?? 0) === $estadoId) {
+                    $territorio = $item;
+                    break;
+                }
+            }
+
+            if (!is_array($territorio)) {
+                http_response_code(403);
+                echo json_encode([
+                    'ok' => false,
+                    'mensaje' => 'No tienes acceso a este territorio.'
+                ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                return;
+            }
+
+            $seguimientos = $this->cargarSeguimientosAccesibles(
+                $modelo,
+                $usuarioId,
+                $modoSeguimiento,
+                [$estadoId => $territorio]
+            );
+
+            if ($municipioId > 0) {
+                $seguimientos = array_values(array_filter(
+                    $seguimientos,
+                    static function ($seguimiento) use ($municipioId) {
+                        return (int)($seguimiento['municipio_id'] ?? 0) === $municipioId;
+                    }
+                ));
+            }
+
+            if ($busqueda !== '') {
+                $aguja = mb_strtolower($busqueda, 'UTF-8');
+                $seguimientos = array_values(array_filter(
+                    $seguimientos,
+                    static function ($seguimiento) use ($aguja) {
+                        $nombre = mb_strtolower(
+                            trim((string)($seguimiento['nombre_entidad'] ?? '')),
+                            'UTF-8'
+                        );
+                        $municipio = mb_strtolower(
+                            trim((string)($seguimiento['municipio'] ?? '')),
+                            'UTF-8'
+                        );
+
+                        return mb_strpos($nombre, $aguja) !== false ||
+                            mb_strpos($municipio, $aguja) !== false;
+                    }
+                ));
+            }
+
+            usort($seguimientos, static function ($a, $b) {
+                return strnatcasecmp(
+                    (string)($a['nombre_entidad'] ?? ''),
+                    (string)($b['nombre_entidad'] ?? '')
+                );
+            });
+
+            $total = count($seguimientos);
+            $paginas = $total > 0 ? (int)ceil($total / $limite) : 0;
+            if ($paginas > 0 && $pagina > $paginas) {
+                $pagina = $paginas;
+            }
+
+            $inicio = ($pagina - 1) * $limite;
+            $segmento = array_slice($seguimientos, max(0, $inicio), $limite);
+            $resultado = array_map(function ($seguimiento) use ($territorio) {
+                $codigo = strtoupper(trim((string)($seguimiento['estado_seguimiento'] ?? '')));
+                $estadoSeguimiento = self::ESTADOS_SEGUIMIENTO[$codigo]
+                    ?? ($codigo !== ''
+                        ? ucfirst(strtolower(str_replace('_', ' ', $codigo)))
+                        : 'Seguimiento');
+
+                return [
+                    'id' => (int)($seguimiento['id'] ?? 0),
+                    'nombre' => trim((string)($seguimiento['nombre_entidad'] ?? '')),
+                    'municipio' => trim((string)($seguimiento['municipio'] ?? '')),
+                    'estado' => trim((string)($territorio['nombre'] ?? '')),
+                    'estatus' => $estadoSeguimiento
+                ];
+            }, $segmento);
+
+            echo json_encode([
+                'ok' => true,
+                'instituciones' => $resultado,
+                'pagina' => $pagina,
+                'paginas' => $paginas,
+                'total' => $total,
+                'limite' => $limite
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        } catch (Throwable $error) {
+            error_log('[reporte_selector_instituciones] ' . $error->getMessage());
+            http_response_code(500);
+            echo json_encode([
+                'ok' => false,
+                'mensaje' => 'No fue posible consultar las instituciones.'
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        }
+    }
+
     public function exportarPdf()
     {
         $this->validarPermiso('seguimientos_vinculacion.ver');
