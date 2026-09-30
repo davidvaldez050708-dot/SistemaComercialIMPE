@@ -51,6 +51,10 @@ class ReporteTerritorialService
             $secretarias
         );
 
+        $perfilEducativo2549 = $this->construirPerfilEducativo2549(
+            $priorizacionMunicipal
+        );
+
         return [
             'ok' => true,
             'estado' => $estado,
@@ -60,6 +64,7 @@ class ReporteTerritorialService
             'rezago_educativo' => $rezagoEducativo,
             'indicadores_educativos' => $indicadoresEducativos,
             'perfil_educativo' => $perfilEducativo,
+            'perfil_educativo_25_49' => $perfilEducativo2549,
             'priorizacion_municipal' => $priorizacionMunicipal,
             'secretarias' => $secretarias,
             'fuentes' => $fuentes,
@@ -70,6 +75,7 @@ class ReporteTerritorialService
                 $poderAdquisitivo,
                 $rezagoEducativo,
                 $perfilEducativo,
+                $perfilEducativo2549,
                 $priorizacionMunicipal,
                 $fuentes,
                 $calculos
@@ -156,12 +162,113 @@ class ReporteTerritorialService
         ];
     }
 
+    private function construirPerfilEducativo2549(
+        array $priorizacionMunicipal
+    ): array {
+        $resultado = [
+            'disponible' => false,
+            'anio' => null,
+            'fuente' => '',
+            'municipios_con_datos' => 0,
+            'municipios_clasificables' => max(
+                0,
+                (int)($priorizacionMunicipal['total_municipios_clasificables'] ?? 0)
+            ),
+            'poblacion_25_49' => 0,
+            'sin_media_superior_25_49' => 0,
+            'sin_media_superior_25_49_pct' => null,
+            'media_superior_sin_superior_25_49' => 0,
+            'media_superior_sin_superior_25_49_pct' => null,
+            'con_educacion_superior_25_49' => 0,
+            'con_educacion_superior_25_49_pct' => null
+        ];
+
+        $porMunicipio = is_array($priorizacionMunicipal['por_municipio'] ?? null)
+            ? $priorizacionMunicipal['por_municipio']
+            : [];
+
+        $anios = [];
+        $fuentes = [];
+
+        foreach ($porMunicipio as $datosMunicipio) {
+            $perfil = is_array($datosMunicipio['perfil_educativo'] ?? null)
+                ? $datosMunicipio['perfil_educativo']
+                : [];
+
+            if (
+                ($perfil['disponible'] ?? false) !== true ||
+                (int)($perfil['poblacion_25_49'] ?? 0) <= 0
+            ) {
+                continue;
+            }
+
+            $resultado['municipios_con_datos']++;
+            $resultado['poblacion_25_49'] +=
+                (int)($perfil['poblacion_25_49'] ?? 0);
+            $resultado['sin_media_superior_25_49'] +=
+                (int)($perfil['sin_estudios_media_superior_25_49'] ?? 0);
+            $resultado['media_superior_sin_superior_25_49'] +=
+                (int)($perfil['media_superior_sin_superior_25_49'] ?? 0);
+            $resultado['con_educacion_superior_25_49'] +=
+                (int)($perfil['con_educacion_superior_25_49'] ?? 0);
+
+            $anio = (int)($perfil['anio'] ?? 0);
+            if ($anio > 0) {
+                $anios[$anio] = true;
+            }
+
+            $fuente = trim((string)($perfil['fuente'] ?? ''));
+            if ($fuente !== '') {
+                $fuentes[$fuente] = true;
+            }
+        }
+
+        $base = (int)$resultado['poblacion_25_49'];
+        if ($base <= 0 || (int)$resultado['municipios_con_datos'] <= 0) {
+            return $resultado;
+        }
+
+        $resultado['disponible'] = true;
+        $resultado['sin_media_superior_25_49_pct'] = round(
+            ((int)$resultado['sin_media_superior_25_49'] / $base) * 100,
+            2
+        );
+        $resultado['media_superior_sin_superior_25_49_pct'] = round(
+            ((int)$resultado['media_superior_sin_superior_25_49'] / $base) * 100,
+            2
+        );
+        $resultado['con_educacion_superior_25_49_pct'] = round(
+            ((int)$resultado['con_educacion_superior_25_49'] / $base) * 100,
+            2
+        );
+
+        if (count($anios) === 1) {
+            $resultado['anio'] = (int)array_key_first($anios);
+        } elseif (!empty($anios)) {
+            $aniosDisponibles = array_map('intval', array_keys($anios));
+            sort($aniosDisponibles);
+            $resultado['anio'] = implode('–', [
+                $aniosDisponibles[0],
+                $aniosDisponibles[count($aniosDisponibles) - 1]
+            ]);
+        }
+
+        if (count($fuentes) === 1) {
+            $resultado['fuente'] = (string)array_key_first($fuentes);
+        } elseif (!empty($fuentes)) {
+            $resultado['fuente'] = 'Fuentes registradas en el perfil educativo municipal';
+        }
+
+        return $resultado;
+    }
+
     private function construirResumenEjecutivo(
         array $estado,
         array $actividadEconomica,
         array $poderAdquisitivo,
         array $rezagoEducativo,
         array $perfilEducativo,
+        array $perfilEducativo2549,
         array $priorizacionMunicipal,
         array $fuentes,
         array $calculos
@@ -243,7 +350,13 @@ class ReporteTerritorialService
                     : null,
             'perfil_educativo_nombre' => (string)(
                 $perfilEducativo['nombre_indicador'] ?? 'Perfil educativo'
-            )
+            ),
+            'perfil_25_49_disponible' =>
+                ($perfilEducativo2549['disponible'] ?? false) === true,
+            'sin_media_superior_25_49' =>
+                $perfilEducativo2549['sin_media_superior_25_49'] ?? null,
+            'sin_media_superior_25_49_pct' =>
+                $perfilEducativo2549['sin_media_superior_25_49_pct'] ?? null
         ];
     }
 
