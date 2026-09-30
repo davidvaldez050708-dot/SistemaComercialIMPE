@@ -1128,6 +1128,18 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                                 $tituloActividad = trim((string)($presentacionActividad['titulo'] ?? ''));
                                 $resultadoActividad = trim((string)($presentacionActividad['resultado_label'] ?? ''));
                                 $resumenActividad = trim((string)($presentacionActividad['resumen'] ?? ''));
+                                if (
+                                    strcasecmp($tituloActividad, 'Llamada') === 0 &&
+                                    ($resultadoActividad === '' || strcasecmp($resultadoActividad, 'Otro') === 0)
+                                ) {
+                                    $resultadoActividad = 'Intento registrado';
+                                }
+                                if (
+                                    strcasecmp($tituloActividad, 'Llamada') === 0 &&
+                                    ($resumenActividad === '' || strcasecmp($resumenActividad, 'Otro') === 0)
+                                ) {
+                                    $resumenActividad = 'Intento telefónico registrado';
+                                }
                                 ?>
                                 <td class="analyst-history-date"><?= $texto($fechaHoraReporte($actividad['fecha_inicio'] ?? '')) ?></td>
                                 <td>
