@@ -133,7 +133,9 @@ if (!$modoModalReporte && $generarReporte && $errorFiltros === '') {
     try {
         $evolucionActividad = (new EvolucionActividadSeguimientoService())->construir(
             $seguimientosActividad,
-            $filtrosReporte
+            $filtrosReporte,
+            (int)($_SESSION['usuario_id'] ?? 0),
+            (string)$modoSeguimiento
         );
     } catch (Throwable $error) {
         error_log('[reporte_evolucion_actividad] ' . $error->getMessage());
