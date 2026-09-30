@@ -118,6 +118,14 @@ class SeguimientoVinculacionReporteController
                 $modoSeguimiento
             );
 
+            $canalesRespuesta = $opciones['canales'];
+            if (
+                $modoSeguimiento === 'analista' &&
+                (string)($filtros['tipo_reporte'] ?? '') === 'actividad'
+            ) {
+                $canalesRespuesta = $this->opcionesCanalesActividad();
+            }
+
             echo json_encode([
                 'ok' => true,
                 'modo' => $modoSeguimiento,
@@ -138,7 +146,7 @@ class SeguimientoVinculacionReporteController
                     : $opciones['instituciones'],
                 'responsables' => $opciones['responsables'],
                 'estatus' => $opciones['estatus'],
-                'canales' => $opciones['canales']
+                'canales' => $canalesRespuesta
             ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         } catch (Throwable $error) {
             error_log('[reporte_filtros_dependientes] ' . $error->getMessage());
@@ -1015,7 +1023,11 @@ class SeguimientoVinculacionReporteController
         }
 
         $canal = strtoupper(trim((string)($filtros['tipo_actividad'] ?? '')));
-        if ($canal !== '') {
+        $esActividadAnalista =
+            $modo === 'analista' &&
+            (string)($filtros['tipo_reporte'] ?? '') === 'actividad';
+
+        if ($canal !== '' && !$esActividadAnalista) {
             $coinciden = array_values(array_filter($actuales, function ($seguimiento) use ($canal) {
                 return strtoupper(trim((string)($seguimiento['ultimo_canal'] ?? ''))) === $canal;
             }));
@@ -1133,6 +1145,16 @@ class SeguimientoVinculacionReporteController
             ];
         }
         return $opciones;
+    }
+
+    private function opcionesCanalesActividad()
+    {
+        return [
+            ['valor' => 'LLAMADA_IP', 'etiqueta' => 'Llamada'],
+            ['valor' => 'CORREO', 'etiqueta' => 'Correo'],
+            ['valor' => 'WHATSAPP', 'etiqueta' => 'WhatsApp'],
+            ['valor' => 'NOTA', 'etiqueta' => 'Otro']
+        ];
     }
 
     private function construirUrlExportacion(array $filtros)
