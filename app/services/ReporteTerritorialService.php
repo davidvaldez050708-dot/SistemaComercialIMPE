@@ -287,6 +287,13 @@ class ReporteTerritorialService
             $fuentesDisponibles++;
         }
 
+        if (
+            ($perfilEducativo2549['disponible'] ?? false) === true &&
+            trim((string)($perfilEducativo2549['fuente'] ?? '')) !== ''
+        ) {
+            $fuentesDisponibles++;
+        }
+
         $conteos = is_array($priorizacionMunicipal['conteos'] ?? null)
             ? $priorizacionMunicipal['conteos']
             : [];
