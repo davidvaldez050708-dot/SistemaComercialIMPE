@@ -786,6 +786,7 @@ class SeguimientoVinculacionReporteController
         $generarReporte = $forzarGeneracion || (string)($_GET['generar'] ?? '') === '1';
         $seguimientosReporte = [];
         $seguimientosActividad = [];
+        $seguimientosComparacionActividad = [];
         $resumenReporte = $this->crearResumenReporte([]);
         $analiticaReporte = [];
         $detalleInstitucionReporte = [];
@@ -810,6 +811,18 @@ class SeguimientoVinculacionReporteController
                 $modoSeguimiento === 'analista' &&
                 (string)($filtrosReporte['tipo_reporte'] ?? '') === 'actividad'
             ) {
+                // Alcance para evolución/comparación: todos los seguimientos
+                // accesibles dentro del territorio elegido, no solo aquellos
+                // con actividad en el periodo actual.
+                $filtrosComparacionActividad = $filtrosReporte;
+                $filtrosComparacionActividad['fecha_inicial'] = '';
+                $filtrosComparacionActividad['fecha_final'] = '';
+                $filtrosComparacionActividad['tipo_actividad'] = '';
+                $seguimientosComparacionActividad = $this->aplicarFiltrosReporte(
+                    $seguimientosDisponibles,
+                    $filtrosComparacionActividad
+                );
+
                 $idsAccesibles = array_values(array_filter(array_map(
                     static function ($seguimiento) {
                         return (int)($seguimiento['id'] ?? 0);
@@ -836,10 +849,18 @@ class SeguimientoVinculacionReporteController
             $filtrosActividad['fecha_inicial'] = '';
             $filtrosActividad['fecha_final'] = '';
             $filtrosActividad['tipo_actividad'] = '';
-            $seguimientosActividad = $this->aplicarFiltrosReporte(
-                $seguimientosBaseReporte,
-                $filtrosActividad
-            );
+
+            if (
+                $modoSeguimiento === 'analista' &&
+                (string)($filtrosReporte['tipo_reporte'] ?? '') === 'actividad'
+            ) {
+                $seguimientosActividad = $seguimientosComparacionActividad;
+            } else {
+                $seguimientosActividad = $this->aplicarFiltrosReporte(
+                    $seguimientosBaseReporte,
+                    $filtrosActividad
+                );
+            }
 
             $filtrosSeguimientos = $filtrosReporte;
             if (
