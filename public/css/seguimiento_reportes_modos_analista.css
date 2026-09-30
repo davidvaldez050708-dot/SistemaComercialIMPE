@@ -66,8 +66,24 @@
 }
 
 .seguimiento-reportes-modal-page .report-mode-selector {
-    margin-top: 2px;
-    margin-bottom: 14px;
+    flex: 0 0 auto;
+    margin: 14px 20px 10px;
+    gap: 12px;
+}
+
+.seguimiento-reportes-modal-page .report-mode-card {
+    min-height: 68px;
+    padding: 12px 14px;
+}
+
+.seguimiento-reportes-modal-page .report-mode-icon {
+    width: 36px;
+    height: 36px;
+}
+
+.seguimiento-reportes-modal-page .report-period-shortcuts {
+    flex: 0 0 auto;
+    margin: 0 20px 8px;
 }
 
 @media (max-width: 767.98px) {
