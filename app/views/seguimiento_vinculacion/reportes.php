@@ -53,6 +53,11 @@ $efectivasHoyReporte = 0;
 $llamadasHoyReporte = 0;
 $contactosHoyReporte = 0;
 $fechaHoyReporte = date('Y-m-d');
+$fechaInicialActividadReporte = trim((string)($filtrosReporte['fecha_inicial'] ?? ''));
+$fechaFinalActividadReporte = trim((string)($filtrosReporte['fecha_final'] ?? ''));
+$hoyIncluidoEnPeriodo =
+    ($fechaInicialActividadReporte === '' || $fechaHoyReporte >= $fechaInicialActividadReporte) &&
+    ($fechaFinalActividadReporte === '' || $fechaHoyReporte <= $fechaFinalActividadReporte);
 
 foreach ($rendimientoTelefonicoDiario as $diaTelefonico) {
     if ((string)($diaTelefonico['fecha'] ?? '') === $fechaHoyReporte) {
@@ -759,7 +764,11 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                         </div>
                         <?php if ($mostrarRendimientoTelefonico): ?>
                             <span class="analyst-activity-today-pill">
-                                Hoy: <strong><?= $efectivasHoyReporte ?></strong>/<?= $metaDiariaEfectivas ?>
+                                <?php if ($hoyIncluidoEnPeriodo): ?>
+                                    Hoy: <strong><?= $efectivasHoyReporte ?></strong>/<?= $metaDiariaEfectivas ?>
+                                <?php else: ?>
+                                    Meta diaria: <strong><?= $metaDiariaEfectivas ?></strong> efectivas
+                                <?php endif; ?>
                             </span>
                         <?php endif; ?>
                     </div>
