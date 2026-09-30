@@ -165,6 +165,20 @@ if ($modoModalReporte) {
     $urlLimpiar .= '&modal=1';
 }
 
+$origenReporte = trim((string)($_GET['origen'] ?? ''));
+$urlVolverReporte = BASE_URL . 'index.php?controller=seguimientoVinculacion&action=index';
+$textoVolverReporte = 'Volver a Seguimiento de Vinculación';
+
+if ($origenReporte === 'reportes') {
+    if ($modoSeguimiento === 'analista' && $generarReporte) {
+        $urlVolverReporte = BASE_URL . 'index.php?controller=seguimientoVinculacionReporte&action=index&origen=reportes';
+        $textoVolverReporte = 'Volver a Reportes de Seguimiento';
+    } else {
+        $urlVolverReporte = BASE_URL . 'index.php?controller=reporte&action=index';
+        $textoVolverReporte = 'Volver a Reportes';
+    }
+}
+
 $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
     return $estadosSeguimiento[$codigo] ?? 'Sin estado';
 };
@@ -206,9 +220,9 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
     <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
         <a
             class="linkage-back-link"
-            href="<?= BASE_URL ?>index.php?controller=seguimientoVinculacion&action=index">
+            href="<?= $texto($urlVolverReporte) ?>">
             <i class="bi bi-arrow-left"></i>
-            Volver a Seguimiento de Vinculación
+            <?= $texto($textoVolverReporte) ?>
         </a>
     </div>
 <?php endif; ?>
