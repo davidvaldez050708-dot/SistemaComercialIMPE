@@ -677,10 +677,10 @@ if ($tipoConvocatoria === 'sindicatos') {
     <span><?= $texto($territorioSeleccionado['nombre'] ?? '') ?> · <?= $texto($etiquetaTipoConvocatoria) ?></span>
 </div>
 
-<?php if ($tipoConvocatoria === 'titulacion'): ?>
+<?php if ($tipoConvocatoria === 'titulacion' || $tipoConvocatoria === 'bachillerato'): ?>
     <section class="dashboard-panel convocatoria-titulacion-hero">
         <div class="convocatoria-titulacion-hero-copy">
-            <span>TITULACIÓN</span>
+            <span><?= $tipoConvocatoria === 'bachillerato' ? 'BACHILLERATO' : 'TITULACIÓN' ?></span>
             <h2>Consulta las convocatorias disponibles</h2>
             <p>
                 Selecciona la opción que deseas consultar para el territorio de
@@ -689,7 +689,7 @@ if ($tipoConvocatoria === 'sindicatos') {
         </div>
 
         <div class="convocatoria-titulacion-hero-icon" aria-hidden="true">
-            <i class="bi bi-file-earmark-text"></i>
+            <i class="bi <?= $tipoConvocatoria === 'bachillerato' ? 'bi-journal-bookmark' : 'bi-file-earmark-text' ?>"></i>
         </div>
     </section>
 
