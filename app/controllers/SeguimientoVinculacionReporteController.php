@@ -420,7 +420,10 @@ class SeguimientoVinculacionReporteController
                 (string)($contexto['filtrosReporte']['fecha_final'] ?? ''),
                 (string)(($contexto['filtrosReporte']['tipo_reporte'] ?? '') === 'actividad'
                     ? ($contexto['filtrosReporte']['tipo_actividad'] ?? '')
-                    : '')
+                    : ''),
+                (string)($contexto['filtrosReporte']['tipo_reporte'] ?? '') === 'actividad'
+                    ? 200
+                    : 60
             );
         } catch (Throwable $error) {
             error_log('[reporte_analitica_pdf] ' . $error->getMessage());
