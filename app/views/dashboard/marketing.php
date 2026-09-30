@@ -105,7 +105,9 @@ $estadoEtiquetasMarketing = [
         </div>
 
         <?php if (tienePermiso('convocatorias.ver')): ?>
-            <a class="marketing-recent-link" href="<?= $convocatoriasUrl ?>">
+            <a
+                class="marketing-recent-link"
+                href="<?= BASE_URL ?>index.php?controller=convocatoria&action=publicacionesDelDia&fecha=<?= date('Y-m-d') ?>">
                 Ver todas
                 <i class="bi bi-arrow-right"></i>
             </a>
