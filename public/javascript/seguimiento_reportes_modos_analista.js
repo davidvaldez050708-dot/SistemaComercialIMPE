@@ -223,6 +223,7 @@
             const startLabel = form.querySelector('label[for="reporte_fecha_inicial"]');
             const endLabel = form.querySelector('label[for="reporte_fecha_final"]');
             const channelLabel = form.querySelector('label[for="reporte_actividad"]');
+            const statusLabel = form.querySelector('label[for="reporte_estatus"]');
             const compactHelp = form.querySelector('[data-report-help-compact] span');
 
             if (startLabel) {
@@ -236,13 +237,18 @@
                     ? 'Tipo de interacción'
                     : 'Último canal de contacto';
             }
+            if (statusLabel) {
+                statusLabel.textContent = mode === 'cartera'
+                    ? 'Etapa actual'
+                    : 'Etapa / Estatus';
+            }
             if (compactHelp) {
                 if (mode === 'actividad') {
                     compactHelp.textContent =
                         'Las fechas corresponden a las actividades que realizaste. Estado limita las instituciones por territorio y Tipo de interacción permite consultar un canal específico.';
                 } else if (mode === 'cartera') {
                     compactHelp.textContent =
-                        'Los filtros muestran el estado actual de tu cartera y consideran la última interacción registrada.';
+                        'Los filtros muestran el estado actual de tu cartera y consideran la última interacción humana registrada; los eventos automáticos no se cuentan.';
                 } else {
                     compactHelp.textContent =
                         'Selecciona Estado y, opcionalmente, Municipio para ubicar la institución de la que necesitas el expediente.';
