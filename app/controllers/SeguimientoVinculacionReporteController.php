@@ -269,14 +269,17 @@ class SeguimientoVinculacionReporteController
                 if ($codigo !== 'DESCARTADO') {
                     try {
                         $flujo = $this->construirFlujoOperativoIndividual([$seguimiento]);
-                        $tituloFlujo = trim((string)($flujo['titulo'] ?? ''));
+                        $etapaActual = trim((string)(
+                            $flujo['ventana']['actual']['titulo']
+                                ?? ''
+                        ));
                         $pasoActual = (int)($flujo['paso_actual'] ?? 0);
                         $totalPasos = max(13, (int)($flujo['total_pasos'] ?? 13));
 
                         if ($pasoActual >= $totalPasos) {
                             $estadoSeguimiento = 'Convenio formalizado';
-                        } elseif ($tituloFlujo !== '') {
-                            $estadoSeguimiento = $tituloFlujo;
+                        } elseif ($etapaActual !== '') {
+                            $estadoSeguimiento = $etapaActual;
                         }
                     } catch (Throwable $error) {
                         error_log(
