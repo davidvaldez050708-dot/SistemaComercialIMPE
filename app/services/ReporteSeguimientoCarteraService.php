@@ -137,6 +137,7 @@ class ReporteSeguimientoCarteraService
             : "";
 
         $reunionId = "NULL AS reunion_actual_id,";
+        $reunionEstado = "NULL AS reunion_actual_estado,";
         $reunionRealizada = "NULL AS reunion_actual_realizada_at,";
 
         if ($reunionesDisponibles) {
@@ -148,6 +149,17 @@ class ReporteSeguimientoCarteraService
                     ORDER BY r.id DESC
                     LIMIT 1
                 ) AS reunion_actual_id,";
+
+            if ($this->columnaDisponible('reuniones_vinculacion', 'estado')) {
+                $reunionEstado = "(
+                    SELECT r.estado
+                    FROM reuniones_vinculacion r
+                    WHERE r.seguimiento_id = s.id
+                      AND UPPER(TRIM(COALESCE(r.estado, ''))) <> 'CANCELADA'
+                    ORDER BY r.id DESC
+                    LIMIT 1
+                ) AS reunion_actual_estado,";
+            }
 
             if ($this->columnaDisponible('reuniones_vinculacion', 'realizada_at')) {
                 $reunionRealizada = "(
@@ -167,6 +179,7 @@ class ReporteSeguimientoCarteraService
                     s.proxima_accion_at,
                     $camposPost
                     $reunionId
+                    $reunionEstado
                     $reunionRealizada
                     (
                         SELECT i.fecha_inicio
@@ -238,7 +251,10 @@ class ReporteSeguimientoCarteraService
         if ($reunionRealizada === '') {
             $reunionRealizada = trim((string)($meta['reunion_realizada_at'] ?? ''));
         }
-        if ($reunionRealizada !== '') {
+        if (
+            $reunionRealizada !== '' ||
+            strtoupper(trim((string)($meta['reunion_actual_estado'] ?? ''))) === 'REALIZADA'
+        ) {
             return $this->etapa('CONVENIO_FORMALIZACION', 13);
         }
 
