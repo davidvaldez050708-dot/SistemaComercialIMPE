@@ -5,6 +5,8 @@ require_once __DIR__ . '/../../config/db_connection.php';
 class ConvocatoriaModel
 {
     private $connection;
+    private $soportaActivacionAutomatica = null;
+    private $soportaNotificacionesConvocatorias = null;
 
     public function __construct()
     {
@@ -14,13 +16,93 @@ class ConvocatoriaModel
 
     public function desactivarConvocatoriasVencidas()
     {
-        $sql = "UPDATE convocatorias
-                SET estado = 0,
-                    updated_at = NOW()
-                WHERE estado = 1
-                  AND fecha_termino < CURDATE()";
+        if ($this->soportaActivacionAutomatica()) {
+            return $this->sincronizarConvocatoriasPorFecha();
+        }
 
-        return $this->connection->query($sql);
+        return $this->desactivarSoloVencidas();
+    }
+
+    public function sincronizarConvocatoriasPorFecha()
+    {
+        if (!$this->soportaActivacionAutomatica()) {
+            return $this->desactivarSoloVencidas();
+        }
+
+        $this->connection->begin_transaction();
+
+        try {
+            // Una convocatoria futura siempre permanece inactiva y programada.
+            $this->connection->query(
+                "UPDATE convocatorias
+                 SET estado = 0,
+                     activacion_automatica = 1,
+                     updated_at = NOW()
+                 WHERE fecha_inicio > CURDATE()
+                   AND fecha_termino >= fecha_inicio
+                   AND (estado <> 0 OR activacion_automatica <> 1)"
+            );
+
+            $resultado = $this->connection->query(
+                "SELECT
+                    id,
+                    titulo,
+                    tipo_convocatoria,
+                    subtipo_convocatoria,
+                    fecha_inicio,
+                    fecha_termino
+                 FROM convocatorias
+                 WHERE estado = 0
+                   AND activacion_automatica = 1
+                   AND fecha_inicio <= CURDATE()
+                   AND fecha_termino >= CURDATE()
+                 ORDER BY fecha_inicio ASC, id ASC
+                 FOR UPDATE"
+            );
+
+            $activadas = [];
+
+            while ($convocatoria = $resultado->fetch_assoc()) {
+                $convocatoriaId = (int)$convocatoria['id'];
+
+                $stmt = $this->connection->prepare(
+                    "UPDATE convocatorias
+                     SET estado = 1,
+                         activacion_automatica = 0,
+                         updated_at = NOW()
+                     WHERE id = ?"
+                );
+                $stmt->bind_param('i', $convocatoriaId);
+                $stmt->execute();
+
+                $this->registrarNotificacionesActivacion($convocatoria);
+                $activadas[] = $convocatoria;
+            }
+
+            $this->connection->query(
+                "UPDATE convocatorias
+                 SET estado = 0,
+                     activacion_automatica = 0,
+                     updated_at = NOW()
+                 WHERE fecha_termino < CURDATE()
+                   AND (estado <> 0 OR activacion_automatica <> 0)"
+            );
+
+            $this->connection->commit();
+
+            return [
+                'ok' => true,
+                'activadas' => $activadas
+            ];
+        } catch (Throwable $error) {
+            $this->connection->rollback();
+            error_log('Sincronización de convocatorias: ' . $error->getMessage());
+
+            return [
+                'ok' => false,
+                'activadas' => []
+            ];
+        }
     }
 
     public function obtenerEstados()
@@ -168,33 +250,76 @@ class ConvocatoriaModel
                 ? 'IMJUVE'
                 : null;
 
-            $sql = "INSERT INTO convocatorias (
-                        titulo,
-                        categoria,
-                        tipo_convocatoria,
-                        subtipo_convocatoria,
-                        imagen,
-                        fecha_inicio,
-                        fecha_termino,
-                        estado,
-                        creado_por,
-                        actualizado_por
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            $estado = (int)$datos['estado'];
+            $activacionAutomatica = 0;
 
-            $stmt = $this->connection->prepare($sql);
-            $stmt->bind_param(
-                'sssssssiii',
-                $datos['titulo'],
-                $categoria,
-                $datos['tipo_convocatoria'],
-                $datos['subtipo_convocatoria'],
-                $datos['imagen'],
-                $datos['fecha_inicio'],
-                $datos['fecha_termino'],
-                $datos['estado'],
-                $datos['usuario_id'],
-                $datos['usuario_id']
-            );
+            if (
+                $this->soportaActivacionAutomatica() &&
+                (string)$datos['fecha_inicio'] > date('Y-m-d')
+            ) {
+                $estado = 0;
+                $activacionAutomatica = 1;
+            }
+
+            if ($this->soportaActivacionAutomatica()) {
+                $sql = "INSERT INTO convocatorias (
+                            titulo,
+                            categoria,
+                            tipo_convocatoria,
+                            subtipo_convocatoria,
+                            imagen,
+                            fecha_inicio,
+                            fecha_termino,
+                            estado,
+                            activacion_automatica,
+                            creado_por,
+                            actualizado_por
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+                $stmt = $this->connection->prepare($sql);
+                $stmt->bind_param(
+                    'sssssssiiii',
+                    $datos['titulo'],
+                    $categoria,
+                    $datos['tipo_convocatoria'],
+                    $datos['subtipo_convocatoria'],
+                    $datos['imagen'],
+                    $datos['fecha_inicio'],
+                    $datos['fecha_termino'],
+                    $estado,
+                    $activacionAutomatica,
+                    $datos['usuario_id'],
+                    $datos['usuario_id']
+                );
+            } else {
+                $sql = "INSERT INTO convocatorias (
+                            titulo,
+                            categoria,
+                            tipo_convocatoria,
+                            subtipo_convocatoria,
+                            imagen,
+                            fecha_inicio,
+                            fecha_termino,
+                            estado,
+                            creado_por,
+                            actualizado_por
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+                $stmt = $this->connection->prepare($sql);
+                $stmt->bind_param(
+                    'sssssssiii',
+                    $datos['titulo'],
+                    $categoria,
+                    $datos['tipo_convocatoria'],
+                    $datos['subtipo_convocatoria'],
+                    $datos['imagen'],
+                    $datos['fecha_inicio'],
+                    $datos['fecha_termino'],
+                    $estado,
+                    $datos['usuario_id'],
+                    $datos['usuario_id']
+                );
+            }
 
             if (!$stmt->execute()) {
                 throw new Exception('No fue posible registrar la convocatoria.');
@@ -223,32 +348,74 @@ class ConvocatoriaModel
                 ? 'IMJUVE'
                 : null;
 
-            $sql = "UPDATE convocatorias
-                    SET titulo = ?,
-                        categoria = ?,
-                        tipo_convocatoria = ?,
-                        subtipo_convocatoria = ?,
-                        imagen = ?,
-                        fecha_inicio = ?,
-                        fecha_termino = ?,
-                        estado = ?,
-                        actualizado_por = ?
-                    WHERE id = ?";
+            $estado = (int)$datos['estado'];
+            $activacionAutomatica = 0;
 
-            $stmt = $this->connection->prepare($sql);
-            $stmt->bind_param(
-                'sssssssiii',
-                $datos['titulo'],
-                $categoria,
-                $datos['tipo_convocatoria'],
-                $datos['subtipo_convocatoria'],
-                $datos['imagen'],
-                $datos['fecha_inicio'],
-                $datos['fecha_termino'],
-                $datos['estado'],
-                $datos['usuario_id'],
-                $id
-            );
+            if (
+                $this->soportaActivacionAutomatica() &&
+                (string)$datos['fecha_inicio'] > date('Y-m-d')
+            ) {
+                $estado = 0;
+                $activacionAutomatica = 1;
+            }
+
+            if ($this->soportaActivacionAutomatica()) {
+                $sql = "UPDATE convocatorias
+                        SET titulo = ?,
+                            categoria = ?,
+                            tipo_convocatoria = ?,
+                            subtipo_convocatoria = ?,
+                            imagen = ?,
+                            fecha_inicio = ?,
+                            fecha_termino = ?,
+                            estado = ?,
+                            activacion_automatica = ?,
+                            actualizado_por = ?
+                        WHERE id = ?";
+
+                $stmt = $this->connection->prepare($sql);
+                $stmt->bind_param(
+                    'sssssssiiii',
+                    $datos['titulo'],
+                    $categoria,
+                    $datos['tipo_convocatoria'],
+                    $datos['subtipo_convocatoria'],
+                    $datos['imagen'],
+                    $datos['fecha_inicio'],
+                    $datos['fecha_termino'],
+                    $estado,
+                    $activacionAutomatica,
+                    $datos['usuario_id'],
+                    $id
+                );
+            } else {
+                $sql = "UPDATE convocatorias
+                        SET titulo = ?,
+                            categoria = ?,
+                            tipo_convocatoria = ?,
+                            subtipo_convocatoria = ?,
+                            imagen = ?,
+                            fecha_inicio = ?,
+                            fecha_termino = ?,
+                            estado = ?,
+                            actualizado_por = ?
+                        WHERE id = ?";
+
+                $stmt = $this->connection->prepare($sql);
+                $stmt->bind_param(
+                    'sssssssiii',
+                    $datos['titulo'],
+                    $categoria,
+                    $datos['tipo_convocatoria'],
+                    $datos['subtipo_convocatoria'],
+                    $datos['imagen'],
+                    $datos['fecha_inicio'],
+                    $datos['fecha_termino'],
+                    $estado,
+                    $datos['usuario_id'],
+                    $id
+                );
+            }
 
             if (!$stmt->execute()) {
                 throw new Exception('No fue posible actualizar la convocatoria.');
@@ -275,10 +442,18 @@ class ConvocatoriaModel
 
     public function cambiarEstado($id, $estado, $usuarioId)
     {
-        $sql = "UPDATE convocatorias
-                SET estado = ?,
-                    actualizado_por = ?
-                WHERE id = ?";
+        if ($this->soportaActivacionAutomatica()) {
+            $sql = "UPDATE convocatorias
+                    SET estado = ?,
+                        activacion_automatica = 0,
+                        actualizado_por = ?
+                    WHERE id = ?";
+        } else {
+            $sql = "UPDATE convocatorias
+                    SET estado = ?,
+                        actualizado_por = ?
+                    WHERE id = ?";
+        }
 
         $stmt = $this->connection->prepare($sql);
         $stmt->bind_param('iii', $estado, $usuarioId, $id);
@@ -609,6 +784,133 @@ class ConvocatoriaModel
         }
 
         return $salida;
+    }
+
+    private function desactivarSoloVencidas()
+    {
+        $sql = "UPDATE convocatorias
+                SET estado = 0,
+                    updated_at = NOW()
+                WHERE estado = 1
+                  AND fecha_termino < CURDATE()";
+
+        return $this->connection->query($sql);
+    }
+
+    private function soportaActivacionAutomatica()
+    {
+        if ($this->soportaActivacionAutomatica !== null) {
+            return $this->soportaActivacionAutomatica;
+        }
+
+        try {
+            $resultado = $this->connection->query(
+                "SHOW COLUMNS FROM convocatorias LIKE 'activacion_automatica'"
+            );
+            $this->soportaActivacionAutomatica = $resultado && $resultado->num_rows > 0;
+        } catch (Throwable $error) {
+            $this->soportaActivacionAutomatica = false;
+        }
+
+        return $this->soportaActivacionAutomatica;
+    }
+
+    private function soportaNotificacionesConvocatorias()
+    {
+        if ($this->soportaNotificacionesConvocatorias !== null) {
+            return $this->soportaNotificacionesConvocatorias;
+        }
+
+        try {
+            $resultado = $this->connection->query(
+                "SHOW TABLES LIKE 'notificaciones_convocatorias'"
+            );
+            $this->soportaNotificacionesConvocatorias =
+                $resultado && $resultado->num_rows > 0;
+        } catch (Throwable $error) {
+            $this->soportaNotificacionesConvocatorias = false;
+        }
+
+        return $this->soportaNotificacionesConvocatorias;
+    }
+
+    private function registrarNotificacionesActivacion($convocatoria)
+    {
+        if (!$this->soportaNotificacionesConvocatorias()) {
+            return;
+        }
+
+        $convocatoriaId = (int)($convocatoria['id'] ?? 0);
+        if ($convocatoriaId <= 0) {
+            return;
+        }
+
+        $tituloConvocatoria = trim((string)($convocatoria['titulo'] ?? 'Convocatoria'));
+        $tipo = trim((string)($convocatoria['tipo_convocatoria'] ?? ''));
+        $subtipo = trim((string)($convocatoria['subtipo_convocatoria'] ?? ''));
+        $estadosIds = $this->obtenerEstadosIds($convocatoriaId);
+        $estadosNombres = $this->obtenerNombresEstados($convocatoriaId);
+        $territorios = !empty($estadosNombres)
+            ? implode(', ', $estadosNombres)
+            : 'el territorio asociado';
+
+        $mensaje = 'La convocatoria "' . $tituloConvocatoria .
+            '" se activó automáticamente al llegar su fecha de inicio. Estado(s): ' .
+            $territorios . '.';
+
+        $baseUrl = defined('BASE_URL') ? BASE_URL : '';
+        $url = $baseUrl . 'index.php?controller=convocatoria&action=index';
+
+        if (!empty($estadosIds)) {
+            $url .= '&territorio_id=' . (int)$estadosIds[0];
+        }
+
+        if ($tipo !== '') {
+            $url .= '&tipo=' . rawurlencode($tipo);
+        }
+
+        if ($subtipo !== '') {
+            $url .= '&subtipo=' . rawurlencode($subtipo);
+        }
+
+        if ($tituloConvocatoria !== '') {
+            $url .= '&buscar=' . rawurlencode($tituloConvocatoria);
+        }
+
+        $tituloNotificacion = 'Convocatoria activada: ' . $tituloConvocatoria;
+
+        $sql = "INSERT INTO notificaciones_convocatorias (
+                    usuario_id,
+                    convocatoria_id,
+                    titulo,
+                    mensaje,
+                    url,
+                    tipo_evento,
+                    leida
+                )
+                SELECT
+                    usuarios.id,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    'activacion_automatica',
+                    0
+                FROM usuarios
+                INNER JOIN roles
+                    ON roles.id = usuarios.rol_id
+                WHERE usuarios.estado = 1
+                  AND LOWER(roles.nombre) = 'marketing'";
+
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param(
+            'isss',
+            $convocatoriaId,
+            $tituloNotificacion,
+            $mensaje,
+            $url
+        );
+        $stmt->execute();
     }
 
     private function obtenerEstadosIds($convocatoriaId)
