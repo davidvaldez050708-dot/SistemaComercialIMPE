@@ -178,6 +178,11 @@ class ReporteSeguimientoInstitucionDetalleService
                     interacciones.resultado,
                     interacciones.fecha_inicio,
                     interacciones.notas,
+                    interacciones.telefono_destino,
+                    interacciones.correo_destino,
+                    interacciones.duracion_segundos,
+                    interacciones.proveedor_externo,
+                    interacciones.id_externo,
                     usuarios.nombre,
                     usuarios.apellidos
                 FROM interacciones_vinculacion interacciones
