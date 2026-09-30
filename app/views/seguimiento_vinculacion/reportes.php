@@ -880,7 +880,12 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                     <?php if (!empty($correosInstitucion)): ?>
                         <div class="analyst-institution-formal-row analyst-institution-mail-list">
                             <span>Correos enviados</span>
-                            <strong><?= count($correosInstitucion) ?> recientes</strong>
+                            <strong>
+                                <?= count($correosInstitucion) ?> recientes
+                                <?php if ((int)($canalesReporte['correos'] ?? 0) > count($correosInstitucion)): ?>
+                                    de <?= (int)$canalesReporte['correos'] ?> registrados
+                                <?php endif; ?>
+                            </strong>
                             <div class="analyst-institution-mail-items">
                                 <?php foreach (array_slice($correosInstitucion, 0, 3) as $correoInstitucion): ?>
                                     <?php
