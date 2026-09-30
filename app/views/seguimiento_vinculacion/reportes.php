@@ -401,7 +401,6 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                                 ? $texto($filtrosReporte['institucion'])
                                 : 'Seleccionar institución' ?>
                         </span>
-                        <i class="bi bi-chevron-down" aria-hidden="true"></i>
                     </button>
                     <div class="form-text report-institution-hint" data-report-institution-hint>
                         <?= $estadoIdActual > 0
