@@ -478,6 +478,82 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                     <?php if ($modoSeguimiento === 'analista' && $tipoReporteActual === 'actividad'): ?>
                         <?= (int)($analiticaReporte['interacciones'] ?? 0) ?> interacciones
                     <?php elseif ($modoSeguimiento === 'analista' && $tipoReporteActual === 'institucion'): ?>
+                        1 institución
+                    <?php else: ?>
+                        <?= (int)$resumenReporte['total'] ?> <?= (int)$resumenReporte['total'] === 1 ? 'seguimiento' : 'seguimientos' ?>
+                    <?php endif; ?>
+                </span>
+                <?php if ($urlExportarPdf !== ''): ?>
+                    <a class="btn btn-system-save linkage-action-button" href="<?= $texto($urlExportarPdf) ?>">
+                        <i class="bi bi-file-earmark-pdf"></i>
+                        Exportar PDF
+                    </a>
+                <?php endif; ?>
+            </div>
+        </div>
+
+        <section class="dashboard-panel mb-4 report-filter-summary" aria-label="Filtros utilizados">
+            <h3 class="panel-title">Filtros utilizados</h3>
+            <div class="row g-3">
+                <?php foreach ($resumenFiltros as $nombreFiltro => $valorFiltro): ?>
+                    <div class="col-sm-6 col-lg-3">
+                        <span class="d-block text-muted small mb-1"><?= $texto($nombreFiltro) ?></span>
+                        <strong><?= $texto($valorFiltro) ?></strong>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        </section>
+
+        <?php if ($modoSeguimiento === 'analista' && $tipoReporteActual === 'actividad'): ?>
+        <section class="metric-grid linkage-summary-grid mb-4" aria-label="Indicadores de actividad del analista">
+            <article class="metric-card linkage-summary-card">
+                <div class="metric-icon"><i class="bi bi-activity"></i></div>
+                <div>
+                    <p class="metric-value"><?= (int)($analiticaReporte['interacciones'] ?? 0) ?></p>
+                    <p class="metric-label">Interacciones registradas</p>
+                </div>
+            </article>
+            <article class="metric-card linkage-summary-card">
+                <div class="metric-icon"><i class="bi bi-telephone"></i></div>
+                <div>
+                    <p class="metric-value"><?= (int)($llamadasReporte['total'] ?? 0) ?></p>
+                    <p class="metric-label">Llamadas realizadas</p>
+                </div>
+            </article>
+            <article class="metric-card linkage-summary-card">
+                <div class="metric-icon"><i class="bi bi-person-check"></i></div>
+                <div>
+                    <p class="metric-value"><?= (int)($llamadasReporte['contactadas'] ?? 0) ?></p>
+                    <p class="metric-label">Llamadas con contacto</p>
+                </div>
+            </article>
+            <article class="metric-card linkage-summary-card">
+                <div class="metric-icon"><i class="bi bi-patch-check"></i></div>
+                <div>
+                    <p class="metric-value"><?= (int)($llamadasReporte['verificaciones_efectivas'] ?? 0) ?></p>
+                    <p class="metric-label">Verificaciones efectivas</p>
+                </div>
+            </article>
+        </section>
+
+        <section class="dashboard-panel mb-4" aria-label="Desglose del trabajo realizado">
+            <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
+                <div>
+                    <h3 class="panel-title mb-1">Desglose del trabajo realizado</h3>
+                    <p class="page-subtitle mb-0">Las verificaciones efectivas se contabilizan una vez por institución y día.</p>
+                </div>
+                <span class="status-pill status-pill-active">
+                    <?= number_format((float)($llamadasReporte['tasa_contacto'] ?? 0), 1) ?>% contacto
+                </span>
+            </div>
+            <div class="row g-3">
+                <div class="col-6 col-lg-3"><strong><?= (int)($canalesReporte['correos'] ?? 0) ?></strong><span class="d-block text-muted small">Correos</span></div>
+                <div class="col-6 col-lg-3"><strong><?= (int)($canalesReporte['whatsapp'] ?? 0) ?></strong><span class="d-block text-muted small">WhatsApp</span></div>
+                <div class="col-6 col-lg-3"><strong><?= (int)($llamadasReporte['sin_respuesta'] ?? 0) ?></strong><span class="d-block text-muted small">Llamadas sin respuesta</span></div>
+                <div class="col-6 col-lg-3"><strong><?= (int)($llamadasReporte['volver_llamar'] ?? 0) ?></strong><span class="d-block text-muted small">Solicitaron llamar después</span></div>
+            </div>
+        </section>
+    <?php elseif ($modoSeguimiento === 'analista' && $tipoReporteActual === 'institucion'): ?>
         <?php
         $contactoInstitucion = is_array($detalleInstitucionReporte['contacto'] ?? null)
             ? $detalleInstitucionReporte['contacto']
