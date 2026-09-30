@@ -753,7 +753,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                 <div>
                     <strong><?= (int)($llamadasReporte['verificaciones_efectivas'] ?? 0) ?></strong>
                     <span>Llamadas efectivas</span>
-                    <small>Verificaciones válidas del periodo</small>
+                    <small>Una efectiva contabilizada por institución y día</small>
                 </div>
             </article>
         </section>
