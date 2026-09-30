@@ -89,7 +89,11 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
 
         $periodoEncabezado = $individual
             ? 'Histórico disponible'
-            : (string)($filtros['Periodo'] ?? 'Todos');
+            : (
+                $tipoReporte === 'cartera'
+                    ? 'Estado actual'
+                    : (string)($filtros['Periodo'] ?? 'Todos')
+            );
 
         $html = '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><style>' . $this->css() . '</style></head><body>';
         $html .= '<div class="top-rule"></div>';
