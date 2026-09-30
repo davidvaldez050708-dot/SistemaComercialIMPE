@@ -61,23 +61,31 @@
     }
 
     function ajustarEtiquetasFiltros(formulario) {
+        const tipoReporte = String(
+            formulario.querySelector('[data-report-type-input]')?.value || 'cartera'
+        );
         const etiquetaDesde = formulario.querySelector('label[for="reporte_fecha_inicial"]');
         const etiquetaHasta = formulario.querySelector('label[for="reporte_fecha_final"]');
         const etiquetaCanal = formulario.querySelector('label[for="reporte_actividad"]');
-
-        if (etiquetaDesde) {
-            etiquetaDesde.textContent = 'Seguimiento iniciado desde';
-        }
-        if (etiquetaHasta) {
-            etiquetaHasta.textContent = 'Seguimiento iniciado hasta';
-        }
-        if (etiquetaCanal) {
-            etiquetaCanal.textContent = 'Último canal de contacto';
-        }
-
         const ayudaCompacta = formulario.querySelector('[data-report-help-compact] span');
+
+        if (tipoReporte === 'actividad') {
+            if (etiquetaDesde) etiquetaDesde.textContent = 'Actividad desde';
+            if (etiquetaHasta) etiquetaHasta.textContent = 'Actividad hasta';
+            if (etiquetaCanal) etiquetaCanal.textContent = 'Tipo de interacción';
+            if (ayudaCompacta) {
+                ayudaCompacta.textContent =
+                    'Las fechas corresponden a las actividades que realizaste. Estado limita las instituciones por territorio y Tipo de interacción permite consultar un canal específico.';
+            }
+            return;
+        }
+
+        if (etiquetaDesde) etiquetaDesde.textContent = 'Fecha inicial';
+        if (etiquetaHasta) etiquetaHasta.textContent = 'Fecha final';
+        if (etiquetaCanal) etiquetaCanal.textContent = 'Último canal de contacto';
         if (ayudaCompacta) {
-            ayudaCompacta.textContent = 'Las fechas filtran por la fecha de inicio del seguimiento. El canal corresponde a la última interacción registrada.';
+            ayudaCompacta.textContent =
+                'Los filtros se aplican sobre el estado actual de los seguimientos y su última interacción registrada.';
         }
     }
 
