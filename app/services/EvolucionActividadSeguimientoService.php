@@ -102,6 +102,11 @@ class EvolucionActividadSeguimientoService
             'variacion' => $comparacion['variacion'],
             'total_anterior' => $comparacion['total_anterior'],
             'comparacion_disponible' => $comparacion['disponible'],
+            'comparacion_periodo_disponible' => $comparacion['periodo_disponible'],
+            'comparacion_etiqueta' => $comparacion['etiqueta'],
+            'comparacion_fecha_inicial' => $comparacion['fecha_inicial'],
+            'comparacion_fecha_final' => $comparacion['fecha_final'],
+            'comparacion_motivo' => $comparacion['motivo'],
             'granularidad' => $granularidad,
             'fecha_inicial' => $inicio->format('Y-m-d'),
             'fecha_final' => $fin->format('Y-m-d'),
@@ -313,27 +318,23 @@ class EvolucionActividadSeguimientoService
         $usuarioId = 0
     ) {
         if ($fechaInicial === '' || $fechaFinal === '') {
-            return [
-                'disponible' => false,
-                'variacion' => null,
-                'total_anterior' => null
-            ];
+            return $this->comparacionVacia('El reporte no tiene un periodo completo para comparar.');
         }
 
         $inicio = $this->crearFecha($fechaInicial);
         $fin = $this->crearFecha($fechaFinal);
 
         if (!$inicio || !$fin || $inicio > $fin) {
-            return [
-                'disponible' => false,
-                'variacion' => null,
-                'total_anterior' => null
-            ];
+            return $this->comparacionVacia('El periodo seleccionado no es válido.');
         }
 
-        $duracion = ((int)$inicio->diff($fin)->days) + 1;
-        $finAnterior = $inicio->modify('-1 day');
-        $inicioAnterior = $finAnterior->modify('-' . ($duracion - 1) . ' days');
+        [$inicioAnterior, $finAnterior, $etiqueta] =
+            $this->resolverPeriodoAnteriorEquivalente($inicio, $fin);
+
+        if (!$inicioAnterior || !$finAnterior) {
+            return $this->comparacionVacia('No fue posible determinar un periodo anterior equivalente.');
+        }
+
         $conteosAnterior = $this->obtenerConteosDiarios(
             $seguimientoIds,
             $inicioAnterior->format('Y-m-d'),
@@ -341,20 +342,115 @@ class EvolucionActividadSeguimientoService
             $canal,
             $usuarioId
         );
-        $totalAnterior = array_sum($conteosAnterior);
+        $totalAnterior = (int)array_sum($conteosAnterior);
 
         if ($totalAnterior <= 0) {
             return [
                 'disponible' => false,
+                'periodo_disponible' => true,
                 'variacion' => null,
-                'total_anterior' => 0
+                'total_anterior' => 0,
+                'fecha_inicial' => $inicioAnterior->format('Y-m-d'),
+                'fecha_final' => $finAnterior->format('Y-m-d'),
+                'etiqueta' => $etiqueta,
+                'motivo' => 'El periodo anterior equivalente registró 0 actividades; no es posible calcular una variación porcentual.'
             ];
         }
 
         return [
             'disponible' => true,
+            'periodo_disponible' => true,
             'variacion' => (($totalActual - $totalAnterior) / $totalAnterior) * 100,
-            'total_anterior' => (int)$totalAnterior
+            'total_anterior' => $totalAnterior,
+            'fecha_inicial' => $inicioAnterior->format('Y-m-d'),
+            'fecha_final' => $finAnterior->format('Y-m-d'),
+            'etiqueta' => $etiqueta,
+            'motivo' => ''
+        ];
+    }
+
+    private function resolverPeriodoAnteriorEquivalente(
+        DateTimeImmutable $inicio,
+        DateTimeImmutable $fin
+    ) {
+        $duracion = ((int)$inicio->diff($fin)->days) + 1;
+
+        // Rangos de hasta una semana se comparan con los mismos días de la
+        // semana anterior. Ej.: lun-mié contra lun-mié, no contra vie-dom.
+        if ($duracion <= 7) {
+            return [
+                $inicio->modify('-7 days'),
+                $fin->modify('-7 days'),
+                'Mismos días de la semana anterior'
+            ];
+        }
+
+        $mismoMes =
+            $inicio->format('Y-m') === $fin->format('Y-m');
+
+        if ($mismoMes) {
+            $inicioMes = $inicio->modify('first day of this month');
+            $finMes = $inicio->modify('last day of this month');
+            $esMesCompleto =
+                $inicio->format('Y-m-d') === $inicioMes->format('Y-m-d') &&
+                $fin->format('Y-m-d') === $finMes->format('Y-m-d');
+
+            $mesAnterior = $inicioMes->modify('-1 month');
+
+            if ($esMesCompleto) {
+                return [
+                    $mesAnterior,
+                    $mesAnterior->modify('last day of this month'),
+                    'Mes anterior completo'
+                ];
+            }
+
+            // Para un tramo mensual (ej. 01-15 Sep) conserva los mismos días
+            // del mes anterior, ajustando únicamente si el mes es más corto.
+            $diaInicio = (int)$inicio->format('j');
+            $diaFin = (int)$fin->format('j');
+            $ultimoDiaMesAnterior = (int)$mesAnterior->format('t');
+            $inicioAnterior = $mesAnterior->setDate(
+                (int)$mesAnterior->format('Y'),
+                (int)$mesAnterior->format('n'),
+                min($diaInicio, $ultimoDiaMesAnterior)
+            );
+            $finAnterior = $mesAnterior->setDate(
+                (int)$mesAnterior->format('Y'),
+                (int)$mesAnterior->format('n'),
+                min($diaFin, $ultimoDiaMesAnterior)
+            );
+
+            return [
+                $inicioAnterior,
+                $finAnterior,
+                'Mismo tramo del mes anterior'
+            ];
+        }
+
+        // Rangos personalizados que cruzan meses conservan una ventana anterior
+        // de la misma duración.
+        $finAnterior = $inicio->modify('-1 day');
+        $inicioAnterior = $finAnterior->modify('-' . ($duracion - 1) . ' days');
+
+        return [
+            $inicioAnterior,
+            $finAnterior,
+            'Periodo anterior de igual duración'
+        ];
+    }
+
+    private function comparacionVacia($motivo)
+    {
+        return [
+            'disponible' => false,
+            'periodo_disponible' => false,
+            'variacion' => null,
+            'total_anterior' => null,
+            'fecha_inicial' => '',
+            'fecha_final' => '',
+            'etiqueta' => '',
+            'motivo' => (string)$motivo
         ];
     }
 
@@ -413,6 +509,11 @@ class EvolucionActividadSeguimientoService
             'variacion' => null,
             'total_anterior' => null,
             'comparacion_disponible' => false,
+            'comparacion_periodo_disponible' => false,
+            'comparacion_etiqueta' => '',
+            'comparacion_fecha_inicial' => '',
+            'comparacion_fecha_final' => '',
+            'comparacion_motivo' => '',
             'granularidad' => 'dia',
             'fecha_inicial' => '',
             'fecha_final' => '',
