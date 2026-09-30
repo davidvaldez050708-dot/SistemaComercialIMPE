@@ -131,6 +131,8 @@ class SeguimientoVinculacionReporteController
                     'tipo_actividad' => (string)$filtros['tipo_actividad']
                 ],
                 'municipios' => $opciones['municipios'],
+                'hay_instituciones' => !empty($opciones['instituciones']),
+                'total_instituciones' => count($opciones['instituciones']),
                 'instituciones' => $modoSeguimiento === 'analista'
                     ? []
                     : $opciones['instituciones'],
