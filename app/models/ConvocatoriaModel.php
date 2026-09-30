@@ -346,6 +346,11 @@ class ConvocatoriaModel
                     convocatorias.estado,
                     convocatorias.created_at,
                     convocatorias.updated_at,
+                    (
+                        SELECT MIN(convocatoria_estados.estado_id)
+                        FROM convocatoria_estados
+                        WHERE convocatoria_estados.convocatoria_id = convocatorias.id
+                    ) AS territorio_id,
                     CASE
                         WHEN convocatorias.fecha_termino < CURDATE()
                             THEN 'finalizada'
