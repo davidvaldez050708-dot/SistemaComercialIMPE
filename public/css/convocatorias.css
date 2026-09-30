@@ -2421,6 +2421,13 @@
     font-size: 24px;
 }
 
+.marketing-daily-publications-summary .analyst-section-kicker {
+    color: var(--color-primary);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .04em;
+}
+
 .marketing-daily-publications-summary h2 {
     margin: 3px 0 0;
     color: var(--color-text-primary);
