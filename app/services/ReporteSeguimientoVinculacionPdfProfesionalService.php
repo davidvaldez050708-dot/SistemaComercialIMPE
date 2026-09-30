@@ -138,7 +138,10 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
                 : [];
             if (!empty($actividadReciente)) {
                 $html .= '<div class="activity-pdf-page-break"></div>';
-                $html .= $this->detalleActividad($actividadReciente);
+                $html .= $this->detalleActividad(
+                    $actividadReciente,
+                    max(0, (int)($analitica['interacciones'] ?? count($actividadReciente)))
+                );
             }
 
             return $html . '</body></html>';
@@ -438,11 +441,15 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
         return $html . '</tbody></table></section>';
     }
 
-    private function detalleActividad(array $actividades): string
+    private function detalleActividad(array $actividades, int $totalInteracciones = 0): string
     {
+        $mostradas = count($actividades);
+        $totalInteracciones = max($mostradas, $totalInteracciones);
+
         $html = '<section class="report-section activity-detail-section">' .
             $this->titulo('Detalle de actividad');
-        $html .= '<div class="flow-note">Se muestran ' . count($actividades) .
+        $html .= '<div class="flow-note">Se muestran ' . $mostradas .
+            ($totalInteracciones > $mostradas ? ' de ' . $totalInteracciones : '') .
             ' interacciones humanas del periodo, ordenadas de la más reciente a la más antigua.</div>';
         $html .= '<table class="data-table activity-detail-table"><thead><tr>';
         $html .= '<th>Fecha</th><th>Institución</th><th>Interacción</th><th>Resultado</th><th>Detalle</th>';
