@@ -12,8 +12,14 @@ $controllerSolicitado = $_GET['controller'] ?? 'login';
 $actionSolicitada = $_GET['action'] ?? 'mostrarLogin';
 
 $esConsultaAutomaticaRecordatorios =
-    $controllerSolicitado === 'reminder' &&
-    $actionSolicitada === 'pendientes';
+    (
+        $controllerSolicitado === 'reminder' &&
+        $actionSolicitada === 'pendientes'
+    ) ||
+    (
+        $controllerSolicitado === 'convocatoriaNotificacion' &&
+        $actionSolicitada === 'pendientes'
+    );
 
 $esPeticionFetch =
     strtolower((string)($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '')) === 'fetch';
@@ -186,7 +192,8 @@ $controladoresProtegidosCsrf = [
     'correoFirmado',
     'oficioVinculacion',
     'oficioCorreo',
-    'convocatoria'
+    'convocatoria',
+    'convocatoriaNotificacion'
 ];
 
 if (
@@ -475,6 +482,17 @@ switch ($controller) {
 
         $controllerInstance =
             new ConvocatoriaController();
+
+        break;
+
+
+    case 'convocatoriaNotificacion':
+
+        require_once __DIR__ .
+            '/app/controllers/ConvocatoriaNotificacionController.php';
+
+        $controllerInstance =
+            new ConvocatoriaNotificacionController();
 
         break;
 
