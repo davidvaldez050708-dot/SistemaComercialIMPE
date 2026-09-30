@@ -158,6 +158,11 @@ $evolucionActividad = [
     'variacion' => null,
     'total_anterior' => null,
     'comparacion_disponible' => false,
+    'comparacion_periodo_disponible' => false,
+    'comparacion_etiqueta' => '',
+    'comparacion_fecha_inicial' => '',
+    'comparacion_fecha_final' => '',
+    'comparacion_motivo' => '',
     'granularidad' => 'dia',
     'fecha_inicial' => '',
     'fecha_final' => '',
@@ -182,6 +187,22 @@ $etiquetaGranularidadEvolucion = [
     'semana' => 'semana',
     'mes' => 'mes'
 ][(string)($evolucionActividad['granularidad'] ?? 'dia')] ?? 'periodo';
+
+$comparacionActividadRango = '';
+if (!empty($evolucionActividad['comparacion_periodo_disponible'])) {
+    $comparacionDesde = trim((string)($evolucionActividad['comparacion_fecha_inicial'] ?? ''));
+    $comparacionHasta = trim((string)($evolucionActividad['comparacion_fecha_final'] ?? ''));
+    try {
+        if ($comparacionDesde !== '' && $comparacionHasta !== '') {
+            $comparacionActividadRango =
+                (new DateTimeImmutable($comparacionDesde))->format('d/m/Y') .
+                ' - ' .
+                (new DateTimeImmutable($comparacionHasta))->format('d/m/Y');
+        }
+    } catch (Throwable $error) {
+        $comparacionActividadRango = '';
+    }
+}
 
 $texto = static function ($valor) {
     return htmlspecialchars((string)$valor, ENT_QUOTES, 'UTF-8');
@@ -1472,10 +1493,17 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                                 <p class="metric-value">
                                     <?= $variacionActividad > 0 ? '+' : '' ?><?= number_format($variacionActividad, 1) ?>%
                                 </p>
-                                <p class="metric-label">Variación vs. periodo anterior</p>
+                                <p class="metric-label">
+                                    <?= (int)($evolucionActividad['total'] ?? 0) ?> vs.
+                                    <?= (int)($evolucionActividad['total_anterior'] ?? 0) ?> ·
+                                    <?= $texto($comparacionActividadRango) ?>
+                                </p>
+                            <?php elseif (!empty($evolucionActividad['comparacion_periodo_disponible'])): ?>
+                                <p class="metric-value" style="font-size: 16px; line-height: 1.2;">0 anteriores</p>
+                                <p class="metric-label"><?= $texto($comparacionActividadRango) ?> · sin % calculable</p>
                             <?php else: ?>
                                 <p class="metric-value" style="font-size: 16px; line-height: 1.2;">Sin comparación disponible</p>
-                                <p class="metric-label">Variación vs. periodo anterior</p>
+                                <p class="metric-label"><?= $texto($evolucionActividad['comparacion_motivo'] ?? 'Sin periodo comparable') ?></p>
                             <?php endif; ?>
                         </div>
                     </article>
@@ -1596,11 +1624,18 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                             <h3 class="panel-title mb-1" id="evolucion-actividad-analista">Actividad por <?= $texto($etiquetaGranularidadEvolucion) ?></h3>
                             <p class="page-subtitle mb-0">Volumen de interacciones realizadas por el Analista durante el periodo seleccionado.</p>
                         </div>
-                        <?php if (!empty($evolucionActividad['comparacion_disponible'])): ?>
-                            <?php $variacionActividadAnalista = (float)($evolucionActividad['variacion'] ?? 0); ?>
-                            <span class="analyst-activity-variation<?= $variacionActividadAnalista < 0 ? ' is-negative' : '' ?>">
-                                <?= $variacionActividadAnalista > 0 ? '+' : '' ?><?= number_format($variacionActividadAnalista, 1) ?>%
-                                <small>vs. periodo anterior</small>
+                        <?php if (!empty($evolucionActividad['comparacion_periodo_disponible'])): ?>
+                            <?php
+                            $variacionActividadAnalista = (float)($evolucionActividad['variacion'] ?? 0);
+                            $comparacionCalculable = !empty($evolucionActividad['comparacion_disponible']);
+                            ?>
+                            <span class="analyst-activity-variation<?= $comparacionCalculable && $variacionActividadAnalista < 0 ? ' is-negative' : (!$comparacionCalculable ? ' is-neutral' : '') ?>">
+                                <?php if ($comparacionCalculable): ?>
+                                    <?= $variacionActividadAnalista > 0 ? '+' : '' ?><?= number_format($variacionActividadAnalista, 1) ?>%
+                                <?php else: ?>
+                                    Sin %
+                                <?php endif; ?>
+                                <small><?= (int)($evolucionActividad['total_anterior'] ?? 0) ?> actividades anteriores</small>
                             </span>
                         <?php endif; ?>
                     </div>
@@ -1619,6 +1654,26 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                             <span>Menor actividad</span>
                             <strong><?= $texto($evolucionActividad['menor']['etiqueta'] ?? '—') ?></strong>
                             <small><?= (int)($evolucionActividad['menor']['total'] ?? 0) ?> actividades</small>
+                        </div>
+                        <div>
+                            <span>Comparación</span>
+                            <?php if (!empty($evolucionActividad['comparacion_periodo_disponible'])): ?>
+                                <?php if (!empty($evolucionActividad['comparacion_disponible'])): ?>
+                                    <?php $variacionResumen = (float)($evolucionActividad['variacion'] ?? 0); ?>
+                                    <strong><?= $variacionResumen > 0 ? '+' : '' ?><?= number_format($variacionResumen, 1) ?>%</strong>
+                                    <small>
+                                        <?= (int)($evolucionActividad['total'] ?? 0) ?> vs.
+                                        <?= (int)($evolucionActividad['total_anterior'] ?? 0) ?> ·
+                                        <?= $texto($comparacionActividadRango) ?>
+                                    </small>
+                                <?php else: ?>
+                                    <strong>0 actividades anteriores</strong>
+                                    <small><?= $texto($comparacionActividadRango) ?> · sin % calculable</small>
+                                <?php endif; ?>
+                            <?php else: ?>
+                                <strong>—</strong>
+                                <small><?= $texto($evolucionActividad['comparacion_motivo'] ?? 'Sin periodo comparable') ?></small>
+                            <?php endif; ?>
                         </div>
                     </div>
 
