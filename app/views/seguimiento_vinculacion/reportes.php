@@ -489,13 +489,13 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
 
         <div class="<?= $modoModalReporte ? 'modal-footer' : 'd-flex flex-wrap justify-content-end gap-2 mt-3' ?>">
             <?php if ($modoSeguimiento === 'analista'): ?>
-                <button
-                    type="button"
+                <a
                     class="btn <?= $modoModalReporte ? 'btn-system-cancel' : 'btn-secondary' ?>"
+                    href="<?= $texto($urlLimpiar) ?>"
                     data-report-clear-filters>
                     <i class="bi bi-arrow-counterclockwise me-2"></i>
                     Limpiar filtros
-                </button>
+                </a>
             <?php else: ?>
                 <a
                     class="btn <?= $modoModalReporte ? 'btn-system-cancel' : 'btn-secondary' ?>"
