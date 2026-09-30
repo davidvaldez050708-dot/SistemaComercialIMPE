@@ -218,6 +218,318 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
         return $html;
     }
 
+    private function contextoActividad(array $filtros, string $responsable, array $analitica): string
+    {
+        $ubicacion = [];
+        foreach (['Estado', 'Municipio'] as $campo) {
+            $valor = trim((string)($filtros[$campo] ?? ''));
+            if ($valor !== '' && !in_array($valor, ['Todos', 'Todas'], true)) {
+                $ubicacion[] = $valor;
+            }
+        }
+
+        $alcance = !empty($ubicacion)
+            ? implode(' · ', $ubicacion)
+            : 'Todos los territorios autorizados';
+        $tipoInteraccion = trim((string)($filtros['Tipo de interacción'] ?? 'Todos'));
+        if ($tipoInteraccion === '') {
+            $tipoInteraccion = 'Todos';
+        }
+        $instituciones = max(0, (int)($analitica['seguimientos_con_actividad'] ?? 0));
+
+        $html = '<table class="scope activity-scope"><tr>';
+        $html .= '<td><span>Territorio</span><strong>' . $this->e($alcance) . '</strong></td>';
+        $html .= '<td><span>Analista</span><strong>' .
+            $this->e($responsable !== '' ? $responsable : 'Responsable del reporte') . '</strong></td>';
+        $html .= '<td><span>Instituciones trabajadas</span><strong>' . $instituciones . '</strong></td>';
+        $html .= '<td><span>Tipo de interacción</span><strong>' . $this->e($tipoInteraccion) . '</strong></td>';
+        return $html . '</tr></table>';
+    }
+
+    private function resumenEjecutivoActividad(array $analitica): string
+    {
+        $llamadas = is_array($analitica['llamadas'] ?? null) ? $analitica['llamadas'] : [];
+        $interacciones = max(0, (int)($analitica['interacciones'] ?? 0));
+        $instituciones = max(0, (int)($analitica['seguimientos_con_actividad'] ?? 0));
+
+        $html = '<section class="report-section keep activity-executive">' .
+            $this->titulo('Resumen ejecutivo');
+        $html .= '<table class="executive-metrics"><tr>';
+        $html .= $this->opMetric('Actividades realizadas', (string)$interacciones);
+        $html .= $this->opMetric('Instituciones trabajadas', (string)$instituciones);
+        $html .= $this->opMetric('Llamadas realizadas', (string)(int)($llamadas['total'] ?? 0));
+        $html .= $this->opMetric(
+            'Con contacto',
+            (string)(int)($llamadas['contactadas'] ?? 0) .
+            ' · ' . $this->decimal($llamadas['tasa_contacto'] ?? 0, 1) . '%'
+        );
+        $html .= $this->opMetric(
+            'Llamadas efectivas',
+            (string)(int)($llamadas['verificaciones_efectivas'] ?? 0)
+        );
+        $html .= '</tr></table>';
+        $html .= '<div class="decision-note"><strong>Criterio de efectividad:</strong> ' .
+            'se contabiliza una efectiva por institución y día cuando existe evidencia telefónica válida vinculada.</div>';
+        return $html . '</section>';
+    }
+
+    private function rendimientoTelefonicoActividad(array $analitica): string
+    {
+        $resumen = is_array($analitica['rendimiento_telefonico'] ?? null)
+            ? $analitica['rendimiento_telefonico']
+            : [];
+        $periodos = is_array($resumen['periodos'] ?? null) ? $resumen['periodos'] : [];
+        $granularidad = strtolower(trim((string)($resumen['granularidad'] ?? 'dia')));
+        $granularidadLabel = [
+            'dia' => 'día',
+            'semana' => 'semana',
+            'mes' => 'mes'
+        ][$granularidad] ?? 'periodo';
+        $metaDiaria = max(1, (int)($analitica['meta_diaria_efectivas'] ?? 25));
+
+        $html = '<section class="report-section keep activity-phone-section">' .
+            $this->titulo('Rendimiento telefónico por ' . $granularidadLabel);
+
+        if (empty($periodos)) {
+            return $html . $this->vacio('No se registraron llamadas dentro del periodo seleccionado.') . '</section>';
+        }
+
+        if ($granularidad === 'dia') {
+            $html .= '<div class="flow-note">La referencia operativa es de ' . $metaDiaria .
+                ' efectivas por día. Las efectivas se contabilizan una vez por institución y día.</div>';
+        } else {
+            $html .= '<div class="flow-note">Las efectivas se contabilizan una vez por institución y día y después se suman por ' .
+                $this->e($granularidadLabel) . '. No se extrapola la meta diaria a una meta ' .
+                $this->e($granularidadLabel) . '.</div>';
+        }
+
+        $html .= '<table class="data-table activity-phone-table"><thead><tr>';
+        $html .= '<th>' . $this->e(ucfirst($granularidadLabel)) . '</th>';
+        $html .= '<th class="center">Llamadas</th>';
+        $html .= '<th class="center">Contacto</th>';
+        $html .= '<th class="center">Efectivas</th>';
+        $html .= '<th class="right">' . ($granularidad === 'dia' ? 'Avance diario' : 'Tasa contacto') . '</th>';
+        $html .= '</tr></thead><tbody>';
+
+        foreach ($periodos as $periodo) {
+            $etiqueta = trim((string)($periodo['etiqueta'] ?? '—'));
+            $sub = trim((string)($periodo['subetiqueta'] ?? ''));
+            $efectivas = max(0, (int)($periodo['efectivas'] ?? 0));
+
+            $html .= '<tr><td><strong>' . $this->e($etiqueta) . '</strong>';
+            if ($sub !== '') {
+                $html .= '<small>' . $this->e($sub) . '</small>';
+            }
+            $html .= '</td>';
+            $html .= '<td class="center">' . (int)($periodo['llamadas'] ?? 0) . '</td>';
+            $html .= '<td class="center">' . (int)($periodo['con_contacto'] ?? 0) . '</td>';
+            $html .= '<td class="center activity-effective">' . $efectivas . '</td>';
+            if ($granularidad === 'dia') {
+                $html .= '<td class="right">' . $efectivas . '/' . $metaDiaria . '</td>';
+            } else {
+                $html .= '<td class="right">' .
+                    $this->decimal($periodo['tasa_contacto'] ?? 0, 1) . '%</td>';
+            }
+            $html .= '</tr>';
+        }
+
+        return $html . '</tbody></table></section>';
+    }
+
+    private function composicionActividad(array $analitica): string
+    {
+        $canales = is_array($analitica['canales'] ?? null) ? $analitica['canales'] : [];
+        $llamadas = is_array($analitica['llamadas'] ?? null) ? $analitica['llamadas'] : [];
+
+        $html = '<section class="report-section keep activity-composition">' .
+            $this->titulo('Actividad medible y resultados');
+        $html .= '<table class="activity-channel-summary"><tr>';
+        $html .= '<td><span>Llamadas</span><strong>' . (int)($canales['llamadas'] ?? 0) . '</strong></td>';
+        $html .= '<td><span>Correos</span><strong>' . (int)($canales['correos'] ?? 0) . '</strong></td>';
+        $html .= '<td><span>Con contacto</span><strong>' . (int)($llamadas['contactadas'] ?? 0) . '</strong></td>';
+        $html .= '<td><span>Tasa de contacto</span><strong>' .
+            $this->decimal($llamadas['tasa_contacto'] ?? 0, 1) . '%</strong></td>';
+        $html .= '</tr></table>';
+
+        $html .= '<table class="call-summary activity-call-summary"><tr>';
+        $html .= $this->callMetric('Sin respuesta', (string)(int)($llamadas['sin_respuesta'] ?? 0));
+        $html .= $this->callMetric('Número incorrecto', (string)(int)($llamadas['numero_incorrecto'] ?? 0));
+        $html .= $this->callMetric('Llamar después', (string)(int)($llamadas['volver_llamar'] ?? 0));
+        $html .= $this->callMetric('Efectivas contabilizadas', (string)(int)($llamadas['verificaciones_efectivas'] ?? 0));
+        $html .= '</tr></table>';
+
+        return $html . '</section>';
+    }
+
+    private function evolucionActividadEjecutiva(array $evolucion): string
+    {
+        $periodos = is_array($evolucion['periodos'] ?? null) ? $evolucion['periodos'] : [];
+        $granularidad = strtolower(trim((string)($evolucion['granularidad'] ?? 'dia')));
+        $granularidadLabel = [
+            'dia' => 'día',
+            'semana' => 'semana',
+            'mes' => 'mes'
+        ][$granularidad] ?? 'periodo';
+
+        $html = '<section class="report-section keep activity-evolution-section">' .
+            $this->titulo('Evolución del periodo · Actividad por ' . $granularidadLabel);
+
+        if (empty($periodos)) {
+            return $html . $this->vacio('No se registraron actividades durante el periodo seleccionado.') . '</section>';
+        }
+
+        $mayor = is_array($evolucion['mayor'] ?? null) ? $evolucion['mayor'] : [];
+        $menor = is_array($evolucion['menor'] ?? null) ? $evolucion['menor'] : [];
+        $html .= '<table class="activity-evolution-summary"><tr>';
+        $html .= '<td><span>Actividades</span><strong>' . (int)($evolucion['total'] ?? 0) . '</strong></td>';
+        $html .= '<td><span>Mayor actividad</span><strong>' .
+            $this->e((string)($mayor['etiqueta'] ?? '—')) . '</strong><small>' .
+            (int)($mayor['total'] ?? 0) . ' actividades</small></td>';
+        $html .= '<td><span>Menor actividad</span><strong>' .
+            $this->e((string)($menor['etiqueta'] ?? '—')) . '</strong><small>' .
+            (int)($menor['total'] ?? 0) . ' actividades</small></td>';
+        if (!empty($evolucion['comparacion_disponible'])) {
+            $variacion = (float)($evolucion['variacion'] ?? 0);
+            $html .= '<td><span>Variación</span><strong>' .
+                ($variacion > 0 ? '+' : '') . $this->decimal($variacion, 1) .
+                '%</strong><small>vs. periodo anterior</small></td>';
+        } else {
+            $html .= '<td><span>Comparación</span><strong>—</strong><small>Sin periodo comparable</small></td>';
+        }
+        $html .= '</tr></table>';
+        $html .= '<img class="line-chart activity-line-chart" src="' .
+            $this->graficaLineaDataUri($periodos) . '" alt="Evolución de actividad">';
+        return $html . '</section>';
+    }
+
+    private function coberturaActividad(array $analitica): string
+    {
+        $instituciones = is_array($analitica['instituciones_actividad'] ?? null)
+            ? $analitica['instituciones_actividad']
+            : [];
+        $total = max(0, (int)($analitica['seguimientos_con_actividad'] ?? 0));
+
+        $html = '<section class="report-section activity-coverage-section">' .
+            $this->titulo('Instituciones con mayor actividad');
+
+        if (empty($instituciones)) {
+            return $html . $this->vacio('No hay instituciones con actividad registrada en el periodo.') . '</section>';
+        }
+
+        $html .= '<div class="flow-note">Principales ' . count($instituciones) . ' de ' . $total .
+            ' instituciones trabajadas en el periodo.</div>';
+        $html .= '<table class="data-table activity-coverage-table"><thead><tr>';
+        $html .= '<th>Institución</th><th>Municipio</th>';
+        $html .= '<th class="center">Interacciones</th><th class="center">Llamadas</th>';
+        $html .= '<th class="center">Contacto</th><th class="center">Efectivas</th>';
+        $html .= '</tr></thead><tbody>';
+
+        foreach ($instituciones as $institucion) {
+            $html .= '<tr><td><strong>' .
+                $this->e((string)($institucion['nombre_entidad'] ?? 'Institución')) .
+                '</strong></td>';
+            $html .= '<td>' . $this->e((string)($institucion['municipio'] ?? '—')) . '</td>';
+            $html .= '<td class="center">' . (int)($institucion['interacciones'] ?? 0) . '</td>';
+            $html .= '<td class="center">' . (int)($institucion['llamadas'] ?? 0) . '</td>';
+            $html .= '<td class="center">' . (int)($institucion['con_contacto'] ?? 0) . '</td>';
+            $html .= '<td class="center activity-effective">' . (int)($institucion['efectivas'] ?? 0) . '</td></tr>';
+        }
+
+        return $html . '</tbody></table></section>';
+    }
+
+    private function detalleActividad(array $actividades): string
+    {
+        $html = '<section class="report-section activity-detail-section">' .
+            $this->titulo('Detalle de actividad');
+        $html .= '<div class="flow-note">Se muestran ' . count($actividades) .
+            ' interacciones humanas del periodo, ordenadas de la más reciente a la más antigua.</div>';
+        $html .= '<table class="data-table activity-detail-table"><thead><tr>';
+        $html .= '<th>Fecha</th><th>Institución</th><th>Interacción</th><th>Resultado</th><th>Detalle</th>';
+        $html .= '</tr></thead><tbody>';
+
+        foreach ($actividades as $actividad) {
+            $canal = strtoupper(trim((string)($actividad['canal'] ?? '')));
+            $resultado = strtoupper(trim((string)($actividad['resultado'] ?? '')));
+            $notas = (string)($actividad['notas'] ?? '');
+            $duracion = max(0, (int)($actividad['duracion_segundos'] ?? 0));
+            $esLlamada = in_array($canal, ['LLAMADA', 'LLAMADA_IP'], true);
+            $verificacionValida =
+                $esLlamada &&
+                strpos($notas, '[VERIFICACION_EFECTIVA]') !== false &&
+                trim((string)($actividad['proveedor_externo'] ?? '')) !== '' &&
+                trim((string)($actividad['id_externo'] ?? '')) !== '' &&
+                $duracion > 0;
+            $contacto =
+                $esLlamada &&
+                strpos($notas, '[SIN_CONTACTO_EFECTIVO]') === false &&
+                (
+                    strpos($notas, '[CONTACTO_EFECTIVO]') !== false ||
+                    in_array(
+                        $resultado,
+                        [
+                            'CONTACTADO',
+                            'CONTACTO_CORRECTO',
+                            'CONTACTO_REFERIDO',
+                            'SOLICITO_INFORMACION',
+                            'SOLICITO_LLAMAR_DESPUES',
+                            'NO_INTERESADO'
+                        ],
+                        true
+                    )
+                );
+
+            if ($verificacionValida) {
+                $resultadoLabel = 'Verificación válida';
+            } elseif ($contacto) {
+                $resultadoLabel = 'Con contacto';
+            } elseif ($resultado === 'OTRO') {
+                $resultadoLabel = 'Sin clasificación';
+            } else {
+                $resultadoLabel = $this->resultadoLabel($resultado);
+            }
+
+            $detalle = '';
+            if ($esLlamada) {
+                $partes = [];
+                if ($duracion > 0) {
+                    $minutos = intdiv($duracion, 60);
+                    $segundos = $duracion % 60;
+                    $partes[] = $minutos > 0
+                        ? $minutos . ' min ' . str_pad((string)$segundos, 2, '0', STR_PAD_LEFT) . ' s'
+                        : $segundos . ' s';
+                }
+                if ($verificacionValida) {
+                    $partes[] = 'evidencia vinculada';
+                } elseif ($contacto) {
+                    $partes[] = 'contacto registrado';
+                } else {
+                    $partes[] = 'intento telefónico';
+                }
+                $detalle = implode(' · ', $partes);
+            } elseif ($canal === 'CORREO') {
+                $detalle = 'Correo registrado en el seguimiento';
+            } else {
+                $detalle = 'Actividad registrada';
+            }
+
+            $resultadoClass = $verificacionValida
+                ? ' activity-status-effective'
+                : ($contacto ? ' activity-status-contact' : '');
+
+            $html .= '<tr>';
+            $html .= '<td>' . $this->e($this->fechaDato((string)($actividad['fecha_inicio'] ?? ''))) . '</td>';
+            $html .= '<td><strong>' . $this->e((string)($actividad['nombre_entidad'] ?? '—')) . '</strong></td>';
+            $html .= '<td>' . $this->e($this->canalLabel($canal)) . '</td>';
+            $html .= '<td><span class="activity-status' . $resultadoClass . '">' .
+                $this->e($resultadoLabel) . '</span></td>';
+            $html .= '<td>' . $this->e($detalle) . '</td>';
+            $html .= '</tr>';
+        }
+
+        return $html . '</tbody></table></section>';
+    }
+
     private function responsableAlcance(array $seguimientos, array $filtros): string
     {
         $filtrado = trim((string)($filtros['Responsable'] ?? ''));
