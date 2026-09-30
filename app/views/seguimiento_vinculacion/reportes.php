@@ -579,6 +579,9 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
         $oficiosInstitucion = is_array($detalleInstitucionReporte['oficios'] ?? null)
             ? $detalleInstitucionReporte['oficios']
             : [];
+        $correosInstitucion = is_array($detalleInstitucionReporte['correos_recientes'] ?? null)
+            ? $detalleInstitucionReporte['correos_recientes']
+            : [];
         $postEnvioInstitucion = is_array($detalleInstitucionReporte['post_envio'] ?? null)
             ? $detalleInstitucionReporte['post_envio']
             : [];
@@ -761,7 +764,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
 
         <div class="row g-3 mb-3">
             <div class="col-xl-7">
-                <section class="dashboard-panel analyst-institution-profile h-100" aria-labelledby="ficha-institucion-reporte">
+                <section class="dashboard-panel analyst-institution-profile" aria-labelledby="ficha-institucion-reporte">
                     <div class="analyst-institution-section-heading">
                         <div>
                             <span class="report-eyebrow">FICHA INSTITUCIONAL</span>
@@ -770,7 +773,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                                 <?= $texto(trim((string)($contactoInstitucion['actividad_giro'] ?? '')) !== '' ? $contactoInstitucion['actividad_giro'] : 'Información institucional y de contacto disponible.') ?>
                             </p>
                         </div>
-                        <span class="status-pill status-pill-active"><?= $texto($estadoLabelInstitucion) ?></span>
+                        <span class="status-pill status-pill-active"><?= $texto($etapaRutaInstitucion) ?></span>
                     </div>
 
                     <div class="analyst-institution-profile-grid">
@@ -795,7 +798,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
             </div>
 
             <div class="col-xl-5">
-                <section class="dashboard-panel analyst-institution-contact-summary h-100" aria-labelledby="actividad-contacto-institucion">
+                <section class="dashboard-panel analyst-institution-contact-summary" aria-labelledby="actividad-contacto-institucion">
                     <div class="analyst-institution-section-heading">
                         <div>
                             <span class="report-eyebrow">ACTIVIDAD Y CONTACTO</span>
@@ -815,13 +818,23 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                         <div><span>Tasa de contacto</span><strong><?= number_format((float)($llamadasReporte['tasa_contacto'] ?? 0), 1) ?>%</strong></div>
                         <div><span>Verificaciones efectivas</span><strong><?= (int)($llamadasReporte['verificaciones_efectivas'] ?? 0) ?></strong></div>
                     </div>
+                    <div class="analyst-institution-last-activity">
+                        <div>
+                            <span>Última interacción</span>
+                            <strong><?= $texto($fechaHoraReporte($ultimaActividadInstitucion)) ?></strong>
+                        </div>
+                        <div>
+                            <span>Último correo</span>
+                            <strong><?= !empty($correosInstitucion) ? $texto($fechaHoraReporte($correosInstitucion[0]['fecha_inicio'] ?? '')) : '—' ?></strong>
+                        </div>
+                    </div>
                 </section>
             </div>
         </div>
 
         <div class="row g-3 mb-3">
             <div class="col-xl-6">
-                <section class="dashboard-panel analyst-institution-formal h-100" aria-labelledby="comunicacion-formal-institucion">
+                <section class="dashboard-panel analyst-institution-formal" aria-labelledby="comunicacion-formal-institucion">
                     <div class="analyst-institution-section-heading">
                         <div>
                             <span class="report-eyebrow">COMUNICACIÓN FORMAL</span>
@@ -864,18 +877,43 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                         </small>
                     </div>
 
-                    <?php if (trim((string)($postEnvioInstitucion['seguimiento_correo_at'] ?? '')) !== ''): ?>
+                    <?php if (!empty($correosInstitucion)): ?>
+                        <div class="analyst-institution-formal-row analyst-institution-mail-list">
+                            <span>Correos enviados</span>
+                            <strong><?= count($correosInstitucion) ?> recientes</strong>
+                            <div class="analyst-institution-mail-items">
+                                <?php foreach (array_slice($correosInstitucion, 0, 3) as $correoInstitucion): ?>
+                                    <?php
+                                    $presentacionCorreo = is_array($correoInstitucion['presentacion'] ?? null)
+                                        ? $correoInstitucion['presentacion']
+                                        : [];
+                                    $resumenCorreo = trim((string)($presentacionCorreo['resumen'] ?? ''));
+                                    if (stripos($resumenCorreo, 'Asunto: ') === 0) {
+                                        $resumenCorreo = trim(substr($resumenCorreo, 8));
+                                    }
+                                    if ($resumenCorreo === '') {
+                                        $resumenCorreo = 'Correo enviado';
+                                    }
+                                    ?>
+                                    <div class="analyst-institution-mail-item">
+                                        <span><?= $texto($fechaHoraReporte($correoInstitucion['fecha_inicio'] ?? '')) ?></span>
+                                        <strong><?= $texto($resumenCorreo) ?></strong>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                    <?php elseif (trim((string)($postEnvioInstitucion['seguimiento_correo_at'] ?? '')) !== ''): ?>
                         <div class="analyst-institution-formal-row">
                             <span>Seguimiento por correo</span>
                             <strong><?= $texto($fechaHoraReporte($postEnvioInstitucion['seguimiento_correo_at'])) ?></strong>
-                            <small><?= $texto(trim((string)($postEnvioInstitucion['seguimiento_correo_notas'] ?? '')) !== '' ? $postEnvioInstitucion['seguimiento_correo_notas'] : 'Seguimiento por correo registrado.') ?></small>
+                            <small>Seguimiento por correo registrado.</small>
                         </div>
                     <?php endif; ?>
                 </section>
             </div>
 
             <div class="col-xl-6">
-                <section class="dashboard-panel analyst-institution-formal h-100" aria-labelledby="reunion-convenio-institucion">
+                <section class="dashboard-panel analyst-institution-formal" aria-labelledby="reunion-convenio-institucion">
                     <div class="analyst-institution-section-heading">
                         <div>
                             <span class="report-eyebrow">REUNIÓN Y FORMALIZACIÓN</span>
