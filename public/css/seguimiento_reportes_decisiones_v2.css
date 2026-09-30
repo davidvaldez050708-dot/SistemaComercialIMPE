@@ -120,10 +120,9 @@
 .seguimiento-report-edit-modal .seguimiento-report-edit-iframe {
     display: block;
     width: 100%;
-    height: 420px;
-    min-height: 0;
-    max-height: calc(100vh - 150px);
-    max-height: calc(100dvh - 150px);
+    height: 440px;
+    min-height: 440px;
+    max-height: 440px;
     border: 0;
     background: #fff;
 }
@@ -136,10 +135,9 @@
     }
 
     .seguimiento-report-edit-modal .seguimiento-report-edit-iframe {
-        height: 420px;
-        min-height: 0;
-        max-height: calc(100vh - 135px);
-        max-height: calc(100dvh - 135px);
+        height: 440px;
+        min-height: 440px;
+        max-height: 440px;
     }
 }
 
