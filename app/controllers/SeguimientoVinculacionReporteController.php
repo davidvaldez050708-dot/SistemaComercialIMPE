@@ -380,7 +380,7 @@ class SeguimientoVinculacionReporteController
 
             if ($puedeUsarCache) {
                 $claveCache = $cachePdf->crearClave([
-                    'version' => 'seguimiento-pdf-profesional-v11',
+                    'version' => 'seguimiento-pdf-profesional-v12',
                     'usuario_id' => $usuarioId,
                     'rol_id' => (int)($_SESSION['rol_id'] ?? 0),
                     'modo' => $modoSeguimientoCache,
@@ -503,7 +503,11 @@ class SeguimientoVinculacionReporteController
             'analitica' => $analitica,
             'flujo_individual' => $flujoIndividual,
             'detalle_institucion' => $detalleInstitucion,
-            'etiquetas_estatus' => self::ESTADOS_SEGUIMIENTO,
+            'etiquetas_estatus' => (
+                (string)($contexto['filtrosReporte']['tipo_reporte'] ?? '') === 'cartera'
+                    ? self::ETAPAS_CARTERA
+                    : self::ESTADOS_SEGUIMIENTO
+            ),
             'fecha_generacion' => date('Y-m-d H:i:s'),
             'generado_por' => trim(
                 (string)($_SESSION['nombre'] ?? '') . ' ' .
