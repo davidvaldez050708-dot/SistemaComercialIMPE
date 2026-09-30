@@ -409,8 +409,6 @@
 }
 
 .seguimiento-reportes-modal-page {
-    height: 100vh;
-    height: 100dvh;
     overflow: hidden !important;
 }
 
@@ -421,26 +419,20 @@
     min-height: 0 !important;
 }
 
-.seguimiento-reportes-modal-page > section {
-    height: 100%;
-}
-
 .seguimiento-reportes-modal-page .seguimiento-report-modal-form {
     display: flex;
     flex-direction: column;
-    height: 100vh;
-    height: 100dvh;
+    height: auto;
     min-height: 0;
-    overflow: hidden;
+    overflow: visible;
     background: #fff;
 }
 
 .seguimiento-reportes-modal-page .seguimiento-report-modal-form > .modal-body {
-    flex: 1 1 auto;
+    flex: 0 0 auto;
     min-height: 0;
     padding: 16px 20px 12px !important;
-    overflow-x: hidden;
-    overflow-y: auto;
+    overflow: visible;
 }
 
 .seguimiento-reportes-modal-page .seguimiento-report-modal-grid .form-label {
@@ -535,13 +527,13 @@
     }
 
     .seguimiento-reportes-modal-page .seguimiento-report-modal-form {
-        min-height: 100vh;
+        min-height: 0;
     }
 
     .seguimiento-reportes-modal-page .seguimiento-report-modal-form > .modal-body {
-        flex: 1 1 auto;
+        flex: 0 0 auto;
         padding: 14px 16px 8px !important;
-        overflow-y: auto;
+        overflow: visible;
     }
 
     .seguimiento-reportes-modal-page .seguimiento-report-help {
