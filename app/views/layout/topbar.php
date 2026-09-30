@@ -6,6 +6,10 @@ require_once __DIR__ . '/../../helpers/ReminderHelper.php';
 $rolTopbarId = (int)($_SESSION['rol_id'] ?? 0);
 $esAnalistaDatos = $rolTopbarId === 4;
 $esCuentaClave = $rolTopbarId === 6;
+$esMarketingTopbar = strcasecmp(
+    trim((string)($_SESSION['rol'] ?? '')),
+    'Marketing'
+) === 0;
 $mostrarCentroAvisos = $esAnalistaDatos || $esCuentaClave;
 $agendaDisponible = is_file(ROOT_PATH . '/app/controllers/AgendaReunionController.php');
 $mostrarAgendaReuniones = $mostrarCentroAvisos && $agendaDisponible;
@@ -113,6 +117,58 @@ $totalRecordatoriosSeguimiento = 0;
 
                         <div class="topbar-call-goal-status" data-topbar-call-status>
                             Actualizando avance…
+                        </div>
+                    </div>
+                </div>
+            <?php endif; ?>
+
+            <?php if ($esMarketingTopbar): ?>
+                <div
+                    class="dropdown convocatoria-notification-root"
+                    data-convocatoria-notification-root
+                    data-endpoint="<?= BASE_URL ?>index.php?controller=convocatoriaNotificacion&action=pendientes"
+                    data-read-endpoint="<?= BASE_URL ?>index.php?controller=convocatoriaNotificacion&action=marcarLeida"
+                    data-read-all-endpoint="<?= BASE_URL ?>index.php?controller=convocatoriaNotificacion&action=marcarTodasLeidas">
+                    <button
+                        class="topbar-reminder-button dropdown-toggle"
+                        type="button"
+                        data-bs-toggle="dropdown"
+                        data-bs-auto-close="outside"
+                        aria-expanded="false"
+                        aria-label="Abrir alertas de convocatorias"
+                        title="Alertas de convocatorias">
+                        <i class="bi bi-bell"></i>
+                        <span
+                            class="topbar-reminder-badge d-none"
+                            data-convocatoria-notification-badge>
+                            0
+                        </span>
+                    </button>
+
+                    <div class="dropdown-menu dropdown-menu-end topbar-reminder-menu convocatoria-notification-menu">
+                        <div class="topbar-reminder-header convocatoria-notification-header">
+                            <div>
+                                <strong>Alertas de convocatorias</strong>
+                                <span>Activaciones automáticas por fecha de inicio.</span>
+                            </div>
+                            <button
+                                type="button"
+                                class="convocatoria-notification-read-all"
+                                data-convocatoria-notification-read-all>
+                                Marcar leídas
+                            </button>
+                        </div>
+
+                        <div
+                            class="convocatoria-notification-list"
+                            data-convocatoria-notification-content
+                            aria-live="polite"
+                            aria-busy="true">
+                            <div class="topbar-reminder-empty">
+                                <i class="bi bi-arrow-repeat"></i>
+                                <strong>Actualizando alertas</strong>
+                                <span>Consultando activaciones programadas.</span>
+                            </div>
                         </div>
                     </div>
                 </div>
