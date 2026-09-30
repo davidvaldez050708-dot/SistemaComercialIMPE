@@ -659,17 +659,44 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
             </div>
         </div>
 
-        <section class="dashboard-panel mb-4 report-filter-summary" aria-label="Filtros utilizados">
-            <h3 class="panel-title">Filtros utilizados</h3>
-            <div class="row g-3">
-                <?php foreach ($resumenFiltros as $nombreFiltro => $valorFiltro): ?>
-                    <div class="col-sm-6 col-lg-3">
-                        <span class="d-block text-muted small mb-1"><?= $texto($nombreFiltro) ?></span>
-                        <strong><?= $texto($valorFiltro) ?></strong>
+        <?php if ($modoSeguimiento === 'analista' && $tipoReporteActual === 'actividad'): ?>
+            <?php
+            $filtrosActividadResumen = [
+                'Periodo' => (string)($resumenFiltros['Periodo'] ?? '—'),
+                'Territorio' => (string)($resumenFiltros['Estado'] ?? 'Todos'),
+                'Tipo de interacción' => (string)($resumenFiltros['Tipo de interacción'] ?? 'Todos')
+            ];
+            ?>
+            <section class="dashboard-panel analyst-activity-context mb-3" aria-label="Contexto del reporte">
+                <div class="analyst-activity-section-heading">
+                    <div>
+                        <span class="report-eyebrow">CONTEXTO DEL REPORTE</span>
+                        <h3 class="panel-title mb-1">Actividad analizada</h3>
+                        <p class="page-subtitle mb-0">El reporte considera únicamente las interacciones realizadas por el Analista dentro del periodo.</p>
                     </div>
-                <?php endforeach; ?>
-            </div>
-        </section>
+                </div>
+                <div class="analyst-activity-context-grid">
+                    <?php foreach ($filtrosActividadResumen as $nombreFiltro => $valorFiltro): ?>
+                        <div>
+                            <span><?= $texto($nombreFiltro) ?></span>
+                            <strong><?= $texto($valorFiltro) ?></strong>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            </section>
+        <?php else: ?>
+            <section class="dashboard-panel mb-4 report-filter-summary" aria-label="Filtros utilizados">
+                <h3 class="panel-title">Filtros utilizados</h3>
+                <div class="row g-3">
+                    <?php foreach ($resumenFiltros as $nombreFiltro => $valorFiltro): ?>
+                        <div class="col-sm-6 col-lg-3">
+                            <span class="d-block text-muted small mb-1"><?= $texto($nombreFiltro) ?></span>
+                            <strong><?= $texto($valorFiltro) ?></strong>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            </section>
+        <?php endif; ?>
 
         <?php if ($modoSeguimiento === 'analista' && $tipoReporteActual === 'actividad'): ?>
         <section class="metric-grid linkage-summary-grid mb-4" aria-label="Indicadores de actividad del analista">
