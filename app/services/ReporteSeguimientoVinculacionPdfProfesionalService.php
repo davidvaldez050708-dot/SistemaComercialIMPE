@@ -873,7 +873,7 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
         $width = 960;
         $height = 270;
         $left = 52;
-        $right = 24;
+        $right = 48;
         $top = 18;
         $bottom = 44;
         $plotW = $width - $left - $right;
@@ -905,8 +905,11 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
             $total = max(0, (int)($periodo['total'] ?? 0));
             $y = $top + $plotH - (($total / $max) * $plotH);
             $points[] = [$x, $y, $total];
+            $anchor = $i === 0
+                ? 'start'
+                : ($i === $count - 1 ? 'end' : 'middle');
             $labels .= '<text x="' . $x . '" y="' . ($height - 18) .
-                '" text-anchor="middle" font-size="10.5" fill="#6D7480">' .
+                '" text-anchor="' . $anchor . '" font-size="10.5" fill="#6D7480">' .
                 $this->eSvg((string)($periodo['etiqueta'] ?? '')) . '</text>';
         }
 
