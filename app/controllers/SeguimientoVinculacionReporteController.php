@@ -266,6 +266,26 @@ class SeguimientoVinculacionReporteController
                         ? ucfirst(strtolower(str_replace('_', ' ', $codigo)))
                         : 'Seguimiento');
 
+                if ($codigo !== 'DESCARTADO') {
+                    try {
+                        $flujo = $this->construirFlujoOperativoIndividual([$seguimiento]);
+                        $tituloFlujo = trim((string)($flujo['titulo'] ?? ''));
+                        $pasoActual = (int)($flujo['paso_actual'] ?? 0);
+                        $totalPasos = max(13, (int)($flujo['total_pasos'] ?? 13));
+
+                        if ($pasoActual >= $totalPasos) {
+                            $estadoSeguimiento = 'Convenio formalizado';
+                        } elseif ($tituloFlujo !== '') {
+                            $estadoSeguimiento = $tituloFlujo;
+                        }
+                    } catch (Throwable $error) {
+                        error_log(
+                            '[reporte_selector_estado_operativo] seguimiento=' .
+                            (int)($seguimiento['id'] ?? 0) . ' ' . $error->getMessage()
+                        );
+                    }
+                }
+
                 return [
                     'id' => (int)($seguimiento['id'] ?? 0),
                     'nombre' => trim((string)($seguimiento['nombre_entidad'] ?? '')),
