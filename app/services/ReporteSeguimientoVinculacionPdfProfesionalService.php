@@ -100,16 +100,21 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
         }
 
         if ($individual) {
+            $html .= '<div class="individual-page individual-page-one">';
             $html .= $this->ficha($seguimientos[0], $flujo, $detalleInstitucion);
             $html .= $this->resumenIndividual($analitica, $detalleInstitucion);
             $html .= $this->contactoInstitucional($detalleInstitucion);
-            $html .= $this->rutaIndividual($flujo);
-            $html .= $this->contacto($analitica);
-            $html .= $this->actividad($evolucion);
-            $html .= $this->historialIndividual($detalleInstitucion);
+            $html .= $this->rutaIndividual($flujo, $detalleInstitucion);
+            $html .= '</div>';
+
+            $html .= '<div class="page-break"></div>';
+            $html .= '<div class="individual-page individual-page-two">';
+            $html .= $this->contactoIndividual($analitica, $detalleInstitucion);
             $html .= $this->reunionesIndividual($detalleInstitucion);
             $html .= $this->documentacionIndividual($detalleInstitucion);
+            $html .= $this->historialIndividual($detalleInstitucion);
             $html .= $this->observacionesIndividual($detalleInstitucion);
+            $html .= '</div>';
             return $html . '</body></html>';
         }
 
@@ -187,7 +192,9 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
             }
         }
 
-        $alcance = !empty($ubicacion) ? implode(' · ', $ubicacion) : 'Todos los territorios autorizados';
+        $alcance = !empty($ubicacion)
+            ? implode(' · ', $ubicacion)
+            : ($individual ? 'Institución seleccionada' : 'Todos los territorios autorizados');
         $html = '<table class="scope"><tr>';
         $html .= '<td><span>Alcance</span><strong>' . $this->e($alcance) . '</strong></td>';
         $html .= '<td><span>Responsable del alcance</span><strong>' . $this->e($responsable !== '' ? $responsable : 'Varios responsables') . '</strong></td>';
@@ -239,12 +246,18 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
 
         $accion = trim((string)($flujo['accion_principal']['etiqueta'] ?? ''));
         if ($accion === '') {
-            $accion = trim((string)($flujo['titulo'] ?? $s['proxima_accion_label'] ?? '—'));
+            $accion = trim((string)($s['proxima_accion_label'] ?? ''));
         }
 
         $pasoActual = max(1, (int)($flujo['paso_actual'] ?? 1));
         $totalPasos = max($pasoActual, (int)($flujo['total_pasos'] ?? 13));
         $paso = 'Paso ' . $pasoActual . ' de ' . $totalPasos;
+
+        if ($pasoActual >= $totalPasos && $accion === '') {
+            $accion = 'Sin acción pendiente para Analista';
+        } elseif ($accion === '') {
+            $accion = 'Sin acción pendiente registrada';
+        }
 
         $ultimaHumana = is_array($detalle['ultima_interaccion_humana'] ?? null)
             ? $detalle['ultima_interaccion_humana']
@@ -265,7 +278,7 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
         $html .= '<table class="institution-grid"><tr>';
         $html .= $this->info('Responsable', $responsable !== '' ? $responsable : '—', false);
         $html .= $this->info('Etapa de vinculación', $etapa, true);
-        $html .= $this->info('Acción actual', $accion, true);
+        $html .= $this->info('Siguiente acción', $accion, true);
         $html .= '</tr><tr>';
         $html .= $this->info('Último contacto humano', $ultima, false);
         $html .= $this->info('Días desde último contacto', $diasLabel, false);
@@ -339,35 +352,45 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
             $html .= '<tr><td class="profile-label">Dirección</td><td class="profile-value" colspan="3">' .
                 $this->e($direccion) . '</td></tr>';
         }
+        $observacionGeneral = trim((string)($seguimiento['observaciones'] ?? ''));
+        if ($observacionGeneral !== '') {
+            $html .= '<tr><td class="profile-label">Observación</td><td class="profile-value" colspan="3">' .
+                $this->e($this->resumirTexto($observacionGeneral, 180)) . '</td></tr>';
+        }
         return $html . '</table></section>';
     }
 
-    private function rutaIndividual(array $flujo): string
+    private function rutaIndividual(array $flujo, array $detalle): string
     {
         $actual = max(1, min(13, (int)($flujo['paso_actual'] ?? 1)));
-        $porcentaje = round(($actual / 13) * 100, 1);
-        $milestones = [
-            [2, 'Investigación'],
-            [4, 'Verificación'],
-            [7, 'Envío'],
-            [9, 'Respuesta'],
-            [12, 'Reunión'],
-            [13, 'Convenio']
-        ];
+        $porcentaje = max(0, min(100, (int)($flujo['porcentaje'] ?? round(($actual / 13) * 100))));
+        $hitos = is_array($detalle['hitos'] ?? null) ? $detalle['hitos'] : [];
 
-        $html = '<section class="report-section keep">' . $this->titulo('Ruta de vinculación');
+        $html = '<section class="report-section keep executive-route">' . $this->titulo('Ruta de vinculación');
+        $html .= '<table class="route-summary"><tr><td><span>Avance de la ruta</span><strong>' .
+            $actual . ' de 13 etapas</strong></td><td class="route-percent">' . $porcentaje . '%</td></tr></table>';
         $html .= '<div class="route-progress"><div class="route-fill" style="width:' .
             number_format($porcentaje, 1, '.', '') . '%"></div></div>';
-        $html .= '<table class="route-milestones"><tr>';
-        foreach ($milestones as $milestone) {
-            $estado = $actual >= $milestone[0] ? ' done' : '';
-            if ($actual === $milestone[0]) {
-                $estado .= ' current';
+
+        if (!empty($hitos)) {
+            $html .= '<table class="route-executive"><tr>';
+            foreach (array_slice($hitos, 0, 5) as $hito) {
+                $estado = strtoupper(trim((string)($hito['estado'] ?? 'PENDIENTE')));
+                $clase = $estado === 'COMPLETADO'
+                    ? 'done'
+                    : ($estado === 'EN_PROCESO' ? 'current' : 'pending');
+                $detalleHito = trim((string)($hito['detalle'] ?? ''));
+                $html .= '<td class="' . $clase . '"><span class="route-check">' .
+                    ($estado === 'COMPLETADO' ? '✓' : ($estado === 'EN_PROCESO' ? '→' : '•')) .
+                    '</span><strong>' . $this->e((string)($hito['titulo'] ?? 'Hito')) . '</strong>';
+                if ($detalleHito !== '') {
+                    $html .= '<small>' . $this->e($this->resumirTexto($detalleHito, 60)) . '</small>';
+                }
+                $html .= '</td>';
             }
-            $html .= '<td class="' . trim($estado) . '"><strong class="route-number">' . $milestone[0] .
-                '</strong><span>' . $this->e($milestone[1]) . '</span></td>';
+            $html .= '</tr></table>';
         }
-        $html .= '</tr></table>';
+
         return $html . '</section>';
     }
 
@@ -630,6 +653,32 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
         }
 
         return $html . '</tbody></table></section>';
+    }
+
+    private function contactoIndividual(array $analitica, array $detalle): string
+    {
+        $llamadas = is_array($analitica['llamadas'] ?? null) ? $analitica['llamadas'] : [];
+        $canales = is_array($analitica['canales'] ?? null) ? $analitica['canales'] : [];
+        $ultima = is_array($detalle['ultima_interaccion_humana'] ?? null)
+            ? $detalle['ultima_interaccion_humana']
+            : [];
+
+        $html = '<section class="report-section keep individual-contact">' . $this->titulo('Actividad y contacto');
+        $html .= '<table class="executive-metrics"><tr>';
+        $html .= $this->opMetric('Llamadas', (string)(int)($llamadas['total'] ?? 0));
+        $html .= $this->opMetric('Con contacto', (string)(int)($llamadas['contactadas'] ?? 0));
+        $html .= $this->opMetric('Sin respuesta', (string)(int)($llamadas['sin_respuesta'] ?? 0));
+        $html .= $this->opMetric('Correos', (string)(int)($canales['correos'] ?? 0));
+        $html .= $this->opMetric('Contacto telefónico', $this->decimal($llamadas['tasa_contacto'] ?? 0, 1) . '%');
+        $html .= '</tr></table>';
+
+        if (!empty($ultima)) {
+            $html .= '<div class="decision-note"><strong>Última interacción humana:</strong> ' .
+                $this->e($this->fechaDato((string)($ultima['fecha_inicio'] ?? ''))) . ' · ' .
+                $this->e($this->canalLabel((string)($ultima['canal'] ?? ''))) . '</div>';
+        }
+
+        return $html . '</section>';
     }
 
     private function contacto(array $analitica): string
