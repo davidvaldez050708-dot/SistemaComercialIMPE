@@ -2424,7 +2424,7 @@
 .marketing-daily-publications-summary h2 {
     margin: 3px 0 0;
     color: var(--color-text-primary);
-    font-size: 20px;
+    font-size: 14px;
     font-weight: 800;
     line-height: 1.2;
 }
@@ -2474,7 +2474,7 @@
 .marketing-daily-publications-heading h2 {
     margin: 0;
     color: var(--color-text-primary);
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 800;
 }
 
