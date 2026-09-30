@@ -812,3 +812,22 @@
         width: auto;
     }
 }
+
+
+.convocatoria-notification-icon.is-success,
+.convocatoria-activation-toast.is-success .convocatoria-activation-toast-icon {
+    background-color: #e9f7f2;
+    color: #07866f;
+}
+
+.convocatoria-notification-icon.is-warning,
+.convocatoria-activation-toast.is-warning .convocatoria-activation-toast-icon {
+    background-color: #fff3e6;
+    color: #d46a13;
+}
+
+.convocatoria-notification-icon.is-danger,
+.convocatoria-activation-toast.is-danger .convocatoria-activation-toast-icon {
+    background-color: #fff0ee;
+    color: #b42318;
+}
