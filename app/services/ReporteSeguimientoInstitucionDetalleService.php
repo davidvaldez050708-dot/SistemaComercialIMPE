@@ -6,6 +6,9 @@ require_once __DIR__ . '/SeguimientoActividadPresentacionService.php';
 require_once __DIR__ . '/SeguimientoFlujoService.php';
 require_once __DIR__ . '/SeguimientoPostEnvioService.php';
 require_once __DIR__ . '/ReunionResultadoService.php';
+require_once __DIR__ . '/AgendaReunionService.php';
+require_once __DIR__ . '/SeguimientoCorreoService.php';
+require_once __DIR__ . '/ReunionFechaGuardService.php';
 
 class ReporteSeguimientoInstitucionDetalleService
 {
@@ -263,6 +266,7 @@ class ReporteSeguimientoInstitucionDetalleService
             error_log('[reporte_institucion_flujo_base] ' . $error->getMessage());
         }
 
+        $postAplica = false;
         try {
             $respuestaPost = (new SeguimientoPostEnvioService())->obtenerFlujoSiAplica(
                 $seguimientoId,
@@ -274,20 +278,36 @@ class ReporteSeguimientoInstitucionDetalleService
                 is_array($respuestaPost['flujo'] ?? null)
             ) {
                 $flujo = $respuestaPost['flujo'];
+                $postAplica = true;
             }
         } catch (Throwable $error) {
             error_log('[reporte_institucion_flujo_post] ' . $error->getMessage());
         }
 
-        if (!empty($flujo)) {
+        if ($postAplica && !empty($flujo)) {
             try {
+                $flujo = (new AgendaReunionService())->ajustarFlujoAnalista(
+                    $seguimientoId,
+                    $usuarioId,
+                    $flujo
+                );
+                $flujo = (new SeguimientoCorreoService())->ajustarFlujo(
+                    $seguimientoId,
+                    $usuarioId,
+                    $flujo
+                );
+                $flujo = (new ReunionFechaGuardService())->ajustarFlujo(
+                    $seguimientoId,
+                    $usuarioId,
+                    $flujo
+                );
                 $flujo = (new ReunionResultadoService())->ajustarFlujo(
                     $seguimientoId,
                     $usuarioId,
                     $flujo
                 );
             } catch (Throwable $error) {
-                error_log('[reporte_institucion_flujo_reunion] ' . $error->getMessage());
+                error_log('[reporte_institucion_flujo_ajustes] ' . $error->getMessage());
             }
         }
 
