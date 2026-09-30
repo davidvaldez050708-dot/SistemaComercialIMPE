@@ -26,7 +26,12 @@
         icono.setAttribute('aria-hidden', 'true');
 
         const texto = document.createElement('span');
-        texto.textContent = 'El periodo se aplica sobre la fecha de inicio registrada en cada seguimiento. El tipo de actividad utiliza el canal de la última interacción registrada.';
+        const tipoReporte = String(
+            formulario.querySelector('[data-report-type-input]')?.value || 'cartera'
+        );
+        texto.textContent = tipoReporte === 'actividad'
+            ? 'Las fechas corresponden a las actividades que realizaste. Estado limita las instituciones por territorio y Tipo de interacción permite consultar un canal específico.'
+            : 'Los filtros se aplican sobre el estado actual de los seguimientos y su última interacción registrada.';
 
         ayuda.appendChild(icono);
         ayuda.appendChild(texto);
