@@ -507,6 +507,35 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
             ? $detalleInstitucionReporte['ultima_interaccion_humana']
             : [];
 
+        $estadoCodigoInstitucion = strtoupper(trim((string)($seguimientoInstitucion['estado_seguimiento'] ?? '')));
+        $estadoLabelInstitucion = trim((string)($seguimientoInstitucion['estado_label'] ?? ''));
+        if ($estadoLabelInstitucion === '') {
+            $estadoLabelInstitucion = $estadosSeguimiento[$estadoCodigoInstitucion]
+                ?? ($estadoCodigoInstitucion !== ''
+                    ? ucfirst(strtolower(str_replace('_', ' ', $estadoCodigoInstitucion)))
+                    : 'Seguimiento');
+        }
+        $responsableInstitucion = trim((string)($seguimientoInstitucion['responsable_nombre'] ?? ''));
+        if ($responsableInstitucion === '') {
+            $responsableInstitucion = trim(
+                (string)($seguimientoInstitucion['analista_nombre'] ?? '') . ' ' .
+                (string)($seguimientoInstitucion['analista_apellidos'] ?? '')
+            );
+        }
+        $tipoEntidadCodigoInstitucion = strtoupper(trim((string)($seguimientoInstitucion['tipo_entidad'] ?? '')));
+        $tipoEntidadLabelsInstitucion = [
+            'EMPRESA' => 'Empresa',
+            'ORGANIZACION' => 'Organización',
+            'INSTITUCION' => 'Institución',
+            'SECRETARIA' => 'Secretaría',
+            'MUNICIPIO' => 'Municipio',
+            'OTRO' => 'Otro'
+        ];
+        $tipoEntidadInstitucion = $tipoEntidadLabelsInstitucion[$tipoEntidadCodigoInstitucion]
+            ?? ($tipoEntidadCodigoInstitucion !== ''
+                ? ucfirst(strtolower(str_replace('_', ' ', $tipoEntidadCodigoInstitucion)))
+                : '—');
+
         $pasoActualInstitucion = (int)($flujoInstitucion['paso_actual'] ?? 0);
         $totalPasosInstitucion = max(1, (int)($flujoInstitucion['total_pasos'] ?? 13));
         $porcentajeRutaInstitucion = max(
@@ -515,7 +544,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
         );
         $etapaRutaInstitucion = trim((string)($flujoInstitucion['ventana']['actual']['titulo'] ?? ''));
         if ($etapaRutaInstitucion === '') {
-            $etapaRutaInstitucion = trim((string)($seguimientoInstitucion['estado_label'] ?? 'Seguimiento'));
+            $etapaRutaInstitucion = $estadoLabelInstitucion;
         }
 
         $accionEjecutivaInstitucion = trim((string)($flujoInstitucion['accion_principal']['etiqueta'] ?? ''));
@@ -602,7 +631,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                 </div>
                 <div>
                     <span>Responsable</span>
-                    <strong><?= $texto(trim((string)($seguimientoInstitucion['responsable_nombre'] ?? $seguimientoInstitucion['analista_nombre'] ?? '')) ?: '—') ?></strong>
+                    <strong><?= $texto($responsableInstitucion !== '' ? $responsableInstitucion : '—') ?></strong>
                 </div>
                 <div>
                     <span>Estado del contacto</span>
@@ -656,10 +685,11 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                                 <?= $texto(trim((string)($contactoInstitucion['actividad_giro'] ?? '')) !== '' ? $contactoInstitucion['actividad_giro'] : 'Información institucional y de contacto disponible.') ?>
                             </p>
                         </div>
-                        <span class="status-pill status-pill-active"><?= $texto($seguimientoInstitucion['estado_label'] ?? 'Seguimiento') ?></span>
+                        <span class="status-pill status-pill-active"><?= $texto($estadoLabelInstitucion) ?></span>
                     </div>
 
                     <div class="analyst-institution-profile-grid">
+                        <div><span>Tipo</span><strong><?= $texto($tipoEntidadInstitucion) ?></strong></div>
                         <div><span>Ubicación</span><strong><?= $texto(trim((string)($seguimientoInstitucion['municipio'] ?? '')) !== '' ? ($seguimientoInstitucion['municipio'] . ', ' . ($seguimientoInstitucion['estado_nombre'] ?? '')) : ($seguimientoInstitucion['estado_nombre'] ?? '—')) ?></strong></div>
                         <div><span>Contacto</span><strong><?= $texto(trim((string)($contactoInstitucion['nombre'] ?? '')) !== '' ? $contactoInstitucion['nombre'] : '—') ?></strong></div>
                         <div><span>Cargo / área</span><strong><?= $texto(trim((string)($contactoInstitucion['cargo'] ?? '')) !== '' ? $contactoInstitucion['cargo'] : '—') ?></strong></div>
@@ -667,6 +697,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                         <div><span>Correo</span><strong><?= $texto(trim((string)($contactoInstitucion['correo'] ?? '')) !== '' ? $contactoInstitucion['correo'] : '—') ?></strong></div>
                         <div><span>WhatsApp</span><strong><?= $texto(trim((string)($contactoInstitucion['whatsapp'] ?? '')) !== '' ? $contactoInstitucion['whatsapp'] : '—') ?></strong></div>
                         <div><span>Sitio web</span><strong><?= $texto(trim((string)($contactoInstitucion['sitio_web'] ?? '')) !== '' ? $contactoInstitucion['sitio_web'] : '—') ?></strong></div>
+                        <div><span>Dirección</span><strong><?= $texto(trim((string)($contactoInstitucion['direccion'] ?? '')) !== '' ? $contactoInstitucion['direccion'] : '—') ?></strong></div>
                         <div><span>Origen</span><strong><?= $texto(trim((string)($seguimientoInstitucion['origen'] ?? '')) !== '' ? $seguimientoInstitucion['origen'] : '—') ?></strong></div>
                     </div>
                 </section>
