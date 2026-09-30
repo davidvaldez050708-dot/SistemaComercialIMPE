@@ -71,11 +71,6 @@ $etiquetaGranularidadTelefonica = [
     'semana' => 'semana',
     'mes' => 'mes'
 ][$rendimientoTelefonicoGranularidad] ?? 'periodo';
-$etiquetaGranularidadEvolucion = [
-    'dia' => 'día',
-    'semana' => 'semana',
-    'mes' => 'mes'
-][(string)($evolucionActividad['granularidad'] ?? 'dia')] ?? 'periodo';
 $etiquetaCanalReporte = static function ($canal) {
     $canal = strtoupper(trim((string)$canal));
     return [
@@ -181,6 +176,12 @@ if (!$modoModalReporte && $generarReporte && $errorFiltros === '') {
         error_log('[reporte_evolucion_actividad] ' . $error->getMessage());
     }
 }
+
+$etiquetaGranularidadEvolucion = [
+    'dia' => 'día',
+    'semana' => 'semana',
+    'mes' => 'mes'
+][(string)($evolucionActividad['granularidad'] ?? 'dia')] ?? 'periodo';
 
 $texto = static function ($valor) {
     return htmlspecialchars((string)$valor, ENT_QUOTES, 'UTF-8');
@@ -766,7 +767,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                             <span class="report-eyebrow">RENDIMIENTO TELEFÓNICO</span>
                             <h3 class="panel-title mb-1" id="rendimiento-telefonico-actividad">
                                 <?= $mostrarRendimientoTelefonico
-                                    ? 'Efectividad por ' . $etiquetaGranularidadTelefonica
+                                    ? 'Rendimiento telefónico por ' . $etiquetaGranularidadTelefonica
                                     : 'Actividad filtrada por canal' ?>
                             </h3>
                             <p class="page-subtitle mb-0">
@@ -774,9 +775,9 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                                     <?php if ($rendimientoTelefonicoGranularidad === 'dia'): ?>
                                         Seguimiento diario de llamadas, contacto y efectivas contabilizadas. La referencia operativa es de <?= $metaDiariaEfectivas ?> efectivas por día.
                                     <?php elseif ($rendimientoTelefonicoGranularidad === 'semana'): ?>
-                                        Resumen semanal de llamadas, contacto y efectivas contabilizadas. No se extrapola la meta diaria a una meta semanal.
+                                        Resumen semanal de llamadas y contacto. Las efectivas se contabilizan una vez por institución y día y aquí se suman por semana; no se extrapola la meta diaria a una meta semanal.
                                     <?php else: ?>
-                                        Resumen mensual de llamadas, contacto y efectivas contabilizadas. La meta diaria se conserva únicamente como referencia operativa.
+                                        Resumen mensual de llamadas y contacto. Las efectivas se contabilizan una vez por institución y día y aquí se suman por mes; la meta diaria se conserva únicamente como referencia operativa.
                                     <?php endif; ?>
                                 <?php else: ?>
                                     El filtro actual no corresponde a llamadas; el rendimiento telefónico no se mezcla con este resultado.
@@ -1626,7 +1627,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                         $svgAnchoActividad = 760;
                         $svgAltoActividad = 220;
                         $margenIzquierdoActividad = 42;
-                        $margenDerechoActividad = 18;
+                        $margenDerechoActividad = 42;
                         $margenSuperiorActividad = 18;
                         $margenInferiorActividad = 42;
                         $anchoAreaActividad = $svgAnchoActividad - $margenIzquierdoActividad - $margenDerechoActividad;
@@ -1657,7 +1658,10 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                                 'y' => $y,
                                 'total' => $totalPeriodo,
                                 'etiqueta' => (string)($periodoActividad['etiqueta'] ?? ''),
-                                'tooltip' => (string)($periodoActividad['tooltip'] ?? '')
+                                'tooltip' => (string)($periodoActividad['tooltip'] ?? ''),
+                                'anchor' => $indicePeriodo === 0
+                                    ? 'start'
+                                    : ($indicePeriodo === $cantidadPeriodosActividad - 1 ? 'end' : 'middle')
                             ];
                         }
                         $saltoEtiquetasActividad = max(1, (int)ceil($cantidadPeriodosActividad / 6));
@@ -1699,7 +1703,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                                         <text
                                             x="<?= number_format($punto['x'], 2, '.', '') ?>"
                                             y="<?= $svgAltoActividad - 14 ?>"
-                                            text-anchor="middle"
+                                            text-anchor="<?= $texto($punto['anchor'] ?? 'middle') ?>"
                                             class="analyst-activity-chart-axis">
                                             <?= $texto($punto['etiqueta']) ?>
                                         </text>
