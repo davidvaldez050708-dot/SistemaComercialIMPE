@@ -3,6 +3,9 @@
 require_once __DIR__ . '/../models/SeguimientoVinculacionModel.php';
 require_once __DIR__ . '/../../config/db_connection.php';
 require_once __DIR__ . '/SeguimientoActividadPresentacionService.php';
+require_once __DIR__ . '/SeguimientoFlujoService.php';
+require_once __DIR__ . '/SeguimientoPostEnvioService.php';
+require_once __DIR__ . '/ReunionResultadoService.php';
 
 class ReporteSeguimientoInstitucionDetalleService
 {
@@ -69,6 +72,13 @@ class ReporteSeguimientoInstitucionDetalleService
             error_log('[reporte_institucion_observaciones] ' . $error->getMessage());
         }
 
+        $reuniones = $this->obtenerReuniones($seguimientoId);
+        $postEnvio = $this->obtenerPostEnvio($seguimientoId);
+        $flujo = $this->obtenerFlujoEjecutivo(
+            $seguimientoId,
+            $usuarioId
+        );
+
         return [
             'seguimiento' => $seguimiento,
             'contacto' => $this->contacto($seguimiento),
@@ -76,8 +86,17 @@ class ReporteSeguimientoInstitucionDetalleService
             'interacciones_recientes' => $interaccionesHumanas,
             'oficios' => $oficios,
             'observaciones' => $observaciones,
-            'reuniones' => $this->obtenerReuniones($seguimientoId),
-            'post_envio' => $this->obtenerPostEnvio($seguimientoId)
+            'reuniones' => $reuniones,
+            'ultima_reunion' => $reuniones[0] ?? null,
+            'post_envio' => $postEnvio,
+            'flujo' => $flujo,
+            'hitos' => $this->construirHitos(
+                $seguimiento,
+                $oficios,
+                $reuniones,
+                $postEnvio,
+                $flujo
+            )
         ];
     }
 
@@ -187,17 +206,7 @@ class ReporteSeguimientoInstitucionDetalleService
 
         try {
             $sql = "SELECT
-                        r.id,
-                        r.fecha_propuesta,
-                        r.duracion_minutos,
-                        r.modalidad,
-                        r.objetivo,
-                        r.estado,
-                        r.ubicacion,
-                        r.confirmada_at,
-                        r.correo_confirmacion_at,
-                        r.notas_analista,
-                        r.notas_kam,
+                        r.*,
                         TRIM(CONCAT(COALESCE(k.nombre, ''), ' ', COALESCE(k.apellidos, ''))) AS cuenta_clave_nombre
                     FROM reuniones_vinculacion r
                     LEFT JOIN usuarios k ON k.id = r.cuenta_clave_id
@@ -236,6 +245,192 @@ class ReporteSeguimientoInstitucionDetalleService
             error_log('[reporte_institucion_post_envio] ' . $error->getMessage());
             return [];
         }
+    }
+
+    private function obtenerFlujoEjecutivo(int $seguimientoId, int $usuarioId): array
+    {
+        $flujo = [];
+
+        try {
+            $respuestaBase = (new SeguimientoFlujoService())->obtenerEstado(
+                $seguimientoId,
+                $usuarioId
+            );
+            if (($respuestaBase['ok'] ?? false) && is_array($respuestaBase['flujo'] ?? null)) {
+                $flujo = $respuestaBase['flujo'];
+            }
+        } catch (Throwable $error) {
+            error_log('[reporte_institucion_flujo_base] ' . $error->getMessage());
+        }
+
+        try {
+            $respuestaPost = (new SeguimientoPostEnvioService())->obtenerFlujoSiAplica(
+                $seguimientoId,
+                $usuarioId
+            );
+            if (
+                ($respuestaPost['ok'] ?? false) &&
+                ($respuestaPost['aplica'] ?? false) &&
+                is_array($respuestaPost['flujo'] ?? null)
+            ) {
+                $flujo = $respuestaPost['flujo'];
+            }
+        } catch (Throwable $error) {
+            error_log('[reporte_institucion_flujo_post] ' . $error->getMessage());
+        }
+
+        if (!empty($flujo)) {
+            try {
+                $flujo = (new ReunionResultadoService())->ajustarFlujo(
+                    $seguimientoId,
+                    $usuarioId,
+                    $flujo
+                );
+            } catch (Throwable $error) {
+                error_log('[reporte_institucion_flujo_reunion] ' . $error->getMessage());
+            }
+        }
+
+        return is_array($flujo) ? $flujo : [];
+    }
+
+    private function construirHitos(
+        array $seguimiento,
+        array $oficios,
+        array $reuniones,
+        array $postEnvio,
+        array $flujo
+    ): array {
+        $hitos = [];
+        $agregar = static function (
+            array &$destino,
+            string $clave,
+            string $titulo,
+            string $estado,
+            string $fecha = '',
+            string $detalle = ''
+        ): void {
+            $destino[] = [
+                'clave' => $clave,
+                'titulo' => $titulo,
+                'estado' => $estado,
+                'fecha' => $fecha,
+                'detalle' => $detalle
+            ];
+        };
+
+        $agregar(
+            $hitos,
+            'datos',
+            'Datos de contacto',
+            (int)($seguimiento['datos_verificados'] ?? 0) === 1 ? 'COMPLETADO' : 'PENDIENTE',
+            (string)($seguimiento['datos_verificados_at'] ?? ''),
+            (int)($seguimiento['datos_verificados'] ?? 0) === 1
+                ? 'Información de contacto verificada.'
+                : 'La información de contacto aún no está marcada como verificada.'
+        );
+
+        $oficio = $oficios[0] ?? [];
+        $estadoOficio = strtoupper(trim((string)($oficio['estado_oficio'] ?? '')));
+        $agregar(
+            $hitos,
+            'oficio',
+            'Oficio institucional',
+            $estadoOficio === 'ENVIADO'
+                ? 'COMPLETADO'
+                : (!empty($oficio) ? 'EN_PROCESO' : 'PENDIENTE'),
+            (string)($oficio['fecha_envio'] ?? $oficio['fecha_generacion'] ?? ''),
+            !empty($oficio)
+                ? ('Folio ' . (trim((string)($oficio['folio'] ?? '')) !== '' ? (string)$oficio['folio'] : 'pendiente') . '.')
+                : 'Aún no existe un oficio registrado.'
+        );
+
+        $respuestaAt = trim((string)($postEnvio['respuesta_at'] ?? ''));
+        $respuestaTipo = strtoupper(trim((string)($postEnvio['respuesta_tipo'] ?? '')));
+        $respuestaLabels = [
+            'INTERESADO' => 'Interesado',
+            'MAS_INFORMACION' => 'Solicitó más información',
+            'QUIERE_REUNION' => 'Solicitó reunión',
+            'CONTACTAR_DESPUES' => 'Solicitó retomar contacto',
+            'NO_INTERESADO' => 'No interesado'
+        ];
+        $agregar(
+            $hitos,
+            'respuesta',
+            'Respuesta de la institución',
+            $respuestaAt !== '' ? 'COMPLETADO' : 'PENDIENTE',
+            $respuestaAt,
+            $respuestaAt !== ''
+                ? ($respuestaLabels[$respuestaTipo] ?? 'Respuesta registrada')
+                : 'Pendiente de respuesta.'
+        );
+
+        $reunion = $reuniones[0] ?? [];
+        $estadoReunion = strtoupper(trim((string)($reunion['estado'] ?? '')));
+        $fechaReunion = trim((string)($reunion['fecha_propuesta'] ?? ''));
+        $realizadaAt = trim((string)($reunion['realizada_at'] ?? ''));
+        $resultadoReunion = strtoupper(trim((string)($reunion['reunion_resultado'] ?? '')));
+        $resultadoLabels = [
+            'AVANZAR_CONVENIO' => 'Avanzar a convenio',
+            'REQUIERE_SEGUIMIENTO' => 'Requiere seguimiento',
+            'NO_INTERESADO' => 'No interesado'
+        ];
+        $estadoHitoReunion = $realizadaAt !== ''
+            ? 'COMPLETADO'
+            : (!empty($reunion) ? 'EN_PROCESO' : 'PENDIENTE');
+        $detalleReunion = '';
+        if ($resultadoReunion !== '') {
+            $detalleReunion = $resultadoLabels[$resultadoReunion] ?? 'Resultado registrado';
+        } elseif ($estadoReunion !== '') {
+            $detalleReunion = ucfirst(strtolower(str_replace('_', ' ', $estadoReunion)));
+        } else {
+            $detalleReunion = 'Aún no hay una reunión registrada.';
+        }
+        $agregar(
+            $hitos,
+            'reunion',
+            'Reunión',
+            $estadoHitoReunion,
+            $realizadaAt !== '' ? $realizadaAt : $fechaReunion,
+            $detalleReunion
+        );
+
+        $convenioAt = trim((string)($postEnvio['convenio_formalizado_at'] ?? ''));
+        $resultadoPost = strtoupper(trim((string)($postEnvio['reunion_resultado'] ?? '')));
+        $agregar(
+            $hitos,
+            'convenio',
+            'Convenio / formalización',
+            $convenioAt !== ''
+                ? 'COMPLETADO'
+                : ($resultadoPost === 'AVANZAR_CONVENIO' ? 'EN_PROCESO' : 'PENDIENTE'),
+            $convenioAt,
+            $convenioAt !== ''
+                ? 'Convenio formalizado.'
+                : ($resultadoPost === 'AVANZAR_CONVENIO'
+                    ? 'La relación está lista para avanzar a convenio.'
+                    : 'La formalización todavía no ha iniciado.')
+        );
+
+        $pasoActual = (int)($flujo['paso_actual'] ?? 0);
+        if ($pasoActual > 0) {
+            foreach ($hitos as &$hito) {
+                $orden = [
+                    'datos' => 4,
+                    'oficio' => 7,
+                    'respuesta' => 9,
+                    'reunion' => 12,
+                    'convenio' => 13
+                ][$hito['clave']] ?? 99;
+
+                if ($hito['estado'] === 'PENDIENTE' && $pasoActual > $orden) {
+                    $hito['estado'] = 'COMPLETADO';
+                }
+            }
+            unset($hito);
+        }
+
+        return $hitos;
     }
 
     private function tablaDisponible(string $tabla): bool
