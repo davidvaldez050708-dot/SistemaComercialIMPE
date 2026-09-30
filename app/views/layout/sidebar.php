@@ -11,6 +11,12 @@ $mostrarSeguimientoVinculacion = tienePermiso('seguimientos_vinculacion.ver');
 $mostrarConvocatorias = tienePermiso('convocatorias.ver');
 $mostrarReportes = $mostrarDataTerritorial || $mostrarSeguimientoVinculacion;
 
+$rolActualConvocatorias = strtolower(trim((string)($_SESSION['rol'] ?? '')));
+$esRolMarketing = $rolActualConvocatorias === 'marketing';
+$etiquetaMenuConvocatorias = $esRolMarketing
+    ? '<?= htmlspecialchars($etiquetaMenuConvocatorias) ?>'
+    : 'Convocatorias';
+
 $claseInicio = $opcionActiva === 'inicio' ? 'active' : '';
 $claseUsuarios = $opcionActiva === 'usuarios' ? 'active' : '';
 $claseRoles = $opcionActiva === 'roles' ? 'active' : '';
@@ -111,7 +117,7 @@ $claseConvocatorias = $opcionActiva === 'convocatorias' ? 'active' : '';
                     href="<?= BASE_URL ?>index.php?controller=convocatoria&action=index"
                     class="sidebar-link <?= $claseConvocatorias ?>">
                     <i class="bi bi-megaphone"></i>
-                    Gestión de Convocatorias
+                    <?= htmlspecialchars($etiquetaMenuConvocatorias) ?>
                 </a>
             </div>
 
@@ -327,7 +333,7 @@ $claseConvocatorias = $opcionActiva === 'convocatorias' ? 'active' : '';
                         href="<?= BASE_URL ?>index.php?controller=convocatoria&action=index"
                         class="sidebar-link <?= $claseConvocatorias ?>">
                         <i class="bi bi-megaphone"></i>
-                        Gestión de Convocatorias
+                        <?= htmlspecialchars($etiquetaMenuConvocatorias) ?>
                     </a>
                 </div>
 
