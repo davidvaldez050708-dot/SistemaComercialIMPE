@@ -558,7 +558,7 @@ class SeguimientoReporteAnaliticaService
         $sql = "SELECT
                     i.seguimiento_id,
                     s.nombre_entidad,
-                    s.municipio,
+                    COALESCE(m.nombre, '') AS municipio,
                     COUNT(*) AS interacciones,
                     SUM(CASE
                         WHEN UPPER(TRIM(COALESCE(i.canal, ''))) IN ('LLAMADA', 'LLAMADA_IP')
@@ -597,6 +597,8 @@ class SeguimientoReporteAnaliticaService
                 FROM interacciones_vinculacion i
                 INNER JOIN seguimientos_vinculacion s
                     ON s.id = i.seguimiento_id
+                LEFT JOIN municipios m
+                    ON m.id = s.municipio_id
                 WHERE i.seguimiento_id IN ($placeholders)
                   AND UPPER(TRIM(COALESCE(i.canal, ''))) <> 'SISTEMA'";
 
@@ -622,7 +624,7 @@ class SeguimientoReporteAnaliticaService
         }
 
         $this->agregarFiltroCanal($sql, $tipos, $parametros, $canal, 'i.');
-        $sql .= " GROUP BY i.seguimiento_id, s.nombre_entidad, s.municipio
+        $sql .= " GROUP BY i.seguimiento_id, s.nombre_entidad, m.nombre
                   ORDER BY interacciones DESC, ultima_actividad DESC
                   LIMIT " . $limite;
 
