@@ -592,3 +592,142 @@
         font-size: 8px;
     }
 }
+
+
+/* =========================================================
+   ALERTAS DE CONVOCATORIAS · MARKETING
+   ========================================================= */
+.convocatoria-notification-menu {
+    width: min(420px, calc(100vw - 28px));
+}
+
+.convocatoria-notification-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.convocatoria-notification-header > div {
+    min-width: 0;
+}
+
+.convocatoria-notification-read-all {
+    flex: 0 0 auto;
+    padding: 2px 0;
+    border: 0;
+    background: transparent;
+    color: var(--color-primary);
+    font-size: 9.5px;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.convocatoria-notification-read-all:hover,
+.convocatoria-notification-read-all:focus {
+    text-decoration: underline;
+}
+
+.convocatoria-notification-list {
+    max-height: 350px;
+    overflow-y: auto;
+}
+
+.convocatoria-notification-item {
+    padding: 11px 14px;
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr) 8px;
+    gap: 10px;
+    align-items: center;
+    border-bottom: 1px solid #edf0f4;
+    color: var(--color-text-primary);
+    text-decoration: none;
+}
+
+.convocatoria-notification-item:last-child {
+    border-bottom: 0;
+}
+
+.convocatoria-notification-item:hover,
+.convocatoria-notification-item:focus {
+    background-color: #f8fafc;
+    color: var(--color-text-primary);
+}
+
+.convocatoria-notification-item.is-unread {
+    background-color: #f7faff;
+}
+
+.convocatoria-notification-icon {
+    width: 34px;
+    height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9px;
+    background-color: var(--color-primary-soft);
+    color: var(--color-primary);
+    font-size: 14px;
+}
+
+.convocatoria-notification-copy {
+    min-width: 0;
+    display: grid;
+    gap: 2px;
+}
+
+.convocatoria-notification-copy strong,
+.convocatoria-notification-copy span,
+.convocatoria-notification-copy small {
+    display: block;
+}
+
+.convocatoria-notification-copy strong {
+    overflow: hidden;
+    color: var(--color-text-primary);
+    font-size: 11.5px;
+    font-weight: 800;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.convocatoria-notification-copy span {
+    color: var(--color-text-secondary);
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+.convocatoria-notification-copy small {
+    margin-top: 2px;
+    color: #8a96a8;
+    font-size: 9px;
+    font-weight: 600;
+}
+
+.convocatoria-notification-dot {
+    width: 7px;
+    height: 7px;
+    justify-self: end;
+    border-radius: 50%;
+    background-color: var(--color-primary);
+}
+
+.convocatoria-notification-empty {
+    min-height: 116px;
+}
+
+@media (max-width: 575.98px) {
+    .convocatoria-notification-header {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .convocatoria-notification-read-all {
+        align-self: flex-start;
+    }
+
+    .convocatoria-notification-item {
+        grid-template-columns: 32px minmax(0, 1fr) 8px;
+    }
+}
