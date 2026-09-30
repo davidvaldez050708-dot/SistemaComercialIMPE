@@ -1462,8 +1462,8 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                                         </span>
                                         <span>
                                             <i class="bi bi-arrow-right-circle"></i>
-                                            <?= $texto(trim((string)($prioritario['proxima_accion_label'] ?? '')) !== ''
-                                                ? $prioritario['proxima_accion_label']
+                                            <?= $texto(trim((string)($prioritario['accion_operativa_label'] ?? '')) !== ''
+                                                ? $prioritario['accion_operativa_label']
                                                 : 'Sin acción programada') ?>
                                         </span>
                                     </div>
@@ -2383,7 +2383,11 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                                 $ultimaHumanaCartera = trim((string)($seguimiento['ultima_interaccion_humana_at'] ?? ''));
                                 $diasCartera = $seguimiento['dias_sin_actividad'] ?? null;
                                 $proximaAtCartera = trim((string)($seguimiento['proxima_accion_at'] ?? ''));
-                                $proximaLabelCartera = trim((string)($seguimiento['proxima_accion_label'] ?? ''));
+                                $proximaLabelCartera = trim((string)(
+                                    $seguimiento['accion_operativa_label'] ??
+                                    $seguimiento['proxima_accion_label'] ??
+                                    ''
+                                ));
                                 $esCerradoCartera = in_array(
                                     (string)($seguimiento['atencion_codigo'] ?? ''),
                                     ['FORMALIZADO', 'DESCARTADO'],
