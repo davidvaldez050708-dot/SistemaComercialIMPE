@@ -67,6 +67,14 @@ class ReporteSeguimientoCarteraService
             $seguimiento['prioridad_orden'] = $atencion['orden'];
             $seguimiento['accion_vencida'] = $atencion['codigo'] === 'VENCIDA';
 
+            $accionOperativa = $this->resolverAccionOperativa(
+                $seguimiento,
+                $meta,
+                $etapa
+            );
+            $seguimiento['accion_operativa_label'] = $accionOperativa['label'];
+            $seguimiento['accion_operativa_fuente'] = $accionOperativa['fuente'];
+
             if (trim((string)($meta['convenio_formalizado_at'] ?? '')) !== '') {
                 $seguimiento['convenio_formalizado_at'] =
                     (string)$meta['convenio_formalizado_at'];
@@ -292,6 +300,87 @@ class ReporteSeguimientoCarteraService
             'codigo' => $codigo,
             'label' => self::ETAPAS[$codigo] ?? $codigo,
             'paso' => $paso
+        ];
+    }
+
+    private function resolverAccionOperativa(
+        array $seguimiento,
+        array $meta,
+        array $etapa
+    ): array {
+        $textoProgramado = trim((string)($seguimiento['proxima_accion_texto'] ?? ''));
+        if ($textoProgramado !== '' && $textoProgramado !== '—') {
+            return [
+                'label' => $textoProgramado,
+                'fuente' => 'PROGRAMADA'
+            ];
+        }
+
+        $fechaProgramada = trim((string)($seguimiento['proxima_accion_at'] ?? ''));
+        if ($fechaProgramada !== '') {
+            return [
+                'label' => 'Seguimiento programado',
+                'fuente' => 'PROGRAMADA'
+            ];
+        }
+
+        if (!empty($seguimiento['ruta_concluida'])) {
+            return [
+                'label' => 'Ruta concluida',
+                'fuente' => 'CIERRE'
+            ];
+        }
+
+        $codigo = (string)($etapa['codigo'] ?? '');
+
+        if ($codigo === 'DESCARTADO') {
+            return [
+                'label' => 'Sin acciones pendientes',
+                'fuente' => 'CIERRE'
+            ];
+        }
+
+        if ($codigo === 'CONVENIO_FORMALIZACION') {
+            return [
+                'label' => 'Formalizar convenio',
+                'fuente' => 'ETAPA'
+            ];
+        }
+
+        if ($codigo === 'REUNION') {
+            return [
+                'label' => 'Continuar coordinación de reunión',
+                'fuente' => 'ETAPA'
+            ];
+        }
+
+        if ($codigo === 'RESPUESTA_INSTITUCION') {
+            $respuestaRegistrada = trim((string)($meta['respuesta_at'] ?? '')) !== '';
+            return [
+                'label' => $respuestaRegistrada
+                    ? 'Continuar seguimiento a la respuesta'
+                    : 'Esperar / registrar respuesta',
+                'fuente' => 'ETAPA'
+            ];
+        }
+
+        if ($codigo === 'OFICIO_INSTITUCIONAL') {
+            return [
+                'label' => 'Preparar / enviar oficio',
+                'fuente' => 'ETAPA'
+            ];
+        }
+
+        if ($codigo === 'DATOS_CONTACTO') {
+            return [
+                'label' => 'Continuar contacto y validación',
+                'fuente' => 'ETAPA'
+            ];
+        }
+
+        return [
+            'label' => 'Sin acción programada',
+            'fuente' => 'NINGUNA'
         ];
     }
 
