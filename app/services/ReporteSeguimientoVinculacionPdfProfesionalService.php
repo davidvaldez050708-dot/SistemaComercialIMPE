@@ -270,6 +270,261 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
         return $html . '</tr></table>';
     }
 
+    private function contextoCartera(array $filtros, string $responsable, array $resumen): string
+    {
+        $ubicacion = [];
+        foreach (['Estado', 'Municipio'] as $campo) {
+            $valor = trim((string)($filtros[$campo] ?? ''));
+            if ($valor !== '' && !in_array($valor, ['Todos', 'Todas'], true)) {
+                $ubicacion[] = $valor;
+            }
+        }
+
+        $territorio = !empty($ubicacion)
+            ? implode(' · ', $ubicacion)
+            : 'Todos los territorios autorizados';
+        $etapa = trim((string)($filtros['Etapa'] ?? 'Todos'));
+        $canal = trim((string)($filtros['Último canal de contacto'] ?? 'Todos'));
+        $inactividad = trim((string)($filtros['Días sin actividad'] ?? 'Todos'));
+
+        $html = '<table class="scope portfolio-scope"><tr>';
+        $html .= '<td><span>Territorio</span><strong>' . $this->e($territorio) . '</strong></td>';
+        $html .= '<td><span>Etapa actual</span><strong>' . $this->e($etapa !== '' ? $etapa : 'Todos') . '</strong></td>';
+        $html .= '<td><span>Último canal humano</span><strong>' . $this->e($canal !== '' ? $canal : 'Todos') . '</strong></td>';
+        $html .= '<td><span>Inactividad</span><strong>' . $this->e($inactividad !== '' ? $inactividad : 'Todos') . '</strong></td>';
+        $html .= '</tr></table>';
+
+        if ($responsable !== '') {
+            $html .= '<div class="portfolio-owner"><strong>Analista:</strong> ' . $this->e($responsable) .
+                ' · <strong>Seguimientos:</strong> ' . (int)($resumen['total'] ?? 0) . '</div>';
+        }
+
+        return $html;
+    }
+
+    private function resumenEjecutivoCartera(array $resumen): string
+    {
+        $html = '<section class="report-section keep portfolio-executive">' .
+            $this->titulo('Panorama de cartera');
+        $html .= '<table class="executive-metrics portfolio-metrics"><tr>';
+        $html .= $this->opMetric('Seguimientos en cartera', (string)(int)($resumen['total'] ?? 0));
+        $html .= $this->opMetric('En gestión', (string)(int)($resumen['en_gestion'] ?? 0));
+        $html .= $this->opMetric('Requieren atención', (string)(int)($resumen['requieren_atencion'] ?? 0));
+        $html .= $this->opMetric('Convenios formalizados', (string)(int)($resumen['formalizados'] ?? 0));
+        $html .= $this->opMetric('Descartados', (string)(int)($resumen['descartados'] ?? 0));
+        $html .= '</tr></table>';
+        $html .= '<div class="decision-note"><strong>Lectura:</strong> Mi cartera representa el estado actual de los seguimientos; ' .
+            'la inactividad y el último canal se calculan únicamente con interacciones humanas.</div>';
+
+        return $html . '</section>';
+    }
+
+    private function atencionCartera(array $resumen): string
+    {
+        $prioritarios = is_array($resumen['prioritarios'] ?? null)
+            ? $resumen['prioritarios']
+            : [];
+
+        $html = '<section class="report-section portfolio-attention-section">' .
+            $this->titulo('Atención operativa');
+
+        if (empty($prioritarios)) {
+            return $html .
+                $this->vacio('No hay seguimientos con acciones vencidas, sin actividad o con más de 7 días de inactividad.') .
+                '</section>';
+        }
+
+        $html .= '<div class="flow-note">Se muestran primero los seguimientos que conviene revisar por vencimiento o falta de actividad humana.</div>';
+        $html .= '<table class="data-table portfolio-priority-table"><thead><tr>';
+        $html .= '<th>Institución</th><th>Etapa</th><th>Inactividad</th><th>Próxima acción</th><th>Atención</th>';
+        $html .= '</tr></thead><tbody>';
+
+        foreach ($prioritarios as $seguimiento) {
+            $dias = $seguimiento['dias_sin_actividad'] ??
+                $seguimiento['dias_sin_actividad_humana'] ??
+                null;
+            $inactividad = $dias === null
+                ? 'Sin actividad'
+                : ((int)$dias . ' días');
+            $proxima = trim((string)($seguimiento['proxima_accion_label'] ?? ''));
+            if ($proxima === '' || $proxima === '—') {
+                $proxima = 'Sin acción programada';
+            }
+
+            $html .= '<tr>';
+            $html .= '<td><strong>' . $this->e((string)($seguimiento['nombre_entidad'] ?? 'Institución')) .
+                '</strong><small>' . $this->e((string)($seguimiento['municipio'] ?? '')) . '</small></td>';
+            $html .= '<td>' . $this->e((string)($seguimiento['etapa_operativa_label'] ?? 'Sin etapa')) . '</td>';
+            $html .= '<td>' . $this->e($inactividad) . '</td>';
+            $html .= '<td>' . $this->e($proxima) . '</td>';
+            $html .= '<td><span class="portfolio-status portfolio-status-' .
+                $this->e(strtolower((string)($seguimiento['atencion_codigo'] ?? 'normal'))) . '">' .
+                $this->e((string)($seguimiento['atencion_label'] ?? 'En seguimiento')) .
+                '</span></td>';
+            $html .= '</tr>';
+        }
+
+        return $html . '</tbody></table></section>';
+    }
+
+    private function saludCartera(array $resumen): string
+    {
+        $normal = max(
+            0,
+            (int)($resumen['en_gestion'] ?? 0) -
+            (int)($resumen['requieren_atencion'] ?? 0)
+        );
+
+        $html = '<section class="report-section keep portfolio-health-section">' .
+            $this->titulo('Salud de cartera');
+        $html .= '<table class="activity-channel-summary portfolio-health"><tr>';
+        $html .= '<td><span>Acciones vencidas</span><strong>' . (int)($resumen['acciones_vencidas'] ?? 0) . '</strong></td>';
+        $html .= '<td><span>Sin actividad registrada</span><strong>' . (int)($resumen['sin_actividad'] ?? 0) . '</strong></td>';
+        $html .= '<td><span>Más de 7 días inactivos</span><strong>' . (int)($resumen['mas_7_dias'] ?? 0) . '</strong></td>';
+        $html .= '<td><span>En seguimiento normal</span><strong>' . $normal . '</strong></td>';
+        $html .= '</tr></table>';
+        $html .= '<div class="flow-note">Los seguimientos sin ninguna interacción humana se muestran separados de aquellos que sí tuvieron actividad y superan 7 días sin movimiento.</div>';
+
+        return $html . '</section>';
+    }
+
+    private function distribucionEtapasCartera(array $resumen): string
+    {
+        $etapas = is_array($resumen['por_etapa'] ?? null) ? $resumen['por_etapa'] : [];
+        $total = max(1, (int)($resumen['total'] ?? 0));
+        $labels = [
+            'DATOS_CONTACTO' => 'Datos de contacto',
+            'OFICIO_INSTITUCIONAL' => 'Oficio institucional',
+            'RESPUESTA_INSTITUCION' => 'Respuesta de la institución',
+            'REUNION' => 'Reunión',
+            'CONVENIO_FORMALIZACION' => 'Convenio / formalización',
+            'DESCARTADO' => 'Descartado'
+        ];
+
+        $html = '<section class="report-section keep portfolio-stage-section">' .
+            $this->titulo('Avance de la cartera · Distribución por etapa actual');
+
+        if (empty($etapas)) {
+            return $html . $this->vacio('No hay etapas operativas disponibles para los criterios seleccionados.') . '</section>';
+        }
+
+        $html .= '<div class="flow-note">La etapa se obtiene del avance operativo real de cada expediente, incluyendo reunión y formalización.</div>';
+        $html .= '<table class="data-table portfolio-stage-table"><thead><tr>';
+        $html .= '<th>Etapa actual</th><th class="center">Seguimientos</th><th class="right">Participación</th>';
+        $html .= '</tr></thead><tbody>';
+
+        foreach ($etapas as $codigo => $cantidad) {
+            $porcentaje = ((int)$cantidad / $total) * 100;
+            $html .= '<tr><td><strong>' . $this->e($labels[$codigo] ?? $codigo) . '</strong></td>';
+            $html .= '<td class="center">' . (int)$cantidad . '</td>';
+            $html .= '<td class="right">' . $this->decimal($porcentaje, 1) . '%</td></tr>';
+        }
+
+        return $html . '</tbody></table></section>';
+    }
+
+    private function coberturaTerritorialCartera(array $resumen): string
+    {
+        $municipios = is_array($resumen['por_municipio'] ?? null)
+            ? $resumen['por_municipio']
+            : [];
+        $municipios = array_slice($municipios, 0, 10, true);
+        $total = max(1, (int)($resumen['total'] ?? 0));
+
+        $html = '<section class="report-section keep portfolio-territory-section">' .
+            $this->titulo('Cobertura territorial');
+
+        if (empty($municipios)) {
+            return $html . $this->vacio('No hay municipios disponibles para los seguimientos incluidos.') . '</section>';
+        }
+
+        $html .= '<table class="data-table portfolio-territory-table"><thead><tr>';
+        $html .= '<th>Municipio</th><th class="center">Seguimientos</th><th class="right">Participación</th>';
+        $html .= '</tr></thead><tbody>';
+
+        foreach ($municipios as $municipio => $cantidad) {
+            $porcentaje = ((int)$cantidad / $total) * 100;
+            $html .= '<tr><td><strong>' . $this->e((string)$municipio) . '</strong></td>';
+            $html .= '<td class="center">' . (int)$cantidad . '</td>';
+            $html .= '<td class="right">' . $this->decimal($porcentaje, 1) . '%</td></tr>';
+        }
+
+        return $html . '</tbody></table></section>';
+    }
+
+    private function detalleCartera(array $seguimientos): string
+    {
+        $html = '<section class="report-section portfolio-detail-section">' .
+            $this->titulo('Detalle de cartera');
+        $html .= '<div class="flow-note">Vista operativa de los ' . count($seguimientos) .
+            ' seguimientos incluidos en la consulta. La última actividad corresponde a una interacción humana.</div>';
+        $html .= '<table class="data-table portfolio-detail-table"><thead><tr>';
+        $html .= '<th>Institución</th><th>Etapa actual</th><th>Última actividad</th>';
+        $html .= '<th>Inactividad</th><th>Próxima acción</th><th>Atención</th><th>Folio</th>';
+        $html .= '</tr></thead><tbody>';
+
+        foreach ($seguimientos as $seguimiento) {
+            $fechaHumana = trim((string)(
+                $seguimiento['ultima_interaccion_humana_at'] ??
+                ''
+            ));
+            $dias = $seguimiento['dias_sin_actividad'] ??
+                $seguimiento['dias_sin_actividad_humana'] ??
+                null;
+            $ultima = $fechaHumana !== ''
+                ? $this->fechaDato($fechaHumana)
+                : 'Sin actividad registrada';
+            $canal = $this->canalLabel((string)(
+                $seguimiento['ultimo_canal_humano'] ??
+                ''
+            ));
+            if ($canal !== '' && $fechaHumana !== '') {
+                $ultima .= ' · ' . $canal;
+            }
+
+            $inactividad = $dias === null
+                ? 'Sin actividad'
+                : ((int)$dias . ' días');
+
+            $atencionCodigo = strtoupper(trim((string)($seguimiento['atencion_codigo'] ?? '')));
+            if ($atencionCodigo === 'FORMALIZADO') {
+                $proxima = 'Ruta concluida';
+            } elseif ($atencionCodigo === 'DESCARTADO') {
+                $proxima = 'Sin acciones pendientes';
+            } else {
+                $proxima = trim((string)($seguimiento['proxima_accion_label'] ?? ''));
+                if ($proxima === '' || $proxima === '—') {
+                    $proxima = 'Sin acción programada';
+                }
+            }
+
+            $ubicacion = trim(implode(', ', array_filter([
+                trim((string)($seguimiento['municipio'] ?? '')),
+                trim((string)($seguimiento['estado_nombre'] ?? ''))
+            ])));
+
+            $html .= '<tr>';
+            $html .= '<td><strong>' . $this->e((string)($seguimiento['nombre_entidad'] ?? '—')) . '</strong>';
+            if ($ubicacion !== '') {
+                $html .= '<small>' . $this->e($ubicacion) . '</small>';
+            }
+            $html .= '</td>';
+            $html .= '<td>' . $this->e((string)($seguimiento['etapa_operativa_label'] ?? 'Sin etapa')) . '</td>';
+            $html .= '<td>' . $this->e($ultima) . '</td>';
+            $html .= '<td>' . $this->e($inactividad) . '</td>';
+            $html .= '<td>' . $this->e($proxima) . '</td>';
+            $html .= '<td><span class="portfolio-status portfolio-status-' .
+                $this->e(strtolower($atencionCodigo !== '' ? $atencionCodigo : 'normal')) . '">' .
+                $this->e((string)($seguimiento['atencion_label'] ?? 'En seguimiento')) . '</span></td>';
+            $html .= '<td>' . $this->e(trim((string)($seguimiento['folio'] ?? '')) !== ''
+                ? (string)$seguimiento['folio']
+                : '—') . '</td>';
+            $html .= '</tr>';
+        }
+
+        return $html . '</tbody></table></section>';
+    }
+
     private function resumenEjecutivoActividad(array $analitica): string
     {
         $llamadas = is_array($analitica['llamadas'] ?? null) ? $analitica['llamadas'] : [];
