@@ -101,12 +101,36 @@
             }
 
             if (institutionTrigger) {
-                const stateSelected = Number(state?.value || 0) > 0;
-                institutionTrigger.disabled = mode !== 'institucion' || !stateSelected;
-                if (institutionHint) {
-                    institutionHint.textContent = !stateSelected
-                        ? 'Selecciona primero un estado para consultar las instituciones disponibles.'
-                        : 'Puedes acotar por municipio o elegir una institución del estado seleccionado.';
+                const stateId = String(state?.value || '0');
+                const municipalityId = String(municipality?.value || '0');
+                const stateSelected = Number(stateId) > 0;
+                const availabilityValidated =
+                    institutionTrigger.dataset.validatedStateId === stateId &&
+                    institutionTrigger.dataset.validatedMunicipalityId === municipalityId;
+                const hasInstitutions =
+                    availabilityValidated &&
+                    institutionTrigger.dataset.hasInstitutions === '1';
+
+                institutionTrigger.disabled =
+                    mode !== 'institucion' ||
+                    !stateSelected ||
+                    !hasInstitutions;
+
+                if (institutionHint && mode === 'institucion') {
+                    if (!stateSelected) {
+                        institutionHint.textContent =
+                            'Selecciona primero un estado para consultar las instituciones disponibles.';
+                    } else if (!availabilityValidated) {
+                        institutionHint.textContent =
+                            'Consultando instituciones disponibles…';
+                    } else if (!hasInstitutions) {
+                        institutionHint.textContent = Number(municipalityId) > 0
+                            ? 'No tienes instituciones con seguimiento en este municipio.'
+                            : 'No tienes instituciones con seguimiento en este estado.';
+                    } else {
+                        institutionHint.textContent =
+                            'Puedes acotar por municipio o elegir una institución del estado seleccionado.';
+                    }
                 }
             }
 
@@ -377,6 +401,9 @@
 
             if (institutionTrigger) {
                 institutionTrigger.disabled = true;
+                institutionTrigger.dataset.hasInstitutions = '0';
+                institutionTrigger.dataset.validatedStateId = '';
+                institutionTrigger.dataset.validatedMunicipalityId = '';
             }
 
             if (institutionHint && String(inputType.value || '') === 'institucion') {
@@ -391,6 +418,9 @@
 
             if (institutionTrigger) {
                 institutionTrigger.disabled = true;
+                institutionTrigger.dataset.hasInstitutions = '0';
+                institutionTrigger.dataset.validatedStateId = '';
+                institutionTrigger.dataset.validatedMunicipalityId = '';
             }
 
             if (institutionHint && String(inputType.value || '') === 'institucion') {
