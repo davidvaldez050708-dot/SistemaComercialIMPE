@@ -400,7 +400,9 @@ class RolModel
                 'seguimientos_vinculacion.crear',
                 'seguimientos_vinculacion.editar',
                 'seguimientos_vinculacion.operar_propios',
-                'convenios.ver'
+                'convenios.ver',
+                'reportes.ver',
+                'reportes.exportar'
             ],
             'Finanzas' => [
                 'pagos.ver',
@@ -421,7 +423,8 @@ class RolModel
                 'seguimientos_vinculacion.ver',
                 'seguimientos_vinculacion.supervisar',
                 'seguimientos_vinculacion.comentar',
-                'reportes.ver'
+                'reportes.ver',
+                'reportes.exportar'
             ]
         ];
 
