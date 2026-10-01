@@ -150,11 +150,12 @@ class SeguimientoFlujoController
 
         if (
             $usuarioId <= 0 ||
-            !tienePermiso('seguimientos_vinculacion.operar_propios')
+            !tienePermiso('seguimientos_vinculacion.operar_propios') ||
+            !tienePermiso('convenios.ver')
         ) {
             $this->responder([
                 'ok' => false,
-                'mensaje' => 'No tienes permiso para operar este seguimiento.'
+                'mensaje' => 'No tienes permiso para consultar el convenio de este seguimiento.'
             ], 403);
         }
 
@@ -185,6 +186,12 @@ class SeguimientoFlujoController
         if ($usuarioId <= 0) {
             http_response_code(401);
             echo 'La sesión no está activa.';
+            exit;
+        }
+
+        if (!tienePermiso('convenios.ver')) {
+            http_response_code(403);
+            echo 'No tienes permiso para consultar convenios.';
             exit;
         }
 
@@ -329,6 +336,24 @@ class SeguimientoFlujoController
                 'ok' => false,
                 'mensaje' => 'Faltan datos para guardar el avance.'
             ], 422);
+        }
+
+        $accionesConvenio = [
+            'ENVIAR_DOCUMENTACION_CONVENIO',
+            'REGISTRAR_CONVENIO_RECIBIDO',
+            'REGISTRAR_CONVENIO_CORREGIDO',
+            'APROBAR_CONVENIO',
+            'REGISTRAR_CONVENIO_FORMALIZADO'
+        ];
+
+        if (
+            in_array($accion, $accionesConvenio, true) &&
+            !tienePermiso('convenios.gestionar')
+        ) {
+            $this->responder([
+                'ok' => false,
+                'mensaje' => 'No tienes permiso para gestionar convenios.'
+            ], 403);
         }
 
         if ($accion === 'ENVIAR_SEGUIMIENTO_CORREO') {
