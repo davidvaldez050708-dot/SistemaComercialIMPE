@@ -759,8 +759,8 @@ class AgendaReunionService
                 $icono = 'bi-envelope-check';
 
                 if ($fecha && $fecha <= $ahora) {
-                    $accion = 'Confirmación pendiente de enviar';
-                    $etiqueta = 'Vencida · enviar confirmación';
+                    $accion = 'Fecha confirmada vencida · reprogramar';
+                    $etiqueta = 'Vencida · requiere nueva fecha';
                     $estadoUi = 'vencida';
                     $prioridad = 0;
                 } else {
