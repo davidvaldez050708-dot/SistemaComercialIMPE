@@ -19,7 +19,7 @@ $pendientesAgenda = array_values(array_filter(
         $estaVencida = !empty($reunion['esta_vencida']);
 
         if ($esCuentaClaveAgenda) {
-            return $estado === 'SOLICITADA';
+            return $estado === 'SOLICITADA' && !$estaVencida;
         }
 
         if ($esAnalistaAgenda) {
@@ -214,7 +214,7 @@ $pendientesAgenda = array_values(array_filter(
                     </h3>
                     <p>
                         <?php if ($esCuentaClaveAgenda): ?>
-                            Solicitudes pendientes, incluidas las que ya superaron la fecha propuesta.
+                            Solicitudes futuras pendientes de confirmación o ajuste.
                         <?php elseif ($esAnalistaAgenda): ?>
                             Reuniones vencidas, cambios solicitados o confirmaciones que requieren una acción.
                         <?php else: ?>
