@@ -17,9 +17,6 @@ class ReprogramacionReunionService
 
     public function solicitarAnalista($usuarioId, $rolId, $datos)
     {
-        if ((int)$rolId !== AgendaReunionService::ROL_ANALISTA) {
-            return $this->error('Solo el Analista puede proponer esta reprogramación.', 403);
-        }
         if (!$this->estructuraDisponible()) {
             return $this->error('Falta aplicar la migración de reprogramación de reuniones.', 500);
         }
@@ -38,7 +35,7 @@ class ReprogramacionReunionService
             return $this->error($error, 422);
         }
 
-        $reunion = $this->obtenerReunion($reunionId, (int)$usuarioId, 4);
+        $reunion = $this->obtenerReunion($reunionId, (int)$usuarioId, 'ANALISTA');
         if (!$reunion || !in_array((string)$reunion['estado'], ['CONFIRMADA', 'CORREO_ENVIADO'], true)) {
             return $this->error('La reunión no está disponible para reprogramarse.', 409);
         }
@@ -107,13 +104,6 @@ class ReprogramacionReunionService
 
     public function reproponerVencidaAnalista($usuarioId, $rolId, $datos)
     {
-        if ((int)$rolId !== AgendaReunionService::ROL_ANALISTA) {
-            return $this->error(
-                'Solo el Analista puede proponer una nueva fecha.',
-                403
-            );
-        }
-
         if (!$this->estructuraDisponible()) {
             return $this->error(
                 'Falta aplicar la migración de reprogramación de reuniones.',
@@ -142,7 +132,7 @@ class ReprogramacionReunionService
         $reunion = $this->obtenerReunion(
             $reunionId,
             (int)$usuarioId,
-            AgendaReunionService::ROL_ANALISTA
+            'ANALISTA'
         );
 
         if (
@@ -308,9 +298,6 @@ class ReprogramacionReunionService
 
     public function solicitarKam($usuarioId, $rolId, $datos)
     {
-        if ((int)$rolId !== AgendaReunionService::ROL_CUENTA_CLAVE) {
-            return $this->error('Solo Cuenta Clave puede solicitar este cambio.', 403);
-        }
         if (!$this->estructuraDisponible()) {
             return $this->error('Falta aplicar la migración de reprogramación de reuniones.', 500);
         }
@@ -321,7 +308,7 @@ class ReprogramacionReunionService
             return $this->error('Indica el motivo de la reprogramación.', 422);
         }
 
-        $reunion = $this->obtenerReunion($reunionId, (int)$usuarioId, 6);
+        $reunion = $this->obtenerReunion($reunionId, (int)$usuarioId, 'CUENTA_CLAVE');
         if (!$reunion || !in_array((string)$reunion['estado'], ['CONFIRMADA', 'CORREO_ENVIADO'], true)) {
             return $this->error('La reunión no está disponible para solicitar un cambio.', 409);
         }
@@ -377,12 +364,8 @@ class ReprogramacionReunionService
 
     public function completarAnalista($usuarioId, $rolId, $datos)
     {
-        if ((int)$rolId !== AgendaReunionService::ROL_ANALISTA) {
-            return $this->error('Solo el Analista puede proponer la nueva fecha.', 403);
-        }
-
         $reunionId = (int)($datos['reunion_id'] ?? 0);
-        $reunion = $this->obtenerReunion($reunionId, (int)$usuarioId, 4);
+        $reunion = $this->obtenerReunion($reunionId, (int)$usuarioId, 'ANALISTA');
         if (!$reunion || (int)($reunion['es_reprogramacion'] ?? 0) !== 1 || (string)$reunion['estado'] !== 'CAMBIO_SOLICITADO') {
             return $this->error('La reunión no está esperando una nueva propuesta.', 409);
         }
@@ -409,12 +392,8 @@ class ReprogramacionReunionService
 
     public function confirmarKam($usuarioId, $rolId, $datos)
     {
-        if ((int)$rolId !== AgendaReunionService::ROL_CUENTA_CLAVE) {
-            return $this->error('Solo Cuenta Clave puede confirmar la nueva fecha.', 403);
-        }
-
         $reunionId = (int)($datos['reunion_id'] ?? 0);
-        $reunion = $this->obtenerReunion($reunionId, (int)$usuarioId, 6);
+        $reunion = $this->obtenerReunion($reunionId, (int)$usuarioId, 'CUENTA_CLAVE');
         if (!$reunion || (int)($reunion['es_reprogramacion'] ?? 0) !== 1 || (string)$reunion['estado'] !== 'SOLICITADA') {
             return $this->error('Esta reunión no corresponde a una reprogramación pendiente.', 409);
         }
@@ -440,12 +419,8 @@ class ReprogramacionReunionService
 
     public function marcarCorreoAnalista($usuarioId, $rolId, $datos)
     {
-        if ((int)$rolId !== AgendaReunionService::ROL_ANALISTA) {
-            return $this->error('Solo el Analista puede registrar el correo de reprogramación.', 403);
-        }
-
         $reunionId = (int)($datos['reunion_id'] ?? 0);
-        $reunion = $this->obtenerReunion($reunionId, (int)$usuarioId, 4);
+        $reunion = $this->obtenerReunion($reunionId, (int)$usuarioId, 'ANALISTA');
         if (!$reunion || (int)($reunion['es_reprogramacion'] ?? 0) !== 1 || (string)$reunion['estado'] !== 'CONFIRMADA') {
             return $this->error('Esta reunión no corresponde a una reprogramación confirmada.', 409);
         }
@@ -508,23 +483,28 @@ class ReprogramacionReunionService
         return (int)$this->connection->insert_id;
     }
 
-    private function obtenerReunion($reunionId, $usuarioId, $rolId)
+    private function obtenerReunion($reunionId, $usuarioId, $tipoActor)
     {
-        $sql = "SELECT r.* FROM reuniones_vinculacion r WHERE r.id=?";
-        if ((int)$rolId === 4) {
-            $sql .= " AND r.analista_id=?";
-        } elseif ((int)$rolId === 6) {
-            $sql .= " AND r.cuenta_clave_id=?";
+        $tipoActor = strtoupper(trim((string)$tipoActor));
+
+        if ($tipoActor === 'ANALISTA') {
+            $campoResponsable = 'analista_id';
+        } elseif ($tipoActor === 'CUENTA_CLAVE') {
+            $campoResponsable = 'cuenta_clave_id';
+        } else {
+            return null;
         }
-        $sql .= " LIMIT 1";
+
+        $sql = "SELECT r.*
+                FROM reuniones_vinculacion r
+                WHERE r.id=?
+                  AND " . $campoResponsable . "=?
+                LIMIT 1";
 
         $stmt = $this->connection->prepare($sql);
-        if (in_array((int)$rolId, [4, 6], true)) {
-            $stmt->bind_param('ii', $reunionId, $usuarioId);
-        } else {
-            $stmt->bind_param('i', $reunionId);
-        }
+        $stmt->bind_param('ii', $reunionId, $usuarioId);
         $stmt->execute();
+
         return $stmt->get_result()->fetch_assoc() ?: null;
     }
 
