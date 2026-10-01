@@ -217,7 +217,8 @@ class AgendaReunionRepository
                     notificado_analista_at = NULL
                 WHERE id = ?
                   AND cuenta_clave_id = ?
-                  AND estado = 'CORREO_ENVIADO'";
+                  AND estado = 'CORREO_ENVIADO'
+                  AND fecha_propuesta > NOW()";
         $stmt = $this->connection->prepare($sql);
         $stmt->bind_param(
             'sii',
@@ -247,6 +248,10 @@ class AgendaReunionRepository
                     'CONFIRMADA',
                     'CORREO_ENVIADO',
                     'CANCELACION_SOLICITADA'
+                  )
+                  AND (
+                    estado = 'CANCELACION_SOLICITADA'
+                    OR fecha_propuesta > NOW()
                   )";
         $stmt = $this->connection->prepare($sql);
         $stmt->bind_param(
@@ -377,7 +382,10 @@ class AgendaReunionRepository
     {
         $sql = "UPDATE reuniones_vinculacion SET cuenta_clave_id=?,zoom_url=?,ubicacion=?,notas_kam=?,estado='CONFIRMADA',
                     confirmada_at=NOW(),confirmada_por=?,notificado_analista_at=NULL
-                WHERE id=? AND cuenta_clave_id=? AND estado='SOLICITADA'";
+                WHERE id=?
+                  AND cuenta_clave_id=?
+                  AND estado='SOLICITADA'
+                  AND fecha_propuesta > NOW()";
         $stmt = $this->connection->prepare($sql);
         $stmt->bind_param('isssiii', $kamId, $zoomUrl, $ubicacion, $notasKam, $kamId, $reunionId, $kamId);
         $stmt->execute();
@@ -388,7 +396,10 @@ class AgendaReunionRepository
     {
         $sql = "UPDATE reuniones_vinculacion SET cuenta_clave_id=?,estado='CAMBIO_SOLICITADO',cambio_motivo=?,
                     cambio_solicitado_at=NOW(),cambio_solicitado_por=?,notificado_analista_at=NULL
-                WHERE id=? AND cuenta_clave_id=? AND estado='SOLICITADA'";
+                WHERE id=?
+                  AND cuenta_clave_id=?
+                  AND estado='SOLICITADA'
+                  AND fecha_propuesta > NOW()";
         $stmt = $this->connection->prepare($sql);
         $stmt->bind_param('isiii', $kamId, $motivo, $kamId, $reunionId, $kamId);
         $stmt->execute();
@@ -399,7 +410,10 @@ class AgendaReunionRepository
     {
         $sql = "UPDATE reuniones_vinculacion SET estado='CORREO_ENVIADO',correo_confirmacion_asunto=?,
                     correo_confirmacion_cuerpo=?,correo_confirmacion_at=NOW(),correo_confirmacion_por=?
-                WHERE id=? AND analista_id=? AND estado='CONFIRMADA'";
+                WHERE id=?
+                  AND analista_id=?
+                  AND estado='CONFIRMADA'
+                  AND fecha_propuesta > NOW()";
         $stmt = $this->connection->prepare($sql);
         $stmt->bind_param('ssiii', $asunto, $cuerpo, $analistaId, $reunionId, $analistaId);
         $stmt->execute();
