@@ -1035,12 +1035,9 @@ if (!empty($seguimientosSinMunicipio)) {
         <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Cerrar"></button>
     </div>
 
-    <div class="offcanvas-body linkage-work-body">
-        <div class="linkage-candidate-alert d-none" data-work-alert></div>
-
         <?php if ($puedeComentarVista): ?>
             <section
-                class="linkage-work-section linkage-supervision-priority"
+                class="linkage-supervision-toolbar"
                 data-work-supervision-priority>
                 <div class="linkage-supervision-priority-head">
                     <span class="linkage-supervision-priority-icon">
@@ -1089,6 +1086,11 @@ if (!empty($seguimientosSinMunicipio)) {
                 </form>
             </section>
         <?php endif; ?>
+
+    <div class="offcanvas-body linkage-work-body">
+        <div class="linkage-candidate-alert d-none" data-work-alert></div>
+
+
 
         <section class="linkage-work-section linkage-work-next" data-work-next-section>
             <span data-work-next-label>PRÓXIMA ACCIÓN</span>
