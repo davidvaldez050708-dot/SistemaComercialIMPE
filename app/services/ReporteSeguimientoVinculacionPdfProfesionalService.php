@@ -81,11 +81,27 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
         $individual = (int)($filtrosRaw['institucion_id'] ?? 0) > 0 && count($seguimientos) === 1;
         $responsable = $this->responsableAlcance($seguimientos, $filtros);
         $tipoReporte = strtolower(trim((string)($filtrosRaw['tipo_reporte'] ?? 'cartera')));
-        $tituloReporte = [
-            'actividad' => 'Mi actividad de seguimiento',
-            'cartera' => 'Mi cartera de seguimiento',
-            'institucion' => 'Reporte de institución'
-        ][$tipoReporte] ?? 'Reporte de Seguimiento de Vinculación';
+        $modoReporte = strtolower(trim((string)($datos['modo_reporte'] ?? 'analista')));
+        $titulosPorModo = [
+            'analista' => [
+                'actividad' => 'Mi actividad de seguimiento',
+                'cartera' => 'Mi cartera de seguimiento',
+                'institucion' => 'Reporte de institución'
+            ],
+            'supervisor' => [
+                'actividad' => 'Actividad del equipo',
+                'cartera' => 'Cartera supervisada',
+                'institucion' => 'Reporte de institución'
+            ],
+            'administrador' => [
+                'actividad' => 'Actividad global de seguimiento',
+                'cartera' => 'Cartera general de seguimiento',
+                'institucion' => 'Reporte de institución'
+            ]
+        ];
+        $titulosModo = $titulosPorModo[$modoReporte] ?? $titulosPorModo['analista'];
+        $tituloReporte = $titulosModo[$tipoReporte]
+            ?? 'Reporte de Seguimiento de Vinculación';
 
         $periodoEncabezado = $individual
             ? 'Histórico disponible'
@@ -267,8 +283,8 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
 
         $html = '<table class="scope activity-scope"><tr>';
         $html .= '<td><span>Territorio</span><strong>' . $this->e($alcance) . '</strong></td>';
-        $html .= '<td><span>Analista</span><strong>' .
-            $this->e($responsable !== '' ? $responsable : 'Responsable del reporte') . '</strong></td>';
+        $html .= '<td><span>Responsable</span><strong>' .
+            $this->e($responsable !== '' ? $responsable : 'Todos los responsables') . '</strong></td>';
         $html .= '<td><span>Instituciones trabajadas</span><strong>' . $instituciones . '</strong></td>';
         $html .= '<td><span>Tipo de interacción</span><strong>' . $this->e($tipoInteraccion) . '</strong></td>';
         return $html . '</tr></table>';
@@ -317,7 +333,7 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
         $html .= $this->opMetric('Convenios formalizados', (string)(int)($resumen['formalizados'] ?? 0));
         $html .= $this->opMetric('Descartados', (string)(int)($resumen['descartados'] ?? 0));
         $html .= '</tr></table>';
-        $html .= '<div class="decision-note"><strong>Lectura:</strong> Mi cartera representa el estado actual de los seguimientos; ' .
+        $html .= '<div class="decision-note"><strong>Lectura:</strong> La cartera representa el estado actual de los seguimientos incluidos; ' .
             'la inactividad y el último canal se calculan únicamente con interacciones humanas.</div>';
 
         return $html . '</section>';
