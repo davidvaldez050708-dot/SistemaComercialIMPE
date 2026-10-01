@@ -13,7 +13,6 @@ $mostrarCentroAvisos =
 $agendaDisponible = is_file(ROOT_PATH . '/app/controllers/AgendaReunionController.php');
 $mostrarAgendaReuniones =
     tienePermiso('reuniones.ver') &&
-    ($puedeSolicitarReuniones || $puedeGestionarReuniones) &&
     $agendaDisponible;
 $trabajarNotificacionId = (int)($_GET['trabajar_id'] ?? 0);
 
