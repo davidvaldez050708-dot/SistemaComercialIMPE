@@ -108,6 +108,25 @@ class LoginController
 
 
         /*
+        * Rol desactivado.
+        * Un usuario activo no puede iniciar sesión con un perfil inactivo.
+        */
+        if ((int)($usuario['rol_estado'] ?? 0) !== 1) {
+
+            $_SESSION['error_login'] =
+                'El perfil de acceso asignado a tu cuenta se encuentra desactivado.';
+
+            header(
+                'Location: ' .
+                BASE_URL .
+                'index.php?controller=login&action=mostrarLogin'
+            );
+
+            exit;
+        }
+
+
+        /*
         * Verificar contraseña
         */
         if (!password_verify(
