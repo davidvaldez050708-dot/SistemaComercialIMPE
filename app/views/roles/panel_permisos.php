@@ -13,14 +13,31 @@ $rolEsAdministrador = $rolSeleccionado &&
     (int)$rolSeleccionado['id'] === 1;
 $panelBloqueado = !$puedeAsignarPermisos || $rolEsAdministrador;
 $totalPermisos = 0;
+$permisosSoloAdministradorIds = [];
 
 foreach ($permisosAgrupados as $permisos) {
-    $totalPermisos += count($permisos);
+    foreach ($permisos as $permiso) {
+        if ((string)($permiso['codigo'] ?? '') === 'reportes.usuarios') {
+            $permisosSoloAdministradorIds[(int)$permiso['id']] = true;
+        }
+
+        if (
+            $rolEsAdministrador ||
+            (string)($permiso['codigo'] ?? '') !== 'reportes.usuarios'
+        ) {
+            $totalPermisos++;
+        }
+    }
 }
 
 $permisosHabilitados = $rolEsAdministrador
     ? $totalPermisos
-    : count($permisosRol);
+    : count(array_filter(
+        array_keys($permisosRol),
+        static function ($permisoId) use ($permisosSoloAdministradorIds) {
+            return !isset($permisosSoloAdministradorIds[(int)$permisoId]);
+        }
+    ));
 
 ?>
 
