@@ -140,6 +140,11 @@ class RolController
         }
 
         if ($modeloRol->actualizarRol($id, $datos)) {
+            $modeloRol->registrarAuditoriaEventoRol(
+                $id,
+                (int)($_SESSION['usuario_id'] ?? 0),
+                'ACTUALIZAR_ROL'
+            );
             $_SESSION['mensaje_rol'] = 'Rol actualizado correctamente.';
         } else {
             $_SESSION['error_rol'] = 'No fue posible actualizar el rol.';
@@ -172,6 +177,11 @@ class RolController
         }
 
         if ($modeloRol->cambiarEstadoRol($id, $estado)) {
+            $modeloRol->registrarAuditoriaEventoRol(
+                $id,
+                (int)($_SESSION['usuario_id'] ?? 0),
+                $estado === 1 ? 'ACTIVAR_ROL' : 'DESACTIVAR_ROL'
+            );
             $_SESSION['mensaje_rol'] = $estado === 1
                 ? 'Rol activado correctamente.'
                 : 'Rol desactivado correctamente.';
