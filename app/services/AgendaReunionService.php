@@ -427,7 +427,13 @@ class AgendaReunionService
             !$reunion ||
             !in_array(
                 strtoupper((string)($reunion['estado'] ?? '')),
-                ['SOLICITADA', 'CAMBIO_SOLICITADO', 'CONFIRMADA', 'CORREO_ENVIADO'],
+                [
+                    'SOLICITADA',
+                    'CAMBIO_SOLICITADO',
+                    'CONFIRMADA',
+                    'CORREO_ENVIADO',
+                    'CANCELACION_SOLICITADA'
+                ],
                 true
             )
         ) {
@@ -437,12 +443,59 @@ class AgendaReunionService
             );
         }
 
+        $estadoReunion = strtoupper(
+            (string)($reunion['estado'] ?? '')
+        );
+
         if (
-            strtoupper((string)($reunion['estado'] ?? '')) === 'CORREO_ENVIADO' &&
+            $estadoReunion === 'CORREO_ENVIADO' &&
+            $rolId === self::ROL_CUENTA_CLAVE &&
+            !$institucionNotificada
+        ) {
+            if (!$this->repo->solicitarCancelacionConAviso(
+                $reunionId,
+                $usuarioId,
+                $motivo
+            )) {
+                return $this->error(
+                    'La reunión cambió de estado. Actualiza la agenda.',
+                    409
+                );
+            }
+
+            $this->repo->registrarInteraccion(
+                (int)$reunion['seguimiento_id'],
+                $usuarioId,
+                'Cuenta Clave solicitó cancelar la reunión. ' .
+                'Pendiente de enviar aviso a la institución. Motivo: ' .
+                $motivo
+            );
+
+            return [
+                'ok' => true,
+                'mensaje' =>
+                    'Cancelación registrada. El Analista deberá enviar el correo a la institución.',
+                'reunion_id' => $reunionId,
+                'seguimiento_id' => (int)$reunion['seguimiento_id']
+            ];
+        }
+
+        if (
+            $estadoReunion === 'CORREO_ENVIADO' &&
             !$institucionNotificada
         ) {
             return $this->error(
                 'La institución ya recibió la confirmación. Envía primero el correo de cancelación desde la Agenda.',
+                409
+            );
+        }
+
+        if (
+            $estadoReunion === 'CANCELACION_SOLICITADA' &&
+            !$institucionNotificada
+        ) {
+            return $this->error(
+                'El correo de cancelación todavía está pendiente de envío.',
                 409
             );
         }
@@ -654,6 +707,12 @@ class AgendaReunionService
                 $icono = 'bi-calendar-x';
                 $estadoUi = 'vencida';
                 $prioridad = 1;
+            } elseif ($estado === 'CANCELACION_SOLICITADA') {
+                $accion = 'Enviar correo de cancelación';
+                $etiqueta = 'Cancelación solicitada por Cuenta Clave';
+                $icono = 'bi-envelope-x';
+                $estadoUi = 'vencida';
+                $prioridad = 0;
             } elseif ($estado === 'CONFIRMADA') {
                 $icono = 'bi-envelope-check';
 
@@ -897,6 +956,7 @@ class AgendaReunionService
             'CAMBIO_SOLICITADO' => 'Cambio solicitado',
             'CONFIRMADA' => 'Confirmada',
             'CORREO_ENVIADO' => 'Confirmación enviada',
+            'CANCELACION_SOLICITADA' => 'Cancelación pendiente de aviso',
             'REALIZADA' => 'Realizada',
             'CANCELADA' => 'Cancelada'
         ][strtoupper(trim((string)$estado))] ?? 'Pendiente';
