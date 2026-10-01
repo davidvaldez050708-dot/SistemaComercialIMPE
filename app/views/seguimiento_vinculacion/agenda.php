@@ -24,7 +24,15 @@ $pendientesAgenda = array_values(array_filter(
 
         if ($esAnalistaAgenda) {
             return $estaVencida ||
-                in_array($estado, ['CAMBIO_SOLICITADO', 'CONFIRMADA'], true);
+                in_array(
+                    $estado,
+                    [
+                        'CAMBIO_SOLICITADO',
+                        'CONFIRMADA',
+                        'CANCELACION_SOLICITADA'
+                    ],
+                    true
+                );
         }
 
         return false;
