@@ -314,13 +314,6 @@ usort($actividadExpediente, function ($eventoA, $eventoB) {
     <span>Convenio</span>
 </nav>
 
-<?php if ($modoSeguimiento === 'analista' && $nuevasObservaciones > 0): ?>
-    <div class="alert alert-info login-alert mb-3" role="status">
-        <i class="bi bi-chat-left-text"></i>
-        <span>Nuevas observaciones</span>
-    </div>
-<?php endif; ?>
-
 <section class="dashboard-panel linkage-detail-panel">
     <div class="linkage-detail-header">
         <?= renderAvatarUsuario(
