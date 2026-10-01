@@ -192,7 +192,14 @@ class AnalistaDashboardReunionService
             $motivo = '';
             $fechaReferencia = $fecha;
 
-            if ($estado === 'CAMBIO_SOLICITADO') {
+            if ($estado === 'CANCELACION_SOLICITADA') {
+                $prioridad = 101;
+                $tipo = 'atrasado';
+                $motivo = 'Enviar correo de cancelación';
+                $fechaReferencia = $this->fecha(
+                    $reunion['updated_at'] ?? null
+                ) ?: $fecha;
+            } elseif ($estado === 'CAMBIO_SOLICITADO') {
                 $prioridad = 96;
                 $motivo = 'Cuenta Clave solicitó reprogramar';
                 $fechaReferencia = $this->fecha($reunion['cambio_solicitado_at'] ?? null) ?: $fecha;
