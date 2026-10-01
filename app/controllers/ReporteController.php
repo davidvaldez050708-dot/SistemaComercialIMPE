@@ -12,7 +12,11 @@ class ReporteController
             exit;
         }
 
-        if ((int)($_SESSION['rol_id'] ?? 0) !== 1) {
+        if (
+            (int)($_SESSION['rol_id'] ?? 0) !== 1 ||
+            !tienePermiso('reportes.ver') ||
+            !tienePermiso('reportes.usuarios')
+        ) {
             http_response_code(403);
             die('No tienes permiso para generar este reporte.');
         }
@@ -67,9 +71,22 @@ class ReporteController
             die('No tienes permiso para consultar reportes.');
         }
 
-        $puedeReporteTerritorial = tienePermiso('data_territorial.ver');
-        $puedeReporteSeguimiento = tienePermiso('seguimientos_vinculacion.ver');
-        $puedeReporteAdministrador = (int)($_SESSION['rol_id'] ?? 0) === 1;
+        $puedeReporteTerritorial =
+            tienePermiso('reportes.territorial') &&
+            tienePermiso('data_territorial.ver');
+
+        $tiposReporteSeguimiento = [
+            'cartera' => tienePermiso('reportes.seguimiento.cartera'),
+            'actividad' => tienePermiso('reportes.seguimiento.actividad'),
+            'institucion' => tienePermiso('reportes.seguimiento.institucion')
+        ];
+        $puedeReporteSeguimiento =
+            tienePermiso('seguimientos_vinculacion.ver') &&
+            in_array(true, $tiposReporteSeguimiento, true);
+
+        $puedeReporteAdministrador =
+            (int)($_SESSION['rol_id'] ?? 0) === 1 &&
+            tienePermiso('reportes.usuarios');
 
         if (!$puedeReporteTerritorial && !$puedeReporteSeguimiento && !$puedeReporteAdministrador) {
             http_response_code(403);
