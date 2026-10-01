@@ -244,6 +244,9 @@
             const pasoActual = Number(flujo.paso_actual || 0);
             const tituloActual = String(flujo.titulo || 'Próxima acción');
             const esAliado = Boolean(flujo.contexto?.es_aliado);
+            const soloLectura =
+                Boolean(flujo.solo_lectura) ||
+                !puedeOperar;
             const telefonoDisponible = String(
                 flujo.contexto?.telefono_disponible || ''
             ).trim();
@@ -259,6 +262,7 @@
             ).trim().toUpperCase();
 
             if (
+                puedeOperar &&
                 pasoActual === 1 &&
                 telefonoDisponible !== '' &&
                 estadoSeguimiento !== 'DESCARTADO'
@@ -281,7 +285,15 @@
             if (etiquetaPanel) {
                 etiquetaPanel.textContent = esAliado
                     ? 'Expediente de aliado'
-                    : (rolId === 1 ? 'Vista de seguimiento' : 'Panel de trabajo');
+                    : (
+                        soloLectura
+                            ? (
+                                window.IMPE_CAN_SUPERVISE_LINKAGE
+                                    ? 'Supervisión de seguimiento'
+                                    : 'Vista de seguimiento'
+                            )
+                            : 'Panel de trabajo'
+                    );
             }
 
             sincronizarBotonVerificacion(pasoActual);
@@ -437,13 +449,18 @@
             }
 
             if (acciones) {
-                acciones.innerHTML =
-                    crearBotonAccion(accionPrincipal, true) +
-                    crearBotonAccion(accionSecundaria, false);
-                acciones.classList.toggle(
-                    'has-single-action',
-                    !accionSecundaria || !accionSecundaria.codigo
-                );
+                if (soloLectura) {
+                    acciones.innerHTML = '';
+                    acciones.classList.add('has-single-action');
+                } else {
+                    acciones.innerHTML =
+                        crearBotonAccion(accionPrincipal, true) +
+                        crearBotonAccion(accionSecundaria, false);
+                    acciones.classList.toggle(
+                        'has-single-action',
+                        !accionSecundaria || !accionSecundaria.codigo
+                    );
+                }
             }
 
             const proximaSeccion = offcanvas.querySelector('[data-work-next-section]');
@@ -502,20 +519,35 @@
 
             if (botonTrabajo) {
                 botonTrabajo.classList.toggle('is-ally', esAliado);
-                botonTrabajo.title = esAliado
-                    ? 'Trabajar con aliado'
-                    : 'Trabajar seguimiento';
-                botonTrabajo.setAttribute(
-                    'aria-label',
-                    esAliado ? 'Trabajar con aliado' : 'Trabajar seguimiento'
-                );
+
+                const etiquetaBoton = soloLectura
+                    ? (
+                        window.IMPE_CAN_SUPERVISE_LINKAGE
+                            ? 'Supervisar seguimiento'
+                            : 'Ver seguimiento'
+                    )
+                    : (esAliado ? 'Trabajar con aliado' : 'Trabajar seguimiento');
+
+                botonTrabajo.title = etiquetaBoton;
+                botonTrabajo.setAttribute('aria-label', etiquetaBoton);
+
                 const iconoTrabajo = botonTrabajo.querySelector('i');
                 const textoTrabajo = botonTrabajo.querySelector('span');
+
                 if (iconoTrabajo) {
-                    iconoTrabajo.className = 'bi bi-kanban';
+                    iconoTrabajo.className = soloLectura
+                        ? 'bi bi-eye'
+                        : 'bi bi-kanban';
                 }
+
                 if (textoTrabajo) {
-                    textoTrabajo.textContent = 'Trabajar';
+                    textoTrabajo.textContent = soloLectura
+                        ? (
+                            window.IMPE_CAN_SUPERVISE_LINKAGE
+                                ? 'Supervisar'
+                                : 'Ver'
+                        )
+                        : 'Trabajar';
                 }
             }
 
@@ -576,6 +608,14 @@
                 ) {
                     return;
                 }
+
+                datos.flujo.solo_lectura =
+                    Boolean(datos.solo_lectura) ||
+                    Boolean(datos.flujo.solo_lectura) ||
+                    !puedeOperar;
+                datos.flujo.puede_operar =
+                    Boolean(datos.puede_operar) &&
+                    puedeOperar;
 
                 renderizar(datos.flujo);
             } catch (error) {
@@ -706,6 +746,13 @@
         };
 
         const ejecutarAccion = function (codigo) {
+            if (!puedeOperar) {
+                mostrarAviso(
+                    'Esta es una vista de supervisión. Las acciones operativas corresponden al Analista responsable.'
+                );
+                return;
+            }
+
             const acciones = {
                 COMPLETAR_DATOS: '[data-work-toggle-contact]',
                 VERIFICAR_CONTACTO: '[data-work-verify-contact]',
