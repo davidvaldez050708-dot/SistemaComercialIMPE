@@ -52,8 +52,20 @@ class AgendaReunionController
         $agendaReuniones = $agenda['reuniones'] ?? [];
         $seguimientosElegibles = $agenda['seguimientos_elegibles'] ?? [];
         $agendaRequiereMigracion = (bool)($agenda['requiere_migracion'] ?? false);
-        $agendaPuedeSolicitar = tienePermiso('reuniones.solicitar');
-        $agendaPuedeGestionar = tienePermiso('reuniones.gestionar');
+        $permisoSolicitarReunion = tienePermiso('reuniones.solicitar');
+        $permisoGestionarReunion = tienePermiso('reuniones.gestionar');
+
+        if ($rolId === AgendaReunionService::ROL_CUENTA_CLAVE) {
+            $agendaPuedeSolicitar = false;
+            $agendaPuedeGestionar = $permisoGestionarReunion;
+        } elseif ($rolId === AgendaReunionService::ROL_ANALISTA) {
+            $agendaPuedeSolicitar = $permisoSolicitarReunion;
+            $agendaPuedeGestionar = false;
+        } else {
+            $agendaPuedeSolicitar = $permisoSolicitarReunion;
+            $agendaPuedeGestionar = $permisoGestionarReunion;
+        }
+
         $agendaPuedeVerSeguimiento = tienePermiso('seguimientos_vinculacion.ver');
         $agendaRolId = $rolId;
         $agendaModo = $agendaPuedeGestionar
