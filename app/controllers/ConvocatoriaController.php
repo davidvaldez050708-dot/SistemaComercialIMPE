@@ -491,11 +491,20 @@ class ConvocatoriaController
     {
         $rolId = (int)($_SESSION['rol_id'] ?? 0);
 
-        if ($rolId === 6) {
+        /*
+         * Administrador y perfiles con gestión de convocatorias trabajan con
+         * cobertura global. Los perfiles de consulta heredan únicamente el
+         * alcance territorial que corresponde a su función operativa.
+         */
+        if ($rolId === 1 || tienePermiso('convocatorias.gestionar')) {
+            return null;
+        }
+
+        if (tienePermiso('seguimientos_vinculacion.supervisar')) {
             return 'CUENTA_CLAVE';
         }
 
-        if ($rolId === 4) {
+        if (tienePermiso('seguimientos_vinculacion.operar_propios')) {
             return 'ANALISTA_DATOS';
         }
 
@@ -503,7 +512,7 @@ class ConvocatoriaController
             return 'ASESOR';
         }
 
-        return null;
+        return 'SIN_ALCANCE';
     }
 
     private function obtenerEstadosDisponibles($estadosGenerales)
@@ -512,6 +521,10 @@ class ConvocatoriaController
 
         if ($tipoAsignacion === null) {
             return $estadosGenerales;
+        }
+
+        if ($tipoAsignacion === 'SIN_ALCANCE') {
+            return [];
         }
 
         $modeloTerritorio = new TerritorioModel();
@@ -528,6 +541,10 @@ class ConvocatoriaController
 
         if ($tipoAsignacion === null) {
             return null;
+        }
+
+        if ($tipoAsignacion === 'SIN_ALCANCE') {
+            return [];
         }
 
         $modeloTerritorio = new TerritorioModel();
