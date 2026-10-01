@@ -418,10 +418,6 @@ class RolModel
                 'seguimientos_comerciales.editar_propios'
             ],
             'Analista de Datos' => [
-                'organizaciones.ver',
-                'organizaciones.crear',
-                'organizaciones.editar',
-                'organizaciones.validar',
                 'oficios.ver',
                 'oficios.generar',
                 'oficios.enviar',
@@ -441,16 +437,10 @@ class RolModel
                 'reportes.ver'
             ],
             'Cuenta Clave' => [
-                'organizaciones.ver',
                 'oficios.ver',
                 'reuniones.ver',
                 'reuniones.gestionar',
                 'convenios.ver',
-                'convenios.gestionar',
-                'difusion.ver',
-                'difusion.crear',
-                'difusion.enviar',
-                'difusion.gestionar',
                 'seguimientos_vinculacion.ver',
                 'seguimientos_vinculacion.supervisar',
                 'seguimientos_vinculacion.comentar',
