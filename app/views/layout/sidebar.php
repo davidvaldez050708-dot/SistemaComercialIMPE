@@ -9,9 +9,26 @@ $mostrarTerritorios = tienePermiso('territorios.ver');
 $mostrarDataTerritorial = tienePermiso('data_territorial.ver');
 $mostrarSeguimientoVinculacion = tienePermiso('seguimientos_vinculacion.ver');
 $mostrarConvocatorias = tienePermiso('convocatorias.ver');
+$mostrarReporteTerritorial =
+    tienePermiso('reportes.territorial') &&
+    $mostrarDataTerritorial;
+$mostrarReporteSeguimiento =
+    $mostrarSeguimientoVinculacion &&
+    (
+        tienePermiso('reportes.seguimiento.cartera') ||
+        tienePermiso('reportes.seguimiento.actividad') ||
+        tienePermiso('reportes.seguimiento.institucion')
+    );
+$mostrarReporteUsuarios =
+    (int)($_SESSION['rol_id'] ?? 0) === 1 &&
+    tienePermiso('reportes.usuarios');
 $mostrarReportes =
     tienePermiso('reportes.ver') &&
-    ($mostrarDataTerritorial || $mostrarSeguimientoVinculacion);
+    (
+        $mostrarReporteTerritorial ||
+        $mostrarReporteSeguimiento ||
+        $mostrarReporteUsuarios
+    );
 
 $etiquetaMenuConvocatorias = tienePermiso('convocatorias.gestionar')
     ? 'Gestión de Convocatorias'
