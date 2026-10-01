@@ -97,7 +97,7 @@
             root.getAttribute('data-agenda-can-manage') === '1';
 
         if (accion === 'enviarCancelacionReunion') {
-            return puedeSolicitar || puedeGestionar;
+            return puedeSolicitar;
         }
 
         if (
