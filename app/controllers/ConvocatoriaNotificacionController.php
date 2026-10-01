@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/../models/ConvocatoriaModel.php';
 require_once __DIR__ . '/../models/ConvocatoriaNotificacionModel.php';
+require_once __DIR__ . '/../helpers/PermissionHelper.php';
 
 class ConvocatoriaNotificacionController
 {
@@ -80,6 +81,6 @@ class ConvocatoriaNotificacionController
     private function esMarketingAutenticado()
     {
         return (int)($_SESSION['usuario_id'] ?? 0) > 0
-            && strcasecmp(trim((string)($_SESSION['rol'] ?? '')), 'Marketing') === 0;
+            && tienePermiso('convocatorias.gestionar');
     }
 }
