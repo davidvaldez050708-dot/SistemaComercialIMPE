@@ -1038,11 +1038,6 @@ if (!empty($seguimientosSinMunicipio)) {
     <div class="offcanvas-body linkage-work-body">
         <div class="linkage-candidate-alert d-none" data-work-alert></div>
 
-        <section class="linkage-work-section linkage-work-next" data-work-next-section>
-            <span data-work-next-label>PRÓXIMA ACCIÓN</span>
-            <strong data-work-next-action>—</strong>
-        </section>
-
         <?php if ($puedeComentarVista): ?>
             <section
                 class="linkage-work-section linkage-supervision-priority"
@@ -1054,9 +1049,6 @@ if (!empty($seguimientosSinMunicipio)) {
                     <div>
                         <span class="linkage-supervision-eyebrow">ACCIÓN DE SUPERVISIÓN</span>
                         <h3>Observación para el Analista</h3>
-                        <p>
-                            Envía una indicación o comentario sin salir de este seguimiento.
-                        </p>
                     </div>
                 </div>
 
@@ -1069,7 +1061,7 @@ if (!empty($seguimientosSinMunicipio)) {
                     <textarea
                         class="form-control"
                         name="observacion"
-                        rows="3"
+                        rows="2"
                         maxlength="2000"
                         placeholder="Escribe una observación para el Analista..."
                         required
@@ -1077,25 +1069,33 @@ if (!empty($seguimientosSinMunicipio)) {
 
                     <div class="linkage-supervision-priority-actions">
                         <small data-work-supervision-counter>0 / 2000</small>
-                        <button
-                            type="submit"
-                            class="btn btn-system-save"
-                            data-work-supervision-submit>
-                            <i class="bi bi-send"></i>
-                            Enviar observación
-                        </button>
+                        <div class="linkage-supervision-priority-buttons">
+                            <a
+                                class="btn btn-system-light linkage-supervision-expedient"
+                                href="#"
+                                data-work-expedient-priority>
+                                <i class="bi bi-folder2-open"></i>
+                                Expediente completo
+                            </a>
+                            <button
+                                type="submit"
+                                class="btn btn-system-save"
+                                data-work-supervision-submit>
+                                <i class="bi bi-send"></i>
+                                Enviar
+                            </button>
+                        </div>
                     </div>
                 </form>
-
-                <a
-                    class="btn btn-system-light linkage-supervision-expedient"
-                    href="#"
-                    data-work-expedient-priority>
-                    <i class="bi bi-folder2-open"></i>
-                    Abrir expediente completo
-                </a>
             </section>
         <?php endif; ?>
+
+        <section class="linkage-work-section linkage-work-next" data-work-next-section>
+            <span data-work-next-label>PRÓXIMA ACCIÓN</span>
+            <strong data-work-next-action>—</strong>
+        </section>
+
+
 
         <section class="linkage-work-section d-none" data-work-discarded-panel>
             <div class="linkage-work-section-title">
