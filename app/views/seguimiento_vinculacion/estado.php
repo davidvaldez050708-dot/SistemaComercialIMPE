@@ -18,6 +18,9 @@ $puedeOperarVista =
     $modoSeguimiento === 'analista' &&
     tienePermiso('seguimientos_vinculacion.operar_propios');
 $esSupervisorVista = $modoSeguimiento === 'supervisor';
+$puedeComentarVista =
+    $esSupervisorVista &&
+    tienePermiso('seguimientos_vinculacion.comentar');
 $totalSeguimientosReales = (int)($totalSeguimientosReales ?? count($seguimientos));
 $totalResultadosFiltrados = (int)($totalResultadosFiltrados ?? count($seguimientos));
 
@@ -1040,6 +1043,60 @@ if (!empty($seguimientosSinMunicipio)) {
             <strong data-work-next-action>—</strong>
         </section>
 
+        <?php if ($puedeComentarVista): ?>
+            <section
+                class="linkage-work-section linkage-supervision-priority"
+                data-work-supervision-priority>
+                <div class="linkage-supervision-priority-head">
+                    <span class="linkage-supervision-priority-icon">
+                        <i class="bi bi-chat-left-text"></i>
+                    </span>
+                    <div>
+                        <span class="linkage-supervision-eyebrow">ACCIÓN DE SUPERVISIÓN</span>
+                        <h3>Observación para el Analista</h3>
+                        <p>
+                            Envía una indicación o comentario sin salir de este seguimiento.
+                        </p>
+                    </div>
+                </div>
+
+                <form data-work-supervision-form>
+                    <input
+                        type="hidden"
+                        name="seguimiento_id"
+                        value=""
+                        data-work-supervision-follow-id>
+                    <textarea
+                        class="form-control"
+                        name="observacion"
+                        rows="3"
+                        maxlength="2000"
+                        placeholder="Escribe una observación para el Analista..."
+                        required
+                        data-work-supervision-text></textarea>
+
+                    <div class="linkage-supervision-priority-actions">
+                        <small data-work-supervision-counter>0 / 2000</small>
+                        <button
+                            type="submit"
+                            class="btn btn-system-save"
+                            data-work-supervision-submit>
+                            <i class="bi bi-send"></i>
+                            Enviar observación
+                        </button>
+                    </div>
+                </form>
+
+                <a
+                    class="btn btn-system-light linkage-supervision-expedient"
+                    href="#"
+                    data-work-expedient-priority>
+                    <i class="bi bi-folder2-open"></i>
+                    Abrir expediente completo
+                </a>
+            </section>
+        <?php endif; ?>
+
         <section class="linkage-work-section d-none" data-work-discarded-panel>
             <div class="linkage-work-section-title">
                 <h3>SEGUIMIENTO DESCARTADO</h3>
@@ -1305,7 +1362,7 @@ if (!empty($seguimientosSinMunicipio)) {
 
         <section class="linkage-work-section">
             <div class="linkage-work-section-title">
-                <h3>Observaciones Cuenta Clave</h3>
+                <h3><?= $esSupervisorVista ? 'Observaciones recientes' : 'Observaciones Cuenta Clave' ?></h3>
                 <span class="linkage-work-new-badge d-none" data-work-observation-count></span>
             </div>
             <div class="linkage-work-list" data-work-observation-list>
@@ -1313,7 +1370,10 @@ if (!empty($seguimientosSinMunicipio)) {
             </div>
         </section>
 
-        <a class="btn btn-system-light linkage-work-expedient" href="#" data-work-expedient>
+        <a
+            class="btn btn-system-light linkage-work-expedient<?= $puedeComentarVista ? ' d-none' : '' ?>"
+            href="#"
+            data-work-expedient>
             Ver expediente completo
         </a>
     </div>
@@ -1502,6 +1562,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const urlRegistrarInteraccionTrabajo = '<?= BASE_URL ?>index.php?controller=seguimientoVinculacion&action=registrarInteraccionTrabajo';
     const urlDescartarSeguimientoTrabajo = '<?= BASE_URL ?>index.php?controller=seguimientoVinculacion&action=descartarSeguimientoTrabajo';
     const urlReactivarSeguimientoTrabajo = '<?= BASE_URL ?>index.php?controller=seguimientoVinculacion&action=reactivarSeguimientoTrabajo';
+    const urlGuardarObservacionSupervision = '<?= BASE_URL ?>index.php?controller=seguimientoVinculacion&action=guardarObservacion';
     let seguimientoTrabajoActual = null;
     let descartePendienteId = null;
 
@@ -1766,6 +1827,24 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const renderizarResumenTrabajo = function (seguimiento, puedeOperar = true) {
         seguimientoTrabajoActual = seguimiento;
+
+        const idObservacionSupervision = document.querySelector(
+            '[data-work-supervision-follow-id]'
+        );
+        const enlaceExpedientePrioritario = document.querySelector(
+            '[data-work-expedient-priority]'
+        );
+
+        if (idObservacionSupervision) {
+            idObservacionSupervision.value = Number(seguimiento.id || 0);
+        }
+
+        if (enlaceExpedientePrioritario) {
+            enlaceExpedientePrioritario.href =
+                '<?= BASE_URL ?>index.php?controller=seguimientoVinculacion&action=detalle&id=' +
+                Number(seguimiento.id || 0);
+        }
+
         asignarTextoTrabajo('[data-work-title]', seguimiento.nombre_entidad);
         asignarTextoTrabajo(
             '[data-work-subtitle]',
@@ -2056,6 +2135,25 @@ document.addEventListener('DOMContentLoaded', function () {
             Number(datos.observaciones_nuevas) || 0
         );
 
+        const formSupervision = document.querySelector(
+            '[data-work-supervision-form]'
+        );
+        const textoSupervision = formSupervision?.querySelector(
+            '[data-work-supervision-text]'
+        );
+        const contadorSupervision = document.querySelector(
+            '[data-work-supervision-counter]'
+        );
+
+        if (!silencioso && textoSupervision) {
+            textoSupervision.value = '';
+        }
+
+        if (contadorSupervision) {
+            contadorSupervision.textContent =
+                String(textoSupervision?.value.length || 0) + ' / 2000';
+        }
+
         return datos;
     };
 
@@ -2087,6 +2185,94 @@ document.addEventListener('DOMContentLoaded', function () {
         cargarPanelTrabajo(seguimientoId, { silencioso: true }).catch(function (error) {
             console.error(error);
         });
+    });
+
+    const formularioSupervision = document.querySelector(
+        '[data-work-supervision-form]'
+    );
+    const textoSupervision = formularioSupervision?.querySelector(
+        '[data-work-supervision-text]'
+    );
+    const contadorSupervision = document.querySelector(
+        '[data-work-supervision-counter]'
+    );
+
+    textoSupervision?.addEventListener('input', function () {
+        if (contadorSupervision) {
+            contadorSupervision.textContent =
+                String(textoSupervision.value.length) + ' / 2000';
+        }
+    });
+
+    formularioSupervision?.addEventListener('submit', async function (event) {
+        event.preventDefault();
+
+        if (!seguimientoTrabajoActual) {
+            return;
+        }
+
+        const boton = formularioSupervision.querySelector(
+            '[data-work-supervision-submit]'
+        );
+        const observacion = String(textoSupervision?.value || '').trim();
+
+        if (observacion === '') {
+            textoSupervision?.focus();
+            return;
+        }
+
+        const textoOriginal = boton?.innerHTML || '';
+
+        if (boton) {
+            boton.disabled = true;
+            boton.innerHTML =
+                '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span>' +
+                '<span>Enviando...</span>';
+        }
+
+        try {
+            const respuesta = await fetch(urlGuardarObservacionSupervision, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'fetch',
+                    'Accept': 'application/json'
+                },
+                body: new FormData(formularioSupervision)
+            });
+            const datos = await respuesta.json();
+
+            if (!respuesta.ok || !datos.ok) {
+                throw new Error(
+                    datos.mensaje || 'No fue posible enviar la observación.'
+                );
+            }
+
+            textoSupervision.value = '';
+
+            if (contadorSupervision) {
+                contadorSupervision.textContent = '0 / 2000';
+            }
+
+            renderizarObservacionesTrabajo(
+                datos.observaciones || [],
+                0
+            );
+
+            mostrarToastSistema(
+                datos.mensaje || 'Observación enviada al Analista.',
+                false
+            );
+        } catch (error) {
+            mostrarErrorTrabajo(
+                error,
+                'No fue posible enviar la observación.'
+            );
+        } finally {
+            if (boton) {
+                boton.disabled = false;
+                boton.innerHTML = textoOriginal;
+            }
+        }
     });
 
     document.querySelector('[data-work-toggle-contact]')?.addEventListener('click', function () {
