@@ -2,6 +2,8 @@
 $puedeReporteTerritorial = $puedeReporteTerritorial ?? false;
 $puedeReporteSeguimiento = $puedeReporteSeguimiento ?? false;
 $puedeReporteAdministrador = $puedeReporteAdministrador ?? false;
+$tiposReporteSeguimiento = $tiposReporteSeguimiento ?? [];
+$puedeExportarReportes = tienePermiso('reportes.exportar');
 ?>
 
 <section class="report-module">
@@ -39,7 +41,9 @@ $puedeReporteAdministrador = $puedeReporteAdministrador ?? false;
                 <div class="report-card-meta">
                     <span><i class="bi bi-check2-circle"></i> Datos oficiales y registrados</span>
                     <span><i class="bi bi-calculator"></i> Indicadores y comparaciones</span>
-                    <span><i class="bi bi-file-earmark-pdf"></i> Exportación a PDF</span>
+                    <?php if ($puedeExportarReportes): ?>
+                        <span><i class="bi bi-file-earmark-pdf"></i> Exportación a PDF</span>
+                    <?php endif; ?>
                 </div>
 
                 <a
@@ -67,14 +71,23 @@ $puedeReporteAdministrador = $puedeReporteAdministrador ?? false;
                 </div>
 
                 <p class="report-card-description">
-                    Consulta el generador de reportes de Seguimiento de vinculación con sus filtros,
-                    indicadores y exportación actualmente implementados.
+                    Analiza la cartera, actividad o expediente de institución según las modalidades
+                    habilitadas para tu rol y siempre dentro de tu alcance autorizado.
                 </p>
 
                 <div class="report-card-meta">
-                    <span><i class="bi bi-funnel"></i> Filtros de seguimiento</span>
-                    <span><i class="bi bi-activity"></i> Actividad e indicadores</span>
-                    <span><i class="bi bi-file-earmark-pdf"></i> Consulta y exportación</span>
+                    <?php if (!empty($tiposReporteSeguimiento['cartera'])): ?>
+                        <span><i class="bi bi-kanban"></i> Cartera de seguimiento</span>
+                    <?php endif; ?>
+                    <?php if (!empty($tiposReporteSeguimiento['actividad'])): ?>
+                        <span><i class="bi bi-activity"></i> Actividad e interacciones</span>
+                    <?php endif; ?>
+                    <?php if (!empty($tiposReporteSeguimiento['institucion'])): ?>
+                        <span><i class="bi bi-building"></i> Expediente de institución</span>
+                    <?php endif; ?>
+                    <?php if ($puedeExportarReportes): ?>
+                        <span><i class="bi bi-file-earmark-pdf"></i> Exportación a PDF</span>
+                    <?php endif; ?>
                 </div>
 
                 <a
@@ -109,7 +122,9 @@ $puedeReporteAdministrador = $puedeReporteAdministrador ?? false;
                 <div class="report-card-meta">
                     <span><i class="bi bi-person-check"></i> Usuarios, roles y estado</span>
                     <span><i class="bi bi-list-check"></i> Seguimientos y pendientes</span>
-                    <span><i class="bi bi-file-earmark-pdf"></i> Exportación a PDF</span>
+                    <?php if ($puedeExportarReportes): ?>
+                        <span><i class="bi bi-file-earmark-pdf"></i> Exportación a PDF</span>
+                    <?php endif; ?>
                 </div>
 
                 <a
