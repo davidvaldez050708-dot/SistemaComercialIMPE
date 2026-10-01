@@ -582,7 +582,9 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                         <?php endforeach; ?>
                     </select>
                     <div class="form-text"><?= $tipoReporteActual === 'actividad'
-                            ? 'Filtra por el tipo de interacción que realizaste durante el periodo.'
+                            ? ($modoSeguimiento === 'analista'
+                                ? 'Filtra por el tipo de interacción que realizaste durante el periodo.'
+                                : 'Filtra por el tipo de interacción registrada por los Analistas incluidos en el alcance.')
                             : 'Filtra por el canal de la última interacción humana registrada; los eventos automáticos no se consideran.' ?></div>
                 </div>
             <?php endif; ?>
@@ -601,11 +603,19 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
 
         <div class="form-text <?= $modoModalReporte ? 'mt-3' : 'mt-2' ?>" data-report-mode-help>
             <?php if ($tipoReporteActual === 'actividad'): ?>
-                Consulta las actividades que realizaste durante el periodo y, si lo necesitas, acótalas por territorio o tipo de interacción.
+                <?= $modoSeguimiento === 'analista'
+                    ? 'Consulta las actividades que realizaste durante el periodo y acótalas por territorio o tipo de interacción.'
+                    : ($modoSeguimiento === 'supervisor'
+                        ? 'Consulta la actividad de los Analistas supervisados y acótala por territorio, responsable o tipo de interacción.'
+                        : 'Consulta la actividad de seguimiento y acótala por territorio, responsable o tipo de interacción.') ?>
             <?php elseif ($tipoReporteActual === 'institucion'): ?>
                 Selecciona una institución para consultar su expediente ejecutivo de seguimiento.
             <?php else: ?>
-                Consulta el estado actual de tu cartera y acota por territorio, etapa, canal o inactividad.
+                <?= $modoSeguimiento === 'analista'
+                    ? 'Consulta el estado actual de tu cartera y acota por territorio, etapa, canal o inactividad.'
+                    : ($modoSeguimiento === 'supervisor'
+                        ? 'Consulta el estado actual de la cartera supervisada y acota por territorio, Analista, etapa, canal o inactividad.'
+                        : 'Consulta el estado actual de la cartera y acota por territorio, responsable, etapa, canal o inactividad.') ?>
             <?php endif; ?>
         </div>
 
@@ -704,30 +714,27 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
 
 <?php if (!$modoModalReporte && $generarReporte && $errorFiltros === ''): ?>
     <section
-        class="seguimiento-report-results<?= $modoSeguimiento === 'analista' ? ' analyst-report-output' : '' ?>"
+        class="seguimiento-report-results analyst-report-output"
         aria-labelledby="titulo-reporte-seguimiento"
-        <?= $modoSeguimiento === 'analista'
-            ? 'data-analyst-report-output data-report-type="' . $texto($tipoReporteActual) . '"'
-            : '' ?>>
+        data-analyst-report-output
+        data-report-type="<?= $texto($tipoReporteActual) ?>">
         <div class="d-flex flex-wrap align-items-end justify-content-between gap-3 mb-3">
             <div>
                 <h2 class="page-title" id="titulo-reporte-seguimiento"><?= $texto($tituloReporteGenerado) ?></h2>
                 <p class="page-subtitle mb-0"><?= $texto($subtituloReporteGenerado) ?></p>
             </div>
             <div class="d-flex flex-wrap align-items-center justify-content-end gap-2">
-                <?php if ($modoSeguimiento === 'analista'): ?>
-                    <button
-                        type="button"
-                        class="btn btn-system-light linkage-action-button"
-                        data-edit-report-filters>
-                        <i class="bi bi-sliders"></i>
-                        Editar filtros
-                    </button>
-                <?php endif; ?>
+                <button
+                    type="button"
+                    class="btn btn-system-light linkage-action-button"
+                    data-edit-report-filters>
+                    <i class="bi bi-sliders"></i>
+                    Editar filtros
+                </button>
                 <span class="status-pill status-pill-active">
-                    <?php if ($modoSeguimiento === 'analista' && $tipoReporteActual === 'actividad'): ?>
+                    <?php if ($tipoReporteActual === 'actividad'): ?>
                         <?= (int)($analiticaReporte['interacciones'] ?? 0) ?> interacciones
-                    <?php elseif ($modoSeguimiento === 'analista' && $tipoReporteActual === 'institucion'): ?>
+                    <?php elseif ($tipoReporteActual === 'institucion'): ?>
                         1 institución
                     <?php else: ?>
                         <?= (int)$resumenReporte['total'] ?> <?= (int)$resumenReporte['total'] === 1 ? 'seguimiento' : 'seguimientos' ?>
@@ -742,11 +749,14 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
             </div>
         </div>
 
-        <?php if ($modoSeguimiento === 'analista' && $tipoReporteActual === 'actividad'): ?>
+        <?php if ($tipoReporteActual === 'actividad'): ?>
             <?php
             $filtrosActividadResumen = [
                 'Periodo' => (string)($resumenFiltros['Periodo'] ?? '—'),
                 'Territorio' => (string)($resumenFiltros['Estado'] ?? 'Todos'),
+                'Responsable' => $modoSeguimiento === 'analista'
+                    ? 'Yo'
+                    : (string)($resumenFiltros['Responsable'] ?? 'Todos'),
                 'Tipo de interacción' => (string)($resumenFiltros['Tipo de interacción'] ?? 'Todos')
             ];
             ?>
@@ -755,7 +765,11 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                     <div>
                         <span class="report-eyebrow">CONTEXTO DEL REPORTE</span>
                         <h3 class="panel-title mb-1">Actividad analizada</h3>
-                        <p class="page-subtitle mb-0">El reporte considera únicamente las interacciones realizadas por el Analista dentro del periodo.</p>
+                        <p class="page-subtitle mb-0"><?= $modoSeguimiento === 'analista'
+      ? 'El reporte considera únicamente las interacciones realizadas por el Analista dentro del periodo.'
+      : ($modoSeguimiento === 'supervisor'
+          ? 'El reporte considera las interacciones de los Analistas supervisados dentro del periodo y alcance seleccionados.'
+          : 'El reporte considera las interacciones registradas dentro del periodo y alcance seleccionados.') ?></p>
                     </div>
                 </div>
                 <div class="analyst-activity-context-grid">
@@ -767,7 +781,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                     <?php endforeach; ?>
                 </div>
             </section>
-        <?php elseif ($modoSeguimiento === 'analista' && $tipoReporteActual === 'cartera'): ?>
+        <?php elseif ($tipoReporteActual === 'cartera'): ?>
             <?php
             $territorioCartera = (string)($resumenFiltros['Estado'] ?? 'Todos');
             $municipioCartera = (string)($resumenFiltros['Municipio'] ?? 'Todos');
@@ -776,6 +790,9 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
             }
             $filtrosCarteraResumen = [
                 'Territorio' => $territorioCartera,
+                'Responsable' => $modoSeguimiento === 'analista'
+                    ? 'Yo'
+                    : (string)($resumenFiltros['Responsable'] ?? 'Todos'),
                 'Etapa actual' => (string)($resumenFiltros['Etapa'] ?? 'Todos'),
                 'Último canal humano' => (string)($resumenFiltros['Último canal de contacto'] ?? 'Todos'),
                 'Inactividad' => (string)($resumenFiltros['Días sin actividad'] ?? 'Todos')
@@ -786,7 +803,11 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                     <div>
                         <span class="report-eyebrow">CONTEXTO DEL REPORTE</span>
                         <h3 class="panel-title mb-1">Cartera analizada</h3>
-                        <p class="page-subtitle mb-0">Fotografía actual de los seguimientos del Analista. La actividad y el canal consideran únicamente interacciones humanas.</p>
+                        <p class="page-subtitle mb-0"><?= $modoSeguimiento === 'analista'
+      ? 'Fotografía actual de tus seguimientos. La actividad y el canal consideran únicamente interacciones humanas.'
+      : ($modoSeguimiento === 'supervisor'
+          ? 'Fotografía actual de la cartera supervisada. La actividad y el canal consideran únicamente interacciones humanas.'
+          : 'Fotografía actual de los seguimientos incluidos. La actividad y el canal consideran únicamente interacciones humanas.') ?></p>
                     </div>
                 </div>
                 <div class="analyst-portfolio-context-grid">
@@ -812,7 +833,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
             </section>
         <?php endif; ?>
 
-        <?php if ($modoSeguimiento === 'analista' && $tipoReporteActual === 'actividad'): ?>
+        <?php if ($tipoReporteActual === 'actividad'): ?>
         <section class="analyst-activity-kpis mb-3" aria-label="Resumen ejecutivo de actividad">
             <article class="analyst-activity-kpi">
                 <span class="analyst-activity-kpi-icon"><i class="bi bi-activity"></i></span>
@@ -982,7 +1003,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
             </div>
             <?php endif; ?>
         </div>
-    <?php elseif ($modoSeguimiento === 'analista' && $tipoReporteActual === 'institucion'): ?>
+    <?php elseif ($tipoReporteActual === 'institucion'): ?>
         <?php
         $contactoInstitucion = is_array($detalleInstitucionReporte['contacto'] ?? null)
             ? $detalleInstitucionReporte['contacto']
@@ -1413,7 +1434,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                 </div>
             </section>
         <?php endif; ?>
-    <?php elseif ($modoSeguimiento === 'analista' && $tipoReporteActual === 'cartera'): ?>
+    <?php elseif ($tipoReporteActual === 'cartera'): ?>
         <section class="analyst-portfolio-kpis mb-3" aria-label="Panorama de la cartera">
             <article class="analyst-portfolio-kpi">
                 <span class="analyst-portfolio-kpi-icon"><i class="bi bi-kanban"></i></span>
@@ -1444,7 +1465,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                 <div>
                     <strong><?= (int)($resumenReporte['formalizados'] ?? 0) ?></strong>
                     <span>Convenios formalizados</span>
-                    <small>Ruta del Analista concluida</small>
+                    <small>Ruta de vinculación concluida</small>
                 </div>
             </article>
             <article class="analyst-portfolio-kpi analyst-portfolio-kpi--muted">
@@ -1595,7 +1616,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
         </section>
     <?php endif; ?>
 
-        <?php if ($modoSeguimiento === 'analista' && $tipoReporteActual === 'cartera'): ?>
+        <?php if ($tipoReporteActual === 'cartera'): ?>
         <?php
         $maxEtapaCartera = !empty($resumenReporte['por_etapa'])
             ? max(1, max($resumenReporte['por_etapa']))
@@ -1909,7 +1930,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
         </section>
         <?php endif; ?>
 
-        <?php if ($modoSeguimiento === 'analista' && $tipoReporteActual === 'actividad'): ?>
+        <?php if ($tipoReporteActual === 'actividad'): ?>
         <?php
         $periodosActividadAnalista = is_array($evolucionActividad['periodos'] ?? null)
             ? $evolucionActividad['periodos']
@@ -1922,7 +1943,11 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                         <div>
                             <span class="report-eyebrow">EVOLUCIÓN DEL PERIODO</span>
                             <h3 class="panel-title mb-1" id="evolucion-actividad-analista">Actividad por <?= $texto($etiquetaGranularidadEvolucion) ?></h3>
-                            <p class="page-subtitle mb-0">Volumen de interacciones realizadas por el Analista durante el periodo seleccionado.</p>
+                            <p class="page-subtitle mb-0"><?= $modoSeguimiento === 'analista'
+      ? 'Volumen de interacciones realizadas durante el periodo seleccionado.'
+      : ($modoSeguimiento === 'supervisor'
+          ? 'Volumen de interacciones de los Analistas supervisados durante el periodo seleccionado.'
+          : 'Volumen de interacciones registradas durante el periodo seleccionado.') ?></p>
                         </div>
                         <?php if (!empty($evolucionActividad['comparacion_periodo_disponible'])): ?>
                             <?php
@@ -2124,7 +2149,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
         </div>
         <?php endif; ?>
 
-        <?php if ($modoSeguimiento === 'analista' && $tipoReporteActual === 'actividad'): ?>
+        <?php if ($tipoReporteActual === 'actividad'): ?>
         <section class="dashboard-panel p-0 overflow-hidden analyst-activity-history">
             <div class="table-panel-header">
                 <div>
@@ -2256,7 +2281,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                 </div>
             <?php endif; ?>
         </section>
-    <?php elseif ($modoSeguimiento === 'analista' && $tipoReporteActual === 'institucion'): ?>
+    <?php elseif ($tipoReporteActual === 'institucion'): ?>
         <?php $interaccionesInstitucion = is_array($detalleInstitucionReporte['interacciones_recientes'] ?? null) ? $detalleInstitucionReporte['interacciones_recientes'] : []; ?>
         <section class="dashboard-panel p-0 overflow-hidden analyst-institution-history">
             <div class="table-panel-header">
@@ -2388,7 +2413,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
             <?php endif; ?>
         </section>
     <?php else: ?>
-        <?php if ($modoSeguimiento === 'analista' && $tipoReporteActual === 'cartera'): ?>
+        <?php if ($tipoReporteActual === 'cartera'): ?>
         <section class="dashboard-panel p-0 overflow-hidden analyst-portfolio-detail">
             <div class="table-panel-header">
                 <div>
