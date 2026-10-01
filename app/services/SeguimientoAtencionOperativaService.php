@@ -192,10 +192,10 @@ class SeguimientoAtencionOperativaService
                     }
                     $fechaReferencia = $reunionFecha;
                 } elseif ($reunionEstado === 'CONFIRMADA' && $reunionFecha) {
-                    if ($reunionFecha < $ahora) {
+                    if ($reunionFecha <= $ahora) {
                         $prioridad = 99;
                         $tipo = 'atrasado';
-                        $motivo = 'Confirmación pendiente de enviar';
+                        $motivo = 'Fecha confirmada vencida · reprogramar';
                     } elseif ($reunionFecha <= $limite24h) {
                         $prioridad = 88;
                         $tipo = 'reunion';
