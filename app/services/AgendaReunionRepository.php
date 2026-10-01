@@ -26,14 +26,17 @@ class AgendaReunionRepository
     public function reunionesMes($usuarioId, $rolId, $inicio, $fin)
     {
         $sql = "SELECT r.*, s.nombre_entidad, s.contacto_nombre, s.contacto_cargo,
+                       s.estado_id AS seguimiento_estado_id,
                        COALESCE(NULLIF(TRIM(s.correo_verificado),''), NULLIF(TRIM(s.correo_fuente),'')) AS contacto_correo,
                        m.nombre AS municipio_nombre,
+                       COALESCE(e.nombre,'') AS estado_nombre,
                        TRIM(CONCAT(COALESCE(a.nombre,''),' ',COALESCE(a.apellidos,''))) AS analista_nombre,
                        TRIM(CONCAT(COALESCE(k.nombre,''),' ',COALESCE(k.apellidos,''))) AS cuenta_clave_nombre,
                        COALESCE(k.correo,'') AS cuenta_clave_correo
                 FROM reuniones_vinculacion r
                 JOIN seguimientos_vinculacion s ON s.id=r.seguimiento_id
                 LEFT JOIN municipios m ON m.id=s.municipio_id
+                LEFT JOIN estados e ON e.id=s.estado_id
                 LEFT JOIN usuarios a ON a.id=r.analista_id
                 LEFT JOIN usuarios k ON k.id=r.cuenta_clave_id
                 WHERE r.fecha_propuesta>=? AND r.fecha_propuesta<? AND r.estado<>'CANCELADA'";
@@ -288,6 +291,7 @@ class AgendaReunionRepository
                 FROM reuniones_vinculacion r
                 JOIN seguimientos_vinculacion s ON s.id=r.seguimiento_id
                 LEFT JOIN municipios m ON m.id=s.municipio_id
+                LEFT JOIN estados e ON e.id=s.estado_id
                 LEFT JOIN usuarios a ON a.id=r.analista_id
                 LEFT JOIN usuarios k ON k.id=r.cuenta_clave_id
                 WHERE r.id=?";
