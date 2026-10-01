@@ -2136,10 +2136,7 @@ class DataTerritorialController
 
     private function validarPermisoEdicionGeneral()
     {
-        if (
-            !tienePermiso('data_territorial.editar') &&
-            !tienePermiso('territorios.actualizar_ficha')
-        ) {
+        if (!tienePermiso('data_territorial.editar')) {
             header(
                 'Location: ' .
                 BASE_URL .
