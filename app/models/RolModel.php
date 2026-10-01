@@ -301,6 +301,10 @@ class RolModel
 
         $permisosIds = array_values(array_unique(array_map('intval', $permisosIds)));
         $permisosIds = $this->normalizarDependenciasPermisos($permisosIds);
+        $permisosIds = $this->retirarPermisosSoloAdministrador(
+            (int)$rolId,
+            $permisosIds
+        );
 
         if (!$this->validarPermisosExistentes($permisosIds)) {
             return false;
@@ -788,7 +792,12 @@ class RolModel
             'convocatorias.gestionar' => 'convocatorias.ver',
             'convocatorias.descargar' => 'convocatorias.ver',
             'convocatorias.cambiar_estado' => 'convocatorias.ver',
-            'reportes.exportar' => 'reportes.ver'
+            'reportes.exportar' => 'reportes.ver',
+            'reportes.seguimiento.cartera' => 'reportes.ver',
+            'reportes.seguimiento.actividad' => 'reportes.ver',
+            'reportes.seguimiento.institucion' => 'reportes.ver',
+            'reportes.territorial' => 'reportes.ver',
+            'reportes.usuarios' => 'reportes.ver'
         ];
 
         $resultado = $this->connection->query(
@@ -938,6 +947,34 @@ class RolModel
         }
     }
 
+    private function retirarPermisosSoloAdministrador($rolId, $permisosIds)
+    {
+        if ((int)$rolId === 1 || empty($permisosIds)) {
+            return $permisosIds;
+        }
+
+        $resultado = $this->connection->query(
+            "SELECT id
+             FROM permisos
+             WHERE codigo = 'reportes.usuarios'
+             LIMIT 1"
+        );
+
+        if (!$resultado || $resultado->num_rows === 0) {
+            return $permisosIds;
+        }
+
+        $permiso = $resultado->fetch_assoc();
+        $permisoId = (int)($permiso['id'] ?? 0);
+
+        return array_values(array_filter(
+            $permisosIds,
+            static function ($id) use ($permisoId) {
+                return (int)$id !== $permisoId;
+            }
+        ));
+    }
+
     private function validarPermisosExistentes($permisosIds)
     {
         if (empty($permisosIds)) {
@@ -1020,8 +1057,13 @@ class RolModel
             ['modulo' => 'Difusión', 'codigo' => 'difusion.crear', 'nombre' => 'Crear difusión', 'descripcion' => 'Registrar nuevas convocatorias o ligas de registro.'],
             ['modulo' => 'Difusión', 'codigo' => 'difusion.enviar', 'nombre' => 'Enviar difusión', 'descripcion' => 'Enviar convocatorias o ligas a instituciones autorizadas.'],
             ['modulo' => 'Difusión', 'codigo' => 'difusion.gestionar', 'nombre' => 'Gestionar difusión', 'descripcion' => 'Administrar el proceso de difusión institucional.'],
-            ['modulo' => 'Reportes', 'codigo' => 'reportes.ver', 'nombre' => 'Ver reportes', 'descripcion' => 'Consultar reportes.'],
-            ['modulo' => 'Reportes', 'codigo' => 'reportes.exportar', 'nombre' => 'Exportar reportes', 'descripcion' => 'Exportar información del sistema.'],
+            ['modulo' => 'Reportes', 'codigo' => 'reportes.ver', 'nombre' => 'Ver reportes', 'descripcion' => 'Consultar el Centro de Reportes.'],
+            ['modulo' => 'Reportes', 'codigo' => 'reportes.seguimiento.cartera', 'nombre' => 'Reporte de cartera de seguimiento', 'descripcion' => 'Generar reportes sobre el estado actual de la cartera dentro del alcance autorizado.'],
+            ['modulo' => 'Reportes', 'codigo' => 'reportes.seguimiento.actividad', 'nombre' => 'Reporte de actividad de seguimiento', 'descripcion' => 'Generar reportes de actividad e interacciones dentro del alcance autorizado.'],
+            ['modulo' => 'Reportes', 'codigo' => 'reportes.seguimiento.institucion', 'nombre' => 'Reporte de institución', 'descripcion' => 'Generar el expediente ejecutivo de una institución dentro del alcance autorizado.'],
+            ['modulo' => 'Reportes', 'codigo' => 'reportes.territorial', 'nombre' => 'Reporte de información territorial', 'descripcion' => 'Generar reportes de información territorial sobre territorios autorizados.'],
+            ['modulo' => 'Reportes', 'codigo' => 'reportes.usuarios', 'nombre' => 'Reporte administrativo de usuarios', 'descripcion' => 'Generar el reporte transversal de usuarios. Exclusivo del Administrador.'],
+            ['modulo' => 'Reportes', 'codigo' => 'reportes.exportar', 'nombre' => 'Exportar reportes', 'descripcion' => 'Exportar a PDF los reportes que el rol tiene autorizados.'],
             ['modulo' => 'Respaldos', 'codigo' => 'respaldos.generar', 'nombre' => 'Generar respaldos', 'descripcion' => 'Crear respaldos del sistema.'],
             ['modulo' => 'Respaldos', 'codigo' => 'respaldos.restaurar', 'nombre' => 'Restaurar respaldos', 'descripcion' => 'Restaurar información desde respaldo.'],
             ['modulo' => 'Configuración', 'codigo' => 'configuracion.ver', 'nombre' => 'Ver configuración', 'descripcion' => 'Consultar configuración del sistema.'],
