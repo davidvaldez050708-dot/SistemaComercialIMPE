@@ -282,6 +282,8 @@ usort($actividadExpediente, function ($eventoA, $eventoB) {
     </div>
 <?php endif; ?>
 
+<div class="linkage-expediente-enhanced">
+
 <section class="dashboard-panel linkage-panel">
     <a
         class="linkage-back-link"
@@ -354,6 +356,115 @@ usort($actividadExpediente, function ($eventoA, $eventoB) {
             <span>Próxima acción</span>
             <strong><?= $texto($proximaAccion) ?></strong>
         </div>
+    </div>
+</section>
+
+
+<section class="dashboard-panel linkage-detail-panel linkage-expediente-supervision">
+    <div class="linkage-expediente-supervision-heading">
+        <span class="linkage-expediente-supervision-icon">
+            <i class="bi bi-chat-left-text"></i>
+        </span>
+        <div>
+            <span class="linkage-expediente-eyebrow">SUPERVISIÓN</span>
+            <h2>
+                <?= $modoSeguimiento === 'supervisor'
+                    ? 'Observación para el Analista'
+                    : 'Indicaciones de Cuenta Clave' ?>
+            </h2>
+            <p>
+                <?= $modoSeguimiento === 'supervisor'
+                    ? 'Envía una indicación interna sobre este seguimiento. El Analista la verá como parte de su supervisión.'
+                    : 'Consulta las observaciones e indicaciones que Cuenta Clave ha dejado para este seguimiento.' ?>
+            </p>
+        </div>
+        <?php if ($modoSeguimiento === 'analista' && $nuevasObservaciones > 0): ?>
+            <span class="linkage-expediente-supervision-badge">
+                <?= (int)$nuevasObservaciones ?>
+                <?= $nuevasObservaciones === 1 ? 'nueva' : 'nuevas' ?>
+            </span>
+        <?php endif; ?>
+    </div>
+
+    <?php if ($puedeComentar): ?>
+        <form
+            class="linkage-comment-form linkage-expediente-supervision-form"
+            action="<?= BASE_URL ?>index.php?controller=seguimientoVinculacion&action=guardarObservacion"
+            method="POST">
+            <input
+                type="hidden"
+                name="seguimiento_id"
+                value="<?= (int)($seguimiento['id'] ?? 0) ?>">
+
+            <label class="form-label" for="observacion">
+                Escribe una observación
+            </label>
+            <textarea
+                class="form-control"
+                id="observacion"
+                name="observacion"
+                rows="3"
+                maxlength="2000"
+                placeholder="Ej. Revisar este caso con prioridad antes del siguiente contacto..."
+                required></textarea>
+
+            <div class="linkage-expediente-supervision-form-footer">
+                <span>
+                    <i class="bi bi-info-circle"></i>
+                    Nota interna dirigida al Analista responsable.
+                </span>
+                <button type="submit" class="btn btn-system-save">
+                    <i class="bi bi-send me-2"></i>
+                    Enviar observación
+                </button>
+            </div>
+        </form>
+    <?php endif; ?>
+
+    <div class="linkage-expediente-supervision-history">
+        <div class="linkage-expediente-supervision-history-head">
+            <strong>
+                <?= $modoSeguimiento === 'supervisor'
+                    ? 'Historial de observaciones'
+                    : 'Observaciones recibidas' ?>
+            </strong>
+            <?php if (!empty($observaciones)): ?>
+                <span><?= count($observaciones) ?> registradas</span>
+            <?php endif; ?>
+        </div>
+
+        <?php if (!empty($observaciones)): ?>
+            <div class="linkage-observation-list">
+                <?php foreach ($observaciones as $observacion): ?>
+                    <?php
+                    $nombreAutor = trim(
+                        ($observacion['nombre'] ?? '') . ' ' .
+                        ($observacion['apellidos'] ?? '')
+                    );
+                    ?>
+                    <article class="linkage-observation-item">
+                        <?= renderAvatarUsuario(
+                            $observacion['nombre'] ?? '',
+                            $observacion['apellidos'] ?? '',
+                            $observacion['rol'] ?? '',
+                            $observacion['foto_perfil'] ?? '',
+                            'sm',
+                            'general'
+                        ) ?>
+                        <div>
+                            <strong><?= $texto($nombreAutor) ?></strong>
+                            <span><?= $texto($formatearFecha($observacion['created_at'] ?? '')) ?></span>
+                            <p><?= nl2br($texto($observacion['observacion'] ?? '')) ?></p>
+                        </div>
+                    </article>
+                <?php endforeach; ?>
+            </div>
+        <?php else: ?>
+            <div class="linkage-expediente-supervision-empty">
+                <i class="bi bi-chat-square-text"></i>
+                <span>Sin observaciones de supervisión registradas.</span>
+            </div>
+        <?php endif; ?>
     </div>
 </section>
 
@@ -554,70 +665,9 @@ usort($actividadExpediente, function ($eventoA, $eventoB) {
     <?php endif; ?>
 </section>
 
-<section class="dashboard-panel linkage-detail-panel">
-    <div class="users-list-header">
-        <div>
-            <h2>Observaciones del Cuenta Clave</h2>
-            <p>Notas internas para seguimiento del Analista.</p>
-        </div>
-    </div>
 
-    <?php if ($puedeComentar): ?>
-        <form
-            class="linkage-comment-form"
-            action="<?= BASE_URL ?>index.php?controller=seguimientoVinculacion&action=guardarObservacion"
-            method="POST">
-            <input type="hidden" name="seguimiento_id" value="<?= (int)($seguimiento['id'] ?? 0) ?>">
-            <label class="form-label" for="observacion">Observación</label>
-            <textarea
-                class="form-control"
-                id="observacion"
-                name="observacion"
-                rows="3"
-                maxlength="2000"
-                placeholder="Escribe una observación para el Analista..."
-                required></textarea>
-            <div class="linkage-comment-actions">
-                <button type="submit" class="btn btn-system-save">
-                    <i class="bi bi-send me-2"></i>
-                    Enviar observación
-                </button>
-            </div>
-        </form>
-    <?php endif; ?>
 
-    <?php if (!empty($observaciones)): ?>
-        <div class="linkage-observation-list">
-            <?php foreach ($observaciones as $observacion): ?>
-                <?php
-                $nombreAutor = trim(
-                    ($observacion['nombre'] ?? '') . ' ' .
-                    ($observacion['apellidos'] ?? '')
-                );
-                ?>
-                <article class="linkage-observation-item">
-                    <?= renderAvatarUsuario(
-                        $observacion['nombre'] ?? '',
-                        $observacion['apellidos'] ?? '',
-                        $observacion['rol'] ?? '',
-                        $observacion['foto_perfil'] ?? '',
-                        'sm',
-                        'general'
-                    ) ?>
-                    <div>
-                        <strong><?= $texto($nombreAutor) ?></strong>
-                        <span><?= $texto($formatearFecha($observacion['created_at'] ?? '')) ?></span>
-                        <p><?= nl2br($texto($observacion['observacion'] ?? '')) ?></p>
-                    </div>
-                </article>
-            <?php endforeach; ?>
-        </div>
-    <?php else: ?>
-        <div class="empty-table-message linkage-empty-message">
-            Sin observaciones registradas.
-        </div>
-    <?php endif; ?>
-</section>
+</div>
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
