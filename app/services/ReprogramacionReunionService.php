@@ -17,6 +17,13 @@ class ReprogramacionReunionService
 
     public function solicitarAnalista($usuarioId, $rolId, $datos)
     {
+        if (!tienePermiso('reuniones.solicitar')) {
+            return $this->error(
+                'No tienes permiso para reprogramar esta reunión.',
+                403
+            );
+        }
+
         if (!$this->estructuraDisponible()) {
             return $this->error('Falta aplicar la migración de reprogramación de reuniones.', 500);
         }
@@ -104,6 +111,13 @@ class ReprogramacionReunionService
 
     public function reproponerVencidaAnalista($usuarioId, $rolId, $datos)
     {
+        if (!tienePermiso('reuniones.solicitar')) {
+            return $this->error(
+                'No tienes permiso para proponer una nueva fecha.',
+                403
+            );
+        }
+
         if (!$this->estructuraDisponible()) {
             return $this->error(
                 'Falta aplicar la migración de reprogramación de reuniones.',
@@ -298,6 +312,13 @@ class ReprogramacionReunionService
 
     public function solicitarKam($usuarioId, $rolId, $datos)
     {
+        if (!tienePermiso('reuniones.gestionar')) {
+            return $this->error(
+                'No tienes permiso para solicitar una reprogramación.',
+                403
+            );
+        }
+
         if (!$this->estructuraDisponible()) {
             return $this->error('Falta aplicar la migración de reprogramación de reuniones.', 500);
         }
@@ -364,6 +385,13 @@ class ReprogramacionReunionService
 
     public function completarAnalista($usuarioId, $rolId, $datos)
     {
+        if (!tienePermiso('reuniones.solicitar')) {
+            return $this->error(
+                'No tienes permiso para completar esta reprogramación.',
+                403
+            );
+        }
+
         $reunionId = (int)($datos['reunion_id'] ?? 0);
         $reunion = $this->obtenerReunion($reunionId, (int)$usuarioId, 'ANALISTA');
         if (!$reunion || (int)($reunion['es_reprogramacion'] ?? 0) !== 1 || (string)$reunion['estado'] !== 'CAMBIO_SOLICITADO') {
@@ -392,6 +420,13 @@ class ReprogramacionReunionService
 
     public function confirmarKam($usuarioId, $rolId, $datos)
     {
+        if (!tienePermiso('reuniones.gestionar')) {
+            return $this->error(
+                'No tienes permiso para confirmar esta reprogramación.',
+                403
+            );
+        }
+
         $reunionId = (int)($datos['reunion_id'] ?? 0);
         $reunion = $this->obtenerReunion($reunionId, (int)$usuarioId, 'CUENTA_CLAVE');
         if (!$reunion || (int)($reunion['es_reprogramacion'] ?? 0) !== 1 || (string)$reunion['estado'] !== 'SOLICITADA') {
@@ -419,6 +454,13 @@ class ReprogramacionReunionService
 
     public function marcarCorreoAnalista($usuarioId, $rolId, $datos)
     {
+        if (!tienePermiso('reuniones.solicitar')) {
+            return $this->error(
+                'No tienes permiso para registrar este correo de reprogramación.',
+                403
+            );
+        }
+
         $reunionId = (int)($datos['reunion_id'] ?? 0);
         $reunion = $this->obtenerReunion($reunionId, (int)$usuarioId, 'ANALISTA');
         if (!$reunion || (int)($reunion['es_reprogramacion'] ?? 0) !== 1 || (string)$reunion['estado'] !== 'CONFIRMADA') {
