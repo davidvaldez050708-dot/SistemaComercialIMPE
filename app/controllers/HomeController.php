@@ -49,6 +49,12 @@ class HomeController
 
             case 4:
                 $tituloPagina = 'Inicio';
+
+                if (!tienePermiso('seguimientos_vinculacion.ver')) {
+                    $subtituloPagina = 'No tienes módulos operativos habilitados actualmente.';
+                    break;
+                }
+
                 $subtituloPagina = 'Resumen operativo de tus seguimientos de vinculación';
 
                 $usuarioId = (int)$_SESSION['usuario_id'];
@@ -90,6 +96,15 @@ class HomeController
 
             case 6:
                 $tituloPagina = 'Panel de Cuenta Clave';
+
+                if (
+                    !tienePermiso('territorios.ver') &&
+                    !tienePermiso('seguimientos_vinculacion.ver')
+                ) {
+                    $subtituloPagina = 'No tienes módulos operativos habilitados actualmente.';
+                    break;
+                }
+
                 $subtituloPagina = 'Gestión de vinculación institucional';
 
                 $modeloTerritorio = new TerritorioModel();
@@ -103,6 +118,12 @@ class HomeController
             default:
                 if (strcasecmp((string)($_SESSION['rol'] ?? ''), 'Marketing') === 0) {
                     $tituloPagina = 'Panel de Marketing';
+
+                    if (!tienePermiso('convocatorias.ver')) {
+                        $subtituloPagina = 'No tienes módulos operativos habilitados actualmente.';
+                        break;
+                    }
+
                     $subtituloPagina = 'Gestión de convocatorias y publicaciones';
 
                     $modeloConvocatoria = new ConvocatoriaModel();
