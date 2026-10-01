@@ -82,6 +82,18 @@ class CorreoFirmadoService
             return $this->error('La reunión todavía no está lista para enviar la confirmación.', 409);
         }
 
+        $fechaReunion = trim((string)($reunion['fecha_propuesta'] ?? ''));
+        if (
+            $fechaReunion === '' ||
+            strtotime($fechaReunion) === false ||
+            strtotime($fechaReunion) <= time()
+        ) {
+            return $this->error(
+                'La hora de la reunión ya inició. No se enviará una confirmación atrasada; reprograma la reunión.',
+                409
+            );
+        }
+
         $destinatario = trim((string)($reunion['contacto_correo'] ?? ''));
         if ($destinatario === '' || !filter_var($destinatario, FILTER_VALIDATE_EMAIL)) {
             return $this->error('La institución no tiene un correo de contacto válido.', 422);
@@ -202,6 +214,20 @@ class CorreoFirmadoService
         ) {
             return $this->error(
                 'Esta reunión ya no requiere un correo de cancelación.',
+                409
+            );
+        }
+
+        $estadoReunion = strtoupper((string)($reunion['estado'] ?? ''));
+        $fechaReunion = trim((string)($reunion['fecha_propuesta'] ?? ''));
+        if (
+            $estadoReunion === 'CORREO_ENVIADO' &&
+            $fechaReunion !== '' &&
+            strtotime($fechaReunion) !== false &&
+            strtotime($fechaReunion) <= time()
+        ) {
+            return $this->error(
+                'La reunión ya inició. Ya no corresponde enviar una cancelación retroactiva; registra lo ocurrido o reprograma si no se realizó.',
                 409
             );
         }
