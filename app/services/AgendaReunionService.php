@@ -388,10 +388,20 @@ class AgendaReunionService
         $usuarioId = (int)$usuarioId;
         $rolId = (int)$rolId;
 
-        if (
-            !tienePermiso('reuniones.solicitar') &&
-            !tienePermiso('reuniones.gestionar')
-        ) {
+        $puedeCancelar = false;
+
+        if ($rolId === self::ROL_CUENTA_CLAVE) {
+            $puedeCancelar = tienePermiso('reuniones.gestionar');
+        } elseif ($rolId === self::ROL_ANALISTA) {
+            $puedeCancelar = tienePermiso('reuniones.solicitar');
+        } else {
+            $puedeCancelar = tieneAlgunPermiso([
+                'reuniones.solicitar',
+                'reuniones.gestionar'
+            ]);
+        }
+
+        if (!$puedeCancelar) {
             return $this->error('No tienes acceso a cancelar esta reunión.', 403);
         }
 
