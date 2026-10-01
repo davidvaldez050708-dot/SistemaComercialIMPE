@@ -63,7 +63,7 @@ class CorreoFirmadoController
 
     public function enviarCancelacionReunion()
     {
-        $this->validarAgendaPost();
+        $this->validarAnalistaPost(true);
 
         $resultado = $this->service->enviarCancelacionReunion(
             (int)($_POST['reunion_id'] ?? 0),
