@@ -52,11 +52,13 @@ class AgendaReunionController
         $agendaReuniones = $agenda['reuniones'] ?? [];
         $seguimientosElegibles = $agenda['seguimientos_elegibles'] ?? [];
         $agendaRequiereMigracion = (bool)($agenda['requiere_migracion'] ?? false);
-        $agendaRolId = tienePermiso('reuniones.gestionar')
-            ? AgendaReunionService::ROL_CUENTA_CLAVE
-            : (tienePermiso('reuniones.solicitar')
-                ? AgendaReunionService::ROL_ANALISTA
-                : 0);
+        $agendaPuedeSolicitar = tienePermiso('reuniones.solicitar');
+        $agendaPuedeGestionar = tienePermiso('reuniones.gestionar');
+        $agendaPuedeVerSeguimiento = tienePermiso('seguimientos_vinculacion.ver');
+        $agendaRolId = $rolId;
+        $agendaModo = $agendaPuedeGestionar
+            ? 'GESTION'
+            : ($agendaPuedeSolicitar ? 'SOLICITUD' : 'LECTURA');
 
         $primerDia = new DateTime($mesAgenda . '-01');
         $offset = (int)$primerDia->format('N') - 1;
@@ -95,9 +97,16 @@ class AgendaReunionController
         $tituloMesAgenda = $this->nombreMes((int)$primerDia->format('n')) . ' ' . $primerDia->format('Y');
 
         $tituloPagina = 'Agenda de reuniones';
-        $subtituloPagina = tienePermiso('reuniones.gestionar')
-            ? 'Confirma solicitudes y agrega los datos de reunión para el Analista'
-            : 'Coordina reuniones con Cuenta Clave y da seguimiento a sus confirmaciones';
+        if ($agendaPuedeGestionar) {
+            $subtituloPagina =
+                'Confirma solicitudes y agrega los datos de reunión para el Analista';
+        } elseif ($agendaPuedeSolicitar) {
+            $subtituloPagina =
+                'Coordina reuniones con Cuenta Clave y da seguimiento a sus confirmaciones';
+        } else {
+            $subtituloPagina =
+                'Consulta las reuniones asignadas y su contexto de seguimiento';
+        }
         $opcionActiva = 'seguimiento_vinculacion';
 
         require_once __DIR__ . '/../views/layout/dashboard_head.php';
