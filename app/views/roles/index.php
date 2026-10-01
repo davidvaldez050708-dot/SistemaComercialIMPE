@@ -467,6 +467,86 @@ document.addEventListener('DOMContentLoaded', function () {
                 .replace(/[\u0300-\u036f]/g, '');
         };
 
+        const dependencias = {
+            'usuarios.crear': 'usuarios.ver',
+            'usuarios.editar': 'usuarios.ver',
+            'usuarios.cambiar_estado': 'usuarios.ver',
+            'roles.crear': 'roles.ver',
+            'roles.editar': 'roles.ver',
+            'roles.cambiar_estado': 'roles.ver',
+            'roles.asignar_permisos': 'roles.ver',
+            'territorios.asignar': 'territorios.ver',
+            'data_territorial.editar': 'data_territorial.ver',
+            'data_territorial.actualizar_oficial': 'data_territorial.ver',
+            'data_territorial.gestionar_secretarias': 'data_territorial.ver',
+            'data_territorial.gestionar_municipios': 'data_territorial.ver',
+            'data_territorial.gestionar_indicadores': 'data_territorial.ver',
+            'seguimientos_vinculacion.crear': 'seguimientos_vinculacion.ver',
+            'seguimientos_vinculacion.operar_propios': 'seguimientos_vinculacion.ver',
+            'seguimientos_vinculacion.supervisar': 'seguimientos_vinculacion.ver',
+            'seguimientos_vinculacion.comentar': 'seguimientos_vinculacion.ver',
+            'oficios.generar': 'oficios.ver',
+            'oficios.enviar': 'oficios.ver',
+            'reuniones.solicitar': 'reuniones.ver',
+            'reuniones.gestionar': 'reuniones.ver',
+            'convocatorias.crear': 'convocatorias.ver',
+            'convocatorias.editar': 'convocatorias.ver',
+            'convocatorias.gestionar': 'convocatorias.ver',
+            'convocatorias.descargar': 'convocatorias.ver',
+            'convocatorias.cambiar_estado': 'convocatorias.ver',
+            'reportes.exportar': 'reportes.ver'
+        };
+        const permisosPorCodigo = new Map(
+            checkboxes.map(function (checkbox) {
+                return [String(checkbox.dataset.permissionCode || ''), checkbox];
+            })
+        );
+        const gestionConvocatorias = [
+            'convocatorias.ver',
+            'convocatorias.crear',
+            'convocatorias.editar',
+            'convocatorias.descargar',
+            'convocatorias.cambiar_estado'
+        ];
+
+        const aplicarDependencias = function (checkbox) {
+            const codigo = String(checkbox.dataset.permissionCode || '');
+
+            if (checkbox.checked) {
+                const padre = dependencias[codigo] || '';
+                if (padre && permisosPorCodigo.has(padre)) {
+                    permisosPorCodigo.get(padre).checked = true;
+                }
+
+                if (codigo === 'convocatorias.gestionar') {
+                    gestionConvocatorias.forEach(function (codigoHijo) {
+                        if (permisosPorCodigo.has(codigoHijo)) {
+                            permisosPorCodigo.get(codigoHijo).checked = true;
+                        }
+                    });
+                }
+
+                return;
+            }
+
+            checkboxes.forEach(function (dependiente) {
+                const codigoDependiente =
+                    String(dependiente.dataset.permissionCode || '');
+
+                if (dependencias[codigoDependiente] === codigo) {
+                    dependiente.checked = false;
+                }
+            });
+
+            if (
+                codigo !== 'convocatorias.gestionar' &&
+                gestionConvocatorias.includes(codigo) &&
+                permisosPorCodigo.has('convocatorias.gestionar')
+            ) {
+                permisosPorCodigo.get('convocatorias.gestionar').checked = false;
+            }
+        };
+
         const actualizarContador = function () {
             if (!contador) {
                 return;
@@ -559,6 +639,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         checkboxes.forEach(function (checkbox) {
             checkbox.addEventListener('change', function () {
+                aplicarDependencias(checkbox);
                 actualizarBotonesModulo();
                 actualizarEstado();
             });
@@ -588,6 +669,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     permisosGrupo.forEach(function (checkbox) {
                         checkbox.checked = !todosMarcados;
                     });
+
+                    if (!todosMarcados) {
+                        permisosGrupo.forEach(aplicarDependencias);
+                    }
 
                     actualizarBotonesModulo();
                     actualizarEstado();
