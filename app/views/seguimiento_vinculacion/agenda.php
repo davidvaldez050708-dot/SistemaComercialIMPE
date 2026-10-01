@@ -186,7 +186,11 @@ $pendientesAgenda = array_values(array_filter(
         <aside class="agenda-side-card">
             <div class="agenda-side-heading">
                 <span class="agenda-side-icon">
-                    <i class="bi <?= $esCuentaClaveAgenda ? 'bi-inbox' : 'bi-bell' ?>"></i>
+                    <i class="bi <?=
+                        $esSoloLecturaAgenda
+                            ? 'bi-eye'
+                            : ($esCuentaClaveAgenda ? 'bi-inbox' : 'bi-bell')
+                    ?>"></i>
                 </span>
                 <div>
                     <h3>
