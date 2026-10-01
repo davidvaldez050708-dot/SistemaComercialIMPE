@@ -132,8 +132,15 @@ $permisosHabilitados = $rolEsAdministrador
                         <?php foreach ($permisos as $permiso): ?>
 
                             <?php
+                            $permisoSoloAdministrador =
+                                (string)($permiso['codigo'] ?? '') ===
+                                'reportes.usuarios';
                             $permisoActivo = $rolEsAdministrador ||
                                 isset($permisosRol[(int)$permiso['id']]);
+                            $permisoBloqueado =
+                                $panelBloqueado ||
+                                ($permisoSoloAdministrador &&
+                                    !$rolEsAdministrador);
                             $checkboxId =
                                 'permiso_' .
                                 (int)$rolSeleccionado['id'] .
@@ -159,10 +166,15 @@ $permisosHabilitados = $rolEsAdministrador
                                     value="<?= (int)$permiso['id'] ?>"
                                     data-permission-code="<?= $textoRol($permiso['codigo']) ?>"
                                     <?= $permisoActivo ? 'checked' : '' ?>
-                                    <?= $panelBloqueado ? 'disabled' : '' ?>>
+                                    <?= $permisoBloqueado ? 'disabled' : '' ?>>
 
                                 <span>
-                                    <strong><?= $textoRol($permiso['nombre']) ?></strong>
+                                    <strong>
+                                        <?= $textoRol($permiso['nombre']) ?>
+                                        <?php if ($permisoSoloAdministrador && !$rolEsAdministrador): ?>
+                                            <span class="role-system-pill ms-2">Solo Administrador</span>
+                                        <?php endif; ?>
+                                    </strong>
                                     <small><?= $textoRol($permiso['descripcion']) ?></small>
                                 </span>
                             </label>
