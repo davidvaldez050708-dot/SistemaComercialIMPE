@@ -2,7 +2,7 @@
     'use strict';
 
     document.addEventListener('DOMContentLoaded', function () {
-        const root = document.querySelector('[data-analyst-report-modes]');
+        const root = document.querySelector('[data-report-modes]');
         const form = document.querySelector('[data-report-form]');
         const inputType = form?.querySelector('[data-report-type-input]');
 
@@ -11,6 +11,7 @@
         }
 
         const buttons = Array.from(root.querySelectorAll('[data-report-mode]'));
+        const scope = String(root.dataset.reportScope || 'analista');
         const help = form.querySelector('[data-report-mode-help]');
         const institution = form.querySelector('#reporte_institucion');
         const periodShortcuts = form.querySelector('[data-report-period-shortcuts]');
@@ -36,20 +37,51 @@
         let institutionPages = 0;
         let institutionRequest = 0;
         let institutionSearchTimer = null;
-        const labels = {
-            actividad: {
-                help: 'Consulta las actividades que realizaste durante el periodo y, si lo necesitas, acótalas por territorio o tipo de interacción.',
-                fields: ['periodo', 'territorio', 'actividad']
+        const labelsByScope = {
+            analista: {
+                actividad: {
+                    help: 'Consulta las actividades que realizaste durante el periodo y, si lo necesitas, acótalas por territorio o tipo de interacción.',
+                    fields: ['periodo', 'territorio', 'actividad']
+                },
+                cartera: {
+                    help: 'Consulta el estado actual de tu cartera. Puedes acotar por estado, municipio, etapa, canal o inactividad.',
+                    fields: ['territorio', 'municipio', 'estatus', 'actividad', 'inactividad']
+                },
+                institucion: {
+                    help: 'Selecciona una institución para consultar su expediente ejecutivo de seguimiento.',
+                    fields: ['territorio', 'municipio', 'institucion']
+                }
             },
-            cartera: {
-                help: 'Consulta el estado actual de tu cartera. Puedes acotar por estado, municipio, etapa, canal o inactividad.',
-                fields: ['territorio', 'municipio', 'estatus', 'actividad', 'inactividad']
+            supervisor: {
+                actividad: {
+                    help: 'Consulta la actividad de los Analistas supervisados y acótala por periodo, territorio, responsable o tipo de interacción.',
+                    fields: ['periodo', 'territorio', 'municipio', 'responsable', 'actividad']
+                },
+                cartera: {
+                    help: 'Consulta la cartera supervisada y acótala por territorio, Analista, etapa, canal o inactividad.',
+                    fields: ['territorio', 'municipio', 'responsable', 'estatus', 'actividad', 'inactividad']
+                },
+                institucion: {
+                    help: 'Selecciona una institución dentro de tu alcance de supervisión para consultar su expediente ejecutivo.',
+                    fields: ['territorio', 'municipio', 'institucion']
+                }
             },
-            institucion: {
-                help: 'Selecciona una institución para consultar su expediente ejecutivo de seguimiento.',
-                fields: ['territorio', 'municipio', 'institucion']
+            administrador: {
+                actividad: {
+                    help: 'Consulta la actividad de seguimiento y acótala por periodo, territorio, responsable o tipo de interacción.',
+                    fields: ['periodo', 'territorio', 'municipio', 'responsable', 'actividad']
+                },
+                cartera: {
+                    help: 'Consulta la cartera general y acótala por territorio, responsable, etapa, canal o inactividad.',
+                    fields: ['territorio', 'municipio', 'responsable', 'estatus', 'actividad', 'inactividad']
+                },
+                institucion: {
+                    help: 'Selecciona una institución para consultar su expediente ejecutivo.',
+                    fields: ['territorio', 'municipio', 'institucion']
+                }
             }
         };
+        const labels = labelsByScope[scope] || labelsByScope.analista;
 
         const neutralValue = function (control) {
             if (!control) return;
@@ -71,8 +103,12 @@
         };
 
         const applyMode = function (mode, resetHidden) {
-            if (!labels[mode]) {
-                mode = 'cartera';
+            const availableModes = buttons.map(function (button) {
+                return String(button.dataset.reportMode || '');
+            });
+
+            if (!labels[mode] || !availableModes.includes(mode)) {
+                mode = availableModes[0] || 'cartera';
             }
 
             inputType.value = mode;
@@ -171,7 +207,9 @@
 
             form.querySelectorAll('[data-report-field]').forEach(function (wrapper) {
                 const field = String(wrapper.dataset.reportField || '');
-                const visible = visibleFields.has(field) && field !== 'responsable';
+                const visible =
+                    visibleFields.has(field) &&
+                    !(scope === 'analista' && field === 'responsable');
                 wrapper.classList.toggle('d-none', !visible);
 
                 wrapper.querySelectorAll('input, select, textarea').forEach(function (control) {
@@ -244,11 +282,13 @@
             }
             if (compactHelp) {
                 if (mode === 'actividad') {
-                    compactHelp.textContent =
-                        'Las fechas corresponden a las actividades que realizaste. Estado limita las instituciones por territorio y Tipo de interacción permite consultar un canal específico.';
+                    compactHelp.textContent = scope === 'analista'
+                        ? 'Las fechas corresponden a las actividades que realizaste. Estado limita las instituciones por territorio y Tipo de interacción permite consultar un canal específico.'
+                        : 'Las fechas corresponden a la actividad del equipo incluido en tu alcance. Puedes acotar por territorio, responsable y tipo de interacción.';
                 } else if (mode === 'cartera') {
-                    compactHelp.textContent =
-                        'Los filtros muestran el estado actual de tu cartera y consideran la última interacción humana registrada; los eventos automáticos no se cuentan.';
+                    compactHelp.textContent = scope === 'analista'
+                        ? 'Los filtros muestran el estado actual de tu cartera y consideran la última interacción humana registrada; los eventos automáticos no se cuentan.'
+                        : 'Los filtros muestran el estado actual de la cartera incluida en tu alcance y permiten acotar por responsable, etapa, canal o inactividad.';
                 } else {
                     compactHelp.textContent =
                         'Selecciona Estado y, opcionalmente, Municipio para ubicar la institución de la que necesitas el expediente.';
