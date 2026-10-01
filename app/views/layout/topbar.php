@@ -3,17 +3,17 @@
 require_once __DIR__ . '/../../helpers/AvatarHelper.php';
 require_once __DIR__ . '/../../helpers/ReminderHelper.php';
 
-$puedeOperarSeguimiento = tienePermiso('seguimientos_vinculacion.operar_propios');
-$puedeSupervisarSeguimiento = tienePermiso('seguimientos_vinculacion.supervisar');
-$esAnalistaDatos = $puedeOperarSeguimiento;
+$puedeSolicitarReuniones = tienePermiso('reuniones.solicitar');
+$puedeGestionarReuniones = tienePermiso('reuniones.gestionar');
+$esAnalistaDatos = tienePermiso('seguimientos_vinculacion.operar_propios');
 $esMarketingTopbar = tienePermiso('convocatorias.gestionar');
 $mostrarCentroAvisos =
     tienePermiso('reuniones.ver') &&
-    ($puedeOperarSeguimiento || $puedeSupervisarSeguimiento);
+    ($puedeSolicitarReuniones || $puedeGestionarReuniones);
 $agendaDisponible = is_file(ROOT_PATH . '/app/controllers/AgendaReunionController.php');
 $mostrarAgendaReuniones =
     tienePermiso('reuniones.ver') &&
-    ($puedeOperarSeguimiento || $puedeSupervisarSeguimiento) &&
+    ($puedeSolicitarReuniones || $puedeGestionarReuniones) &&
     $agendaDisponible;
 $trabajarNotificacionId = (int)($_GET['trabajar_id'] ?? 0);
 
