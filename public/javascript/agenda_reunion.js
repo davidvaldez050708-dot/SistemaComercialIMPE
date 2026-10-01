@@ -686,7 +686,10 @@
         };
 
         const bloqueCancelacion = function (reunion) {
-            if (!puedeOperarAgenda) {
+            if (
+                !puedeOperarAgenda ||
+                Boolean(reunion.reunion_iniciada)
+            ) {
                 return '';
             }
 
@@ -843,6 +846,19 @@
             }
 
             if (estado === 'CONFIRMADA') {
+                if (Boolean(reunion.reunion_iniciada)) {
+                    html += '<div class="agenda-action-box">' +
+                        '<h6>Fecha confirmada vencida</h6>' +
+                        '<p>La hora programada ya inició y la confirmación no se envió a la institución. No envíes un correo atrasado; reprograma la reunión.</p>' +
+                        datosConexion(reunion) +
+                        '<div class="agenda-status-line is-expired">' +
+                            '<i class="bi bi-clock-history"></i>' +
+                            '<span>Se requiere una nueva fecha</span>' +
+                        '</div>' +
+                    '</div>';
+                    return html;
+                }
+
                 html += '<div class="agenda-action-box">' +
                     '<h6>Reunión confirmada</h6>' +
                     '<p>Cuenta Clave confirmó la fecha y agregó los datos de acceso. Prepara el correo de confirmación para la institución.</p>' +
@@ -883,15 +899,37 @@
             }
 
             if (estado === 'CORREO_ENVIADO') {
-                html += '<div class="agenda-action-box">' +
-                    '<h6>Reunión formalmente agendada</h6>' +
-                    '<p>La confirmación ya fue registrada y el seguimiento puede continuar al paso 12 cuando se realice la reunión.</p>' +
-                    datosConexion(reunion) +
-                    '<div class="agenda-status-line is-sent">' +
-                        '<i class="bi bi-check2-circle"></i>' +
-                        '<span>Confirmación enviada a la institución</span>' +
-                    '</div>' +
-                '</div>';
+                if (Boolean(reunion.reunion_finalizada)) {
+                    html += '<div class="agenda-action-box">' +
+                        '<h6>Reunión pendiente de registrar</h6>' +
+                        '<p>La hora programada ya concluyó. Abre el seguimiento para registrar lo ocurrido; si la reunión no se realizó, usa Cambiar fecha para proponer una nueva.</p>' +
+                        datosConexion(reunion) +
+                        '<div class="agenda-status-line is-expired">' +
+                            '<i class="bi bi-clipboard-check"></i>' +
+                            '<span>Pendiente de registrar resultado</span>' +
+                        '</div>' +
+                    '</div>';
+                } else if (Boolean(reunion.reunion_en_curso)) {
+                    html += '<div class="agenda-action-box">' +
+                        '<h6>Reunión en curso</h6>' +
+                        '<p>La reunión ya inició. Ya no corresponde cancelarla; cuando termine registra el resultado desde el seguimiento.</p>' +
+                        datosConexion(reunion) +
+                        '<div class="agenda-status-line is-ready">' +
+                            '<i class="bi bi-camera-video"></i>' +
+                            '<span>En curso</span>' +
+                        '</div>' +
+                    '</div>';
+                } else {
+                    html += '<div class="agenda-action-box">' +
+                        '<h6>Reunión formalmente agendada</h6>' +
+                        '<p>La confirmación ya fue registrada y el seguimiento puede continuar al paso 12 cuando se realice la reunión.</p>' +
+                        datosConexion(reunion) +
+                        '<div class="agenda-status-line is-sent">' +
+                            '<i class="bi bi-check2-circle"></i>' +
+                            '<span>Confirmación enviada a la institución</span>' +
+                        '</div>' +
+                    '</div>';
+                }
             }
 
             return html + bloqueCancelacion(reunion);
@@ -926,6 +964,28 @@
                 return html;
             }
 
+            if (
+                Boolean(reunion.reunion_iniciada) &&
+                ['CONFIRMADA', 'CORREO_ENVIADO'].includes(estado)
+            ) {
+                const finalizada = Boolean(reunion.reunion_finalizada);
+                html += '<div class="agenda-action-box">' +
+                    '<h6>' +
+                        (finalizada
+                            ? 'Reunión pendiente de registro'
+                            : 'Reunión en curso') +
+                    '</h6>' +
+                    '<p>' +
+                        (finalizada
+                            ? 'La fecha programada ya concluyó. El Analista debe registrar el resultado o reprogramar si la reunión no se realizó.'
+                            : 'La reunión ya inició. Las acciones de cancelación y reprogramación de Cuenta Clave quedan cerradas.') +
+                    '</p>' +
+                    datosConexion(reunion) +
+                '</div>';
+
+                return html;
+            }
+
             if (estado !== 'SOLICITADA') {
                 html += '<div class="agenda-action-box">' +
                     '<h6>' + escapar(valorSeguro(reunion.estado_etiqueta, 'Solicitud atendida')) + '</h6>' +
@@ -942,11 +1002,13 @@
             if (Boolean(reunion.esta_vencida)) {
                 html += '<div class="agenda-action-box">' +
                     '<h6>La fecha propuesta ya venció</h6>' +
-                    '<p>No es posible confirmar una reunión con una fecha pasada. Solicita al Analista una nueva propuesta.</p>' +
+                    '<p>No es posible confirmar ni gestionar una fecha que ya inició. El Analista debe proponer una nueva fecha.</p>' +
                     '<div class="agenda-inline-note is-danger">' +
-                        '<i class="bi bi-exclamation-triangle"></i> Confirmación bloqueada hasta recibir una nueva fecha.' +
+                        '<i class="bi bi-exclamation-triangle"></i> Acciones de Cuenta Clave cerradas para esta fecha.' +
                     '</div>' +
                 '</div>';
+
+                return html;
             } else {
                 html += '<div class="agenda-action-box">' +
                     '<h6>Confirmar propuesta</h6>' +
