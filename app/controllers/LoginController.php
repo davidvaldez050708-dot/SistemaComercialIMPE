@@ -285,7 +285,11 @@ class LoginController
         * Nunca indicamos al visitante si la cuenta
         * existe o no.
         */
-        if ($usuario && (int)$usuario['estado'] === 1) {
+        if (
+            $usuario &&
+            (int)$usuario['estado'] === 1 &&
+            (int)($usuario['rol_estado'] ?? 0) === 1
+        ) {
 
             // Generar contraseña temporal
             $passwordTemporal =
