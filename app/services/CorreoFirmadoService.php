@@ -186,16 +186,6 @@ class CorreoFirmadoService
         $cuerpo = trim((string)$cuerpo);
         $motivo = trim((string)$motivo);
 
-        if (!in_array($rolId, [
-            AgendaReunionService::ROL_ANALISTA,
-            AgendaReunionService::ROL_CUENTA_CLAVE
-        ], true)) {
-            return $this->error(
-                'No tienes permiso para cancelar esta reunión.',
-                403
-            );
-        }
-
         $reunion = $this->agendaRepo->reunion(
             $reunionId,
             $usuarioId,
