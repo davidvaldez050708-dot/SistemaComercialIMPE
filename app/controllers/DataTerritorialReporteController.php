@@ -118,6 +118,7 @@ class DataTerritorialReporteController
     {
         if (
             !tienePermiso('reportes.ver') ||
+            !tienePermiso('reportes.territorial') ||
             !tienePermiso('data_territorial.ver')
         ) {
             http_response_code(403);
