@@ -170,7 +170,12 @@ class SeguimientoAtencionOperativaService
             $tieneReunionActiva = $reunionEstado !== '';
 
             if ($tieneReunionActiva) {
-                if ($reunionEstado === 'CAMBIO_SOLICITADO') {
+                if ($reunionEstado === 'CANCELACION_SOLICITADA') {
+                $prioridad = 101;
+                $tipo = 'atrasado';
+                $motivo = 'Enviar correo de cancelación';
+                $fechaReferencia = $reunionFecha;
+            } elseif ($reunionEstado === 'CAMBIO_SOLICITADO') {
                     $prioridad = 96;
                     $tipo = 'reunion';
                     $motivo = 'Cuenta Clave solicitó reprogramar';
