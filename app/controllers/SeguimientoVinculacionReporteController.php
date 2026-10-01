@@ -351,6 +351,11 @@ class SeguimientoVinculacionReporteController
     {
         $this->validarPermiso('seguimientos_vinculacion.ver');
 
+        if (!tienePermiso('reportes.exportar')) {
+            http_response_code(403);
+            die('No tienes permiso para exportar reportes.');
+        }
+
         $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
         $modoSeguimientoCache = $this->resolverModoSeguimiento();
         $filtrosCache = $this->obtenerFiltrosReporte();
@@ -1904,7 +1909,10 @@ class SeguimientoVinculacionReporteController
             exit;
         }
 
-        if (!tienePermiso($codigo)) {
+        if (
+            !tienePermiso('reportes.ver') ||
+            !tienePermiso($codigo)
+        ) {
             header(
                 'Location: ' . BASE_URL .
                 'index.php?controller=home&action=index'
