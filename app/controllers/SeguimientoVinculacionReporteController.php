@@ -54,9 +54,12 @@ class SeguimientoVinculacionReporteController
 
         $errorExportacionPdf = (string)($_SESSION['error_reporte_seguimiento_pdf'] ?? '');
         unset($_SESSION['error_reporte_seguimiento_pdf']);
-        $urlExportarPdf = $generarReporte && $errorFiltros === ''
-            ? $this->construirUrlExportacion($filtrosReporte)
-            : '';
+        $urlExportarPdf =
+            $generarReporte &&
+            $errorFiltros === '' &&
+            tienePermiso('reportes.exportar')
+                ? $this->construirUrlExportacion($filtrosReporte)
+                : '';
 
         $tituloPagina = 'Generar reportes';
         $subtituloPagina = 'Seguimiento de vinculación';
