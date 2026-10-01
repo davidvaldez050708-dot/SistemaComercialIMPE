@@ -367,8 +367,8 @@ usort($actividadExpediente, function ($eventoA, $eventoB) {
             </h2>
             <p>
                 <?= $modoSeguimiento === 'supervisor'
-                    ? 'Envía una indicación interna sobre este seguimiento. El Analista la verá como parte de su supervisión.'
-                    : 'Consulta las observaciones e indicaciones que Cuenta Clave ha dejado para este seguimiento.' ?>
+                    ? 'Indicación interna para el Analista responsable.'
+                    : 'Indicaciones internas de supervisión para este seguimiento.' ?>
             </p>
         </div>
         <?php if ($modoSeguimiento === 'analista' && $nuevasObservaciones > 0): ?>
@@ -396,7 +396,7 @@ usort($actividadExpediente, function ($eventoA, $eventoB) {
                 class="form-control"
                 id="observacion"
                 name="observacion"
-                rows="3"
+                rows="2"
                 maxlength="2000"
                 placeholder="Ej. Revisar este caso con prioridad antes del siguiente contacto..."
                 required></textarea>
@@ -404,7 +404,7 @@ usort($actividadExpediente, function ($eventoA, $eventoB) {
             <div class="linkage-expediente-supervision-form-footer">
                 <span>
                     <i class="bi bi-info-circle"></i>
-                    Nota interna dirigida al Analista responsable.
+                    Solo visible dentro del seguimiento.
                 </span>
                 <button type="submit" class="btn btn-system-save">
                     <i class="bi bi-send me-2"></i>
