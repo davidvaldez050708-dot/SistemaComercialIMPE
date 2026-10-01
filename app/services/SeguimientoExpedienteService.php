@@ -29,10 +29,6 @@ class SeguimientoExpedienteService
             return $this->error('Selecciona un seguimiento válido.', 422);
         }
 
-        if (!in_array($rolId, [4, 6], true)) {
-            return $this->error('El expediente operativo está disponible para Analista y Cuenta Clave.', 403);
-        }
-
         $seguimiento = $this->obtenerSeguimientoBase($seguimientoId);
 
         if (!$seguimiento) {
@@ -92,12 +88,8 @@ class SeguimientoExpedienteService
         $analistaId = (int)($seguimiento['analista_id'] ?? 0);
         $estadoId = (int)($seguimiento['estado_id'] ?? 0);
 
-        if ($rolId === 4) {
-            return $analistaId === $usuarioId;
-        }
-
-        if ($rolId !== 6) {
-            return false;
+        if ($analistaId === $usuarioId) {
+            return true;
         }
 
         if ($this->tablaDisponible('reuniones_vinculacion')) {
