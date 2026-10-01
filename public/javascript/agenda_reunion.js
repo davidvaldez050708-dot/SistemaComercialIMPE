@@ -146,8 +146,12 @@
                 'confirmarReprogramacion'
             ]);
 
-            if (accion === 'cancelar' || accion === 'enviarCancelacionReunion') {
+            if (accion === 'cancelar') {
                 return puedeOperarAgenda;
+            }
+
+            if (accion === 'enviarCancelacionReunion') {
+                return puedeSolicitar;
             }
 
             if (accionesAnalista.has(accion)) {
@@ -699,6 +703,23 @@
             }
 
             if (estado === 'CORREO_ENVIADO') {
+                if (modoAgenda === 'GESTION' && puedeGestionar) {
+                    return '' +
+                        '<div class="agenda-action-box">' +
+                            '<h6>Cancelar reunión</h6>' +
+                            '<p>La institución ya recibió la confirmación. Registra el motivo; el Analista recibirá el pendiente para enviar el correo de cancelación.</p>' +
+                            '<form data-agenda-action-form data-agenda-action="cancelar">' +
+                                '<input type="hidden" name="reunion_id" value="' + Number(reunion.id || 0) + '">' +
+                                '<textarea class="form-control system-form-control" name="motivo_cancelacion" rows="3" maxlength="2000" placeholder="Indica brevemente por qué se cancela la reunión..." required></textarea>' +
+                                '<div class="agenda-action-row">' +
+                                    '<button class="btn btn-system-cancel" type="submit">' +
+                                        '<i class="bi bi-x-circle"></i> Registrar cancelación' +
+                                    '</button>' +
+                                '</div>' +
+                            '</form>' +
+                        '</div>';
+                }
+
                 return '' +
                     '<div class="agenda-action-box">' +
                         '<h6>Cancelar reunión</h6>' +
@@ -839,6 +860,28 @@
                 return html + bloqueCancelacion(reunion);
             }
 
+            if (estado === 'CANCELACION_SOLICITADA') {
+                html += '<div class="agenda-action-box">' +
+                    '<h6>Cuenta Clave canceló la reunión</h6>' +
+                    '<p>La institución ya había recibido la confirmación. Revisa el motivo y envía el correo de cancelación.</p>' +
+                    '<div class="agenda-inline-note is-warning">' +
+                        '<strong>Motivo:</strong> ' +
+                        escapar(valorSeguro(
+                            reunion.cancelacion_motivo,
+                            'Sin motivo registrado.'
+                        )) +
+                    '</div>' +
+                    datosConexion(reunion) +
+                    '<div class="agenda-action-row">' +
+                        '<button class="btn btn-system-cancel" type="button" data-agenda-prepare-cancel-mail="' + Number(reunion.id || 0) + '">' +
+                            '<i class="bi bi-envelope-x"></i> Preparar correo de cancelación' +
+                        '</button>' +
+                    '</div>' +
+                '</div>';
+
+                return html;
+            }
+
             if (estado === 'CORREO_ENVIADO') {
                 html += '<div class="agenda-action-box">' +
                     '<h6>Reunión formalmente agendada</h6>' +
@@ -865,6 +908,23 @@
                     : '') +
             '</div>';
             html += enlaceSeguimiento(reunion);
+
+            if (estado === 'CANCELACION_SOLICITADA') {
+                html += '<div class="agenda-action-box">' +
+                    '<h6>Cancelación registrada</h6>' +
+                    '<p>El Analista recibió el pendiente para enviar el correo de cancelación a la institución.</p>' +
+                    '<div class="agenda-inline-note is-warning">' +
+                        '<strong>Motivo:</strong> ' +
+                        escapar(valorSeguro(
+                            reunion.cancelacion_motivo,
+                            'Sin motivo registrado.'
+                        )) +
+                    '</div>' +
+                    datosConexion(reunion) +
+                '</div>';
+
+                return html;
+            }
 
             if (estado !== 'SOLICITADA') {
                 html += '<div class="agenda-action-box">' +
@@ -1054,6 +1114,31 @@
                 abrirCorreoReunion(
                     Number(prepararCorreo.getAttribute('data-agenda-prepare-mail') || 0)
                 );
+                return;
+            }
+
+            const prepararCancelacion = event.target.closest(
+                '[data-agenda-prepare-cancel-mail]'
+            );
+            if (prepararCancelacion) {
+                const reunionId = Number(
+                    prepararCancelacion.getAttribute(
+                        'data-agenda-prepare-cancel-mail'
+                    ) || 0
+                );
+                const reunionActual = reunionesPorId.get(reunionId);
+
+                if (
+                    reunionActual &&
+                    accionPermitida('enviarCancelacionReunion')
+                ) {
+                    abrirCorreoCancelacion(
+                        reunionId,
+                        String(
+                            reunionActual.cancelacion_motivo || ''
+                        ).trim()
+                    );
+                }
                 return;
             }
 
