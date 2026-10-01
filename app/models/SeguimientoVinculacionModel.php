@@ -18,7 +18,8 @@ class SeguimientoVinculacionModel
         $usuarioId,
         $fechaInicial = '',
         $fechaFinal = '',
-        $canal = ''
+        $canal = '',
+        $modoAcceso = 'analista'
     ) {
         $ids = array_values(array_unique(array_filter(array_map('intval', $seguimientoIds))));
         $usuarioId = (int)$usuarioId;
@@ -34,12 +35,17 @@ class SeguimientoVinculacionModel
 
         $sql = "SELECT DISTINCT seguimiento_id
             FROM interacciones_vinculacion
-            WHERE usuario_id = ?
-              AND seguimiento_id IN (" . $listaIds . ")
+            WHERE seguimiento_id IN (" . $listaIds . ")
               AND UPPER(TRIM(COALESCE(canal, ''))) <> 'SISTEMA'";
 
-        $tipos = 'i';
-        $parametros = [$usuarioId];
+        $tipos = '';
+        $parametros = [];
+
+        if (strtolower(trim((string)$modoAcceso)) === 'analista') {
+            $sql .= " AND usuario_id = ?";
+            $tipos .= 'i';
+            $parametros[] = $usuarioId;
+        }
 
         if ($fechaInicial !== '') {
             $sql .= " AND fecha_inicio >= ?";
