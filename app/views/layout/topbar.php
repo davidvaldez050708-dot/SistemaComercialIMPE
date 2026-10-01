@@ -3,16 +3,18 @@
 require_once __DIR__ . '/../../helpers/AvatarHelper.php';
 require_once __DIR__ . '/../../helpers/ReminderHelper.php';
 
-$rolTopbarId = (int)($_SESSION['rol_id'] ?? 0);
-$esAnalistaDatos = $rolTopbarId === 4;
-$esCuentaClave = $rolTopbarId === 6;
-$esMarketingTopbar = strcasecmp(
-    trim((string)($_SESSION['rol'] ?? '')),
-    'Marketing'
-) === 0;
-$mostrarCentroAvisos = $esAnalistaDatos || $esCuentaClave;
+$puedeOperarSeguimiento = tienePermiso('seguimientos_vinculacion.operar_propios');
+$puedeSupervisarSeguimiento = tienePermiso('seguimientos_vinculacion.supervisar');
+$esAnalistaDatos = $puedeOperarSeguimiento;
+$esMarketingTopbar = tienePermiso('convocatorias.gestionar');
+$mostrarCentroAvisos =
+    tienePermiso('reuniones.ver') &&
+    ($puedeOperarSeguimiento || $puedeSupervisarSeguimiento);
 $agendaDisponible = is_file(ROOT_PATH . '/app/controllers/AgendaReunionController.php');
-$mostrarAgendaReuniones = $mostrarCentroAvisos && $agendaDisponible;
+$mostrarAgendaReuniones =
+    tienePermiso('reuniones.ver') &&
+    ($puedeOperarSeguimiento || $puedeSupervisarSeguimiento) &&
+    $agendaDisponible;
 $trabajarNotificacionId = (int)($_GET['trabajar_id'] ?? 0);
 
 /*
