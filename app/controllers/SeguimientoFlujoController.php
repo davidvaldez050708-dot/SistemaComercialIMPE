@@ -342,8 +342,9 @@ class SeguimientoFlujoController
             'ENVIAR_DOCUMENTACION_CONVENIO',
             'REGISTRAR_CONVENIO_RECIBIDO',
             'REGISTRAR_CONVENIO_CORREGIDO',
-            'APROBAR_CONVENIO',
-            'REGISTRAR_CONVENIO_FORMALIZADO'
+            'APROBAR_CONVENIO_RECIBIDO',
+            'SOLICITAR_CORRECCIONES_CONVENIO',
+            'FORMALIZAR_CONVENIO'
         ];
 
         if (
