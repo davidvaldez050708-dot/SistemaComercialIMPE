@@ -1129,7 +1129,6 @@ class SeguimientoVinculacionReporteController
         $estatus = (string)($filtros['estado_seguimiento'] ?? '');
         if ($estatus !== '') {
             $esCartera =
-                $modo === 'analista' &&
                 (string)($filtros['tipo_reporte'] ?? '') === 'cartera';
             $coinciden = array_values(array_filter(
                 $actuales,
@@ -1149,11 +1148,10 @@ class SeguimientoVinculacionReporteController
         }
 
         $canal = strtoupper(trim((string)($filtros['tipo_actividad'] ?? '')));
-        $esActividadAnalista =
-            $modo === 'analista' &&
+        $esReporteActividad =
             (string)($filtros['tipo_reporte'] ?? '') === 'actividad';
 
-        if ($canal !== '' && !$esActividadAnalista) {
+        if ($canal !== '' && !$esReporteActividad) {
             $coinciden = array_values(array_filter($actuales, function ($seguimiento) use ($canal) {
                 $ultimoCanal = (string)(
                     $seguimiento['ultimo_canal_humano'] ??
@@ -1376,7 +1374,11 @@ class SeguimientoVinculacionReporteController
             'institucion_id' => $this->enteroPositivo($_GET['institucion_id'] ?? 0),
             'institucion' => trim((string)($_GET['institucion'] ?? '')),
             'responsable_id' => $this->enteroPositivo($_GET['responsable_id'] ?? 0),
-            'estado_seguimiento' => isset(self::ESTADOS_SEGUIMIENTO[$estadoSeguimiento])
+            'estado_seguimiento' => (
+                $tipoReporte === 'cartera'
+                    ? isset(self::ETAPAS_CARTERA[$estadoSeguimiento])
+                    : isset(self::ESTADOS_SEGUIMIENTO[$estadoSeguimiento])
+            )
                 ? $estadoSeguimiento
                 : '',
             'tipo_actividad' => $tipoActividad,
