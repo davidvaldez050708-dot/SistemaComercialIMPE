@@ -50,6 +50,11 @@
         const modoAgenda = String(
             root.getAttribute('data-agenda-mode') || 'LECTURA'
         ).toUpperCase();
+        const puedeSolicitar =
+            root.getAttribute('data-agenda-can-request') === '1';
+        const puedeGestionar =
+            root.getAttribute('data-agenda-can-manage') === '1';
+        const puedeOperarAgenda = puedeSolicitar || puedeGestionar;
         const puedeVerSeguimiento =
             root.getAttribute('data-agenda-can-view-follow-up') === '1';
         const mesActual = root.getAttribute('data-agenda-month') || '';
@@ -121,6 +126,62 @@
                 HIBRIDA: 'Híbrida'
             };
             return mapa[String(modalidad || '').toUpperCase()] || 'Por definir';
+        };
+
+        const accionPermitida = function (accion) {
+            accion = String(accion || '').trim();
+
+            const accionesAnalista = new Set([
+                'solicitar',
+                'reprogramar',
+                'reproponerFechaVencida',
+                'completarReprogramacion',
+                'solicitarReprogramacion',
+                'marcarCorreoEnviado',
+                'marcarCorreoReprogramacionEnviado'
+            ]);
+            const accionesGestion = new Set([
+                'confirmar',
+                'solicitarCambio',
+                'solicitarReprogramacionKam',
+                'confirmarReprogramacion'
+            ]);
+
+            if (accion === 'cancelar' || accion === 'enviarCancelacionReunion') {
+                return puedeOperarAgenda;
+            }
+
+            if (accionesAnalista.has(accion)) {
+                return puedeSolicitar;
+            }
+
+            if (accionesGestion.has(accion)) {
+                return puedeGestionar;
+            }
+
+            return false;
+        };
+
+        const limpiarAccionesModoLectura = function () {
+            if (modoAgenda !== 'LECTURA' || !modalDetalleEl) {
+                return;
+            }
+
+            const selectores = [
+                '[data-agenda-action-form]',
+                '[data-agenda-cancel-mail-form]',
+                '[data-agenda-prepare-mail]',
+                '[data-reprogramacion-box]',
+                '[data-agenda-toggle-cambio]',
+                '.agenda-action-box'
+            ];
+
+            modalDetalleEl
+                .querySelectorAll(selectores.join(','))
+                .forEach(function (elemento) {
+                    const bloque = elemento.closest('.agenda-action-box');
+                    (bloque || elemento).remove();
+                });
         };
 
         const mostrarToast = function (mensaje) {
@@ -203,7 +264,11 @@
         };
 
         const abrirSolicitud = function (seguimientoId) {
-            if (!modalSolicitudEl || !modalSolicitud) {
+            if (
+                !puedeSolicitar ||
+                !modalSolicitudEl ||
+                !modalSolicitud
+            ) {
                 return;
             }
 
@@ -507,7 +572,12 @@
 
         const abrirCorreoReunion = function (reunionId) {
             const reunion = reunionesPorId.get(Number(reunionId || 0));
-            if (!reunion || !modalCorreoEl || !modalCorreo) {
+            if (
+                !puedeSolicitar ||
+                !reunion ||
+                !modalCorreoEl ||
+                !modalCorreo
+            ) {
                 return;
             }
 
@@ -574,6 +644,7 @@
             motivo = String(motivo || '').trim();
 
             if (
+                !puedeOperarAgenda ||
                 !reunion ||
                 !modalCorreoEl ||
                 !modalCorreo ||
@@ -612,6 +683,10 @@
         };
 
         const bloqueCancelacion = function (reunion) {
+            if (!puedeOperarAgenda) {
+                return '';
+            }
+
             const estado = String(reunion.estado || '').toUpperCase();
             const cancelables = new Set([
                 'SOLICITADA',
@@ -877,10 +952,21 @@
                 }
             }
 
+            limpiarAccionesModoLectura();
             modalDetalle.show();
         };
 
         const enviarFormulario = async function (form, accion) {
+            if (!accionPermitida(accion)) {
+                const caja = document.createElement('div');
+                caja.className = 'agenda-form-error';
+                caja.textContent =
+                    'No tienes permiso para realizar esta acción de reunión.';
+                form.querySelector('.agenda-form-error')?.remove();
+                form.prepend(caja);
+                return;
+            }
+
             const boton = form.querySelector('[type="submit"]');
             const datos = new FormData(form);
             boton && (boton.disabled = true);
@@ -1065,6 +1151,11 @@
 
             if (cancelacionNotificada) {
                 event.preventDefault();
+
+                if (!accionPermitida('enviarCancelacionReunion')) {
+                    return;
+                }
+
                 const datos = new FormData(cancelacionNotificada);
                 const reunionId = Number(datos.get('reunion_id') || 0);
                 const motivo = String(
@@ -1100,6 +1191,27 @@
             // dicho módulo no estuviera disponible.
             event.preventDefault();
         });
+
+        if (modoAgenda === 'LECTURA' && modalDetalleEl) {
+            const cuerpoDetalle = modalDetalleEl.querySelector(
+                '[data-agenda-detail-body]'
+            );
+
+            if (cuerpoDetalle) {
+                const observadorLectura = new MutationObserver(function () {
+                    limpiarAccionesModoLectura();
+                });
+
+                observadorLectura.observe(cuerpoDetalle, {
+                    childList: true,
+                    subtree: true
+                });
+            }
+
+            modalCorreoEl?.addEventListener('show.bs.modal', function (event) {
+                event.preventDefault();
+            });
+        }
 
         if (reunionInicial > 0 && reunionesPorId.has(reunionInicial)) {
             window.setTimeout(function () {
