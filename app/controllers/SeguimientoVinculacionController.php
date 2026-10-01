@@ -2708,14 +2708,9 @@ class SeguimientoVinculacionController
             return false;
         }
 
-        $esAnalistaResponsable = $modo === 'analista' &&
+        return $modo === 'analista' &&
             (int)($seguimiento['analista_id'] ?? 0) === (int)$usuarioId &&
             tienePermiso('seguimientos_vinculacion.operar_propios');
-
-        $puedeSupervisar = $modo === 'supervisor' &&
-            tienePermiso('seguimientos_vinculacion.supervisar');
-
-        return $esAnalistaResponsable || $puedeSupervisar;
     }
 
     private function seguimientoEstaDescartado($seguimiento)
