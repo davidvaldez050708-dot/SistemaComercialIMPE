@@ -494,7 +494,12 @@ document.addEventListener('DOMContentLoaded', function () {
             'convocatorias.gestionar': 'convocatorias.ver',
             'convocatorias.descargar': 'convocatorias.ver',
             'convocatorias.cambiar_estado': 'convocatorias.ver',
-            'reportes.exportar': 'reportes.ver'
+            'reportes.exportar': 'reportes.ver',
+            'reportes.seguimiento.cartera': 'reportes.ver',
+            'reportes.seguimiento.actividad': 'reportes.ver',
+            'reportes.seguimiento.institucion': 'reportes.ver',
+            'reportes.territorial': 'reportes.ver',
+            'reportes.usuarios': 'reportes.ver'
         };
         const permisosPorCodigo = new Map(
             checkboxes.map(function (checkbox) {
@@ -602,9 +607,14 @@ document.addEventListener('DOMContentLoaded', function () {
                         return;
                     }
 
-                    const todosMarcados = permisosGrupo.every(function (checkbox) {
-                        return checkbox.checked;
+                    const permisosEditables = permisosGrupo.filter(function (checkbox) {
+                        return !checkbox.disabled;
                     });
+                    const todosMarcados =
+                        permisosEditables.length > 0 &&
+                        permisosEditables.every(function (checkbox) {
+                            return checkbox.checked;
+                        });
 
                     boton.textContent = todosMarcados
                         ? 'Desmarcar todos'
