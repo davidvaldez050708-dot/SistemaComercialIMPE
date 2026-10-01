@@ -9,7 +9,7 @@ class DataTerritorialReporteController
 {
     public function index()
     {
-        $this->validarPermiso();
+        $this->validarPermiso(false);
 
         $modelo = new DataTerritorialModel();
         $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
@@ -57,7 +57,7 @@ class DataTerritorialReporteController
 
     public function exportarPdf()
     {
-        $this->validarPermiso();
+        $this->validarPermiso(true);
 
         $estadoId = max(0, (int)($_GET['estado_id'] ?? 0));
         $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
@@ -110,11 +110,19 @@ class DataTerritorialReporteController
         exit;
     }
 
-    private function validarPermiso(): void
+    private function validarPermiso(bool $exportar): void
     {
-        if (!tienePermiso('data_territorial.ver')) {
+        if (
+            !tienePermiso('reportes.ver') ||
+            !tienePermiso('data_territorial.ver')
+        ) {
             http_response_code(403);
             die('No tienes permiso para consultar reportes de información territorial.');
+        }
+
+        if ($exportar && !tienePermiso('reportes.exportar')) {
+            http_response_code(403);
+            die('No tienes permiso para exportar reportes.');
         }
     }
 
