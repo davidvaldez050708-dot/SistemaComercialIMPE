@@ -501,6 +501,20 @@ document.addEventListener('DOMContentLoaded', function () {
             'reportes.territorial': 'reportes.ver',
             'reportes.usuarios': 'reportes.ver'
         };
+        const dependenciasAdicionales = {
+            'reportes.seguimiento.cartera': [
+                'seguimientos_vinculacion.ver'
+            ],
+            'reportes.seguimiento.actividad': [
+                'seguimientos_vinculacion.ver'
+            ],
+            'reportes.seguimiento.institucion': [
+                'seguimientos_vinculacion.ver'
+            ],
+            'reportes.territorial': [
+                'data_territorial.ver'
+            ]
+        };
         const permisosPorCodigo = new Map(
             checkboxes.map(function (checkbox) {
                 return [String(checkbox.dataset.permissionCode || ''), checkbox];
@@ -523,6 +537,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     permisosPorCodigo.get(padre).checked = true;
                 }
 
+                (dependenciasAdicionales[codigo] || []).forEach(function (codigoPadre) {
+                    if (permisosPorCodigo.has(codigoPadre)) {
+                        permisosPorCodigo.get(codigoPadre).checked = true;
+                    }
+                });
+
                 if (codigo === 'convocatorias.gestionar') {
                     gestionConvocatorias.forEach(function (codigoHijo) {
                         if (permisosPorCodigo.has(codigoHijo)) {
@@ -538,7 +558,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 const codigoDependiente =
                     String(dependiente.dataset.permissionCode || '');
 
-                if (dependencias[codigoDependiente] === codigo) {
+                if (
+                    dependencias[codigoDependiente] === codigo ||
+                    (dependenciasAdicionales[codigoDependiente] || [])
+                        .includes(codigo)
+                ) {
                     dependiente.checked = false;
                 }
             });
