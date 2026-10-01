@@ -247,6 +247,9 @@
             const soloLectura =
                 Boolean(flujo.solo_lectura) ||
                 !puedeOperar;
+            const esSupervision =
+                soloLectura &&
+                Boolean(window.IMPE_CAN_SUPERVISE_LINKAGE);
             const telefonoDisponible = String(
                 flujo.contexto?.telefono_disponible || ''
             ).trim();
@@ -350,11 +353,31 @@
 
             const etiquetaActual = bloque.querySelector('.linkage-flow-current > span');
             if (etiquetaActual) {
-                etiquetaActual.textContent = esAliado ? 'CIERRE DE RUTA' : 'PASO ACTUAL';
+                etiquetaActual.textContent = esAliado
+                    ? 'CIERRE DE RUTA'
+                    : (
+                        esSupervision
+                            ? 'PASO ACTUAL DEL ANALISTA'
+                            : 'PASO ACTUAL'
+                    );
             }
 
             if (descripcion) {
-                descripcion.textContent = String(flujo.descripcion || '');
+                let textoDescripcion = String(flujo.descripcion || '');
+
+                if (esSupervision) {
+                    textoDescripcion = textoDescripcion
+                        .replace(
+                            'Al finalizar, registra el resultado para continuar.',
+                            'Al finalizar, el Analista debe registrar el resultado para continuar.'
+                        )
+                        .replace(
+                            'Revisa la información disponible y comienza la investigación de datos para avanzar en la ruta.',
+                            'El Analista debe revisar la información disponible y comenzar la investigación de datos para avanzar en la ruta.'
+                        );
+                }
+
+                descripcion.textContent = textoDescripcion;
             }
 
             const listaFaltantes = Array.isArray(flujo.faltantes)
@@ -473,7 +496,13 @@
 
             proximaSeccion?.classList.toggle('is-ally', esAliado);
             if (proximaEtiqueta) {
-                proximaEtiqueta.textContent = esAliado ? 'CONDICIÓN' : 'PRÓXIMA ACCIÓN';
+                proximaEtiqueta.textContent = esAliado
+                    ? 'CONDICIÓN'
+                    : (
+                        esSupervision
+                            ? 'PRÓXIMA ACCIÓN DEL ANALISTA'
+                            : 'PRÓXIMA ACCIÓN'
+                    );
             }
             if (proximaAccion) {
                 proximaAccion.textContent = esAliado
