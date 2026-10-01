@@ -508,11 +508,11 @@ class ConvocatoriaController
             return null;
         }
 
-        if (tienePermiso('seguimientos_vinculacion.supervisar')) {
+        if ($rolId === 6) {
             return 'CUENTA_CLAVE';
         }
 
-        if (tienePermiso('seguimientos_vinculacion.operar_propios')) {
+        if ($rolId === 4) {
             return 'ANALISTA_DATOS';
         }
 
