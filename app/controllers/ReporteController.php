@@ -62,6 +62,11 @@ class ReporteController
 
     public function index()
     {
+        if (!tienePermiso('reportes.ver')) {
+            http_response_code(403);
+            die('No tienes permiso para consultar reportes.');
+        }
+
         $puedeReporteTerritorial = tienePermiso('data_territorial.ver');
         $puedeReporteSeguimiento = tienePermiso('seguimientos_vinculacion.ver');
         $puedeReporteAdministrador = (int)($_SESSION['rol_id'] ?? 0) === 1;
