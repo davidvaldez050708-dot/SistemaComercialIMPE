@@ -807,6 +807,20 @@ class RolModel
             'reportes.territorial' => 'reportes.ver',
             'reportes.usuarios' => 'reportes.ver'
         ];
+        $dependenciasAdicionales = [
+            'reportes.seguimiento.cartera' => [
+                'seguimientos_vinculacion.ver'
+            ],
+            'reportes.seguimiento.actividad' => [
+                'seguimientos_vinculacion.ver'
+            ],
+            'reportes.seguimiento.institucion' => [
+                'seguimientos_vinculacion.ver'
+            ],
+            'reportes.territorial' => [
+                'data_territorial.ver'
+            ]
+        ];
 
         $resultado = $this->connection->query(
             "SELECT id, codigo
@@ -825,6 +839,16 @@ class RolModel
         }
 
         $seleccionados = array_fill_keys(array_map('intval', $permisosIds), true);
+
+        foreach (array_keys($seleccionados) as $permisoId) {
+            $codigo = $codigoPorId[(int)$permisoId] ?? '';
+
+            foreach ($dependenciasAdicionales[$codigo] ?? [] as $codigoPadre) {
+                if (isset($idPorCodigo[$codigoPadre])) {
+                    $seleccionados[(int)$idPorCodigo[$codigoPadre]] = true;
+                }
+            }
+        }
 
         if (
             isset($idPorCodigo['convocatorias.gestionar']) &&
