@@ -38,6 +38,8 @@ $pendientesAgenda = array_values(array_filter(
     data-agenda-root
     data-agenda-role="<?= $agendaRolId ?>"
     data-agenda-mode="<?= htmlspecialchars($agendaModo, ENT_QUOTES, 'UTF-8') ?>"
+    data-agenda-can-request="<?= $agendaPuedeSolicitar ? '1' : '0' ?>"
+    data-agenda-can-manage="<?= $agendaPuedeGestionar ? '1' : '0' ?>"
     data-agenda-can-view-follow-up="<?= $agendaPuedeVerSeguimiento ? '1' : '0' ?>"
     data-agenda-month="<?= htmlspecialchars($mesAgenda, ENT_QUOTES, 'UTF-8') ?>"
     data-agenda-initial-follow="<?= (int)$agendaSeguimientoInicial ?>"
