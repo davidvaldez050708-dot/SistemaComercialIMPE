@@ -869,8 +869,15 @@
                             Boolean(flujoInicial.solo_lectura) ||
                             !puedeOperar,
                         puede_operar:
-                            Boolean(flujoInicial.puede_operar) &&
-                            puedeOperar
+                            Object.prototype.hasOwnProperty.call(
+                                flujoInicial,
+                                'puede_operar'
+                            )
+                                ? (
+                                    Boolean(flujoInicial.puede_operar) &&
+                                    puedeOperar
+                                )
+                                : puedeOperar
                     });
 
                     renderizar(flujoInmediato);
