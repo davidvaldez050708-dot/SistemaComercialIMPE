@@ -354,6 +354,36 @@ class RolModel
         }
     }
 
+    public function registrarAuditoriaEventoRol($rolId, $actorUsuarioId, $accion)
+    {
+        $tabla = $this->connection->query(
+            "SHOW TABLES LIKE 'auditoria_roles_permisos'"
+        );
+
+        if (!$tabla || $tabla->num_rows === 0) {
+            return true;
+        }
+
+        $rolId = (int)$rolId;
+        $actorUsuarioId = (int)$actorUsuarioId;
+        $accion = strtoupper(trim((string)$accion));
+
+        if ($rolId <= 0 || $accion === '') {
+            return false;
+        }
+
+        $sql = "INSERT INTO auditoria_roles_permisos (
+                    rol_id,
+                    actor_usuario_id,
+                    accion,
+                    created_at
+                ) VALUES (?, NULLIF(?, 0), ?, NOW())";
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param('iis', $rolId, $actorUsuarioId, $accion);
+
+        return $stmt->execute();
+    }
+
     public function asegurarPermisosAdministrador()
     {
         $sql = "INSERT IGNORE INTO rol_permisos (
