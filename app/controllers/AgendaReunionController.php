@@ -3,6 +3,7 @@
 require_once __DIR__ . '/../services/AgendaReunionService.php';
 require_once __DIR__ . '/../services/ReprogramacionReunionService.php';
 require_once __DIR__ . '/../services/SeguimientoExpedienteService.php';
+require_once __DIR__ . '/../helpers/PermissionHelper.php';
 
 class AgendaReunionController
 {
@@ -51,7 +52,11 @@ class AgendaReunionController
         $agendaReuniones = $agenda['reuniones'] ?? [];
         $seguimientosElegibles = $agenda['seguimientos_elegibles'] ?? [];
         $agendaRequiereMigracion = (bool)($agenda['requiere_migracion'] ?? false);
-        $agendaRolId = $rolId;
+        $agendaRolId = tienePermiso('reuniones.gestionar')
+            ? AgendaReunionService::ROL_CUENTA_CLAVE
+            : (tienePermiso('reuniones.solicitar')
+                ? AgendaReunionService::ROL_ANALISTA
+                : 0);
 
         $primerDia = new DateTime($mesAgenda . '-01');
         $offset = (int)$primerDia->format('N') - 1;
@@ -90,8 +95,8 @@ class AgendaReunionController
         $tituloMesAgenda = $this->nombreMes((int)$primerDia->format('n')) . ' ' . $primerDia->format('Y');
 
         $tituloPagina = 'Agenda de reuniones';
-        $subtituloPagina = $rolId === AgendaReunionService::ROL_CUENTA_CLAVE
-            ? 'Confirma solicitudes y agrega los datos de Zoom para el Analista'
+        $subtituloPagina = tienePermiso('reuniones.gestionar')
+            ? 'Confirma solicitudes y agrega los datos de reunión para el Analista'
             : 'Coordina reuniones con Cuenta Clave y da seguimiento a sus confirmaciones';
         $opcionActiva = 'seguimiento_vinculacion';
 
@@ -267,6 +272,29 @@ class AgendaReunionController
             ], 403);
         }
 
+        $permisoAccion = [
+            'solicitar' => 'reuniones.solicitar',
+            'reprogramar' => 'reuniones.solicitar',
+            'confirmar' => 'reuniones.gestionar',
+            'solicitarCambio' => 'reuniones.gestionar'
+        ][$metodo] ?? '';
+
+        $puedeCancelar = $metodo === 'cancelar' &&
+            tieneAlgunPermiso([
+                'reuniones.solicitar',
+                'reuniones.gestionar'
+            ]);
+
+        if (
+            ($permisoAccion !== '' && !tienePermiso($permisoAccion)) ||
+            ($metodo === 'cancelar' && !$puedeCancelar)
+        ) {
+            $this->responder([
+                'ok' => false,
+                'mensaje' => 'No tienes permiso para realizar esta acción de reunión.'
+            ], 403);
+        }
+
         if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
             $this->responder([
                 'ok' => false,
@@ -292,6 +320,21 @@ class AgendaReunionController
             $this->responder([
                 'ok' => false,
                 'mensaje' => 'No tienes acceso a esta acción.'
+            ], 403);
+        }
+
+        $permisoReprogramacion = in_array(
+            $metodo,
+            ['solicitarAnalista', 'reproponerVencidaAnalista', 'completarAnalista'],
+            true
+        )
+            ? 'reuniones.solicitar'
+            : 'reuniones.gestionar';
+
+        if (!tienePermiso($permisoReprogramacion)) {
+            $this->responder([
+                'ok' => false,
+                'mensaje' => 'No tienes permiso para gestionar esta reprogramación.'
             ], 403);
         }
 
