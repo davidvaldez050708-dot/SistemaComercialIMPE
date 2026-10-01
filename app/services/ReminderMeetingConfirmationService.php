@@ -64,8 +64,8 @@ class ReminderMeetingConfirmationService
                         : 'Reunión pendiente de confirmación';
                     $icono = $vencida ? 'bi-calendar-x' : 'bi-hourglass-split';
                 } else {
-                    $accion = 'Confirmar reunión o solicitar nueva fecha';
-                    $icono = 'bi-calendar-x';
+                    $accion = 'Confirmar reunión o solicitar ajuste';
+                    $icono = 'bi-calendar-check';
                 }
 
                 $recordatorios[] = [
@@ -133,7 +133,8 @@ class ReminderMeetingConfirmationService
             : 'r.cuenta_clave_id';
         $ventana = $rolId === self::ROL_ANALISTA
             ? "AND r.fecha_propuesta <= DATE_ADD(NOW(), INTERVAL 3 HOUR)"
-            : "AND r.fecha_propuesta <= NOW()";
+            : "AND r.fecha_propuesta > NOW()
+               AND r.fecha_propuesta <= DATE_ADD(NOW(), INTERVAL 3 HOUR)";
 
         $sql = "SELECT
                     r.id AS reunion_id,
