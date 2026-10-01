@@ -5,7 +5,10 @@
         const offcanvas = document.getElementById('offcanvasSeguimientoTrabajo');
         let temporizadorTitulos = null;
 
-        if (!offcanvas) {
+        if (
+            !offcanvas ||
+            !window.IMPE_CAN_OPERATE_LINKAGE
+        ) {
             return;
         }
 
