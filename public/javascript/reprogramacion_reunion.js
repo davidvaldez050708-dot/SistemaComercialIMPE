@@ -10,7 +10,21 @@
             return;
         }
 
-        const rolId = Number(root.getAttribute('data-agenda-role') || 0);
+        const modoAgenda = String(
+            root.getAttribute('data-agenda-mode') || 'LECTURA'
+        ).toUpperCase();
+        const puedeSolicitar =
+            root.getAttribute('data-agenda-can-request') === '1';
+        const puedeGestionar =
+            root.getAttribute('data-agenda-can-manage') === '1';
+
+        if (
+            modoAgenda === 'LECTURA' ||
+            (!puedeSolicitar && !puedeGestionar)
+        ) {
+            return;
+        }
+
         const seguimientoInicial = Number(
             root.getAttribute('data-agenda-initial-follow') || 0
         );
@@ -100,7 +114,9 @@
                 reunionActualId,
                 String(reunion.estado || ''),
                 Number(reunion.es_reprogramacion || 0),
-                rolId
+                modoAgenda,
+                puedeSolicitar ? 'S' : '-',
+                puedeGestionar ? 'G' : '-'
             ].join(':');
 
             if (body.getAttribute('data-reprogramacion-procesada') === token) {
@@ -135,9 +151,9 @@
             box.className = 'agenda-action-box';
             box.setAttribute('data-reprogramacion-box', '');
 
-            if (rolId === 4) {
+            if (modoAgenda === 'SOLICITUD' && puedeSolicitar) {
                 box.innerHTML = formularioAnalista(reunion);
-            } else if (rolId === 6) {
+            } else if (modoAgenda === 'GESTION' && puedeGestionar) {
                 box.innerHTML = formularioKam(reunion);
             } else {
                 return;
@@ -149,7 +165,7 @@
         function adaptarReprogramacionActiva(reunion) {
             const estado = String(reunion.estado || '');
 
-            if (rolId === 6 && estado === 'SOLICITADA') {
+            if (modoAgenda === 'GESTION' && puedeGestionar && estado === 'SOLICITADA') {
                 const form = body.querySelector('[data-agenda-action="confirmar"]');
                 const zoom = form?.querySelector('[name="zoom_url"]');
                 if (zoom && !zoom.value && String(reunion.zoom_url || '').trim() !== '') {
@@ -166,11 +182,11 @@
                 }
             }
 
-            if (rolId === 4 && estado === 'CONFIRMADA') {
+            if (modoAgenda === 'SOLICITUD' && puedeSolicitar && estado === 'CONFIRMADA') {
                 prepararCorreoReprogramacion(reunion);
             }
 
-            if (rolId === 4 && estado === 'CORREO_ENVIADO') {
+            if (modoAgenda === 'SOLICITUD' && puedeSolicitar && estado === 'CORREO_ENVIADO') {
                 const titulo = body.querySelector('.agenda-action-box h6');
                 const nota = body.querySelector('.agenda-inline-note.is-success');
                 if (titulo && titulo.textContent.trim() === 'Reunión formalmente agendada') {
