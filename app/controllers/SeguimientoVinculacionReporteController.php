@@ -49,6 +49,7 @@ class SeguimientoVinculacionReporteController
     public function index()
     {
         $this->validarPermiso('seguimientos_vinculacion.ver');
+        $this->validarAccesoReporteSeguimiento();
         $contexto = $this->construirContextoReporte(false);
         extract($contexto, EXTR_SKIP);
 
@@ -75,6 +76,7 @@ class SeguimientoVinculacionReporteController
     public function opcionesFiltros()
     {
         $this->validarPermiso('seguimientos_vinculacion.ver');
+        $this->validarAccesoReporteSeguimiento();
         header('Content-Type: application/json; charset=UTF-8');
         header('Cache-Control: private, no-store, max-age=0');
 
@@ -97,6 +99,16 @@ class SeguimientoVinculacionReporteController
             }
 
             $filtros = $this->obtenerFiltrosReporte();
+
+            if (!$this->puedeGenerarTipoReporte((string)$filtros['tipo_reporte'])) {
+                http_response_code(403);
+                echo json_encode([
+                    'ok' => false,
+                    'mensaje' => 'No tienes permiso para generar este tipo de reporte.'
+                ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                return;
+            }
+
             $estadoId = (int)$filtros['estado_id'];
 
             if ($estadoId > 0 && !isset($territoriosPorId[$estadoId])) {
@@ -185,6 +197,7 @@ class SeguimientoVinculacionReporteController
     public function institucionesSelector()
     {
         $this->validarPermiso('seguimientos_vinculacion.ver');
+        $this->validarPermiso('reportes.seguimiento.institucion');
         header('Content-Type: application/json; charset=UTF-8');
         header('Cache-Control: private, no-store, max-age=0');
 
@@ -353,6 +366,7 @@ class SeguimientoVinculacionReporteController
     public function exportarPdf()
     {
         $this->validarPermiso('seguimientos_vinculacion.ver');
+        $this->validarAccesoReporteSeguimiento();
 
         if (!tienePermiso('reportes.exportar')) {
             http_response_code(403);
@@ -362,6 +376,9 @@ class SeguimientoVinculacionReporteController
         $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
         $modoSeguimientoCache = $this->resolverModoSeguimiento();
         $filtrosCache = $this->obtenerFiltrosReporte();
+        $this->validarTipoReportePermitido(
+            (string)$filtrosCache['tipo_reporte']
+        );
         $cachePdf = new ReporteSeguimientoPdfCacheService();
         $claveCache = '';
 
@@ -714,6 +731,10 @@ class SeguimientoVinculacionReporteController
         }
 
         $filtrosReporte = $this->obtenerFiltrosReporte();
+        $this->validarTipoReportePermitido(
+            (string)$filtrosReporte['tipo_reporte']
+        );
+        $tiposReportePermitidos = $this->obtenerTiposReportePermitidos();
         $estadoId = (int)$filtrosReporte['estado_id'];
 
         if ($estadoId > 0 && !isset($territoriosPorId[$estadoId])) {
@@ -1018,7 +1039,8 @@ class SeguimientoVinculacionReporteController
             'detalleInstitucionReporte' => $detalleInstitucionReporte,
             'generarReporte' => $generarReporte,
             'errorFiltros' => $errorFiltros,
-            'modoSeguimiento' => $modoSeguimiento
+            'modoSeguimiento' => $modoSeguimiento,
+            'tiposReportePermitidos' => $tiposReportePermitidos
         ];
     }
 
@@ -1339,10 +1361,14 @@ class SeguimientoVinculacionReporteController
         $estadoSeguimiento = strtoupper(trim((string)($_GET['estado_seguimiento'] ?? '')));
         $tipoActividad = strtoupper(trim((string)($_GET['tipo_actividad'] ?? '')));
         $dias = (int)($_GET['dias_sin_actividad'] ?? 0);
-        $tipoReporte = strtolower(trim((string)($_GET['tipo_reporte'] ?? 'cartera')));
+        $tipoReporte = strtolower(trim((string)($_GET['tipo_reporte'] ?? '')));
 
         if (!in_array($tipoReporte, ['actividad', 'cartera', 'institucion'], true)) {
-            $tipoReporte = 'cartera';
+            $tipoReporte = '';
+        }
+
+        if ($tipoReporte === '') {
+            $tipoReporte = $this->obtenerTipoReportePredeterminado();
         }
 
         return [
@@ -1853,6 +1879,69 @@ class SeguimientoVinculacionReporteController
     private function enteroPositivo($valor)
     {
         return ctype_digit((string)$valor) ? max(0, (int)$valor) : 0;
+    }
+
+    private function obtenerMapaPermisosTiposReporte()
+    {
+        return [
+            'cartera' => 'reportes.seguimiento.cartera',
+            'actividad' => 'reportes.seguimiento.actividad',
+            'institucion' => 'reportes.seguimiento.institucion'
+        ];
+    }
+
+    private function obtenerTiposReportePermitidos()
+    {
+        $permitidos = [];
+
+        foreach ($this->obtenerMapaPermisosTiposReporte() as $tipo => $permiso) {
+            if (tienePermiso($permiso)) {
+                $permitidos[$tipo] = true;
+            }
+        }
+
+        return $permitidos;
+    }
+
+    private function obtenerTipoReportePredeterminado()
+    {
+        $permitidos = $this->obtenerTiposReportePermitidos();
+
+        foreach (['cartera', 'actividad', 'institucion'] as $tipo) {
+            if (!empty($permitidos[$tipo])) {
+                return $tipo;
+            }
+        }
+
+        return 'cartera';
+    }
+
+    private function puedeGenerarTipoReporte($tipo)
+    {
+        $mapa = $this->obtenerMapaPermisosTiposReporte();
+        $tipo = strtolower(trim((string)$tipo));
+
+        return isset($mapa[$tipo]) && tienePermiso($mapa[$tipo]);
+    }
+
+    private function validarAccesoReporteSeguimiento()
+    {
+        if (!empty($this->obtenerTiposReportePermitidos())) {
+            return;
+        }
+
+        http_response_code(403);
+        die('No tienes permiso para generar reportes de seguimiento.');
+    }
+
+    private function validarTipoReportePermitido($tipo)
+    {
+        if ($this->puedeGenerarTipoReporte($tipo)) {
+            return;
+        }
+
+        http_response_code(403);
+        die('No tienes permiso para generar este tipo de reporte.');
     }
 
     private function resolverModoSeguimiento()
