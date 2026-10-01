@@ -310,8 +310,12 @@
 
             if (filaVerificacion) {
                 const mostrarVerificacion =
-                    pasoActual === 4 || datosVerificados;
-                filaVerificacion.classList.toggle('d-none', !mostrarVerificacion);
+                    puedeOperar &&
+                    (pasoActual === 4 || datosVerificados);
+                filaVerificacion.classList.toggle(
+                    'd-none',
+                    !mostrarVerificacion
+                );
             }
 
             const contador = bloque.querySelector('[data-flow-step-count]');
