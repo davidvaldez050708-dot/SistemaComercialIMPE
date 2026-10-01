@@ -118,6 +118,16 @@ class RolController
 
         if (
             $rol &&
+            $this->esRolSistemaProtegido($rol) &&
+            trim((string)$datos['nombre']) !== trim((string)$rol['nombre'])
+        ) {
+            $errores[] =
+                'Los roles operativos del sistema conservan un nombre interno protegido. ' .
+                'Puedes modificar su descripción, estado y permisos.';
+        }
+
+        if (
+            $rol &&
             (int)$datos['estado'] !== (int)$rol['estado'] &&
             !tienePermiso('roles.cambiar_estado')
         ) {
@@ -193,7 +203,11 @@ class RolController
             $permisos = [];
         }
 
-        if ($modeloRol->actualizarPermisosRol($rolId, $permisos)) {
+        if ($modeloRol->actualizarPermisosRol(
+            $rolId,
+            $permisos,
+            (int)($_SESSION['usuario_id'] ?? 0)
+        )) {
             $_SESSION['mensaje_rol'] = 'Permisos actualizados correctamente.';
         } else {
             $_SESSION['error_rol'] = 'No fue posible actualizar los permisos.';
@@ -205,6 +219,15 @@ class RolController
         }
 
         $this->redirigirARoles($rolId);
+    }
+
+    private function esRolSistemaProtegido($rol)
+    {
+        $rolId = (int)($rol['id'] ?? 0);
+        $nombre = trim((string)($rol['nombre'] ?? ''));
+
+        return ($rolId >= 1 && $rolId <= 6) ||
+            strcasecmp($nombre, 'Marketing') === 0;
     }
 
     private function validarPermiso($codigo)
