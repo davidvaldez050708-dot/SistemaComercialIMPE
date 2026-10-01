@@ -46,7 +46,6 @@
             return;
         }
 
-        const rolId = Number(root.getAttribute('data-agenda-role') || 0);
         const modoAgenda = String(
             root.getAttribute('data-agenda-mode') || 'LECTURA'
         ).toUpperCase();
