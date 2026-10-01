@@ -135,7 +135,6 @@ class SeguimientoVinculacionReporteController
             );
 
             if (
-                $modoSeguimiento === 'analista' &&
                 (string)($filtros['tipo_reporte'] ?? 'cartera') === 'cartera'
             ) {
                 $seguimientos = (new ReporteSeguimientoCarteraService())->enriquecer(
@@ -156,7 +155,6 @@ class SeguimientoVinculacionReporteController
 
             $canalesRespuesta = $opciones['canales'];
             if (
-                $modoSeguimiento === 'analista' &&
                 (string)($filtros['tipo_reporte'] ?? '') === 'actividad'
             ) {
                 $canalesRespuesta = $this->opcionesCanalesActividad();
@@ -900,7 +898,6 @@ class SeguimientoVinculacionReporteController
             $seguimientosBaseReporte = $seguimientosDisponibles;
 
             if (
-                $modoSeguimiento === 'analista' &&
                 (string)($filtrosReporte['tipo_reporte'] ?? '') === 'actividad'
             ) {
                 // Alcance para evolución/comparación: todos los seguimientos
@@ -943,7 +940,6 @@ class SeguimientoVinculacionReporteController
             $filtrosActividad['tipo_actividad'] = '';
 
             if (
-                $modoSeguimiento === 'analista' &&
                 (string)($filtrosReporte['tipo_reporte'] ?? '') === 'actividad'
             ) {
                 $seguimientosActividad = $seguimientosComparacionActividad;
@@ -956,7 +952,6 @@ class SeguimientoVinculacionReporteController
 
             $filtrosSeguimientos = $filtrosReporte;
             if (
-                $modoSeguimiento === 'analista' &&
                 (string)($filtrosReporte['tipo_reporte'] ?? '') === 'actividad'
             ) {
                 $filtrosSeguimientos['fecha_inicial'] = '';
@@ -997,7 +992,6 @@ class SeguimientoVinculacionReporteController
             }
 
             if (
-                $modoSeguimiento === 'analista' &&
                 (string)($filtrosReporte['tipo_reporte'] ?? '') === 'institucion' &&
                 count($seguimientosReporte) === 1
             ) {
