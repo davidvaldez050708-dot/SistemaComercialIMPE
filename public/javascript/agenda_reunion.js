@@ -47,6 +47,11 @@
         }
 
         const rolId = Number(root.getAttribute('data-agenda-role') || 0);
+        const modoAgenda = String(
+            root.getAttribute('data-agenda-mode') || 'LECTURA'
+        ).toUpperCase();
+        const puedeVerSeguimiento =
+            root.getAttribute('data-agenda-can-view-follow-up') === '1';
         const mesActual = root.getAttribute('data-agenda-month') || '';
         const seguimientoInicial = Number(
             root.getAttribute('data-agenda-initial-follow') || 0
@@ -255,6 +260,7 @@
                         itemDetalle('Modalidad', etiquetaModalidad(reunion.modalidad)) +
                         itemDetalle('Duración', Number(reunion.duracion_minutos || 60) + ' min') +
                         itemDetalle('Municipio', reunion.municipio_nombre) +
+                        itemDetalle('Estado', reunion.estado_nombre) +
                         itemDetalle('Contacto', reunion.contacto_nombre) +
                         itemDetalle('Correo', reunion.contacto_correo) +
                         itemDetalle('Analista', reunion.analista_nombre) +
@@ -277,6 +283,54 @@
             }
 
             html += '</div>';
+            return html;
+        };
+
+        const enlaceSeguimiento = function (reunion) {
+            const seguimientoId = Number(reunion.seguimiento_id || 0);
+
+            if (!puedeVerSeguimiento || seguimientoId <= 0) {
+                return '';
+            }
+
+            const url =
+                'index.php?controller=seguimientoVinculacion&action=detalle&id=' +
+                encodeURIComponent(String(seguimientoId));
+
+            return '' +
+                '<div class="agenda-follow-up-link">' +
+                    '<a class="btn btn-system-light" href="' + url + '">' +
+                        '<i class="bi bi-box-arrow-up-right"></i>' +
+                        '<span>Abrir seguimiento</span>' +
+                    '</a>' +
+                    '<span>Consulta el expediente, actividades y contexto completo de la institución.</span>' +
+                '</div>';
+        };
+
+        const contenidoLectura = function (reunion) {
+            let html = cabeceraDetalle(reunion);
+
+            html += '<div class="agenda-inline-note">' +
+                '<strong>Objetivo:</strong> ' +
+                escapar(valorSeguro(reunion.objetivo, 'Sin objetivo registrado.')) +
+                (String(reunion.notas_analista || '').trim() !== ''
+                    ? '<br><strong>Notas del Analista:</strong> ' +
+                        escapar(reunion.notas_analista)
+                    : '') +
+            '</div>';
+
+            html += datosConexion(reunion);
+
+            html += '<div class="agenda-readonly-note">' +
+                '<i class="bi bi-eye"></i>' +
+                '<div>' +
+                    '<strong>Vista de consulta</strong>' +
+                    '<span>Puedes revisar la información de la reunión, pero las acciones de gestión están deshabilitadas para este perfil.</span>' +
+                '</div>' +
+            '</div>';
+
+            html += enlaceSeguimiento(reunion);
+
             return html;
         };
 
@@ -610,6 +664,7 @@
             html += '<div class="agenda-inline-note">' +
                 '<strong>Objetivo:</strong> ' + escapar(valorSeguro(reunion.objetivo, 'Sin objetivo registrado.')) +
             '</div>';
+            html += enlaceSeguimiento(reunion);
 
             if (estado === 'SOLICITADA') {
                 if (Boolean(reunion.esta_vencida)) {
@@ -735,6 +790,7 @@
                     ? '<br><strong>Notas del Analista:</strong> ' + escapar(reunion.notas_analista)
                     : '') +
             '</div>';
+            html += enlaceSeguimiento(reunion);
 
             if (estado !== 'SOLICITADA') {
                 html += '<div class="agenda-action-box">' +
@@ -812,9 +868,13 @@
                 subtitulo.textContent = reunion.fecha_legible || '';
             }
             if (cuerpo) {
-                cuerpo.innerHTML = rolId === 6
-                    ? contenidoCuentaClave(reunion)
-                    : contenidoAnalista(reunion);
+                if (modoAgenda === 'GESTION') {
+                    cuerpo.innerHTML = contenidoCuentaClave(reunion);
+                } else if (modoAgenda === 'SOLICITUD') {
+                    cuerpo.innerHTML = contenidoAnalista(reunion);
+                } else {
+                    cuerpo.innerHTML = contenidoLectura(reunion);
+                }
             }
 
             modalDetalle.show();
