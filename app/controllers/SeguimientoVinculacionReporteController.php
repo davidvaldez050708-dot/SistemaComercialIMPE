@@ -536,7 +536,8 @@ class SeguimientoVinculacionReporteController
                 (string)($_SESSION['nombre'] ?? '') . ' ' .
                 (string)($_SESSION['apellidos'] ?? '')
             ),
-            'generado_por_rol' => (string)($_SESSION['rol'] ?? '')
+            'generado_por_rol' => (string)($_SESSION['rol'] ?? ''),
+            'modo_reporte' => (string)($contexto['modoSeguimiento'] ?? 'analista')
         ];
 
         $servicio = new ReporteSeguimientoVinculacionPdfProfesionalService();
