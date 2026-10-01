@@ -194,7 +194,11 @@ class CorreoFirmadoService
 
         if (
             !$reunion ||
-            strtoupper((string)($reunion['estado'] ?? '')) !== 'CORREO_ENVIADO'
+            !in_array(
+                strtoupper((string)($reunion['estado'] ?? '')),
+                ['CORREO_ENVIADO', 'CANCELACION_SOLICITADA'],
+                true
+            )
         ) {
             return $this->error(
                 'Esta reunión ya no requiere un correo de cancelación.',
