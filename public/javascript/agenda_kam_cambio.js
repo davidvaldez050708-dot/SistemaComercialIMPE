@@ -5,7 +5,18 @@
         const root = document.querySelector('[data-agenda-root]');
         const detalle = document.querySelector('[data-agenda-detail-body]');
 
-        if (!root || !detalle || Number(root.getAttribute('data-agenda-role') || 0) !== 6) {
+        const puedeGestionar =
+            root?.getAttribute('data-agenda-can-manage') === '1';
+        const modoAgenda = String(
+            root?.getAttribute('data-agenda-mode') || 'LECTURA'
+        ).toUpperCase();
+
+        if (
+            !root ||
+            !detalle ||
+            !puedeGestionar ||
+            modoAgenda !== 'GESTION'
+        ) {
             return;
         }
 
