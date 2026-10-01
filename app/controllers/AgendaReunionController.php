@@ -288,11 +288,20 @@ class AgendaReunionController
             'solicitarCambio' => 'reuniones.gestionar'
         ][$metodo] ?? '';
 
-        $puedeCancelar = $metodo === 'cancelar' &&
-            tieneAlgunPermiso([
-                'reuniones.solicitar',
-                'reuniones.gestionar'
-            ]);
+        $puedeCancelar = false;
+
+        if ($metodo === 'cancelar') {
+            if ($rolId === AgendaReunionService::ROL_CUENTA_CLAVE) {
+                $puedeCancelar = tienePermiso('reuniones.gestionar');
+            } elseif ($rolId === AgendaReunionService::ROL_ANALISTA) {
+                $puedeCancelar = tienePermiso('reuniones.solicitar');
+            } else {
+                $puedeCancelar = tieneAlgunPermiso([
+                    'reuniones.solicitar',
+                    'reuniones.gestionar'
+                ]);
+            }
+        }
 
         if (
             ($permisoAccion !== '' && !tienePermiso($permisoAccion)) ||
