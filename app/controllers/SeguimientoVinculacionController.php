@@ -1693,29 +1693,73 @@ class SeguimientoVinculacionController
 
     public function guardarObservacion()
     {
-        $this->validarPermiso('seguimientos_vinculacion.ver');
-        $this->validarPermiso('seguimientos_vinculacion.comentar');
-        $this->validarMetodoPost();
+        $esSolicitudJson =
+            strtolower(
+                trim(
+                    (string)($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '')
+                )
+            ) === 'fetch' ||
+            str_contains(
+                strtolower(
+                    (string)($_SERVER['HTTP_ACCEPT'] ?? '')
+                ),
+                'application/json'
+            );
+
+        if ($esSolicitudJson) {
+            $this->validarPermisoJson('seguimientos_vinculacion.ver');
+            $this->validarPermisoJson('seguimientos_vinculacion.comentar');
+            $this->validarMetodoPostJson();
+        } else {
+            $this->validarPermiso('seguimientos_vinculacion.ver');
+            $this->validarPermiso('seguimientos_vinculacion.comentar');
+            $this->validarMetodoPost();
+        }
 
         $modelo = new SeguimientoVinculacionModel();
         $usuarioId = $this->obtenerUsuarioActualId();
         $seguimientoId = (int)($_POST['seguimiento_id'] ?? 0);
         $observacion = trim((string)($_POST['observacion'] ?? ''));
-        $seguimiento = $modelo->obtenerSeguimientoSupervisor($usuarioId, $seguimientoId);
+        $seguimiento = $modelo->obtenerSeguimientoSupervisor(
+            $usuarioId,
+            $seguimientoId
+        );
 
         if (!$seguimiento) {
+            if ($esSolicitudJson) {
+                $this->responderJson([
+                    'ok' => false,
+                    'mensaje' => 'No tienes acceso al seguimiento solicitado.'
+                ], 403);
+            }
+
             $_SESSION['error_seguimiento_vinculacion'] =
                 'No tienes acceso al seguimiento solicitado.';
             $this->redirigirASeguimiento();
         }
 
         if ($observacion === '') {
+            if ($esSolicitudJson) {
+                $this->responderJson([
+                    'ok' => false,
+                    'mensaje' => 'La observación es obligatoria.'
+                ], 422);
+            }
+
             $_SESSION['error_seguimiento_vinculacion'] =
                 'La observación es obligatoria.';
             $this->redirigirADetalle($seguimientoId);
         }
 
         if (strlen($observacion) > 2000) {
+            if ($esSolicitudJson) {
+                $this->responderJson([
+                    'ok' => false,
+                    'mensaje' =>
+                        'La observación no debe superar 2000 caracteres.'
+                ], 422);
+            }
+
             $_SESSION['error_seguimiento_vinculacion'] =
                 'La observación no debe superar 2000 caracteres.';
             $this->redirigirADetalle($seguimientoId);
@@ -1727,6 +1771,27 @@ class SeguimientoVinculacionController
             (int)$seguimiento['analista_id'],
             $observacion
         );
+
+        if ($esSolicitudJson) {
+            if (!$resultado) {
+                $this->responderJson([
+                    'ok' => false,
+                    'mensaje' => 'No fue posible enviar la observación.'
+                ], 500);
+            }
+
+            $this->responderJson([
+                'ok' => true,
+                'mensaje' => 'Observación enviada al Analista.',
+                'observaciones' =>
+                    $this->serializarObservacionesTrabajo(
+                        $modelo->obtenerUltimasObservacionesSeguimiento(
+                            $seguimientoId,
+                            2
+                        )
+                    )
+            ]);
+        }
 
         if ($resultado) {
             $_SESSION['mensaje_seguimiento_vinculacion'] =
