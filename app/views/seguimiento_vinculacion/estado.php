@@ -1035,6 +1035,11 @@ if (!empty($seguimientosSinMunicipio)) {
         <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Cerrar"></button>
     </div>
 
+
+
+    <div class="offcanvas-body linkage-work-body">
+        <div class="linkage-candidate-alert d-none" data-work-alert></div>
+
         <?php if ($puedeComentarVista): ?>
             <section
                 class="linkage-supervision-toolbar"
@@ -1086,9 +1091,6 @@ if (!empty($seguimientosSinMunicipio)) {
                 </form>
             </section>
         <?php endif; ?>
-
-    <div class="offcanvas-body linkage-work-body">
-        <div class="linkage-candidate-alert d-none" data-work-alert></div>
 
 
 
