@@ -3,6 +3,7 @@
 require_once __DIR__ . '/../services/CorreoFirmadoService.php';
 require_once __DIR__ . '/../services/SeguimientoCorreoService.php';
 require_once __DIR__ . '/../services/AgendaReunionService.php';
+require_once __DIR__ . '/../helpers/PermissionHelper.php';
 
 class CorreoFirmadoController
 {
@@ -15,7 +16,7 @@ class CorreoFirmadoController
 
     public function enviarSeguimiento()
     {
-        $this->validarAnalistaPost();
+        $this->validarAnalistaPost(false);
 
         /*
          * Compatibilidad con clientes antiguos: el seguimiento por correo
@@ -46,7 +47,7 @@ class CorreoFirmadoController
 
     public function enviarReunion()
     {
-        $this->validarAnalistaPost();
+        $this->validarAnalistaPost(true);
 
         $resultado = $this->service->enviarReunion(
             (int)($_POST['reunion_id'] ?? 0),
@@ -83,14 +84,10 @@ class CorreoFirmadoController
 
         if (
             $usuarioId <= 0 ||
-            !in_array(
-                $rolId,
-                [
-                    AgendaReunionService::ROL_ANALISTA,
-                    AgendaReunionService::ROL_CUENTA_CLAVE
-                ],
-                true
-            )
+            !tieneAlgunPermiso([
+                'reuniones.solicitar',
+                'reuniones.gestionar'
+            ])
         ) {
             $this->responder([
                 'ok' => false,
@@ -106,15 +103,18 @@ class CorreoFirmadoController
         }
     }
 
-    private function validarAnalistaPost()
+    private function validarAnalistaPost($requierePermisoReunion = false)
     {
         $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
-        $rolId = (int)($_SESSION['rol_id'] ?? 0);
 
-        if ($usuarioId <= 0 || $rolId !== AgendaReunionService::ROL_ANALISTA) {
+        if (
+            $usuarioId <= 0 ||
+            !tienePermiso('seguimientos_vinculacion.operar_propios') ||
+            ($requierePermisoReunion && !tienePermiso('reuniones.solicitar'))
+        ) {
             $this->responder([
                 'ok' => false,
-                'mensaje' => 'Solo el Analista puede realizar este envío.'
+                'mensaje' => 'No tienes permiso para realizar este envío.'
             ], 403);
         }
 
