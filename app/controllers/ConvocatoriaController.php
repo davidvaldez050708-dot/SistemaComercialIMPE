@@ -162,8 +162,7 @@ class ConvocatoriaController
             $_SESSION['modal_convocatoria']
         );
 
-        $rolActualConvocatorias = strtolower(trim((string)($_SESSION['rol'] ?? '')));
-        $tituloPagina = $rolActualConvocatorias === 'marketing'
+        $tituloPagina = tienePermiso('convocatorias.gestionar')
             ? 'Gestión de Convocatorias'
             : 'Convocatorias';
         $subtituloPagina = 'Administra publicaciones y su vigencia territorial.';
@@ -496,7 +495,16 @@ class ConvocatoriaController
          * cobertura global. Los perfiles de consulta heredan únicamente el
          * alcance territorial que corresponde a su función operativa.
          */
-        if ($rolId === 1 || tienePermiso('convocatorias.gestionar')) {
+        $esMarketingSistema = strcasecmp(
+            trim((string)($_SESSION['rol'] ?? '')),
+            'Marketing'
+        ) === 0;
+
+        if (
+            $rolId === 1 ||
+            $esMarketingSistema ||
+            tienePermiso('convocatorias.gestionar')
+        ) {
             return null;
         }
 
