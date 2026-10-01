@@ -84,7 +84,45 @@
         return form.querySelector('[type="submit"]');
     };
 
+    const agendaPermiteAccion = function (accion) {
+        const root = document.querySelector('[data-agenda-root]');
+
+        if (!root) {
+            return true;
+        }
+
+        const puedeSolicitar =
+            root.getAttribute('data-agenda-can-request') === '1';
+        const puedeGestionar =
+            root.getAttribute('data-agenda-can-manage') === '1';
+
+        if (accion === 'enviarCancelacionReunion') {
+            return puedeSolicitar || puedeGestionar;
+        }
+
+        if (
+            accion === 'marcarCorreoEnviado' ||
+            accion === 'marcarCorreoReprogramacionEnviado'
+        ) {
+            return puedeSolicitar;
+        }
+
+        return true;
+    };
+
     const enviarReunion = async function (form) {
+        const accion = String(
+            form.getAttribute('data-agenda-action') || ''
+        );
+
+        if (!agendaPermiteAccion(accion)) {
+            mostrarErrorFormulario(
+                form,
+                'No tienes permiso para realizar este envío desde la Agenda.'
+            );
+            return;
+        }
+
         const datos = new FormData(form);
         const reunionId = Number(datos.get('reunion_id') || 0);
         if (reunionId <= 0) {
@@ -92,9 +130,6 @@
             return;
         }
 
-        const accion = String(
-            form.getAttribute('data-agenda-action') || ''
-        );
         const esCancelacion = accion === 'enviarCancelacionReunion';
         const esReprogramacion =
             form.dataset.reprogramacionPreparada === '1' ||
@@ -236,6 +271,13 @@
             form.matches('#modalAgendaCorreo [data-agenda-action-form]')
         ) {
             const accion = String(form.getAttribute('data-agenda-action') || '');
+
+            if (!agendaPermiteAccion(accion)) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                return;
+            }
+
             const esCorreo = accion === 'marcarCorreoEnviado' ||
                 accion === 'marcarCorreoReprogramacionEnviado' ||
                 accion === 'enviarCancelacionReunion' ||
