@@ -8,8 +8,6 @@
             return;
         }
 
-        const esAdministrador =
-            Number(window.IMPE_CURRENT_ROLE_ID || 0) === 1;
         const puedeOperar =
             Boolean(window.IMPE_CAN_OPERATE_LINKAGE);
         const puedeSupervisar =
