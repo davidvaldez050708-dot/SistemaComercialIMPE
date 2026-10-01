@@ -15,6 +15,11 @@
         let temporizadorConsulta = null;
         let controladorConsulta = null;
         let secuenciaConsulta = 0;
+        const rutasIniciales =
+            window.IMPE_SEGUIMIENTOS_RUTA_INICIAL &&
+            typeof window.IMPE_SEGUIMIENTOS_RUTA_INICIAL === 'object'
+                ? window.IMPE_SEGUIMIENTOS_RUTA_INICIAL
+                : {};
 
         const crearBloque = function () {
             let bloque = offcanvas.querySelector('[data-work-flow-section]');
@@ -584,6 +589,15 @@
                 }
             }
 
+            const seguimientoFlujoId = Number(
+                flujo.seguimiento_id || seguimientoActualId || 0
+            );
+
+            if (seguimientoFlujoId > 0) {
+                rutasIniciales[seguimientoFlujoId] = flujo;
+                rutasIniciales[String(seguimientoFlujoId)] = flujo;
+            }
+
             document.dispatchEvent(new CustomEvent('impe:flow-updated', {
                 detail: {
                     seguimientoId: Number(flujo.seguimiento_id || 0),
@@ -844,18 +858,22 @@
                 delete offcanvas.dataset.ally;
                 offcanvas.dataset.flowSeguimientoId = String(seguimientoActualId);
 
-                const cacheRuta = window.IMPE_SEGUIMIENTO_RUTA_CACHE;
-                const flujoGuardado = cacheRuta?.obtener?.(seguimientoActualId) || null;
+                const flujoInicial = rutasIniciales[seguimientoActualId] ||
+                    rutasIniciales[String(seguimientoActualId)] ||
+                    null;
 
-                if (
-                    flujoGuardado &&
-                    typeof cacheRuta?.renderizarPanel === 'function'
-                ) {
-                    cacheRuta.renderizarPanel(
-                        seguimientoActualId,
-                        flujoGuardado,
-                        false
-                    );
+                if (flujoInicial && typeof flujoInicial === 'object') {
+                    const flujoInmediato = Object.assign({}, flujoInicial, {
+                        seguimiento_id: seguimientoActualId,
+                        solo_lectura:
+                            Boolean(flujoInicial.solo_lectura) ||
+                            !puedeOperar,
+                        puede_operar:
+                            Boolean(flujoInicial.puede_operar) &&
+                            puedeOperar
+                    });
+
+                    renderizar(flujoInmediato);
                 } else {
                     prepararRutaParaCarga();
                 }
