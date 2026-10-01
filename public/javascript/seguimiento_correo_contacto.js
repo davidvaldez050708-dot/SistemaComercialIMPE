@@ -4,7 +4,11 @@
     document.addEventListener('DOMContentLoaded', function () {
         const offcanvas = document.getElementById('offcanvasSeguimientoTrabajo');
 
-        if (!offcanvas || !window.bootstrap) {
+        if (
+            !offcanvas ||
+            !window.bootstrap ||
+            !window.IMPE_CAN_OPERATE_LINKAGE
+        ) {
             return;
         }
 
