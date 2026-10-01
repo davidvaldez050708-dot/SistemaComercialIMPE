@@ -818,6 +818,26 @@ class RolModel
         }
 
         $seleccionados = array_fill_keys(array_map('intval', $permisosIds), true);
+
+        if (
+            isset($idPorCodigo['convocatorias.gestionar']) &&
+            isset($seleccionados[$idPorCodigo['convocatorias.gestionar']])
+        ) {
+            foreach (
+                [
+                    'convocatorias.ver',
+                    'convocatorias.crear',
+                    'convocatorias.editar',
+                    'convocatorias.descargar',
+                    'convocatorias.cambiar_estado'
+                ] as $codigoGestion
+            ) {
+                if (isset($idPorCodigo[$codigoGestion])) {
+                    $seleccionados[(int)$idPorCodigo[$codigoGestion]] = true;
+                }
+            }
+        }
+
         $cambio = true;
 
         while ($cambio) {
@@ -1003,7 +1023,7 @@ class RolModel
             ['modulo' => 'Convocatorias', 'codigo' => 'convocatorias.ver', 'nombre' => 'Ver convocatorias', 'descripcion' => 'Consultar convocatorias registradas.'],
             ['modulo' => 'Convocatorias', 'codigo' => 'convocatorias.crear', 'nombre' => 'Crear convocatorias', 'descripcion' => 'Registrar nuevas convocatorias.'],
             ['modulo' => 'Convocatorias', 'codigo' => 'convocatorias.editar', 'nombre' => 'Editar convocatorias', 'descripcion' => 'Actualizar información de convocatorias.'],
-            ['modulo' => 'Convocatorias', 'codigo' => 'convocatorias.gestionar', 'nombre' => 'Gestionar convocatorias', 'descripcion' => 'Administrar el estado y operación general de las convocatorias.'],
+            ['modulo' => 'Convocatorias', 'codigo' => 'convocatorias.gestionar', 'nombre' => 'Administrar convocatorias', 'descripcion' => 'Habilita alcance global, alertas y las capacidades administrativas de convocatorias.'],
             ['modulo' => 'Convocatorias', 'codigo' => 'convocatorias.descargar', 'nombre' => 'Descargar imágenes', 'descripcion' => 'Descargar la imagen asociada a una convocatoria.'],
             ['modulo' => 'Convocatorias', 'codigo' => 'convocatorias.cambiar_estado', 'nombre' => 'Activar / desactivar convocatorias', 'descripcion' => 'Modificar el estado lógico de una convocatoria.'],
             ['modulo' => 'Difusión', 'codigo' => 'difusion.ver', 'nombre' => 'Ver difusión', 'descripcion' => 'Consultar campañas, convocatorias o ligas de registro.'],
