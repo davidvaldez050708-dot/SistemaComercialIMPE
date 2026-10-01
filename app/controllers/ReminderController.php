@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../helpers/ReminderHelper.php';
+require_once __DIR__ . '/../helpers/PermissionHelper.php';
 require_once __DIR__ . '/../services/AgendaReunionService.php';
 require_once __DIR__ . '/../services/ReminderAgendaFilterService.php';
 require_once __DIR__ . '/../services/ReminderReunionFollowupService.php';
@@ -35,9 +36,14 @@ class ReminderController
         header('Content-Type: application/json; charset=utf-8');
 
         $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
-        $rolId = (int)($_SESSION['rol_id'] ?? 0);
+        $esSupervisor = tienePermiso('seguimientos_vinculacion.supervisar');
+        $esAnalista = tienePermiso('seguimientos_vinculacion.operar_propios');
 
-        if ($usuarioId <= 0 || !in_array($rolId, [4, 6], true)) {
+        if (
+            $usuarioId <= 0 ||
+            !tienePermiso('reuniones.ver') ||
+            (!$esSupervisor && !$esAnalista)
+        ) {
             http_response_code(403);
             echo json_encode([
                 'ok' => false,
@@ -46,9 +52,18 @@ class ReminderController
             exit;
         }
 
+        /*
+         * Algunos servicios de recordatorio todavía reciben el identificador
+         * histórico del actor operativo. La autorización real ya fue resuelta
+         * por permisos antes de llegar aquí.
+         */
+        $rolContexto = $esSupervisor
+            ? AgendaReunionService::ROL_CUENTA_CLAVE
+            : AgendaReunionService::ROL_ANALISTA;
+
         $agenda = $this->agendaReunionService->obtenerNotificacionesCampana(
             $usuarioId,
-            $rolId,
+            $rolContexto,
             10
         );
         $recordatoriosAgenda = array_values($agenda['recordatorios'] ?? []);
@@ -59,7 +74,7 @@ class ReminderController
         // y Cuenta Clave debe ver con prioridad las solicitudes vencidas.
         $confirmaciones = $this->reminderMeetingConfirmationService->obtener(
             $usuarioId,
-            $rolId,
+            $rolContexto,
             10
         );
         $recordatoriosConfirmacion = array_values(
@@ -72,7 +87,7 @@ class ReminderController
         // Para Cuenta Clave, Agenda ya devuelve todas las SOLICITADAS. Cuando una
         // de ellas está vencida, sustituimos la versión genérica por la versión
         // urgente del servicio especializado para no duplicarla en la campana.
-        if ($rolId === 6 && !empty($recordatoriosConfirmacion)) {
+        if ($esSupervisor && !empty($recordatoriosConfirmacion)) {
             $reunionesUrgentes = [];
             foreach ($recordatoriosConfirmacion as $recordatorioConfirmacion) {
                 $reunionId = (int)($recordatorioConfirmacion['reunion_id'] ?? 0);
@@ -103,7 +118,7 @@ class ReminderController
             $avisosAgenda
         );
 
-        if ($rolId === 6) {
+        if ($esSupervisor) {
             $cambiosDatos = $this->seguimientoCambioDatosService->obtenerNotificaciones(
                 $usuarioId,
                 10
@@ -127,7 +142,7 @@ class ReminderController
             ));
         }
 
-        if ($rolId === 4) {
+        if ($esAnalista) {
             $resultado = obtenerAvisosPendientesRecordatoriosAnalista($usuarioId);
             $recordatoriosSeguimiento = serializarRecordatoriosSeguimiento(
                 $resultado['recordatorios'] ?? []
