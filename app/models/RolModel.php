@@ -429,7 +429,6 @@ class RolModel
                 'reuniones.solicitar',
                 'seguimientos_vinculacion.ver',
                 'seguimientos_vinculacion.crear',
-                'seguimientos_vinculacion.editar',
                 'seguimientos_vinculacion.operar_propios',
                 'convenios.ver',
                 'convenios.gestionar',
@@ -600,6 +599,7 @@ class RolModel
             'seguimientos_comerciales.crear',
             'seguimientos_comerciales.editar',
             'seguimientos_comerciales.editar_propios',
+            'seguimientos_vinculacion.editar',
             'pagos.ver',
             'pagos.validar',
             'organizaciones.ver',
@@ -735,7 +735,6 @@ class RolModel
             'Analista de Datos' => [
                 'seguimientos_vinculacion.ver',
                 'seguimientos_vinculacion.crear',
-                'seguimientos_vinculacion.editar',
                 'seguimientos_vinculacion.operar_propios'
             ],
             'Cuenta Clave' => [
