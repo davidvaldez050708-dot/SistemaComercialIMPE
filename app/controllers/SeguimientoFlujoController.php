@@ -57,6 +57,13 @@ class SeguimientoFlujoController
             ], 401);
         }
 
+        if (!tienePermiso('seguimientos_vinculacion.ver')) {
+            $this->responder([
+                'ok' => false,
+                'mensaje' => 'No tienes permiso para consultar seguimientos.'
+            ], 403);
+        }
+
         if ($seguimientoId <= 0) {
             $this->responder([
                 'ok' => false,
@@ -101,8 +108,20 @@ class SeguimientoFlujoController
         $codigoHttp = (int)($resultado['codigo_http'] ?? 200);
         unset($resultado['codigo_http']);
 
+        $puedeOperar =
+            $modoAcceso === 'analista' &&
+            tienePermiso('seguimientos_vinculacion.operar_propios') &&
+            (int)($seguimiento['analista_id'] ?? 0) === $usuarioId;
+
         $resultado['modo_acceso'] = $modoAcceso;
-        $resultado['solo_lectura'] = $modoAcceso === 'administrador';
+        $resultado['puede_operar'] = $puedeOperar;
+        $resultado['solo_lectura'] = !$puedeOperar;
+
+        if (is_array($resultado['flujo'] ?? null)) {
+            $resultado['flujo']['modo_acceso'] = $modoAcceso;
+            $resultado['flujo']['puede_operar'] = $puedeOperar;
+            $resultado['flujo']['solo_lectura'] = !$puedeOperar;
+        }
 
         $this->responder($resultado, $codigoHttp);
     }
