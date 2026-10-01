@@ -1093,7 +1093,9 @@ if (!empty($seguimientosSinMunicipio)) {
 
 
         <section class="linkage-work-section linkage-work-next" data-work-next-section>
-            <span data-work-next-label>PRÓXIMA ACCIÓN</span>
+            <span data-work-next-label><?= $esSupervisorVista
+                ? 'PRÓXIMA ACCIÓN DEL ANALISTA'
+                : 'PRÓXIMA ACCIÓN' ?></span>
             <strong data-work-next-action>—</strong>
         </section>
 
