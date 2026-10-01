@@ -10,6 +10,11 @@
 
         const esAdministrador =
             Number(window.IMPE_CURRENT_ROLE_ID || 0) === 1;
+        const puedeOperar =
+            Boolean(window.IMPE_CAN_OPERATE_LINKAGE);
+        const puedeSupervisar =
+            Boolean(window.IMPE_CAN_SUPERVISE_LINKAGE);
+        const esSoloLectura = !puedeOperar;
 
         const pasosRuta = new Map([
             [1, 'Seguimiento iniciado'],
@@ -102,8 +107,8 @@
             }
         };
 
-        const aplicarModoAdministrador = function () {
-            if (!esAdministrador) {
+        const aplicarModoSoloLectura = function () {
+            if (!esSoloLectura) {
                 return;
             }
 
@@ -112,16 +117,16 @@
             document.querySelectorAll('[data-work-follow]').forEach(function (boton) {
                 const fila = boton.closest('[data-linkage-follow-row]');
                 const esAliado = String(fila?.dataset.ally || '') === '1';
-
-                boton.title = esAliado
+                const etiqueta = esAliado
                     ? 'Consultar aliado'
-                    : 'Consultar seguimiento';
-                boton.setAttribute(
-                    'aria-label',
-                    esAliado
-                        ? 'Consultar aliado'
-                        : 'Consultar seguimiento'
-                );
+                    : (
+                        puedeSupervisar
+                            ? 'Supervisar seguimiento'
+                            : 'Consultar seguimiento'
+                    );
+
+                boton.title = etiqueta;
+                boton.setAttribute('aria-label', etiqueta);
 
                 const icono = boton.querySelector('i');
                 const texto = boton.querySelector('span');
@@ -131,7 +136,9 @@
                 }
 
                 if (texto) {
-                    texto.textContent = 'Ver';
+                    texto.textContent = puedeSupervisar
+                        ? 'Supervisar'
+                        : 'Ver';
                 }
             });
 
@@ -143,7 +150,11 @@
                 etiquetaPanel.textContent =
                     String(offcanvas.dataset.ally || '') === '1'
                         ? 'Expediente de aliado'
-                        : 'Vista de seguimiento';
+                        : (
+                            puedeSupervisar
+                                ? 'Supervisión de seguimiento'
+                                : 'Vista de seguimiento'
+                        );
             }
         };
 
@@ -160,18 +171,18 @@
 
         document.addEventListener('impe:flow-row-updated', function (event) {
             actualizarFila(event.detail || {});
-            aplicarModoAdministrador();
+            aplicarModoSoloLectura();
         });
 
         document.addEventListener('impe:flow-updated', function (event) {
             actualizarFila(event.detail || {});
-            aplicarModoAdministrador();
+            aplicarModoSoloLectura();
         });
 
         offcanvas.addEventListener('shown.bs.offcanvas', function () {
-            aplicarModoAdministrador();
+            aplicarModoSoloLectura();
         });
 
-        aplicarModoAdministrador();
+        aplicarModoSoloLectura();
     });
 })();
