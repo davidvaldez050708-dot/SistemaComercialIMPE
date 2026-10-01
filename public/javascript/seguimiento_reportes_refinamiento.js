@@ -98,10 +98,12 @@
         }
 
         if (volver) {
-            const esAnalista = Boolean(formulario.querySelector('[data-analyst-report-modes]'));
+            const tieneSelectorModos = Boolean(
+                formulario.querySelector('[data-report-modes]')
+            );
             const esReporteGenerado = parametros.get('generar') === '1';
 
-            if (esAnalista && esReporteGenerado) {
+            if (tieneSelectorModos && esReporteGenerado) {
                 volver.href = window.location.pathname +
                     '?controller=seguimientoVinculacionReporte&action=index&origen=reportes';
                 volver.innerHTML = '<i class="bi bi-arrow-left"></i> Volver a Reportes de Seguimiento';
