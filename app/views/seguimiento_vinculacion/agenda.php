@@ -4,8 +4,13 @@ $agendaReuniones = $agendaReuniones ?? [];
 $seguimientosElegibles = $seguimientosElegibles ?? [];
 $celdasAgenda = $celdasAgenda ?? [];
 $agendaRolId = (int)($agendaRolId ?? 0);
-$esAnalistaAgenda = $agendaRolId === 4;
-$esCuentaClaveAgenda = $agendaRolId === 6;
+$agendaPuedeSolicitar = (bool)($agendaPuedeSolicitar ?? false);
+$agendaPuedeGestionar = (bool)($agendaPuedeGestionar ?? false);
+$agendaPuedeVerSeguimiento = (bool)($agendaPuedeVerSeguimiento ?? false);
+$agendaModo = (string)($agendaModo ?? 'LECTURA');
+$esAnalistaAgenda = $agendaPuedeSolicitar;
+$esCuentaClaveAgenda = $agendaPuedeGestionar;
+$esSoloLecturaAgenda = !$esAnalistaAgenda && !$esCuentaClaveAgenda;
 
 $pendientesAgenda = array_values(array_filter(
     $agendaReuniones,
@@ -32,6 +37,8 @@ $pendientesAgenda = array_values(array_filter(
     class="agenda-page"
     data-agenda-root
     data-agenda-role="<?= $agendaRolId ?>"
+    data-agenda-mode="<?= htmlspecialchars($agendaModo, ENT_QUOTES, 'UTF-8') ?>"
+    data-agenda-can-view-follow-up="<?= $agendaPuedeVerSeguimiento ? '1' : '0' ?>"
     data-agenda-month="<?= htmlspecialchars($mesAgenda, ENT_QUOTES, 'UTF-8') ?>"
     data-agenda-initial-follow="<?= (int)$agendaSeguimientoInicial ?>"
     data-agenda-initial-meeting="<?= (int)$agendaReunionInicial ?>">
@@ -53,13 +60,23 @@ $pendientesAgenda = array_values(array_filter(
     <div class="agenda-toolbar">
         <div>
             <p class="agenda-eyebrow">
-                <?= $esCuentaClaveAgenda ? 'CUENTA CLAVE · KAM' : 'ANALISTA DE DATOS' ?>
+                <?php if ($esCuentaClaveAgenda): ?>
+                    CUENTA CLAVE · KAM
+                <?php elseif ($esAnalistaAgenda): ?>
+                    ANALISTA DE DATOS
+                <?php else: ?>
+                    AGENDA · CONSULTA
+                <?php endif; ?>
             </p>
             <h2><?= htmlspecialchars($tituloMesAgenda, ENT_QUOTES, 'UTF-8') ?></h2>
             <p>
-                <?= $esCuentaClaveAgenda
-                    ? 'Revisa las fechas propuestas, confirma la reunión y agrega el enlace de Zoom.'
-                    : 'Consulta tus reuniones, propone fechas y da seguimiento a las confirmaciones de Cuenta Clave.' ?>
+                <?php if ($esCuentaClaveAgenda): ?>
+                    Revisa las fechas propuestas, confirma la reunión y agrega los datos de acceso.
+                <?php elseif ($esAnalistaAgenda): ?>
+                    Consulta tus reuniones, propone fechas y da seguimiento a las confirmaciones de Cuenta Clave.
+                <?php else: ?>
+                    Consulta las reuniones asignadas y abre su expediente cuando necesites mayor contexto.
+                <?php endif; ?>
             </p>
         </div>
 
@@ -148,7 +165,15 @@ $pendientesAgenda = array_values(array_filter(
                                         <?= htmlspecialchars((string)($reunion['nombre_entidad'] ?? 'Reunión'), ENT_QUOTES, 'UTF-8') ?>
                                     </strong>
                                     <small>
-                                        <?= htmlspecialchars((string)($reunion['estado_etiqueta'] ?? ''), ENT_QUOTES, 'UTF-8') ?>
+                                        <?php
+                                        $estadoTerritorial = trim((string)($reunion['estado_nombre'] ?? ''));
+                                        $estadoOperativo = trim((string)($reunion['estado_etiqueta'] ?? ''));
+                                        $detalleEvento = implode(
+                                            ' · ',
+                                            array_filter([$estadoTerritorial, $estadoOperativo])
+                                        );
+                                        ?>
+                                        <?= htmlspecialchars($detalleEvento, ENT_QUOTES, 'UTF-8') ?>
                                     </small>
                                 </button>
                             <?php endforeach; ?>
@@ -164,11 +189,23 @@ $pendientesAgenda = array_values(array_filter(
                     <i class="bi <?= $esCuentaClaveAgenda ? 'bi-inbox' : 'bi-bell' ?>"></i>
                 </span>
                 <div>
-                    <h3><?= $esCuentaClaveAgenda ? 'Por confirmar' : 'Requiere tu atención' ?></h3>
+                    <h3>
+                        <?php if ($esCuentaClaveAgenda): ?>
+                            Por confirmar
+                        <?php elseif ($esAnalistaAgenda): ?>
+                            Requiere tu atención
+                        <?php else: ?>
+                            Vista de consulta
+                        <?php endif; ?>
+                    </h3>
                     <p>
-                        <?= $esCuentaClaveAgenda
-                            ? 'Solicitudes pendientes, incluidas las que ya superaron la fecha propuesta.'
-                            : 'Reuniones vencidas, cambios solicitados o confirmaciones que requieren una acción.' ?>
+                        <?php if ($esCuentaClaveAgenda): ?>
+                            Solicitudes pendientes, incluidas las que ya superaron la fecha propuesta.
+                        <?php elseif ($esAnalistaAgenda): ?>
+                            Reuniones vencidas, cambios solicitados o confirmaciones que requieren una acción.
+                        <?php else: ?>
+                            Puedes revisar tus reuniones y abrir el seguimiento asociado, sin acciones de gestión.
+                        <?php endif; ?>
                     </p>
                 </div>
             </div>
@@ -176,9 +213,13 @@ $pendientesAgenda = array_values(array_filter(
             <div class="agenda-pending-list">
                 <?php if (empty($pendientesAgenda)): ?>
                     <div class="agenda-empty-state">
-                        <i class="bi bi-check2-circle"></i>
-                        <strong>Todo al día</strong>
-                        <span>No tienes reuniones que requieran una acción inmediata.</span>
+                        <i class="bi <?= $esSoloLecturaAgenda ? 'bi-eye' : 'bi-check2-circle' ?>"></i>
+                        <strong><?= $esSoloLecturaAgenda ? 'Agenda en modo consulta' : 'Todo al día' ?></strong>
+                        <span>
+                            <?= $esSoloLecturaAgenda
+                                ? 'Las reuniones se muestran sin acciones de gestión.'
+                                : 'No tienes reuniones que requieran una acción inmediata.' ?>
+                        </span>
                     </div>
                 <?php else: ?>
                     <?php foreach (array_slice($pendientesAgenda, 0, 6) as $reunion): ?>
@@ -197,7 +238,15 @@ $pendientesAgenda = array_values(array_filter(
                                     <?= htmlspecialchars((string)($reunion['fecha_legible'] ?? ''), ENT_QUOTES, 'UTF-8') ?>
                                 </span>
                                 <small>
-                                    <?= htmlspecialchars((string)($reunion['estado_etiqueta'] ?? ''), ENT_QUOTES, 'UTF-8') ?>
+                                    <?php
+                                    $estadoTerritorial = trim((string)($reunion['estado_nombre'] ?? ''));
+                                    $estadoOperativo = trim((string)($reunion['estado_etiqueta'] ?? ''));
+                                    ?>
+                                    <?= htmlspecialchars(
+                                        implode(' · ', array_filter([$estadoTerritorial, $estadoOperativo])),
+                                        ENT_QUOTES,
+                                        'UTF-8'
+                                    ) ?>
                                 </small>
                             </span>
                         </button>
