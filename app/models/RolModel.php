@@ -58,12 +58,15 @@ class RolModel
             $stmt->execute();
         }
 
-        $permisosGenericosActivos =
-            $this->existenPermisosGenericosSeguimientosActivos();
         $sinPermisosActivosSistema =
             !$this->existenRelacionesPermisosActivas();
 
-        if ($permisosGenericosActivos || $sinPermisosActivosSistema) {
+        /*
+         * La plantilla base solo se usa al crear una instalación sin relaciones.
+         * Encontrar permisos legacy nunca debe reconstruir roles existentes,
+         * porque eso pisaría decisiones tomadas por el Administrador.
+         */
+        if ($sinPermisosActivosSistema) {
             $this->sincronizarPermisosBasePorRol();
         }
 
