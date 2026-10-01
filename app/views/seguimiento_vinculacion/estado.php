@@ -14,6 +14,10 @@ $filtrosSeguimiento = $filtrosSeguimiento ?? [];
 $modoSeguimiento = $modoSeguimiento ?? 'analista';
 $mostrarColumnaAnalista = in_array($modoSeguimiento, ['supervisor', 'administrador'], true);
 $puedeCrearSeguimiento = $puedeCrearSeguimiento ?? false;
+$puedeOperarVista =
+    $modoSeguimiento === 'analista' &&
+    tienePermiso('seguimientos_vinculacion.operar_propios');
+$esSupervisorVista = $modoSeguimiento === 'supervisor';
 $totalSeguimientosReales = (int)($totalSeguimientosReales ?? count($seguimientos));
 $totalResultadosFiltrados = (int)($totalResultadosFiltrados ?? count($seguimientos));
 
@@ -634,11 +638,15 @@ if (!empty($seguimientosSinMunicipio)) {
                                 <button
                                     type="button"
                                     class="btn btn-system-light linkage-manage-button <?= $esAliado ? 'is-ally' : '' ?>"
-                                    title="<?= $esAliado ? 'Trabajar con aliado' : 'Trabajar seguimiento' ?>"
-                                    aria-label="<?= $esAliado ? 'Trabajar con aliado' : 'Trabajar seguimiento' ?>"
+                                    title="<?= $puedeOperarVista
+                                        ? ($esAliado ? 'Trabajar con aliado' : 'Trabajar seguimiento')
+                                        : ($esSupervisorVista ? 'Supervisar seguimiento' : 'Ver seguimiento') ?>"
+                                    aria-label="<?= $puedeOperarVista
+                                        ? ($esAliado ? 'Trabajar con aliado' : 'Trabajar seguimiento')
+                                        : ($esSupervisorVista ? 'Supervisar seguimiento' : 'Ver seguimiento') ?>"
                                     data-work-follow
                                     data-work-follow-id="<?= (int)$seguimiento['id'] ?>">
-                                    <i class="bi bi-kanban"></i>
+                                    <i class="bi <?= $puedeOperarVista ? 'bi-kanban' : 'bi-eye' ?>"></i>
                                 </button>
                                 <a
                                     href="<?= BASE_URL ?>index.php?controller=seguimientoVinculacion&action=detalle&id=<?= (int)$seguimiento['id'] ?>"
@@ -673,23 +681,33 @@ if (!empty($seguimientosSinMunicipio)) {
                 <?php endif; ?>
             </strong>
             <span>
-                Busca una institución u organización para comenzar.
+                <?php if ($puedeCrearSeguimiento): ?>
+                    Busca una institución u organización para comenzar.
+                <?php elseif ($esSupervisorVista): ?>
+                    Los nuevos seguimientos son iniciados por los Analistas responsables.
+                <?php else: ?>
+                    No hay acciones disponibles para iniciar seguimientos desde esta vista.
+                <?php endif; ?>
             </span>
-            <div class="linkage-empty-actions">
-                <a
-                    href="#"
-                    class="btn btn-system-save linkage-action-button"
-                    <?= $puedeCrearSeguimiento ? 'data-bs-toggle="modal" data-bs-target="#modalBuscarCandidato"' : 'aria-disabled="true" data-linkage-disabled-action' ?>>
-                    <i class="bi bi-plus-lg"></i>
-                    Buscar candidato
-                </a>
-                <a
-                    href="#"
-                    class="btn btn-system-light linkage-action-button"
-                    <?= $puedeCrearSeguimiento ? 'data-bs-toggle="modal" data-bs-target="#modalAgregarSeguimientoManual"' : 'aria-disabled="true" data-linkage-disabled-action' ?>>
-                    Agregar manualmente
-                </a>
-            </div>
+            <?php if ($puedeCrearSeguimiento): ?>
+                <div class="linkage-empty-actions">
+                    <a
+                        href="#"
+                        class="btn btn-system-save linkage-action-button"
+                        data-bs-toggle="modal"
+                        data-bs-target="#modalBuscarCandidato">
+                        <i class="bi bi-plus-lg"></i>
+                        Buscar candidato
+                    </a>
+                    <a
+                        href="#"
+                        class="btn btn-system-light linkage-action-button"
+                        data-bs-toggle="modal"
+                        data-bs-target="#modalAgregarSeguimientoManual">
+                        Agregar manualmente
+                    </a>
+                </div>
+            <?php endif; ?>
     </div>
 
     <div
@@ -1005,7 +1023,9 @@ if (!empty($seguimientosSinMunicipio)) {
     aria-labelledby="offcanvasSeguimientoTrabajoTitulo">
     <div class="offcanvas-header linkage-work-header">
         <div>
-            <span>Panel de trabajo</span>
+            <span><?= $puedeOperarVista
+                ? 'Panel de trabajo'
+                : ($esSupervisorVista ? 'Supervisión de seguimiento' : 'Vista de seguimiento') ?></span>
             <h5 id="offcanvasSeguimientoTrabajoTitulo" data-work-title>Seguimiento</h5>
             <p data-work-subtitle>—</p>
         </div>
@@ -1043,7 +1063,11 @@ if (!empty($seguimientosSinMunicipio)) {
         <section class="linkage-work-section">
             <div class="linkage-work-section-title">
                 <h3 data-work-contact-heading>Contacto</h3>
-                <button type="button" class="btn btn-system-light linkage-work-small-button" data-work-toggle-contact data-work-contact-action>
+                <button
+                    type="button"
+                    class="btn btn-system-light linkage-work-small-button<?= $puedeOperarVista ? '' : ' d-none' ?>"
+                    data-work-toggle-contact
+                    data-work-contact-action>
                     Completar datos de contacto
                 </button>
             </div>
@@ -1075,7 +1099,7 @@ if (!empty($seguimientosSinMunicipio)) {
                 </div>
             </div>
 
-            <div class="linkage-work-verify-row" data-work-verify-row>
+            <div class="linkage-work-verify-row<?= $puedeOperarVista ? '' : ' d-none' ?>" data-work-verify-row>
                 <button type="button" class="btn btn-system-light linkage-work-small-button" data-work-verify-contact>
                     <i class="bi bi-patch-check"></i>
                     Marcar información como verificada
@@ -1141,7 +1165,7 @@ if (!empty($seguimientosSinMunicipio)) {
             </form>
         </section>
 
-        <section class="linkage-work-section" data-work-contact-actions-section>
+        <section class="linkage-work-section<?= $puedeOperarVista ? '' : ' d-none' ?>" data-work-contact-actions-section>
             <h3>Contactar</h3>
             <div class="linkage-work-quick-actions">
                 <button type="button" class="btn btn-system-light" disabled title="Captura un teléfono para habilitar esta acción." data-work-call-button>
@@ -1159,7 +1183,7 @@ if (!empty($seguimientosSinMunicipio)) {
             </div>
         </section>
 
-        <section class="linkage-work-section" data-work-interaction-section>
+        <section class="linkage-work-section<?= $puedeOperarVista ? '' : ' d-none' ?>" data-work-interaction-section>
             <div class="linkage-work-section-title">
                 <h3>Registrar interacción</h3>
                 <button type="button" class="btn btn-system-light linkage-work-small-button" data-work-toggle-interaction>
@@ -1759,18 +1783,31 @@ document.addEventListener('DOMContentLoaded', function () {
         asignarTextoTrabajo('[data-work-source-address]', seguimiento.direccion_fuente);
 
         const seguimientoDescartado = seguimiento.estado_seguimiento === 'DESCARTADO';
-        const puedeReactivar = seguimientoDescartado && Boolean(seguimiento.puede_reactivar);
+        const puedeReactivar =
+            seguimientoDescartado &&
+            puedeOperar &&
+            Boolean(seguimiento.puede_reactivar);
         document.querySelector('[data-work-next-section]')?.classList.toggle('d-none', seguimientoDescartado);
         document.querySelector('[data-work-discarded-panel]')?.classList.toggle('d-none', !seguimientoDescartado);
-        document.querySelector('[data-work-contact-actions-section]')?.classList.toggle('d-none', seguimientoDescartado);
-        document.querySelector('[data-work-interaction-section]')?.classList.toggle('d-none', seguimientoDescartado);
-        document.querySelector('[data-work-contact-action]')?.classList.toggle('d-none', seguimientoDescartado);
+        document.querySelector('[data-work-contact-actions-section]')?.classList.toggle(
+            'd-none',
+            seguimientoDescartado || !puedeOperar
+        );
+        document.querySelector('[data-work-interaction-section]')?.classList.toggle(
+            'd-none',
+            seguimientoDescartado || !puedeOperar
+        );
+        document.querySelector('[data-work-contact-action]')?.classList.toggle(
+            'd-none',
+            seguimientoDescartado || !puedeOperar
+        );
 
         const filaVerificacionInicial = document.querySelector('[data-work-verify-row]');
         if (filaVerificacionInicial) {
             filaVerificacionInicial.classList.toggle(
                 'd-none',
                 seguimientoDescartado ||
+                !puedeOperar ||
                 Number(seguimiento.datos_verificados) !== 1
             );
         }
@@ -1805,22 +1842,32 @@ document.addEventListener('DOMContentLoaded', function () {
         const botonLlamar = document.querySelector('[data-work-call-button]');
         const telefonoDisponible = seguimiento.telefono_verificado || seguimiento.telefono_fuente || '';
         if (botonLlamar) {
-            botonLlamar.disabled = seguimientoDescartado || !telefonoDisponible;
+            botonLlamar.disabled =
+                seguimientoDescartado ||
+                !puedeOperar ||
+                !telefonoDisponible;
             botonLlamar.title = seguimientoDescartado
                 ? 'El seguimiento está descartado'
-                : (telefonoDisponible
-                ? 'Integración pendiente. Teléfono: ' + telefonoDisponible
-                : 'Captura un teléfono para habilitar esta acción.');
+                : (!puedeOperar
+                    ? 'Acción disponible para el Analista responsable'
+                    : (telefonoDisponible
+                        ? 'Integración pendiente. Teléfono: ' + telefonoDisponible
+                        : 'Captura un teléfono para habilitar esta acción.'));
         }
 
         const botonWhatsapp = document.querySelector('[data-work-whatsapp-button]');
         if (botonWhatsapp) {
-            botonWhatsapp.disabled = seguimientoDescartado || !seguimiento.whatsapp_verificado;
+            botonWhatsapp.disabled =
+                seguimientoDescartado ||
+                !puedeOperar ||
+                !seguimiento.whatsapp_verificado;
             botonWhatsapp.title = seguimientoDescartado
                 ? 'El seguimiento está descartado'
-                : (seguimiento.whatsapp_verificado
-                ? 'Abrir WhatsApp con ' + seguimiento.whatsapp_verificado
-                : 'Captura un WhatsApp verificado para habilitar esta acción.');
+                : (!puedeOperar
+                    ? 'Acción disponible para el Analista responsable'
+                    : (seguimiento.whatsapp_verificado
+                        ? 'Abrir WhatsApp con ' + seguimiento.whatsapp_verificado
+                        : 'Captura un WhatsApp verificado para habilitar esta acción.'));
         }
 
         const botonCorreo = document.querySelector('[data-work-email-button]');
@@ -1866,7 +1913,7 @@ document.addEventListener('DOMContentLoaded', function () {
             formInteraccion.querySelector('[name="persona_atendio"]').value = seguimiento.contacto_nombre || '';
         }
 
-        if (seguimientoDescartado) {
+        if (seguimientoDescartado || !puedeOperar) {
             formContacto?.classList.add('d-none');
             formInteraccion?.classList.add('d-none');
         }
