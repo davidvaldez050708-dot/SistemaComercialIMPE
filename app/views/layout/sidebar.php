@@ -9,11 +9,11 @@ $mostrarTerritorios = tienePermiso('territorios.ver');
 $mostrarDataTerritorial = tienePermiso('data_territorial.ver');
 $mostrarSeguimientoVinculacion = tienePermiso('seguimientos_vinculacion.ver');
 $mostrarConvocatorias = tienePermiso('convocatorias.ver');
-$mostrarReportes = $mostrarDataTerritorial || $mostrarSeguimientoVinculacion;
+$mostrarReportes =
+    tienePermiso('reportes.ver') &&
+    ($mostrarDataTerritorial || $mostrarSeguimientoVinculacion);
 
-$rolActualConvocatorias = strtolower(trim((string)($_SESSION['rol'] ?? '')));
-$esRolMarketing = $rolActualConvocatorias === 'marketing';
-$etiquetaMenuConvocatorias = $esRolMarketing
+$etiquetaMenuConvocatorias = tienePermiso('convocatorias.gestionar')
     ? 'Gestión de Convocatorias'
     : 'Convocatorias';
 
