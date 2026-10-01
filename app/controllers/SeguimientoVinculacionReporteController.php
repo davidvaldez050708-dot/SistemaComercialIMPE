@@ -209,15 +209,6 @@ class SeguimientoVinculacionReporteController
             $limite = 12;
             $busqueda = trim((string)($_GET['q'] ?? ''));
 
-            if ($modoSeguimiento !== 'analista') {
-                http_response_code(403);
-                echo json_encode([
-                    'ok' => false,
-                    'mensaje' => 'Este selector está disponible para el flujo del Analista.'
-                ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-                return;
-            }
-
             if ($estadoId <= 0) {
                 echo json_encode([
                     'ok' => true,
