@@ -77,15 +77,10 @@ class SeguimientoReporteAnaliticaController
             ], 401);
         }
 
-        $puedeAlgunaModalidad =
-            tienePermiso('reportes.seguimiento.cartera') ||
-            tienePermiso('reportes.seguimiento.actividad') ||
-            tienePermiso('reportes.seguimiento.institucion');
-
         if (
             !tienePermiso('reportes.ver') ||
-            !tienePermiso($codigo) ||
-            !$puedeAlgunaModalidad
+            !tienePermiso('reportes.seguimiento.actividad') ||
+            !tienePermiso($codigo)
         ) {
             $this->responder([
                 'ok' => false,
