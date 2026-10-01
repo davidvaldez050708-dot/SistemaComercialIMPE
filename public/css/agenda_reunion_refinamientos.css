@@ -757,3 +757,84 @@
 #modalAgendaDetalle .agenda-expired-proposal-form .btn-system-save {
     min-height: 38px;
 }
+
+
+/* Agenda en modo consulta y acceso contextual al expediente. */
+.agenda-readonly-note {
+    margin-top: 12px;
+    padding: 10px 11px;
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    border: 1px solid #dbe4ef;
+    border-radius: 9px;
+    background: #f7f9fc;
+    color: #5f6d82;
+}
+
+.agenda-readonly-note > i {
+    margin-top: 1px;
+    flex: 0 0 auto;
+    color: var(--color-primary);
+    font-size: 13px;
+}
+
+.agenda-readonly-note > div {
+    min-width: 0;
+    display: grid;
+    gap: 2px;
+}
+
+.agenda-readonly-note strong {
+    color: #263950;
+    font-size: 10.5px;
+    font-weight: 800;
+}
+
+.agenda-readonly-note span {
+    font-size: 10px;
+    line-height: 1.45;
+}
+
+.agenda-follow-up-link {
+    margin-top: 12px;
+    padding-top: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    border-top: 1px solid #e2e8f0;
+}
+
+.agenda-follow-up-link > span {
+    color: #728096;
+    font-size: 9.5px;
+    line-height: 1.4;
+    text-align: right;
+}
+
+.agenda-follow-up-link .btn {
+    min-height: 36px;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    flex: 0 0 auto;
+    font-size: 10.5px;
+    font-weight: 800;
+}
+
+@media (max-width: 575.98px) {
+    .agenda-follow-up-link {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .agenda-follow-up-link > span {
+        text-align: left;
+    }
+
+    .agenda-follow-up-link .btn {
+        justify-content: center;
+        width: 100%;
+    }
+}
