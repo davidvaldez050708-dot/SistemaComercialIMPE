@@ -38,19 +38,11 @@ class AgendaReunionRepository
                 LEFT JOIN usuarios k ON k.id=r.cuenta_clave_id
                 WHERE r.fecha_propuesta>=? AND r.fecha_propuesta<? AND r.estado<>'CANCELADA'";
 
-        if ((int)$rolId === 4) {
-            $sql .= " AND r.analista_id=?";
-        } elseif ((int)$rolId === 6) {
-            $sql .= " AND r.cuenta_clave_id=?";
-        }
+        $sql .= " AND (r.analista_id=? OR r.cuenta_clave_id=?)";
         $sql .= " ORDER BY r.fecha_propuesta ASC, r.id ASC";
 
         $stmt = $this->connection->prepare($sql);
-        if (in_array((int)$rolId, [4, 6], true)) {
-            $stmt->bind_param('ssi', $inicio, $fin, $usuarioId);
-        } else {
-            $stmt->bind_param('ss', $inicio, $fin);
-        }
+        $stmt->bind_param('ssii', $inicio, $fin, $usuarioId, $usuarioId);
         $stmt->execute();
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
@@ -128,8 +120,10 @@ class AgendaReunionRepository
                     AND (cuenta.fecha_fin IS NULL OR cuenta.fecha_fin >= CURDATE())
                 JOIN usuarios usuario_cuenta
                     ON usuario_cuenta.id = cuenta.usuario_id
-                    AND usuario_cuenta.rol_id = 6
                     AND usuario_cuenta.estado = 1
+                JOIN roles rol_cuenta
+                    ON rol_cuenta.id = usuario_cuenta.rol_id
+                    AND rol_cuenta.estado = 1
                 WHERE s.id = ? AND s.analista_id = ?
                 ORDER BY analista.id DESC
                 LIMIT 1";
@@ -209,10 +203,6 @@ class AgendaReunionRepository
 
     public function cancelar($reunionId, $usuarioId, $rolId, $motivo)
     {
-        $campoResponsable = (int)$rolId === 4
-            ? 'analista_id'
-            : 'cuenta_clave_id';
-
         $sql = "UPDATE reuniones_vinculacion
                 SET estado = 'CANCELADA',
                     cancelacion_motivo = ?,
@@ -221,7 +211,7 @@ class AgendaReunionRepository
                     notificado_kam_at = NULL,
                     notificado_analista_at = NULL
                 WHERE id = ?
-                  AND " . $campoResponsable . " = ?
+                  AND (analista_id = ? OR cuenta_clave_id = ?)
                   AND estado IN (
                     'SOLICITADA',
                     'CAMBIO_SOLICITADO',
@@ -230,10 +220,11 @@ class AgendaReunionRepository
                   )";
         $stmt = $this->connection->prepare($sql);
         $stmt->bind_param(
-            'siii',
+            'siiii',
             $motivo,
             $usuarioId,
             $reunionId,
+            $usuarioId,
             $usuarioId
         );
         $stmt->execute();
@@ -300,18 +291,10 @@ class AgendaReunionRepository
                 LEFT JOIN usuarios a ON a.id=r.analista_id
                 LEFT JOIN usuarios k ON k.id=r.cuenta_clave_id
                 WHERE r.id=?";
-        if ((int)$rolId === 4) {
-            $sql .= " AND r.analista_id=?";
-        } elseif ((int)$rolId === 6) {
-            $sql .= " AND r.cuenta_clave_id=?";
-        }
+        $sql .= " AND (r.analista_id=? OR r.cuenta_clave_id=?)";
         $sql .= " LIMIT 1";
         $stmt = $this->connection->prepare($sql);
-        if (in_array((int)$rolId, [4, 6], true)) {
-            $stmt->bind_param('ii', $reunionId, $usuarioId);
-        } else {
-            $stmt->bind_param('i', $reunionId);
-        }
+        $stmt->bind_param('iii', $reunionId, $usuarioId, $usuarioId);
         $stmt->execute();
         return $stmt->get_result()->fetch_assoc() ?: null;
     }
