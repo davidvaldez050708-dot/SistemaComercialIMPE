@@ -36,7 +36,11 @@ class DataTerritorialReporteController
         unset($_SESSION['error_reporte_territorial']);
 
         $urlExportarPdf = '';
-        if ($reporte && $generarReporte) {
+        if (
+            $reporte &&
+            $generarReporte &&
+            tienePermiso('reportes.exportar')
+        ) {
             $urlExportarPdf = BASE_URL . 'index.php?' . http_build_query([
                 'controller' => 'dataTerritorialReporte',
                 'action' => 'exportarPdf',
