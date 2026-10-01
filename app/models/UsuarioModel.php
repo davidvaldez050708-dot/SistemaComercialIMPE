@@ -26,7 +26,8 @@ class UsuarioModel
                     usuarios.rol_id,
                     usuarios.requiere_cambio_password,
                     usuarios.password_temporal_expira,
-                    roles.nombre AS rol
+                    roles.nombre AS rol,
+                    roles.estado AS rol_estado
                 FROM usuarios
                 INNER JOIN roles 
                     ON usuarios.rol_id = roles.id
@@ -95,7 +96,8 @@ class UsuarioModel
                     usuarios.updated_at,
                     usuarios.requiere_cambio_password,
                     usuarios.password_temporal_expira,
-                    roles.nombre AS rol
+                    roles.nombre AS rol,
+                    roles.estado AS rol_estado
                 FROM usuarios
                 INNER JOIN roles
                     ON usuarios.rol_id = roles.id
