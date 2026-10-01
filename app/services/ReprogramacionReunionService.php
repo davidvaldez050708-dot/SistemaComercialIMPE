@@ -335,6 +335,18 @@ class ReprogramacionReunionService
             return $this->error('La reunión no está disponible para solicitar un cambio.', 409);
         }
 
+        $fechaActual = trim((string)($reunion['fecha_propuesta'] ?? ''));
+        if (
+            $fechaActual === '' ||
+            strtotime($fechaActual) === false ||
+            strtotime($fechaActual) <= time()
+        ) {
+            return $this->error(
+                'La reunión ya inició. Cuenta Clave ya no puede reprogramarla; el Analista debe registrar lo ocurrido o proponer una nueva fecha si no se realizó.',
+                409
+            );
+        }
+
         $this->connection->begin_transaction();
         try {
             $this->insertarHistorial(
@@ -354,7 +366,10 @@ class ReprogramacionReunionService
                         reprogramacion_solicitada_por=?, cambio_motivo=?,
                         cambio_solicitado_at=NOW(), cambio_solicitado_por=?,
                         notificado_analista_at=NULL
-                    WHERE id=? AND cuenta_clave_id=? AND estado IN ('CONFIRMADA','CORREO_ENVIADO')";
+                    WHERE id=?
+                      AND cuenta_clave_id=?
+                      AND estado IN ('CONFIRMADA','CORREO_ENVIADO')
+                      AND fecha_propuesta > NOW()";
             $stmt = $this->connection->prepare($sql);
             $stmt->bind_param('sisiii', $motivo, $usuarioId, $motivo, $usuarioId, $reunionId, $usuarioId);
             $stmt->execute();
