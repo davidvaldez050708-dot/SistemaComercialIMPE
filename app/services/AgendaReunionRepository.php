@@ -463,7 +463,9 @@ class AgendaReunionRepository
 
         $sql = "SELECT r.id,r.seguimiento_id,r.fecha_propuesta,s.nombre_entidad
                 FROM reuniones_vinculacion r JOIN seguimientos_vinculacion s ON s.id=r.seguimiento_id
-                WHERE r.estado='SOLICITADA' AND r.cuenta_clave_id=?
+                WHERE r.estado='SOLICITADA'
+                  AND r.cuenta_clave_id=?
+                  AND r.fecha_propuesta > NOW()
                 ORDER BY r.updated_at DESC LIMIT ?";
         $stmt = $this->connection->prepare($sql);
         $stmt->bind_param('ii', $kamId, $limite);
