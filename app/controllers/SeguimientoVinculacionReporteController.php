@@ -923,7 +923,8 @@ class SeguimientoVinculacionReporteController
                     $usuarioId,
                     (string)$filtrosReporte['fecha_inicial'],
                     (string)$filtrosReporte['fecha_final'],
-                    (string)$filtrosReporte['tipo_actividad']
+                    (string)$filtrosReporte['tipo_actividad'],
+                    $modoSeguimiento
                 );
                 $mapaActividad = array_fill_keys($idsConActividad, true);
                 $seguimientosBaseReporte = array_values(array_filter(
