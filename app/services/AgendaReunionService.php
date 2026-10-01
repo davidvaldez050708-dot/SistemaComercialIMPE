@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/AgendaReunionRepository.php';
+require_once __DIR__ . '/../helpers/PermissionHelper.php';
 require_once __DIR__ . '/EcardReunionService.php';
 
 class AgendaReunionService
@@ -17,9 +18,9 @@ class AgendaReunionService
         $this->ecardService = new EcardReunionService($this->repo->connection());
     }
 
-    public function puedeAcceder($rolId)
+    public function puedeAcceder($rolId = 0)
     {
-        return in_array((int)$rolId, [self::ROL_ANALISTA, self::ROL_CUENTA_CLAVE], true);
+        return tienePermiso('reuniones.ver');
     }
 
     public function tablaDisponible()
@@ -112,7 +113,7 @@ class AgendaReunionService
 
         if ((int)$reunionId > 0) {
             $reunion = $this->repo->reunion((int)$reunionId, (int)$usuarioId, (int)$rolId);
-        } elseif ((int)$seguimientoId > 0 && (int)$rolId === self::ROL_ANALISTA) {
+        } elseif ((int)$seguimientoId > 0 && tienePermiso('reuniones.solicitar')) {
             $reunion = $this->repo->ultimaReunionSeguimiento((int)$seguimientoId, (int)$usuarioId);
         } else {
             $reunion = null;
@@ -154,7 +155,7 @@ class AgendaReunionService
             'requiere_migracion' => false,
             'mes' => $mes,
             'reuniones' => $reuniones,
-            'seguimientos_elegibles' => $rolId === self::ROL_ANALISTA
+            'seguimientos_elegibles' => tienePermiso('reuniones.solicitar')
                 ? $this->repo->seguimientosElegibles($usuarioId)
                 : []
         ];
@@ -162,8 +163,8 @@ class AgendaReunionService
 
     public function solicitar($usuarioId, $rolId, $datos)
     {
-        if ((int)$rolId !== self::ROL_ANALISTA) {
-            return $this->error('Solo el Analista puede solicitar una reunión.', 403);
+        if (!tienePermiso('reuniones.solicitar')) {
+            return $this->error('No tienes permiso para solicitar reuniones.', 403);
         }
         if (!$this->tablaDisponible()) {
             return $this->error('Falta aplicar la migración de agenda de reuniones.', 500);
@@ -238,8 +239,8 @@ class AgendaReunionService
 
     public function reprogramar($usuarioId, $rolId, $datos)
     {
-        if ((int)$rolId !== self::ROL_ANALISTA) {
-            return $this->error('Solo el Analista puede proponer una nueva fecha.', 403);
+        if (!tienePermiso('reuniones.solicitar')) {
+            return $this->error('No tienes permiso para proponer una nueva fecha.', 403);
         }
 
         $reunionId = (int)($datos['reunion_id'] ?? 0);
@@ -289,8 +290,8 @@ class AgendaReunionService
 
     public function confirmar($usuarioId, $rolId, $datos)
     {
-        if ((int)$rolId !== self::ROL_CUENTA_CLAVE) {
-            return $this->error('Solo Cuenta Clave puede confirmar la reunión.', 403);
+        if (!tienePermiso('reuniones.gestionar')) {
+            return $this->error('No tienes permiso para confirmar reuniones.', 403);
         }
 
         $reunionId = (int)($datos['reunion_id'] ?? 0);
@@ -350,8 +351,8 @@ class AgendaReunionService
 
     public function solicitarCambio($usuarioId, $rolId, $datos)
     {
-        if ((int)$rolId !== self::ROL_CUENTA_CLAVE) {
-            return $this->error('Solo Cuenta Clave puede solicitar un cambio.', 403);
+        if (!tienePermiso('reuniones.gestionar')) {
+            return $this->error('No tienes permiso para solicitar cambios de reunión.', 403);
         }
 
         $reunionId = (int)($datos['reunion_id'] ?? 0);
@@ -387,7 +388,10 @@ class AgendaReunionService
         $usuarioId = (int)$usuarioId;
         $rolId = (int)$rolId;
 
-        if (!$this->puedeAcceder($rolId)) {
+        if (
+            !tienePermiso('reuniones.solicitar') &&
+            !tienePermiso('reuniones.gestionar')
+        ) {
             return $this->error('No tienes acceso a cancelar esta reunión.', 403);
         }
 
@@ -480,8 +484,8 @@ class AgendaReunionService
 
     public function marcarCorreoEnviado($usuarioId, $rolId, $datos)
     {
-        if ((int)$rolId !== self::ROL_ANALISTA) {
-            return $this->error('Solo el Analista puede registrar el correo de confirmación.', 403);
+        if (!tienePermiso('reuniones.solicitar')) {
+            return $this->error('No tienes permiso para registrar el correo de confirmación.', 403);
         }
 
         $reunionId = (int)($datos['reunion_id'] ?? 0);
@@ -603,7 +607,11 @@ class AgendaReunionService
             return ['recordatorios' => [], 'avisos' => []];
         }
 
-        $filas = (int)$rolId === self::ROL_CUENTA_CLAVE
+        $esSupervisor =
+            tienePermiso('seguimientos_vinculacion.supervisar') &&
+            !tienePermiso('seguimientos_vinculacion.operar_propios');
+
+        $filas = $esSupervisor
             ? $this->repo->pendientesKam((int)$limite)
             : $this->repo->pendientesAnalista((int)$usuarioId, (int)$limite);
         $salida = [];
@@ -624,7 +632,7 @@ class AgendaReunionService
 
             $prioridad = 4;
 
-            if ((int)$rolId === self::ROL_CUENTA_CLAVE) {
+            if ($esSupervisor) {
                 $accion = 'Confirmar solicitud de reunión';
                 $etiqueta = 'Pendiente de Cuenta Clave';
                 $icono = 'bi-calendar-check';
