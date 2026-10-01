@@ -1524,6 +1524,15 @@ if (!empty($seguimientosSinMunicipio)) {
 <div class="toast-container position-fixed top-0 end-0 p-3"></div>
 
 <script>
+window.IMPE_SEGUIMIENTOS_RUTA_INICIAL = <?= json_encode(
+    is_array($seguimientosRutaInicial ?? null) ? $seguimientosRutaInicial : [],
+    JSON_UNESCAPED_UNICODE |
+    JSON_HEX_TAG |
+    JSON_HEX_AMP |
+    JSON_HEX_APOS |
+    JSON_HEX_QUOT
+) ?>;
+
 document.addEventListener('DOMContentLoaded', function () {
     const formulario = document.querySelector('[data-linkage-state-filters]');
     let temporizadorFiltros = null;
@@ -1856,7 +1865,23 @@ document.addEventListener('DOMContentLoaded', function () {
             '[data-work-subtitle]',
             valorTrabajo(seguimiento.tipo_entidad_label) + ' · ' + valorTrabajo(seguimiento.municipio)
         );
-        asignarTextoTrabajo('[data-work-next-action]', seguimiento.proxima_accion_label);
+        const filaSeguimiento = document
+            .querySelector(
+                '[data-work-follow-id="' + Number(seguimiento.id || 0) + '"]'
+            )
+            ?.closest('[data-linkage-follow-row]');
+        const accionRutaInicial = String(
+            filaSeguimiento?.dataset.flowTitle ||
+            filaSeguimiento
+                ?.querySelector('[data-row-next-action]')
+                ?.dataset.flowNextAction ||
+            ''
+        ).trim();
+
+        asignarTextoTrabajo(
+            '[data-work-next-action]',
+            accionRutaInicial || seguimiento.proxima_accion_label
+        );
         asignarTextoTrabajo('[data-work-contact-name]', seguimiento.contacto_nombre);
         asignarTextoTrabajo('[data-work-contact-role]', seguimiento.contacto_cargo);
         asignarTextoTrabajo('[data-work-phone]', seguimiento.telefono_verificado || seguimiento.telefono_fuente);
