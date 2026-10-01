@@ -103,46 +103,40 @@ body.impe-seguimiento-readonly .linkage-work-offcanvas [data-work-expedient] {
    SUPERVISIÓN · ACCIÓN PRIORITARIA
    ========================================================= */
 
-.linkage-work-body > .linkage-supervision-priority,
-body.impe-seguimiento-readonly
-    .linkage-work-body > .linkage-supervision-priority {
+.linkage-supervision-toolbar {
+    flex: 0 0 auto;
     width: 100%;
-    height: auto !important;
-    min-height: 0 !important;
-    max-height: none !important;
-    display: grid !important;
-    align-self: start;
-    gap: 9px;
-    overflow: visible !important;
-    padding: 12px 13px;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
+    display: grid;
+    gap: 8px;
+    padding: 10px 18px 11px;
+    border-top: 1px solid #edf1f6;
+    border-bottom: 1px solid var(--color-border);
     background: #ffffff;
-    box-shadow: none;
 }
 
-.linkage-supervision-priority::before {
-    display: none;
-    content: none;
+body.impe-seguimiento-readonly .linkage-supervision-toolbar,
+body.impe-seguimiento-readonly
+    .linkage-supervision-toolbar [data-work-supervision-form] {
+    display: grid !important;
 }
 
 .linkage-supervision-priority-head {
     display: grid;
-    grid-template-columns: 30px minmax(0, 1fr);
-    gap: 9px;
+    grid-template-columns: 28px minmax(0, 1fr);
+    gap: 8px;
     align-items: center;
 }
 
 .linkage-supervision-priority-icon {
-    width: 30px;
-    height: 30px;
+    width: 28px;
+    height: 28px;
     display: inline-grid;
     place-items: center;
-    border: 1px solid #dbe3ef;
-    border-radius: 9px;
+    border: 1px solid #dce4ef;
+    border-radius: 8px;
     background: #f8faff;
     color: var(--color-primary);
-    font-size: 13px;
+    font-size: 12px;
 }
 
 .linkage-supervision-priority-head > div {
@@ -153,48 +147,46 @@ body.impe-seguimiento-readonly
     display: block;
     margin-bottom: 1px;
     color: var(--color-primary);
-    font-size: 9px;
+    font-size: 8.8px;
     font-weight: 800;
     letter-spacing: 0.035em;
 }
 
-.linkage-supervision-priority h3 {
+.linkage-supervision-toolbar h3 {
     margin: 0;
     color: var(--color-text-primary);
     font-size: 12.5px;
     font-weight: 800;
-    line-height: 1.3;
+    line-height: 1.25;
 }
 
-.linkage-supervision-priority form,
-body.impe-seguimiento-readonly
-    .linkage-supervision-priority [data-work-supervision-form] {
+.linkage-supervision-toolbar form {
     width: 100%;
-    display: grid !important;
+    display: grid;
     gap: 7px;
     margin: 0;
 }
 
-.linkage-supervision-priority textarea {
+.linkage-supervision-toolbar textarea {
     width: 100%;
-    min-height: 58px;
-    max-height: 120px;
+    min-height: 54px;
+    max-height: 96px;
     resize: vertical;
     border-color: #dce3ec;
     border-radius: 9px;
-    background: #ffffff;
+    background: #fbfcfe;
     color: var(--color-text-primary);
-    font-size: 11px;
+    font-size: 10.8px;
     line-height: 1.4;
 }
 
-.linkage-supervision-priority textarea:focus {
+.linkage-supervision-toolbar textarea:focus {
     border-color: #b7c5d9;
+    background: #ffffff;
     box-shadow: 0 0 0 3px rgba(39, 58, 138, 0.06);
 }
 
 .linkage-supervision-priority-actions {
-    min-width: 0;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -204,7 +196,7 @@ body.impe-seguimiento-readonly
 .linkage-supervision-priority-actions > small {
     flex: 0 0 auto;
     color: #8a94a3;
-    font-size: 9px;
+    font-size: 8.8px;
     font-weight: 700;
 }
 
@@ -217,14 +209,14 @@ body.impe-seguimiento-readonly
 }
 
 .linkage-supervision-priority-buttons .btn {
-    min-height: 32px;
+    min-height: 31px;
     padding: 0 10px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
+    gap: 5px;
     white-space: nowrap;
-    font-size: 10px;
+    font-size: 9.8px;
     font-weight: 800;
 }
 
@@ -233,6 +225,11 @@ body.impe-seguimiento-readonly
 }
 
 @media (max-width: 575.98px) {
+    .linkage-supervision-toolbar {
+        padding-right: 14px;
+        padding-left: 14px;
+    }
+
     .linkage-supervision-priority-actions {
         align-items: stretch;
         flex-direction: column;
