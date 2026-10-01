@@ -21,30 +21,15 @@ class RolModel
         $permisosDataTerritorialNuevos =
             !$this->existePermisoPorCodigo('data_territorial.ver') ||
             !$this->existePermisoPorCodigo('data_territorial.actualizar_oficial');
-        $permisosSeguimientoVinculacionBaseFaltantes =
+        /*
+         * La inicialización solo detecta permisos nuevos del catálogo.
+         * Nunca vuelve a conceder una relación rol-permiso que un Administrador
+         * haya revocado expresamente desde Roles y permisos.
+         */
+        $permisosSeguimientoVinculacionNuevos =
             !$this->existePermisoPorCodigo('seguimientos_vinculacion.operar_propios') ||
             !$this->existePermisoPorCodigo('seguimientos_vinculacion.supervisar') ||
-            !$this->existePermisoPorCodigo('seguimientos_vinculacion.comentar') ||
-            !$this->rolTienePermisoActivo(
-                'Analista de Datos',
-                'seguimientos_vinculacion.crear'
-            ) ||
-            !$this->rolTienePermisoActivo(
-                'Analista de Datos',
-                'seguimientos_vinculacion.editar'
-            ) ||
-            !$this->rolTienePermisoActivo(
-                'Analista de Datos',
-                'seguimientos_vinculacion.operar_propios'
-            ) ||
-            !$this->rolTienePermisoActivo(
-                'Cuenta Clave',
-                'seguimientos_vinculacion.supervisar'
-            ) ||
-            !$this->rolTienePermisoActivo(
-                'Cuenta Clave',
-                'seguimientos_vinculacion.comentar'
-            );
+            !$this->existePermisoPorCodigo('seguimientos_vinculacion.comentar');
 
         $sql = "INSERT INTO permisos (
                     modulo,
@@ -93,7 +78,7 @@ class RolModel
             $this->asignarPermisosInicialesDataTerritorial();
         }
 
-        if ($permisosSeguimientoVinculacionBaseFaltantes) {
+        if ($permisosSeguimientoVinculacionNuevos) {
             $this->asignarPermisosInicialesSeguimientoVinculacion();
         }
 
@@ -277,10 +262,6 @@ class RolModel
 
     public function obtenerCodigosPermisosPorRol($rolId)
     {
-        if ((int)$rolId === 1) {
-            $this->asegurarPermisosAdministrador();
-        }
-
         $sql = "SELECT permisos.codigo
                 FROM rol_permisos
                 INNER JOIN permisos
@@ -303,18 +284,25 @@ class RolModel
         return $codigos;
     }
 
-    public function actualizarPermisosRol($rolId, $permisosIds)
+    public function actualizarPermisosRol($rolId, $permisosIds, $actorUsuarioId = 0)
     {
         if ((int)$rolId === 1) {
+            /*
+             * Administrador es un rol protegido. Sus permisos se mantienen desde
+             * el catálogo del sistema y no pueden editarse desde la interfaz.
+             */
             $this->asegurarPermisosAdministrador();
             return true;
         }
 
         $permisosIds = array_values(array_unique(array_map('intval', $permisosIds)));
+        $permisosIds = $this->normalizarDependenciasPermisos($permisosIds);
 
         if (!$this->validarPermisosExistentes($permisosIds)) {
             return false;
         }
+
+        $permisosAnteriores = $this->obtenerIdsPermisosRol($rolId);
 
         $this->connection->begin_transaction();
 
@@ -323,7 +311,10 @@ class RolModel
                             WHERE rol_id = ?";
             $stmtEliminar = $this->connection->prepare($sqlEliminar);
             $stmtEliminar->bind_param("i", $rolId);
-            $stmtEliminar->execute();
+
+            if (!$stmtEliminar->execute()) {
+                throw new RuntimeException('No fue posible limpiar los permisos anteriores.');
+            }
 
             if (!empty($permisosIds)) {
                 $sqlInsertar = "INSERT INTO rol_permisos (
@@ -334,9 +325,19 @@ class RolModel
 
                 foreach ($permisosIds as $permisoId) {
                     $stmtInsertar->bind_param("ii", $rolId, $permisoId);
-                    $stmtInsertar->execute();
+
+                    if (!$stmtInsertar->execute()) {
+                        throw new RuntimeException('No fue posible asignar uno de los permisos.');
+                    }
                 }
             }
+
+            $this->registrarAuditoriaPermisos(
+                (int)$rolId,
+                (int)$actorUsuarioId,
+                $permisosAnteriores,
+                $permisosIds
+            );
 
             $this->connection->commit();
 
@@ -678,6 +679,170 @@ class RolModel
                 $stmt->bind_param("ss", $codigo, $nombreRol);
                 $stmt->execute();
             }
+        }
+    }
+
+    private function normalizarDependenciasPermisos($permisosIds)
+    {
+        if (empty($permisosIds)) {
+            return [];
+        }
+
+        $dependencias = [
+            'usuarios.crear' => 'usuarios.ver',
+            'usuarios.editar' => 'usuarios.ver',
+            'usuarios.cambiar_estado' => 'usuarios.ver',
+            'roles.crear' => 'roles.ver',
+            'roles.editar' => 'roles.ver',
+            'roles.cambiar_estado' => 'roles.ver',
+            'roles.asignar_permisos' => 'roles.ver',
+            'territorios.asignar' => 'territorios.ver',
+            'data_territorial.editar' => 'data_territorial.ver',
+            'data_territorial.actualizar_oficial' => 'data_territorial.ver',
+            'data_territorial.gestionar_secretarias' => 'data_territorial.ver',
+            'data_territorial.gestionar_municipios' => 'data_territorial.ver',
+            'data_territorial.gestionar_indicadores' => 'data_territorial.ver',
+            'seguimientos_vinculacion.crear' => 'seguimientos_vinculacion.ver',
+            'seguimientos_vinculacion.editar' => 'seguimientos_vinculacion.ver',
+            'seguimientos_vinculacion.operar_propios' => 'seguimientos_vinculacion.ver',
+            'seguimientos_vinculacion.supervisar' => 'seguimientos_vinculacion.ver',
+            'seguimientos_vinculacion.comentar' => 'seguimientos_vinculacion.ver',
+            'oficios.generar' => 'oficios.ver',
+            'oficios.enviar' => 'oficios.ver',
+            'reuniones.solicitar' => 'reuniones.ver',
+            'reuniones.gestionar' => 'reuniones.ver',
+            'convocatorias.crear' => 'convocatorias.ver',
+            'convocatorias.editar' => 'convocatorias.ver',
+            'convocatorias.gestionar' => 'convocatorias.ver',
+            'convocatorias.descargar' => 'convocatorias.ver',
+            'convocatorias.cambiar_estado' => 'convocatorias.ver',
+            'reportes.exportar' => 'reportes.ver'
+        ];
+
+        $resultado = $this->connection->query(
+            "SELECT id, codigo
+             FROM permisos
+             WHERE estado = 1"
+        );
+
+        $idPorCodigo = [];
+        $codigoPorId = [];
+
+        while ($fila = $resultado->fetch_assoc()) {
+            $id = (int)$fila['id'];
+            $codigo = (string)$fila['codigo'];
+            $idPorCodigo[$codigo] = $id;
+            $codigoPorId[$id] = $codigo;
+        }
+
+        $seleccionados = array_fill_keys(array_map('intval', $permisosIds), true);
+        $cambio = true;
+
+        while ($cambio) {
+            $cambio = false;
+
+            foreach (array_keys($seleccionados) as $permisoId) {
+                $codigo = $codigoPorId[(int)$permisoId] ?? '';
+                $padre = $dependencias[$codigo] ?? '';
+
+                if ($padre === '' || !isset($idPorCodigo[$padre])) {
+                    continue;
+                }
+
+                $padreId = (int)$idPorCodigo[$padre];
+
+                if (!isset($seleccionados[$padreId])) {
+                    $seleccionados[$padreId] = true;
+                    $cambio = true;
+                }
+            }
+        }
+
+        $ids = array_map('intval', array_keys($seleccionados));
+        sort($ids, SORT_NUMERIC);
+
+        return $ids;
+    }
+
+    private function obtenerIdsPermisosRol($rolId)
+    {
+        $sql = "SELECT permiso_id
+                FROM rol_permisos
+                WHERE rol_id = ?
+                ORDER BY permiso_id";
+
+        $stmt = $this->connection->prepare($sql);
+        $rolId = (int)$rolId;
+        $stmt->bind_param('i', $rolId);
+        $stmt->execute();
+
+        $ids = [];
+        $resultado = $stmt->get_result();
+
+        while ($fila = $resultado->fetch_assoc()) {
+            $ids[] = (int)$fila['permiso_id'];
+        }
+
+        return $ids;
+    }
+
+    private function registrarAuditoriaPermisos(
+        $rolId,
+        $actorUsuarioId,
+        $anteriores,
+        $nuevos
+    ) {
+        $tabla = $this->connection->query(
+            "SHOW TABLES LIKE 'auditoria_roles_permisos'"
+        );
+
+        if (!$tabla || $tabla->num_rows === 0) {
+            return;
+        }
+
+        $anteriores = array_values(array_unique(array_map('intval', $anteriores)));
+        $nuevos = array_values(array_unique(array_map('intval', $nuevos)));
+        sort($anteriores, SORT_NUMERIC);
+        sort($nuevos, SORT_NUMERIC);
+
+        if ($anteriores === $nuevos) {
+            return;
+        }
+
+        $agregados = array_values(array_diff($nuevos, $anteriores));
+        $removidos = array_values(array_diff($anteriores, $nuevos));
+
+        $sql = "INSERT INTO auditoria_roles_permisos (
+                    rol_id,
+                    actor_usuario_id,
+                    accion,
+                    permisos_anteriores,
+                    permisos_nuevos,
+                    permisos_agregados,
+                    permisos_removidos,
+                    created_at
+                ) VALUES (?, NULLIF(?, 0), 'ACTUALIZAR_PERMISOS', ?, ?, ?, ?, NOW())";
+
+        $stmt = $this->connection->prepare($sql);
+        $anterioresJson = json_encode($anteriores, JSON_UNESCAPED_UNICODE);
+        $nuevosJson = json_encode($nuevos, JSON_UNESCAPED_UNICODE);
+        $agregadosJson = json_encode($agregados, JSON_UNESCAPED_UNICODE);
+        $removidosJson = json_encode($removidos, JSON_UNESCAPED_UNICODE);
+        $rolId = (int)$rolId;
+        $actorUsuarioId = (int)$actorUsuarioId;
+
+        $stmt->bind_param(
+            'iissss',
+            $rolId,
+            $actorUsuarioId,
+            $anterioresJson,
+            $nuevosJson,
+            $agregadosJson,
+            $removidosJson
+        );
+
+        if (!$stmt->execute()) {
+            throw new RuntimeException('No fue posible registrar la auditoría de permisos.');
         }
     }
 
