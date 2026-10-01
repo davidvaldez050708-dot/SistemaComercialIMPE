@@ -204,6 +204,33 @@ class AgendaReunionRepository
         return $stmt->get_result()->fetch_assoc() ?: null;
     }
 
+    public function solicitarCancelacionConAviso(
+        $reunionId,
+        $cuentaClaveId,
+        $motivo
+    ) {
+        $sql = "UPDATE reuniones_vinculacion
+                SET estado = 'CANCELACION_SOLICITADA',
+                    cancelacion_motivo = ?,
+                    cancelada_at = NULL,
+                    cancelada_por = ?,
+                    notificado_analista_at = NULL
+                WHERE id = ?
+                  AND cuenta_clave_id = ?
+                  AND estado = 'CORREO_ENVIADO'";
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param(
+            'siii',
+            $motivo,
+            $cuentaClaveId,
+            $reunionId,
+            $cuentaClaveId
+        );
+        $stmt->execute();
+
+        return $stmt->affected_rows > 0;
+    }
+
     public function cancelar($reunionId, $usuarioId, $rolId, $motivo)
     {
         $sql = "UPDATE reuniones_vinculacion
@@ -219,7 +246,8 @@ class AgendaReunionRepository
                     'SOLICITADA',
                     'CAMBIO_SOLICITADO',
                     'CONFIRMADA',
-                    'CORREO_ENVIADO'
+                    'CORREO_ENVIADO',
+                    'CANCELACION_SOLICITADA'
                   )";
         $stmt = $this->connection->prepare($sql);
         $stmt->bind_param(
@@ -445,7 +473,11 @@ class AgendaReunionRepository
                   AND s.activo = 1
                   AND s.estado_seguimiento <> 'DESCARTADO'
                   AND (
-                    r.estado IN ('CAMBIO_SOLICITADO','CONFIRMADA')
+                    r.estado IN (
+                        'CAMBIO_SOLICITADO',
+                        'CONFIRMADA',
+                        'CANCELACION_SOLICITADA'
+                    )
                     OR (
                         r.estado = 'CORREO_ENVIADO'
                         AND r.fecha_propuesta <= DATE_ADD(NOW(), INTERVAL 24 HOUR)
@@ -453,6 +485,8 @@ class AgendaReunionRepository
                   )
                 ORDER BY
                     CASE
+                        WHEN r.estado = 'CANCELACION_SOLICITADA'
+                        THEN 0
                         WHEN r.estado = 'CORREO_ENVIADO'
                              AND DATE_ADD(
                                  r.fecha_propuesta,
