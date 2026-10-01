@@ -82,13 +82,20 @@ class CorreoFirmadoController
         $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
         $rolId = (int)($_SESSION['rol_id'] ?? 0);
 
-        if (
-            $usuarioId <= 0 ||
-            !tieneAlgunPermiso([
+        $puedeEnviar = false;
+
+        if ($rolId === AgendaReunionService::ROL_CUENTA_CLAVE) {
+            $puedeEnviar = tienePermiso('reuniones.gestionar');
+        } elseif ($rolId === AgendaReunionService::ROL_ANALISTA) {
+            $puedeEnviar = tienePermiso('reuniones.solicitar');
+        } else {
+            $puedeEnviar = tieneAlgunPermiso([
                 'reuniones.solicitar',
                 'reuniones.gestionar'
-            ])
-        ) {
+            ]);
+        }
+
+        if ($usuarioId <= 0 || !$puedeEnviar) {
             $this->responder([
                 'ok' => false,
                 'mensaje' => 'No tienes acceso a este envío.'
