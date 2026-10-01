@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/../services/ReporteAdministradorDataService.php';
 require_once __DIR__ . '/../services/ReporteAdministradorPdfService.php';
+require_once __DIR__ . '/../helpers/PermissionHelper.php';
 
 class ReporteAdministradorController
 {
