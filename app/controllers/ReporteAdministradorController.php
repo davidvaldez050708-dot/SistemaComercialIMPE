@@ -70,9 +70,14 @@ class ReporteAdministradorController
             exit;
         }
 
-        if ((int)($_SESSION['rol_id'] ?? 0) !== 1) {
+        if (
+            (int)($_SESSION['rol_id'] ?? 0) !== 1 ||
+            !tienePermiso('reportes.ver') ||
+            !tienePermiso('reportes.usuarios') ||
+            !tienePermiso('reportes.exportar')
+        ) {
             http_response_code(403);
-            die('No tienes permiso para generar este reporte.');
+            die('No tienes permiso para exportar este reporte.');
         }
     }
 
