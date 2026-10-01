@@ -71,7 +71,7 @@ $permisosHabilitados = $rolEsAdministrador
 
         <div class="roles-note">
             <i class="bi bi-shield-check"></i>
-            El rol Administrador conserva siempre acceso completo al sistema.
+            El rol Administrador conserva acceso administrativo completo; en Seguimiento de vinculación opera en modo consulta.
         </div>
 
     <?php elseif (!$puedeAsignarPermisos): ?>
@@ -157,6 +157,7 @@ $permisosHabilitados = $rolEsAdministrador
                                     id="<?= $checkboxId ?>"
                                     name="permisos[]"
                                     value="<?= (int)$permiso['id'] ?>"
+                                    data-permission-code="<?= $textoRol($permiso['codigo']) ?>"
                                     <?= $permisoActivo ? 'checked' : '' ?>
                                     <?= $panelBloqueado ? 'disabled' : '' ?>>
 
