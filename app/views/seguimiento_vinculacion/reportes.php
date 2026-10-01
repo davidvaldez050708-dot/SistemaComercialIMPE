@@ -32,6 +32,28 @@ $errorExportacionPdf = $errorExportacionPdf ?? '';
 $urlExportarPdf = $urlExportarPdf ?? '';
 $modoModalReporte = (string)($_GET['modal'] ?? '') === '1';
 $tipoReporteActual = (string)($filtrosReporte['tipo_reporte'] ?? 'cartera');
+$tiposReportePermitidos = is_array($tiposReportePermitidos ?? null)
+    ? $tiposReportePermitidos
+    : [];
+$modoReporteEtiquetas = [
+    'analista' => [
+        'actividad' => ['titulo' => 'Mi actividad', 'detalle' => 'Lo que hiciste durante un periodo.'],
+        'cartera' => ['titulo' => 'Mi cartera', 'detalle' => 'Estado actual de tus seguimientos.'],
+        'institucion' => ['titulo' => 'Una institución', 'detalle' => 'Expediente ejecutivo de un seguimiento.']
+    ],
+    'supervisor' => [
+        'actividad' => ['titulo' => 'Actividad del equipo', 'detalle' => 'Interacciones de los Analistas que supervisas.'],
+        'cartera' => ['titulo' => 'Cartera supervisada', 'detalle' => 'Estado actual de los seguimientos de tu equipo.'],
+        'institucion' => ['titulo' => 'Una institución', 'detalle' => 'Expediente ejecutivo de una institución supervisada.']
+    ],
+    'administrador' => [
+        'actividad' => ['titulo' => 'Actividad global', 'detalle' => 'Actividad de seguimiento dentro del alcance seleccionado.'],
+        'cartera' => ['titulo' => 'Cartera general', 'detalle' => 'Estado actual de los seguimientos del sistema.'],
+        'institucion' => ['titulo' => 'Una institución', 'detalle' => 'Expediente ejecutivo de una institución.']
+    ]
+];
+$etiquetasModoReporte = $modoReporteEtiquetas[$modoSeguimiento]
+    ?? $modoReporteEtiquetas['analista'];
 $analiticaReporte = is_array($analiticaReporte ?? null) ? $analiticaReporte : [];
 $detalleInstitucionReporte = is_array($detalleInstitucionReporte ?? null)
     ? $detalleInstitucionReporte
@@ -103,33 +125,60 @@ $etiquetaResultadoReporte = static function ($resultado) {
         'REGISTRADA' => 'Registrada'
     ][$resultado] ?? ($resultado !== '' ? ucfirst(strtolower(str_replace('_', ' ', $resultado))) : 'Registrada');
 };
-$titulosReporteAnalista = [
-    'actividad' => [
-        'titulo' => 'Mi actividad de seguimiento',
-        'subtitulo' => 'Actividad e interacciones registradas dentro del periodo seleccionado.'
+$titulosReportePorModo = [
+    'analista' => [
+        'actividad' => [
+            'titulo' => 'Mi actividad de seguimiento',
+            'subtitulo' => 'Actividad e interacciones registradas dentro del periodo seleccionado.'
+        ],
+        'cartera' => [
+            'titulo' => 'Mi cartera de seguimiento',
+            'subtitulo' => 'Estado actual de tus seguimientos incluidos en la consulta.'
+        ],
+        'institucion' => [
+            'titulo' => 'Reporte de institución',
+            'subtitulo' => 'Expediente ejecutivo del seguimiento seleccionado.'
+        ]
     ],
-    'cartera' => [
-        'titulo' => 'Mi cartera de seguimiento',
-        'subtitulo' => 'Estado actual de los seguimientos incluidos en la consulta.'
+    'supervisor' => [
+        'actividad' => [
+            'titulo' => 'Actividad del equipo',
+            'subtitulo' => 'Actividad e interacciones de los Analistas supervisados dentro del periodo seleccionado.'
+        ],
+        'cartera' => [
+            'titulo' => 'Cartera supervisada',
+            'subtitulo' => 'Estado actual de los seguimientos de los Analistas bajo tu supervisión.'
+        ],
+        'institucion' => [
+            'titulo' => 'Reporte de institución',
+            'subtitulo' => 'Expediente ejecutivo de una institución dentro de tu alcance de supervisión.'
+        ]
     ],
-    'institucion' => [
-        'titulo' => 'Reporte de institución',
-        'subtitulo' => 'Expediente ejecutivo del seguimiento seleccionado.'
+    'administrador' => [
+        'actividad' => [
+            'titulo' => 'Actividad global de seguimiento',
+            'subtitulo' => 'Actividad e interacciones dentro del alcance seleccionado.'
+        ],
+        'cartera' => [
+            'titulo' => 'Cartera general de seguimiento',
+            'subtitulo' => 'Estado actual de los seguimientos incluidos en la consulta.'
+        ],
+        'institucion' => [
+            'titulo' => 'Reporte de institución',
+            'subtitulo' => 'Expediente ejecutivo del seguimiento seleccionado.'
+        ]
     ]
 ];
+$titulosModoActual = $titulosReportePorModo[$modoSeguimiento]
+    ?? $titulosReportePorModo['analista'];
 $tituloReporteGenerado =
-    $modoSeguimiento === 'analista'
-        ? ($titulosReporteAnalista[$tipoReporteActual]['titulo'] ?? 'Reporte de Seguimiento de Vinculación')
-        : 'Reporte de Seguimiento de Vinculación';
+    $titulosModoActual[$tipoReporteActual]['titulo']
+    ?? 'Reporte de Seguimiento de Vinculación';
 $subtituloReporteGenerado =
-    $modoSeguimiento === 'analista'
-        ? ($titulosReporteAnalista[$tipoReporteActual]['subtitulo'] ?? 'Resultados calculados con los criterios seleccionados.')
-        : 'Resultados calculados con los criterios seleccionados.';
+    $titulosModoActual[$tipoReporteActual]['subtitulo']
+    ?? 'Resultados calculados con los criterios seleccionados.';
 
-if (
-    $modoSeguimiento === 'analista' &&
-    $tipoReporteActual === 'institucion'
-) {
+if ($tipoReporteActual === 'institucion') {
     $institucionEncabezado = is_array($detalleInstitucionReporte['seguimiento'] ?? null)
         ? $detalleInstitucionReporte['seguimiento']
         : (count($seguimientosReporte) === 1 ? $seguimientosReporte[0] : []);
@@ -139,10 +188,12 @@ if (
         trim((string)($institucionEncabezado['estado_nombre'] ?? ''))
     ])));
 
-    $subtituloReporteGenerado = trim(
-        $nombreInstitucionEncabezado .
-        ($ubicacionInstitucionEncabezado !== '' ? ' · ' . $ubicacionInstitucionEncabezado : '')
-    );
+    if ($nombreInstitucionEncabezado !== '') {
+        $subtituloReporteGenerado = trim(
+            $nombreInstitucionEncabezado .
+            ($ubicacionInstitucionEncabezado !== '' ? ' · ' . $ubicacionInstitucionEncabezado : '')
+        );
+    }
 }
 
 $fechaHoraReporte = static function ($valor) {
@@ -341,45 +392,41 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
             value="<?= $texto($filtrosReporte['tipo_reporte'] ?? 'cartera') ?>"
             data-report-type-input>
 
-        <?php if ($modoSeguimiento === 'analista'): ?>
-            <div class="report-mode-selector" data-analyst-report-modes>
-                <button
-                    type="button"
-                    class="report-mode-card"
-                    data-report-mode="actividad"
-                    aria-pressed="false">
-                    <span class="report-mode-icon"><i class="bi bi-activity"></i></span>
-                    <span>
-                        <strong>Mi actividad</strong>
-                        <small>Lo que hiciste durante un periodo.</small>
-                    </span>
-                </button>
-                <button
-                    type="button"
-                    class="report-mode-card"
-                    data-report-mode="cartera"
-                    aria-pressed="false">
-                    <span class="report-mode-icon"><i class="bi bi-kanban"></i></span>
-                    <span>
-                        <strong>Mi cartera</strong>
-                        <small>Estado actual de tus seguimientos.</small>
-                    </span>
-                </button>
-                <button
-                    type="button"
-                    class="report-mode-card"
-                    data-report-mode="institucion"
-                    aria-pressed="false">
-                    <span class="report-mode-icon"><i class="bi bi-building"></i></span>
-                    <span>
-                        <strong>Una institución</strong>
-                        <small>Expediente ejecutivo de un seguimiento.</small>
-                    </span>
-                </button>
-            </div>
-        <?php endif; ?>
+        <div
+            class="report-mode-selector"
+            data-report-modes
+            data-report-scope="<?= $texto($modoSeguimiento) ?>">
+            <?php foreach (['actividad', 'cartera', 'institucion'] as $tipoModo): ?>
+                <?php if (!empty($tiposReportePermitidos[$tipoModo])): ?>
+                    <?php
+                    $metaModo = $etiquetasModoReporte[$tipoModo] ?? [
+                        'titulo' => ucfirst($tipoModo),
+                        'detalle' => ''
+                    ];
+                    $iconoModo = [
+                        'actividad' => 'bi-activity',
+                        'cartera' => 'bi-kanban',
+                        'institucion' => 'bi-building'
+                    ][$tipoModo] ?? 'bi-file-earmark-bar-graph';
+                    ?>
+                    <button
+                        type="button"
+                        class="report-mode-card"
+                        data-report-mode="<?= $texto($tipoModo) ?>"
+                        aria-pressed="false">
+                        <span class="report-mode-icon">
+                            <i class="bi <?= $texto($iconoModo) ?>"></i>
+                        </span>
+                        <span>
+                            <strong><?= $texto($metaModo['titulo']) ?></strong>
+                            <small><?= $texto($metaModo['detalle']) ?></small>
+                        </span>
+                    </button>
+                <?php endif; ?>
+            <?php endforeach; ?>
+        </div>
 
-        <?php if ($modoSeguimiento === 'analista'): ?>
+        <?php if (!empty($tiposReportePermitidos['actividad'])): ?>
             <div class="report-period-shortcuts d-none" data-report-period-shortcuts>
                 <span>Periodo rápido:</span>
                 <button type="button" class="btn btn-sm btn-light" data-report-period="today">Hoy</button>
@@ -567,22 +614,13 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
         <?php endif; ?>
 
         <div class="<?= $modoModalReporte ? 'modal-footer' : 'd-flex flex-wrap justify-content-end gap-2 mt-3' ?>">
-            <?php if ($modoSeguimiento === 'analista'): ?>
-                <a
-                    class="btn <?= $modoModalReporte ? 'btn-system-cancel' : 'btn-secondary' ?>"
-                    href="<?= $texto($urlLimpiar) ?>"
-                    data-report-clear-filters>
-                    <i class="bi bi-arrow-counterclockwise me-2"></i>
-                    Limpiar filtros
-                </a>
-            <?php else: ?>
-                <a
-                    class="btn <?= $modoModalReporte ? 'btn-system-cancel' : 'btn-secondary' ?>"
-                    href="<?= $texto($urlLimpiar) ?>">
-                    <i class="bi bi-arrow-counterclockwise me-2"></i>
-                    Limpiar filtros
-                </a>
-            <?php endif; ?>
+            <a
+                class="btn <?= $modoModalReporte ? 'btn-system-cancel' : 'btn-secondary' ?>"
+                href="<?= $texto($urlLimpiar) ?>"
+                data-report-clear-filters>
+                <i class="bi bi-arrow-counterclockwise me-2"></i>
+                Limpiar filtros
+            </a>
             <button
                 class="btn <?= $modoModalReporte ? 'btn-system-save' : 'btn-system-primary' ?>"
                 type="submit">
