@@ -498,46 +498,32 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
             </div>
 
             <div class="col-md-6 col-xl-4" data-report-field="institucion">
-                <?php if ($modoSeguimiento === 'analista'): ?>
-                    <label class="form-label" for="reporte_institucion_selector">Institución</label>
-                    <input
-                        type="hidden"
-                        id="reporte_institucion"
-                        name="institucion_id"
-                        value="<?= (int)($filtrosReporte['institucion_id'] ?? 0) ?>"
-                        data-report-institution-input>
-                    <button
-                        type="button"
-                        class="form-select report-institution-trigger"
-                        id="reporte_institucion_selector"
-                        data-report-institution-picker
-                        <?= $estadoIdActual > 0 ? '' : 'disabled' ?>>
-                        <span
-                            class="report-institution-trigger-label"
-                            data-report-institution-label>
-                            <?= trim((string)($filtrosReporte['institucion'] ?? '')) !== ''
-                                ? $texto($filtrosReporte['institucion'])
-                                : 'Seleccionar institución' ?>
-                        </span>
-                    </button>
-                    <div class="form-text report-institution-hint" data-report-institution-hint>
-                        <?= $estadoIdActual > 0
-                            ? 'Puedes acotar por municipio o elegir una institución del estado seleccionado.'
-                            : 'Selecciona primero un estado para consultar las instituciones disponibles.' ?>
-                    </div>
-                <?php else: ?>
-                    <label class="form-label" for="reporte_institucion">Institución</label>
-                    <select class="form-select" id="reporte_institucion" name="institucion">
-                        <option value="">Todas</option>
-                        <?php foreach ($institucionesDisponibles as $institucion): ?>
-                            <option
-                                value="<?= $texto($institucion) ?>"
-                                <?= $seleccionado($filtrosReporte['institucion'] ?? '', $institucion) ?>>
-                                <?= $texto($institucion) ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                <?php endif; ?>
+                <label class="form-label" for="reporte_institucion_selector">Institución</label>
+                <input
+                    type="hidden"
+                    id="reporte_institucion"
+                    name="institucion_id"
+                    value="<?= (int)($filtrosReporte['institucion_id'] ?? 0) ?>"
+                    data-report-institution-input>
+                <button
+                    type="button"
+                    class="form-select report-institution-trigger"
+                    id="reporte_institucion_selector"
+                    data-report-institution-picker
+                    <?= $estadoIdActual > 0 ? '' : 'disabled' ?>>
+                    <span
+                        class="report-institution-trigger-label"
+                        data-report-institution-label>
+                        <?= trim((string)($filtrosReporte['institucion'] ?? '')) !== ''
+                            ? $texto($filtrosReporte['institucion'])
+                            : 'Seleccionar institución' ?>
+                    </span>
+                </button>
+                <div class="form-text report-institution-hint" data-report-institution-hint>
+                    <?= $estadoIdActual > 0
+                        ? 'Puedes acotar por municipio o elegir una institución del estado seleccionado.'
+                        : 'Selecciona primero un estado para consultar las instituciones disponibles.' ?>
+                </div>
             </div>
 
             <div class="col-md-6 col-xl-4<?= $modoSeguimiento === 'analista' ? ' d-none' : '' ?>" data-report-field="responsable">
@@ -640,7 +626,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
         </div>
     </form>
 
-    <?php if ($modoSeguimiento === 'analista'): ?>
+    <?php if (!empty($tiposReportePermitidos['institucion'])): ?>
         <div class="report-institution-picker-backdrop d-none" data-report-institution-dialog aria-hidden="true">
             <section
                 class="report-institution-picker-dialog"
