@@ -512,15 +512,21 @@ class TerritorioController
 
     private function resolverTipoAsignacionConsulta()
     {
-        if (tienePermiso('seguimientos_vinculacion.supervisar')) {
+        /*
+         * El permiso territorios.ver autoriza la consulta; el rol del sistema
+         * determina qué tipo de asignación territorial acota esa consulta.
+         */
+        $rolId = (int)($_SESSION['rol_id'] ?? 0);
+
+        if ($rolId === 6) {
             return 'CUENTA_CLAVE';
         }
 
-        if (tienePermiso('seguimientos_vinculacion.operar_propios')) {
+        if ($rolId === 4) {
             return 'ANALISTA_DATOS';
         }
 
-        if ((int)($_SESSION['rol_id'] ?? 0) === 3) {
+        if ($rolId === 3) {
             return 'ASESOR';
         }
 
