@@ -72,7 +72,11 @@ class SeguimientoVinculacionModel
         }
 
         $stmt = $this->connection->prepare($sql);
-        $stmt->bind_param($tipos, ...$parametros);
+
+        if ($tipos !== '') {
+            $stmt->bind_param($tipos, ...$parametros);
+        }
+
         $stmt->execute();
 
         $resultado = $stmt->get_result();
