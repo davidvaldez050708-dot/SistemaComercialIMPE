@@ -36,8 +36,8 @@ class ReminderController
         header('Content-Type: application/json; charset=utf-8');
 
         $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
-        $esSupervisor = tienePermiso('seguimientos_vinculacion.supervisar');
-        $esAnalista = tienePermiso('seguimientos_vinculacion.operar_propios');
+        $esSupervisor = tienePermiso('reuniones.gestionar');
+        $esAnalista = tienePermiso('reuniones.solicitar');
 
         if (
             $usuarioId <= 0 ||
