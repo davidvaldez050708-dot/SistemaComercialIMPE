@@ -366,6 +366,18 @@ class AgendaReunionService
             return $this->error('La solicitud ya no está pendiente.', 409);
         }
 
+        $fechaPropuesta = trim((string)($reunion['fecha_propuesta'] ?? ''));
+        if (
+            $fechaPropuesta === '' ||
+            strtotime($fechaPropuesta) === false ||
+            strtotime($fechaPropuesta) <= time()
+        ) {
+            return $this->error(
+                'La fecha propuesta ya inició. El Analista debe registrar lo ocurrido o proponer una nueva fecha.',
+                409
+            );
+        }
+
         if (!$this->repo->solicitarCambio($reunionId, (int)$usuarioId, $motivo)) {
             return $this->error('La solicitud fue atendida por otro usuario.', 409);
         }
@@ -446,6 +458,23 @@ class AgendaReunionService
         $estadoReunion = strtoupper(
             (string)($reunion['estado'] ?? '')
         );
+        $fechaInicioReunion = trim(
+            (string)($reunion['fecha_propuesta'] ?? '')
+        );
+        $inicioReunionTs = $fechaInicioReunion !== ''
+            ? strtotime($fechaInicioReunion)
+            : false;
+
+        if (
+            $estadoReunion !== 'CANCELACION_SOLICITADA' &&
+            $inicioReunionTs !== false &&
+            $inicioReunionTs <= time()
+        ) {
+            return $this->error(
+                'La reunión ya inició. Ya no puede cancelarse; registra lo ocurrido o reprograma si no se realizó.',
+                409
+            );
+        }
 
         if (
             $estadoReunion === 'CORREO_ENVIADO' &&
@@ -560,6 +589,19 @@ class AgendaReunionService
         if (!$reunion || (string)$reunion['estado'] !== 'CONFIRMADA') {
             return $this->error('La reunión todavía no está lista para enviar la confirmación.', 409);
         }
+
+        $fechaPropuesta = trim((string)($reunion['fecha_propuesta'] ?? ''));
+        if (
+            $fechaPropuesta === '' ||
+            strtotime($fechaPropuesta) === false ||
+            strtotime($fechaPropuesta) <= time()
+        ) {
+            return $this->error(
+                'La hora de la reunión ya inició. No envíes una confirmación atrasada; reprograma la reunión.',
+                409
+            );
+        }
+
         $correo = trim((string)($reunion['contacto_correo'] ?? ''));
         if ($correo === '' || !filter_var($correo, FILTER_VALIDATE_EMAIL)) {
             return $this->error('El seguimiento no tiene un correo de contacto válido.', 422);
@@ -786,11 +828,20 @@ class AgendaReunionService
         $fila['duracion_minutos'] = (int)($fila['duracion_minutos'] ?? 60);
 
         $estado = strtoupper(trim((string)($fila['estado'] ?? 'SOLICITADA')));
+        $tiempoReunion = $this->resolverTiempoReunion(
+            (string)($fila['fecha_propuesta'] ?? ''),
+            (int)($fila['duracion_minutos'] ?? 60)
+        );
         $estadoVisual = $this->resolverEstadoVisual(
             $estado,
-            (string)($fila['fecha_propuesta'] ?? '')
+            (string)($fila['fecha_propuesta'] ?? ''),
+            (int)($fila['duracion_minutos'] ?? 60)
         );
 
+        $fila['reunion_iniciada'] = (bool)$tiempoReunion['iniciada'];
+        $fila['reunion_en_curso'] = (bool)$tiempoReunion['en_curso'];
+        $fila['reunion_finalizada'] = (bool)$tiempoReunion['finalizada'];
+        $fila['reunion_fin'] = (string)$tiempoReunion['fecha_fin'];
         $fila['esta_vencida'] = (bool)$estadoVisual['vencida'];
         $fila['estado_visual'] = (string)$estadoVisual['clase'];
         $fila['estado_etiqueta'] = (string)$estadoVisual['etiqueta'];
@@ -827,27 +878,81 @@ class AgendaReunionService
         return $fila;
     }
 
-    private function resolverEstadoVisual($estado, $fechaPropuesta)
+    private function resolverTiempoReunion($fechaPropuesta, $duracion)
     {
-        $estado = strtoupper(trim((string)$estado));
-        $vencida = false;
+        $fechaTexto = trim((string)$fechaPropuesta);
+        $duracion = max(1, (int)$duracion);
 
-        try {
-            $fecha = trim((string)$fechaPropuesta) !== ''
-                ? new DateTime((string)$fechaPropuesta)
-                : null;
-            $vencida = $fecha instanceof DateTime &&
-                $fecha <= new DateTime() &&
-                in_array($estado, ['SOLICITADA', 'CONFIRMADA', 'CORREO_ENVIADO'], true);
-        } catch (Throwable $error) {
-            $vencida = false;
+        if ($fechaTexto === '') {
+            return [
+                'iniciada' => false,
+                'en_curso' => false,
+                'finalizada' => false,
+                'fecha_fin' => ''
+            ];
         }
 
-        if ($vencida) {
+        try {
+            $inicio = new DateTimeImmutable($fechaTexto);
+            $fin = $inicio->modify('+' . $duracion . ' minutes');
+            $ahora = new DateTimeImmutable();
+
+            return [
+                'iniciada' => $inicio <= $ahora,
+                'en_curso' => $inicio <= $ahora && $fin > $ahora,
+                'finalizada' => $fin <= $ahora,
+                'fecha_fin' => $fin->format('Y-m-d H:i:s')
+            ];
+        } catch (Throwable $error) {
+            return [
+                'iniciada' => false,
+                'en_curso' => false,
+                'finalizada' => false,
+                'fecha_fin' => ''
+            ];
+        }
+    }
+
+    private function resolverEstadoVisual(
+        $estado,
+        $fechaPropuesta,
+        $duracion = 60
+    ) {
+        $estado = strtoupper(trim((string)$estado));
+        $tiempo = $this->resolverTiempoReunion(
+            $fechaPropuesta,
+            $duracion
+        );
+
+        if (
+            $estado === 'CORREO_ENVIADO' &&
+            (bool)$tiempo['en_curso']
+        ) {
+            return [
+                'vencida' => false,
+                'clase' => 'en-curso',
+                'etiqueta' => 'En curso'
+            ];
+        }
+
+        if (
+            $estado === 'CORREO_ENVIADO' &&
+            (bool)$tiempo['finalizada']
+        ) {
+            return [
+                'vencida' => true,
+                'clase' => 'vencida',
+                'etiqueta' => 'Vencida · pendiente de registrar'
+            ];
+        }
+
+        if (
+            (bool)$tiempo['iniciada'] &&
+            in_array($estado, ['SOLICITADA', 'CONFIRMADA'], true)
+        ) {
             $etiquetas = [
-                'SOLICITADA' => 'Vencida · pendiente de Cuenta Clave',
-                'CONFIRMADA' => 'Vencida · confirmación pendiente',
-                'CORREO_ENVIADO' => 'Vencida · pendiente de registrar'
+                'SOLICITADA' => 'Vencida · sin confirmar',
+                'CONFIRMADA' => 'Vencida · confirmación no enviada'
             ];
 
             return [
@@ -859,7 +964,13 @@ class AgendaReunionService
 
         return [
             'vencida' => false,
-            'clase' => strtolower(str_replace('_', '-', $estado !== '' ? $estado : 'SOLICITADA')),
+            'clase' => strtolower(
+                str_replace(
+                    '_',
+                    '-',
+                    $estado !== '' ? $estado : 'SOLICITADA'
+                )
+            ),
             'etiqueta' => $this->etiquetaEstado($estado)
         ];
     }
