@@ -790,7 +790,6 @@ class SeguimientoVinculacionReporteController
         );
 
         if (
-            $modoSeguimiento === 'analista' &&
             (string)($filtrosReporte['tipo_reporte'] ?? 'cartera') === 'cartera'
         ) {
             try {
@@ -809,42 +808,52 @@ class SeguimientoVinculacionReporteController
             $modoSeguimiento
         );
 
-        if ($modoSeguimiento === 'analista') {
-            $tipoReporte = (string)($filtrosReporte['tipo_reporte'] ?? 'cartera');
+        $tipoReporte = (string)($filtrosReporte['tipo_reporte'] ?? 'cartera');
 
-            if ($tipoReporte === 'actividad') {
+        if ($tipoReporte === 'actividad') {
+            $filtrosReporte['institucion_id'] = 0;
+            $filtrosReporte['institucion'] = '';
+            $filtrosReporte['estado_seguimiento'] = '';
+            $filtrosReporte['dias_sin_actividad'] = 0;
+
+            if ($modoSeguimiento === 'analista') {
                 $filtrosReporte['municipio_id'] = 0;
-                $filtrosReporte['institucion_id'] = 0;
-                $filtrosReporte['institucion'] = '';
                 $filtrosReporte['responsable_id'] = 0;
-                $filtrosReporte['estado_seguimiento'] = '';
-                $filtrosReporte['dias_sin_actividad'] = 0;
+            }
 
-                $canalActividad = strtoupper(trim((string)($filtrosReporte['tipo_actividad'] ?? '')));
-                if (!in_array($canalActividad, ['', 'LLAMADA', 'LLAMADA_IP', 'CORREO'], true)) {
-                    $filtrosReporte['tipo_actividad'] = '';
-                }
-
-                if (
-                    trim((string)$filtrosReporte['fecha_inicial']) === '' &&
-                    trim((string)$filtrosReporte['fecha_final']) === ''
-                ) {
-                    $hoy = date('Y-m-d');
-                    $filtrosReporte['fecha_inicial'] = $hoy;
-                    $filtrosReporte['fecha_final'] = $hoy;
-                }
-            } elseif ($tipoReporte === 'institucion') {
-                $filtrosReporte['fecha_inicial'] = '';
-                $filtrosReporte['fecha_final'] = '';
-                $filtrosReporte['responsable_id'] = 0;
-                $filtrosReporte['estado_seguimiento'] = '';
+            $canalActividad = strtoupper(trim(
+                (string)($filtrosReporte['tipo_actividad'] ?? '')
+            ));
+            if (!in_array(
+                $canalActividad,
+                ['', 'LLAMADA', 'LLAMADA_IP', 'CORREO'],
+                true
+            )) {
                 $filtrosReporte['tipo_actividad'] = '';
-                $filtrosReporte['dias_sin_actividad'] = 0;
-            } else {
-                $filtrosReporte['fecha_inicial'] = '';
-                $filtrosReporte['fecha_final'] = '';
-                $filtrosReporte['institucion_id'] = 0;
-                $filtrosReporte['institucion'] = '';
+            }
+
+            if (
+                trim((string)$filtrosReporte['fecha_inicial']) === '' &&
+                trim((string)$filtrosReporte['fecha_final']) === ''
+            ) {
+                $hoy = date('Y-m-d');
+                $filtrosReporte['fecha_inicial'] = $hoy;
+                $filtrosReporte['fecha_final'] = $hoy;
+            }
+        } elseif ($tipoReporte === 'institucion') {
+            $filtrosReporte['fecha_inicial'] = '';
+            $filtrosReporte['fecha_final'] = '';
+            $filtrosReporte['responsable_id'] = 0;
+            $filtrosReporte['estado_seguimiento'] = '';
+            $filtrosReporte['tipo_actividad'] = '';
+            $filtrosReporte['dias_sin_actividad'] = 0;
+        } else {
+            $filtrosReporte['fecha_inicial'] = '';
+            $filtrosReporte['fecha_final'] = '';
+            $filtrosReporte['institucion_id'] = 0;
+            $filtrosReporte['institucion'] = '';
+
+            if ($modoSeguimiento === 'analista') {
                 $filtrosReporte['responsable_id'] = 0;
             }
         }
@@ -859,10 +868,7 @@ class SeguimientoVinculacionReporteController
             $seguimientosDisponibles
         );
 
-        if (
-            $modoSeguimiento === 'analista' &&
-            (string)($filtrosReporte['tipo_reporte'] ?? '') === 'actividad'
-        ) {
+        if ((string)($filtrosReporte['tipo_reporte'] ?? '') === 'actividad') {
             $canalesDisponibles = [
                 'LLAMADA_IP' => 'Llamada',
                 'CORREO' => 'Correo'
@@ -881,7 +887,6 @@ class SeguimientoVinculacionReporteController
         if (
             $generarReporte &&
             $errorFiltros === '' &&
-            $modoSeguimiento === 'analista' &&
             (string)($filtrosReporte['tipo_reporte'] ?? '') === 'institucion'
         ) {
             if ((int)($filtrosReporte['estado_id'] ?? 0) <= 0) {
@@ -1009,12 +1014,10 @@ class SeguimientoVinculacionReporteController
             }
         }
 
-        $estadosSeguimiento = (
-            $modoSeguimiento === 'analista' &&
+        $estadosSeguimiento =
             (string)($filtrosReporte['tipo_reporte'] ?? '') === 'cartera'
-        )
-            ? self::ETAPAS_CARTERA
-            : self::ESTADOS_SEGUIMIENTO;
+                ? self::ETAPAS_CARTERA
+                : self::ESTADOS_SEGUIMIENTO;
         $resumenFiltros = $this->crearResumenFiltros(
             $filtrosReporte,
             $territoriosPorId,
@@ -1131,13 +1134,13 @@ class SeguimientoVinculacionReporteController
 
         $estatus = (string)($filtros['estado_seguimiento'] ?? '');
         if ($estatus !== '') {
-            $esCarteraAnalista =
+            $esCartera =
                 $modo === 'analista' &&
                 (string)($filtros['tipo_reporte'] ?? '') === 'cartera';
             $coinciden = array_values(array_filter(
                 $actuales,
-                function ($seguimiento) use ($estatus, $esCarteraAnalista) {
-                    $codigo = $esCarteraAnalista
+                function ($seguimiento) use ($estatus, $esCartera) {
+                    $codigo = $esCartera
                         ? (string)($seguimiento['etapa_operativa_codigo'] ?? '')
                         : (string)($seguimiento['estado_seguimiento'] ?? '');
                     return $codigo === $estatus;
@@ -1237,17 +1240,16 @@ class SeguimientoVinculacionReporteController
         }
 
         $estatus = [];
-        $esCarteraAnalista =
-            $modo === 'analista' &&
+        $esCartera =
             (string)($filtros['tipo_reporte'] ?? '') === 'cartera';
 
         foreach ($actuales as $seguimiento) {
             $codigo = strtoupper(trim((string)(
-                $esCarteraAnalista
+                $esCartera
                     ? ($seguimiento['etapa_operativa_codigo'] ?? '')
                     : ($seguimiento['estado_seguimiento'] ?? '')
             )));
-            $mapaEstatus = $esCarteraAnalista
+            $mapaEstatus = $esCartera
                 ? self::ETAPAS_CARTERA
                 : self::ESTADOS_SEGUIMIENTO;
             if ($codigo !== '' && isset($mapaEstatus[$codigo])) {
@@ -1259,8 +1261,8 @@ class SeguimientoVinculacionReporteController
             $estadoSeguimiento = (string)$filtros['estado_seguimiento'];
             $actuales = array_values(array_filter(
                 $actuales,
-                function ($seguimiento) use ($estadoSeguimiento, $esCarteraAnalista) {
-                    $codigo = $esCarteraAnalista
+                function ($seguimiento) use ($estadoSeguimiento, $esCartera) {
+                    $codigo = $esCartera
                         ? (string)($seguimiento['etapa_operativa_codigo'] ?? '')
                         : (string)($seguimiento['estado_seguimiento'] ?? '');
                     return $codigo === $estadoSeguimiento;
