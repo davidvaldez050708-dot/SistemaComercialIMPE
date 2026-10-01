@@ -2,11 +2,22 @@
     'use strict';
 
     document.addEventListener('DOMContentLoaded', function () {
+        const root = document.querySelector('[data-agenda-root]');
         const modal = document.getElementById('modalAgendaDetalle');
         const body = modal?.querySelector('[data-agenda-detail-body]');
         const reuniones = leerJson('agendaReunionesData');
+        const modoAgenda = String(
+            root?.getAttribute('data-agenda-mode') || 'LECTURA'
+        ).toUpperCase();
 
-        if (!modal || !body || !Array.isArray(reuniones) || reuniones.length === 0) {
+        if (
+            !root ||
+            modoAgenda === 'LECTURA' ||
+            !modal ||
+            !body ||
+            !Array.isArray(reuniones) ||
+            reuniones.length === 0
+        ) {
             return;
         }
 
