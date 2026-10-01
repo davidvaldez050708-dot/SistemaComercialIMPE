@@ -608,8 +608,8 @@ class AgendaReunionService
         }
 
         $esSupervisor =
-            tienePermiso('seguimientos_vinculacion.supervisar') &&
-            !tienePermiso('seguimientos_vinculacion.operar_propios');
+            tienePermiso('reuniones.gestionar') &&
+            !tienePermiso('reuniones.solicitar');
 
         $filas = $esSupervisor
             ? $this->repo->pendientesKam((int)$limite)
