@@ -18,10 +18,24 @@ class TerritorioController
         $modeloTerritorio = new TerritorioModel();
         $filtros = $this->obtenerFiltros();
 
-        $estados = $modeloTerritorio->obtenerEstados($filtros);
-        $resumenTerritorial = $modeloTerritorio->obtenerResumenTerritorial();
-        $cuentasClaveFiltro = $modeloTerritorio->obtenerUsuariosCuentaClave();
-        $analistasFiltro = $modeloTerritorio->obtenerUsuariosAnalistas();
+        $estados = $this->obtenerEstadosPermitidos(
+            $modeloTerritorio,
+            $filtros
+        );
+        $estadosResumen = $this->obtenerEstadosPermitidos(
+            $modeloTerritorio,
+            []
+        );
+        $resumenTerritorial = $this->construirResumenTerritorial(
+            $estadosResumen
+        );
+        $puedeAsignarTerritorios = tienePermiso('territorios.asignar');
+        $cuentasClaveFiltro = $puedeAsignarTerritorios
+            ? $modeloTerritorio->obtenerUsuariosCuentaClave()
+            : [];
+        $analistasFiltro = $puedeAsignarTerritorios
+            ? $modeloTerritorio->obtenerUsuariosAnalistas()
+            : [];
 
         $mensajeExito = $_SESSION['mensaje_territorio'] ?? '';
         $mensajeError = $_SESSION['error_territorio'] ?? '';
@@ -54,7 +68,10 @@ class TerritorioController
 
         $modeloTerritorio = new TerritorioModel();
         $filtros = $this->obtenerFiltros();
-        $estados = $modeloTerritorio->obtenerEstados($filtros);
+        $estados = $this->obtenerEstadosPermitidos(
+            $modeloTerritorio,
+            $filtros
+        );
 
         require_once __DIR__ . '/../views/territorios/tabla.php';
     }
@@ -66,7 +83,9 @@ class TerritorioController
         $modeloTerritorio = new TerritorioModel();
         $this->responderJson([
             'ok' => true,
-            'resumen' => $modeloTerritorio->obtenerResumenTerritorial()
+            'resumen' => $this->construirResumenTerritorial(
+                $this->obtenerEstadosPermitidos($modeloTerritorio, [])
+            )
         ]);
     }
 
@@ -76,6 +95,13 @@ class TerritorioController
 
         $modeloTerritorio = new TerritorioModel();
         $estadoId = (int)($_GET['id'] ?? 0);
+
+        if (!$this->puedeConsultarTerritorio($modeloTerritorio, $estadoId)) {
+            http_response_code(403);
+            echo 'No tienes acceso a este territorio.';
+            return;
+        }
+
         $estado = $modeloTerritorio->buscarEstadoPorId($estadoId);
 
         if (!$estado) {
@@ -418,6 +444,114 @@ class TerritorioController
 
             $this->redirigirATerritorios();
         }
+    }
+
+    private function obtenerEstadosPermitidos(
+        TerritorioModel $modeloTerritorio,
+        array $filtros
+    ) {
+        $estados = $modeloTerritorio->obtenerEstados($filtros);
+
+        if (tienePermiso('territorios.asignar')) {
+            return $estados;
+        }
+
+        $tipoAsignacion = $this->resolverTipoAsignacionConsulta();
+
+        if ($tipoAsignacion === '') {
+            return [];
+        }
+
+        $asignados = $modeloTerritorio->obtenerEstadosAsignadosUsuario(
+            (int)($_SESSION['usuario_id'] ?? 0),
+            $tipoAsignacion
+        );
+        $idsPermitidos = [];
+
+        foreach ($asignados as $estadoAsignado) {
+            $estadoId = (int)($estadoAsignado['id'] ?? 0);
+
+            if ($estadoId > 0) {
+                $idsPermitidos[$estadoId] = true;
+            }
+        }
+
+        return array_values(array_filter(
+            $estados,
+            static function ($estado) use ($idsPermitidos) {
+                return isset($idsPermitidos[(int)($estado['id'] ?? 0)]);
+            }
+        ));
+    }
+
+    private function puedeConsultarTerritorio(
+        TerritorioModel $modeloTerritorio,
+        $estadoId
+    ) {
+        $estadoId = (int)$estadoId;
+
+        if ($estadoId <= 0) {
+            return false;
+        }
+
+        if (tienePermiso('territorios.asignar')) {
+            return (bool)$modeloTerritorio->buscarEstadoPorId($estadoId);
+        }
+
+        foreach (
+            $this->obtenerEstadosPermitidos($modeloTerritorio, [])
+            as $estado
+        ) {
+            if ((int)($estado['id'] ?? 0) === $estadoId) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function resolverTipoAsignacionConsulta()
+    {
+        if (tienePermiso('seguimientos_vinculacion.supervisar')) {
+            return 'CUENTA_CLAVE';
+        }
+
+        if (tienePermiso('seguimientos_vinculacion.operar_propios')) {
+            return 'ANALISTA_DATOS';
+        }
+
+        if ((int)($_SESSION['rol_id'] ?? 0) === 3) {
+            return 'ASESOR';
+        }
+
+        return '';
+    }
+
+    private function construirResumenTerritorial(array $estados)
+    {
+        $resumen = [
+            'estados_registrados' => count($estados),
+            'con_cuenta_clave' => 0,
+            'con_analista' => 0,
+            'sin_cuenta_clave' => 0
+        ];
+
+        foreach ($estados as $estado) {
+            $tieneCuentaClave = (int)($estado['cuenta_clave_total'] ?? 0) > 0;
+            $tieneAnalista = (int)($estado['analista_total'] ?? 0) > 0;
+
+            if ($tieneCuentaClave) {
+                $resumen['con_cuenta_clave']++;
+            } else {
+                $resumen['sin_cuenta_clave']++;
+            }
+
+            if ($tieneAnalista) {
+                $resumen['con_analista']++;
+            }
+        }
+
+        return $resumen;
     }
 
     private function obtenerFiltros()
