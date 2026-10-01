@@ -213,10 +213,10 @@ class AnalistaDashboardReunionService
                     $motivo = 'Reunión pendiente de confirmación';
                 }
             } elseif ($estado === 'CONFIRMADA' && $fecha) {
-                if ($fecha < $ahora) {
+                if ($fecha <= $ahora) {
                     $prioridad = 99;
                     $tipo = 'atrasado';
-                    $motivo = 'Confirmación pendiente de enviar';
+                    $motivo = 'Fecha confirmada vencida · reprogramar';
                 } elseif ($fecha <= $limite24h) {
                     $prioridad = 88;
                     $motivo = 'Confirmación pendiente de enviar';
