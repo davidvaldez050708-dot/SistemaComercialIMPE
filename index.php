@@ -139,43 +139,68 @@ if (!$esRutaPublica && !isset($_SESSION['usuario_id'])) {
 }
 
 
+/*
+ * La autorización se sincroniza contra la base en cada petición autenticada.
+ * De esta manera, cambios de rol, estado de usuario/rol o permisos aplican
+ * inmediatamente sin exigir cerrar sesión.
+ */
+if (isset($_SESSION['usuario_id'])) {
+    require_once __DIR__ . '/app/models/UsuarioModel.php';
+    require_once __DIR__ . '/app/models/RolModel.php';
+
+    $modeloUsuarioSesion = new UsuarioModel();
+    $usuarioSesion = $modeloUsuarioSesion->buscarPorId(
+        (int)$_SESSION['usuario_id']
+    );
+
+    $sesionVigente =
+        is_array($usuarioSesion) &&
+        (int)($usuarioSesion['estado'] ?? 0) === 1 &&
+        (int)($usuarioSesion['rol_estado'] ?? 0) === 1;
+
+    if (!$sesionVigente) {
+        $_SESSION = [];
+        session_destroy();
+
+        if ($esPeticionFetch) {
+            $responderSesionJson(
+                'Tu cuenta o perfil de acceso ya no se encuentra activo.',
+                403
+            );
+        }
+
+        header(
+            'Location: index.php?controller=login&action=mostrarLogin&acceso=revocado'
+        );
+
+        exit;
+    }
+
+    $_SESSION['nombre'] = (string)($usuarioSesion['nombre'] ?? '');
+    $_SESSION['apellidos'] = (string)($usuarioSesion['apellidos'] ?? '');
+    $_SESSION['usuario'] = (string)($usuarioSesion['usuario'] ?? '');
+    $_SESSION['foto_perfil'] = (string)($usuarioSesion['foto_perfil'] ?? '');
+    $_SESSION['rol_id'] = (int)($usuarioSesion['rol_id'] ?? 0);
+    $_SESSION['rol'] = (string)($usuarioSesion['rol'] ?? '');
+    $_SESSION['requiere_cambio_password'] =
+        (int)($usuarioSesion['requiere_cambio_password'] ?? 0);
+
+    $modeloRolSesion = new RolModel();
+    $_SESSION['permisos'] =
+        $modeloRolSesion->obtenerCodigosPermisosPorRol(
+            (int)$_SESSION['rol_id']
+        );
+}
+
+
 if (isset($_SESSION['usuario_id']) && empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 
 
 /*
- * Si cambia el catálogo base de permisos, refrescamos la sesión una sola vez.
- * Evita que una sesión abierta conserve permisos obsoletos después de una
- * actualización del sistema.
+ * Los permisos ya fueron refrescados desde la base en esta misma petición.
  */
-$versionPermisosSistema = 2026092302;
-
-if (
-    isset($_SESSION['usuario_id']) &&
-    (
-        !isset($_SESSION['permisos']) ||
-        (int)($_SESSION['version_permisos_sistema'] ?? 0) <
-            $versionPermisosSistema
-    )
-) {
-
-    require_once __DIR__ . '/app/models/RolModel.php';
-
-    $modeloRolSesion = new RolModel();
-
-    $modeloRolSesion
-        ->inicializarPermisosSistema();
-
-    $_SESSION['permisos'] =
-        $modeloRolSesion
-            ->obtenerCodigosPermisosPorRol(
-                (int)($_SESSION['rol_id'] ?? 0)
-            );
-
-    $_SESSION['version_permisos_sistema'] =
-        $versionPermisosSistema;
-}
 
 
 /*
@@ -193,7 +218,9 @@ $controladoresProtegidosCsrf = [
     'oficioVinculacion',
     'oficioCorreo',
     'convocatoria',
-    'convocatoriaNotificacion'
+    'convocatoriaNotificacion',
+    'rol',
+    'usuario'
 ];
 
 if (
