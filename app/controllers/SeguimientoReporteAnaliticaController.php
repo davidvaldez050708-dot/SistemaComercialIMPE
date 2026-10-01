@@ -77,7 +77,10 @@ class SeguimientoReporteAnaliticaController
             ], 401);
         }
 
-        if (!tienePermiso($codigo)) {
+        if (
+            !tienePermiso('reportes.ver') ||
+            !tienePermiso($codigo)
+        ) {
             $this->responder([
                 'ok' => false,
                 'mensaje' => 'No tienes permiso para consultar este reporte.'
