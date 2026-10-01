@@ -6,6 +6,7 @@
  * Uso:
  *   php tools/migrar.php --status
  *   php tools/migrar.php --baseline=2026_09_21
+ *   php tools/migrar.php --baseline=2026_09_24
  *   php tools/migrar.php --run
  *
  * Base existente del proyecto:
@@ -331,6 +332,73 @@ function foreignKeyExiste(mysqli $db, string $tabla, string $constraint): bool
     return (int)($fila['total'] ?? 0) > 0;
 }
 
+function verificarBaseline20260924(mysqli $db): array
+{
+    $faltantes = [];
+
+    $tablas = [
+        'seguimientos_vinculacion_correo_adjuntos',
+        'seguimientos_vinculacion_correos',
+        'convocatorias',
+        'convocatoria_estados'
+    ];
+
+    foreach ($tablas as $tabla) {
+        if (!tablaExiste($db, $tabla)) {
+            $faltantes[] = "tabla {$tabla}";
+        }
+    }
+
+    $columnas = [
+        ['reuniones_vinculacion', 'reunion_resultado'],
+        ['reuniones_vinculacion', 'cancelacion_motivo'],
+        ['reuniones_vinculacion', 'cancelada_at'],
+        ['seguimientos_vinculacion_post_envio', 'reactivacion_ruta_at'],
+        ['seguimientos_vinculacion_post_envio', 'coordinacion_reunion_habilitada_at'],
+        ['seguimientos_vinculacion_post_envio', 'reunion_seguimiento_objetivo'],
+        ['seguimientos_vinculacion_post_envio', 'reunion_seguimiento_pendiente_de'],
+        ['seguimientos_vinculacion_post_envio', 'reunion_seguimiento_accion']
+    ];
+
+    foreach ($columnas as [$tabla, $columna]) {
+        if (!columnaExiste($db, $tabla, $columna)) {
+            $faltantes[] = "columna {$tabla}.{$columna}";
+        }
+    }
+
+    $resultadoRol = $db->query(
+        "SELECT id
+         FROM roles
+         WHERE nombre = 'Marketing'
+         LIMIT 1"
+    );
+
+    if (!$resultadoRol || $resultadoRol->num_rows === 0) {
+        $faltantes[] = 'rol Marketing';
+    }
+
+    if ($resultadoRol instanceof mysqli_result) {
+        $resultadoRol->free();
+    }
+
+    $resultadoPermiso = $db->query(
+        "SELECT id
+         FROM permisos
+         WHERE codigo = 'convocatorias.ver'
+         LIMIT 1"
+    );
+
+    if (!$resultadoPermiso || $resultadoPermiso->num_rows === 0) {
+        $faltantes[] = 'permiso convocatorias.ver';
+    }
+
+    if ($resultadoPermiso instanceof mysqli_result) {
+        $resultadoPermiso->free();
+    }
+
+    return $faltantes;
+}
+
 function prepararMigracionMarketingConvocatorias(mysqli $db): string
 {
     $sql = [];
@@ -504,6 +572,31 @@ if (str_starts_with($comando, '--baseline=')) {
             "ERROR: Usa --baseline=AAAA-MM-DD o AAAA_MM_DD.\n"
         );
         exit(1);
+    }
+
+    if ($corte === '2026_09_24') {
+        $faltantesBaseline = verificarBaseline20260924($db);
+
+        if (!empty($faltantesBaseline)) {
+            fwrite(
+                STDERR,
+                "ERROR: La base no cumple el estado requerido para " .
+                "--baseline=2026_09_24.\n"
+            );
+
+            foreach ($faltantesBaseline as $faltante) {
+                fwrite(STDERR, "  - Falta {$faltante}\n");
+            }
+
+            fwrite(
+                STDERR,
+                "No se registró ninguna migración. Usa un baseline anterior " .
+                "o aplica primero las estructuras faltantes.\n"
+            );
+            exit(1);
+        }
+
+        echo "[VERIFICADO] La base contiene las estructuras requeridas hasta 2026-09-24.\n";
     }
 
     $lote = siguienteLote($db);
