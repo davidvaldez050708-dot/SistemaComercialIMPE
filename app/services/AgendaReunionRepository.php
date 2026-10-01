@@ -213,16 +213,15 @@ class AgendaReunionRepository
                 SET estado = 'CANCELACION_SOLICITADA',
                     cancelacion_motivo = ?,
                     cancelada_at = NULL,
-                    cancelada_por = ?,
+                    cancelada_por = NULL,
                     notificado_analista_at = NULL
                 WHERE id = ?
                   AND cuenta_clave_id = ?
                   AND estado = 'CORREO_ENVIADO'";
         $stmt = $this->connection->prepare($sql);
         $stmt->bind_param(
-            'siii',
+            'sii',
             $motivo,
-            $cuentaClaveId,
             $reunionId,
             $cuentaClaveId
         );
