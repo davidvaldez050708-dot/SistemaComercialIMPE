@@ -433,7 +433,11 @@ class RolModel
                 'convenios.ver',
                 'convenios.gestionar',
                 'reportes.ver',
-                'reportes.exportar'
+                'reportes.exportar',
+                'reportes.seguimiento.cartera',
+                'reportes.seguimiento.actividad',
+                'reportes.seguimiento.institucion',
+                'reportes.territorial'
             ],
             'Finanzas' => [
                 'pagos.ver',
@@ -449,7 +453,11 @@ class RolModel
                 'seguimientos_vinculacion.supervisar',
                 'seguimientos_vinculacion.comentar',
                 'reportes.ver',
-                'reportes.exportar'
+                'reportes.exportar',
+                'reportes.seguimiento.cartera',
+                'reportes.seguimiento.actividad',
+                'reportes.seguimiento.institucion',
+                'reportes.territorial'
             ]
         ];
 
