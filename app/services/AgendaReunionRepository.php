@@ -283,8 +283,10 @@ class AgendaReunionRepository
     public function reunion($reunionId, $usuarioId, $rolId)
     {
         $sql = "SELECT r.*, s.nombre_entidad, s.contacto_nombre, s.contacto_cargo,
+                       s.estado_id AS seguimiento_estado_id,
                        COALESCE(NULLIF(TRIM(s.correo_verificado),''), NULLIF(TRIM(s.correo_fuente),'')) AS contacto_correo,
                        m.nombre AS municipio_nombre,
+                       COALESCE(e.nombre,'') AS estado_nombre,
                        TRIM(CONCAT(COALESCE(a.nombre,''),' ',COALESCE(a.apellidos,''))) AS analista_nombre,
                        TRIM(CONCAT(COALESCE(k.nombre,''),' ',COALESCE(k.apellidos,''))) AS cuenta_clave_nombre,
                        COALESCE(k.correo,'') AS cuenta_clave_correo
