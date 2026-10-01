@@ -147,6 +147,14 @@
                 return;
             }
 
+            if (
+                modoAgenda === 'GESTION' &&
+                puedeGestionar &&
+                Boolean(reunion.reunion_iniciada)
+            ) {
+                return;
+            }
+
             const box = document.createElement('div');
             box.className = 'agenda-action-box';
             box.setAttribute('data-reprogramacion-box', '');
@@ -250,6 +258,11 @@
         }
 
         function formularioAnalista(reunion) {
+            const reunionIniciada = Boolean(reunion.reunion_iniciada);
+            const textoAyuda = reunionIniciada
+                ? 'Si la reunión no se realizó, indica el motivo y propón una nueva fecha. No uses esta opción si la reunión sí ocurrió: en ese caso registra el resultado.'
+                : 'Indica el motivo y propón una nueva fecha. Cuenta Clave deberá confirmarla nuevamente.';
+
             return '' +
                 '<div class="agenda-reprogramacion-trigger">' +
                     '<button class="btn btn-system-light agenda-reprogramacion-toggle" type="button" data-reprogramacion-toggle aria-expanded="false">' +
@@ -261,7 +274,7 @@
                 '<div class="agenda-reprogramacion-panel d-none" data-reprogramacion-form>' +
                     '<div class="agenda-reprogramacion-heading">' +
                         '<strong>Reprogramar reunión</strong>' +
-                        '<span>Indica el motivo y propón una nueva fecha. Cuenta Clave deberá confirmarla nuevamente.</span>' +
+                        '<span>' + textoAyuda + '</span>' +
                     '</div>' +
                     '<form data-agenda-action-form data-agenda-action="solicitarReprogramacion">' +
                         '<input type="hidden" name="reunion_id" value="' + Number(reunion.id || 0) + '">' +
