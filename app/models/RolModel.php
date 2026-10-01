@@ -72,6 +72,7 @@ class RolModel
 
         $this->desactivarPermisosGenericosSeguimientos();
         $this->desactivarPermisosTerritorioObsoletos();
+        $this->desactivarPermisosSinModuloActivo();
 
         if ($permisosTerritorioNuevos) {
             $this->asignarPermisosInicialesTerritorios();
@@ -401,6 +402,7 @@ class RolModel
                 'seguimientos_vinculacion.editar',
                 'seguimientos_vinculacion.operar_propios',
                 'convenios.ver',
+                'convenios.gestionar',
                 'reportes.ver',
                 'reportes.exportar'
             ],
@@ -537,6 +539,51 @@ class RolModel
         $codigos = [
             'territorios.editar',
             'territorios.actualizar_ficha'
+        ];
+        $placeholders = implode(',', array_fill(0, count($codigos), '?'));
+
+        $sql = "UPDATE permisos
+                SET estado = 0
+                WHERE codigo IN ($placeholders)";
+
+        $stmt = $this->connection->prepare($sql);
+        $this->vincularParametros($stmt, str_repeat('s', count($codigos)), $codigos);
+
+        return $stmt->execute();
+    }
+
+    private function desactivarPermisosSinModuloActivo()
+    {
+        /*
+         * Estos permisos pertenecen a módulos previstos o legacy que todavía
+         * no tienen una superficie funcional completa. Se mantienen en el
+         * catálogo histórico, pero no se muestran ni autorizan hasta que el
+         * módulo correspondiente exista.
+         */
+        $codigos = [
+            'prospectos.ver_todos',
+            'prospectos.ver_propios',
+            'prospectos.editar',
+            'prospectos.asignar',
+            'seguimientos_comerciales.ver_todos',
+            'seguimientos_comerciales.ver_propios',
+            'seguimientos_comerciales.crear',
+            'seguimientos_comerciales.editar',
+            'seguimientos_comerciales.editar_propios',
+            'pagos.ver',
+            'pagos.validar',
+            'organizaciones.ver',
+            'organizaciones.crear',
+            'organizaciones.editar',
+            'organizaciones.validar',
+            'difusion.ver',
+            'difusion.crear',
+            'difusion.enviar',
+            'difusion.gestionar',
+            'respaldos.generar',
+            'respaldos.restaurar',
+            'configuracion.ver',
+            'configuracion.editar'
         ];
         $placeholders = implode(',', array_fill(0, count($codigos), '?'));
 
