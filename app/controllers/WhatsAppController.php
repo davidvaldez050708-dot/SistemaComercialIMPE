@@ -152,6 +152,11 @@ class WhatsAppController
             $gestionar,
             $despuesDeId
         );
+        $estadosSalida = $modelo->obtenerEstadosMensajesSalida(
+            $conversacionId,
+            $usuarioId,
+            $gestionar
+        );
 
         $modelo->marcarConversacionLeida($conversacionId);
 
@@ -160,7 +165,8 @@ class WhatsAppController
             'conversacion' => $conversacion,
             'ventana_servicio_abierta' =>
                 $modelo->ventanaServicioAbierta($conversacion),
-            'mensajes' => $mensajes
+            'mensajes' => $mensajes,
+            'estados_salida' => $estadosSalida
         ]);
     }
 
