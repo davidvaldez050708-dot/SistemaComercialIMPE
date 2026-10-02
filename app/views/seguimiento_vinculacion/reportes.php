@@ -12,6 +12,7 @@ $filtrosReporte = $filtrosReporte ?? [];
 $resumenFiltros = $resumenFiltros ?? [];
 $seguimientosReporte = $seguimientosReporte ?? [];
 $seguimientosActividad = $seguimientosActividad ?? [];
+$actoresActividad = is_array($actoresActividad ?? null) ? $actoresActividad : [];
 $resumenReporte = $resumenReporte ?? [
     'total' => 0,
     'sin_actividad' => 0,
@@ -32,6 +33,10 @@ $errorExportacionPdf = $errorExportacionPdf ?? '';
 $urlExportarPdf = $urlExportarPdf ?? '';
 $modoModalReporte = (string)($_GET['modal'] ?? '') === '1';
 $tipoReporteActual = (string)($filtrosReporte['tipo_reporte'] ?? 'cartera');
+$analistaSeleccionadoId = (int)($filtrosReporte['responsable_id'] ?? 0);
+$analistaSeleccionadoNombre = $analistaSeleccionadoId > 0
+    ? trim((string)($responsablesDisponibles[$analistaSeleccionadoId] ?? ''))
+    : '';
 $tiposReportePermitidos = is_array($tiposReportePermitidos ?? null)
     ? $tiposReportePermitidos
     : [];
@@ -178,6 +183,21 @@ $subtituloReporteGenerado =
     $titulosModoActual[$tipoReporteActual]['subtitulo']
     ?? 'Resultados calculados con los criterios seleccionados.';
 
+if (
+    $modoSeguimiento === 'supervisor' &&
+    $analistaSeleccionadoNombre !== ''
+) {
+    if ($tipoReporteActual === 'actividad') {
+        $tituloReporteGenerado = 'Actividad de ' . $analistaSeleccionadoNombre;
+        $subtituloReporteGenerado =
+            'Actividad e interacciones registradas por este Analista dentro del periodo seleccionado.';
+    } elseif ($tipoReporteActual === 'cartera') {
+        $tituloReporteGenerado = 'Cartera de ' . $analistaSeleccionadoNombre;
+        $subtituloReporteGenerado =
+            'Estado actual de los seguimientos asignados a este Analista dentro de tu alcance de supervisión.';
+    }
+}
+
 if ($tipoReporteActual === 'institucion') {
     $institucionEncabezado = is_array($detalleInstitucionReporte['seguimiento'] ?? null)
         ? $detalleInstitucionReporte['seguimiento']
@@ -233,7 +253,8 @@ if (!$modoModalReporte && $generarReporte && $errorFiltros === '') {
             $seguimientosActividad,
             $filtrosReporte,
             (int)($_SESSION['usuario_id'] ?? 0),
-            (string)$modoSeguimiento
+            (string)$modoSeguimiento,
+            $actoresActividad
         );
     } catch (Throwable $error) {
         error_log('[reporte_evolucion_actividad] ' . $error->getMessage());
@@ -527,9 +548,9 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
             </div>
 
             <div class="col-md-6 col-xl-4<?= $modoSeguimiento === 'analista' ? ' d-none' : '' ?>" data-report-field="responsable">
-                <label class="form-label" for="reporte_responsable">Responsable</label>
+                <label class="form-label" for="reporte_responsable"><?= $modoSeguimiento === 'supervisor' ? 'Analista' : 'Responsable' ?></label>
                 <select class="form-select" id="reporte_responsable" name="responsable_id">
-                    <option value="0">Todos</option>
+                    <option value="0"><?= $modoSeguimiento === 'supervisor' ? 'Todos mis Analistas' : 'Todos' ?></option>
                     <?php foreach ($responsablesDisponibles as $responsableId => $responsableNombre): ?>
                         <option
                             value="<?= (int)$responsableId ?>"
@@ -592,7 +613,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                 <?= $modoSeguimiento === 'analista'
                     ? 'Consulta las actividades que realizaste durante el periodo y acótalas por territorio o tipo de interacción.'
                     : ($modoSeguimiento === 'supervisor'
-                        ? 'Consulta la actividad de los Analistas supervisados y acótala por territorio, responsable o tipo de interacción.'
+                        ? 'Consulta la actividad de tus Analistas y acótala por territorio, Analista o tipo de interacción.'
                         : 'Consulta la actividad de seguimiento y acótala por territorio, responsable o tipo de interacción.') ?>
             <?php elseif ($tipoReporteActual === 'institucion'): ?>
                 Selecciona una institución para consultar su expediente ejecutivo de seguimiento.
@@ -740,9 +761,10 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
             $filtrosActividadResumen = [
                 'Periodo' => (string)($resumenFiltros['Periodo'] ?? '—'),
                 'Territorio' => (string)($resumenFiltros['Estado'] ?? 'Todos'),
-                'Responsable' => $modoSeguimiento === 'analista'
-                    ? 'Yo'
-                    : (string)($resumenFiltros['Responsable'] ?? 'Todos'),
+                ($modoSeguimiento === 'supervisor' ? 'Analista' : 'Responsable') =>
+                    $modoSeguimiento === 'analista'
+                        ? 'Yo'
+                        : (string)($resumenFiltros['Responsable'] ?? ($modoSeguimiento === 'supervisor' ? 'Todos mis Analistas' : 'Todos')),
                 'Tipo de interacción' => (string)($resumenFiltros['Tipo de interacción'] ?? 'Todos')
             ];
             ?>
@@ -754,7 +776,9 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                         <p class="page-subtitle mb-0"><?= $modoSeguimiento === 'analista'
       ? 'El reporte considera únicamente las interacciones realizadas por el Analista dentro del periodo.'
       : ($modoSeguimiento === 'supervisor'
-          ? 'El reporte considera las interacciones de los Analistas supervisados dentro del periodo y alcance seleccionados.'
+          ? ($analistaSeleccionadoNombre !== ''
+              ? 'El reporte considera únicamente las interacciones realizadas por el Analista seleccionado dentro del periodo y alcance indicados.'
+              : 'El reporte considera únicamente las interacciones realizadas por los Analistas que supervisas dentro del periodo y alcance seleccionados.')
           : 'El reporte considera las interacciones registradas dentro del periodo y alcance seleccionados.') ?></p>
                     </div>
                 </div>
@@ -776,9 +800,10 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
             }
             $filtrosCarteraResumen = [
                 'Territorio' => $territorioCartera,
-                'Responsable' => $modoSeguimiento === 'analista'
-                    ? 'Yo'
-                    : (string)($resumenFiltros['Responsable'] ?? 'Todos'),
+                ($modoSeguimiento === 'supervisor' ? 'Analista' : 'Responsable') =>
+                    $modoSeguimiento === 'analista'
+                        ? 'Yo'
+                        : (string)($resumenFiltros['Responsable'] ?? ($modoSeguimiento === 'supervisor' ? 'Todos mis Analistas' : 'Todos')),
                 'Etapa actual' => (string)($resumenFiltros['Etapa'] ?? 'Todos'),
                 'Último canal humano' => (string)($resumenFiltros['Último canal de contacto'] ?? 'Todos'),
                 'Inactividad' => (string)($resumenFiltros['Días sin actividad'] ?? 'Todos')
