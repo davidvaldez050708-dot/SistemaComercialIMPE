@@ -64,32 +64,12 @@ $fechaHora = static function ($valor) {
         </div>
     <?php endif; ?>
 
-    <section class="dashboard-panel aliados-hero">
-        <div>
-            <span class="aliados-eyebrow">RELACIÓN INSTITUCIONAL</span>
-            <h2>Aliados con convenio formalizado</h2>
-            <p>
-                Consulta las instituciones que ya concluyeron su vinculación y comparte
-                convocatorias vigentes dentro de su territorio.
-            </p>
-        </div>
-
-        <div class="aliados-hero-badge">
-            <i class="bi bi-patch-check"></i>
-            <div>
-                <strong>Fuente única</strong>
-                <span>Convenio formalizado</span>
-            </div>
-        </div>
-    </section>
-
     <section class="aliados-summary-grid">
         <article class="aliados-summary-card">
             <span class="aliados-summary-icon"><i class="bi bi-buildings"></i></span>
             <div>
                 <strong><?= (int)$resumenAliados['total'] ?></strong>
                 <span>Aliados activos</span>
-                <small>Instituciones formalizadas</small>
             </div>
         </article>
 
@@ -97,8 +77,7 @@ $fechaHora = static function ($valor) {
             <span class="aliados-summary-icon"><i class="bi bi-envelope-check"></i></span>
             <div>
                 <strong><?= (int)$resumenAliados['con_correo'] ?></strong>
-                <span>Con correo disponible</span>
-                <small>Listos para difusión</small>
+                <span>Con correo</span>
             </div>
         </article>
 
@@ -106,8 +85,7 @@ $fechaHora = static function ($valor) {
             <span class="aliados-summary-icon"><i class="bi bi-whatsapp"></i></span>
             <div>
                 <strong><?= (int)$resumenAliados['con_whatsapp'] ?></strong>
-                <span>Con WhatsApp registrado</span>
-                <small>Canal pendiente de API</small>
+                <span>Con WhatsApp</span>
             </div>
         </article>
 
@@ -117,26 +95,32 @@ $fechaHora = static function ($valor) {
                 <div>
                     <strong><?= (int)$resumenAliados['convocatorias_vigentes'] ?></strong>
                     <span>Convocatorias vigentes</span>
-                    <small>Aplicables a tus territorios</small>
                 </div>
             </article>
         <?php endif; ?>
     </section>
 
-    <section class="dashboard-panel aliados-filter-panel">
-        <div class="aliados-section-heading">
-            <div>
-                <span class="aliados-eyebrow">DIRECTORIO DE ALIADOS</span>
-                <h3>Instituciones formalizadas</h3>
-                <p>Filtra por territorio, Analista de origen o nombre de institución.</p>
+    <section class="dashboard-panel aliados-directory-panel">
+        <div class="aliados-directory-controls">
+            <div class="aliados-section-heading">
+                <div>
+                    <span class="aliados-eyebrow">DIRECTORIO</span>
+                    <h3>Instituciones aliadas</h3>
+                    <p>Busca por institución o filtra por territorio y Analista de origen.</p>
+                </div>
+
+                <div class="aliados-directory-meta">
+                    <span class="aliados-source-chip">
+                        <i class="bi bi-patch-check"></i>
+                        Convenio formalizado
+                    </span>
+                    <span class="aliados-result-count">
+                        <?= count($aliados) ?> resultado<?= count($aliados) === 1 ? '' : 's' ?>
+                    </span>
+                </div>
             </div>
 
-            <span class="aliados-result-count">
-                <?= count($aliados) ?> resultado<?= count($aliados) === 1 ? '' : 's' ?>
-            </span>
-        </div>
-
-        <form method="GET" class="aliados-filter-grid">
+            <form method="GET" class="aliados-filter-grid">
             <input type="hidden" name="controller" value="aliado">
             <input type="hidden" name="action" value="index">
 
@@ -210,10 +194,10 @@ $fechaHora = static function ($valor) {
                     Aplicar filtros
                 </button>
             </div>
-        </form>
-    </section>
+            </form>
+        </div>
 
-    <section class="dashboard-panel aliados-list-panel">
+        <div class="aliados-directory-results">
         <?php if (empty($aliados)): ?>
             <div class="aliados-empty-state">
                 <span><i class="bi bi-buildings"></i></span>
@@ -361,6 +345,7 @@ $fechaHora = static function ($valor) {
                 </table>
             </div>
         <?php endif; ?>
+        </div>
     </section>
 </section>
 
