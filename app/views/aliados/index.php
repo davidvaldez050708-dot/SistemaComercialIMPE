@@ -35,26 +35,6 @@ $imagenEstado = static function ($territorio) use ($slugEstado) {
         '.png';
 };
 
-$formatearFecha = static function ($valor) {
-    $valor = trim((string)$valor);
-    if ($valor === '') {
-        return '—';
-    }
-
-    try {
-        $fecha = new DateTime($valor);
-        $meses = [
-            'Jan' => 'ene', 'Feb' => 'feb', 'Mar' => 'mar', 'Apr' => 'abr',
-            'May' => 'may', 'Jun' => 'jun', 'Jul' => 'jul', 'Aug' => 'ago',
-            'Sep' => 'sep', 'Oct' => 'oct', 'Nov' => 'nov', 'Dec' => 'dic'
-        ];
-
-        return strtr($fecha->format('d M Y'), $meses);
-    } catch (Throwable $error) {
-        return '—';
-    }
-};
-
 $tarjetasPorPagina = 12;
 
 ?>
@@ -196,15 +176,10 @@ $tarjetasPorPagina = 12;
                             <?= $totalMunicipios === 1 ? 'con aliado' : 'con aliados' ?>
                         </dd>
                     </div>
-                    <div>
-                        <dt>Última formalización</dt>
-                        <dd><?= $texto($formatearFecha($territorio['ultima_formalizacion_at'] ?? '')) ?></dd>
-                    </div>
                 </dl>
 
                 <a class="btn btn-system-light" href="<?= $texto($urlEstado) ?>">
                     Ver aliados
-                    <i class="bi bi-arrow-right"></i>
                 </a>
             </article>
         <?php endforeach; ?>
