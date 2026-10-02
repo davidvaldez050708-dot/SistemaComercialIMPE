@@ -218,6 +218,10 @@ if ($esWhatsappDashboard) {
     $jsOpcionalHead[] = 'whatsapp.js';
 }
 
+if ($esCorreosMarketingDashboard) {
+    $jsOpcionalHead[] = 'correos_marketing.js';
+}
+
 if ($esHomeDashboard) {
     $jsOpcionalHead = array_merge(
         $jsOpcionalHead,
