@@ -37,6 +37,11 @@ class RolModel
             !$this->existePermisoPorCodigo('aliados.ver_historial') ||
             !$this->existePermisoPorCodigo('aliados.gestionar_contactos') ||
             !$this->existePermisoPorCodigo('aliados.compartir_correo');
+        $permisosWhatsappNuevos =
+            !$this->existePermisoPorCodigo('whatsapp.ver') ||
+            !$this->existePermisoPorCodigo('whatsapp.enviar') ||
+            !$this->existePermisoPorCodigo('whatsapp.gestionar_conversaciones') ||
+            !$this->existePermisoPorCodigo('whatsapp.gestionar_cuentas');
 
         $sql = "INSERT INTO permisos (
                     modulo,
@@ -99,6 +104,10 @@ class RolModel
 
         if ($permisosAliadosNuevos) {
             $this->asignarPermisosInicialesAliados();
+        }
+
+        if ($permisosWhatsappNuevos) {
+            $this->asignarPermisosInicialesWhatsapp();
         }
 
         $this->asegurarPermisosAdministrador();
@@ -426,6 +435,9 @@ class RolModel
                 'seguimientos_comerciales.ver_todos',
                 'seguimientos_comerciales.crear',
                 'seguimientos_comerciales.editar',
+                'whatsapp.ver',
+                'whatsapp.enviar',
+                'whatsapp.gestionar_conversaciones',
                 'reportes.ver',
                 'reportes.exportar'
             ],
@@ -434,7 +446,9 @@ class RolModel
                 'prospectos.editar',
                 'seguimientos_comerciales.ver_propios',
                 'seguimientos_comerciales.crear',
-                'seguimientos_comerciales.editar_propios'
+                'seguimientos_comerciales.editar_propios',
+                'whatsapp.ver',
+                'whatsapp.enviar'
             ],
             'Analista de Datos' => [
                 'oficios.ver',
@@ -472,6 +486,8 @@ class RolModel
                 'aliados.ver_historial',
                 'aliados.gestionar_contactos',
                 'aliados.compartir_correo',
+                'whatsapp.ver',
+                'whatsapp.enviar',
                 'reportes.ver',
                 'reportes.exportar',
                 'reportes.seguimiento.cartera',
@@ -828,6 +844,45 @@ class RolModel
         }
     }
 
+    private function asignarPermisosInicialesWhatsapp()
+    {
+        $asignaciones = [
+            'Cuenta Clave' => [
+                'whatsapp.ver',
+                'whatsapp.enviar'
+            ],
+            'Asesor de Ventas' => [
+                'whatsapp.ver',
+                'whatsapp.enviar'
+            ],
+            'Coordinador Comercial' => [
+                'whatsapp.ver',
+                'whatsapp.enviar',
+                'whatsapp.gestionar_conversaciones'
+            ]
+        ];
+
+        $sql = "INSERT IGNORE INTO rol_permisos (
+                    rol_id,
+                    permiso_id
+                )
+                SELECT roles.id, permisos.id
+                FROM roles
+                INNER JOIN permisos
+                    ON permisos.codigo = ?
+                WHERE roles.nombre = ?
+                  AND permisos.estado = 1";
+
+        $stmt = $this->connection->prepare($sql);
+
+        foreach ($asignaciones as $nombreRol => $codigos) {
+            foreach ($codigos as $codigo) {
+                $stmt->bind_param("ss", $codigo, $nombreRol);
+                $stmt->execute();
+            }
+        }
+    }
+
     private function asignarPermisosInicialesReporteConvocatorias()
     {
         $nombreRol = 'Marketing';
@@ -894,6 +949,9 @@ class RolModel
             'aliados.ver_historial' => 'aliados.ver',
             'aliados.gestionar_contactos' => 'aliados.ver',
             'aliados.compartir_correo' => 'aliados.ver',
+            'whatsapp.enviar' => 'whatsapp.ver',
+            'whatsapp.gestionar_conversaciones' => 'whatsapp.ver',
+            'whatsapp.gestionar_cuentas' => 'whatsapp.ver',
             'reportes.exportar' => 'reportes.ver',
             'reportes.seguimiento.cartera' => 'reportes.ver',
             'reportes.seguimiento.actividad' => 'reportes.ver',
@@ -1099,21 +1157,28 @@ class RolModel
         $resultado = $this->connection->query(
             "SELECT id
              FROM permisos
-             WHERE codigo = 'reportes.usuarios'
-             LIMIT 1"
+             WHERE codigo IN (
+                'reportes.usuarios',
+                'whatsapp.gestionar_cuentas'
+             )"
         );
 
         if (!$resultado || $resultado->num_rows === 0) {
             return $permisosIds;
         }
 
-        $permiso = $resultado->fetch_assoc();
-        $permisoId = (int)($permiso['id'] ?? 0);
+        $permisosSoloAdministrador = [];
+
+        while ($permiso = $resultado->fetch_assoc()) {
+            $permisosSoloAdministrador[(int)$permiso['id']] = true;
+        }
 
         return array_values(array_filter(
             $permisosIds,
-            static function ($id) use ($permisoId) {
-                return (int)$id !== $permisoId;
+            static function ($id) use ($permisosSoloAdministrador) {
+                return !isset(
+                    $permisosSoloAdministrador[(int)$id]
+                );
             }
         ));
     }
@@ -1194,6 +1259,10 @@ class RolModel
             ['modulo' => 'Aliados', 'codigo' => 'aliados.ver_historial', 'nombre' => 'Ver historial de aliados', 'descripcion' => 'Consultar el historial de convocatorias compartidas con aliados autorizados.'],
             ['modulo' => 'Aliados', 'codigo' => 'aliados.gestionar_contactos', 'nombre' => 'Gestionar contactos de aliados', 'descripcion' => 'Agregar y administrar números de difusión sin modificar los datos originales del seguimiento.'],
             ['modulo' => 'Aliados', 'codigo' => 'aliados.compartir_correo', 'nombre' => 'Compartir convocatorias por correo', 'descripcion' => 'Enviar convocatorias vigentes por correo a aliados autorizados.'],
+            ['modulo' => 'WhatsApp', 'codigo' => 'whatsapp.ver', 'nombre' => 'Ver conversaciones de WhatsApp', 'descripcion' => 'Consultar conversaciones de WhatsApp autorizadas.'],
+            ['modulo' => 'WhatsApp', 'codigo' => 'whatsapp.enviar', 'nombre' => 'Enviar mensajes por WhatsApp', 'descripcion' => 'Enviar mensajes mediante cuentas de WhatsApp Business autorizadas.'],
+            ['modulo' => 'WhatsApp', 'codigo' => 'whatsapp.gestionar_conversaciones', 'nombre' => 'Gestionar conversaciones de WhatsApp', 'descripcion' => 'Asignar responsables y administrar conversaciones autorizadas.'],
+            ['modulo' => 'WhatsApp', 'codigo' => 'whatsapp.gestionar_cuentas', 'nombre' => 'Gestionar cuentas de WhatsApp', 'descripcion' => 'Configurar números empresariales y asignarlos a usuarios. Exclusivo del Administrador.'],
             ['modulo' => 'Convocatorias', 'codigo' => 'convocatorias.ver', 'nombre' => 'Ver convocatorias', 'descripcion' => 'Consultar convocatorias registradas.'],
             ['modulo' => 'Convocatorias', 'codigo' => 'convocatorias.crear', 'nombre' => 'Crear convocatorias', 'descripcion' => 'Registrar nuevas convocatorias.'],
             ['modulo' => 'Convocatorias', 'codigo' => 'convocatorias.editar', 'nombre' => 'Editar convocatorias', 'descripcion' => 'Actualizar información de convocatorias.'],
