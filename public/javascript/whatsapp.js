@@ -26,6 +26,15 @@ document.addEventListener('DOMContentLoaded', function () {
     );
     const channelForm = document.querySelector('[data-whatsapp-channel-form]');
     const channelStatus = document.querySelector('[data-whatsapp-channel-status]');
+    const channelEditorTitle = document.querySelector(
+        '[data-whatsapp-channel-editor-title]'
+    );
+    const channelCancel = document.querySelector(
+        '[data-whatsapp-channel-cancel]'
+    );
+    const channelEditButtons = Array.from(
+        document.querySelectorAll('[data-whatsapp-channel-edit]')
+    );
     const newConversationForm = document.querySelector(
         '[data-whatsapp-new-conversation-form]'
     );
@@ -506,6 +515,96 @@ document.addEventListener('DOMContentLoaded', function () {
             );
         }
     );
+
+    const resetChannelForm = function () {
+        if (!channelForm) {
+            return;
+        }
+
+        channelForm.reset();
+
+        const idInput = channelForm.querySelector('[name="cuenta_id"]');
+        const activeInput = channelForm.querySelector('[name="activo"]');
+
+        if (idInput) {
+            idInput.value = '0';
+        }
+        if (activeInput) {
+            activeInput.checked = true;
+        }
+        if (channelEditorTitle) {
+            channelEditorTitle.textContent = 'Agregar canal';
+        }
+        channelCancel?.classList.add('d-none');
+
+        if (channelStatus) {
+            channelStatus.classList.add('d-none');
+            channelStatus.classList.remove('is-success', 'is-error');
+            channelStatus.textContent = '';
+        }
+    };
+
+    const editChannel = function (button) {
+        if (!channelForm || !button) {
+            return;
+        }
+
+        const field = function (name) {
+            return channelForm.querySelector('[name="' + name + '"]');
+        };
+
+        const idInput = field('cuenta_id');
+        const nameInput = field('nombre');
+        const phoneIdInput = field('phone_number_id');
+        const numberInput = field('numero_mostrado');
+        const userInput = field('usuario_id');
+        const typeInput = field('tipo');
+        const defaultInput = field('es_predeterminada');
+        const activeInput = field('activo');
+
+        if (idInput) idInput.value = String(button.dataset.id || '0');
+        if (nameInput) nameInput.value = String(button.dataset.nombre || '');
+        if (phoneIdInput) {
+            phoneIdInput.value = String(button.dataset.phoneNumberId || '');
+        }
+        if (numberInput) {
+            numberInput.value = String(button.dataset.numeroMostrado || '');
+        }
+        if (userInput) {
+            userInput.value = String(button.dataset.usuarioId || '0');
+        }
+        if (typeInput) {
+            typeInput.value = String(button.dataset.tipo || 'EMPRESARIAL');
+        }
+        if (defaultInput) {
+            defaultInput.checked =
+                String(button.dataset.predeterminada || '0') === '1';
+        }
+        if (activeInput) {
+            activeInput.checked =
+                String(button.dataset.activo || '0') === '1';
+        }
+
+        if (channelEditorTitle) {
+            channelEditorTitle.textContent = 'Editar canal';
+        }
+
+        channelCancel?.classList.remove('d-none');
+
+        if (channelStatus) {
+            channelStatus.classList.add('d-none');
+        }
+
+        nameInput?.focus();
+    };
+
+    channelEditButtons.forEach(function (button) {
+        button.addEventListener('click', function () {
+            editChannel(button);
+        });
+    });
+
+    channelCancel?.addEventListener('click', resetChannelForm);
 
     channelForm?.addEventListener('submit', async function (event) {
         event.preventDefault();
