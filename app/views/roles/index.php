@@ -494,6 +494,8 @@ document.addEventListener('DOMContentLoaded', function () {
             'convocatorias.gestionar': 'convocatorias.ver',
             'convocatorias.descargar': 'convocatorias.ver',
             'convocatorias.cambiar_estado': 'convocatorias.ver',
+            'aliados.ver_historial': 'aliados.ver',
+            'aliados.compartir_correo': 'aliados.ver',
             'reportes.exportar': 'reportes.ver',
             'reportes.seguimiento.cartera': 'reportes.ver',
             'reportes.seguimiento.actividad': 'reportes.ver',
@@ -513,6 +515,9 @@ document.addEventListener('DOMContentLoaded', function () {
             ],
             'reportes.territorial': [
                 'data_territorial.ver'
+            ],
+            'aliados.compartir_correo': [
+                'convocatorias.ver'
             ]
         };
         const permisosPorCodigo = new Map(
