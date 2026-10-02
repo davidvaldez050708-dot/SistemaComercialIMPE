@@ -621,4 +621,4 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     filterMunicipalities();
-}});
+});
