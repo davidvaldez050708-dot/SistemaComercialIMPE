@@ -1,50 +1,184 @@
 <?php
 
-require_once dirname(__DIR__, 2) . '/vendor/autoload.php';
-
-use Dompdf\Dompdf;
-use Dompdf\Options;
-
 class ReporteConvocatoriaPdfService
 {
+    private const W_NS = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+    private const XML_NS = 'http://www.w3.org/XML/1998/namespace';
+    private const COLOR_PRIMARIO = '273A8A';
+    private const COLOR_TEXTO = '16223B';
+    private const COLOR_SECUNDARIO = '6D7480';
+    private const COLOR_BORDE = 'E5E9EF';
+    private const COLOR_FONDO = 'F8FAFC';
+    private const COLOR_FONDO_PRIMARIO = 'EDF2FA';
+
+    private $rootPath;
+    private $templatePath;
+
+    public function __construct()
+    {
+        $this->rootPath = dirname(__DIR__, 2);
+        $this->templatePath = $this->rootPath . DIRECTORY_SEPARATOR .
+            'storage' . DIRECTORY_SEPARATOR . 'templates' . DIRECTORY_SEPARATOR .
+            'reportes' . DIRECTORY_SEPARATOR . 'seguimiento_vinculacion' . DIRECTORY_SEPARATOR .
+            'Plantilla_Reporte_Seguimiento.docx';
+    }
+
     public function generar(array $datosReporte)
     {
+        if (!file_exists($this->templatePath) || !is_file($this->templatePath) || !is_readable($this->templatePath)) {
+            return $this->error(
+                'No fue posible localizar la plantilla del reporte de convocatorias.',
+                'La plantilla no existe, no es un archivo o no tiene permiso de lectura: ' . $this->templatePath
+            );
+        }
+
+        if (!class_exists('ZipArchive') || !class_exists('DOMDocument')) {
+            return $this->error(
+                'No fue posible preparar el reporte de convocatorias.',
+                'Se requieren ZipArchive y DOMDocument para procesar la copia temporal del DOCX.'
+            );
+        }
+
+        if (!function_exists('proc_open')) {
+            return $this->error(
+                'No fue posible convertir el reporte de convocatorias a PDF.',
+                'proc_open no está disponible en este entorno.'
+            );
+        }
+
+        $nombreBase = 'Reporte_Convocatorias_' . date('Y-m-d');
+        $directorioTemporal = $this->rootPath . DIRECTORY_SEPARATOR . 'storage' .
+            DIRECTORY_SEPARATOR . 'tmp' . DIRECTORY_SEPARATOR . 'reportes' .
+            DIRECTORY_SEPARATOR . 'convocatorias' . DIRECTORY_SEPARATOR .
+            'reporte_' . bin2hex(random_bytes(6));
+
+        if (!mkdir($directorioTemporal, 0775, true) && !is_dir($directorioTemporal)) {
+            return $this->error(
+                'No fue posible preparar el reporte de convocatorias.',
+                'No se pudo crear el directorio temporal: ' . $directorioTemporal
+            );
+        }
+
+        $rutaDocx = $directorioTemporal . DIRECTORY_SEPARATOR . $nombreBase . '.docx';
+
         try {
-            $options = new Options();
-            $options->set('isRemoteEnabled', false);
-            $options->set('isHtml5ParserEnabled', true);
-            $options->set('defaultFont', 'DejaVu Sans');
+            if (!copy($this->templatePath, $rutaDocx)) {
+                return $this->error(
+                    'No fue posible preparar la plantilla del reporte de convocatorias.',
+                    'copy() falló al crear la copia temporal.'
+                );
+            }
 
-            $dompdf = new Dompdf($options);
-            $dompdf->loadHtml($this->construirHtml($datosReporte), 'UTF-8');
-            $dompdf->setPaper('A4', 'landscape');
-            $dompdf->render();
+            $insertado = $this->insertarContenido($rutaDocx, $datosReporte);
+            if (!($insertado['ok'] ?? false)) {
+                return $insertado;
+            }
 
-            $contenido = $dompdf->output();
+            $conversion = $this->convertirAPdf($rutaDocx, $directorioTemporal);
+            if (!($conversion['ok'] ?? false)) {
+                return $conversion;
+            }
 
-            if (!is_string($contenido) || $contenido === '') {
-                return [
-                    'ok' => false,
-                    'mensaje' => 'No fue posible generar el PDF de convocatorias.',
-                    'mensaje_tecnico' => 'Dompdf devolvió contenido vacío.'
-                ];
+            $rutaPdf = (string)($conversion['ruta_pdf'] ?? '');
+            $contenidoPdf = $rutaPdf !== '' && is_file($rutaPdf)
+                ? file_get_contents($rutaPdf)
+                : false;
+
+            if ($contenidoPdf === false || $contenidoPdf === '') {
+                return $this->error(
+                    'No fue posible obtener el PDF de convocatorias generado.',
+                    'El archivo PDF temporal no existe, está vacío o no pudo leerse.'
+                );
             }
 
             return [
                 'ok' => true,
-                'contenido_pdf' => $contenido,
-                'nombre_archivo' => 'Reporte_Convocatorias_' . date('Y-m-d') . '.pdf'
+                'contenido_pdf' => $contenidoPdf,
+                'nombre_archivo' => $nombreBase . '.pdf',
+                'conversor' => (string)($conversion['conversor'] ?? '')
             ];
         } catch (Throwable $error) {
-            return [
-                'ok' => false,
-                'mensaje' => 'No fue posible generar el PDF de convocatorias.',
-                'mensaje_tecnico' => $error->getMessage()
-            ];
+            return $this->error(
+                'No fue posible generar el reporte de convocatorias.',
+                $error->getMessage()
+            );
+        } finally {
+            $this->eliminarDirectorio($directorioTemporal);
         }
     }
 
-    private function construirHtml(array $datosReporte)
+    private function insertarContenido($rutaDocx, array $datosReporte)
+    {
+        $zip = new ZipArchive();
+        $abierto = $zip->open($rutaDocx);
+
+        if ($abierto !== true) {
+            return $this->error(
+                'No fue posible abrir la plantilla del reporte de convocatorias.',
+                'ZipArchive::open devolvió el código: ' . (string)$abierto
+            );
+        }
+
+        try {
+            $xml = $zip->getFromName('word/document.xml');
+            if ($xml === false || trim((string)$xml) === '') {
+                return $this->error(
+                    'La plantilla del reporte de convocatorias no contiene un documento válido.',
+                    'No se encontró word/document.xml dentro de la copia temporal.'
+                );
+            }
+
+            $documento = new DOMDocument('1.0', 'UTF-8');
+            $documento->preserveWhiteSpace = true;
+            $documento->formatOutput = false;
+
+            if (!@$documento->loadXML($xml)) {
+                return $this->error(
+                    'La plantilla del reporte de convocatorias no contiene un documento válido.',
+                    'word/document.xml no pudo interpretarse como XML.'
+                );
+            }
+
+            $xpath = new DOMXPath($documento);
+            $xpath->registerNamespace('w', self::W_NS);
+            $cuerpo = $xpath->query('/w:document/w:body')->item(0);
+
+            if (!$cuerpo instanceof DOMElement) {
+                return $this->error(
+                    'La plantilla del reporte de convocatorias no tiene una estructura compatible.',
+                    'No se encontró /w:document/w:body.'
+                );
+            }
+
+            $sectPr = $xpath->query('./w:sectPr', $cuerpo)->item(0);
+            $anchoUtil = $this->obtenerAnchoUtil($xpath, $cuerpo);
+            $this->aplicarEncabezadoInstitucional($zip, $datosReporte, $anchoUtil);
+            $this->aplicarPieInstitucional($zip, $anchoUtil);
+            $elementos = $this->construirContenido($documento, $datosReporte, $anchoUtil);
+
+            foreach ($elementos as $elemento) {
+                if ($sectPr instanceof DOMNode) {
+                    $cuerpo->insertBefore($elemento, $sectPr);
+                } else {
+                    $cuerpo->appendChild($elemento);
+                }
+            }
+
+            $xmlFinal = $documento->saveXML();
+            if ($xmlFinal === false || !$zip->addFromString('word/document.xml', $xmlFinal)) {
+                return $this->error(
+                    'No fue posible incorporar la información al reporte de convocatorias.',
+                    'No se pudo actualizar word/document.xml en la copia temporal.'
+                );
+            }
+
+            return ['ok' => true];
+        } finally {
+            $zip->close();
+        }
+    }
+
+    private function construirContenido(DOMDocument $documento, array $datosReporte, $anchoUtil)
     {
         $resumen = is_array($datosReporte['resumen'] ?? null)
             ? $datosReporte['resumen']
@@ -55,87 +189,44 @@ class ReporteConvocatoriaPdfService
         $hallazgos = is_array($datosReporte['hallazgos'] ?? null)
             ? $datosReporte['hallazgos']
             : [];
-        $alertasVencimiento = is_array(
-            $datosReporte['alertas_vencimiento'] ?? null
-        )
+        $alertas = is_array($datosReporte['alertas_vencimiento'] ?? null)
             ? $datosReporte['alertas_vencimiento']
+            : [];
+        $cobertura = is_array($datosReporte['cobertura'] ?? null)
+            ? $datosReporte['cobertura']
             : [];
         $porTipo = is_array($datosReporte['por_tipo'] ?? null)
             ? $datosReporte['por_tipo']
             : [];
-        $territorios = is_array($datosReporte['cobertura']['territorios'] ?? null)
-            ? $datosReporte['cobertura']['territorios']
+        $territorios = is_array($cobertura['territorios'] ?? null)
+            ? $cobertura['territorios']
             : [];
 
-        $fechaGeneracion = $this->e($datosReporte['fecha_generacion'] ?? date('d/m/Y H:i'));
-        $generadoPor = $this->e($datosReporte['generado_por'] ?? '');
-        $rol = $this->e($datosReporte['generado_por_rol'] ?? '');
+        $elementos = [];
 
-        $filasDetalle = '';
-        foreach ($detalle as $fila) {
-            $estado = (string)($fila['estado_proceso'] ?? 'inactiva');
+        $elementos[] = $this->crearTituloSeccion($documento, 'RESUMEN EJECUTIVO');
+        $elementos[] = $this->crearTarjetasIndicadores(
+            $documento,
+            [
+                ['etiqueta' => 'Registradas', 'valor' => (int)($resumen['total'] ?? 0)],
+                ['etiqueta' => 'Activas', 'valor' => (int)($resumen['activas'] ?? 0)],
+                ['etiqueta' => 'Inactivas', 'valor' => (int)($resumen['inactivas'] ?? 0)],
+                ['etiqueta' => 'Publicadas este mes', 'valor' => (int)($resumen['publicaciones_mes_actual'] ?? 0)],
+                ['etiqueta' => 'Publicadas hoy', 'valor' => (int)($resumen['publicaciones_hoy'] ?? 0)],
+                ['etiqueta' => 'Vencen hoy', 'valor' => (int)($resumen['vencen_hoy'] ?? 0)],
+                ['etiqueta' => 'Vencen en 1–2 días', 'valor' => (int)($resumen['vencen_2_dias'] ?? 0)],
+                ['etiqueta' => 'Cobertura territorial', 'valor' => (int)($resumen['porcentaje_cobertura'] ?? 0) . '%']
+            ],
+            $anchoUtil,
+            4
+        );
+        $elementos[] = $this->crearEspaciador($documento, 120);
 
-            $filasDetalle .= '<tr>' .
-                '<td>' . $this->e($fila['titulo'] ?? '') . '</td>' .
-                '<td>' . $this->e($this->tipoLabel($fila['tipo_convocatoria'] ?? '')) . '</td>' .
-                '<td>' . $this->e($this->subtipoLabel($fila['subtipo_convocatoria'] ?? '')) . '</td>' .
-                '<td>' . $this->e($this->fecha($fila['fecha_inicio'] ?? '')) . '</td>' .
-                '<td>' . $this->e($this->fecha($fila['fecha_termino'] ?? '')) . '</td>' .
-                '<td>' . $this->e($fila['estados'] ?? '—') . '</td>' .
-                '<td><span class="status status-' . $this->e($estado) . '">' .
-                    $this->e($this->estadoLabel($estado)) .
-                '</span></td>' .
-            '</tr>';
-        }
-
-        if ($filasDetalle === '') {
-            $filasDetalle = '<tr><td colspan="7" class="empty">No hay convocatorias registradas.</td></tr>';
-        }
-
-        $filasTerritorios = '';
-        foreach ($territorios as $territorio) {
-            $filasTerritorios .= '<tr>' .
-                '<td>' . $this->e($territorio['nombre'] ?? '') . '</td>' .
-                '<td class="num">' . (int)($territorio['convocatorias_activas'] ?? 0) . '</td>' .
-            '</tr>';
-        }
-
-        if ($filasTerritorios === '') {
-            $filasTerritorios = '<tr><td colspan="2" class="empty">Sin cobertura activa registrada.</td></tr>';
-        }
-
-        $hallazgosHtml = '';
-        foreach ($hallazgos as $hallazgo) {
-            $hallazgosHtml .= '<li>' . $this->e($hallazgo) . '</li>';
-        }
-
-        $filasAlertas = '';
-        foreach ($alertasVencimiento as $alerta) {
-            $diasRestantes = (int)($alerta['dias_restantes'] ?? 0);
-            $prioridad = $diasRestantes === 0
-                ? 'Vence hoy'
-                : ($diasRestantes === 1 ? 'Vence mañana' : 'Vence en 2 días');
-            $clasePrioridad = $diasRestantes === 0
-                ? 'priority-danger'
-                : 'priority-warning';
-
-            $filasAlertas .= '<tr>' .
-                '<td>' . $this->e($alerta['titulo'] ?? '') . '</td>' .
-                '<td>' . $this->e($this->tipoLabel($alerta['tipo_convocatoria'] ?? '')) . '</td>' .
-                '<td>' . $this->e($alerta['estados'] ?? '—') . '</td>' .
-                '<td>' . $this->e($this->fecha($alerta['fecha_termino'] ?? '')) . '</td>' .
-                '<td><span class="priority ' . $clasePrioridad . '">' .
-                    $this->e($prioridad) .
-                '</span></td>' .
-            '</tr>';
-        }
-
-        if ($filasAlertas === '') {
-            $filasAlertas =
-                '<tr><td colspan="5" class="empty">' .
-                'No hay convocatorias con vencimiento hoy o en los próximos 2 días.' .
-                '</td></tr>';
-        }
+        $elementos[] = $this->crearTituloSeccion($documento, 'PUBLICACIONES POR TIPO');
+        $elementos[] = $this->crearSubtitulo(
+            $documento,
+            'Tendencia mensual · Bachillerato vs. Titulación'
+        );
 
         $mesesBachillerato = is_array($porTipo['bachillerato']['meses'] ?? null)
             ? $porTipo['bachillerato']['meses']
@@ -143,372 +234,133 @@ class ReporteConvocatoriaPdfService
         $mesesTitulacion = is_array($porTipo['titulacion']['meses'] ?? null)
             ? $porTipo['titulacion']['meses']
             : [];
-
-        $serieMensual = [];
-        $maximoMensual = 1;
+        $graficaTipo = [];
         $cantidadMeses = max(count($mesesBachillerato), count($mesesTitulacion));
 
-        for ($indiceMes = 0; $indiceMes < $cantidadMeses; $indiceMes++) {
-            $filaBachillerato = $mesesBachillerato[$indiceMes] ?? [];
-            $filaTitulacion = $mesesTitulacion[$indiceMes] ?? [];
+        for ($indice = 0; $indice < $cantidadMeses; $indice++) {
+            $bachillerato = $mesesBachillerato[$indice] ?? [];
+            $titulacion = $mesesTitulacion[$indice] ?? [];
+            $mes = (string)($bachillerato['label'] ?? $titulacion['label'] ?? '');
 
-            $labelMes = (string)(
-                $filaBachillerato['label'] ??
-                $filaTitulacion['label'] ??
-                ''
-            );
-            $bachilleratoMes = (int)($filaBachillerato['total'] ?? 0);
-            $titulacionMes = (int)($filaTitulacion['total'] ?? 0);
-
-            $maximoMensual = max(
-                $maximoMensual,
-                $bachilleratoMes,
-                $titulacionMes
-            );
-
-            $serieMensual[] = [
-                'label' => $labelMes,
-                'bachillerato' => $bachilleratoMes,
-                'titulacion' => $titulacionMes
+            $graficaTipo[] = [
+                'etiqueta' => $mes . ' · Bachillerato',
+                'valor' => (int)($bachillerato['total'] ?? 0)
+            ];
+            $graficaTipo[] = [
+                'etiqueta' => $mes . ' · Titulación',
+                'valor' => (int)($titulacion['total'] ?? 0)
             ];
         }
 
-        $filasGraficaTipo = '';
+        $elementos[] = $this->crearGraficaBarras(
+            $documento,
+            $graficaTipo,
+            $anchoUtil
+        );
+        $elementos[] = $this->crearEspaciador($documento, 120);
 
-        foreach ($serieMensual as $mesSerie) {
-            $bachilleratoMes = (int)($mesSerie['bachillerato'] ?? 0);
-            $titulacionMes = (int)($mesSerie['titulacion'] ?? 0);
-            $anchoBachillerato = (int)round(
-                ($bachilleratoMes / $maximoMensual) * 100
-            );
-            $anchoTitulacion = (int)round(
-                ($titulacionMes / $maximoMensual) * 100
-            );
-
-            $filasGraficaTipo .=
-                '<tr>' .
-                    '<td class="chart-month">' .
-                        $this->e($mesSerie['label'] ?? '') .
-                    '</td>' .
-                    '<td class="chart-series-label">Bachillerato</td>' .
-                    '<td class="chart-cell">' .
-                        '<div class="chart-track"><div class="chart-bar chart-bar-light" style="width:' .
-                            max(2, $anchoBachillerato) . '%"></div></div>' .
-                    '</td>' .
-                    '<td class="chart-value">' . $bachilleratoMes . '</td>' .
-                '</tr>' .
-                '<tr>' .
-                    '<td></td>' .
-                    '<td class="chart-series-label">Titulación</td>' .
-                    '<td class="chart-cell">' .
-                        '<div class="chart-track"><div class="chart-bar chart-bar-primary" style="width:' .
-                            max(2, $anchoTitulacion) . '%"></div></div>' .
-                    '</td>' .
-                    '<td class="chart-value">' . $titulacionMes . '</td>' .
-                '</tr>';
+        $elementos[] = $this->crearTituloSeccion($documento, 'LECTURA EJECUTIVA');
+        $filasHallazgos = [];
+        foreach ($hallazgos as $indice => $hallazgo) {
+            $filasHallazgos[] = [
+                (string)($indice + 1),
+                (string)$hallazgo
+            ];
         }
-
-        if ($filasGraficaTipo === '') {
-            $filasGraficaTipo =
-                '<tr><td colspan="4" class="empty">Sin información mensual disponible.</td></tr>';
+        if (empty($filasHallazgos)) {
+            $filasHallazgos[] = ['—', 'No hay hallazgos disponibles.'];
         }
+        $elementos[] = $this->crearTablaDetalle(
+            $documento,
+            ['#', 'Hallazgo'],
+            $filasHallazgos,
+            $this->anchos($anchoUtil, [8, 92])
+        );
+        $elementos[] = $this->crearEspaciador($documento, 120);
 
-        return '<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<style>
-    @page { margin: 22px 28px 28px; }
-    body {
-        margin: 0;
-        color: #16223b;
-        font-family: "DejaVu Sans", sans-serif;
-        font-size: 9px;
-        line-height: 1.4;
-        background: #ffffff;
-    }
-    .header {
-        padding: 0 0 12px;
-        border-bottom: 2px solid #273a8a;
-        margin-bottom: 16px;
-    }
-    .brand {
-        color: #273a8a;
-        font-size: 10px;
-        font-weight: 700;
-        letter-spacing: .5px;
-        text-transform: uppercase;
-    }
-    h1 {
-        margin: 3px 0 2px;
-        font-size: 20px;
-        color: #16223b;
-    }
-    .meta {
-        color: #6d7480;
-        font-size: 8px;
-    }
-    .section-title {
-        margin: 18px 0 8px;
-        color: #273a8a;
-        font-size: 11px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: .4px;
-    }
-    .metrics {
-        width: 100%;
-        border-collapse: separate;
-        border-spacing: 7px;
-        margin-left: -7px;
-    }
-    .metric {
-        width: 25%;
-        padding: 10px;
-        border: 1px solid #e5e9ef;
-        background: #f8fafc;
-        border-radius: 7px;
-        vertical-align: top;
-    }
-    .metric strong {
-        display: block;
-        margin-bottom: 3px;
-        color: #273a8a;
-        font-size: 17px;
-        line-height: 1;
-    }
-    .metric span {
-        color: #6d7480;
-        font-size: 8px;
-    }
-    .two-col {
-        width: 100%;
-        border-collapse: separate;
-        border-spacing: 12px 0;
-        margin-left: -12px;
-    }
-    .two-col > tbody > tr > td {
-        width: 50%;
-        vertical-align: top;
-    }
-    .panel {
-        padding: 11px;
-        border: 1px solid #e5e9ef;
-        background: #ffffff;
-        border-radius: 7px;
-    }
-    table.data {
-        width: 100%;
-        border-collapse: collapse;
-    }
-    table.data th {
-        padding: 7px 6px;
-        background: #f2f5fa;
-        border: 1px solid #e5e9ef;
-        color: #16223b;
-        font-size: 7.5px;
-        text-align: left;
-    }
-    table.data td {
-        padding: 6px;
-        border: 1px solid #e5e9ef;
-        color: #46536b;
-        font-size: 7px;
-        vertical-align: top;
-    }
-    table.data td.num {
-        text-align: right;
-        font-weight: 700;
-        color: #273a8a;
-    }
-    .status {
-        display: inline-block;
-        padding: 3px 6px;
-        border-radius: 10px;
-        font-size: 6.5px;
-        font-weight: 700;
-    }
-    .status-activa { background: #e9f7f2; color: #07866f; }
-    .status-proxima { background: #fff3e6; color: #d46a13; }
-    .status-finalizada,
-    .status-inactiva { background: #eef1f5; color: #65738a; }
-    .priority {
-        display: inline-block;
-        padding: 3px 6px;
-        border-radius: 10px;
-        font-size: 6.5px;
-        font-weight: 700;
-    }
-    .priority-danger { background: #fff0ee; color: #b42318; }
-    .priority-warning { background: #fff3e6; color: #d46a13; }
-    .chart-table {
-        width: 100%;
-        margin-top: 8px;
-        border-collapse: collapse;
-    }
-    .chart-table td {
-        padding: 4px 5px;
-        border: 0;
-        font-size: 7px;
-        vertical-align: middle;
-    }
-    .chart-month {
-        width: 8%;
-        color: #16223b;
-        font-weight: 700;
-    }
-    .chart-series-label {
-        width: 12%;
-        color: #6d7480;
-    }
-    .chart-cell {
-        width: 72%;
-    }
-    .chart-value {
-        width: 8%;
-        color: #16223b;
-        font-weight: 700;
-        text-align: right;
-    }
-    .chart-track {
-        width: 100%;
-        height: 9px;
-        background: #edf1f6;
-        border-radius: 4px;
-    }
-    .chart-bar {
-        height: 9px;
-        border-radius: 4px;
-    }
-    .chart-bar-light { background: #cfdaf0; }
-    .chart-bar-primary { background: #273a8a; }
-    ul.findings {
-        margin: 0;
-        padding-left: 16px;
-    }
-    ul.findings li {
-        margin-bottom: 6px;
-        color: #46536b;
-    }
-    .empty {
-        color: #8a96a8;
-        text-align: center;
-        padding: 12px !important;
-    }
-    .footer {
-        margin-top: 14px;
-        padding-top: 8px;
-        border-top: 1px solid #e5e9ef;
-        color: #8a96a8;
-        font-size: 7px;
-        text-align: right;
-    }
-</style>
-</head>
-<body>
-    <div class="header">
-        <div class="brand">Sistema Comercial · Convocatorias</div>
-        <h1>Reporte de Convocatorias</h1>
-        <div class="meta">
-            Generado: ' . $fechaGeneracion .
-            ($generadoPor !== '' ? ' · Por: ' . $generadoPor : '') .
-            ($rol !== '' ? ' · Rol: ' . $rol : '') .
-        '</div>
-    </div>
+        $elementos[] = $this->crearTituloSeccion($documento, 'ALERTAS DE VENCIMIENTO');
+        $filasAlertas = [];
+        foreach ($alertas as $alerta) {
+            $dias = (int)($alerta['dias_restantes'] ?? 0);
+            $prioridad = $dias === 0
+                ? 'Vence hoy'
+                : ($dias === 1 ? 'Vence mañana' : 'Vence en 2 días');
 
-    <div class="section-title">Resumen ejecutivo</div>
-    <table class="metrics">
-        <tr>
-            <td class="metric"><strong>' . (int)($resumen['total'] ?? 0) . '</strong><span>Total registradas</span></td>
-            <td class="metric"><strong>' . (int)($resumen['activas'] ?? 0) . '</strong><span>Activas</span></td>
-            <td class="metric"><strong>' . (int)($resumen['inactivas'] ?? 0) . '</strong><span>Inactivas</span></td>
-            <td class="metric"><strong>' . (int)($resumen['publicaciones_mes_actual'] ?? 0) . '</strong><span>Publicadas este mes</span></td>
-        </tr>
-        <tr>
-            <td class="metric"><strong>' . (int)($resumen['publicaciones_hoy'] ?? 0) . '</strong><span>Publicadas hoy</span></td>
-            <td class="metric"><strong>' . (int)($resumen['vencen_hoy'] ?? 0) . '</strong><span>Vencen hoy</span></td>
-            <td class="metric"><strong>' . (int)($resumen['vencen_2_dias'] ?? 0) . '</strong><span>Vencen en 1–2 días</span></td>
-            <td class="metric"><strong>' . (int)($resumen['porcentaje_cobertura'] ?? 0) . '%</strong><span>Cobertura territorial</span></td>
-        </tr>
-    </table>
-
-    <div class="section-title">Publicaciones por tipo · tendencia mensual</div>
-    <div class="panel">
-        <table class="chart-table">
-            <tbody>' . $filasGraficaTipo . '</tbody>
-        </table>
-    </div>
-
-    <table class="two-col"><tr>
-        <td>
-            <div class="section-title">Hallazgos</div>
-            <div class="panel"><ul class="findings">' . $hallazgosHtml . '</ul></div>
-        </td>
-        <td>
-            <div class="section-title">Cobertura territorial</div>
-            <div class="panel">
-                <table class="data">
-                    <thead><tr><th>Estado</th><th>Convocatorias activas</th></tr></thead>
-                    <tbody>' . $filasTerritorios . '</tbody>
-                </table>
-            </div>
-        </td>
-    </tr></table>
-
-    <div class="section-title">Alertas de vencimiento</div>
-    <table class="data">
-        <thead>
-            <tr>
-                <th>Convocatoria</th>
-                <th>Tipo</th>
-                <th>Territorio(s)</th>
-                <th>Fecha de vencimiento</th>
-                <th>Prioridad</th>
-            </tr>
-        </thead>
-        <tbody>' . $filasAlertas . '</tbody>
-    </table>
-
-    <div class="section-title">Detalle de convocatorias</div>
-    <table class="data">
-        <thead>
-            <tr>
-                <th>Título</th>
-                <th>Tipo</th>
-                <th>Subtipo</th>
-                <th>Inicio</th>
-                <th>Fin</th>
-                <th>Territorio(s)</th>
-                <th>Estado</th>
-            </tr>
-        </thead>
-        <tbody>' . $filasDetalle . '</tbody>
-    </table>
-
-    <div class="footer">Reporte generado desde el módulo de Convocatorias.</div>
-</body>
-</html>';
-    }
-
-    private function e($valor)
-    {
-        return htmlspecialchars((string)$valor, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-    }
-
-    private function fecha($valor)
-    {
-        $valor = trim((string)$valor);
-
-        if ($valor === '') {
-            return '—';
+            $filasAlertas[] = [
+                (string)($alerta['titulo'] ?? '—'),
+                $this->tipoConvocatoria((string)($alerta['tipo_convocatoria'] ?? '')),
+                (string)($alerta['estados'] ?? '—'),
+                $this->formatearFechaSimple($alerta['fecha_termino'] ?? null),
+                $prioridad
+            ];
         }
+        if (empty($filasAlertas)) {
+            $filasAlertas[] = [
+                'Sin alertas',
+                '—',
+                '—',
+                '—',
+                'No hay vencimientos hoy ni en los próximos 2 días'
+            ];
+        }
+        $elementos[] = $this->crearTablaDetalle(
+            $documento,
+            ['Convocatoria', 'Tipo', 'Territorio(s)', 'Vencimiento', 'Prioridad'],
+            $filasAlertas,
+            $this->anchos($anchoUtil, [27, 14, 23, 16, 20])
+        );
+        $elementos[] = $this->crearEspaciador($documento, 120);
 
-        $timestamp = strtotime($valor);
+        $elementos[] = $this->crearTituloSeccion($documento, 'COBERTURA TERRITORIAL');
+        $filasCobertura = [];
+        foreach ($territorios as $territorio) {
+            $filasCobertura[] = [
+                (string)($territorio['nombre'] ?? '—'),
+                (string)((int)($territorio['convocatorias_activas'] ?? 0))
+            ];
+        }
+        if (empty($filasCobertura)) {
+            $filasCobertura[] = ['Sin cobertura activa registrada', '0'];
+        }
+        $elementos[] = $this->crearTablaDetalle(
+            $documento,
+            ['Estado', 'Convocatorias activas'],
+            $filasCobertura,
+            $this->anchos($anchoUtil, [75, 25])
+        );
+        $elementos[] = $this->crearEspaciador($documento, 120);
 
-        return $timestamp !== false ? date('d/m/Y', $timestamp) : $valor;
+        $elementos[] = $this->crearTituloSeccion($documento, 'DETALLE DE CONVOCATORIAS');
+        $filasDetalle = [];
+        foreach ($detalle as $fila) {
+            $periodo =
+                $this->formatearFechaSimple($fila['fecha_inicio'] ?? null) .
+                ' – ' .
+                $this->formatearFechaSimple($fila['fecha_termino'] ?? null);
+
+            $filasDetalle[] = [
+                (string)($fila['titulo'] ?? '—'),
+                $this->tipoConvocatoria((string)($fila['tipo_convocatoria'] ?? '')),
+                $this->subtipoConvocatoria((string)($fila['subtipo_convocatoria'] ?? '')),
+                $periodo,
+                (string)($fila['estados'] ?? '—'),
+                $this->estadoConvocatoria((string)($fila['estado_proceso'] ?? 'inactiva'))
+            ];
+        }
+        if (empty($filasDetalle)) {
+            $filasDetalle[] = ['Sin convocatorias registradas', '—', '—', '—', '—', '—'];
+        }
+        $elementos[] = $this->crearTablaDetalle(
+            $documento,
+            ['Convocatoria', 'Tipo', 'Subtipo', 'Periodo', 'Territorio(s)', 'Estatus'],
+            $filasDetalle,
+            $this->anchos($anchoUtil, [24, 12, 15, 19, 18, 12])
+        );
+
+        return $elementos;
     }
 
-    private function tipoLabel($tipo)
+    private function tipoConvocatoria($tipo)
     {
         $tipo = strtolower(trim((string)$tipo));
 
@@ -527,28 +379,953 @@ class ReporteConvocatoriaPdfService
         return $tipo !== '' ? ucfirst($tipo) : '—';
     }
 
-    private function subtipoLabel($subtipo)
+    private function subtipoConvocatoria($subtipo)
     {
         $subtipo = trim((string)$subtipo);
 
-        if ($subtipo === '') {
-            return '—';
-        }
-
-        return ucwords(str_replace('-', ' ', $subtipo));
+        return $subtipo !== ''
+            ? ucwords(str_replace('-', ' ', $subtipo))
+            : '—';
     }
 
-    private function estadoLabel($estado)
+    private function estadoConvocatoria($estado)
     {
         $estado = strtolower(trim((string)$estado));
 
-        $labels = [
+        $etiquetas = [
             'activa' => 'Activa',
             'proxima' => 'Próxima a vencer',
             'finalizada' => 'Finalizada',
             'inactiva' => 'Inactiva'
         ];
 
-        return $labels[$estado] ?? 'Inactiva';
+        return $etiquetas[$estado] ?? 'Inactiva';
+    }
+
+    private function formatearFechaSimple($valor)
+    {
+        $valor = trim((string)$valor);
+
+        if ($valor === '') {
+            return '—';
+        }
+
+        try {
+            return (new DateTimeImmutable($valor))->format('d/m/Y');
+        } catch (Exception $error) {
+            return '—';
+        }
+    }
+
+    private function aplicarEncabezadoInstitucional(ZipArchive $zip, array $datosReporte, $anchoUtil)
+    {
+        if ($zip->locateName('word/header1.xml') === false) {
+            return;
+        }
+
+        $fecha = trim((string)($datosReporte['fecha_generacion'] ?? ''));
+        $fecha = $fecha !== '' ? $fecha : date('d/m/Y H:i');
+        $generadoPor = trim((string)($datosReporte['generado_por'] ?? ''));
+        $rol = trim((string)($datosReporte['generado_por_rol'] ?? ''));
+
+        $anchoTotal = max(7200, (int)$anchoUtil);
+        $anchoLogo = (int)round($anchoTotal * 0.34);
+        $anchoTexto = max(1, $anchoTotal - $anchoLogo);
+
+        $contenidoLogo = $zip->getFromName('word/media/image1.png');
+
+        if (is_string($contenidoLogo) && $contenidoLogo !== '') {
+            $rels = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' .
+                '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' .
+                '<Relationship Id="rId1" ' .
+                'Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" ' .
+                'Target="media/image1.png"/>' .
+                '</Relationships>';
+            $zip->addFromString('word/_rels/header1.xml.rels', $rels);
+        }
+
+        $logoXml = '';
+        if (is_string($contenidoLogo) && $contenidoLogo !== '') {
+            $logoXml =
+                '<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:before="0" w:after="0"/></w:pPr>' .
+                '<w:r><w:drawing>' .
+                '<wp:inline distB="114300" distT="114300" distL="114300" distR="114300">' .
+                '<wp:extent cx="1243013" cy="1137428"/>' .
+                '<wp:effectExtent b="0" l="0" r="0" t="0"/>' .
+                '<wp:docPr id="1" name="image1.png"/>' .
+                '<a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">' .
+                '<pic:pic><pic:nvPicPr><pic:cNvPr id="0" name="image1.png"/>' .
+                '<pic:cNvPicPr preferRelativeResize="0"/></pic:nvPicPr>' .
+                '<pic:blipFill><a:blip r:embed="rId1"/><a:srcRect b="0" l="0" r="0" t="0"/>' .
+                '<a:stretch><a:fillRect/></a:stretch></pic:blipFill>' .
+                '<pic:spPr><a:xfrm><a:off x="0" y="0"/>' .
+                '<a:ext cx="1243013" cy="1137428"/></a:xfrm>' .
+                '<a:prstGeom prst="rect"/><a:ln><a:noFill/></a:ln></pic:spPr></pic:pic>' .
+                '</a:graphicData></a:graphic>' .
+                '</wp:inline></w:drawing></w:r></w:p>';
+        }
+
+        $meta = '';
+        if ($generadoPor !== '') {
+            $meta .= $this->parrafoHeaderXml('Generado por: ' . $generadoPor, 12, self::COLOR_SECUNDARIO, false);
+        }
+        if ($rol !== '') {
+            $meta .= $this->parrafoHeaderXml('Rol: ' . $rol, 12, self::COLOR_SECUNDARIO, false);
+        }
+        $meta .= $this->parrafoHeaderXml('Fecha: ' . $fecha, 12, self::COLOR_SECUNDARIO, false);
+
+        $header =
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' .
+            '<w:hdr xmlns:w="' . self::W_NS . '" ' .
+            'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" ' .
+            'xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" ' .
+            'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" ' .
+            'xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">' .
+            '<w:tbl><w:tblPr><w:tblW w:w="' . $anchoTotal . '" w:type="dxa"/>' .
+            '<w:tblLayout w:type="fixed"/></w:tblPr>' .
+            '<w:tblGrid><w:gridCol w:w="' . $anchoLogo . '"/><w:gridCol w:w="' . $anchoTexto . '"/></w:tblGrid>' .
+            '<w:tr><w:trPr><w:cantSplit/></w:trPr>' .
+            '<w:tc><w:tcPr><w:tcW w:w="' . $anchoLogo . '" w:type="dxa"/><w:vAlign w:val="center"/></w:tcPr>' .
+            $logoXml . '</w:tc>' .
+            '<w:tc><w:tcPr><w:tcW w:w="' . $anchoTexto . '" w:type="dxa"/><w:vAlign w:val="center"/></w:tcPr>' .
+            $this->parrafoHeaderXml('Sistema de Gestión Comercial', 13, self::COLOR_PRIMARIO, true) .
+            $this->parrafoHeaderXml('Reporte de Convocatorias', 21, self::COLOR_TEXTO, true) .
+            $this->parrafoHeaderXml('Publicaciones, vigencias, cobertura territorial y alertas', 14, self::COLOR_SECUNDARIO, false) .
+            $meta .
+            '</w:tc></w:tr></w:tbl>' .
+            '<w:p><w:pPr>' .
+            '<w:spacing w:before="60" w:after="90"/>' .
+            '<w:pBdr><w:bottom w:val="single" w:sz="16" w:space="0" w:color="' . self::COLOR_PRIMARIO . '"/></w:pBdr>' .
+            '</w:pPr><w:r><w:t></w:t></w:r></w:p>' .
+            '</w:hdr>';
+
+        $zip->addFromString('word/header1.xml', $header);
+    }
+
+    private function parrafoHeaderXml($texto, $tamano, $color, $negrita)
+    {
+        return '<w:p><w:pPr><w:jc w:val="right"/>' .
+            '<w:spacing w:before="0" w:after="25"/></w:pPr><w:r><w:rPr>' .
+            ($negrita ? '<w:b/>' : '') .
+            '<w:color w:val="' . $color . '"/>' .
+            '<w:sz w:val="' . (int)$tamano . '"/><w:szCs w:val="' . (int)$tamano . '"/>' .
+            '</w:rPr><w:t xml:space="preserve">' . $this->xmlTexto($texto) . '</w:t></w:r></w:p>';
+    }
+
+    private function aplicarPieInstitucional(ZipArchive $zip, $anchoUtil)
+    {
+        $anchoTotal = max(7200, (int)$anchoUtil);
+        $anchoIzquierdo = (int)round($anchoTotal * 0.68);
+        $anchoDerecho = max(1, $anchoTotal - $anchoIzquierdo);
+
+        $pie =
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' .
+            '<w:ftr xmlns:w="' . self::W_NS . '">' .
+            '<w:tbl><w:tblPr><w:tblW w:w="' . $anchoTotal . '" w:type="dxa"/>' .
+            '<w:tblLayout w:type="fixed"/><w:tblBorders>' .
+            '<w:top w:val="single" w:sz="4" w:space="6" w:color="' . self::COLOR_BORDE . '"/>' .
+            '</w:tblBorders></w:tblPr>' .
+            '<w:tblGrid><w:gridCol w:w="' . $anchoIzquierdo . '"/><w:gridCol w:w="' . $anchoDerecho . '"/></w:tblGrid>' .
+            '<w:tr><w:trPr><w:cantSplit/></w:trPr>' .
+            '<w:tc><w:tcPr><w:tcW w:w="' . $anchoIzquierdo . '" w:type="dxa"/></w:tcPr>' .
+            '<w:p><w:pPr><w:jc w:val="left"/><w:spacing w:before="0" w:after="0"/></w:pPr>' .
+            '<w:r><w:rPr><w:b/><w:color w:val="' . self::COLOR_PRIMARIO . '"/>' .
+            '<w:sz w:val="13"/><w:szCs w:val="13"/></w:rPr>' .
+            '<w:t>Grupo Porcayo · Sistema de Gestión Comercial</w:t></w:r></w:p></w:tc>' .
+            '<w:tc><w:tcPr><w:tcW w:w="' . $anchoDerecho . '" w:type="dxa"/></w:tcPr>' .
+            '<w:p><w:pPr><w:jc w:val="right"/><w:spacing w:before="0" w:after="0"/></w:pPr>' .
+            '<w:r><w:rPr><w:color w:val="' . self::COLOR_SECUNDARIO . '"/><w:sz w:val="13"/><w:szCs w:val="13"/></w:rPr><w:t xml:space="preserve">Página </w:t></w:r>' .
+            $this->campoPieXml('PAGE') .
+            '<w:r><w:rPr><w:color w:val="' . self::COLOR_SECUNDARIO . '"/><w:sz w:val="13"/><w:szCs w:val="13"/></w:rPr><w:t xml:space="preserve"> de </w:t></w:r>' .
+            $this->campoPieXml('NUMPAGES') .
+            '</w:p></w:tc></w:tr></w:tbl></w:ftr>';
+
+        for ($indice = 0; $indice < $zip->numFiles; $indice++) {
+            $estadisticas = $zip->statIndex($indice);
+            $nombre = is_array($estadisticas) ? (string)($estadisticas['name'] ?? '') : '';
+            if (preg_match('#^word/footer\d*\.xml$#', $nombre) === 1) {
+                $zip->addFromString($nombre, $pie);
+            }
+        }
+    }
+
+    private function campoPieXml($campo)
+    {
+        $campo = strtoupper(trim((string)$campo));
+        return '<w:r><w:fldChar w:fldCharType="begin"/></w:r>' .
+            '<w:r><w:instrText xml:space="preserve"> ' . $campo . ' </w:instrText></w:r>' .
+            '<w:r><w:fldChar w:fldCharType="separate"/></w:r>' .
+            '<w:r><w:rPr><w:color w:val="' . self::COLOR_SECUNDARIO . '"/>' .
+            '<w:sz w:val="13"/><w:szCs w:val="13"/></w:rPr><w:t>1</w:t></w:r>' .
+            '<w:r><w:fldChar w:fldCharType="end"/></w:r>';
+    }
+
+    private function xmlTexto($texto)
+    {
+        return htmlspecialchars((string)$texto, ENT_QUOTES | ENT_XML1, 'UTF-8');
+    }
+
+    private function crearTituloSeccion(DOMDocument $documento, $texto)
+    {
+        return $this->crearParrafo(
+            $documento,
+            (string)$texto,
+            [
+                'tamano' => 19,
+                'negrita' => true,
+                'color' => self::COLOR_TEXTO,
+                'antes' => 80,
+                'despues' => 70,
+                'mantener_siguiente' => true,
+                'borde_izquierdo' => true
+            ]
+        );
+    }
+
+    private function crearSubtitulo(DOMDocument $documento, $texto)
+    {
+        return $this->crearParrafo(
+            $documento,
+            (string)$texto,
+            [
+                'tamano' => 17,
+                'negrita' => true,
+                'color' => self::COLOR_TEXTO,
+                'antes' => 50,
+                'despues' => 50,
+                'mantener_siguiente' => true
+            ]
+        );
+    }
+
+    private function crearEspaciador(DOMDocument $documento, $despues)
+    {
+        return $this->crearParrafo(
+            $documento,
+            '',
+            ['tamano' => 4, 'despues' => (int)$despues]
+        );
+    }
+
+    private function crearTarjetasIndicadores(
+        DOMDocument $documento,
+        array $indicadores,
+        $anchoUtil,
+        $columnas
+    ) {
+        $columnas = max(1, (int)$columnas);
+        $anchoBase = (int)floor($anchoUtil / $columnas);
+        $anchos = array_fill(0, $columnas, $anchoBase);
+        $anchos[$columnas - 1] += $anchoUtil - array_sum($anchos);
+        $tabla = $this->crearTablaBase($documento, $anchoUtil, $anchos, true);
+
+        foreach (array_chunk($indicadores, $columnas) as $grupo) {
+            $fila = $this->crearFila($documento, false);
+            foreach ($anchos as $indice => $ancho) {
+                $indicador = $grupo[$indice] ?? ['etiqueta' => '', 'valor' => ''];
+                $fila->appendChild($this->crearCeldaIndicador(
+                    $documento,
+                    (string)($indicador['valor'] ?? ''),
+                    (string)($indicador['etiqueta'] ?? ''),
+                    $ancho
+                ));
+            }
+            $tabla->appendChild($fila);
+        }
+
+        return $tabla;
+    }
+
+    private function crearCeldaIndicador(DOMDocument $documento, $valor, $etiqueta, $ancho)
+    {
+        $celda = $this->w($documento, 'tc');
+        $propiedades = $this->w($documento, 'tcPr');
+        $anchoNodo = $this->w($documento, 'tcW');
+        $this->attr($anchoNodo, 'w', 'w', 'w', (string)$ancho);
+        $this->attr($anchoNodo, 'w', 'w', 'type', 'dxa');
+        $propiedades->appendChild($anchoNodo);
+
+        $relleno = $this->w($documento, 'shd');
+        $this->attr($relleno, 'w', 'w', 'val', 'clear');
+        $this->attr($relleno, 'w', 'w', 'fill', self::COLOR_FONDO);
+        $propiedades->appendChild($relleno);
+
+        $vertical = $this->w($documento, 'vAlign');
+        $this->attr($vertical, 'w', 'w', 'val', 'center');
+        $propiedades->appendChild($vertical);
+        $celda->appendChild($propiedades);
+
+        $celda->appendChild($this->crearParrafo(
+            $documento,
+            (string)$valor,
+            [
+                'tamano' => 22,
+                'negrita' => true,
+                'color' => self::COLOR_TEXTO,
+                'alineacion' => 'center',
+                'antes' => 45,
+                'despues' => 20
+            ]
+        ));
+        $celda->appendChild($this->crearParrafo(
+            $documento,
+            (string)$etiqueta,
+            [
+                'tamano' => 13,
+                'color' => self::COLOR_SECUNDARIO,
+                'alineacion' => 'center',
+                'antes' => 0,
+                'despues' => 45
+            ]
+        ));
+
+        return $celda;
+    }
+
+    private function crearGraficaBarras(DOMDocument $documento, array $datos, $anchoUtil)
+    {
+        if (empty($datos)) {
+            return $this->crearParrafo(
+                $documento,
+                'No hay información disponible.',
+                ['tamano' => 15, 'color' => self::COLOR_SECUNDARIO, 'despues' => 60]
+            );
+        }
+
+        $valores = array_map(static function ($dato) {
+            return max(0, (int)($dato['valor'] ?? 0));
+        }, $datos);
+        $maximo = max(1, max($valores));
+        $anchos = $this->anchos($anchoUtil, [32, 56, 12]);
+        $tabla = $this->crearTablaBase($documento, $anchoUtil, $anchos, false);
+
+        foreach ($datos as $dato) {
+            $etiqueta = (string)($dato['etiqueta'] ?? '—');
+            $valor = max(0, (int)($dato['valor'] ?? 0));
+            $fila = $this->crearFila($documento, false);
+            $fila->appendChild($this->crearCelda(
+                $documento,
+                $etiqueta,
+                $anchos[0],
+                ['tamano' => 14, 'color' => self::COLOR_TEXTO]
+            ));
+
+            $celdaBarra = $this->crearCelda(
+                $documento,
+                '',
+                $anchos[1],
+                ['tamano' => 4, 'color' => self::COLOR_TEXTO]
+            );
+            $parrafoExistente = $celdaBarra->getElementsByTagNameNS(self::W_NS, 'p')->item(0);
+            if ($parrafoExistente instanceof DOMNode) {
+                $celdaBarra->removeChild($parrafoExistente);
+            }
+
+            if ($valor <= 0) {
+                $barra = $this->crearTablaBase($documento, $anchos[1], [$anchos[1]], false);
+                $filaBarra = $this->crearFila($documento, false);
+                $filaBarra->appendChild($this->crearCeldaBarra(
+                    $documento,
+                    $anchos[1],
+                    self::COLOR_FONDO_PRIMARIO
+                ));
+                $barra->appendChild($filaBarra);
+            } elseif ($valor >= $maximo) {
+                $barra = $this->crearTablaBase($documento, $anchos[1], [$anchos[1]], false);
+                $filaBarra = $this->crearFila($documento, false);
+                $filaBarra->appendChild($this->crearCeldaBarra(
+                    $documento,
+                    $anchos[1],
+                    self::COLOR_PRIMARIO
+                ));
+                $barra->appendChild($filaBarra);
+            } else {
+                $relleno = max(1, (int)round($anchos[1] * ($valor / $maximo)));
+                $vacio = max(1, $anchos[1] - $relleno);
+                $barra = $this->crearTablaBase(
+                    $documento,
+                    $anchos[1],
+                    [$relleno, $vacio],
+                    false
+                );
+                $filaBarra = $this->crearFila($documento, false);
+                $filaBarra->appendChild($this->crearCeldaBarra(
+                    $documento,
+                    $relleno,
+                    self::COLOR_PRIMARIO
+                ));
+                $filaBarra->appendChild($this->crearCeldaBarra(
+                    $documento,
+                    $vacio,
+                    self::COLOR_FONDO_PRIMARIO
+                ));
+                $barra->appendChild($filaBarra);
+            }
+
+            $celdaBarra->appendChild($barra);
+            $celdaBarra->appendChild($this->crearParrafo(
+                $documento,
+                '',
+                ['tamano' => 4, 'despues' => 0]
+            ));
+            $fila->appendChild($celdaBarra);
+            $fila->appendChild($this->crearCelda(
+                $documento,
+                (string)$valor,
+                $anchos[2],
+                [
+                    'tamano' => 14,
+                    'negrita' => true,
+                    'color' => self::COLOR_TEXTO,
+                    'alineacion' => 'right'
+                ]
+            ));
+            $tabla->appendChild($fila);
+        }
+
+        return $tabla;
+    }
+
+    private function crearCeldaBarra(DOMDocument $documento, $ancho, $color)
+    {
+        $celda = $this->w($documento, 'tc');
+        $propiedades = $this->w($documento, 'tcPr');
+        $anchoNodo = $this->w($documento, 'tcW');
+        $this->attr($anchoNodo, 'w', 'w', 'w', (string)$ancho);
+        $this->attr($anchoNodo, 'w', 'w', 'type', 'dxa');
+        $propiedades->appendChild($anchoNodo);
+
+        $relleno = $this->w($documento, 'shd');
+        $this->attr($relleno, 'w', 'w', 'val', 'clear');
+        $this->attr($relleno, 'w', 'w', 'fill', (string)$color);
+        $propiedades->appendChild($relleno);
+        $celda->appendChild($propiedades);
+        $celda->appendChild($this->crearParrafo(
+            $documento,
+            ' ',
+            ['tamano' => 4, 'antes' => 0, 'despues' => 0]
+        ));
+
+        return $celda;
+    }
+
+    private function crearTablaSimple(DOMDocument $documento, array $filas, array $anchos)
+    {
+        $tabla = $this->crearTablaBase($documento, array_sum($anchos), $anchos);
+
+        foreach ($filas as $indice => $valores) {
+            $fila = $this->crearFila($documento, false);
+            $rellenoFila = $indice % 2 === 0 ? 'FFFFFF' : self::COLOR_FONDO;
+
+            foreach ($anchos as $columna => $ancho) {
+                $fila->appendChild($this->crearCelda(
+                    $documento,
+                    (string)($valores[$columna] ?? ''),
+                    $ancho,
+                    [
+                        'tamano' => 16,
+                        'negrita' => $columna === 0,
+                        'color' => $columna === 0 ? self::COLOR_PRIMARIO : self::COLOR_TEXTO,
+                        'relleno' => $columna === 0 ? self::COLOR_FONDO_PRIMARIO : $rellenoFila
+                    ]
+                ));
+            }
+
+            $tabla->appendChild($fila);
+        }
+
+        return $tabla;
+    }
+
+    private function crearTablaDetalle(DOMDocument $documento, array $encabezados, array $filas, array $anchos)
+    {
+        $tabla = $this->crearTablaBase($documento, array_sum($anchos), $anchos);
+        $filaCabecera = $this->crearFila($documento, true);
+
+        foreach ($encabezados as $indice => $encabezado) {
+            $filaCabecera->appendChild($this->crearCelda(
+                $documento,
+                (string)$encabezado,
+                $anchos[$indice] ?? 900,
+                [
+                    'tamano' => 14,
+                    'negrita' => true,
+                    'color' => 'FFFFFF',
+                    'relleno' => self::COLOR_PRIMARIO,
+                    'alineacion' => 'center'
+                ]
+            ));
+        }
+        $tabla->appendChild($filaCabecera);
+
+        foreach ($filas as $indiceFila => $valores) {
+            $fila = $this->crearFila($documento, false);
+            $rellenoFila = $indiceFila % 2 === 0 ? 'FFFFFF' : self::COLOR_FONDO;
+
+            foreach ($anchos as $indice => $ancho) {
+                $fila->appendChild($this->crearCelda(
+                    $documento,
+                    (string)($valores[$indice] ?? ''),
+                    $ancho,
+                    [
+                        'tamano' => 13,
+                        'color' => self::COLOR_TEXTO,
+                        'relleno' => $rellenoFila
+                    ]
+                ));
+            }
+            $tabla->appendChild($fila);
+        }
+
+        return $tabla;
+    }
+
+    private function crearTablaBase(DOMDocument $documento, $anchoTotal, array $anchos, $bordes = true)
+    {
+        $tabla = $this->w($documento, 'tbl');
+        $propiedades = $this->w($documento, 'tblPr');
+        $ancho = $this->w($documento, 'tblW');
+        $this->attr($ancho, 'w', 'w', 'type', 'dxa');
+        $this->attr($ancho, 'w', 'w', 'w', (string)$anchoTotal);
+        $propiedades->appendChild($ancho);
+
+        $layout = $this->w($documento, 'tblLayout');
+        $this->attr($layout, 'w', 'w', 'type', 'fixed');
+        $propiedades->appendChild($layout);
+
+        if ($bordes) {
+            $bordesNodo = $this->w($documento, 'tblBorders');
+            foreach (['top', 'left', 'bottom', 'right', 'insideH', 'insideV'] as $lado) {
+                $borde = $this->w($documento, $lado);
+                $this->attr($borde, 'w', 'w', 'val', 'single');
+                $this->attr($borde, 'w', 'w', 'sz', '2');
+                $this->attr($borde, 'w', 'w', 'color', self::COLOR_BORDE);
+                $bordesNodo->appendChild($borde);
+            }
+            $propiedades->appendChild($bordesNodo);
+        }
+        $tabla->appendChild($propiedades);
+
+        $grid = $this->w($documento, 'tblGrid');
+        foreach ($anchos as $anchoColumna) {
+            $columna = $this->w($documento, 'gridCol');
+            $this->attr($columna, 'w', 'w', 'w', (string)$anchoColumna);
+            $grid->appendChild($columna);
+        }
+        $tabla->appendChild($grid);
+
+        return $tabla;
+    }
+
+    private function crearFila(DOMDocument $documento, $encabezado)
+    {
+        $fila = $this->w($documento, 'tr');
+        $propiedades = $this->w($documento, 'trPr');
+        $propiedades->appendChild($this->w($documento, 'cantSplit'));
+
+        if ($encabezado) {
+            $repetir = $this->w($documento, 'tblHeader');
+            $this->attr($repetir, 'w', 'w', 'val', '1');
+            $propiedades->appendChild($repetir);
+        }
+
+        $fila->appendChild($propiedades);
+        return $fila;
+    }
+
+    private function crearCelda(DOMDocument $documento, $texto, $ancho, array $opciones = [])
+    {
+        $celda = $this->w($documento, 'tc');
+        $propiedades = $this->w($documento, 'tcPr');
+        $anchoNodo = $this->w($documento, 'tcW');
+        $this->attr($anchoNodo, 'w', 'w', 'w', (string)$ancho);
+        $this->attr($anchoNodo, 'w', 'w', 'type', 'dxa');
+        $propiedades->appendChild($anchoNodo);
+
+        if (!empty($opciones['relleno'])) {
+            $relleno = $this->w($documento, 'shd');
+            $this->attr($relleno, 'w', 'w', 'val', 'clear');
+            $this->attr($relleno, 'w', 'w', 'fill', (string)$opciones['relleno']);
+            $propiedades->appendChild($relleno);
+        }
+
+        $vertical = $this->w($documento, 'vAlign');
+        $this->attr($vertical, 'w', 'w', 'val', 'center');
+        $propiedades->appendChild($vertical);
+        $celda->appendChild($propiedades);
+
+        $celda->appendChild($this->crearParrafo(
+            $documento,
+            $texto,
+            [
+                'tamano' => $opciones['tamano'] ?? 15,
+                'negrita' => $opciones['negrita'] ?? false,
+                'color' => $opciones['color'] ?? self::COLOR_TEXTO,
+                'alineacion' => $opciones['alineacion'] ?? 'left',
+                'antes' => 25,
+                'despues' => 25
+            ]
+        ));
+
+        return $celda;
+    }
+
+    private function crearParrafo(DOMDocument $documento, $texto, array $opciones = [])
+    {
+        $parrafo = $this->w($documento, 'p');
+        $propiedades = $this->w($documento, 'pPr');
+        $espaciado = $this->w($documento, 'spacing');
+        $this->attr($espaciado, 'w', 'w', 'before', (string)($opciones['antes'] ?? 0));
+        $this->attr($espaciado, 'w', 'w', 'after', (string)($opciones['despues'] ?? 0));
+        $this->attr($espaciado, 'w', 'w', 'line', '240');
+        $this->attr($espaciado, 'w', 'w', 'lineRule', 'auto');
+        $propiedades->appendChild($espaciado);
+
+        if (!empty($opciones['borde_izquierdo'])) {
+            $bordes = $this->w($documento, 'pBdr');
+            $bordeIzquierdo = $this->w($documento, 'left');
+            $this->attr($bordeIzquierdo, 'w', 'w', 'val', 'single');
+            $this->attr($bordeIzquierdo, 'w', 'w', 'sz', '18');
+            $this->attr($bordeIzquierdo, 'w', 'w', 'space', '8');
+            $this->attr($bordeIzquierdo, 'w', 'w', 'color', self::COLOR_PRIMARIO);
+            $bordes->appendChild($bordeIzquierdo);
+            $propiedades->appendChild($bordes);
+        }
+
+        if (!empty($opciones['alineacion'])) {
+            $alineacion = $this->w($documento, 'jc');
+            $this->attr($alineacion, 'w', 'w', 'val', (string)$opciones['alineacion']);
+            $propiedades->appendChild($alineacion);
+        }
+
+        if (!empty($opciones['mantener_siguiente'])) {
+            $propiedades->appendChild($this->w($documento, 'keepNext'));
+        }
+
+        $parrafo->appendChild($propiedades);
+        $run = $this->w($documento, 'r');
+        $runPropiedades = $this->w($documento, 'rPr');
+
+        if (!empty($opciones['negrita'])) {
+            $runPropiedades->appendChild($this->w($documento, 'b'));
+        }
+
+        $color = $this->w($documento, 'color');
+        $this->attr($color, 'w', 'w', 'val', (string)($opciones['color'] ?? self::COLOR_TEXTO));
+        $runPropiedades->appendChild($color);
+
+        $tamano = (int)($opciones['tamano'] ?? 18);
+        $sz = $this->w($documento, 'sz');
+        $this->attr($sz, 'w', 'w', 'val', (string)$tamano);
+        $runPropiedades->appendChild($sz);
+        $szCs = $this->w($documento, 'szCs');
+        $this->attr($szCs, 'w', 'w', 'val', (string)$tamano);
+        $runPropiedades->appendChild($szCs);
+        $run->appendChild($runPropiedades);
+
+        $textoNodo = $this->w($documento, 't');
+        $textoNodo->setAttributeNS(self::XML_NS, 'xml:space', 'preserve');
+        $textoNodo->nodeValue = $this->textoXml($texto);
+        $run->appendChild($textoNodo);
+        $parrafo->appendChild($run);
+
+        return $parrafo;
+    }
+
+    private function anchos($anchoTotal, array $porcentajes)
+    {
+        $anchos = [];
+        $acumulado = 0;
+        $ultimo = count($porcentajes) - 1;
+
+        foreach ($porcentajes as $indice => $porcentaje) {
+            if ($indice === $ultimo) {
+                $ancho = max(1, $anchoTotal - $acumulado);
+            } else {
+                $ancho = max(1, (int)round($anchoTotal * ((float)$porcentaje / 100)));
+                $acumulado += $ancho;
+            }
+            $anchos[] = $ancho;
+        }
+
+        return $anchos;
+    }
+
+    private function obtenerAnchoUtil(DOMXPath $xpath, DOMElement $cuerpo)
+    {
+        $sectPr = $xpath->query('./w:sectPr', $cuerpo)->item(0);
+        if (!$sectPr instanceof DOMElement) {
+            $sectPr = $xpath->query('.//w:sectPr[last()]', $cuerpo)->item(0);
+        }
+
+        $anchoPagina = 12240;
+        $margenIzquierdo = 1440;
+        $margenDerecho = 1440;
+
+        if ($sectPr instanceof DOMElement) {
+            $pgSz = $xpath->query('./w:pgSz', $sectPr)->item(0);
+            $pgMar = $xpath->query('./w:pgMar', $sectPr)->item(0);
+
+            if ($pgSz instanceof DOMElement) {
+                $valor = (int)$pgSz->getAttributeNS(self::W_NS, 'w');
+                if ($valor > 0) {
+                    $anchoPagina = $valor;
+                }
+            }
+
+            if ($pgMar instanceof DOMElement) {
+                $izquierdo = (int)$pgMar->getAttributeNS(self::W_NS, 'left');
+                $derecho = (int)$pgMar->getAttributeNS(self::W_NS, 'right');
+                $margenIzquierdo = $izquierdo >= 0 ? $izquierdo : $margenIzquierdo;
+                $margenDerecho = $derecho >= 0 ? $derecho : $margenDerecho;
+            }
+        }
+
+        return max(7200, $anchoPagina - $margenIzquierdo - $margenDerecho);
+    }
+
+    private function formatearFechaHora($valor, $vacio)
+    {
+        $valor = trim((string)$valor);
+        if ($valor === '') {
+            return (string)$vacio;
+        }
+
+        try {
+            $fecha = new DateTimeImmutable($valor);
+            return $fecha->format('d/m/Y H:i');
+        } catch (Exception $error) {
+            return (string)$vacio;
+        }
+    }
+
+    private function w(DOMDocument $documento, $nombre)
+    {
+        return $documento->createElementNS(self::W_NS, 'w:' . $nombre);
+    }
+
+    private function attr(DOMElement $elemento, $prefijo, $nsClave, $nombre, $valor)
+    {
+        $namespace = $nsClave === 'w' ? self::W_NS : self::XML_NS;
+        $elemento->setAttributeNS($namespace, $prefijo . ':' . $nombre, (string)$valor);
+    }
+
+    private function textoXml($texto)
+    {
+        $texto = (string)$texto;
+        $limpio = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F]/u', '', $texto);
+        return $limpio === null ? '' : $limpio;
+    }
+
+    private function convertirAPdf($rutaDocx, $directorioSalida)
+    {
+        $conversor = $this->detectarConversor();
+        if (!($conversor['ok'] ?? false)) {
+            return $this->error(
+                'No se encontró un conversor DOCX a PDF disponible.',
+                (string)($conversor['detalle'] ?? 'Instala LibreOffice o Microsoft Word.')
+            );
+        }
+
+        if (($conversor['tipo'] ?? '') === 'libreoffice') {
+            return $this->convertirConLibreOffice(
+                (string)$conversor['ruta'],
+                $rutaDocx,
+                $directorioSalida
+            );
+        }
+
+        return $this->convertirConWord($rutaDocx, $directorioSalida);
+    }
+
+    private function detectarConversor()
+    {
+        $configurado = getenv('LIBREOFFICE_PATH');
+        $candidatos = [];
+
+        if ($configurado !== false && trim((string)$configurado) !== '') {
+            $candidatos[] = trim((string)$configurado);
+        }
+
+        if (PHP_OS_FAMILY === 'Windows') {
+            $candidatos[] = 'C:\\Program Files\\LibreOffice\\program\\soffice.exe';
+            $candidatos[] = 'C:\\Program Files (x86)\\LibreOffice\\program\\soffice.exe';
+        } else {
+            $candidatos[] = '/usr/bin/libreoffice';
+            $candidatos[] = '/usr/bin/soffice';
+            $candidatos[] = '/snap/bin/libreoffice';
+        }
+
+        foreach (array_unique($candidatos) as $ruta) {
+            if (is_file($ruta) && is_executable($ruta)) {
+                return [
+                    'ok' => true,
+                    'tipo' => 'libreoffice',
+                    'ruta' => $ruta,
+                    'detalle' => 'LibreOffice disponible.'
+                ];
+            }
+        }
+
+        if (PHP_OS_FAMILY === 'Windows') {
+            $windows = getenv('SystemRoot');
+            $rutaPowerShell = ($windows ? rtrim($windows, '\\/') : 'C:\\Windows') .
+                '\\System32\\WindowsPowerShell\\v1.0\\powershell.exe';
+
+            if (is_file($rutaPowerShell)) {
+                return [
+                    'ok' => true,
+                    'tipo' => 'word',
+                    'ruta' => $rutaPowerShell,
+                    'detalle' => 'Se intentará convertir mediante Microsoft Word.'
+                ];
+            }
+        }
+
+        return [
+            'ok' => false,
+            'tipo' => '',
+            'ruta' => '',
+            'detalle' => 'No se encontró LibreOffice y no hay conversor de Word disponible.'
+        ];
+    }
+
+    private function convertirConLibreOffice($ejecutable, $rutaDocx, $directorioSalida)
+    {
+        $comando = escapeshellarg($ejecutable) .
+            ' --headless --convert-to pdf --outdir ' . escapeshellarg($directorioSalida) .
+            ' ' . escapeshellarg($rutaDocx);
+        $resultado = $this->ejecutar($comando);
+        $rutaPdf = $directorioSalida . DIRECTORY_SEPARATOR .
+            pathinfo($rutaDocx, PATHINFO_FILENAME) . '.pdf';
+
+        if (($resultado['codigo'] ?? 1) !== 0 || !is_file($rutaPdf)) {
+            return $this->error(
+                'No fue posible convertir el reporte de convocatorias a PDF con LibreOffice.',
+                trim((string)($resultado['salida'] ?? ''))
+            );
+        }
+
+        return [
+            'ok' => true,
+            'ruta_pdf' => $rutaPdf,
+            'conversor' => 'LIBREOFFICE'
+        ];
+    }
+
+    private function convertirConWord($rutaDocx, $directorioSalida)
+    {
+        $rutaPdf = $directorioSalida . DIRECTORY_SEPARATOR .
+            pathinfo($rutaDocx, PATHINFO_FILENAME) . '.pdf';
+        $script = $directorioSalida . DIRECTORY_SEPARATOR . 'convertir_word.ps1';
+        $contenido = <<<'POWERSHELL'
+param(
+    [Parameter(Mandatory=$true)][string]$Docx,
+    [Parameter(Mandatory=$true)][string]$Pdf
+)
+$ErrorActionPreference = 'Stop'
+$word = $null
+$documento = $null
+try {
+    $word = New-Object -ComObject Word.Application
+    $word.Visible = $false
+    $word.DisplayAlerts = 0
+    $documento = $word.Documents.Open($Docx, $false, $true)
+    $documento.ExportAsFixedFormat($Pdf, 17)
+}
+finally {
+    if ($documento -ne $null) { $documento.Close($false) }
+    if ($word -ne $null) { $word.Quit() }
+}
+POWERSHELL;
+
+        if (file_put_contents($script, $contenido) === false) {
+            return $this->error(
+                'No fue posible preparar la conversión del reporte de convocatorias.',
+                'No se pudo crear el script temporal de PowerShell.'
+            );
+        }
+
+        $windows = getenv('SystemRoot') ?: 'C:\\Windows';
+        $powershell = rtrim($windows, '\\/') .
+            '\\System32\\WindowsPowerShell\\v1.0\\powershell.exe';
+        $comando = escapeshellarg($powershell) .
+            ' -NoProfile -NonInteractive -ExecutionPolicy Bypass -File ' . escapeshellarg($script) .
+            ' -Docx ' . escapeshellarg($rutaDocx) .
+            ' -Pdf ' . escapeshellarg($rutaPdf);
+        $resultado = $this->ejecutar($comando);
+
+        if (($resultado['codigo'] ?? 1) !== 0 || !is_file($rutaPdf)) {
+            return $this->error(
+                'No fue posible convertir el reporte de convocatorias a PDF con Microsoft Word.',
+                trim((string)($resultado['salida'] ?? ''))
+            );
+        }
+
+        return [
+            'ok' => true,
+            'ruta_pdf' => $rutaPdf,
+            'conversor' => 'MICROSOFT_WORD'
+        ];
+    }
+
+    private function ejecutar($comando)
+    {
+        $descriptores = [
+            1 => ['pipe', 'w'],
+            2 => ['pipe', 'w']
+        ];
+        $proceso = proc_open($comando, $descriptores, $pipes);
+
+        if (!is_resource($proceso)) {
+            return ['codigo' => 1, 'salida' => 'proc_open no pudo iniciar el proceso.'];
+        }
+
+        $stdout = stream_get_contents($pipes[1]);
+        $stderr = stream_get_contents($pipes[2]);
+        fclose($pipes[1]);
+        fclose($pipes[2]);
+        $codigo = proc_close($proceso);
+
+        return [
+            'codigo' => (int)$codigo,
+            'salida' => trim((string)$stdout . PHP_EOL . (string)$stderr)
+        ];
+    }
+
+    private function eliminarDirectorio($directorio)
+    {
+        if (!is_dir($directorio)) {
+            return;
+        }
+
+        $elementos = scandir($directorio);
+        if (!is_array($elementos)) {
+            return;
+        }
+
+        foreach ($elementos as $elemento) {
+            if ($elemento === '.' || $elemento === '..') {
+                continue;
+            }
+
+            $ruta = $directorio . DIRECTORY_SEPARATOR . $elemento;
+            if (is_dir($ruta)) {
+                $this->eliminarDirectorio($ruta);
+            } else {
+                @unlink($ruta);
+            }
+        }
+
+        @rmdir($directorio);
+    }
+
+    private function error($mensaje, $detalle)
+    {
+        return [
+            'ok' => false,
+            'mensaje' => (string)$mensaje,
+            'mensaje_tecnico' => (string)$detalle
+        ];
     }
 }
