@@ -9,14 +9,26 @@ document.addEventListener('DOMContentLoaded', function () {
     const baseUrl = String(root.dataset.baseUrl || '');
     const stateSelect = document.getElementById('aliados_estado');
     const municipalitySelect = document.getElementById('aliados_municipio');
+    const analystSelect = document.getElementById('aliados_analista');
+    const searchInput = document.getElementById('aliados_buscar');
+    const filterForm = root.querySelector('[data-aliados-filters]');
+    const clearFilters = root.querySelector('[data-aliados-clear]');
+    const resultCount = root.querySelector('[data-aliados-result-count]');
+    const allyRows = Array.from(root.querySelectorAll('[data-aliado-row]'));
+    const tableWrap = root.querySelector('[data-aliados-table-wrap]');
+    const filteredEmpty = root.querySelector('[data-aliados-filter-empty]');
 
     const shareModalElement = document.getElementById('modalAliadoCompartir');
     const historyModalElement = document.getElementById('modalAliadoHistorial');
+    const contactsModalElement = document.getElementById('modalAliadoContactos');
     const shareModal = shareModalElement && window.bootstrap
         ? bootstrap.Modal.getOrCreateInstance(shareModalElement)
         : null;
     const historyModal = historyModalElement && window.bootstrap
         ? bootstrap.Modal.getOrCreateInstance(historyModalElement)
+        : null;
+    const contactsModal = contactsModalElement && window.bootstrap
+        ? bootstrap.Modal.getOrCreateInstance(contactsModalElement)
         : null;
 
     const shareForm = shareModalElement
@@ -60,8 +72,30 @@ document.addEventListener('DOMContentLoaded', function () {
         ? historyModalElement.querySelector('[data-aliado-history-list]')
         : null;
 
+    const contactsContext = contactsModalElement
+        ? contactsModalElement.querySelector('[data-aliado-contacts-context]')
+        : null;
+    const contactsList = contactsModalElement
+        ? contactsModalElement.querySelector('[data-aliado-contact-list]')
+        : null;
+    const contactForm = contactsModalElement
+        ? contactsModalElement.querySelector('[data-aliado-contact-form]')
+        : null;
+    const contactEditorTitle = contactsModalElement
+        ? contactsModalElement.querySelector('[data-contact-editor-title]')
+        : null;
+    const contactEditorCancel = contactsModalElement
+        ? contactsModalElement.querySelector('[data-contact-editor-cancel]')
+        : null;
+    const contactFormStatus = contactsModalElement
+        ? contactsModalElement.querySelector('[data-contact-form-status]')
+        : null;
+
     let currentAllyId = 0;
+    let currentContactAllyId = 0;
+    let contactsDirty = false;
     let currentConvocatorias = new Map();
+    let searchTimer = null;
 
     const endpoint = function (action, params) {
         const url = new URL(
