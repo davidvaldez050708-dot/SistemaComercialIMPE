@@ -5,6 +5,25 @@ require_once __DIR__ . '/../services/WhatsAppCloudApiService.php';
 
 class WhatsAppWebhookController
 {
+    public function webhook()
+    {
+        $metodo = strtoupper(
+            (string)($_SERVER['REQUEST_METHOD'] ?? 'GET')
+        );
+
+        if ($metodo === 'GET') {
+            $this->verificar();
+        }
+
+        if ($metodo === 'POST') {
+            $this->recibir();
+        }
+
+        http_response_code(405);
+        echo 'Método no permitido.';
+        exit;
+    }
+
     public function verificar()
     {
         $servicio = new WhatsAppCloudApiService();
