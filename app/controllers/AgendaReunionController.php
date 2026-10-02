@@ -189,19 +189,35 @@ class AgendaReunionController
 
         $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
         $rolId = (int)($_SESSION['rol_id'] ?? 0);
+        $rolNombre = trim((string)($_SESSION['rol'] ?? ''));
         $seguimientoId = (int)($_GET['seguimiento_id'] ?? 0);
+        $esMarketing = strcasecmp($rolNombre, 'Marketing') === 0;
 
-        if ($usuarioId <= 0 || !$this->service->puedeAcceder($rolId)) {
+        /*
+         * El expediente completo es una consulta transversal.
+         * Marketing comparte el alcance global de lectura del Administrador,
+         * sin heredar permisos de operación de reuniones.
+         */
+        $puedeConsultarExpediente =
+            $this->service->puedeAcceder($rolId) ||
+            (
+                $esMarketing &&
+                tienePermiso('seguimientos_vinculacion.ver')
+            );
+
+        if ($usuarioId <= 0 || !$puedeConsultarExpediente) {
             $this->responder([
                 'ok' => false,
                 'mensaje' => 'No tienes acceso a los datos operativos del expediente.'
             ], 403);
         }
 
+        $rolConsulta = $esMarketing ? 1 : $rolId;
+
         $resultado = $this->expedienteService->obtener(
             $seguimientoId,
             $usuarioId,
-            $rolId
+            $rolConsulta
         );
         $codigoHttp = (int)($resultado['codigo_http'] ?? 200);
         unset($resultado['codigo_http']);
