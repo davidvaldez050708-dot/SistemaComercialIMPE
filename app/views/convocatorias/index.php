@@ -986,11 +986,59 @@ $urlCambiarOpcionMes = $tipoConvocatoria === 'sindicatos'
     </span>
 </div>
 
-<section class="dashboard-panel users-module-panel">
-    <div class="module-toolbar convocatoria-toolbar">
-        <div>
-            <h2 class="panel-title mb-1">Convocatorias registradas</h2>
-            <p class="panel-subtitle mb-0">Consulta, actualiza y administra publicaciones por estado.</p>
+<?php
+$convocatoriasActivasIniciales = array_values(array_filter(
+    $convocatorias,
+    static fn($convocatoria) => (int)($convocatoria['estado'] ?? 0) === 1
+));
+
+$convocatoriasHistorialIniciales = array_values(array_filter(
+    $convocatorias,
+    static fn($convocatoria) => (int)($convocatoria['estado'] ?? 0) !== 1
+));
+?>
+
+<div class="convocatoria-status-tabs" role="tablist" aria-label="Estado de convocatorias">
+    <button
+        type="button"
+        class="convocatoria-status-tab is-active"
+        data-convocatoria-view="activas"
+        role="tab"
+        aria-selected="true">
+        <span class="convocatoria-status-tab-icon">
+            <i class="bi bi-megaphone"></i>
+        </span>
+        <span>Convocatorias activas</span>
+        <strong data-convocatoria-count="activas"><?= count($convocatoriasActivasIniciales) ?></strong>
+    </button>
+
+    <button
+        type="button"
+        class="convocatoria-status-tab"
+        data-convocatoria-view="historial"
+        role="tab"
+        aria-selected="false">
+        <span class="convocatoria-status-tab-icon">
+            <i class="bi bi-archive"></i>
+        </span>
+        <span>Historial / Desactivadas</span>
+        <strong data-convocatoria-count="historial"><?= count($convocatoriasHistorialIniciales) ?></strong>
+    </button>
+</div>
+
+<section class="dashboard-panel convocatoria-list-workspace mt-3">
+    <div class="convocatoria-list-workspace-header">
+        <div class="convocatoria-list-workspace-title">
+            <span class="convocatoria-list-workspace-icon is-active" data-convocatoria-heading-icon>
+                <i class="bi bi-megaphone"></i>
+            </span>
+
+            <div>
+                <h2 data-convocatoria-heading>Convocatorias activas</h2>
+                <p data-convocatoria-heading-copy>
+                    Convocatorias vigentes o nuevas disponibles para consulta y gestión.
+                </p>
+            </div>
         </div>
 
         <div class="module-toolbar-actions">
@@ -1006,13 +1054,11 @@ $urlCambiarOpcionMes = $tipoConvocatoria === 'sindicatos'
             <?php endif; ?>
         </div>
     </div>
-</section>
 
-<section class="dashboard-panel mt-4 convocatoria-filter-panel">
     <form
         method="GET"
         action="<?= BASE_URL ?>index.php"
-        class="convocatoria-filter-bar">
+        class="convocatoria-filter-bar convocatoria-list-workspace-filters">
         <input type="hidden" name="controller" value="convocatoria">
         <input type="hidden" name="action" value="index">
         <input type="hidden" name="territorio_id" value="<?= (int)$territorioSeleccionado['id'] ?>">
@@ -1055,124 +1101,124 @@ $urlCambiarOpcionMes = $tipoConvocatoria === 'sindicatos'
 
         <div class="convocatoria-filter-actions">
             <a
-                class="filter-clear-link <?= ($buscar === '' && (int)$estadoFiltro === 0 && $estatusFiltro === '' && $categoriaFiltro === '') ? 'd-none' : '' ?>"
+                class="filter-clear-link <?= ($buscar === '' && $estatusFiltro === '' && $categoriaFiltro === '') ? 'd-none' : '' ?>"
                 href="<?= BASE_URL ?>index.php?controller=convocatoria&action=index&territorio_id=<?= (int)$territorioSeleccionado['id'] ?>&tipo=<?= $texto($tipoConvocatoria) ?>&subtipo=<?= $texto($subtipoConvocatoria) ?>&anio=<?= (int)$anioSeleccionado ?>&mes=<?= (int)$mesSeleccionado ?>"
                 data-convocatoria-clear-filters>
                 Limpiar filtros
             </a>
         </div>
     </form>
-</section>
 
-<section class="dashboard-panel users-list-panel mt-4">
-    <div class="table-responsive">
-        <table class="table users-table align-middle">
-            <thead>
-                <tr>
-                    <th>Imagen</th>
-                    <th>Título</th>
-                    <th>Periodo</th>
-                    <th>Estados</th>
-                    <th>Estatus</th>
-                    <th class="text-end">Acciones</th>
-                </tr>
-            </thead>
+    <div class="convocatoria-list-table">
+        <div class="table-responsive">
+            <table class="table users-table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Imagen</th>
+                        <th>Título</th>
+                        <th>Periodo</th>
+                        <th>Estados</th>
+                        <th>Estatus</th>
+                        <th class="text-end">Acciones</th>
+                    </tr>
+                </thead>
 
-            <tbody data-convocatorias-listado>
-                <?php if (!empty($convocatorias)): ?>
-                    <?php foreach ($convocatorias as $convocatoria): ?>
-                        <tr>
-                            <td>
-                                <?php if (!empty($convocatoria['imagen'])): ?>
-                                    <button
-                                        type="button"
-                                        class="convocatoria-thumb-button"
-                                        data-convocatoria-image="<?= BASE_URL . $texto($convocatoria['imagen']) ?>"
-                                        data-convocatoria-image-title="<?= $texto($convocatoria['titulo']) ?>"
-                                        aria-label="Ver imagen de <?= $texto($convocatoria['titulo']) ?>">
-                                        <img
-                                            src="<?= BASE_URL . $texto($convocatoria['imagen']) ?>"
-                                            alt="<?= $texto($convocatoria['titulo']) ?>"
-                                            class="convocatoria-thumb">
-                                    </button>
-                                <?php else: ?>
+                <tbody data-convocatorias-listado>
+                    <?php if (!empty($convocatoriasActivasIniciales)): ?>
+                        <?php foreach ($convocatoriasActivasIniciales as $convocatoria): ?>
+                            <tr>
+                                <td>
+                                    <?php if (!empty($convocatoria['imagen'])): ?>
+                                        <button
+                                            type="button"
+                                            class="convocatoria-thumb-button"
+                                            data-convocatoria-image="<?= BASE_URL . $texto($convocatoria['imagen']) ?>"
+                                            data-convocatoria-image-title="<?= $texto($convocatoria['titulo']) ?>"
+                                            aria-label="Ver imagen de <?= $texto($convocatoria['titulo']) ?>">
+                                            <img
+                                                src="<?= BASE_URL . $texto($convocatoria['imagen']) ?>"
+                                                alt="<?= $texto($convocatoria['titulo']) ?>"
+                                                class="convocatoria-thumb">
+                                        </button>
+                                    <?php else: ?>
+                                        —
+                                    <?php endif; ?>
+                                </td>
+
+                                <td><?= $texto($convocatoria['titulo']) ?></td>
+
+                                <td>
+                                    <?= $texto($fechaLegible($convocatoria['fecha_inicio'])) ?>
                                     —
-                                <?php endif; ?>
-                            </td>
+                                    <?= $texto($fechaLegible($convocatoria['fecha_termino'])) ?>
+                                </td>
 
-                            <td><?= $texto($convocatoria['titulo']) ?></td>
+                                <td><?= $texto($convocatoria['estados'] ?: 'Sin estados') ?></td>
 
-                            <td>
-                                <?= $texto($fechaLegible($convocatoria['fecha_inicio'])) ?>
-                                —
-                                <?= $texto($fechaLegible($convocatoria['fecha_termino'])) ?>
-                            </td>
+                                <td>
+                                    <span class="status-pill status-pill-active">
+                                        Activa
+                                    </span>
+                                </td>
 
-                            <td><?= $texto($convocatoria['estados'] ?: 'Sin estados') ?></td>
-
-                            <td>
-                                <span class="status-pill <?= (int)$convocatoria['estado'] === 1 ? 'status-pill-active' : 'status-pill-inactive' ?>">
-                                    <?= (int)$convocatoria['estado'] === 1 ? 'Activa' : 'Inactiva' ?>
-                                </span>
-                            </td>
-
-                            <td class="text-end">
-                                <div class="table-actions">
-                                    <button
-                                        type="button"
-                                        class="table-action-button btn-ver-convocatoria"
-                                        data-id="<?= (int)$convocatoria['id'] ?>"
-                                        aria-label="Ver convocatoria">
-                                        <i class="bi bi-eye"></i>
-                                    </button>
-
-                                    <?php if ($puedeEditar): ?>
+                                <td class="text-end">
+                                    <div class="table-actions">
                                         <button
                                             type="button"
-                                            class="table-action-button btn-editar-convocatoria"
+                                            class="table-action-button btn-ver-convocatoria"
                                             data-id="<?= (int)$convocatoria['id'] ?>"
-                                            aria-label="Editar convocatoria">
-                                            <i class="bi bi-pencil"></i>
+                                            aria-label="Ver convocatoria">
+                                            <i class="bi bi-eye"></i>
                                         </button>
-                                    <?php endif; ?>
 
-                                    <?php if ($puedeDescargar): ?>
-                                        <a
-                                            class="table-action-button"
-                                            href="<?= BASE_URL ?>index.php?controller=convocatoria&action=descargarImagen&id=<?= (int)$convocatoria['id'] ?>"
-                                            aria-label="Descargar imagen">
-                                            <i class="bi bi-download"></i>
-                                        </a>
-                                    <?php endif; ?>
+                                        <?php if ($puedeEditar): ?>
+                                            <button
+                                                type="button"
+                                                class="table-action-button btn-editar-convocatoria"
+                                                data-id="<?= (int)$convocatoria['id'] ?>"
+                                                aria-label="Editar convocatoria">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                        <?php endif; ?>
 
-                                    <?php if ($puedeCambiarEstado): ?>
-                                        <button
-                                            type="button"
-                                            class="table-action-button <?= (int)$convocatoria['estado'] === 1 ? 'table-action-warning' : 'table-action-success' ?>"
-                                            data-bs-toggle="modal"
-                                            data-bs-target="#modalEstadoConvocatoria"
-                                            data-id="<?= (int)$convocatoria['id'] ?>"
-                                            data-titulo="<?= $texto($convocatoria['titulo']) ?>"
-                                            data-estado-nuevo="<?= (int)$convocatoria['estado'] === 1 ? 0 : 1 ?>"
-                                            aria-label="<?= (int)$convocatoria['estado'] === 1 ? 'Desactivar convocatoria' : 'Activar convocatoria' ?>">
-                                            <i class="bi <?= (int)$convocatoria['estado'] === 1 ? 'bi-toggle-on' : 'bi-toggle-off' ?>"></i>
-                                        </button>
-                                    <?php endif; ?>
+                                        <?php if ($puedeDescargar): ?>
+                                            <a
+                                                class="table-action-button"
+                                                href="<?= BASE_URL ?>index.php?controller=convocatoria&action=descargarImagen&id=<?= (int)$convocatoria['id'] ?>"
+                                                aria-label="Descargar imagen">
+                                                <i class="bi bi-download"></i>
+                                            </a>
+                                        <?php endif; ?>
+
+                                        <?php if ($puedeCambiarEstado): ?>
+                                            <button
+                                                type="button"
+                                                class="table-action-button table-action-warning"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#modalEstadoConvocatoria"
+                                                data-id="<?= (int)$convocatoria['id'] ?>"
+                                                data-titulo="<?= $texto($convocatoria['titulo']) ?>"
+                                                data-estado-nuevo="0"
+                                                aria-label="Desactivar convocatoria">
+                                                <i class="bi bi-toggle-on"></i>
+                                            </button>
+                                        <?php endif; ?>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <tr>
+                            <td colspan="6">
+                                <div class="empty-table-message">
+                                    No hay convocatorias activas con los filtros seleccionados.
                                 </div>
                             </td>
                         </tr>
-                    <?php endforeach; ?>
-                <?php else: ?>
-                    <tr>
-                        <td colspan="6">
-                            <div class="empty-table-message">
-                                No se encontraron convocatorias con los filtros seleccionados.
-                            </div>
-                        </td>
-                    </tr>
-                <?php endif; ?>
-            </tbody>
-        </table>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
     </div>
 </section>
 
