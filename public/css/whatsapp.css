@@ -877,6 +877,7 @@
 .whatsapp-channel-form-actions {
     display: flex;
     justify-content: flex-end;
+    gap: 7px;
     margin-top: 10px;
 }
 
