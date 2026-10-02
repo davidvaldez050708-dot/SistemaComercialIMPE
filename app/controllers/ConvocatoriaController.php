@@ -221,6 +221,28 @@ class ConvocatoriaController
         require_once __DIR__ . '/../views/layout/dashboard_footer.php';
     }
 
+    public function reportes()
+    {
+        $this->validarPermiso('convocatorias.ver');
+
+        $modelo = new ConvocatoriaModel();
+        $modelo->desactivarConvocatoriasVencidas();
+
+        $resumenConvocatoriasReporte = $modelo->obtenerResumenDashboard();
+        $coberturaConvocatoriasReporte = $modelo->obtenerCoberturaTerritorialDashboard(32);
+        $publicacionesPorTipoReporte = $modelo->obtenerPublicacionesPorTipoDashboard(30);
+
+        $tituloPagina = 'Reportes de Convocatorias';
+        $subtituloPagina = 'Consulta indicadores y accesos de análisis del módulo de convocatorias.';
+        $opcionActiva = 'convocatorias_reportes';
+
+        require_once __DIR__ . '/../views/layout/dashboard_head.php';
+        require_once __DIR__ . '/../views/layout/sidebar.php';
+        require_once __DIR__ . '/../views/layout/topbar.php';
+        require_once __DIR__ . '/../views/convocatorias/reportes.php';
+        require_once __DIR__ . '/../views/layout/dashboard_footer.php';
+    }
+
     public function guardar()
     {
         $this->validarPermiso('convocatorias.crear');
