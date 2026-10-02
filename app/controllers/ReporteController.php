@@ -88,7 +88,16 @@ class ReporteController
             (int)($_SESSION['rol_id'] ?? 0) === 1 &&
             tienePermiso('reportes.usuarios');
 
-        if (!$puedeReporteTerritorial && !$puedeReporteSeguimiento && !$puedeReporteAdministrador) {
+        $puedeReporteConvocatorias =
+            tienePermiso('reportes.convocatorias') &&
+            tienePermiso('convocatorias.ver');
+
+        if (
+            !$puedeReporteTerritorial &&
+            !$puedeReporteSeguimiento &&
+            !$puedeReporteAdministrador &&
+            !$puedeReporteConvocatorias
+        ) {
             http_response_code(403);
             die('No tienes permiso para consultar reportes.');
         }
