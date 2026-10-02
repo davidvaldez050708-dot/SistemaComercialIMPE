@@ -2683,6 +2683,10 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                                 <?php
                                 $etapaCodigoCartera = strtolower((string)($seguimiento['etapa_operativa_codigo'] ?? ''));
                                 $atencionCodigoCartera = strtolower((string)($seguimiento['atencion_codigo'] ?? 'en_seguimiento'));
+                                $motivoAtencionCartera = trim((string)($seguimiento['atencion_operativa_motivo'] ?? ''));
+                                if ($motivoAtencionCartera === '') {
+                                    $motivoAtencionCartera = (string)($seguimiento['atencion_label'] ?? 'En seguimiento');
+                                }
                                 $ultimaHumanaCartera = trim((string)($seguimiento['ultima_interaccion_humana_at'] ?? ''));
                                 $diasCartera = $seguimiento['dias_sin_actividad'] ?? null;
                                 $proximaAtCartera = trim((string)($seguimiento['proxima_accion_at'] ?? ''));
@@ -2753,7 +2757,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                                     </td>
                                     <td>
                                         <span class="analyst-portfolio-attention-pill is-<?= $texto($atencionCodigoCartera) ?>">
-                                            <?= $texto($seguimiento['atencion_label'] ?? 'En seguimiento') ?>
+                                            <?= $texto($motivoAtencionCartera) ?>
                                         </span>
                                     </td>
                                     <td>
