@@ -138,6 +138,21 @@ foreach ($mensajesIniciales as $mensaje) {
                 <?= !empty($estadoConfiguracionWhatsapp['lista']) ? 'Cloud API lista' : 'Configuración pendiente' ?>
             </span>
 
+            <?php if ($puedeEnviarWhatsapp): ?>
+                <button
+                    type="button"
+                    class="btn whatsapp-primary-button"
+                    data-bs-toggle="modal"
+                    data-bs-target="#modalWhatsAppNuevaConversacion"
+                    <?= empty($cuentasDisponibles) ? 'disabled' : '' ?>
+                    title="<?= empty($cuentasDisponibles)
+                        ? 'Primero configura o asigna un canal de WhatsApp'
+                        : 'Abrir una conversación nueva' ?>">
+                    <i class="bi bi-chat-dots"></i>
+                    Nueva conversación
+                </button>
+            <?php endif; ?>
+
             <?php if ($puedeGestionarCuentas): ?>
                 <button
                     type="button"
@@ -480,6 +495,113 @@ foreach ($mensajesIniciales as $mensaje) {
         </aside>
     </section>
 </section>
+
+<?php if ($puedeEnviarWhatsapp): ?>
+    <div
+        class="modal fade"
+        id="modalWhatsAppNuevaConversacion"
+        tabindex="-1"
+        aria-labelledby="modalWhatsAppNuevaConversacionTitulo"
+        aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content whatsapp-channel-modal">
+                <div class="modal-header">
+                    <div>
+                        <span class="whatsapp-eyebrow">NUEVA CONVERSACIÓN</span>
+                        <h2 class="modal-title" id="modalWhatsAppNuevaConversacionTitulo">
+                            Abrir chat de prueba
+                        </h2>
+                        <p>
+                            Usa un número autorizado como destinatario de prueba en Meta.
+                        </p>
+                    </div>
+                    <button
+                        type="button"
+                        class="btn-close"
+                        data-bs-dismiss="modal"
+                        aria-label="Cerrar"></button>
+                </div>
+
+                <form data-whatsapp-new-conversation-form>
+                    <div class="modal-body">
+                        <div class="whatsapp-channel-form-grid">
+                            <div>
+                                <label class="form-label" for="whatsapp_new_channel">
+                                    Canal
+                                </label>
+                                <select
+                                    class="form-select"
+                                    id="whatsapp_new_channel"
+                                    name="cuenta_id"
+                                    required>
+                                    <option value="">Selecciona un canal</option>
+                                    <?php foreach ($cuentasDisponibles as $cuenta): ?>
+                                        <option value="<?= (int)$cuenta['id'] ?>">
+                                            <?= $texto(
+                                                (string)$cuenta['nombre'] .
+                                                ' · ' .
+                                                (string)$cuenta['numero_mostrado']
+                                            ) ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="form-label" for="whatsapp_new_phone">
+                                    Número destino
+                                </label>
+                                <input
+                                    type="tel"
+                                    class="form-control"
+                                    id="whatsapp_new_phone"
+                                    name="telefono"
+                                    maxlength="25"
+                                    placeholder="Ej. 5217771234567"
+                                    required>
+                                <small class="whatsapp-field-help">
+                                    Incluye código de país. Para la prueba debe estar autorizado en Meta.
+                                </small>
+                            </div>
+
+                            <div class="whatsapp-form-full">
+                                <label class="form-label" for="whatsapp_new_name">
+                                    Nombre del contacto
+                                </label>
+                                <input
+                                    type="text"
+                                    class="form-control"
+                                    id="whatsapp_new_name"
+                                    name="nombre_contacto"
+                                    maxlength="180"
+                                    placeholder="Ej. Celular de prueba">
+                            </div>
+                        </div>
+
+                        <div
+                            class="whatsapp-channel-form-status d-none"
+                            data-whatsapp-new-conversation-status></div>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button
+                            type="button"
+                            class="btn whatsapp-secondary-button"
+                            data-bs-dismiss="modal">
+                            Cancelar
+                        </button>
+                        <button
+                            type="submit"
+                            class="btn whatsapp-primary-button">
+                            <i class="bi bi-chat-dots"></i>
+                            Abrir conversación
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+<?php endif; ?>
 
 <?php if ($puedeGestionarCuentas): ?>
     <div
