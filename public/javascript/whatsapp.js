@@ -32,6 +32,9 @@ document.addEventListener('DOMContentLoaded', function () {
     const channelCancel = document.querySelector(
         '[data-whatsapp-channel-cancel]'
     );
+    const channelTest = document.querySelector(
+        '[data-whatsapp-channel-test]'
+    );
     const channelEditButtons = Array.from(
         document.querySelectorAll('[data-whatsapp-channel-edit]')
     );
@@ -536,6 +539,11 @@ document.addEventListener('DOMContentLoaded', function () {
             channelEditorTitle.textContent = 'Agregar canal';
         }
         channelCancel?.classList.add('d-none');
+        channelTest?.classList.add('d-none');
+
+        if (channelTest) {
+            channelTest.disabled = false;
+        }
 
         if (channelStatus) {
             channelStatus.classList.add('d-none');
@@ -590,6 +598,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         channelCancel?.classList.remove('d-none');
+        channelTest?.classList.remove('d-none');
 
         if (channelStatus) {
             channelStatus.classList.add('d-none');
@@ -605,6 +614,57 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     channelCancel?.addEventListener('click', resetChannelForm);
+
+    channelTest?.addEventListener('click', async function () {
+        if (!channelForm || !channelStatus) {
+            return;
+        }
+
+        const idInput = channelForm.querySelector('[name="cuenta_id"]');
+        const cuentaId = Number(idInput?.value || 0);
+
+        if (cuentaId <= 0) {
+            channelStatus.classList.remove('d-none', 'is-success');
+            channelStatus.classList.add('is-error');
+            channelStatus.textContent =
+                'Guarda primero el canal antes de probar la conexión.';
+            return;
+        }
+
+        const original = channelTest.innerHTML;
+        channelTest.disabled = true;
+        channelTest.innerHTML =
+            '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span> Probando…';
+
+        const formData = new FormData();
+        formData.set('cuenta_id', String(cuentaId));
+
+        const data = await requestJson(
+            endpoint('probarCanal'),
+            {
+                method: 'POST',
+                body: formData
+            }
+        );
+
+        channelStatus.classList.remove(
+            'd-none',
+            'is-success',
+            'is-error'
+        );
+        channelStatus.classList.add(data.ok ? 'is-success' : 'is-error');
+        channelStatus.textContent = String(
+            data.mensaje ||
+            (
+                data.ok
+                    ? 'Conexión verificada correctamente.'
+                    : 'No fue posible validar el canal con Meta.'
+            )
+        );
+
+        channelTest.disabled = false;
+        channelTest.innerHTML = original;
+    });
 
     channelForm?.addEventListener('submit', async function (event) {
         event.preventDefault();
