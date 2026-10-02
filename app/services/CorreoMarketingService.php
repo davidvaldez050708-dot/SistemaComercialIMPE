@@ -369,7 +369,7 @@ class CorreoMarketingService
                 ) VALUES (?, ?, NULLIF(?, ''), ?, ?, ?, ?, ?, ?, NOW())";
         $stmt = $this->connection->prepare($sql);
         $stmt->bind_param(
-            'issssssiss',
+            'issssssis',
             $usuarioId,
             $destinatario,
             $destinatarioNombre,
