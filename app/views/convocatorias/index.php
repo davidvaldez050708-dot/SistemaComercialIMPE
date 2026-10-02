@@ -838,16 +838,11 @@ if ($tipoConvocatoria === 'sindicatos') {
             </select>
         </div>
 
-        <div class="convocatoria-filter-field">
-            <label class="form-label login-label" for="filtro_convocatoria_categoria">Categoría</label>
-            <select
-                class="form-select system-form-control"
-                id="filtro_convocatoria_categoria"
-                name="categoria">
-                <option value="" <?= $categoriaFiltro === '' ? 'selected' : '' ?>>Todas</option>
-                <option value="IMJUVE" <?= $categoriaFiltro === 'IMJUVE' ? 'selected' : '' ?>>IMJUVE</option>
-            </select>
-        </div>
+        <input
+            type="hidden"
+            id="filtro_convocatoria_categoria"
+            name="categoria"
+            value="<?= $texto($categoriaFiltro) ?>">
 
         <div class="convocatoria-filter-actions">
             <a
