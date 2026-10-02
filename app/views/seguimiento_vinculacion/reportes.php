@@ -2433,6 +2433,19 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                                 <?php endif; ?>
                                 <td>
                                     <strong class="analyst-activity-history-institution"><?= $texto($actividad['nombre_entidad'] ?? '—') ?></strong>
+                                    <?php
+                                    $municipioActividadDetalle = trim((string)($actividad['municipio'] ?? ''));
+                                    $estadoActividadDetalle = trim((string)($actividad['estado_nombre'] ?? ''));
+                                    $ubicacionActividadDetalle = $municipioActividadDetalle !== ''
+                                        ? $municipioActividadDetalle
+                                        : $estadoActividadDetalle;
+                                    if ($mostrarJerarquiaTerritorial && $municipioActividadDetalle !== '' && $estadoActividadDetalle !== '') {
+                                        $ubicacionActividadDetalle .= ', ' . $estadoActividadDetalle;
+                                    }
+                                    ?>
+                                    <?php if ($ubicacionActividadDetalle !== ''): ?>
+                                        <span class="analyst-activity-history-location"><?= $texto($ubicacionActividadDetalle) ?></span>
+                                    <?php endif; ?>
                                 </td>
                                 <td>
                                     <span class="analyst-activity-channel">
@@ -2637,11 +2650,17 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                                 <tr>
                                     <td>
                                         <strong class="analyst-portfolio-institution-name"><?= $texto($seguimiento['nombre_entidad'] ?? '—') ?></strong>
-                                        <span class="analyst-portfolio-location">
-                                            <?= $texto(trim((string)($seguimiento['municipio'] ?? '')) !== ''
-                                                ? $seguimiento['municipio'] . ', ' . ($seguimiento['estado_nombre'] ?? '')
-                                                : ($seguimiento['estado_nombre'] ?? 'Ubicación no disponible')) ?>
-                                        </span>
+                                        <?php
+                                        $municipioSeguimiento = trim((string)($seguimiento['municipio'] ?? ''));
+                                        $estadoSeguimiento = trim((string)($seguimiento['estado_nombre'] ?? ''));
+                                        $ubicacionSeguimiento = $municipioSeguimiento !== ''
+                                            ? $municipioSeguimiento
+                                            : ($estadoSeguimiento !== '' ? $estadoSeguimiento : 'Ubicación no disponible');
+                                        if ($mostrarJerarquiaTerritorial && $municipioSeguimiento !== '' && $estadoSeguimiento !== '') {
+                                            $ubicacionSeguimiento .= ', ' . $estadoSeguimiento;
+                                        }
+                                        ?>
+                                        <span class="analyst-portfolio-location"><?= $texto($ubicacionSeguimiento) ?></span>
                                     </td>
                                     <td>
                                         <span class="analyst-portfolio-stage-pill is-<?= $texto($etapaCodigoCartera) ?>">
