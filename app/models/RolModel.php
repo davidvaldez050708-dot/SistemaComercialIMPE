@@ -887,6 +887,19 @@ class RolModel
 
         $seleccionados = array_fill_keys(array_map('intval', $permisosIds), true);
 
+        /*
+         * El Reporte de Convocatorias forma parte del Centro de Reportes.
+         * Todo rol que conserve reportes.ver debe conservar también esta familia,
+         * sin que eso le conceda acceso operativo al módulo de Convocatorias.
+         */
+        if (
+            isset($idPorCodigo['reportes.ver']) &&
+            isset($idPorCodigo['reportes.convocatorias']) &&
+            isset($seleccionados[(int)$idPorCodigo['reportes.ver']])
+        ) {
+            $seleccionados[(int)$idPorCodigo['reportes.convocatorias']] = true;
+        }
+
         foreach (array_keys($seleccionados) as $permisoId) {
             $codigo = $codigoPorId[(int)$permisoId] ?? '';
 
