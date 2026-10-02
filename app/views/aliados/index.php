@@ -262,7 +262,8 @@ $fechaHora = static function ($valor) {
                                 $aliado['telefono_verificado'] ?? '',
                                 $aliado['telefono_fuente'] ?? '',
                                 $aliado['whatsapp_verificado'] ?? '',
-                                $aliado['contacto_difusion_preferido'] ?? ''
+                                $aliado['contacto_difusion_preferido'] ?? '',
+                                $aliado['contactos_difusion_busqueda'] ?? ''
                             ]));
                             ?>
                             <tr
