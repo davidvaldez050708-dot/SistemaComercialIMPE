@@ -267,7 +267,7 @@
 }
 
 .aliados-table tbody td {
-    padding: 14px;
+    padding: 12px 14px;
     border-color: #edf1f6;
     color: var(--color-text, #172642);
     font-size: 10px;
@@ -296,12 +296,12 @@
 
 .aliados-table th:nth-child(5),
 .aliados-table td:nth-child(5) {
-    width: 17%;
+    width: 18%;
 }
 
 .aliados-table th:nth-child(6),
 .aliados-table td:nth-child(6) {
-    width: 11%;
+    width: 10%;
 }
 
 .aliados-institution-cell {
@@ -391,10 +391,28 @@
 
 .aliados-actions {
     justify-content: flex-end;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    gap: 6px;
 }
 
-.aliados-icon-button {
+.aliados-share-button {
+    min-height: 34px;
+    padding: 7px 11px;
+    border-radius: 9px;
+    white-space: nowrap;
+}
+
+.aliados-share-button:disabled {
+    border-color: #d7dde7;
+    background: #eef1f5;
+    color: #9aa4b2;
+}
+
+.aliados-actions-menu {
+    flex: 0 0 auto;
+}
+
+.aliados-more-button {
     display: inline-grid;
     width: 34px;
     height: 34px;
@@ -403,25 +421,58 @@
     border-radius: 9px;
     background: #fff;
     color: var(--color-primary, #273a8a);
-    text-decoration: none;
+    font-size: 16px;
+    line-height: 1;
 }
 
-.aliados-icon-button:hover {
+.aliados-more-button:hover,
+.aliados-more-button[aria-expanded="true"] {
     border-color: #cbd6e6;
     background: #f5f8fc;
     color: #1f3177;
 }
 
-.aliados-share-button {
-    min-height: 34px;
-    padding: 7px 10px;
-    border-radius: 9px;
+.aliados-actions-dropdown {
+    min-width: 195px;
+    padding: 6px;
+    border: 1px solid var(--color-border, #dfe5ef);
+    border-radius: 10px;
+    box-shadow: 0 12px 30px rgba(23, 38, 66, .12);
 }
 
-.aliados-share-button:disabled {
-    border-color: #d7dde7;
-    background: #eef1f5;
-    color: #9aa4b2;
+.aliados-actions-dropdown .dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 34px;
+    padding: 7px 9px;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--color-text, #172642);
+    font-size: 9.5px;
+    font-weight: 650;
+    text-align: left;
+    text-decoration: none;
+}
+
+.aliados-actions-dropdown .dropdown-item i {
+    width: 16px;
+    flex: 0 0 16px;
+    color: var(--color-primary, #273a8a);
+    font-size: 12px;
+    text-align: center;
+}
+
+.aliados-actions-dropdown .dropdown-item:hover,
+.aliados-actions-dropdown .dropdown-item:focus {
+    background: #f3f6fb;
+    color: var(--color-text, #172642);
+}
+
+.aliados-actions-dropdown .dropdown-divider {
+    margin: 5px 3px;
+    border-color: #e9edf4;
 }
 
 .aliados-empty-state {
