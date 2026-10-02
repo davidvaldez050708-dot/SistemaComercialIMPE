@@ -1632,6 +1632,8 @@ class SeguimientoVinculacionReporteController
         $porEstatus = [];
         $porEtapa = [];
         $porMunicipio = [];
+        $porEstado = [];
+        $territorioJerarquico = [];
         $sinActividad = 0;
         $masSieteDias = 0;
         $accionesVencidas = 0;
@@ -1658,12 +1660,46 @@ class SeguimientoVinculacionReporteController
                 $porEtapa[$etapa]++;
             }
 
+            $estadoIdTerritorial = (int)($seguimiento['estado_id'] ?? 0);
+            $estadoNombreTerritorial = trim((string)($seguimiento['estado_nombre'] ?? ''));
+            if ($estadoNombreTerritorial === '') {
+                $estadoNombreTerritorial = 'Sin estado';
+            }
+
+            $estadoClaveTerritorial = $estadoIdTerritorial > 0
+                ? 'id:' . $estadoIdTerritorial
+                : 'nombre:' . strtolower($estadoNombreTerritorial);
+
+            if (!isset($territorioJerarquico[$estadoClaveTerritorial])) {
+                $territorioJerarquico[$estadoClaveTerritorial] = [
+                    'estado_id' => $estadoIdTerritorial,
+                    'estado_nombre' => $estadoNombreTerritorial,
+                    'total' => 0,
+                    'municipios' => []
+                ];
+            }
+
+            $territorioJerarquico[$estadoClaveTerritorial]['total']++;
+            if (!isset($porEstado[$estadoNombreTerritorial])) {
+                $porEstado[$estadoNombreTerritorial] = 0;
+            }
+            $porEstado[$estadoNombreTerritorial]++;
+
             $municipio = trim((string)($seguimiento['municipio'] ?? ''));
             if ($municipio !== '') {
-                if (!isset($porMunicipio[$municipio])) {
-                    $porMunicipio[$municipio] = 0;
+                if (!isset($territorioJerarquico[$estadoClaveTerritorial]['municipios'][$municipio])) {
+                    $territorioJerarquico[$estadoClaveTerritorial]['municipios'][$municipio] = 0;
                 }
-                $porMunicipio[$municipio]++;
+                $territorioJerarquico[$estadoClaveTerritorial]['municipios'][$municipio]++;
+
+                $municipioEtiqueta = $municipio;
+                if ($estadoNombreTerritorial !== 'Sin estado') {
+                    $municipioEtiqueta .= ', ' . $estadoNombreTerritorial;
+                }
+                if (!isset($porMunicipio[$municipioEtiqueta])) {
+                    $porMunicipio[$municipioEtiqueta] = 0;
+                }
+                $porMunicipio[$municipioEtiqueta]++;
             }
 
             $dias = $seguimiento['dias_sin_actividad'] ??
@@ -1711,7 +1747,44 @@ class SeguimientoVinculacionReporteController
             return $posA <=> $posB;
         });
 
+        arsort($porEstado);
         arsort($porMunicipio);
+
+        foreach ($territorioJerarquico as &$territorioEstado) {
+            $municipiosEstado = [];
+            foreach (($territorioEstado['municipios'] ?? []) as $municipioNombre => $municipioTotal) {
+                $municipiosEstado[] = [
+                    'nombre' => (string)$municipioNombre,
+                    'total' => (int)$municipioTotal
+                ];
+            }
+
+            usort($municipiosEstado, static function ($a, $b) {
+                $comparacionTotal = (int)($b['total'] ?? 0) <=> (int)($a['total'] ?? 0);
+                if ($comparacionTotal !== 0) {
+                    return $comparacionTotal;
+                }
+                return strcasecmp(
+                    (string)($a['nombre'] ?? ''),
+                    (string)($b['nombre'] ?? '')
+                );
+            });
+
+            $territorioEstado['municipios'] = $municipiosEstado;
+        }
+        unset($territorioEstado);
+
+        $territorioJerarquico = array_values($territorioJerarquico);
+        usort($territorioJerarquico, static function ($a, $b) {
+            $comparacionTotal = (int)($b['total'] ?? 0) <=> (int)($a['total'] ?? 0);
+            if ($comparacionTotal !== 0) {
+                return $comparacionTotal;
+            }
+            return strcasecmp(
+                (string)($a['estado_nombre'] ?? ''),
+                (string)($b['estado_nombre'] ?? '')
+            );
+        });
 
         usort($prioritarios, static function ($a, $b) {
             $orden = (int)($a['prioridad_orden'] ?? 99)
@@ -1734,7 +1807,9 @@ class SeguimientoVinculacionReporteController
             'requieren_atencion' => $requierenAtencion,
             'por_estatus' => $porEstatus,
             'por_etapa' => $porEtapa,
+            'por_estado' => $porEstado,
             'por_municipio' => $porMunicipio,
+            'territorio_jerarquico' => $territorioJerarquico,
             'prioritarios' => array_slice($prioritarios, 0, 6)
         ];
     }
