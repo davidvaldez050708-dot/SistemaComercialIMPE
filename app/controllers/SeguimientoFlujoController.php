@@ -208,7 +208,18 @@ class SeguimientoFlujoController
             exit;
         }
 
-        if (!tienePermiso('convenios.ver')) {
+        $esMarketing = strcasecmp(
+            trim((string)($_SESSION['rol'] ?? '')),
+            'Marketing'
+        ) === 0;
+
+        if (
+            !tienePermiso('convenios.ver') &&
+            !(
+                $esMarketing &&
+                tienePermiso('seguimientos_vinculacion.ver')
+            )
+        ) {
             http_response_code(403);
             echo 'No tienes permiso para consultar convenios.';
             exit;
@@ -623,7 +634,13 @@ class SeguimientoFlujoController
 
     private function resolverModoAcceso()
     {
-        if ((int)($_SESSION['rol_id'] ?? 0) === 1) {
+        $rolId = (int)($_SESSION['rol_id'] ?? 0);
+        $rolNombre = trim((string)($_SESSION['rol'] ?? ''));
+
+        if (
+            $rolId === 1 ||
+            strcasecmp($rolNombre, 'Marketing') === 0
+        ) {
             return 'administrador';
         }
 
