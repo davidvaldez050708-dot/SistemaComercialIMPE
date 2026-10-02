@@ -125,6 +125,13 @@ class SeguimientoReporteAnaliticaService
             6,
             $actorIds
         );
+        $actividadPorActor = $this->obtenerActividadPorActor(
+            $autorizados,
+            $fechaInicial,
+            $fechaFinal,
+            $canal,
+            $actorIds
+        );
 
         return [
             'seguimientos_considerados' => $totalSeguimientos,
@@ -143,6 +150,7 @@ class SeguimientoReporteAnaliticaService
             'rendimiento_telefonico' => $rendimientoTelefonico,
             'rendimiento_telefonico_hoy' => $rendimientoTelefonicoHoy,
             'instituciones_actividad' => $institucionesActividad,
+            'actividad_por_actor' => $actividadPorActor,
             'meta_diaria_efectivas' => 25,
             'atencion' => [
                 'total' => $totalAtencion,
@@ -857,6 +865,129 @@ class SeguimientoReporteAnaliticaService
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
 
+    private function obtenerActividadPorActor(
+        array $ids,
+        $fechaInicial,
+        $fechaFinal,
+        $canal,
+        array $actorIds
+    ) {
+        $ids = $this->normalizarIds($ids);
+        $actorIds = $this->normalizarIds($actorIds);
+
+        if (empty($ids) || empty($actorIds)) {
+            return [];
+        }
+
+        $seguimientoPlaceholders = implode(',', array_fill(0, count($ids), '?'));
+        $actorPlaceholders = implode(',', array_fill(0, count($actorIds), '?'));
+
+        $sql = "SELECT
+                    u.id AS usuario_id,
+                    TRIM(CONCAT(COALESCE(u.nombre, ''), ' ', COALESCE(u.apellidos, ''))) AS analista_nombre,
+                    COUNT(i.id) AS interacciones,
+                    COUNT(DISTINCT i.seguimiento_id) AS instituciones,
+                    COALESCE(SUM(CASE
+                        WHEN UPPER(TRIM(COALESCE(i.canal, ''))) IN ('LLAMADA', 'LLAMADA_IP')
+                        THEN 1 ELSE 0
+                    END), 0) AS llamadas,
+                    COALESCE(SUM(CASE
+                        WHEN UPPER(TRIM(COALESCE(i.canal, ''))) = 'CORREO'
+                        THEN 1 ELSE 0
+                    END), 0) AS correos,
+                    COALESCE(SUM(CASE
+                        WHEN UPPER(TRIM(COALESCE(i.canal, ''))) IN ('LLAMADA', 'LLAMADA_IP')
+                         AND (
+                            i.notas LIKE '%[CONTACTO_EFECTIVO]%'
+                            OR UPPER(TRIM(COALESCE(i.resultado, ''))) IN (
+                                'CONTACTADO',
+                                'CONTACTO_CORRECTO',
+                                'CONTACTO_REFERIDO',
+                                'SOLICITO_INFORMACION',
+                                'SOLICITO_LLAMAR_DESPUES',
+                                'NO_INTERESADO'
+                            )
+                         )
+                         AND i.notas NOT LIKE '%[SIN_CONTACTO_EFECTIVO]%'
+                        THEN 1 ELSE 0
+                    END), 0) AS con_contacto,
+                    COUNT(DISTINCT CASE
+                        WHEN UPPER(TRIM(COALESCE(i.canal, ''))) IN ('LLAMADA', 'LLAMADA_IP')
+                         AND i.notas LIKE '%[VERIFICACION_EFECTIVA]%'
+                         AND TRIM(COALESCE(i.proveedor_externo, '')) <> ''
+                         AND TRIM(COALESCE(i.id_externo, '')) <> ''
+                         AND COALESCE(i.duracion_segundos, 0) > 0
+                        THEN CONCAT(i.seguimiento_id, '|', DATE(i.fecha_inicio))
+                        ELSE NULL
+                    END) AS efectivas
+                FROM usuarios u
+                LEFT JOIN interacciones_vinculacion i
+                    ON i.usuario_id = u.id
+                    AND i.seguimiento_id IN (" . $seguimientoPlaceholders . ")
+                    AND UPPER(TRIM(COALESCE(i.canal, ''))) <> 'SISTEMA'";
+
+        $parametros = array_map('intval', $ids);
+        $tipos = str_repeat('i', count($parametros));
+
+        if ($fechaInicial !== '') {
+            $sql .= " AND i.fecha_inicio >= ?";
+            $parametros[] = $fechaInicial . ' 00:00:00';
+            $tipos .= 's';
+        }
+
+        if ($fechaFinal !== '') {
+            $sql .= " AND i.fecha_inicio <= ?";
+            $parametros[] = $fechaFinal . ' 23:59:59';
+            $tipos .= 's';
+        }
+
+        $canal = strtoupper(trim((string)$canal));
+        if ($canal !== '') {
+            if (in_array($canal, ['LLAMADA', 'LLAMADA_IP'], true)) {
+                $sql .= " AND UPPER(TRIM(COALESCE(i.canal, ''))) IN ('LLAMADA', 'LLAMADA_IP')";
+            } elseif ($canal === 'NOTA') {
+                $sql .= " AND UPPER(TRIM(COALESCE(i.canal, ''))) NOT IN ('SISTEMA', 'LLAMADA', 'LLAMADA_IP', 'CORREO', 'WHATSAPP')";
+            } else {
+                $sql .= " AND UPPER(TRIM(COALESCE(i.canal, ''))) = ?";
+                $parametros[] = $canal;
+                $tipos .= 's';
+            }
+        }
+
+        $sql .= " WHERE u.id IN (" . $actorPlaceholders . ")
+                  GROUP BY u.id, u.nombre, u.apellidos
+                  ORDER BY u.nombre, u.apellidos";
+
+        foreach ($actorIds as $actorId) {
+            $parametros[] = (int)$actorId;
+            $tipos .= 'i';
+        }
+
+        $stmt = $this->connection->prepare($sql);
+        $this->vincularParametros($stmt, $tipos, $parametros);
+        $stmt->execute();
+
+        $filas = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        foreach ($filas as &$fila) {
+            $llamadas = max(0, (int)($fila['llamadas'] ?? 0));
+            $contactos = max(0, (int)($fila['con_contacto'] ?? 0));
+            $fila['usuario_id'] = (int)($fila['usuario_id'] ?? 0);
+            $fila['interacciones'] = max(0, (int)($fila['interacciones'] ?? 0));
+            $fila['instituciones'] = max(0, (int)($fila['instituciones'] ?? 0));
+            $fila['llamadas'] = $llamadas;
+            $fila['correos'] = max(0, (int)($fila['correos'] ?? 0));
+            $fila['con_contacto'] = $contactos;
+            $fila['efectivas'] = max(0, (int)($fila['efectivas'] ?? 0));
+            $fila['tasa_contacto'] = $llamadas > 0
+                ? round(($contactos / $llamadas) * 100, 1)
+                : 0.0;
+        }
+        unset($fila);
+
+        return $filas;
+    }
+
     private function agregarFiltroActores(
         string &$sql,
         string &$tipos,
@@ -994,6 +1125,7 @@ class SeguimientoReporteAnaliticaService
                 'efectivas' => 0
             ],
             'instituciones_actividad' => [],
+            'actividad_por_actor' => [],
             'meta_diaria_efectivas' => 25,
             'atencion' => [
                 'total' => 0,
