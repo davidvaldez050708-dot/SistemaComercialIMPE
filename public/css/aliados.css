@@ -1038,3 +1038,192 @@
         flex-direction: column;
     }
 }
+
+
+/* ===== Navegación territorial de Aliados ===== */
+.aliados-territory-selector {
+    margin-bottom: 14px;
+    padding: 20px 22px;
+}
+
+.aliados-territory-selector .data-selector-heading {
+    margin-bottom: 16px;
+}
+
+.aliados-territory-selector .panel-title {
+    margin: 0 0 5px;
+    color: var(--color-text, #172642);
+    font-size: 16px;
+    font-weight: 800;
+}
+
+.aliados-territory-selector .data-territorial-selector-copy p {
+    margin: 0;
+    color: var(--color-text-soft, #6b7280);
+    font-size: 11px;
+}
+
+.aliados-territory-toolbar {
+    display: grid;
+    grid-template-columns: minmax(260px, 1.5fr) minmax(180px, .8fr) minmax(220px, 1fr);
+    gap: 12px;
+    align-items: end;
+}
+
+.aliados-territory-search-field {
+    min-width: 0;
+}
+
+.aliados-territory-results {
+    margin: 0 0 10px;
+}
+
+.aliados-territory-grid {
+    align-items: stretch;
+}
+
+.aliados-territory-card {
+    cursor: pointer;
+}
+
+.aliados-territory-card .data-card-meta {
+    min-height: 118px;
+}
+
+.aliados-territory-meta > div:last-child {
+    padding-top: 9px;
+    border-top: 1px solid #edf1f6;
+}
+
+.aliados-territory-card .btn-system-light {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.aliados-state-nav {
+    margin-bottom: 4px;
+}
+
+.aliados-state-summary {
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.aliados-state-filter-grid {
+    grid-template-columns:
+        minmax(230px, 1.45fr)
+        repeat(4, minmax(125px, .78fr))
+        auto;
+}
+
+.aliados-municipality-group {
+    border-bottom: 1px solid var(--color-border, #dfe5ef);
+}
+
+.aliados-municipality-group:last-of-type {
+    border-bottom: 0;
+}
+
+.aliados-municipality-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 42px;
+    padding: 9px 16px;
+    border-bottom: 1px solid var(--color-border, #dfe5ef);
+    background: #f8fafc;
+}
+
+.aliados-municipality-header > div {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    min-width: 0;
+}
+
+.aliados-municipality-header i {
+    color: var(--color-primary, #273a8a);
+    font-size: 12px;
+}
+
+.aliados-municipality-header strong {
+    overflow: hidden;
+    color: var(--color-text, #172642);
+    font-size: 10.5px;
+    font-weight: 800;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.aliados-municipality-header > span {
+    flex: 0 0 auto;
+    padding: 4px 7px;
+    border: 1px solid #dfe5ef;
+    border-radius: 999px;
+    background: #fff;
+    color: var(--color-text-soft, #6b7280);
+    font-size: 8px;
+    font-weight: 750;
+}
+
+.aliados-state-module .aliados-directory-results {
+    background: #fff;
+}
+
+.aliados-state-module .aliados-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+@media (max-width: 1399.98px) {
+    .aliados-state-filter-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .aliados-state-filter-grid .aliados-filter-search {
+        grid-column: span 2;
+    }
+
+    .aliados-state-filter-grid .aliados-filter-actions {
+        grid-column: auto;
+    }
+}
+
+@media (max-width: 991.98px) {
+    .aliados-territory-toolbar {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .aliados-territory-search-field {
+        grid-column: 1 / -1;
+    }
+
+    .aliados-state-filter-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .aliados-state-filter-grid .aliados-filter-search {
+        grid-column: 1 / -1;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .aliados-territory-selector {
+        padding: 16px;
+    }
+
+    .aliados-territory-toolbar,
+    .aliados-state-filter-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .aliados-state-filter-grid .aliados-filter-search,
+    .aliados-state-filter-grid .aliados-filter-actions {
+        grid-column: auto;
+    }
+
+    .aliados-municipality-header {
+        padding-inline: 12px;
+    }
+}
