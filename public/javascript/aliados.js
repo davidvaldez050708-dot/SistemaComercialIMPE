@@ -525,8 +525,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const name = String(ally.nombre_entidad || 'Institución');
         const email = String(ally.correo_contacto || '');
         currentAllyWhatsappReady =
-            String(ally.whatsapp_verificado || '').trim() !== '' ||
-            Number(ally.tiene_whatsapp_confirmado_contacto || 0) === 1;
+            Number(ally.tiene_whatsapp_autorizado_contacto || 0) === 1;
 
         if (whatsappShareButton) {
             whatsappShareButton.disabled = !currentAllyWhatsappReady;
@@ -538,7 +537,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (whatsappShareStatus) {
             whatsappShareStatus.textContent = currentAllyWhatsappReady
                 ? 'Abrir conversación'
-                : 'Requiere WhatsApp confirmado';
+                : 'Requiere autorización de WhatsApp';
         }
 
         if (shareContext) {
@@ -934,6 +933,18 @@ document.addEventListener('DOMContentLoaded', function () {
                 badges.appendChild(unconfirmed);
             }
 
+            if (item.autorizado_whatsapp) {
+                const authorized = document.createElement('span');
+                authorized.className = 'is-confirmed';
+                authorized.textContent = 'Comunicaciones autorizadas';
+                badges.appendChild(authorized);
+            } else if (item.editable) {
+                const notAuthorized = document.createElement('span');
+                notAuthorized.className = 'is-unconfirmed';
+                notAuthorized.textContent = 'Sin autorización de mensajes';
+                badges.appendChild(notAuthorized);
+            }
+
             copy.append(number, meta, badges);
 
             const actions = document.createElement('div');
@@ -984,6 +995,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const numberInput = contactForm.querySelector('[name="numero"]');
         const labelInput = contactForm.querySelector('[name="etiqueta"]');
         const whatsappInput = contactForm.querySelector('[name="confirmado_whatsapp"]');
+        const authorizedInput = contactForm.querySelector('[name="autorizado_whatsapp"]');
         const preferredInput = contactForm.querySelector('[name="preferido_difusion"]');
 
         if (idInput) {
@@ -1002,6 +1014,11 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         if (whatsappInput) {
             whatsappInput.checked = Boolean(item.confirmado_whatsapp);
+        }
+        if (authorizedInput) {
+            authorizedInput.checked = fromSource
+                ? false
+                : Boolean(item.autorizado_whatsapp);
         }
         if (preferredInput) {
             preferredInput.checked = fromSource
@@ -1086,12 +1103,18 @@ document.addEventListener('DOMContentLoaded', function () {
         const formData = new FormData(contactForm);
         const whatsappCheckbox =
             contactForm.querySelector('[name="confirmado_whatsapp"]');
+        const authorizedCheckbox =
+            contactForm.querySelector('[name="autorizado_whatsapp"]');
         const preferredCheckbox =
             contactForm.querySelector('[name="preferido_difusion"]');
 
         formData.set(
             'confirmado_whatsapp',
             whatsappCheckbox?.checked ? '1' : '0'
+        );
+        formData.set(
+            'autorizado_whatsapp',
+            authorizedCheckbox?.checked ? '1' : '0'
         );
         formData.set(
             'preferido_difusion',
@@ -1289,6 +1312,23 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (contactForm) {
         contactForm.addEventListener('submit', saveContact);
+
+        const whatsappCheckbox =
+            contactForm.querySelector('[name="confirmado_whatsapp"]');
+        const authorizedCheckbox =
+            contactForm.querySelector('[name="autorizado_whatsapp"]');
+
+        authorizedCheckbox?.addEventListener('change', function () {
+            if (authorizedCheckbox.checked && whatsappCheckbox) {
+                whatsappCheckbox.checked = true;
+            }
+        });
+
+        whatsappCheckbox?.addEventListener('change', function () {
+            if (!whatsappCheckbox.checked && authorizedCheckbox) {
+                authorizedCheckbox.checked = false;
+            }
+        });
     }
 
     contactEditorCancel?.addEventListener('click', resetContactForm);
