@@ -525,6 +525,77 @@ class WhatsAppController
         ]);
     }
 
+    public function probarCanal()
+    {
+        $this->validarPermiso('whatsapp.gestionar_cuentas');
+        $this->validarMetodoPost();
+
+        $modelo = new WhatsAppModel();
+        $this->validarEstructura($modelo);
+
+        $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
+        $cuentaId = (int)($_POST['cuenta_id'] ?? 0);
+
+        if ($cuentaId <= 0) {
+            $this->responder([
+                'ok' => false,
+                'mensaje' => 'Selecciona primero un canal guardado.'
+            ], 422);
+        }
+
+        $cuenta = $modelo->obtenerCuentaPorId(
+            $cuentaId,
+            $usuarioId,
+            true
+        );
+
+        if (!$cuenta) {
+            $this->responder([
+                'ok' => false,
+                'mensaje' => 'No fue posible localizar el canal seleccionado.'
+            ], 404);
+        }
+
+        $servicio = new WhatsAppCloudApiService();
+        $resultado = $servicio->probarConexion(
+            (string)($cuenta['phone_number_id'] ?? '')
+        );
+
+        if (empty($resultado['ok'])) {
+            $this->responder([
+                'ok' => false,
+                'mensaje' => (string)(
+                    $resultado['mensaje'] ??
+                    'No fue posible validar el canal con Meta.'
+                ),
+                'codigo_meta' => (string)($resultado['codigo_meta'] ?? '')
+            ], 502);
+        }
+
+        $nombre = trim((string)($resultado['verified_name'] ?? ''));
+        $numero = trim((string)($resultado['display_phone_number'] ?? ''));
+        $detalle = trim(
+            ($nombre !== '' ? $nombre : (string)$cuenta['nombre']) .
+            ($numero !== '' ? ' · ' . $numero : '')
+        );
+
+        $this->responder([
+            'ok' => true,
+            'mensaje' => 'Conexión con Meta verificada' .
+                ($detalle !== '' ? ': ' . $detalle : '.'),
+            'canal' => [
+                'phone_number_id' => (string)(
+                    $resultado['phone_number_id'] ?? ''
+                ),
+                'numero' => $numero,
+                'nombre_verificado' => $nombre,
+                'graph_version' => (string)(
+                    $resultado['graph_version'] ?? ''
+                )
+            ]
+        ]);
+    }
+
     public function guardarCuenta()
     {
         $this->validarPermiso('whatsapp.gestionar_cuentas');
