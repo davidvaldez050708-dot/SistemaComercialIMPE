@@ -421,6 +421,94 @@ class WhatsAppController
         exit;
     }
 
+    public function crearConversacion()
+    {
+        $this->validarPermiso('whatsapp.enviar');
+        $this->validarMetodoPost();
+
+        $modelo = new WhatsAppModel();
+        $this->validarEstructura($modelo);
+
+        $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
+        $puedeGestionarCuentas =
+            tienePermiso('whatsapp.gestionar_cuentas');
+        $cuentaId = (int)($_POST['cuenta_id'] ?? 0);
+        $telefono = preg_replace(
+            '/[^0-9]+/',
+            '',
+            (string)($_POST['telefono'] ?? '')
+        );
+        $nombreContacto = trim(
+            (string)($_POST['nombre_contacto'] ?? '')
+        );
+
+        if (
+            $telefono === '' ||
+            strlen($telefono) < 7 ||
+            strlen($telefono) > 15
+        ) {
+            $this->responder([
+                'ok' => false,
+                'mensaje' =>
+                    'Indica un número válido con código de país, sin extensiones.'
+            ], 422);
+        }
+
+        if (mb_strlen($nombreContacto) > 180) {
+            $this->responder([
+                'ok' => false,
+                'mensaje' => 'El nombre del contacto es demasiado largo.'
+            ], 422);
+        }
+
+        $cuenta = $modelo->obtenerCuentaPorId(
+            $cuentaId,
+            $usuarioId,
+            $puedeGestionarCuentas
+        );
+
+        if (!$cuenta || (int)($cuenta['activo'] ?? 0) !== 1) {
+            $this->responder([
+                'ok' => false,
+                'mensaje' =>
+                    'No tienes acceso al canal de WhatsApp seleccionado.'
+            ], 403);
+        }
+
+        try {
+            $conversacionId = $modelo->crearORecuperarConversacion(
+                (int)$cuenta['id'],
+                $telefono,
+                $nombreContacto,
+                $usuarioId,
+                0
+            );
+        } catch (Throwable $error) {
+            $this->responder([
+                'ok' => false,
+                'mensaje' =>
+                    'No fue posible abrir la conversación: ' .
+                    $error->getMessage()
+            ], 409);
+        }
+
+        if ($conversacionId <= 0) {
+            $this->responder([
+                'ok' => false,
+                'mensaje' => 'No fue posible crear la conversación.'
+            ], 500);
+        }
+
+        $this->responder([
+            'ok' => true,
+            'mensaje' => 'Conversación preparada.',
+            'conversacion_id' => $conversacionId,
+            'url' => BASE_URL .
+                'index.php?controller=whatsapp&action=index&conversacion_id=' .
+                $conversacionId
+        ]);
+    }
+
     public function guardarCuenta()
     {
         $this->validarPermiso('whatsapp.gestionar_cuentas');
