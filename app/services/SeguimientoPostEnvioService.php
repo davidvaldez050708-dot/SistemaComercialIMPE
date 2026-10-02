@@ -554,6 +554,12 @@ class SeguimientoPostEnvioService
             'OTRO',
             'Convenio formalizado | Fecha: ' . $fecha . ($notas !== '' ? ' | ' . $notas : '')
         );
+
+        $this->registrarAsignacionAliado(
+            $seguimientoId,
+            $usuarioId
+        );
+
         $this->actualizarUltimaInteraccion($seguimientoId, $usuarioId, null);
     }
 
@@ -757,6 +763,87 @@ class SeguimientoPostEnvioService
         $stmt = $this->connection->prepare($sql);
         $stmt->bind_param('sii', $proximaAccion, $seguimientoId, $usuarioId);
         $stmt->execute();
+    }
+
+    private function registrarAsignacionAliado($seguimientoId, $usuarioId)
+    {
+        if (!$this->tablaAliadosDisponible()) {
+            return;
+        }
+
+        $sql = "INSERT IGNORE INTO aliados_asignaciones (
+                    seguimiento_id,
+                    cuenta_clave_usuario_id,
+                    cuenta_clave_asignacion_id,
+                    origen_asignacion,
+                    asignado_por,
+                    asignado_at,
+                    activo
+                )
+                SELECT
+                    s.id,
+                    cuenta.usuario_id,
+                    cuenta.id,
+                    'FORMALIZACION',
+                    ?,
+                    NOW(),
+                    1
+                FROM seguimientos_vinculacion s
+                LEFT JOIN asignaciones_territorio analista
+                    ON analista.id = (
+                        SELECT asignacion.id
+                        FROM asignaciones_territorio asignacion
+                        WHERE asignacion.usuario_id = s.analista_id
+                          AND asignacion.estado_id = s.estado_id
+                          AND asignacion.tipo_asignacion = 'ANALISTA_DATOS'
+                          AND asignacion.activo = 1
+                          AND (
+                              asignacion.fecha_inicio IS NULL OR
+                              asignacion.fecha_inicio <= CURDATE()
+                          )
+                          AND (
+                              asignacion.fecha_fin IS NULL OR
+                              asignacion.fecha_fin >= CURDATE()
+                          )
+                        ORDER BY
+                            asignacion.es_principal DESC,
+                            asignacion.id DESC
+                        LIMIT 1
+                    )
+                LEFT JOIN asignaciones_territorio cuenta
+                    ON cuenta.id = analista.cuenta_clave_asignacion_id
+                   AND cuenta.tipo_asignacion = 'CUENTA_CLAVE'
+                   AND cuenta.activo = 1
+                   AND (
+                       cuenta.fecha_inicio IS NULL OR
+                       cuenta.fecha_inicio <= CURDATE()
+                   )
+                   AND (
+                       cuenta.fecha_fin IS NULL OR
+                       cuenta.fecha_fin >= CURDATE()
+                   )
+                WHERE s.id = ?
+                LIMIT 1";
+
+        $stmt = $this->connection->prepare($sql);
+        $seguimientoId = (int)$seguimientoId;
+        $usuarioId = (int)$usuarioId;
+        $stmt->bind_param('ii', $usuarioId, $seguimientoId);
+
+        if (!$stmt->execute()) {
+            throw new RuntimeException(
+                'No fue posible asignar el aliado a la Cuenta Clave responsable.'
+            );
+        }
+    }
+
+    private function tablaAliadosDisponible()
+    {
+        $resultado = $this->connection->query(
+            "SHOW TABLES LIKE 'aliados_asignaciones'"
+        );
+
+        return $resultado && $resultado->num_rows > 0;
     }
 
     private function tablaAgendaDisponible()
