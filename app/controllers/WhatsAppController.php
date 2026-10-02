@@ -352,12 +352,19 @@ class WhatsAppController
             $this->redirigirIndex();
         }
 
+        if (!$modeloAliado->consentimientoWhatsappDisponible()) {
+            $_SESSION['error_whatsapp'] =
+                'Falta aplicar la migración de consentimiento de WhatsApp para usar Aliados con este canal.';
+            $this->redirigirIndex();
+        }
+
         $numero = '';
         $contactos = $modeloAliado->obtenerContactosDifusion($aliado);
 
         foreach ($contactos as $contacto) {
             if (
                 !empty($contacto['confirmado_whatsapp']) &&
+                !empty($contacto['autorizado_whatsapp']) &&
                 !empty($contacto['preferido_difusion'])
             ) {
                 $numero = (string)$contacto['numero'];
@@ -367,7 +374,10 @@ class WhatsAppController
 
         if ($numero === '') {
             foreach ($contactos as $contacto) {
-                if (!empty($contacto['confirmado_whatsapp'])) {
+                if (
+                    !empty($contacto['confirmado_whatsapp']) &&
+                    !empty($contacto['autorizado_whatsapp'])
+                ) {
                     $numero = (string)$contacto['numero'];
                     break;
                 }
@@ -376,7 +386,7 @@ class WhatsAppController
 
         if ($numero === '') {
             $_SESSION['error_whatsapp'] =
-                'El aliado no tiene un número confirmado para WhatsApp. Regístralo primero en Contactos de difusión.';
+                'El aliado no tiene un número con WhatsApp confirmado y autorización para recibir comunicaciones. Registra la autorización en Contactos de difusión.';
             $this->redirigirIndex();
         }
 
