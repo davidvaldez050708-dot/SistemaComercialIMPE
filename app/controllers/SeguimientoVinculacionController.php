@@ -3096,7 +3096,18 @@ class SeguimientoVinculacionController
 
     private function resolverModoSeguimiento()
     {
-        if ((int)($_SESSION['rol_id'] ?? 0) === 1) {
+        $rolId = (int)($_SESSION['rol_id'] ?? 0);
+        $rolNombre = trim((string)($_SESSION['rol'] ?? ''));
+
+        /*
+         * Administrador y Marketing tienen alcance institucional de consulta:
+         * pueden visualizar todos los territorios y los seguimientos asociados.
+         * Las acciones operativas continúan sujetas a sus permisos específicos.
+         */
+        if (
+            $rolId === 1 ||
+            strcasecmp($rolNombre, 'Marketing') === 0
+        ) {
             return 'administrador';
         }
 
