@@ -313,6 +313,7 @@ class SeguimientoReporteAnaliticaService
                                 'NO_INTERESADO'
                             )
                          )
+                         AND notas NOT LIKE '%[SIN_CONTACTO_EFECTIVO]%'
                         THEN 1 ELSE 0
                     END) AS contactadas,
                     SUM(CASE
