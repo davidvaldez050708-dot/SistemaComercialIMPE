@@ -140,6 +140,35 @@ class CorreoMarketingController
         exit;
     }
 
+    public function recuperarAdjunto()
+    {
+        $this->validarAccesoMarketing();
+
+        if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
+            $this->responder([
+                'ok' => false,
+                'mensaje' => 'Método no permitido.'
+            ], 405);
+        }
+
+        $correoId = (int)($_POST['correo_id'] ?? 0);
+        $nombreEsperado = trim((string)($_POST['nombre_esperado'] ?? ''));
+        $archivo = $_FILES['archivo'] ?? null;
+
+        $service = new CorreoMarketingService();
+        $resultado = $service->recuperarAdjuntoLegacy(
+            (int)($_SESSION['usuario_id'] ?? 0),
+            $correoId,
+            $nombreEsperado,
+            $archivo
+        );
+
+        $codigoHttp = (int)($resultado['codigo_http'] ?? 200);
+        unset($resultado['codigo_http']);
+
+        $this->responder($resultado, $codigoHttp);
+    }
+
     public function enviar()
     {
         $this->validarAccesoMarketing();
