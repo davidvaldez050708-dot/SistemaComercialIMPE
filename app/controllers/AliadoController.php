@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../models/AliadoModel.php';
+require_once __DIR__ . '/../models/SeguimientoVinculacionModel.php';
 require_once __DIR__ . '/../services/AliadoDifusionService.php';
 require_once __DIR__ . '/../helpers/PermissionHelper.php';
 
@@ -12,47 +13,100 @@ class AliadoController
 
         $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
         $esAdministrador = (int)($_SESSION['rol_id'] ?? 0) === 1;
-        $modelo = new AliadoModel();
+        $modeloAliado = new AliadoModel();
+        $modeloSeguimiento = new SeguimientoVinculacionModel();
 
-        $estructuraAliadosDisponible = $modelo->estructuraDisponible();
-        $filtros = [
-            'buscar' => trim((string)($_GET['buscar'] ?? '')),
-            'estado_id' => (int)($_GET['estado_id'] ?? 0),
-            'municipio_id' => (int)($_GET['municipio_id'] ?? 0),
-            'analista_id' => (int)($_GET['analista_id'] ?? 0)
-        ];
+        $estructuraAliadosDisponible = $modeloAliado->estructuraDisponible();
+        $territorios = $esAdministrador
+            ? $modeloSeguimiento->obtenerEstadosAdministrador()
+            : $modeloSeguimiento->obtenerEstadosSupervisadosCuentaClave($usuarioId);
 
-        $aliadosBase = $estructuraAliadosDisponible
-            ? $modelo->obtenerListado($usuarioId, $esAdministrador, [])
+        $resumenPorEstado = [];
+        if ($estructuraAliadosDisponible) {
+            foreach (
+                $modeloAliado->obtenerResumenTerritorial(
+                    $usuarioId,
+                    $esAdministrador
+                ) as $resumenEstado
+            ) {
+                $resumenPorEstado[(int)$resumenEstado['estado_id']] = $resumenEstado;
+            }
+        }
+
+        foreach ($territorios as $indice => $territorio) {
+            $estadoId = (int)($territorio['id'] ?? 0);
+            $resumen = $resumenPorEstado[$estadoId] ?? [];
+
+            $territorios[$indice]['total_aliados'] =
+                (int)($resumen['total_aliados'] ?? 0);
+            $territorios[$indice]['total_municipios_aliados'] =
+                (int)($resumen['total_municipios_aliados'] ?? 0);
+            $territorios[$indice]['ultima_formalizacion_at'] =
+                (string)($resumen['ultima_formalizacion_at'] ?? '');
+        }
+
+        $mensajeError = $_SESSION['error_aliados'] ?? '';
+        unset($_SESSION['error_aliados']);
+
+        $tituloPagina = 'Aliados';
+        $subtituloPagina = $esAdministrador
+            ? 'Consulta la red institucional formalizada por territorio'
+            : 'Selecciona uno de tus territorios asignados';
+        $opcionActiva = 'aliados';
+
+        require_once __DIR__ . '/../views/layout/dashboard_head.php';
+        require_once __DIR__ . '/../views/layout/sidebar.php';
+        require_once __DIR__ . '/../views/layout/topbar.php';
+        require_once __DIR__ . '/../views/aliados/index.php';
+        require_once __DIR__ . '/../views/layout/dashboard_footer.php';
+    }
+
+    public function estado()
+    {
+        $this->validarPermiso('aliados.ver');
+
+        $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
+        $esAdministrador = (int)($_SESSION['rol_id'] ?? 0) === 1;
+        $estadoId = (int)($_GET['estado_id'] ?? 0);
+        $modeloAliado = new AliadoModel();
+        $modeloSeguimiento = new SeguimientoVinculacionModel();
+
+        $estado = $esAdministrador
+            ? $modeloSeguimiento->obtenerEstadoAdministrador($estadoId)
+            : $modeloSeguimiento->obtenerEstadoSupervisadoCuentaClave(
+                $usuarioId,
+                $estadoId
+            );
+
+        if (!$estado) {
+            $_SESSION['error_aliados'] = 'No tienes acceso a este territorio.';
+            header(
+                'Location: ' . BASE_URL .
+                'index.php?controller=aliado&action=index'
+            );
+            exit;
+        }
+
+        $estructuraAliadosDisponible = $modeloAliado->estructuraDisponible();
+        $aliados = $estructuraAliadosDisponible
+            ? $modeloAliado->obtenerListado(
+                $usuarioId,
+                $esAdministrador,
+                ['estado_id' => $estadoId]
+            )
             : [];
-        // El directorio se carga completo dentro del alcance autorizado.
-        // Los filtros son reactivos en cliente, igual que en Seguimiento.
-        $aliados = $aliadosBase;
 
-        $estadosAliados = [];
         $municipiosAliados = [];
         $analistasAliados = [];
+        $aliadosPorMunicipio = [];
+        $aliadosSinMunicipio = [];
 
-        foreach ($aliadosBase as $aliado) {
-            $estadoId = (int)($aliado['estado_id'] ?? 0);
+        foreach ($aliados as $aliado) {
             $municipioId = (int)($aliado['municipio_id'] ?? 0);
+            $municipioNombre = trim(
+                (string)($aliado['municipio_nombre'] ?? '')
+            );
             $analistaId = (int)($aliado['analista_id'] ?? 0);
-
-            if ($estadoId > 0) {
-                $estadosAliados[$estadoId] = [
-                    'id' => $estadoId,
-                    'nombre' => (string)($aliado['estado_nombre'] ?? '')
-                ];
-            }
-
-            if ($municipioId > 0) {
-                $municipiosAliados[$municipioId] = [
-                    'id' => $municipioId,
-                    'estado_id' => $estadoId,
-                    'nombre' => (string)($aliado['municipio_nombre'] ?? ''),
-                    'estado_nombre' => (string)($aliado['estado_nombre'] ?? '')
-                ];
-            }
 
             if ($analistaId > 0) {
                 $analistasAliados[$analistaId] = [
@@ -60,32 +114,55 @@ class AliadoController
                     'nombre' => (string)($aliado['analista_nombre'] ?? '')
                 ];
             }
+
+            if ($municipioId <= 0 || $municipioNombre === '') {
+                $aliadosSinMunicipio[] = $aliado;
+                continue;
+            }
+
+            $municipiosAliados[$municipioId] = [
+                'id' => $municipioId,
+                'nombre' => $municipioNombre
+            ];
+
+            if (!isset($aliadosPorMunicipio[$municipioId])) {
+                $aliadosPorMunicipio[$municipioId] = [
+                    'id' => $municipioId,
+                    'nombre' => $municipioNombre,
+                    'aliados' => []
+                ];
+            }
+
+            $aliadosPorMunicipio[$municipioId]['aliados'][] = $aliado;
         }
 
-        uasort($estadosAliados, static function ($a, $b) {
-            return strcasecmp((string)$a['nombre'], (string)$b['nombre']);
-        });
         uasort($municipiosAliados, static function ($a, $b) {
-            $estado = strcasecmp(
-                (string)$a['estado_nombre'],
-                (string)$b['estado_nombre']
-            );
-            return $estado !== 0
-                ? $estado
-                : strcasecmp((string)$a['nombre'], (string)$b['nombre']);
+            return strnatcasecmp((string)$a['nombre'], (string)$b['nombre']);
         });
         uasort($analistasAliados, static function ($a, $b) {
             return strcasecmp((string)$a['nombre'], (string)$b['nombre']);
         });
+        uasort($aliadosPorMunicipio, static function ($a, $b) {
+            return strnatcasecmp((string)$a['nombre'], (string)$b['nombre']);
+        });
+
+        if (!empty($aliadosSinMunicipio)) {
+            $aliadosPorMunicipio['sin_municipio'] = [
+                'id' => 0,
+                'nombre' => 'Sin municipio',
+                'aliados' => $aliadosSinMunicipio
+            ];
+        }
 
         $resumenAliados = [
-            'total' => count($aliadosBase),
+            'total' => count($aliados),
+            'municipios' => count($municipiosAliados),
             'con_correo' => 0,
             'con_whatsapp' => 0,
             'convocatorias_vigentes' => 0
         ];
 
-        foreach ($aliadosBase as $aliado) {
+        foreach ($aliados as $aliado) {
             $correo = trim((string)($aliado['correo_contacto'] ?? ''));
             $whatsappVerificado = trim(
                 (string)($aliado['whatsapp_verificado'] ?? '')
@@ -96,38 +173,47 @@ class AliadoController
             if ($correo !== '' && filter_var($correo, FILTER_VALIDATE_EMAIL)) {
                 $resumenAliados['con_correo']++;
             }
+
             if ($whatsappVerificado !== '' || $whatsappDifusionConfirmado) {
                 $resumenAliados['con_whatsapp']++;
             }
         }
 
         $puedeConsultarConvocatorias = tienePermiso('convocatorias.ver');
-
         if ($estructuraAliadosDisponible && $puedeConsultarConvocatorias) {
             $resumenAliados['convocatorias_vigentes'] =
-                $modelo->contarConvocatoriasVigentesPorEstados(
-                    array_keys($estadosAliados)
-                );
+                $modeloAliado->contarConvocatoriasVigentesPorEstados([$estadoId]);
         }
 
         $puedeCompartirCorreo =
             tienePermiso('aliados.compartir_correo') &&
             $puedeConsultarConvocatorias;
         $puedeVerHistorial = tienePermiso('aliados.ver_historial');
-        $estructuraContactosDisponible = $modelo->contactosDisponibles();
+        $estructuraContactosDisponible = $modeloAliado->contactosDisponibles();
         $puedeGestionarContactos =
             tienePermiso('aliados.gestionar_contactos') &&
             $estructuraContactosDisponible;
+        $puedeAbrirExpediente =
+            tienePermiso('seguimientos_vinculacion.ver');
+
+        $filtros = [
+            'buscar' => trim((string)($_GET['buscar'] ?? '')),
+            'municipio_id' => (int)($_GET['municipio_id'] ?? 0),
+            'analista_id' => (int)($_GET['analista_id'] ?? 0),
+            'difusion' => trim((string)($_GET['difusion'] ?? 'todos')),
+            'formalizacion' => trim(
+                (string)($_GET['formalizacion'] ?? 'todas')
+            )
+        ];
 
         $tituloPagina = 'Aliados';
-        $subtituloPagina =
-            'Instituciones con convenio formalizado y relación institucional activa';
+        $subtituloPagina = (string)($estado['nombre'] ?? '');
         $opcionActiva = 'aliados';
 
         require_once __DIR__ . '/../views/layout/dashboard_head.php';
         require_once __DIR__ . '/../views/layout/sidebar.php';
         require_once __DIR__ . '/../views/layout/topbar.php';
-        require_once __DIR__ . '/../views/aliados/index.php';
+        require_once __DIR__ . '/../views/aliados/estado.php';
         require_once __DIR__ . '/../views/layout/dashboard_footer.php';
     }
 
