@@ -90,6 +90,34 @@ $actividadPorAnalistaReporte = is_array($analiticaReporte['actividad_por_actor']
     : [];
 $totalInstitucionesActividadReporte = max(0, (int)($analiticaReporte['seguimientos_con_actividad'] ?? 0));
 $metaDiariaEfectivas = max(1, (int)($analiticaReporte['meta_diaria_efectivas'] ?? 25));
+$cumplimientoEfectivasReporte = is_array($analiticaReporte['cumplimiento_efectivas'] ?? null)
+    ? $analiticaReporte['cumplimiento_efectivas']
+    : [];
+$analistasMetaEfectivas = max(1, (int)($cumplimientoEfectivasReporte['analistas_evaluados'] ?? 1));
+$metaDiariaEquipoEfectivas = max(
+    $metaDiariaEfectivas,
+    (int)($cumplimientoEfectivasReporte['meta_diaria_equipo'] ?? $metaDiariaEfectivas)
+);
+$diasMetaEfectivas = max(0, (int)($cumplimientoEfectivasReporte['dias_evaluados'] ?? 0));
+$metaPeriodoEfectivas = max(0, (int)($cumplimientoEfectivasReporte['meta_periodo'] ?? 0));
+$efectivasPeriodoMeta = max(
+    0,
+    (int)($cumplimientoEfectivasReporte['efectivas'] ?? ($llamadasReporte['verificaciones_efectivas'] ?? 0))
+);
+$cumplimientoMetaEfectivas = max(0, (float)($cumplimientoEfectivasReporte['cumplimiento_pct'] ?? 0));
+$cumplimientoMetaVisual = min(100, $cumplimientoMetaEfectivas);
+$promedioEfectivasAnalistaDia = max(
+    0,
+    (float)($cumplimientoEfectivasReporte['promedio_diario_por_analista'] ?? 0)
+);
+$diasCumplidosMeta = max(0, (int)($cumplimientoEfectivasReporte['dias_cumplidos'] ?? 0));
+$esMetaEquipoSupervisor = $modoSeguimiento === 'supervisor' && $analistaSeleccionadoId <= 0;
+$estadoMetaEfectivas = $cumplimientoMetaEfectivas >= 100
+    ? 'Meta alcanzada'
+    : ($cumplimientoMetaEfectivas >= 75 ? 'Cerca de la meta' : 'Por debajo de la meta');
+$claseMetaEfectivas = $cumplimientoMetaEfectivas >= 100
+    ? 'is-complete'
+    : ($cumplimientoMetaEfectivas >= 75 ? 'is-near' : 'is-low');
 $tipoInteraccionActividad = strtoupper(trim((string)($filtrosReporte['tipo_actividad'] ?? '')));
 $mostrarRendimientoTelefonico =
     $tipoInteraccionActividad === '' ||
@@ -899,6 +927,86 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
             </article>
         </section>
 
+        <?php if ($mostrarRendimientoTelefonico && $modoSeguimiento !== 'administrador'): ?>
+        <section class="dashboard-panel analyst-effective-goal-panel mb-3 <?= $texto($claseMetaEfectivas) ?>" aria-labelledby="meta-efectivas-titulo">
+            <div class="analyst-effective-goal-heading">
+                <div>
+                    <span class="report-eyebrow">CUMPLIMIENTO OPERATIVO</span>
+                    <h3 class="panel-title mb-1" id="meta-efectivas-titulo">
+                        Meta diaria de llamadas efectivas
+                    </h3>
+                    <p class="page-subtitle mb-0">
+                        <?= $esMetaEquipoSupervisor
+                            ? 'Cada Analista tiene una meta de ' . $metaDiariaEfectivas . ' llamadas efectivas por día. El avance del equipo se calcula sumando la meta individual de los Analistas incluidos.'
+                            : 'La meta operativa es de ' . $metaDiariaEfectivas . ' llamadas efectivas por día.' ?>
+                    </p>
+                </div>
+                <span class="analyst-effective-goal-badge <?= $texto($claseMetaEfectivas) ?>">
+                    <i class="bi bi-bullseye"></i>
+                    <strong><?= $metaDiariaEfectivas ?></strong>
+                    <span>efectivas / Analista / día</span>
+                </span>
+            </div>
+
+            <div class="analyst-effective-goal-layout">
+                <div class="analyst-effective-goal-main">
+                    <div class="analyst-effective-goal-score">
+                        <div>
+                            <span>Cumplimiento del periodo</span>
+                            <strong><?= number_format($cumplimientoMetaEfectivas, 1) ?>%</strong>
+                            <small><?= $texto($estadoMetaEfectivas) ?></small>
+                        </div>
+                        <div class="analyst-effective-goal-total">
+                            <strong><?= $efectivasPeriodoMeta ?></strong>
+                            <span>de <?= $metaPeriodoEfectivas ?> efectivas esperadas</span>
+                        </div>
+                    </div>
+                    <div
+                        class="analyst-effective-goal-progress"
+                        role="img"
+                        aria-label="Cumplimiento de llamadas efectivas: <?= number_format($cumplimientoMetaEfectivas, 1) ?>%">
+                        <span style="width: <?= number_format($cumplimientoMetaVisual, 1, '.', '') ?>%"></span>
+                    </div>
+                    <div class="analyst-effective-goal-foot">
+                        <span>
+                            <i class="bi bi-calendar3"></i>
+                            <?= $diasMetaEfectivas ?> <?= $diasMetaEfectivas === 1 ? 'día evaluado' : 'días evaluados' ?>
+                        </span>
+                        <?php if ($esMetaEquipoSupervisor): ?>
+                            <span>
+                                <i class="bi bi-people"></i>
+                                <?= $analistasMetaEfectivas ?> <?= $analistasMetaEfectivas === 1 ? 'Analista' : 'Analistas' ?> · meta diaria del equipo <?= $metaDiariaEquipoEfectivas ?>
+                            </span>
+                        <?php else: ?>
+                            <span>
+                                <i class="bi bi-check2-circle"></i>
+                                <?= $diasCumplidosMeta ?> de <?= $diasMetaEfectivas ?> días con meta alcanzada
+                            </span>
+                        <?php endif; ?>
+                    </div>
+                </div>
+
+                <div class="analyst-effective-goal-metrics">
+                    <div>
+                        <span>Promedio diario</span>
+                        <strong><?= number_format($promedioEfectivasAnalistaDia, 1) ?></strong>
+                        <small>efectivas por Analista</small>
+                    </div>
+                    <div>
+                        <span>Meta del periodo</span>
+                        <strong><?= $metaPeriodoEfectivas ?></strong>
+                        <small><?= $esMetaEquipoSupervisor ? 'equipo supervisado' : 'efectivas esperadas' ?></small>
+                    </div>
+                    <div>
+                        <span>Hoy</span>
+                        <strong><?= $efectivasHoyReporte ?>/<?= $metaDiariaEquipoEfectivas ?></strong>
+                        <small><?= $esMetaEquipoSupervisor ? 'meta diaria del equipo' : 'meta diaria' ?></small>
+                    </div>
+                </div>
+            </div>
+        </section>
+        <?php endif; ?>
+
         <?php if (
             $modoSeguimiento === 'supervisor' &&
             $analistaSeleccionadoId <= 0 &&
@@ -925,7 +1033,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                             <th>Llamadas</th>
                             <th>Con contacto</th>
                             <th>Correos</th>
-                            <th>Efectivas</th>
+                            <th>Efectivas / meta</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -942,7 +1050,14 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                                 <small class="d-block text-muted"><?= number_format((float)($actividadAnalista['tasa_contacto'] ?? 0), 1) ?>%</small>
                             </td>
                             <td><?= (int)($actividadAnalista['correos'] ?? 0) ?></td>
-                            <td><?= (int)($actividadAnalista['efectivas'] ?? 0) ?></td>
+                            <td>
+                                <strong class="analyst-activity-effective-value">
+                                    <?= (int)($actividadAnalista['efectivas'] ?? 0) ?>/<?= (int)($actividadAnalista['meta_efectivas_periodo'] ?? 0) ?>
+                                </strong>
+                                <small class="d-block text-muted">
+                                    <?= number_format((float)($actividadAnalista['cumplimiento_efectivas_pct'] ?? 0), 1) ?>%
+                                </small>
+                            </td>
                         </tr>
                     <?php endforeach; ?>
                     </tbody>
@@ -965,7 +1080,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                             <p class="page-subtitle mb-0">
                                 <?php if ($mostrarRendimientoTelefonico): ?>
                                     <?php if ($rendimientoTelefonicoGranularidad === 'dia'): ?>
-                                        Seguimiento diario de llamadas, contacto y efectivas contabilizadas. La referencia operativa es de <?= $metaDiariaEfectivas ?> efectivas por día.
+                                        Seguimiento diario de llamadas, contacto y efectivas contabilizadas contra la meta de <?= $metaDiariaEfectivas ?> efectivas por Analista.
                                     <?php elseif ($rendimientoTelefonicoGranularidad === 'semana'): ?>
                                         Resumen semanal de llamadas y contacto. Las efectivas se contabilizan una vez por institución y día y aquí se suman por semana; no se extrapola la meta diaria a una meta semanal.
                                     <?php else: ?>
@@ -979,7 +1094,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                         <?php if ($mostrarRendimientoTelefonico): ?>
                             <span class="analyst-activity-today-pill">
                                 <?php if ($hoyIncluidoEnPeriodo): ?>
-                                    Hoy: <strong><?= $efectivasHoyReporte ?></strong>/<?= $metaDiariaEfectivas ?>
+                                    Hoy: <strong><?= $efectivasHoyReporte ?></strong>/<?= $metaDiariaEquipoEfectivas ?>
                                 <?php else: ?>
                                     Meta diaria: <strong><?= $metaDiariaEfectivas ?></strong> efectivas
                                 <?php endif; ?>
@@ -1025,7 +1140,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                                             <div>
                                                 <span style="width: <?= number_format($cumplimientoPeriodo, 1, '.', '') ?>%"></span>
                                             </div>
-                                            <small><?= $efectivasPeriodo ?>/<?= $metaDiariaEfectivas ?></small>
+                                            <small><?= $efectivasPeriodo ?>/<?= (int)($periodoTelefonico['meta'] ?? $metaDiariaEquipoEfectivas) ?></small>
                                         </div>
                                     <?php else: ?>
                                         <div class="analyst-activity-contact-rate">
@@ -1782,226 +1897,80 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                 </section>
             </div>
         </div>
-        <?php elseif ($modoSeguimiento !== 'analista'): ?>
-<div class="row g-4 mb-4">
-            <div class="col-xl-6">
-                <section class="dashboard-panel h-100" aria-labelledby="grafica-estatus-titulo">
-                    <h3 class="panel-title" id="grafica-estatus-titulo">Seguimientos por estatus</h3>
+        <?php elseif ($tipoReporteActual === 'actividad'): ?>
+        <?php
+        $municipiosActividad = array_slice($resumenReporte['por_municipio'] ?? [], 0, 6, true);
+        ?>
+        <div class="row g-3 mb-3">
+            <div class="col-xl-7">
+                <section class="dashboard-panel analyst-portfolio-stage analyst-activity-distribution">
+                    <div class="analyst-portfolio-section-heading">
+                        <div>
+                            <span class="report-eyebrow">DISTRIBUCIÓN DEL TRABAJO</span>
+                            <h3 class="panel-title mb-1">Seguimientos trabajados por estatus</h3>
+                            <p class="page-subtitle mb-0">Situación actual de las instituciones que tuvieron actividad dentro del periodo seleccionado.</p>
+                        </div>
+                    </div>
+
                     <?php if (!empty($resumenReporte['por_estatus'])): ?>
-                        <div class="d-grid gap-3">
+                        <div class="analyst-portfolio-stage-list">
                             <?php foreach ($resumenReporte['por_estatus'] as $codigo => $totalEstatus): ?>
-                                <?php $porcentaje = ((int)$totalEstatus / $maxEstatus) * 100; ?>
-                                <div>
-                                    <div class="d-flex justify-content-between gap-3 mb-1 small">
-                                        <span><?= $texto($etiquetaEstatus($codigo)) ?></span>
-                                        <strong><?= (int)$totalEstatus ?></strong>
+                                <?php $porcentajeEstatus = ((int)$totalEstatus / max(1, (int)$resumenReporte['total'])) * 100; ?>
+                                <div class="analyst-portfolio-stage-item">
+                                    <div>
+                                        <strong><?= $texto($etiquetaEstatus($codigo)) ?></strong>
+                                        <span><?= (int)$totalEstatus ?> seguimiento<?= (int)$totalEstatus === 1 ? '' : 's' ?></span>
                                     </div>
-                                    <div class="progress" role="img" aria-label="<?= $texto($etiquetaEstatus($codigo)) ?>: <?= (int)$totalEstatus ?>">
-                                        <div class="progress-bar" style="width: <?= number_format($porcentaje, 2, '.', '') ?>%"></div>
+                                    <div class="analyst-portfolio-stage-progress">
+                                        <span style="width: <?= number_format($porcentajeEstatus, 1, '.', '') ?>%"></span>
                                     </div>
+                                    <b><?= number_format($porcentajeEstatus, 0) ?>%</b>
                                 </div>
                             <?php endforeach; ?>
                         </div>
                     <?php else: ?>
-                        <p class="text-muted mb-0">No hay información de estatus para los criterios seleccionados.</p>
+                        <div class="analyst-portfolio-empty">
+                            <i class="bi bi-diagram-3"></i>
+                            <div><strong>No hay estatus para mostrar.</strong><span>No hubo seguimientos trabajados con los criterios seleccionados.</span></div>
+                        </div>
                     <?php endif; ?>
                 </section>
             </div>
 
-            <div class="col-xl-6">
-                <section class="dashboard-panel h-100" aria-labelledby="grafica-municipios-titulo">
-                    <h3 class="panel-title" id="grafica-municipios-titulo">Seguimientos por municipio</h3>
-                    <?php if (!empty($resumenReporte['por_municipio'])): ?>
-                        <div class="d-grid gap-3">
-                            <?php foreach ($resumenReporte['por_municipio'] as $municipioNombre => $totalMunicipio): ?>
-                                <?php $porcentaje = ((int)$totalMunicipio / $maxMunicipio) * 100; ?>
+            <div class="col-xl-5">
+                <section class="dashboard-panel analyst-portfolio-territory analyst-activity-distribution">
+                    <div class="analyst-portfolio-section-heading">
+                        <div>
+                            <span class="report-eyebrow">COBERTURA DEL TRABAJO</span>
+                            <h3 class="panel-title mb-1">Seguimientos trabajados por municipio</h3>
+                            <p class="page-subtitle mb-0">Principales municipios donde se concentró la actividad del periodo.</p>
+                        </div>
+                    </div>
+
+                    <?php if (!empty($municipiosActividad)): ?>
+                        <div class="analyst-portfolio-territory-list">
+                            <?php foreach ($municipiosActividad as $municipioNombre => $totalMunicipio): ?>
+                                <?php $porcentajeMunicipio = ((int)$totalMunicipio / max(1, (int)$resumenReporte['total'])) * 100; ?>
                                 <div>
-                                    <div class="d-flex justify-content-between gap-3 mb-1 small">
-                                        <span><?= $texto($municipioNombre) ?></span>
-                                        <strong><?= (int)$totalMunicipio ?></strong>
+                                    <div class="analyst-portfolio-territory-copy">
+                                        <strong><?= $texto($municipioNombre) ?></strong>
+                                        <span><?= (int)$totalMunicipio ?> · <?= number_format($porcentajeMunicipio, 0) ?>%</span>
                                     </div>
-                                    <div class="progress" role="img" aria-label="<?= $texto($municipioNombre) ?>: <?= (int)$totalMunicipio ?>">
-                                        <div class="progress-bar" style="width: <?= number_format($porcentaje, 2, '.', '') ?>%"></div>
+                                    <div class="analyst-portfolio-territory-progress">
+                                        <span style="width: <?= number_format($porcentajeMunicipio, 1, '.', '') ?>%"></span>
                                     </div>
                                 </div>
                             <?php endforeach; ?>
                         </div>
                     <?php else: ?>
-                        <p class="text-muted mb-0">No hay información municipal para los criterios seleccionados.</p>
+                        <div class="analyst-portfolio-empty">
+                            <i class="bi bi-geo-alt"></i>
+                            <div><strong>No hay distribución municipal.</strong><span>Las instituciones trabajadas no tienen municipio disponible.</span></div>
+                        </div>
                     <?php endif; ?>
                 </section>
             </div>
         </div>
-        <?php endif; ?>
-
-        <?php if ($modoSeguimiento !== 'analista'): ?>
-        <section class="dashboard-panel mb-4" aria-labelledby="grafica-evolucion-actividad-titulo">
-            <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
-                <div>
-                    <h3 class="panel-title mb-1" id="grafica-evolucion-actividad-titulo">Evolución de la actividad</h3>
-                    <p class="page-subtitle mb-0">Actividades registradas durante el periodo seleccionado.</p>
-                </div>
-            </div>
-
-            <div class="row g-3 mb-4">
-                <div class="col-sm-6 col-xl-3">
-                    <article class="metric-card h-100">
-                        <div class="metric-icon">
-                            <i class="bi bi-activity"></i>
-                        </div>
-                        <div>
-                            <p class="metric-value"><?= (int)$evolucionActividad['total'] ?></p>
-                            <p class="metric-label">Actividades en el periodo</p>
-                        </div>
-                    </article>
-                </div>
-                <div class="col-sm-6 col-xl-3">
-                    <article class="metric-card h-100">
-                        <div class="metric-icon">
-                            <i class="bi bi-arrow-up-circle"></i>
-                        </div>
-                        <div>
-                            <p class="metric-value" style="font-size: 18px; line-height: 1.2;"><?= $texto($evolucionActividad['mayor']['etiqueta'] ?? '—') ?></p>
-                            <p class="metric-label"><?= (int)($evolucionActividad['mayor']['total'] ?? 0) ?> actividades · Mayor actividad</p>
-                        </div>
-                    </article>
-                </div>
-                <div class="col-sm-6 col-xl-3">
-                    <article class="metric-card h-100">
-                        <div class="metric-icon metric-icon-muted">
-                            <i class="bi bi-arrow-down-circle"></i>
-                        </div>
-                        <div>
-                            <p class="metric-value" style="font-size: 18px; line-height: 1.2;"><?= $texto($evolucionActividad['menor']['etiqueta'] ?? '—') ?></p>
-                            <p class="metric-label"><?= (int)($evolucionActividad['menor']['total'] ?? 0) ?> actividades · Menor actividad</p>
-                        </div>
-                    </article>
-                </div>
-                <div class="col-sm-6 col-xl-3">
-                    <article class="metric-card h-100">
-                        <div class="metric-icon metric-icon-muted">
-                            <i class="bi bi-percent"></i>
-                        </div>
-                        <div>
-                            <?php if (!empty($evolucionActividad['comparacion_disponible'])): ?>
-                                <?php $variacionActividad = (float)$evolucionActividad['variacion']; ?>
-                                <p class="metric-value">
-                                    <?= $variacionActividad > 0 ? '+' : '' ?><?= number_format($variacionActividad, 1) ?>%
-                                </p>
-                                <p class="metric-label">
-                                    <?= (int)($evolucionActividad['total'] ?? 0) ?> vs.
-                                    <?= (int)($evolucionActividad['total_anterior'] ?? 0) ?> ·
-                                    <?= $texto($comparacionActividadRango) ?>
-                                </p>
-                            <?php elseif (!empty($evolucionActividad['comparacion_periodo_disponible'])): ?>
-                                <p class="metric-value" style="font-size: 16px; line-height: 1.2;">0 anteriores</p>
-                                <p class="metric-label"><?= $texto($comparacionActividadRango) ?> · sin % calculable</p>
-                            <?php else: ?>
-                                <p class="metric-value" style="font-size: 16px; line-height: 1.2;">Sin comparación disponible</p>
-                                <p class="metric-label"><?= $texto($evolucionActividad['comparacion_motivo'] ?? 'Sin periodo comparable') ?></p>
-                            <?php endif; ?>
-                        </div>
-                    </article>
-                </div>
-            </div>
-
-            <?php $periodosActividad = $evolucionActividad['periodos'] ?? []; ?>
-            <?php if (!empty($periodosActividad)): ?>
-                <?php
-                $svgAncho = 1000;
-                $svgAlto = 340;
-                $margenIzquierdo = 58;
-                $margenDerecho = 24;
-                $margenSuperior = 20;
-                $margenInferior = 58;
-                $anchoArea = $svgAncho - $margenIzquierdo - $margenDerecho;
-                $altoArea = $svgAlto - $margenSuperior - $margenInferior;
-                $maxActividad = max(1, max(array_map(static function ($periodo) {
-                    return (int)($periodo['total'] ?? 0);
-                }, $periodosActividad)));
-                $cantidadPeriodos = count($periodosActividad);
-                $pasoX = $cantidadPeriodos > 1 ? $anchoArea / ($cantidadPeriodos - 1) : 0;
-                $puntosLinea = [];
-                $puntosSvg = [];
-
-                foreach ($periodosActividad as $indicePeriodo => $periodoActividad) {
-                    $x = $cantidadPeriodos > 1
-                        ? $margenIzquierdo + ($pasoX * $indicePeriodo)
-                        : $margenIzquierdo + ($anchoArea / 2);
-                    $totalPeriodo = (int)($periodoActividad['total'] ?? 0);
-                    $y = $margenSuperior + $altoArea - (($totalPeriodo / $maxActividad) * $altoArea);
-                    $puntosLinea[] = number_format($x, 2, '.', '') . ',' . number_format($y, 2, '.', '');
-                    $puntosSvg[] = [
-                        'x' => $x,
-                        'y' => $y,
-                        'total' => $totalPeriodo,
-                        'etiqueta' => (string)($periodoActividad['etiqueta'] ?? ''),
-                        'tooltip' => (string)($periodoActividad['tooltip'] ?? '')
-                    ];
-                }
-
-                $saltoEtiquetas = max(1, (int)ceil($cantidadPeriodos / 8));
-                ?>
-                <div class="w-100 overflow-hidden">
-                    <svg
-                        viewBox="0 0 <?= $svgAncho ?> <?= $svgAlto ?>"
-                        width="100%"
-                        role="img"
-                        aria-labelledby="grafica-evolucion-actividad-titulo">
-                        <?php for ($nivel = 0; $nivel <= 4; $nivel++): ?>
-                            <?php
-                            $valorNivel = (int)round($maxActividad * (1 - ($nivel / 4)));
-                            $yNivel = $margenSuperior + (($altoArea / 4) * $nivel);
-                            ?>
-                            <line
-                                x1="<?= $margenIzquierdo ?>"
-                                y1="<?= number_format($yNivel, 2, '.', '') ?>"
-                                x2="<?= $svgAncho - $margenDerecho ?>"
-                                y2="<?= number_format($yNivel, 2, '.', '') ?>"
-                                style="stroke: var(--color-border); stroke-width: 1;" />
-                            <text
-                                x="<?= $margenIzquierdo - 10 ?>"
-                                y="<?= number_format($yNivel + 4, 2, '.', '') ?>"
-                                text-anchor="end"
-                                style="fill: var(--color-text-secondary); font-size: 12px;">
-                                <?= $valorNivel ?>
-                            </text>
-                        <?php endfor; ?>
-
-                        <polyline
-                            points="<?= $texto(implode(' ', $puntosLinea)) ?>"
-                            fill="none"
-                            style="stroke: var(--color-primary); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round;" />
-
-                        <?php foreach ($puntosSvg as $indicePunto => $puntoSvg): ?>
-                            <circle
-                                cx="<?= number_format($puntoSvg['x'], 2, '.', '') ?>"
-                                cy="<?= number_format($puntoSvg['y'], 2, '.', '') ?>"
-                                r="5"
-                                style="fill: var(--color-primary); stroke: #ffffff; stroke-width: 2;">
-                                <title><?= $texto($puntoSvg['tooltip']) ?> · <?= (int)$puntoSvg['total'] ?> actividades</title>
-                            </circle>
-
-                            <?php if ($indicePunto % $saltoEtiquetas === 0 || $indicePunto === $cantidadPeriodos - 1): ?>
-                                <text
-                                    x="<?= number_format($puntoSvg['x'], 2, '.', '') ?>"
-                                    y="<?= $svgAlto - 22 ?>"
-                                    text-anchor="middle"
-                                    style="fill: var(--color-text-secondary); font-size: 12px;">
-                                    <?= $texto($puntoSvg['etiqueta']) ?>
-                                </text>
-                            <?php endif; ?>
-                        <?php endforeach; ?>
-                    </svg>
-                </div>
-
-                <?php if (!empty($evolucionActividad['sin_datos'])): ?>
-                    <p class="text-muted mb-0 mt-2">No se registraron actividades durante el periodo seleccionado.</p>
-                <?php endif; ?>
-            <?php else: ?>
-                <p class="text-muted mb-0">No se registraron actividades durante el periodo seleccionado.</p>
-            <?php endif; ?>
-        </section>
         <?php endif; ?>
 
         <?php if ($tipoReporteActual === 'actividad'): ?>
@@ -2016,7 +1985,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                     <div class="analyst-activity-section-heading">
                         <div>
                             <span class="report-eyebrow">EVOLUCIÓN DEL PERIODO</span>
-                            <h3 class="panel-title mb-1" id="evolucion-actividad-analista">Actividad por <?= $texto($etiquetaGranularidadEvolucion) ?></h3>
+                            <h3 class="panel-title mb-1" id="evolucion-actividad-analista">Evolución y cumplimiento por <?= $texto($etiquetaGranularidadEvolucion) ?></h3>
                             <p class="page-subtitle mb-0"><?= $modoSeguimiento === 'analista'
       ? 'Volumen de interacciones realizadas durante el periodo seleccionado.'
       : ($modoSeguimiento === 'supervisor'
@@ -2054,25 +2023,10 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                             <strong><?= $texto($evolucionActividad['menor']['etiqueta'] ?? '—') ?></strong>
                             <small><?= (int)($evolucionActividad['menor']['total'] ?? 0) ?> actividades</small>
                         </div>
-                        <div>
-                            <span>Comparación</span>
-                            <?php if (!empty($evolucionActividad['comparacion_periodo_disponible'])): ?>
-                                <?php if (!empty($evolucionActividad['comparacion_disponible'])): ?>
-                                    <?php $variacionResumen = (float)($evolucionActividad['variacion'] ?? 0); ?>
-                                    <strong><?= $variacionResumen > 0 ? '+' : '' ?><?= number_format($variacionResumen, 1) ?>%</strong>
-                                    <small>
-                                        <?= (int)($evolucionActividad['total'] ?? 0) ?> vs.
-                                        <?= (int)($evolucionActividad['total_anterior'] ?? 0) ?> ·
-                                        <?= $texto($comparacionActividadRango) ?>
-                                    </small>
-                                <?php else: ?>
-                                    <strong>0 actividades anteriores</strong>
-                                    <small><?= $texto($comparacionActividadRango) ?> · sin % calculable</small>
-                                <?php endif; ?>
-                            <?php else: ?>
-                                <strong>—</strong>
-                                <small><?= $texto($evolucionActividad['comparacion_motivo'] ?? 'Sin periodo comparable') ?></small>
-                            <?php endif; ?>
+                        <div class="analyst-activity-evolution-goal">
+                            <span>Meta de efectivas</span>
+                            <strong><?= number_format($cumplimientoMetaEfectivas, 1) ?>%</strong>
+                            <small><?= $efectivasPeriodoMeta ?> de <?= $metaPeriodoEfectivas ?> · <?= $metaDiariaEfectivas ?>/Analista/día</small>
                         </div>
                     </div>
 
