@@ -85,6 +85,9 @@ $rendimientoTelefonicoHoy = is_array($analiticaReporte['rendimiento_telefonico_h
 $institucionesActividadReporte = is_array($analiticaReporte['instituciones_actividad'] ?? null)
     ? $analiticaReporte['instituciones_actividad']
     : [];
+$actividadPorAnalistaReporte = is_array($analiticaReporte['actividad_por_actor'] ?? null)
+    ? $analiticaReporte['actividad_por_actor']
+    : [];
 $totalInstitucionesActividadReporte = max(0, (int)($analiticaReporte['seguimientos_con_actividad'] ?? 0));
 $metaDiariaEfectivas = max(1, (int)($analiticaReporte['meta_diaria_efectivas'] ?? 25));
 $tipoInteraccionActividad = strtoupper(trim((string)($filtrosReporte['tipo_actividad'] ?? '')));
@@ -764,7 +767,11 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                 ($modoSeguimiento === 'supervisor' ? 'Analista' : 'Responsable') =>
                     $modoSeguimiento === 'analista'
                         ? 'Yo'
-                        : (string)($resumenFiltros['Responsable'] ?? ($modoSeguimiento === 'supervisor' ? 'Todos mis Analistas' : 'Todos')),
+                        : (
+                            $modoSeguimiento === 'supervisor' && $analistaSeleccionadoId <= 0
+                                ? 'Todos mis Analistas'
+                                : (string)($resumenFiltros['Responsable'] ?? 'Todos')
+                        ),
                 'Tipo de interacción' => (string)($resumenFiltros['Tipo de interacción'] ?? 'Todos')
             ];
             ?>
@@ -803,7 +810,11 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                 ($modoSeguimiento === 'supervisor' ? 'Analista' : 'Responsable') =>
                     $modoSeguimiento === 'analista'
                         ? 'Yo'
-                        : (string)($resumenFiltros['Responsable'] ?? ($modoSeguimiento === 'supervisor' ? 'Todos mis Analistas' : 'Todos')),
+                        : (
+                            $modoSeguimiento === 'supervisor' && $analistaSeleccionadoId <= 0
+                                ? 'Todos mis Analistas'
+                                : (string)($resumenFiltros['Responsable'] ?? 'Todos')
+                        ),
                 'Etapa actual' => (string)($resumenFiltros['Etapa'] ?? 'Todos'),
                 'Último canal humano' => (string)($resumenFiltros['Último canal de contacto'] ?? 'Todos'),
                 'Inactividad' => (string)($resumenFiltros['Días sin actividad'] ?? 'Todos')
@@ -887,6 +898,58 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                 </div>
             </article>
         </section>
+
+        <?php if (
+            $modoSeguimiento === 'supervisor' &&
+            $analistaSeleccionadoId <= 0 &&
+            !empty($actividadPorAnalistaReporte)
+        ): ?>
+        <section class="dashboard-panel p-0 overflow-hidden analyst-activity-history mb-3" aria-labelledby="actividad-equipo-analistas">
+            <div class="table-panel-header">
+                <div>
+                    <span class="report-eyebrow">ACTIVIDAD POR ANALISTA</span>
+                    <h3 class="panel-title mb-0" id="actividad-equipo-analistas">Trabajo registrado por el equipo</h3>
+                    <p class="page-subtitle mb-0 mt-1">Desglose individual dentro del mismo periodo y alcance del reporte.</p>
+                </div>
+                <span class="analyst-activity-history-count">
+                    <?= count($actividadPorAnalistaReporte) ?> <?= count($actividadPorAnalistaReporte) === 1 ? 'Analista' : 'Analistas' ?>
+                </span>
+            </div>
+            <div class="table-responsive">
+                <table class="table users-table align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Analista</th>
+                            <th>Actividades</th>
+                            <th>Instituciones</th>
+                            <th>Llamadas</th>
+                            <th>Con contacto</th>
+                            <th>Correos</th>
+                            <th>Efectivas</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    <?php foreach ($actividadPorAnalistaReporte as $actividadAnalista): ?>
+                        <tr>
+                            <td>
+                                <strong><?= $texto($actividadAnalista['analista_nombre'] ?? 'Analista') ?></strong>
+                            </td>
+                            <td><?= (int)($actividadAnalista['interacciones'] ?? 0) ?></td>
+                            <td><?= (int)($actividadAnalista['instituciones'] ?? 0) ?></td>
+                            <td><?= (int)($actividadAnalista['llamadas'] ?? 0) ?></td>
+                            <td>
+                                <?= (int)($actividadAnalista['con_contacto'] ?? 0) ?>
+                                <small class="d-block text-muted"><?= number_format((float)($actividadAnalista['tasa_contacto'] ?? 0), 1) ?>%</small>
+                            </td>
+                            <td><?= (int)($actividadAnalista['correos'] ?? 0) ?></td>
+                            <td><?= (int)($actividadAnalista['efectivas'] ?? 0) ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+        <?php endif; ?>
 
         <div class="row g-3 mb-3">
             <div class="<?= $mostrarRendimientoTelefonico ? 'col-xl-8' : 'col-12' ?>">
