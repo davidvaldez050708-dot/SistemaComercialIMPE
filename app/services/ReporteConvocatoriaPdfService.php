@@ -55,6 +55,11 @@ class ReporteConvocatoriaPdfService
         $hallazgos = is_array($datosReporte['hallazgos'] ?? null)
             ? $datosReporte['hallazgos']
             : [];
+        $alertasVencimiento = is_array(
+            $datosReporte['alertas_vencimiento'] ?? null
+        )
+            ? $datosReporte['alertas_vencimiento']
+            : [];
         $territorios = is_array($datosReporte['cobertura']['territorios'] ?? null)
             ? $datosReporte['cobertura']['territorios']
             : [];
@@ -99,6 +104,34 @@ class ReporteConvocatoriaPdfService
         $hallazgosHtml = '';
         foreach ($hallazgos as $hallazgo) {
             $hallazgosHtml .= '<li>' . $this->e($hallazgo) . '</li>';
+        }
+
+        $filasAlertas = '';
+        foreach ($alertasVencimiento as $alerta) {
+            $diasRestantes = (int)($alerta['dias_restantes'] ?? 0);
+            $prioridad = $diasRestantes === 0
+                ? 'Vence hoy'
+                : ($diasRestantes === 1 ? 'Vence mañana' : 'Vence en 2 días');
+            $clasePrioridad = $diasRestantes === 0
+                ? 'priority-danger'
+                : 'priority-warning';
+
+            $filasAlertas .= '<tr>' .
+                '<td>' . $this->e($alerta['titulo'] ?? '') . '</td>' .
+                '<td>' . $this->e($this->tipoLabel($alerta['tipo_convocatoria'] ?? '')) . '</td>' .
+                '<td>' . $this->e($alerta['estados'] ?? '—') . '</td>' .
+                '<td>' . $this->e($this->fecha($alerta['fecha_termino'] ?? '')) . '</td>' .
+                '<td><span class="priority ' . $clasePrioridad . '">' .
+                    $this->e($prioridad) .
+                '</span></td>' .
+            '</tr>';
+        }
+
+        if ($filasAlertas === '') {
+            $filasAlertas =
+                '<tr><td colspan="5" class="empty">' .
+                'No hay convocatorias con vencimiento hoy o en los próximos 2 días.' .
+                '</td></tr>';
         }
 
         return '<!DOCTYPE html>
@@ -220,6 +253,15 @@ class ReporteConvocatoriaPdfService
     .status-proxima { background: #fff3e6; color: #d46a13; }
     .status-finalizada,
     .status-inactiva { background: #eef1f5; color: #65738a; }
+    .priority {
+        display: inline-block;
+        padding: 3px 6px;
+        border-radius: 10px;
+        font-size: 6.5px;
+        font-weight: 700;
+    }
+    .priority-danger { background: #fff0ee; color: #b42318; }
+    .priority-warning { background: #fff3e6; color: #d46a13; }
     ul.findings {
         margin: 0;
         padding-left: 16px;
@@ -255,14 +297,20 @@ class ReporteConvocatoriaPdfService
     </div>
 
     <div class="section-title">Resumen ejecutivo</div>
-    <table class="metrics"><tr>
-        <td class="metric"><strong>' . (int)($resumen['total'] ?? 0) . '</strong><span>Total registradas</span></td>
-        <td class="metric"><strong>' . (int)($resumen['activas'] ?? 0) . '</strong><span>Activas</span></td>
-        <td class="metric"><strong>' . (int)($resumen['inactivas'] ?? 0) . '</strong><span>Inactivas</span></td>
-        <td class="metric"><strong>' . (int)($resumen['proximas_finalizar'] ?? 0) . '</strong><span>Próximas a vencer</span></td>
-        <td class="metric"><strong>' . (int)($resumen['porcentaje_cobertura'] ?? 0) . '%</strong><span>Cobertura territorial</span></td>
-        <td class="metric"><strong>' . (int)($resumen['vigentes'] ?? 0) . '</strong><span>Vigentes</span></td>
-    </tr></table>
+    <table class="metrics">
+        <tr>
+            <td class="metric"><strong>' . (int)($resumen['total'] ?? 0) . '</strong><span>Total registradas</span></td>
+            <td class="metric"><strong>' . (int)($resumen['activas'] ?? 0) . '</strong><span>Activas</span></td>
+            <td class="metric"><strong>' . (int)($resumen['inactivas'] ?? 0) . '</strong><span>Inactivas</span></td>
+            <td class="metric"><strong>' . (int)($resumen['publicaciones_mes_actual'] ?? 0) . '</strong><span>Publicadas este mes</span></td>
+        </tr>
+        <tr>
+            <td class="metric"><strong>' . (int)($resumen['publicaciones_hoy'] ?? 0) . '</strong><span>Publicadas hoy</span></td>
+            <td class="metric"><strong>' . (int)($resumen['vencen_hoy'] ?? 0) . '</strong><span>Vencen hoy</span></td>
+            <td class="metric"><strong>' . (int)($resumen['vencen_2_dias'] ?? 0) . '</strong><span>Vencen en 1–2 días</span></td>
+            <td class="metric"><strong>' . (int)($resumen['porcentaje_cobertura'] ?? 0) . '%</strong><span>Cobertura territorial</span></td>
+        </tr>
+    </table>
 
     <table class="two-col"><tr>
         <td>
@@ -279,6 +327,20 @@ class ReporteConvocatoriaPdfService
             </div>
         </td>
     </tr></table>
+
+    <div class="section-title">Alertas de vencimiento</div>
+    <table class="data">
+        <thead>
+            <tr>
+                <th>Convocatoria</th>
+                <th>Tipo</th>
+                <th>Territorio(s)</th>
+                <th>Fecha de vencimiento</th>
+                <th>Prioridad</th>
+            </tr>
+        </thead>
+        <tbody>' . $filasAlertas . '</tbody>
+    </table>
 
     <div class="section-title">Detalle de convocatorias</div>
     <table class="data">
