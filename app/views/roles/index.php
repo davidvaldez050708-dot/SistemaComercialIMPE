@@ -495,6 +495,7 @@ document.addEventListener('DOMContentLoaded', function () {
             'convocatorias.descargar': 'convocatorias.ver',
             'convocatorias.cambiar_estado': 'convocatorias.ver',
             'aliados.ver_historial': 'aliados.ver',
+            'aliados.gestionar_contactos': 'aliados.ver',
             'aliados.compartir_correo': 'aliados.ver',
             'reportes.exportar': 'reportes.ver',
             'reportes.seguimiento.cartera': 'reportes.ver',
