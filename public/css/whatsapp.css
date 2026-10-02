@@ -954,3 +954,34 @@
         flex-direction: column;
     }
 }
+
+
+.whatsapp-form-full {
+    grid-column: 1 / -1;
+}
+
+.whatsapp-field-help {
+    display: block;
+    margin-top: 4px;
+    color: var(--color-text-soft, #6b7280);
+    font-size: 7.4px;
+    line-height: 1.35;
+}
+
+.whatsapp-composer-feedback {
+    margin: 0 12px 10px;
+    padding: 7px 9px;
+    border-radius: 8px;
+    font-size: 8px;
+    font-weight: 700;
+}
+
+.whatsapp-composer-feedback.is-success {
+    background: #eaf8f4;
+    color: #087e69;
+}
+
+.whatsapp-composer-feedback.is-error {
+    background: #fff1f0;
+    color: #b43e36;
+}
