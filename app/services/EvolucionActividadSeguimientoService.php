@@ -16,7 +16,8 @@ class EvolucionActividadSeguimientoService
         array $seguimientos,
         array $filtros,
         $usuarioId = 0,
-        $modoAcceso = ''
+        $modoAcceso = '',
+        array $actorIds = []
     ) {
         $seguimientoIds = [];
 
@@ -32,10 +33,16 @@ class EvolucionActividadSeguimientoService
         $fechaFinalFiltro = trim((string)($filtros['fecha_final'] ?? ''));
         $canal = strtoupper(trim((string)($filtros['tipo_actividad'] ?? '')));
         $tipoReporte = strtolower(trim((string)($filtros['tipo_reporte'] ?? '')));
-        $usuarioActividad = (
+        $actorIds = array_values(array_unique(array_filter(array_map('intval', $actorIds))));
+
+        if (
             $tipoReporte === 'actividad' &&
             strtolower(trim((string)$modoAcceso)) === 'analista'
-        ) ? max(0, (int)$usuarioId) : 0;
+        ) {
+            $actorIds = [max(0, (int)$usuarioId)];
+        } elseif ($tipoReporte !== 'actividad') {
+            $actorIds = [];
+        }
         $fechaFinalConsulta = $fechaFinalFiltro;
 
         if ($fechaInicialFiltro !== '' && $fechaFinalConsulta === '') {
@@ -47,7 +54,7 @@ class EvolucionActividadSeguimientoService
             $fechaInicialFiltro,
             $fechaFinalConsulta,
             $canal,
-            $usuarioActividad
+            $actorIds
         );
 
         $fechaInicial = $fechaInicialFiltro;
@@ -91,7 +98,7 @@ class EvolucionActividadSeguimientoService
             $fechaFinalFiltro,
             $canal,
             $total,
-            $usuarioActividad
+            $actorIds
         );
 
         return [
@@ -119,7 +126,7 @@ class EvolucionActividadSeguimientoService
         $fechaInicial,
         $fechaFinal,
         $canal,
-        $usuarioId = 0
+        array $actorIds = []
     ) {
         if (empty($seguimientoIds)) {
             return [];
@@ -147,10 +154,13 @@ class EvolucionActividadSeguimientoService
             $tipos .= 's';
         }
 
-        if ((int)$usuarioId > 0) {
-            $sql .= " AND usuario_id = ?";
-            $parametros[] = (int)$usuarioId;
-            $tipos .= 'i';
+        if (!empty($actorIds)) {
+            $actorPlaceholders = implode(',', array_fill(0, count($actorIds), '?'));
+            $sql .= " AND usuario_id IN (" . $actorPlaceholders . ")";
+            foreach ($actorIds as $actorId) {
+                $parametros[] = (int)$actorId;
+                $tipos .= 'i';
+            }
         }
 
         if ($canal !== '') {
@@ -315,7 +325,7 @@ class EvolucionActividadSeguimientoService
         $fechaFinal,
         $canal,
         $totalActual,
-        $usuarioId = 0
+        array $actorIds = []
     ) {
         if ($fechaInicial === '' || $fechaFinal === '') {
             return $this->comparacionVacia('El reporte no tiene un periodo completo para comparar.');
@@ -340,7 +350,7 @@ class EvolucionActividadSeguimientoService
             $inicioAnterior->format('Y-m-d'),
             $finAnterior->format('Y-m-d'),
             $canal,
-            $usuarioId
+            $actorIds
         );
         $totalAnterior = (int)array_sum($conteosAnterior);
 
