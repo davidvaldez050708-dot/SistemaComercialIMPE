@@ -19,6 +19,7 @@ $puedeConsultarConvocatorias = $puedeConsultarConvocatorias ?? false;
 $puedeGestionarContactos = $puedeGestionarContactos ?? false;
 $estructuraContactosDisponible = $estructuraContactosDisponible ?? false;
 $puedeAbrirExpediente = $puedeAbrirExpediente ?? false;
+$puedeUsarWhatsapp = $puedeUsarWhatsapp ?? false;
 
 $texto = static function ($valor) {
     return htmlspecialchars((string)$valor, ENT_QUOTES, 'UTF-8');
@@ -302,10 +303,17 @@ $normalizarNumeroVista = static function ($valor) {
                                             $aliado['contacto_difusion_preferido'] ?? '',
                                             $aliado['contactos_difusion_busqueda'] ?? ''
                                         ]));
+                                        $aliadoTieneWhatsappConfirmado =
+                                            trim((string)($aliado['whatsapp_verificado'] ?? '')) !== '' ||
+                                            (int)($aliado['tiene_whatsapp_confirmado_contacto'] ?? 0) === 1;
                                         $mostrarAccionesSecundarias =
                                             $puedeGestionarContactos ||
                                             $puedeVerHistorial ||
-                                            $puedeAbrirExpediente;
+                                            $puedeAbrirExpediente ||
+                                            (
+                                                $puedeUsarWhatsapp &&
+                                                $aliadoTieneWhatsappConfirmado
+                                            );
                                         ?>
                                         <tr
                                             data-aliado-row
@@ -437,6 +445,17 @@ $normalizarNumeroVista = static function ($valor) {
                                                                     </li>
                                                                 <?php endif; ?>
 
+                                                                <?php if ($puedeUsarWhatsapp && $aliadoTieneWhatsappConfirmado): ?>
+                                                                    <li>
+                                                                        <a
+                                                                            class="dropdown-item"
+                                                                            href="<?= BASE_URL ?>index.php?controller=whatsapp&action=abrirAliado&seguimiento_id=<?= (int)$aliado['seguimiento_id'] ?>">
+                                                                            <i class="bi bi-whatsapp"></i>
+                                                                            <span>Abrir conversación</span>
+                                                                        </a>
+                                                                    </li>
+                                                                <?php endif; ?>
+
                                                                 <?php if ($puedeAbrirExpediente): ?>
                                                                     <?php if ($puedeGestionarContactos || $puedeVerHistorial): ?>
                                                                         <li><hr class="dropdown-divider"></li>
@@ -509,13 +528,18 @@ $normalizarNumeroVista = static function ($valor) {
                         </span>
                     </button>
 
-                    <button type="button" class="aliados-channel-option is-disabled" disabled>
-                        <i class="bi bi-whatsapp"></i>
-                        <span>
-                            <strong>WhatsApp Business</strong>
-                            <small>Pendiente de API</small>
-                        </span>
-                    </button>
+                    <?php if ($puedeUsarWhatsapp): ?>
+                        <button
+                            type="button"
+                            class="aliados-channel-option"
+                            data-aliado-open-whatsapp>
+                            <i class="bi bi-whatsapp"></i>
+                            <span>
+                                <strong>WhatsApp Business</strong>
+                                <small>Abrir conversación</small>
+                            </span>
+                        </button>
+                    <?php endif; ?>
                 </div>
 
                 <form data-aliado-share-form>
