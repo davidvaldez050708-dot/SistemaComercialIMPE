@@ -7,15 +7,20 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     const baseUrl = String(root.dataset.baseUrl || '');
+    const fixedStateId = Number(root.dataset.estadoId || 0);
     const stateSelect = document.getElementById('aliados_estado');
     const municipalitySelect = document.getElementById('aliados_municipio');
     const analystSelect = document.getElementById('aliados_analista');
+    const diffusionSelect = document.getElementById('aliados_difusion');
+    const formalizationSelect = document.getElementById('aliados_formalizacion');
     const searchInput = document.getElementById('aliados_buscar');
     const filterForm = root.querySelector('[data-aliados-filters]');
     const clearFilters = root.querySelector('[data-aliados-clear]');
     const resultCount = root.querySelector('[data-aliados-result-count]');
     const allyRows = Array.from(root.querySelectorAll('[data-aliado-row]'));
-    const tableWrap = root.querySelector('[data-aliados-table-wrap]');
+    const municipalityGroups = Array.from(
+        root.querySelectorAll('[data-aliado-municipio-group]')
+    );
     const filteredEmpty = root.querySelector('[data-aliados-filter-empty]');
 
     const shareModalElement = document.getElementById('modalAliadoCompartir');
@@ -175,15 +180,27 @@ document.addEventListener('DOMContentLoaded', function () {
         const url = new URL(window.location.href);
         const values = {
             buscar: String(searchInput?.value || '').trim(),
-            estado_id: Number(stateSelect?.value || 0),
             municipio_id: Number(municipalitySelect?.value || 0),
-            analista_id: Number(analystSelect?.value || 0)
+            analista_id: Number(analystSelect?.value || 0),
+            difusion: String(diffusionSelect?.value || 'todos'),
+            formalizacion: String(formalizationSelect?.value || 'todas')
         };
 
+        if (fixedStateId > 0) {
+            url.searchParams.set('estado_id', String(fixedStateId));
+        }
+
         Object.entries(values).forEach(function ([key, value]) {
-            if (String(value) !== '' && Number(value) !== 0) {
-                url.searchParams.set(key, String(value));
-            } else if (key === 'buscar' && String(value) !== '') {
+            const defaultValue =
+                key === 'difusion'
+                    ? 'todos'
+                    : key === 'formalizacion'
+                        ? 'todas'
+                        : key === 'buscar'
+                            ? ''
+                            : 0;
+
+            if (String(value) !== String(defaultValue) && String(value) !== '') {
                 url.searchParams.set(key, String(value));
             } else {
                 url.searchParams.delete(key);
@@ -200,11 +217,73 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const active =
             String(searchInput?.value || '').trim() !== '' ||
-            Number(stateSelect?.value || 0) > 0 ||
             Number(municipalitySelect?.value || 0) > 0 ||
-            Number(analystSelect?.value || 0) > 0;
+            Number(analystSelect?.value || 0) > 0 ||
+            String(diffusionSelect?.value || 'todos') !== 'todos' ||
+            String(formalizationSelect?.value || 'todas') !== 'todas';
 
         clearFilters.classList.toggle('d-none', !active);
+    };
+
+    const matchesFormalization = function (row, filterValue) {
+        if (filterValue === 'todas') {
+            return true;
+        }
+
+        const source = String(row.dataset.formalizadoAt || '').trim();
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(source)) {
+            return false;
+        }
+
+        const formalized = new Date(source + 'T00:00:00');
+        const now = new Date();
+        const today = new Date(
+            now.getFullYear(),
+            now.getMonth(),
+            now.getDate()
+        );
+
+        if (Number.isNaN(formalized.getTime())) {
+            return false;
+        }
+
+        if (filterValue === '30' || filterValue === '90') {
+            const days = Number(filterValue);
+            const threshold = new Date(today);
+            threshold.setDate(threshold.getDate() - (days - 1));
+            return formalized >= threshold && formalized <= today;
+        }
+
+        if (filterValue === 'mes') {
+            return (
+                formalized.getFullYear() === today.getFullYear() &&
+                formalized.getMonth() === today.getMonth()
+            );
+        }
+
+        if (filterValue === 'anio') {
+            return formalized.getFullYear() === today.getFullYear();
+        }
+
+        return true;
+    };
+
+    const updateMunicipalityGroups = function () {
+        municipalityGroups.forEach(function (group) {
+            const rows = Array.from(group.querySelectorAll('[data-aliado-row]'));
+            const visibleRows = rows.filter(function (row) {
+                return !row.classList.contains('d-none');
+            }).length;
+            const counter = group.querySelector('[data-group-count]');
+
+            group.classList.toggle('d-none', visibleRows === 0);
+
+            if (counter) {
+                counter.textContent =
+                    visibleRows +
+                    (visibleRows === 1 ? ' aliado' : ' aliados');
+            }
+        });
     };
 
     const applyDirectoryFilters = function () {
@@ -215,17 +294,31 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         const search = normalizeText(searchInput?.value || '');
-        const stateId = Number(stateSelect?.value || 0);
+        const stateId =
+            fixedStateId > 0
+                ? fixedStateId
+                : Number(stateSelect?.value || 0);
         const municipalityId = Number(municipalitySelect?.value || 0);
         const analystId = Number(analystSelect?.value || 0);
+        const diffusion = String(diffusionSelect?.value || 'todos');
+        const formalization =
+            String(formalizationSelect?.value || 'todas');
         let visible = 0;
 
         allyRows.forEach(function (row) {
+            const hasDiffusion = row.dataset.tieneDifusion === '1';
+            const matchesDiffusion =
+                diffusion === 'todos' ||
+                (diffusion === 'con' && hasDiffusion) ||
+                (diffusion === 'sin' && !hasDiffusion);
+
             const matches =
                 (search === '' || normalizeText(row.dataset.search).includes(search)) &&
                 (stateId === 0 || Number(row.dataset.estadoId || 0) === stateId) &&
                 (municipalityId === 0 || Number(row.dataset.municipioId || 0) === municipalityId) &&
-                (analystId === 0 || Number(row.dataset.analistaId || 0) === analystId);
+                (analystId === 0 || Number(row.dataset.analistaId || 0) === analystId) &&
+                matchesDiffusion &&
+                matchesFormalization(row, formalization);
 
             row.classList.toggle('d-none', !matches);
 
@@ -234,14 +327,13 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
 
+        updateMunicipalityGroups();
+
         if (resultCount) {
             resultCount.textContent =
                 visible + (visible === 1 ? ' resultado' : ' resultados');
         }
 
-        if (tableWrap) {
-            tableWrap.classList.toggle('d-none', visible === 0);
-        }
         if (filteredEmpty) {
             filteredEmpty.classList.toggle('d-none', visible !== 0);
         }
@@ -1122,6 +1214,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     municipalitySelect?.addEventListener('change', applyDirectoryFilters);
     analystSelect?.addEventListener('change', applyDirectoryFilters);
+    diffusionSelect?.addEventListener('change', applyDirectoryFilters);
+    formalizationSelect?.addEventListener('change', applyDirectoryFilters);
 
     clearFilters?.addEventListener('click', function (event) {
         event.preventDefault();
@@ -1137,6 +1231,12 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         if (analystSelect) {
             analystSelect.value = '0';
+        }
+        if (diffusionSelect) {
+            diffusionSelect.value = 'todos';
+        }
+        if (formalizationSelect) {
+            formalizationSelect.value = 'todas';
         }
 
         filterMunicipalities();
