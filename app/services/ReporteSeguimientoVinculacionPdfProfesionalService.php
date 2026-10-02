@@ -194,7 +194,9 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
                 $html .= '<div class="activity-pdf-page-break"></div>';
                 $html .= $this->detalleActividad(
                     $actividadReciente,
-                    max(0, (int)($analitica['interacciones'] ?? count($actividadReciente)))
+                    max(0, (int)($analitica['interacciones'] ?? count($actividadReciente))),
+                    $modoReporte === 'supervisor' &&
+                        (int)($filtrosRaw['responsable_id'] ?? 0) <= 0
                 );
             }
 
@@ -847,7 +849,11 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
         return $html . '</tbody></table></section>';
     }
 
-    private function detalleActividad(array $actividades, int $totalInteracciones = 0): string
+    private function detalleActividad(
+        array $actividades,
+        int $totalInteracciones = 0,
+        bool $mostrarAnalista = false
+    ): string
     {
         $mostradas = count($actividades);
         $totalInteracciones = max($mostradas, $totalInteracciones);
@@ -858,7 +864,11 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
             ($totalInteracciones > $mostradas ? ' de ' . $totalInteracciones : '') .
             ' interacciones humanas del periodo, ordenadas de la más reciente a la más antigua.</div>';
         $html .= '<table class="data-table activity-detail-table"><thead><tr>';
-        $html .= '<th>Fecha</th><th>Institución</th><th>Interacción</th><th>Resultado</th><th>Detalle</th>';
+        $html .= '<th>Fecha</th>';
+        if ($mostrarAnalista) {
+            $html .= '<th>Analista</th>';
+        }
+        $html .= '<th>Institución</th><th>Interacción</th><th>Resultado</th><th>Detalle</th>';
         $html .= '</tr></thead><tbody>';
 
         foreach ($actividades as $actividad) {
@@ -932,6 +942,11 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
 
             $html .= '<tr>';
             $html .= '<td>' . $this->e($this->fechaDato((string)($actividad['fecha_inicio'] ?? ''))) . '</td>';
+            if ($mostrarAnalista) {
+                $html .= '<td><strong>' .
+                    $this->e((string)($actividad['responsable_nombre'] ?? '—')) .
+                    '</strong></td>';
+            }
             $html .= '<td><strong>' . $this->e((string)($actividad['nombre_entidad'] ?? '—')) . '</strong></td>';
             $html .= '<td>' . $this->e($this->canalLabel($canal)) . '</td>';
             $html .= '<td><span class="activity-status' . $resultadoClass . '">' .
