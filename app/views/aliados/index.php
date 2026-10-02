@@ -15,6 +15,7 @@ $filtros = $filtros ?? [];
 $estructuraAliadosDisponible = $estructuraAliadosDisponible ?? false;
 $puedeCompartirCorreo = $puedeCompartirCorreo ?? false;
 $puedeVerHistorial = $puedeVerHistorial ?? false;
+$puedeConsultarConvocatorias = $puedeConsultarConvocatorias ?? false;
 
 $texto = static function ($valor) {
     return htmlspecialchars((string)$valor, ENT_QUOTES, 'UTF-8');
@@ -110,14 +111,16 @@ $fechaHora = static function ($valor) {
             </div>
         </article>
 
-        <article class="aliados-summary-card">
-            <span class="aliados-summary-icon"><i class="bi bi-megaphone"></i></span>
-            <div>
-                <strong><?= (int)$resumenAliados['convocatorias_vigentes'] ?></strong>
-                <span>Convocatorias vigentes</span>
-                <small>Aplicables a tus territorios</small>
-            </div>
-        </article>
+        <?php if ($puedeConsultarConvocatorias): ?>
+            <article class="aliados-summary-card">
+                <span class="aliados-summary-icon"><i class="bi bi-megaphone"></i></span>
+                <div>
+                    <strong><?= (int)$resumenAliados['convocatorias_vigentes'] ?></strong>
+                    <span>Convocatorias vigentes</span>
+                    <small>Aplicables a tus territorios</small>
+                </div>
+            </article>
+        <?php endif; ?>
     </section>
 
     <section class="dashboard-panel aliados-filter-panel">
