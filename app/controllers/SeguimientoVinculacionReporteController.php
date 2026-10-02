@@ -403,7 +403,7 @@ class SeguimientoVinculacionReporteController
 
             if ($puedeUsarCache) {
                 $claveCache = $cachePdf->crearClave([
-                    'version' => 'seguimiento-pdf-profesional-v15',
+                    'version' => 'seguimiento-pdf-profesional-v16',
                     'usuario_id' => $usuarioId,
                     'rol_id' => (int)($_SESSION['rol_id'] ?? 0),
                     'modo' => $modoSeguimientoCache,
@@ -814,6 +814,17 @@ class SeguimientoVinculacionReporteController
             $estadoId,
             $seguimientosDisponibles
         );
+        $responsableSolicitado = (int)($filtrosReporte['responsable_id'] ?? 0);
+        $errorAlcanceAnalista = '';
+        if (
+            $modoSeguimiento === 'supervisor' &&
+            $responsableSolicitado > 0 &&
+            !isset($responsablesDisponibles[$responsableSolicitado])
+        ) {
+            $errorAlcanceAnalista =
+                'El Analista seleccionado no pertenece a tu alcance de supervisión.';
+        }
+
         $filtrosReporte = $this->normalizarFiltrosDependientes(
             $seguimientosDisponibles,
             $filtrosReporte,
@@ -892,7 +903,9 @@ class SeguimientoVinculacionReporteController
             $responsablesDisponibles
         );
 
-        $errorFiltros = $this->validarPeriodo($filtrosReporte);
+        $errorFiltros = $errorAlcanceAnalista !== ''
+            ? $errorAlcanceAnalista
+            : $this->validarPeriodo($filtrosReporte);
         $generarReporte = $forzarGeneracion || (string)($_GET['generar'] ?? '') === '1';
         $seguimientosReporte = [];
         $seguimientosActividad = [];
