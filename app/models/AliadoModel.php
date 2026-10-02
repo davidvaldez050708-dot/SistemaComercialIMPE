@@ -618,6 +618,7 @@ class AliadoModel
                     NULL AS contacto_difusion_preferido,
                     0 AS contacto_difusion_confirmado_whatsapp,
                     0 AS tiene_whatsapp_confirmado_contacto,
+                    '' AS contactos_difusion_busqueda,
                     NULL AS contacto_difusion_etiqueta";
         $contactoJoin = "";
 
@@ -636,6 +637,12 @@ class AliadoModel
                         THEN 1
                         ELSE 0
                     END AS tiene_whatsapp_confirmado_contacto,
+                    COALESCE((
+                        SELECT GROUP_CONCAT(contacto_busqueda.numero SEPARATOR ' ')
+                        FROM aliados_contactos contacto_busqueda
+                        WHERE contacto_busqueda.seguimiento_id = s.id
+                          AND contacto_busqueda.activo = 1
+                    ), '') AS contactos_difusion_busqueda,
                     preferido.etiqueta AS contacto_difusion_etiqueta";
             $contactoJoin = "
                 LEFT JOIN aliados_contactos preferido
