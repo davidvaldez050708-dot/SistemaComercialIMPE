@@ -652,9 +652,14 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
             $html .= '<td>' . $this->e($ultima) . '</td>';
             $html .= '<td>' . $this->e($inactividad) . '</td>';
             $html .= '<td>' . $this->e($proxima) . '</td>';
+            $motivoAtencionDetalle = trim((string)($seguimiento['atencion_operativa_motivo'] ?? ''));
+            if ($motivoAtencionDetalle === '') {
+                $motivoAtencionDetalle = (string)($seguimiento['atencion_label'] ?? 'En seguimiento');
+            }
+
             $html .= '<td><span class="portfolio-status portfolio-status-' .
                 $this->e(strtolower($atencionCodigo !== '' ? $atencionCodigo : 'normal')) . '">' .
-                $this->e((string)($seguimiento['atencion_label'] ?? 'En seguimiento')) . '</span></td>';
+                $this->e($motivoAtencionDetalle) . '</span></td>';
             $html .= '<td>' . $this->e(trim((string)($seguimiento['folio'] ?? '')) !== ''
                 ? (string)$seguimiento['folio']
                 : '—') . '</td>';
