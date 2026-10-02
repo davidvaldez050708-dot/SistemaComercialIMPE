@@ -41,8 +41,6 @@ class AliadoController
                 (int)($resumen['total_aliados'] ?? 0);
             $territorios[$indice]['total_municipios_aliados'] =
                 (int)($resumen['total_municipios_aliados'] ?? 0);
-            $territorios[$indice]['ultima_formalizacion_at'] =
-                (string)($resumen['ultima_formalizacion_at'] ?? '');
         }
 
         $mensajeError = $_SESSION['error_aliados'] ?? '';
