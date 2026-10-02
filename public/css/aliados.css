@@ -1087,12 +1087,7 @@
 }
 
 .aliados-territory-card .data-card-meta {
-    min-height: 118px;
-}
-
-.aliados-territory-meta > div:last-child {
-    padding-top: 9px;
-    border-top: 1px solid #edf1f6;
+    min-height: 0;
 }
 
 .aliados-territory-card .btn-system-light {
