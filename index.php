@@ -513,6 +513,17 @@ switch ($controller) {
         break;
 
 
+    case 'convocatoriaReporte':
+
+        require_once __DIR__ .
+            '/app/controllers/ConvocatoriaReporteController.php';
+
+        $controllerInstance =
+            new ConvocatoriaReporteController();
+
+        break;
+
+
     case 'convocatoriaNotificacion':
 
         require_once __DIR__ .
