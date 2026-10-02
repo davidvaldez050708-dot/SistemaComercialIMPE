@@ -234,7 +234,9 @@ $texto = static fn($valor) => htmlspecialchars(
                                     <button
                                         type="button"
                                         class="table-action-button"
-                                        aria-label="Ver correo">
+                                        aria-label="Ver correo"
+                                        data-marketing-mail-view
+                                        data-mail-id="<?= (int)($correo['id'] ?? 0) ?>">
                                         <i class="bi bi-eye"></i>
                                     </button>
                                 </td>
@@ -404,6 +406,144 @@ $texto = static fn($valor) => htmlspecialchars(
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+
+<div
+    class="modal fade"
+    id="modalCorreoMarketingDetalle"
+    tabindex="-1"
+    aria-labelledby="modalCorreoMarketingDetalleTitulo"
+    aria-hidden="true">
+
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content system-form-modal correo-marketing-detail-modal">
+            <div class="modal-header system-form-modal-header">
+                <div>
+                    <h5
+                        class="system-form-modal-title"
+                        id="modalCorreoMarketingDetalleTitulo">
+                        Correo enviado
+                    </h5>
+                    <p class="system-form-modal-subtitle">
+                        Consulta el contenido del correo registrado.
+                    </p>
+                </div>
+
+                <button
+                    type="button"
+                    class="btn-close"
+                    data-bs-dismiss="modal"
+                    aria-label="Cerrar">
+                </button>
+            </div>
+
+            <div class="modal-body">
+                <div
+                    class="alert alert-danger d-none mb-3"
+                    data-marketing-mail-detail-error>
+                </div>
+
+                <div
+                    class="correo-marketing-detail-loading"
+                    data-marketing-mail-detail-loading>
+                    <span
+                        class="spinner-border spinner-border-sm"
+                        aria-hidden="true">
+                    </span>
+                    <span>Cargando correo...</span>
+                </div>
+
+                <div
+                    class="d-none"
+                    data-marketing-mail-detail-content>
+
+                    <div class="correo-marketing-detail-meta">
+                        <div>
+                            <span>PARA</span>
+                            <strong data-marketing-mail-detail-to>—</strong>
+                            <small data-marketing-mail-detail-name></small>
+                        </div>
+
+                        <div>
+                            <span>FECHA DE ENVÍO</span>
+                            <strong data-marketing-mail-detail-date>—</strong>
+                        </div>
+
+                        <div>
+                            <span>ESTADO</span>
+                            <strong data-marketing-mail-detail-status>—</strong>
+                        </div>
+                    </div>
+
+                    <div class="correo-marketing-detail-section">
+                        <span class="correo-marketing-detail-label">
+                            Asunto
+                        </span>
+                        <div
+                            class="correo-marketing-detail-subject"
+                            data-marketing-mail-detail-subject>
+                            —
+                        </div>
+                    </div>
+
+                    <div class="correo-marketing-detail-section">
+                        <span class="correo-marketing-detail-label">
+                            Mensaje
+                        </span>
+                        <div
+                            class="correo-marketing-detail-message"
+                            data-marketing-mail-detail-body>
+                            —
+                        </div>
+                    </div>
+
+                    <div
+                        class="correo-marketing-detail-section d-none"
+                        data-marketing-mail-detail-attachments-section>
+                        <span class="correo-marketing-detail-label">
+                            Adjuntos
+                        </span>
+                        <div
+                            class="correo-marketing-detail-attachments"
+                            data-marketing-mail-detail-attachments>
+                        </div>
+                    </div>
+
+                    <div class="correo-marketing-detail-footer">
+                        <span>
+                            <i class="bi bi-envelope-check"></i>
+                            <span data-marketing-mail-detail-provider></span>
+                        </span>
+
+                        <span
+                            class="d-none"
+                            data-marketing-mail-detail-signature>
+                            <i class="bi bi-pen"></i>
+                            Firma institucional incluida
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer system-form-modal-footer">
+                <button
+                    type="button"
+                    class="btn btn-system-light"
+                    data-marketing-mail-detail-copy>
+                    <i class="bi bi-copy me-2"></i>
+                    Copiar contenido
+                </button>
+
+                <button
+                    type="button"
+                    class="btn btn-system-cancel"
+                    data-bs-dismiss="modal">
+                    Cerrar
+                </button>
+            </div>
         </div>
     </div>
 </div>
