@@ -172,6 +172,9 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
 
         if ($tipoReporte === 'actividad') {
             $html .= $this->resumenEjecutivoActividad($analitica);
+            if ($modoReporte !== 'administrador') {
+                $html .= $this->cumplimientoEfectivasActividad($analitica);
+            }
 
             if (
                 $modoReporte === 'supervisor' &&
@@ -612,6 +615,47 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
         return $html . '</section>';
     }
 
+    private function cumplimientoEfectivasActividad(array $analitica): string
+    {
+        $cumplimiento = is_array($analitica['cumplimiento_efectivas'] ?? null)
+            ? $analitica['cumplimiento_efectivas']
+            : [];
+        $metaDiaria = max(1, (int)($cumplimiento['meta_diaria_por_analista'] ?? 25));
+        $analistas = max(1, (int)($cumplimiento['analistas_evaluados'] ?? 1));
+        $metaDiariaEquipo = max($metaDiaria, (int)($cumplimiento['meta_diaria_equipo'] ?? $metaDiaria));
+        $dias = max(0, (int)($cumplimiento['dias_evaluados'] ?? 0));
+        $metaPeriodo = max(0, (int)($cumplimiento['meta_periodo'] ?? 0));
+        $efectivas = max(0, (int)($cumplimiento['efectivas'] ?? 0));
+        $porcentaje = max(0, (float)($cumplimiento['cumplimiento_pct'] ?? 0));
+        $promedio = max(0, (float)($cumplimiento['promedio_diario_por_analista'] ?? 0));
+        $diasCumplidos = max(0, (int)($cumplimiento['dias_cumplidos'] ?? 0));
+
+        $html = '<section class="report-section keep activity-goal-section">' .
+            $this->titulo('Cumplimiento de llamadas efectivas');
+        $html .= '<div class="flow-note"><strong>Meta operativa:</strong> ' .
+            $metaDiaria . ' llamadas efectivas por Analista por día.';
+
+        if ($analistas > 1) {
+            $html .= ' Para ' . $analistas . ' Analistas, la meta diaria conjunta es de ' .
+                $metaDiariaEquipo . ' efectivas.';
+        }
+
+        $html .= '</div>';
+        $html .= '<table class="activity-goal-summary"><tr>';
+        $html .= '<td><span>Cumplimiento</span><strong>' .
+            $this->decimal($porcentaje, 1) . '%</strong><small>' .
+            $efectivas . ' de ' . $metaPeriodo . ' efectivas</small></td>';
+        $html .= '<td><span>Promedio diario</span><strong>' .
+            $this->decimal($promedio, 1) . '</strong><small>por Analista</small></td>';
+        $html .= '<td><span>Días evaluados</span><strong>' . $dias .
+            '</strong><small>' . $diasCumplidos . ' con meta alcanzada</small></td>';
+        $html .= '<td><span>Meta diaria</span><strong>' . $metaDiaria .
+            '</strong><small>por Analista</small></td>';
+        $html .= '</tr></table>';
+
+        return $html . '</section>';
+    }
+
     private function actividadPorAnalista(array $analitica): string
     {
         $filas = is_array($analitica['actividad_por_actor'] ?? null)
@@ -633,7 +677,7 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
         $html .= '<th class="center">Llamadas</th>';
         $html .= '<th class="center">Contacto</th>';
         $html .= '<th class="center">Correos</th>';
-        $html .= '<th class="center">Efectivas</th>';
+        $html .= '<th class="center">Efectivas / meta</th>';
         $html .= '</tr></thead><tbody>';
 
         foreach ($filas as $fila) {
@@ -647,7 +691,10 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
             $html .= '<td class="center">' . (int)($fila['llamadas'] ?? 0) . '</td>';
             $html .= '<td class="center">' . $contactos . ' · ' . $this->e($tasa) . '%</td>';
             $html .= '<td class="center">' . (int)($fila['correos'] ?? 0) . '</td>';
-            $html .= '<td class="center activity-effective">' . (int)($fila['efectivas'] ?? 0) . '</td>';
+            $html .= '<td class="center activity-effective">' .
+                (int)($fila['efectivas'] ?? 0) . '/' .
+                (int)($fila['meta_efectivas_periodo'] ?? 0) .
+                '<small>' . $this->decimal($fila['cumplimiento_efectivas_pct'] ?? 0, 1) . '%</small></td>';
             $html .= '</tr>';
         }
 
@@ -667,6 +714,13 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
             'mes' => 'mes'
         ][$granularidad] ?? 'periodo';
         $metaDiaria = max(1, (int)($analitica['meta_diaria_efectivas'] ?? 25));
+        $cumplimiento = is_array($analitica['cumplimiento_efectivas'] ?? null)
+            ? $analitica['cumplimiento_efectivas']
+            : [];
+        $metaDiariaEquipo = max(
+            $metaDiaria,
+            (int)($cumplimiento['meta_diaria_equipo'] ?? $metaDiaria)
+        );
 
         $html = '<section class="report-section keep activity-phone-section">' .
             $this->titulo('Rendimiento telefónico por ' . $granularidadLabel);
@@ -676,8 +730,12 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
         }
 
         if ($granularidad === 'dia') {
-            $html .= '<div class="flow-note">La referencia operativa es de ' . $metaDiaria .
-                ' efectivas por día. Las efectivas se contabilizan una vez por institución y día.</div>';
+            $html .= '<div class="flow-note">La meta es de ' . $metaDiaria .
+                ' efectivas por Analista por día' .
+                ($metaDiariaEquipo > $metaDiaria
+                    ? '; meta diaria conjunta del alcance: ' . $metaDiariaEquipo
+                    : '') .
+                '. Las efectivas requieren evidencia telefónica válida.</div>';
         } else {
             $html .= '<div class="flow-note">Las efectivas se contabilizan una vez por institución y día y después se suman por ' .
                 $this->e($granularidadLabel) . '. No se extrapola la meta diaria a una meta ' .
@@ -706,7 +764,8 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
             $html .= '<td class="center">' . (int)($periodo['con_contacto'] ?? 0) . '</td>';
             $html .= '<td class="center activity-effective">' . $efectivas . '</td>';
             if ($granularidad === 'dia') {
-                $html .= '<td class="right">' . $efectivas . '/' . $metaDiaria . '</td>';
+                $html .= '<td class="right">' . $efectivas . '/' .
+                    (int)($periodo['meta'] ?? $metaDiariaEquipo) . '</td>';
             } else {
                 $html .= '<td class="right">' .
                     $this->decimal($periodo['tasa_contacto'] ?? 0, 1) . '%</td>';
@@ -2041,6 +2100,7 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
             '.activity-pdf-page-break{page-break-before:always;height:0;line-height:0;margin:0;padding:0}' .
             '.activity-scope td{width:25%}.activity-scope strong{font-size:6.8pt}' .
             '.activity-executive .executive-metrics td{background:#F8FAFC}.activity-executive .executive-metrics td:last-child{background:#F0FAF8;border-color:#B9E2DA}.activity-executive .executive-metrics td:last-child strong{color:#087966}' .
+            '.activity-goal-section{page-break-inside:avoid}.activity-goal-summary{width:100%;table-layout:fixed;border-collapse:separate;border-spacing:4px 0;margin-top:6px}.activity-goal-summary td{width:25%;padding:7px 8px;border:1px solid #D7DFEA;background:#F8FAFC;vertical-align:top}.activity-goal-summary td:first-child{background:#F0FAF8;border-color:#B9E2DA}.activity-goal-summary span{display:block;color:#6D7480;font-size:5.6pt;margin-bottom:2px}.activity-goal-summary strong{display:block;color:#16223B;font-size:9pt;font-weight:800}.activity-goal-summary td:first-child strong{color:#087966}.activity-goal-summary small{display:block;color:#6D7480;font-size:5.2pt;margin-top:2px}' .
             '.activity-phone-section,.activity-composition,.activity-evolution-section{page-break-inside:avoid}' .
             '.activity-phone-table{margin-top:6px;font-size:6pt}.activity-phone-table th:first-child{width:30%}.activity-phone-table th:nth-child(2),.activity-phone-table th:nth-child(3),.activity-phone-table th:nth-child(4){width:14%}.activity-phone-table th:nth-child(5){width:28%}.activity-phone-table td{padding:5px 7px}.activity-effective{color:#087966;font-weight:800}' .
             '.activity-channel-summary{width:100%;table-layout:fixed;border-collapse:separate;border-spacing:4px 0}.activity-channel-summary td{width:25%;padding:7px 8px;border:1px solid #D7DFEA;background:#F8FAFC}.activity-channel-summary span{display:block;color:#6D7480;font-size:5.7pt;margin-bottom:2px}.activity-channel-summary strong{display:block;color:#16223B;font-size:9.2pt;font-weight:800}.activity-call-summary{margin-top:5px}' .
