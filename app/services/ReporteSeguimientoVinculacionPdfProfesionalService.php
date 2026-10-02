@@ -398,11 +398,11 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
 
         if (empty($prioritarios)) {
             return $html .
-                $this->vacio('No hay seguimientos con acciones vencidas, sin actividad o con más de 7 días de inactividad.') .
+                $this->vacio('No hay seguimientos que requieran atención operativa con los criterios seleccionados.') .
                 '</section>';
         }
 
-        $html .= '<div class="flow-note">Se muestran primero los seguimientos que conviene revisar por vencimiento o falta de actividad humana.</div>';
+        $html .= '<div class="flow-note">La atención operativa usa el mismo criterio del panel del Analista: acciones para hoy o vencidas, esperas prolongadas y reuniones que requieren intervención.</div>';
         $html .= '<table class="data-table portfolio-priority-table"><thead><tr>';
         $html .= '<th>Institución</th><th>Etapa</th><th>Inactividad</th><th>Próxima acción</th><th>Atención</th>';
         $html .= '</tr></thead><tbody>';
@@ -429,9 +429,14 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
             $html .= '<td>' . $this->e((string)($seguimiento['etapa_operativa_label'] ?? 'Sin etapa')) . '</td>';
             $html .= '<td>' . $this->e($inactividad) . '</td>';
             $html .= '<td>' . $this->e($proxima) . '</td>';
+            $motivoAtencion = trim((string)($seguimiento['atencion_operativa_motivo'] ?? ''));
+            if ($motivoAtencion === '') {
+                $motivoAtencion = (string)($seguimiento['atencion_label'] ?? 'En seguimiento');
+            }
+
             $html .= '<td><span class="portfolio-status portfolio-status-' .
                 $this->e(strtolower((string)($seguimiento['atencion_codigo'] ?? 'normal'))) . '">' .
-                $this->e((string)($seguimiento['atencion_label'] ?? 'En seguimiento')) .
+                $this->e($motivoAtencion) .
                 '</span></td>';
             $html .= '</tr>';
         }
