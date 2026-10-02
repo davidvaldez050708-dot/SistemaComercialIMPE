@@ -41,6 +41,9 @@ $mostrarReportes =
         $mostrarReporteUsuarios ||
         $mostrarReporteConvocatorias
     );
+$mostrarReportesEnAnalisis =
+    $mostrarReportes &&
+    !$esRolMarketingSidebar;
 
 $etiquetaMenuConvocatorias = tienePermiso('convocatorias.gestionar')
     ? 'Gestión de Convocatorias'
@@ -153,8 +156,8 @@ $claseConvocatoriasReportes =
 
                 <?php if ($mostrarReporteConvocatoriasEnMarketing): ?>
                         <a
-                            href="<?= BASE_URL ?>index.php?controller=convocatoria&action=reportes"
-                            class="sidebar-link <?= $claseConvocatoriasReportes ?>">
+                            href="<?= BASE_URL ?>index.php?controller=reporte&action=index"
+                            class="sidebar-link <?= $claseReportes ?>">
                             <i class="bi bi-file-earmark-bar-graph"></i>
                             Reportes
                         </a>
@@ -195,7 +198,7 @@ $claseConvocatoriasReportes =
 
         <?php endif; ?>
 
-        <?php if ($mostrarReportes): ?>
+        <?php if ($mostrarReportesEnAnalisis): ?>
 
             <div class="sidebar-section">
                 <p class="sidebar-section-title">
@@ -378,8 +381,8 @@ $claseConvocatoriasReportes =
 
                     <?php if ($mostrarReporteConvocatoriasEnMarketing): ?>
                         <a
-                            href="<?= BASE_URL ?>index.php?controller=convocatoria&action=reportes"
-                            class="sidebar-link <?= $claseConvocatoriasReportes ?>">
+                            href="<?= BASE_URL ?>index.php?controller=reporte&action=index"
+                            class="sidebar-link <?= $claseReportes ?>">
                             <i class="bi bi-file-earmark-bar-graph"></i>
                             Reportes
                         </a>
@@ -431,7 +434,7 @@ $claseConvocatoriasReportes =
 
 
             <!-- ANÁLISIS -->
-            <?php if ($mostrarReportes): ?>
+            <?php if ($mostrarReportesEnAnalisis): ?>
 
                 <div class="sidebar-section">
 
