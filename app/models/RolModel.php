@@ -866,9 +866,6 @@ class RolModel
             ],
             'reportes.territorial' => [
                 'data_territorial.ver'
-            ],
-            'reportes.convocatorias' => [
-                'convocatorias.ver'
             ]
         ];
 
