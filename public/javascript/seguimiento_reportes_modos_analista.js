@@ -209,7 +209,8 @@
                 const field = String(wrapper.dataset.reportField || '');
                 const visible =
                     visibleFields.has(field) &&
-                    !(scope === 'analista' && field === 'responsable');
+                    !(scope === 'analista' && field === 'responsable') &&
+                    !(mode === 'institucion' && field === 'responsable');
                 wrapper.classList.toggle('d-none', !visible);
 
                 wrapper.querySelectorAll('input, select, textarea').forEach(function (control) {
@@ -219,6 +220,29 @@
                     control.disabled = !visible;
                 });
             });
+
+            const stateWrapper = form.querySelector('[data-report-field="territorio"]');
+            const municipalityWrapper = form.querySelector('[data-report-field="municipio"]');
+            const institutionWrapper = form.querySelector('[data-report-field="institucion"]');
+
+            [stateWrapper, municipalityWrapper].forEach(function (wrapper) {
+                if (!wrapper) return;
+                wrapper.classList.remove('col-xl-3', 'col-xl-4');
+                wrapper.classList.add(mode === 'institucion' ? 'col-xl-4' : 'col-xl-3');
+            });
+
+            if (institutionWrapper) {
+                institutionWrapper.classList.remove('col-xl-3');
+                institutionWrapper.classList.add('col-xl-4');
+            }
+
+            if (mode === 'institucion') {
+                const responsible = form.querySelector('#reporte_responsable');
+                if (responsible) {
+                    responsible.value = '0';
+                    responsible.disabled = true;
+                }
+            }
 
             if (institution) {
                 institution.required = false;
