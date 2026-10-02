@@ -322,17 +322,62 @@ class ReporteSeguimientoVinculacionPdfService
         );
         $elementos[] = $this->crearEspaciador($documento, 90);
 
-        $elementos[] = $this->crearTituloSeccion($documento, 'Seguimientos por municipio');
-        $elementos = array_merge(
-            $elementos,
-            $this->crearGraficaBarras(
-                $documento,
-                $resumenReporte['por_municipio'] ?? [],
-                $anchoUtil,
-                function ($municipio) {
-                    return (string)$municipio;
+        $elementos[] = $this->crearTituloSeccion($documento, 'Cobertura territorial');
+        $territoriosJerarquicos = is_array($resumenReporte['territorio_jerarquico'] ?? null)
+            ? $resumenReporte['territorio_jerarquico']
+            : [];
+        $estadoFiltroId = (int)($filtrosRaw['estado_id'] ?? 0);
+        $filasTerritoriales = [];
+
+        if ($estadoFiltroId <= 0) {
+            foreach (array_slice($territoriosJerarquicos, 0, 8) as $territorio) {
+                $totalEstado = max(0, (int)($territorio['total'] ?? 0));
+                $filasTerritoriales[] = [
+                    (string)($territorio['estado_nombre'] ?? 'Sin estado'),
+                    $totalEstado . ' seguimientos'
+                ];
+
+                $municipios = is_array($territorio['municipios'] ?? null)
+                    ? array_slice($territorio['municipios'], 0, 5)
+                    : [];
+                foreach ($municipios as $municipio) {
+                    $filasTerritoriales[] = [
+                        '   ↳ ' . (string)($municipio['nombre'] ?? 'Sin municipio'),
+                        (string)((int)($municipio['total'] ?? 0))
+                    ];
                 }
-            )
+            }
+        } else {
+            foreach ($territoriosJerarquicos as $territorio) {
+                if ((int)($territorio['estado_id'] ?? 0) !== $estadoFiltroId) {
+                    continue;
+                }
+
+                foreach (array_slice(
+                    is_array($territorio['municipios'] ?? null)
+                        ? $territorio['municipios']
+                        : [],
+                    0,
+                    10
+                ) as $municipio) {
+                    $filasTerritoriales[] = [
+                        (string)($municipio['nombre'] ?? 'Sin municipio'),
+                        (string)((int)($municipio['total'] ?? 0))
+                    ];
+                }
+                break;
+            }
+        }
+
+        if (empty($filasTerritoriales)) {
+            $filasTerritoriales[] = ['Sin información territorial', '0'];
+        }
+
+        $elementos[] = $this->crearTablaSimple(
+            $documento,
+            $filasTerritoriales,
+            [(int)round($anchoUtil * 0.72), (int)round($anchoUtil * 0.28)],
+            false
         );
         $elementos[] = $this->crearEspaciador($documento, 120);
 
