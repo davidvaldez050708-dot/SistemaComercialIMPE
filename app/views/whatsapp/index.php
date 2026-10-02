@@ -662,14 +662,32 @@ foreach ($mensajesIniciales as $mensaje) {
                                         </small>
                                     </div>
 
-                                    <div class="whatsapp-channel-badges">
-                                        <?php if ((int)$cuenta['es_predeterminada'] === 1): ?>
-                                            <span>Predeterminado</span>
-                                        <?php endif; ?>
+                                    <div class="whatsapp-channel-item-actions">
+                                        <div class="whatsapp-channel-badges">
+                                            <?php if ((int)$cuenta['es_predeterminada'] === 1): ?>
+                                                <span>Predeterminado</span>
+                                            <?php endif; ?>
 
-                                        <span class="<?= (int)$cuenta['activo'] === 1 ? 'is-active' : 'is-inactive' ?>">
-                                            <?= (int)$cuenta['activo'] === 1 ? 'Activo' : 'Inactivo' ?>
-                                        </span>
+                                            <span class="<?= (int)$cuenta['activo'] === 1 ? 'is-active' : 'is-inactive' ?>">
+                                                <?= (int)$cuenta['activo'] === 1 ? 'Activo' : 'Inactivo' ?>
+                                            </span>
+                                        </div>
+
+                                        <button
+                                            type="button"
+                                            class="btn whatsapp-channel-edit-button"
+                                            data-whatsapp-channel-edit
+                                            data-id="<?= (int)$cuenta['id'] ?>"
+                                            data-nombre="<?= $texto($cuenta['nombre']) ?>"
+                                            data-phone-number-id="<?= $texto($cuenta['phone_number_id']) ?>"
+                                            data-numero-mostrado="<?= $texto($cuenta['numero_mostrado']) ?>"
+                                            data-usuario-id="<?= (int)($cuenta['usuario_id'] ?? 0) ?>"
+                                            data-tipo="<?= $texto($cuenta['tipo']) ?>"
+                                            data-predeterminada="<?= (int)$cuenta['es_predeterminada'] ?>"
+                                            data-activo="<?= (int)$cuenta['activo'] ?>">
+                                            <i class="bi bi-pencil"></i>
+                                            Editar
+                                        </button>
                                     </div>
                                 </article>
                             <?php endforeach; ?>
@@ -678,10 +696,19 @@ foreach ($mensajesIniciales as $mensaje) {
 
                     <section class="whatsapp-channel-editor">
                         <div class="whatsapp-channel-editor-heading">
-                            <strong>Agregar canal</strong>
-                            <span>
-                                Para el MVP puedes usar el Phone Number ID del número de prueba de Meta.
-                            </span>
+                            <div>
+                                <strong data-whatsapp-channel-editor-title>Agregar canal</strong>
+                                <span>
+                                    Para el MVP puedes usar el Phone Number ID del número de prueba de Meta.
+                                </span>
+                            </div>
+
+                            <button
+                                type="button"
+                                class="btn whatsapp-secondary-button d-none"
+                                data-whatsapp-channel-cancel>
+                                Cancelar edición
+                            </button>
                         </div>
 
                         <form data-whatsapp-channel-form>
