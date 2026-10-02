@@ -409,13 +409,6 @@ $fechaHora = static function ($valor) {
                     </button>
                 </div>
 
-                <div class="aliados-registration-note">
-                    <i class="bi bi-info-circle"></i>
-                    <span>
-                        El formulario y enlace de registro se incorporarán en una siguiente etapa desde el propio sistema.
-                    </span>
-                </div>
-
                 <form data-aliado-share-form>
                     <input type="hidden" name="seguimiento_id" value="">
                     <input type="hidden" name="confirmar_reenvio" value="0">
