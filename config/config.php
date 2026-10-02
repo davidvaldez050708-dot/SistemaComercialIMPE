@@ -1,16 +1,23 @@
 <?php
 
 // URL principal del sistema.
-// En desarrollo normal se conserva localhost. Para pruebas temporales de WebRTC
-// se acepta únicamente un Quick Tunnel HTTPS de Cloudflare (trycloudflare.com),
-// evitando depender de un dominio fijo mientras se valida la telefonía.
+// En desarrollo normal se conserva localhost. Para pruebas que requieren
+// callbacks HTTPS (telefonía o WhatsApp) se aceptan únicamente hosts temporales
+// conocidos de Cloudflare Quick Tunnels y Visual Studio Dev Tunnels.
 $baseUrl = 'http://localhost/SistemaComercialIMPE/';
 $hostActual = strtolower(trim((string)($_SERVER['HTTP_HOST'] ?? '')));
 
-if (
-    $hostActual !== '' &&
-    preg_match('/^[a-z0-9-]+\.trycloudflare\.com(?::\d+)?$/', $hostActual)
-) {
+$hostTemporalSeguro =
+    preg_match(
+        '/^[a-z0-9-]+\.trycloudflare\.com(?::\d+)?$/',
+        $hostActual
+    ) ||
+    preg_match(
+        '/^[a-z0-9-]+(?:-[0-9]+)?\.[a-z0-9-]+\.devtunnels\.ms(?::\d+)?$/',
+        $hostActual
+    );
+
+if ($hostActual !== '' && $hostTemporalSeguro) {
     $baseUrl = 'https://' . $hostActual . '/SistemaComercialIMPE/';
 }
 
