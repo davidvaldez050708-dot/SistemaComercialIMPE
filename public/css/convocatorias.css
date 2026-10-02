@@ -3265,3 +3265,37 @@
         grid-column: auto;
     }
 }
+
+
+/* Indicadores ejecutivos del reporte de Convocatorias. */
+.convocatoria-report-icon-danger {
+    background-color: #fff0ee;
+    color: #b42318;
+}
+
+.convocatoria-report-icon-warning {
+    background-color: #fff3e6;
+    color: #d46a13;
+}
+
+.convocatoria-report-priority {
+    min-height: 28px;
+    padding: 5px 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    font-size: 9.5px;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.convocatoria-report-priority.is-danger {
+    background-color: #fff0ee;
+    color: #b42318;
+}
+
+.convocatoria-report-priority.is-warning {
+    background-color: #fff3e6;
+    color: #d46a13;
+}
