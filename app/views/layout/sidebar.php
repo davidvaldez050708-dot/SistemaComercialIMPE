@@ -62,6 +62,8 @@ $claseReportes = $opcionActiva === 'reportes' ? 'active' : '';
 $claseConvocatorias = $opcionActiva === 'convocatorias' ? 'active' : '';
 $claseConvocatoriasReportes =
     $opcionActiva === 'convocatorias_reportes' ? 'active' : '';
+$claseCorreosMarketing =
+    $opcionActiva === 'correos_marketing' ? 'active' : '';
 
 ?>
 
@@ -162,6 +164,15 @@ $claseConvocatoriasReportes =
                             <i class="bi bi-file-earmark-bar-graph"></i>
                             Reportes
                         </a>
+                <?php endif; ?>
+
+                <?php if ($esRolMarketingSidebar): ?>
+                    <a
+                        href="<?= BASE_URL ?>index.php?controller=correoMarketing&action=index"
+                        class="sidebar-link <?= $claseCorreosMarketing ?>">
+                        <i class="bi bi-envelope"></i>
+                        Correos
+                    </a>
                 <?php endif; ?>
             </div>
 
@@ -397,6 +408,15 @@ $claseConvocatoriasReportes =
                             class="sidebar-link <?= $claseReportes ?>">
                             <i class="bi bi-file-earmark-bar-graph"></i>
                             Reportes
+                        </a>
+                    <?php endif; ?>
+
+                    <?php if ($esRolMarketingSidebar): ?>
+                        <a
+                            href="<?= BASE_URL ?>index.php?controller=correoMarketing&action=index"
+                            class="sidebar-link <?= $claseCorreosMarketing ?>">
+                            <i class="bi bi-envelope"></i>
+                            Correos
                         </a>
                     <?php endif; ?>
                 </div>
