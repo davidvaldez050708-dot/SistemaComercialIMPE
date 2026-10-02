@@ -160,7 +160,7 @@ class OficioCorreoController
 
     public function historial()
     {
-        $this->validarPermisoJson('oficios.ver');
+        $this->validarAccesoHistorialJson();
 
         $seguimientoId = (int)($_GET['seguimiento_id'] ?? 0);
         $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
@@ -354,7 +354,13 @@ class OficioCorreoController
 
     private function resolverModoAcceso()
     {
-        if ((int)($_SESSION['rol_id'] ?? 0) === 1) {
+        $rolId = (int)($_SESSION['rol_id'] ?? 0);
+        $rolNombre = trim((string)($_SESSION['rol'] ?? ''));
+
+        if (
+            $rolId === 1 ||
+            strcasecmp($rolNombre, 'Marketing') === 0
+        ) {
             return 'administrador';
         }
 
@@ -363,6 +369,36 @@ class OficioCorreoController
         }
 
         return 'analista';
+    }
+
+    private function validarAccesoHistorialJson()
+    {
+        if (!isset($_SESSION['usuario_id'])) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'La sesión no está activa.'
+            ], 401);
+        }
+
+        $esMarketing = strcasecmp(
+            trim((string)($_SESSION['rol'] ?? '')),
+            'Marketing'
+        ) === 0;
+
+        if (
+            tienePermiso('oficios.ver') ||
+            (
+                $esMarketing &&
+                tienePermiso('seguimientos_vinculacion.ver')
+            )
+        ) {
+            return;
+        }
+
+        $this->responderJson([
+            'ok' => false,
+            'mensaje' => 'No tienes permiso para consultar este historial.'
+        ], 403);
     }
 
     private function validarMetodoPostJson()
