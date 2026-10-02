@@ -89,8 +89,7 @@ class ReporteController
             tienePermiso('reportes.usuarios');
 
         $puedeReporteConvocatorias =
-            tienePermiso('reportes.convocatorias') &&
-            tienePermiso('convocatorias.ver');
+            tienePermiso('reportes.convocatorias');
 
         if (
             !$puedeReporteTerritorial &&
