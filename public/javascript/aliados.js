@@ -94,6 +94,7 @@ document.addEventListener('DOMContentLoaded', function () {
     let currentAllyId = 0;
     let currentContactAllyId = 0;
     let contactsDirty = false;
+    let currentContacts = new Map();
     let currentConvocatorias = new Map();
     let searchTimer = null;
 
@@ -675,6 +676,368 @@ document.addEventListener('DOMContentLoaded', function () {
         items.forEach(function (item) {
             historyList.appendChild(createHistoryItem(item));
         });
+    };
+
+    const resetContactForm = function () {
+        if (!contactForm) {
+            return;
+        }
+
+        contactForm.reset();
+
+        const allyInput = contactForm.querySelector('[name="seguimiento_id"]');
+        const idInput = contactForm.querySelector('[name="contacto_id"]');
+        const originInput = contactForm.querySelector('[name="origen"]');
+        const labelInput = contactForm.querySelector('[name="etiqueta"]');
+
+        if (allyInput) {
+            allyInput.value = currentContactAllyId > 0
+                ? String(currentContactAllyId)
+                : '';
+        }
+        if (idInput) {
+            idInput.value = '0';
+        }
+        if (originInput) {
+            originInput.value = 'CUENTA_CLAVE';
+        }
+        if (labelInput) {
+            labelInput.value = 'Difusión';
+        }
+
+        if (contactEditorTitle) {
+            contactEditorTitle.textContent = 'Agregar número de difusión';
+        }
+        if (contactEditorCancel) {
+            contactEditorCancel.classList.add('d-none');
+        }
+        if (contactFormStatus) {
+            contactFormStatus.classList.add('d-none');
+            contactFormStatus.textContent = '';
+        }
+    };
+
+    const setContactFormStatus = function (message, isError) {
+        if (!contactFormStatus) {
+            return;
+        }
+
+        contactFormStatus.textContent = String(message || '');
+        contactFormStatus.classList.remove('d-none', 'is-error', 'is-success');
+        contactFormStatus.classList.add(isError ? 'is-error' : 'is-success');
+    };
+
+    const contactKey = function (item, index) {
+        if (Number(item.id || 0) > 0) {
+            return 'id:' + String(item.id);
+        }
+
+        return 'source:' +
+            String(item.origen || 'FUENTE') +
+            ':' +
+            String(item.numero_normalizado || item.numero || '') +
+            ':' +
+            String(index);
+    };
+
+    const renderContacts = function (items, canManage) {
+        if (!contactsList) {
+            return;
+        }
+
+        contactsList.innerHTML = '';
+        currentContacts = new Map();
+
+        const contacts = Array.isArray(items) ? items : [];
+
+        if (contacts.length === 0) {
+            const empty = document.createElement('div');
+            empty.className = 'aliados-history-loading';
+            empty.innerHTML =
+                '<i class="bi bi-telephone-x"></i><br>No hay números registrados para este aliado.';
+            contactsList.appendChild(empty);
+            return;
+        }
+
+        contacts.forEach(function (item, index) {
+            const key = contactKey(item, index);
+            currentContacts.set(key, item);
+
+            const card = document.createElement('article');
+            card.className = 'aliados-contact-item';
+
+            const icon = document.createElement('span');
+            icon.className =
+                'aliados-contact-item-icon ' +
+                (item.confirmado_whatsapp ? 'is-whatsapp' : '');
+            const iconEl = document.createElement('i');
+            iconEl.className = item.confirmado_whatsapp
+                ? 'bi bi-whatsapp'
+                : 'bi bi-telephone';
+            icon.appendChild(iconEl);
+
+            const copy = document.createElement('div');
+            copy.className = 'aliados-contact-item-copy';
+
+            const number = document.createElement('strong');
+            number.textContent = String(item.numero || '');
+
+            const meta = document.createElement('span');
+            meta.textContent =
+                String(item.etiqueta || 'Contacto') +
+                ' · ' +
+                String(item.origen_label || 'Contacto de difusión');
+
+            const badges = document.createElement('div');
+            badges.className = 'aliados-contact-badges';
+
+            if (item.preferido_difusion) {
+                const preferred = document.createElement('span');
+                preferred.className = 'is-preferred';
+                preferred.textContent = 'Preferido para difusión';
+                badges.appendChild(preferred);
+            }
+
+            if (item.confirmado_whatsapp) {
+                const confirmed = document.createElement('span');
+                confirmed.className = 'is-confirmed';
+                confirmed.textContent = 'WhatsApp confirmado';
+                badges.appendChild(confirmed);
+            } else {
+                const unconfirmed = document.createElement('span');
+                unconfirmed.className = 'is-unconfirmed';
+                unconfirmed.textContent = 'WhatsApp no confirmado';
+                badges.appendChild(unconfirmed);
+            }
+
+            copy.append(number, meta, badges);
+
+            const actions = document.createElement('div');
+            actions.className = 'aliados-contact-item-actions';
+
+            if (canManage) {
+                if (item.editable) {
+                    const edit = document.createElement('button');
+                    edit.type = 'button';
+                    edit.className = 'btn aliados-btn-secondary';
+                    edit.dataset.contactEdit = key;
+                    edit.innerHTML = '<i class="bi bi-pencil"></i> Editar';
+
+                    const remove = document.createElement('button');
+                    remove.type = 'button';
+                    remove.className = 'aliados-contact-remove';
+                    remove.dataset.contactRemove = key;
+                    remove.title = 'Retirar contacto de difusión';
+                    remove.setAttribute('aria-label', 'Retirar contacto de difusión');
+                    remove.innerHTML = '<i class="bi bi-trash3"></i>';
+
+                    actions.append(edit, remove);
+                } else {
+                    const use = document.createElement('button');
+                    use.type = 'button';
+                    use.className = 'btn aliados-btn-secondary';
+                    use.dataset.contactUse = key;
+                    use.innerHTML =
+                        '<i class="bi bi-plus-circle"></i> Usar para difusión';
+                    actions.appendChild(use);
+                }
+            }
+
+            card.append(icon, copy, actions);
+            contactsList.appendChild(card);
+        });
+    };
+
+    const populateContactEditor = function (item, fromSource) {
+        if (!contactForm || !item) {
+            return;
+        }
+
+        resetContactForm();
+
+        const idInput = contactForm.querySelector('[name="contacto_id"]');
+        const originInput = contactForm.querySelector('[name="origen"]');
+        const numberInput = contactForm.querySelector('[name="numero"]');
+        const labelInput = contactForm.querySelector('[name="etiqueta"]');
+        const whatsappInput = contactForm.querySelector('[name="confirmado_whatsapp"]');
+        const preferredInput = contactForm.querySelector('[name="preferido_difusion"]');
+
+        if (idInput) {
+            idInput.value = item.editable ? String(item.id || 0) : '0';
+        }
+        if (originInput) {
+            originInput.value = String(item.origen || 'CUENTA_CLAVE');
+        }
+        if (numberInput) {
+            numberInput.value = String(item.numero || '');
+        }
+        if (labelInput) {
+            labelInput.value = fromSource
+                ? 'Difusión'
+                : String(item.etiqueta || 'Difusión');
+        }
+        if (whatsappInput) {
+            whatsappInput.checked = Boolean(item.confirmado_whatsapp);
+        }
+        if (preferredInput) {
+            preferredInput.checked = fromSource
+                ? true
+                : Boolean(item.preferido_difusion);
+        }
+
+        if (contactEditorTitle) {
+            contactEditorTitle.textContent = fromSource
+                ? 'Configurar número para difusión'
+                : 'Editar contacto de difusión';
+        }
+        if (contactEditorCancel) {
+            contactEditorCancel.classList.remove('d-none');
+        }
+
+        numberInput?.focus();
+    };
+
+    const loadContacts = async function (allyId) {
+        const id = Number(allyId || 0);
+        if (id <= 0 || !contactsList) {
+            return;
+        }
+
+        currentContactAllyId = id;
+        contactsDirty = false;
+        resetContactForm();
+
+        contactsList.innerHTML =
+            '<div class="aliados-history-loading"><i class="bi bi-arrow-repeat"></i> Consultando contactos…</div>';
+
+        if (contactsContext) {
+            contactsContext.textContent =
+                'Consultando los canales disponibles del aliado…';
+        }
+
+        contactsModal?.show();
+
+        const data = await requestJson(
+            endpoint('contactos', { id: id })
+        );
+
+        if (!data.ok) {
+            contactsList.innerHTML = '';
+            const error = document.createElement('div');
+            error.className = 'aliados-history-loading';
+            error.textContent = String(
+                data.mensaje || 'No fue posible cargar los contactos.'
+            );
+            contactsList.appendChild(error);
+            return;
+        }
+
+        const ally = data.aliado || {};
+        if (contactsContext) {
+            contactsContext.textContent =
+                String(ally.nombre_entidad || 'Institución') +
+                ' · ' +
+                String(ally.estado_nombre || '');
+        }
+
+        renderContacts(data.contactos || [], Boolean(data.puede_gestionar));
+    };
+
+    const saveContact = async function (event) {
+        event.preventDefault();
+
+        if (!contactForm || currentContactAllyId <= 0) {
+            return;
+        }
+
+        if (!contactForm.reportValidity()) {
+            return;
+        }
+
+        const submitButton = contactForm.querySelector('button[type="submit"]');
+        if (submitButton) {
+            submitButton.disabled = true;
+        }
+
+        const formData = new FormData(contactForm);
+        const whatsappCheckbox =
+            contactForm.querySelector('[name="confirmado_whatsapp"]');
+        const preferredCheckbox =
+            contactForm.querySelector('[name="preferido_difusion"]');
+
+        formData.set(
+            'confirmado_whatsapp',
+            whatsappCheckbox?.checked ? '1' : '0'
+        );
+        formData.set(
+            'preferido_difusion',
+            preferredCheckbox?.checked ? '1' : '0'
+        );
+
+        const data = await requestJson(
+            endpoint('guardarContacto'),
+            {
+                method: 'POST',
+                body: formData
+            }
+        );
+
+        if (!data.ok) {
+            setContactFormStatus(
+                data.mensaje || 'No fue posible guardar el contacto.',
+                true
+            );
+            if (submitButton) {
+                submitButton.disabled = false;
+            }
+            return;
+        }
+
+        contactsDirty = true;
+        renderContacts(data.contactos || [], true);
+        resetContactForm();
+        setContactFormStatus(
+            data.mensaje || 'Contacto guardado correctamente.',
+            false
+        );
+
+        if (submitButton) {
+            submitButton.disabled = false;
+        }
+    };
+
+    const removeContact = async function (item) {
+        if (!item || !item.editable || Number(item.id || 0) <= 0) {
+            return;
+        }
+
+        const formData = new FormData();
+        formData.set('seguimiento_id', String(currentContactAllyId));
+        formData.set('contacto_id', String(item.id));
+
+        const data = await requestJson(
+            endpoint('eliminarContacto'),
+            {
+                method: 'POST',
+                body: formData
+            }
+        );
+
+        if (!data.ok) {
+            setContactFormStatus(
+                data.mensaje || 'No fue posible retirar el contacto.',
+                true
+            );
+            return;
+        }
+
+        contactsDirty = true;
+        renderContacts(data.contactos || [], true);
+        resetContactForm();
+        setContactFormStatus(
+            data.mensaje || 'Contacto retirado.',
+            false
+        );
     };
 
     const filterMunicipalities = function () {
