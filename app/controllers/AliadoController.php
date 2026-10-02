@@ -97,7 +97,9 @@ class AliadoController
             }
         }
 
-        if ($estructuraAliadosDisponible) {
+        $puedeConsultarConvocatorias = tienePermiso('convocatorias.ver');
+
+        if ($estructuraAliadosDisponible && $puedeConsultarConvocatorias) {
             $resumenAliados['convocatorias_vigentes'] =
                 $modelo->contarConvocatoriasVigentesPorEstados(
                     array_keys($estadosAliados)
@@ -106,7 +108,7 @@ class AliadoController
 
         $puedeCompartirCorreo =
             tienePermiso('aliados.compartir_correo') &&
-            tienePermiso('convocatorias.ver');
+            $puedeConsultarConvocatorias;
         $puedeVerHistorial = tienePermiso('aliados.ver_historial');
 
         $tituloPagina = 'Aliados';
