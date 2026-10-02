@@ -445,6 +445,20 @@ class AliadoController
             }
         }
 
+        $autorizadoWhatsapp =
+            (int)($_POST['autorizado_whatsapp'] ?? 0) === 1;
+
+        if (
+            $autorizadoWhatsapp &&
+            !$modelo->consentimientoWhatsappDisponible()
+        ) {
+            $this->responder([
+                'ok' => false,
+                'mensaje' =>
+                    'Falta aplicar la migración de consentimiento de WhatsApp antes de registrar esta autorización.'
+            ], 409);
+        }
+
         try {
             $modelo->guardarContactoDifusion(
                 $seguimientoId,
@@ -456,6 +470,7 @@ class AliadoController
                     'origen' => $origen,
                     'confirmado_whatsapp' =>
                         (int)($_POST['confirmado_whatsapp'] ?? 0) === 1,
+                    'autorizado_whatsapp' => $autorizadoWhatsapp,
                     'preferido_difusion' =>
                         (int)($_POST['preferido_difusion'] ?? 0) === 1
                 ]
