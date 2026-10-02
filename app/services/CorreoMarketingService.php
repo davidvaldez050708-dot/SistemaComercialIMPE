@@ -418,6 +418,12 @@ class CorreoMarketingService
             );
         }
 
+        /*
+         * Conservamos el nombre histórico del adjunto para que el registro
+         * recuperado sustituya exactamente la referencia legacy.
+         */
+        $adjuntos[0]['nombre'] = $nombreEsperado;
+
         try {
             $this->guardarAdjuntosPersistentes(
                 $correoId,
