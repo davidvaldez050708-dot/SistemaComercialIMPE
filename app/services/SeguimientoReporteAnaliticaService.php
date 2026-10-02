@@ -32,10 +32,6 @@ class SeguimientoReporteAnaliticaService
             $actorIds = [$usuarioId];
         }
 
-        if ($modoAcceso === 'supervisor' && empty($actorIds)) {
-            return $this->estructuraVacia();
-        }
-
         if (empty($seguimientoIds) || $usuarioId <= 0) {
             return $this->estructuraVacia();
         }
