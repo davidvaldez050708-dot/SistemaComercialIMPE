@@ -91,7 +91,7 @@ class AliadoController
                 (string)($aliado['whatsapp_verificado'] ?? '')
             );
             $whatsappDifusionConfirmado =
-                (int)($aliado['contacto_difusion_confirmado_whatsapp'] ?? 0) === 1;
+                (int)($aliado['tiene_whatsapp_confirmado_contacto'] ?? 0) === 1;
 
             if ($correo !== '' && filter_var($correo, FILTER_VALIDATE_EMAIL)) {
                 $resumenAliados['con_correo']++;
