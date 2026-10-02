@@ -3067,3 +3067,201 @@
         grid-template-columns: 1fr;
     }
 }
+
+
+/* =========================================================
+   LISTADO DE CONVOCATORIAS · ACTIVAS / HISTORIAL
+   ========================================================= */
+.convocatoria-status-tabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0;
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    background-color: #f3f6fa;
+}
+
+.convocatoria-status-tab {
+    min-height: 48px;
+    padding: 0 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    border: 0;
+    border-radius: 9px;
+    background: transparent;
+    color: #718099;
+    font-size: 11px;
+    font-weight: 800;
+    cursor: pointer;
+    transition:
+        background-color .18s ease,
+        color .18s ease,
+        box-shadow .18s ease;
+}
+
+.convocatoria-status-tab + .convocatoria-status-tab {
+    border-left: 1px solid #e2e7ef;
+}
+
+.convocatoria-status-tab.is-active {
+    margin: -1px;
+    border: 1px solid #5ec9aa;
+    background-color: #f3fcf9;
+    color: #07866f;
+    box-shadow: inset 0 0 0 1px rgba(7, 134, 111, .04);
+}
+
+.convocatoria-status-tab-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+}
+
+.convocatoria-status-tab strong {
+    min-width: 24px;
+    height: 24px;
+    padding: 0 7px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background-color: #e3e9f1;
+    color: #283750;
+    font-size: 9px;
+    font-weight: 800;
+}
+
+.convocatoria-status-tab.is-active strong {
+    background-color: #35b894;
+    color: #ffffff;
+}
+
+.convocatoria-list-workspace {
+    padding: 0;
+    overflow: hidden;
+}
+
+.convocatoria-list-workspace-header {
+    padding: 14px 18px 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+}
+
+.convocatoria-list-workspace-title {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 13px;
+}
+
+.convocatoria-list-workspace-icon {
+    width: 48px;
+    height: 48px;
+    flex: 0 0 48px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-size: 21px;
+}
+
+.convocatoria-list-workspace-icon.is-active {
+    background-color: #e2f7f0;
+    color: #07866f;
+}
+
+.convocatoria-list-workspace-icon.is-history {
+    background-color: #eef1f5;
+    color: #65738a;
+}
+
+.convocatoria-list-workspace-title h2 {
+    margin: 0;
+    color: var(--color-text-primary);
+    font-size: 15px;
+    font-weight: 800;
+    line-height: 1.2;
+}
+
+.convocatoria-list-workspace-title p {
+    margin: 3px 0 0;
+    color: var(--color-text-secondary);
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+.convocatoria-list-workspace-filters {
+    padding: 6px 18px 14px;
+    grid-template-columns: minmax(300px, 1.7fr) minmax(180px, .7fr) auto;
+    border-bottom: 1px solid #e9edf3;
+}
+
+.convocatoria-list-workspace-filters .login-label {
+    font-size: 9px;
+}
+
+.convocatoria-list-table {
+    border-top: 0;
+}
+
+.convocatoria-list-table .users-table thead th {
+    background-color: #f8fafc;
+}
+
+.convocatoria-list-table .users-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.convocatoria-list-table .empty-table-message {
+    min-height: 90px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+@media (max-width: 991.98px) {
+    .convocatoria-status-tabs {
+        grid-template-columns: 1fr;
+    }
+
+    .convocatoria-status-tab + .convocatoria-status-tab {
+        border-top: 1px solid #e2e7ef;
+        border-left: 0;
+    }
+
+    .convocatoria-list-workspace-header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .convocatoria-list-workspace-filters {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .convocatoria-list-workspace-filters .convocatoria-filter-search,
+    .convocatoria-list-workspace-filters .convocatoria-filter-actions {
+        grid-column: 1 / -1;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .convocatoria-status-tab {
+        justify-content: flex-start;
+    }
+
+    .convocatoria-list-workspace-filters {
+        grid-template-columns: 1fr;
+    }
+
+    .convocatoria-list-workspace-filters .convocatoria-filter-search,
+    .convocatoria-list-workspace-filters .convocatoria-filter-actions {
+        grid-column: auto;
+    }
+}
