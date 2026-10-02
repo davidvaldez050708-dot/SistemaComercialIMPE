@@ -84,7 +84,7 @@ $claseConvocatoriasReportes =
 
     </div>
 
-    <nav>
+    <nav class="sidebar-navigation">
         <div class="sidebar-section">
             <p class="sidebar-section-title">
                 INICIO
@@ -299,7 +299,7 @@ $claseConvocatoriasReportes =
 
     <div class="offcanvas-body d-flex flex-column">
 
-        <nav>
+        <nav class="sidebar-navigation">
 
             <!-- INICIO -->
             <div class="sidebar-section">
