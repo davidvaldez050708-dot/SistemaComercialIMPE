@@ -813,6 +813,7 @@ class SeguimientoReporteAnaliticaService
                     i.seguimiento_id,
                     s.nombre_entidad,
                     COALESCE(m.nombre, '') AS municipio,
+                    COALESCE(e.nombre, '') AS estado_nombre,
                     COUNT(*) AS interacciones,
                     SUM(CASE
                         WHEN UPPER(TRIM(COALESCE(i.canal, ''))) IN ('LLAMADA', 'LLAMADA_IP')
@@ -844,7 +845,7 @@ class SeguimientoReporteAnaliticaService
                          AND TRIM(COALESCE(i.proveedor_externo, '')) <> ''
                          AND TRIM(COALESCE(i.id_externo, '')) <> ''
                          AND COALESCE(i.duracion_segundos, 0) > 0
-                        THEN DATE(i.fecha_inicio)
+                        THEN CONCAT(i.usuario_id, '|', DATE(i.fecha_inicio))
                         ELSE NULL
                     END) AS efectivas,
                     MAX(i.fecha_inicio) AS ultima_actividad
@@ -853,6 +854,8 @@ class SeguimientoReporteAnaliticaService
                     ON s.id = i.seguimiento_id
                 LEFT JOIN municipios m
                     ON m.id = s.municipio_id
+                LEFT JOIN estados e
+                    ON e.id = s.estado_id
                 WHERE i.seguimiento_id IN ($placeholders)
                   AND UPPER(TRIM(COALESCE(i.canal, ''))) <> 'SISTEMA'";
 
@@ -874,7 +877,7 @@ class SeguimientoReporteAnaliticaService
         }
 
         $this->agregarFiltroCanal($sql, $tipos, $parametros, $canal, 'i.');
-        $sql .= " GROUP BY i.seguimiento_id, s.nombre_entidad, m.nombre
+        $sql .= " GROUP BY i.seguimiento_id, s.nombre_entidad, m.nombre, e.nombre
                   ORDER BY interacciones DESC, ultima_actividad DESC
                   LIMIT " . $limite;
 
