@@ -1,4 +1,4 @@
-(function () {
+document.addEventListener('DOMContentLoaded', function () {
     'use strict';
 
     const root = document.querySelector('[data-aliados-module]');
@@ -313,6 +313,17 @@
     const loadDraft = async function () {
         if (!convocatoriaSelect || currentAllyId <= 0) {
             return;
+        }
+
+        const resendInput = shareForm
+            ? shareForm.querySelector('[name="confirmar_reenvio"]')
+            : null;
+        if (resendInput) {
+            resendInput.value = '0';
+        }
+        if (sendButton) {
+            sendButton.innerHTML =
+                '<i class="bi bi-send"></i> Enviar por correo';
         }
 
         const convocatoriaId = Number(convocatoriaSelect.value || 0);
