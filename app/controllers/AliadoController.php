@@ -25,9 +25,9 @@ class AliadoController
         $aliadosBase = $estructuraAliadosDisponible
             ? $modelo->obtenerListado($usuarioId, $esAdministrador, [])
             : [];
-        $aliados = $estructuraAliadosDisponible
-            ? $modelo->obtenerListado($usuarioId, $esAdministrador, $filtros)
-            : [];
+        // El directorio se carga completo dentro del alcance autorizado.
+        // Los filtros son reactivos en cliente, igual que en Seguimiento.
+        $aliados = $aliadosBase;
 
         $estadosAliados = [];
         $municipiosAliados = [];
@@ -87,12 +87,16 @@ class AliadoController
 
         foreach ($aliadosBase as $aliado) {
             $correo = trim((string)($aliado['correo_contacto'] ?? ''));
-            $whatsapp = trim((string)($aliado['whatsapp_contacto'] ?? ''));
+            $whatsappVerificado = trim(
+                (string)($aliado['whatsapp_verificado'] ?? '')
+            );
+            $whatsappDifusionConfirmado =
+                (int)($aliado['contacto_difusion_confirmado_whatsapp'] ?? 0) === 1;
 
             if ($correo !== '' && filter_var($correo, FILTER_VALIDATE_EMAIL)) {
                 $resumenAliados['con_correo']++;
             }
-            if ($whatsapp !== '') {
+            if ($whatsappVerificado !== '' || $whatsappDifusionConfirmado) {
                 $resumenAliados['con_whatsapp']++;
             }
         }
@@ -110,6 +114,10 @@ class AliadoController
             tienePermiso('aliados.compartir_correo') &&
             $puedeConsultarConvocatorias;
         $puedeVerHistorial = tienePermiso('aliados.ver_historial');
+        $estructuraContactosDisponible = $modelo->contactosDisponibles();
+        $puedeGestionarContactos =
+            tienePermiso('aliados.gestionar_contactos') &&
+            $estructuraContactosDisponible;
 
         $tituloPagina = 'Aliados';
         $subtituloPagina =
@@ -231,6 +239,207 @@ class AliadoController
                 $usuarioId,
                 $esAdministrador
             )
+        ]);
+    }
+
+    public function contactos()
+    {
+        $this->validarPermiso('aliados.ver');
+
+        $modelo = new AliadoModel();
+        $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
+        $esAdministrador = (int)($_SESSION['rol_id'] ?? 0) === 1;
+        $seguimientoId = (int)($_GET['id'] ?? 0);
+
+        $aliado = $modelo->obtenerAliado(
+            $seguimientoId,
+            $usuarioId,
+            $esAdministrador
+        );
+
+        if (!$aliado) {
+            $this->responder([
+                'ok' => false,
+                'mensaje' => 'No tienes acceso a este aliado.'
+            ], 403);
+        }
+
+        if (!$modelo->contactosDisponibles()) {
+            $this->responder([
+                'ok' => false,
+                'mensaje' => 'Falta aplicar la migración de contactos de difusión.'
+            ], 409);
+        }
+
+        $this->responder([
+            'ok' => true,
+            'aliado' => $aliado,
+            'contactos' => $modelo->obtenerContactosDifusion($aliado),
+            'puede_gestionar' => tienePermiso('aliados.gestionar_contactos')
+        ]);
+    }
+
+    public function guardarContacto()
+    {
+        $this->validarPermiso('aliados.gestionar_contactos');
+        $this->validarMetodoPost();
+
+        $modelo = new AliadoModel();
+        $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
+        $esAdministrador = (int)($_SESSION['rol_id'] ?? 0) === 1;
+        $seguimientoId = (int)($_POST['seguimiento_id'] ?? 0);
+
+        $aliado = $modelo->obtenerAliado(
+            $seguimientoId,
+            $usuarioId,
+            $esAdministrador
+        );
+
+        if (!$aliado) {
+            $this->responder([
+                'ok' => false,
+                'mensaje' => 'No tienes acceso a este aliado.'
+            ], 403);
+        }
+
+        if (!$modelo->contactosDisponibles()) {
+            $this->responder([
+                'ok' => false,
+                'mensaje' => 'Falta aplicar la migración de contactos de difusión.'
+            ], 409);
+        }
+
+        $numero = trim((string)($_POST['numero'] ?? ''));
+        $digitos = preg_replace('/[^0-9]+/', '', $numero);
+
+        if (strlen($digitos) < 7 || strlen($digitos) > 15) {
+            $this->responder([
+                'ok' => false,
+                'mensaje' => 'Ingresa un número válido de entre 7 y 15 dígitos.'
+            ], 422);
+        }
+
+        $etiqueta = trim((string)($_POST['etiqueta'] ?? 'Difusión'));
+        if ($etiqueta === '') {
+            $etiqueta = 'Difusión';
+        }
+        if (mb_strlen($etiqueta) > 80) {
+            $this->responder([
+                'ok' => false,
+                'mensaje' => 'La etiqueta del contacto es demasiado larga.'
+            ], 422);
+        }
+
+        $origen = strtoupper(trim((string)($_POST['origen'] ?? 'CUENTA_CLAVE')));
+        $origenesPermitidos = [
+            'CUENTA_CLAVE',
+            'WHATSAPP_VERIFICADO',
+            'TELEFONO_VERIFICADO',
+            'TELEFONO_FUENTE'
+        ];
+
+        if (!in_array($origen, $origenesPermitidos, true)) {
+            $origen = 'CUENTA_CLAVE';
+        }
+
+        $campoOrigen = [
+            'WHATSAPP_VERIFICADO' => 'whatsapp_verificado',
+            'TELEFONO_VERIFICADO' => 'telefono_verificado',
+            'TELEFONO_FUENTE' => 'telefono_fuente'
+        ];
+
+        if (isset($campoOrigen[$origen])) {
+            $numeroOrigen = preg_replace(
+                '/[^0-9]+/',
+                '',
+                (string)($aliado[$campoOrigen[$origen]] ?? '')
+            );
+
+            if ($numeroOrigen === '' || $numeroOrigen !== $digitos) {
+                $origen = 'CUENTA_CLAVE';
+            }
+        }
+
+        try {
+            $modelo->guardarContactoDifusion(
+                $seguimientoId,
+                $usuarioId,
+                [
+                    'id' => (int)($_POST['contacto_id'] ?? 0),
+                    'numero' => $numero,
+                    'etiqueta' => $etiqueta,
+                    'origen' => $origen,
+                    'confirmado_whatsapp' =>
+                        (int)($_POST['confirmado_whatsapp'] ?? 0) === 1,
+                    'preferido_difusion' =>
+                        (int)($_POST['preferido_difusion'] ?? 0) === 1
+                ]
+            );
+        } catch (Throwable $error) {
+            $this->responder([
+                'ok' => false,
+                'mensaje' => $error->getMessage()
+            ], 409);
+        }
+
+        $aliadoActualizado = $modelo->obtenerAliado(
+            $seguimientoId,
+            $usuarioId,
+            $esAdministrador
+        );
+
+        $this->responder([
+            'ok' => true,
+            'mensaje' => 'Contacto de difusión guardado correctamente.',
+            'contactos' => $modelo->obtenerContactosDifusion($aliadoActualizado)
+        ]);
+    }
+
+    public function eliminarContacto()
+    {
+        $this->validarPermiso('aliados.gestionar_contactos');
+        $this->validarMetodoPost();
+
+        $modelo = new AliadoModel();
+        $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
+        $esAdministrador = (int)($_SESSION['rol_id'] ?? 0) === 1;
+        $seguimientoId = (int)($_POST['seguimiento_id'] ?? 0);
+        $contactoId = (int)($_POST['contacto_id'] ?? 0);
+
+        $aliado = $modelo->obtenerAliado(
+            $seguimientoId,
+            $usuarioId,
+            $esAdministrador
+        );
+
+        if (!$aliado) {
+            $this->responder([
+                'ok' => false,
+                'mensaje' => 'No tienes acceso a este aliado.'
+            ], 403);
+        }
+
+        if ($contactoId <= 0 || !$modelo->desactivarContactoDifusion(
+            $contactoId,
+            $seguimientoId,
+            $usuarioId
+        )) {
+            $this->responder([
+                'ok' => false,
+                'mensaje' => 'No fue posible retirar el contacto de difusión.'
+            ], 422);
+        }
+
+        $aliadoActualizado = $modelo->obtenerAliado(
+            $seguimientoId,
+            $usuarioId,
+            $esAdministrador
+        );
+
+        $this->responder([
+            'ok' => true,
+            'mensaje' => 'Contacto retirado del directorio de difusión.',
+            'contactos' => $modelo->obtenerContactosDifusion($aliadoActualizado)
         ]);
     }
 
