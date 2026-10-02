@@ -2929,3 +2929,133 @@
         grid-template-columns: 1fr;
     }
 }
+
+
+/* ===== Reportes: jerarquía territorial adaptativa ===== */
+.analyst-territory-hierarchy {
+    display: grid;
+    gap: 9px;
+}
+
+.analyst-territory-state {
+    min-width: 0;
+    padding: 10px 11px;
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    background: #fff;
+}
+
+.analyst-territory-state-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.analyst-territory-state-head > div {
+    min-width: 0;
+}
+
+.analyst-territory-state-head strong,
+.analyst-territory-state-head span {
+    display: block;
+}
+
+.analyst-territory-state-head strong {
+    overflow: hidden;
+    color: var(--color-text);
+    font-size: 10px;
+    font-weight: 800;
+    line-height: 1.25;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.analyst-territory-state-head span {
+    margin-top: 2px;
+    color: var(--color-text-soft);
+    font-size: 8.4px;
+    line-height: 1.25;
+}
+
+.analyst-territory-state-head > b {
+    flex: 0 0 auto;
+    color: var(--color-primary);
+    font-size: 13px;
+    font-weight: 850;
+    line-height: 1;
+}
+
+.analyst-territory-state-progress {
+    height: 6px;
+    overflow: hidden;
+    margin-top: 7px;
+    border-radius: 999px;
+    background: #e8edf4;
+}
+
+.analyst-territory-state-progress > span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--color-primary);
+}
+
+.analyst-territory-municipalities {
+    display: grid;
+    gap: 0;
+    margin-top: 7px;
+    padding-top: 3px;
+    border-top: 1px solid var(--color-border);
+}
+
+.analyst-territory-municipalities > div {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    min-height: 27px;
+    padding: 5px 1px;
+    border-bottom: 1px solid rgba(215, 223, 234, .68);
+}
+
+.analyst-territory-municipalities > div:last-child {
+    border-bottom: 0;
+}
+
+.analyst-territory-municipalities span {
+    min-width: 0;
+    overflow: hidden;
+    color: var(--color-text);
+    font-size: 8.9px;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.analyst-territory-municipalities strong {
+    flex: 0 0 auto;
+    color: var(--color-text-soft);
+    font-size: 8.3px;
+    font-weight: 750;
+    white-space: nowrap;
+}
+
+.analyst-activity-history-location {
+    display: block;
+    margin-top: 2px;
+    color: var(--color-text-soft);
+    font-size: 8.3px;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+@media (max-width: 767.98px) {
+    .analyst-territory-state {
+        padding: 9px 10px;
+    }
+
+    .analyst-territory-state-head {
+        gap: 8px;
+    }
+}
