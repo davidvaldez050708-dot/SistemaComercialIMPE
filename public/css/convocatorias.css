@@ -3299,3 +3299,304 @@
     background-color: #fff3e6;
     color: #d46a13;
 }
+
+
+/* Publicaciones por tipo y gráfica del reporte de Convocatorias. */
+.convocatoria-report-publications-panel {
+    padding: 18px;
+}
+
+.convocatoria-report-publications-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.convocatoria-report-publications-header p {
+    margin: 4px 0 0;
+    color: var(--color-text-secondary);
+    font-size: 10.5px;
+    font-weight: 600;
+}
+
+.convocatoria-report-period {
+    min-height: 38px;
+    padding: 0 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid var(--color-border);
+    border-radius: 9px;
+    background-color: #ffffff;
+    color: var(--color-text-primary);
+    font-size: 10.5px;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.convocatoria-report-publication-cards {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.convocatoria-report-publication-card {
+    min-width: 0;
+    padding: 16px;
+    border: 1px solid var(--color-border);
+    border-left: 4px solid var(--color-primary);
+    border-radius: 12px;
+    background-color: #ffffff;
+}
+
+.convocatoria-report-publication-card-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.convocatoria-report-publication-card-head > strong {
+    color: var(--color-text-primary);
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.convocatoria-report-publication-icon {
+    width: 40px;
+    height: 40px;
+    flex: 0 0 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    background-color: var(--color-primary-soft);
+    color: var(--color-primary);
+    font-size: 19px;
+}
+
+.convocatoria-report-publication-card-body {
+    margin-top: 14px;
+    display: grid;
+    grid-template-columns: 92px minmax(0, 1fr);
+    gap: 14px;
+    align-items: end;
+}
+
+.convocatoria-report-publication-total {
+    min-height: 84px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    border-right: 1px solid var(--color-border);
+}
+
+.convocatoria-report-publication-total strong {
+    color: var(--color-text-primary);
+    font-size: 28px;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.convocatoria-report-publication-total span {
+    margin-top: 5px;
+    color: var(--color-text-secondary);
+    font-size: 9.5px;
+    font-weight: 600;
+}
+
+.convocatoria-report-mini-chart {
+    min-height: 84px;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(24px, 1fr));
+    gap: 8px;
+    align-items: end;
+}
+
+.convocatoria-report-mini-column {
+    min-width: 0;
+    min-height: 84px;
+    display: grid;
+    grid-template-rows: 18px 58px 14px;
+    align-items: end;
+    justify-items: center;
+    gap: 3px;
+}
+
+.convocatoria-report-mini-column > strong {
+    color: var(--color-text-primary);
+    font-size: 9px;
+    font-weight: 800;
+}
+
+.convocatoria-report-mini-column > small {
+    color: var(--color-text-secondary);
+    font-size: 8.5px;
+    font-weight: 600;
+}
+
+.convocatoria-report-mini-bar {
+    width: 24px;
+    max-height: 58px;
+    align-self: end;
+    display: block;
+    border-radius: 4px 4px 1px 1px;
+    background-color: #dce5f5;
+}
+
+.convocatoria-report-mini-bar.is-titulacion {
+    background-color: var(--color-primary);
+}
+
+.convocatoria-report-chart-block {
+    margin-top: 18px;
+    padding-top: 16px;
+    border-top: 1px solid var(--color-border);
+}
+
+.convocatoria-report-chart-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 14px;
+}
+
+.convocatoria-report-chart-heading h3 {
+    margin: 3px 0 0;
+    color: var(--color-text-primary);
+    font-size: 14px;
+    font-weight: 800;
+}
+
+.convocatoria-report-chart-legend {
+    display: inline-flex;
+    align-items: center;
+    gap: 14px;
+    color: var(--color-text-secondary);
+    font-size: 9.5px;
+    font-weight: 700;
+}
+
+.convocatoria-report-chart-legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.convocatoria-report-chart-legend i {
+    width: 9px;
+    height: 9px;
+    display: inline-block;
+    border-radius: 2px;
+}
+
+.convocatoria-report-chart-legend .is-bachillerato {
+    background-color: #dce5f5;
+}
+
+.convocatoria-report-chart-legend .is-titulacion {
+    background-color: var(--color-primary);
+}
+
+.convocatoria-report-grouped-chart {
+    min-height: 175px;
+    padding: 8px 14px 0;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(70px, 1fr));
+    gap: 20px;
+    align-items: end;
+    border-bottom: 1px solid var(--color-border);
+    background-image: linear-gradient(
+        to top,
+        rgba(221, 228, 238, .45) 1px,
+        transparent 1px
+    );
+    background-size: 100% 32px;
+}
+
+.convocatoria-report-group {
+    min-height: 165px;
+    display: grid;
+    grid-template-rows: 145px 20px;
+    align-items: end;
+    justify-items: center;
+}
+
+.convocatoria-report-group-bars {
+    height: 145px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 8px;
+}
+
+.convocatoria-report-chart-bar-wrap {
+    height: 145px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 4px;
+}
+
+.convocatoria-report-chart-bar-wrap strong {
+    color: var(--color-text-primary);
+    font-size: 9px;
+    font-weight: 800;
+}
+
+.convocatoria-report-chart-bar {
+    width: 30px;
+    display: block;
+    border-radius: 5px 5px 1px 1px;
+}
+
+.convocatoria-report-chart-bar.is-bachillerato {
+    background-color: #dce5f5;
+}
+
+.convocatoria-report-chart-bar.is-titulacion {
+    background-color: var(--color-primary);
+}
+
+.convocatoria-report-group > small {
+    color: var(--color-text-secondary);
+    font-size: 9px;
+    font-weight: 700;
+}
+
+@media (max-width: 991.98px) {
+    .convocatoria-report-publication-cards {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 699.98px) {
+    .convocatoria-report-publications-header,
+    .convocatoria-report-chart-heading {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .convocatoria-report-period {
+        align-self: flex-start;
+    }
+
+    .convocatoria-report-publication-card-body {
+        grid-template-columns: 1fr;
+    }
+
+    .convocatoria-report-publication-total {
+        min-height: auto;
+        padding-bottom: 10px;
+        border-right: 0;
+        border-bottom: 1px solid var(--color-border);
+    }
+
+    .convocatoria-report-grouped-chart {
+        gap: 10px;
+        overflow-x: auto;
+    }
+}
