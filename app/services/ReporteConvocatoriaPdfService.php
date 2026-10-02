@@ -184,7 +184,7 @@ class ReporteConvocatoriaPdfService
         margin-left: -7px;
     }
     .metric {
-        width: 16.66%;
+        width: 25%;
         padding: 10px;
         border: 1px solid #e5e9ef;
         background: #f8fafc;
