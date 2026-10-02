@@ -2,6 +2,7 @@
 $puedeReporteTerritorial = $puedeReporteTerritorial ?? false;
 $puedeReporteSeguimiento = $puedeReporteSeguimiento ?? false;
 $puedeReporteAdministrador = $puedeReporteAdministrador ?? false;
+$puedeReporteConvocatorias = $puedeReporteConvocatorias ?? false;
 $tiposReporteSeguimiento = $tiposReporteSeguimiento ?? [];
 $puedeExportarReportes = tienePermiso('reportes.exportar');
 ?>
@@ -98,6 +99,43 @@ $puedeExportarReportes = tienePermiso('reportes.exportar');
                 </a>
                 <span class="report-card-decoration report-card-decoration--seguimiento" aria-hidden="true">
                     <i class="bi bi-bar-chart-fill"></i>
+                </span>
+            </article>
+        <?php endif; ?>
+
+        <?php if ($puedeReporteConvocatorias): ?>
+            <article class="dashboard-panel report-catalog-card report-catalog-card--seguimiento">
+                <div class="report-card-heading">
+                    <span class="metric-icon report-card-icon">
+                        <i class="bi bi-megaphone"></i>
+                    </span>
+                    <div>
+                        <span class="report-card-kicker">MARKETING</span>
+                        <h3>Reporte de convocatorias</h3>
+                    </div>
+                </div>
+
+                <p class="report-card-description">
+                    Consolida el estado de las convocatorias, vigencias, cobertura territorial,
+                    distribución por tipo y detalle de publicaciones registradas.
+                </p>
+
+                <div class="report-card-meta">
+                    <span><i class="bi bi-check2-circle"></i> Activas, inactivas y vigentes</span>
+                    <span><i class="bi bi-map"></i> Cobertura territorial</span>
+                    <?php if ($puedeExportarReportes): ?>
+                        <span><i class="bi bi-file-earmark-pdf"></i> Exportación a PDF</span>
+                    <?php endif; ?>
+                </div>
+
+                <a
+                    class="btn btn-system-save report-card-action"
+                    href="<?= BASE_URL ?>index.php?controller=convocatoriaReporte&action=index">
+                    <i class="bi bi-arrow-right-circle" aria-hidden="true"></i>
+                    <span>Generar reporte</span>
+                </a>
+                <span class="report-card-decoration report-card-decoration--seguimiento" aria-hidden="true">
+                    <i class="bi bi-megaphone-fill"></i>
                 </span>
             </article>
         <?php endif; ?>
