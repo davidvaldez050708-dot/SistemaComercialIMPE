@@ -23,6 +23,48 @@ class AliadoModel
         return $this->tablaExiste('aliados_contactos');
     }
 
+    public function obtenerResumenTerritorial($usuarioId, $esAdministrador = false)
+    {
+        if (!$this->estructuraDisponible()) {
+            return [];
+        }
+
+        $sql = "SELECT
+                    s.estado_id,
+                    COUNT(DISTINCT s.id) AS total_aliados,
+                    COUNT(DISTINCT CASE
+                        WHEN s.municipio_id IS NOT NULL AND s.municipio_id > 0
+                        THEN s.municipio_id
+                        ELSE NULL
+                    END) AS total_municipios_aliados,
+                    MAX(p.convenio_formalizado_at) AS ultima_formalizacion_at
+                FROM seguimientos_vinculacion s
+                INNER JOIN seguimientos_vinculacion_post_envio p
+                    ON p.seguimiento_id = s.id
+                LEFT JOIN aliados_asignaciones aa
+                    ON aa.seguimiento_id = s.id
+                WHERE s.activo = 1
+                  AND p.convenio_formalizado_at IS NOT NULL";
+
+        $tipos = '';
+        $parametros = [];
+
+        if (!$esAdministrador) {
+            $sql .= " AND aa.cuenta_clave_usuario_id = ?
+                      AND aa.activo = 1";
+            $tipos = 'i';
+            $parametros[] = (int)$usuarioId;
+        }
+
+        $sql .= " GROUP BY s.estado_id";
+
+        $stmt = $this->connection->prepare($sql);
+        $this->vincularParametros($stmt, $tipos, $parametros);
+        $stmt->execute();
+
+        return $this->convertirResultadoEnArreglo($stmt->get_result());
+    }
+
     public function obtenerListado($usuarioId, $esAdministrador = false, $filtros = [])
     {
         if (!$this->estructuraDisponible()) {
