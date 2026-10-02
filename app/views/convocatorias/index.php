@@ -1771,6 +1771,27 @@ document.addEventListener('DOMContentLoaded', function () {
     const filtroCategoria = document.getElementById('filtro_convocatoria_categoria');
     const limpiarFiltros = document.querySelector('[data-convocatoria-clear-filters]');
     const listadoConvocatorias = document.querySelector('[data-convocatorias-listado]');
+    const tabsConvocatorias = Array.from(
+        document.querySelectorAll('[data-convocatoria-view]')
+    );
+    const headingConvocatorias = document.querySelector('[data-convocatoria-heading]');
+    const headingCopyConvocatorias = document.querySelector('[data-convocatoria-heading-copy]');
+    const headingIconConvocatorias = document.querySelector('[data-convocatoria-heading-icon]');
+    const contadorActivas = document.querySelector('[data-convocatoria-count="activas"]');
+    const contadorHistorial = document.querySelector('[data-convocatoria-count="historial"]');
+
+    let vistaConvocatorias = String(filtroEstatus?.value || '') === '0'
+        ? 'historial'
+        : 'activas';
+    let convocatoriasActuales = <?= json_encode(
+        $convocatorias,
+        JSON_UNESCAPED_UNICODE |
+        JSON_INVALID_UTF8_SUBSTITUTE |
+        JSON_HEX_TAG |
+        JSON_HEX_AMP |
+        JSON_HEX_APOS |
+        JSON_HEX_QUOT
+    ) ?>;
     let temporizadorFiltro = null;
     let controladorFiltro = null;
     let secuenciaFiltro = 0;
@@ -1784,20 +1805,86 @@ document.addEventListener('DOMContentLoaded', function () {
         limpiarFiltros?.classList.toggle('d-none', !hayFiltros);
     };
 
-    const renderConvocatorias = function (convocatorias) {
+    const actualizarEncabezadoVista = function () {
+        const esActivas = vistaConvocatorias === 'activas';
+
+        tabsConvocatorias.forEach(function (tab) {
+            const activa = tab.dataset.convocatoriaView === vistaConvocatorias;
+            tab.classList.toggle('is-active', activa);
+            tab.setAttribute('aria-selected', activa ? 'true' : 'false');
+        });
+
+        if (headingConvocatorias) {
+            headingConvocatorias.textContent = esActivas
+                ? 'Convocatorias activas'
+                : 'Historial / Desactivadas';
+        }
+
+        if (headingCopyConvocatorias) {
+            headingCopyConvocatorias.textContent = esActivas
+                ? 'Convocatorias vigentes o nuevas disponibles para consulta y gestión.'
+                : 'Consulta convocatorias desactivadas o que ya no se encuentran disponibles.';
+        }
+
+        if (headingIconConvocatorias) {
+            headingIconConvocatorias.classList.toggle('is-active', esActivas);
+            headingIconConvocatorias.classList.toggle('is-history', !esActivas);
+            headingIconConvocatorias.innerHTML = esActivas
+                ? '<i class="bi bi-megaphone"></i>'
+                : '<i class="bi bi-archive"></i>';
+        }
+    };
+
+    const actualizarContadoresVista = function () {
+        const activas = convocatoriasActuales.filter(function (convocatoria) {
+            return Number(convocatoria.estado) === 1;
+        }).length;
+        const historial = convocatoriasActuales.length - activas;
+
+        if (contadorActivas) {
+            contadorActivas.textContent = String(activas);
+        }
+
+        if (contadorHistorial) {
+            contadorHistorial.textContent = String(historial);
+        }
+    };
+
+    const renderConvocatorias = function (convocatorias, actualizarBase = true) {
         if (!listadoConvocatorias) {
             return;
         }
 
-        if (!Array.isArray(convocatorias) || convocatorias.length === 0) {
+        if (actualizarBase) {
+            convocatoriasActuales = Array.isArray(convocatorias)
+                ? convocatorias
+                : [];
+        }
+
+        actualizarContadoresVista();
+        actualizarEncabezadoVista();
+
+        const convocatoriasVista = convocatoriasActuales.filter(function (convocatoria) {
+            const activa = Number(convocatoria.estado) === 1;
+
+            return vistaConvocatorias === 'activas'
+                ? activa
+                : !activa;
+        });
+
+        if (convocatoriasVista.length === 0) {
+            const mensajeVacio = vistaConvocatorias === 'activas'
+                ? 'No hay convocatorias activas con los filtros seleccionados.'
+                : 'No hay convocatorias en el historial con los filtros seleccionados.';
+
             listadoConvocatorias.innerHTML =
                 '<tr><td colspan="6"><div class="empty-table-message">' +
-                'No se encontraron convocatorias con los filtros seleccionados.' +
+                mensajeVacio +
                 '</div></td></tr>';
             return;
         }
 
-        listadoConvocatorias.innerHTML = convocatorias.map(function (convocatoria) {
+        listadoConvocatorias.innerHTML = convocatoriasVista.map(function (convocatoria) {
             const estadoActivo = Number(convocatoria.estado) === 1;
             const imagenUrl = convocatoria.imagen
                 ? <?= json_encode(BASE_URL) ?> +
@@ -1900,7 +1987,9 @@ document.addEventListener('DOMContentLoaded', function () {
             tipo: <?= json_encode($tipoConvocatoria) ?>,
             subtipo: <?= json_encode($subtipoConvocatoria) ?>,
             estatus: String(filtroEstatus?.value || ''),
-            categoria: String(filtroCategoria?.value || '')
+            categoria: String(filtroCategoria?.value || ''),
+            anio: <?= json_encode((string)(int)$anioSeleccionado) ?>,
+            mes: <?= json_encode((string)(int)$mesSeleccionado) ?>
         });
 
         try {
@@ -1949,9 +2038,27 @@ document.addEventListener('DOMContentLoaded', function () {
         }, 300);
     };
 
+    tabsConvocatorias.forEach(function (tab) {
+        tab.addEventListener('click', function () {
+            vistaConvocatorias = tab.dataset.convocatoriaView === 'historial'
+                ? 'historial'
+                : 'activas';
+
+            renderConvocatorias(convocatoriasActuales, false);
+        });
+    });
+
+    renderConvocatorias(convocatoriasActuales, false);
+
     filtroBuscar?.addEventListener('input', programarBusqueda);
 
     filtroEstatus?.addEventListener('change', function () {
+        if (String(filtroEstatus.value || '') === '1') {
+            vistaConvocatorias = 'activas';
+        } else if (String(filtroEstatus.value || '') === '0') {
+            vistaConvocatorias = 'historial';
+        }
+
         actualizarVisibilidadLimpiar();
         cargarListadoFiltrado();
     });
