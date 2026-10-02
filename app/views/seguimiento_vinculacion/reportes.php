@@ -24,7 +24,9 @@ $resumenReporte = $resumenReporte ?? [
     'requieren_atencion' => 0,
     'por_estatus' => [],
     'por_etapa' => [],
+    'por_estado' => [],
     'por_municipio' => [],
+    'territorio_jerarquico' => [],
     'prioritarios' => []
 ];
 $generarReporte = $generarReporte ?? false;
@@ -37,6 +39,20 @@ $analistaSeleccionadoId = (int)($filtrosReporte['responsable_id'] ?? 0);
 $analistaSeleccionadoNombre = $analistaSeleccionadoId > 0
     ? trim((string)($responsablesDisponibles[$analistaSeleccionadoId] ?? ''))
     : '';
+$estadoReporteId = (int)($filtrosReporte['estado_id'] ?? 0);
+$territorioJerarquicoReporte = is_array($resumenReporte['territorio_jerarquico'] ?? null)
+    ? $resumenReporte['territorio_jerarquico']
+    : [];
+$mostrarJerarquiaTerritorial = $estadoReporteId <= 0;
+$territorioEstadoSeleccionado = [];
+if (!$mostrarJerarquiaTerritorial) {
+    foreach ($territorioJerarquicoReporte as $territorioEstado) {
+        if ((int)($territorioEstado['estado_id'] ?? 0) === $estadoReporteId) {
+            $territorioEstadoSeleccionado = $territorioEstado;
+            break;
+        }
+    }
+}
 $tiposReportePermitidos = is_array($tiposReportePermitidos ?? null)
     ? $tiposReportePermitidos
     : [];
@@ -1814,10 +1830,13 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
         $maxEtapaCartera = !empty($resumenReporte['por_etapa'])
             ? max(1, max($resumenReporte['por_etapa']))
             : 1;
-        $municipiosCartera = array_slice($resumenReporte['por_municipio'] ?? [], 0, 8, true);
-        $maxMunicipioCartera = !empty($municipiosCartera)
-            ? max(1, max($municipiosCartera))
-            : 1;
+        $municipiosCartera = array_slice(
+            is_array($territorioEstadoSeleccionado['municipios'] ?? null)
+                ? $territorioEstadoSeleccionado['municipios']
+                : [],
+            0,
+            8
+        );
         ?>
         <div class="row g-3 mb-3">
             <div class="col-xl-7">
@@ -1872,19 +1891,70 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                     <div class="analyst-portfolio-section-heading">
                         <div>
                             <span class="report-eyebrow">COBERTURA TERRITORIAL</span>
-                            <h3 class="panel-title mb-1">Seguimientos por municipio</h3>
-                            <p class="page-subtitle mb-0">Municipios donde se concentra la cartera incluida en el reporte.</p>
+                            <h3 class="panel-title mb-1">
+                                <?= $mostrarJerarquiaTerritorial ? 'Cartera por Estado y municipio' : 'Seguimientos por municipio' ?>
+                            </h3>
+                            <p class="page-subtitle mb-0">
+                                <?= $mostrarJerarquiaTerritorial
+                                    ? 'La cartera se organiza primero por Estado para evitar mezclar municipios de territorios distintos.'
+                                    : 'Municipios donde se concentra la cartera dentro del Estado seleccionado.' ?>
+                            </p>
                         </div>
                     </div>
 
-                    <?php if (!empty($municipiosCartera)): ?>
+                    <?php if ($mostrarJerarquiaTerritorial && !empty($territorioJerarquicoReporte)): ?>
+                        <div class="analyst-territory-hierarchy">
+                            <?php foreach (array_slice($territorioJerarquicoReporte, 0, 8) as $territorioEstado): ?>
+                                <?php
+                                $totalEstado = max(0, (int)($territorioEstado['total'] ?? 0));
+                                $porcentajeEstado = ($totalEstado / max(1, (int)$resumenReporte['total'])) * 100;
+                                $municipiosEstado = array_slice(
+                                    is_array($territorioEstado['municipios'] ?? null)
+                                        ? $territorioEstado['municipios']
+                                        : [],
+                                    0,
+                                    5
+                                );
+                                ?>
+                                <article class="analyst-territory-state">
+                                    <div class="analyst-territory-state-head">
+                                        <div>
+                                            <strong><?= $texto($territorioEstado['estado_nombre'] ?? 'Sin estado') ?></strong>
+                                            <span><?= $totalEstado ?> seguimiento<?= $totalEstado === 1 ? '' : 's' ?> · <?= number_format($porcentajeEstado, 0) ?>% de la cartera</span>
+                                        </div>
+                                        <b><?= $totalEstado ?></b>
+                                    </div>
+                                    <div class="analyst-territory-state-progress">
+                                        <span style="width: <?= number_format($porcentajeEstado, 1, '.', '') ?>%"></span>
+                                    </div>
+                                    <?php if (!empty($municipiosEstado)): ?>
+                                        <div class="analyst-territory-municipalities">
+                                            <?php foreach ($municipiosEstado as $municipioEstado): ?>
+                                                <?php
+                                                $totalMunicipio = max(0, (int)($municipioEstado['total'] ?? 0));
+                                                $porcentajeMunicipio = ($totalMunicipio / max(1, $totalEstado)) * 100;
+                                                ?>
+                                                <div>
+                                                    <span><?= $texto($municipioEstado['nombre'] ?? 'Sin municipio') ?></span>
+                                                    <strong><?= $totalMunicipio ?> · <?= number_format($porcentajeMunicipio, 0) ?>%</strong>
+                                                </div>
+                                            <?php endforeach; ?>
+                                        </div>
+                                    <?php endif; ?>
+                                </article>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php elseif (!$mostrarJerarquiaTerritorial && !empty($municipiosCartera)): ?>
                         <div class="analyst-portfolio-territory-list">
-                            <?php foreach ($municipiosCartera as $municipioNombre => $totalMunicipio): ?>
-                                <?php $porcentajeMunicipio = ((int)$totalMunicipio / max(1, (int)$resumenReporte['total'])) * 100; ?>
+                            <?php foreach ($municipiosCartera as $municipioCartera): ?>
+                                <?php
+                                $totalMunicipio = max(0, (int)($municipioCartera['total'] ?? 0));
+                                $porcentajeMunicipio = ($totalMunicipio / max(1, (int)$resumenReporte['total'])) * 100;
+                                ?>
                                 <div>
                                     <div class="analyst-portfolio-territory-copy">
-                                        <strong><?= $texto($municipioNombre) ?></strong>
-                                        <span><?= (int)$totalMunicipio ?> · <?= number_format($porcentajeMunicipio, 0) ?>%</span>
+                                        <strong><?= $texto($municipioCartera['nombre'] ?? 'Sin municipio') ?></strong>
+                                        <span><?= $totalMunicipio ?> · <?= number_format($porcentajeMunicipio, 0) ?>%</span>
                                     </div>
                                     <div class="analyst-portfolio-territory-progress">
                                         <span style="width: <?= number_format($porcentajeMunicipio, 1, '.', '') ?>%"></span>
@@ -1895,7 +1965,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                     <?php else: ?>
                         <div class="analyst-portfolio-empty">
                             <i class="bi bi-geo-alt"></i>
-                            <div><strong>No hay distribución municipal disponible.</strong><span>Los seguimientos filtrados no tienen municipio registrado.</span></div>
+                            <div><strong>No hay distribución territorial disponible.</strong><span>Los seguimientos filtrados no tienen ubicación territorial suficiente.</span></div>
                         </div>
                     <?php endif; ?>
                 </section>
@@ -1903,7 +1973,13 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
         </div>
         <?php elseif ($tipoReporteActual === 'actividad'): ?>
         <?php
-        $municipiosActividad = array_slice($resumenReporte['por_municipio'] ?? [], 0, 6, true);
+        $municipiosActividad = array_slice(
+            is_array($territorioEstadoSeleccionado['municipios'] ?? null)
+                ? $territorioEstadoSeleccionado['municipios']
+                : [],
+            0,
+            6
+        );
         ?>
         <div class="row g-3 mb-3">
             <div class="col-xl-7">
@@ -1946,19 +2022,70 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                     <div class="analyst-portfolio-section-heading">
                         <div>
                             <span class="report-eyebrow">COBERTURA DEL TRABAJO</span>
-                            <h3 class="panel-title mb-1">Seguimientos trabajados por municipio</h3>
-                            <p class="page-subtitle mb-0">Principales municipios donde se concentró la actividad del periodo.</p>
+                            <h3 class="panel-title mb-1">
+                                <?= $mostrarJerarquiaTerritorial ? 'Actividad por Estado y municipio' : 'Seguimientos trabajados por municipio' ?>
+                            </h3>
+                            <p class="page-subtitle mb-0">
+                                <?= $mostrarJerarquiaTerritorial
+                                    ? 'El trabajo se agrupa por Estado y después por municipio para conservar el contexto territorial.'
+                                    : 'Principales municipios donde se concentró la actividad dentro del Estado seleccionado.' ?>
+                            </p>
                         </div>
                     </div>
 
-                    <?php if (!empty($municipiosActividad)): ?>
+                    <?php if ($mostrarJerarquiaTerritorial && !empty($territorioJerarquicoReporte)): ?>
+                        <div class="analyst-territory-hierarchy">
+                            <?php foreach (array_slice($territorioJerarquicoReporte, 0, 8) as $territorioEstado): ?>
+                                <?php
+                                $totalEstado = max(0, (int)($territorioEstado['total'] ?? 0));
+                                $porcentajeEstado = ($totalEstado / max(1, (int)$resumenReporte['total'])) * 100;
+                                $municipiosEstado = array_slice(
+                                    is_array($territorioEstado['municipios'] ?? null)
+                                        ? $territorioEstado['municipios']
+                                        : [],
+                                    0,
+                                    5
+                                );
+                                ?>
+                                <article class="analyst-territory-state">
+                                    <div class="analyst-territory-state-head">
+                                        <div>
+                                            <strong><?= $texto($territorioEstado['estado_nombre'] ?? 'Sin estado') ?></strong>
+                                            <span><?= $totalEstado ?> seguimiento<?= $totalEstado === 1 ? '' : 's' ?> trabajado<?= $totalEstado === 1 ? '' : 's' ?> · <?= number_format($porcentajeEstado, 0) ?>%</span>
+                                        </div>
+                                        <b><?= $totalEstado ?></b>
+                                    </div>
+                                    <div class="analyst-territory-state-progress">
+                                        <span style="width: <?= number_format($porcentajeEstado, 1, '.', '') ?>%"></span>
+                                    </div>
+                                    <?php if (!empty($municipiosEstado)): ?>
+                                        <div class="analyst-territory-municipalities">
+                                            <?php foreach ($municipiosEstado as $municipioEstado): ?>
+                                                <?php
+                                                $totalMunicipio = max(0, (int)($municipioEstado['total'] ?? 0));
+                                                $porcentajeMunicipio = ($totalMunicipio / max(1, $totalEstado)) * 100;
+                                                ?>
+                                                <div>
+                                                    <span><?= $texto($municipioEstado['nombre'] ?? 'Sin municipio') ?></span>
+                                                    <strong><?= $totalMunicipio ?> · <?= number_format($porcentajeMunicipio, 0) ?>%</strong>
+                                                </div>
+                                            <?php endforeach; ?>
+                                        </div>
+                                    <?php endif; ?>
+                                </article>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php elseif (!$mostrarJerarquiaTerritorial && !empty($municipiosActividad)): ?>
                         <div class="analyst-portfolio-territory-list">
-                            <?php foreach ($municipiosActividad as $municipioNombre => $totalMunicipio): ?>
-                                <?php $porcentajeMunicipio = ((int)$totalMunicipio / max(1, (int)$resumenReporte['total'])) * 100; ?>
+                            <?php foreach ($municipiosActividad as $municipioActividad): ?>
+                                <?php
+                                $totalMunicipio = max(0, (int)($municipioActividad['total'] ?? 0));
+                                $porcentajeMunicipio = ($totalMunicipio / max(1, (int)$resumenReporte['total'])) * 100;
+                                ?>
                                 <div>
                                     <div class="analyst-portfolio-territory-copy">
-                                        <strong><?= $texto($municipioNombre) ?></strong>
-                                        <span><?= (int)$totalMunicipio ?> · <?= number_format($porcentajeMunicipio, 0) ?>%</span>
+                                        <strong><?= $texto($municipioActividad['nombre'] ?? 'Sin municipio') ?></strong>
+                                        <span><?= $totalMunicipio ?> · <?= number_format($porcentajeMunicipio, 0) ?>%</span>
                                     </div>
                                     <div class="analyst-portfolio-territory-progress">
                                         <span style="width: <?= number_format($porcentajeMunicipio, 1, '.', '') ?>%"></span>
@@ -1969,7 +2096,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                     <?php else: ?>
                         <div class="analyst-portfolio-empty">
                             <i class="bi bi-geo-alt"></i>
-                            <div><strong>No hay distribución municipal.</strong><span>Las instituciones trabajadas no tienen municipio disponible.</span></div>
+                            <div><strong>No hay distribución territorial.</strong><span>Las instituciones trabajadas no tienen ubicación territorial suficiente.</span></div>
                         </div>
                     <?php endif; ?>
                 </section>
@@ -2154,7 +2281,17 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                                 <article>
                                     <div class="analyst-activity-institution-main">
                                         <strong><?= $texto($institucionActividad['nombre_entidad'] ?? 'Institución') ?></strong>
-                                        <span><?= $texto(trim((string)($institucionActividad['municipio'] ?? '')) !== '' ? $institucionActividad['municipio'] : 'Ubicación no disponible') ?></span>
+                                        <?php
+                                        $municipioInstitucion = trim((string)($institucionActividad['municipio'] ?? ''));
+                                        $estadoInstitucion = trim((string)($institucionActividad['estado_nombre'] ?? ''));
+                                        $ubicacionInstitucion = $municipioInstitucion !== ''
+                                            ? $municipioInstitucion
+                                            : ($estadoInstitucion !== '' ? $estadoInstitucion : 'Ubicación no disponible');
+                                        if ($mostrarJerarquiaTerritorial && $municipioInstitucion !== '' && $estadoInstitucion !== '') {
+                                            $ubicacionInstitucion .= ', ' . $estadoInstitucion;
+                                        }
+                                        ?>
+                                        <span><?= $texto($ubicacionInstitucion) ?></span>
                                     </div>
                                     <div class="analyst-activity-institution-total">
                                         <strong><?= (int)($institucionActividad['interacciones'] ?? 0) ?></strong>
