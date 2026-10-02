@@ -596,3 +596,157 @@
         padding: 16px;
     }
 }
+
+
+/* =========================================================
+   DETALLE DE CORREO ENVIADO · MARKETING
+   ========================================================= */
+
+.correo-marketing-detail-modal .modal-body {
+    padding: 20px 22px;
+}
+
+.correo-marketing-detail-loading {
+    min-height: 180px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    color: var(--color-text-secondary);
+    font-size: 11.5px;
+    font-weight: 700;
+}
+
+.correo-marketing-detail-meta {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(150px, .65fr) minmax(120px, .45fr);
+    gap: 12px;
+}
+
+.correo-marketing-detail-meta > div {
+    min-width: 0;
+    padding: 12px 13px;
+    display: grid;
+    gap: 3px;
+    border: 1px solid #dce5f1;
+    border-radius: 9px;
+    background-color: #f8fbff;
+}
+
+.correo-marketing-detail-meta span,
+.correo-marketing-detail-label {
+    color: var(--color-primary);
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: .05em;
+}
+
+.correo-marketing-detail-meta strong {
+    overflow-wrap: anywhere;
+    color: var(--color-text-primary);
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.correo-marketing-detail-meta small {
+    overflow-wrap: anywhere;
+    color: var(--color-text-secondary);
+    font-size: 9.5px;
+    font-weight: 600;
+}
+
+.correo-marketing-detail-section {
+    margin-top: 14px;
+}
+
+.correo-marketing-detail-label {
+    display: block;
+    margin-bottom: 6px;
+}
+
+.correo-marketing-detail-subject,
+.correo-marketing-detail-message {
+    border: 1px solid var(--color-border);
+    border-radius: 9px;
+    background-color: #ffffff;
+    color: var(--color-text-primary);
+    font-size: 11.5px;
+    font-weight: 600;
+}
+
+.correo-marketing-detail-subject {
+    min-height: 42px;
+    padding: 11px 13px;
+}
+
+.correo-marketing-detail-message {
+    min-height: 180px;
+    padding: 14px;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    line-height: 1.6;
+}
+
+.correo-marketing-detail-attachments {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.correo-marketing-detail-attachments > span {
+    max-width: 100%;
+    min-height: 31px;
+    padding: 6px 9px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid #dce5f1;
+    border-radius: 8px;
+    background-color: #f8fbff;
+    color: var(--color-text-primary);
+    font-size: 10px;
+}
+
+.correo-marketing-detail-attachments i {
+    color: var(--color-primary);
+}
+
+.correo-marketing-detail-attachments strong {
+    max-width: 340px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 700;
+}
+
+.correo-marketing-detail-footer {
+    margin-top: 16px;
+    padding-top: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    border-top: 1px solid var(--color-border);
+    color: var(--color-text-secondary);
+    font-size: 9.5px;
+    font-weight: 700;
+}
+
+.correo-marketing-detail-footer > span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.correo-marketing-detail-footer i {
+    color: var(--color-primary);
+}
+
+@media (max-width: 699.98px) {
+    .correo-marketing-detail-modal .modal-body {
+        padding: 16px;
+    }
+
+    .correo-marketing-detail-meta {
+        grid-template-columns: 1fr;
+    }
+}
