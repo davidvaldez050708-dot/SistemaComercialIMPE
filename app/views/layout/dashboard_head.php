@@ -68,6 +68,9 @@ $esTerritorialDashboard = in_array(
     true
 );
 $esConvocatoriaDashboard = $controllerDashboard === 'convocatoria';
+$esConvocatoriaReportesDashboard =
+    $controllerDashboard === 'convocatoria' &&
+    $actionDashboard === 'reportes';
 
 $cssOpcionalDashboard = [];
 
@@ -147,6 +150,10 @@ if ($esConvocatoriaDashboard || $esHomeDashboard) {
 
 if ($esTerritorialDashboard) {
     $cssOpcionalDashboard[] = 'territorios_resumen_refinamientos.css';
+}
+
+if ($esConvocatoriaReportesDashboard) {
+    $cssOpcionalDashboard[] = 'reportes.css';
 }
 
 if ($esReportesDashboard) {
