@@ -486,6 +486,7 @@ class RolModel
                 'convocatorias.gestionar',
                 'convocatorias.descargar',
                 'convocatorias.cambiar_estado',
+                'seguimientos_vinculacion.ver',
                 'reportes.ver',
                 'reportes.convocatorias',
                 'reportes.exportar'
