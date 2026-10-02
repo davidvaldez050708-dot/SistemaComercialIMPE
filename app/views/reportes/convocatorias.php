@@ -87,12 +87,6 @@ $estadoLabels = [
     'inactiva' => 'Inactiva'
 ];
 
-$bachillerato30 = (int)($resumen['bachillerato_30'] ?? 0);
-$titulacion30 = (int)($resumen['titulacion_30'] ?? 0);
-$totalTipos30 = max(1, $bachillerato30 + $titulacion30);
-$bachilleratoPct = (int)round(($bachillerato30 / $totalTipos30) * 100);
-$titulacionPct = (int)round(($titulacion30 / $totalTipos30) * 100);
-
 $mesesBachillerato = is_array($porTipo['bachillerato']['meses'] ?? null)
     ? $porTipo['bachillerato']['meses']
     : [];
@@ -255,130 +249,54 @@ for ($indiceMes = 0; $indiceMes < max(count($mesesBachillerato), count($mesesTit
         <p>Total de publicaciones por tipo de convocatoria y comportamiento de los últimos 4 meses.</p>
     </div>
 
-    <section class="dashboard-panel convocatoria-report-publications-panel mb-4">
-        <div class="convocatoria-report-publications-header">
+    <section class="dashboard-panel convocatoria-report-analysis-card mb-4">
+        <div class="convocatoria-report-chart-heading">
             <div>
-                <span class="report-card-kicker">PUBLICACIONES POR TIPO</span>
-                <p>Total de publicaciones según el tipo de convocatoria.</p>
-            </div>
-            <span class="convocatoria-report-period">
-                <i class="bi bi-calendar3"></i>
-                Últimos 30 días
-            </span>
-        </div>
-
-        <div class="convocatoria-report-publication-cards">
-            <article class="convocatoria-report-publication-card">
-                <div class="convocatoria-report-publication-card-head">
-                    <span class="convocatoria-report-publication-icon">
-                        <i class="bi bi-book"></i>
-                    </span>
-                    <strong>Bachillerato</strong>
-                </div>
-
-                <div class="convocatoria-report-publication-card-body">
-                    <div class="convocatoria-report-publication-total">
-                        <strong><?= $bachillerato30 ?></strong>
-                        <span>publicaciones</span>
-                    </div>
-
-                    <div class="convocatoria-report-mini-chart">
-                        <?php foreach ($serieMensual as $mesSerie): ?>
-                            <?php
-                            $valor = (int)($mesSerie['bachillerato'] ?? 0);
-                            $altura = max(6, (int)round(($valor / $maximoMensual) * 58));
-                            ?>
-                            <div class="convocatoria-report-mini-column">
-                                <strong><?= $valor ?></strong>
-                                <span
-                                    class="convocatoria-report-mini-bar"
-                                    style="height: <?= $altura ?>px"></span>
-                                <small><?= $texto($mesSerie['label'] ?? '') ?></small>
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
-            </article>
-
-            <article class="convocatoria-report-publication-card">
-                <div class="convocatoria-report-publication-card-head">
-                    <span class="convocatoria-report-publication-icon">
-                        <i class="bi bi-mortarboard"></i>
-                    </span>
-                    <strong>Titulación</strong>
-                </div>
-
-                <div class="convocatoria-report-publication-card-body">
-                    <div class="convocatoria-report-publication-total">
-                        <strong><?= $titulacion30 ?></strong>
-                        <span>publicaciones</span>
-                    </div>
-
-                    <div class="convocatoria-report-mini-chart">
-                        <?php foreach ($serieMensual as $mesSerie): ?>
-                            <?php
-                            $valor = (int)($mesSerie['titulacion'] ?? 0);
-                            $altura = max(6, (int)round(($valor / $maximoMensual) * 58));
-                            ?>
-                            <div class="convocatoria-report-mini-column">
-                                <strong><?= $valor ?></strong>
-                                <span
-                                    class="convocatoria-report-mini-bar is-titulacion"
-                                    style="height: <?= $altura ?>px"></span>
-                                <small><?= $texto($mesSerie['label'] ?? '') ?></small>
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
-            </article>
-        </div>
-
-        <div class="convocatoria-report-chart-block">
-            <div class="convocatoria-report-chart-heading">
-                <div>
-                    <span class="report-card-kicker">TENDENCIA MENSUAL</span>
-                    <h3>Publicaciones de los últimos 4 meses</h3>
-                </div>
-
-                <div class="convocatoria-report-chart-legend">
-                    <span><i class="is-bachillerato"></i>Bachillerato</span>
-                    <span><i class="is-titulacion"></i>Titulación</span>
-                </div>
+                <span class="report-card-kicker">TENDENCIA MENSUAL</span>
+                <h3>Publicaciones de los últimos 4 meses</h3>
+                <p class="page-subtitle mb-0">
+                    Comparativo mensual entre publicaciones de Bachillerato y Titulación.
+                </p>
             </div>
 
-            <div class="convocatoria-report-grouped-chart">
-                <?php foreach ($serieMensual as $mesSerie): ?>
-                    <?php
-                    $bachilleratoMes = (int)($mesSerie['bachillerato'] ?? 0);
-                    $titulacionMes = (int)($mesSerie['titulacion'] ?? 0);
-                    $alturaBachillerato = max(
-                        5,
-                        (int)round(($bachilleratoMes / $maximoMensual) * 130)
-                    );
-                    $alturaTitulacion = max(
-                        5,
-                        (int)round(($titulacionMes / $maximoMensual) * 130)
-                    );
-                    ?>
-                    <div class="convocatoria-report-group">
-                        <div class="convocatoria-report-group-bars">
-                            <div class="convocatoria-report-chart-bar-wrap">
-                                <strong><?= $bachilleratoMes ?></strong>
-                                <span
-                                    class="convocatoria-report-chart-bar is-bachillerato"
-                                    style="height: <?= $alturaBachillerato ?>px"></span>
-                            </div>
-                            <div class="convocatoria-report-chart-bar-wrap">
-                                <strong><?= $titulacionMes ?></strong>
-                                <span
-                                    class="convocatoria-report-chart-bar is-titulacion"
-                                    style="height: <?= $alturaTitulacion ?>px"></span>
-                            </div>
+            <div class="convocatoria-report-chart-legend">
+                <span><i class="is-bachillerato"></i>Bachillerato</span>
+                <span><i class="is-titulacion"></i>Titulación</span>
+            </div>
+        </div>
+
+        <div class="convocatoria-report-grouped-chart">
+            <?php foreach ($serieMensual as $mesSerie): ?>
+                <?php
+                $bachilleratoMes = (int)($mesSerie['bachillerato'] ?? 0);
+                $titulacionMes = (int)($mesSerie['titulacion'] ?? 0);
+                $alturaBachillerato = max(
+                    5,
+                    (int)round(($bachilleratoMes / $maximoMensual) * 130)
+                );
+                $alturaTitulacion = max(
+                    5,
+                    (int)round(($titulacionMes / $maximoMensual) * 130)
+                );
+                ?>
+                <div class="convocatoria-report-group">
+                    <div class="convocatoria-report-group-bars">
+                        <div class="convocatoria-report-chart-bar-wrap">
+                            <strong><?= $bachilleratoMes ?></strong>
+                            <span
+                                class="convocatoria-report-chart-bar is-bachillerato"
+                                style="height: <?= $alturaBachillerato ?>px"></span>
                         </div>
-                        <small><?= $texto($mesSerie['label'] ?? '') ?></small>
+                        <div class="convocatoria-report-chart-bar-wrap">
+                            <strong><?= $titulacionMes ?></strong>
+                            <span
+                                class="convocatoria-report-chart-bar is-titulacion"
+                                style="height: <?= $alturaTitulacion ?>px"></span>
+                        </div>
                     </div>
-                <?php endforeach; ?>
-            </div>
+                    <small><?= $texto($mesSerie['label'] ?? '') ?></small>
+                </div>
+            <?php endforeach; ?>
         </div>
     </section>
 
