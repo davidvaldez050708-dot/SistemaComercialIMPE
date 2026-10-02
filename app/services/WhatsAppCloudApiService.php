@@ -107,6 +107,94 @@ class WhatsAppCloudApiService
         );
     }
 
+    public function probarConexion($phoneNumberId)
+    {
+        $token = trim((string)($this->config['access_token'] ?? ''));
+        $version = trim((string)($this->config['graph_version'] ?? ''));
+        $phoneNumberId = trim((string)$phoneNumberId);
+
+        if ($token === '') {
+            return [
+                'ok' => false,
+                'mensaje' => 'Falta configurar el Access Token de Meta.'
+            ];
+        }
+
+        if ($version === '') {
+            return [
+                'ok' => false,
+                'mensaje' => 'Falta configurar la versión de Graph API.'
+            ];
+        }
+
+        if ($phoneNumberId === '') {
+            return [
+                'ok' => false,
+                'mensaje' => 'El canal no tiene Phone Number ID.'
+            ];
+        }
+
+        if (!function_exists('curl_init')) {
+            return [
+                'ok' => false,
+                'mensaje' => 'La extensión cURL de PHP no está disponible.'
+            ];
+        }
+
+        $url = 'https://graph.facebook.com/' .
+            rawurlencode($version) . '/' .
+            rawurlencode($phoneNumberId) .
+            '?fields=id,display_phone_number,verified_name';
+
+        $curl = curl_init($url);
+
+        curl_setopt_array(
+            $curl,
+            [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_CONNECTTIMEOUT => 10,
+                CURLOPT_TIMEOUT => 20,
+                CURLOPT_HTTPHEADER => [
+                    'Authorization: Bearer ' . $token,
+                    'Accept: application/json'
+                ]
+            ]
+        );
+
+        $respuesta = curl_exec($curl);
+        $errorCurl = curl_error($curl);
+        $codigoHttp = (int)curl_getinfo($curl, CURLINFO_HTTP_CODE);
+        curl_close($curl);
+
+        if ($respuesta === false || $errorCurl !== '') {
+            return [
+                'ok' => false,
+                'mensaje' => 'No fue posible conectar con Meta: ' . $errorCurl
+            ];
+        }
+
+        $datos = json_decode((string)$respuesta, true);
+
+        if ($codigoHttp < 200 || $codigoHttp >= 300) {
+            return [
+                'ok' => false,
+                'mensaje' => (string)(
+                    $datos['error']['message'] ??
+                    'Meta rechazó la comprobación del canal.'
+                ),
+                'codigo_meta' => (string)($datos['error']['code'] ?? '')
+            ];
+        }
+
+        return [
+            'ok' => true,
+            'phone_number_id' => (string)($datos['id'] ?? $phoneNumberId),
+            'display_phone_number' => (string)($datos['display_phone_number'] ?? ''),
+            'verified_name' => (string)($datos['verified_name'] ?? ''),
+            'graph_version' => $version
+        ];
+    }
+
     private function enviar($phoneNumberId, array $payload)
     {
         $estado = $this->obtenerEstadoConfiguracion();
@@ -215,7 +303,7 @@ class WhatsAppCloudApiService
             'access_token' => '',
             'verify_token' => '',
             'app_secret' => '',
-            'graph_version' => '',
+            'graph_version' => 'v26.0',
             'test_template' => 'hello_world',
             'test_template_lang' => 'en_US'
         ];
