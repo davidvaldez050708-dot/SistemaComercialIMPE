@@ -19,7 +19,8 @@ class SeguimientoVinculacionModel
         $fechaInicial = '',
         $fechaFinal = '',
         $canal = '',
-        $modoAcceso = 'analista'
+        $modoAcceso = 'analista',
+        array $actorIds = []
     ) {
         $ids = array_values(array_unique(array_filter(array_map('intval', $seguimientoIds))));
         $usuarioId = (int)$usuarioId;
@@ -32,6 +33,11 @@ class SeguimientoVinculacionModel
         $fechaInicial = trim((string)$fechaInicial);
         $fechaFinal = trim((string)$fechaFinal);
         $canal = strtoupper(trim((string)$canal));
+        $actorIds = array_values(array_unique(array_filter(array_map('intval', $actorIds))));
+
+        if (strtolower(trim((string)$modoAcceso)) === 'analista') {
+            $actorIds = [$usuarioId];
+        }
 
         $sql = "SELECT DISTINCT seguimiento_id
             FROM interacciones_vinculacion
@@ -41,10 +47,13 @@ class SeguimientoVinculacionModel
         $tipos = '';
         $parametros = [];
 
-        if (strtolower(trim((string)$modoAcceso)) === 'analista') {
-            $sql .= " AND usuario_id = ?";
-            $tipos .= 'i';
-            $parametros[] = $usuarioId;
+        if (!empty($actorIds)) {
+            $actorPlaceholders = implode(',', array_fill(0, count($actorIds), '?'));
+            $sql .= " AND usuario_id IN (" . $actorPlaceholders . ")";
+            foreach ($actorIds as $actorId) {
+                $tipos .= 'i';
+                $parametros[] = (int)$actorId;
+            }
         }
 
         if ($fechaInicial !== '') {
@@ -171,6 +180,48 @@ class SeguimientoVinculacionModel
         $stmt = $this->connection->prepare($sql);
         $usuarioId = (int)$usuarioId;
         $stmt->bind_param('i', $usuarioId);
+        $stmt->execute();
+
+        return $this->convertirResultadoEnArreglo($stmt->get_result());
+    }
+
+    public function obtenerAnalistasSupervisadosCuentaClave($usuarioId, $estadoId = 0)
+    {
+        $usuarioId = (int)$usuarioId;
+        $estadoId = (int)$estadoId;
+
+        $sql = "SELECT DISTINCT
+                    usuarios.id,
+                    usuarios.nombre,
+                    usuarios.apellidos
+                FROM asignaciones_territorio cuentas
+                INNER JOIN asignaciones_territorio analistas
+                    ON analistas.cuenta_clave_asignacion_id = cuentas.id
+                    AND analistas.estado_id = cuentas.estado_id
+                    AND analistas.tipo_asignacion = 'ANALISTA_DATOS'
+                    AND analistas.activo = 1
+                    AND " . $this->condicionAsignacionVigente('analistas') . "
+                INNER JOIN usuarios
+                    ON usuarios.id = analistas.usuario_id
+                    AND usuarios.estado = 1
+                WHERE cuentas.usuario_id = ?
+                    AND cuentas.tipo_asignacion = 'CUENTA_CLAVE'
+                    AND cuentas.activo = 1
+                    AND " . $this->condicionAsignacionVigente('cuentas');
+
+        $parametros = [$usuarioId];
+        $tipos = 'i';
+
+        if ($estadoId > 0) {
+            $sql .= " AND cuentas.estado_id = ?";
+            $parametros[] = $estadoId;
+            $tipos .= 'i';
+        }
+
+        $sql .= " ORDER BY usuarios.nombre, usuarios.apellidos";
+
+        $stmt = $this->connection->prepare($sql);
+        $this->vincularParametros($stmt, $tipos, $parametros);
         $stmt->execute();
 
         return $this->convertirResultadoEnArreglo($stmt->get_result());
