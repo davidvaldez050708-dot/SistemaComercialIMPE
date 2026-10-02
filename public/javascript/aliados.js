@@ -42,6 +42,12 @@ document.addEventListener('DOMContentLoaded', function () {
     const shareContext = shareModalElement
         ? shareModalElement.querySelector('[data-aliado-share-context]')
         : null;
+    const whatsappShareButton = shareModalElement
+        ? shareModalElement.querySelector('[data-aliado-open-whatsapp]')
+        : null;
+    const whatsappShareStatus = whatsappShareButton
+        ? whatsappShareButton.querySelector('small')
+        : null;
     const convocatoriaSelect = document.getElementById('aliado_convocatoria_id');
     const asuntoInput = document.getElementById('aliado_asunto');
     const mensajeInput = document.getElementById('aliado_mensaje');
@@ -97,6 +103,7 @@ document.addEventListener('DOMContentLoaded', function () {
         : null;
 
     let currentAllyId = 0;
+    let currentAllyWhatsappReady = false;
     let currentContactAllyId = 0;
     let contactsDirty = false;
     let currentContacts = new Map();
@@ -344,6 +351,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const resetSendState = function () {
         currentConvocatorias = new Map();
+        currentAllyWhatsappReady = false;
+
+        if (whatsappShareButton) {
+            whatsappShareButton.disabled = true;
+            whatsappShareButton.classList.add('is-disabled');
+        }
+        if (whatsappShareStatus) {
+            whatsappShareStatus.textContent = 'Requiere WhatsApp confirmado';
+        }
 
         if (shareForm) {
             shareForm.reset();
@@ -508,6 +524,22 @@ document.addEventListener('DOMContentLoaded', function () {
         const ally = data.aliado || {};
         const name = String(ally.nombre_entidad || 'Institución');
         const email = String(ally.correo_contacto || '');
+        currentAllyWhatsappReady =
+            String(ally.whatsapp_verificado || '').trim() !== '' ||
+            Number(ally.tiene_whatsapp_confirmado_contacto || 0) === 1;
+
+        if (whatsappShareButton) {
+            whatsappShareButton.disabled = !currentAllyWhatsappReady;
+            whatsappShareButton.classList.toggle(
+                'is-disabled',
+                !currentAllyWhatsappReady
+            );
+        }
+        if (whatsappShareStatus) {
+            whatsappShareStatus.textContent = currentAllyWhatsappReady
+                ? 'Abrir conversación'
+                : 'Requiere WhatsApp confirmado';
+        }
 
         if (shareContext) {
             shareContext.textContent =
@@ -1190,6 +1222,17 @@ document.addEventListener('DOMContentLoaded', function () {
     if (sendButton) {
         sendButton.addEventListener('click', sendConvocatoria);
     }
+
+    whatsappShareButton?.addEventListener('click', function () {
+        if (currentAllyId <= 0 || !currentAllyWhatsappReady) {
+            return;
+        }
+
+        window.location.href =
+            baseUrl +
+            'index.php?controller=whatsapp&action=abrirAliado&seguimiento_id=' +
+            encodeURIComponent(String(currentAllyId));
+    });
 
     if (filterForm) {
         filterForm.addEventListener('submit', function (event) {
