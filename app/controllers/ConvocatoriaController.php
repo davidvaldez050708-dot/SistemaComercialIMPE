@@ -22,6 +22,10 @@ class ConvocatoriaController
             : '';
         $tipoConvocatoria = strtolower(trim((string)($_GET['tipo'] ?? '')));
         $subtipoConvocatoria = strtolower(trim((string)($_GET['subtipo'] ?? '')));
+        $anioFiltro = (int)($_GET['anio'] ?? 0);
+        $mesFiltro = (int)($_GET['mes'] ?? 0);
+        $anioFiltro = $anioFiltro >= 2000 && $anioFiltro <= 2100 ? $anioFiltro : 0;
+        $mesFiltro = $mesFiltro >= 1 && $mesFiltro <= 12 ? $mesFiltro : 0;
         $territorioPermitido = $this->usuarioPuedeConsultarTerritorio($estadoFiltro);
         $esChihuahua = $territorioPermitido
             ? $this->esTerritorioChihuahua($modelo, $estadoFiltro)
@@ -41,7 +45,9 @@ class ConvocatoriaController
                 $estatusFiltro,
                 $categoriaFiltro,
                 $tipoConvocatoria,
-                $subtipoConvocatoria
+                $subtipoConvocatoria,
+                $anioFiltro,
+                $mesFiltro
             )
             : [];
 
@@ -120,6 +126,16 @@ class ConvocatoriaController
         $estatusFiltro = in_array((string)($_GET['estatus'] ?? ''), ['0', '1'], true)
             ? (string)$_GET['estatus']
             : '';
+        $anioSolicitado = (int)($_GET['anio'] ?? 0);
+        $mesSolicitado = (int)($_GET['mes'] ?? 0);
+        $anioSeleccionado = (
+            $anioSolicitado >= 2000 &&
+            $anioSolicitado <= 2100
+        ) ? $anioSolicitado : (int)date('Y');
+        $mesSeleccionado = (
+            $mesSolicitado >= 1 &&
+            $mesSolicitado <= 12
+        ) ? $mesSolicitado : 0;
         $categoriaSolicitada = (string)($_GET['categoria'] ?? '');
         $categoriaFiltro = in_array($categoriaSolicitada, ['', 'IMJUVE'], true)
             ? $categoriaSolicitada
@@ -133,10 +149,50 @@ class ConvocatoriaController
             ? $modelo->obtenerRecientesPorTerritorio($estadoFiltro, 12)
             : [];
 
-        $convocatorias = (
+        $aniosConvocatorias = [];
+        $resumenMensualConvocatorias = [];
+        $mostrarSelectorMes = false;
+
+        if (
             $territorioSeleccionado &&
             $tipoConvocatoria !== '' &&
             $subtipoConvocatoria !== ''
+        ) {
+            $aniosConvocatorias = $modelo->obtenerAniosDisponiblesPorClasificacion(
+                $estadoFiltro,
+                $tipoConvocatoria,
+                $subtipoConvocatoria
+            );
+
+            if (!in_array((int)date('Y'), $aniosConvocatorias, true)) {
+                $aniosConvocatorias[] = (int)date('Y');
+            }
+
+            rsort($aniosConvocatorias, SORT_NUMERIC);
+
+            if (!in_array($anioSeleccionado, $aniosConvocatorias, true)) {
+                $anioSeleccionado = (int)date('Y');
+            }
+
+            $mostrarSelectorMes =
+                $mesSeleccionado === 0 &&
+                $buscar === '';
+
+            if ($mostrarSelectorMes) {
+                $resumenMensualConvocatorias = $modelo->obtenerResumenMensual(
+                    $estadoFiltro,
+                    $tipoConvocatoria,
+                    $subtipoConvocatoria,
+                    $anioSeleccionado
+                );
+            }
+        }
+
+        $convocatorias = (
+            $territorioSeleccionado &&
+            $tipoConvocatoria !== '' &&
+            $subtipoConvocatoria !== '' &&
+            (!$mostrarSelectorMes)
         )
             ? $modelo->obtenerListado(
                 $buscar,
@@ -144,7 +200,9 @@ class ConvocatoriaController
                 $estatusFiltro,
                 $categoriaFiltro,
                 $tipoConvocatoria,
-                $subtipoConvocatoria
+                $subtipoConvocatoria,
+                $mesSeleccionado > 0 ? $anioSeleccionado : 0,
+                $mesSeleccionado
             )
             : [];
 
