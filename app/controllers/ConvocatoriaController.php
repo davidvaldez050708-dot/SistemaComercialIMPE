@@ -224,6 +224,18 @@ class ConvocatoriaController
     public function reportes()
     {
         $this->validarPermiso('convocatorias.ver');
+        $this->validarPermiso('reportes.ver');
+        $this->validarPermiso('reportes.convocatorias');
+
+        if (
+            strcasecmp(
+                trim((string)($_SESSION['rol'] ?? '')),
+                'Marketing'
+            ) !== 0
+        ) {
+            header('Location: ' . BASE_URL . 'index.php?controller=reporte&action=index');
+            exit;
+        }
 
         $modelo = new ConvocatoriaModel();
         $modelo->desactivarConvocatoriasVencidas();
