@@ -152,14 +152,12 @@ $claseConvocatoriasReportes =
                 </a>
 
                 <?php if ($mostrarReporteConvocatoriasEnMarketing): ?>
-                    <?php if ($mostrarReporteConvocatoriasEnMarketing): ?>
                         <a
                             href="<?= BASE_URL ?>index.php?controller=convocatoria&action=reportes"
                             class="sidebar-link <?= $claseConvocatoriasReportes ?>">
                             <i class="bi bi-file-earmark-bar-graph"></i>
                             Reportes
                         </a>
-                    <?php endif; ?>
                 <?php endif; ?>
             </div>
 
@@ -378,12 +376,14 @@ $claseConvocatoriasReportes =
                         <?= htmlspecialchars($etiquetaMenuConvocatorias) ?>
                     </a>
 
-                    <a
-                        href="<?= BASE_URL ?>index.php?controller=convocatoria&action=reportes"
-                        class="sidebar-link <?= $claseConvocatoriasReportes ?>">
-                        <i class="bi bi-file-earmark-bar-graph"></i>
-                        Reportes
-                    </a>
+                    <?php if ($mostrarReporteConvocatoriasEnMarketing): ?>
+                        <a
+                            href="<?= BASE_URL ?>index.php?controller=convocatoria&action=reportes"
+                            class="sidebar-link <?= $claseConvocatoriasReportes ?>">
+                            <i class="bi bi-file-earmark-bar-graph"></i>
+                            Reportes
+                        </a>
+                    <?php endif; ?>
                 </div>
 
             <?php endif; ?>
