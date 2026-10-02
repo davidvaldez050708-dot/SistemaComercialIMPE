@@ -8,12 +8,14 @@ class CorreoMarketingService
 {
     private $connection;
     private $sender;
+    private $rootPath;
 
     public function __construct()
     {
         $database = new Database();
         $this->connection = $database->connect();
         $this->sender = new CorreoSalidaInstitucionalService();
+        $this->rootPath = dirname(__DIR__, 2);
     }
 
     public function resumen($usuarioId)
@@ -151,13 +153,43 @@ class CorreoMarketingService
 
         $fechaEnvio = trim((string)($fila['fecha_envio'] ?? ''));
         $fechaRegistro = trim((string)($fila['created_at'] ?? ''));
-        $adjuntos = json_decode(
-            (string)($fila['adjuntos_nombres'] ?? '[]'),
-            true
+        $adjuntos = $this->listarAdjuntosCorreo(
+            (int)$fila['id'],
+            (int)$fila['usuario_id']
         );
 
-        if (!is_array($adjuntos)) {
-            $adjuntos = [];
+        if (empty($adjuntos)) {
+            $nombresLegacy = json_decode(
+                (string)($fila['adjuntos_nombres'] ?? '[]'),
+                true
+            );
+
+            if (!is_array($nombresLegacy)) {
+                $nombresLegacy = [];
+            }
+
+            foreach ($nombresLegacy as $nombreLegacy) {
+                $nombreLegacy = trim((string)$nombreLegacy);
+
+                if ($nombreLegacy === '') {
+                    continue;
+                }
+
+                $adjuntos[] = [
+                    'id' => 0,
+                    'nombre' => $nombreLegacy,
+                    'mime' => '',
+                    'tamano' => 0,
+                    'disponible' => false,
+                    'es_imagen' => false,
+                    'es_pdf' => strtolower(
+                        (string)pathinfo(
+                            $nombreLegacy,
+                            PATHINFO_EXTENSION
+                        )
+                    ) === 'pdf'
+                ];
+            }
         }
 
         return [
@@ -172,18 +204,71 @@ class CorreoMarketingService
             'proveedor' => (string)($fila['proveedor'] ?? ''),
             'firma_incluida' =>
                 (bool)((int)($fila['firma_incluida'] ?? 0)),
-            'adjuntos' => array_values(array_filter(
-                array_map(
-                    static fn($nombre) => trim((string)$nombre),
-                    $adjuntos
-                ),
-                static fn($nombre) => $nombre !== ''
-            )),
+            'adjuntos' => $adjuntos,
             'adjuntos_count' => (int)($fila['adjuntos_count'] ?? 0),
             'error_envio' => (string)($fila['error_envio'] ?? ''),
             'fecha_envio' => $this->formatearFechaHora(
                 $fechaEnvio !== '' ? $fechaEnvio : $fechaRegistro
             )
+        ];
+    }
+
+    public function obtenerAdjunto($usuarioId, $adjuntoId)
+    {
+        $usuarioId = (int)$usuarioId;
+        $adjuntoId = (int)$adjuntoId;
+
+        if (
+            $usuarioId <= 0 ||
+            $adjuntoId <= 0 ||
+            !$this->tablaAdjuntosDisponible()
+        ) {
+            return null;
+        }
+
+        $sql = "SELECT
+                    a.id,
+                    a.archivo,
+                    a.nombre_original,
+                    a.mime,
+                    a.tamano
+                FROM correos_marketing_adjuntos a
+                INNER JOIN correos_marketing c
+                    ON c.id = a.correo_id
+                WHERE a.id = ?
+                  AND a.usuario_id = ?
+                  AND c.usuario_id = ?
+                LIMIT 1";
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param(
+            'iii',
+            $adjuntoId,
+            $usuarioId,
+            $usuarioId
+        );
+        $stmt->execute();
+        $fila = $stmt->get_result()->fetch_assoc();
+
+        if (!$fila) {
+            return null;
+        }
+
+        $ruta = $this->rutaAdjuntoAbsoluta(
+            (string)($fila['archivo'] ?? '')
+        );
+
+        if ($ruta === null || !is_file($ruta)) {
+            return null;
+        }
+
+        return [
+            'id' => (int)$fila['id'],
+            'ruta' => $ruta,
+            'nombre' => (string)($fila['nombre_original'] ?? 'archivo'),
+            'mime' => trim((string)($fila['mime'] ?? '')) !== ''
+                ? (string)$fila['mime']
+                : 'application/octet-stream',
+            'tamano' => (int)($fila['tamano'] ?? filesize($ruta))
         ];
     }
 
@@ -233,6 +318,16 @@ class CorreoMarketingService
 
         $adjuntos = $preparacion['adjuntos'] ?? [];
         $rutasTemporales = $preparacion['rutas_temporales'] ?? [];
+
+        if (!empty($adjuntos) && !$this->tablaAdjuntosDisponible()) {
+            $this->limpiarTemporales($rutasTemporales);
+
+            return $this->error(
+                'Falta aplicar la migración de adjuntos de Correos de Marketing.',
+                500
+            );
+        }
+
         $nombresAdjuntos = array_map(
             static fn($adjunto) => (string)($adjunto['nombre'] ?? ''),
             $adjuntos
@@ -277,6 +372,14 @@ class CorreoMarketingService
             }
 
             if ($registroId > 0) {
+                if (!empty($adjuntos)) {
+                    $this->guardarAdjuntosPersistentes(
+                        $registroId,
+                        $usuarioId,
+                        $adjuntos
+                    );
+                }
+
                 $this->marcarEnviado(
                     $registroId,
                     (string)($envio['proveedor'] ?? ''),
@@ -407,7 +510,8 @@ class CorreoMarketingService
             $adjuntos[] = [
                 'ruta' => $destino,
                 'nombre' => $nombre,
-                'mime' => $mimes[$extension] ?? 'application/octet-stream'
+                'mime' => $mimes[$extension] ?? 'application/octet-stream',
+                'tamano' => $tamano
             ];
         }
 
@@ -416,6 +520,218 @@ class CorreoMarketingService
             'adjuntos' => $adjuntos,
             'rutas_temporales' => $temporales
         ];
+    }
+
+    private function listarAdjuntosCorreo($correoId, $usuarioId)
+    {
+        $correoId = (int)$correoId;
+        $usuarioId = (int)$usuarioId;
+
+        if (
+            $correoId <= 0 ||
+            $usuarioId <= 0 ||
+            !$this->tablaAdjuntosDisponible()
+        ) {
+            return [];
+        }
+
+        $sql = "SELECT
+                    id,
+                    archivo,
+                    nombre_original,
+                    mime,
+                    tamano
+                FROM correos_marketing_adjuntos
+                WHERE correo_id = ?
+                  AND usuario_id = ?
+                ORDER BY id ASC";
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param('ii', $correoId, $usuarioId);
+        $stmt->execute();
+
+        $salida = [];
+        $resultado = $stmt->get_result();
+
+        while ($fila = $resultado->fetch_assoc()) {
+            $mime = strtolower(trim((string)($fila['mime'] ?? '')));
+            $nombre = (string)($fila['nombre_original'] ?? 'archivo');
+
+            $salida[] = [
+                'id' => (int)$fila['id'],
+                'nombre' => $nombre,
+                'mime' => $mime,
+                'tamano' => (int)($fila['tamano'] ?? 0),
+                'disponible' => $this->rutaAdjuntoAbsoluta(
+                    (string)($fila['archivo'] ?? '')
+                ) !== null,
+                'es_imagen' => strpos($mime, 'image/') === 0,
+                'es_pdf' =>
+                    $mime === 'application/pdf' ||
+                    strtolower(
+                        (string)pathinfo($nombre, PATHINFO_EXTENSION)
+                    ) === 'pdf'
+            ];
+        }
+
+        return $salida;
+    }
+
+    private function guardarAdjuntosPersistentes(
+        $correoId,
+        $usuarioId,
+        $adjuntos
+    ) {
+        if (
+            (int)$correoId <= 0 ||
+            (int)$usuarioId <= 0 ||
+            empty($adjuntos) ||
+            !$this->tablaAdjuntosDisponible()
+        ) {
+            return;
+        }
+
+        $directorio = $this->rootPath . DIRECTORY_SEPARATOR .
+            'storage' . DIRECTORY_SEPARATOR .
+            'mail' . DIRECTORY_SEPARATOR .
+            'marketing' . DIRECTORY_SEPARATOR .
+            date('Y') . DIRECTORY_SEPARATOR .
+            'usuario_' . (int)$usuarioId . DIRECTORY_SEPARATOR .
+            'correo_' . (int)$correoId;
+
+        if (
+            !is_dir($directorio) &&
+            !mkdir($directorio, 0775, true) &&
+            !is_dir($directorio)
+        ) {
+            throw new RuntimeException(
+                'No fue posible preparar la carpeta permanente de adjuntos.'
+            );
+        }
+
+        $sql = "INSERT INTO correos_marketing_adjuntos (
+                    correo_id,
+                    usuario_id,
+                    archivo,
+                    nombre_original,
+                    mime,
+                    tamano
+                ) VALUES (?, ?, ?, ?, ?, ?)";
+        $stmt = $this->connection->prepare($sql);
+        $creados = [];
+
+        try {
+            foreach ($adjuntos as $adjunto) {
+                $origen = (string)($adjunto['ruta'] ?? '');
+
+                if ($origen === '' || !is_file($origen)) {
+                    throw new RuntimeException(
+                        'Uno de los adjuntos enviados ya no está disponible.'
+                    );
+                }
+
+                $nombreOriginal = basename(
+                    (string)($adjunto['nombre'] ?? 'archivo')
+                );
+                $extension = strtolower(
+                    (string)pathinfo($nombreOriginal, PATHINFO_EXTENSION)
+                );
+                $base = (string)pathinfo(
+                    $nombreOriginal,
+                    PATHINFO_FILENAME
+                );
+                $base = preg_replace(
+                    '/[^a-zA-Z0-9._-]+/',
+                    '_',
+                    $base
+                );
+                $base = trim((string)$base, '._-');
+
+                if ($base === '') {
+                    $base = 'archivo';
+                }
+
+                $nombreFisico =
+                    date('Ymd_His') . '_' .
+                    bin2hex(random_bytes(5)) . '_' .
+                    $base .
+                    ($extension !== '' ? '.' . $extension : '');
+                $destino = $directorio . DIRECTORY_SEPARATOR . $nombreFisico;
+
+                if (!copy($origen, $destino)) {
+                    throw new RuntimeException(
+                        'No fue posible conservar uno de los archivos enviados.'
+                    );
+                }
+
+                $creados[] = $destino;
+                $relativa = $this->rutaRelativaStorage($destino);
+                $mime = trim(
+                    (string)($adjunto['mime'] ?? 'application/octet-stream')
+                );
+                $tamano = (int)(
+                    $adjunto['tamano'] ??
+                    filesize($destino)
+                );
+
+                $stmt->bind_param(
+                    'iisssi',
+                    $correoId,
+                    $usuarioId,
+                    $relativa,
+                    $nombreOriginal,
+                    $mime,
+                    $tamano
+                );
+                $stmt->execute();
+            }
+        } catch (Throwable $error) {
+            foreach ($creados as $creado) {
+                if (is_file($creado)) {
+                    @unlink($creado);
+                }
+            }
+
+            throw $error;
+        }
+    }
+
+    private function rutaRelativaStorage($ruta)
+    {
+        $root = rtrim(
+            str_replace('\\', '/', $this->rootPath),
+            '/'
+        );
+        $rutaNormalizada = str_replace('\\', '/', (string)$ruta);
+
+        if (strpos($rutaNormalizada, $root . '/') !== 0) {
+            throw new RuntimeException('Ruta de adjunto fuera del proyecto.');
+        }
+
+        return ltrim(substr($rutaNormalizada, strlen($root)), '/');
+    }
+
+    private function rutaAdjuntoAbsoluta($rutaRelativa)
+    {
+        $rutaRelativa = ltrim(
+            str_replace('\\', '/', trim((string)$rutaRelativa)),
+            '/'
+        );
+
+        if (
+            $rutaRelativa === '' ||
+            strpos($rutaRelativa, '..') !== false ||
+            strpos(
+                $rutaRelativa,
+                'storage/mail/marketing/'
+            ) !== 0
+        ) {
+            return null;
+        }
+
+        $ruta = $this->rootPath . DIRECTORY_SEPARATOR .
+            str_replace('/', DIRECTORY_SEPARATOR, $rutaRelativa);
+
+        return is_file($ruta) ? $ruta : null;
     }
 
     private function crearRegistroPendiente(
@@ -498,6 +814,15 @@ class CorreoMarketingService
     {
         $resultado = $this->connection->query(
             "SHOW TABLES LIKE 'correos_marketing'"
+        );
+
+        return $resultado && $resultado->num_rows > 0;
+    }
+
+    private function tablaAdjuntosDisponible()
+    {
+        $resultado = $this->connection->query(
+            "SHOW TABLES LIKE 'correos_marketing_adjuntos'"
         );
 
         return $resultado && $resultado->num_rows > 0;
