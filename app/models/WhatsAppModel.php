@@ -512,7 +512,7 @@ class WhatsAppModel
         $conversacionId = (int)$conversacionId;
         $usuarioId = (int)$usuarioId;
         $stmt->bind_param(
-            'issssssiss',
+            'issssssis',
             $conversacionId,
             $wamid,
             $tipo,
