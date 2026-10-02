@@ -44,6 +44,8 @@ $claseSeguimientoVinculacion =
     $opcionActiva === 'seguimiento_vinculacion' ? 'active' : '';
 $claseReportes = $opcionActiva === 'reportes' ? 'active' : '';
 $claseConvocatorias = $opcionActiva === 'convocatorias' ? 'active' : '';
+$claseConvocatoriasReportes =
+    $opcionActiva === 'convocatorias_reportes' ? 'active' : '';
 
 ?>
 
@@ -135,6 +137,13 @@ $claseConvocatorias = $opcionActiva === 'convocatorias' ? 'active' : '';
                     class="sidebar-link <?= $claseConvocatorias ?>">
                     <i class="bi bi-megaphone"></i>
                     <?= htmlspecialchars($etiquetaMenuConvocatorias) ?>
+                </a>
+
+                <a
+                    href="<?= BASE_URL ?>index.php?controller=convocatoria&action=reportes"
+                    class="sidebar-link <?= $claseConvocatoriasReportes ?>">
+                    <i class="bi bi-file-earmark-bar-graph"></i>
+                    Reportes
                 </a>
             </div>
 
@@ -351,6 +360,13 @@ $claseConvocatorias = $opcionActiva === 'convocatorias' ? 'active' : '';
                         class="sidebar-link <?= $claseConvocatorias ?>">
                         <i class="bi bi-megaphone"></i>
                         <?= htmlspecialchars($etiquetaMenuConvocatorias) ?>
+                    </a>
+
+                    <a
+                        href="<?= BASE_URL ?>index.php?controller=convocatoria&action=reportes"
+                        class="sidebar-link <?= $claseConvocatoriasReportes ?>">
+                        <i class="bi bi-file-earmark-bar-graph"></i>
+                        Reportes
                     </a>
                 </div>
 
