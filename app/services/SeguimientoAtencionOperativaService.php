@@ -45,12 +45,32 @@ class SeguimientoAtencionOperativaService
             return [];
         }
 
-        $placeholders = implode(',', array_fill(0, count($ids), '?'));
-        return $this->obtener(
-            "seguimientos.id IN ($placeholders)",
-            str_repeat('i', count($ids)),
-            $ids
-        );
+        $atenciones = [];
+        foreach (array_chunk($ids, 500) as $bloqueIds) {
+            $placeholders = implode(',', array_fill(0, count($bloqueIds), '?'));
+            $atenciones = array_merge(
+                $atenciones,
+                $this->obtener(
+                    "seguimientos.id IN ($placeholders)",
+                    str_repeat('i', count($bloqueIds)),
+                    $bloqueIds
+                )
+            );
+        }
+
+        usort($atenciones, static function ($a, $b) {
+            $prioridad = (int)($b['prioridad'] ?? 0) <=> (int)($a['prioridad'] ?? 0);
+            if ($prioridad !== 0) {
+                return $prioridad;
+            }
+
+            return strcmp(
+                (string)($a['fecha_referencia'] ?? ''),
+                (string)($b['fecha_referencia'] ?? '')
+            );
+        });
+
+        return $atenciones;
     }
 
     private function obtener($condicion, $tipos, array $parametros)
