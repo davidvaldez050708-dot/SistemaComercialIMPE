@@ -728,3 +728,262 @@
         height: 54px;
     }
 }
+
+
+/* ===== Contactos de difusión y filtros reactivos ===== */
+.aliados-filter-actions {
+    min-width: 96px;
+}
+
+.aliados-filter-actions .aliados-btn-secondary {
+    width: 100%;
+    min-height: 38px;
+}
+
+.aliados-channel-pill.is-whatsapp-confirmed {
+    background: #eaf8f4;
+    color: #087e69;
+}
+
+.aliados-contact-source-note {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 13px;
+    padding: 9px 11px;
+    border: 1px solid #dce5f1;
+    border-radius: 10px;
+    background: #f6f9fd;
+    color: #60708a;
+    font-size: 9px;
+    line-height: 1.45;
+}
+
+.aliados-contact-source-note i {
+    flex: 0 0 auto;
+    margin-top: 1px;
+    color: var(--color-primary, #273a8a);
+}
+
+.aliados-contact-list {
+    display: grid;
+    gap: 8px;
+}
+
+.aliados-contact-item {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: center;
+    padding: 10px 11px;
+    border: 1px solid var(--color-border, #dfe5ef);
+    border-radius: 11px;
+    background: #fff;
+}
+
+.aliados-contact-item-icon {
+    display: grid;
+    width: 34px;
+    height: 34px;
+    place-items: center;
+    border-radius: 9px;
+    background: #f1f5fb;
+    color: var(--color-primary, #273a8a);
+    font-size: 14px;
+}
+
+.aliados-contact-item-icon.is-whatsapp {
+    background: #eaf8f4;
+    color: #087e69;
+}
+
+.aliados-contact-item-copy {
+    display: grid;
+    min-width: 0;
+    gap: 2px;
+}
+
+.aliados-contact-item-copy strong {
+    color: var(--color-text, #172642);
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.aliados-contact-item-copy > span {
+    color: var(--color-text-soft, #6b7280);
+    font-size: 8.5px;
+}
+
+.aliados-contact-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 3px;
+}
+
+.aliados-contact-badges span {
+    padding: 3px 6px;
+    border-radius: 999px;
+    font-size: 7.8px;
+    font-weight: 750;
+}
+
+.aliados-contact-badges .is-preferred {
+    background: #eef3fb;
+    color: var(--color-primary, #273a8a);
+}
+
+.aliados-contact-badges .is-confirmed {
+    background: #eaf8f4;
+    color: #087e69;
+}
+
+.aliados-contact-badges .is-unconfirmed {
+    background: #f4f5f7;
+    color: #7f8998;
+}
+
+.aliados-contact-item-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    justify-content: flex-end;
+}
+
+.aliados-contact-item-actions .btn {
+    min-height: 32px;
+    padding: 6px 9px;
+    border-radius: 8px;
+    font-size: 8.5px;
+}
+
+.aliados-contact-remove {
+    display: grid;
+    width: 32px;
+    height: 32px;
+    place-items: center;
+    border: 1px solid #f0d3d0;
+    border-radius: 8px;
+    background: #fff8f7;
+    color: #b54a42;
+}
+
+.aliados-contact-remove:hover {
+    background: #fff0ee;
+}
+
+.aliados-contact-editor {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--color-border, #dfe5ef);
+}
+
+.aliados-contact-editor-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 11px;
+}
+
+.aliados-contact-editor-heading > div {
+    display: grid;
+    gap: 2px;
+}
+
+.aliados-contact-editor-heading strong {
+    color: var(--color-text, #172642);
+    font-size: 11px;
+}
+
+.aliados-contact-editor-heading span {
+    color: var(--color-text-soft, #6b7280);
+    font-size: 8.5px;
+}
+
+.aliados-contact-form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 9px;
+}
+
+.aliados-contact-options {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.aliados-contact-options label {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin: 0;
+    padding: 9px 10px;
+    border: 1px solid var(--color-border, #dfe5ef);
+    border-radius: 9px;
+    background: #f9fbfd;
+    cursor: pointer;
+}
+
+.aliados-contact-options input {
+    margin-top: 2px;
+}
+
+.aliados-contact-options span {
+    display: grid;
+    gap: 2px;
+}
+
+.aliados-contact-options strong {
+    color: var(--color-text, #172642);
+    font-size: 9px;
+}
+
+.aliados-contact-options small {
+    color: var(--color-text-soft, #6b7280);
+    font-size: 7.8px;
+    line-height: 1.35;
+}
+
+.aliados-contact-form-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 11px;
+}
+
+.aliados-contact-form-status {
+    margin-right: auto;
+    font-size: 8.5px;
+    font-weight: 700;
+}
+
+.aliados-contact-form-status.is-success {
+    color: #087e69;
+}
+
+.aliados-contact-form-status.is-error {
+    color: #b43e36;
+}
+
+@media (max-width: 767.98px) {
+    .aliados-contact-item {
+        grid-template-columns: auto minmax(0, 1fr);
+    }
+
+    .aliados-contact-item-actions {
+        grid-column: 1 / -1;
+        justify-content: flex-end;
+    }
+
+    .aliados-contact-form-grid,
+    .aliados-contact-options {
+        grid-template-columns: 1fr;
+    }
+
+    .aliados-contact-editor-heading {
+        flex-direction: column;
+    }
+}
