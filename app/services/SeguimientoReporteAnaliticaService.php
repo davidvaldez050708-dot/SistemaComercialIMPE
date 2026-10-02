@@ -410,10 +410,16 @@ class SeguimientoReporteAnaliticaService
                     i.proveedor_externo,
                     i.id_externo,
                     s.nombre_entidad,
+                    COALESCE(m.nombre, '') AS municipio,
+                    COALESCE(e.nombre, '') AS estado_nombre,
                     TRIM(CONCAT(COALESCE(u.nombre, ''), ' ', COALESCE(u.apellidos, ''))) AS responsable_nombre
                 FROM interacciones_vinculacion i
                 INNER JOIN seguimientos_vinculacion s
                     ON s.id = i.seguimiento_id
+                LEFT JOIN municipios m
+                    ON m.id = s.municipio_id
+                LEFT JOIN estados e
+                    ON e.id = s.estado_id
                 LEFT JOIN usuarios u
                     ON u.id = i.usuario_id
                 WHERE i.seguimiento_id IN ($placeholders)
