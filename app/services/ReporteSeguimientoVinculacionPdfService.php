@@ -184,16 +184,53 @@ class ReporteSeguimientoVinculacionPdfService
     private function construirContenido(DOMDocument $documento, array $datosReporte, $anchoUtil)
     {
         $resumenFiltros = $datosReporte['resumen_filtros'] ?? [];
+        $filtrosRaw = $datosReporte['filtros_reporte'] ?? [];
         $resumenReporte = $datosReporte['resumen_reporte'] ?? [];
         $seguimientos = $datosReporte['seguimientos'] ?? [];
         $evolucionActividad = $datosReporte['evolucion_actividad'] ?? [];
         $etiquetasEstatus = $datosReporte['etiquetas_estatus'] ?? [];
         $fechaGeneracion = trim((string)($datosReporte['fecha_generacion'] ?? ''));
+        $modoReporte = strtolower(trim((string)($datosReporte['modo_reporte'] ?? 'analista')));
+        $tipoReporte = strtolower(trim((string)($filtrosRaw['tipo_reporte'] ?? 'cartera')));
+        $responsable = trim((string)($resumenFiltros['Responsable'] ?? ''));
+        $titulosModo = [
+            'analista' => [
+                'actividad' => 'Mi actividad de seguimiento',
+                'cartera' => 'Mi cartera de seguimiento',
+                'institucion' => 'Reporte de institución'
+            ],
+            'supervisor' => [
+                'actividad' => 'Actividad del equipo',
+                'cartera' => 'Cartera supervisada',
+                'institucion' => 'Reporte de institución'
+            ],
+            'administrador' => [
+                'actividad' => 'Actividad global de seguimiento',
+                'cartera' => 'Cartera general de seguimiento',
+                'institucion' => 'Reporte de institución'
+            ]
+        ];
+        $tituloReporte = $titulosModo[$modoReporte][$tipoReporte]
+            ?? 'Reporte de Seguimiento de Vinculación';
+
+        if (
+            $modoReporte === 'supervisor' &&
+            (int)($filtrosRaw['responsable_id'] ?? 0) > 0 &&
+            $responsable !== '' &&
+            strcasecmp($responsable, 'Todos') !== 0
+        ) {
+            if ($tipoReporte === 'actividad') {
+                $tituloReporte = 'Actividad de ' . $responsable;
+            } elseif ($tipoReporte === 'cartera') {
+                $tituloReporte = 'Cartera de ' . $responsable;
+            }
+        }
+
         $elementos = [];
 
         $elementos[] = $this->crearParrafo(
             $documento,
-            'Reporte de Seguimiento de Vinculación',
+            $tituloReporte,
             ['tamano' => 28, 'negrita' => true, 'color' => self::COLOR_TEXTO, 'despues' => 100]
         );
         $elementos[] = $this->crearParrafo(
@@ -205,6 +242,12 @@ class ReporteSeguimientoVinculacionPdfService
         $elementos[] = $this->crearTituloSeccion($documento, 'Filtros utilizados');
         $filasFiltros = [];
         foreach ($resumenFiltros as $nombre => $valor) {
+            if ($modoReporte === 'supervisor' && (string)$nombre === 'Responsable') {
+                $nombre = 'Analista';
+                if ((int)($filtrosRaw['responsable_id'] ?? 0) <= 0) {
+                    $valor = 'Todos mis Analistas';
+                }
+            }
             $filasFiltros[] = [(string)$nombre, (string)$valor];
         }
         $elementos[] = $this->crearTablaSimple(
@@ -332,7 +375,7 @@ class ReporteSeguimientoVinculacionPdfService
         $encabezados = [
             'Institución',
             'Municipio',
-            'Responsable',
+            $modoReporte === 'supervisor' ? 'Analista' : 'Responsable',
             'Etapa / Estatus',
             'Última actividad',
             'Días sin actividad',
