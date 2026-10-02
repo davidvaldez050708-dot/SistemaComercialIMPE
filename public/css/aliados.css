@@ -960,7 +960,7 @@
 
 .aliados-contact-options {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 8px;
     margin-top: 10px;
 }
@@ -1017,6 +1017,12 @@
 
 .aliados-contact-form-status.is-error {
     color: #b43e36;
+}
+
+@media (max-width: 991.98px) {
+    .aliados-contact-options {
+        grid-template-columns: 1fr 1fr;
+    }
 }
 
 @media (max-width: 767.98px) {
