@@ -20,11 +20,21 @@ class SeguimientoReporteAnaliticaService
         $fechaInicial = '',
         $fechaFinal = '',
         $canal = '',
-        $limiteActividadReciente = 60
+        $limiteActividadReciente = 60,
+        array $actorIds = []
     ) {
         $seguimientoIds = $this->normalizarIds($seguimientoIds);
         $usuarioId = (int)$usuarioId;
         $modoAcceso = (string)$modoAcceso;
+        $actorIds = $this->normalizarIds($actorIds);
+
+        if ($modoAcceso === 'analista') {
+            $actorIds = [$usuarioId];
+        }
+
+        if ($modoAcceso === 'supervisor' && empty($actorIds)) {
+            return $this->estructuraVacia();
+        }
 
         if (empty($seguimientoIds) || $usuarioId <= 0) {
             return $this->estructuraVacia();
@@ -49,7 +59,8 @@ class SeguimientoReporteAnaliticaService
             $fechaFinal,
             $usuarioId,
             $modoAcceso,
-            $canal
+            $canal,
+            $actorIds
         );
 
         $canales = [
@@ -88,7 +99,8 @@ class SeguimientoReporteAnaliticaService
             $usuarioId,
             $modoAcceso,
             $canal,
-            max(1, min(500, (int)$limiteActividadReciente))
+            max(1, min(500, (int)$limiteActividadReciente)),
+            $actorIds
         );
         $rendimientoTelefonicoDiario = $this->obtenerRendimientoTelefonicoDiario(
             $autorizados,
@@ -96,7 +108,8 @@ class SeguimientoReporteAnaliticaService
             $fechaFinal,
             $usuarioId,
             $modoAcceso,
-            $canal
+            $canal,
+            $actorIds
         );
         $rendimientoTelefonico = $this->resumirRendimientoTelefonico(
             $rendimientoTelefonicoDiario,
@@ -113,7 +126,8 @@ class SeguimientoReporteAnaliticaService
             $usuarioId,
             $modoAcceso,
             $canal,
-            6
+            6,
+            $actorIds
         );
 
         return [
@@ -230,7 +244,8 @@ class SeguimientoReporteAnaliticaService
         $fechaFinal,
         $usuarioId,
         $modoAcceso,
-        $canal
+        $canal,
+        array $actorIds = []
     ) {
         if (empty($ids)) {
             return [
@@ -325,11 +340,7 @@ class SeguimientoReporteAnaliticaService
         $parametros = array_map('intval', $ids);
         $tipos = str_repeat('i', count($parametros));
 
-        if ($modoAcceso === 'analista') {
-            $sql .= " AND usuario_id = ?";
-            $parametros[] = (int)$usuarioId;
-            $tipos .= 'i';
-        }
+        $this->agregarFiltroActores($sql, $tipos, $parametros, $actorIds);
 
         if ($fechaInicial !== '') {
             $sql .= " AND fecha_inicio >= ?";
@@ -359,7 +370,8 @@ class SeguimientoReporteAnaliticaService
         $usuarioId,
         $modoAcceso,
         $canal,
-        $limite = 60
+        $limite = 60,
+        array $actorIds = []
     ) {
         if (empty($ids)) {
             return [];
@@ -393,11 +405,7 @@ class SeguimientoReporteAnaliticaService
         $parametros = array_map('intval', $ids);
         $tipos = str_repeat('i', count($parametros));
 
-        if ($modoAcceso === 'analista') {
-            $sql .= " AND i.usuario_id = ?";
-            $parametros[] = (int)$usuarioId;
-            $tipos .= 'i';
-        }
+        $this->agregarFiltroActores($sql, $tipos, $parametros, $actorIds, 'i.');
 
         if ($fechaInicial !== '') {
             $sql .= " AND i.fecha_inicio >= ?";
@@ -427,7 +435,8 @@ class SeguimientoReporteAnaliticaService
         $fechaFinal,
         $usuarioId,
         $modoAcceso,
-        $canal
+        $canal,
+        array $actorIds = []
     ) {
         $canal = strtoupper(trim((string)$canal));
         if (
@@ -473,11 +482,7 @@ class SeguimientoReporteAnaliticaService
         $parametros = array_map('intval', $ids);
         $tipos = str_repeat('i', count($parametros));
 
-        if ($modoAcceso === 'analista') {
-            $sql .= " AND usuario_id = ?";
-            $parametros[] = (int)$usuarioId;
-            $tipos .= 'i';
-        }
+        $this->agregarFiltroActores($sql, $tipos, $parametros, $actorIds);
 
         if ($fechaInicial !== '') {
             $sql .= " AND fecha_inicio >= ?";
@@ -771,7 +776,8 @@ class SeguimientoReporteAnaliticaService
         $usuarioId,
         $modoAcceso,
         $canal,
-        $limite = 6
+        $limite = 6,
+        array $actorIds = []
     ) {
         if (empty($ids)) {
             return [];
@@ -829,11 +835,7 @@ class SeguimientoReporteAnaliticaService
         $parametros = array_map('intval', $ids);
         $tipos = str_repeat('i', count($parametros));
 
-        if ($modoAcceso === 'analista') {
-            $sql .= " AND i.usuario_id = ?";
-            $parametros[] = (int)$usuarioId;
-            $tipos .= 'i';
-        }
+        $this->agregarFiltroActores($sql, $tipos, $parametros, $actorIds, 'i.');
 
         if ($fechaInicial !== '') {
             $sql .= " AND i.fecha_inicio >= ?";
@@ -857,6 +859,27 @@ class SeguimientoReporteAnaliticaService
         $stmt->execute();
 
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+    private function agregarFiltroActores(
+        string &$sql,
+        string &$tipos,
+        array &$parametros,
+        array $actorIds,
+        $prefijo = ''
+    ) {
+        $actorIds = $this->normalizarIds($actorIds);
+        if (empty($actorIds)) {
+            return;
+        }
+
+        $placeholders = implode(',', array_fill(0, count($actorIds), '?'));
+        $sql .= " AND " . $prefijo . "usuario_id IN (" . $placeholders . ")";
+
+        foreach ($actorIds as $actorId) {
+            $parametros[] = (int)$actorId;
+            $tipos .= 'i';
+        }
     }
 
     private function agregarFiltroCanal(
