@@ -750,3 +750,109 @@
         grid-template-columns: 1fr;
     }
 }
+
+
+/* =========================================================
+   ARCHIVOS ENVIADOS · VISTA PREVIA
+   ========================================================= */
+
+.correo-marketing-detail-attachments {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.correo-marketing-attachment-card {
+    min-width: 0;
+    padding: 10px;
+    display: grid;
+    grid-template-columns: 76px minmax(0, 1fr);
+    gap: 11px;
+    align-items: center;
+    border: 1px solid #dce5f1;
+    border-radius: 10px;
+    background-color: #f8fbff;
+}
+
+.correo-marketing-attachment-preview {
+    width: 76px;
+    height: 64px;
+    display: block;
+    overflow: hidden;
+    border: 1px solid #dce5f1;
+    border-radius: 8px;
+    background-color: #ffffff;
+}
+
+.correo-marketing-attachment-preview img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+}
+
+.correo-marketing-attachment-file-icon {
+    width: 76px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #dce5f1;
+    border-radius: 8px;
+    background-color: #ffffff;
+    color: var(--color-primary);
+    font-size: 28px;
+}
+
+.correo-marketing-attachment-info {
+    min-width: 0;
+    display: grid;
+    gap: 4px;
+}
+
+.correo-marketing-attachment-info > strong {
+    min-width: 0;
+    overflow: hidden;
+    color: var(--color-text-primary);
+    font-size: 10.5px;
+    font-weight: 800;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.correo-marketing-attachment-info > small {
+    overflow-wrap: anywhere;
+    color: var(--color-text-secondary);
+    font-size: 8.5px;
+    font-weight: 600;
+}
+
+.correo-marketing-attachment-actions {
+    margin-top: 4px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.correo-marketing-attachment-actions .btn {
+    min-height: 28px;
+    padding: 4px 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 8.5px;
+    font-weight: 800;
+}
+
+.correo-marketing-attachment-legacy {
+    color: #8a6d3b;
+    font-size: 8.5px;
+    font-weight: 700;
+    line-height: 1.35;
+}
+
+@media (max-width: 699.98px) {
+    .correo-marketing-detail-attachments {
+        grid-template-columns: 1fr;
+    }
+}
