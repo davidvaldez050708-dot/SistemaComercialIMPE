@@ -41,6 +41,7 @@ $esSeguimientoDetalle =
     $controllerDashboard === 'seguimientovinculacion' &&
     $actionDashboard === 'detalle';
 $esAgendaDashboard = $controllerDashboard === 'agendareunion';
+$esAliadosDashboard = $controllerDashboard === 'aliado';
 $esReportesDashboard =
     in_array(
         $controllerDashboard,
@@ -158,6 +159,10 @@ if ($esTerritorialDashboard) {
     $cssOpcionalDashboard[] = 'territorios_resumen_refinamientos.css';
 }
 
+if ($esAliadosDashboard) {
+    $cssOpcionalDashboard[] = 'aliados.css';
+}
+
 if (
     $esConvocatoriaReportesDashboard ||
     $esConvocatoriaReportePreviewDashboard
@@ -192,6 +197,10 @@ if (tienePermiso('convocatorias.gestionar')) {
 
 if (tienePermiso('seguimientos_vinculacion.operar_propios')) {
     $jsOpcionalHead[] = 'topbar_llamadas_analista.js';
+}
+
+if ($esAliadosDashboard) {
+    $jsOpcionalHead[] = 'aliados.js';
 }
 
 if ($esHomeDashboard) {
