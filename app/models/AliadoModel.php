@@ -36,8 +36,7 @@ class AliadoModel
                         WHEN s.municipio_id IS NOT NULL AND s.municipio_id > 0
                         THEN s.municipio_id
                         ELSE NULL
-                    END) AS total_municipios_aliados,
-                    MAX(p.convenio_formalizado_at) AS ultima_formalizacion_at
+                    END) AS total_municipios_aliados
                 FROM seguimientos_vinculacion s
                 INNER JOIN seguimientos_vinculacion_post_envio p
                     ON p.seguimiento_id = s.id
