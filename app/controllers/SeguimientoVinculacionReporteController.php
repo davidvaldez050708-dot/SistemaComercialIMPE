@@ -173,7 +173,9 @@ class SeguimientoVinculacionReporteController
             echo json_encode([
                 'ok' => true,
                 'modo' => $modoSeguimiento,
-                'mostrar_responsable' => $modoSeguimiento !== 'analista',
+                'mostrar_responsable' =>
+                    $modoSeguimiento !== 'analista' &&
+                    (string)($filtros['tipo_reporte'] ?? '') !== 'institucion',
                 'seleccion' => [
                     'estado_id' => (int)$filtros['estado_id'],
                     'municipio_id' => (int)$filtros['municipio_id'],
