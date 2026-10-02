@@ -35,6 +35,7 @@ class RolModel
         $permisosAliadosNuevos =
             !$this->existePermisoPorCodigo('aliados.ver') ||
             !$this->existePermisoPorCodigo('aliados.ver_historial') ||
+            !$this->existePermisoPorCodigo('aliados.gestionar_contactos') ||
             !$this->existePermisoPorCodigo('aliados.compartir_correo');
 
         $sql = "INSERT INTO permisos (
@@ -469,6 +470,7 @@ class RolModel
                 'convocatorias.ver',
                 'aliados.ver',
                 'aliados.ver_historial',
+                'aliados.gestionar_contactos',
                 'aliados.compartir_correo',
                 'reportes.ver',
                 'reportes.exportar',
@@ -801,6 +803,7 @@ class RolModel
         $codigos = [
             'aliados.ver',
             'aliados.ver_historial',
+            'aliados.gestionar_contactos',
             'aliados.compartir_correo',
             'convocatorias.ver'
         ];
@@ -888,6 +891,7 @@ class RolModel
             'convocatorias.descargar' => 'convocatorias.ver',
             'convocatorias.cambiar_estado' => 'convocatorias.ver',
             'aliados.ver_historial' => 'aliados.ver',
+            'aliados.gestionar_contactos' => 'aliados.ver',
             'aliados.compartir_correo' => 'aliados.ver',
             'reportes.exportar' => 'reportes.ver',
             'reportes.seguimiento.cartera' => 'reportes.ver',
@@ -1187,6 +1191,7 @@ class RolModel
             ['modulo' => 'Convenios', 'codigo' => 'convenios.gestionar', 'nombre' => 'Gestionar convenios', 'descripcion' => 'Administrar convenios.'],
             ['modulo' => 'Aliados', 'codigo' => 'aliados.ver', 'nombre' => 'Ver aliados', 'descripcion' => 'Consultar instituciones con convenio formalizado dentro del alcance autorizado.'],
             ['modulo' => 'Aliados', 'codigo' => 'aliados.ver_historial', 'nombre' => 'Ver historial de aliados', 'descripcion' => 'Consultar el historial de convocatorias compartidas con aliados autorizados.'],
+            ['modulo' => 'Aliados', 'codigo' => 'aliados.gestionar_contactos', 'nombre' => 'Gestionar contactos de aliados', 'descripcion' => 'Agregar y administrar números de difusión sin modificar los datos originales del seguimiento.'],
             ['modulo' => 'Aliados', 'codigo' => 'aliados.compartir_correo', 'nombre' => 'Compartir convocatorias por correo', 'descripcion' => 'Enviar convocatorias vigentes por correo a aliados autorizados.'],
             ['modulo' => 'Convocatorias', 'codigo' => 'convocatorias.ver', 'nombre' => 'Ver convocatorias', 'descripcion' => 'Consultar convocatorias registradas.'],
             ['modulo' => 'Convocatorias', 'codigo' => 'convocatorias.crear', 'nombre' => 'Crear convocatorias', 'descripcion' => 'Registrar nuevas convocatorias.'],
