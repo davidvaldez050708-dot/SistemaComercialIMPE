@@ -15,6 +15,15 @@ $territorioSeleccionado = $territorioSeleccionado ?? null;
 $tipoConvocatoria = $tipoConvocatoria ?? '';
 $subtipoConvocatoria = $subtipoConvocatoria ?? '';
 $convocatoriasRecientes = $convocatoriasRecientes ?? [];
+$anioSeleccionado = (int)($anioSeleccionado ?? date('Y'));
+$mesSeleccionado = (int)($mesSeleccionado ?? 0);
+$aniosConvocatorias = is_array($aniosConvocatorias ?? null)
+    ? $aniosConvocatorias
+    : [(int)date('Y')];
+$resumenMensualConvocatorias = is_array($resumenMensualConvocatorias ?? null)
+    ? $resumenMensualConvocatorias
+    : [];
+$mostrarSelectorMes = (bool)($mostrarSelectorMes ?? false);
 $esChihuahua = $territorioSeleccionado &&
     strcasecmp(trim((string)($territorioSeleccionado['nombre'] ?? '')), 'Chihuahua') === 0;
 
@@ -761,20 +770,204 @@ if ($tipoConvocatoria === 'sindicatos') {
 <?php return; ?>
 <?php endif; ?>
 
+<?php if ($mostrarSelectorMes): ?>
+<?php
+$nombresMesesConvocatoria = [
+    1 => 'Enero',
+    2 => 'Febrero',
+    3 => 'Marzo',
+    4 => 'Abril',
+    5 => 'Mayo',
+    6 => 'Junio',
+    7 => 'Julio',
+    8 => 'Agosto',
+    9 => 'Septiembre',
+    10 => 'Octubre',
+    11 => 'Noviembre',
+    12 => 'Diciembre'
+];
+
+$estadoMesLabels = [
+    'activa' => 'Activa',
+    'proxima' => 'Próxima',
+    'finalizada' => 'Finalizada',
+    'inactiva' => 'Inactiva'
+];
+
+$urlCambiarOpcionMes = $tipoConvocatoria === 'sindicatos'
+    ? BASE_URL . 'index.php?controller=convocatoria&action=index&territorio_id=' .
+        (int)$territorioSeleccionado['id']
+    : BASE_URL . 'index.php?controller=convocatoria&action=index&territorio_id=' .
+        (int)$territorioSeleccionado['id'] .
+        '&tipo=' . rawurlencode($tipoConvocatoria);
+?>
+
+<div class="convocatoria-month-page">
+    <div class="convocatoria-territory-context convocatoria-month-context">
+        <a
+            class="data-back-link"
+            href="<?= $texto($urlCambiarOpcionMes) ?>">
+            <i class="bi bi-arrow-left"></i>
+            <?= $tipoConvocatoria === 'sindicatos' ? 'Cambiar tipo' : 'Cambiar opción' ?>
+        </a>
+
+        <span>
+            <?= $texto($territorioSeleccionado['nombre'] ?? '') ?>
+            · <?= $texto($etiquetaTipoConvocatoria) ?>
+            <?php if ($tipoConvocatoria !== 'sindicatos'): ?>
+                · <?= $texto($etiquetasSubtipo[$subtipoConvocatoria] ?? '') ?>
+            <?php endif; ?>
+        </span>
+    </div>
+
+    <section class="dashboard-panel convocatoria-month-shell">
+        <div class="convocatoria-month-heading">
+            <div>
+                <h2>Convocatorias por mes</h2>
+                <p>Selecciona un mes para consultar las convocatorias disponibles.</p>
+            </div>
+
+            <form
+                method="GET"
+                action="<?= BASE_URL ?>index.php"
+                class="convocatoria-month-year-form">
+                <input type="hidden" name="controller" value="convocatoria">
+                <input type="hidden" name="action" value="index">
+                <input
+                    type="hidden"
+                    name="territorio_id"
+                    value="<?= (int)$territorioSeleccionado['id'] ?>">
+                <input
+                    type="hidden"
+                    name="tipo"
+                    value="<?= $texto($tipoConvocatoria) ?>">
+                <input
+                    type="hidden"
+                    name="subtipo"
+                    value="<?= $texto($subtipoConvocatoria) ?>">
+
+                <span aria-hidden="true">
+                    <i class="bi bi-calendar3"></i>
+                </span>
+
+                <select
+                    name="anio"
+                    aria-label="Seleccionar año"
+                    onchange="this.form.submit()">
+                    <?php foreach ($aniosConvocatorias as $anioDisponible): ?>
+                        <option
+                            value="<?= (int)$anioDisponible ?>"
+                            <?= (int)$anioDisponible === $anioSeleccionado ? 'selected' : '' ?>>
+                            <?= (int)$anioDisponible ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+
+                <i class="bi bi-chevron-down" aria-hidden="true"></i>
+            </form>
+        </div>
+
+        <div class="convocatoria-month-grid">
+            <?php foreach ($nombresMesesConvocatoria as $numeroMes => $nombreMes): ?>
+                <?php
+                $datosMes = is_array($resumenMensualConvocatorias[$numeroMes] ?? null)
+                    ? $resumenMensualConvocatorias[$numeroMes]
+                    : ['total' => 0, 'convocatorias' => []];
+
+                $totalMes = (int)($datosMes['total'] ?? 0);
+                $muestrasMes = is_array($datosMes['convocatorias'] ?? null)
+                    ? $datosMes['convocatorias']
+                    : [];
+
+                $urlMes = BASE_URL .
+                    'index.php?controller=convocatoria&action=index&territorio_id=' .
+                    (int)$territorioSeleccionado['id'] .
+                    '&tipo=' . rawurlencode($tipoConvocatoria) .
+                    '&subtipo=' . rawurlencode($subtipoConvocatoria) .
+                    '&anio=' . $anioSeleccionado .
+                    '&mes=' . $numeroMes;
+                ?>
+
+                <article class="dashboard-panel convocatoria-month-card">
+                    <div class="convocatoria-month-card-header">
+                        <span class="convocatoria-month-icon">
+                            <i class="bi bi-calendar3"></i>
+                        </span>
+
+                        <div class="convocatoria-month-card-title">
+                            <strong><?= $texto($nombreMes) ?></strong>
+                            <small>Consulta las convocatorias de <?= $texto(mb_strtolower($nombreMes, 'UTF-8')) ?>.</small>
+                        </div>
+
+                        <span class="convocatoria-month-count"><?= $totalMes ?></span>
+                    </div>
+
+                    <div class="convocatoria-month-preview">
+                        <?php if (!empty($muestrasMes)): ?>
+                            <?php foreach ($muestrasMes as $muestraMes): ?>
+                                <?php
+                                $estadoMes = (string)($muestraMes['estado_proceso'] ?? 'inactiva');
+                                ?>
+                                <div class="convocatoria-month-preview-row">
+                                    <span class="convocatoria-month-dot is-<?= $texto($estadoMes) ?>"></span>
+                                    <span class="convocatoria-month-preview-name">
+                                        <?= $texto($muestraMes['titulo'] ?? '') ?>
+                                    </span>
+                                    <span class="convocatoria-month-status is-<?= $texto($estadoMes) ?>">
+                                        <?= $texto($estadoMesLabels[$estadoMes] ?? 'Inactiva') ?>
+                                    </span>
+                                </div>
+                            <?php endforeach; ?>
+
+                            <?php if ($totalMes > count($muestrasMes)): ?>
+                                <small class="convocatoria-month-more">
+                                    +<?= $totalMes - count($muestrasMes) ?> más
+                                </small>
+                            <?php endif; ?>
+                        <?php else: ?>
+                            <div class="convocatoria-month-empty">
+                                <span class="convocatoria-month-dot is-empty"></span>
+                                <span>Sin convocatorias registradas</span>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+
+                    <a
+                        class="btn btn-system-light convocatoria-month-button"
+                        href="<?= $texto($urlMes) ?>">
+                        Ver convocatorias
+                        <i class="bi bi-arrow-right"></i>
+                    </a>
+                </article>
+            <?php endforeach; ?>
+        </div>
+    </section>
+</div>
+
+<?php return; ?>
+<?php endif; ?>
+
 <div class="convocatoria-territory-context">
     <a
         class="data-back-link"
-        href="<?= $tipoConvocatoria === 'sindicatos'
-            ? BASE_URL . 'index.php?controller=convocatoria&action=index&territorio_id=' . (int)$territorioSeleccionado['id']
-            : BASE_URL . 'index.php?controller=convocatoria&action=index&territorio_id=' . (int)$territorioSeleccionado['id'] . '&tipo=' . rawurlencode($tipoConvocatoria) ?>">
+        href="<?= BASE_URL .
+            'index.php?controller=convocatoria&action=index&territorio_id=' .
+            (int)$territorioSeleccionado['id'] .
+            '&tipo=' . rawurlencode($tipoConvocatoria) .
+            '&subtipo=' . rawurlencode($subtipoConvocatoria) .
+            '&anio=' . (int)$anioSeleccionado ?>">
         <i class="bi bi-arrow-left"></i>
-        <?= $tipoConvocatoria === 'sindicatos' ? 'Cambiar tipo' : 'Cambiar opción' ?>
+        Cambiar mes
     </a>
     <span>
         <?= $texto($territorioSeleccionado['nombre'] ?? '') ?>
         · <?= $texto($etiquetaTipoConvocatoria) ?>
         <?php if ($tipoConvocatoria !== 'sindicatos'): ?>
             · <?= $texto($etiquetasSubtipo[$subtipoConvocatoria] ?? '') ?>
+        <?php endif; ?>
+        <?php if ($mesSeleccionado >= 1 && $mesSeleccionado <= 12): ?>
+            · <?= $texto($nombresMesesConvocatoria[$mesSeleccionado] ?? '') ?>
+            <?= (int)$anioSeleccionado ?>
         <?php endif; ?>
     </span>
 </div>
