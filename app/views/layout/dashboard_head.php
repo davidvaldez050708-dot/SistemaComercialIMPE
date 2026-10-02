@@ -74,6 +74,8 @@ $esConvocatoriaReportesDashboard =
     $actionDashboard === 'reportes';
 $esConvocatoriaReportePreviewDashboard =
     $controllerDashboard === 'convocatoriareporte';
+$esCorreosMarketingDashboard =
+    $controllerDashboard === 'correomarketing';
 
 $cssOpcionalDashboard = [];
 
@@ -161,6 +163,10 @@ if ($esTerritorialDashboard) {
 
 if ($esAliadosDashboard) {
     $cssOpcionalDashboard[] = 'aliados.css';
+}
+
+if ($esCorreosMarketingDashboard) {
+    $cssOpcionalDashboard[] = 'correos_marketing.css';
 }
 
 if (
