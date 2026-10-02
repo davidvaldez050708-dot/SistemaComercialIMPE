@@ -35,9 +35,6 @@ class SeguimientoAtencionOperativaService
             if ($id > 0) {
                 $ids[$id] = $id;
             }
-            if (count($ids) >= 200) {
-                break;
-            }
         }
 
         $ids = array_values($ids);
