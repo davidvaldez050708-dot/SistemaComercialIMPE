@@ -42,7 +42,7 @@
 
 .convocatoria-filter-bar {
     display: grid;
-    grid-template-columns: minmax(240px, 2fr) minmax(180px, 1fr) minmax(160px, .8fr) auto;
+    grid-template-columns: minmax(240px, 2fr) minmax(180px, 1fr) auto;
     gap: 16px;
     align-items: end;
 }
