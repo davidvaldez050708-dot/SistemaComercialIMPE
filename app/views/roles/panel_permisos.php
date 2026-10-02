@@ -17,14 +17,21 @@ $permisosSoloAdministradorIds = [];
 
 foreach ($permisosAgrupados as $permisos) {
     foreach ($permisos as $permiso) {
-        if ((string)($permiso['codigo'] ?? '') === 'reportes.usuarios') {
+        $codigoPermiso = (string)($permiso['codigo'] ?? '');
+        $permisoSoloAdministrador = in_array(
+            $codigoPermiso,
+            [
+                'reportes.usuarios',
+                'whatsapp.gestionar_cuentas'
+            ],
+            true
+        );
+
+        if ($permisoSoloAdministrador) {
             $permisosSoloAdministradorIds[(int)$permiso['id']] = true;
         }
 
-        if (
-            $rolEsAdministrador ||
-            (string)($permiso['codigo'] ?? '') !== 'reportes.usuarios'
-        ) {
+        if ($rolEsAdministrador || !$permisoSoloAdministrador) {
             $totalPermisos++;
         }
     }
@@ -149,9 +156,14 @@ $permisosHabilitados = $rolEsAdministrador
                         <?php foreach ($permisos as $permiso): ?>
 
                             <?php
-                            $permisoSoloAdministrador =
-                                (string)($permiso['codigo'] ?? '') ===
-                                'reportes.usuarios';
+                            $permisoSoloAdministrador = in_array(
+                                (string)($permiso['codigo'] ?? ''),
+                                [
+                                    'reportes.usuarios',
+                                    'whatsapp.gestionar_cuentas'
+                                ],
+                                true
+                            );
                             $permisoActivo = $rolEsAdministrador ||
                                 isset($permisosRol[(int)$permiso['id']]);
                             $permisoBloqueado =
