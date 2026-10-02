@@ -137,8 +137,6 @@ class ReporteConvocatoriaPdfService
                 '</td></tr>';
         }
 
-        $totalBachillerato = (int)($porTipo['bachillerato']['total'] ?? 0);
-        $totalTitulacion = (int)($porTipo['titulacion']['total'] ?? 0);
         $mesesBachillerato = is_array($porTipo['bachillerato']['meses'] ?? null)
             ? $porTipo['bachillerato']['meses']
             : [];
@@ -343,35 +341,6 @@ class ReporteConvocatoriaPdfService
     }
     .priority-danger { background: #fff0ee; color: #b42318; }
     .priority-warning { background: #fff3e6; color: #d46a13; }
-    .type-cards {
-        width: 100%;
-        border-collapse: separate;
-        border-spacing: 10px 0;
-        margin-left: -10px;
-    }
-    .type-card {
-        width: 50%;
-        padding: 12px;
-        border: 1px solid #dfe5ee;
-        border-left: 4px solid #273a8a;
-        background: #ffffff;
-        vertical-align: top;
-    }
-    .type-card-title {
-        color: #16223b;
-        font-size: 10px;
-        font-weight: 700;
-    }
-    .type-card-total {
-        margin-top: 8px;
-        color: #273a8a;
-        font-size: 22px;
-        font-weight: 700;
-    }
-    .type-card-sub {
-        color: #6d7480;
-        font-size: 7px;
-    }
     .chart-table {
         width: 100%;
         margin-top: 8px;
@@ -463,23 +432,7 @@ class ReporteConvocatoriaPdfService
         </tr>
     </table>
 
-    <div class="section-title">Publicaciones por tipo</div>
-    <table class="type-cards">
-        <tr>
-            <td class="type-card">
-                <div class="type-card-title">Bachillerato</div>
-                <div class="type-card-total">' . $totalBachillerato . '</div>
-                <div class="type-card-sub">publicaciones · últimos 30 días</div>
-            </td>
-            <td class="type-card">
-                <div class="type-card-title">Titulación</div>
-                <div class="type-card-total">' . $totalTitulacion . '</div>
-                <div class="type-card-sub">publicaciones · últimos 30 días</div>
-            </td>
-        </tr>
-    </table>
-
-    <div class="section-title">Tendencia mensual de publicaciones</div>
+    <div class="section-title">Publicaciones por tipo · tendencia mensual</div>
     <div class="panel">
         <table class="chart-table">
             <tbody>' . $filasGraficaTipo . '</tbody>
