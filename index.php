@@ -114,6 +114,9 @@ $rutasPublicas = [
         'iniciarSesion',
         'mostrarRecuperacion',
         'procesarRecuperacion'
+    ],
+    'whatsappWebhook' => [
+        'webhook'
     ]
 ];
 
@@ -220,6 +223,7 @@ $controladoresProtegidosCsrf = [
     'convocatoria',
     'convocatoriaNotificacion',
     'aliado',
+    'whatsapp',
     'rol',
     'usuario'
 ];
@@ -532,6 +536,28 @@ switch ($controller) {
 
         $controllerInstance =
             new AliadoController();
+
+        break;
+
+
+    case 'whatsapp':
+
+        require_once __DIR__ .
+            '/app/controllers/WhatsAppController.php';
+
+        $controllerInstance =
+            new WhatsAppController();
+
+        break;
+
+
+    case 'whatsappWebhook':
+
+        require_once __DIR__ .
+            '/app/controllers/WhatsAppWebhookController.php';
+
+        $controllerInstance =
+            new WhatsAppWebhookController();
 
         break;
 
