@@ -514,6 +514,17 @@ switch ($controller) {
         break;
 
 
+    case 'correoMarketing':
+
+        require_once __DIR__ .
+            '/app/controllers/CorreoMarketingController.php';
+
+        $controllerInstance =
+            new CorreoMarketingController();
+
+        break;
+
+
     case 'aliado':
 
         require_once __DIR__ .
