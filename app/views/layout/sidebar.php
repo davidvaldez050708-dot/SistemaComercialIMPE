@@ -8,6 +8,7 @@ $mostrarRoles = tienePermiso('roles.ver');
 $mostrarTerritorios = tienePermiso('territorios.ver');
 $mostrarDataTerritorial = tienePermiso('data_territorial.ver');
 $mostrarSeguimientoVinculacion = tienePermiso('seguimientos_vinculacion.ver');
+$mostrarAliados = tienePermiso('aliados.ver');
 $mostrarConvocatorias = tienePermiso('convocatorias.ver');
 $mostrarReporteTerritorial =
     tienePermiso('reportes.territorial') &&
@@ -56,6 +57,7 @@ $claseDataTerritorial =
     $opcionActiva === 'data_territorial' ? 'active' : '';
 $claseSeguimientoVinculacion =
     $opcionActiva === 'seguimiento_vinculacion' ? 'active' : '';
+$claseAliados = $opcionActiva === 'aliados' ? 'active' : '';
 $claseReportes = $opcionActiva === 'reportes' ? 'active' : '';
 $claseConvocatorias = $opcionActiva === 'convocatorias' ? 'active' : '';
 $claseConvocatoriasReportes =
@@ -165,7 +167,7 @@ $claseConvocatoriasReportes =
 
         <?php endif; ?>
 
-        <?php if ($mostrarDataTerritorial || $mostrarSeguimientoVinculacion): ?>
+        <?php if ($mostrarDataTerritorial || $mostrarSeguimientoVinculacion || $mostrarAliados): ?>
 
             <div class="sidebar-section">
                 <p class="sidebar-section-title">
@@ -190,6 +192,17 @@ $claseConvocatoriasReportes =
                         class="sidebar-link <?= $claseSeguimientoVinculacion ?>">
                         <i class="bi bi-kanban"></i>
                         Seguimiento
+                    </a>
+
+                <?php endif; ?>
+
+                <?php if ($mostrarAliados): ?>
+
+                    <a
+                        href="<?= BASE_URL ?>index.php?controller=aliado&action=index"
+                        class="sidebar-link <?= $claseAliados ?>">
+                        <i class="bi bi-building-check"></i>
+                        Aliados
                     </a>
 
                 <?php endif; ?>
@@ -392,7 +405,7 @@ $claseConvocatoriasReportes =
 
 
             <!-- VINCULACIÓN -->
-            <?php if ($mostrarDataTerritorial || $mostrarSeguimientoVinculacion): ?>
+            <?php if ($mostrarDataTerritorial || $mostrarSeguimientoVinculacion || $mostrarAliados): ?>
 
                 <div class="sidebar-section">
 
@@ -422,6 +435,19 @@ $claseConvocatoriasReportes =
 
                             <i class="bi bi-kanban"></i>
                             Seguimiento
+
+                        </a>
+
+                    <?php endif; ?>
+
+                    <?php if ($mostrarAliados): ?>
+
+                        <a
+                            href="<?= BASE_URL ?>index.php?controller=aliado&action=index"
+                            class="sidebar-link <?= $claseAliados ?>">
+
+                            <i class="bi bi-building-check"></i>
+                            Aliados
 
                         </a>
 
