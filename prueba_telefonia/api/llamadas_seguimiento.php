@@ -40,8 +40,12 @@ if ($seguimientoId <= 0 || $usuarioId <= 0) {
 
 $modelo = new SeguimientoVinculacionModel();
 $rolId = (int)($_SESSION['rol_id'] ?? 0);
+$rolNombre = trim((string)($_SESSION['rol'] ?? ''));
+$esConsultaGlobal =
+    $rolId === 1 ||
+    strcasecmp($rolNombre, 'Marketing') === 0;
 
-if ($rolId === 1) {
+if ($esConsultaGlobal) {
     $seguimiento = $modelo->obtenerSeguimientoAdministrador($seguimientoId);
 } elseif (tienePermiso('seguimientos_vinculacion.supervisar')) {
     $seguimiento = $modelo->obtenerSeguimientoSupervisor($usuarioId, $seguimientoId);
