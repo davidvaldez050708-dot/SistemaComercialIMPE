@@ -1079,6 +1079,12 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
+        const contactsButton = event.target.closest('[data-aliado-contacts]');
+        if (contactsButton) {
+            loadContacts(contactsButton.dataset.aliadoContacts);
+            return;
+        }
+
         const historyButton = event.target.closest('[data-aliado-history]');
         if (historyButton) {
             loadHistory(historyButton.dataset.aliadoHistory);
@@ -1093,9 +1099,83 @@ document.addEventListener('DOMContentLoaded', function () {
         sendButton.addEventListener('click', sendConvocatoria);
     }
 
-    if (stateSelect) {
-        stateSelect.addEventListener('change', filterMunicipalities);
+    if (filterForm) {
+        filterForm.addEventListener('submit', function (event) {
+            event.preventDefault();
+            applyDirectoryFilters();
+        });
     }
+
+    if (searchInput) {
+        searchInput.addEventListener('input', function () {
+            window.clearTimeout(searchTimer);
+            searchTimer = window.setTimeout(applyDirectoryFilters, 280);
+        });
+    }
+
+    if (stateSelect) {
+        stateSelect.addEventListener('change', function () {
+            filterMunicipalities();
+            applyDirectoryFilters();
+        });
+    }
+
+    municipalitySelect?.addEventListener('change', applyDirectoryFilters);
+    analystSelect?.addEventListener('change', applyDirectoryFilters);
+
+    clearFilters?.addEventListener('click', function (event) {
+        event.preventDefault();
+
+        if (searchInput) {
+            searchInput.value = '';
+        }
+        if (stateSelect) {
+            stateSelect.value = '0';
+        }
+        if (municipalitySelect) {
+            municipalitySelect.value = '0';
+        }
+        if (analystSelect) {
+            analystSelect.value = '0';
+        }
+
+        filterMunicipalities();
+        applyDirectoryFilters();
+        searchInput?.focus();
+    });
+
+    if (contactForm) {
+        contactForm.addEventListener('submit', saveContact);
+    }
+
+    contactEditorCancel?.addEventListener('click', resetContactForm);
+
+    contactsList?.addEventListener('click', function (event) {
+        const editButton = event.target.closest('[data-contact-edit]');
+        if (editButton) {
+            populateContactEditor(
+                currentContacts.get(editButton.dataset.contactEdit),
+                false
+            );
+            return;
+        }
+
+        const useButton = event.target.closest('[data-contact-use]');
+        if (useButton) {
+            populateContactEditor(
+                currentContacts.get(useButton.dataset.contactUse),
+                true
+            );
+            return;
+        }
+
+        const removeButton = event.target.closest('[data-contact-remove]');
+        if (removeButton) {
+            removeContact(
+                currentContacts.get(removeButton.dataset.contactRemove)
+            );
+        }
+    });
 
     if (shareModalElement) {
         shareModalElement.addEventListener('hidden.bs.modal', function () {
@@ -1104,5 +1184,18 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    if (contactsModalElement) {
+        contactsModalElement.addEventListener('hidden.bs.modal', function () {
+            currentContactAllyId = 0;
+            currentContacts = new Map();
+            resetContactForm();
+
+            if (contactsDirty) {
+                window.location.reload();
+            }
+        });
+    }
+
     filterMunicipalities();
+    applyDirectoryFilters();
 });
