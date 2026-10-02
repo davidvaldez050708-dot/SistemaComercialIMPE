@@ -30,6 +30,8 @@ class RolModel
             !$this->existePermisoPorCodigo('seguimientos_vinculacion.operar_propios') ||
             !$this->existePermisoPorCodigo('seguimientos_vinculacion.supervisar') ||
             !$this->existePermisoPorCodigo('seguimientos_vinculacion.comentar');
+        $permisoReporteConvocatoriasNuevo =
+            !$this->existePermisoPorCodigo('reportes.convocatorias');
 
         $sql = "INSERT INTO permisos (
                     modulo,
@@ -84,6 +86,10 @@ class RolModel
 
         if ($permisosSeguimientoVinculacionNuevos) {
             $this->asignarPermisosInicialesSeguimientoVinculacion();
+        }
+
+        if ($permisoReporteConvocatoriasNuevo) {
+            $this->asignarPermisosInicialesReporteConvocatorias();
         }
 
         $this->asegurarPermisosAdministrador();
@@ -458,6 +464,17 @@ class RolModel
                 'reportes.seguimiento.actividad',
                 'reportes.seguimiento.institucion',
                 'reportes.territorial'
+            ],
+            'Marketing' => [
+                'convocatorias.ver',
+                'convocatorias.crear',
+                'convocatorias.editar',
+                'convocatorias.gestionar',
+                'convocatorias.descargar',
+                'convocatorias.cambiar_estado',
+                'reportes.ver',
+                'reportes.convocatorias',
+                'reportes.exportar'
             ]
         ];
 
@@ -766,6 +783,35 @@ class RolModel
         }
     }
 
+    private function asignarPermisosInicialesReporteConvocatorias()
+    {
+        $nombreRol = 'Marketing';
+        $codigos = [
+            'convocatorias.ver',
+            'reportes.ver',
+            'reportes.convocatorias',
+            'reportes.exportar'
+        ];
+
+        $sql = "INSERT IGNORE INTO rol_permisos (
+                    rol_id,
+                    permiso_id
+                )
+                SELECT roles.id, permisos.id
+                FROM roles
+                INNER JOIN permisos
+                    ON permisos.codigo = ?
+                WHERE roles.nombre = ?
+                  AND permisos.estado = 1";
+
+        $stmt = $this->connection->prepare($sql);
+
+        foreach ($codigos as $codigo) {
+            $stmt->bind_param("ss", $codigo, $nombreRol);
+            $stmt->execute();
+        }
+    }
+
     private function normalizarDependenciasPermisos($permisosIds)
     {
         if (empty($permisosIds)) {
@@ -805,6 +851,7 @@ class RolModel
             'reportes.seguimiento.actividad' => 'reportes.ver',
             'reportes.seguimiento.institucion' => 'reportes.ver',
             'reportes.territorial' => 'reportes.ver',
+            'reportes.convocatorias' => 'reportes.ver',
             'reportes.usuarios' => 'reportes.ver'
         ];
         $dependenciasAdicionales = [
@@ -819,6 +866,9 @@ class RolModel
             ],
             'reportes.territorial' => [
                 'data_territorial.ver'
+            ],
+            'reportes.convocatorias' => [
+                'convocatorias.ver'
             ]
         ];
 
@@ -1094,6 +1144,7 @@ class RolModel
             ['modulo' => 'Reportes', 'codigo' => 'reportes.seguimiento.actividad', 'nombre' => 'Reporte de actividad de seguimiento', 'descripcion' => 'Generar reportes de actividad e interacciones dentro del alcance autorizado.'],
             ['modulo' => 'Reportes', 'codigo' => 'reportes.seguimiento.institucion', 'nombre' => 'Reporte de institución', 'descripcion' => 'Generar el expediente ejecutivo de una institución dentro del alcance autorizado.'],
             ['modulo' => 'Reportes', 'codigo' => 'reportes.territorial', 'nombre' => 'Reporte de información territorial', 'descripcion' => 'Generar reportes de información territorial sobre territorios autorizados.'],
+            ['modulo' => 'Reportes', 'codigo' => 'reportes.convocatorias', 'nombre' => 'Reporte de convocatorias', 'descripcion' => 'Consultar y generar el reporte ejecutivo del módulo de Convocatorias.'],
             ['modulo' => 'Reportes', 'codigo' => 'reportes.usuarios', 'nombre' => 'Reporte administrativo de usuarios', 'descripcion' => 'Generar el reporte transversal de usuarios. Exclusivo del Administrador.'],
             ['modulo' => 'Reportes', 'codigo' => 'reportes.exportar', 'nombre' => 'Exportar reportes', 'descripcion' => 'Exportar a PDF los reportes que el rol tiene autorizados.'],
             ['modulo' => 'Respaldos', 'codigo' => 'respaldos.generar', 'nombre' => 'Generar respaldos', 'descripcion' => 'Crear respaldos del sistema.'],
