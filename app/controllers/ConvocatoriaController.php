@@ -227,32 +227,12 @@ class ConvocatoriaController
         $this->validarPermiso('reportes.ver');
         $this->validarPermiso('reportes.convocatorias');
 
-        if (
-            strcasecmp(
-                trim((string)($_SESSION['rol'] ?? '')),
-                'Marketing'
-            ) !== 0
-        ) {
-            header('Location: ' . BASE_URL . 'index.php?controller=reporte&action=index');
-            exit;
-        }
-
-        $modelo = new ConvocatoriaModel();
-        $modelo->desactivarConvocatoriasVencidas();
-
-        $resumenConvocatoriasReporte = $modelo->obtenerResumenDashboard();
-        $coberturaConvocatoriasReporte = $modelo->obtenerCoberturaTerritorialDashboard(32);
-        $publicacionesPorTipoReporte = $modelo->obtenerPublicacionesPorTipoDashboard(30);
-
-        $tituloPagina = 'Reportes de Convocatorias';
-        $subtituloPagina = 'Consulta indicadores y accesos de análisis del módulo de convocatorias.';
-        $opcionActiva = 'convocatorias_reportes';
-
-        require_once __DIR__ . '/../views/layout/dashboard_head.php';
-        require_once __DIR__ . '/../views/layout/sidebar.php';
-        require_once __DIR__ . '/../views/layout/topbar.php';
-        require_once __DIR__ . '/../views/convocatorias/reportes.php';
-        require_once __DIR__ . '/../views/layout/dashboard_footer.php';
+        header(
+            'Location: ' .
+            BASE_URL .
+            'index.php?controller=reporte&action=index'
+        );
+        exit;
     }
 
     public function guardar()
