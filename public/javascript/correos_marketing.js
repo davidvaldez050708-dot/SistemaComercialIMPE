@@ -26,6 +26,8 @@
             : null;
         const urlEnviar = 'index.php?controller=correoMarketing&action=enviar';
         const urlVer = 'index.php?controller=correoMarketing&action=ver';
+        const urlRecuperarAdjunto =
+            'index.php?controller=correoMarketing&action=recuperarAdjunto';
         let enviando = false;
         let correoDetalleActual = null;
 
@@ -440,8 +442,161 @@
                         legacy.className =
                             'correo-marketing-attachment-legacy';
                         legacy.textContent =
-                            'Vista no disponible para este envío anterior';
+                            'Archivo histórico sin copia local';
                         acciones.appendChild(legacy);
+
+                        if (
+                            correoDetalleActual &&
+                            Number(correoDetalleActual.id || 0) > 0
+                        ) {
+                            const recuperar = document.createElement('button');
+                            recuperar.type = 'button';
+                            recuperar.className =
+                                'btn btn-system-light btn-sm';
+                            recuperar.innerHTML =
+                                '<i class="bi bi-arrow-clockwise"></i>' +
+                                '<span>Recuperar archivo</span>';
+
+                            recuperar.addEventListener(
+                                'click',
+                                function () {
+                                    const input = document.createElement(
+                                        'input'
+                                    );
+                                    input.type = 'file';
+                                    input.className = 'd-none';
+
+                                    const extension = String(
+                                        adjunto.nombre || ''
+                                    ).split('.').pop().toLowerCase();
+
+                                    const acceptMap = {
+                                        pdf: '.pdf',
+                                        doc: '.doc',
+                                        docx: '.docx',
+                                        xls: '.xls',
+                                        xlsx: '.xlsx',
+                                        ppt: '.ppt',
+                                        pptx: '.pptx',
+                                        txt: '.txt',
+                                        csv: '.csv',
+                                        png: '.png',
+                                        jpg: '.jpg',
+                                        jpeg: '.jpeg'
+                                    };
+
+                                    if (acceptMap[extension]) {
+                                        input.accept =
+                                            acceptMap[extension];
+                                    }
+
+                                    document.body.appendChild(input);
+
+                                    input.addEventListener(
+                                        'change',
+                                        async function () {
+                                            const archivo =
+                                                input.files &&
+                                                input.files[0]
+                                                    ? input.files[0]
+                                                    : null;
+
+                                            if (!archivo) {
+                                                input.remove();
+                                                return;
+                                            }
+
+                                            recuperar.disabled = true;
+                                            const original =
+                                                recuperar.innerHTML;
+                                            recuperar.innerHTML =
+                                                '<span class="spinner-border ' +
+                                                'spinner-border-sm" ' +
+                                                'aria-hidden="true"></span>' +
+                                                '<span>Recuperando...</span>';
+
+                                            try {
+                                                const datos =
+                                                    new FormData();
+                                                datos.append(
+                                                    'correo_id',
+                                                    String(
+                                                        correoDetalleActual.id
+                                                    )
+                                                );
+                                                datos.append(
+                                                    'nombre_esperado',
+                                                    String(
+                                                        adjunto.nombre || ''
+                                                    )
+                                                );
+                                                datos.append(
+                                                    'archivo',
+                                                    archivo
+                                                );
+
+                                                const respuesta =
+                                                    await fetch(
+                                                        urlRecuperarAdjunto,
+                                                        {
+                                                            method: 'POST',
+                                                            body: datos,
+                                                            headers: {
+                                                                'X-Requested-With':
+                                                                    'fetch'
+                                                            }
+                                                        }
+                                                    );
+
+                                                const json =
+                                                    await respuesta.json();
+
+                                                if (
+                                                    !respuesta.ok ||
+                                                    !json.ok
+                                                ) {
+                                                    throw new Error(
+                                                        json.mensaje ||
+                                                        'No fue posible recuperar el archivo.'
+                                                    );
+                                                }
+
+                                                mostrarToast(
+                                                    json.mensaje ||
+                                                    'Archivo recuperado correctamente.',
+                                                    false
+                                                );
+
+                                                await abrirDetalle(
+                                                    Number(
+                                                        correoDetalleActual.id
+                                                    )
+                                                );
+                                            } catch (errorRecuperar) {
+                                                console.error(
+                                                    errorRecuperar
+                                                );
+                                                mostrarToast(
+                                                    errorRecuperar.message ||
+                                                    'No fue posible recuperar el archivo.',
+                                                    true
+                                                );
+                                            } finally {
+                                                recuperar.disabled = false;
+                                                recuperar.innerHTML =
+                                                    original;
+                                                input.remove();
+                                            }
+                                        },
+                                        { once: true }
+                                    );
+
+                                    input.click();
+                                }
+                            );
+
+                            acciones.appendChild(recuperar);
+                        }
                     }
 
                     informacion.appendChild(acciones);
