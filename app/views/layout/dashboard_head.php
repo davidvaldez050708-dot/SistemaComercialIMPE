@@ -71,6 +71,8 @@ $esConvocatoriaDashboard = $controllerDashboard === 'convocatoria';
 $esConvocatoriaReportesDashboard =
     $controllerDashboard === 'convocatoria' &&
     $actionDashboard === 'reportes';
+$esConvocatoriaReportePreviewDashboard =
+    $controllerDashboard === 'convocatoriareporte';
 
 $cssOpcionalDashboard = [];
 
@@ -144,7 +146,11 @@ if ($esSeguimientoEstado || $esSeguimientoDetalle || $esAgendaDashboard) {
     $cssOpcionalDashboard[] = 'seguimiento_estabilizacion_visual.css';
 }
 
-if ($esConvocatoriaDashboard || $esHomeDashboard) {
+if (
+    $esConvocatoriaDashboard ||
+    $esConvocatoriaReportePreviewDashboard ||
+    $esHomeDashboard
+) {
     $cssOpcionalDashboard[] = 'convocatorias.css';
 }
 
@@ -152,7 +158,10 @@ if ($esTerritorialDashboard) {
     $cssOpcionalDashboard[] = 'territorios_resumen_refinamientos.css';
 }
 
-if ($esConvocatoriaReportesDashboard) {
+if (
+    $esConvocatoriaReportesDashboard ||
+    $esConvocatoriaReportePreviewDashboard
+) {
     $cssOpcionalDashboard[] = 'reportes.css';
 }
 
