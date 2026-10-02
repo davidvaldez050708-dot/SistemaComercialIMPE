@@ -23,6 +23,15 @@ class AliadoModel
         return $this->tablaExiste('aliados_contactos');
     }
 
+    public function consentimientoWhatsappDisponible()
+    {
+        return $this->contactosDisponibles() &&
+            $this->columnaExiste(
+                'aliados_contactos',
+                'autorizado_whatsapp'
+            );
+    }
+
     public function obtenerResumenTerritorial($usuarioId, $esAdministrador = false)
     {
         if (!$this->estructuraDisponible()) {
@@ -342,8 +351,18 @@ class AliadoModel
     {
         $contactos = [];
         $normalizados = [];
+        $consentimientoDisponible =
+            $this->consentimientoWhatsappDisponible();
 
         if ($this->contactosDisponibles()) {
+            $consentimientoSelect = $consentimientoDisponible
+                ? ",
+                        autorizado_whatsapp,
+                        autorizado_whatsapp_at"
+                : ",
+                        0 AS autorizado_whatsapp,
+                        NULL AS autorizado_whatsapp_at";
+
             $sql = "SELECT
                         id,
                         numero,
@@ -351,7 +370,8 @@ class AliadoModel
                         etiqueta,
                         origen,
                         confirmado_whatsapp,
-                        preferido_difusion,
+                        preferido_difusion" .
+                        $consentimientoSelect . ",
                         created_at,
                         updated_at
                     FROM aliados_contactos
@@ -383,6 +403,8 @@ class AliadoModel
                     'origen' => (string)$fila['origen'],
                     'origen_label' => $this->etiquetaOrigenContacto($fila['origen']),
                     'confirmado_whatsapp' => (int)$fila['confirmado_whatsapp'] === 1,
+                    'autorizado_whatsapp' => (int)($fila['autorizado_whatsapp'] ?? 0) === 1,
+                    'autorizado_whatsapp_at' => (string)($fila['autorizado_whatsapp_at'] ?? ''),
                     'preferido_difusion' => (int)$fila['preferido_difusion'] === 1,
                     'editable' => true
                 ];
@@ -427,6 +449,8 @@ class AliadoModel
                 'origen' => (string)$fuente['origen'],
                 'origen_label' => (string)$fuente['etiqueta'],
                 'confirmado_whatsapp' => (bool)$fuente['confirmado_whatsapp'],
+                'autorizado_whatsapp' => false,
+                'autorizado_whatsapp_at' => '',
                 'preferido_difusion' => false,
                 'editable' => false
             ];
@@ -449,7 +473,18 @@ class AliadoModel
         $etiqueta = trim((string)($datos['etiqueta'] ?? 'Difusión'));
         $origen = strtoupper(trim((string)($datos['origen'] ?? 'CUENTA_CLAVE')));
         $confirmadoWhatsapp = !empty($datos['confirmado_whatsapp']) ? 1 : 0;
+        $autorizadoWhatsapp = !empty($datos['autorizado_whatsapp']) ? 1 : 0;
         $preferido = !empty($datos['preferido_difusion']) ? 1 : 0;
+        $consentimientoDisponible =
+            $this->consentimientoWhatsappDisponible();
+
+        if ($autorizadoWhatsapp === 1) {
+            $confirmadoWhatsapp = 1;
+        }
+
+        if (!$consentimientoDisponible) {
+            $autorizadoWhatsapp = 0;
+        }
 
         if ($etiqueta === '') {
             $etiqueta = 'Difusión';
@@ -578,6 +613,38 @@ class AliadoModel
                 $stmt->execute();
             }
 
+            if ($consentimientoDisponible) {
+                $stmtConsentimiento = $this->connection->prepare(
+                    "UPDATE aliados_contactos
+                     SET autorizado_whatsapp = ?,
+                         autorizado_whatsapp_at = CASE
+                            WHEN ? = 1
+                                THEN COALESCE(autorizado_whatsapp_at, NOW())
+                            ELSE NULL
+                         END,
+                         autorizado_whatsapp_por = CASE
+                            WHEN ? = 1 THEN ?
+                            ELSE NULL
+                         END,
+                         actualizado_por = ?
+                     WHERE seguimiento_id = ?
+                       AND numero_normalizado = ?
+                       AND activo = 1"
+                );
+
+                $stmtConsentimiento->bind_param(
+                    'iiiiiis',
+                    $autorizadoWhatsapp,
+                    $autorizadoWhatsapp,
+                    $autorizadoWhatsapp,
+                    $usuarioId,
+                    $usuarioId,
+                    $seguimientoId,
+                    $numeroNormalizado
+                );
+                $stmtConsentimiento->execute();
+            }
+
             $this->connection->commit();
             return true;
         } catch (Throwable $error) {
@@ -658,15 +725,40 @@ class AliadoModel
         $contactoSelect = ",
                     NULL AS contacto_difusion_preferido,
                     0 AS contacto_difusion_confirmado_whatsapp,
+                    0 AS contacto_difusion_autorizado_whatsapp,
                     0 AS tiene_whatsapp_confirmado_contacto,
+                    0 AS tiene_whatsapp_autorizado_contacto,
                     '' AS contactos_difusion_busqueda,
                     NULL AS contacto_difusion_etiqueta";
         $contactoJoin = "";
 
         if ($this->contactosDisponibles()) {
+            $consentimientoDisponible =
+                $this->consentimientoWhatsappDisponible();
+
+            $contactoAutorizadoSelect = $consentimientoDisponible
+                ? ",
+                    COALESCE(preferido.autorizado_whatsapp, 0) AS contacto_difusion_autorizado_whatsapp,
+                    CASE
+                        WHEN EXISTS (
+                            SELECT 1
+                            FROM aliados_contactos contacto_autorizado
+                            WHERE contacto_autorizado.seguimiento_id = s.id
+                              AND contacto_autorizado.activo = 1
+                              AND contacto_autorizado.confirmado_whatsapp = 1
+                              AND contacto_autorizado.autorizado_whatsapp = 1
+                        )
+                        THEN 1
+                        ELSE 0
+                    END AS tiene_whatsapp_autorizado_contacto"
+                : ",
+                    0 AS contacto_difusion_autorizado_whatsapp,
+                    0 AS tiene_whatsapp_autorizado_contacto";
+
             $contactoSelect = ",
                     preferido.numero AS contacto_difusion_preferido,
-                    COALESCE(preferido.confirmado_whatsapp, 0) AS contacto_difusion_confirmado_whatsapp,
+                    COALESCE(preferido.confirmado_whatsapp, 0) AS contacto_difusion_confirmado_whatsapp" .
+                    $contactoAutorizadoSelect . ",
                     CASE
                         WHEN EXISTS (
                             SELECT 1
@@ -784,6 +876,22 @@ class AliadoModel
 
         $resultado = $this->connection->query(
             "SHOW TABLES LIKE '" . $tabla . "'"
+        );
+
+        return $resultado && $resultado->num_rows > 0;
+    }
+
+    private function columnaExiste($tabla, $columna)
+    {
+        $tabla = preg_replace('/[^a-zA-Z0-9_]+/', '', (string)$tabla);
+        $columna = preg_replace('/[^a-zA-Z0-9_]+/', '', (string)$columna);
+
+        if ($tabla === '' || $columna === '') {
+            return false;
+        }
+
+        $resultado = $this->connection->query(
+            "SHOW COLUMNS FROM `" . $tabla . "` LIKE '" . $columna . "'"
         );
 
         return $resultado && $resultado->num_rows > 0;
