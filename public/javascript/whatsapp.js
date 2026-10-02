@@ -164,6 +164,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         : ''
                 );
             icon.title = String(message.estado || '');
+            icon.dataset.messageStatusIcon = '';
             meta.appendChild(icon);
         }
 
@@ -181,6 +182,58 @@ document.addEventListener('DOMContentLoaded', function () {
 
         article.appendChild(bubble);
         return article;
+    };
+
+    const updateOutgoingStatuses = function (items) {
+        if (!messagesContainer || !Array.isArray(items)) {
+            return;
+        }
+
+        items.forEach(function (item) {
+            const id = Number(item.id || 0);
+            if (id <= 0) {
+                return;
+            }
+
+            const message = messagesContainer.querySelector(
+                '[data-message-id="' + String(id) + '"]'
+            );
+
+            if (!message) {
+                return;
+            }
+
+            const icon = message.querySelector(
+                '[data-message-status-icon]'
+            );
+
+            if (icon) {
+                const status = String(item.estado || '').toUpperCase();
+                icon.className =
+                    'bi ' +
+                    messageStatusIcon(status) +
+                    (status === 'LEIDO' ? ' is-read' : '');
+                icon.title = status;
+            }
+
+            const bubble = message.querySelector('.whatsapp-message-bubble');
+            let error = message.querySelector('.whatsapp-message-error');
+            const detail = String(item.error_detalle || '').trim();
+
+            if (detail !== '') {
+                if (!error && bubble) {
+                    error = document.createElement('small');
+                    error.className = 'whatsapp-message-error';
+                    bubble.appendChild(error);
+                }
+
+                if (error) {
+                    error.textContent = detail;
+                }
+            } else if (error) {
+                error.remove();
+            }
+        });
     };
 
     const scrollMessages = function () {
@@ -265,6 +318,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         appendMessages(data.mensajes || []);
+        updateOutgoingStatuses(data.estados_salida || []);
         updateWindowState(Boolean(data.ventana_servicio_abierta));
     };
 
