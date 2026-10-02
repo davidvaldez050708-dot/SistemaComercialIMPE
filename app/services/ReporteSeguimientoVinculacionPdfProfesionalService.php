@@ -145,7 +145,7 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
         }
 
         $total = (int)($resumen['total'] ?? count($seguimientos));
-        if ($total <= 0) {
+        if ($total <= 0 && $tipoReporte !== 'actividad') {
             $html .= '<section class="report-section keep">' . $this->titulo('Resultado de la consulta');
             $html .= $this->vacio('No se encontraron seguimientos con los criterios seleccionados.');
             return $html . '</section></body></html>';
@@ -172,6 +172,14 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
 
         if ($tipoReporte === 'actividad') {
             $html .= $this->resumenEjecutivoActividad($analitica);
+
+            if (
+                $modoReporte === 'supervisor' &&
+                (int)($filtrosRaw['responsable_id'] ?? 0) <= 0
+            ) {
+                $html .= $this->actividadPorAnalista($analitica);
+            }
+
             $html .= $this->rendimientoTelefonicoActividad($analitica);
             $html .= $this->composicionActividad($analitica);
 
@@ -600,6 +608,48 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
         $html .= '<div class="decision-note"><strong>Criterio de efectividad:</strong> ' .
             'se contabiliza una efectiva por institución y día cuando existe evidencia telefónica válida vinculada.</div>';
         return $html . '</section>';
+    }
+
+    private function actividadPorAnalista(array $analitica): string
+    {
+        $filas = is_array($analitica['actividad_por_actor'] ?? null)
+            ? $analitica['actividad_por_actor']
+            : [];
+
+        $html = '<section class="report-section keep activity-team-section">' .
+            $this->titulo('Actividad por Analista');
+
+        if (empty($filas)) {
+            return $html . $this->vacio('No hay Analistas supervisados dentro del alcance seleccionado.') . '</section>';
+        }
+
+        $html .= '<div class="flow-note">Desglose del trabajo registrado por cada Analista dentro del mismo periodo y alcance.</div>';
+        $html .= '<table class="data-table activity-team-table"><thead><tr>';
+        $html .= '<th>Analista</th>';
+        $html .= '<th class="center">Actividades</th>';
+        $html .= '<th class="center">Instituciones</th>';
+        $html .= '<th class="center">Llamadas</th>';
+        $html .= '<th class="center">Contacto</th>';
+        $html .= '<th class="center">Correos</th>';
+        $html .= '<th class="center">Efectivas</th>';
+        $html .= '</tr></thead><tbody>';
+
+        foreach ($filas as $fila) {
+            $contactos = max(0, (int)($fila['con_contacto'] ?? 0));
+            $tasa = $this->decimal($fila['tasa_contacto'] ?? 0, 1);
+
+            $html .= '<tr>';
+            $html .= '<td><strong>' . $this->e((string)($fila['analista_nombre'] ?? 'Analista')) . '</strong></td>';
+            $html .= '<td class="center">' . (int)($fila['interacciones'] ?? 0) . '</td>';
+            $html .= '<td class="center">' . (int)($fila['instituciones'] ?? 0) . '</td>';
+            $html .= '<td class="center">' . (int)($fila['llamadas'] ?? 0) . '</td>';
+            $html .= '<td class="center">' . $contactos . ' · ' . $this->e($tasa) . '%</td>';
+            $html .= '<td class="center">' . (int)($fila['correos'] ?? 0) . '</td>';
+            $html .= '<td class="center activity-effective">' . (int)($fila['efectivas'] ?? 0) . '</td>';
+            $html .= '</tr>';
+        }
+
+        return $html . '</tbody></table></section>';
     }
 
     private function rendimientoTelefonicoActividad(array $analitica): string
