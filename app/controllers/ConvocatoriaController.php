@@ -955,6 +955,17 @@ class ConvocatoriaController
             $url .= '&subtipo=' . rawurlencode($subtipo);
         }
 
+        $anioContexto = (int)($_POST['anio'] ?? ($_GET['anio'] ?? 0));
+        $mesContexto = (int)($_POST['mes'] ?? ($_GET['mes'] ?? 0));
+
+        if ($anioContexto >= 2000 && $anioContexto <= 2100) {
+            $url .= '&anio=' . $anioContexto;
+        }
+
+        if ($mesContexto >= 1 && $mesContexto <= 12) {
+            $url .= '&mes=' . $mesContexto;
+        }
+
         header('Location: ' . $url);
         exit;
     }
