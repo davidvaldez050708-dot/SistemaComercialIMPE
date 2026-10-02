@@ -3059,3 +3059,163 @@
         gap: 8px;
     }
 }
+
+
+/* ===== Reportes: tablas de actividad ajustadas ===== */
+.analyst-activity-history .analyst-team-activity-table,
+.analyst-activity-history .analyst-activity-detail-table {
+    width: 100% !important;
+    min-width: 0 !important;
+    table-layout: fixed !important;
+}
+
+.analyst-activity-history .analyst-team-activity-table th,
+.analyst-activity-history .analyst-team-activity-table td,
+.analyst-activity-history .analyst-activity-detail-table th,
+.analyst-activity-history .analyst-activity-detail-table td {
+    min-width: 0;
+    overflow-wrap: break-word;
+    word-break: normal;
+}
+
+.analyst-activity-history .analyst-team-activity-table th:nth-child(1),
+.analyst-activity-history .analyst-team-activity-table td:nth-child(1) {
+    width: 20%;
+}
+
+.analyst-activity-history .analyst-team-activity-table th:nth-child(2),
+.analyst-activity-history .analyst-team-activity-table td:nth-child(2) {
+    width: 10%;
+}
+
+.analyst-activity-history .analyst-team-activity-table th:nth-child(3),
+.analyst-activity-history .analyst-team-activity-table td:nth-child(3) {
+    width: 12%;
+}
+
+.analyst-activity-history .analyst-team-activity-table th:nth-child(4),
+.analyst-activity-history .analyst-team-activity-table td:nth-child(4) {
+    width: 10%;
+}
+
+.analyst-activity-history .analyst-team-activity-table th:nth-child(5),
+.analyst-activity-history .analyst-team-activity-table td:nth-child(5) {
+    width: 15%;
+}
+
+.analyst-activity-history .analyst-team-activity-table th:nth-child(6),
+.analyst-activity-history .analyst-team-activity-table td:nth-child(6) {
+    width: 10%;
+}
+
+.analyst-activity-history .analyst-team-activity-table th:nth-child(7),
+.analyst-activity-history .analyst-team-activity-table td:nth-child(7) {
+    width: 23%;
+}
+
+.analyst-activity-history .analyst-team-activity-table th:nth-child(n),
+.analyst-activity-history .analyst-team-activity-table td:nth-child(n) {
+    text-align: left;
+}
+
+.analyst-activity-history .analyst-activity-detail-table.is-individual th:nth-child(1),
+.analyst-activity-history .analyst-activity-detail-table.is-individual td:nth-child(1) {
+    width: 14%;
+}
+
+.analyst-activity-history .analyst-activity-detail-table.is-individual th:nth-child(2),
+.analyst-activity-history .analyst-activity-detail-table.is-individual td:nth-child(2) {
+    width: 27%;
+}
+
+.analyst-activity-history .analyst-activity-detail-table.is-individual th:nth-child(3),
+.analyst-activity-history .analyst-activity-detail-table.is-individual td:nth-child(3) {
+    width: 14%;
+}
+
+.analyst-activity-history .analyst-activity-detail-table.is-individual th:nth-child(4),
+.analyst-activity-history .analyst-activity-detail-table.is-individual td:nth-child(4) {
+    width: 18%;
+}
+
+.analyst-activity-history .analyst-activity-detail-table.is-individual th:nth-child(5),
+.analyst-activity-history .analyst-activity-detail-table.is-individual td:nth-child(5) {
+    width: 27%;
+}
+
+.analyst-activity-history .analyst-activity-detail-table.has-analyst-column th:nth-child(1),
+.analyst-activity-history .analyst-activity-detail-table.has-analyst-column td:nth-child(1) {
+    width: 12%;
+}
+
+.analyst-activity-history .analyst-activity-detail-table.has-analyst-column th:nth-child(2),
+.analyst-activity-history .analyst-activity-detail-table.has-analyst-column td:nth-child(2) {
+    width: 14%;
+}
+
+.analyst-activity-history .analyst-activity-detail-table.has-analyst-column th:nth-child(3),
+.analyst-activity-history .analyst-activity-detail-table.has-analyst-column td:nth-child(3) {
+    width: 23%;
+}
+
+.analyst-activity-history .analyst-activity-detail-table.has-analyst-column th:nth-child(4),
+.analyst-activity-history .analyst-activity-detail-table.has-analyst-column td:nth-child(4) {
+    width: 12%;
+}
+
+.analyst-activity-history .analyst-activity-detail-table.has-analyst-column th:nth-child(5),
+.analyst-activity-history .analyst-activity-detail-table.has-analyst-column td:nth-child(5) {
+    width: 15%;
+}
+
+.analyst-activity-history .analyst-activity-detail-table.has-analyst-column th:nth-child(6),
+.analyst-activity-history .analyst-activity-detail-table.has-analyst-column td:nth-child(6) {
+    width: 24%;
+}
+
+.analyst-activity-history .analyst-activity-history-detail {
+    white-space: normal;
+    overflow-wrap: break-word;
+    word-break: normal;
+}
+
+.analyst-activity-history .analyst-activity-effective-value {
+    white-space: nowrap;
+}
+
+.analyst-territory-more {
+    display: block;
+    margin-top: 5px;
+    color: var(--color-text-soft);
+    font-size: 8px;
+    font-weight: 700;
+}
+
+.analyst-territory-summary {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 32px;
+    padding: 7px 9px;
+    border: 1px dashed var(--color-border);
+    border-radius: 9px;
+    background: var(--color-bg);
+    color: var(--color-text-soft);
+    font-size: 8.5px;
+    font-weight: 700;
+}
+
+.analyst-territory-summary i {
+    color: var(--color-primary);
+    font-size: 10px;
+}
+
+@media (max-width: 991.98px) {
+    .analyst-activity-history .analyst-team-activity-table {
+        min-width: 760px !important;
+    }
+
+    .analyst-activity-history .analyst-activity-detail-table {
+        min-width: 780px !important;
+    }
+}
