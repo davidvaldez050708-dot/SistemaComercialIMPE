@@ -23,7 +23,6 @@ $mostrarReporteUsuarios =
     (int)($_SESSION['rol_id'] ?? 0) === 1 &&
     tienePermiso('reportes.usuarios');
 $mostrarReporteConvocatorias =
-    $mostrarConvocatorias &&
     tienePermiso('reportes.convocatorias');
 $esRolMarketingSidebar = strcasecmp(
     trim((string)($_SESSION['rol'] ?? '')),
