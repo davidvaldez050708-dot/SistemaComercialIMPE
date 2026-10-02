@@ -1261,7 +1261,7 @@ class RolModel
             ['modulo' => 'Aliados', 'codigo' => 'aliados.compartir_correo', 'nombre' => 'Compartir convocatorias por correo', 'descripcion' => 'Enviar convocatorias vigentes por correo a aliados autorizados.'],
             ['modulo' => 'WhatsApp', 'codigo' => 'whatsapp.ver', 'nombre' => 'Ver conversaciones de WhatsApp', 'descripcion' => 'Consultar conversaciones de WhatsApp autorizadas.'],
             ['modulo' => 'WhatsApp', 'codigo' => 'whatsapp.enviar', 'nombre' => 'Enviar mensajes por WhatsApp', 'descripcion' => 'Enviar mensajes mediante cuentas de WhatsApp Business autorizadas.'],
-            ['modulo' => 'WhatsApp', 'codigo' => 'whatsapp.gestionar_conversaciones', 'nombre' => 'Gestionar conversaciones de WhatsApp', 'descripcion' => 'Asignar responsables y administrar conversaciones autorizadas.'],
+            ['modulo' => 'WhatsApp', 'codigo' => 'whatsapp.gestionar_conversaciones', 'nombre' => 'Supervisar conversaciones de WhatsApp', 'descripcion' => 'Consultar las conversaciones del equipo dentro del alcance autorizado.'],
             ['modulo' => 'WhatsApp', 'codigo' => 'whatsapp.gestionar_cuentas', 'nombre' => 'Gestionar cuentas de WhatsApp', 'descripcion' => 'Configurar números empresariales y asignarlos a usuarios. Exclusivo del Administrador.'],
             ['modulo' => 'Convocatorias', 'codigo' => 'convocatorias.ver', 'nombre' => 'Ver convocatorias', 'descripcion' => 'Consultar convocatorias registradas.'],
             ['modulo' => 'Convocatorias', 'codigo' => 'convocatorias.crear', 'nombre' => 'Crear convocatorias', 'descripcion' => 'Registrar nuevas convocatorias.'],
