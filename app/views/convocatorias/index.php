@@ -24,6 +24,20 @@ $resumenMensualConvocatorias = is_array($resumenMensualConvocatorias ?? null)
     ? $resumenMensualConvocatorias
     : [];
 $mostrarSelectorMes = (bool)($mostrarSelectorMes ?? false);
+$nombresMesesConvocatoria = [
+    1 => 'Enero',
+    2 => 'Febrero',
+    3 => 'Marzo',
+    4 => 'Abril',
+    5 => 'Mayo',
+    6 => 'Junio',
+    7 => 'Julio',
+    8 => 'Agosto',
+    9 => 'Septiembre',
+    10 => 'Octubre',
+    11 => 'Noviembre',
+    12 => 'Diciembre'
+];
 $esChihuahua = $territorioSeleccionado &&
     strcasecmp(trim((string)($territorioSeleccionado['nombre'] ?? '')), 'Chihuahua') === 0;
 
@@ -772,21 +786,6 @@ if ($tipoConvocatoria === 'sindicatos') {
 
 <?php if ($mostrarSelectorMes): ?>
 <?php
-$nombresMesesConvocatoria = [
-    1 => 'Enero',
-    2 => 'Febrero',
-    3 => 'Marzo',
-    4 => 'Abril',
-    5 => 'Mayo',
-    6 => 'Junio',
-    7 => 'Julio',
-    8 => 'Agosto',
-    9 => 'Septiembre',
-    10 => 'Octubre',
-    11 => 'Noviembre',
-    12 => 'Diciembre'
-];
-
 $estadoMesLabels = [
     'activa' => 'Activa',
     'proxima' => 'Próxima',
@@ -1004,6 +1003,8 @@ $urlCambiarOpcionMes = $tipoConvocatoria === 'sindicatos'
         <input type="hidden" name="territorio_id" value="<?= (int)$territorioSeleccionado['id'] ?>">
         <input type="hidden" name="tipo" value="<?= $texto($tipoConvocatoria) ?>">
         <input type="hidden" name="subtipo" value="<?= $texto($subtipoConvocatoria) ?>">
+        <input type="hidden" name="anio" value="<?= (int)$anioSeleccionado ?>">
+        <input type="hidden" name="mes" value="<?= (int)$mesSeleccionado ?>">
 
         <div class="convocatoria-filter-field convocatoria-filter-search">
             <label class="form-label login-label" for="filtro_convocatoria_buscar">Buscar convocatoria</label>
@@ -1040,7 +1041,7 @@ $urlCambiarOpcionMes = $tipoConvocatoria === 'sindicatos'
         <div class="convocatoria-filter-actions">
             <a
                 class="filter-clear-link <?= ($buscar === '' && (int)$estadoFiltro === 0 && $estatusFiltro === '' && $categoriaFiltro === '') ? 'd-none' : '' ?>"
-                href="<?= BASE_URL ?>index.php?controller=convocatoria&action=index&territorio_id=<?= (int)$territorioSeleccionado['id'] ?>&tipo=<?= $texto($tipoConvocatoria) ?>&subtipo=<?= $texto($subtipoConvocatoria) ?>"
+                href="<?= BASE_URL ?>index.php?controller=convocatoria&action=index&territorio_id=<?= (int)$territorioSeleccionado['id'] ?>&tipo=<?= $texto($tipoConvocatoria) ?>&subtipo=<?= $texto($subtipoConvocatoria) ?>&anio=<?= (int)$anioSeleccionado ?>&mes=<?= (int)$mesSeleccionado ?>"
                 data-convocatoria-clear-filters>
                 Limpiar filtros
             </a>
@@ -1233,6 +1234,8 @@ $urlCambiarOpcionMes = $tipoConvocatoria === 'sindicatos'
                 <input type="hidden" name="territorio_id" value="<?= (int)$territorioSeleccionado['id'] ?>">
                 <input type="hidden" name="tipo" value="<?= $texto($tipoConvocatoria) ?>">
                 <input type="hidden" name="subtipo" value="<?= $texto($subtipoConvocatoria) ?>">
+                <input type="hidden" name="anio" value="<?= (int)$anioSeleccionado ?>">
+                <input type="hidden" name="mes" value="<?= (int)$mesSeleccionado ?>">
 
                 <div class="modal-body">
                     <?php if ($modalAbierto === 'crear' && !empty($erroresFormulario)): ?>
@@ -1377,6 +1380,8 @@ $urlCambiarOpcionMes = $tipoConvocatoria === 'sindicatos'
                 <input type="hidden" name="territorio_id" value="<?= (int)$territorioSeleccionado['id'] ?>">
                 <input type="hidden" name="tipo" value="<?= $texto($tipoConvocatoria) ?>">
                 <input type="hidden" name="subtipo" value="<?= $texto($subtipoConvocatoria) ?>">
+                <input type="hidden" name="anio" value="<?= (int)$anioSeleccionado ?>">
+                <input type="hidden" name="mes" value="<?= (int)$mesSeleccionado ?>">
 
                 <input type="hidden" name="id" id="editar_convocatoria_id">
 
@@ -1488,6 +1493,8 @@ $urlCambiarOpcionMes = $tipoConvocatoria === 'sindicatos'
                 <input type="hidden" name="territorio_id" value="<?= (int)$territorioSeleccionado['id'] ?>">
                 <input type="hidden" name="tipo" value="<?= $texto($tipoConvocatoria) ?>">
                 <input type="hidden" name="subtipo" value="<?= $texto($subtipoConvocatoria) ?>">
+                <input type="hidden" name="anio" value="<?= (int)$anioSeleccionado ?>">
+                <input type="hidden" name="mes" value="<?= (int)$mesSeleccionado ?>">
                 <input type="hidden" name="id" id="estado_convocatoria_id">
                 <input type="hidden" name="estado" id="estado_convocatoria_nuevo">
 
