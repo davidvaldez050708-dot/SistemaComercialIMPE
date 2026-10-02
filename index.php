@@ -219,6 +219,7 @@ $controladoresProtegidosCsrf = [
     'oficioCorreo',
     'convocatoria',
     'convocatoriaNotificacion',
+    'aliado',
     'rol',
     'usuario'
 ];
@@ -509,6 +510,17 @@ switch ($controller) {
 
         $controllerInstance =
             new ConvocatoriaController();
+
+        break;
+
+
+    case 'aliado':
+
+        require_once __DIR__ .
+            '/app/controllers/AliadoController.php';
+
+        $controllerInstance =
+            new AliadoController();
 
         break;
 
