@@ -281,3 +281,152 @@
         text-align: center;
     }
 }
+
+
+/* =========================================================
+   ESTANDARIZACIÓN TIPOGRÁFICA · MISMO FORMATO DEL SISTEMA
+   ========================================================= */
+.correo-marketing-module,
+.correo-marketing-module button,
+.correo-marketing-module input,
+.correo-marketing-module select,
+.correo-marketing-module textarea {
+    font-family: 'Manrope', sans-serif;
+}
+
+.correo-marketing-selector-heading .panel-title,
+.correo-marketing-toolbar-heading .panel-title {
+    margin: 0 0 15px;
+    color: var(--color-text-primary);
+    font-size: 14px;
+    font-weight: 800;
+    line-height: 1.2;
+}
+
+.correo-marketing-selector-heading p,
+.correo-marketing-toolbar-heading p {
+    margin: 0;
+    color: var(--color-text-secondary);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+.correo-marketing-toolbar .data-filter-field {
+    gap: 6px;
+}
+
+.correo-marketing-toolbar .data-filter-field label {
+    margin: 0;
+    color: var(--color-text-secondary);
+    font-size: 11.5px;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.correo-marketing-toolbar .module-search {
+    min-height: 42px;
+    padding: 0 12px;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background-color: #f8fafc;
+}
+
+.correo-marketing-toolbar .module-search > i {
+    position: static;
+    transform: none;
+    color: var(--color-primary);
+    font-size: 14px;
+}
+
+.correo-marketing-toolbar .module-search .form-control,
+.correo-marketing-toolbar .module-search .form-control:focus {
+    min-height: 40px;
+    padding: 0;
+    border: 0;
+    outline: 0;
+    background-color: transparent;
+    box-shadow: none;
+    color: var(--color-text-primary);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.correo-marketing-toolbar .module-search .form-control::placeholder {
+    color: var(--color-text-muted);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.correo-marketing-toolbar .form-select {
+    width: 100%;
+    min-height: 42px;
+    padding: 0 34px 0 12px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background-color: #f8fafc;
+    color: var(--color-text-primary);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.2;
+    box-shadow: none;
+}
+
+.correo-marketing-toolbar .form-select:focus {
+    border-color: var(--color-secondary);
+    background-color: #ffffff;
+    box-shadow: 0 0 0 3px rgba(5, 99, 166, 0.07);
+}
+
+.correo-marketing-summary-card strong {
+    font-size: 26px;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.correo-marketing-summary-card span:last-child {
+    margin-top: 7px;
+    color: var(--color-text-secondary);
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.25;
+}
+
+.correo-marketing-results {
+    color: var(--color-text-secondary);
+    font-size: 11.5px;
+    font-weight: 800;
+}
+
+.correo-marketing-tab {
+    min-height: 38px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.correo-marketing-status {
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.correo-marketing-table td > small {
+    color: var(--color-text-secondary);
+    font-size: 10px;
+    font-weight: 600;
+}
+
+.correo-marketing-empty h3 {
+    color: var(--color-text-primary);
+    font-size: 14px;
+    font-weight: 800;
+}
+
+.correo-marketing-empty p {
+    color: var(--color-text-secondary);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.45;
+}
