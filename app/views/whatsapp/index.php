@@ -337,27 +337,25 @@ foreach ($mensajesIniciales as $mensaje) {
                 </div>
 
                 <footer class="whatsapp-composer">
-                    <?php if (!$ventanaServicioAbierta): ?>
-                        <div class="whatsapp-window-notice" data-whatsapp-window-notice>
-                            <i class="bi bi-info-circle"></i>
-                            <div>
-                                <strong>La ventana de atención está cerrada.</strong>
-                                <span>
-                                    Para iniciar la prueba usa una plantilla aprobada. Cuando el contacto responda, se habilitará texto libre durante 24 horas.
-                                </span>
-                            </div>
-
-                            <?php if ($puedeEnviarWhatsapp): ?>
-                                <button
-                                    type="button"
-                                    class="btn whatsapp-template-button"
-                                    data-whatsapp-test-template>
-                                    <i class="bi bi-send-check"></i>
-                                    Enviar plantilla de prueba
-                                </button>
-                            <?php endif; ?>
+                    <div class="whatsapp-window-notice <?= $ventanaServicioAbierta ? 'd-none' : '' ?>" data-whatsapp-window-notice>
+                        <i class="bi bi-info-circle"></i>
+                        <div>
+                            <strong>La ventana de atención está cerrada.</strong>
+                            <span>
+                                Para iniciar la prueba usa una plantilla aprobada. Cuando el contacto responda, se habilitará texto libre durante 24 horas.
+                            </span>
                         </div>
-                    <?php endif; ?>
+
+                        <?php if ($puedeEnviarWhatsapp): ?>
+                            <button
+                                type="button"
+                                class="btn whatsapp-template-button"
+                                data-whatsapp-test-template>
+                                <i class="bi bi-send-check"></i>
+                                Enviar plantilla de prueba
+                            </button>
+                        <?php endif; ?>
+                    </div>
 
                     <?php if ($puedeEnviarWhatsapp): ?>
                         <form data-whatsapp-send-form>
@@ -384,6 +382,7 @@ foreach ($mensajesIniciales as $mensaje) {
                                 <i class="bi bi-send-fill"></i>
                             </button>
                         </form>
+                        <div class="whatsapp-composer-feedback d-none" data-whatsapp-composer-feedback></div>
                     <?php else: ?>
                         <div class="whatsapp-readonly-note">
                             <i class="bi bi-eye"></i>
