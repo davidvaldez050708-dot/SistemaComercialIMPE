@@ -23,11 +23,18 @@ $hallazgos = is_array($reporteConvocatorias['hallazgos'] ?? null)
     ? $reporteConvocatorias['hallazgos']
     : [];
 
+$alertasVencimiento = is_array(
+    $reporteConvocatorias['alertas_vencimiento'] ?? null
+)
+    ? $reporteConvocatorias['alertas_vencimiento']
+    : [];
+
 $territorios = is_array($cobertura['territorios'] ?? null)
     ? $cobertura['territorios']
     : [];
 
 $urlExportarPdf = (string)($urlExportarPdf ?? '');
+$puedeExportarPdf = tienePermiso('reportes.exportar');
 
 $texto = static fn($valor) => htmlspecialchars(
     (string)$valor,
@@ -91,17 +98,19 @@ $titulacionPct = (int)round(($titulacion30 / $totalTipos30) * 100);
     <div class="convocatoria-report-preview-toolbar">
         <a
             class="linkage-back-link territorial-back-link"
-            href="<?= BASE_URL ?>index.php?controller=convocatoria&action=reportes">
+            href="<?= BASE_URL ?>index.php?controller=reporte&action=index">
             <i class="bi bi-arrow-left"></i>
             Volver a Reportes
         </a>
 
-        <a
-            class="btn btn-system-save report-export-action"
-            href="<?= $texto($urlExportarPdf) ?>">
-            <i class="bi bi-file-earmark-pdf"></i>
-            Exportar PDF
-        </a>
+        <?php if ($puedeExportarPdf): ?>
+            <a
+                class="btn btn-system-save report-export-action"
+                href="<?= $texto($urlExportarPdf) ?>">
+                <i class="bi bi-file-earmark-pdf"></i>
+                Exportar PDF
+            </a>
+        <?php endif; ?>
     </div>
 
     <section class="dashboard-panel report-intro-panel mb-4">
@@ -157,21 +166,41 @@ $titulacionPct = (int)round(($titulacion30 / $totalTipos30) * 100);
 
         <article class="metric-card">
             <div class="metric-icon">
-                <i class="bi bi-calendar-check"></i>
+                <i class="bi bi-calendar-plus"></i>
             </div>
             <div>
-                <p class="metric-value"><?= (int)($resumen['vigentes'] ?? 0) ?></p>
-                <p class="metric-label">Vigentes</p>
+                <p class="metric-value"><?= (int)($resumen['publicaciones_mes_actual'] ?? 0) ?></p>
+                <p class="metric-label">Publicadas este mes</p>
             </div>
         </article>
 
         <article class="metric-card">
             <div class="metric-icon">
-                <i class="bi bi-clock"></i>
+                <i class="bi bi-calendar-day"></i>
             </div>
             <div>
-                <p class="metric-value"><?= (int)($resumen['proximas_finalizar'] ?? 0) ?></p>
-                <p class="metric-label">Próximas a vencer</p>
+                <p class="metric-value"><?= (int)($resumen['publicaciones_hoy'] ?? 0) ?></p>
+                <p class="metric-label">Publicadas hoy</p>
+            </div>
+        </article>
+
+        <article class="metric-card">
+            <div class="metric-icon convocatoria-report-icon-danger">
+                <i class="bi bi-exclamation-octagon"></i>
+            </div>
+            <div>
+                <p class="metric-value"><?= (int)($resumen['vencen_hoy'] ?? 0) ?></p>
+                <p class="metric-label">Vencen hoy</p>
+            </div>
+        </article>
+
+        <article class="metric-card">
+            <div class="metric-icon convocatoria-report-icon-warning">
+                <i class="bi bi-clock-history"></i>
+            </div>
+            <div>
+                <p class="metric-value"><?= (int)($resumen['vencen_2_dias'] ?? 0) ?></p>
+                <p class="metric-label">Vencen en 1–2 días</p>
             </div>
         </article>
 
@@ -240,6 +269,65 @@ $titulacionPct = (int)round(($titulacion30 / $totalTipos30) * 100);
             </ul>
         </section>
     </div>
+
+    <div class="territorial-section-title">
+        <h2>ALERTAS DE VENCIMIENTO</h2>
+        <p>Convocatorias activas que vencen hoy o dentro de los próximos 2 días.</p>
+    </div>
+
+    <section class="dashboard-panel convocatoria-report-table-panel mb-4">
+        <div class="table-responsive">
+            <table class="table users-table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Convocatoria</th>
+                        <th>Tipo</th>
+                        <th>Territorio(s)</th>
+                        <th>Fecha de vencimiento</th>
+                        <th>Prioridad</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if (empty($alertasVencimiento)): ?>
+                        <tr>
+                            <td colspan="5">
+                                <div class="empty-table-message">
+                                    No hay convocatorias con vencimiento hoy o en los próximos 2 días.
+                                </div>
+                            </td>
+                        </tr>
+                    <?php else: ?>
+                        <?php foreach ($alertasVencimiento as $alerta): ?>
+                            <?php
+                            $diasRestantes = (int)($alerta['dias_restantes'] ?? 0);
+                            $prioridadTexto = $diasRestantes === 0
+                                ? 'Vence hoy'
+                                : ($diasRestantes === 1 ? 'Vence mañana' : 'Vence en 2 días');
+                            $prioridadClase = $diasRestantes === 0
+                                ? 'is-danger'
+                                : 'is-warning';
+                            ?>
+                            <tr>
+                                <td>
+                                    <strong><?= $texto($alerta['titulo'] ?? '') ?></strong>
+                                </td>
+                                <td>
+                                    <?= $texto($tipoLabel($alerta['tipo_convocatoria'] ?? '')) ?>
+                                </td>
+                                <td><?= $texto($alerta['estados'] ?? '—') ?></td>
+                                <td><?= $texto($fecha($alerta['fecha_termino'] ?? '')) ?></td>
+                                <td>
+                                    <span class="convocatoria-report-priority <?= $texto($prioridadClase) ?>">
+                                        <?= $texto($prioridadTexto) ?>
+                                    </span>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+    </section>
 
     <div class="territorial-section-title">
         <h2>COBERTURA TERRITORIAL</h2>
