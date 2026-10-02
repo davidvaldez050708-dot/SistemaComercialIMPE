@@ -126,7 +126,9 @@ class ConvocatoriaModel
         $estatus = '',
         $categoria = '',
         $tipoConvocatoria = '',
-        $subtipoConvocatoria = ''
+        $subtipoConvocatoria = '',
+        $anio = 0,
+        $mes = 0
     )
     {
         $sql = "SELECT
@@ -193,6 +195,18 @@ class ConvocatoriaModel
             $parametros[] = $subtipoConvocatoria;
         }
 
+        if ((int)$anio > 0) {
+            $sql .= " AND YEAR(convocatorias.fecha_inicio) = ?";
+            $tipos .= 'i';
+            $parametros[] = (int)$anio;
+        }
+
+        if ((int)$mes >= 1 && (int)$mes <= 12) {
+            $sql .= " AND MONTH(convocatorias.fecha_inicio) = ?";
+            $tipos .= 'i';
+            $parametros[] = (int)$mes;
+        }
+
         $sql .= " GROUP BY convocatorias.id
                   ORDER BY
                       convocatorias.estado DESC,
@@ -210,6 +224,120 @@ class ConvocatoriaModel
         $stmt->execute();
 
         return $this->convertirResultadoEnArreglo($stmt->get_result());
+    }
+
+    public function obtenerAniosDisponiblesPorClasificacion(
+        $estadoId,
+        $tipoConvocatoria,
+        $subtipoConvocatoria
+    )
+    {
+        $sql = "SELECT DISTINCT YEAR(convocatorias.fecha_inicio) AS anio
+                FROM convocatorias
+                INNER JOIN convocatoria_estados
+                    ON convocatoria_estados.convocatoria_id = convocatorias.id
+                WHERE convocatoria_estados.estado_id = ?
+                  AND convocatorias.tipo_convocatoria = ?
+                  AND convocatorias.subtipo_convocatoria = ?
+                  AND convocatorias.fecha_inicio IS NOT NULL
+                ORDER BY anio DESC";
+
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param(
+            'iss',
+            $estadoId,
+            $tipoConvocatoria,
+            $subtipoConvocatoria
+        );
+        $stmt->execute();
+
+        $resultado = $stmt->get_result();
+        $anios = [];
+
+        while ($fila = $resultado->fetch_assoc()) {
+            $anio = (int)($fila['anio'] ?? 0);
+
+            if ($anio > 0) {
+                $anios[] = $anio;
+            }
+        }
+
+        return $anios;
+    }
+
+    public function obtenerResumenMensual(
+        $estadoId,
+        $tipoConvocatoria,
+        $subtipoConvocatoria,
+        $anio
+    )
+    {
+        $meses = [];
+
+        for ($mes = 1; $mes <= 12; $mes++) {
+            $meses[$mes] = [
+                'total' => 0,
+                'convocatorias' => []
+            ];
+        }
+
+        $sql = "SELECT
+                    convocatorias.id,
+                    convocatorias.titulo,
+                    convocatorias.fecha_inicio,
+                    convocatorias.fecha_termino,
+                    convocatorias.estado,
+                    MONTH(convocatorias.fecha_inicio) AS mes,
+                    CASE
+                        WHEN convocatorias.fecha_termino < CURDATE()
+                            THEN 'finalizada'
+                        WHEN convocatorias.estado = 1
+                            AND convocatorias.fecha_termino BETWEEN CURDATE()
+                                AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)
+                            THEN 'proxima'
+                        WHEN convocatorias.estado = 1
+                            THEN 'activa'
+                        ELSE 'inactiva'
+                    END AS estado_proceso
+                FROM convocatorias
+                INNER JOIN convocatoria_estados
+                    ON convocatoria_estados.convocatoria_id = convocatorias.id
+                WHERE convocatoria_estados.estado_id = ?
+                  AND convocatorias.tipo_convocatoria = ?
+                  AND convocatorias.subtipo_convocatoria = ?
+                  AND YEAR(convocatorias.fecha_inicio) = ?
+                ORDER BY
+                    MONTH(convocatorias.fecha_inicio) ASC,
+                    convocatorias.fecha_inicio DESC,
+                    convocatorias.id DESC";
+
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param(
+            'issi',
+            $estadoId,
+            $tipoConvocatoria,
+            $subtipoConvocatoria,
+            $anio
+        );
+        $stmt->execute();
+
+        $resultado = $stmt->get_result();
+
+        while ($fila = $resultado->fetch_assoc()) {
+            $mes = (int)($fila['mes'] ?? 0);
+
+            if ($mes < 1 || $mes > 12) {
+                continue;
+            }
+
+            $meses[$mes]['total']++;
+
+            if (count($meses[$mes]['convocatorias']) < 2) {
+                $meses[$mes]['convocatorias'][] = $fila;
+            }
+        }
+
+        return $meses;
     }
 
     public function buscarPorId($id)
