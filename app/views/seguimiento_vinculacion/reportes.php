@@ -1044,7 +1044,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                 </span>
             </div>
             <div class="table-responsive">
-                <table class="table users-table align-middle mb-0">
+                <table class="table users-table analyst-team-activity-table align-middle mb-0">
                     <thead>
                         <tr>
                             <th>Analista</th>
@@ -1666,7 +1666,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                 <div>
                     <strong><?= (int)($resumenReporte['requieren_atencion'] ?? 0) ?></strong>
                     <span>Requieren atención</span>
-                    <small>Vencidos, sin actividad o con inactividad prolongada</small>
+                    <small>Mismo criterio operativo que el panel del Analista</small>
                 </div>
             </article>
             <article class="analyst-portfolio-kpi analyst-portfolio-kpi--success">
@@ -1694,7 +1694,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                         <div>
                             <span class="report-eyebrow">ATENCIÓN OPERATIVA</span>
                             <h3 class="panel-title mb-1">Seguimientos que conviene revisar</h3>
-                            <p class="page-subtitle mb-0">Prioriza acciones vencidas, instituciones nunca trabajadas y seguimientos con más de 7 días sin interacción humana.</p>
+                            <p class="page-subtitle mb-0">Incluye acciones para hoy o vencidas, esperas prolongadas y reuniones que requieren intervención, con el mismo criterio del panel del Analista.</p>
                         </div>
                         <span class="analyst-portfolio-attention-count">
                             <?= (int)($resumenReporte['requieren_atencion'] ?? 0) ?> por revisar
@@ -1707,6 +1707,8 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                                 <?php
                                 $diasPrioritario = $prioritario['dias_sin_actividad'] ?? null;
                                 $codigoAtencion = (string)($prioritario['atencion_codigo'] ?? 'EN_SEGUIMIENTO');
+                                $motivoAtencionOperativa = trim((string)($prioritario['atencion_operativa_motivo'] ?? ''));
+                                $fechaAtencionOperativa = trim((string)($prioritario['atencion_operativa_fecha'] ?? ''));
                                 ?>
                                 <article>
                                     <div class="analyst-portfolio-priority-main">
@@ -1719,14 +1721,20 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                                         </span>
                                     </div>
                                     <span class="analyst-portfolio-priority-status is-<?= strtolower($texto($codigoAtencion)) ?>">
-                                        <?= $texto($prioritario['atencion_label'] ?? 'En seguimiento') ?>
+                                        <?= $texto($motivoAtencionOperativa !== ''
+                                            ? $motivoAtencionOperativa
+                                            : ($prioritario['atencion_label'] ?? 'En seguimiento')) ?>
                                     </span>
                                     <div class="analyst-portfolio-priority-meta">
                                         <span>
                                             <i class="bi bi-clock-history"></i>
-                                            <?= $diasPrioritario === null
-                                                ? 'Sin actividad humana registrada'
-                                                : ((int)$diasPrioritario . ' días sin actividad') ?>
+                                            <?= $fechaAtencionOperativa !== ''
+                                                ? 'Referencia: ' . $texto($fechaHoraReporte($fechaAtencionOperativa))
+                                                : (
+                                                    $diasPrioritario === null
+                                                        ? 'Sin actividad humana registrada'
+                                                        : ((int)$diasPrioritario . ' días sin actividad')
+                                                ) ?>
                                         </span>
                                         <span>
                                             <i class="bi bi-arrow-right-circle"></i>
@@ -1742,8 +1750,8 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                         <div class="analyst-portfolio-empty">
                             <i class="bi bi-check-circle"></i>
                             <div>
-                                <strong>No hay seguimientos con atención prioritaria.</strong>
-                                <span>La cartera filtrada no presenta acciones vencidas ni inactividad mayor a 7 días.</span>
+                                <strong>No hay seguimientos que requieran atención operativa.</strong>
+                                <span>Con los filtros actuales no hay pendientes detectados por el criterio operativo del Analista.</span>
                             </div>
                         </div>
                     <?php endif; ?>
@@ -2332,7 +2340,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
             </div>
             <?php if (!empty($actividadRecienteReporte)): ?>
                 <div class="table-responsive">
-                    <table class="table users-table align-middle mb-0">
+                    <table class="table users-table analyst-activity-detail-table <?= $modoSeguimiento === 'supervisor' && $analistaSeleccionadoId <= 0 ? 'has-analyst-column' : 'is-individual' ?> align-middle mb-0">
                         <thead>
                             <tr>
                                 <th>Fecha</th>
