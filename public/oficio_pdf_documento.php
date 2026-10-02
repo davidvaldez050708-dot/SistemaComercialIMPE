@@ -21,7 +21,18 @@ if (!isset($_SESSION['usuario_id'])) {
     $mensajeError('La sesión no está activa.', 401);
 }
 
-if (!tienePermiso('oficios.ver')) {
+$esMarketing = strcasecmp(
+    trim((string)($_SESSION['rol'] ?? '')),
+    'Marketing'
+) === 0;
+
+if (
+    !tienePermiso('oficios.ver') &&
+    !(
+        $esMarketing &&
+        tienePermiso('seguimientos_vinculacion.ver')
+    )
+) {
     $mensajeError('No tienes permiso para consultar este oficio.', 403);
 }
 
@@ -33,7 +44,10 @@ if ($seguimientoId <= 0) {
     $mensajeError('El seguimiento solicitado no es válido.', 422);
 }
 
-if ((int)($_SESSION['rol_id'] ?? 0) === 1) {
+if (
+    (int)($_SESSION['rol_id'] ?? 0) === 1 ||
+    $esMarketing
+) {
     $modoAcceso = 'administrador';
 } elseif (tienePermiso('seguimientos_vinculacion.supervisar')) {
     $modoAcceso = 'supervisor';
