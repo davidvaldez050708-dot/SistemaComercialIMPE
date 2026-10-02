@@ -335,7 +335,8 @@ foreach ($mensajesIniciales as $mensaje) {
                                         <?php if ($saliente): ?>
                                             <i
                                                 class="bi <?= $texto($estadoIcono($estadoMensaje)) ?> <?= $estadoMensaje === 'LEIDO' ? 'is-read' : '' ?>"
-                                                title="<?= $texto($estadoMensaje) ?>">
+                                                title="<?= $texto($estadoMensaje) ?>"
+                                                data-message-status-icon>
                                             </i>
                                         <?php endif; ?>
                                     </div>
