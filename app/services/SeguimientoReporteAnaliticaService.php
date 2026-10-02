@@ -107,10 +107,21 @@ class SeguimientoReporteAnaliticaService
             $canal,
             $actorIds
         );
+        $cantidadActoresMeta = $modoAcceso === 'supervisor'
+            ? max(1, count($actorIds))
+            : 1;
+        $metaDiariaEquipo = 25 * $cantidadActoresMeta;
         $rendimientoTelefonico = $this->resumirRendimientoTelefonico(
             $rendimientoTelefonicoDiario,
             $fechaInicial,
-            $fechaFinal
+            $fechaFinal,
+            $metaDiariaEquipo
+        );
+        $cumplimientoEfectivas = $this->calcularCumplimientoEfectivas(
+            $rendimientoTelefonicoDiario,
+            $fechaInicial,
+            $fechaFinal,
+            $cantidadActoresMeta
         );
         $rendimientoTelefonicoHoy = $this->rendimientoTelefonicoHoy(
             $rendimientoTelefonicoDiario
@@ -151,6 +162,7 @@ class SeguimientoReporteAnaliticaService
             'rendimiento_telefonico_hoy' => $rendimientoTelefonicoHoy,
             'instituciones_actividad' => $institucionesActividad,
             'actividad_por_actor' => $actividadPorActor,
+            'cumplimiento_efectivas' => $cumplimientoEfectivas,
             'meta_diaria_efectivas' => 25,
             'atencion' => [
                 'total' => $totalAtencion,
@@ -334,7 +346,7 @@ class SeguimientoReporteAnaliticaService
                          AND TRIM(COALESCE(proveedor_externo, '')) <> ''
                          AND TRIM(COALESCE(id_externo, '')) <> ''
                          AND COALESCE(duracion_segundos, 0) > 0
-                        THEN CONCAT(seguimiento_id, '|', DATE(fecha_inicio))
+                        THEN CONCAT(usuario_id, '|', seguimiento_id, '|', DATE(fecha_inicio))
                         ELSE NULL
                     END) AS verificaciones_efectivas
                 FROM interacciones_vinculacion
@@ -476,7 +488,7 @@ class SeguimientoReporteAnaliticaService
                          AND TRIM(COALESCE(proveedor_externo, '')) <> ''
                          AND TRIM(COALESCE(id_externo, '')) <> ''
                          AND COALESCE(duracion_segundos, 0) > 0
-                        THEN seguimiento_id
+                        THEN CONCAT(usuario_id, '|', seguimiento_id)
                         ELSE NULL
                     END) AS efectivas
                 FROM interacciones_vinculacion
@@ -563,8 +575,10 @@ class SeguimientoReporteAnaliticaService
     private function resumirRendimientoTelefonico(
         array $diasRegistrados,
         $fechaInicial,
-        $fechaFinal
+        $fechaFinal,
+        $metaDiaria = 25
     ) {
+        $metaDiaria = max(1, (int)$metaDiaria);
         $fechaInicial = $this->normalizarFecha($fechaInicial);
         $fechaFinal = $this->normalizarFecha($fechaFinal);
 
@@ -618,6 +632,11 @@ class SeguimientoReporteAnaliticaService
                     'meta' => 25,
                     'cumplimiento_pct' => 0.0
                 ];
+                $base['meta'] = $metaDiaria;
+                $base['cumplimiento_pct'] = round(
+                    min(100, ((int)($base['efectivas'] ?? 0) / $metaDiaria) * 100),
+                    1
+                );
                 $base['clave'] = $clave;
                 $base['etiqueta'] = $fecha->format('d/m/Y');
                 $base['subetiqueta'] = '';
@@ -865,6 +884,66 @@ class SeguimientoReporteAnaliticaService
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
 
+    private function calcularCumplimientoEfectivas(
+        array $diasRegistrados,
+        $fechaInicial,
+        $fechaFinal,
+        $cantidadActores
+    ) {
+        $metaPorAnalista = 25;
+        $cantidadActores = max(1, (int)$cantidadActores);
+        $metaDiariaEquipo = $metaPorAnalista * $cantidadActores;
+        $fechaInicial = $this->normalizarFecha($fechaInicial);
+        $fechaFinal = $this->normalizarFecha($fechaFinal);
+        $diasEvaluados = 0;
+
+        if ($fechaInicial !== '' && $fechaFinal !== '') {
+            try {
+                $inicio = new DateTimeImmutable($fechaInicial);
+                $fin = new DateTimeImmutable($fechaFinal);
+                if ($inicio <= $fin) {
+                    $diasEvaluados = ((int)$inicio->diff($fin)->days) + 1;
+                }
+            } catch (Throwable $error) {
+                $diasEvaluados = 0;
+            }
+        }
+
+        if ($diasEvaluados <= 0) {
+            $diasEvaluados = max(1, count($diasRegistrados));
+        }
+
+        $efectivas = 0;
+        $diasCumplidos = 0;
+        foreach ($diasRegistrados as $dia) {
+            $efectivasDia = max(0, (int)($dia['efectivas'] ?? 0));
+            $efectivas += $efectivasDia;
+            if ($efectivasDia >= $metaDiariaEquipo) {
+                $diasCumplidos++;
+            }
+        }
+
+        $metaPeriodo = $metaDiariaEquipo * $diasEvaluados;
+        $cumplimiento = $metaPeriodo > 0
+            ? round(($efectivas / $metaPeriodo) * 100, 1)
+            : 0.0;
+        $promedioPorAnalistaDia = ($diasEvaluados * $cantidadActores) > 0
+            ? round($efectivas / ($diasEvaluados * $cantidadActores), 1)
+            : 0.0;
+
+        return [
+            'meta_diaria_por_analista' => $metaPorAnalista,
+            'analistas_evaluados' => $cantidadActores,
+            'meta_diaria_equipo' => $metaDiariaEquipo,
+            'dias_evaluados' => $diasEvaluados,
+            'meta_periodo' => $metaPeriodo,
+            'efectivas' => $efectivas,
+            'cumplimiento_pct' => $cumplimiento,
+            'promedio_diario_por_analista' => $promedioPorAnalistaDia,
+            'dias_cumplidos' => $diasCumplidos
+        ];
+    }
+
     private function obtenerActividadPorActor(
         array $ids,
         $fechaInicial,
@@ -969,6 +1048,20 @@ class SeguimientoReporteAnaliticaService
 
         $filas = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
+        $diasEvaluados = 1;
+        if ($fechaInicial !== '' && $fechaFinal !== '') {
+            try {
+                $inicioMeta = new DateTimeImmutable($fechaInicial);
+                $finMeta = new DateTimeImmutable($fechaFinal);
+                if ($inicioMeta <= $finMeta) {
+                    $diasEvaluados = ((int)$inicioMeta->diff($finMeta)->days) + 1;
+                }
+            } catch (Throwable $error) {
+                $diasEvaluados = 1;
+            }
+        }
+        $metaPeriodoAnalista = 25 * max(1, $diasEvaluados);
+
         foreach ($filas as &$fila) {
             $llamadas = max(0, (int)($fila['llamadas'] ?? 0));
             $contactos = max(0, (int)($fila['con_contacto'] ?? 0));
@@ -979,6 +1072,10 @@ class SeguimientoReporteAnaliticaService
             $fila['correos'] = max(0, (int)($fila['correos'] ?? 0));
             $fila['con_contacto'] = $contactos;
             $fila['efectivas'] = max(0, (int)($fila['efectivas'] ?? 0));
+            $fila['meta_efectivas_periodo'] = $metaPeriodoAnalista;
+            $fila['cumplimiento_efectivas_pct'] = $metaPeriodoAnalista > 0
+                ? round(($fila['efectivas'] / $metaPeriodoAnalista) * 100, 1)
+                : 0.0;
             $fila['tasa_contacto'] = $llamadas > 0
                 ? round(($contactos / $llamadas) * 100, 1)
                 : 0.0;
@@ -1126,6 +1223,17 @@ class SeguimientoReporteAnaliticaService
             ],
             'instituciones_actividad' => [],
             'actividad_por_actor' => [],
+            'cumplimiento_efectivas' => [
+                'meta_diaria_por_analista' => 25,
+                'analistas_evaluados' => 1,
+                'meta_diaria_equipo' => 25,
+                'dias_evaluados' => 0,
+                'meta_periodo' => 0,
+                'efectivas' => 0,
+                'cumplimiento_pct' => 0.0,
+                'promedio_diario_por_analista' => 0.0,
+                'dias_cumplidos' => 0
+            ],
             'meta_diaria_efectivas' => 25,
             'atencion' => [
                 'total' => 0,
