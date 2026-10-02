@@ -88,6 +88,15 @@ class SeguimientoExpedienteService
         $analistaId = (int)($seguimiento['analista_id'] ?? 0);
         $estadoId = (int)($seguimiento['estado_id'] ?? 0);
 
+        /*
+         * El rol 1 representa el alcance institucional de lectura.
+         * AgendaReunionController reutiliza este alcance para Marketing
+         * únicamente al consultar el expediente completo.
+         */
+        if ((int)$rolId === 1) {
+            return true;
+        }
+
         if ($analistaId === $usuarioId) {
             return true;
         }
