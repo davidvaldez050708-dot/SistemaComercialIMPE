@@ -32,6 +32,10 @@ class RolModel
             !$this->existePermisoPorCodigo('seguimientos_vinculacion.comentar');
         $permisoReporteConvocatoriasNuevo =
             !$this->existePermisoPorCodigo('reportes.convocatorias');
+        $permisosAliadosNuevos =
+            !$this->existePermisoPorCodigo('aliados.ver') ||
+            !$this->existePermisoPorCodigo('aliados.ver_historial') ||
+            !$this->existePermisoPorCodigo('aliados.compartir_correo');
 
         $sql = "INSERT INTO permisos (
                     modulo,
@@ -90,6 +94,10 @@ class RolModel
 
         if ($permisoReporteConvocatoriasNuevo) {
             $this->asignarPermisosInicialesReporteConvocatorias();
+        }
+
+        if ($permisosAliadosNuevos) {
+            $this->asignarPermisosInicialesAliados();
         }
 
         $this->asegurarPermisosAdministrador();
@@ -458,6 +466,10 @@ class RolModel
                 'seguimientos_vinculacion.ver',
                 'seguimientos_vinculacion.supervisar',
                 'seguimientos_vinculacion.comentar',
+                'convocatorias.ver',
+                'aliados.ver',
+                'aliados.ver_historial',
+                'aliados.compartir_correo',
                 'reportes.ver',
                 'reportes.exportar',
                 'reportes.seguimiento.cartera',
@@ -783,6 +795,35 @@ class RolModel
         }
     }
 
+    private function asignarPermisosInicialesAliados()
+    {
+        $nombreRol = 'Cuenta Clave';
+        $codigos = [
+            'aliados.ver',
+            'aliados.ver_historial',
+            'aliados.compartir_correo',
+            'convocatorias.ver'
+        ];
+
+        $sql = "INSERT IGNORE INTO rol_permisos (
+                    rol_id,
+                    permiso_id
+                )
+                SELECT roles.id, permisos.id
+                FROM roles
+                INNER JOIN permisos
+                    ON permisos.codigo = ?
+                WHERE roles.nombre = ?
+                  AND permisos.estado = 1";
+
+        $stmt = $this->connection->prepare($sql);
+
+        foreach ($codigos as $codigo) {
+            $stmt->bind_param("ss", $codigo, $nombreRol);
+            $stmt->execute();
+        }
+    }
+
     private function asignarPermisosInicialesReporteConvocatorias()
     {
         $nombreRol = 'Marketing';
@@ -846,6 +887,8 @@ class RolModel
             'convocatorias.gestionar' => 'convocatorias.ver',
             'convocatorias.descargar' => 'convocatorias.ver',
             'convocatorias.cambiar_estado' => 'convocatorias.ver',
+            'aliados.ver_historial' => 'aliados.ver',
+            'aliados.compartir_correo' => 'aliados.ver',
             'reportes.exportar' => 'reportes.ver',
             'reportes.seguimiento.cartera' => 'reportes.ver',
             'reportes.seguimiento.actividad' => 'reportes.ver',
@@ -866,6 +909,9 @@ class RolModel
             ],
             'reportes.territorial' => [
                 'data_territorial.ver'
+            ],
+            'aliados.compartir_correo' => [
+                'convocatorias.ver'
             ]
         ];
 
@@ -1139,6 +1185,9 @@ class RolModel
             ['modulo' => 'Reuniones', 'codigo' => 'reuniones.gestionar', 'nombre' => 'Gestionar reuniones', 'descripcion' => 'Administrar reuniones.'],
             ['modulo' => 'Convenios', 'codigo' => 'convenios.ver', 'nombre' => 'Ver convenios', 'descripcion' => 'Consultar convenios.'],
             ['modulo' => 'Convenios', 'codigo' => 'convenios.gestionar', 'nombre' => 'Gestionar convenios', 'descripcion' => 'Administrar convenios.'],
+            ['modulo' => 'Aliados', 'codigo' => 'aliados.ver', 'nombre' => 'Ver aliados', 'descripcion' => 'Consultar instituciones con convenio formalizado dentro del alcance autorizado.'],
+            ['modulo' => 'Aliados', 'codigo' => 'aliados.ver_historial', 'nombre' => 'Ver historial de aliados', 'descripcion' => 'Consultar el historial de convocatorias compartidas con aliados autorizados.'],
+            ['modulo' => 'Aliados', 'codigo' => 'aliados.compartir_correo', 'nombre' => 'Compartir convocatorias por correo', 'descripcion' => 'Enviar convocatorias vigentes por correo a aliados autorizados.'],
             ['modulo' => 'Convocatorias', 'codigo' => 'convocatorias.ver', 'nombre' => 'Ver convocatorias', 'descripcion' => 'Consultar convocatorias registradas.'],
             ['modulo' => 'Convocatorias', 'codigo' => 'convocatorias.crear', 'nombre' => 'Crear convocatorias', 'descripcion' => 'Registrar nuevas convocatorias.'],
             ['modulo' => 'Convocatorias', 'codigo' => 'convocatorias.editar', 'nombre' => 'Editar convocatorias', 'descripcion' => 'Actualizar información de convocatorias.'],
