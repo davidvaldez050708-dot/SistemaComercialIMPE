@@ -16,6 +16,8 @@ $estructuraAliadosDisponible = $estructuraAliadosDisponible ?? false;
 $puedeCompartirCorreo = $puedeCompartirCorreo ?? false;
 $puedeVerHistorial = $puedeVerHistorial ?? false;
 $puedeConsultarConvocatorias = $puedeConsultarConvocatorias ?? false;
+$puedeGestionarContactos = $puedeGestionarContactos ?? false;
+$estructuraContactosDisponible = $estructuraContactosDisponible ?? false;
 
 $texto = static function ($valor) {
     return htmlspecialchars((string)$valor, ENT_QUOTES, 'UTF-8');
@@ -85,7 +87,7 @@ $fechaHora = static function ($valor) {
             <span class="aliados-summary-icon"><i class="bi bi-whatsapp"></i></span>
             <div>
                 <strong><?= (int)$resumenAliados['con_whatsapp'] ?></strong>
-                <span>Con WhatsApp</span>
+                <span>WhatsApp confirmado</span>
             </div>
         </article>
 
@@ -114,13 +116,13 @@ $fechaHora = static function ($valor) {
                         <i class="bi bi-patch-check"></i>
                         Convenio formalizado
                     </span>
-                    <span class="aliados-result-count">
+                    <span class="aliados-result-count" data-aliados-result-count>
                         <?= count($aliados) ?> resultado<?= count($aliados) === 1 ? '' : 's' ?>
                     </span>
                 </div>
             </div>
 
-            <form method="GET" class="aliados-filter-grid">
+            <form method="GET" class="aliados-filter-grid" data-aliados-filters>
             <input type="hidden" name="controller" value="aliado">
             <input type="hidden" name="action" value="index">
 
@@ -185,14 +187,11 @@ $fechaHora = static function ($valor) {
             <div class="aliados-filter-actions">
                 <a
                     class="btn aliados-btn-secondary"
-                    href="<?= BASE_URL ?>index.php?controller=aliado&action=index">
+                    href="<?= BASE_URL ?>index.php?controller=aliado&action=index"
+                    data-aliados-clear>
                     <i class="bi bi-arrow-counterclockwise"></i>
                     Limpiar
                 </a>
-                <button class="btn aliados-btn-primary" type="submit">
-                    <i class="bi bi-funnel"></i>
-                    Aplicar filtros
-                </button>
             </div>
             </form>
         </div>
@@ -211,7 +210,7 @@ $fechaHora = static function ($valor) {
                 </p>
             </div>
         <?php else: ?>
-            <div class="table-responsive">
+            <div class="table-responsive" data-aliados-table-wrap>
                 <table class="table aliados-table align-middle mb-0">
                     <thead>
                         <tr>
@@ -234,12 +233,44 @@ $fechaHora = static function ($valor) {
 
                             $correo = trim((string)($aliado['correo_contacto'] ?? ''));
                             $whatsapp = trim((string)($aliado['whatsapp_contacto'] ?? ''));
+                            $contactoDifusion = trim(
+                                (string)($aliado['contacto_difusion_preferido'] ?? '')
+                            );
+                            $contactoDifusionEsWhatsapp =
+                                (int)($aliado['contacto_difusion_confirmado_whatsapp'] ?? 0) === 1;
+                            $normalizarNumeroVista = static function ($valor) {
+                                return preg_replace('/[^0-9]+/', '', (string)$valor);
+                            };
+                            $mostrarContactoDifusion =
+                                $contactoDifusion !== '' &&
+                                $normalizarNumeroVista($contactoDifusion) !==
+                                    $normalizarNumeroVista($whatsapp);
                             $puedeEnviarAliado =
                                 $puedeCompartirCorreo &&
                                 $correo !== '' &&
                                 filter_var($correo, FILTER_VALIDATE_EMAIL);
                             ?>
-                            <tr>
+                            <?php
+                            $textoBusquedaAliado = trim(implode(' ', [
+                                $aliado['nombre_entidad'] ?? '',
+                                $aliado['contacto_nombre'] ?? '',
+                                $aliado['contacto_cargo'] ?? '',
+                                $aliado['correo_contacto'] ?? '',
+                                $aliado['estado_nombre'] ?? '',
+                                $aliado['municipio_nombre'] ?? '',
+                                $aliado['analista_nombre'] ?? '',
+                                $aliado['telefono_verificado'] ?? '',
+                                $aliado['telefono_fuente'] ?? '',
+                                $aliado['whatsapp_verificado'] ?? '',
+                                $aliado['contacto_difusion_preferido'] ?? ''
+                            ]));
+                            ?>
+                            <tr
+                                data-aliado-row
+                                data-search="<?= $texto($textoBusquedaAliado) ?>"
+                                data-estado-id="<?= (int)($aliado['estado_id'] ?? 0) ?>"
+                                data-municipio-id="<?= (int)($aliado['municipio_id'] ?? 0) ?>"
+                                data-analista-id="<?= (int)($aliado['analista_id'] ?? 0) ?>">
                                 <td>
                                     <div class="aliados-institution-cell">
                                         <span class="aliados-institution-icon">
@@ -266,9 +297,16 @@ $fechaHora = static function ($valor) {
                                             </span>
 
                                             <?php if ($whatsapp !== ''): ?>
-                                                <span class="aliados-channel-pill is-pending">
+                                                <span class="aliados-channel-pill is-whatsapp-confirmed">
                                                     <i class="bi bi-whatsapp"></i>
                                                     <?= $texto($whatsapp) ?>
+                                                </span>
+                                            <?php endif; ?>
+
+                                            <?php if ($mostrarContactoDifusion): ?>
+                                                <span class="aliados-channel-pill <?= $contactoDifusionEsWhatsapp ? 'is-whatsapp-confirmed' : 'is-pending' ?>">
+                                                    <i class="bi <?= $contactoDifusionEsWhatsapp ? 'bi-whatsapp' : 'bi-telephone' ?>"></i>
+                                                    <?= $texto($contactoDifusion) ?>
                                                 </span>
                                             <?php endif; ?>
                                         </div>
@@ -305,6 +343,17 @@ $fechaHora = static function ($valor) {
 
                                 <td class="text-end">
                                     <div class="aliados-actions">
+                                        <?php if ($puedeGestionarContactos): ?>
+                                            <button
+                                                type="button"
+                                                class="aliados-icon-button"
+                                                data-aliado-contacts="<?= (int)$aliado['seguimiento_id'] ?>"
+                                                aria-label="Gestionar contactos de difusión"
+                                                title="Gestionar contactos de difusión">
+                                                <i class="bi bi-person-lines-fill"></i>
+                                            </button>
+                                        <?php endif; ?>
+
                                         <?php if ($puedeVerHistorial): ?>
                                             <button
                                                 type="button"
@@ -343,6 +392,11 @@ $fechaHora = static function ($valor) {
                         <?php endforeach; ?>
                     </tbody>
                 </table>
+            </div>
+            <div class="aliados-empty-state d-none" data-aliados-filter-empty>
+                <span><i class="bi bi-search"></i></span>
+                <strong>No hay aliados que coincidan</strong>
+                <p>Prueba con otros criterios o limpia los filtros del directorio.</p>
             </div>
         <?php endif; ?>
         </div>
@@ -468,6 +522,123 @@ $fechaHora = static function ($valor) {
                     <i class="bi bi-send"></i>
                     Enviar por correo
                 </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div
+    class="modal fade"
+    id="modalAliadoContactos"
+    tabindex="-1"
+    aria-labelledby="modalAliadoContactosTitulo"
+    aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content aliados-modal">
+            <div class="modal-header">
+                <div>
+                    <span class="aliados-eyebrow">CONTACTOS DE DIFUSIÓN</span>
+                    <h2 class="modal-title" id="modalAliadoContactosTitulo">
+                        Canales del aliado
+                    </h2>
+                    <p data-aliado-contacts-context>
+                        Administra números para futuras comunicaciones sin modificar el expediente original.
+                    </p>
+                </div>
+                <button
+                    type="button"
+                    class="btn-close"
+                    data-bs-dismiss="modal"
+                    aria-label="Cerrar"></button>
+            </div>
+
+            <div class="modal-body">
+                <div class="aliados-contact-source-note">
+                    <i class="bi bi-shield-check"></i>
+                    <span>
+                        Los teléfonos obtenidos durante la vinculación se muestran como referencia.
+                        Al elegir uno para difusión se guarda una relación independiente y el dato original permanece intacto.
+                    </span>
+                </div>
+
+                <div class="aliados-contact-list" data-aliado-contact-list>
+                    <div class="aliados-history-loading">
+                        <i class="bi bi-arrow-repeat"></i>
+                        Consultando contactos…
+                    </div>
+                </div>
+
+                <div class="aliados-contact-editor" data-aliado-contact-editor>
+                    <div class="aliados-contact-editor-heading">
+                        <div>
+                            <strong data-contact-editor-title>Agregar número de difusión</strong>
+                            <span>Úsalo cuando la institución comparta un número específico para convocatorias.</span>
+                        </div>
+                        <button
+                            type="button"
+                            class="btn aliados-btn-secondary d-none"
+                            data-contact-editor-cancel>
+                            Cancelar edición
+                        </button>
+                    </div>
+
+                    <form data-aliado-contact-form>
+                        <input type="hidden" name="seguimiento_id" value="">
+                        <input type="hidden" name="contacto_id" value="0">
+                        <input type="hidden" name="origen" value="CUENTA_CLAVE">
+
+                        <div class="aliados-contact-form-grid">
+                            <div>
+                                <label class="form-label" for="aliado_contacto_numero">Número</label>
+                                <input
+                                    type="tel"
+                                    class="form-control"
+                                    id="aliado_contacto_numero"
+                                    name="numero"
+                                    maxlength="40"
+                                    placeholder="Ej. 477 123 4567"
+                                    required>
+                            </div>
+                            <div>
+                                <label class="form-label" for="aliado_contacto_etiqueta">Etiqueta</label>
+                                <input
+                                    type="text"
+                                    class="form-control"
+                                    id="aliado_contacto_etiqueta"
+                                    name="etiqueta"
+                                    maxlength="80"
+                                    placeholder="Ej. Difusión, Dirección, Admisiones"
+                                    value="Difusión"
+                                    required>
+                            </div>
+                        </div>
+
+                        <div class="aliados-contact-options">
+                            <label>
+                                <input type="checkbox" name="confirmado_whatsapp" value="1">
+                                <span>
+                                    <strong>Confirmado para WhatsApp</strong>
+                                    <small>Marca sólo si la institución confirmó que este número usa WhatsApp.</small>
+                                </span>
+                            </label>
+                            <label>
+                                <input type="checkbox" name="preferido_difusion" value="1">
+                                <span>
+                                    <strong>Preferido para difusión</strong>
+                                    <small>Será la primera opción cuando se habilite WhatsApp Business.</small>
+                                </span>
+                            </label>
+                        </div>
+
+                        <div class="aliados-contact-form-actions">
+                            <span class="aliados-contact-form-status d-none" data-contact-form-status></span>
+                            <button type="submit" class="btn aliados-btn-primary">
+                                <i class="bi bi-check2-circle"></i>
+                                Guardar contacto
+                            </button>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
