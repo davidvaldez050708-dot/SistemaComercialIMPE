@@ -103,6 +103,28 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
         $tituloReporte = $titulosModo[$tipoReporte]
             ?? 'Reporte de Seguimiento de Vinculación';
 
+        $responsableContexto = $responsable;
+        if (
+            $modoReporte === 'supervisor' &&
+            (int)($filtrosRaw['responsable_id'] ?? 0) <= 0
+        ) {
+            $responsableContexto = 'Todos mis Analistas';
+        }
+
+        if (
+            $modoReporte === 'supervisor' &&
+            (int)($filtrosRaw['responsable_id'] ?? 0) > 0
+        ) {
+            $nombreAnalista = trim((string)($filtros['Responsable'] ?? $responsable));
+            if ($nombreAnalista !== '' && $nombreAnalista !== 'Todos') {
+                if ($tipoReporte === 'actividad') {
+                    $tituloReporte = 'Actividad de ' . $nombreAnalista;
+                } elseif ($tipoReporte === 'cartera') {
+                    $tituloReporte = 'Cartera de ' . $nombreAnalista;
+                }
+            }
+        }
+
         $periodoEncabezado = $individual
             ? 'Histórico disponible'
             : (
@@ -115,9 +137,9 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
         $html .= '<div class="top-rule"></div>';
         $html .= $this->encabezado($fecha, $generadoPor, $generadoPorRol, $periodoEncabezado, $tituloReporte);
         if ($tipoReporte === 'actividad') {
-            $html .= $this->contextoActividad($filtros, $responsable, $analitica);
+            $html .= $this->contextoActividad($filtros, $responsableContexto, $analitica);
         } elseif ($tipoReporte === 'cartera') {
-            $html .= $this->contextoCartera($filtros, $responsable, $resumen);
+            $html .= $this->contextoCartera($filtros, $responsableContexto, $resumen);
         } else {
             $html .= $this->contexto($filtros, $responsable, count($seguimientos), $individual);
         }
@@ -283,8 +305,8 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
 
         $html = '<table class="scope activity-scope"><tr>';
         $html .= '<td><span>Territorio</span><strong>' . $this->e($alcance) . '</strong></td>';
-        $html .= '<td><span>Responsable</span><strong>' .
-            $this->e($responsable !== '' ? $responsable : 'Todos los responsables') . '</strong></td>';
+        $html .= '<td><span>Analista</span><strong>' .
+            $this->e($responsable !== '' ? $responsable : 'Todos los Analistas') . '</strong></td>';
         $html .= '<td><span>Instituciones trabajadas</span><strong>' . $instituciones . '</strong></td>';
         $html .= '<td><span>Tipo de interacción</span><strong>' . $this->e($tipoInteraccion) . '</strong></td>';
         return $html . '</tr></table>';
