@@ -351,8 +351,7 @@ class AliadoModel
                     ) AS correo_contacto,
                     COALESCE(
                         NULLIF(TRIM(s.whatsapp_verificado), ''),
-                        NULLIF(TRIM(s.telefono_verificado), ''),
-                        NULLIF(TRIM(s.telefono_fuente), '')
+                        ''
                     ) AS whatsapp_contacto,
                     s.analista_id,
                     CONCAT_WS(' ', analista.nombre, analista.apellidos) AS analista_nombre,
