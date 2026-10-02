@@ -1912,7 +1912,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
 
                     <?php if ($mostrarJerarquiaTerritorial && !empty($territorioJerarquicoReporte)): ?>
                         <div class="analyst-territory-hierarchy">
-                            <?php foreach (array_slice($territorioJerarquicoReporte, 0, 8) as $territorioEstado): ?>
+                            <?php foreach (array_slice($territorioJerarquicoReporte, 0, 4) as $territorioEstado): ?>
                                 <?php
                                 $totalEstado = max(0, (int)($territorioEstado['total'] ?? 0));
                                 $porcentajeEstado = ($totalEstado / max(1, (int)$resumenReporte['total'])) * 100;
@@ -1921,7 +1921,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                                         ? $territorioEstado['municipios']
                                         : [],
                                     0,
-                                    5
+                                    3
                                 );
                                 ?>
                                 <article class="analyst-territory-state">
@@ -1948,9 +1948,30 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                                                 </div>
                                             <?php endforeach; ?>
                                         </div>
+                                        <?php
+                                        $municipiosTotalesEstado = count(
+                                            is_array($territorioEstado['municipios'] ?? null)
+                                                ? $territorioEstado['municipios']
+                                                : []
+                                        );
+                                        ?>
+                                        <?php if ($municipiosTotalesEstado > 3): ?>
+                                            <span class="analyst-territory-more">
+                                                + <?= $municipiosTotalesEstado - 3 ?> municipio<?= ($municipiosTotalesEstado - 3) === 1 ? '' : 's' ?> más
+                                            </span>
+                                        <?php endif; ?>
                                     <?php endif; ?>
                                 </article>
                             <?php endforeach; ?>
+                            <?php if (count($territorioJerarquicoReporte) > 4): ?>
+                                <div class="analyst-territory-summary">
+                                    <i class="bi bi-layers"></i>
+                                    <span>
+                                        Mostrando 4 de <?= count($territorioJerarquicoReporte) ?> estados ·
+                                        <?= count($territorioJerarquicoReporte) - 4 ?> estado<?= (count($territorioJerarquicoReporte) - 4) === 1 ? '' : 's' ?> adicional<?= (count($territorioJerarquicoReporte) - 4) === 1 ? '' : 'es' ?>
+                                    </span>
+                                </div>
+                            <?php endif; ?>
                         </div>
                     <?php elseif (!$mostrarJerarquiaTerritorial && !empty($municipiosCartera)): ?>
                         <div class="analyst-portfolio-territory-list">
@@ -2043,7 +2064,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
 
                     <?php if ($mostrarJerarquiaTerritorial && !empty($territorioJerarquicoReporte)): ?>
                         <div class="analyst-territory-hierarchy">
-                            <?php foreach (array_slice($territorioJerarquicoReporte, 0, 8) as $territorioEstado): ?>
+                            <?php foreach (array_slice($territorioJerarquicoReporte, 0, 4) as $territorioEstado): ?>
                                 <?php
                                 $totalEstado = max(0, (int)($territorioEstado['total'] ?? 0));
                                 $porcentajeEstado = ($totalEstado / max(1, (int)$resumenReporte['total'])) * 100;
@@ -2052,7 +2073,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                                         ? $territorioEstado['municipios']
                                         : [],
                                     0,
-                                    5
+                                    3
                                 );
                                 ?>
                                 <article class="analyst-territory-state">
@@ -2079,9 +2100,30 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                                                 </div>
                                             <?php endforeach; ?>
                                         </div>
+                                        <?php
+                                        $municipiosTotalesEstado = count(
+                                            is_array($territorioEstado['municipios'] ?? null)
+                                                ? $territorioEstado['municipios']
+                                                : []
+                                        );
+                                        ?>
+                                        <?php if ($municipiosTotalesEstado > 3): ?>
+                                            <span class="analyst-territory-more">
+                                                + <?= $municipiosTotalesEstado - 3 ?> municipio<?= ($municipiosTotalesEstado - 3) === 1 ? '' : 's' ?> más
+                                            </span>
+                                        <?php endif; ?>
                                     <?php endif; ?>
                                 </article>
                             <?php endforeach; ?>
+                            <?php if (count($territorioJerarquicoReporte) > 4): ?>
+                                <div class="analyst-territory-summary">
+                                    <i class="bi bi-layers"></i>
+                                    <span>
+                                        Mostrando 4 de <?= count($territorioJerarquicoReporte) ?> estados ·
+                                        <?= count($territorioJerarquicoReporte) - 4 ?> estado<?= (count($territorioJerarquicoReporte) - 4) === 1 ? '' : 's' ?> adicional<?= (count($territorioJerarquicoReporte) - 4) === 1 ? '' : 'es' ?>
+                                    </span>
+                                </div>
+                            <?php endif; ?>
                         </div>
                     <?php elseif (!$mostrarJerarquiaTerritorial && !empty($municipiosActividad)): ?>
                         <div class="analyst-portfolio-territory-list">
