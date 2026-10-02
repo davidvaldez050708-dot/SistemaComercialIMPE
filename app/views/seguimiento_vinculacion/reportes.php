@@ -922,7 +922,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                 <div>
                     <strong><?= (int)($llamadasReporte['verificaciones_efectivas'] ?? 0) ?></strong>
                     <span>Llamadas efectivas</span>
-                    <small>Una efectiva contabilizada por institución y día</small>
+                    <small>Meta operativa: <?= $metaDiariaEfectivas ?> por Analista y día</small>
                 </div>
             </article>
         </section>
@@ -998,9 +998,13 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                         <small><?= $esMetaEquipoSupervisor ? 'equipo supervisado' : 'efectivas esperadas' ?></small>
                     </div>
                     <div>
-                        <span>Hoy</span>
-                        <strong><?= $efectivasHoyReporte ?>/<?= $metaDiariaEquipoEfectivas ?></strong>
-                        <small><?= $esMetaEquipoSupervisor ? 'meta diaria del equipo' : 'meta diaria' ?></small>
+                        <span><?= $hoyIncluidoEnPeriodo ? 'Hoy' : 'Meta diaria' ?></span>
+                        <strong>
+                            <?= $hoyIncluidoEnPeriodo
+                                ? $efectivasHoyReporte . '/' . $metaDiariaEquipoEfectivas
+                                : $metaDiariaEquipoEfectivas ?>
+                        </strong>
+                        <small><?= $esMetaEquipoSupervisor ? 'alcance supervisado' : 'efectivas esperadas' ?></small>
                     </div>
                 </div>
             </div>
