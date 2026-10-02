@@ -20,7 +20,7 @@ $estadosCubiertos = (int)($coberturaConvocatoriasReporte['estados_cubiertos'] ??
 $totalBachillerato = (int)($publicacionesPorTipoReporte['bachillerato']['total'] ?? 0);
 $totalTitulacion = (int)($publicacionesPorTipoReporte['titulacion']['total'] ?? 0);
 
-$urlDashboardMarketing = BASE_URL . 'index.php?controller=home&action=index';
+$urlResumenConvocatorias = BASE_URL . 'index.php?controller=convocatoriaReporte&action=index';
 $urlConvocatorias = BASE_URL . 'index.php?controller=convocatoria&action=index';
 $urlPublicacionesDia = BASE_URL .
     'index.php?controller=convocatoria&action=publicacionesDelDia&fecha=' .
@@ -78,7 +78,7 @@ $urlPublicacionesDia = BASE_URL .
 
             <a
                 class="btn btn-system-save report-card-action"
-                href="<?= $urlDashboardMarketing ?>">
+                href="<?= $urlResumenConvocatorias ?>">
                 <i class="bi bi-arrow-right-circle" aria-hidden="true"></i>
                 <span>Consultar resumen</span>
             </a>
