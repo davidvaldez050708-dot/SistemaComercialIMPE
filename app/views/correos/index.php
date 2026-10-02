@@ -29,9 +29,19 @@ $texto = static fn($valor) => htmlspecialchars(
                 </p>
             </div>
 
-            <span class="correo-marketing-selector-icon" aria-hidden="true">
-                <i class="bi bi-envelope-paper"></i>
-            </span>
+            <div class="correo-marketing-selector-actions">
+                <button
+                    type="button"
+                    class="btn btn-system-save correo-marketing-compose-button"
+                    data-marketing-compose>
+                    <i class="bi bi-pencil-square"></i>
+                    Redactar correo
+                </button>
+
+                <span class="correo-marketing-selector-icon" aria-hidden="true">
+                    <i class="bi bi-envelope-paper"></i>
+                </span>
+            </div>
         </div>
 
         <div class="correo-marketing-summary-grid">
@@ -236,3 +246,164 @@ $texto = static fn($valor) => htmlspecialchars(
         </div>
     </section>
 </section>
+
+
+<div
+    class="modal fade"
+    id="modalCorreoMarketing"
+    tabindex="-1"
+    aria-labelledby="modalCorreoMarketingTitulo"
+    aria-hidden="true">
+
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content system-form-modal correo-marketing-compose-modal">
+            <form
+                enctype="multipart/form-data"
+                data-marketing-mail-form>
+
+                <div class="modal-header system-form-modal-header">
+                    <div>
+                        <h5
+                            class="system-form-modal-title"
+                            id="modalCorreoMarketingTitulo">
+                            Redactar correo
+                        </h5>
+                        <p class="system-form-modal-subtitle">
+                            Redacta el mensaje y, si lo necesitas, adjunta documentos.
+                        </p>
+                    </div>
+
+                    <button
+                        type="button"
+                        class="btn-close"
+                        data-bs-dismiss="modal"
+                        aria-label="Cerrar">
+                    </button>
+                </div>
+
+                <div class="modal-body">
+                    <div
+                        class="alert alert-danger d-none mb-3"
+                        data-marketing-mail-error>
+                    </div>
+
+                    <div class="correo-marketing-recipient-card mb-3">
+                        <span>DESTINATARIO</span>
+                        <strong data-marketing-mail-recipient>
+                            Escribe un correo electrónico
+                        </strong>
+                    </div>
+
+                    <div class="mb-3">
+                        <label
+                            class="form-label"
+                            for="correo_marketing_para">
+                            Para
+                        </label>
+
+                        <input
+                            class="form-control system-form-control"
+                            id="correo_marketing_para"
+                            type="email"
+                            name="destinatario"
+                            maxlength="255"
+                            placeholder="correo@dominio.com"
+                            autocomplete="email"
+                            data-marketing-mail-to
+                            required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label
+                            class="form-label"
+                            for="correo_marketing_asunto">
+                            Asunto
+                        </label>
+
+                        <input
+                            class="form-control system-form-control"
+                            id="correo_marketing_asunto"
+                            type="text"
+                            name="asunto"
+                            maxlength="255"
+                            placeholder="Escribe el asunto del correo"
+                            data-marketing-mail-subject
+                            required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label
+                            class="form-label"
+                            for="correo_marketing_mensaje">
+                            Mensaje
+                        </label>
+
+                        <textarea
+                            class="form-control system-form-control correo-marketing-message"
+                            id="correo_marketing_mensaje"
+                            name="cuerpo"
+                            rows="9"
+                            maxlength="20000"
+                            placeholder="Escribe tu mensaje..."
+                            data-marketing-mail-body
+                            required></textarea>
+                    </div>
+
+                    <div class="mb-0">
+                        <label
+                            class="form-label"
+                            for="correo_marketing_adjuntos">
+                            Adjuntos
+                            <span class="text-muted">(opcional)</span>
+                        </label>
+
+                        <input
+                            class="form-control system-form-control"
+                            id="correo_marketing_adjuntos"
+                            type="file"
+                            name="adjuntos[]"
+                            multiple
+                            accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.png,.jpg,.jpeg"
+                            data-marketing-mail-files>
+
+                        <div class="form-text correo-marketing-file-help">
+                            PDF, Office, TXT, CSV, PNG o JPG. Máximo 8 archivos,
+                            12 MB por archivo y 20 MB en total.
+                        </div>
+
+                        <div
+                            class="correo-marketing-files d-none"
+                            data-marketing-mail-files-list>
+                        </div>
+                    </div>
+
+                    <div class="correo-marketing-mail-note">
+                        <i class="bi bi-info-circle"></i>
+                        <span>
+                            El correo se enviará desde tu cuenta institucional.
+                            Si tienes una firma configurada en Mi perfil,
+                            se incluirá automáticamente.
+                        </span>
+                    </div>
+                </div>
+
+                <div class="modal-footer system-form-modal-footer">
+                    <button
+                        type="button"
+                        class="btn btn-system-cancel"
+                        data-bs-dismiss="modal">
+                        Cancelar
+                    </button>
+
+                    <button
+                        type="submit"
+                        class="btn btn-system-save"
+                        data-marketing-mail-send>
+                        <i class="bi bi-send me-2"></i>
+                        Enviar correo
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
