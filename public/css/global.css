@@ -62,14 +62,55 @@ a {
     top: 0;
     left: 0;
     z-index: 1030;
+
+    height: 100vh;
+    min-height: 0;
+    overflow: hidden;
 }
 
 .admin-sidebar .offcanvas-body {
+    min-height: 0;
     padding: 0;
+    overflow: hidden;
+}
+
+.sidebar-navigation {
+    min-height: 0;
+    flex: 1 1 auto;
+
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+
+    padding-bottom: 12px;
+
+    scrollbar-width: thin;
+    scrollbar-color:
+        rgba(159, 183, 231, 0.42)
+        transparent;
+}
+
+.sidebar-navigation::-webkit-scrollbar {
+    width: 6px;
+}
+
+.sidebar-navigation::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.sidebar-navigation::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background-color: rgba(159, 183, 231, 0.34);
+}
+
+.sidebar-navigation::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(159, 183, 231, 0.54);
 }
 
 .sidebar-brand {
     min-height: 118px;
+    flex: 0 0 auto;
 
     padding: 14px 16px 12px;
 
@@ -175,9 +216,12 @@ a {
 
 .sidebar-footer {
     margin-top: auto;
+    flex: 0 0 auto;
+
     padding: 13px 14px;
 
     border-top: 1px solid rgba(255, 255, 255, 0.14);
+    background-color: #16223B;
 }
 
 .sidebar-user {
