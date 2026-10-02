@@ -19,8 +19,15 @@
         const error = modalElement.querySelector('[data-marketing-mail-error]');
         const botonEnviar = modalElement.querySelector('[data-marketing-mail-send]');
         const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
+        const modalDetalleElement =
+            document.getElementById('modalCorreoMarketingDetalle');
+        const modalDetalle = modalDetalleElement
+            ? bootstrap.Modal.getOrCreateInstance(modalDetalleElement)
+            : null;
         const urlEnviar = 'index.php?controller=correoMarketing&action=enviar';
+        const urlVer = 'index.php?controller=correoMarketing&action=ver';
         let enviando = false;
+        let correoDetalleActual = null;
 
         const escapar = function (valor) {
             const div = document.createElement('div');
@@ -169,6 +176,250 @@
 
             return '';
         };
+
+        const limpiarDetalle = function () {
+            correoDetalleActual = null;
+
+            if (!modalDetalleElement) {
+                return;
+            }
+
+            const errorDetalle = modalDetalleElement.querySelector(
+                '[data-marketing-mail-detail-error]'
+            );
+            const cargando = modalDetalleElement.querySelector(
+                '[data-marketing-mail-detail-loading]'
+            );
+            const contenido = modalDetalleElement.querySelector(
+                '[data-marketing-mail-detail-content]'
+            );
+            const adjuntosSeccion = modalDetalleElement.querySelector(
+                '[data-marketing-mail-detail-attachments-section]'
+            );
+            const adjuntosLista = modalDetalleElement.querySelector(
+                '[data-marketing-mail-detail-attachments]'
+            );
+
+            errorDetalle?.classList.add('d-none');
+            if (errorDetalle) {
+                errorDetalle.textContent = '';
+            }
+
+            cargando?.classList.remove('d-none');
+            contenido?.classList.add('d-none');
+            adjuntosSeccion?.classList.add('d-none');
+
+            if (adjuntosLista) {
+                adjuntosLista.innerHTML = '';
+            }
+        };
+
+        const renderizarDetalle = function (correo) {
+            if (!modalDetalleElement) {
+                return;
+            }
+
+            correoDetalleActual = correo;
+
+            const asignarTexto = function (selector, valor) {
+                const nodo = modalDetalleElement.querySelector(selector);
+                if (nodo) {
+                    nodo.textContent = String(
+                        valor == null || valor === '' ? '—' : valor
+                    );
+                }
+            };
+
+            asignarTexto(
+                '[data-marketing-mail-detail-to]',
+                correo.destinatario || '—'
+            );
+            asignarTexto(
+                '[data-marketing-mail-detail-name]',
+                correo.destinatario_nombre || ''
+            );
+            asignarTexto(
+                '[data-marketing-mail-detail-date]',
+                correo.fecha_envio || '—'
+            );
+            asignarTexto(
+                '[data-marketing-mail-detail-status]',
+                correo.estado || '—'
+            );
+            asignarTexto(
+                '[data-marketing-mail-detail-subject]',
+                correo.asunto || '—'
+            );
+            asignarTexto(
+                '[data-marketing-mail-detail-body]',
+                correo.cuerpo || '—'
+            );
+
+            const proveedor = String(correo.proveedor || '').trim();
+            asignarTexto(
+                '[data-marketing-mail-detail-provider]',
+                proveedor !== ''
+                    ? 'Enviado mediante ' + proveedor
+                    : 'Correo registrado en el sistema'
+            );
+
+            const firma = modalDetalleElement.querySelector(
+                '[data-marketing-mail-detail-signature]'
+            );
+            firma?.classList.toggle(
+                'd-none',
+                !Boolean(correo.firma_incluida)
+            );
+
+            const adjuntos = Array.isArray(correo.adjuntos)
+                ? correo.adjuntos
+                : [];
+            const adjuntosSeccion = modalDetalleElement.querySelector(
+                '[data-marketing-mail-detail-attachments-section]'
+            );
+            const adjuntosLista = modalDetalleElement.querySelector(
+                '[data-marketing-mail-detail-attachments]'
+            );
+
+            if (adjuntosLista) {
+                adjuntosLista.innerHTML = '';
+
+                adjuntos.forEach(function (nombre) {
+                    const item = document.createElement('span');
+                    const icono = document.createElement('i');
+                    const textoNombre = document.createElement('strong');
+
+                    icono.className = 'bi bi-paperclip';
+                    textoNombre.textContent = String(nombre || 'Archivo');
+                    item.appendChild(icono);
+                    item.appendChild(textoNombre);
+                    adjuntosLista.appendChild(item);
+                });
+            }
+
+            adjuntosSeccion?.classList.toggle(
+                'd-none',
+                adjuntos.length === 0
+            );
+
+            modalDetalleElement
+                .querySelector('[data-marketing-mail-detail-loading]')
+                ?.classList.add('d-none');
+            modalDetalleElement
+                .querySelector('[data-marketing-mail-detail-content]')
+                ?.classList.remove('d-none');
+        };
+
+        const mostrarErrorDetalle = function (mensaje) {
+            if (!modalDetalleElement) {
+                return;
+            }
+
+            const errorDetalle = modalDetalleElement.querySelector(
+                '[data-marketing-mail-detail-error]'
+            );
+
+            modalDetalleElement
+                .querySelector('[data-marketing-mail-detail-loading]')
+                ?.classList.add('d-none');
+            modalDetalleElement
+                .querySelector('[data-marketing-mail-detail-content]')
+                ?.classList.add('d-none');
+
+            if (errorDetalle) {
+                errorDetalle.textContent = String(
+                    mensaje || 'No fue posible cargar el correo.'
+                );
+                errorDetalle.classList.remove('d-none');
+            }
+        };
+
+        const abrirDetalle = async function (correoId) {
+            if (!modalDetalleElement || !modalDetalle || correoId <= 0) {
+                return;
+            }
+
+            limpiarDetalle();
+            modalDetalle.show();
+
+            try {
+                const respuesta = await fetch(
+                    urlVer + '&id=' + encodeURIComponent(correoId),
+                    {
+                        headers: {
+                            'X-Requested-With': 'fetch'
+                        },
+                        cache: 'no-store'
+                    }
+                );
+
+                const json = await respuesta.json();
+
+                if (!respuesta.ok || !json.ok || !json.correo) {
+                    throw new Error(
+                        json.mensaje ||
+                        'No fue posible cargar el correo.'
+                    );
+                }
+
+                renderizarDetalle(json.correo);
+            } catch (errorDetalle) {
+                console.error(errorDetalle);
+                mostrarErrorDetalle(
+                    errorDetalle.message ||
+                    'No fue posible comunicarse con el sistema.'
+                );
+            }
+        };
+
+        document.addEventListener('click', function (event) {
+            const botonVer = event.target.closest(
+                '[data-marketing-mail-view]'
+            );
+
+            if (!botonVer) {
+                return;
+            }
+
+            event.preventDefault();
+
+            abrirDetalle(
+                Number(botonVer.getAttribute('data-mail-id') || 0)
+            );
+        });
+
+        modalDetalleElement
+            ?.querySelector('[data-marketing-mail-detail-copy]')
+            ?.addEventListener('click', async function () {
+                if (!correoDetalleActual) {
+                    return;
+                }
+
+                const textoCorreo = [
+                    'Para: ' + String(
+                        correoDetalleActual.destinatario || ''
+                    ),
+                    'Asunto: ' + String(
+                        correoDetalleActual.asunto || ''
+                    ),
+                    '',
+                    String(correoDetalleActual.cuerpo || '')
+                ].join('\n');
+
+                try {
+                    await navigator.clipboard.writeText(textoCorreo);
+                    mostrarToast(
+                        'Contenido del correo copiado.',
+                        false
+                    );
+                } catch (errorCopiar) {
+                    console.error(errorCopiar);
+                    mostrarToast(
+                        'No fue posible copiar el contenido.',
+                        true
+                    );
+                }
+            });
 
         botonRedactar.addEventListener('click', function () {
             limpiarFormulario();
