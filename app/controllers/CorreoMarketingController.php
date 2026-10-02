@@ -44,10 +44,100 @@ class CorreoMarketingController
             ], 404);
         }
 
+        $correo['adjuntos'] = array_map(
+            static function ($adjunto) {
+                if (
+                    !is_array($adjunto) ||
+                    empty($adjunto['id']) ||
+                    empty($adjunto['disponible'])
+                ) {
+                    if (is_array($adjunto)) {
+                        $adjunto['url_inline'] = '';
+                        $adjunto['url_descarga'] = '';
+                    }
+
+                    return $adjunto;
+                }
+
+                $adjuntoId = (int)$adjunto['id'];
+                $adjunto['url_inline'] =
+                    BASE_URL .
+                    'index.php?controller=correoMarketing&action=archivo&id=' .
+                    $adjuntoId .
+                    '&modo=inline';
+                $adjunto['url_descarga'] =
+                    BASE_URL .
+                    'index.php?controller=correoMarketing&action=archivo&id=' .
+                    $adjuntoId .
+                    '&modo=descarga';
+
+                return $adjunto;
+            },
+            is_array($correo['adjuntos'] ?? null)
+                ? $correo['adjuntos']
+                : []
+        );
+
         $this->responder([
             'ok' => true,
             'correo' => $correo
         ]);
+    }
+
+    public function archivo()
+    {
+        $this->validarAccesoMarketing();
+
+        $adjuntoId = (int)($_GET['id'] ?? 0);
+        $modo = strtolower(trim((string)($_GET['modo'] ?? 'descarga')));
+        $service = new CorreoMarketingService();
+        $adjunto = $service->obtenerAdjunto(
+            (int)($_SESSION['usuario_id'] ?? 0),
+            $adjuntoId
+        );
+
+        if (!$adjunto) {
+            http_response_code(404);
+            echo 'Archivo no disponible.';
+            exit;
+        }
+
+        $ruta = (string)$adjunto['ruta'];
+        $nombre = basename((string)$adjunto['nombre']);
+        $mime = trim((string)$adjunto['mime']) !== ''
+            ? (string)$adjunto['mime']
+            : 'application/octet-stream';
+        $tamano = is_file($ruta)
+            ? (int)filesize($ruta)
+            : (int)($adjunto['tamano'] ?? 0);
+
+        $permitirInline =
+            strpos(strtolower($mime), 'image/') === 0 ||
+            strtolower($mime) === 'application/pdf';
+
+        $disposition = (
+            $modo === 'inline' &&
+            $permitirInline
+        ) ? 'inline' : 'attachment';
+
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+
+        header('Content-Type: ' . $mime);
+        header('Content-Length: ' . $tamano);
+        header('X-Content-Type-Options: nosniff');
+        header(
+            'Content-Disposition: ' .
+            $disposition .
+            '; filename="' .
+            str_replace('"', '', $nombre) .
+            '"; filename*=UTF-8\'\'' .
+            rawurlencode($nombre)
+        );
+
+        readfile($ruta);
+        exit;
     }
 
     public function enviar()
