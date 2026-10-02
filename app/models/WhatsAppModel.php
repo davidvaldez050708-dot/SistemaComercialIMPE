@@ -382,6 +382,43 @@ class WhatsAppModel
         return $this->resultadoArreglo($stmt->get_result());
     }
 
+    public function obtenerEstadosMensajesSalida(
+        $conversacionId,
+        $usuarioId,
+        $gestionarTodas = false
+    ) {
+        if (!$this->obtenerConversacion(
+            $conversacionId,
+            $usuarioId,
+            $gestionarTodas
+        )) {
+            return [];
+        }
+
+        $stmt = $this->connection->prepare(
+            "SELECT
+                id,
+                estado,
+                error_detalle,
+                enviado_at,
+                entregado_at,
+                leido_at
+             FROM whatsapp_mensajes
+             WHERE conversacion_id = ?
+               AND direccion = 'SALIENTE'
+             ORDER BY id DESC
+             LIMIT 100"
+        );
+
+        $conversacionId = (int)$conversacionId;
+        $stmt->bind_param('i', $conversacionId);
+        $stmt->execute();
+
+        $filas = $this->resultadoArreglo($stmt->get_result());
+
+        return array_reverse($filas);
+    }
+
     public function crearORecuperarConversacion(
         $cuentaId,
         $telefono,
