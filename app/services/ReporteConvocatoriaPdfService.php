@@ -60,6 +60,9 @@ class ReporteConvocatoriaPdfService
         )
             ? $datosReporte['alertas_vencimiento']
             : [];
+        $porTipo = is_array($datosReporte['por_tipo'] ?? null)
+            ? $datosReporte['por_tipo']
+            : [];
         $territorios = is_array($datosReporte['cobertura']['territorios'] ?? null)
             ? $datosReporte['cobertura']['territorios']
             : [];
@@ -132,6 +135,84 @@ class ReporteConvocatoriaPdfService
                 '<tr><td colspan="5" class="empty">' .
                 'No hay convocatorias con vencimiento hoy o en los próximos 2 días.' .
                 '</td></tr>';
+        }
+
+        $totalBachillerato = (int)($porTipo['bachillerato']['total'] ?? 0);
+        $totalTitulacion = (int)($porTipo['titulacion']['total'] ?? 0);
+        $mesesBachillerato = is_array($porTipo['bachillerato']['meses'] ?? null)
+            ? $porTipo['bachillerato']['meses']
+            : [];
+        $mesesTitulacion = is_array($porTipo['titulacion']['meses'] ?? null)
+            ? $porTipo['titulacion']['meses']
+            : [];
+
+        $serieMensual = [];
+        $maximoMensual = 1;
+        $cantidadMeses = max(count($mesesBachillerato), count($mesesTitulacion));
+
+        for ($indiceMes = 0; $indiceMes < $cantidadMeses; $indiceMes++) {
+            $filaBachillerato = $mesesBachillerato[$indiceMes] ?? [];
+            $filaTitulacion = $mesesTitulacion[$indiceMes] ?? [];
+
+            $labelMes = (string)(
+                $filaBachillerato['label'] ??
+                $filaTitulacion['label'] ??
+                ''
+            );
+            $bachilleratoMes = (int)($filaBachillerato['total'] ?? 0);
+            $titulacionMes = (int)($filaTitulacion['total'] ?? 0);
+
+            $maximoMensual = max(
+                $maximoMensual,
+                $bachilleratoMes,
+                $titulacionMes
+            );
+
+            $serieMensual[] = [
+                'label' => $labelMes,
+                'bachillerato' => $bachilleratoMes,
+                'titulacion' => $titulacionMes
+            ];
+        }
+
+        $filasGraficaTipo = '';
+
+        foreach ($serieMensual as $mesSerie) {
+            $bachilleratoMes = (int)($mesSerie['bachillerato'] ?? 0);
+            $titulacionMes = (int)($mesSerie['titulacion'] ?? 0);
+            $anchoBachillerato = (int)round(
+                ($bachilleratoMes / $maximoMensual) * 100
+            );
+            $anchoTitulacion = (int)round(
+                ($titulacionMes / $maximoMensual) * 100
+            );
+
+            $filasGraficaTipo .=
+                '<tr>' .
+                    '<td class="chart-month">' .
+                        $this->e($mesSerie['label'] ?? '') .
+                    '</td>' .
+                    '<td class="chart-series-label">Bachillerato</td>' .
+                    '<td class="chart-cell">' .
+                        '<div class="chart-track"><div class="chart-bar chart-bar-light" style="width:' .
+                            max(2, $anchoBachillerato) . '%"></div></div>' .
+                    '</td>' .
+                    '<td class="chart-value">' . $bachilleratoMes . '</td>' .
+                '</tr>' .
+                '<tr>' .
+                    '<td></td>' .
+                    '<td class="chart-series-label">Titulación</td>' .
+                    '<td class="chart-cell">' .
+                        '<div class="chart-track"><div class="chart-bar chart-bar-primary" style="width:' .
+                            max(2, $anchoTitulacion) . '%"></div></div>' .
+                    '</td>' .
+                    '<td class="chart-value">' . $titulacionMes . '</td>' .
+                '</tr>';
+        }
+
+        if ($filasGraficaTipo === '') {
+            $filasGraficaTipo =
+                '<tr><td colspan="4" class="empty">Sin información mensual disponible.</td></tr>';
         }
 
         return '<!DOCTYPE html>
@@ -262,6 +343,76 @@ class ReporteConvocatoriaPdfService
     }
     .priority-danger { background: #fff0ee; color: #b42318; }
     .priority-warning { background: #fff3e6; color: #d46a13; }
+    .type-cards {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 10px 0;
+        margin-left: -10px;
+    }
+    .type-card {
+        width: 50%;
+        padding: 12px;
+        border: 1px solid #dfe5ee;
+        border-left: 4px solid #273a8a;
+        background: #ffffff;
+        vertical-align: top;
+    }
+    .type-card-title {
+        color: #16223b;
+        font-size: 10px;
+        font-weight: 700;
+    }
+    .type-card-total {
+        margin-top: 8px;
+        color: #273a8a;
+        font-size: 22px;
+        font-weight: 700;
+    }
+    .type-card-sub {
+        color: #6d7480;
+        font-size: 7px;
+    }
+    .chart-table {
+        width: 100%;
+        margin-top: 8px;
+        border-collapse: collapse;
+    }
+    .chart-table td {
+        padding: 4px 5px;
+        border: 0;
+        font-size: 7px;
+        vertical-align: middle;
+    }
+    .chart-month {
+        width: 8%;
+        color: #16223b;
+        font-weight: 700;
+    }
+    .chart-series-label {
+        width: 12%;
+        color: #6d7480;
+    }
+    .chart-cell {
+        width: 72%;
+    }
+    .chart-value {
+        width: 8%;
+        color: #16223b;
+        font-weight: 700;
+        text-align: right;
+    }
+    .chart-track {
+        width: 100%;
+        height: 9px;
+        background: #edf1f6;
+        border-radius: 4px;
+    }
+    .chart-bar {
+        height: 9px;
+        border-radius: 4px;
+    }
+    .chart-bar-light { background: #cfdaf0; }
+    .chart-bar-primary { background: #273a8a; }
     ul.findings {
         margin: 0;
         padding-left: 16px;
@@ -311,6 +462,29 @@ class ReporteConvocatoriaPdfService
             <td class="metric"><strong>' . (int)($resumen['porcentaje_cobertura'] ?? 0) . '%</strong><span>Cobertura territorial</span></td>
         </tr>
     </table>
+
+    <div class="section-title">Publicaciones por tipo</div>
+    <table class="type-cards">
+        <tr>
+            <td class="type-card">
+                <div class="type-card-title">Bachillerato</div>
+                <div class="type-card-total">' . $totalBachillerato . '</div>
+                <div class="type-card-sub">publicaciones · últimos 30 días</div>
+            </td>
+            <td class="type-card">
+                <div class="type-card-title">Titulación</div>
+                <div class="type-card-total">' . $totalTitulacion . '</div>
+                <div class="type-card-sub">publicaciones · últimos 30 días</div>
+            </td>
+        </tr>
+    </table>
+
+    <div class="section-title">Tendencia mensual de publicaciones</div>
+    <div class="panel">
+        <table class="chart-table">
+            <tbody>' . $filasGraficaTipo . '</tbody>
+        </table>
+    </div>
 
     <table class="two-col"><tr>
         <td>
