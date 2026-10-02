@@ -26,6 +26,12 @@ document.addEventListener('DOMContentLoaded', function () {
     );
     const channelForm = document.querySelector('[data-whatsapp-channel-form]');
     const channelStatus = document.querySelector('[data-whatsapp-channel-status]');
+    const newConversationForm = document.querySelector(
+        '[data-whatsapp-new-conversation-form]'
+    );
+    const newConversationStatus = document.querySelector(
+        '[data-whatsapp-new-conversation-status]'
+    );
 
     const endpoint = function (action, params) {
         const url = new URL(baseUrl + 'index.php', window.location.href);
@@ -381,6 +387,71 @@ document.addEventListener('DOMContentLoaded', function () {
         templateButton.disabled = false;
         templateButton.innerHTML = original;
     });
+
+    newConversationForm?.addEventListener(
+        'submit',
+        async function (event) {
+            event.preventDefault();
+
+            if (!newConversationForm.reportValidity()) {
+                return;
+            }
+
+            const button = newConversationForm.querySelector(
+                'button[type="submit"]'
+            );
+
+            if (button) {
+                button.disabled = true;
+            }
+
+            const data = await requestJson(
+                endpoint('crearConversacion'),
+                {
+                    method: 'POST',
+                    body: new FormData(newConversationForm)
+                }
+            );
+
+            if (!data.ok) {
+                if (newConversationStatus) {
+                    newConversationStatus.classList.remove(
+                        'd-none',
+                        'is-success',
+                        'is-error'
+                    );
+                    newConversationStatus.classList.add('is-error');
+                    newConversationStatus.textContent = String(
+                        data.mensaje ||
+                        'No fue posible abrir la conversación.'
+                    );
+                }
+
+                if (button) {
+                    button.disabled = false;
+                }
+
+                return;
+            }
+
+            if (newConversationStatus) {
+                newConversationStatus.classList.remove(
+                    'd-none',
+                    'is-error'
+                );
+                newConversationStatus.classList.add('is-success');
+                newConversationStatus.textContent =
+                    'Conversación preparada. Abriendo chat…';
+            }
+
+            window.location.href = String(
+                data.url ||
+                endpoint('index', {
+                    conversacion_id: data.conversacion_id
+                })
+            );
+        }
+    );
 
     channelForm?.addEventListener('submit', async function (event) {
         event.preventDefault();
