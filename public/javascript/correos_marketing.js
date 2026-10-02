@@ -284,15 +284,168 @@
             if (adjuntosLista) {
                 adjuntosLista.innerHTML = '';
 
-                adjuntos.forEach(function (nombre) {
-                    const item = document.createElement('span');
-                    const icono = document.createElement('i');
-                    const textoNombre = document.createElement('strong');
+                const formatearTamano = function (bytes) {
+                    const valor = Number(bytes || 0);
 
-                    icono.className = 'bi bi-paperclip';
-                    textoNombre.textContent = String(nombre || 'Archivo');
-                    item.appendChild(icono);
-                    item.appendChild(textoNombre);
+                    if (valor <= 0) {
+                        return '';
+                    }
+
+                    if (valor >= 1024 * 1024) {
+                        return (valor / (1024 * 1024)).toFixed(1) + ' MB';
+                    }
+
+                    return Math.max(1, Math.round(valor / 1024)) + ' KB';
+                };
+
+                const iconoArchivo = function (adjunto) {
+                    const nombre = String(adjunto.nombre || '').toLowerCase();
+                    const mime = String(adjunto.mime || '').toLowerCase();
+
+                    if (adjunto.es_imagen || mime.indexOf('image/') === 0) {
+                        return 'bi-file-earmark-image';
+                    }
+
+                    if (adjunto.es_pdf || mime === 'application/pdf') {
+                        return 'bi-file-earmark-pdf';
+                    }
+
+                    if (/\.(doc|docx)$/.test(nombre)) {
+                        return 'bi-file-earmark-word';
+                    }
+
+                    if (/\.(xls|xlsx|csv)$/.test(nombre)) {
+                        return 'bi-file-earmark-excel';
+                    }
+
+                    if (/\.(ppt|pptx)$/.test(nombre)) {
+                        return 'bi-file-earmark-slides';
+                    }
+
+                    return 'bi-file-earmark';
+                };
+
+                adjuntos.forEach(function (adjuntoOriginal) {
+                    const adjunto = typeof adjuntoOriginal === 'string'
+                        ? {
+                            nombre: adjuntoOriginal,
+                            disponible: false,
+                            es_imagen: false,
+                            es_pdf: /\.pdf$/i.test(adjuntoOriginal)
+                        }
+                        : (adjuntoOriginal || {});
+
+                    const item = document.createElement('article');
+                    item.className = 'correo-marketing-attachment-card';
+
+                    if (
+                        adjunto.es_imagen &&
+                        adjunto.disponible &&
+                        adjunto.url_inline
+                    ) {
+                        const enlaceImagen = document.createElement('a');
+                        enlaceImagen.className =
+                            'correo-marketing-attachment-preview';
+                        enlaceImagen.href = String(adjunto.url_inline);
+                        enlaceImagen.target = '_blank';
+                        enlaceImagen.rel = 'noopener';
+
+                        const imagen = document.createElement('img');
+                        imagen.src = String(adjunto.url_inline);
+                        imagen.alt = String(
+                            adjunto.nombre || 'Imagen adjunta'
+                        );
+                        imagen.loading = 'lazy';
+
+                        enlaceImagen.appendChild(imagen);
+                        item.appendChild(enlaceImagen);
+                    } else {
+                        const visual = document.createElement('div');
+                        visual.className =
+                            'correo-marketing-attachment-file-icon';
+
+                        const icono = document.createElement('i');
+                        icono.className =
+                            'bi ' + iconoArchivo(adjunto);
+
+                        visual.appendChild(icono);
+                        item.appendChild(visual);
+                    }
+
+                    const informacion = document.createElement('div');
+                    informacion.className =
+                        'correo-marketing-attachment-info';
+
+                    const nombre = document.createElement('strong');
+                    nombre.textContent = String(
+                        adjunto.nombre || 'Archivo adjunto'
+                    );
+
+                    const detalle = document.createElement('small');
+                    const partesDetalle = [];
+                    const tamano = formatearTamano(adjunto.tamano);
+
+                    if (String(adjunto.mime || '').trim() !== '') {
+                        partesDetalle.push(String(adjunto.mime));
+                    }
+
+                    if (tamano !== '') {
+                        partesDetalle.push(tamano);
+                    }
+
+                    detalle.textContent = partesDetalle.length > 0
+                        ? partesDetalle.join(' · ')
+                        : (
+                            adjunto.disponible
+                                ? 'Archivo enviado'
+                                : 'Archivo de un envío anterior'
+                        );
+
+                    informacion.appendChild(nombre);
+                    informacion.appendChild(detalle);
+
+                    const acciones = document.createElement('div');
+                    acciones.className =
+                        'correo-marketing-attachment-actions';
+
+                    if (adjunto.disponible) {
+                        if (
+                            (adjunto.es_imagen || adjunto.es_pdf) &&
+                            adjunto.url_inline
+                        ) {
+                            const ver = document.createElement('a');
+                            ver.className =
+                                'btn btn-system-light btn-sm';
+                            ver.href = String(adjunto.url_inline);
+                            ver.target = '_blank';
+                            ver.rel = 'noopener';
+                            ver.innerHTML =
+                                '<i class="bi bi-eye"></i>' +
+                                '<span>Ver</span>';
+                            acciones.appendChild(ver);
+                        }
+
+                        if (adjunto.url_descarga) {
+                            const descargar = document.createElement('a');
+                            descargar.className =
+                                'btn btn-system-light btn-sm';
+                            descargar.href = String(adjunto.url_descarga);
+                            descargar.innerHTML =
+                                '<i class="bi bi-download"></i>' +
+                                '<span>Descargar</span>';
+                            acciones.appendChild(descargar);
+                        }
+                    } else {
+                        const legacy = document.createElement('span');
+                        legacy.className =
+                            'correo-marketing-attachment-legacy';
+                        legacy.textContent =
+                            'Vista no disponible para este envío anterior';
+                        acciones.appendChild(legacy);
+                    }
+
+                    informacion.appendChild(acciones);
+                    item.appendChild(informacion);
                     adjuntosLista.appendChild(item);
                 });
             }
