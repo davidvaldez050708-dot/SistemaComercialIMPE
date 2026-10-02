@@ -1041,7 +1041,7 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
             </div>
         </div>
 
-        <div class="module-toolbar-actions">
+        <div class="module-toolbar-actions" data-convocatoria-create-action>
             <?php if ($puedeCrear): ?>
                 <button
                     type="button"
@@ -1777,6 +1777,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const headingConvocatorias = document.querySelector('[data-convocatoria-heading]');
     const headingCopyConvocatorias = document.querySelector('[data-convocatoria-heading-copy]');
     const headingIconConvocatorias = document.querySelector('[data-convocatoria-heading-icon]');
+    const crearConvocatoriaAction = document.querySelector('[data-convocatoria-create-action]');
     const contadorActivas = document.querySelector('[data-convocatoria-count="activas"]');
     const contadorHistorial = document.querySelector('[data-convocatoria-count="historial"]');
 
@@ -1833,6 +1834,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 ? '<i class="bi bi-megaphone"></i>'
                 : '<i class="bi bi-archive"></i>';
         }
+
+        crearConvocatoriaAction?.classList.toggle('d-none', !esActivas);
     };
 
     const actualizarContadoresVista = function () {
