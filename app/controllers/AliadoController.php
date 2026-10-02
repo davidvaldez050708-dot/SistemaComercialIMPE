@@ -193,6 +193,7 @@ class AliadoController
             $estructuraContactosDisponible;
         $puedeAbrirExpediente =
             tienePermiso('seguimientos_vinculacion.ver');
+        $puedeUsarWhatsapp = tienePermiso('whatsapp.ver');
 
         $filtros = [
             'buscar' => trim((string)($_GET['buscar'] ?? '')),
