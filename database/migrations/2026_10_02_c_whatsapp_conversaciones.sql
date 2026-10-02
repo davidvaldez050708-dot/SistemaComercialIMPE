@@ -105,7 +105,7 @@ INSERT INTO permisos (modulo, codigo, nombre, descripcion, estado)
 VALUES
 ('WhatsApp', 'whatsapp.ver', 'Ver conversaciones de WhatsApp', 'Consultar conversaciones de WhatsApp autorizadas.', 1),
 ('WhatsApp', 'whatsapp.enviar', 'Enviar mensajes por WhatsApp', 'Enviar mensajes mediante cuentas de WhatsApp Business autorizadas.', 1),
-('WhatsApp', 'whatsapp.gestionar_conversaciones', 'Gestionar conversaciones de WhatsApp', 'Asignar responsables y administrar el estado de conversaciones.', 1),
+('WhatsApp', 'whatsapp.gestionar_conversaciones', 'Supervisar conversaciones de WhatsApp', 'Consultar las conversaciones del equipo dentro del alcance autorizado.', 1),
 ('WhatsApp', 'whatsapp.gestionar_cuentas', 'Gestionar cuentas de WhatsApp', 'Configurar números empresariales y asignarlos a usuarios. Exclusivo de administración.', 1)
 ON DUPLICATE KEY UPDATE
     modulo = VALUES(modulo),
