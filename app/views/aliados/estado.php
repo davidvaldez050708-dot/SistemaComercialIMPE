@@ -306,13 +306,15 @@ $normalizarNumeroVista = static function ($valor) {
                                         $aliadoTieneWhatsappConfirmado =
                                             trim((string)($aliado['whatsapp_verificado'] ?? '')) !== '' ||
                                             (int)($aliado['tiene_whatsapp_confirmado_contacto'] ?? 0) === 1;
+                                        $aliadoTieneWhatsappAutorizado =
+                                            (int)($aliado['tiene_whatsapp_autorizado_contacto'] ?? 0) === 1;
                                         $mostrarAccionesSecundarias =
                                             $puedeGestionarContactos ||
                                             $puedeVerHistorial ||
                                             $puedeAbrirExpediente ||
                                             (
                                                 $puedeUsarWhatsapp &&
-                                                $aliadoTieneWhatsappConfirmado
+                                                $aliadoTieneWhatsappAutorizado
                                             );
                                         ?>
                                         <tr
@@ -445,7 +447,7 @@ $normalizarNumeroVista = static function ($valor) {
                                                                     </li>
                                                                 <?php endif; ?>
 
-                                                                <?php if ($puedeUsarWhatsapp && $aliadoTieneWhatsappConfirmado): ?>
+                                                                <?php if ($puedeUsarWhatsapp && $aliadoTieneWhatsappAutorizado): ?>
                                                                     <li>
                                                                         <a
                                                                             class="dropdown-item"
@@ -716,10 +718,17 @@ $normalizarNumeroVista = static function ($valor) {
                                 </span>
                             </label>
                             <label>
+                                <input type="checkbox" name="autorizado_whatsapp" value="1">
+                                <span>
+                                    <strong>Autorizó comunicaciones por WhatsApp</strong>
+                                    <small>Marca sólo cuando la institución haya aceptado recibir mensajes en este número.</small>
+                                </span>
+                            </label>
+                            <label>
                                 <input type="checkbox" name="preferido_difusion" value="1">
                                 <span>
                                     <strong>Preferido para difusión</strong>
-                                    <small>Será la primera opción cuando se habilite WhatsApp Business.</small>
+                                    <small>Será la primera opción sugerida al abrir la conversación.</small>
                                 </span>
                             </label>
                         </div>
