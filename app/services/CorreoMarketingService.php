@@ -107,6 +107,86 @@ class CorreoMarketingService
         return $salida;
     }
 
+    public function obtener($usuarioId, $correoId)
+    {
+        $usuarioId = (int)$usuarioId;
+        $correoId = (int)$correoId;
+
+        if (
+            $usuarioId <= 0 ||
+            $correoId <= 0 ||
+            !$this->tablaDisponible()
+        ) {
+            return null;
+        }
+
+        $sql = "SELECT
+                    id,
+                    usuario_id,
+                    destinatario,
+                    destinatario_nombre,
+                    asunto,
+                    cuerpo,
+                    tipo,
+                    estado,
+                    proveedor,
+                    firma_incluida,
+                    adjuntos_count,
+                    adjuntos_nombres,
+                    error_envio,
+                    fecha_envio,
+                    created_at
+                FROM correos_marketing
+                WHERE id = ?
+                  AND usuario_id = ?
+                LIMIT 1";
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param('ii', $correoId, $usuarioId);
+        $stmt->execute();
+        $fila = $stmt->get_result()->fetch_assoc();
+
+        if (!$fila) {
+            return null;
+        }
+
+        $fechaEnvio = trim((string)($fila['fecha_envio'] ?? ''));
+        $fechaRegistro = trim((string)($fila['created_at'] ?? ''));
+        $adjuntos = json_decode(
+            (string)($fila['adjuntos_nombres'] ?? '[]'),
+            true
+        );
+
+        if (!is_array($adjuntos)) {
+            $adjuntos = [];
+        }
+
+        return [
+            'id' => (int)$fila['id'],
+            'destinatario' => (string)($fila['destinatario'] ?? ''),
+            'destinatario_nombre' =>
+                (string)($fila['destinatario_nombre'] ?? ''),
+            'asunto' => (string)($fila['asunto'] ?? ''),
+            'cuerpo' => (string)($fila['cuerpo'] ?? ''),
+            'tipo' => $this->etiquetaTipo($fila['tipo'] ?? ''),
+            'estado' => $this->etiquetaEstado($fila['estado'] ?? ''),
+            'proveedor' => (string)($fila['proveedor'] ?? ''),
+            'firma_incluida' =>
+                (bool)((int)($fila['firma_incluida'] ?? 0)),
+            'adjuntos' => array_values(array_filter(
+                array_map(
+                    static fn($nombre) => trim((string)$nombre),
+                    $adjuntos
+                ),
+                static fn($nombre) => $nombre !== ''
+            )),
+            'adjuntos_count' => (int)($fila['adjuntos_count'] ?? 0),
+            'error_envio' => (string)($fila['error_envio'] ?? ''),
+            'fecha_envio' => $this->formatearFechaHora(
+                $fechaEnvio !== '' ? $fechaEnvio : $fechaRegistro
+            )
+        ];
+    }
+
     public function enviar($usuarioId, $datos, $archivos = null)
     {
         $usuarioId = (int)$usuarioId;
@@ -430,6 +510,20 @@ class CorreoMarketingService
                 @unlink($ruta);
             }
         }
+    }
+
+    private function formatearFechaHora($valor)
+    {
+        $valor = trim((string)$valor);
+
+        if ($valor === '') {
+            return '—';
+        }
+
+        $timestamp = strtotime($valor);
+        return $timestamp !== false
+            ? date('d/m/Y H:i', $timestamp)
+            : '—';
     }
 
     private function etiquetaEstado($estado)
