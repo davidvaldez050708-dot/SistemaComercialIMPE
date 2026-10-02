@@ -430,11 +430,26 @@ $descripcionTiposTerritorio = $esChihuahua
                                         'inactiva' => 'Inactiva'
                                     ];
 
+                                    $fechaInicioReciente = trim(
+                                        (string)($convocatoriaReciente['fecha_inicio'] ?? '')
+                                    );
+                                    $timestampInicioReciente = $fechaInicioReciente !== ''
+                                        ? strtotime($fechaInicioReciente)
+                                        : false;
+                                    $anioReciente = $timestampInicioReciente !== false
+                                        ? (int)date('Y', $timestampInicioReciente)
+                                        : (int)date('Y');
+                                    $mesReciente = $timestampInicioReciente !== false
+                                        ? (int)date('n', $timestampInicioReciente)
+                                        : (int)date('n');
+
                                     $urlReciente = BASE_URL .
                                         'index.php?controller=convocatoria&action=index&territorio_id=' .
                                         (int)$territorioSeleccionado['id'] .
                                         '&tipo=' . rawurlencode($tipoReciente) .
-                                        '&subtipo=' . rawurlencode($subtipoReciente);
+                                        '&subtipo=' . rawurlencode($subtipoReciente) .
+                                        '&anio=' . $anioReciente .
+                                        '&mes=' . $mesReciente;
                                     ?>
                                     <tr
                                         data-convocatoria-overview-row
