@@ -188,6 +188,9 @@ class ReporteSeguimientoVinculacionPdfService
         $resumenReporte = $datosReporte['resumen_reporte'] ?? [];
         $seguimientos = $datosReporte['seguimientos'] ?? [];
         $evolucionActividad = $datosReporte['evolucion_actividad'] ?? [];
+        $analitica = is_array($datosReporte['analitica'] ?? null)
+            ? $datosReporte['analitica']
+            : [];
         $etiquetasEstatus = $datosReporte['etiquetas_estatus'] ?? [];
         $fechaGeneracion = trim((string)($datosReporte['fecha_generacion'] ?? ''));
         $modoReporte = strtolower(trim((string)($datosReporte['modo_reporte'] ?? 'analista')));
@@ -257,6 +260,31 @@ class ReporteSeguimientoVinculacionPdfService
             false
         );
         $elementos[] = $this->crearEspaciador($documento, 100);
+
+        if ($tipoReporte === 'actividad' && $modoReporte !== 'administrador') {
+            $cumplimiento = is_array($analitica['cumplimiento_efectivas'] ?? null)
+                ? $analitica['cumplimiento_efectivas']
+                : [];
+            $metaDiaria = max(1, (int)($cumplimiento['meta_diaria_por_analista'] ?? 25));
+            $metaPeriodo = max(0, (int)($cumplimiento['meta_periodo'] ?? 0));
+            $efectivas = max(0, (int)($cumplimiento['efectivas'] ?? 0));
+            $porcentaje = max(0, (float)($cumplimiento['cumplimiento_pct'] ?? 0));
+            $promedio = max(0, (float)($cumplimiento['promedio_diario_por_analista'] ?? 0));
+
+            $elementos[] = $this->crearTituloSeccion($documento, 'Cumplimiento de llamadas efectivas');
+            $elementos[] = $this->crearTablaSimple(
+                $documento,
+                [
+                    ['Meta diaria por Analista', (string)$metaDiaria],
+                    ['Efectivas del periodo', $efectivas . ' de ' . $metaPeriodo],
+                    ['Cumplimiento', number_format($porcentaje, 1) . '%'],
+                    ['Promedio diario por Analista', number_format($promedio, 1)]
+                ],
+                [(int)round($anchoUtil * 0.58), (int)round($anchoUtil * 0.42)],
+                false
+            );
+            $elementos[] = $this->crearEspaciador($documento, 100);
+        }
 
         $elementos[] = $this->crearTituloSeccion($documento, 'Resumen / Indicadores');
         $filasIndicadores = [
