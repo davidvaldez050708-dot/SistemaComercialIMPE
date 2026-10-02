@@ -158,38 +158,57 @@ class CorreoMarketingService
             (int)$fila['usuario_id']
         );
 
-        if (empty($adjuntos)) {
-            $nombresLegacy = json_decode(
-                (string)($fila['adjuntos_nombres'] ?? '[]'),
-                true
+        $nombresLegacy = json_decode(
+            (string)($fila['adjuntos_nombres'] ?? '[]'),
+            true
+        );
+
+        if (!is_array($nombresLegacy)) {
+            $nombresLegacy = [];
+        }
+
+        $nombresPersistidos = [];
+        foreach ($adjuntos as $adjuntoPersistido) {
+            $clavePersistida = strtolower(
+                trim((string)($adjuntoPersistido['nombre'] ?? ''))
             );
 
-            if (!is_array($nombresLegacy)) {
-                $nombresLegacy = [];
+            if ($clavePersistida !== '') {
+                $nombresPersistidos[$clavePersistida] = true;
+            }
+        }
+
+        foreach ($nombresLegacy as $nombreLegacy) {
+            $nombreLegacy = trim((string)$nombreLegacy);
+            $claveLegacy = strtolower($nombreLegacy);
+
+            if (
+                $nombreLegacy === '' ||
+                isset($nombresPersistidos[$claveLegacy])
+            ) {
+                continue;
             }
 
-            foreach ($nombresLegacy as $nombreLegacy) {
-                $nombreLegacy = trim((string)$nombreLegacy);
+            $extensionLegacy = strtolower(
+                (string)pathinfo(
+                    $nombreLegacy,
+                    PATHINFO_EXTENSION
+                )
+            );
 
-                if ($nombreLegacy === '') {
-                    continue;
-                }
-
-                $adjuntos[] = [
-                    'id' => 0,
-                    'nombre' => $nombreLegacy,
-                    'mime' => '',
-                    'tamano' => 0,
-                    'disponible' => false,
-                    'es_imagen' => false,
-                    'es_pdf' => strtolower(
-                        (string)pathinfo(
-                            $nombreLegacy,
-                            PATHINFO_EXTENSION
-                        )
-                    ) === 'pdf'
-                ];
-            }
+            $adjuntos[] = [
+                'id' => 0,
+                'nombre' => $nombreLegacy,
+                'mime' => '',
+                'tamano' => 0,
+                'disponible' => false,
+                'es_imagen' => in_array(
+                    $extensionLegacy,
+                    ['png', 'jpg', 'jpeg'],
+                    true
+                ),
+                'es_pdf' => $extensionLegacy === 'pdf'
+            ];
         }
 
         return [
@@ -269,6 +288,159 @@ class CorreoMarketingService
                 ? (string)$fila['mime']
                 : 'application/octet-stream',
             'tamano' => (int)($fila['tamano'] ?? filesize($ruta))
+        ];
+    }
+
+    public function recuperarAdjuntoLegacy(
+        $usuarioId,
+        $correoId,
+        $nombreEsperado,
+        $archivo
+    ) {
+        $usuarioId = (int)$usuarioId;
+        $correoId = (int)$correoId;
+        $nombreEsperado = trim((string)$nombreEsperado);
+
+        if (
+            $usuarioId <= 0 ||
+            $correoId <= 0 ||
+            $nombreEsperado === '' ||
+            !$this->tablaDisponible() ||
+            !$this->tablaAdjuntosDisponible()
+        ) {
+            return $this->error(
+                'No fue posible preparar la recuperación del archivo.',
+                422
+            );
+        }
+
+        $sql = "SELECT adjuntos_nombres
+                FROM correos_marketing
+                WHERE id = ?
+                  AND usuario_id = ?
+                LIMIT 1";
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param('ii', $correoId, $usuarioId);
+        $stmt->execute();
+        $fila = $stmt->get_result()->fetch_assoc();
+
+        if (!$fila) {
+            return $this->error(
+                'No fue posible encontrar el correo.',
+                404
+            );
+        }
+
+        $nombresLegacy = json_decode(
+            (string)($fila['adjuntos_nombres'] ?? '[]'),
+            true
+        );
+
+        if (!is_array($nombresLegacy)) {
+            $nombresLegacy = [];
+        }
+
+        $coincide = false;
+        foreach ($nombresLegacy as $nombreLegacy) {
+            if (
+                strcasecmp(
+                    trim((string)$nombreLegacy),
+                    $nombreEsperado
+                ) === 0
+            ) {
+                $coincide = true;
+                break;
+            }
+        }
+
+        if (!$coincide) {
+            return $this->error(
+                'El archivo no pertenece al historial de este correo.',
+                422
+            );
+        }
+
+        if (!is_array($archivo)) {
+            return $this->error(
+                'Selecciona el archivo original.',
+                422
+            );
+        }
+
+        $extensionEsperada = strtolower(
+            (string)pathinfo(
+                $nombreEsperado,
+                PATHINFO_EXTENSION
+            )
+        );
+        $extensionRecibida = strtolower(
+            (string)pathinfo(
+                (string)($archivo['name'] ?? ''),
+                PATHINFO_EXTENSION
+            )
+        );
+
+        if (
+            $extensionEsperada !== '' &&
+            $extensionRecibida !== $extensionEsperada
+        ) {
+            return $this->error(
+                'El archivo seleccionado no coincide con el tipo del adjunto original.',
+                422
+            );
+        }
+
+        $archivosNormalizados = [
+            'name' => [(string)($archivo['name'] ?? '')],
+            'type' => [(string)($archivo['type'] ?? '')],
+            'tmp_name' => [(string)($archivo['tmp_name'] ?? '')],
+            'error' => [(int)($archivo['error'] ?? UPLOAD_ERR_NO_FILE)],
+            'size' => [(int)($archivo['size'] ?? 0)]
+        ];
+
+        $preparacion = $this->prepararAdjuntos(
+            $archivosNormalizados
+        );
+
+        if (!($preparacion['ok'] ?? false)) {
+            return $preparacion;
+        }
+
+        $adjuntos = $preparacion['adjuntos'] ?? [];
+        $temporales = $preparacion['rutas_temporales'] ?? [];
+
+        if (count($adjuntos) !== 1) {
+            $this->limpiarTemporales($temporales);
+
+            return $this->error(
+                'No fue posible preparar el archivo seleccionado.',
+                422
+            );
+        }
+
+        try {
+            $this->guardarAdjuntosPersistentes(
+                $correoId,
+                $usuarioId,
+                $adjuntos
+            );
+        } catch (Throwable $error) {
+            error_log(
+                'Recuperación de adjunto de Marketing: ' .
+                $error->getMessage()
+            );
+
+            return $this->error(
+                'No fue posible conservar el archivo recuperado.',
+                500
+            );
+        } finally {
+            $this->limpiarTemporales($temporales);
+        }
+
+        return [
+            'ok' => true,
+            'mensaje' => 'Archivo recuperado correctamente.'
         ];
     }
 
