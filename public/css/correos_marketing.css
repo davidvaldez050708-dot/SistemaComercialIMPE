@@ -1,0 +1,283 @@
+/* =========================================================
+   CORREOS · MARKETING
+   Interfaz alineada al lenguaje visual de Seguimiento.
+   ========================================================= */
+
+.correo-marketing-module {
+    display: grid;
+    gap: 18px;
+}
+
+.correo-marketing-selector,
+.correo-marketing-toolbar-panel,
+.correo-marketing-list-panel {
+    padding: 18px;
+}
+
+.correo-marketing-selector-heading,
+.correo-marketing-toolbar-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+}
+
+.correo-marketing-selector-heading p,
+.correo-marketing-toolbar-heading p {
+    margin: 4px 0 0;
+    color: var(--color-text-secondary);
+    font-size: 10.5px;
+    font-weight: 600;
+}
+
+.correo-marketing-selector-icon {
+    width: 48px;
+    height: 48px;
+    flex: 0 0 48px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #d9e4f2;
+    border-radius: 11px;
+    background-color: var(--color-primary-soft);
+    color: var(--color-primary);
+    font-size: 21px;
+}
+
+.correo-marketing-summary-grid {
+    margin-top: 18px;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.correo-marketing-summary-card {
+    min-width: 0;
+    padding: 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border: 1px solid var(--color-border);
+    border-left: 3px solid var(--color-primary);
+    border-radius: 10px;
+    background-color: #fff;
+}
+
+.correo-marketing-summary-icon {
+    width: 40px;
+    height: 40px;
+    flex: 0 0 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9px;
+    background-color: var(--color-primary-soft);
+    color: var(--color-primary);
+    font-size: 17px;
+}
+
+.correo-marketing-summary-card > div {
+    min-width: 0;
+    display: grid;
+    gap: 2px;
+}
+
+.correo-marketing-summary-card strong {
+    color: var(--color-text-primary);
+    font-size: 20px;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.correo-marketing-summary-card span:last-child {
+    color: var(--color-text-secondary);
+    font-size: 9.5px;
+    font-weight: 600;
+}
+
+.correo-marketing-toolbar {
+    margin-top: 16px;
+    display: grid;
+    grid-template-columns: minmax(300px, 1.7fr) minmax(180px, .65fr) minmax(180px, .65fr);
+    gap: 14px;
+    align-items: end;
+}
+
+.correo-marketing-toolbar .data-filter-field {
+    min-width: 0;
+}
+
+.correo-marketing-toolbar label {
+    display: block;
+    margin-bottom: 6px;
+    color: var(--color-text-primary);
+    font-size: 9.5px;
+    font-weight: 700;
+}
+
+.correo-marketing-toolbar .module-search {
+    position: relative;
+}
+
+.correo-marketing-toolbar .module-search > i {
+    position: absolute;
+    top: 50%;
+    left: 13px;
+    z-index: 2;
+    transform: translateY(-50%);
+    color: var(--color-text-secondary);
+}
+
+.correo-marketing-toolbar .module-search .form-control {
+    padding-left: 38px;
+}
+
+.correo-marketing-results {
+    padding: 0 2px;
+    color: var(--color-text-secondary);
+    font-size: 9.5px;
+    font-weight: 700;
+}
+
+.correo-marketing-list-panel {
+    padding: 0;
+    overflow: hidden;
+}
+
+.correo-marketing-tabs {
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid var(--color-border);
+    background-color: #fbfcfe;
+}
+
+.correo-marketing-tab {
+    min-height: 34px;
+    padding: 0 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--color-text-secondary);
+    font-size: 9.5px;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.correo-marketing-tab.is-active {
+    border-color: #cdd9ee;
+    background-color: var(--color-primary-soft);
+    color: var(--color-primary);
+}
+
+.correo-marketing-table thead th {
+    background-color: #f8fafc;
+    white-space: nowrap;
+}
+
+.correo-marketing-table td > small {
+    margin-top: 2px;
+    display: block;
+    color: var(--color-text-secondary);
+    font-size: 8.5px;
+}
+
+.correo-marketing-status {
+    min-height: 27px;
+    padding: 4px 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background-color: #eef3fb;
+    color: var(--color-primary);
+    font-size: 8.5px;
+    font-weight: 800;
+}
+
+.correo-marketing-empty {
+    min-height: 220px;
+    padding: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    text-align: left;
+}
+
+.correo-marketing-empty-icon {
+    width: 58px;
+    height: 58px;
+    flex: 0 0 58px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 14px;
+    background-color: var(--color-primary-soft);
+    color: var(--color-primary);
+    font-size: 26px;
+}
+
+.correo-marketing-empty h3 {
+    margin: 0;
+    color: var(--color-text-primary);
+    font-size: 14px;
+    font-weight: 800;
+}
+
+.correo-marketing-empty p {
+    max-width: 520px;
+    margin: 5px 0 0;
+    color: var(--color-text-secondary);
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 1.45;
+}
+
+@media (max-width: 1199.98px) {
+    .correo-marketing-summary-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .correo-marketing-toolbar {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .correo-marketing-search {
+        grid-column: 1 / -1;
+    }
+}
+
+@media (max-width: 699.98px) {
+    .correo-marketing-selector,
+    .correo-marketing-toolbar-panel {
+        padding: 15px;
+    }
+
+    .correo-marketing-summary-grid,
+    .correo-marketing-toolbar {
+        grid-template-columns: 1fr;
+    }
+
+    .correo-marketing-search {
+        grid-column: auto;
+    }
+
+    .correo-marketing-tabs {
+        overflow-x: auto;
+    }
+
+    .correo-marketing-tab {
+        white-space: nowrap;
+    }
+
+    .correo-marketing-empty {
+        align-items: center;
+        flex-direction: column;
+        text-align: center;
+    }
+}
