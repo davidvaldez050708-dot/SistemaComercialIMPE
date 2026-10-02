@@ -106,8 +106,7 @@ class ConvocatoriaReporteController
 
         $puedeConsultar =
             tienePermiso('reportes.ver') &&
-            tienePermiso('reportes.convocatorias') &&
-            tienePermiso('convocatorias.ver');
+            tienePermiso('reportes.convocatorias');
 
         $puedeExportar =
             !$requiereExportar ||
