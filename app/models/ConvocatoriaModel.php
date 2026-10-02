@@ -613,6 +613,58 @@ class ConvocatoriaModel
         return $this->convertirResultadoEnArreglo($resultado);
     }
 
+    public function obtenerDetalleReporteConvocatorias()
+    {
+        $sql = "SELECT
+                    convocatorias.id,
+                    convocatorias.titulo,
+                    convocatorias.categoria,
+                    convocatorias.tipo_convocatoria,
+                    convocatorias.subtipo_convocatoria,
+                    convocatorias.fecha_inicio,
+                    convocatorias.fecha_termino,
+                    convocatorias.estado,
+                    convocatorias.created_at,
+                    GROUP_CONCAT(
+                        DISTINCT estados.nombre
+                        ORDER BY estados.nombre
+                        SEPARATOR ', '
+                    ) AS estados,
+                    CASE
+                        WHEN convocatorias.fecha_termino < CURDATE()
+                            THEN 'finalizada'
+                        WHEN convocatorias.estado = 1
+                            AND convocatorias.fecha_termino BETWEEN CURDATE()
+                                AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)
+                            THEN 'proxima'
+                        WHEN convocatorias.estado = 1
+                            THEN 'activa'
+                        ELSE 'inactiva'
+                    END AS estado_proceso
+                FROM convocatorias
+                LEFT JOIN convocatoria_estados
+                    ON convocatoria_estados.convocatoria_id = convocatorias.id
+                LEFT JOIN estados
+                    ON estados.id = convocatoria_estados.estado_id
+                GROUP BY
+                    convocatorias.id,
+                    convocatorias.titulo,
+                    convocatorias.categoria,
+                    convocatorias.tipo_convocatoria,
+                    convocatorias.subtipo_convocatoria,
+                    convocatorias.fecha_inicio,
+                    convocatorias.fecha_termino,
+                    convocatorias.estado,
+                    convocatorias.created_at
+                ORDER BY
+                    convocatorias.fecha_inicio DESC,
+                    convocatorias.id DESC";
+
+        $resultado = $this->connection->query($sql);
+
+        return $this->convertirResultadoEnArreglo($resultado);
+    }
+
     public function obtenerResumenDashboard()
     {
         $sql = "SELECT
