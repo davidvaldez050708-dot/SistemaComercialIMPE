@@ -403,7 +403,7 @@ class SeguimientoVinculacionReporteController
 
             if ($puedeUsarCache) {
                 $claveCache = $cachePdf->crearClave([
-                    'version' => 'seguimiento-pdf-profesional-v16',
+                    'version' => 'seguimiento-pdf-profesional-v17',
                     'usuario_id' => $usuarioId,
                     'rol_id' => (int)($_SESSION['rol_id'] ?? 0),
                     'modo' => $modoSeguimientoCache,
@@ -466,13 +466,23 @@ class SeguimientoVinculacionReporteController
             error_log('[reporte_evolucion_actividad_pdf] ' . $error->getMessage());
         }
 
+        $seguimientosFuenteAnaliticaPdf =
+            (string)($contexto['filtrosReporte']['tipo_reporte'] ?? '') === 'actividad'
+                ? (
+                    is_array($contexto['seguimientosActividad'] ?? null)
+                        ? $contexto['seguimientosActividad']
+                        : []
+                )
+                : (
+                    is_array($contexto['seguimientosReporte'] ?? null)
+                        ? $contexto['seguimientosReporte']
+                        : []
+                );
         $seguimientoIds = array_values(array_filter(array_map(
             static function ($seguimiento) {
                 return (int)($seguimiento['id'] ?? 0);
             },
-            is_array($contexto['seguimientosReporte'] ?? null)
-                ? $contexto['seguimientosReporte']
-                : []
+            $seguimientosFuenteAnaliticaPdf
         )));
 
         $analitica = [];
@@ -1003,11 +1013,15 @@ class SeguimientoVinculacionReporteController
             );
             $resumenReporte = $this->crearResumenReporte($seguimientosReporte);
 
+            $seguimientosFuenteAnalitica =
+                (string)($filtrosReporte['tipo_reporte'] ?? '') === 'actividad'
+                    ? $seguimientosActividad
+                    : $seguimientosReporte;
             $seguimientoIdsReporte = array_values(array_filter(array_map(
                 static function ($seguimiento) {
                     return (int)($seguimiento['id'] ?? 0);
                 },
-                $seguimientosReporte
+                $seguimientosFuenteAnalitica
             )));
 
             try {
