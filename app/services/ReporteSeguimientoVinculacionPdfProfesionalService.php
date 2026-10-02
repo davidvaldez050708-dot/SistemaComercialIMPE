@@ -188,7 +188,12 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
 
             $html .= '<div class="activity-pdf-page-break"></div>';
             $html .= $this->evolucionActividadEjecutiva($evolucion);
-            $html .= $this->coberturaActividad($analitica);
+            $html .= $this->coberturaTerritorialResumen(
+                $resumen,
+                $filtrosRaw,
+                'Cobertura territorial del trabajo'
+            );
+            $html .= $this->coberturaActividad($analitica, $filtrosRaw);
 
             $actividadReciente = is_array($analitica['actividad_reciente'] ?? null)
                 ? $analitica['actividad_reciente']
@@ -199,7 +204,8 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
                     $actividadReciente,
                     max(0, (int)($analitica['interacciones'] ?? count($actividadReciente))),
                     $modoReporte === 'supervisor' &&
-                        (int)($filtrosRaw['responsable_id'] ?? 0) <= 0
+                        (int)($filtrosRaw['responsable_id'] ?? 0) <= 0,
+                    (int)($filtrosRaw['estado_id'] ?? 0) <= 0
                 );
             }
 
@@ -213,11 +219,18 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
 
             $html .= '<div class="portfolio-pdf-page-break"></div>';
             $html .= $this->distribucionEtapasCartera($resumen);
-            $html .= $this->coberturaTerritorialCartera($resumen);
+            $html .= $this->coberturaTerritorialResumen(
+                $resumen,
+                $filtrosRaw,
+                'Cobertura territorial de la cartera'
+            );
 
             if (!empty($seguimientos)) {
                 $html .= '<div class="portfolio-pdf-page-break"></div>';
-                $html .= $this->detalleCartera($seguimientos);
+                $html .= $this->detalleCartera(
+                    $seguimientos,
+                    (int)($filtrosRaw['estado_id'] ?? 0) <= 0
+                );
             }
 
             return $html . '</body></html>';
@@ -482,36 +495,92 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
         return $html . '</tbody></table></section>';
     }
 
-    private function coberturaTerritorialCartera(array $resumen): string
+    private function coberturaTerritorialResumen(
+        array $resumen,
+        array $filtrosRaw,
+        string $titulo
+    ): string
     {
-        $municipios = is_array($resumen['por_municipio'] ?? null)
-            ? $resumen['por_municipio']
+        $territorios = is_array($resumen['territorio_jerarquico'] ?? null)
+            ? $resumen['territorio_jerarquico']
             : [];
-        $municipios = array_slice($municipios, 0, 10, true);
         $total = max(1, (int)($resumen['total'] ?? 0));
+        $estadoId = (int)($filtrosRaw['estado_id'] ?? 0);
+        $mostrarEstados = $estadoId <= 0;
 
         $html = '<section class="report-section keep portfolio-territory-section">' .
-            $this->titulo('Cobertura territorial');
+            $this->titulo($titulo);
 
-        if (empty($municipios)) {
-            return $html . $this->vacio('No hay municipios disponibles para los seguimientos incluidos.') . '</section>';
+        if (empty($territorios)) {
+            return $html . $this->vacio('No hay información territorial disponible para los seguimientos incluidos.') . '</section>';
         }
 
+        if ($mostrarEstados) {
+            $html .= '<div class="flow-note">El alcance abarca varios territorios; se presenta primero el Estado y después sus principales municipios.</div>';
+            $html .= '<table class="data-table portfolio-territory-table territorial-hierarchy-table"><thead><tr>';
+            $html .= '<th>Estado / municipio</th><th class="center">Seguimientos</th><th class="right">Participación</th>';
+            $html .= '</tr></thead><tbody>';
+
+            foreach (array_slice($territorios, 0, 8) as $territorio) {
+                $totalEstado = max(0, (int)($territorio['total'] ?? 0));
+                $porcentajeEstado = ($totalEstado / $total) * 100;
+                $html .= '<tr class="territorial-state-row"><td><strong>' .
+                    $this->e((string)($territorio['estado_nombre'] ?? 'Sin estado')) .
+                    '</strong></td><td class="center"><strong>' . $totalEstado .
+                    '</strong></td><td class="right"><strong>' .
+                    $this->decimal($porcentajeEstado, 1) . '%</strong></td></tr>';
+
+                $municipios = is_array($territorio['municipios'] ?? null)
+                    ? array_slice($territorio['municipios'], 0, 5)
+                    : [];
+                foreach ($municipios as $municipio) {
+                    $totalMunicipio = max(0, (int)($municipio['total'] ?? 0));
+                    $porcentajeMunicipio = ($totalMunicipio / max(1, $totalEstado)) * 100;
+                    $html .= '<tr class="territorial-municipality-row"><td>&nbsp;&nbsp;↳ ' .
+                        $this->e((string)($municipio['nombre'] ?? 'Sin municipio')) .
+                        '</td><td class="center">' . $totalMunicipio .
+                        '</td><td class="right">' .
+                        $this->decimal($porcentajeMunicipio, 1) . '% del Estado</td></tr>';
+                }
+            }
+
+            return $html . '</tbody></table></section>';
+        }
+
+        $estadoSeleccionado = [];
+        foreach ($territorios as $territorio) {
+            if ((int)($territorio['estado_id'] ?? 0) === $estadoId) {
+                $estadoSeleccionado = $territorio;
+                break;
+            }
+        }
+
+        $municipios = is_array($estadoSeleccionado['municipios'] ?? null)
+            ? array_slice($estadoSeleccionado['municipios'], 0, 10)
+            : [];
+
+        if (empty($municipios)) {
+            return $html . $this->vacio('No hay municipios disponibles dentro del Estado seleccionado.') . '</section>';
+        }
+
+        $html .= '<div class="flow-note">El reporte ya está acotado a un Estado; la cobertura se presenta directamente por municipio.</div>';
         $html .= '<table class="data-table portfolio-territory-table"><thead><tr>';
         $html .= '<th>Municipio</th><th class="center">Seguimientos</th><th class="right">Participación</th>';
         $html .= '</tr></thead><tbody>';
 
-        foreach ($municipios as $municipio => $cantidad) {
-            $porcentaje = ((int)$cantidad / $total) * 100;
-            $html .= '<tr><td><strong>' . $this->e((string)$municipio) . '</strong></td>';
-            $html .= '<td class="center">' . (int)$cantidad . '</td>';
-            $html .= '<td class="right">' . $this->decimal($porcentaje, 1) . '%</td></tr>';
+        foreach ($municipios as $municipio) {
+            $cantidad = max(0, (int)($municipio['total'] ?? 0));
+            $porcentaje = ($cantidad / $total) * 100;
+            $html .= '<tr><td><strong>' .
+                $this->e((string)($municipio['nombre'] ?? 'Sin municipio')) .
+                '</strong></td><td class="center">' . $cantidad .
+                '</td><td class="right">' . $this->decimal($porcentaje, 1) . '%</td></tr>';
         }
 
         return $html . '</tbody></table></section>';
     }
 
-    private function detalleCartera(array $seguimientos): string
+    private function detalleCartera(array $seguimientos, bool $mostrarEstado = false): string
     {
         $html = '<section class="report-section portfolio-detail-section">' .
             $this->titulo('Detalle de cartera');
@@ -561,10 +630,12 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
                 }
             }
 
-            $ubicacion = trim(implode(', ', array_filter([
-                trim((string)($seguimiento['municipio'] ?? '')),
-                trim((string)($seguimiento['estado_nombre'] ?? ''))
-            ])));
+            $municipio = trim((string)($seguimiento['municipio'] ?? ''));
+            $estado = trim((string)($seguimiento['estado_nombre'] ?? ''));
+            $ubicacion = $municipio !== '' ? $municipio : $estado;
+            if ($mostrarEstado && $municipio !== '' && $estado !== '') {
+                $ubicacion .= ', ' . $estado;
+            }
 
             $html .= '<tr>';
             $html .= '<td><strong>' . $this->e((string)($seguimiento['nombre_entidad'] ?? '—')) . '</strong>';
@@ -872,7 +943,7 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
         }
     }
 
-    private function coberturaActividad(array $analitica): string
+    private function coberturaActividad(array $analitica, array $filtrosRaw = []): string
     {
         $instituciones = is_array($analitica['instituciones_actividad'] ?? null)
             ? $analitica['instituciones_actividad']
@@ -888,8 +959,9 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
 
         $html .= '<div class="flow-note">Principales ' . count($instituciones) . ' de ' . $total .
             ' instituciones trabajadas en el periodo.</div>';
+        $mostrarEstado = (int)($filtrosRaw['estado_id'] ?? 0) <= 0;
         $html .= '<table class="data-table activity-coverage-table"><thead><tr>';
-        $html .= '<th>Institución</th><th>Municipio</th>';
+        $html .= '<th>Institución</th><th>' . ($mostrarEstado ? 'Ubicación' : 'Municipio') . '</th>';
         $html .= '<th class="center">Interacciones</th><th class="center">Llamadas</th>';
         $html .= '<th class="center">Contacto</th><th class="center">Efectivas</th>';
         $html .= '</tr></thead><tbody>';
@@ -898,7 +970,13 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
             $html .= '<tr><td><strong>' .
                 $this->e((string)($institucion['nombre_entidad'] ?? 'Institución')) .
                 '</strong></td>';
-            $html .= '<td>' . $this->e((string)($institucion['municipio'] ?? '—')) . '</td>';
+            $municipio = trim((string)($institucion['municipio'] ?? ''));
+            $estado = trim((string)($institucion['estado_nombre'] ?? ''));
+            $ubicacion = $municipio !== '' ? $municipio : ($estado !== '' ? $estado : '—');
+            if ($mostrarEstado && $municipio !== '' && $estado !== '') {
+                $ubicacion .= ', ' . $estado;
+            }
+            $html .= '<td>' . $this->e($ubicacion) . '</td>';
             $html .= '<td class="center">' . (int)($institucion['interacciones'] ?? 0) . '</td>';
             $html .= '<td class="center">' . (int)($institucion['llamadas'] ?? 0) . '</td>';
             $html .= '<td class="center">' . (int)($institucion['con_contacto'] ?? 0) . '</td>';
@@ -911,7 +989,8 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
     private function detalleActividad(
         array $actividades,
         int $totalInteracciones = 0,
-        bool $mostrarAnalista = false
+        bool $mostrarAnalista = false,
+        bool $mostrarEstado = false
     ): string
     {
         $mostradas = count($actividades);
@@ -1006,7 +1085,17 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
                     $this->e((string)($actividad['responsable_nombre'] ?? '—')) .
                     '</strong></td>';
             }
-            $html .= '<td><strong>' . $this->e((string)($actividad['nombre_entidad'] ?? '—')) . '</strong></td>';
+            $municipioActividad = trim((string)($actividad['municipio'] ?? ''));
+            $estadoActividad = trim((string)($actividad['estado_nombre'] ?? ''));
+            $ubicacionActividad = $municipioActividad !== '' ? $municipioActividad : $estadoActividad;
+            if ($mostrarEstado && $municipioActividad !== '' && $estadoActividad !== '') {
+                $ubicacionActividad .= ', ' . $estadoActividad;
+            }
+            $html .= '<td><strong>' . $this->e((string)($actividad['nombre_entidad'] ?? '—')) . '</strong>';
+            if ($ubicacionActividad !== '') {
+                $html .= '<small>' . $this->e($ubicacionActividad) . '</small>';
+            }
+            $html .= '</td>';
             $html .= '<td>' . $this->e($this->canalLabel($canal)) . '</td>';
             $html .= '<td><span class="activity-status' . $resultadoClass . '">' .
                 $this->e($resultadoLabel) . '</span></td>';
@@ -2114,7 +2203,7 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
             '.portfolio-attention-section{page-break-inside:avoid}.portfolio-priority-table{font-size:5.85pt}.portfolio-priority-table th:first-child{width:28%}.portfolio-priority-table th:nth-child(2){width:17%}.portfolio-priority-table th:nth-child(3){width:13%}.portfolio-priority-table th:nth-child(4){width:25%}.portfolio-priority-table th:nth-child(5){width:17%}' .
             '.portfolio-health-section{page-break-inside:avoid}.portfolio-health td{width:25%}.portfolio-health td:first-child{background:#FFF8F5}.portfolio-health td:last-child{background:#F0FAF8}' .
             '.portfolio-status{display:inline-block;padding:2px 5px;border:1px solid #D7DFEA;background:#F8FAFC;color:#16223B;font-size:5.2pt;font-weight:700}.portfolio-status-vencida{background:#FFF3F1;border-color:#EFCFC9;color:#A33B2B}.portfolio-status-sin_actividad,.portfolio-status-inactiva{background:#FFF9EE;border-color:#ECDCB7;color:#80571D}.portfolio-status-formalizado{background:#EAF7F4;border-color:#B9E2DA;color:#087966}.portfolio-status-descartado{background:#F2F4F7;color:#5F6877}' .
-            '.portfolio-stage-section,.portfolio-territory-section{page-break-inside:avoid}.portfolio-stage-table,.portfolio-territory-table{font-size:6pt}.portfolio-stage-table th:first-child,.portfolio-territory-table th:first-child{width:60%}.portfolio-stage-table th:nth-child(2),.portfolio-territory-table th:nth-child(2){width:18%}.portfolio-stage-table th:nth-child(3),.portfolio-territory-table th:nth-child(3){width:22%}' .
+            '.portfolio-stage-section,.portfolio-territory-section{page-break-inside:avoid}.portfolio-stage-table,.portfolio-territory-table{font-size:6pt}.portfolio-stage-table th:first-child,.portfolio-territory-table th:first-child{width:60%}.portfolio-stage-table th:nth-child(2),.portfolio-territory-table th:nth-child(2){width:18%}.portfolio-stage-table th:nth-child(3),.portfolio-territory-table th:nth-child(3){width:22%}.territorial-state-row td{background:#EDF2FA;color:#273A8A}.territorial-municipality-row td:first-child{color:#5F6877}' .
             '.portfolio-detail-section{page-break-inside:auto}.portfolio-detail-section .section-title{page-break-after:avoid}.portfolio-detail-table{font-size:5.35pt}.portfolio-detail-table thead{display:table-header-group}.portfolio-detail-table tr{page-break-inside:avoid}.portfolio-detail-table td{padding:4.5px 5px}.portfolio-detail-table th:first-child{width:22%}.portfolio-detail-table th:nth-child(2){width:14%}.portfolio-detail-table th:nth-child(3){width:17%}.portfolio-detail-table th:nth-child(4){width:9%}.portfolio-detail-table th:nth-child(5){width:19%}.portfolio-detail-table th:nth-child(6){width:12%}.portfolio-detail-table th:nth-child(7){width:7%}';
     }
 
