@@ -1,6 +1,6 @@
 .aliados-module {
     display: grid;
-    gap: 18px;
+    gap: 12px;
 }
 
 .aliados-structure-alert {
@@ -25,107 +25,57 @@
     font-size: 12px;
 }
 
-.aliados-hero {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 20px;
-    padding: 22px 24px;
-}
-
 .aliados-eyebrow {
     display: inline-block;
     color: var(--color-primary, #273a8a);
-    font-size: 10px;
+    font-size: 9px;
     font-weight: 800;
     letter-spacing: .06em;
 }
 
-.aliados-hero h2,
 .aliados-section-heading h3,
 .aliados-modal .modal-title {
-    margin: 4px 0 5px;
+    margin: 3px 0 3px;
     color: var(--color-text, #172642);
     font-weight: 800;
 }
 
-.aliados-hero h2 {
-    font-size: 21px;
-}
-
-.aliados-hero p,
 .aliados-section-heading p,
 .aliados-modal .modal-header p {
     margin: 0;
     color: var(--color-text-soft, #6b7280);
-    font-size: 12px;
-}
-
-.aliados-hero-badge {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    min-width: 210px;
-    padding: 12px 14px;
-    border: 1px solid #cfe8e3;
-    border-radius: 12px;
-    background: #f1fbf8;
-}
-
-.aliados-hero-badge > i {
-    display: grid;
-    width: 36px;
-    height: 36px;
-    place-items: center;
-    border-radius: 10px;
-    background: #dff5ef;
-    color: #0b8f79;
-    font-size: 18px;
-}
-
-.aliados-hero-badge div {
-    display: grid;
-}
-
-.aliados-hero-badge strong {
-    color: var(--color-text, #172642);
-    font-size: 12px;
-}
-
-.aliados-hero-badge span {
-    color: var(--color-text-soft, #6b7280);
-    font-size: 10px;
+    font-size: 10.5px;
 }
 
 .aliados-summary-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-    gap: 12px;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 9px;
 }
 
 .aliados-summary-card {
     display: flex;
     align-items: center;
-    gap: 12px;
-    min-height: 104px;
-    padding: 16px;
+    gap: 10px;
+    min-height: 72px;
+    padding: 11px 13px;
     border: 1px solid var(--color-border, #dfe5ef);
-    border-radius: 14px;
+    border-radius: 12px;
     background: #fff;
-    box-shadow: 0 8px 24px rgba(23, 38, 66, .04);
+    box-shadow: 0 5px 16px rgba(23, 38, 66, .035);
 }
 
 .aliados-summary-icon {
     display: grid;
-    width: 42px;
-    height: 42px;
+    width: 36px;
+    height: 36px;
     flex: 0 0 auto;
     place-items: center;
     border: 1px solid #d9e4f5;
-    border-radius: 11px;
+    border-radius: 10px;
     background: #f3f7fd;
     color: var(--color-primary, #273a8a);
-    font-size: 17px;
+    font-size: 15px;
 }
 
 .aliados-summary-card > div {
@@ -135,74 +85,99 @@
 
 .aliados-summary-card strong {
     color: var(--color-text, #172642);
-    font-size: 22px;
+    font-size: 19px;
     font-weight: 800;
     line-height: 1;
 }
 
 .aliados-summary-card span:not(.aliados-summary-icon) {
-    margin-top: 5px;
+    margin-top: 3px;
     color: var(--color-text, #172642);
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 700;
 }
 
-.aliados-summary-card small {
-    margin-top: 2px;
-    color: var(--color-text-soft, #6b7280);
-    font-size: 9px;
-}
-
-.aliados-filter-panel,
-.aliados-list-panel {
+.aliados-directory-panel {
     padding: 0;
     overflow: hidden;
 }
 
-.aliados-filter-panel {
-    padding: 20px;
+.aliados-directory-controls {
+    padding: 15px 17px 13px;
+}
+
+.aliados-directory-results {
+    border-top: 1px solid var(--color-border, #dfe5ef);
 }
 
 .aliados-section-heading {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: space-between;
     gap: 16px;
-    margin-bottom: 16px;
+    margin-bottom: 11px;
 }
 
 .aliados-section-heading h3 {
-    font-size: 17px;
+    font-size: 15.5px;
 }
 
+.aliados-directory-meta {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 7px;
+    flex-wrap: wrap;
+}
+
+.aliados-source-chip,
 .aliados-result-count {
-    padding: 7px 10px;
-    border: 1px solid var(--color-border, #dfe5ef);
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    min-height: 28px;
+    padding: 5px 9px;
     border-radius: 999px;
-    background: #f8fafc;
-    color: var(--color-text-soft, #6b7280);
-    font-size: 10px;
+    font-size: 9px;
     font-weight: 700;
     white-space: nowrap;
 }
 
+.aliados-source-chip {
+    border: 1px solid #cfe8e3;
+    background: #f1fbf8;
+    color: #087e69;
+}
+
+.aliados-result-count {
+    border: 1px solid var(--color-border, #dfe5ef);
+    background: #f8fafc;
+    color: var(--color-text-soft, #6b7280);
+}
+
 .aliados-filter-grid {
     display: grid;
-    grid-template-columns: minmax(230px, 1.4fr) repeat(3, minmax(150px, .8fr)) auto;
-    gap: 10px;
+    grid-template-columns: minmax(220px, 1.45fr) repeat(3, minmax(140px, .8fr)) auto;
+    gap: 8px;
     align-items: end;
 }
 
 .aliados-filter-grid .form-label,
 .aliados-modal .form-label {
-    margin-bottom: 6px;
+    margin-bottom: 5px;
     color: var(--color-text, #172642);
-    font-size: 10px;
+    font-size: 9.5px;
     font-weight: 700;
 }
 
 .aliados-filter-grid .form-control,
-.aliados-filter-grid .form-select,
+.aliados-filter-grid .form-select {
+    min-height: 38px;
+    border-color: var(--color-border, #dfe5ef);
+    border-radius: 9px;
+    font-size: 10.5px;
+}
+
 .aliados-modal .form-control,
 .aliados-modal .form-select {
     min-height: 42px;
@@ -451,7 +426,7 @@
 
 .aliados-empty-state {
     display: grid;
-    min-height: 250px;
+    min-height: 190px;
     place-items: center;
     align-content: center;
     padding: 36px;
@@ -721,14 +696,13 @@
 }
 
 @media (max-width: 767.98px) {
-    .aliados-hero,
     .aliados-section-heading {
         align-items: stretch;
         flex-direction: column;
     }
 
-    .aliados-hero-badge {
-        min-width: 0;
+    .aliados-directory-meta {
+        justify-content: flex-start;
     }
 
     .aliados-summary-grid,
