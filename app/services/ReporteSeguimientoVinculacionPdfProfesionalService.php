@@ -682,7 +682,7 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
         );
         $html .= '</tr></table>';
         $html .= '<div class="decision-note"><strong>Criterio de efectividad:</strong> ' .
-            'se contabiliza una efectiva por institución y día cuando existe evidencia telefónica válida vinculada.</div>';
+            'se contabiliza una efectiva por Analista e institución en cada día cuando existe evidencia telefónica válida vinculada.</div>';
         return $html . '</section>';
     }
 
@@ -808,7 +808,7 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
                     : '') .
                 '. Las efectivas requieren evidencia telefónica válida.</div>';
         } else {
-            $html .= '<div class="flow-note">Las efectivas se contabilizan una vez por institución y día y después se suman por ' .
+            $html .= '<div class="flow-note">Las efectivas se contabilizan una vez por Analista e institución en cada día y después se suman por ' .
                 $this->e($granularidadLabel) . '. No se extrapola la meta diaria a una meta ' .
                 $this->e($granularidadLabel) . '.</div>';
         }
