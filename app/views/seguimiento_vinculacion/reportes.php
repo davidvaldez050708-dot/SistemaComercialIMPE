@@ -1102,9 +1102,9 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                                     <?php if ($rendimientoTelefonicoGranularidad === 'dia'): ?>
                                         Seguimiento diario de llamadas, contacto y efectivas contabilizadas contra la meta de <?= $metaDiariaEfectivas ?> efectivas por Analista.
                                     <?php elseif ($rendimientoTelefonicoGranularidad === 'semana'): ?>
-                                        Resumen semanal de llamadas y contacto. Las efectivas se contabilizan una vez por institución y día y aquí se suman por semana; no se extrapola la meta diaria a una meta semanal.
+                                        Resumen semanal de llamadas y contacto. Las efectivas se contabilizan una vez por Analista e institución en cada día y aquí se suman por semana; no se extrapola la meta diaria a una meta semanal.
                                     <?php else: ?>
-                                        Resumen mensual de llamadas y contacto. Las efectivas se contabilizan una vez por institución y día y aquí se suman por mes; la meta diaria se conserva únicamente como referencia operativa.
+                                        Resumen mensual de llamadas y contacto. Las efectivas se contabilizan una vez por Analista e institución en cada día y aquí se suman por mes; la meta diaria se conserva únicamente como referencia operativa.
                                     <?php endif; ?>
                                 <?php else: ?>
                                     El filtro actual no corresponde a llamadas; el rendimiento telefónico no se mezcla con este resultado.
@@ -1936,7 +1936,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                                                 ?>
                                                 <div>
                                                     <span><?= $texto($municipioEstado['nombre'] ?? 'Sin municipio') ?></span>
-                                                    <strong><?= $totalMunicipio ?> · <?= number_format($porcentajeMunicipio, 0) ?>%</strong>
+                                                    <strong><?= $totalMunicipio ?> · <?= number_format($porcentajeMunicipio, 0) ?>% del Estado</strong>
                                                 </div>
                                             <?php endforeach; ?>
                                         </div>
@@ -2051,7 +2051,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                                     <div class="analyst-territory-state-head">
                                         <div>
                                             <strong><?= $texto($territorioEstado['estado_nombre'] ?? 'Sin estado') ?></strong>
-                                            <span><?= $totalEstado ?> seguimiento<?= $totalEstado === 1 ? '' : 's' ?> trabajado<?= $totalEstado === 1 ? '' : 's' ?> · <?= number_format($porcentajeEstado, 0) ?>%</span>
+                                            <span><?= $totalEstado ?> seguimiento<?= $totalEstado === 1 ? '' : 's' ?> trabajado<?= $totalEstado === 1 ? '' : 's' ?> · <?= number_format($porcentajeEstado, 0) ?>% del trabajo</span>
                                         </div>
                                         <b><?= $totalEstado ?></b>
                                     </div>
@@ -2067,7 +2067,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                                                 ?>
                                                 <div>
                                                     <span><?= $texto($municipioEstado['nombre'] ?? 'Sin municipio') ?></span>
-                                                    <strong><?= $totalMunicipio ?> · <?= number_format($porcentajeMunicipio, 0) ?>%</strong>
+                                                    <strong><?= $totalMunicipio ?> · <?= number_format($porcentajeMunicipio, 0) ?>% del Estado</strong>
                                                 </div>
                                             <?php endforeach; ?>
                                         </div>
@@ -2407,7 +2407,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                                         : $segundos . ' s';
                                 }
                                 if ($esEfectivaActividad) {
-                                    $partesDetalle[] = 'evidencia válida; la efectiva se contabiliza una vez por institución y día';
+                                    $partesDetalle[] = 'evidencia válida; la efectiva se contabiliza una vez por Analista e institución en el día';
                                 } elseif ($contactoActividad) {
                                     $partesDetalle[] = 'contacto registrado';
                                 } else {
