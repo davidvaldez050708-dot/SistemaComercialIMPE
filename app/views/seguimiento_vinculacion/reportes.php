@@ -2241,6 +2241,9 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                         <thead>
                             <tr>
                                 <th>Fecha</th>
+                                <?php if ($modoSeguimiento === 'supervisor' && $analistaSeleccionadoId <= 0): ?>
+                                    <th>Analista</th>
+                                <?php endif; ?>
                                 <th>Institución</th>
                                 <th>Interacción</th>
                                 <th>Resultado</th>
@@ -2328,6 +2331,11 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                                 <td class="analyst-activity-history-date">
                                     <?= $texto($fechaHoraReporte($actividad['fecha_inicio'] ?? '')) ?>
                                 </td>
+                                <?php if ($modoSeguimiento === 'supervisor' && $analistaSeleccionadoId <= 0): ?>
+                                    <td>
+                                        <strong><?= $texto(trim((string)($actividad['responsable_nombre'] ?? '')) !== '' ? $actividad['responsable_nombre'] : '—') ?></strong>
+                                    </td>
+                                <?php endif; ?>
                                 <td>
                                     <strong class="analyst-activity-history-institution"><?= $texto($actividad['nombre_entidad'] ?? '—') ?></strong>
                                 </td>
