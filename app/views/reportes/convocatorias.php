@@ -48,7 +48,7 @@ $fecha = static function ($valor) {
 };
 
 $tipoLabel = static function ($tipo) {
-    $tipo = strtolower(trim((string)$tipo);
+    $tipo = strtolower(trim((string)$tipo));
 
     if ($tipo === 'bachillerato') {
         return 'Bachillerato';
