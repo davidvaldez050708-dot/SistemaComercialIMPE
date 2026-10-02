@@ -6,6 +6,7 @@ config/hostinger_mail_config.php
 config/voip_config.php
 config/zadarma_config.php
 config/ecard_reunion_config.php
+config/whatsapp.local.php
 
 # Archivos del sistema operativo
 .DS_Store
