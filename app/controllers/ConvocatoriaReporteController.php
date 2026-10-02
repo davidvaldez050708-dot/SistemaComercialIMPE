@@ -8,7 +8,7 @@ class ConvocatoriaReporteController
 {
     public function index()
     {
-        $this->validarAcceso();
+        $this->validarAcceso(false);
 
         $service = new ReporteConvocatoriaDataService();
         $reporteConvocatorias = $service->prepararDatos();
@@ -29,7 +29,7 @@ class ConvocatoriaReporteController
 
     public function exportarPdf()
     {
-        $this->validarAcceso();
+        $this->validarAcceso(true);
 
         try {
             $service = new ReporteConvocatoriaDataService();
@@ -93,7 +93,7 @@ class ConvocatoriaReporteController
         }
     }
 
-    private function validarAcceso()
+    private function validarAcceso($requiereExportar = false)
     {
         if (!isset($_SESSION['usuario_id'])) {
             header(
@@ -104,9 +104,22 @@ class ConvocatoriaReporteController
             exit;
         }
 
-        if (!tienePermiso('convocatorias.ver')) {
+        $puedeConsultar =
+            tienePermiso('reportes.ver') &&
+            tienePermiso('reportes.convocatorias') &&
+            tienePermiso('convocatorias.ver');
+
+        $puedeExportar =
+            !$requiereExportar ||
+            tienePermiso('reportes.exportar');
+
+        if (!$puedeConsultar || !$puedeExportar) {
             http_response_code(403);
-            die('No tienes permiso para consultar este reporte.');
+            die(
+                $requiereExportar
+                    ? 'No tienes permiso para exportar este reporte.'
+                    : 'No tienes permiso para consultar este reporte.'
+            );
         }
     }
 
