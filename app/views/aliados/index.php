@@ -18,6 +18,7 @@ $puedeVerHistorial = $puedeVerHistorial ?? false;
 $puedeConsultarConvocatorias = $puedeConsultarConvocatorias ?? false;
 $puedeGestionarContactos = $puedeGestionarContactos ?? false;
 $estructuraContactosDisponible = $estructuraContactosDisponible ?? false;
+$puedeAbrirExpediente = tienePermiso('seguimientos_vinculacion.ver');
 
 $texto = static function ($valor) {
     return htmlspecialchars((string)$valor, ENT_QUOTES, 'UTF-8');
@@ -343,39 +344,13 @@ $fechaHora = static function ($valor) {
                                 </td>
 
                                 <td class="text-end">
+                                    <?php
+                                    $mostrarAccionesSecundarias =
+                                        $puedeGestionarContactos ||
+                                        $puedeVerHistorial ||
+                                        $puedeAbrirExpediente;
+                                    ?>
                                     <div class="aliados-actions">
-                                        <?php if ($puedeGestionarContactos): ?>
-                                            <button
-                                                type="button"
-                                                class="aliados-icon-button"
-                                                data-aliado-contacts="<?= (int)$aliado['seguimiento_id'] ?>"
-                                                aria-label="Gestionar contactos de difusión"
-                                                title="Gestionar contactos de difusión">
-                                                <i class="bi bi-person-lines-fill"></i>
-                                            </button>
-                                        <?php endif; ?>
-
-                                        <?php if ($puedeVerHistorial): ?>
-                                            <button
-                                                type="button"
-                                                class="aliados-icon-button"
-                                                data-aliado-history="<?= (int)$aliado['seguimiento_id'] ?>"
-                                                aria-label="Ver historial"
-                                                title="Ver historial">
-                                                <i class="bi bi-clock-history"></i>
-                                            </button>
-                                        <?php endif; ?>
-
-                                        <?php if (tienePermiso('seguimientos_vinculacion.ver')): ?>
-                                            <a
-                                                class="aliados-icon-button"
-                                                href="<?= BASE_URL ?>index.php?controller=seguimientoVinculacion&action=detalle&id=<?= (int)$aliado['seguimiento_id'] ?>"
-                                                aria-label="Abrir expediente"
-                                                title="Abrir expediente">
-                                                <i class="bi bi-folder2-open"></i>
-                                            </a>
-                                        <?php endif; ?>
-
                                         <?php if ($puedeCompartirCorreo): ?>
                                             <button
                                                 type="button"
@@ -386,6 +361,61 @@ $fechaHora = static function ($valor) {
                                                 <i class="bi bi-send"></i>
                                                 Compartir
                                             </button>
+                                        <?php endif; ?>
+
+                                        <?php if ($mostrarAccionesSecundarias): ?>
+                                            <div class="dropdown dropstart aliados-actions-menu">
+                                                <button
+                                                    type="button"
+                                                    class="aliados-more-button"
+                                                    data-bs-toggle="dropdown"
+                                                    data-bs-auto-close="true"
+                                                    aria-expanded="false"
+                                                    aria-label="Más acciones"
+                                                    title="Más acciones">
+                                                    <i class="bi bi-three-dots"></i>
+                                                </button>
+
+                                                <ul class="dropdown-menu aliados-actions-dropdown">
+                                                    <?php if ($puedeGestionarContactos): ?>
+                                                        <li>
+                                                            <button
+                                                                type="button"
+                                                                class="dropdown-item"
+                                                                data-aliado-contacts="<?= (int)$aliado['seguimiento_id'] ?>">
+                                                                <i class="bi bi-person-lines-fill"></i>
+                                                                <span>Gestionar contactos</span>
+                                                            </button>
+                                                        </li>
+                                                    <?php endif; ?>
+
+                                                    <?php if ($puedeVerHistorial): ?>
+                                                        <li>
+                                                            <button
+                                                                type="button"
+                                                                class="dropdown-item"
+                                                                data-aliado-history="<?= (int)$aliado['seguimiento_id'] ?>">
+                                                                <i class="bi bi-clock-history"></i>
+                                                                <span>Historial de difusión</span>
+                                                            </button>
+                                                        </li>
+                                                    <?php endif; ?>
+
+                                                    <?php if ($puedeAbrirExpediente): ?>
+                                                        <?php if ($puedeGestionarContactos || $puedeVerHistorial): ?>
+                                                            <li><hr class="dropdown-divider"></li>
+                                                        <?php endif; ?>
+                                                        <li>
+                                                            <a
+                                                                class="dropdown-item"
+                                                                href="<?= BASE_URL ?>index.php?controller=seguimientoVinculacion&action=detalle&id=<?= (int)$aliado['seguimiento_id'] ?>">
+                                                                <i class="bi bi-folder2-open"></i>
+                                                                <span>Abrir expediente</span>
+                                                            </a>
+                                                        </li>
+                                                    <?php endif; ?>
+                                                </ul>
+                                            </div>
                                         <?php endif; ?>
                                     </div>
                                 </td>
