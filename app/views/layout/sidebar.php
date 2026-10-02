@@ -9,6 +9,7 @@ $mostrarTerritorios = tienePermiso('territorios.ver');
 $mostrarDataTerritorial = tienePermiso('data_territorial.ver');
 $mostrarSeguimientoVinculacion = tienePermiso('seguimientos_vinculacion.ver');
 $mostrarAliados = tienePermiso('aliados.ver');
+$mostrarWhatsapp = tienePermiso('whatsapp.ver');
 $mostrarConvocatorias = tienePermiso('convocatorias.ver');
 $mostrarReporteTerritorial =
     tienePermiso('reportes.territorial') &&
@@ -58,6 +59,7 @@ $claseDataTerritorial =
 $claseSeguimientoVinculacion =
     $opcionActiva === 'seguimiento_vinculacion' ? 'active' : '';
 $claseAliados = $opcionActiva === 'aliados' ? 'active' : '';
+$claseWhatsapp = $opcionActiva === 'whatsapp' ? 'active' : '';
 $claseReportes = $opcionActiva === 'reportes' ? 'active' : '';
 $claseConvocatorias = $opcionActiva === 'convocatorias' ? 'active' : '';
 $claseConvocatoriasReportes =
@@ -174,6 +176,23 @@ $claseCorreosMarketing =
                         Correos
                     </a>
                 <?php endif; ?>
+            </div>
+
+        <?php endif; ?>
+
+        <?php if ($mostrarWhatsapp): ?>
+
+            <div class="sidebar-section">
+                <p class="sidebar-section-title">
+                    COMUNICACIÓN
+                </p>
+
+                <a
+                    href="<?= BASE_URL ?>index.php?controller=whatsapp&action=index"
+                    class="sidebar-link <?= $claseWhatsapp ?>">
+                    <i class="bi bi-whatsapp"></i>
+                    Conversaciones
+                </a>
             </div>
 
         <?php endif; ?>
@@ -425,7 +444,24 @@ $claseCorreosMarketing =
 
 
             <!-- VINCULACIÓN -->
-            <?php if ($mostrarDataTerritorial || $mostrarSeguimientoVinculacion || $mostrarAliados): ?>
+            <?php if ($mostrarWhatsapp): ?>
+
+            <div class="sidebar-section">
+                <p class="sidebar-section-title">
+                    COMUNICACIÓN
+                </p>
+
+                <a
+                    href="<?= BASE_URL ?>index.php?controller=whatsapp&action=index"
+                    class="sidebar-link <?= $claseWhatsapp ?>">
+                    <i class="bi bi-whatsapp"></i>
+                    Conversaciones
+                </a>
+            </div>
+
+        <?php endif; ?>
+
+        <?php if ($mostrarDataTerritorial || $mostrarSeguimientoVinculacion || $mostrarAliados): ?>
 
                 <div class="sidebar-section">
 
