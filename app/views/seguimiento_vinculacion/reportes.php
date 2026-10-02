@@ -528,7 +528,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                     value="<?= $texto($filtrosReporte['fecha_final'] ?? '') ?>">
             </div>
 
-            <div class="col-md-6 col-xl-3" data-report-field="territorio">
+            <div class="col-md-6 <?= $tipoReporteActual === 'institucion' ? 'col-xl-4' : 'col-xl-3' ?>" data-report-field="territorio">
                 <label class="form-label" for="reporte_estado">Estado</label>
                 <select
                     class="form-select"
@@ -546,7 +546,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                 </select>
             </div>
 
-            <div class="col-md-6 col-xl-3" data-report-field="municipio">
+            <div class="col-md-6 <?= $tipoReporteActual === 'institucion' ? 'col-xl-4' : 'col-xl-3' ?>" data-report-field="municipio">
                 <label class="form-label" for="reporte_municipio">Municipio</label>
                 <select
                     class="form-select"
@@ -594,9 +594,13 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                 </div>
             </div>
 
-            <div class="col-md-6 col-xl-4<?= $modoSeguimiento === 'analista' ? ' d-none' : '' ?>" data-report-field="responsable">
+            <div class="col-md-6 col-xl-4<?= ($modoSeguimiento === 'analista' || $tipoReporteActual === 'institucion') ? ' d-none' : '' ?>" data-report-field="responsable">
                 <label class="form-label" for="reporte_responsable"><?= $modoSeguimiento === 'supervisor' ? 'Analista' : 'Responsable' ?></label>
-                <select class="form-select" id="reporte_responsable" name="responsable_id">
+                <select
+                    class="form-select"
+                    id="reporte_responsable"
+                    name="responsable_id"
+                    <?= ($modoSeguimiento === 'analista' || $tipoReporteActual === 'institucion') ? 'disabled' : '' ?>>
                     <option value="0"><?= $modoSeguimiento === 'supervisor' ? 'Todos mis Analistas' : 'Todos' ?></option>
                     <?php foreach ($responsablesDisponibles as $responsableId => $responsableNombre): ?>
                         <option
