@@ -2783,3 +2783,287 @@
         justify-content: center;
     }
 }
+
+
+/* =========================================================
+   NAVEGACIÓN POR MES · CONVOCATORIAS
+   ========================================================= */
+.convocatoria-month-page {
+    display: grid;
+    gap: 18px;
+}
+
+.convocatoria-month-context {
+    margin-bottom: 0;
+}
+
+.convocatoria-month-shell {
+    padding: 18px 20px 20px;
+}
+
+.convocatoria-month-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    margin-bottom: 16px;
+}
+
+.convocatoria-month-heading h2 {
+    margin: 0;
+    color: var(--color-text-primary);
+    font-size: 16px;
+    font-weight: 800;
+    line-height: 1.2;
+}
+
+.convocatoria-month-heading p {
+    margin: 4px 0 0;
+    color: var(--color-text-secondary);
+    font-size: 10.5px;
+    font-weight: 600;
+}
+
+.convocatoria-month-year-form {
+    min-width: 142px;
+    height: 42px;
+    padding: 0 12px;
+    display: grid;
+    grid-template-columns: 22px minmax(56px, 1fr) 16px;
+    align-items: center;
+    gap: 7px;
+    border: 1px solid var(--color-border);
+    border-radius: 9px;
+    background-color: #ffffff;
+    color: var(--color-primary);
+}
+
+.convocatoria-month-year-form > span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+}
+
+.convocatoria-month-year-form select {
+    width: 100%;
+    padding: 0;
+    border: 0;
+    outline: 0;
+    appearance: none;
+    background: transparent;
+    color: var(--color-text-primary);
+    font-size: 11.5px;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.convocatoria-month-year-form > .bi-chevron-down {
+    color: var(--color-primary);
+    font-size: 10px;
+    pointer-events: none;
+}
+
+.convocatoria-month-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.convocatoria-month-card {
+    min-width: 0;
+    min-height: 202px;
+    padding: 14px;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    gap: 12px;
+    border-left: 4px solid var(--color-primary);
+}
+
+.convocatoria-month-card-header {
+    min-width: 0;
+    display: grid;
+    grid-template-columns: 42px minmax(0, 1fr) 28px;
+    align-items: center;
+    gap: 10px;
+}
+
+.convocatoria-month-icon {
+    width: 42px;
+    height: 42px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #d8e3f2;
+    border-radius: 9px;
+    background-color: var(--color-primary-soft);
+    color: var(--color-primary);
+    font-size: 18px;
+}
+
+.convocatoria-month-card-title {
+    min-width: 0;
+    display: grid;
+    gap: 2px;
+}
+
+.convocatoria-month-card-title strong {
+    color: var(--color-text-primary);
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.convocatoria-month-card-title small {
+    overflow: hidden;
+    color: var(--color-text-secondary);
+    font-size: 8.5px;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.convocatoria-month-count {
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    justify-self: end;
+    border-radius: 50%;
+    background-color: #eef3fb;
+    color: var(--color-text-primary);
+    font-size: 10px;
+    font-weight: 800;
+}
+
+.convocatoria-month-preview {
+    min-width: 0;
+    min-height: 58px;
+    display: grid;
+    align-content: start;
+    gap: 8px;
+}
+
+.convocatoria-month-preview-row {
+    min-width: 0;
+    display: grid;
+    grid-template-columns: 8px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+}
+
+.convocatoria-month-dot {
+    width: 7px;
+    height: 7px;
+    display: inline-block;
+    border-radius: 50%;
+    background-color: #91a0b5;
+}
+
+.convocatoria-month-dot.is-activa {
+    background-color: #0aa77d;
+}
+
+.convocatoria-month-dot.is-proxima {
+    background-color: #258dca;
+}
+
+.convocatoria-month-dot.is-finalizada,
+.convocatoria-month-dot.is-inactiva,
+.convocatoria-month-dot.is-empty {
+    background-color: #94a3b8;
+}
+
+.convocatoria-month-preview-name {
+    min-width: 0;
+    overflow: hidden;
+    color: #4f5f7a;
+    font-size: 9.5px;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.convocatoria-month-status {
+    min-width: 70px;
+    padding: 4px 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    font-size: 8.5px;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.convocatoria-month-status.is-activa {
+    background-color: #e4f7f1;
+    color: #07866f;
+}
+
+.convocatoria-month-status.is-proxima {
+    background-color: #e8f3fc;
+    color: #1666c5;
+}
+
+.convocatoria-month-status.is-finalizada,
+.convocatoria-month-status.is-inactiva {
+    background-color: #eef1f5;
+    color: #65738a;
+}
+
+.convocatoria-month-empty {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #8a96a8;
+    font-size: 9px;
+    font-weight: 600;
+}
+
+.convocatoria-month-more {
+    color: var(--color-text-secondary);
+    font-size: 8px;
+    font-weight: 700;
+}
+
+.convocatoria-month-button {
+    min-height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    font-size: 10px;
+    font-weight: 800;
+}
+
+@media (max-width: 1399.98px) {
+    .convocatoria-month-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 1099.98px) {
+    .convocatoria-month-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 699.98px) {
+    .convocatoria-month-shell {
+        padding: 16px;
+    }
+
+    .convocatoria-month-heading {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .convocatoria-month-year-form {
+        align-self: flex-start;
+    }
+
+    .convocatoria-month-grid {
+        grid-template-columns: 1fr;
+    }
+}
