@@ -18,6 +18,11 @@ class AliadoModel
             $this->tablaExiste('aliados_convocatorias_envios');
     }
 
+    public function contactosDisponibles()
+    {
+        return $this->tablaExiste('aliados_contactos');
+    }
+
     public function obtenerListado($usuarioId, $esAdministrador = false, $filtros = [])
     {
         if (!$this->estructuraDisponible()) {
@@ -292,6 +297,261 @@ class AliadoModel
         return $stmt->execute();
     }
 
+    public function obtenerContactosDifusion(array $aliado)
+    {
+        $contactos = [];
+        $normalizados = [];
+
+        if ($this->contactosDisponibles()) {
+            $sql = "SELECT
+                        id,
+                        numero,
+                        numero_normalizado,
+                        etiqueta,
+                        origen,
+                        confirmado_whatsapp,
+                        preferido_difusion,
+                        created_at,
+                        updated_at
+                    FROM aliados_contactos
+                    WHERE seguimiento_id = ?
+                      AND activo = 1
+                    ORDER BY
+                        preferido_difusion DESC,
+                        confirmado_whatsapp DESC,
+                        updated_at DESC,
+                        id DESC";
+
+            $stmt = $this->connection->prepare($sql);
+            $seguimientoId = (int)($aliado['seguimiento_id'] ?? 0);
+            $stmt->bind_param('i', $seguimientoId);
+            $stmt->execute();
+
+            while ($fila = $stmt->get_result()->fetch_assoc()) {
+                $normalizado = (string)($fila['numero_normalizado'] ?? '');
+                if ($normalizado !== '') {
+                    $normalizados[$normalizado] = true;
+                }
+
+                $contactos[] = [
+                    'id' => (int)$fila['id'],
+                    'numero' => (string)$fila['numero'],
+                    'numero_normalizado' => $normalizado,
+                    'etiqueta' => (string)$fila['etiqueta'],
+                    'origen' => (string)$fila['origen'],
+                    'origen_label' => $this->etiquetaOrigenContacto($fila['origen']),
+                    'confirmado_whatsapp' => (int)$fila['confirmado_whatsapp'] === 1,
+                    'preferido_difusion' => (int)$fila['preferido_difusion'] === 1,
+                    'editable' => true
+                ];
+            }
+        }
+
+        $fuentes = [
+            [
+                'numero' => trim((string)($aliado['whatsapp_verificado'] ?? '')),
+                'etiqueta' => 'WhatsApp verificado',
+                'origen' => 'WHATSAPP_VERIFICADO',
+                'confirmado_whatsapp' => true
+            ],
+            [
+                'numero' => trim((string)($aliado['telefono_verificado'] ?? '')),
+                'etiqueta' => 'Teléfono verificado',
+                'origen' => 'TELEFONO_VERIFICADO',
+                'confirmado_whatsapp' => false
+            ],
+            [
+                'numero' => trim((string)($aliado['telefono_fuente'] ?? '')),
+                'etiqueta' => 'Teléfono de origen',
+                'origen' => 'TELEFONO_FUENTE',
+                'confirmado_whatsapp' => false
+            ]
+        ];
+
+        foreach ($fuentes as $fuente) {
+            $numero = (string)$fuente['numero'];
+            $normalizado = $this->normalizarNumero($numero);
+
+            if ($numero === '' || $normalizado === '' || isset($normalizados[$normalizado])) {
+                continue;
+            }
+
+            $normalizados[$normalizado] = true;
+            $contactos[] = [
+                'id' => 0,
+                'numero' => $numero,
+                'numero_normalizado' => $normalizado,
+                'etiqueta' => (string)$fuente['etiqueta'],
+                'origen' => (string)$fuente['origen'],
+                'origen_label' => (string)$fuente['etiqueta'],
+                'confirmado_whatsapp' => (bool)$fuente['confirmado_whatsapp'],
+                'preferido_difusion' => false,
+                'editable' => false
+            ];
+        }
+
+        return $contactos;
+    }
+
+    public function guardarContactoDifusion($seguimientoId, $usuarioId, array $datos)
+    {
+        if (!$this->contactosDisponibles()) {
+            throw new RuntimeException('La estructura de contactos de Aliados no está disponible.');
+        }
+
+        $seguimientoId = (int)$seguimientoId;
+        $usuarioId = (int)$usuarioId;
+        $contactoId = (int)($datos['id'] ?? 0);
+        $numero = trim((string)($datos['numero'] ?? ''));
+        $numeroNormalizado = $this->normalizarNumero($numero);
+        $etiqueta = trim((string)($datos['etiqueta'] ?? 'Difusión'));
+        $origen = strtoupper(trim((string)($datos['origen'] ?? 'CUENTA_CLAVE')));
+        $confirmadoWhatsapp = !empty($datos['confirmado_whatsapp']) ? 1 : 0;
+        $preferido = !empty($datos['preferido_difusion']) ? 1 : 0;
+
+        if ($etiqueta === '') {
+            $etiqueta = 'Difusión';
+        }
+
+        if (!in_array($origen, [
+            'CUENTA_CLAVE',
+            'WHATSAPP_VERIFICADO',
+            'TELEFONO_VERIFICADO',
+            'TELEFONO_FUENTE'
+        ], true)) {
+            $origen = 'CUENTA_CLAVE';
+        }
+
+        $this->connection->begin_transaction();
+
+        try {
+            if ($preferido === 1) {
+                $stmtPreferido = $this->connection->prepare(
+                    "UPDATE aliados_contactos
+                     SET preferido_difusion = 0,
+                         actualizado_por = ?
+                     WHERE seguimiento_id = ?
+                       AND activo = 1"
+                );
+                $stmtPreferido->bind_param('ii', $usuarioId, $seguimientoId);
+                $stmtPreferido->execute();
+            }
+
+            if ($contactoId > 0) {
+                $stmtExistente = $this->connection->prepare(
+                    "SELECT id
+                     FROM aliados_contactos
+                     WHERE seguimiento_id = ?
+                       AND numero_normalizado = ?
+                       AND id <> ?
+                     LIMIT 1"
+                );
+                $stmtExistente->bind_param(
+                    'isi',
+                    $seguimientoId,
+                    $numeroNormalizado,
+                    $contactoId
+                );
+                $stmtExistente->execute();
+
+                if ($stmtExistente->get_result()->num_rows > 0) {
+                    throw new RuntimeException('Ese número ya está registrado para este aliado.');
+                }
+
+                $stmt = $this->connection->prepare(
+                    "UPDATE aliados_contactos
+                     SET numero = ?,
+                         numero_normalizado = ?,
+                         etiqueta = ?,
+                         origen = ?,
+                         confirmado_whatsapp = ?,
+                         preferido_difusion = ?,
+                         activo = 1,
+                         actualizado_por = ?
+                     WHERE id = ?
+                       AND seguimiento_id = ?"
+                );
+                $stmt->bind_param(
+                    'ssssiiiii',
+                    $numero,
+                    $numeroNormalizado,
+                    $etiqueta,
+                    $origen,
+                    $confirmadoWhatsapp,
+                    $preferido,
+                    $usuarioId,
+                    $contactoId,
+                    $seguimientoId
+                );
+                $stmt->execute();
+            } else {
+                $stmt = $this->connection->prepare(
+                    "INSERT INTO aliados_contactos (
+                        seguimiento_id,
+                        numero,
+                        numero_normalizado,
+                        etiqueta,
+                        origen,
+                        confirmado_whatsapp,
+                        preferido_difusion,
+                        activo,
+                        creado_por,
+                        actualizado_por
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+                    ON DUPLICATE KEY UPDATE
+                        numero = VALUES(numero),
+                        etiqueta = VALUES(etiqueta),
+                        origen = VALUES(origen),
+                        confirmado_whatsapp = VALUES(confirmado_whatsapp),
+                        preferido_difusion = VALUES(preferido_difusion),
+                        activo = 1,
+                        actualizado_por = VALUES(actualizado_por)"
+                );
+                $stmt->bind_param(
+                    'issssiiii',
+                    $seguimientoId,
+                    $numero,
+                    $numeroNormalizado,
+                    $etiqueta,
+                    $origen,
+                    $confirmadoWhatsapp,
+                    $preferido,
+                    $usuarioId,
+                    $usuarioId
+                );
+                $stmt->execute();
+            }
+
+            $this->connection->commit();
+            return true;
+        } catch (Throwable $error) {
+            $this->connection->rollback();
+            throw $error;
+        }
+    }
+
+    public function desactivarContactoDifusion($contactoId, $seguimientoId, $usuarioId)
+    {
+        if (!$this->contactosDisponibles()) {
+            return false;
+        }
+
+        $sql = "UPDATE aliados_contactos
+                SET activo = 0,
+                    preferido_difusion = 0,
+                    actualizado_por = ?
+                WHERE id = ?
+                  AND seguimiento_id = ?";
+
+        $stmt = $this->connection->prepare($sql);
+        $usuarioId = (int)$usuarioId;
+        $contactoId = (int)$contactoId;
+        $seguimientoId = (int)$seguimientoId;
+        $stmt->bind_param('iii', $usuarioId, $contactoId, $seguimientoId);
+
+        return $stmt->execute();
+    }
+
     public function obtenerUsuarioRemitente($usuarioId)
     {
         $sql = "SELECT id, nombre, apellidos, correo
@@ -335,6 +595,30 @@ class AliadoModel
 
     private function consultaBase()
     {
+        $contactoSelect = ",
+                    NULL AS contacto_difusion_preferido,
+                    0 AS contacto_difusion_confirmado_whatsapp,
+                    NULL AS contacto_difusion_etiqueta";
+        $contactoJoin = "";
+
+        if ($this->contactosDisponibles()) {
+            $contactoSelect = ",
+                    preferido.numero AS contacto_difusion_preferido,
+                    COALESCE(preferido.confirmado_whatsapp, 0) AS contacto_difusion_confirmado_whatsapp,
+                    preferido.etiqueta AS contacto_difusion_etiqueta";
+            $contactoJoin = "
+                LEFT JOIN aliados_contactos preferido
+                    ON preferido.id = (
+                        SELECT contacto_preferido.id
+                        FROM aliados_contactos contacto_preferido
+                        WHERE contacto_preferido.seguimiento_id = s.id
+                          AND contacto_preferido.activo = 1
+                          AND contacto_preferido.preferido_difusion = 1
+                        ORDER BY contacto_preferido.updated_at DESC, contacto_preferido.id DESC
+                        LIMIT 1
+                    )";
+        }
+
         return "SELECT
                     s.id AS seguimiento_id,
                     s.estado_id,
@@ -345,6 +629,9 @@ class AliadoModel
                     s.tipo_entidad,
                     s.contacto_nombre,
                     s.contacto_cargo,
+                    s.telefono_fuente,
+                    s.telefono_verificado,
+                    s.whatsapp_verificado,
                     COALESCE(
                         NULLIF(TRIM(s.correo_verificado), ''),
                         NULLIF(TRIM(s.correo_fuente), '')
@@ -352,7 +639,8 @@ class AliadoModel
                     COALESCE(
                         NULLIF(TRIM(s.whatsapp_verificado), ''),
                         ''
-                    ) AS whatsapp_contacto,
+                    ) AS whatsapp_contacto" .
+                    $contactoSelect . ",
                     s.analista_id,
                     CONCAT_WS(' ', analista.nombre, analista.apellidos) AS analista_nombre,
                     p.convenio_fecha,
@@ -377,7 +665,8 @@ class AliadoModel
                 LEFT JOIN aliados_asignaciones aa
                     ON aa.seguimiento_id = s.id
                 LEFT JOIN usuarios cuenta
-                    ON cuenta.id = aa.cuenta_clave_usuario_id
+                    ON cuenta.id = aa.cuenta_clave_usuario_id" .
+                    $contactoJoin . "
                 LEFT JOIN aliados_convocatorias_envios ultimo
                     ON ultimo.id = (
                         SELECT envio_reciente.id
@@ -387,6 +676,24 @@ class AliadoModel
                         ORDER BY envio_reciente.enviado_at DESC, envio_reciente.id DESC
                         LIMIT 1
                     )";
+    }
+
+    private function normalizarNumero($numero)
+    {
+        return preg_replace('/[^0-9]+/', '', (string)$numero);
+    }
+
+    private function etiquetaOrigenContacto($origen)
+    {
+        $etiquetas = [
+            'CUENTA_CLAVE' => 'Agregado por Cuenta Clave',
+            'WHATSAPP_VERIFICADO' => 'WhatsApp verificado',
+            'TELEFONO_VERIFICADO' => 'Teléfono verificado',
+            'TELEFONO_FUENTE' => 'Teléfono de origen'
+        ];
+
+        $origen = strtoupper(trim((string)$origen));
+        return $etiquetas[$origen] ?? 'Contacto de difusión';
     }
 
     private function tablaExiste($tabla)
