@@ -9,6 +9,7 @@ require_once __DIR__ . '/../services/ReporteSeguimientoPdfCacheService.php';
 require_once __DIR__ . '/../services/EvolucionActividadSeguimientoService.php';
 require_once __DIR__ . '/../services/SeguimientoReporteAnaliticaService.php';
 require_once __DIR__ . '/../services/ReporteSeguimientoCarteraService.php';
+require_once __DIR__ . '/../services/SeguimientoAtencionOperativaService.php';
 require_once __DIR__ . '/../services/SeguimientoFlujoService.php';
 require_once __DIR__ . '/../services/SeguimientoPostEnvioService.php';
 require_once __DIR__ . '/../services/SeguimientoCorreoService.php';
@@ -403,7 +404,7 @@ class SeguimientoVinculacionReporteController
 
             if ($puedeUsarCache) {
                 $claveCache = $cachePdf->crearClave([
-                    'version' => 'seguimiento-pdf-profesional-v20',
+                    'version' => 'seguimiento-pdf-profesional-v21',
                     'usuario_id' => $usuarioId,
                     'rol_id' => (int)($_SESSION['rol_id'] ?? 0),
                     'modo' => $modoSeguimientoCache,
@@ -1011,6 +1012,15 @@ class SeguimientoVinculacionReporteController
                 [$this, 'prepararSeguimientoReporte'],
                 $seguimientosReporte
             );
+
+            if (
+                (string)($filtrosReporte['tipo_reporte'] ?? '') === 'cartera'
+            ) {
+                $seguimientosReporte = $this->aplicarAtencionOperativaReporte(
+                    $seguimientosReporte
+                );
+            }
+
             $resumenReporte = $this->crearResumenReporte($seguimientosReporte);
 
             $seguimientosFuenteAnalitica =
@@ -1627,6 +1637,62 @@ class SeguimientoVinculacionReporteController
         return $seguimiento;
     }
 
+    private function aplicarAtencionOperativaReporte(array $seguimientos)
+    {
+        if (empty($seguimientos)) {
+            return [];
+        }
+
+        $ids = array_values(array_filter(array_map(
+            static function ($seguimiento) {
+                return (int)($seguimiento['id'] ?? 0);
+            },
+            $seguimientos
+        )));
+
+        if (empty($ids)) {
+            return $seguimientos;
+        }
+
+        try {
+            $atenciones = (new SeguimientoAtencionOperativaService())->obtenerPorIds($ids);
+        } catch (Throwable $error) {
+            error_log('[reporte_atencion_operativa] ' . $error->getMessage());
+            return $seguimientos;
+        }
+
+        $mapa = [];
+        foreach ($atenciones as $atencion) {
+            $id = (int)($atencion['id'] ?? 0);
+            if ($id > 0) {
+                $mapa[$id] = $atencion;
+            }
+        }
+
+        foreach ($seguimientos as &$seguimiento) {
+            $id = (int)($seguimiento['id'] ?? 0);
+            $atencion = $mapa[$id] ?? null;
+
+            $seguimiento['requiere_atencion_operativa'] = is_array($atencion);
+
+            if (!is_array($atencion)) {
+                continue;
+            }
+
+            $seguimiento['atencion_operativa_tipo'] =
+                (string)($atencion['tipo_atencion'] ?? 'seguimiento');
+            $seguimiento['atencion_operativa_motivo'] =
+                (string)($atencion['motivo_atencion'] ?? 'Revisar seguimiento');
+            $seguimiento['atencion_operativa_prioridad'] =
+                (int)($atencion['prioridad'] ?? 0);
+            $seguimiento['atencion_operativa_fecha'] =
+                (string)($atencion['fecha_referencia'] ?? '');
+        }
+        unset($seguimiento);
+
+        return $seguimientos;
+    }
+
     private function crearResumenReporte($seguimientos)
     {
         $porEstatus = [];
@@ -1716,7 +1782,15 @@ class SeguimientoVinculacionReporteController
             if ($atencion === 'VENCIDA') {
                 $accionesVencidas++;
             }
-            if (in_array($atencion, ['VENCIDA', 'SIN_ACTIVIDAD', 'INACTIVA'], true)) {
+
+            $requiereAtencionOperativa = array_key_exists(
+                'requiere_atencion_operativa',
+                $seguimiento
+            )
+                ? !empty($seguimiento['requiere_atencion_operativa'])
+                : in_array($atencion, ['VENCIDA', 'SIN_ACTIVIDAD', 'INACTIVA'], true);
+
+            if ($requiereAtencionOperativa) {
                 $requierenAtencion++;
                 $prioritarios[] = $seguimiento;
             }
@@ -1787,11 +1861,19 @@ class SeguimientoVinculacionReporteController
         });
 
         usort($prioritarios, static function ($a, $b) {
+            $prioridadOperativaA = (int)($a['atencion_operativa_prioridad'] ?? 0);
+            $prioridadOperativaB = (int)($b['atencion_operativa_prioridad'] ?? 0);
+
+            if ($prioridadOperativaA !== $prioridadOperativaB) {
+                return $prioridadOperativaB <=> $prioridadOperativaA;
+            }
+
             $orden = (int)($a['prioridad_orden'] ?? 99)
                 <=> (int)($b['prioridad_orden'] ?? 99);
             if ($orden !== 0) {
                 return $orden;
             }
+
             return (int)($b['dias_sin_actividad'] ?? -1)
                 <=> (int)($a['dias_sin_actividad'] ?? -1);
         });
