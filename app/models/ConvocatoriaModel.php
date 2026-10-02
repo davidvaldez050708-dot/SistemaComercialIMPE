@@ -725,7 +725,7 @@ class ConvocatoriaModel
         $filaCobertura = $resultadoCobertura->fetch_assoc();
         $estadosCubiertos = (int)($filaCobertura['estados_cubiertos'] ?? 0);
 
-        $limite = max(1, min(5, (int)$limite));
+        $limite = max(1, min(32, (int)$limite));
 
         $sqlTop = "SELECT
                         estados.id,
