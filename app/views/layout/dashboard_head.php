@@ -42,6 +42,7 @@ $esSeguimientoDetalle =
     $actionDashboard === 'detalle';
 $esAgendaDashboard = $controllerDashboard === 'agendareunion';
 $esAliadosDashboard = $controllerDashboard === 'aliado';
+$esWhatsappDashboard = $controllerDashboard === 'whatsapp';
 $esReportesDashboard =
     in_array(
         $controllerDashboard,
@@ -165,6 +166,10 @@ if ($esAliadosDashboard) {
     $cssOpcionalDashboard[] = 'aliados.css';
 }
 
+if ($esWhatsappDashboard) {
+    $cssOpcionalDashboard[] = 'whatsapp.css';
+}
+
 if ($esCorreosMarketingDashboard) {
     $cssOpcionalDashboard[] = 'correos_marketing.css';
 }
@@ -207,6 +212,10 @@ if (tienePermiso('seguimientos_vinculacion.operar_propios')) {
 
 if ($esAliadosDashboard) {
     $jsOpcionalHead[] = 'aliados.js';
+}
+
+if ($esWhatsappDashboard) {
+    $jsOpcionalHead[] = 'whatsapp.js';
 }
 
 if ($esHomeDashboard) {
