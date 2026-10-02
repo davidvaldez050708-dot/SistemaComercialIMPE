@@ -26,8 +26,9 @@ return [
     // App Secret de la aplicación de Meta. Se usa para validar X-Hub-Signature-256.
     'app_secret' => '',
 
-    // Ejemplo: vXX.X. Usa la versión vigente indicada en Meta Developers.
-    'graph_version' => '',
+    // Versión vigente para esta integración al momento de la configuración.
+    // Actualízala cuando Meta publique una versión posterior compatible.
+    'graph_version' => 'v26.0',
 
     // La cuenta de prueba de Meta normalmente incluye una plantilla inicial.
     'test_template' => 'hello_world',
