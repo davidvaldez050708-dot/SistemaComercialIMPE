@@ -26,6 +26,30 @@ class CorreoMarketingController
         require_once __DIR__ . '/../views/layout/dashboard_footer.php';
     }
 
+    public function ver()
+    {
+        $this->validarAccesoMarketing();
+
+        $correoId = (int)($_GET['id'] ?? 0);
+        $service = new CorreoMarketingService();
+        $correo = $service->obtener(
+            (int)($_SESSION['usuario_id'] ?? 0),
+            $correoId
+        );
+
+        if (!$correo) {
+            $this->responder([
+                'ok' => false,
+                'mensaje' => 'No fue posible encontrar este correo.'
+            ], 404);
+        }
+
+        $this->responder([
+            'ok' => true,
+            'correo' => $correo
+        ]);
+    }
+
     public function enviar()
     {
         $this->validarAccesoMarketing();
