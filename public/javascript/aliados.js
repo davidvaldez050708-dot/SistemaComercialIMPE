@@ -162,6 +162,93 @@ document.addEventListener('DOMContentLoaded', function () {
         return time ? date + ' · ' + time : date;
     };
 
+    const normalizeText = function (value) {
+        return String(value || '')
+            .trim()
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '');
+    };
+
+    const updateFilterUrl = function () {
+        const url = new URL(window.location.href);
+        const values = {
+            buscar: String(searchInput?.value || '').trim(),
+            estado_id: Number(stateSelect?.value || 0),
+            municipio_id: Number(municipalitySelect?.value || 0),
+            analista_id: Number(analystSelect?.value || 0)
+        };
+
+        Object.entries(values).forEach(function ([key, value]) {
+            if (String(value) !== '' && Number(value) !== 0) {
+                url.searchParams.set(key, String(value));
+            } else if (key === 'buscar' && String(value) !== '') {
+                url.searchParams.set(key, String(value));
+            } else {
+                url.searchParams.delete(key);
+            }
+        });
+
+        window.history.replaceState({}, '', url.toString());
+    };
+
+    const updateClearVisibility = function () {
+        if (!clearFilters) {
+            return;
+        }
+
+        const active =
+            String(searchInput?.value || '').trim() !== '' ||
+            Number(stateSelect?.value || 0) > 0 ||
+            Number(municipalitySelect?.value || 0) > 0 ||
+            Number(analystSelect?.value || 0) > 0;
+
+        clearFilters.classList.toggle('d-none', !active);
+    };
+
+    const applyDirectoryFilters = function () {
+        if (allyRows.length === 0) {
+            updateFilterUrl();
+            updateClearVisibility();
+            return;
+        }
+
+        const search = normalizeText(searchInput?.value || '');
+        const stateId = Number(stateSelect?.value || 0);
+        const municipalityId = Number(municipalitySelect?.value || 0);
+        const analystId = Number(analystSelect?.value || 0);
+        let visible = 0;
+
+        allyRows.forEach(function (row) {
+            const matches =
+                (search === '' || normalizeText(row.dataset.search).includes(search)) &&
+                (stateId === 0 || Number(row.dataset.estadoId || 0) === stateId) &&
+                (municipalityId === 0 || Number(row.dataset.municipioId || 0) === municipalityId) &&
+                (analystId === 0 || Number(row.dataset.analistaId || 0) === analystId);
+
+            row.classList.toggle('d-none', !matches);
+
+            if (matches) {
+                visible++;
+            }
+        });
+
+        if (resultCount) {
+            resultCount.textContent =
+                visible + (visible === 1 ? ' resultado' : ' resultados');
+        }
+
+        if (tableWrap) {
+            tableWrap.classList.toggle('d-none', visible === 0);
+        }
+        if (filteredEmpty) {
+            filteredEmpty.classList.toggle('d-none', visible !== 0);
+        }
+
+        updateFilterUrl();
+        updateClearVisibility();
+    };
+
     const resetSendState = function () {
         currentConvocatorias = new Map();
 
