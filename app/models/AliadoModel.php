@@ -326,8 +326,9 @@ class AliadoModel
             $seguimientoId = (int)($aliado['seguimiento_id'] ?? 0);
             $stmt->bind_param('i', $seguimientoId);
             $stmt->execute();
+            $resultadoContactos = $stmt->get_result();
 
-            while ($fila = $stmt->get_result()->fetch_assoc()) {
+            while ($fila = $resultadoContactos->fetch_assoc()) {
                 $normalizado = (string)($fila['numero_normalizado'] ?? '');
                 if ($normalizado !== '') {
                     $normalizados[$normalizado] = true;
@@ -438,6 +439,20 @@ class AliadoModel
             }
 
             if ($contactoId > 0) {
+                $stmtPropio = $this->connection->prepare(
+                    "SELECT id
+                     FROM aliados_contactos
+                     WHERE id = ?
+                       AND seguimiento_id = ?
+                     LIMIT 1"
+                );
+                $stmtPropio->bind_param('ii', $contactoId, $seguimientoId);
+                $stmtPropio->execute();
+
+                if ($stmtPropio->get_result()->num_rows === 0) {
+                    throw new RuntimeException('El contacto no pertenece a este aliado.');
+                }
+
                 $stmtExistente = $this->connection->prepare(
                     "SELECT id
                      FROM aliados_contactos
@@ -549,7 +564,11 @@ class AliadoModel
         $seguimientoId = (int)$seguimientoId;
         $stmt->bind_param('iii', $usuarioId, $contactoId, $seguimientoId);
 
-        return $stmt->execute();
+        if (!$stmt->execute()) {
+            return false;
+        }
+
+        return $stmt->affected_rows > 0;
     }
 
     public function obtenerUsuarioRemitente($usuarioId)
@@ -598,6 +617,7 @@ class AliadoModel
         $contactoSelect = ",
                     NULL AS contacto_difusion_preferido,
                     0 AS contacto_difusion_confirmado_whatsapp,
+                    0 AS tiene_whatsapp_confirmado_contacto,
                     NULL AS contacto_difusion_etiqueta";
         $contactoJoin = "";
 
@@ -605,6 +625,17 @@ class AliadoModel
             $contactoSelect = ",
                     preferido.numero AS contacto_difusion_preferido,
                     COALESCE(preferido.confirmado_whatsapp, 0) AS contacto_difusion_confirmado_whatsapp,
+                    CASE
+                        WHEN EXISTS (
+                            SELECT 1
+                            FROM aliados_contactos contacto_whatsapp
+                            WHERE contacto_whatsapp.seguimiento_id = s.id
+                              AND contacto_whatsapp.activo = 1
+                              AND contacto_whatsapp.confirmado_whatsapp = 1
+                        )
+                        THEN 1
+                        ELSE 0
+                    END AS tiene_whatsapp_confirmado_contacto,
                     preferido.etiqueta AS contacto_difusion_etiqueta";
             $contactoJoin = "
                 LEFT JOIN aliados_contactos preferido
