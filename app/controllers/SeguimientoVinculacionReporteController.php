@@ -142,15 +142,24 @@ class SeguimientoVinculacionReporteController
                 );
             }
 
+            $responsablesPermitidos = $this->obtenerResponsablesPorModo(
+                $modelo,
+                $usuarioId,
+                $modoSeguimiento,
+                (int)($filtros['estado_id'] ?? 0),
+                $seguimientos
+            );
             $filtros = $this->normalizarFiltrosDependientes(
                 $seguimientos,
                 $filtros,
-                $modoSeguimiento
+                $modoSeguimiento,
+                $responsablesPermitidos
             );
             $opciones = $this->construirOpcionesDependientes(
                 $seguimientos,
                 $filtros,
-                $modoSeguimiento
+                $modoSeguimiento,
+                $responsablesPermitidos
             );
 
             $canalesRespuesta = $opciones['canales'];
@@ -448,7 +457,10 @@ class SeguimientoVinculacionReporteController
                 $contexto['seguimientosActividad'] ?? [],
                 $contexto['filtrosReporte'],
                 $usuarioId,
-                (string)($contexto['modoSeguimiento'] ?? 'analista')
+                (string)($contexto['modoSeguimiento'] ?? 'analista'),
+                is_array($contexto['actoresActividad'] ?? null)
+                    ? $contexto['actoresActividad']
+                    : []
             );
         } catch (Throwable $error) {
             error_log('[reporte_evolucion_actividad_pdf] ' . $error->getMessage());
@@ -476,7 +488,10 @@ class SeguimientoVinculacionReporteController
                     : ''),
                 (string)($contexto['filtrosReporte']['tipo_reporte'] ?? '') === 'actividad'
                     ? 200
-                    : 60
+                    : 60,
+                is_array($contexto['actoresActividad'] ?? null)
+                    ? $contexto['actoresActividad']
+                    : []
             );
         } catch (Throwable $error) {
             error_log('[reporte_analitica_pdf] ' . $error->getMessage());
@@ -792,10 +807,18 @@ class SeguimientoVinculacionReporteController
             }
         }
 
+        $responsablesDisponibles = $this->obtenerResponsablesPorModo(
+            $modelo,
+            $usuarioId,
+            $modoSeguimiento,
+            $estadoId,
+            $seguimientosDisponibles
+        );
         $filtrosReporte = $this->normalizarFiltrosDependientes(
             $seguimientosDisponibles,
             $filtrosReporte,
-            $modoSeguimiento
+            $modoSeguimiento,
+            $responsablesDisponibles
         );
 
         $tipoReporte = (string)($filtrosReporte['tipo_reporte'] ?? 'cartera');
@@ -851,9 +874,6 @@ class SeguimientoVinculacionReporteController
         $institucionesDisponibles = $this->obtenerInstitucionesDisponibles(
             $seguimientosDisponibles
         );
-        $responsablesDisponibles = $this->obtenerResponsablesDisponibles(
-            $seguimientosDisponibles
-        );
         $canalesDisponibles = $this->obtenerCanalesDisponibles(
             $seguimientosDisponibles
         );
@@ -864,6 +884,13 @@ class SeguimientoVinculacionReporteController
                 'CORREO' => 'Correo'
             ];
         }
+
+        $actoresActividad = $this->resolverActoresActividad(
+            $modoSeguimiento,
+            $usuarioId,
+            $filtrosReporte,
+            $responsablesDisponibles
+        );
 
         $errorFiltros = $this->validarPeriodo($filtrosReporte);
         $generarReporte = $forzarGeneracion || (string)($_GET['generar'] ?? '') === '1';
@@ -916,7 +943,8 @@ class SeguimientoVinculacionReporteController
                     (string)$filtrosReporte['fecha_inicial'],
                     (string)$filtrosReporte['fecha_final'],
                     (string)$filtrosReporte['tipo_actividad'],
-                    $modoSeguimiento
+                    $modoSeguimiento,
+                    $actoresActividad
                 );
                 $mapaActividad = array_fill_keys($idsConActividad, true);
                 $seguimientosBaseReporte = array_values(array_filter(
@@ -978,7 +1006,9 @@ class SeguimientoVinculacionReporteController
                     (string)($filtrosReporte['fecha_final'] ?? ''),
                     (string)(($filtrosReporte['tipo_reporte'] ?? '') === 'actividad'
                         ? ($filtrosReporte['tipo_actividad'] ?? '')
-                        : '')
+                        : ''),
+                    60,
+                    $actoresActividad
                 );
             } catch (Throwable $error) {
                 error_log('[reporte_analitica_web] ' . $error->getMessage());
@@ -1030,7 +1060,8 @@ class SeguimientoVinculacionReporteController
             'generarReporte' => $generarReporte,
             'errorFiltros' => $errorFiltros,
             'modoSeguimiento' => $modoSeguimiento,
-            'tiposReportePermitidos' => $tiposReportePermitidos
+            'tiposReportePermitidos' => $tiposReportePermitidos,
+            'actoresActividad' => $actoresActividad
         ];
     }
 
@@ -1057,8 +1088,12 @@ class SeguimientoVinculacionReporteController
         return $seguimientosDisponibles;
     }
 
-    private function normalizarFiltrosDependientes(array $seguimientos, array $filtros, $modo)
-    {
+    private function normalizarFiltrosDependientes(
+        array $seguimientos,
+        array $filtros,
+        $modo,
+        array $responsablesPermitidos = []
+    ) {
         $actuales = $seguimientos;
         $municipioId = (int)($filtros['municipio_id'] ?? 0);
 
@@ -1107,14 +1142,30 @@ class SeguimientoVinculacionReporteController
             $responsableId = (int)($filtros['responsable_id'] ?? 0);
 
             if ($responsableId > 0) {
-                $coinciden = array_values(array_filter($actuales, function ($seguimiento) use ($responsableId) {
-                    return (int)($seguimiento['analista_id'] ?? 0) === $responsableId;
-                }));
-
-                if (empty($coinciden)) {
+                if (
+                    $modo === 'supervisor' &&
+                    !isset($responsablesPermitidos[$responsableId])
+                ) {
                     $filtros['responsable_id'] = 0;
                 } else {
-                    $actuales = $coinciden;
+                    $coinciden = array_values(array_filter(
+                        $actuales,
+                        function ($seguimiento) use ($responsableId) {
+                            return (int)($seguimiento['analista_id'] ?? 0) === $responsableId;
+                        }
+                    ));
+
+                    if (empty($coinciden)) {
+                        if ($modo !== 'supervisor') {
+                            $filtros['responsable_id'] = 0;
+                        } else {
+                            // El Analista sigue siendo seleccionable aunque aún no tenga
+                            // seguimientos o actividad dentro del alcance elegido.
+                            $actuales = [];
+                        }
+                    } else {
+                        $actuales = $coinciden;
+                    }
                 }
             }
         }
@@ -1162,8 +1213,12 @@ class SeguimientoVinculacionReporteController
         return $filtros;
     }
 
-    private function construirOpcionesDependientes(array $seguimientos, array $filtros, $modo)
-    {
+    private function construirOpcionesDependientes(
+        array $seguimientos,
+        array $filtros,
+        $modo,
+        array $responsablesPermitidos = []
+    ) {
         $actuales = $seguimientos;
         $municipios = [];
 
@@ -1203,7 +1258,9 @@ class SeguimientoVinculacionReporteController
         }
 
         $responsables = [];
-        if ($modo !== 'analista') {
+        if ($modo === 'supervisor') {
+            $responsables = $responsablesPermitidos;
+        } elseif ($modo !== 'analista') {
             foreach ($actuales as $seguimiento) {
                 $id = (int)($seguimiento['analista_id'] ?? 0);
                 $nombre = trim(
@@ -1733,6 +1790,67 @@ class SeguimientoVinculacionReporteController
 
         natcasesort($instituciones);
         return $instituciones;
+    }
+
+    private function obtenerResponsablesPorModo(
+        SeguimientoVinculacionModel $modelo,
+        $usuarioId,
+        $modo,
+        $estadoId,
+        array $seguimientos
+    ) {
+        if ($modo !== 'supervisor') {
+            return $this->obtenerResponsablesDisponibles($seguimientos);
+        }
+
+        $responsables = [];
+        $analistas = $modelo->obtenerAnalistasSupervisadosCuentaClave(
+            (int)$usuarioId,
+            (int)$estadoId
+        );
+
+        foreach ($analistas as $analista) {
+            $id = (int)($analista['id'] ?? 0);
+            $nombre = trim(
+                (string)($analista['nombre'] ?? '') . ' ' .
+                (string)($analista['apellidos'] ?? '')
+            );
+
+            if ($id > 0 && $nombre !== '') {
+                $responsables[$id] = $nombre;
+            }
+        }
+
+        natcasesort($responsables);
+        return $responsables;
+    }
+
+    private function resolverActoresActividad(
+        $modo,
+        $usuarioId,
+        array $filtros,
+        array $responsablesDisponibles
+    ) {
+        if ((string)($filtros['tipo_reporte'] ?? '') !== 'actividad') {
+            return [];
+        }
+
+        if ($modo === 'analista') {
+            return [(int)$usuarioId];
+        }
+
+        $responsableId = (int)($filtros['responsable_id'] ?? 0);
+        if ($responsableId > 0) {
+            return isset($responsablesDisponibles[$responsableId])
+                ? [$responsableId]
+                : [];
+        }
+
+        if ($modo === 'supervisor') {
+            return array_values(array_map('intval', array_keys($responsablesDisponibles)));
+        }
+
+        return [];
     }
 
     private function obtenerResponsablesDisponibles($seguimientos)
