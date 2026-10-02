@@ -2629,3 +2629,157 @@
         min-width: 96px;
     }
 }
+
+
+/* =========================================================
+   VISTA PREVIA · REPORTE DE CONVOCATORIAS
+   ========================================================= */
+.convocatoria-report-preview {
+    display: grid;
+    gap: 18px;
+}
+
+.convocatoria-report-preview-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+}
+
+.convocatoria-report-preview-toolbar .territorial-back-link {
+    margin: 0;
+}
+
+.convocatoria-report-preview-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.convocatoria-report-analysis-card {
+    min-width: 0;
+    padding: 18px;
+}
+
+.convocatoria-report-section-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+    margin-bottom: 16px;
+}
+
+.convocatoria-report-section-heading h3 {
+    margin: 3px 0 0;
+    color: var(--color-text-primary);
+    font-size: 14px;
+    font-weight: 800;
+}
+
+.convocatoria-report-section-heading > i {
+    color: var(--color-primary);
+    font-size: 20px;
+}
+
+.convocatoria-report-type-list {
+    display: grid;
+    gap: 16px;
+}
+
+.convocatoria-report-type-copy {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    color: var(--color-text-primary);
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.convocatoria-report-type-copy strong {
+    color: var(--color-primary);
+    font-size: 15px;
+    font-weight: 800;
+}
+
+.convocatoria-report-progress {
+    height: 8px;
+    margin-top: 7px;
+    overflow: hidden;
+    border-radius: 999px;
+    background-color: #e8edf4;
+}
+
+.convocatoria-report-progress > span {
+    min-width: 4px;
+    height: 100%;
+    display: block;
+    border-radius: inherit;
+    background-color: var(--color-primary);
+}
+
+.convocatoria-report-type-list small {
+    display: block;
+    margin-top: 5px;
+    color: var(--color-text-secondary);
+    font-size: 9.5px;
+    font-weight: 600;
+}
+
+.convocatoria-report-findings {
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 11px;
+    list-style: none;
+}
+
+.convocatoria-report-findings li {
+    display: grid;
+    grid-template-columns: 18px minmax(0, 1fr);
+    gap: 8px;
+    align-items: start;
+    color: var(--color-text-secondary);
+    font-size: 10.5px;
+    font-weight: 600;
+    line-height: 1.45;
+}
+
+.convocatoria-report-findings i {
+    color: #0a9d7b;
+    font-size: 14px;
+}
+
+.convocatoria-report-table-panel {
+    padding: 0;
+    overflow: hidden;
+}
+
+.convocatoria-report-table-panel .users-table {
+    margin: 0;
+}
+
+.convocatoria-report-table-panel .users-table th {
+    white-space: nowrap;
+}
+
+.convocatoria-report-table-panel .users-table td {
+    font-size: 10.5px;
+}
+
+@media (max-width: 991.98px) {
+    .convocatoria-report-preview-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .convocatoria-report-preview-toolbar {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .convocatoria-report-preview-toolbar .report-export-action {
+        justify-content: center;
+    }
+}
