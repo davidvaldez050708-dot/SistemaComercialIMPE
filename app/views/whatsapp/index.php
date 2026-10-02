@@ -114,11 +114,18 @@ foreach ($mensajesIniciales as $mensaje) {
             <i class="bi bi-gear"></i>
             <div>
                 <strong>Cloud API todavía no está configurada.</strong>
-                <span>
-                    Faltan:
-                    <?= $texto(implode(', ', $estadoConfiguracionWhatsapp['faltantes'] ?? [])) ?>.
-                    Puedes explorar la bandeja, pero el envío/webhook requerirán la configuración local.
-                </span>
+                <?php if ($puedeGestionarCuentas): ?>
+                    <span>
+                        Faltan:
+                        <?= $texto(implode(', ', $estadoConfiguracionWhatsapp['faltantes'] ?? [])) ?>.
+                        Completa la configuración local antes de probar el canal o registrar el webhook en Meta.
+                    </span>
+                <?php else: ?>
+                    <span>
+                        El canal de WhatsApp aún no está disponible.
+                        Contacta al administrador del sistema para completar la configuración.
+                    </span>
+                <?php endif; ?>
             </div>
         </div>
     <?php endif; ?>
@@ -825,6 +832,14 @@ foreach ($mensajesIniciales as $mensaje) {
                             <div class="whatsapp-channel-form-status d-none" data-whatsapp-channel-status></div>
 
                             <div class="whatsapp-channel-form-actions">
+                                <button
+                                    type="button"
+                                    class="btn whatsapp-secondary-button d-none"
+                                    data-whatsapp-channel-test>
+                                    <i class="bi bi-cloud-check"></i>
+                                    Probar conexión
+                                </button>
+
                                 <button
                                     type="submit"
                                     class="btn whatsapp-primary-button">
