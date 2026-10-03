@@ -523,7 +523,7 @@ $normalizarNumeroVista = static function ($valor) {
     tabindex="-1"
     aria-labelledby="modalAliadoCompartirTitulo"
     aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-dialog modal-dialog-centered modal-xl aliados-share-dialog">
         <div class="modal-content aliados-modal">
             <div class="modal-header">
                 <div>
@@ -572,87 +572,72 @@ $normalizarNumeroVista = static function ($valor) {
                     <?php endif; ?>
                 </div>
 
-                <?php if ($puedePrepararWhatsapp): ?>
-                    <div
-                        class="aliados-whatsapp-readiness aliados-whatsapp-manual-note d-none"
-                        data-aliado-whatsapp-readiness>
-                        <div class="aliados-whatsapp-readiness-icon">
-                            <i class="bi bi-whatsapp"></i>
-                        </div>
-                        <div class="aliados-whatsapp-readiness-copy">
-                            <strong data-aliado-whatsapp-title>WhatsApp del aliado</strong>
-                            <span data-aliado-whatsapp-detail>
-                                El CRM preparará el material. El envío se realizará fuera del sistema.
-                            </span>
-                        </div>
-                    </div>
-                <?php endif; ?>
-
                 <form data-aliado-share-form>
                     <input type="hidden" name="seguimiento_id" value="">
                     <input type="hidden" name="confirmar_reenvio" value="0">
                     <input type="hidden" name="canal" value="">
 
-                    <div class="mb-3">
-                        <label class="form-label" for="aliado_convocatoria_id">
-                            Convocatoria vigente
-                        </label>
-                        <select
-                            class="form-select"
-                            id="aliado_convocatoria_id"
-                            name="convocatoria_id"
-                            required>
-                            <option value="">Selecciona una convocatoria</option>
-                        </select>
-                    </div>
+                    <div class="aliados-share-compose">
+                        <div class="aliados-share-selection">
+                            <div>
+                                <label class="form-label" for="aliado_convocatoria_id">
+                                    Convocatoria vigente
+                                </label>
+                                <select
+                                    class="form-select"
+                                    id="aliado_convocatoria_id"
+                                    name="convocatoria_id"
+                                    required>
+                                    <option value="">Selecciona una convocatoria</option>
+                                </select>
+                            </div>
 
-                    <div class="aliados-convocatoria-preview d-none" data-aliado-convocatoria-preview>
-                        <img src="" alt="" data-aliado-convocatoria-image>
-                        <div>
-                            <span class="aliados-preview-label">CONVOCATORIA SELECCIONADA</span>
-                            <strong data-aliado-convocatoria-title>—</strong>
-                            <small data-aliado-convocatoria-period>—</small>
-                            <small class="aliados-preview-link" data-aliado-convocatoria-link>
-                                Sin enlace de registro
-                            </small>
+                            <div class="aliados-convocatoria-preview d-none" data-aliado-convocatoria-preview>
+                                <img src="" alt="" data-aliado-convocatoria-image>
+                                <div>
+                                    <span class="aliados-preview-label">CONVOCATORIA SELECCIONADA</span>
+                                    <strong data-aliado-convocatoria-title>—</strong>
+                                    <small data-aliado-convocatoria-period>—</small>
+                                    <small class="aliados-preview-link" data-aliado-convocatoria-link>
+                                        Sin enlace de registro
+                                    </small>
+                                </div>
+                            </div>
                         </div>
-                    </div>
 
-                    <div class="mb-3" data-aliado-email-only>
-                        <label class="form-label" for="aliado_asunto">Asunto</label>
-                        <input
-                            type="text"
-                            class="form-control"
-                            id="aliado_asunto"
-                            name="asunto"
-                            maxlength="255">
-                    </div>
+                        <div class="aliados-share-message-column">
+                            <div class="mb-2" data-aliado-email-only>
+                                <label class="form-label" for="aliado_asunto">Asunto</label>
+                                <input
+                                    type="text"
+                                    class="form-control"
+                                    id="aliado_asunto"
+                                    name="asunto"
+                                    maxlength="255">
+                            </div>
 
-                    <div class="mb-0">
-                        <label class="form-label" for="aliado_mensaje">Mensaje</label>
-                        <textarea
-                            class="form-control aliados-message"
-                            id="aliado_mensaje"
-                            name="mensaje"
-                            rows="8"
-                            maxlength="20000"
-                            required></textarea>
-                        <small class="aliados-message-help" data-aliado-message-help>
-                            Puedes ajustar el mensaje antes de enviarlo.
-                        </small>
+                            <div>
+                                <label class="form-label" for="aliado_mensaje">Mensaje</label>
+                                <textarea
+                                    class="form-control aliados-message"
+                                    id="aliado_mensaje"
+                                    name="mensaje"
+                                    rows="5"
+                                    maxlength="20000"
+                                    required></textarea>
+                                <small class="aliados-message-help" data-aliado-message-help>
+                                    Puedes ajustar el mensaje antes de enviarlo.
+                                </small>
+                            </div>
+                        </div>
                     </div>
 
                     <?php if ($puedePrepararWhatsapp): ?>
                         <div class="aliados-whatsapp-manual-tools d-none" data-aliado-whatsapp-tools>
-                            <div class="aliados-whatsapp-manual-head">
-                                <div>
-                                    <span class="aliados-preview-label">MATERIAL LISTO PARA COMPARTIR</span>
-                                    <strong>WhatsApp manual</strong>
-                                </div>
-                                <span class="aliados-whatsapp-manual-badge">
-                                    <i class="bi bi-box-arrow-up-right"></i>
-                                    Fuera del CRM
-                                </span>
+                            <div class="aliados-whatsapp-manual-inline-title">
+                                <i class="bi bi-whatsapp"></i>
+                                <span>Material listo para WhatsApp</span>
+                                <small>El envío se realiza fuera del CRM.</small>
                             </div>
 
                             <div class="aliados-whatsapp-manual-actions">
@@ -688,8 +673,7 @@ $normalizarNumeroVista = static function ($valor) {
                             </div>
 
                             <p class="aliados-whatsapp-manual-help">
-                                Después de enviarla en WhatsApp, vuelve aquí y usa
-                                <strong>Marcar como compartida</strong> para conservar el historial.
+                                Tras enviarla, usa <strong>Marcar como compartida</strong> para conservar el historial.
                             </p>
                         </div>
                     <?php endif; ?>
