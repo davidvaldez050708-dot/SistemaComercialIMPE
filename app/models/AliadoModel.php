@@ -210,6 +210,7 @@ class AliadoModel
                     c.id,
                     c.titulo,
                     c.imagen,
+                    c.enlace_registro,
                     c.categoria,
                     c.tipo_convocatoria,
                     c.subtipo_convocatoria,
