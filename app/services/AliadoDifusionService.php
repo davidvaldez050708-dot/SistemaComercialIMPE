@@ -708,6 +708,8 @@ class AliadoDifusionService
             'mensaje' => $mensaje,
             'convocatoria_titulo' => (string)$convocatoria['titulo'],
             'convocatoria_imagen' => (string)($convocatoria['imagen'] ?? ''),
+            'convocatoria_enlace_registro' =>
+                (string)($convocatoria['enlace_registro'] ?? ''),
             'convocatoria_fecha_inicio' => (string)($convocatoria['fecha_inicio'] ?? ''),
             'convocatoria_fecha_termino' => (string)($convocatoria['fecha_termino'] ?? ''),
             'estado_envio' => ($resultado['ok'] ?? false) ? 'ENVIADO' : 'ERROR',
