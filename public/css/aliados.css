@@ -597,7 +597,7 @@
     transform: translateY(-1px);
 }
 
-.aliados-channel-option[data-aliado-share-channel="WHATSAPP"].is-active {
+.aliados-channel-option[data-aliado-share-channel="WHATSAPP_MANUAL"].is-active {
     border-color: #9ed8ca;
     background: #edf9f5;
     color: #087e69;
@@ -679,6 +679,111 @@
     color: var(--color-text-soft, #6b7280);
     font-size: 8.5px;
     line-height: 1.45;
+}
+
+.aliados-whatsapp-manual-note {
+    border-color: #c9e7df;
+    background: #f3fbf8;
+}
+
+.aliados-whatsapp-manual-tools {
+    margin-top: 14px;
+    padding: 13px;
+    border: 1px solid #dbe5ef;
+    border-radius: 12px;
+    background: #fbfcfe;
+}
+
+.aliados-whatsapp-manual-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 11px;
+}
+
+.aliados-whatsapp-manual-head > div {
+    display: grid;
+    gap: 3px;
+}
+
+.aliados-whatsapp-manual-head strong {
+    color: var(--color-text, #172642);
+    font-size: 11px;
+}
+
+.aliados-whatsapp-manual-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 8px;
+    border-radius: 999px;
+    background: #eef3f8;
+    color: #5c6878;
+    font-size: 8px;
+    font-weight: 750;
+    white-space: nowrap;
+}
+
+.aliados-whatsapp-manual-actions {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 7px;
+}
+
+.aliados-manual-action {
+    display: inline-flex;
+    min-height: 34px;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 7px 8px;
+    border: 1px solid #d9e2ed;
+    border-radius: 8px;
+    background: #fff;
+    color: #25344f;
+    font-size: 8.5px;
+    font-weight: 700;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.aliados-manual-action:hover,
+.aliados-manual-action:focus {
+    border-color: #bcc9da;
+    background: #f7f9fc;
+    color: #1d2d49;
+}
+
+.aliados-manual-action.is-primary {
+    border-color: #b6ded4;
+    background: #eefaf6;
+    color: #087e69;
+}
+
+.aliados-manual-action:disabled,
+.aliados-manual-action.is-disabled {
+    pointer-events: none;
+    opacity: .5;
+}
+
+.aliados-whatsapp-manual-help {
+    margin: 10px 0 0;
+    color: var(--color-text-soft, #6b7280);
+    font-size: 8.5px;
+    line-height: 1.5;
+}
+
+.aliados-preview-link {
+    overflow: hidden;
+    color: #3b4f79;
+    font-size: 8.5px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.aliados-preview-link.is-missing {
+    color: #9a6b12;
 }
 
 .aliados-convocatoria-preview {
@@ -867,6 +972,14 @@
 
     .aliados-filter-actions .btn {
         flex: 1;
+    }
+
+    .aliados-whatsapp-manual-actions {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .aliados-whatsapp-manual-actions .aliados-manual-action.is-primary {
+        grid-column: 1 / -1;
     }
 
     .aliados-whatsapp-readiness {
