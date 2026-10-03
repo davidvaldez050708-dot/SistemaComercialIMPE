@@ -851,7 +851,7 @@ class AliadoModel
                         SELECT envio_reciente.id
                         FROM aliados_convocatorias_envios envio_reciente
                         WHERE envio_reciente.seguimiento_id = s.id
-                          AND envio_reciente.estado_envio = 'ENVIADO'
+                          AND envio_reciente.estado_envio IN ('ENVIADO', 'COMPARTIDO')
                         ORDER BY envio_reciente.enviado_at DESC, envio_reciente.id DESC
                         LIMIT 1
                     )";
