@@ -1322,6 +1322,23 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
                                 required>
                         </div>
 
+                        <div class="system-form-full">
+                            <label class="form-label login-label" for="crear_convocatoria_enlace_registro">
+                                Enlace de registro
+                            </label>
+                            <input
+                                type="url"
+                                class="form-control system-form-control"
+                                id="crear_convocatoria_enlace_registro"
+                                name="enlace_registro"
+                                maxlength="1000"
+                                placeholder="https://..."
+                                value="<?= $texto($datosCrear['enlace_registro'] ?? '') ?>">
+                            <small class="form-text">
+                                Opcional. Cuenta Clave podrá copiar este enlace al preparar la convocatoria para WhatsApp.
+                            </small>
+                        </div>
+
                         <div>
                             <label class="form-label login-label" for="crear_convocatoria_fecha_inicio">Fecha de inicio</label>
                             <input
@@ -1451,6 +1468,22 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
                         <div class="system-form-full">
                             <label class="form-label login-label" for="editar_convocatoria_titulo">Título</label>
                             <input type="text" class="form-control system-form-control" id="editar_convocatoria_titulo" name="titulo" required>
+                        </div>
+
+                        <div class="system-form-full">
+                            <label class="form-label login-label" for="editar_convocatoria_enlace_registro">
+                                Enlace de registro
+                            </label>
+                            <input
+                                type="url"
+                                class="form-control system-form-control"
+                                id="editar_convocatoria_enlace_registro"
+                                name="enlace_registro"
+                                maxlength="1000"
+                                placeholder="https://...">
+                            <small class="form-text">
+                                Opcional. Se incluirá en el material preparado para difusión.
+                            </small>
                         </div>
 
                         <div>
@@ -1654,6 +1687,16 @@ document.addEventListener('DOMContentLoaded', function () {
                     escapeHtml((convocatoria.fecha_inicio || '—') + ' — ' + (convocatoria.fecha_termino || '—')) +
                     '</div></div>' +
                     '<div class="user-detail-info-row">' +
+                    '<div class="user-detail-info-icon"><i class="bi bi-link-45deg"></i></div>' +
+                    '<div class="user-detail-info-label">Enlace de registro</div>' +
+                    '<div class="user-detail-info-value">' +
+                    (convocatoria.enlace_registro
+                        ? '<a href="' + escapeHtml(convocatoria.enlace_registro) + '" target="_blank" rel="noopener noreferrer">' +
+                            escapeHtml(convocatoria.enlace_registro) +
+                          '</a>'
+                        : '—') +
+                    '</div></div>' +
+                    '<div class="user-detail-info-row">' +
                     '<div class="user-detail-info-icon"><i class="bi bi-geo-alt"></i></div>' +
                     '<div class="user-detail-info-label">Estados</div>' +
                     '<div class="user-detail-info-value">' +
@@ -1678,6 +1721,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const convocatoria = await cargarConvocatoria(this.dataset.id);
                 document.getElementById('editar_convocatoria_id').value = convocatoria.id || '';
                 document.getElementById('editar_convocatoria_titulo').value = convocatoria.titulo || '';
+                document.getElementById('editar_convocatoria_enlace_registro').value = convocatoria.enlace_registro || '';
                 document.getElementById('editar_convocatoria_fecha_inicio').value = convocatoria.fecha_inicio || '';
                 document.getElementById('editar_convocatoria_fecha_termino').value = convocatoria.fecha_termino || '';
                 document.getElementById('editar_convocatoria_estado').value = String(convocatoria.estado ?? 1);
