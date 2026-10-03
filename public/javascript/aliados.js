@@ -588,10 +588,7 @@ document.addEventListener('DOMContentLoaded', function () {
             downloadImageLink.classList.toggle('is-disabled', imagen === '');
             if (imagen !== '') {
                 downloadImageLink.href = baseUrl + imagen;
-                downloadImageLink.setAttribute(
-                    'download',
-                    String(item.titulo || 'convocatoria')
-                );
+                downloadImageLink.setAttribute('download', '');
             } else {
                 downloadImageLink.removeAttribute('href');
             }
