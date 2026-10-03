@@ -5,20 +5,53 @@
 // callbacks HTTPS (telefonía o WhatsApp) se aceptan únicamente hosts temporales
 // conocidos de Cloudflare Quick Tunnels y Visual Studio Dev Tunnels.
 $baseUrl = 'http://localhost/SistemaComercialIMPE/';
-$hostActual = strtolower(trim((string)($_SERVER['HTTP_HOST'] ?? '')));
 
-$hostTemporalSeguro =
-    preg_match(
-        '/^[a-z0-9-]+\.trycloudflare\.com(?::\d+)?$/',
-        $hostActual
-    ) ||
-    preg_match(
-        '/^[a-z0-9-]+(?:-[0-9]+)?\.[a-z0-9-]+\.devtunnels\.ms(?::\d+)?$/',
-        $hostActual
-    );
+$normalizarHost = static function ($valor) {
+    $valor = strtolower(trim((string)$valor));
 
-if ($hostActual !== '' && $hostTemporalSeguro) {
-    $baseUrl = 'https://' . $hostActual . '/SistemaComercialIMPE/';
+    // Algunos proxies agregan una lista separada por comas.
+    if (strpos($valor, ',') !== false) {
+        $valor = trim(explode(',', $valor, 2)[0]);
+    }
+
+    return $valor;
+};
+
+$esHostTemporalSeguro = static function ($host) {
+    if ($host === '') {
+        return false;
+    }
+
+    return
+        preg_match(
+            '/^[a-z0-9-]+\.trycloudflare\.com(?::\d+)?$/',
+            $host
+        ) === 1 ||
+        preg_match(
+            '/^[a-z0-9-]+(?:-[0-9]+)?\.[a-z0-9-]+\.devtunnels\.ms(?::\d+)?$/',
+            $host
+        ) === 1;
+};
+
+$hostDirecto = $normalizarHost($_SERVER['HTTP_HOST'] ?? '');
+$hostReenviado = $normalizarHost($_SERVER['HTTP_X_FORWARDED_HOST'] ?? '');
+
+/*
+ * Visual Studio Dev Tunnels puede entregar la petición a Apache con
+ * Host=localhost y conservar el host público en X-Forwarded-Host.
+ * Solo confiamos en el host reenviado cuando coincide exactamente con
+ * los dominios temporales permitidos.
+ */
+$hostPublico = '';
+
+if ($esHostTemporalSeguro($hostDirecto)) {
+    $hostPublico = $hostDirecto;
+} elseif ($esHostTemporalSeguro($hostReenviado)) {
+    $hostPublico = $hostReenviado;
+}
+
+if ($hostPublico !== '') {
+    $baseUrl = 'https://' . $hostPublico . '/SistemaComercialIMPE/';
 }
 
 define('BASE_URL', $baseUrl);
