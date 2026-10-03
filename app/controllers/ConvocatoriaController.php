@@ -734,6 +734,7 @@ class ConvocatoriaController
     {
         return [
             'titulo' => trim((string)($origen['titulo'] ?? '')),
+            'enlace_registro' => trim((string)($origen['enlace_registro'] ?? '')),
             'fecha_inicio' => trim((string)($origen['fecha_inicio'] ?? '')),
             'fecha_termino' => trim((string)($origen['fecha_termino'] ?? '')),
             'estado' => in_array((string)($origen['estado'] ?? ''), ['0', '1'], true)
@@ -762,6 +763,20 @@ class ConvocatoriaController
 
         if ($datos['titulo'] === '') {
             $errores[] = 'El título es obligatorio.';
+        }
+
+        if (
+            $datos['enlace_registro'] !== '' &&
+            (
+                filter_var($datos['enlace_registro'], FILTER_VALIDATE_URL) === false ||
+                !in_array(
+                    strtolower((string)parse_url($datos['enlace_registro'], PHP_URL_SCHEME)),
+                    ['http', 'https'],
+                    true
+                )
+            )
+        ) {
+            $errores[] = 'El enlace de registro debe ser una URL válida con http o https.';
         }
 
         if (!$this->fechaValida($datos['fecha_inicio'])) {
