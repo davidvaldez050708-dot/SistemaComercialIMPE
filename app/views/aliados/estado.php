@@ -20,6 +20,7 @@ $puedeGestionarContactos = $puedeGestionarContactos ?? false;
 $estructuraContactosDisponible = $estructuraContactosDisponible ?? false;
 $puedeAbrirExpediente = $puedeAbrirExpediente ?? false;
 $puedeUsarWhatsapp = $puedeUsarWhatsapp ?? false;
+$puedeCompartirWhatsapp = $puedeCompartirWhatsapp ?? false;
 
 $texto = static function ($valor) {
     return htmlspecialchars((string)$valor, ENT_QUOTES, 'UTF-8');
@@ -52,7 +53,13 @@ $fechaHora = static function ($valor) {
 };
 
 $normalizarNumeroVista = static function ($valor) {
-    return preg_replace('/[^0-9]+/', '', (string)$valor);
+    $digitos = preg_replace('/[^0-9]+/', '', (string)$valor);
+
+    if (strlen($digitos) === 13 && strpos($digitos, '521') === 0) {
+        $digitos = '52' . substr($digitos, 3);
+    }
+
+    return $digitos;
 };
 
 ?>
@@ -286,7 +293,7 @@ $normalizarNumeroVista = static function ($valor) {
                                             $contactoDifusion !== '' &&
                                             $normalizarNumeroVista($contactoDifusion) !==
                                                 $normalizarNumeroVista($whatsapp);
-                                        $puedeEnviarAliado =
+                                        $correoDisponible =
                                             $puedeCompartirCorreo &&
                                             $correo !== '' &&
                                             filter_var($correo, FILTER_VALIDATE_EMAIL);
@@ -308,6 +315,12 @@ $normalizarNumeroVista = static function ($valor) {
                                             (int)($aliado['tiene_whatsapp_confirmado_contacto'] ?? 0) === 1;
                                         $aliadoTieneWhatsappAutorizado =
                                             (int)($aliado['tiene_whatsapp_autorizado_contacto'] ?? 0) === 1;
+                                        $whatsappDisponible =
+                                            $puedeCompartirWhatsapp &&
+                                            $aliadoTieneWhatsappAutorizado;
+                                        $puedeCompartirAliado =
+                                            $correoDisponible ||
+                                            $whatsappDisponible;
                                         $mostrarAccionesSecundarias =
                                             $puedeGestionarContactos ||
                                             $puedeVerHistorial ||
@@ -397,13 +410,15 @@ $normalizarNumeroVista = static function ($valor) {
 
                                             <td class="text-end">
                                                 <div class="aliados-actions">
-                                                    <?php if ($puedeCompartirCorreo): ?>
+                                                    <?php if ($puedeCompartirCorreo || $puedeCompartirWhatsapp): ?>
                                                         <button
                                                             type="button"
                                                             class="btn aliados-share-button"
                                                             data-aliado-share="<?= (int)$aliado['seguimiento_id'] ?>"
-                                                            <?= $puedeEnviarAliado ? '' : 'disabled' ?>
-                                                            title="<?= $puedeEnviarAliado ? 'Compartir convocatoria' : 'El aliado no tiene un correo válido' ?>">
+                                                            <?= $puedeCompartirAliado ? '' : 'disabled' ?>
+                                                            title="<?= $puedeCompartirAliado
+                                                                ? 'Compartir convocatoria'
+                                                                : 'El aliado no tiene un canal autorizado disponible' ?>">
                                                             <i class="bi bi-send"></i>
                                                             Compartir
                                                         </button>
@@ -521,32 +536,61 @@ $normalizarNumeroVista = static function ($valor) {
             </div>
 
             <div class="modal-body">
-                <div class="aliados-channel-selector">
-                    <button type="button" class="aliados-channel-option is-active" disabled>
-                        <i class="bi bi-envelope-check"></i>
-                        <span>
-                            <strong>Correo</strong>
-                            <small>Disponible</small>
-                        </span>
-                    </button>
-
-                    <?php if ($puedeUsarWhatsapp): ?>
+                <div class="aliados-channel-selector" data-aliado-channel-selector>
+                    <?php if ($puedeCompartirCorreo): ?>
                         <button
                             type="button"
                             class="aliados-channel-option"
-                            data-aliado-open-whatsapp>
+                            data-aliado-share-channel="CORREO">
+                            <i class="bi bi-envelope-check"></i>
+                            <span>
+                                <strong>Correo</strong>
+                                <small data-channel-status>Validando destinatario…</small>
+                            </span>
+                        </button>
+                    <?php endif; ?>
+
+                    <?php if ($puedeCompartirWhatsapp): ?>
+                        <button
+                            type="button"
+                            class="aliados-channel-option"
+                            data-aliado-share-channel="WHATSAPP">
                             <i class="bi bi-whatsapp"></i>
                             <span>
                                 <strong>WhatsApp Business</strong>
-                                <small>Abrir conversación</small>
+                                <small data-channel-status>Validando conversación…</small>
                             </span>
                         </button>
                     <?php endif; ?>
                 </div>
 
+                <?php if ($puedeCompartirWhatsapp): ?>
+                    <div
+                        class="aliados-whatsapp-readiness d-none"
+                        data-aliado-whatsapp-readiness>
+                        <div class="aliados-whatsapp-readiness-icon">
+                            <i class="bi bi-whatsapp"></i>
+                        </div>
+                        <div class="aliados-whatsapp-readiness-copy">
+                            <strong data-aliado-whatsapp-title>WhatsApp del aliado</strong>
+                            <span data-aliado-whatsapp-detail>
+                                Validando canal y ventana de atención…
+                            </span>
+                        </div>
+                        <a
+                            class="btn aliados-btn-secondary d-none"
+                            href="#"
+                            data-aliado-whatsapp-open>
+                            <i class="bi bi-chat-dots"></i>
+                            Abrir chat
+                        </a>
+                    </div>
+                <?php endif; ?>
+
                 <form data-aliado-share-form>
                     <input type="hidden" name="seguimiento_id" value="">
                     <input type="hidden" name="confirmar_reenvio" value="0">
+                    <input type="hidden" name="canal" value="">
 
                     <div class="mb-3">
                         <label class="form-label" for="aliado_convocatoria_id">
@@ -570,15 +614,14 @@ $normalizarNumeroVista = static function ($valor) {
                         </div>
                     </div>
 
-                    <div class="mb-3">
+                    <div class="mb-3" data-aliado-email-only>
                         <label class="form-label" for="aliado_asunto">Asunto</label>
                         <input
                             type="text"
                             class="form-control"
                             id="aliado_asunto"
                             name="asunto"
-                            maxlength="255"
-                            required>
+                            maxlength="255">
                     </div>
 
                     <div class="mb-0">
@@ -590,6 +633,9 @@ $normalizarNumeroVista = static function ($valor) {
                             rows="8"
                             maxlength="20000"
                             required></textarea>
+                        <small class="aliados-message-help" data-aliado-message-help>
+                            Puedes ajustar el mensaje antes de enviarlo.
+                        </small>
                     </div>
 
                     <div class="alert alert-warning aliados-reenvio-alert d-none" data-aliado-reenvio-alert>
@@ -616,7 +662,7 @@ $normalizarNumeroVista = static function ($valor) {
                     class="btn aliados-btn-primary"
                     data-aliado-send-button>
                     <i class="bi bi-send"></i>
-                    Enviar por correo
+                    Enviar convocatoria
                 </button>
             </div>
         </div>
