@@ -279,7 +279,7 @@ class AliadoModel
                 WHERE seguimiento_id = ?
                   AND convocatoria_id = ?
                   AND canal = ?
-                  AND estado_envio = 'ENVIADO'
+                  AND estado_envio IN ('ENVIADO', 'COMPARTIDO')
                 ORDER BY enviado_at DESC, id DESC
                 LIMIT 1";
 
