@@ -194,6 +194,9 @@ class AliadoController
         $puedeAbrirExpediente =
             tienePermiso('seguimientos_vinculacion.ver');
         $puedeUsarWhatsapp = tienePermiso('whatsapp.ver');
+        $puedeCompartirWhatsapp =
+            tienePermiso('whatsapp.enviar') &&
+            $puedeConsultarConvocatorias;
 
         $filtros = [
             'buscar' => trim((string)($_GET['buscar'] ?? '')),
@@ -218,10 +221,12 @@ class AliadoController
 
     public function prepararEnvio()
     {
-        $this->validarPermiso('aliados.compartir_correo');
+        $this->validarPermiso('aliados.ver');
         $this->validarPermiso('convocatorias.ver');
+        $this->validarAccesoCompartirConvocatoria();
 
         $modelo = new AliadoModel();
+        $servicio = new AliadoDifusionService();
         $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
         $esAdministrador = (int)($_SESSION['rol_id'] ?? 0) === 1;
         $seguimientoId = (int)($_GET['id'] ?? 0);
@@ -243,17 +248,45 @@ class AliadoController
             (int)$aliado['estado_id']
         );
 
+        $correo = trim((string)($aliado['correo_contacto'] ?? ''));
+        $puedeCorreo =
+            tienePermiso('aliados.compartir_correo') &&
+            $correo !== '' &&
+            filter_var($correo, FILTER_VALIDATE_EMAIL);
+
+        $whatsapp = tienePermiso('whatsapp.enviar')
+            ? $servicio->prepararWhatsapp($usuarioId, $aliado)
+            : [
+                'disponible' => false,
+                'motivo' => 'Tu perfil no tiene permiso para enviar por WhatsApp.'
+            ];
+
         $this->responder([
             'ok' => true,
             'aliado' => $aliado,
-            'convocatorias' => $convocatorias
+            'convocatorias' => $convocatorias,
+            'canales' => [
+                'correo' => [
+                    'disponible' => (bool)$puedeCorreo,
+                    'destinatario' => $correo,
+                    'motivo' => $puedeCorreo
+                        ? ''
+                        : (
+                            tienePermiso('aliados.compartir_correo')
+                                ? 'El aliado no tiene un correo válido.'
+                                : 'Tu perfil no tiene permiso para enviar por correo.'
+                        )
+                ],
+                'whatsapp' => $whatsapp
+            ]
         ]);
     }
 
     public function borradorEnvio()
     {
-        $this->validarPermiso('aliados.compartir_correo');
+        $this->validarPermiso('aliados.ver');
         $this->validarPermiso('convocatorias.ver');
+        $this->validarAccesoCompartirConvocatoria();
 
         $modelo = new AliadoModel();
         $servicio = new AliadoDifusionService();
@@ -290,6 +323,8 @@ class AliadoController
         $this->responder([
             'ok' => true,
             'borrador' => $servicio->construirBorrador($aliado, $convocatoria),
+            'borrador_whatsapp' =>
+                $servicio->construirBorradorWhatsapp($aliado, $convocatoria),
             'convocatoria' => $convocatoria
         ]);
     }
@@ -543,6 +578,29 @@ class AliadoController
         ]);
     }
 
+    public function enviarConvocatoriaWhatsapp()
+    {
+        $this->validarPermiso('aliados.ver');
+        $this->validarPermiso('convocatorias.ver');
+        $this->validarPermiso('whatsapp.enviar');
+        $this->validarMetodoPost();
+
+        $servicio = new AliadoDifusionService();
+        $resultado = $servicio->enviarWhatsapp(
+            (int)($_SESSION['usuario_id'] ?? 0),
+            (int)($_POST['seguimiento_id'] ?? 0),
+            (int)($_POST['convocatoria_id'] ?? 0),
+            $_POST['mensaje'] ?? '',
+            (int)($_POST['confirmar_reenvio'] ?? 0) === 1,
+            (int)($_SESSION['rol_id'] ?? 0) === 1
+        );
+
+        $codigoHttp = (int)($resultado['codigo_http'] ?? 200);
+        unset($resultado['codigo_http']);
+
+        $this->responder($resultado, $codigoHttp);
+    }
+
     public function enviarConvocatoria()
     {
         $this->validarPermiso('aliados.compartir_correo');
@@ -564,6 +622,22 @@ class AliadoController
         unset($resultado['codigo_http']);
 
         $this->responder($resultado, $codigoHttp);
+    }
+
+    private function validarAccesoCompartirConvocatoria()
+    {
+        if (
+            tienePermiso('aliados.compartir_correo') ||
+            tienePermiso('whatsapp.enviar')
+        ) {
+            return;
+        }
+
+        $this->responder([
+            'ok' => false,
+            'mensaje' =>
+                'Tu perfil no tiene un canal autorizado para compartir convocatorias.'
+        ], 403);
     }
 
     private function validarPermiso($codigo)
