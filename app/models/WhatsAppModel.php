@@ -427,8 +427,8 @@ class WhatsAppModel
         $aliadoSeguimientoId = 0
     ) {
         $cuentaId = (int)$cuentaId;
-        $telefono = trim((string)$telefono);
-        $normalizado = $this->normalizarNumero($telefono);
+        $telefono = $this->normalizarNumero($telefono);
+        $normalizado = $telefono;
         $nombreContacto = trim((string)$nombreContacto);
         $responsableUsuarioId = (int)$responsableUsuarioId;
         $aliadoSeguimientoId = (int)$aliadoSeguimientoId;
@@ -890,7 +890,22 @@ class WhatsAppModel
 
     private function normalizarNumero($numero)
     {
-        return preg_replace('/[^0-9]+/', '', (string)$numero);
+        $digitos = preg_replace('/[^0-9]+/', '', (string)$numero);
+
+        /*
+         * México eliminó el prefijo móvil 1 del formato internacional.
+         * Meta todavía puede reportar algunos remitentes históricos como
+         * 521 + 10 dígitos, mientras que los envíos Cloud API se realizan
+         * como 52 + 10 dígitos. Ambos formatos deben resolver al mismo chat.
+         */
+        if (
+            strlen($digitos) === 13 &&
+            strpos($digitos, '521') === 0
+        ) {
+            $digitos = '52' . substr($digitos, 3);
+        }
+
+        return $digitos;
     }
 
     private function tablaExiste($tabla)
