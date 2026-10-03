@@ -195,6 +195,151 @@ class WhatsAppCloudApiService
         ];
     }
 
+    public function enviarImagenLocal(
+        $phoneNumberId,
+        $destinatario,
+        $rutaArchivo,
+        $caption = ''
+    ) {
+        $subida = $this->subirMediaLocal(
+            (string)$phoneNumberId,
+            (string)$rutaArchivo
+        );
+
+        if (empty($subida['ok'])) {
+            return $subida;
+        }
+
+        $imagen = [
+            'id' => (string)$subida['media_id']
+        ];
+
+        $caption = trim((string)$caption);
+        if ($caption !== '') {
+            $imagen['caption'] = mb_substr($caption, 0, 1024);
+        }
+
+        return $this->enviar(
+            (string)$phoneNumberId,
+            [
+                'messaging_product' => 'whatsapp',
+                'recipient_type' => 'individual',
+                'to' => $this->normalizarNumero($destinatario),
+                'type' => 'image',
+                'image' => $imagen
+            ]
+        );
+    }
+
+    private function subirMediaLocal($phoneNumberId, $rutaArchivo)
+    {
+        $token = trim((string)($this->config['access_token'] ?? ''));
+        $version = trim((string)($this->config['graph_version'] ?? ''));
+        $phoneNumberId = trim((string)$phoneNumberId);
+        $rutaArchivo = trim((string)$rutaArchivo);
+
+        if ($token === '' || $version === '' || $phoneNumberId === '') {
+            return [
+                'ok' => false,
+                'mensaje' => 'La configuración de WhatsApp no está completa para adjuntar la convocatoria.'
+            ];
+        }
+
+        if ($rutaArchivo === '' || !is_file($rutaArchivo)) {
+            return [
+                'ok' => false,
+                'mensaje' => 'No fue posible localizar la imagen de la convocatoria.'
+            ];
+        }
+
+        if (!function_exists('curl_init') || !class_exists('CURLFile')) {
+            return [
+                'ok' => false,
+                'mensaje' => 'La instalación de PHP no puede adjuntar archivos a WhatsApp.'
+            ];
+        }
+
+        $mime = function_exists('mime_content_type')
+            ? (string)mime_content_type($rutaArchivo)
+            : 'image/jpeg';
+
+        if (strpos($mime, 'image/') !== 0) {
+            return [
+                'ok' => false,
+                'mensaje' => 'El archivo de la convocatoria no es una imagen válida.'
+            ];
+        }
+
+        $url = 'https://graph.facebook.com/' .
+            rawurlencode($version) . '/' .
+            rawurlencode($phoneNumberId) .
+            '/media';
+
+        $curl = curl_init($url);
+        $archivo = new CURLFile(
+            $rutaArchivo,
+            $mime,
+            basename($rutaArchivo)
+        );
+
+        curl_setopt_array(
+            $curl,
+            [
+                CURLOPT_POST => true,
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_CONNECTTIMEOUT => 10,
+                CURLOPT_TIMEOUT => 45,
+                CURLOPT_HTTPHEADER => [
+                    'Authorization: Bearer ' . $token
+                ],
+                CURLOPT_POSTFIELDS => [
+                    'messaging_product' => 'whatsapp',
+                    'file' => $archivo
+                ]
+            ]
+        );
+
+        $respuesta = curl_exec($curl);
+        $errorCurl = curl_error($curl);
+        $codigoHttp = (int)curl_getinfo($curl, CURLINFO_HTTP_CODE);
+        curl_close($curl);
+
+        if ($respuesta === false || $errorCurl !== '') {
+            return [
+                'ok' => false,
+                'mensaje' => 'No fue posible subir la imagen a Meta: ' . $errorCurl
+            ];
+        }
+
+        $datos = json_decode((string)$respuesta, true);
+
+        if ($codigoHttp < 200 || $codigoHttp >= 300) {
+            return [
+                'ok' => false,
+                'mensaje' => (string)(
+                    $datos['error']['message'] ??
+                    'Meta rechazó la imagen de la convocatoria.'
+                ),
+                'codigo_meta' => (string)($datos['error']['code'] ?? ''),
+                'respuesta' => is_array($datos) ? $datos : []
+            ];
+        }
+
+        $mediaId = trim((string)($datos['id'] ?? ''));
+
+        if ($mediaId === '') {
+            return [
+                'ok' => false,
+                'mensaje' => 'Meta aceptó la imagen sin devolver un identificador de media.'
+            ];
+        }
+
+        return [
+            'ok' => true,
+            'media_id' => $mediaId
+        ];
+    }
+
     private function enviar($phoneNumberId, array $payload)
     {
         $estado = $this->obtenerEstadoConfiguracion();
