@@ -1646,6 +1646,66 @@ document.addEventListener('DOMContentLoaded', function () {
         sendButton.addEventListener('click', sendConvocatoria);
     }
 
+    mensajeInput?.addEventListener('input', function () {
+        if (currentChannel === 'WHATSAPP_MANUAL') {
+            currentDrafts.whatsapp = mensajeInput.value;
+        } else if (currentChannel === 'CORREO') {
+            currentDrafts.correo = mensajeInput.value;
+        }
+
+        const hasDraft =
+            Number(convocatoriaSelect?.value || 0) > 0 &&
+            String(mensajeInput.value || '').trim() !== '';
+
+        if (sendButton) {
+            sendButton.disabled = !hasDraft;
+        }
+
+        updateManualTools();
+    });
+
+    copyNumberButton?.addEventListener('click', function () {
+        copyText(
+            currentChannels.whatsapp_manual?.telefono || '',
+            'Número de WhatsApp copiado.'
+        );
+    });
+
+    copyMessageButton?.addEventListener('click', function () {
+        copyText(
+            mensajeInput?.value || '',
+            'Mensaje copiado. Ya puedes pegarlo en WhatsApp.'
+        );
+    });
+
+    copyLinkButton?.addEventListener('click', function () {
+        const item = getSelectedConvocatoria();
+        copyText(
+            item?.enlace_registro || '',
+            'Enlace de registro copiado.'
+        );
+    });
+
+    downloadImageLink?.addEventListener('click', function (event) {
+        if (downloadImageLink.classList.contains('is-disabled')) {
+            event.preventDefault();
+            setStatus(
+                'Esta convocatoria no tiene una imagen disponible para descargar.',
+                'error'
+            );
+        }
+    });
+
+    openWhatsappManualLink?.addEventListener('click', function (event) {
+        if (openWhatsappManualLink.classList.contains('is-disabled')) {
+            event.preventDefault();
+            setStatus(
+                'Selecciona una convocatoria y prepara el mensaje antes de abrir WhatsApp.',
+                'error'
+            );
+        }
+    });
+
     channelButtons.forEach(function (button) {
         button.addEventListener('click', function () {
             selectChannel(button.dataset.aliadoShareChannel);
