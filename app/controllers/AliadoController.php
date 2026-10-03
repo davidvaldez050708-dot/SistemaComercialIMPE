@@ -194,8 +194,8 @@ class AliadoController
         $puedeAbrirExpediente =
             tienePermiso('seguimientos_vinculacion.ver');
         $puedeUsarWhatsapp = tienePermiso('whatsapp.ver');
-        $puedeCompartirWhatsapp =
-            tienePermiso('whatsapp.enviar') &&
+        $puedePrepararWhatsapp =
+            tienePermiso('aliados.preparar_whatsapp') &&
             $puedeConsultarConvocatorias;
 
         $filtros = [
@@ -254,11 +254,12 @@ class AliadoController
             $correo !== '' &&
             filter_var($correo, FILTER_VALIDATE_EMAIL);
 
-        $whatsapp = tienePermiso('whatsapp.enviar')
-            ? $servicio->prepararWhatsapp($usuarioId, $aliado)
+        $whatsappManual = tienePermiso('aliados.preparar_whatsapp')
+            ? $servicio->prepararWhatsappManual($aliado)
             : [
                 'disponible' => false,
-                'motivo' => 'Tu perfil no tiene permiso para enviar por WhatsApp.'
+                'motivo' =>
+                    'Tu perfil no tiene permiso para preparar difusión por WhatsApp.'
             ];
 
         $this->responder([
@@ -277,7 +278,7 @@ class AliadoController
                                 : 'Tu perfil no tiene permiso para enviar por correo.'
                         )
                 ],
-                'whatsapp' => $whatsapp
+                'whatsapp_manual' => $whatsappManual
             ]
         ]);
     }
@@ -589,6 +590,29 @@ class AliadoController
         ]);
     }
 
+    public function registrarConvocatoriaWhatsappManual()
+    {
+        $this->validarPermiso('aliados.ver');
+        $this->validarPermiso('convocatorias.ver');
+        $this->validarPermiso('aliados.preparar_whatsapp');
+        $this->validarMetodoPost();
+
+        $servicio = new AliadoDifusionService();
+        $resultado = $servicio->registrarWhatsappManual(
+            (int)($_SESSION['usuario_id'] ?? 0),
+            (int)($_POST['seguimiento_id'] ?? 0),
+            (int)($_POST['convocatoria_id'] ?? 0),
+            $_POST['mensaje'] ?? '',
+            (int)($_POST['confirmar_reenvio'] ?? 0) === 1,
+            (int)($_SESSION['rol_id'] ?? 0) === 1
+        );
+
+        $codigoHttp = (int)($resultado['codigo_http'] ?? 200);
+        unset($resultado['codigo_http']);
+
+        $this->responder($resultado, $codigoHttp);
+    }
+
     public function enviarConvocatoriaWhatsapp()
     {
         $this->validarPermiso('aliados.ver');
@@ -639,7 +663,7 @@ class AliadoController
     {
         if (
             tienePermiso('aliados.compartir_correo') ||
-            tienePermiso('whatsapp.enviar')
+            tienePermiso('aliados.preparar_whatsapp')
         ) {
             return;
         }
