@@ -538,6 +538,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const selectChannel = function (channel) {
         channel = String(channel || '').toUpperCase();
+
+        if (currentChannel && mensajeInput) {
+            if (currentChannel === 'WHATSAPP') {
+                currentDrafts.whatsapp = mensajeInput.value;
+            } else if (currentChannel === 'CORREO') {
+                currentDrafts.correo = mensajeInput.value;
+            }
+        }
+
         const data = channel === 'WHATSAPP'
             ? currentChannels.whatsapp
             : currentChannels.correo;
