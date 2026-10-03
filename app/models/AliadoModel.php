@@ -851,7 +851,16 @@ class AliadoModel
 
     private function normalizarNumero($numero)
     {
-        return preg_replace('/[^0-9]+/', '', (string)$numero);
+        $digitos = preg_replace('/[^0-9]+/', '', (string)$numero);
+
+        if (
+            strlen($digitos) === 13 &&
+            strpos($digitos, '521') === 0
+        ) {
+            $digitos = '52' . substr($digitos, 3);
+        }
+
+        return $digitos;
     }
 
     private function etiquetaOrigenContacto($origen)
