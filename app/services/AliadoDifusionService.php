@@ -25,6 +25,7 @@ class AliadoDifusionService
         $titulo = trim((string)($convocatoria['titulo'] ?? 'Convocatoria'));
         $inicio = $this->fechaLegible($convocatoria['fecha_inicio'] ?? '');
         $termino = $this->fechaLegible($convocatoria['fecha_termino'] ?? '');
+        $enlace = trim((string)($convocatoria['enlace_registro'] ?? ''));
 
         $saludo = $contacto !== ''
             ? 'Buen día, ' . $contacto . ':'
@@ -36,18 +37,28 @@ class AliadoDifusionService
                 $inicio . ' al ' . $termino . '.';
         }
 
-        $cuerpo = implode("\n", [
+        $lineasCorreo = [
             $saludo,
             '',
             'Como institución aliada, queremos compartirle la convocatoria "' .
                 $titulo . '".' . $periodo,
             '',
-            'Adjuntamos la información disponible para su conocimiento y difusión interna.',
-            '',
-            'Si requiere orientación adicional, quedamos atentos para apoyarle.',
-            '',
-            'Saludos cordiales.'
-        ]);
+            'Adjuntamos la información disponible para su conocimiento y difusión interna.'
+        ];
+
+        if ($enlace !== '') {
+            $lineasCorreo[] = '';
+            $lineasCorreo[] = 'Enlace de registro:';
+            $lineasCorreo[] = $enlace;
+        }
+
+        $lineasCorreo[] = '';
+        $lineasCorreo[] =
+            'Si requiere orientación adicional, quedamos atentos para apoyarle.';
+        $lineasCorreo[] = '';
+        $lineasCorreo[] = 'Saludos cordiales.';
+
+        $cuerpo = implode("\n", $lineasCorreo);
 
         return [
             'asunto' => 'Convocatoria para institución aliada - ' . $titulo,
@@ -64,6 +75,7 @@ class AliadoDifusionService
         $titulo = trim((string)($convocatoria['titulo'] ?? 'Convocatoria'));
         $inicio = $this->fechaLegible($convocatoria['fecha_inicio'] ?? '');
         $termino = $this->fechaLegible($convocatoria['fecha_termino'] ?? '');
+        $enlace = trim((string)($convocatoria['enlace_registro'] ?? ''));
 
         $saludo = $contacto !== ''
             ? 'Buen día, ' . $contacto . '.'
@@ -79,13 +91,184 @@ class AliadoDifusionService
             $lineas[] = 'Vigencia: ' . $inicio . ' al ' . $termino . '.';
         }
 
+        if ($enlace !== '') {
+            $lineas[] = '';
+            $lineas[] = 'Registro: ' . $enlace;
+        }
+
         $lineas[] = '';
         $lineas[] =
             'La compartimos para su conocimiento y difusión interna.';
         $lineas[] =
             'Si requiere orientación adicional, quedamos atentos para apoyarle.';
 
-        return mb_substr(implode("\n", $lineas), 0, 1024);
+        return mb_substr(implode("\n", $lineas), 0, 4096);
+    }
+
+    public function prepararWhatsappManual(array $aliado)
+    {
+        $resultado = [
+            'disponible' => false,
+            'telefono' => '',
+            'telefono_whatsapp' => '',
+            'etiqueta' => '',
+            'motivo' => ''
+        ];
+
+        if (!$this->modelo->consentimientoWhatsappDisponible()) {
+            $resultado['motivo'] =
+                'Falta preparar el consentimiento de WhatsApp para Aliados.';
+            return $resultado;
+        }
+
+        $contacto = $this->seleccionarContactoWhatsapp($aliado);
+        if (!$contacto) {
+            $resultado['motivo'] =
+                'El aliado no tiene un número de WhatsApp confirmado y autorizado.';
+            return $resultado;
+        }
+
+        $telefono = trim((string)($contacto['numero'] ?? ''));
+        $telefonoWhatsapp = $this->normalizarWhatsappManual($telefono);
+
+        if ($telefonoWhatsapp === '') {
+            $resultado['motivo'] =
+                'El número de WhatsApp del aliado no tiene un formato válido.';
+            return $resultado;
+        }
+
+        $resultado['disponible'] = true;
+        $resultado['telefono'] = $telefono;
+        $resultado['telefono_whatsapp'] = $telefonoWhatsapp;
+        $resultado['etiqueta'] =
+            (string)($contacto['etiqueta'] ?? 'WhatsApp');
+
+        return $resultado;
+    }
+
+    public function registrarWhatsappManual(
+        $usuarioId,
+        $seguimientoId,
+        $convocatoriaId,
+        $mensaje,
+        $confirmarReenvio = false,
+        $esAdministrador = false
+    ) {
+        if (!$this->modelo->estructuraDisponible()) {
+            return $this->error(
+                'El módulo de Aliados todavía no está preparado.',
+                500
+            );
+        }
+
+        $aliado = $this->modelo->obtenerAliado(
+            (int)$seguimientoId,
+            (int)$usuarioId,
+            (bool)$esAdministrador
+        );
+
+        if (!$aliado) {
+            return $this->error('No tienes acceso a este aliado.', 403);
+        }
+
+        $convocatoria = $this->modelo->obtenerConvocatoriaAplicable(
+            (int)$convocatoriaId,
+            (int)$aliado['estado_id']
+        );
+
+        if (!$convocatoria) {
+            return $this->error(
+                'La convocatoria ya no está vigente o no corresponde al territorio del aliado.',
+                409
+            );
+        }
+
+        $preparacion = $this->prepararWhatsappManual($aliado);
+        if (empty($preparacion['disponible'])) {
+            return $this->error(
+                (string)($preparacion['motivo'] ?? 'WhatsApp no está disponible.'),
+                409
+            );
+        }
+
+        $mensaje = trim((string)$mensaje);
+        if ($mensaje === '') {
+            $mensaje = $this->construirBorradorWhatsapp(
+                $aliado,
+                $convocatoria
+            );
+        }
+
+        if ($mensaje === '' || mb_strlen($mensaje) > 4096) {
+            return $this->error(
+                'El mensaje preparado debe tener entre 1 y 4096 caracteres.',
+                422
+            );
+        }
+
+        $ultimoEnvio = $this->modelo->obtenerUltimoEnvioExitoso(
+            (int)$seguimientoId,
+            (int)$convocatoriaId,
+            'WHATSAPP_MANUAL'
+        );
+
+        if ($ultimoEnvio && !$confirmarReenvio) {
+            $fecha = $this->fechaHoraLegible($ultimoEnvio['enviado_at'] ?? '');
+
+            return [
+                'ok' => false,
+                'requiere_confirmacion' => true,
+                'codigo_http' => 409,
+                'mensaje' =>
+                    'Esta convocatoria ya fue marcada como compartida por WhatsApp' .
+                    ($fecha !== '' ? ' el ' . $fecha : '') .
+                    '. Confirma si deseas registrarla nuevamente.'
+            ];
+        }
+
+        $registro = [
+            'seguimiento_id' => (int)$seguimientoId,
+            'convocatoria_id' => (int)$convocatoriaId,
+            'usuario_id' => (int)$usuarioId,
+            'canal' => 'WHATSAPP_MANUAL',
+            'destinatario' => (string)$preparacion['telefono'],
+            'asunto' => '',
+            'mensaje' => $mensaje,
+            'convocatoria_titulo' => (string)$convocatoria['titulo'],
+            'convocatoria_imagen' => (string)($convocatoria['imagen'] ?? ''),
+            'convocatoria_enlace_registro' =>
+                (string)($convocatoria['enlace_registro'] ?? ''),
+            'convocatoria_fecha_inicio' =>
+                (string)($convocatoria['fecha_inicio'] ?? ''),
+            'convocatoria_fecha_termino' =>
+                (string)($convocatoria['fecha_termino'] ?? ''),
+            'estado_envio' => 'COMPARTIDO',
+            'proveedor' => 'MANUAL',
+            'error_detalle' => ''
+        ];
+
+        try {
+            $registrado = $this->modelo->registrarEnvio($registro);
+        } catch (Throwable $error) {
+            $registrado = false;
+            error_log(
+                'Historial de difusión manual de aliado: ' .
+                $error->getMessage()
+            );
+        }
+
+        if (!$registrado) {
+            return $this->error(
+                'No fue posible registrar la difusión manual en el historial.',
+                500
+            );
+        }
+
+        return [
+            'ok' => true,
+            'mensaje' =>
+                'La convocatoria quedó registrada como compartida por WhatsApp.'
+        ];
     }
 
     public function prepararWhatsapp($usuarioId, array $aliado)
@@ -336,6 +519,8 @@ class AliadoDifusionService
             'mensaje' => $mensaje,
             'convocatoria_titulo' => (string)$convocatoria['titulo'],
             'convocatoria_imagen' => (string)($convocatoria['imagen'] ?? ''),
+            'convocatoria_enlace_registro' =>
+                (string)($convocatoria['enlace_registro'] ?? ''),
             'convocatoria_fecha_inicio' =>
                 (string)($convocatoria['fecha_inicio'] ?? ''),
             'convocatoria_fecha_termino' =>
@@ -599,6 +784,10 @@ class AliadoDifusionService
             ENT_QUOTES,
             'UTF-8'
         );
+        $enlace = trim((string)($convocatoria['enlace_registro'] ?? ''));
+        $enlaceSeguro = $enlace !== ''
+            ? htmlspecialchars($enlace, ENT_QUOTES, 'UTF-8')
+            : '';
 
         $html = '<div style="margin-top:18px;padding:16px;border:1px solid #dfe5ef;border-radius:12px;background:#f8fafc;">';
 
@@ -611,6 +800,12 @@ class AliadoDifusionService
         if ($inicio !== '' && $termino !== '') {
             $html .= '<div style="margin-top:6px;font-size:13px;color:#64748b;">Vigencia: ' .
                 $inicio . ' - ' . $termino . '</div>';
+        }
+
+        if ($enlaceSeguro !== '') {
+            $html .= '<div style="margin-top:12px;"><a href="' .
+                $enlaceSeguro .
+                '" style="display:inline-block;padding:9px 14px;border-radius:8px;background:#273a8a;color:#ffffff;text-decoration:none;font-size:13px;font-weight:700;">Abrir registro</a></div>';
         }
 
         $html .= '</div>';
@@ -653,6 +848,26 @@ class AliadoDifusionService
             'nombre' => basename($ruta),
             'mime' => $mime
         ];
+    }
+
+    private function normalizarWhatsappManual($numero)
+    {
+        $digitos = preg_replace('/[^0-9]+/', '', (string)$numero);
+
+        if (
+            strlen($digitos) === 13 &&
+            strpos($digitos, '521') === 0
+        ) {
+            $digitos = '52' . substr($digitos, 3);
+        }
+
+        if (strlen($digitos) === 10) {
+            $digitos = '52' . $digitos;
+        }
+
+        return preg_match('/^[1-9][0-9]{7,14}$/', $digitos)
+            ? $digitos
+            : '';
     }
 
     private function fechaLegible($valor)
