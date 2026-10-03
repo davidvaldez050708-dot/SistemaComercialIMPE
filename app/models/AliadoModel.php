@@ -390,7 +390,9 @@ class AliadoModel
             $resultadoContactos = $stmt->get_result();
 
             while ($fila = $resultadoContactos->fetch_assoc()) {
-                $normalizado = (string)($fila['numero_normalizado'] ?? '');
+                $normalizado = $this->normalizarNumero(
+                    (string)($fila['numero_normalizado'] ?? $fila['numero'] ?? '')
+                );
                 if ($normalizado !== '') {
                     $normalizados[$normalizado] = true;
                 }
