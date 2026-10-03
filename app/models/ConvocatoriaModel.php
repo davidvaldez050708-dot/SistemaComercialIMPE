@@ -135,6 +135,7 @@ class ConvocatoriaModel
                     convocatorias.id,
                     convocatorias.titulo,
                     convocatorias.imagen,
+                    convocatorias.enlace_registro,
                     convocatorias.fecha_inicio,
                     convocatorias.fecha_termino,
                     convocatorias.estado,
@@ -399,22 +400,24 @@ class ConvocatoriaModel
                             tipo_convocatoria,
                             subtipo_convocatoria,
                             imagen,
+                            enlace_registro,
                             fecha_inicio,
                             fecha_termino,
                             estado,
                             activacion_automatica,
                             creado_por,
                             actualizado_por
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
                 $stmt = $this->connection->prepare($sql);
                 $stmt->bind_param(
-                    'sssssssiiii',
+                    'ssssssssiiii',
                     $datos['titulo'],
                     $categoria,
                     $datos['tipo_convocatoria'],
                     $datos['subtipo_convocatoria'],
                     $datos['imagen'],
+                    $datos['enlace_registro'],
                     $datos['fecha_inicio'],
                     $datos['fecha_termino'],
                     $estado,
@@ -434,16 +437,17 @@ class ConvocatoriaModel
                             estado,
                             creado_por,
                             actualizado_por
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
                 $stmt = $this->connection->prepare($sql);
                 $stmt->bind_param(
-                    'sssssssiii',
+                    'ssssssssiii',
                     $datos['titulo'],
                     $categoria,
                     $datos['tipo_convocatoria'],
                     $datos['subtipo_convocatoria'],
                     $datos['imagen'],
+                    $datos['enlace_registro'],
                     $datos['fecha_inicio'],
                     $datos['fecha_termino'],
                     $estado,
@@ -497,6 +501,7 @@ class ConvocatoriaModel
                             tipo_convocatoria = ?,
                             subtipo_convocatoria = ?,
                             imagen = ?,
+                            enlace_registro = ?,
                             fecha_inicio = ?,
                             fecha_termino = ?,
                             estado = ?,
@@ -506,12 +511,13 @@ class ConvocatoriaModel
 
                 $stmt = $this->connection->prepare($sql);
                 $stmt->bind_param(
-                    'sssssssiiii',
+                    'ssssssssiiii',
                     $datos['titulo'],
                     $categoria,
                     $datos['tipo_convocatoria'],
                     $datos['subtipo_convocatoria'],
                     $datos['imagen'],
+                    $datos['enlace_registro'],
                     $datos['fecha_inicio'],
                     $datos['fecha_termino'],
                     $estado,
@@ -534,12 +540,13 @@ class ConvocatoriaModel
 
                 $stmt = $this->connection->prepare($sql);
                 $stmt->bind_param(
-                    'sssssssiii',
+                    'ssssssssiii',
                     $datos['titulo'],
                     $categoria,
                     $datos['tipo_convocatoria'],
                     $datos['subtipo_convocatoria'],
                     $datos['imagen'],
+                    $datos['enlace_registro'],
                     $datos['fecha_inicio'],
                     $datos['fecha_termino'],
                     $estado,
