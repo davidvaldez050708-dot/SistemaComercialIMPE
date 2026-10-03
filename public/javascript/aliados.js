@@ -62,8 +62,23 @@ document.addEventListener('DOMContentLoaded', function () {
     const whatsappDetail = shareModalElement
         ? shareModalElement.querySelector('[data-aliado-whatsapp-detail]')
         : null;
-    const whatsappOpenLink = shareModalElement
-        ? shareModalElement.querySelector('[data-aliado-whatsapp-open]')
+    const whatsappTools = shareModalElement
+        ? shareModalElement.querySelector('[data-aliado-whatsapp-tools]')
+        : null;
+    const copyNumberButton = shareModalElement
+        ? shareModalElement.querySelector('[data-aliado-copy-number]')
+        : null;
+    const copyMessageButton = shareModalElement
+        ? shareModalElement.querySelector('[data-aliado-copy-message]')
+        : null;
+    const copyLinkButton = shareModalElement
+        ? shareModalElement.querySelector('[data-aliado-copy-link]')
+        : null;
+    const downloadImageLink = shareModalElement
+        ? shareModalElement.querySelector('[data-aliado-download-image]')
+        : null;
+    const openWhatsappManualLink = shareModalElement
+        ? shareModalElement.querySelector('[data-aliado-open-whatsapp-manual]')
         : null;
     const messageHelp = shareModalElement
         ? shareModalElement.querySelector('[data-aliado-message-help]')
@@ -94,6 +109,9 @@ document.addEventListener('DOMContentLoaded', function () {
         : null;
     const previewPeriod = shareModalElement
         ? shareModalElement.querySelector('[data-aliado-convocatoria-period]')
+        : null;
+    const previewLink = shareModalElement
+        ? shareModalElement.querySelector('[data-aliado-convocatoria-link]')
         : null;
 
     const historyContext = historyModalElement
@@ -126,7 +144,7 @@ document.addEventListener('DOMContentLoaded', function () {
     let currentChannel = '';
     let currentChannels = {
         correo: { disponible: false },
-        whatsapp: { disponible: false }
+        whatsapp_manual: { disponible: false }
     };
     let currentDrafts = {
         correo: '',
@@ -382,7 +400,7 @@ document.addEventListener('DOMContentLoaded', function () {
         currentChannel = '';
         currentChannels = {
             correo: { disponible: false },
-            whatsapp: { disponible: false }
+            whatsapp_manual: { disponible: false }
         };
         currentDrafts = {
             correo: '',
@@ -402,22 +420,27 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (whatsappReadiness) {
             whatsappReadiness.classList.add('d-none');
-            whatsappReadiness.classList.remove(
-                'is-ready',
-                'is-closed',
-                'is-unavailable'
-            );
         }
         if (whatsappTitle) {
             whatsappTitle.textContent = 'WhatsApp del aliado';
         }
         if (whatsappDetail) {
             whatsappDetail.textContent =
-                'Validando canal y ventana de atención…';
+                'El CRM preparará el material. El envío se realizará fuera del sistema.';
         }
-        if (whatsappOpenLink) {
-            whatsappOpenLink.classList.add('d-none');
-            whatsappOpenLink.removeAttribute('href');
+        if (whatsappTools) {
+            whatsappTools.classList.add('d-none');
+        }
+        if (copyLinkButton) {
+            copyLinkButton.disabled = true;
+        }
+        if (downloadImageLink) {
+            downloadImageLink.classList.add('is-disabled');
+            downloadImageLink.removeAttribute('href');
+        }
+        if (openWhatsappManualLink) {
+            openWhatsappManualLink.classList.add('is-disabled');
+            openWhatsappManualLink.removeAttribute('href');
         }
 
         if (shareForm) {
@@ -474,6 +497,10 @@ document.addEventListener('DOMContentLoaded', function () {
         if (previewPeriod) {
             previewPeriod.textContent = '—';
         }
+        if (previewLink) {
+            previewLink.textContent = 'Sin enlace de registro';
+            previewLink.classList.add('is-missing');
+        }
 
         if (resendAlert) {
             resendAlert.classList.add('d-none');
@@ -495,15 +522,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     };
 
-    const formatWhatsappWindow = function (value) {
-        const source = String(value || '').trim();
-        if (!source) {
-            return '';
-        }
-
-        return formatDateTime(source);
-    };
-
     const updateChannelButton = function (channel, data) {
         const button = channelButtons.find(function (item) {
             return String(item.dataset.aliadoShareChannel || '') === channel;
@@ -519,19 +537,78 @@ document.addEventListener('DOMContentLoaded', function () {
         button.disabled = !available;
         button.classList.toggle('is-disabled', !available);
 
-        if (status) {
-            if (channel === 'CORREO') {
-                status.textContent = available
-                    ? String(data.destinatario || 'Disponible')
-                    : String(data.motivo || 'No disponible');
+        if (!status) {
+            return;
+        }
+
+        if (channel === 'CORREO') {
+            status.textContent = available
+                ? String(data.destinatario || 'Disponible')
+                : String(data.motivo || 'No disponible');
+            return;
+        }
+
+        status.textContent = available
+            ? String(data.telefono || 'WhatsApp disponible')
+            : String(data.motivo || 'No disponible');
+    };
+
+    const getSelectedConvocatoria = function () {
+        const id = Number(convocatoriaSelect?.value || 0);
+        return id > 0 ? (currentConvocatorias.get(id) || null) : null;
+    };
+
+    const updateManualTools = function () {
+        const isManual = currentChannel === 'WHATSAPP_MANUAL';
+        const item = getSelectedConvocatoria();
+        const data = currentChannels.whatsapp_manual || {};
+        const ready = isManual && Boolean(item) && Boolean(data.disponible);
+
+        if (whatsappTools) {
+            whatsappTools.classList.toggle('d-none', !ready);
+        }
+
+        if (!ready) {
+            return;
+        }
+
+        const enlace = String(item.enlace_registro || '').trim();
+        const imagen = String(item.imagen || '').replace(/^\/+/, '');
+        const telefono = String(data.telefono_whatsapp || '').trim();
+        const mensaje = String(mensajeInput?.value || '').trim();
+
+        if (copyLinkButton) {
+            copyLinkButton.disabled = enlace === '';
+            copyLinkButton.title = enlace === ''
+                ? 'Esta convocatoria no tiene enlace de registro.'
+                : 'Copiar enlace de registro';
+        }
+
+        if (downloadImageLink) {
+            downloadImageLink.classList.toggle('is-disabled', imagen === '');
+            if (imagen !== '') {
+                downloadImageLink.href = baseUrl + imagen;
+                downloadImageLink.setAttribute(
+                    'download',
+                    String(item.titulo || 'convocatoria')
+                );
             } else {
-                status.textContent = available
-                    ? (
-                        data.ventana_abierta
-                            ? 'Ventana de 24 h abierta'
-                            : 'Ventana cerrada'
-                    )
-                    : String(data.motivo || 'No disponible');
+                downloadImageLink.removeAttribute('href');
+            }
+        }
+
+        if (openWhatsappManualLink) {
+            const canOpen = telefono !== '' && mensaje !== '';
+            openWhatsappManualLink.classList.toggle('is-disabled', !canOpen);
+
+            if (canOpen) {
+                openWhatsappManualLink.href =
+                    'https://wa.me/' +
+                    encodeURIComponent(telefono) +
+                    '?text=' +
+                    encodeURIComponent(mensaje);
+            } else {
+                openWhatsappManualLink.removeAttribute('href');
             }
         }
     };
@@ -544,15 +621,16 @@ document.addEventListener('DOMContentLoaded', function () {
             currentChannel !== channel &&
             mensajeInput
         ) {
-            if (currentChannel === 'WHATSAPP') {
+            if (currentChannel === 'WHATSAPP_MANUAL') {
                 currentDrafts.whatsapp = mensajeInput.value;
             } else if (currentChannel === 'CORREO') {
                 currentDrafts.correo = mensajeInput.value;
             }
         }
 
-        const data = channel === 'WHATSAPP'
-            ? currentChannels.whatsapp
+        const isManual = channel === 'WHATSAPP_MANUAL';
+        const data = isManual
+            ? currentChannels.whatsapp_manual
             : currentChannels.correo;
 
         if (!data || !data.disponible) {
@@ -572,70 +650,38 @@ document.addEventListener('DOMContentLoaded', function () {
             );
         });
 
-        const isWhatsapp = channel === 'WHATSAPP';
-
         if (emailOnly) {
-            emailOnly.classList.toggle('d-none', isWhatsapp);
+            emailOnly.classList.toggle('d-none', isManual);
         }
         if (asuntoInput) {
-            asuntoInput.required = !isWhatsapp;
+            asuntoInput.required = !isManual;
         }
         if (mensajeInput) {
-            mensajeInput.maxLength = isWhatsapp ? 1024 : 20000;
-            mensajeInput.value = isWhatsapp
+            mensajeInput.maxLength = isManual ? 4096 : 20000;
+            mensajeInput.value = isManual
                 ? currentDrafts.whatsapp
                 : currentDrafts.correo;
         }
 
         if (messageHelp) {
-            messageHelp.textContent = isWhatsapp
-                ? 'WhatsApp enviará la imagen de la convocatoria cuando esté disponible y este texto como mensaje.'
+            messageHelp.textContent = isManual
+                ? 'Este texto se copiará o se abrirá en WhatsApp. El CRM no lo enviará automáticamente.'
                 : 'Puedes ajustar el correo antes de enviarlo.';
         }
 
         if (whatsappReadiness) {
-            whatsappReadiness.classList.toggle('d-none', !isWhatsapp);
-
-            if (isWhatsapp) {
-                whatsappReadiness.classList.remove(
-                    'is-ready',
-                    'is-closed',
-                    'is-unavailable'
-                );
-                whatsappReadiness.classList.add(
-                    data.ventana_abierta ? 'is-ready' : 'is-closed'
-                );
-            }
+            whatsappReadiness.classList.toggle('d-none', !isManual);
         }
 
-        if (isWhatsapp) {
+        if (isManual) {
             if (whatsappTitle) {
                 whatsappTitle.textContent =
-                    String(data.telefono || 'WhatsApp autorizado') +
-                    (data.canal ? ' · ' + String(data.canal) : '');
+                    String(data.telefono || 'WhatsApp autorizado');
             }
 
             if (whatsappDetail) {
-                whatsappDetail.textContent = data.ventana_abierta
-                    ? (
-                        'Ventana de 24 h abierta' +
-                        (
-                            data.ventana_hasta
-                                ? ' hasta ' +
-                                    formatWhatsappWindow(data.ventana_hasta)
-                                : ''
-                        ) +
-                        '. La convocatoria puede enviarse ahora.'
-                    )
-                    : 'La ventana de 24 h está cerrada. Para iniciar el contacto se requiere una plantilla aprobada y la respuesta del aliado.';
-            }
-
-            if (whatsappOpenLink) {
-                const url = String(data.url_conversacion || '');
-                whatsappOpenLink.classList.toggle('d-none', url === '');
-                if (url !== '') {
-                    whatsappOpenLink.href = url;
-                }
+                whatsappDetail.textContent =
+                    'Prepara el mensaje, enlace e imagen para compartirlos desde WhatsApp fuera del CRM.';
             }
         }
 
@@ -644,33 +690,17 @@ document.addEventListener('DOMContentLoaded', function () {
             String(mensajeInput?.value || '').trim() !== '';
 
         if (sendButton) {
-            const canSend =
-                hasDraft &&
-                (
-                    !isWhatsapp ||
-                    Boolean(data.ventana_abierta)
-                );
-
-            sendButton.disabled = !canSend;
-            sendButton.innerHTML = isWhatsapp
-                ? '<i class="bi bi-whatsapp"></i> Enviar por WhatsApp'
+            sendButton.disabled = !hasDraft;
+            sendButton.innerHTML = isManual
+                ? '<i class="bi bi-check2-circle"></i> Marcar como compartida'
                 : '<i class="bi bi-envelope-check"></i> Enviar por correo';
         }
 
-        if (
-            isWhatsapp &&
-            data.disponible &&
-            !data.ventana_abierta &&
-            Number(convocatoriaSelect?.value || 0) > 0
-        ) {
-            setStatus(
-                'La convocatoria está lista, pero no se puede enviar como texto libre hasta que exista una ventana de atención. Abre el chat para iniciar con una plantilla aprobada.',
-                'error'
-            );
-        } else if (sendStatus) {
+        if (sendStatus) {
             sendStatus.classList.add('d-none');
         }
 
+        updateManualTools();
         return true;
     };
 
@@ -736,6 +766,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 ' - ' +
                 formatDate(item.fecha_termino);
         }
+        if (previewLink) {
+            const enlace = String(item.enlace_registro || '').trim();
+            previewLink.textContent = enlace !== ''
+                ? 'Registro: ' + enlace
+                : 'Sin enlace de registro';
+            previewLink.classList.toggle('is-missing', enlace === '');
+        }
 
         if (previewImage) {
             const image = String(item.imagen || '').replace(/^\/+/, '');
@@ -751,6 +788,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 previewImage.classList.add('d-none');
             }
         }
+
+        updateManualTools();
     };
 
     const loadShare = async function (allyId) {
@@ -789,11 +828,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
         currentChannels = {
             correo: channels.correo || { disponible: false },
-            whatsapp: channels.whatsapp || { disponible: false }
+            whatsapp_manual:
+                channels.whatsapp_manual || { disponible: false }
         };
 
         updateChannelButton('CORREO', currentChannels.correo);
-        updateChannelButton('WHATSAPP', currentChannels.whatsapp);
+        updateChannelButton(
+            'WHATSAPP_MANUAL',
+            currentChannels.whatsapp_manual
+        );
 
         if (shareContext) {
             shareContext.textContent =
@@ -807,15 +850,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
         populateConvocatorias(data.convocatorias || []);
 
-        const preferred =
-            currentChannels.whatsapp.disponible &&
-            currentChannels.whatsapp.ventana_abierta
-                ? 'WHATSAPP'
-                : currentChannels.correo.disponible
-                    ? 'CORREO'
-                    : currentChannels.whatsapp.disponible
-                        ? 'WHATSAPP'
-                        : '';
+        const preferred = currentChannels.correo.disponible
+            ? 'CORREO'
+            : currentChannels.whatsapp_manual.disponible
+                ? 'WHATSAPP_MANUAL'
+                : '';
 
         if (preferred) {
             selectChannel(preferred);
@@ -871,6 +910,9 @@ document.addEventListener('DOMContentLoaded', function () {
         if (sendStatus) {
             sendStatus.classList.add('d-none');
         }
+        if (whatsappTools) {
+            whatsappTools.classList.add('d-none');
+        }
 
         if (convocatoriaId <= 0) {
             return;
@@ -902,15 +944,11 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         if (!currentChannel) {
-            const preferred =
-                currentChannels.whatsapp.disponible &&
-                currentChannels.whatsapp.ventana_abierta
-                    ? 'WHATSAPP'
-                    : currentChannels.correo.disponible
-                        ? 'CORREO'
-                        : currentChannels.whatsapp.disponible
-                            ? 'WHATSAPP'
-                            : '';
+            const preferred = currentChannels.correo.disponible
+                ? 'CORREO'
+                : currentChannels.whatsapp_manual.disponible
+                    ? 'WHATSAPP_MANUAL'
+                    : '';
 
             if (preferred) {
                 selectChannel(preferred);
@@ -918,6 +956,8 @@ document.addEventListener('DOMContentLoaded', function () {
         } else {
             selectChannel(currentChannel);
         }
+
+        updateManualTools();
     };
 
     const sendConvocatoria = async function () {
@@ -925,41 +965,23 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        if (currentChannel === 'WHATSAPP') {
-            const whatsapp = currentChannels.whatsapp || {};
-
-            if (!whatsapp.disponible) {
-                setStatus(
-                    whatsapp.motivo ||
-                        'WhatsApp no está disponible para este aliado.',
-                    'error'
-                );
-                return;
-            }
-
-            if (!whatsapp.ventana_abierta) {
-                setStatus(
-                    'La ventana de atención está cerrada. Abre el chat y utiliza una plantilla aprobada para iniciar el contacto.',
-                    'error'
-                );
-                return;
-            }
-        }
-
         if (!shareForm.reportValidity()) {
             return;
         }
 
+        const isManual = currentChannel === 'WHATSAPP_MANUAL';
+
         sendButton.disabled = true;
         const originalLabel = sendButton.innerHTML;
-        sendButton.innerHTML =
-            '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span> Enviando…';
+        sendButton.innerHTML = isManual
+            ? '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span> Registrando…'
+            : '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span> Enviando…';
 
         const formData = new FormData(shareForm);
         formData.set('canal', currentChannel);
 
-        const action = currentChannel === 'WHATSAPP'
-            ? 'enviarConvocatoriaWhatsapp'
+        const action = isManual
+            ? 'registrarConvocatoriaWhatsappManual'
             : 'enviarConvocatoria';
 
         const data = await requestJson(
@@ -972,15 +994,21 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (data.ok) {
             setStatus(
-                data.mensaje || 'Convocatoria enviada correctamente.',
+                data.mensaje ||
+                    (
+                        isManual
+                            ? 'La difusión quedó registrada.'
+                            : 'Convocatoria enviada correctamente.'
+                    ),
                 'success'
             );
-            sendButton.innerHTML =
-                '<i class="bi bi-check2-circle"></i> Enviado';
+            sendButton.innerHTML = isManual
+                ? '<i class="bi bi-check2-circle"></i> Compartida'
+                : '<i class="bi bi-check2-circle"></i> Enviado';
 
             window.setTimeout(function () {
                 window.location.reload();
-            }, 1000);
+            }, 900);
             return;
         }
 
@@ -1000,34 +1028,54 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             sendButton.disabled = false;
-            sendButton.innerHTML =
-                '<i class="bi bi-arrow-repeat"></i> Enviar nuevamente';
-            return;
-        }
-
-        if (data.requiere_ventana) {
-            currentChannels.whatsapp.ventana_abierta = false;
-
-            if (data.url_conversacion) {
-                currentChannels.whatsapp.url_conversacion =
-                    String(data.url_conversacion);
-            }
-
-            selectChannel('WHATSAPP');
-            setStatus(
-                data.mensaje ||
-                    'La ventana de WhatsApp está cerrada.',
-                'error'
-            );
+            sendButton.innerHTML = isManual
+                ? '<i class="bi bi-arrow-repeat"></i> Registrar nuevamente'
+                : '<i class="bi bi-arrow-repeat"></i> Enviar nuevamente';
             return;
         }
 
         setStatus(
-            data.mensaje || 'No fue posible enviar la convocatoria.',
+            data.mensaje || 'No fue posible completar la operación.',
             'error'
         );
         sendButton.disabled = false;
         sendButton.innerHTML = originalLabel;
+    };
+
+    const copyText = async function (value, successMessage) {
+        const textValue = String(value || '').trim();
+        if (textValue === '') {
+            return false;
+        }
+
+        try {
+            if (navigator.clipboard && window.isSecureContext) {
+                await navigator.clipboard.writeText(textValue);
+            } else {
+                const textarea = document.createElement('textarea');
+                textarea.value = textValue;
+                textarea.setAttribute('readonly', '');
+                textarea.style.position = 'fixed';
+                textarea.style.opacity = '0';
+                document.body.appendChild(textarea);
+                textarea.select();
+                const copied = document.execCommand('copy');
+                textarea.remove();
+
+                if (!copied) {
+                    throw new Error('copy');
+                }
+            }
+
+            setStatus(successMessage, 'success');
+            return true;
+        } catch (error) {
+            setStatus(
+                'No fue posible copiar automáticamente. Selecciona el contenido y cópialo de forma manual.',
+                'error'
+            );
+            return false;
+        }
     };
 
     const createHistoryItem = function (item) {
@@ -1037,10 +1085,11 @@ document.addEventListener('DOMContentLoaded', function () {
         const icon = document.createElement('span');
         icon.className = 'aliados-history-icon';
         const iconElement = document.createElement('i');
-        iconElement.className =
-            String(item.canal || '').toUpperCase() === 'WHATSAPP'
-                ? 'bi bi-whatsapp'
-                : 'bi bi-envelope-check';
+        const canal = String(item.canal || '').toUpperCase();
+        const esWhatsapp = canal.indexOf('WHATSAPP') === 0;
+        iconElement.className = esWhatsapp
+            ? 'bi bi-whatsapp'
+            : 'bi bi-envelope-check';
         icon.appendChild(iconElement);
 
         const copy = document.createElement('div');
@@ -1052,25 +1101,41 @@ document.addEventListener('DOMContentLoaded', function () {
         );
 
         const meta = document.createElement('span');
+        const canalLabel = canal === 'WHATSAPP_MANUAL'
+            ? 'WhatsApp manual'
+            : canal === 'WHATSAPP'
+                ? 'WhatsApp'
+                : 'Correo';
         meta.textContent =
-            String(item.canal || 'CORREO') +
-            ' · ' +
-            formatDateTime(item.enviado_at);
+            canalLabel + ' · ' + formatDateTime(item.enviado_at);
 
         const author = document.createElement('small');
         const authorName = String(item.enviado_por_nombre || '').trim();
         author.textContent =
-            (authorName ? 'Enviado por ' + authorName + ' · ' : '') +
+            (
+                authorName
+                    ? (
+                        canal === 'WHATSAPP_MANUAL'
+                            ? 'Registrado por ' + authorName + ' · '
+                            : 'Enviado por ' + authorName + ' · '
+                    )
+                    : ''
+            ) +
             String(item.destinatario || '');
 
         copy.append(title, meta, author);
 
         const status = document.createElement('span');
-        const sent = String(item.estado_envio || '').toUpperCase() === 'ENVIADO';
+        const estado = String(item.estado_envio || '').toUpperCase();
+        const success = estado === 'ENVIADO' || estado === 'COMPARTIDO';
         status.className =
             'aliados-history-status ' +
-            (sent ? 'is-sent' : 'is-error');
-        status.textContent = sent ? 'Enviado' : 'Error';
+            (success ? 'is-sent' : 'is-error');
+        status.textContent = estado === 'COMPARTIDO'
+            ? 'Compartida'
+            : estado === 'ENVIADO'
+                ? 'Enviado'
+                : 'Error';
 
         article.append(icon, copy, status);
 
