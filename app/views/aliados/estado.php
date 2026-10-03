@@ -20,7 +20,7 @@ $puedeGestionarContactos = $puedeGestionarContactos ?? false;
 $estructuraContactosDisponible = $estructuraContactosDisponible ?? false;
 $puedeAbrirExpediente = $puedeAbrirExpediente ?? false;
 $puedeUsarWhatsapp = $puedeUsarWhatsapp ?? false;
-$puedeCompartirWhatsapp = $puedeCompartirWhatsapp ?? false;
+$puedePrepararWhatsapp = $puedePrepararWhatsapp ?? false;
 
 $texto = static function ($valor) {
     return htmlspecialchars((string)$valor, ENT_QUOTES, 'UTF-8');
@@ -315,12 +315,12 @@ $normalizarNumeroVista = static function ($valor) {
                                             (int)($aliado['tiene_whatsapp_confirmado_contacto'] ?? 0) === 1;
                                         $aliadoTieneWhatsappAutorizado =
                                             (int)($aliado['tiene_whatsapp_autorizado_contacto'] ?? 0) === 1;
-                                        $whatsappDisponible =
-                                            $puedeCompartirWhatsapp &&
+                                        $whatsappManualDisponible =
+                                            $puedePrepararWhatsapp &&
                                             $aliadoTieneWhatsappAutorizado;
                                         $puedeCompartirAliado =
                                             $correoDisponible ||
-                                            $whatsappDisponible;
+                                            $whatsappManualDisponible;
                                         $mostrarAccionesSecundarias =
                                             $puedeGestionarContactos ||
                                             $puedeVerHistorial ||
@@ -399,7 +399,15 @@ $normalizarNumeroVista = static function ($valor) {
                                                     <div class="aliados-last-send">
                                                         <strong><?= $texto($aliado['ultima_convocatoria_titulo'] ?? 'Convocatoria') ?></strong>
                                                         <span>
-                                                            <?= $texto($aliado['ultimo_envio_canal'] ?? 'CORREO') ?> ·
+                                                            <?= $texto(
+                                                                strtoupper((string)($aliado['ultimo_envio_canal'] ?? 'CORREO')) === 'WHATSAPP_MANUAL'
+                                                                    ? 'WhatsApp manual'
+                                                                    : (
+                                                                        strtoupper((string)($aliado['ultimo_envio_canal'] ?? 'CORREO')) === 'WHATSAPP'
+                                                                            ? 'WhatsApp'
+                                                                            : 'Correo'
+                                                                    )
+                                                            ) ?> ·
                                                             <?= $texto($fechaHora($aliado['ultimo_envio_at'] ?? '')) ?>
                                                         </span>
                                                     </div>
@@ -410,7 +418,7 @@ $normalizarNumeroVista = static function ($valor) {
 
                                             <td class="text-end">
                                                 <div class="aliados-actions">
-                                                    <?php if ($puedeCompartirCorreo || $puedeCompartirWhatsapp): ?>
+                                                    <?php if ($puedeCompartirCorreo || $puedePrepararWhatsapp): ?>
                                                         <button
                                                             type="button"
                                                             class="btn aliados-share-button"
@@ -550,23 +558,23 @@ $normalizarNumeroVista = static function ($valor) {
                         </button>
                     <?php endif; ?>
 
-                    <?php if ($puedeCompartirWhatsapp): ?>
+                    <?php if ($puedePrepararWhatsapp): ?>
                         <button
                             type="button"
                             class="aliados-channel-option"
-                            data-aliado-share-channel="WHATSAPP">
+                            data-aliado-share-channel="WHATSAPP_MANUAL">
                             <i class="bi bi-whatsapp"></i>
                             <span>
-                                <strong>WhatsApp Business</strong>
-                                <small data-channel-status>Validando conversación…</small>
+                                <strong>Preparar para WhatsApp</strong>
+                                <small data-channel-status>Validando número…</small>
                             </span>
                         </button>
                     <?php endif; ?>
                 </div>
 
-                <?php if ($puedeCompartirWhatsapp): ?>
+                <?php if ($puedePrepararWhatsapp): ?>
                     <div
-                        class="aliados-whatsapp-readiness d-none"
+                        class="aliados-whatsapp-readiness aliados-whatsapp-manual-note d-none"
                         data-aliado-whatsapp-readiness>
                         <div class="aliados-whatsapp-readiness-icon">
                             <i class="bi bi-whatsapp"></i>
@@ -574,16 +582,9 @@ $normalizarNumeroVista = static function ($valor) {
                         <div class="aliados-whatsapp-readiness-copy">
                             <strong data-aliado-whatsapp-title>WhatsApp del aliado</strong>
                             <span data-aliado-whatsapp-detail>
-                                Validando canal y ventana de atención…
+                                El CRM preparará el material. El envío se realizará fuera del sistema.
                             </span>
                         </div>
-                        <a
-                            class="btn aliados-btn-secondary d-none"
-                            href="#"
-                            data-aliado-whatsapp-open>
-                            <i class="bi bi-chat-dots"></i>
-                            Abrir chat
-                        </a>
                     </div>
                 <?php endif; ?>
 
@@ -611,6 +612,9 @@ $normalizarNumeroVista = static function ($valor) {
                             <span class="aliados-preview-label">CONVOCATORIA SELECCIONADA</span>
                             <strong data-aliado-convocatoria-title>—</strong>
                             <small data-aliado-convocatoria-period>—</small>
+                            <small class="aliados-preview-link" data-aliado-convocatoria-link>
+                                Sin enlace de registro
+                            </small>
                         </div>
                     </div>
 
@@ -637,6 +641,58 @@ $normalizarNumeroVista = static function ($valor) {
                             Puedes ajustar el mensaje antes de enviarlo.
                         </small>
                     </div>
+
+                    <?php if ($puedePrepararWhatsapp): ?>
+                        <div class="aliados-whatsapp-manual-tools d-none" data-aliado-whatsapp-tools>
+                            <div class="aliados-whatsapp-manual-head">
+                                <div>
+                                    <span class="aliados-preview-label">MATERIAL LISTO PARA COMPARTIR</span>
+                                    <strong>WhatsApp manual</strong>
+                                </div>
+                                <span class="aliados-whatsapp-manual-badge">
+                                    <i class="bi bi-box-arrow-up-right"></i>
+                                    Fuera del CRM
+                                </span>
+                            </div>
+
+                            <div class="aliados-whatsapp-manual-actions">
+                                <button type="button" class="btn aliados-manual-action" data-aliado-copy-number>
+                                    <i class="bi bi-telephone"></i>
+                                    Copiar número
+                                </button>
+                                <button type="button" class="btn aliados-manual-action" data-aliado-copy-message>
+                                    <i class="bi bi-copy"></i>
+                                    Copiar mensaje
+                                </button>
+                                <button type="button" class="btn aliados-manual-action" data-aliado-copy-link>
+                                    <i class="bi bi-link-45deg"></i>
+                                    Copiar enlace
+                                </button>
+                                <a
+                                    class="btn aliados-manual-action"
+                                    href="#"
+                                    download
+                                    data-aliado-download-image>
+                                    <i class="bi bi-download"></i>
+                                    Descargar imagen
+                                </a>
+                                <a
+                                    class="btn aliados-manual-action is-primary"
+                                    href="#"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    data-aliado-open-whatsapp-manual>
+                                    <i class="bi bi-whatsapp"></i>
+                                    Abrir WhatsApp
+                                </a>
+                            </div>
+
+                            <p class="aliados-whatsapp-manual-help">
+                                Después de enviarla en WhatsApp, vuelve aquí y usa
+                                <strong>Marcar como compartida</strong> para conservar el historial.
+                            </p>
+                        </div>
+                    <?php endif; ?>
 
                     <div class="alert alert-warning aliados-reenvio-alert d-none" data-aliado-reenvio-alert>
                         <i class="bi bi-exclamation-circle"></i>
