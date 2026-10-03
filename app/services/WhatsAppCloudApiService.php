@@ -340,6 +340,19 @@ class WhatsAppCloudApiService
 
     private function normalizarNumero($numero)
     {
-        return preg_replace('/[^0-9]+/', '', (string)$numero);
+        $digitos = preg_replace('/[^0-9]+/', '', (string)$numero);
+
+        /*
+         * Unificamos el formato mexicano que Meta todavía puede entregar
+         * como 521 + 10 dígitos con el formato vigente 52 + 10 dígitos.
+         */
+        if (
+            strlen($digitos) === 13 &&
+            strpos($digitos, '521') === 0
+        ) {
+            $digitos = '52' . substr($digitos, 3);
+        }
+
+        return $digitos;
     }
 }
