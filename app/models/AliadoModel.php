@@ -179,6 +179,7 @@ class AliadoModel
                     c.id,
                     c.titulo,
                     c.imagen,
+                    c.enlace_registro,
                     c.categoria,
                     c.tipo_convocatoria,
                     c.subtipo_convocatoria,
@@ -248,6 +249,7 @@ class AliadoModel
                     envios.mensaje,
                     envios.convocatoria_titulo,
                     envios.convocatoria_imagen,
+                    envios.convocatoria_enlace_registro,
                     envios.convocatoria_fecha_inicio,
                     envios.convocatoria_fecha_termino,
                     envios.estado_envio,
@@ -302,13 +304,14 @@ class AliadoModel
                     mensaje,
                     convocatoria_titulo,
                     convocatoria_imagen,
+                    convocatoria_enlace_registro,
                     convocatoria_fecha_inicio,
                     convocatoria_fecha_termino,
                     estado_envio,
                     proveedor,
                     error_detalle,
                     enviado_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
 
         $stmt = $this->connection->prepare($sql);
         $seguimientoId = (int)($datos['seguimiento_id'] ?? 0);
@@ -320,6 +323,7 @@ class AliadoModel
         $mensaje = (string)($datos['mensaje'] ?? '');
         $titulo = (string)($datos['convocatoria_titulo'] ?? '');
         $imagen = (string)($datos['convocatoria_imagen'] ?? '');
+        $enlaceRegistro = (string)($datos['convocatoria_enlace_registro'] ?? '');
         $fechaInicio = (string)($datos['convocatoria_fecha_inicio'] ?? '');
         $fechaTermino = (string)($datos['convocatoria_fecha_termino'] ?? '');
         $estadoEnvio = (string)($datos['estado_envio'] ?? 'ENVIADO');
@@ -327,7 +331,7 @@ class AliadoModel
         $error = (string)($datos['error_detalle'] ?? '');
 
         $stmt->bind_param(
-            'iiisssssssssss',
+            'iiissssssssssss',
             $seguimientoId,
             $convocatoriaId,
             $usuarioId,
@@ -337,6 +341,7 @@ class AliadoModel
             $mensaje,
             $titulo,
             $imagen,
+            $enlaceRegistro,
             $fechaInicio,
             $fechaTermino,
             $estadoEnvio,
