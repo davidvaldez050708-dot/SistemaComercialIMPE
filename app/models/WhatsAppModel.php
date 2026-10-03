@@ -138,6 +138,28 @@ class WhatsAppModel
         return $stmt->get_result()->fetch_assoc() ?: null;
     }
 
+    public function obtenerConversacionPorCuentaTelefono($cuentaId, $telefono)
+    {
+        $cuentaId = (int)$cuentaId;
+        $normalizado = $this->normalizarNumero($telefono);
+
+        if ($cuentaId <= 0 || $normalizado === '') {
+            return null;
+        }
+
+        $sql = $this->consultaConversacionesBase() . "
+                WHERE conv.cuenta_id = ?
+                  AND conv.telefono_normalizado = ?
+                  AND c.activo = 1
+                LIMIT 1";
+
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param('is', $cuentaId, $normalizado);
+        $stmt->execute();
+
+        return $stmt->get_result()->fetch_assoc() ?: null;
+    }
+
     public function resolverCuentaUsuario($usuarioId)
     {
         $sql = "SELECT *
