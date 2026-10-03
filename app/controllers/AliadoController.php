@@ -432,6 +432,10 @@ class AliadoController
         $numero = trim((string)($_POST['numero'] ?? ''));
         $digitos = preg_replace('/[^0-9]+/', '', $numero);
 
+        if (strlen($digitos) === 13 && strpos($digitos, '521') === 0) {
+            $digitos = '52' . substr($digitos, 3);
+        }
+
         if (strlen($digitos) < 7 || strlen($digitos) > 15) {
             $this->responder([
                 'ok' => false,
@@ -474,6 +478,13 @@ class AliadoController
                 '',
                 (string)($aliado[$campoOrigen[$origen]] ?? '')
             );
+
+            if (
+                strlen($numeroOrigen) === 13 &&
+                strpos($numeroOrigen, '521') === 0
+            ) {
+                $numeroOrigen = '52' . substr($numeroOrigen, 3);
+            }
 
             if ($numeroOrigen === '' || $numeroOrigen !== $digitos) {
                 $origen = 'CUENTA_CLAVE';
