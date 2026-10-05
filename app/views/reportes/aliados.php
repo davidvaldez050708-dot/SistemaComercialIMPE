@@ -185,14 +185,13 @@ foreach ($municipiosVisibles as $filaMunicipio) {
                     <?php foreach ($municipios as $municipio): ?>
                         <option
                             value="<?= (int)($municipio['id'] ?? 0) ?>"
+                            data-estado-id="<?= (int)($municipio['estado_id'] ?? 0) ?>"
                             <?= (int)($filtrosReporte['municipio_id'] ?? 0) === (int)($municipio['id'] ?? 0) ? 'selected' : '' ?>>
-                            <?= (int)($filtrosReporte['estado_id'] ?? 0) > 0
-                                ? $texto($municipio['nombre'] ?? '')
-                                : $texto(
-                                    ($municipio['nombre'] ?? '') .
-                                    ' · ' .
-                                    ($municipio['estado_nombre'] ?? '')
-                                ) ?>
+                            <?= $texto(
+                                ($municipio['nombre'] ?? '') .
+                                ' · ' .
+                                ($municipio['estado_nombre'] ?? '')
+                            ) ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
