@@ -270,6 +270,23 @@ class ReminderController
             $ok = (bool)($resultado['ok'] ?? true);
         }
 
+        if ($puedeSeguimientoAliados) {
+            $seguimientoAliados =
+                $this->aliadoSeguimientoReminderService->obtener(
+                    $usuarioId,
+                    10
+                );
+
+            $recordatorios = array_merge(
+                array_values($seguimientoAliados['recordatorios'] ?? []),
+                $recordatorios
+            );
+            $avisos = array_values(array_merge(
+                $seguimientoAliados['avisos'] ?? [],
+                $avisos
+            ));
+        }
+
         // La campana debe priorizar obligaciones vencidas y acciones que requieren
         // intervención, sin depender del orden en que cada servicio fue consultado.
         $recordatorios = array_slice(
