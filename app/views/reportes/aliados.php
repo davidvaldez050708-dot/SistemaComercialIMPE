@@ -537,7 +537,7 @@ if ($modoAnalisis === 'estado') {
 
         <div class="row g-3 mb-3">
             <div class="col-xl-7">
-                <section class="dashboard-panel analyst-portfolio-attention h-100">
+                <section class="dashboard-panel analyst-portfolio-attention">
                     <div class="analyst-portfolio-section-heading">
                         <div>
                             <span class="report-eyebrow">ATENCIÓN OPERATIVA</span>
@@ -604,7 +604,7 @@ if ($modoAnalisis === 'estado') {
             </div>
 
             <div class="col-xl-5">
-                <section class="dashboard-panel analyst-portfolio-health h-100">
+                <section class="dashboard-panel analyst-portfolio-health">
                     <div class="analyst-portfolio-section-heading">
                         <div>
                             <span class="report-eyebrow">SALUD DE LA RED</span>
@@ -658,7 +658,7 @@ if ($modoAnalisis === 'estado') {
 
         <div class="row g-3 mb-3">
             <div class="col-xl-7">
-                <section class="dashboard-panel aliados-report-insights h-100">
+                <section class="dashboard-panel aliados-report-insights">
                     <div class="analyst-portfolio-section-heading">
                         <div>
                             <span class="report-eyebrow">LECTURA EJECUTIVA</span>
@@ -687,7 +687,7 @@ if ($modoAnalisis === 'estado') {
             </div>
 
             <div class="col-xl-5">
-                <section class="dashboard-panel aliados-report-followup-state h-100">
+                <section class="dashboard-panel aliados-report-followup-state">
                     <div class="analyst-portfolio-section-heading">
                         <div>
                             <span class="report-eyebrow">DISTRIBUCIÓN</span>
