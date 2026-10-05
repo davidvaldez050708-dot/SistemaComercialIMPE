@@ -157,7 +157,9 @@ class AliadoController
             'municipios' => count($municipiosAliados),
             'con_correo' => 0,
             'con_whatsapp' => 0,
-            'convocatorias_vigentes' => 0
+            'convocatorias_vigentes' => 0,
+            'seguimientos_pendientes' => 0,
+            'seguimientos_vencidos' => 0
         ];
 
         foreach ($aliados as $aliado) {
@@ -174,6 +176,35 @@ class AliadoController
 
             if ($whatsappVerificado !== '' || $whatsappDifusionConfirmado) {
                 $resumenAliados['con_whatsapp']++;
+            }
+
+            $estadoSeguimiento = strtoupper(trim((string)(
+                $aliado['seguimiento_convocatoria_estado'] ?? ''
+            )));
+            $proximoSeguimientoAt = trim((string)(
+                $aliado['proximo_seguimiento_at'] ?? ''
+            ));
+            $seguimientoPendiente =
+                $estadoSeguimiento !== '' &&
+                !in_array(
+                    $estadoSeguimiento,
+                    ['DIFUSION_CONFIRMADA', 'NO_PARTICIPARA'],
+                    true
+                );
+
+            if ($seguimientoPendiente) {
+                $resumenAliados['seguimientos_pendientes']++;
+
+                $proximoTimestamp = $proximoSeguimientoAt !== ''
+                    ? strtotime($proximoSeguimientoAt)
+                    : false;
+
+                if (
+                    $proximoTimestamp !== false &&
+                    $proximoTimestamp <= time()
+                ) {
+                    $resumenAliados['seguimientos_vencidos']++;
+                }
             }
         }
 
