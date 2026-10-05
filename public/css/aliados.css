@@ -276,17 +276,17 @@
 
 .aliados-table th:nth-child(1),
 .aliados-table td:nth-child(1) {
-    width: 18%;
+    width: 17%;
 }
 
 .aliados-table th:nth-child(2),
 .aliados-table td:nth-child(2) {
-    width: 22%;
+    width: 21%;
 }
 
 .aliados-table th:nth-child(3),
 .aliados-table td:nth-child(3) {
-    width: 12%;
+    width: 11%;
 }
 
 .aliados-table th:nth-child(4),
@@ -306,7 +306,7 @@
 
 .aliados-table th:nth-child(7),
 .aliados-table td:nth-child(7) {
-    width: 8%;
+    width: 11%;
 }
 
 .aliados-institution-cell,
