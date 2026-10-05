@@ -403,13 +403,7 @@ $seguimientoVista = static function ($estado) {
                                             data-formalizado-at="<?= $texto(substr((string)($aliado['convenio_formalizado_at'] ?? ''), 0, 10)) ?>">
                                             <td>
                                                 <div class="aliados-institution-cell">
-                                                    <span class="aliados-institution-icon">
-                                                        <i class="bi bi-building-check"></i>
-                                                    </span>
-                                                    <div>
-                                                        <strong><?= $texto($aliado['nombre_entidad'] ?? 'Institución') ?></strong>
-                                                        <span><?= $texto($aliado['tipo_entidad'] ?? 'Institución') ?></span>
-                                                    </div>
+                                                    <strong><?= $texto($aliado['nombre_entidad'] ?? 'Institución') ?></strong>
                                                 </div>
                                             </td>
 
@@ -446,14 +440,12 @@ $seguimientoVista = static function ($estado) {
                                             <td>
                                                 <div class="aliados-analyst-cell">
                                                     <strong><?= $texto($aliado['analista_nombre'] ?? '—') ?></strong>
-                                                    <span>Originó la vinculación</span>
                                                 </div>
                                             </td>
 
                                             <td>
                                                 <div class="aliados-date-cell">
                                                     <strong><?= $texto($fecha($aliado['convenio_formalizado_at'] ?? '')) ?></strong>
-                                                    <span>Convenio formalizado</span>
                                                 </div>
                                             </td>
 
@@ -507,7 +499,7 @@ $seguimientoVista = static function ($estado) {
                                                                         true
                                                                     )
                                                                         ? 'Seguimiento cerrado'
-                                                                        : 'Sin recordatorio programado' ?>
+                                                                        : 'Sin recordatorio' ?>
                                                                 </small>
                                                             <?php endif; ?>
                                                         </button>
