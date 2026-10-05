@@ -1838,7 +1838,7 @@ document.addEventListener('DOMContentLoaded', function () {
         true
     );
 
-    root.addEventListener('click', function (event) {
+    document.addEventListener('click', function (event) {
         const shareButton = event.target.closest('[data-aliado-share]');
         if (shareButton) {
             loadShare(shareButton.dataset.aliadoShare);
