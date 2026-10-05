@@ -90,6 +90,10 @@ class AliadoReporteController
             $municipioId = 0;
         }
 
+        if ($municipioId > 0 && $estadoId <= 0) {
+            $estadoId = (int)($municipios[$municipioId]['estado_id'] ?? 0);
+        }
+
         $situacionesPermitidas = [
             'todos',
             'con_difusion',
