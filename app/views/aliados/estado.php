@@ -491,16 +491,6 @@ $seguimientoVista = static function ($estado) {
                                                                     <i class="bi bi-clock"></i>
                                                                     <?= $texto($fechaHora($proximoSeguimientoAt)) ?>
                                                                 </small>
-                                                            <?php else: ?>
-                                                                <small>
-                                                                    <?= in_array(
-                                                                        $estadoSeguimiento,
-                                                                        ['DIFUSION_CONFIRMADA', 'NO_PARTICIPARA'],
-                                                                        true
-                                                                    )
-                                                                        ? 'Cerrado'
-                                                                        : 'Sin fecha' ?>
-                                                                </small>
                                                             <?php endif; ?>
                                                         </button>
                                                     <?php else: ?>
