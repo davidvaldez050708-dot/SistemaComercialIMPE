@@ -22,6 +22,9 @@ document.addEventListener('DOMContentLoaded', function () {
         root.querySelectorAll('[data-aliado-municipio-group]')
     );
     const filteredEmpty = root.querySelector('[data-aliados-filter-empty]');
+    const followupFilterButtons = Array.from(
+        root.querySelectorAll('[data-aliados-followup-filter]')
+    );
 
     const shareModalElement = document.getElementById('modalAliadoCompartir');
     const historyModalElement = document.getElementById('modalAliadoHistorial');
@@ -155,6 +158,7 @@ document.addEventListener('DOMContentLoaded', function () {
     let currentContacts = new Map();
     let currentConvocatorias = new Map();
     let searchTimer = null;
+    let currentFollowupFilter = '';
 
     const endpoint = function (action, params) {
         const url = new URL(
@@ -273,9 +277,20 @@ document.addEventListener('DOMContentLoaded', function () {
             Number(municipalitySelect?.value || 0) > 0 ||
             Number(analystSelect?.value || 0) > 0 ||
             String(diffusionSelect?.value || 'todos') !== 'todos' ||
-            String(formalizationSelect?.value || 'todas') !== 'todas';
+            String(formalizationSelect?.value || 'todas') !== 'todas' ||
+            currentFollowupFilter !== '';
 
         clearFilters.classList.toggle('d-none', !active);
+    };
+
+    const updateFollowupFilterButtons = function () {
+        followupFilterButtons.forEach(function (button) {
+            const value = String(button.dataset.aliadosFollowupFilter || '');
+            const active = value !== '' && value === currentFollowupFilter;
+
+            button.classList.toggle('is-active', active);
+            button.setAttribute('aria-pressed', active ? 'true' : 'false');
+        });
     };
 
     const matchesFormalization = function (row, filterValue) {
@@ -356,6 +371,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const diffusion = String(diffusionSelect?.value || 'todos');
         const formalization =
             String(formalizationSelect?.value || 'todas');
+        const followup = currentFollowupFilter;
         let visible = 0;
 
         allyRows.forEach(function (row) {
@@ -365,13 +381,25 @@ document.addEventListener('DOMContentLoaded', function () {
                 (diffusion === 'con' && hasDiffusion) ||
                 (diffusion === 'sin' && !hasDiffusion);
 
+            const matchesFollowup =
+                followup === '' ||
+                (
+                    followup === 'pendientes' &&
+                    row.dataset.seguimientoPendiente === '1'
+                ) ||
+                (
+                    followup === 'vencidos' &&
+                    row.dataset.seguimientoVencido === '1'
+                );
+
             const matches =
                 (search === '' || normalizeText(row.dataset.search).includes(search)) &&
                 (stateId === 0 || Number(row.dataset.estadoId || 0) === stateId) &&
                 (municipalityId === 0 || Number(row.dataset.municipioId || 0) === municipalityId) &&
                 (analystId === 0 || Number(row.dataset.analistaId || 0) === analystId) &&
                 matchesDiffusion &&
-                matchesFormalization(row, formalization);
+                matchesFormalization(row, formalization) &&
+                matchesFollowup;
 
             row.classList.toggle('d-none', !matches);
 
@@ -392,6 +420,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         updateFilterUrl();
+        updateFollowupFilterButtons();
         updateClearVisibility();
     };
 
@@ -1928,6 +1957,19 @@ document.addEventListener('DOMContentLoaded', function () {
     diffusionSelect?.addEventListener('change', applyDirectoryFilters);
     formalizationSelect?.addEventListener('change', applyDirectoryFilters);
 
+    followupFilterButtons.forEach(function (button) {
+        button.addEventListener('click', function () {
+            const value = String(
+                button.dataset.aliadosFollowupFilter || ''
+            );
+
+            currentFollowupFilter =
+                currentFollowupFilter === value ? '' : value;
+
+            applyDirectoryFilters();
+        });
+    });
+
     clearFilters?.addEventListener('click', function (event) {
         event.preventDefault();
 
@@ -1949,6 +1991,9 @@ document.addEventListener('DOMContentLoaded', function () {
         if (formalizationSelect) {
             formalizationSelect.value = 'todas';
         }
+
+        currentFollowupFilter = '';
+        updateFollowupFilterButtons();
 
         filterMunicipalities();
         applyDirectoryFilters();
