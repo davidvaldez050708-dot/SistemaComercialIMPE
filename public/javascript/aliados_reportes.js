@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         municipalityOptions.forEach(function (option) {
             const optionStateId = Number(option.dataset.estadoId || 0);
-            const visible = stateId === 0 || optionStateId === stateId;
+            const visible = stateId > 0 && optionStateId === stateId;
 
             option.hidden = !visible;
             option.disabled = !visible;
@@ -29,7 +29,9 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
 
-        if (!currentStillAvailable) {
+        municipalitySelect.disabled = stateId <= 0;
+
+        if (stateId <= 0 || !currentStillAvailable) {
             municipalitySelect.value = '0';
         }
     };
