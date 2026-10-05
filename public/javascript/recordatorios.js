@@ -66,14 +66,25 @@
 
         const claveRecordatorio = function (recordatorio) {
             const reunionId = Number(recordatorio.reunion_id || 0);
+            const seguimientoConvocatoriaId = Number(
+                recordatorio.seguimiento_convocatoria_id || 0
+            );
             const seguimientoId = Number(
                 recordatorio.seguimiento_id || recordatorio.id || 0
             );
             const accion = String(recordatorio.accion || '').trim();
             const fecha = String(recordatorio.fecha || '').trim();
+            let referencia = 'seguimiento:' + seguimientoId;
+
+            if (seguimientoConvocatoriaId > 0) {
+                referencia =
+                    'aliado-seguimiento:' + seguimientoConvocatoriaId;
+            } else if (reunionId > 0) {
+                referencia = 'reunion:' + reunionId;
+            }
 
             return [
-                reunionId > 0 ? 'reunion:' + reunionId : 'seguimiento:' + seguimientoId,
+                referencia,
                 accion,
                 fecha
             ].join('|');
