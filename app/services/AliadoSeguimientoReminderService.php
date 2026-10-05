@@ -80,7 +80,9 @@ class AliadoSeguimientoReminderService
                     'index.php?controller=aliado&action=estado&estado_id=' .
                     (int)($fila['estado_id'] ?? 0) .
                     '&abrir_seguimiento=' .
-                    (int)($fila['seguimiento_id'] ?? 0)
+                    (int)($fila['seguimiento_id'] ?? 0) .
+                    '&seguimiento_convocatoria_id=' .
+                    (int)($fila['seguimiento_convocatoria_id'] ?? 0)
             ];
         }
 
