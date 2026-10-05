@@ -1,0 +1,442 @@
+/* ===== Reporte ejecutivo de Aliados ===== */
+
+.aliados-report-module {
+    padding-bottom: 26px;
+}
+
+.aliados-report-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.aliados-report-generated {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 9px;
+    border: 1px solid #cfe6df;
+    border-radius: 999px;
+    background: #f1faf7;
+    color: #087e69;
+    font-size: 9px;
+    font-weight: 800;
+}
+
+.aliados-report-filter-panel,
+.aliados-report-context,
+.aliados-report-analysis-card,
+.aliados-report-table-panel {
+    padding: 18px 20px;
+}
+
+.aliados-report-filter-heading,
+.aliados-report-section-heading,
+.aliados-report-context-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.aliados-report-filter-heading {
+    margin-bottom: 14px;
+}
+
+.aliados-report-filter-heading h3,
+.aliados-report-section-heading h3,
+.aliados-report-context-heading h3 {
+    margin: 2px 0 0;
+    color: var(--color-navy, #172642);
+    font-size: 16px;
+    font-weight: 800;
+}
+
+.aliados-report-filter-heading p,
+.aliados-report-section-heading p {
+    max-width: 760px;
+    margin: 4px 0 0;
+    color: var(--color-text-soft, #6b7280);
+    font-size: 10.5px;
+    line-height: 1.45;
+}
+
+.aliados-report-filter-heading > i,
+.aliados-report-section-heading > i {
+    display: grid;
+    width: 36px;
+    height: 36px;
+    flex: 0 0 auto;
+    place-items: center;
+    border-radius: 10px;
+    background: var(--color-primary-soft, #eef2fb);
+    color: var(--color-primary, #273a8a);
+    font-size: 15px;
+}
+
+.aliados-report-filter-form {
+    display: grid;
+    grid-template-columns:
+        minmax(180px, .85fr)
+        minmax(190px, 1fr)
+        minmax(200px, 1fr)
+        auto;
+    gap: 11px;
+    align-items: end;
+}
+
+.aliados-report-filter-form .form-label {
+    margin-bottom: 5px;
+    color: var(--color-text, #172642);
+    font-size: 9px;
+    font-weight: 750;
+}
+
+.aliados-report-filter-form .form-select {
+    min-height: 39px;
+    border-color: var(--color-border, #dfe5ef);
+    border-radius: 9px;
+    background-color: #fbfcfe;
+    font-size: 10px;
+    box-shadow: none;
+}
+
+.aliados-report-filter-form .form-select:focus {
+    border-color: var(--color-primary, #273a8a);
+    background-color: #fff;
+    box-shadow: 0 0 0 3px rgba(39, 58, 138, .07);
+}
+
+.aliados-report-filter-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.aliados-report-filter-actions .btn {
+    min-height: 39px;
+    white-space: nowrap;
+}
+
+.aliados-report-context-heading {
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.aliados-report-context-heading > span {
+    padding: 5px 8px;
+    border: 1px solid #dce4ef;
+    border-radius: 999px;
+    background: #f7f9fc;
+    color: #52617a;
+    font-size: 8.5px;
+    font-weight: 800;
+}
+
+.aliados-report-context-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 9px;
+}
+
+.aliados-report-context-grid > div {
+    min-width: 0;
+    padding: 10px 12px;
+    border: 1px solid var(--color-border, #dfe5ef);
+    border-radius: 9px;
+    background: #fbfcfe;
+}
+
+.aliados-report-context-grid span,
+.aliados-report-status-grid span {
+    display: block;
+    margin-bottom: 3px;
+    color: var(--color-text-soft, #6b7280);
+    font-size: 8.5px;
+    font-weight: 700;
+}
+
+.aliados-report-context-grid strong {
+    display: block;
+    overflow: hidden;
+    color: var(--color-text, #172642);
+    font-size: 10.5px;
+    font-weight: 800;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.aliados-report-kpi-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.aliados-report-kpi-grid .metric-card {
+    min-width: 0;
+    min-height: 104px;
+    padding: 13px 14px;
+    gap: 11px;
+}
+
+.aliados-report-kpi-grid .metric-card small {
+    display: block;
+    margin-top: 3px;
+    color: var(--color-text-soft, #6b7280);
+    font-size: 8px;
+    line-height: 1.3;
+}
+
+.aliados-report-icon-warning {
+    border-color: #ead8a7 !important;
+    background: #fff9ec !important;
+    color: #a66c08 !important;
+}
+
+.aliados-report-icon-danger {
+    border-color: #efcbc7 !important;
+    background: #fff2f0 !important;
+    color: #b44b43 !important;
+}
+
+.aliados-report-decision-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(320px, .8fr);
+    gap: 12px;
+}
+
+.aliados-report-section-heading {
+    margin-bottom: 12px;
+}
+
+.aliados-report-findings {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.aliados-report-findings li {
+    display: grid;
+    grid-template-columns: 22px minmax(0, 1fr);
+    align-items: start;
+    gap: 8px;
+    padding: 8px 10px;
+    border: 1px solid #e3e9f1;
+    border-radius: 9px;
+    background: #fbfcfe;
+}
+
+.aliados-report-findings i {
+    display: grid;
+    width: 20px;
+    height: 20px;
+    place-items: center;
+    border-radius: 6px;
+    background: #edf5f2;
+    color: #087e69;
+    font-size: 10px;
+}
+
+.aliados-report-findings span {
+    color: var(--color-text, #172642);
+    font-size: 9.5px;
+    line-height: 1.45;
+}
+
+.aliados-report-status-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.aliados-report-status-grid > div {
+    min-width: 0;
+    min-height: 74px;
+    padding: 11px 12px;
+    border: 1px solid var(--color-border, #dfe5ef);
+    border-radius: 9px;
+    background: #fbfcfe;
+}
+
+.aliados-report-status-grid strong {
+    display: block;
+    color: var(--color-navy, #172642);
+    font-size: 20px;
+    font-weight: 850;
+    line-height: 1;
+}
+
+.aliados-report-table-panel {
+    padding: 0;
+    overflow: hidden;
+}
+
+.aliados-report-table-panel .users-table th {
+    padding: 10px 12px;
+    font-size: 8px;
+    letter-spacing: .025em;
+}
+
+.aliados-report-table-panel .users-table td {
+    padding: 10px 12px;
+    font-size: 9px;
+    vertical-align: middle;
+}
+
+.aliados-report-table-panel .users-table td strong {
+    color: var(--color-text, #172642);
+    font-size: 9.5px;
+}
+
+.aliados-report-priority,
+.aliados-report-status {
+    display: inline-flex;
+    max-width: 100%;
+    align-items: center;
+    padding: 4px 7px;
+    border-radius: 999px;
+    background: #f2f4f7;
+    color: #677386;
+    font-size: 8px;
+    font-weight: 800;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+.aliados-report-priority.is-vencido,
+.aliados-report-status.is-overdue {
+    background: #fff0ee;
+    color: #b4463e;
+}
+
+.aliados-report-priority.is-informacion {
+    background: #fff5df;
+    color: #936311;
+}
+
+.aliados-report-priority.is-sin-respuesta {
+    background: #fff3ec;
+    color: #aa5b2e;
+}
+
+.aliados-report-priority.is-sin-difusion {
+    background: #f1f4f9;
+    color: #536789;
+}
+
+.aliados-report-bars {
+    display: grid;
+    gap: 10px;
+}
+
+.aliados-report-bar-row {
+    min-width: 0;
+}
+
+.aliados-report-bar-label {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 14px;
+    margin-bottom: 5px;
+}
+
+.aliados-report-bar-label > div {
+    display: grid;
+    gap: 1px;
+    min-width: 0;
+}
+
+.aliados-report-bar-label > div:last-child {
+    flex: 0 0 auto;
+    text-align: right;
+}
+
+.aliados-report-bar-label strong {
+    overflow: hidden;
+    color: var(--color-text, #172642);
+    font-size: 9.5px;
+    font-weight: 800;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.aliados-report-bar-label span {
+    color: var(--color-text-soft, #6b7280);
+    font-size: 8px;
+}
+
+.aliados-report-bar-track {
+    height: 7px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #e9edf4;
+}
+
+.aliados-report-bar-track > span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--color-primary, #273a8a);
+}
+
+@media (max-width: 1399.98px) {
+    .aliados-report-kpi-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 1199.98px) {
+    .aliados-report-filter-form {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .aliados-report-filter-actions {
+        grid-column: 1 / -1;
+    }
+
+    .aliados-report-decision-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 991.98px) {
+    .aliados-report-context-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 767.98px) {
+    .aliados-report-toolbar,
+    .aliados-report-filter-heading,
+    .aliados-report-section-heading,
+    .aliados-report-context-heading {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .aliados-report-filter-form,
+    .aliados-report-context-grid,
+    .aliados-report-kpi-grid,
+    .aliados-report-status-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .aliados-report-filter-actions {
+        display: grid;
+        grid-template-columns: 1fr;
+        grid-column: auto;
+    }
+
+    .aliados-report-filter-actions .btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .aliados-report-generated {
+        width: fit-content;
+    }
+}
