@@ -375,6 +375,8 @@ class AliadoController
         $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
         $esAdministrador = (int)($_SESSION['rol_id'] ?? 0) === 1;
         $seguimientoId = (int)($_GET['id'] ?? 0);
+        $seguimientoConvocatoriaId =
+            (int)($_GET['seguimiento_convocatoria_id'] ?? 0);
 
         if (!$modelo->seguimientoConvocatoriasDisponible()) {
             $this->responder([
@@ -397,11 +399,18 @@ class AliadoController
             ], 403);
         }
 
-        $seguimiento = $modelo->obtenerSeguimientoConvocatoriaActual(
-            $seguimientoId,
-            $usuarioId,
-            $esAdministrador
-        );
+        $seguimiento = $seguimientoConvocatoriaId > 0
+            ? $modelo->obtenerSeguimientoConvocatoriaPorId(
+                $seguimientoConvocatoriaId,
+                $seguimientoId,
+                $usuarioId,
+                $esAdministrador
+            )
+            : $modelo->obtenerSeguimientoConvocatoriaActual(
+                $seguimientoId,
+                $usuarioId,
+                $esAdministrador
+            );
 
         $this->responder([
             'ok' => true,
@@ -444,32 +453,20 @@ class AliadoController
             ], 403);
         }
 
-        $actual = $modelo->obtenerSeguimientoConvocatoriaActual(
-            $seguimientoId,
-            $usuarioId,
-            $esAdministrador
-        );
+        $actual = $seguimientoConvocatoriaId > 0
+            ? $modelo->obtenerSeguimientoConvocatoriaPorId(
+                $seguimientoConvocatoriaId,
+                $seguimientoId,
+                $usuarioId,
+                $esAdministrador
+            )
+            : null;
 
-        if (
-            !$actual ||
-            (int)($actual['seguimiento_convocatoria_id'] ?? 0) <= 0
-        ) {
+        if (!$actual) {
             $this->responder([
                 'ok' => false,
                 'mensaje' =>
-                    'Este aliado todavía no tiene una convocatoria compartida para dar seguimiento.'
-            ], 409);
-        }
-
-        if (
-            $seguimientoConvocatoriaId <= 0 ||
-            $seguimientoConvocatoriaId !==
-                (int)$actual['seguimiento_convocatoria_id']
-        ) {
-            $this->responder([
-                'ok' => false,
-                'mensaje' =>
-                    'El seguimiento cambió porque existe una difusión más reciente. Actualiza la información e inténtalo de nuevo.'
+                    'Este seguimiento ya no está disponible o no pertenece al aliado seleccionado.'
             ], 409);
         }
 
@@ -550,7 +547,8 @@ class AliadoController
         }
 
         $seguimientoActualizado =
-            $modelo->obtenerSeguimientoConvocatoriaActual(
+            $modelo->obtenerSeguimientoConvocatoriaPorId(
+                $seguimientoConvocatoriaId,
                 $seguimientoId,
                 $usuarioId,
                 $esAdministrador
