@@ -149,6 +149,63 @@
     color: #087e69;
 }
 
+.aliados-attention-chip {
+    display: inline-flex;
+    min-height: 28px;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 9px;
+    border: 1px solid #dfe5ef;
+    border-radius: 999px;
+    background: #fff;
+    color: #5f6f88;
+    font-size: 8.5px;
+    font-weight: 700;
+    white-space: nowrap;
+    cursor: pointer;
+    transition:
+        border-color .16s ease,
+        background-color .16s ease,
+        color .16s ease,
+        box-shadow .16s ease;
+}
+
+.aliados-attention-chip i {
+    color: var(--color-primary, #273a8a);
+    font-size: 9px;
+}
+
+.aliados-attention-chip strong {
+    color: var(--color-text, #172642);
+    font-size: 9px;
+}
+
+.aliados-attention-chip:hover,
+.aliados-attention-chip.is-active {
+    border-color: #bfcbe4;
+    background: #f2f5fb;
+    color: var(--color-primary, #273a8a);
+    box-shadow: 0 0 0 2px rgba(39, 58, 138, .05);
+}
+
+.aliados-attention-chip.is-overdue {
+    border-color: #f0d4d1;
+    background: #fff8f7;
+    color: #a94b44;
+}
+
+.aliados-attention-chip.is-overdue i,
+.aliados-attention-chip.is-overdue strong {
+    color: #b84d45;
+}
+
+.aliados-attention-chip.is-overdue:hover,
+.aliados-attention-chip.is-overdue.is-active {
+    border-color: #e6bdb9;
+    background: #fff0ee;
+    color: #a33f38;
+}
+
 .aliados-result-count {
     border: 1px solid var(--color-border, #dfe5ef);
     background: #f8fafc;
