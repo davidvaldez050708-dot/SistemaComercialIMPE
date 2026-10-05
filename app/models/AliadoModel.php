@@ -735,13 +735,28 @@ class AliadoModel
                     ON vinculacion.id = seguimiento.seguimiento_id
                 WHERE seguimiento.responsable_usuario_id = ?
                   AND seguimiento.activo = 1
+                  AND vinculacion.activo = 1
                   AND seguimiento.proximo_seguimiento_at IS NOT NULL
+                  AND seguimiento.proximo_seguimiento_at <=
+                      DATE_ADD(NOW(), INTERVAL 24 HOUR)
                   AND seguimiento.estado NOT IN (
                       'DIFUSION_CONFIRMADA',
                       'NO_PARTICIPARA'
                   )
                 ORDER BY
-                    seguimiento.proximo_seguimiento_at ASC,
+                    CASE
+                        WHEN seguimiento.proximo_seguimiento_at < NOW()
+                        THEN 0
+                        ELSE 1
+                    END ASC,
+                    CASE
+                        WHEN seguimiento.proximo_seguimiento_at < NOW()
+                        THEN seguimiento.proximo_seguimiento_at
+                    END DESC,
+                    CASE
+                        WHEN seguimiento.proximo_seguimiento_at >= NOW()
+                        THEN seguimiento.proximo_seguimiento_at
+                    END ASC,
                     seguimiento.id ASC
                 LIMIT ?";
 
