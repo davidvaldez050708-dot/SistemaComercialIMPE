@@ -540,6 +540,17 @@ switch ($controller) {
         break;
 
 
+    case 'aliadoReporte':
+
+        require_once __DIR__ .
+            '/app/controllers/AliadoReporteController.php';
+
+        $controllerInstance =
+            new AliadoReporteController();
+
+        break;
+
+
     case 'whatsapp':
 
         require_once __DIR__ .
