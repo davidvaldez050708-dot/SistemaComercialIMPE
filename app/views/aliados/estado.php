@@ -21,6 +21,8 @@ $estructuraContactosDisponible = $estructuraContactosDisponible ?? false;
 $puedeAbrirExpediente = $puedeAbrirExpediente ?? false;
 $puedeUsarWhatsapp = $puedeUsarWhatsapp ?? false;
 $puedePrepararWhatsapp = $puedePrepararWhatsapp ?? false;
+$puedeSeguimientoConvocatorias =
+    $puedeSeguimientoConvocatorias ?? false;
 
 $texto = static function ($valor) {
     return htmlspecialchars((string)$valor, ENT_QUOTES, 'UTF-8');
@@ -60,6 +62,38 @@ $normalizarNumeroVista = static function ($valor) {
     }
 
     return $digitos;
+};
+
+$seguimientoVista = static function ($estado) {
+    $estado = strtoupper(trim((string)$estado));
+
+    $mapa = [
+        'ESPERANDO_RESPUESTA' => [
+            'label' => 'Esperando respuesta',
+            'class' => 'is-waiting'
+        ],
+        'DIFUSION_CONFIRMADA' => [
+            'label' => 'Difusión confirmada',
+            'class' => 'is-confirmed'
+        ],
+        'SOLICITA_INFORMACION' => [
+            'label' => 'Solicita información',
+            'class' => 'is-attention'
+        ],
+        'NO_PARTICIPARA' => [
+            'label' => 'No participará',
+            'class' => 'is-closed'
+        ],
+        'SIN_RESPUESTA' => [
+            'label' => 'Sin respuesta',
+            'class' => 'is-no-response'
+        ]
+    ];
+
+    return $mapa[$estado] ?? [
+        'label' => 'Sin seguimiento',
+        'class' => 'is-empty'
+    ];
 };
 
 ?>
@@ -276,6 +310,7 @@ $normalizarNumeroVista = static function ($valor) {
                                         <th>Analista de origen</th>
                                         <th>Formalización</th>
                                         <th>Última difusión</th>
+                                        <th>Seguimiento</th>
                                         <th class="text-end">Acciones</th>
                                     </tr>
                                 </thead>
@@ -321,9 +356,37 @@ $normalizarNumeroVista = static function ($valor) {
                                         $puedeCompartirAliado =
                                             $correoDisponible ||
                                             $whatsappManualDisponible;
+                                        $estadoSeguimiento =
+                                            strtoupper(trim((string)(
+                                                $aliado['seguimiento_convocatoria_estado'] ?? ''
+                                            )));
+                                        $seguimientoActual =
+                                            $seguimientoVista($estadoSeguimiento);
+                                        $proximoSeguimientoAt = trim((string)(
+                                            $aliado['proximo_seguimiento_at'] ?? ''
+                                        ));
+                                        $proximoSeguimientoTimestamp =
+                                            $proximoSeguimientoAt !== ''
+                                                ? strtotime($proximoSeguimientoAt)
+                                                : false;
+                                        $seguimientoVencido =
+                                            $proximoSeguimientoTimestamp !== false &&
+                                            $proximoSeguimientoTimestamp <= time() &&
+                                            !in_array(
+                                                $estadoSeguimiento,
+                                                [
+                                                    'DIFUSION_CONFIRMADA',
+                                                    'NO_PARTICIPARA'
+                                                ],
+                                                true
+                                            );
+                                        $puedeAbrirSeguimiento =
+                                            $puedeSeguimientoConvocatorias &&
+                                            !empty($aliado['ultimo_envio_id']);
                                         $mostrarAccionesSecundarias =
                                             $puedeGestionarContactos ||
                                             $puedeVerHistorial ||
+                                            $puedeAbrirSeguimiento ||
                                             $puedeAbrirExpediente ||
                                             (
                                                 $puedeUsarWhatsapp &&
@@ -416,6 +479,50 @@ $normalizarNumeroVista = static function ($valor) {
                                                 <?php endif; ?>
                                             </td>
 
+                                            <td>
+                                                <?php if (!empty($aliado['ultimo_envio_id'])): ?>
+                                                    <?php if ($puedeAbrirSeguimiento): ?>
+                                                        <button
+                                                            type="button"
+                                                            class="aliados-followup-summary <?= $texto($seguimientoActual['class']) ?> <?= $seguimientoVencido ? 'is-overdue' : '' ?>"
+                                                            data-aliado-followup="<?= (int)$aliado['seguimiento_id'] ?>"
+                                                            title="Abrir seguimiento de la convocatoria">
+                                                            <span class="aliados-followup-pill">
+                                                                <?= $texto(
+                                                                    $seguimientoVencido
+                                                                        ? 'Seguimiento vencido'
+                                                                        : $seguimientoActual['label']
+                                                                ) ?>
+                                                            </span>
+                                                            <?php if ($proximoSeguimientoAt !== ''): ?>
+                                                                <small>
+                                                                    <i class="bi bi-clock"></i>
+                                                                    <?= $texto($fechaHora($proximoSeguimientoAt)) ?>
+                                                                </small>
+                                                            <?php else: ?>
+                                                                <small>
+                                                                    <?= in_array(
+                                                                        $estadoSeguimiento,
+                                                                        ['DIFUSION_CONFIRMADA', 'NO_PARTICIPARA'],
+                                                                        true
+                                                                    )
+                                                                        ? 'Seguimiento cerrado'
+                                                                        : 'Sin recordatorio programado' ?>
+                                                                </small>
+                                                            <?php endif; ?>
+                                                        </button>
+                                                    <?php else: ?>
+                                                        <div class="aliados-followup-summary <?= $texto($seguimientoActual['class']) ?>">
+                                                            <span class="aliados-followup-pill">
+                                                                <?= $texto($seguimientoActual['label']) ?>
+                                                            </span>
+                                                        </div>
+                                                    <?php endif; ?>
+                                                <?php else: ?>
+                                                    <span class="aliados-no-send">Sin seguimiento</span>
+                                                <?php endif; ?>
+                                            </td>
+
                                             <td class="text-end">
                                                 <div class="aliados-actions">
                                                     <?php if ($puedeCompartirCorreo || $puedePrepararWhatsapp): ?>
@@ -454,6 +561,18 @@ $normalizarNumeroVista = static function ($valor) {
                                                                             data-aliado-contacts="<?= (int)$aliado['seguimiento_id'] ?>">
                                                                             <i class="bi bi-person-lines-fill"></i>
                                                                             <span>Gestionar contactos</span>
+                                                                        </button>
+                                                                    </li>
+                                                                <?php endif; ?>
+
+                                                                <?php if ($puedeAbrirSeguimiento): ?>
+                                                                    <li>
+                                                                        <button
+                                                                            type="button"
+                                                                            class="dropdown-item"
+                                                                            data-aliado-followup="<?= (int)$aliado['seguimiento_id'] ?>">
+                                                                            <i class="bi bi-chat-square-text"></i>
+                                                                            <span>Seguimiento de convocatoria</span>
                                                                         </button>
                                                                     </li>
                                                                 <?php endif; ?>
@@ -828,6 +947,154 @@ $normalizarNumeroVista = static function ($valor) {
                         </div>
                     </form>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div
+    class="modal fade"
+    id="modalAliadoSeguimiento"
+    tabindex="-1"
+    aria-labelledby="modalAliadoSeguimientoTitulo"
+    aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content aliados-modal aliados-followup-modal">
+            <div class="modal-header">
+                <div>
+                    <span class="aliados-eyebrow">SEGUIMIENTO DE CONVOCATORIA</span>
+                    <h2 class="modal-title" id="modalAliadoSeguimientoTitulo">
+                        Respuesta del aliado
+                    </h2>
+                    <p data-aliado-followup-context>
+                        Consulta el último envío y registra únicamente lo relevante.
+                    </p>
+                </div>
+                <button
+                    type="button"
+                    class="btn-close"
+                    data-bs-dismiss="modal"
+                    aria-label="Cerrar">
+                </button>
+            </div>
+
+            <div class="modal-body">
+                <div class="aliados-followup-loading" data-aliado-followup-loading>
+                    <i class="bi bi-arrow-repeat"></i>
+                    Consultando seguimiento…
+                </div>
+
+                <div class="aliados-followup-empty d-none" data-aliado-followup-empty>
+                    <i class="bi bi-send-check"></i>
+                    <strong>Primero comparte una convocatoria</strong>
+                    <span>
+                        El seguimiento se habilita después de registrar una difusión exitosa.
+                    </span>
+                </div>
+
+                <div class="d-none" data-aliado-followup-content>
+                    <div class="aliados-followup-source">
+                        <div>
+                            <span>Convocatoria</span>
+                            <strong data-aliado-followup-convocatoria>—</strong>
+                        </div>
+                        <div>
+                            <span>Compartida por</span>
+                            <strong data-aliado-followup-canal>—</strong>
+                        </div>
+                        <div>
+                            <span>Fecha</span>
+                            <strong data-aliado-followup-envio>—</strong>
+                        </div>
+                    </div>
+
+                    <form data-aliado-followup-form>
+                        <input type="hidden" name="seguimiento_id" value="">
+                        <input
+                            type="hidden"
+                            name="seguimiento_convocatoria_id"
+                            value="">
+
+                        <div class="aliados-followup-grid">
+                            <div>
+                                <label class="form-label" for="aliado_seguimiento_estado">
+                                    Respuesta / situación actual
+                                </label>
+                                <select
+                                    class="form-select"
+                                    id="aliado_seguimiento_estado"
+                                    name="estado"
+                                    required>
+                                    <option value="ESPERANDO_RESPUESTA">Esperando respuesta</option>
+                                    <option value="DIFUSION_CONFIRMADA">La institución confirmó la difusión</option>
+                                    <option value="SOLICITA_INFORMACION">Solicita información</option>
+                                    <option value="SIN_RESPUESTA">Sin respuesta</option>
+                                    <option value="NO_PARTICIPARA">No participará</option>
+                                </select>
+                                <small class="aliados-followup-state-help" data-aliado-followup-state-help>
+                                    La convocatoria fue compartida y estamos esperando respuesta.
+                                </small>
+                            </div>
+
+                            <div data-aliado-followup-next-wrap>
+                                <label class="form-label" for="aliado_seguimiento_proximo">
+                                    Volver a escribir por WhatsApp
+                                </label>
+                                <input
+                                    type="datetime-local"
+                                    class="form-control"
+                                    id="aliado_seguimiento_proximo"
+                                    name="proximo_seguimiento_at">
+                                <small class="aliados-followup-state-help">
+                                    Opcional. Si indicas una fecha, aparecerá en notificaciones.
+                                </small>
+                            </div>
+                        </div>
+
+                        <div class="aliados-followup-note">
+                            <label class="form-label" for="aliado_seguimiento_nota">
+                                Nota breve
+                            </label>
+                            <textarea
+                                class="form-control"
+                                id="aliado_seguimiento_nota"
+                                name="nota"
+                                rows="3"
+                                maxlength="1000"
+                                placeholder="Ej. Confirmó que la compartirá con alumnos y docentes."></textarea>
+                            <small>
+                                Registra solo el contexto útil; no es necesario copiar toda la conversación de WhatsApp.
+                            </small>
+                        </div>
+
+                        <div class="aliados-followup-status d-none" data-aliado-followup-status></div>
+                    </form>
+
+                    <div class="aliados-followup-events">
+                        <div class="aliados-followup-events-heading">
+                            <strong>Actividad reciente</strong>
+                            <span>Últimos cambios de este seguimiento</span>
+                        </div>
+                        <div data-aliado-followup-events></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button
+                    type="button"
+                    class="btn aliados-btn-secondary"
+                    data-bs-dismiss="modal">
+                    Cancelar
+                </button>
+                <button
+                    type="button"
+                    class="btn aliados-btn-primary"
+                    data-aliado-followup-save
+                    disabled>
+                    <i class="bi bi-check2-circle"></i>
+                    Guardar seguimiento
+                </button>
             </div>
         </div>
     </div>
