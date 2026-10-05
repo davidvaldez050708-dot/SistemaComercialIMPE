@@ -339,8 +339,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     };
 
-    const loadFollowup = async function (allyId) {
+    const loadFollowup = async function (allyId, trackingId) {
         const id = Number(allyId || 0);
+        const requestedTrackingId = Number(trackingId || 0);
         if (id <= 0 || loadingRequest) {
             return;
         }
@@ -351,7 +352,11 @@ document.addEventListener('DOMContentLoaded', function () {
         modal.show();
 
         const data = await requestJson(
-            endpoint('seguimientoConvocatoria', { id: currentAllyId }),
+            endpoint('seguimientoConvocatoria', {
+                id: currentAllyId,
+                seguimiento_convocatoria_id:
+                    requestedTrackingId > 0 ? requestedTrackingId : ''
+            }),
             {
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest'
@@ -437,6 +442,7 @@ document.addEventListener('DOMContentLoaded', function () {
         window.setTimeout(function () {
             const url = new URL(window.location.href);
             url.searchParams.delete('abrir_seguimiento');
+            url.searchParams.delete('seguimiento_convocatoria_id');
             window.history.replaceState({}, '', url.toString());
             window.location.reload();
         }, 700);
@@ -455,13 +461,17 @@ document.addEventListener('DOMContentLoaded', function () {
     stateSelect?.addEventListener('change', syncStateUi);
     saveButton?.addEventListener('click', saveFollowup);
 
+    const initialUrl = new URL(window.location.href);
     const initialAllyId = Number(
-        new URL(window.location.href).searchParams.get('abrir_seguimiento') || 0
+        initialUrl.searchParams.get('abrir_seguimiento') || 0
+    );
+    const initialTrackingId = Number(
+        initialUrl.searchParams.get('seguimiento_convocatoria_id') || 0
     );
 
     if (initialAllyId > 0) {
         window.setTimeout(function () {
-            loadFollowup(initialAllyId);
+            loadFollowup(initialAllyId, initialTrackingId);
         }, 120);
     }
 });
