@@ -31,6 +31,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
         municipalitySelect.disabled = stateId <= 0;
 
+        const defaultOption = municipalitySelect.querySelector(
+            'option[value="0"]'
+        );
+        if (defaultOption) {
+            defaultOption.textContent =
+                stateId > 0 ? 'Todos' : 'Selecciona un estado primero';
+        }
+
         if (stateId <= 0 || !currentStillAvailable) {
             municipalitySelect.value = '0';
         }
