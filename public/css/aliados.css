@@ -1783,6 +1783,16 @@ button.aliados-followup-summary:hover .aliados-followup-pill {
     background: #fff;
 }
 
+.aliados-state-module [data-aliados-table-wrap] {
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+
+.aliados-actions-dropdown-portal {
+    max-height: calc(100vh - 16px);
+    overflow-y: auto;
+}
+
 .aliados-state-module .aliados-table tbody tr:last-child td {
     border-bottom: 0;
 }
