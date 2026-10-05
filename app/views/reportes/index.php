@@ -3,6 +3,7 @@ $puedeReporteTerritorial = $puedeReporteTerritorial ?? false;
 $puedeReporteSeguimiento = $puedeReporteSeguimiento ?? false;
 $puedeReporteAdministrador = $puedeReporteAdministrador ?? false;
 $puedeReporteConvocatorias = $puedeReporteConvocatorias ?? false;
+$puedeReporteAliados = $puedeReporteAliados ?? false;
 $tiposReporteSeguimiento = $tiposReporteSeguimiento ?? [];
 $puedeExportarReportes = tienePermiso('reportes.exportar');
 ?>
@@ -99,6 +100,41 @@ $puedeExportarReportes = tienePermiso('reportes.exportar');
                 </a>
                 <span class="report-card-decoration report-card-decoration--seguimiento" aria-hidden="true">
                     <i class="bi bi-bar-chart-fill"></i>
+                </span>
+            </article>
+        <?php endif; ?>
+
+        <?php if ($puedeReporteAliados): ?>
+            <article class="dashboard-panel report-catalog-card report-catalog-card--seguimiento">
+                <div class="report-card-heading">
+                    <span class="metric-icon report-card-icon">
+                        <i class="bi bi-diagram-3"></i>
+                    </span>
+                    <div>
+                        <span class="report-card-kicker">ALIADOS</span>
+                        <h3>Reporte de aliados</h3>
+                    </div>
+                </div>
+
+                <p class="report-card-description">
+                    Analiza la cobertura de la red institucional, difusión de convocatorias,
+                    seguimiento pendiente y aliados que requieren atención dentro de tus territorios.
+                </p>
+
+                <div class="report-card-meta">
+                    <span><i class="bi bi-map"></i> Cobertura por estado y municipio</span>
+                    <span><i class="bi bi-chat-square-text"></i> Seguimiento y prioridades</span>
+                    <span><i class="bi bi-lightbulb"></i> Hallazgos para toma de decisiones</span>
+                </div>
+
+                <a
+                    class="btn btn-system-save report-card-action"
+                    href="<?= BASE_URL ?>index.php?controller=aliadoReporte&action=index">
+                    <i class="bi bi-arrow-right-circle" aria-hidden="true"></i>
+                    <span>Generar reporte</span>
+                </a>
+                <span class="report-card-decoration report-card-decoration--seguimiento" aria-hidden="true">
+                    <i class="bi bi-diagram-3-fill"></i>
                 </span>
             </article>
         <?php endif; ?>
