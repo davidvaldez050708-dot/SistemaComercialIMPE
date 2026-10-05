@@ -4,6 +4,8 @@ $territorios = is_array($territorios ?? null) ? $territorios : [];
 $municipios = is_array($municipios ?? null) ? $municipios : [];
 $filtrosReporte = is_array($filtrosReporte ?? null) ? $filtrosReporte : [];
 $generarReporte = (bool)($generarReporte ?? false);
+$urlExportarPdf = (string)($urlExportarPdf ?? '');
+$errorExportacionPdf = (string)($errorExportacionPdf ?? '');
 $reporteAliados = is_array($reporteAliados ?? null)
     ? $reporteAliados
     : [];
@@ -136,6 +138,13 @@ if ($modoAnalisis === 'estado') {
         Volver a Reportes
     </a>
 
+    <?php if ($errorExportacionPdf !== ''): ?>
+        <div class="alert alert-danger login-alert mb-3" role="alert">
+            <i class="bi bi-exclamation-circle"></i>
+            <span><?= $texto($errorExportacionPdf) ?></span>
+        </div>
+    <?php endif; ?>
+
     <?php if (!$generarReporte): ?>
         <section class="dashboard-panel report-filter-panel aliados-report-generator mb-4">
             <div class="report-filter-heading">
@@ -180,6 +189,14 @@ if ($modoAnalisis === 'estado') {
                     <i class="bi bi-sliders"></i>
                     Editar filtros
                 </button>
+                <?php if ($urlExportarPdf !== ''): ?>
+                    <a
+                        class="btn btn-system-save"
+                        href="<?= $texto($urlExportarPdf) ?>">
+                        <i class="bi bi-file-earmark-pdf"></i>
+                        Generar PDF
+                    </a>
+                <?php endif; ?>
                 <span class="aliados-report-generated">
                     <i class="bi bi-check2-circle"></i>
                     Actualizado <?= $texto(date('H:i')) ?>
