@@ -39,8 +39,7 @@ class AliadoReporteController
 
         $aliadosParaMunicipios = $modeloAliado->obtenerListado(
             $usuarioId,
-            $esAdministrador,
-            $estadoId > 0 ? ['estado_id' => $estadoId] : []
+            $esAdministrador
         );
 
         $municipios = [];
@@ -77,7 +76,17 @@ class AliadoReporteController
         });
 
         $municipioId = max(0, (int)($_GET['municipio_id'] ?? 0));
-        if ($municipioId > 0 && !isset($municipios[$municipioId])) {
+        if (
+            $municipioId > 0 &&
+            (
+                !isset($municipios[$municipioId]) ||
+                (
+                    $estadoId > 0 &&
+                    (int)($municipios[$municipioId]['estado_id'] ?? 0) !==
+                        $estadoId
+                )
+            )
+        ) {
             $municipioId = 0;
         }
 
