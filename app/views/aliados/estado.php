@@ -9,7 +9,9 @@ $resumenAliados = $resumenAliados ?? [
     'municipios' => 0,
     'con_correo' => 0,
     'con_whatsapp' => 0,
-    'convocatorias_vigentes' => 0
+    'convocatorias_vigentes' => 0,
+    'seguimientos_pendientes' => 0,
+    'seguimientos_vencidos' => 0
 ];
 $filtros = $filtros ?? [];
 $estructuraAliadosDisponible = $estructuraAliadosDisponible ?? false;
@@ -185,10 +187,38 @@ $seguimientoVista = static function ($estado) {
                 </div>
 
                 <div class="aliados-directory-meta">
-                    <span class="aliados-source-chip">
-                        <i class="bi bi-patch-check"></i>
-                        Convenio formalizado
-                    </span>
+                    <?php if (
+                        $puedeSeguimientoConvocatorias &&
+                        (int)$resumenAliados['seguimientos_pendientes'] > 0
+                    ): ?>
+                        <button
+                            type="button"
+                            class="aliados-attention-chip"
+                            data-aliados-followup-filter="pendientes"
+                            aria-pressed="false"
+                            title="Mostrar aliados con seguimiento pendiente">
+                            <i class="bi bi-chat-square-text"></i>
+                            <strong><?= (int)$resumenAliados['seguimientos_pendientes'] ?></strong>
+                            pendiente<?= (int)$resumenAliados['seguimientos_pendientes'] === 1 ? '' : 's' ?>
+                        </button>
+                    <?php endif; ?>
+
+                    <?php if (
+                        $puedeSeguimientoConvocatorias &&
+                        (int)$resumenAliados['seguimientos_vencidos'] > 0
+                    ): ?>
+                        <button
+                            type="button"
+                            class="aliados-attention-chip is-overdue"
+                            data-aliados-followup-filter="vencidos"
+                            aria-pressed="false"
+                            title="Mostrar seguimientos vencidos">
+                            <i class="bi bi-exclamation-circle"></i>
+                            <strong><?= (int)$resumenAliados['seguimientos_vencidos'] ?></strong>
+                            vencido<?= (int)$resumenAliados['seguimientos_vencidos'] === 1 ? '' : 's' ?>
+                        </button>
+                    <?php endif; ?>
+
                     <span class="aliados-result-count" data-aliados-result-count>
                         <?= count($aliados) ?> resultado<?= count($aliados) === 1 ? '' : 's' ?>
                     </span>
@@ -380,6 +410,16 @@ $seguimientoVista = static function ($estado) {
                                                 ],
                                                 true
                                             );
+                                        $seguimientoPendiente =
+                                            $estadoSeguimiento !== '' &&
+                                            !in_array(
+                                                $estadoSeguimiento,
+                                                [
+                                                    'DIFUSION_CONFIRMADA',
+                                                    'NO_PARTICIPARA'
+                                                ],
+                                                true
+                                            );
                                         $puedeAbrirSeguimiento =
                                             $puedeSeguimientoConvocatorias &&
                                             !empty($aliado['ultimo_envio_id']);
@@ -400,6 +440,9 @@ $seguimientoVista = static function ($estado) {
                                             data-municipio-id="<?= (int)($aliado['municipio_id'] ?? 0) ?>"
                                             data-analista-id="<?= (int)($aliado['analista_id'] ?? 0) ?>"
                                             data-tiene-difusion="<?= !empty($aliado['ultimo_envio_id']) ? '1' : '0' ?>"
+                                            data-seguimiento-estado="<?= $texto($estadoSeguimiento) ?>"
+                                            data-seguimiento-pendiente="<?= $seguimientoPendiente ? '1' : '0' ?>"
+                                            data-seguimiento-vencido="<?= $seguimientoVencido ? '1' : '0' ?>"
                                             data-formalizado-at="<?= $texto(substr((string)($aliado['convenio_formalizado_at'] ?? ''), 0, 10)) ?>">
                                             <td>
                                                 <div class="aliados-institution-cell">
