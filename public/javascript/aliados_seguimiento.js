@@ -223,7 +223,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        const events = Array.isArray(items) ? items.slice(0, 5) : [];
+        const events = Array.isArray(items) ? items.slice(0, 12) : [];
 
         if (events.length === 0) {
             eventsRoot.innerHTML =
@@ -235,13 +235,34 @@ document.addEventListener('DOMContentLoaded', function () {
             const next = String(item.proximo_seguimiento_at || '').trim();
             const note = String(item.nota || '').trim();
             const author = String(item.usuario_nombre || '').trim();
+            const previousState = String(
+                item.estado_anterior || ''
+            ).toUpperCase();
+            const currentState = String(
+                item.estado_nuevo || ''
+            ).toUpperCase();
+
+            let eventTitle = stateLabel(currentState);
+
+            if (
+                previousState !== '' &&
+                previousState === currentState
+            ) {
+                if (next !== '') {
+                    eventTitle = 'Seguimiento programado';
+                } else if (note !== '') {
+                    eventTitle = 'Nota actualizada';
+                } else {
+                    eventTitle = 'Seguimiento actualizado';
+                }
+            }
 
             return (
                 '<div class="aliados-followup-event">' +
                     '<span class="aliados-followup-event-dot"></span>' +
                     '<div>' +
                         '<div class="aliados-followup-event-top">' +
-                            '<strong>' + escapeHtml(stateLabel(item.estado_nuevo)) + '</strong>' +
+                            '<strong>' + escapeHtml(eventTitle) + '</strong>' +
                             '<span>' + escapeHtml(formatDateTime(item.created_at)) + '</span>' +
                         '</div>' +
                         (note !== ''
