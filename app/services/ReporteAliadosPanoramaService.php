@@ -30,6 +30,10 @@ class ReporteAliadosPanoramaService
             (string)($filtros['situacion'] ?? 'todos')
         );
 
+        $modoAnalisis = $municipioId > 0
+            ? 'municipio'
+            : ($estadoId > 0 ? 'estado' : 'red');
+
         $aliados = $this->modelo->obtenerListado(
             $usuarioId,
             $esAdministrador,
@@ -57,6 +61,7 @@ class ReporteAliadosPanoramaService
             'sin_difusion' => 0,
             'pendientes' => 0,
             'vencidos' => 0,
+            'requieren_atencion' => 0,
             'esperando_respuesta' => 0,
             'sin_respuesta' => 0,
             'solicita_informacion' => 0,
@@ -151,6 +156,10 @@ class ReporteAliadosPanoramaService
                     'aliados' => 0,
                     'municipios' => [],
                     'con_difusion' => 0,
+                    'difusion_confirmada' => 0,
+                    'sin_respuesta' => 0,
+                    'solicita_informacion' => 0,
+                    'con_whatsapp' => 0,
                     'pendientes' => 0,
                     'vencidos' => 0
                 ];
@@ -162,6 +171,18 @@ class ReporteAliadosPanoramaService
             }
             if ($tieneDifusion) {
                 $porEstado[$estadoTerritorioId]['con_difusion']++;
+            }
+            if ($estadoSeguimiento === 'DIFUSION_CONFIRMADA') {
+                $porEstado[$estadoTerritorioId]['difusion_confirmada']++;
+            }
+            if ($estadoSeguimiento === 'SIN_RESPUESTA') {
+                $porEstado[$estadoTerritorioId]['sin_respuesta']++;
+            }
+            if ($estadoSeguimiento === 'SOLICITA_INFORMACION') {
+                $porEstado[$estadoTerritorioId]['solicita_informacion']++;
+            }
+            if ($tieneWhatsapp) {
+                $porEstado[$estadoTerritorioId]['con_whatsapp']++;
             }
             if ($pendiente) {
                 $porEstado[$estadoTerritorioId]['pendientes']++;
@@ -183,6 +204,10 @@ class ReporteAliadosPanoramaService
                         : 'Sin municipio',
                     'aliados' => 0,
                     'con_difusion' => 0,
+                    'difusion_confirmada' => 0,
+                    'sin_respuesta' => 0,
+                    'solicita_informacion' => 0,
+                    'con_whatsapp' => 0,
                     'pendientes' => 0,
                     'vencidos' => 0
                 ];
@@ -191,6 +216,18 @@ class ReporteAliadosPanoramaService
             $porMunicipio[$claveMunicipio]['aliados']++;
             if ($tieneDifusion) {
                 $porMunicipio[$claveMunicipio]['con_difusion']++;
+            }
+            if ($estadoSeguimiento === 'DIFUSION_CONFIRMADA') {
+                $porMunicipio[$claveMunicipio]['difusion_confirmada']++;
+            }
+            if ($estadoSeguimiento === 'SIN_RESPUESTA') {
+                $porMunicipio[$claveMunicipio]['sin_respuesta']++;
+            }
+            if ($estadoSeguimiento === 'SOLICITA_INFORMACION') {
+                $porMunicipio[$claveMunicipio]['solicita_informacion']++;
+            }
+            if ($tieneWhatsapp) {
+                $porMunicipio[$claveMunicipio]['con_whatsapp']++;
             }
             if ($pendiente) {
                 $porMunicipio[$claveMunicipio]['pendientes']++;
@@ -238,6 +275,8 @@ class ReporteAliadosPanoramaService
             );
 
             if ($prioridad !== null) {
+                $resumen['requieren_atencion']++;
+
                 $atencion[] = [
                     'prioridad' => $prioridad['orden'],
                     'tipo' => $prioridad['tipo'],
@@ -293,6 +332,16 @@ class ReporteAliadosPanoramaService
                         1
                     )
                     : 0;
+            $filaEstado['tasa_confirmacion'] =
+                $filaEstado['con_difusion'] > 0
+                    ? round(
+                        (
+                            $filaEstado['difusion_confirmada'] /
+                            $filaEstado['con_difusion']
+                        ) * 100,
+                        1
+                    )
+                    : 0;
         }
         unset($filaEstado);
 
@@ -303,6 +352,16 @@ class ReporteAliadosPanoramaService
                         (
                             $filaMunicipio['con_difusion'] /
                             $filaMunicipio['aliados']
+                        ) * 100,
+                        1
+                    )
+                    : 0;
+            $filaMunicipio['tasa_confirmacion'] =
+                $filaMunicipio['con_difusion'] > 0
+                    ? round(
+                        (
+                            $filaMunicipio['difusion_confirmada'] /
+                            $filaMunicipio['con_difusion']
                         ) * 100,
                         1
                     )
@@ -380,9 +439,12 @@ class ReporteAliadosPanoramaService
             'por_municipio' => $porMunicipio,
             'atencion' => $atencion,
             'detalle' => $detalle,
+            'modo' => $modoAnalisis,
             'hallazgos' => $this->construirHallazgos(
                 $resumen,
-                $porMunicipio
+                $porEstado,
+                $porMunicipio,
+                $modoAnalisis
             ),
             'filtros' => [
                 'estado_id' => $estadoId,
@@ -552,8 +614,12 @@ class ReporteAliadosPanoramaService
         return null;
     }
 
-    private function construirHallazgos(array $resumen, array $municipios)
-    {
+    private function construirHallazgos(
+        array $resumen,
+        array $estados,
+        array $municipios,
+        $modo
+    ) {
         if ((int)($resumen['total'] ?? 0) <= 0) {
             return [
                 'No hay aliados que coincidan con los filtros seleccionados.'
@@ -561,74 +627,147 @@ class ReporteAliadosPanoramaService
         }
 
         $hallazgos = [];
-        $totalAliados = (int)$resumen['total'];
-        $totalMunicipios = (int)$resumen['municipios'];
-        $totalEstados = (int)$resumen['estados'];
+        $totalAliados = (int)($resumen['total'] ?? 0);
+        $totalMunicipios = (int)($resumen['municipios'] ?? 0);
+        $totalEstados = (int)($resumen['estados'] ?? 0);
+        $modo = (string)$modo;
 
-        $hallazgos[] =
-            'La red analizada reúne ' .
-            $totalAliados . ' ' .
-            ($totalAliados === 1 ? 'aliado' : 'aliados') . ' en ' .
-            $totalMunicipios . ' ' .
-            ($totalMunicipios === 1 ? 'municipio' : 'municipios') . ' y ' .
-            $totalEstados . ' ' .
-            ($totalEstados === 1 ? 'estado' : 'estados') . '.';
-
-        $hallazgos[] =
-            number_format((float)$resumen['cobertura_difusion'], 1) .
-            '% de los aliados ya registra al menos una difusión de convocatoria.';
-
-        if ((int)$resumen['vencidos'] > 0) {
+        if ($modo === 'red') {
             $hallazgos[] =
-                'Hay ' . (int)$resumen['vencidos'] .
-                ' ' .
-                ((int)$resumen['vencidos'] === 1
-                    ? 'seguimiento vencido que requiere atención prioritaria.'
-                    : 'seguimientos vencidos que requieren atención prioritaria.');
-        } elseif ((int)$resumen['pendientes'] > 0) {
+                'La red supervisada reúne ' . $totalAliados . ' ' .
+                ($totalAliados === 1 ? 'aliado' : 'aliados') . ' en ' .
+                $totalEstados . ' ' .
+                ($totalEstados === 1 ? 'estado' : 'estados') . ' y ' .
+                $totalMunicipios . ' ' .
+                ($totalMunicipios === 1 ? 'municipio' : 'municipios') . '.';
+
+            if (!empty($estados)) {
+                $principal = $estados[0];
+                $hallazgos[] =
+                    (string)$principal['estado'] . ' concentra el mayor número de aliados: ' .
+                    (int)$principal['aliados'] . ' de ' . $totalAliados . '.';
+
+                $menorCobertura = $estados[0];
+                foreach ($estados as $filaEstado) {
+                    if (
+                        (float)($filaEstado['cobertura_difusion'] ?? 0) <
+                        (float)($menorCobertura['cobertura_difusion'] ?? 0)
+                    ) {
+                        $menorCobertura = $filaEstado;
+                    }
+                }
+
+                if (count($estados) > 1) {
+                    $hallazgos[] =
+                        (string)$menorCobertura['estado'] .
+                        ' presenta la menor cobertura de difusión de la red: ' .
+                        number_format(
+                            (float)($menorCobertura['cobertura_difusion'] ?? 0),
+                            1
+                        ) . '%.';
+                }
+            }
+        } elseif ($modo === 'estado') {
+            $nombreEstado = !empty($estados)
+                ? (string)($estados[0]['estado'] ?? 'El estado seleccionado')
+                : 'El estado seleccionado';
+
             $hallazgos[] =
-                'Hay ' . (int)$resumen['pendientes'] .
-                ' ' .
-                ((int)$resumen['pendientes'] === 1
-                    ? 'seguimiento abierto, sin acciones vencidas al momento del reporte.'
-                    : 'seguimientos abiertos, sin acciones vencidas al momento del reporte.');
+                $nombreEstado . ' cuenta con ' . $totalAliados . ' ' .
+                ($totalAliados === 1 ? 'aliado' : 'aliados') .
+                ' distribuidos en ' . $totalMunicipios . ' ' .
+                ($totalMunicipios === 1 ? 'municipio' : 'municipios') . '.';
+
+            if (!empty($municipios)) {
+                $principal = $municipios[0];
+                $hallazgos[] =
+                    (string)$principal['municipio'] .
+                    ' concentra el mayor número de aliados del estado: ' .
+                    (int)$principal['aliados'] . '.';
+
+                $menorCobertura = $municipios[0];
+                foreach ($municipios as $filaMunicipio) {
+                    if (
+                        (float)($filaMunicipio['cobertura_difusion'] ?? 0) <
+                        (float)($menorCobertura['cobertura_difusion'] ?? 0)
+                    ) {
+                        $menorCobertura = $filaMunicipio;
+                    }
+                }
+
+                if (count($municipios) > 1) {
+                    $hallazgos[] =
+                        (string)$menorCobertura['municipio'] .
+                        ' registra la menor cobertura de difusión del estado: ' .
+                        number_format(
+                            (float)($menorCobertura['cobertura_difusion'] ?? 0),
+                            1
+                        ) . '%.';
+                }
+            }
+        } else {
+            $municipio = !empty($municipios)
+                ? (string)($municipios[0]['municipio'] ?? 'El municipio seleccionado')
+                : 'El municipio seleccionado';
+            $estado = !empty($municipios)
+                ? (string)($municipios[0]['estado'] ?? '')
+                : '';
+
+            $hallazgos[] =
+                $municipio .
+                ($estado !== '' ? ' (' . $estado . ')' : '') .
+                ' reúne ' . $totalAliados . ' ' .
+                ($totalAliados === 1 ? 'aliado' : 'aliados') .
+                ' dentro del alcance seleccionado.';
+
+            $hallazgos[] =
+                (int)($resumen['con_difusion'] ?? 0) . ' de ' .
+                $totalAliados .
+                ' aliados registran al menos una difusión de convocatoria.';
+
+            if ((int)($resumen['con_whatsapp'] ?? 0) < $totalAliados) {
+                $hallazgos[] =
+                    ($totalAliados - (int)$resumen['con_whatsapp']) .
+                    ' ' .
+                    (($totalAliados - (int)$resumen['con_whatsapp']) === 1
+                        ? 'aliado no cuenta'
+                        : 'aliados no cuentan') .
+                    ' con WhatsApp confirmado o verificado.';
+            }
+        }
+
+        if ((int)($resumen['requieren_atencion'] ?? 0) > 0) {
+            $hallazgos[] =
+                'Hay ' . (int)$resumen['requieren_atencion'] . ' ' .
+                ((int)$resumen['requieren_atencion'] === 1
+                    ? 'aliado que requiere una acción prioritaria.'
+                    : 'aliados que requieren una acción prioritaria.');
         } else {
             $hallazgos[] =
-                'No hay seguimientos abiertos que requieran atención inmediata.';
+                'No hay aliados que requieran atención prioritaria con el criterio actual.';
         }
 
-        if ((int)$resumen['sin_respuesta'] > 0) {
+        $hallazgos[] =
+            number_format((float)($resumen['cobertura_difusion'] ?? 0), 1) .
+            '% de la red analizada registra al menos una difusión de convocatoria.';
+
+        if ((int)($resumen['sin_respuesta'] ?? 0) > 0) {
             $hallazgos[] =
-                (int)$resumen['sin_respuesta'] .
-                ' ' .
+                (int)$resumen['sin_respuesta'] . ' ' .
                 ((int)$resumen['sin_respuesta'] === 1
-                    ? 'aliado se encuentra actualmente en estado Sin respuesta.'
-                    : 'aliados se encuentran actualmente en estado Sin respuesta.');
+                    ? 'aliado se encuentra actualmente sin respuesta.'
+                    : 'aliados se encuentran actualmente sin respuesta.');
         }
 
-        if ((int)$resumen['solicita_informacion'] > 0) {
+        if ((int)($resumen['solicita_informacion'] ?? 0) > 0) {
             $hallazgos[] =
-                (int)$resumen['solicita_informacion'] .
-                ' ' .
+                (int)$resumen['solicita_informacion'] . ' ' .
                 ((int)$resumen['solicita_informacion'] === 1
                     ? 'aliado solicitó información y requiere respuesta.'
                     : 'aliados solicitaron información y requieren respuesta.');
         }
 
-        $hallazgos[] =
-            number_format((float)$resumen['cobertura_whatsapp'], 1) .
-            '% de la red analizada cuenta con WhatsApp confirmado o verificado.';
-
-        if (!empty($municipios)) {
-            $principal = $municipios[0];
-            $hallazgos[] =
-                'El municipio con mayor concentración es ' .
-                (string)$principal['municipio'] . ' (' .
-                (string)$principal['estado'] . ') con ' .
-                (int)$principal['aliados'] . ' ' .
-                ((int)$principal['aliados'] === 1 ? 'aliado.' : 'aliados.');
-        }
-
-        return $hallazgos;
+        return array_slice($hallazgos, 0, 6);
     }
+
 }
