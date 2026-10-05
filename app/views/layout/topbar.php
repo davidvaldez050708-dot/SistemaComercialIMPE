@@ -8,8 +8,11 @@ $puedeGestionarReuniones = tienePermiso('reuniones.gestionar');
 $esAnalistaDatos = tienePermiso('seguimientos_vinculacion.operar_propios');
 $esMarketingTopbar = tienePermiso('convocatorias.gestionar');
 $mostrarCentroAvisos =
-    tienePermiso('reuniones.ver') &&
-    ($puedeSolicitarReuniones || $puedeGestionarReuniones);
+    (
+        tienePermiso('reuniones.ver') &&
+        ($puedeSolicitarReuniones || $puedeGestionarReuniones)
+    ) ||
+    tienePermiso('aliados.seguimiento_convocatorias');
 $agendaDisponible = is_file(ROOT_PATH . '/app/controllers/AgendaReunionController.php');
 $mostrarAgendaReuniones =
     tienePermiso('reuniones.ver') &&
@@ -199,14 +202,14 @@ $totalRecordatoriosSeguimiento = 0;
                     <div class="dropdown-menu dropdown-menu-end topbar-reminder-menu">
                         <div class="topbar-reminder-header">
                             <strong>Notificaciones</strong>
-                            <span>Reuniones, confirmaciones y acciones próximas.</span>
+                            <span>Reuniones, seguimientos y acciones próximas.</span>
                         </div>
 
                         <div data-reminder-content aria-live="polite" aria-busy="true">
                             <div class="topbar-reminder-empty">
                                 <i class="bi bi-arrow-repeat"></i>
                                 <strong>Actualizando notificaciones</strong>
-                                <span>Consultando reuniones y acciones pendientes.</span>
+                                <span>Consultando acciones y seguimientos pendientes.</span>
                             </div>
                         </div>
                     </div>
