@@ -62,6 +62,7 @@ class ReporteAliadosPanoramaService
             'solicita_informacion' => 0,
             'difusion_confirmada' => 0,
             'no_participara' => 0,
+            'sin_seguimiento' => 0,
             'cobertura_difusion' => 0,
             'cobertura_whatsapp' => 0,
             'tasa_confirmacion' => 0
@@ -137,6 +138,8 @@ class ReporteAliadosPanoramaService
                 if ($claveResumen !== '' && isset($resumen[$claveResumen])) {
                     $resumen[$claveResumen]++;
                 }
+            } else {
+                $resumen['sin_seguimiento']++;
             }
 
             if (!isset($porEstado[$estadoTerritorioId])) {
@@ -558,11 +561,18 @@ class ReporteAliadosPanoramaService
         }
 
         $hallazgos = [];
+        $totalAliados = (int)$resumen['total'];
+        $totalMunicipios = (int)$resumen['municipios'];
+        $totalEstados = (int)$resumen['estados'];
+
         $hallazgos[] =
             'La red analizada reúne ' .
-            (int)$resumen['total'] . ' aliado(s) en ' .
-            (int)$resumen['municipios'] . ' municipio(s) y ' .
-            (int)$resumen['estados'] . ' estado(s).';
+            $totalAliados . ' ' .
+            ($totalAliados === 1 ? 'aliado' : 'aliados') . ' en ' .
+            $totalMunicipios . ' ' .
+            ($totalMunicipios === 1 ? 'municipio' : 'municipios') . ' y ' .
+            $totalEstados . ' ' .
+            ($totalEstados === 1 ? 'estado' : 'estados') . '.';
 
         $hallazgos[] =
             number_format((float)$resumen['cobertura_difusion'], 1) .
@@ -571,11 +581,17 @@ class ReporteAliadosPanoramaService
         if ((int)$resumen['vencidos'] > 0) {
             $hallazgos[] =
                 'Hay ' . (int)$resumen['vencidos'] .
-                ' seguimiento(s) vencido(s) que requieren atención prioritaria.';
+                ' ' .
+                ((int)$resumen['vencidos'] === 1
+                    ? 'seguimiento vencido que requiere atención prioritaria.'
+                    : 'seguimientos vencidos que requieren atención prioritaria.');
         } elseif ((int)$resumen['pendientes'] > 0) {
             $hallazgos[] =
                 'Hay ' . (int)$resumen['pendientes'] .
-                ' seguimiento(s) abierto(s), sin acciones vencidas al momento del reporte.';
+                ' ' .
+                ((int)$resumen['pendientes'] === 1
+                    ? 'seguimiento abierto, sin acciones vencidas al momento del reporte.'
+                    : 'seguimientos abiertos, sin acciones vencidas al momento del reporte.');
         } else {
             $hallazgos[] =
                 'No hay seguimientos abiertos que requieran atención inmediata.';
@@ -584,13 +600,19 @@ class ReporteAliadosPanoramaService
         if ((int)$resumen['sin_respuesta'] > 0) {
             $hallazgos[] =
                 (int)$resumen['sin_respuesta'] .
-                ' aliado(s) se encuentran actualmente en estado Sin respuesta.';
+                ' ' .
+                ((int)$resumen['sin_respuesta'] === 1
+                    ? 'aliado se encuentra actualmente en estado Sin respuesta.'
+                    : 'aliados se encuentran actualmente en estado Sin respuesta.');
         }
 
         if ((int)$resumen['solicita_informacion'] > 0) {
             $hallazgos[] =
                 (int)$resumen['solicita_informacion'] .
-                ' aliado(s) solicitaron información y requieren respuesta.';
+                ' ' .
+                ((int)$resumen['solicita_informacion'] === 1
+                    ? 'aliado solicitó información y requiere respuesta.'
+                    : 'aliados solicitaron información y requieren respuesta.');
         }
 
         $hallazgos[] =
@@ -603,7 +625,8 @@ class ReporteAliadosPanoramaService
                 'El municipio con mayor concentración es ' .
                 (string)$principal['municipio'] . ' (' .
                 (string)$principal['estado'] . ') con ' .
-                (int)$principal['aliados'] . ' aliado(s).';
+                (int)$principal['aliados'] . ' ' .
+                ((int)$principal['aliados'] === 1 ? 'aliado.' : 'aliados.');
         }
 
         return $hallazgos;
