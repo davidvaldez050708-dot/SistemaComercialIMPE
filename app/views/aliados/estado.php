@@ -498,8 +498,8 @@ $seguimientoVista = static function ($estado) {
                                                                         ['DIFUSION_CONFIRMADA', 'NO_PARTICIPARA'],
                                                                         true
                                                                     )
-                                                                        ? 'Seguimiento cerrado'
-                                                                        : 'Sin recordatorio' ?>
+                                                                        ? 'Cerrado'
+                                                                        : 'Sin fecha' ?>
                                                                 </small>
                                                             <?php endif; ?>
                                                         </button>
