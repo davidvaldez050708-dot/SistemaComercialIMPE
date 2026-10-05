@@ -212,6 +212,7 @@ if (tienePermiso('seguimientos_vinculacion.operar_propios')) {
 
 if ($esAliadosDashboard) {
     $jsOpcionalHead[] = 'aliados.js';
+    $jsOpcionalHead[] = 'aliados_seguimiento.js';
 }
 
 if ($esWhatsappDashboard) {
