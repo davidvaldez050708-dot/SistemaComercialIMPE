@@ -601,7 +601,11 @@ $seguimientoVista = static function ($estado) {
                                                                 <?php endif; ?>
 
                                                                 <?php if ($puedeAbrirExpediente): ?>
-                                                                    <?php if ($puedeGestionarContactos || $puedeVerHistorial): ?>
+                                                                    <?php if (
+                                                                        $puedeGestionarContactos ||
+                                                                        $puedeVerHistorial ||
+                                                                        $puedeAbrirSeguimiento
+                                                                    ): ?>
                                                                         <li><hr class="dropdown-divider"></li>
                                                                     <?php endif; ?>
                                                                     <li>
