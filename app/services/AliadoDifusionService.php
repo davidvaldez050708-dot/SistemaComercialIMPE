@@ -264,6 +264,11 @@ class AliadoDifusionService
             );
         }
 
+        $this->modelo->iniciarSeguimientoConvocatoriaPorEnvio(
+            (int)$registrado,
+            (int)$usuarioId
+        );
+
         return [
             'ok' => true,
             'mensaje' =>
@@ -562,6 +567,11 @@ class AliadoDifusionService
             );
         }
 
+        $this->modelo->iniciarSeguimientoConvocatoriaPorEnvio(
+            (int)$registrado,
+            (int)$usuarioId
+        );
+
         return [
             'ok' => true,
             'mensaje' =>
@@ -736,6 +746,11 @@ class AliadoDifusionService
                 500
             );
         }
+
+        $this->modelo->iniciarSeguimientoConvocatoriaPorEnvio(
+            (int)$registrado,
+            (int)$usuarioId
+        );
 
         return [
             'ok' => true,
