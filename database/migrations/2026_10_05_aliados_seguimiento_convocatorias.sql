@@ -94,9 +94,9 @@ FROM permisos p
 WHERE p.codigo = 'aliados.seguimiento_convocatorias'
   AND p.estado = 1;
 
--- Inicializa únicamente la difusión exitosa más reciente de cada
--- aliado + convocatoria. Los reenvíos anteriores quedan como historial,
--- no como pendientes simultáneos.
+-- Inicializa únicamente la difusión exitosa más reciente de cada aliado.
+-- El historial anterior permanece disponible, pero no nace como pendiente
+-- de seguimiento al activar esta función por primera vez.
 INSERT IGNORE INTO aliados_convocatorias_seguimientos (
     envio_id,
     seguimiento_id,
@@ -125,13 +125,6 @@ WHERE envio.estado_envio IN ('ENVIADO', 'COMPARTIDO')
       SELECT envio_reciente.id
       FROM aliados_convocatorias_envios envio_reciente
       WHERE envio_reciente.seguimiento_id = envio.seguimiento_id
-        AND (
-            envio_reciente.convocatoria_id = envio.convocatoria_id
-            OR (
-                envio_reciente.convocatoria_id IS NULL
-                AND envio.convocatoria_id IS NULL
-            )
-        )
         AND envio_reciente.estado_envio IN ('ENVIADO', 'COMPARTIDO')
       ORDER BY envio_reciente.enviado_at DESC, envio_reciente.id DESC
       LIMIT 1
