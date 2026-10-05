@@ -163,6 +163,10 @@ if ($controllerDashboard === 'aliadoreporte') {
     $cssOpcionalDashboard[] = 'aliados_reportes.css';
 }
 
+if ($controllerDashboard === 'aliadoreporte') {
+    $jsOpcionalHead[] = 'aliados_reportes.js';
+}
+
 if ($esTerritorialDashboard) {
     $cssOpcionalDashboard[] = 'territorios_resumen_refinamientos.css';
 }
