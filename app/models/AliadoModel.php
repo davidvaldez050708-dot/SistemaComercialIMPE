@@ -32,6 +32,12 @@ class AliadoModel
             );
     }
 
+    public function seguimientoConvocatoriasDisponible()
+    {
+        return $this->tablaExiste('aliados_convocatorias_seguimientos') &&
+            $this->tablaExiste('aliados_convocatorias_seguimiento_eventos');
+    }
+
     public function obtenerResumenTerritorial($usuarioId, $esAdministrador = false)
     {
         if (!$this->estructuraDisponible()) {
@@ -350,7 +356,433 @@ class AliadoModel
             $error
         );
 
-        return $stmt->execute();
+        if (!$stmt->execute()) {
+            return false;
+        }
+
+        return (int)$this->connection->insert_id;
+    }
+
+    public function iniciarSeguimientoConvocatoriaPorEnvio($envioId, $actorUsuarioId)
+    {
+        if (!$this->seguimientoConvocatoriasDisponible()) {
+            return true;
+        }
+
+        $envioId = (int)$envioId;
+        $actorUsuarioId = (int)$actorUsuarioId;
+
+        if ($envioId <= 0) {
+            return false;
+        }
+
+        $this->connection->begin_transaction();
+
+        try {
+            $sqlEnvio = "SELECT
+                            envio.id,
+                            envio.seguimiento_id,
+                            envio.convocatoria_id,
+                            envio.cuenta_clave_usuario_id,
+                            COALESCE(
+                                asignacion.cuenta_clave_usuario_id,
+                                envio.cuenta_clave_usuario_id
+                            ) AS responsable_usuario_id
+                        FROM aliados_convocatorias_envios envio
+                        LEFT JOIN aliados_asignaciones asignacion
+                            ON asignacion.seguimiento_id = envio.seguimiento_id
+                           AND asignacion.activo = 1
+                        WHERE envio.id = ?
+                          AND envio.estado_envio IN ('ENVIADO', 'COMPARTIDO')
+                        LIMIT 1
+                        FOR UPDATE";
+
+            $stmtEnvio = $this->connection->prepare($sqlEnvio);
+            $stmtEnvio->bind_param('i', $envioId);
+            $stmtEnvio->execute();
+            $envio = $stmtEnvio->get_result()->fetch_assoc();
+
+            if (!$envio) {
+                $this->connection->rollback();
+                return false;
+            }
+
+            $seguimientoId = (int)$envio['seguimiento_id'];
+            $convocatoriaId = (int)($envio['convocatoria_id'] ?? 0);
+            $responsableUsuarioId = (int)$envio['responsable_usuario_id'];
+
+            if ($responsableUsuarioId <= 0) {
+                $responsableUsuarioId = (int)$envio['cuenta_clave_usuario_id'];
+            }
+
+            if ($actorUsuarioId <= 0) {
+                $actorUsuarioId = $responsableUsuarioId;
+            }
+
+            if ($convocatoriaId > 0) {
+                $stmtCerrar = $this->connection->prepare(
+                    "UPDATE aliados_convocatorias_seguimientos
+                     SET activo = 0,
+                         cerrado_at = COALESCE(cerrado_at, NOW()),
+                         updated_at = NOW()
+                     WHERE seguimiento_id = ?
+                       AND convocatoria_id = ?
+                       AND envio_id <> ?
+                       AND activo = 1"
+                );
+                $stmtCerrar->bind_param(
+                    'iii',
+                    $seguimientoId,
+                    $convocatoriaId,
+                    $envioId
+                );
+                $stmtCerrar->execute();
+            }
+
+            $stmtInsertar = $this->connection->prepare(
+                "INSERT IGNORE INTO aliados_convocatorias_seguimientos (
+                    envio_id,
+                    seguimiento_id,
+                    convocatoria_id,
+                    responsable_usuario_id,
+                    estado,
+                    activo,
+                    created_at,
+                    updated_at
+                 ) VALUES (?, ?, NULLIF(?, 0), ?, 'ESPERANDO_RESPUESTA', 1, NOW(), NOW())"
+            );
+            $stmtInsertar->bind_param(
+                'iiii',
+                $envioId,
+                $seguimientoId,
+                $convocatoriaId,
+                $responsableUsuarioId
+            );
+            $stmtInsertar->execute();
+
+            if ($stmtInsertar->affected_rows > 0) {
+                $seguimientoConvocatoriaId =
+                    (int)$this->connection->insert_id;
+                $notaInicial =
+                    'Seguimiento iniciado a partir de una convocatoria compartida.';
+                $estadoNuevo = 'ESPERANDO_RESPUESTA';
+
+                $stmtEvento = $this->connection->prepare(
+                    "INSERT INTO aliados_convocatorias_seguimiento_eventos (
+                        seguimiento_convocatoria_id,
+                        usuario_id,
+                        estado_anterior,
+                        estado_nuevo,
+                        nota,
+                        proximo_seguimiento_at,
+                        created_at
+                     ) VALUES (?, ?, NULL, ?, ?, NULL, NOW())"
+                );
+                $stmtEvento->bind_param(
+                    'iiss',
+                    $seguimientoConvocatoriaId,
+                    $actorUsuarioId,
+                    $estadoNuevo,
+                    $notaInicial
+                );
+                $stmtEvento->execute();
+            }
+
+            $this->connection->commit();
+            return true;
+        } catch (Throwable $error) {
+            $this->connection->rollback();
+            error_log(
+                'Seguimiento de convocatoria de aliado: ' .
+                $error->getMessage()
+            );
+            return false;
+        }
+    }
+
+    public function obtenerSeguimientoConvocatoriaActual(
+        $seguimientoId,
+        $usuarioId,
+        $esAdministrador = false
+    ) {
+        $aliado = $this->obtenerAliado(
+            (int)$seguimientoId,
+            (int)$usuarioId,
+            (bool)$esAdministrador
+        );
+
+        if (!$aliado || !$this->seguimientoConvocatoriasDisponible()) {
+            return null;
+        }
+
+        $resultado = $this->consultarSeguimientoConvocatoriaActual(
+            (int)$seguimientoId
+        );
+
+        if (
+            $resultado &&
+            (int)($resultado['seguimiento_convocatoria_id'] ?? 0) <= 0 &&
+            (int)($resultado['envio_id'] ?? 0) > 0
+        ) {
+            $this->iniciarSeguimientoConvocatoriaPorEnvio(
+                (int)$resultado['envio_id'],
+                (int)$usuarioId
+            );
+            $resultado = $this->consultarSeguimientoConvocatoriaActual(
+                (int)$seguimientoId
+            );
+        }
+
+        if (!$resultado) {
+            return null;
+        }
+
+        $seguimientoConvocatoriaId =
+            (int)($resultado['seguimiento_convocatoria_id'] ?? 0);
+
+        $resultado['eventos'] = $seguimientoConvocatoriaId > 0
+            ? $this->obtenerEventosSeguimientoConvocatoria(
+                $seguimientoConvocatoriaId
+            )
+            : [];
+
+        return $resultado;
+    }
+
+    public function guardarSeguimientoConvocatoria(
+        $seguimientoConvocatoriaId,
+        $seguimientoId,
+        $usuarioId,
+        array $datos
+    ) {
+        if (!$this->seguimientoConvocatoriasDisponible()) {
+            return false;
+        }
+
+        $seguimientoConvocatoriaId = (int)$seguimientoConvocatoriaId;
+        $seguimientoId = (int)$seguimientoId;
+        $usuarioId = (int)$usuarioId;
+        $estadoNuevo = strtoupper(trim((string)($datos['estado'] ?? '')));
+        $nota = trim((string)($datos['nota'] ?? ''));
+        $proximoSeguimientoAt = $datos['proximo_seguimiento_at'] ?? null;
+
+        $this->connection->begin_transaction();
+
+        try {
+            $stmtActual = $this->connection->prepare(
+                "SELECT
+                    id,
+                    estado,
+                    nota,
+                    proximo_seguimiento_at
+                 FROM aliados_convocatorias_seguimientos
+                 WHERE id = ?
+                   AND seguimiento_id = ?
+                   AND activo = 1
+                 LIMIT 1
+                 FOR UPDATE"
+            );
+            $stmtActual->bind_param(
+                'ii',
+                $seguimientoConvocatoriaId,
+                $seguimientoId
+            );
+            $stmtActual->execute();
+            $actual = $stmtActual->get_result()->fetch_assoc();
+
+            if (!$actual) {
+                $this->connection->rollback();
+                return false;
+            }
+
+            $estadosCerrados = [
+                'DIFUSION_CONFIRMADA',
+                'NO_PARTICIPARA'
+            ];
+            $cerradoAt = in_array($estadoNuevo, $estadosCerrados, true)
+                ? date('Y-m-d H:i:s')
+                : null;
+
+            if ($cerradoAt !== null) {
+                $proximoSeguimientoAt = null;
+            }
+
+            $stmtActualizar = $this->connection->prepare(
+                "UPDATE aliados_convocatorias_seguimientos
+                 SET estado = ?,
+                     nota = NULLIF(?, ''),
+                     proximo_seguimiento_at = ?,
+                     cerrado_at = ?,
+                     updated_at = NOW()
+                 WHERE id = ?
+                   AND seguimiento_id = ?
+                   AND activo = 1"
+            );
+            $stmtActualizar->bind_param(
+                'ssssii',
+                $estadoNuevo,
+                $nota,
+                $proximoSeguimientoAt,
+                $cerradoAt,
+                $seguimientoConvocatoriaId,
+                $seguimientoId
+            );
+
+            if (!$stmtActualizar->execute()) {
+                throw new RuntimeException(
+                    'No fue posible actualizar el seguimiento.'
+                );
+            }
+
+            $estadoAnterior = (string)$actual['estado'];
+            $stmtEvento = $this->connection->prepare(
+                "INSERT INTO aliados_convocatorias_seguimiento_eventos (
+                    seguimiento_convocatoria_id,
+                    usuario_id,
+                    estado_anterior,
+                    estado_nuevo,
+                    nota,
+                    proximo_seguimiento_at,
+                    created_at
+                 ) VALUES (?, ?, ?, ?, NULLIF(?, ''), ?, NOW())"
+            );
+            $stmtEvento->bind_param(
+                'iissss',
+                $seguimientoConvocatoriaId,
+                $usuarioId,
+                $estadoAnterior,
+                $estadoNuevo,
+                $nota,
+                $proximoSeguimientoAt
+            );
+            $stmtEvento->execute();
+
+            $this->connection->commit();
+
+            return $this->consultarSeguimientoConvocatoriaActual(
+                $seguimientoId
+            );
+        } catch (Throwable $error) {
+            $this->connection->rollback();
+            error_log(
+                'Actualización de seguimiento de aliado: ' .
+                $error->getMessage()
+            );
+            return false;
+        }
+    }
+
+    public function obtenerRecordatoriosSeguimientoAliados(
+        $usuarioId,
+        $limite = 10
+    ) {
+        if (!$this->seguimientoConvocatoriasDisponible()) {
+            return [];
+        }
+
+        $usuarioId = (int)$usuarioId;
+        $limite = max(1, min(50, (int)$limite));
+
+        $sql = "SELECT
+                    seguimiento.id AS seguimiento_convocatoria_id,
+                    seguimiento.seguimiento_id,
+                    seguimiento.estado,
+                    seguimiento.nota,
+                    seguimiento.proximo_seguimiento_at,
+                    envio.convocatoria_titulo,
+                    envio.canal,
+                    envio.enviado_at,
+                    vinculacion.nombre_entidad,
+                    vinculacion.estado_id
+                FROM aliados_convocatorias_seguimientos seguimiento
+                INNER JOIN aliados_convocatorias_envios envio
+                    ON envio.id = seguimiento.envio_id
+                INNER JOIN seguimientos_vinculacion vinculacion
+                    ON vinculacion.id = seguimiento.seguimiento_id
+                WHERE seguimiento.responsable_usuario_id = ?
+                  AND seguimiento.activo = 1
+                  AND seguimiento.proximo_seguimiento_at IS NOT NULL
+                  AND seguimiento.estado NOT IN (
+                      'DIFUSION_CONFIRMADA',
+                      'NO_PARTICIPARA'
+                  )
+                ORDER BY
+                    seguimiento.proximo_seguimiento_at ASC,
+                    seguimiento.id ASC
+                LIMIT ?";
+
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param('ii', $usuarioId, $limite);
+        $stmt->execute();
+
+        return $this->convertirResultadoEnArreglo($stmt->get_result());
+    }
+
+    private function consultarSeguimientoConvocatoriaActual($seguimientoId)
+    {
+        $sql = "SELECT
+                    envio.id AS envio_id,
+                    envio.convocatoria_id,
+                    envio.convocatoria_titulo,
+                    envio.canal,
+                    envio.destinatario,
+                    envio.enviado_at,
+                    seguimiento.id AS seguimiento_convocatoria_id,
+                    seguimiento.responsable_usuario_id,
+                    seguimiento.estado,
+                    seguimiento.nota,
+                    seguimiento.proximo_seguimiento_at,
+                    seguimiento.cerrado_at,
+                    seguimiento.created_at AS seguimiento_created_at,
+                    seguimiento.updated_at AS seguimiento_updated_at,
+                    CONCAT_WS(
+                        ' ',
+                        responsable.nombre,
+                        responsable.apellidos
+                    ) AS responsable_nombre
+                FROM aliados_convocatorias_envios envio
+                LEFT JOIN aliados_convocatorias_seguimientos seguimiento
+                    ON seguimiento.envio_id = envio.id
+                   AND seguimiento.activo = 1
+                LEFT JOIN usuarios responsable
+                    ON responsable.id = seguimiento.responsable_usuario_id
+                WHERE envio.seguimiento_id = ?
+                  AND envio.estado_envio IN ('ENVIADO', 'COMPARTIDO')
+                ORDER BY envio.enviado_at DESC, envio.id DESC
+                LIMIT 1";
+
+        $stmt = $this->connection->prepare($sql);
+        $seguimientoId = (int)$seguimientoId;
+        $stmt->bind_param('i', $seguimientoId);
+        $stmt->execute();
+
+        return $stmt->get_result()->fetch_assoc() ?: null;
+    }
+
+    private function obtenerEventosSeguimientoConvocatoria(
+        $seguimientoConvocatoriaId
+    ) {
+        $sql = "SELECT
+                    evento.id,
+                    evento.estado_anterior,
+                    evento.estado_nuevo,
+                    evento.nota,
+                    evento.proximo_seguimiento_at,
+                    evento.created_at,
+                    CONCAT_WS(' ', usuario.nombre, usuario.apellidos)
+                        AS usuario_nombre
+                FROM aliados_convocatorias_seguimiento_eventos evento
+                INNER JOIN usuarios usuario
+                    ON usuario.id = evento.usuario_id
+                WHERE evento.seguimiento_convocatoria_id = ?
+                ORDER BY evento.created_at DESC, evento.id DESC";
+
+        $stmt = $this->connection->prepare($sql);
+        $seguimientoConvocatoriaId = (int)$seguimientoConvocatoriaId;
+        $stmt->bind_param('i', $seguimientoConvocatoriaId);
+        $stmt->execute();
+
+        return $this->convertirResultadoEnArreglo($stmt->get_result());
     }
 
     public function obtenerContactosDifusion(array $aliado)
