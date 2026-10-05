@@ -1162,6 +1162,27 @@ class AliadoModel
 
     private function consultaBase()
     {
+        $seguimientoSelect = ",
+                    NULL AS seguimiento_convocatoria_id,
+                    NULL AS seguimiento_convocatoria_estado,
+                    NULL AS seguimiento_convocatoria_nota,
+                    NULL AS proximo_seguimiento_at,
+                    NULL AS seguimiento_convocatoria_updated_at";
+        $seguimientoJoin = "";
+
+        if ($this->seguimientoConvocatoriasDisponible()) {
+            $seguimientoSelect = ",
+                    seguimiento_actual.id AS seguimiento_convocatoria_id,
+                    seguimiento_actual.estado AS seguimiento_convocatoria_estado,
+                    seguimiento_actual.nota AS seguimiento_convocatoria_nota,
+                    seguimiento_actual.proximo_seguimiento_at,
+                    seguimiento_actual.updated_at AS seguimiento_convocatoria_updated_at";
+            $seguimientoJoin = "
+                LEFT JOIN aliados_convocatorias_seguimientos seguimiento_actual
+                    ON seguimiento_actual.envio_id = ultimo.id
+                   AND seguimiento_actual.activo = 1";
+        }
+
         $contactoSelect = ",
                     NULL AS contacto_difusion_preferido,
                     0 AS contacto_difusion_confirmado_whatsapp,
@@ -1263,7 +1284,8 @@ class AliadoModel
                     ultimo.id AS ultimo_envio_id,
                     ultimo.convocatoria_titulo AS ultima_convocatoria_titulo,
                     ultimo.canal AS ultimo_envio_canal,
-                    ultimo.enviado_at AS ultimo_envio_at
+                    ultimo.enviado_at AS ultimo_envio_at" .
+                    $seguimientoSelect . "
                 FROM seguimientos_vinculacion s
                 INNER JOIN seguimientos_vinculacion_post_envio p
                     ON p.seguimiento_id = s.id
@@ -1286,7 +1308,8 @@ class AliadoModel
                           AND envio_reciente.estado_envio IN ('ENVIADO', 'COMPARTIDO')
                         ORDER BY envio_reciente.enviado_at DESC, envio_reciente.id DESC
                         LIMIT 1
-                    )";
+                    )" .
+                    $seguimientoJoin;
     }
 
     private function normalizarNumero($numero)
