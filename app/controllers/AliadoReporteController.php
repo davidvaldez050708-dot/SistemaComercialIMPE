@@ -4,6 +4,7 @@ require_once __DIR__ . '/../helpers/PermissionHelper.php';
 require_once __DIR__ . '/../models/AliadoModel.php';
 require_once __DIR__ . '/../models/SeguimientoVinculacionModel.php';
 require_once __DIR__ . '/../services/ReporteAliadosPanoramaService.php';
+require_once __DIR__ . '/../services/ReporteAliadosPdfService.php';
 
 class AliadoReporteController
 {
@@ -131,6 +132,31 @@ class AliadoReporteController
             );
         }
 
+        $errorExportacionPdf = (string)(
+            $_SESSION['error_reporte_aliados_pdf'] ?? ''
+        );
+        unset($_SESSION['error_reporte_aliados_pdf']);
+
+        $urlExportarPdf = '';
+        if (
+            $generarReporte &&
+            is_array($reporteAliados) &&
+            tienePermiso('reportes.exportar')
+        ) {
+            $urlExportarPdf = BASE_URL . 'index.php?' . http_build_query(
+                [
+                    'controller' => 'aliadoReporte',
+                    'action' => 'exportarPdf',
+                    'estado_id' => $estadoId,
+                    'municipio_id' => $municipioId,
+                    'situacion' => $situacion
+                ],
+                '',
+                '&',
+                PHP_QUERY_RFC3986
+            );
+        }
+
         $tituloPagina = 'Reporte de Aliados';
         $subtituloPagina =
             'Panorama ejecutivo de la red institucional y su seguimiento.';
@@ -143,7 +169,238 @@ class AliadoReporteController
         require_once __DIR__ . '/../views/layout/dashboard_footer.php';
     }
 
-    private function validarAcceso()
+    public function exportarPdf()
+    {
+        $this->validarAcceso(true);
+
+        $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
+        $esAdministrador = (int)($_SESSION['rol_id'] ?? 0) === 1;
+        $estadoId = max(0, (int)($_GET['estado_id'] ?? 0));
+        $municipioId = max(0, (int)($_GET['municipio_id'] ?? 0));
+
+        $situaciones = [
+            'todos' => 'Todos los aliados',
+            'con_difusion' => 'Con difusión',
+            'sin_difusion' => 'Sin difusión',
+            'pendientes' => 'Seguimiento pendiente',
+            'vencidos' => 'Seguimiento vencido',
+            'esperando_respuesta' => 'Esperando respuesta',
+            'sin_respuesta' => 'Sin respuesta',
+            'solicita_informacion' => 'Solicita información',
+            'difusion_confirmada' => 'Difusión confirmada',
+            'no_participara' => 'No participará'
+        ];
+
+        $situacion = strtolower(trim(
+            (string)($_GET['situacion'] ?? 'todos')
+        ));
+        if (!isset($situaciones[$situacion])) {
+            $situacion = 'todos';
+        }
+
+        $modeloAliado = new AliadoModel();
+        $modeloSeguimiento = new SeguimientoVinculacionModel();
+
+        $territorios = $esAdministrador
+            ? $modeloSeguimiento->obtenerEstadosAdministrador()
+            : $modeloSeguimiento->obtenerEstadosSupervisadosCuentaClave(
+                $usuarioId
+            );
+
+        $estadoNombre = '';
+        $idsTerritorios = [];
+        foreach ($territorios as $territorio) {
+            $id = (int)($territorio['id'] ?? 0);
+            if ($id <= 0) {
+                continue;
+            }
+
+            $idsTerritorios[$id] = true;
+
+            if ($id === $estadoId) {
+                $estadoNombre = trim(
+                    (string)($territorio['nombre'] ?? '')
+                );
+            }
+        }
+
+        if ($estadoId > 0 && !isset($idsTerritorios[$estadoId])) {
+            http_response_code(403);
+            die('No tienes acceso al territorio seleccionado.');
+        }
+
+        $municipioNombre = '';
+        if ($municipioId > 0) {
+            $aliadosMunicipio = $modeloAliado->obtenerListado(
+                $usuarioId,
+                $esAdministrador,
+                ['municipio_id' => $municipioId]
+            );
+
+            $municipioValido = false;
+            foreach ($aliadosMunicipio as $aliado) {
+                $estadoAliado = (int)($aliado['estado_id'] ?? 0);
+                $municipioAliado = (int)($aliado['municipio_id'] ?? 0);
+
+                if ($municipioAliado !== $municipioId) {
+                    continue;
+                }
+
+                if ($estadoId > 0 && $estadoAliado !== $estadoId) {
+                    continue;
+                }
+
+                if (
+                    $estadoId <= 0 &&
+                    !isset($idsTerritorios[$estadoAliado])
+                ) {
+                    continue;
+                }
+
+                $municipioValido = true;
+                $municipioNombre = trim(
+                    (string)($aliado['municipio_nombre'] ?? '')
+                );
+
+                if ($estadoId <= 0) {
+                    $estadoId = $estadoAliado;
+                    foreach ($territorios as $territorio) {
+                        if (
+                            (int)($territorio['id'] ?? 0) ===
+                            $estadoId
+                        ) {
+                            $estadoNombre = trim(
+                                (string)($territorio['nombre'] ?? '')
+                            );
+                            break;
+                        }
+                    }
+                }
+
+                break;
+            }
+
+            if (!$municipioValido) {
+                http_response_code(403);
+                die('No tienes acceso al municipio seleccionado.');
+            }
+        }
+
+        $filtros = [
+            'estado_id' => $estadoId,
+            'municipio_id' => $municipioId,
+            'situacion' => $situacion
+        ];
+
+        try {
+            $reporte = (new ReporteAliadosPanoramaService())
+                ->prepararDatos(
+                    $usuarioId,
+                    $esAdministrador,
+                    $filtros
+                );
+
+            $reporte['estado_nombre'] = $estadoNombre;
+            $reporte['municipio_nombre'] = $municipioNombre;
+            $reporte['situacion_label'] =
+                $situaciones[$situacion] ?? 'Todos los aliados';
+            $reporte['fecha_generacion'] = date('d/m/Y H:i');
+            $reporte['generado_por'] = trim(
+                (string)($_SESSION['nombre'] ?? '') . ' ' .
+                (string)($_SESSION['apellidos'] ?? '')
+            );
+            $reporte['generado_por_rol'] =
+                (string)($_SESSION['rol'] ?? '');
+
+            $resultado = (new ReporteAliadosPdfService())
+                ->generar($reporte);
+
+            if (!($resultado['ok'] ?? false)) {
+                error_log(
+                    '[reporte_aliados_pdf] ' .
+                    (string)(
+                        $resultado['mensaje_tecnico'] ??
+                        $resultado['mensaje'] ??
+                        'Error sin detalle.'
+                    )
+                );
+
+                $_SESSION['error_reporte_aliados_pdf'] =
+                    (string)(
+                        $resultado['mensaje'] ??
+                        'No fue posible generar el PDF.'
+                    );
+
+                header(
+                    'Location: ' .
+                    BASE_URL .
+                    'index.php?' .
+                    http_build_query(
+                        [
+                            'controller' => 'aliadoReporte',
+                            'action' => 'index',
+                            'estado_id' => $estadoId,
+                            'municipio_id' => $municipioId,
+                            'situacion' => $situacion,
+                            'generar' => 1
+                        ],
+                        '',
+                        '&',
+                        PHP_QUERY_RFC3986
+                    )
+                );
+                exit;
+            }
+
+            $contenido = (string)($resultado['contenido_pdf'] ?? '');
+            $nombreArchivo = (string)(
+                $resultado['nombre_archivo'] ??
+                'Reporte_Aliados.pdf'
+            );
+
+            header('Content-Type: application/pdf');
+            header(
+                'Content-Disposition: attachment; filename="' .
+                $nombreArchivo .
+                '"'
+            );
+            header('Content-Length: ' . strlen($contenido));
+            header('Cache-Control: private, no-store, max-age=0');
+            header('X-Content-Type-Options: nosniff');
+
+            echo $contenido;
+            exit;
+        } catch (Throwable $error) {
+            error_log(
+                '[reporte_aliados_pdf] ' . $error->getMessage()
+            );
+
+            $_SESSION['error_reporte_aliados_pdf'] =
+                'No fue posible generar el PDF del reporte de aliados.';
+
+            header(
+                'Location: ' .
+                BASE_URL .
+                'index.php?' .
+                http_build_query(
+                    [
+                        'controller' => 'aliadoReporte',
+                        'action' => 'index',
+                        'estado_id' => $estadoId,
+                        'municipio_id' => $municipioId,
+                        'situacion' => $situacion,
+                        'generar' => 1
+                    ],
+                    '',
+                    '&',
+                    PHP_QUERY_RFC3986
+                )
+            );
+            exit;
+        }
+    }
+
+    private function validarAcceso($requiereExportar = false)
     {
         if (!isset($_SESSION['usuario_id'])) {
             header(
@@ -161,6 +418,14 @@ class AliadoReporteController
         ) {
             http_response_code(403);
             die('No tienes permiso para consultar este reporte.');
+        }
+
+        if (
+            $requiereExportar &&
+            !tienePermiso('reportes.exportar')
+        ) {
+            http_response_code(403);
+            die('No tienes permiso para exportar este reporte.');
         }
     }
 }
