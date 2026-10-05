@@ -246,6 +246,25 @@ class ReporteAliadosPanoramaService
                 'analista' => trim(
                     (string)($aliado['analista_nombre'] ?? '')
                 ),
+                'cuenta_clave' => trim(
+                    (string)($aliado['cuenta_clave_nombre'] ?? '')
+                ),
+                'contacto_nombre' => trim(
+                    (string)($aliado['contacto_nombre'] ?? '')
+                ),
+                'contacto_cargo' => trim(
+                    (string)($aliado['contacto_cargo'] ?? '')
+                ),
+                'correo_contacto' => trim(
+                    (string)($aliado['correo_contacto'] ?? '')
+                ),
+                'whatsapp_contacto' => trim(
+                    (string)(
+                        $aliado['contacto_difusion_preferido']
+                            ?? $aliado['whatsapp_contacto']
+                            ?? ''
+                    )
+                ),
                 'formalizado_at' => (string)(
                     $aliado['convenio_formalizado_at'] ?? ''
                 ),
@@ -263,6 +282,12 @@ class ReporteAliadosPanoramaService
                 'estado_seguimiento' => $estadoSeguimiento,
                 'estado_seguimiento_label' =>
                     $this->etiquetaEstado($estadoSeguimiento),
+                'nota_seguimiento' => trim(
+                    (string)($aliado['seguimiento_convocatoria_nota'] ?? '')
+                ),
+                'seguimiento_actualizado_at' => (string)(
+                    $aliado['seguimiento_convocatoria_updated_at'] ?? ''
+                ),
                 'proximo_seguimiento_at' => $proximo,
                 'pendiente' => $pendiente,
                 'vencido' => $vencido
