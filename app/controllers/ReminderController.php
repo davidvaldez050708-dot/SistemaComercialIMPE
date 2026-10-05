@@ -42,11 +42,15 @@ class ReminderController
         $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
         $esSupervisor = tienePermiso('reuniones.gestionar');
         $esAnalista = tienePermiso('reuniones.solicitar');
+        $puedeCentroReuniones =
+            tienePermiso('reuniones.ver') &&
+            ($esSupervisor || $esAnalista);
+        $puedeSeguimientoAliados =
+            tienePermiso('aliados.seguimiento_convocatorias');
 
         if (
             $usuarioId <= 0 ||
-            !tienePermiso('reuniones.ver') ||
-            (!$esSupervisor && !$esAnalista)
+            (!$puedeCentroReuniones && !$puedeSeguimientoAliados)
         ) {
             http_response_code(403);
             echo json_encode([
@@ -56,58 +60,71 @@ class ReminderController
             exit;
         }
 
-        /*
-         * Algunos servicios de recordatorio todavía reciben el identificador
-         * histórico del actor operativo. La autorización real ya fue resuelta
-         * por permisos antes de llegar aquí.
-         */
-        $rolContexto = $esSupervisor
-            ? AgendaReunionService::ROL_CUENTA_CLAVE
-            : AgendaReunionService::ROL_ANALISTA;
+        $recordatoriosAgenda = [];
+        $avisosAgenda = [];
+        $recordatoriosConfirmacion = [];
+        $avisosConfirmacion = [];
 
-        $agenda = $this->agendaReunionService->obtenerNotificacionesCampana(
-            $usuarioId,
-            $rolContexto,
-            10
-        );
-        $recordatoriosAgenda = array_values($agenda['recordatorios'] ?? []);
-        $avisosAgenda = array_values($agenda['avisos'] ?? []);
+        if ($puedeCentroReuniones) {
+            /*
+             * Algunos servicios de recordatorio todavía reciben el identificador
+             * histórico del actor operativo. La autorización real ya fue resuelta
+             * por permisos antes de llegar aquí.
+             */
+            $rolContexto = $esSupervisor
+                ? AgendaReunionService::ROL_CUENTA_CLAVE
+                : AgendaReunionService::ROL_ANALISTA;
 
-        // Las reuniones que siguen SOLICITADAS requieren una lectura adicional:
-        // el Analista debe enterarse cuando la confirmación se acerca o ya venció,
-        // y Cuenta Clave debe ver con prioridad las solicitudes vencidas.
-        $confirmaciones = $this->reminderMeetingConfirmationService->obtener(
-            $usuarioId,
-            $rolContexto,
-            10
-        );
-        $recordatoriosConfirmacion = array_values(
-            $confirmaciones['recordatorios'] ?? []
-        );
-        $avisosConfirmacion = array_values(
-            $confirmaciones['avisos'] ?? []
-        );
+            $agenda = $this->agendaReunionService->obtenerNotificacionesCampana(
+                $usuarioId,
+                $rolContexto,
+                10
+            );
+            $recordatoriosAgenda = array_values(
+                $agenda['recordatorios'] ?? []
+            );
+            $avisosAgenda = array_values($agenda['avisos'] ?? []);
 
-        // Para Cuenta Clave, Agenda ya devuelve todas las SOLICITADAS. Cuando una
-        // de ellas está vencida, sustituimos la versión genérica por la versión
-        // urgente del servicio especializado para no duplicarla en la campana.
-        if ($esSupervisor && !empty($recordatoriosConfirmacion)) {
-            $reunionesUrgentes = [];
-            foreach ($recordatoriosConfirmacion as $recordatorioConfirmacion) {
-                $reunionId = (int)($recordatorioConfirmacion['reunion_id'] ?? 0);
-                if ($reunionId > 0) {
-                    $reunionesUrgentes[$reunionId] = true;
-                }
-            }
+            // Las reuniones que siguen SOLICITADAS requieren una lectura adicional.
+            $confirmaciones =
+                $this->reminderMeetingConfirmationService->obtener(
+                    $usuarioId,
+                    $rolContexto,
+                    10
+                );
+            $recordatoriosConfirmacion = array_values(
+                $confirmaciones['recordatorios'] ?? []
+            );
+            $avisosConfirmacion = array_values(
+                $confirmaciones['avisos'] ?? []
+            );
 
-            if (!empty($reunionesUrgentes)) {
-                $recordatoriosAgenda = array_values(array_filter(
-                    $recordatoriosAgenda,
-                    static function ($item) use ($reunionesUrgentes) {
-                        $reunionId = (int)($item['reunion_id'] ?? $item['id'] ?? 0);
-                        return $reunionId <= 0 || !isset($reunionesUrgentes[$reunionId]);
+            if ($esSupervisor && !empty($recordatoriosConfirmacion)) {
+                $reunionesUrgentes = [];
+                foreach (
+                    $recordatoriosConfirmacion as $recordatorioConfirmacion
+                ) {
+                    $reunionId =
+                        (int)($recordatorioConfirmacion['reunion_id'] ?? 0);
+                    if ($reunionId > 0) {
+                        $reunionesUrgentes[$reunionId] = true;
                     }
-                ));
+                }
+
+                if (!empty($reunionesUrgentes)) {
+                    $recordatoriosAgenda = array_values(array_filter(
+                        $recordatoriosAgenda,
+                        static function ($item) use ($reunionesUrgentes) {
+                            $reunionId = (int)(
+                                $item['reunion_id'] ??
+                                $item['id'] ??
+                                0
+                            );
+                            return $reunionId <= 0 ||
+                                !isset($reunionesUrgentes[$reunionId]);
+                        }
+                    ));
+                }
             }
         }
 
