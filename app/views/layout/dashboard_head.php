@@ -51,7 +51,8 @@ $esReportesDashboard =
             'reporteadministrador',
             'dataterritorialreporte',
             'seguimientovinculacionreporte',
-            'seguimientoreporteanalitica'
+            'seguimientoreporteanalitica',
+            'aliadoreporte'
         ],
         true
     ) ||
@@ -156,6 +157,10 @@ if (
     $esHomeDashboard
 ) {
     $cssOpcionalDashboard[] = 'convocatorias.css';
+}
+
+if ($controllerDashboard === 'aliadoreporte') {
+    $cssOpcionalDashboard[] = 'aliados_reportes.css';
 }
 
 if ($esTerritorialDashboard) {
