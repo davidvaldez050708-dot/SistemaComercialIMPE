@@ -950,7 +950,7 @@ $seguimientoVista = static function ($estado) {
                 <div>
                     <span class="aliados-eyebrow">SEGUIMIENTO DE CONVOCATORIA</span>
                     <h2 class="modal-title" id="modalAliadoSeguimientoTitulo">
-                        Respuesta del aliado
+                        Seguimiento de convocatoria
                     </h2>
                     <p data-aliado-followup-context>
                         Consulta el último envío y registra únicamente lo relevante.
