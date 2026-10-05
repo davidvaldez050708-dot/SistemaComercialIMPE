@@ -9,6 +9,7 @@ require_once __DIR__ . '/../services/ReminderDirectLinkService.php';
 require_once __DIR__ . '/../services/ReminderObservacionService.php';
 require_once __DIR__ . '/../services/ReminderMeetingConfirmationService.php';
 require_once __DIR__ . '/../services/SeguimientoCambioDatosService.php';
+require_once __DIR__ . '/../services/AliadoSeguimientoReminderService.php';
 
 class ReminderController
 {
@@ -19,6 +20,7 @@ class ReminderController
     private $reminderObservacionService;
     private $reminderMeetingConfirmationService;
     private $seguimientoCambioDatosService;
+    private $aliadoSeguimientoReminderService;
 
     public function __construct()
     {
@@ -29,6 +31,8 @@ class ReminderController
         $this->reminderObservacionService = new ReminderObservacionService();
         $this->reminderMeetingConfirmationService = new ReminderMeetingConfirmationService();
         $this->seguimientoCambioDatosService = new SeguimientoCambioDatosService();
+        $this->aliadoSeguimientoReminderService =
+            new AliadoSeguimientoReminderService();
     }
 
     public function pendientes()
