@@ -282,6 +282,34 @@
     background: var(--color-primary);
 }
 
+.aliados-report-module .table-panel-header {
+    min-height: 0;
+    padding: 13px 18px 12px;
+    align-items: flex-start;
+}
+
+.aliados-report-module .table-panel-header > div {
+    min-width: 0;
+}
+
+.aliados-report-module .table-panel-header .report-eyebrow {
+    margin-bottom: 3px;
+    line-height: 1.2;
+}
+
+.aliados-report-module .table-panel-header .panel-title {
+    line-height: 1.25;
+}
+
+.aliados-report-module .table-panel-header .page-subtitle {
+    line-height: 1.35;
+}
+
+.aliados-report-module .table-panel-header .analyst-portfolio-detail-count {
+    flex: 0 0 auto;
+    margin-top: 2px;
+}
+
 .aliados-report-detail-table th {
     font-size: 8px;
     letter-spacing: .025em;
