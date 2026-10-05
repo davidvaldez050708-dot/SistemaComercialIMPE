@@ -448,7 +448,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }, 700);
     };
 
-    root.addEventListener('click', function (event) {
+    document.addEventListener('click', function (event) {
         const button = event.target.closest('[data-aliado-followup]');
         if (!button) {
             return;
