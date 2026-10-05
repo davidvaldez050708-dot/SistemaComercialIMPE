@@ -285,6 +285,12 @@ class ReminderController
                 $seguimientoAliados['avisos'] ?? [],
                 $avisos
             ));
+            $requiereMigracion =
+                $requiereMigracion ||
+                (bool)($seguimientoAliados['requiere_migracion'] ?? false);
+            $ok =
+                $ok &&
+                (bool)($seguimientoAliados['ok'] ?? true);
         }
 
         // La campana debe priorizar obligaciones vencidas y acciones que requieren
