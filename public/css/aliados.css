@@ -425,8 +425,40 @@ button.aliados-followup-summary:hover .aliados-followup-pill {
 }
 
 /* ===== Seguimiento de convocatorias de Aliados ===== */
+.aliados-followup-modal {
+    display: flex;
+    max-height: calc(100vh - 36px);
+    flex-direction: column;
+}
+
+.aliados-followup-modal .modal-header,
+.aliados-followup-modal .modal-footer {
+    flex: 0 0 auto;
+}
+
 .aliados-followup-modal .modal-body {
+    display: flex;
+    min-height: 0;
+    flex: 1 1 auto;
+    flex-direction: column;
+    overflow: hidden;
     padding-top: 14px;
+}
+
+.aliados-followup-modal [data-aliado-followup-content] {
+    display: flex;
+    min-height: 0;
+    flex: 1 1 auto;
+    flex-direction: column;
+}
+
+.aliados-followup-modal [data-aliado-followup-content].d-none {
+    display: none !important;
+}
+
+.aliados-followup-source,
+.aliados-followup-modal [data-aliado-followup-form] {
+    flex: 0 0 auto;
 }
 
 .aliados-followup-loading,
@@ -557,9 +589,40 @@ button.aliados-followup-summary:hover .aliados-followup-pill {
 }
 
 .aliados-followup-events {
+    display: flex;
+    min-height: 132px;
+    max-height: 190px;
+    flex: 1 1 170px;
+    flex-direction: column;
     margin-top: 14px;
     padding-top: 12px;
     border-top: 1px solid var(--color-border, #dfe5ef);
+}
+
+.aliados-followup-events-heading {
+    flex: 0 0 auto;
+}
+
+.aliados-followup-events > [data-aliado-followup-events] {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-right: 7px;
+    scrollbar-width: thin;
+    scrollbar-color: #cbd4e1 transparent;
+}
+
+.aliados-followup-events > [data-aliado-followup-events]::-webkit-scrollbar {
+    width: 6px;
+}
+
+.aliados-followup-events > [data-aliado-followup-events]::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: #cbd4e1;
+}
+
+.aliados-followup-events > [data-aliado-followup-events]::-webkit-scrollbar-track {
+    background: transparent;
 }
 
 .aliados-followup-events-heading {
@@ -1304,6 +1367,27 @@ button.aliados-followup-summary:hover .aliados-followup-pill {
 }
 
 @media (max-width: 767.98px) {
+    .aliados-followup-modal {
+        max-height: calc(100vh - 12px);
+    }
+
+    .aliados-followup-modal .modal-body {
+        overflow-y: auto;
+    }
+
+    .aliados-followup-modal [data-aliado-followup-content] {
+        display: block;
+    }
+
+    .aliados-followup-modal [data-aliado-followup-content].d-none {
+        display: none !important;
+    }
+
+    .aliados-followup-events {
+        min-height: 0;
+        max-height: 180px;
+    }
+
     .aliados-followup-source,
     .aliados-followup-grid {
         grid-template-columns: 1fr;
