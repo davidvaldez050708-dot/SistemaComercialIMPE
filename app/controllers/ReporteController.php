@@ -91,11 +91,16 @@ class ReporteController
         $puedeReporteConvocatorias =
             tienePermiso('reportes.convocatorias');
 
+        $puedeReporteAliados =
+            tienePermiso('reportes.aliados.panorama') &&
+            tienePermiso('aliados.ver');
+
         if (
             !$puedeReporteTerritorial &&
             !$puedeReporteSeguimiento &&
             !$puedeReporteAdministrador &&
-            !$puedeReporteConvocatorias
+            !$puedeReporteConvocatorias &&
+            !$puedeReporteAliados
         ) {
             http_response_code(403);
             die('No tienes permiso para consultar reportes.');
