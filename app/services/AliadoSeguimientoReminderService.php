@@ -1,14 +1,19 @@
 <?php
 
 require_once __DIR__ . '/../models/AliadoModel.php';
+require_once __DIR__ . '/../helpers/ReminderHelper.php';
 
 class AliadoSeguimientoReminderService
 {
     private $modelo;
+    private $connection;
 
     public function __construct()
     {
         $this->modelo = new AliadoModel();
+
+        $database = new Database();
+        $this->connection = $database->connect();
     }
 
     public function obtener($usuarioId, $limite = 10)
@@ -21,6 +26,8 @@ class AliadoSeguimientoReminderService
             !$this->modelo->seguimientoConvocatoriasDisponible()
         ) {
             return [
+                'ok' => true,
+                'requiere_migracion' => false,
                 'recordatorios' => [],
                 'avisos' => []
             ];
@@ -30,7 +37,13 @@ class AliadoSeguimientoReminderService
             $usuarioId,
             $limite
         );
+
         $recordatorios = [];
+        $avisos = [];
+        $tablaRecordatoriosDisponible =
+            existeTablaRecordatoriosVinculacion($this->connection);
+        $ahora = new DateTime();
+        $limiteVentana = (clone $ahora)->modify('+24 hours');
 
         foreach ($filas as $fila) {
             $fecha = trim(
@@ -47,14 +60,27 @@ class AliadoSeguimientoReminderService
                 continue;
             }
 
-            $estadoVisual = $this->estadoVisual($momento);
+            if ($momento > $limiteVentana) {
+                continue;
+            }
+
+            $seguimientoConvocatoriaId =
+                (int)($fila['seguimiento_convocatoria_id'] ?? 0);
+            $seguimientoId = (int)($fila['seguimiento_id'] ?? 0);
+
+            if (
+                $seguimientoConvocatoriaId <= 0 ||
+                $seguimientoId <= 0
+            ) {
+                continue;
+            }
+
             $convocatoria = trim(
                 (string)($fila['convocatoria_titulo'] ?? '')
             );
             $estadoSeguimiento = strtoupper(
                 trim((string)($fila['estado'] ?? ''))
             );
-
             $accion = $estadoSeguimiento === 'SOLICITA_INFORMACION'
                 ? 'Responder información pendiente'
                 : 'Dar seguimiento por WhatsApp';
@@ -63,88 +89,116 @@ class AliadoSeguimientoReminderService
                 $accion .= ' · ' . $convocatoria;
             }
 
-            $recordatorios[] = [
-                'id' => (int)($fila['seguimiento_id'] ?? 0),
-                'seguimiento_id' => (int)($fila['seguimiento_id'] ?? 0),
+            $descripcion = describirRecordatorioSeguimiento($fecha);
+            $url = BASE_URL .
+                'index.php?controller=aliado&action=estado&estado_id=' .
+                (int)($fila['estado_id'] ?? 0) .
+                '&abrir_seguimiento=' .
+                $seguimientoId .
+                '&seguimiento_convocatoria_id=' .
+                $seguimientoConvocatoriaId;
+
+            $recordatorio = [
+                'id' => $seguimientoId,
+                'seguimiento_id' => $seguimientoId,
                 'seguimiento_convocatoria_id' =>
-                    (int)($fila['seguimiento_convocatoria_id'] ?? 0),
+                    $seguimientoConvocatoriaId,
                 'nombre_entidad' =>
                     (string)($fila['nombre_entidad'] ?? 'Aliado'),
                 'accion' => $accion,
                 'fecha' => $momento->format('Y-m-d H:i:s'),
-                'estado' => $estadoVisual,
-                'etiqueta' => $this->etiqueta($momento, $estadoVisual),
+                'estado' => (string)($descripcion['estado'] ?? 'normal'),
+                'etiqueta' => (string)($descripcion['etiqueta'] ?? ''),
                 'icono' => 'bi-whatsapp',
-                'prioridad' => $this->prioridad($estadoVisual),
-                'url' => BASE_URL .
-                    'index.php?controller=aliado&action=estado&estado_id=' .
-                    (int)($fila['estado_id'] ?? 0) .
-                    '&abrir_seguimiento=' .
-                    (int)($fila['seguimiento_id'] ?? 0) .
-                    '&seguimiento_convocatoria_id=' .
-                    (int)($fila['seguimiento_convocatoria_id'] ?? 0)
+                'prioridad' => $this->prioridad(
+                    (string)($descripcion['estado'] ?? 'normal')
+                ),
+                'url' => $url
             ];
+
+            $recordatorios[] = $recordatorio;
+
+            if (!$tablaRecordatoriosDisponible) {
+                continue;
+            }
+
+            $claveCiclo = 'ALIADO_CONVOCATORIA:' .
+                $seguimientoConvocatoriaId;
+
+            asegurarCicloRecordatorioVinculacion(
+                $this->connection,
+                $seguimientoId,
+                $usuarioId,
+                $claveCiclo,
+                $momento->format('Y-m-d H:i:s')
+            );
+
+            $segundosRestantes =
+                $momento->getTimestamp() - $ahora->getTimestamp();
+            $tipoAviso = resolverTipoAvisoRecordatorio(
+                $segundosRestantes
+            );
+
+            if ($tipoAviso === '') {
+                continue;
+            }
+
+            if (!marcarAvisoRecordatorioComoEnviado(
+                $this->connection,
+                $seguimientoId,
+                $usuarioId,
+                $claveCiclo,
+                $momento->format('Y-m-d H:i:s'),
+                $tipoAviso
+            )) {
+                continue;
+            }
+
+            $aviso = construirAvisoRecordatorioSeguimiento(
+                [
+                    'id' => $seguimientoId,
+                    'nombre_entidad' =>
+                        (string)($fila['nombre_entidad'] ?? 'Aliado'),
+                    'proxima_accion_texto' => $accion,
+                    'proxima_accion_at' =>
+                        $momento->format('Y-m-d H:i:s')
+                ],
+                $tipoAviso
+            );
+
+            $aviso['id'] = $seguimientoId;
+            $aviso['seguimiento_id'] = $seguimientoId;
+            $aviso['seguimiento_convocatoria_id'] =
+                $seguimientoConvocatoriaId;
+            $aviso['nombre_entidad'] =
+                (string)($fila['nombre_entidad'] ?? 'Aliado');
+            $aviso['icono'] = 'bi-whatsapp';
+            $aviso['url'] = $url;
+
+            $avisos[] = $aviso;
         }
 
         return [
+            'ok' => true,
+            'requiere_migracion' => !$tablaRecordatoriosDisponible,
             'recordatorios' => $recordatorios,
-            'avisos' => []
+            'avisos' => $avisos
         ];
-    }
-
-    private function estadoVisual(DateTime $momento)
-    {
-        $ahora = new DateTime();
-        if ($momento <= $ahora) {
-            return 'vencida';
-        }
-
-        $hoy = $ahora->format('Y-m-d');
-        $fecha = $momento->format('Y-m-d');
-
-        if ($fecha === $hoy) {
-            return 'hoy';
-        }
-
-        $manana = (clone $ahora)
-            ->modify('+1 day')
-            ->format('Y-m-d');
-
-        if ($fecha === $manana) {
-            return 'manana';
-        }
-
-        return 'proxima';
-    }
-
-    private function etiqueta(DateTime $momento, $estado)
-    {
-        if ($estado === 'vencida') {
-            return 'Vencida · ' . $momento->format('d/m · H:i');
-        }
-
-        if ($estado === 'hoy') {
-            return 'Hoy · ' . $momento->format('H:i');
-        }
-
-        if ($estado === 'manana') {
-            return 'Mañana · ' . $momento->format('H:i');
-        }
-
-        return $momento->format('d/m · H:i');
     }
 
     private function prioridad($estado)
     {
+        $estado = strtolower(trim((string)$estado));
+
         if ($estado === 'vencida') {
             return 0;
         }
 
-        if ($estado === 'hoy') {
+        if ($estado === 'proxima' || $estado === 'hoy') {
             return 2;
         }
 
-        if ($estado === 'manana') {
+        if ($estado === 'manana' || $estado === 'mañana') {
             return 3;
         }
 
