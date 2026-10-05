@@ -97,7 +97,7 @@ $situacionSeleccionada = (string)($filtrosReporte['situacion'] ?? 'todos');
 $situacionSeleccionadaTexto =
     $situaciones[$situacionSeleccionada] ?? 'Todos los aliados';
 
-$maxMunicipios = 10;
+$maxMunicipios = 8;
 $municipiosVisibles = array_slice($porMunicipio, 0, $maxMunicipios);
 $maxAliadosMunicipio = 1;
 foreach ($municipiosVisibles as $filaMunicipio) {
@@ -106,142 +106,104 @@ foreach ($municipiosVisibles as $filaMunicipio) {
         (int)($filaMunicipio['aliados'] ?? 0)
     );
 }
+
+$textoAlcance = $estadoSeleccionado;
+if ($municipioSeleccionado !== 'Todos') {
+    $textoAlcance .= ' · ' . $municipioSeleccionado;
+}
 ?>
 
 <section class="report-module aliados-report-module">
-    <div class="aliados-report-toolbar">
-        <a
-            class="linkage-back-link territorial-back-link"
-            href="<?= BASE_URL ?>index.php?controller=reporte&action=index">
-            <i class="bi bi-arrow-left"></i>
-            Volver a Reportes
-        </a>
+    <a
+        class="linkage-back-link territorial-back-link"
+        href="<?= BASE_URL ?>index.php?controller=reporte&action=index">
+        <i class="bi bi-arrow-left"></i>
+        Volver a Reportes
+    </a>
 
-        <?php if ($generarReporte): ?>
-            <span class="aliados-report-generated">
-                <i class="bi bi-check2-circle"></i>
-                Reporte actualizado
-            </span>
-        <?php endif; ?>
-    </div>
-
-    <section class="dashboard-panel report-intro-panel mb-4">
-        <div>
-            <span class="report-eyebrow">ALIADOS · PANORAMA EJECUTIVO</span>
-            <h2 class="panel-title mb-1">Red institucional y atención operativa</h2>
-            <p class="page-subtitle mb-0">
-                Analiza cobertura, difusión de convocatorias, estado del seguimiento
-                y aliados que requieren atención dentro de tus territorios autorizados.
-            </p>
-        </div>
-
-        <span class="metric-icon report-intro-icon" aria-hidden="true">
-            <i class="bi bi-diagram-3"></i>
-        </span>
-    </section>
-
-    <section class="dashboard-panel aliados-report-filter-panel mb-4">
-        <div class="aliados-report-filter-heading">
-            <div>
-                <span class="report-card-kicker">ALCANCE DEL REPORTE</span>
-                <h3>Selecciona la red que deseas analizar</h3>
-                <p>
-                    El reporte respeta automáticamente los territorios y aliados
-                    autorizados para tu usuario.
-                </p>
-            </div>
-            <i class="bi bi-sliders"></i>
-        </div>
-
-        <form method="GET" class="aliados-report-filter-form">
-            <input type="hidden" name="controller" value="aliadoReporte">
-            <input type="hidden" name="action" value="index">
-            <input type="hidden" name="generar" value="1">
-
-            <div>
-                <label class="form-label" for="reporte_aliados_estado">Estado</label>
-                <select
-                    class="form-select"
-                    id="reporte_aliados_estado"
-                    name="estado_id">
-                    <option value="0">Todos mis territorios</option>
-                    <?php foreach ($territorios as $territorio): ?>
-                        <option
-                            value="<?= (int)($territorio['id'] ?? 0) ?>"
-                            <?= (int)($filtrosReporte['estado_id'] ?? 0) === (int)($territorio['id'] ?? 0) ? 'selected' : '' ?>>
-                            <?= $texto($territorio['nombre'] ?? '') ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-
-            <div>
-                <label class="form-label" for="reporte_aliados_municipio">Municipio</label>
-                <select
-                    class="form-select"
-                    id="reporte_aliados_municipio"
-                    name="municipio_id">
-                    <option value="0">Todos</option>
-                    <?php foreach ($municipios as $municipio): ?>
-                        <option
-                            value="<?= (int)($municipio['id'] ?? 0) ?>"
-                            data-estado-id="<?= (int)($municipio['estado_id'] ?? 0) ?>"
-                            <?= (int)($filtrosReporte['municipio_id'] ?? 0) === (int)($municipio['id'] ?? 0) ? 'selected' : '' ?>>
-                            <?= $texto(
-                                ($municipio['nombre'] ?? '') .
-                                ' · ' .
-                                ($municipio['estado_nombre'] ?? '')
-                            ) ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-
-            <div>
-                <label class="form-label" for="reporte_aliados_situacion">Situación</label>
-                <select
-                    class="form-select"
-                    id="reporte_aliados_situacion"
-                    name="situacion">
-                    <?php foreach ($situaciones as $valor => $label): ?>
-                        <option
-                            value="<?= $texto($valor) ?>"
-                            <?= $situacionSeleccionada === $valor ? 'selected' : '' ?>>
-                            <?= $texto($label) ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-
-            <div class="aliados-report-filter-actions">
-                <a
-                    class="btn btn-system-light"
-                    href="<?= BASE_URL ?>index.php?controller=aliadoReporte&action=index">
-                    <i class="bi bi-arrow-counterclockwise"></i>
-                    Limpiar
-                </a>
-                <button class="btn btn-system-save" type="submit">
-                    <i class="bi bi-bar-chart"></i>
-                    Generar reporte
-                </button>
-            </div>
-        </form>
-    </section>
-
-    <?php if ($generarReporte): ?>
-        <section class="dashboard-panel aliados-report-context mb-4">
-            <div class="aliados-report-context-heading">
+    <?php if (!$generarReporte): ?>
+        <section class="dashboard-panel report-filter-panel aliados-report-generator mb-4">
+            <div class="report-filter-heading">
                 <div>
-                    <span class="report-card-kicker">CONTEXTO DEL REPORTE</span>
-                    <h3>Red analizada</h3>
+                    <span class="report-eyebrow">ALIADOS</span>
+                    <h2 class="panel-title mb-1">Generar panorama de aliados</h2>
+                    <p class="page-subtitle mb-0">
+                        Selecciona el territorio y la situación que deseas analizar.
+                        El alcance siempre respeta los aliados autorizados para tu usuario.
+                    </p>
                 </div>
-                <span>
+                <span class="metric-icon" aria-hidden="true">
+                    <i class="bi bi-diagram-3"></i>
+                </span>
+            </div>
+
+            <?php require __DIR__ . '/partials/aliados_panorama_filtros.php'; ?>
+        </section>
+
+        <section class="dashboard-panel data-empty-state report-empty-state">
+            <span><i class="bi bi-file-earmark-bar-graph"></i></span>
+            <strong>Configura el alcance para preparar el reporte.</strong>
+            <p>
+                Verás cobertura de la red, difusión de convocatorias,
+                seguimiento operativo y prioridades de atención.
+            </p>
+        </section>
+    <?php else: ?>
+        <div class="aliados-report-result-toolbar">
+            <div>
+                <h1>Panorama de Aliados</h1>
+                <p><?= $texto($textoAlcance) ?> · <?= $texto($situacionSeleccionadaTexto) ?></p>
+            </div>
+            <div class="aliados-report-result-actions">
+                <button
+                    type="button"
+                    class="btn btn-system-light"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#aliadosReportFilters"
+                    aria-expanded="false"
+                    aria-controls="aliadosReportFilters">
+                    <i class="bi bi-sliders"></i>
+                    Editar filtros
+                </button>
+                <span class="aliados-report-generated">
+                    <i class="bi bi-check2-circle"></i>
+                    Actualizado <?= $texto(date('H:i')) ?>
+                </span>
+            </div>
+        </div>
+
+        <div class="collapse mb-3" id="aliadosReportFilters">
+            <section class="dashboard-panel report-filter-panel aliados-report-generator">
+                <div class="report-filter-heading">
+                    <div>
+                        <span class="report-eyebrow">ALCANCE DEL REPORTE</span>
+                        <h2 class="panel-title mb-1">Editar filtros</h2>
+                        <p class="page-subtitle mb-0">
+                            Ajusta territorio, municipio o situación y vuelve a generar el panorama.
+                        </p>
+                    </div>
+                </div>
+
+                <?php require __DIR__ . '/partials/aliados_panorama_filtros.php'; ?>
+            </section>
+        </div>
+
+        <section class="dashboard-panel analyst-portfolio-context mb-3" aria-label="Contexto del reporte">
+            <div class="analyst-portfolio-section-heading">
+                <div>
+                    <span class="report-eyebrow">CONTEXTO DEL REPORTE</span>
+                    <h3 class="panel-title mb-1">Red analizada</h3>
+                    <p class="page-subtitle mb-0">
+                        Fotografía actual de los aliados institucionales incluidos en el alcance seleccionado.
+                    </p>
+                </div>
+                <span class="analyst-portfolio-detail-count">
                     <?= (int)($resumen['total'] ?? 0) ?>
                     <?= (int)($resumen['total'] ?? 0) === 1 ? 'aliado' : 'aliados' ?>
                 </span>
             </div>
 
-            <div class="aliados-report-context-grid">
+            <div class="analyst-portfolio-context-grid">
                 <div>
                     <span>Territorio</span>
                     <strong><?= $texto($estadoSeleccionado) ?></strong>
@@ -255,207 +217,263 @@ foreach ($municipiosVisibles as $filaMunicipio) {
                     <strong><?= $texto($situacionSeleccionadaTexto) ?></strong>
                 </div>
                 <div>
-                    <span>Generado</span>
-                    <strong><?= $texto(date('d/m/Y · H:i')) ?></strong>
+                    <span>Cobertura</span>
+                    <strong>
+                        <?= (int)($resumen['municipios'] ?? 0) ?>
+                        <?= (int)($resumen['municipios'] ?? 0) === 1 ? 'municipio' : 'municipios' ?>
+                    </strong>
                 </div>
             </div>
         </section>
 
-        <div class="territorial-section-title">
-            <h2>RESUMEN EJECUTIVO</h2>
-            <p>Indicadores para dimensionar la red y detectar necesidades de atención.</p>
-        </div>
-
-        <section class="metric-grid report-summary-grid aliados-report-kpi-grid mb-4">
-            <article class="metric-card">
-                <div class="metric-icon">
+        <section class="analyst-portfolio-kpis mb-3" aria-label="Panorama de aliados">
+            <article class="analyst-portfolio-kpi">
+                <span class="analyst-portfolio-kpi-icon">
                     <i class="bi bi-buildings"></i>
-                </div>
+                </span>
                 <div>
-                    <p class="metric-value"><?= (int)($resumen['total'] ?? 0) ?></p>
-                    <p class="metric-label">Aliados analizados</p>
-                    <small><?= (int)($resumen['municipios'] ?? 0) ?> municipios</small>
+                    <strong><?= (int)($resumen['total'] ?? 0) ?></strong>
+                    <span>Aliados en la red</span>
+                    <small>Instituciones incluidas en la consulta</small>
                 </div>
             </article>
 
-            <article class="metric-card">
-                <div class="metric-icon metric-icon-success">
+            <article class="analyst-portfolio-kpi">
+                <span class="analyst-portfolio-kpi-icon">
                     <i class="bi bi-megaphone"></i>
-                </div>
+                </span>
                 <div>
-                    <p class="metric-value"><?= $texto(number_format((float)($resumen['cobertura_difusion'] ?? 0), 1)) ?>%</p>
-                    <p class="metric-label">Cobertura de difusión</p>
-                    <small><?= (int)($resumen['con_difusion'] ?? 0) ?> con difusión</small>
+                    <strong><?= (int)($resumen['con_difusion'] ?? 0) ?></strong>
+                    <span>Con difusión</span>
+                    <small><?= $texto(number_format((float)($resumen['cobertura_difusion'] ?? 0), 1)) ?>% de la red</small>
                 </div>
             </article>
 
-            <article class="metric-card">
-                <div class="metric-icon">
-                    <i class="bi bi-whatsapp"></i>
-                </div>
+            <article class="analyst-portfolio-kpi">
+                <span class="analyst-portfolio-kpi-icon">
+                    <i class="bi bi-arrow-repeat"></i>
+                </span>
                 <div>
-                    <p class="metric-value"><?= $texto(number_format((float)($resumen['cobertura_whatsapp'] ?? 0), 1)) ?>%</p>
-                    <p class="metric-label">WhatsApp disponible</p>
-                    <small><?= (int)($resumen['con_whatsapp'] ?? 0) ?> aliados</small>
+                    <strong><?= (int)($resumen['pendientes'] ?? 0) ?></strong>
+                    <span>Seguimientos abiertos</span>
+                    <small>Aliados que todavía requieren gestión</small>
                 </div>
             </article>
 
-            <article class="metric-card">
-                <div class="metric-icon aliados-report-icon-warning">
-                    <i class="bi bi-hourglass-split"></i>
-                </div>
+            <article class="analyst-portfolio-kpi analyst-portfolio-kpi--attention">
+                <span class="analyst-portfolio-kpi-icon">
+                    <i class="bi bi-exclamation-circle"></i>
+                </span>
                 <div>
-                    <p class="metric-value"><?= (int)($resumen['pendientes'] ?? 0) ?></p>
-                    <p class="metric-label">Seguimientos pendientes</p>
-                    <small>Acciones todavía abiertas</small>
+                    <strong><?= (int)($resumen['vencidos'] ?? 0) ?></strong>
+                    <span>Requieren atención</span>
+                    <small>Seguimientos con fecha ya vencida</small>
                 </div>
             </article>
 
-            <article class="metric-card">
-                <div class="metric-icon aliados-report-icon-danger">
-                    <i class="bi bi-exclamation-octagon"></i>
-                </div>
-                <div>
-                    <p class="metric-value"><?= (int)($resumen['vencidos'] ?? 0) ?></p>
-                    <p class="metric-label">Seguimientos vencidos</p>
-                    <small>Requieren atención prioritaria</small>
-                </div>
-            </article>
-
-            <article class="metric-card">
-                <div class="metric-icon metric-icon-success">
+            <article class="analyst-portfolio-kpi analyst-portfolio-kpi--success">
+                <span class="analyst-portfolio-kpi-icon">
                     <i class="bi bi-patch-check"></i>
-                </div>
+                </span>
                 <div>
-                    <p class="metric-value"><?= (int)($resumen['difusion_confirmada'] ?? 0) ?></p>
-                    <p class="metric-label">Difusión confirmada</p>
+                    <strong><?= (int)($resumen['difusion_confirmada'] ?? 0) ?></strong>
+                    <span>Difusión confirmada</span>
                     <small><?= $texto(number_format((float)($resumen['tasa_confirmacion'] ?? 0), 1)) ?>% sobre aliados con difusión</small>
                 </div>
             </article>
         </section>
 
-        <section class="aliados-report-decision-grid mb-4">
-            <article class="dashboard-panel aliados-report-analysis-card">
-                <div class="aliados-report-section-heading">
-                    <div>
-                        <span class="report-card-kicker">LECTURA EJECUTIVA</span>
-                        <h3>Hallazgos para toma de decisiones</h3>
-                        <p>
-                            Síntesis automática del alcance, cobertura y pendientes
-                            detectados en la red seleccionada.
-                        </p>
+        <div class="row g-3 mb-3">
+            <div class="col-xl-7">
+                <section class="dashboard-panel analyst-portfolio-attention h-100">
+                    <div class="analyst-portfolio-section-heading">
+                        <div>
+                            <span class="report-eyebrow">ATENCIÓN OPERATIVA</span>
+                            <h3 class="panel-title mb-1">Aliados que conviene revisar</h3>
+                            <p class="page-subtitle mb-0">
+                                Prioriza seguimientos vencidos, solicitudes de información,
+                                casos sin respuesta y aliados sin difusión registrada.
+                            </p>
+                        </div>
+                        <span class="analyst-portfolio-attention-count">
+                            <?= count($atencion) ?> por revisar
+                        </span>
                     </div>
-                    <i class="bi bi-lightbulb"></i>
-                </div>
 
-                <ul class="aliados-report-findings">
-                    <?php foreach ($hallazgos as $hallazgo): ?>
-                        <li>
-                            <i class="bi bi-check2-circle"></i>
-                            <span><?= $texto($hallazgo) ?></span>
-                        </li>
-                    <?php endforeach; ?>
-                </ul>
-            </article>
+                    <?php if (!empty($atencion)): ?>
+                        <div class="analyst-portfolio-priority-list">
+                            <?php foreach ($atencion as $fila): ?>
+                                <article>
+                                    <div class="analyst-portfolio-priority-main">
+                                        <strong><?= $texto($fila['institucion'] ?? '') ?></strong>
+                                        <span>
+                                            <?= $texto($fila['municipio'] ?? '') ?>
+                                            ·
+                                            <?= $texto($fila['estado'] ?? '') ?>
+                                        </span>
+                                    </div>
+                                    <span class="aliados-report-priority is-<?= $texto($fila['tipo'] ?? '') ?>">
+                                        <?= $texto($fila['etiqueta'] ?? '') ?>
+                                    </span>
+                                    <div class="analyst-portfolio-priority-meta">
+                                        <span>
+                                            <i class="bi bi-megaphone"></i>
+                                            <?= $texto(trim((string)($fila['convocatoria'] ?? '')) !== ''
+                                                ? $fila['convocatoria']
+                                                : 'Sin convocatoria difundida') ?>
+                                        </span>
+                                        <span>
+                                            <i class="bi bi-arrow-right-circle"></i>
+                                            <?= $texto($fila['accion'] ?? '') ?>
+                                        </span>
+                                        <?php if (trim((string)($fila['proximo_seguimiento_at'] ?? '')) !== ''): ?>
+                                            <span>
+                                                <i class="bi bi-clock"></i>
+                                                <?= $texto($fecha($fila['proximo_seguimiento_at'], true)) ?>
+                                            </span>
+                                        <?php endif; ?>
+                                    </div>
+                                </article>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php else: ?>
+                        <div class="analyst-portfolio-empty">
+                            <i class="bi bi-check-circle"></i>
+                            <div>
+                                <strong>Sin prioridades de atención.</strong>
+                                <span>
+                                    Con los filtros actuales no hay seguimientos vencidos
+                                    ni aliados que requieran una acción inmediata.
+                                </span>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+                </section>
+            </div>
 
-            <article class="dashboard-panel aliados-report-analysis-card">
-                <div class="aliados-report-section-heading">
-                    <div>
-                        <span class="report-card-kicker">ESTADO DE RESPUESTA</span>
-                        <h3>Situación del seguimiento</h3>
-                        <p>Distribución actual del último seguimiento de convocatoria.</p>
+            <div class="col-xl-5">
+                <section class="dashboard-panel analyst-portfolio-health h-100">
+                    <div class="analyst-portfolio-section-heading">
+                        <div>
+                            <span class="report-eyebrow">SALUD DE LA RED</span>
+                            <h3 class="panel-title mb-1">Estado operativo</h3>
+                            <p class="page-subtitle mb-0">
+                                Señales rápidas sobre capacidad de contacto y continuidad de difusión.
+                            </p>
+                        </div>
                     </div>
-                    <i class="bi bi-chat-square-text"></i>
-                </div>
 
-                <div class="aliados-report-status-grid">
-                    <div>
-                        <span>Esperando respuesta</span>
-                        <strong><?= (int)($resumen['esperando_respuesta'] ?? 0) ?></strong>
+                    <div class="analyst-portfolio-health-grid">
+                        <div>
+                            <span>WhatsApp disponible</span>
+                            <strong><?= (int)($resumen['con_whatsapp'] ?? 0) ?></strong>
+                        </div>
+                        <div>
+                            <span>Sin difusión</span>
+                            <strong><?= (int)($resumen['sin_difusion'] ?? 0) ?></strong>
+                        </div>
+                        <div>
+                            <span>Sin respuesta</span>
+                            <strong><?= (int)($resumen['sin_respuesta'] ?? 0) ?></strong>
+                        </div>
+                        <div>
+                            <span>Solicita información</span>
+                            <strong><?= (int)($resumen['solicita_informacion'] ?? 0) ?></strong>
+                        </div>
                     </div>
-                    <div>
-                        <span>Sin respuesta</span>
-                        <strong><?= (int)($resumen['sin_respuesta'] ?? 0) ?></strong>
-                    </div>
-                    <div>
-                        <span>Solicita información</span>
-                        <strong><?= (int)($resumen['solicita_informacion'] ?? 0) ?></strong>
-                    </div>
-                    <div>
-                        <span>No participará</span>
-                        <strong><?= (int)($resumen['no_participara'] ?? 0) ?></strong>
-                    </div>
-                </div>
-            </article>
-        </section>
 
-        <div class="territorial-section-title">
-            <h2>PRIORIDADES DE ATENCIÓN</h2>
-            <p>Aliados que requieren una acción concreta antes que el resto de la cartera.</p>
+                    <div class="analyst-portfolio-health-note">
+                        <i class="bi bi-info-circle"></i>
+                        <span>
+                            <?= $texto(number_format((float)($resumen['cobertura_whatsapp'] ?? 0), 1)) ?>%
+                            de la red cuenta con WhatsApp confirmado o verificado.
+                        </span>
+                    </div>
+                </section>
+            </div>
         </div>
 
-        <section class="dashboard-panel aliados-report-table-panel mb-4">
-            <div class="table-responsive">
-                <table class="table users-table align-middle mb-0">
-                    <thead>
-                        <tr>
-                            <th>Aliado</th>
-                            <th>Territorio</th>
-                            <th>Situación</th>
-                            <th>Convocatoria</th>
-                            <th>Próxima acción</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php if (empty($atencion)): ?>
-                            <tr>
-                                <td colspan="5">
-                                    <div class="empty-table-message">
-                                        No se detectaron aliados que requieran atención prioritaria con estos filtros.
-                                    </div>
-                                </td>
-                            </tr>
-                        <?php else: ?>
-                            <?php foreach ($atencion as $fila): ?>
-                                <tr>
-                                    <td>
-                                        <strong><?= $texto($fila['institucion'] ?? '') ?></strong>
-                                    </td>
-                                    <td>
-                                        <?= $texto($fila['municipio'] ?? '') ?>
-                                        <small class="d-block text-muted">
-                                            <?= $texto($fila['estado'] ?? '') ?>
-                                        </small>
-                                    </td>
-                                    <td>
-                                        <span class="aliados-report-priority is-<?= $texto($fila['tipo'] ?? '') ?>">
-                                            <?= $texto($fila['etiqueta'] ?? '') ?>
-                                        </span>
-                                    </td>
-                                    <td><?= $texto($fila['convocatoria'] ?: '—') ?></td>
-                                    <td>
-                                        <span><?= $texto($fila['accion'] ?? '') ?></span>
-                                        <?php if (trim((string)($fila['proximo_seguimiento_at'] ?? '')) !== ''): ?>
-                                            <small class="d-block text-muted">
-                                                <?= $texto($fecha($fila['proximo_seguimiento_at'], true)) ?>
-                                            </small>
-                                        <?php endif; ?>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
-                    </tbody>
-                </table>
+        <div class="row g-3 mb-3">
+            <div class="col-xl-7">
+                <section class="dashboard-panel aliados-report-insights h-100">
+                    <div class="analyst-portfolio-section-heading">
+                        <div>
+                            <span class="report-eyebrow">LECTURA EJECUTIVA</span>
+                            <h3 class="panel-title mb-1">Hallazgos de la red</h3>
+                            <p class="page-subtitle mb-0">
+                                Síntesis automática construida con los indicadores del alcance seleccionado.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="aliados-report-findings">
+                        <?php foreach ($hallazgos as $hallazgo): ?>
+                            <article>
+                                <i class="bi bi-lightbulb"></i>
+                                <p><?= $texto($hallazgo) ?></p>
+                            </article>
+                        <?php endforeach; ?>
+                    </div>
+                </section>
             </div>
-        </section>
+
+            <div class="col-xl-5">
+                <section class="dashboard-panel aliados-report-followup-state h-100">
+                    <div class="analyst-portfolio-section-heading">
+                        <div>
+                            <span class="report-eyebrow">DISTRIBUCIÓN</span>
+                            <h3 class="panel-title mb-1">Situación del seguimiento</h3>
+                            <p class="page-subtitle mb-0">
+                                El total de categorías corresponde a los aliados incluidos en el reporte.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="aliados-report-followup-grid">
+                        <div>
+                            <span>Difusión confirmada</span>
+                            <strong><?= (int)($resumen['difusion_confirmada'] ?? 0) ?></strong>
+                        </div>
+                        <div>
+                            <span>Esperando respuesta</span>
+                            <strong><?= (int)($resumen['esperando_respuesta'] ?? 0) ?></strong>
+                        </div>
+                        <div>
+                            <span>Sin respuesta</span>
+                            <strong><?= (int)($resumen['sin_respuesta'] ?? 0) ?></strong>
+                        </div>
+                        <div>
+                            <span>Solicita información</span>
+                            <strong><?= (int)($resumen['solicita_informacion'] ?? 0) ?></strong>
+                        </div>
+                        <div>
+                            <span>No participará</span>
+                            <strong><?= (int)($resumen['no_participara'] ?? 0) ?></strong>
+                        </div>
+                        <div>
+                            <span>Sin seguimiento</span>
+                            <strong><?= (int)($resumen['sin_seguimiento'] ?? 0) ?></strong>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
 
         <?php if (count($porEstado) > 1): ?>
-            <div class="territorial-section-title">
-                <h2>COBERTURA POR ESTADO</h2>
-                <p>Comparativo de tamaño de red, difusión y atención pendiente.</p>
-            </div>
-
-            <section class="dashboard-panel aliados-report-table-panel mb-4">
+            <section class="dashboard-panel p-0 overflow-hidden mb-3">
+                <div class="table-panel-header">
+                    <div>
+                        <span class="report-eyebrow">COBERTURA TERRITORIAL</span>
+                        <h3 class="panel-title mb-0">Red por estado</h3>
+                        <p class="page-subtitle mb-0 mt-1">
+                            Comparativo de aliados, difusión y pendientes dentro del alcance autorizado.
+                        </p>
+                    </div>
+                    <span class="analyst-portfolio-detail-count">
+                        <?= count($porEstado) ?>
+                        <?= count($porEstado) === 1 ? 'estado' : 'estados' ?>
+                    </span>
+                </div>
                 <div class="table-responsive">
                     <table class="table users-table align-middle mb-0">
                         <thead>
@@ -491,15 +509,28 @@ foreach ($municipiosVisibles as $filaMunicipio) {
             </section>
         <?php endif; ?>
 
-        <div class="territorial-section-title">
-            <h2>CONCENTRACIÓN MUNICIPAL</h2>
-            <p>Municipios con mayor número de aliados dentro del alcance seleccionado.</p>
-        </div>
+        <section class="dashboard-panel analyst-portfolio-territory mb-3">
+            <div class="analyst-portfolio-section-heading">
+                <div>
+                    <span class="report-eyebrow">COBERTURA MUNICIPAL</span>
+                    <h3 class="panel-title mb-1">Concentración de aliados</h3>
+                    <p class="page-subtitle mb-0">
+                        Municipios con mayor número de instituciones aliadas dentro del alcance seleccionado.
+                    </p>
+                </div>
+                <span class="analyst-portfolio-detail-count">
+                    <?= count($porMunicipio) ?>
+                    <?= count($porMunicipio) === 1 ? 'municipio' : 'municipios' ?>
+                </span>
+            </div>
 
-        <section class="dashboard-panel aliados-report-analysis-card mb-4">
             <?php if (empty($municipiosVisibles)): ?>
-                <div class="empty-table-message">
-                    No hay municipios disponibles para el alcance seleccionado.
+                <div class="analyst-portfolio-empty">
+                    <i class="bi bi-geo-alt"></i>
+                    <div>
+                        <strong>Sin municipios para mostrar.</strong>
+                        <span>No hay aliados dentro del alcance seleccionado.</span>
+                    </div>
                 </div>
             <?php else: ?>
                 <div class="aliados-report-bars">
@@ -520,8 +551,13 @@ foreach ($municipiosVisibles as $filaMunicipio) {
                                     <span><?= $texto($fila['estado'] ?? '') ?></span>
                                 </div>
                                 <div>
-                                    <strong><?= $aliadosMunicipio ?></strong>
-                                    <span><?= $texto(number_format((float)($fila['cobertura_difusion'] ?? 0), 1)) ?>% con difusión</span>
+                                    <strong>
+                                        <?= $aliadosMunicipio ?>
+                                        <?= $aliadosMunicipio === 1 ? 'aliado' : 'aliados' ?>
+                                    </strong>
+                                    <span>
+                                        <?= $texto(number_format((float)($fila['cobertura_difusion'] ?? 0), 1)) ?>% con difusión
+                                    </span>
                                 </div>
                             </div>
                             <div class="aliados-report-bar-track">
@@ -533,14 +569,23 @@ foreach ($municipiosVisibles as $filaMunicipio) {
             <?php endif; ?>
         </section>
 
-        <div class="territorial-section-title">
-            <h2>DETALLE DE ALIADOS</h2>
-            <p>Listado utilizado para construir los indicadores y hallazgos del reporte.</p>
-        </div>
+        <section class="dashboard-panel p-0 overflow-hidden">
+            <div class="table-panel-header">
+                <div>
+                    <span class="report-eyebrow">DETALLE DEL REPORTE</span>
+                    <h3 class="panel-title mb-0">Aliados incluidos</h3>
+                    <p class="page-subtitle mb-0 mt-1">
+                        Instituciones utilizadas para construir los indicadores y hallazgos anteriores.
+                    </p>
+                </div>
+                <span class="analyst-portfolio-detail-count">
+                    <?= count($detalle) ?>
+                    <?= count($detalle) === 1 ? 'aliado' : 'aliados' ?>
+                </span>
+            </div>
 
-        <section class="dashboard-panel aliados-report-table-panel">
             <div class="table-responsive">
-                <table class="table users-table align-middle mb-0">
+                <table class="table users-table align-middle mb-0 aliados-report-detail-table">
                     <thead>
                         <tr>
                             <th>Institución</th>
