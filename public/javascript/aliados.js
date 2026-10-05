@@ -1616,6 +1616,199 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     };
 
+    let activeActionsDropdownPortal = null;
+
+    const restoreActionsDropdownPortal = function () {
+        if (!activeActionsDropdownPortal) {
+            return;
+        }
+
+        const state = activeActionsDropdownPortal;
+        activeActionsDropdownPortal = null;
+
+        state.menu.classList.remove('aliados-actions-dropdown-portal');
+        [
+            'position',
+            'top',
+            'left',
+            'right',
+            'bottom',
+            'transform',
+            'inset',
+            'margin',
+            'z-index'
+        ].forEach(function (property) {
+            state.menu.style.removeProperty(property);
+        });
+
+        if (state.placeholder.parentNode) {
+            state.placeholder.parentNode.replaceChild(
+                state.menu,
+                state.placeholder
+            );
+        }
+    };
+
+    const positionActionsDropdownPortal = function () {
+        const state = activeActionsDropdownPortal;
+        if (!state) {
+            return;
+        }
+
+        const toggleRect = state.toggle.getBoundingClientRect();
+        const menuRect = state.menu.getBoundingClientRect();
+        const margin = 8;
+        const gap = 8;
+        const menuWidth = Math.max(menuRect.width, 195);
+        const menuHeight = menuRect.height;
+
+        let left = toggleRect.left - menuWidth - gap;
+
+        if (left < margin) {
+            left = toggleRect.right + gap;
+        }
+
+        if (left + menuWidth > window.innerWidth - margin) {
+            left = Math.max(
+                margin,
+                window.innerWidth - menuWidth - margin
+            );
+        }
+
+        let top =
+            toggleRect.top +
+            (toggleRect.height / 2) -
+            (menuHeight / 2);
+
+        top = Math.max(
+            margin,
+            Math.min(
+                top,
+                window.innerHeight - menuHeight - margin
+            )
+        );
+
+        state.menu.style.setProperty(
+            'position',
+            'fixed',
+            'important'
+        );
+        state.menu.style.setProperty(
+            'inset',
+            'auto',
+            'important'
+        );
+        state.menu.style.setProperty(
+            'top',
+            Math.round(top) + 'px',
+            'important'
+        );
+        state.menu.style.setProperty(
+            'left',
+            Math.round(left) + 'px',
+            'important'
+        );
+        state.menu.style.setProperty(
+            'right',
+            'auto',
+            'important'
+        );
+        state.menu.style.setProperty(
+            'bottom',
+            'auto',
+            'important'
+        );
+        state.menu.style.setProperty(
+            'transform',
+            'none',
+            'important'
+        );
+        state.menu.style.setProperty(
+            'margin',
+            '0',
+            'important'
+        );
+        state.menu.style.setProperty(
+            'z-index',
+            '1085',
+            'important'
+        );
+    };
+
+    document.addEventListener('shown.bs.dropdown', function (event) {
+        const toggle = event.target instanceof Element
+            ? (
+                event.target.matches('.aliados-more-button')
+                    ? event.target
+                    : event.target.querySelector('.aliados-more-button')
+            )
+            : null;
+
+        if (!toggle) {
+            return;
+        }
+
+        const container = toggle.closest('.aliados-actions-menu');
+        const menu = container
+            ? container.querySelector('.aliados-actions-dropdown')
+            : null;
+
+        if (!container || !menu) {
+            return;
+        }
+
+        restoreActionsDropdownPortal();
+
+        const placeholder = document.createComment(
+            'aliados-actions-dropdown'
+        );
+        menu.parentNode.insertBefore(placeholder, menu);
+
+        activeActionsDropdownPortal = {
+            toggle: toggle,
+            menu: menu,
+            placeholder: placeholder
+        };
+
+        menu.classList.add('aliados-actions-dropdown-portal');
+        document.body.appendChild(menu);
+
+        window.requestAnimationFrame(
+            positionActionsDropdownPortal
+        );
+    });
+
+    document.addEventListener('hidden.bs.dropdown', function (event) {
+        if (!activeActionsDropdownPortal) {
+            return;
+        }
+
+        const toggle = event.target instanceof Element
+            ? (
+                event.target.matches('.aliados-more-button')
+                    ? event.target
+                    : event.target.querySelector('.aliados-more-button')
+            )
+            : null;
+
+        if (
+            !toggle ||
+            toggle === activeActionsDropdownPortal.toggle
+        ) {
+            restoreActionsDropdownPortal();
+        }
+    });
+
+    window.addEventListener(
+        'resize',
+        positionActionsDropdownPortal
+    );
+    window.addEventListener(
+        'scroll',
+        positionActionsDropdownPortal,
+        true
+    );
+
     root.addEventListener('click', function (event) {
         const shareButton = event.target.closest('[data-aliado-share]');
         if (shareButton) {
