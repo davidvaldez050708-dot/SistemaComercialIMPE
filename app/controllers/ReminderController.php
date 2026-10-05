@@ -139,7 +139,7 @@ class ReminderController
             $avisosAgenda
         );
 
-        if ($esSupervisor) {
+        if ($puedeCentroReuniones && $esSupervisor) {
             $cambiosDatos = $this->seguimientoCambioDatosService->obtenerNotificaciones(
                 $usuarioId,
                 10
@@ -163,7 +163,7 @@ class ReminderController
             ));
         }
 
-        if ($esAnalista) {
+        if ($puedeCentroReuniones && $esAnalista) {
             $resultado = obtenerAvisosPendientesRecordatoriosAnalista($usuarioId);
             $recordatoriosSeguimiento = serializarRecordatoriosSeguimiento(
                 $resultado['recordatorios'] ?? []
