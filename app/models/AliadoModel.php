@@ -549,6 +549,39 @@ class AliadoModel
         return $resultado;
     }
 
+    public function obtenerSeguimientoConvocatoriaPorId(
+        $seguimientoConvocatoriaId,
+        $seguimientoId,
+        $usuarioId,
+        $esAdministrador = false
+    ) {
+        $aliado = $this->obtenerAliado(
+            (int)$seguimientoId,
+            (int)$usuarioId,
+            (bool)$esAdministrador
+        );
+
+        if (!$aliado || !$this->seguimientoConvocatoriasDisponible()) {
+            return null;
+        }
+
+        $resultado = $this->consultarSeguimientoConvocatoriaPorId(
+            (int)$seguimientoConvocatoriaId,
+            (int)$seguimientoId
+        );
+
+        if (!$resultado) {
+            return null;
+        }
+
+        $resultado['eventos'] =
+            $this->obtenerEventosSeguimientoConvocatoria(
+                (int)$seguimientoConvocatoriaId
+            );
+
+        return $resultado;
+    }
+
     public function guardarSeguimientoConvocatoria(
         $seguimientoConvocatoriaId,
         $seguimientoId,
@@ -659,7 +692,8 @@ class AliadoModel
 
             $this->connection->commit();
 
-            return $this->consultarSeguimientoConvocatoriaActual(
+            return $this->consultarSeguimientoConvocatoriaPorId(
+                $seguimientoConvocatoriaId,
                 $seguimientoId
             );
         } catch (Throwable $error) {
@@ -754,6 +788,53 @@ class AliadoModel
         $stmt = $this->connection->prepare($sql);
         $seguimientoId = (int)$seguimientoId;
         $stmt->bind_param('i', $seguimientoId);
+        $stmt->execute();
+
+        return $stmt->get_result()->fetch_assoc() ?: null;
+    }
+
+    private function consultarSeguimientoConvocatoriaPorId(
+        $seguimientoConvocatoriaId,
+        $seguimientoId
+    ) {
+        $sql = "SELECT
+                    envio.id AS envio_id,
+                    envio.convocatoria_id,
+                    envio.convocatoria_titulo,
+                    envio.canal,
+                    envio.destinatario,
+                    envio.enviado_at,
+                    seguimiento.id AS seguimiento_convocatoria_id,
+                    seguimiento.responsable_usuario_id,
+                    seguimiento.estado,
+                    seguimiento.nota,
+                    seguimiento.proximo_seguimiento_at,
+                    seguimiento.cerrado_at,
+                    seguimiento.created_at AS seguimiento_created_at,
+                    seguimiento.updated_at AS seguimiento_updated_at,
+                    CONCAT_WS(
+                        ' ',
+                        responsable.nombre,
+                        responsable.apellidos
+                    ) AS responsable_nombre
+                FROM aliados_convocatorias_seguimientos seguimiento
+                INNER JOIN aliados_convocatorias_envios envio
+                    ON envio.id = seguimiento.envio_id
+                LEFT JOIN usuarios responsable
+                    ON responsable.id = seguimiento.responsable_usuario_id
+                WHERE seguimiento.id = ?
+                  AND seguimiento.seguimiento_id = ?
+                  AND seguimiento.activo = 1
+                LIMIT 1";
+
+        $stmt = $this->connection->prepare($sql);
+        $seguimientoConvocatoriaId = (int)$seguimientoConvocatoriaId;
+        $seguimientoId = (int)$seguimientoId;
+        $stmt->bind_param(
+            'ii',
+            $seguimientoConvocatoriaId,
+            $seguimientoId
+        );
         $stmt->execute();
 
         return $stmt->get_result()->fetch_assoc() ?: null;
