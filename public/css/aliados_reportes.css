@@ -345,3 +345,61 @@
         align-items: flex-start;
     }
 }
+
+
+/* Jerarquía territorial: red -> estado -> municipio */
+.aliados-report-territory-table th,
+.aliados-report-territory-table td {
+    padding: 10px 12px;
+    font-size: 9px;
+    vertical-align: middle;
+}
+
+.aliados-report-territory-table td > strong {
+    color: var(--color-text);
+    font-size: 9.6px;
+}
+
+.aliados-report-filter-form .form-select:disabled {
+    cursor: not-allowed;
+    background-color: #f2f4f7;
+    color: #9aa3b2;
+    opacity: 1;
+}
+
+.aliados-report-contactability {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+.aliados-report-contactability span {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 23px;
+    padding: 3px 6px;
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    background: var(--color-bg);
+    color: #8a94a3;
+    font-size: 8px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.aliados-report-contactability span.is-ready {
+    border-color: rgba(10, 143, 122, .17);
+    background: rgba(10, 143, 122, .07);
+    color: #087966;
+}
+
+.aliados-report-contactability i {
+    font-size: 8.5px;
+}
+
+@media (max-width: 991.98px) {
+    .aliados-report-territory-table {
+        min-width: 820px;
+    }
+}
