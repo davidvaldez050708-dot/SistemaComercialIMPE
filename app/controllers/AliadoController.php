@@ -197,6 +197,9 @@ class AliadoController
         $puedePrepararWhatsapp =
             tienePermiso('aliados.preparar_whatsapp') &&
             $puedeConsultarConvocatorias;
+        $puedeSeguimientoConvocatorias =
+            tienePermiso('aliados.seguimiento_convocatorias') &&
+            $modeloAliado->seguimientoConvocatoriasDisponible();
 
         $filtros = [
             'buscar' => trim((string)($_GET['buscar'] ?? '')),
@@ -360,6 +363,203 @@ class AliadoController
                 $usuarioId,
                 $esAdministrador
             )
+        ]);
+    }
+
+    public function seguimientoConvocatoria()
+    {
+        $this->validarPermiso('aliados.ver');
+        $this->validarPermiso('aliados.seguimiento_convocatorias');
+
+        $modelo = new AliadoModel();
+        $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
+        $esAdministrador = (int)($_SESSION['rol_id'] ?? 0) === 1;
+        $seguimientoId = (int)($_GET['id'] ?? 0);
+
+        if (!$modelo->seguimientoConvocatoriasDisponible()) {
+            $this->responder([
+                'ok' => false,
+                'mensaje' =>
+                    'Falta aplicar la migración de seguimiento de convocatorias.'
+            ], 409);
+        }
+
+        $aliado = $modelo->obtenerAliado(
+            $seguimientoId,
+            $usuarioId,
+            $esAdministrador
+        );
+
+        if (!$aliado) {
+            $this->responder([
+                'ok' => false,
+                'mensaje' => 'No tienes acceso a este aliado.'
+            ], 403);
+        }
+
+        $seguimiento = $modelo->obtenerSeguimientoConvocatoriaActual(
+            $seguimientoId,
+            $usuarioId,
+            $esAdministrador
+        );
+
+        $this->responder([
+            'ok' => true,
+            'aliado' => $aliado,
+            'seguimiento' => $seguimiento
+        ]);
+    }
+
+    public function guardarSeguimientoConvocatoria()
+    {
+        $this->validarPermiso('aliados.ver');
+        $this->validarPermiso('aliados.seguimiento_convocatorias');
+        $this->validarMetodoPost();
+
+        $modelo = new AliadoModel();
+        $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
+        $esAdministrador = (int)($_SESSION['rol_id'] ?? 0) === 1;
+        $seguimientoId = (int)($_POST['seguimiento_id'] ?? 0);
+        $seguimientoConvocatoriaId =
+            (int)($_POST['seguimiento_convocatoria_id'] ?? 0);
+
+        if (!$modelo->seguimientoConvocatoriasDisponible()) {
+            $this->responder([
+                'ok' => false,
+                'mensaje' =>
+                    'Falta aplicar la migración de seguimiento de convocatorias.'
+            ], 409);
+        }
+
+        $aliado = $modelo->obtenerAliado(
+            $seguimientoId,
+            $usuarioId,
+            $esAdministrador
+        );
+
+        if (!$aliado) {
+            $this->responder([
+                'ok' => false,
+                'mensaje' => 'No tienes acceso a este aliado.'
+            ], 403);
+        }
+
+        $actual = $modelo->obtenerSeguimientoConvocatoriaActual(
+            $seguimientoId,
+            $usuarioId,
+            $esAdministrador
+        );
+
+        if (
+            !$actual ||
+            (int)($actual['seguimiento_convocatoria_id'] ?? 0) <= 0
+        ) {
+            $this->responder([
+                'ok' => false,
+                'mensaje' =>
+                    'Este aliado todavía no tiene una convocatoria compartida para dar seguimiento.'
+            ], 409);
+        }
+
+        if (
+            $seguimientoConvocatoriaId <= 0 ||
+            $seguimientoConvocatoriaId !==
+                (int)$actual['seguimiento_convocatoria_id']
+        ) {
+            $this->responder([
+                'ok' => false,
+                'mensaje' =>
+                    'El seguimiento cambió porque existe una difusión más reciente. Actualiza la información e inténtalo de nuevo.'
+            ], 409);
+        }
+
+        $estado = strtoupper(trim((string)($_POST['estado'] ?? '')));
+        $estadosPermitidos = [
+            'ESPERANDO_RESPUESTA',
+            'DIFUSION_CONFIRMADA',
+            'SOLICITA_INFORMACION',
+            'NO_PARTICIPARA',
+            'SIN_RESPUESTA'
+        ];
+
+        if (!in_array($estado, $estadosPermitidos, true)) {
+            $this->responder([
+                'ok' => false,
+                'mensaje' => 'Selecciona un estado de seguimiento válido.'
+            ], 422);
+        }
+
+        $nota = trim((string)($_POST['nota'] ?? ''));
+        if (mb_strlen($nota) > 1000) {
+            $this->responder([
+                'ok' => false,
+                'mensaje' => 'La nota no puede superar los 1000 caracteres.'
+            ], 422);
+        }
+
+        $proximoRaw = trim(
+            (string)($_POST['proximo_seguimiento_at'] ?? '')
+        );
+        $proximoSeguimientoAt = null;
+        $estadosCerrados = [
+            'DIFUSION_CONFIRMADA',
+            'NO_PARTICIPARA'
+        ];
+
+        if (
+            $proximoRaw !== '' &&
+            !in_array($estado, $estadosCerrados, true)
+        ) {
+            $timestamp = strtotime($proximoRaw);
+
+            if ($timestamp === false) {
+                $this->responder([
+                    'ok' => false,
+                    'mensaje' => 'La fecha del próximo seguimiento no es válida.'
+                ], 422);
+            }
+
+            if ($timestamp <= time()) {
+                $this->responder([
+                    'ok' => false,
+                    'mensaje' =>
+                        'Programa el próximo seguimiento en una fecha y hora futuras.'
+                ], 422);
+            }
+
+            $proximoSeguimientoAt = date('Y-m-d H:i:s', $timestamp);
+        }
+
+        $guardado = $modelo->guardarSeguimientoConvocatoria(
+            $seguimientoConvocatoriaId,
+            $seguimientoId,
+            $usuarioId,
+            [
+                'estado' => $estado,
+                'nota' => $nota,
+                'proximo_seguimiento_at' => $proximoSeguimientoAt
+            ]
+        );
+
+        if (!$guardado) {
+            $this->responder([
+                'ok' => false,
+                'mensaje' =>
+                    'No fue posible guardar el seguimiento de la convocatoria.'
+            ], 500);
+        }
+
+        $seguimientoActualizado =
+            $modelo->obtenerSeguimientoConvocatoriaActual(
+                $seguimientoId,
+                $usuarioId,
+                $esAdministrador
+            );
+
+        $this->responder([
+            'ok' => true,
+            'mensaje' => 'Seguimiento actualizado correctamente.',
+            'seguimiento' => $seguimientoActualizado
         ]);
     }
 
