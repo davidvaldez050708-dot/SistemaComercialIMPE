@@ -167,6 +167,15 @@ $claseFormularios =
                     <?= htmlspecialchars($etiquetaMenuConvocatorias) ?>
                 </a>
 
+                <?php if ($esRolMarketingSidebar): ?>
+                    <a
+                        href="<?= BASE_URL ?>index.php?controller=formulario&action=index"
+                        class="sidebar-link <?= $claseFormularios ?>">
+                        <i class="bi bi-ui-checks-grid"></i>
+                        Formularios
+                    </a>
+                <?php endif; ?>
+
                 <?php if ($mostrarReporteConvocatoriasEnMarketing): ?>
                         <a
                             href="<?= BASE_URL ?>index.php?controller=reporte&action=index"
@@ -182,13 +191,6 @@ $claseFormularios =
                         class="sidebar-link <?= $claseCorreosMarketing ?>">
                         <i class="bi bi-envelope"></i>
                         Correos
-                    </a>
-
-                    <a
-                        href="<?= BASE_URL ?>index.php?controller=formulario&action=index"
-                        class="sidebar-link <?= $claseFormularios ?>">
-                        <i class="bi bi-ui-checks-grid"></i>
-                        Formularios
                     </a>
                 <?php endif; ?>
             </div>
@@ -447,6 +449,15 @@ $claseFormularios =
                         <?= htmlspecialchars($etiquetaMenuConvocatorias) ?>
                     </a>
 
+                    <?php if ($esRolMarketingSidebar): ?>
+                        <a
+                            href="<?= BASE_URL ?>index.php?controller=formulario&action=index"
+                            class="sidebar-link <?= $claseFormularios ?>">
+                            <i class="bi bi-ui-checks-grid"></i>
+                            Formularios
+                        </a>
+                    <?php endif; ?>
+
                     <?php if ($mostrarReporteConvocatoriasEnMarketing): ?>
                         <a
                             href="<?= BASE_URL ?>index.php?controller=reporte&action=index"
@@ -462,13 +473,6 @@ $claseFormularios =
                             class="sidebar-link <?= $claseCorreosMarketing ?>">
                             <i class="bi bi-envelope"></i>
                             Correos
-                        </a>
-
-                        <a
-                            href="<?= BASE_URL ?>index.php?controller=formulario&action=index"
-                            class="sidebar-link <?= $claseFormularios ?>">
-                            <i class="bi bi-ui-checks-grid"></i>
-                            Formularios
                         </a>
                     <?php endif; ?>
                 </div>
