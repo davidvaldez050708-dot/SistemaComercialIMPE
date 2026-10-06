@@ -493,22 +493,39 @@ class ReporteAliadosPanoramaService
             $trabajadosEstado[$estadoTerritorioId][$seguimientoId] = true;
             $trabajadosMunicipio[$claveMunicipio][$seguimientoId] = true;
 
-            if ($estadoNuevo === 'DIFUSION_CONFIRMADA') {
+            $estadoAnterior = strtoupper(trim(
+                (string)($evento['estado_anterior'] ?? '')
+            ));
+            $cambioEstado = $estadoAnterior !== $estadoNuevo;
+
+            if (
+                $cambioEstado &&
+                $estadoNuevo === 'DIFUSION_CONFIRMADA'
+            ) {
                 $actividadPeriodo['confirmaciones']++;
             }
 
-            if ($estadoNuevo === 'SIN_RESPUESTA') {
+            if (
+                $cambioEstado &&
+                $estadoNuevo === 'SIN_RESPUESTA'
+            ) {
                 $actividadPeriodo['sin_respuesta']++;
             }
 
-            if ($estadoNuevo === 'SOLICITA_INFORMACION') {
+            if (
+                $cambioEstado &&
+                $estadoNuevo === 'SOLICITA_INFORMACION'
+            ) {
                 $actividadPeriodo['solicita_informacion']++;
             }
 
             if (isset($porEstado[$estadoTerritorioId])) {
                 $porEstado[$estadoTerritorioId]['seguimientos_periodo']++;
 
-                if ($estadoNuevo === 'DIFUSION_CONFIRMADA') {
+                if (
+                    $cambioEstado &&
+                    $estadoNuevo === 'DIFUSION_CONFIRMADA'
+                ) {
                     $porEstado[$estadoTerritorioId]
                         ['confirmaciones_periodo']++;
                 }
@@ -521,7 +538,10 @@ class ReporteAliadosPanoramaService
                 $porMunicipio[$claveMunicipio]
                     ['seguimientos_periodo']++;
 
-                if ($estadoNuevo === 'DIFUSION_CONFIRMADA') {
+                if (
+                    $cambioEstado &&
+                    $estadoNuevo === 'DIFUSION_CONFIRMADA'
+                ) {
                     $porMunicipio[$claveMunicipio]
                         ['confirmaciones_periodo']++;
                 }
@@ -1051,12 +1071,23 @@ class ReporteAliadosPanoramaService
                     : 'instituciones'
             ) . '.';
 
+        $totalDifusionesPeriodo =
+            (int)($actividadPeriodo['difusiones'] ?? 0);
+        $totalConfirmacionesPeriodo =
+            (int)($actividadPeriodo['confirmaciones'] ?? 0);
+
         $hallazgos[] =
-            'Durante el periodo se registraron ' .
-            (int)($actividadPeriodo['difusiones'] ?? 0) .
-            ' difusión(es) y ' .
-            (int)($actividadPeriodo['confirmaciones'] ?? 0) .
-            ' confirmación(es) de difusión.';
+            'Durante el periodo se ' .
+            ($totalDifusionesPeriodo === 1
+                ? 'registró 1 difusión'
+                : 'registraron ' .
+                    $totalDifusionesPeriodo .
+                    ' difusiones') .
+            ' y ' .
+            ($totalConfirmacionesPeriodo === 1
+                ? '1 confirmación de difusión.'
+                : $totalConfirmacionesPeriodo .
+                    ' confirmaciones de difusión.');
 
         if ((int)($resumen['requieren_atencion'] ?? 0) > 0) {
             $hallazgos[] =
