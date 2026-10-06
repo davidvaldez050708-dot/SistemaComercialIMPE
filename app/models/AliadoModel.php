@@ -241,6 +241,172 @@ class AliadoModel
         return $stmt->get_result()->fetch_assoc() ?: null;
     }
 
+    public function obtenerDifusionesReporte(
+        array $seguimientoIds,
+        $desde = null,
+        $hasta = null
+    ) {
+        if (!$this->estructuraDisponible()) {
+            return [];
+        }
+
+        $seguimientoIds = array_values(array_unique(array_filter(
+            array_map('intval', $seguimientoIds),
+            static function ($id) {
+                return $id > 0;
+            }
+        )));
+
+        if (empty($seguimientoIds)) {
+            return [];
+        }
+
+        $placeholders = implode(
+            ',',
+            array_fill(0, count($seguimientoIds), '?')
+        );
+
+        $sql = "SELECT
+                    envios.id,
+                    envios.seguimiento_id,
+                    envios.convocatoria_id,
+                    envios.convocatoria_titulo,
+                    envios.canal,
+                    envios.estado_envio,
+                    envios.enviado_at,
+                    s.estado_id,
+                    s.municipio_id,
+                    COALESCE(m.nombre, '') AS municipio_nombre,
+                    e.nombre AS estado_nombre,
+                    CONCAT_WS(' ', u.nombre, u.apellidos) AS enviado_por_nombre
+                FROM aliados_convocatorias_envios envios
+                INNER JOIN seguimientos_vinculacion s
+                    ON s.id = envios.seguimiento_id
+                INNER JOIN estados e
+                    ON e.id = s.estado_id
+                LEFT JOIN municipios m
+                    ON m.id = s.municipio_id
+                LEFT JOIN usuarios u
+                    ON u.id = envios.cuenta_clave_usuario_id
+                WHERE envios.seguimiento_id IN (" .
+                    $placeholders .
+                ")
+                  AND envios.estado_envio IN ('ENVIADO', 'COMPARTIDO')";
+
+        $tipos = str_repeat('i', count($seguimientoIds));
+        $parametros = $seguimientoIds;
+
+        $desde = trim((string)$desde);
+        $hasta = trim((string)$hasta);
+
+        if ($desde !== '') {
+            $sql .= " AND envios.enviado_at >= ?";
+            $tipos .= 's';
+            $parametros[] = $desde;
+        }
+
+        if ($hasta !== '') {
+            $sql .= " AND envios.enviado_at <= ?";
+            $tipos .= 's';
+            $parametros[] = $hasta;
+        }
+
+        $sql .= " ORDER BY envios.enviado_at DESC, envios.id DESC";
+
+        $stmt = $this->connection->prepare($sql);
+        $this->vincularParametros($stmt, $tipos, $parametros);
+        $stmt->execute();
+
+        return $this->convertirResultadoEnArreglo($stmt->get_result());
+    }
+
+    public function obtenerEventosSeguimientoReporte(
+        array $seguimientoIds,
+        $desde = null,
+        $hasta = null
+    ) {
+        if (!$this->seguimientoConvocatoriasDisponible()) {
+            return [];
+        }
+
+        $seguimientoIds = array_values(array_unique(array_filter(
+            array_map('intval', $seguimientoIds),
+            static function ($id) {
+                return $id > 0;
+            }
+        )));
+
+        if (empty($seguimientoIds)) {
+            return [];
+        }
+
+        $placeholders = implode(
+            ',',
+            array_fill(0, count($seguimientoIds), '?')
+        );
+
+        $sql = "SELECT
+                    evento.id,
+                    seguimiento.seguimiento_id,
+                    seguimiento.id AS seguimiento_convocatoria_id,
+                    seguimiento.convocatoria_id,
+                    envio.convocatoria_titulo,
+                    envio.canal,
+                    evento.estado_anterior,
+                    evento.estado_nuevo,
+                    evento.nota,
+                    evento.proximo_seguimiento_at,
+                    evento.created_at,
+                    s.estado_id,
+                    s.municipio_id,
+                    COALESCE(m.nombre, '') AS municipio_nombre,
+                    e.nombre AS estado_nombre,
+                    CONCAT_WS(' ', u.nombre, u.apellidos) AS usuario_nombre
+                FROM aliados_convocatorias_seguimiento_eventos evento
+                INNER JOIN aliados_convocatorias_seguimientos seguimiento
+                    ON seguimiento.id =
+                        evento.seguimiento_convocatoria_id
+                INNER JOIN aliados_convocatorias_envios envio
+                    ON envio.id = seguimiento.envio_id
+                INNER JOIN seguimientos_vinculacion s
+                    ON s.id = seguimiento.seguimiento_id
+                INNER JOIN estados e
+                    ON e.id = s.estado_id
+                LEFT JOIN municipios m
+                    ON m.id = s.municipio_id
+                LEFT JOIN usuarios u
+                    ON u.id = evento.usuario_id
+                WHERE seguimiento.seguimiento_id IN (" .
+                    $placeholders .
+                ")";
+
+        $tipos = str_repeat('i', count($seguimientoIds));
+        $parametros = $seguimientoIds;
+
+        $desde = trim((string)$desde);
+        $hasta = trim((string)$hasta);
+
+        if ($desde !== '') {
+            $sql .= " AND evento.created_at >= ?";
+            $tipos .= 's';
+            $parametros[] = $desde;
+        }
+
+        if ($hasta !== '') {
+            $sql .= " AND evento.created_at <= ?";
+            $tipos .= 's';
+            $parametros[] = $hasta;
+        }
+
+        $sql .= " ORDER BY evento.created_at DESC, evento.id DESC";
+
+        $stmt = $this->connection->prepare($sql);
+        $this->vincularParametros($stmt, $tipos, $parametros);
+        $stmt->execute();
+
+        return $this->convertirResultadoEnArreglo($stmt->get_result());
+    }
+
     public function obtenerHistorial($seguimientoId, $usuarioId, $esAdministrador = false)
     {
         if (!$this->obtenerAliado($seguimientoId, $usuarioId, $esAdministrador)) {
