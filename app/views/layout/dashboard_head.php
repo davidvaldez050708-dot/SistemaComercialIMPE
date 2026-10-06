@@ -78,6 +78,8 @@ $esConvocatoriaReportePreviewDashboard =
     $controllerDashboard === 'convocatoriareporte';
 $esCorreosMarketingDashboard =
     $controllerDashboard === 'correomarketing';
+$esFormulariosDashboard =
+    $controllerDashboard === 'formulario';
 $esDesempenoDashboard =
     $controllerDashboard === 'desempeno';
 
@@ -186,6 +188,10 @@ if ($esWhatsappDashboard) {
 
 if ($esCorreosMarketingDashboard) {
     $cssOpcionalDashboard[] = 'correos_marketing.css';
+}
+
+if ($esFormulariosDashboard) {
+    $cssOpcionalDashboard[] = 'formularios.css';
 }
 
 if ($esDesempenoDashboard) {
