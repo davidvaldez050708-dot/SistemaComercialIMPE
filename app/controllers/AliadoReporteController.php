@@ -400,7 +400,7 @@ class AliadoReporteController
             $contenido = (string)($resultado['contenido_pdf'] ?? '');
             $nombreArchivo = (string)(
                 $resultado['nombre_archivo'] ??
-                'Reporte_Aliados.pdf'
+                'Reporte_Aliados_Corte_' . date('Y-m-d') . '.pdf'
             );
 
             header('Content-Type: application/pdf');
