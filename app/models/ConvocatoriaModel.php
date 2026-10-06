@@ -16,11 +16,15 @@ class ConvocatoriaModel
 
     public function desactivarConvocatoriasVencidas()
     {
-        if ($this->soportaActivacionAutomatica()) {
-            return $this->sincronizarConvocatoriasPorFecha();
-        }
+        $resultado = $this->soportaActivacionAutomatica()
+            ? $this->sincronizarConvocatoriasPorFecha()
+            : $this->desactivarSoloVencidas();
 
-        return $this->desactivarSoloVencidas();
+        // Una convocatoria inactiva permanece disponible durante 3 días.
+        // Después de ese periodo se elimina definitivamente del sistema.
+        $this->eliminarConvocatoriasInactivasAntiguas(3);
+
+        return $resultado;
     }
 
     public function sincronizarConvocatoriasPorFecha()
@@ -1038,6 +1042,115 @@ class ConvocatoriaModel
         }
 
         return $salida;
+    }
+
+    private function eliminarConvocatoriasInactivasAntiguas($dias = 3)
+    {
+        $dias = max(1, (int)$dias);
+
+        $condicionProgramada = $this->soportaActivacionAutomatica()
+            ? " AND COALESCE(activacion_automatica, 0) = 0"
+            : "";
+
+        $sql = "SELECT id, imagen
+                FROM convocatorias
+                WHERE estado = 0
+                  AND updated_at <= DATE_SUB(NOW(), INTERVAL " . $dias . " DAY)" .
+                  $condicionProgramada . "
+                ORDER BY updated_at ASC, id ASC";
+
+        try {
+            $resultado = $this->connection->query($sql);
+
+            if (!$resultado || $resultado->num_rows === 0) {
+                return 0;
+            }
+
+            $convocatorias = [];
+            while ($fila = $resultado->fetch_assoc()) {
+                $convocatorias[] = $fila;
+            }
+
+            $this->connection->begin_transaction();
+
+            foreach ($convocatorias as $convocatoria) {
+                $convocatoriaId = (int)($convocatoria['id'] ?? 0);
+
+                if ($convocatoriaId <= 0) {
+                    continue;
+                }
+
+                if ($this->soportaNotificacionesConvocatorias()) {
+                    $stmtNotificaciones = $this->connection->prepare(
+                        "DELETE FROM notificaciones_convocatorias
+                         WHERE convocatoria_id = ?"
+                    );
+                    $stmtNotificaciones->bind_param('i', $convocatoriaId);
+                    $stmtNotificaciones->execute();
+                }
+
+                $stmtEstados = $this->connection->prepare(
+                    "DELETE FROM convocatoria_estados
+                     WHERE convocatoria_id = ?"
+                );
+                $stmtEstados->bind_param('i', $convocatoriaId);
+                $stmtEstados->execute();
+
+                $stmtConvocatoria = $this->connection->prepare(
+                    "DELETE FROM convocatorias
+                     WHERE id = ?
+                       AND estado = 0"
+                );
+                $stmtConvocatoria->bind_param('i', $convocatoriaId);
+                $stmtConvocatoria->execute();
+            }
+
+            $this->connection->commit();
+
+            foreach ($convocatorias as $convocatoria) {
+                $rutaImagen = trim((string)($convocatoria['imagen'] ?? ''));
+
+                if (
+                    $rutaImagen !== '' &&
+                    defined('ROOT_PATH')
+                ) {
+                    $rutaRelativa = ltrim(
+                        str_replace('\\', '/', $rutaImagen),
+                        '/'
+                    );
+
+                    if (
+                        strpos($rutaRelativa, 'public/uploads/convocatorias/') === 0 &&
+                        strpos($rutaRelativa, '..') === false
+                    ) {
+                        $rutaAbsoluta = ROOT_PATH . '/' . $rutaRelativa;
+
+                        if (is_file($rutaAbsoluta)) {
+                            @unlink($rutaAbsoluta);
+                        }
+                    }
+                }
+            }
+
+            return count($convocatorias);
+        } catch (Throwable $error) {
+            if ($this->connection->errno === 0) {
+                // No hay una transacción pendiente que revertir.
+            } else {
+                try {
+                    $this->connection->rollback();
+                } catch (Throwable $rollbackError) {
+                    // Evita ocultar el error original.
+                }
+            }
+
+            error_log(
+                'Depuración de convocatorias inactivas: ' .
+                $error->getMessage()
+            );
+
+            return 0;
+        }
     }
 
     private function desactivarSoloVencidas()
