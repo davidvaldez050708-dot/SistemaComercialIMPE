@@ -1048,19 +1048,31 @@ class ConvocatoriaModel
     private function eliminarConvocatoriasFueraVentanaMensual()
     {
         /*
-         * Conserva las convocatorias del mes actual y de los dos meses
-         * anteriores. Cuando inicia un nuevo mes, el mes más antiguo sale
-         * de la ventana y sus convocatorias se eliminan.
+         * La depuración sigue exactamente la misma ventana móvil de 4 meses
+         * que usa la interfaz:
+         * - Septiembre, octubre y noviembre: Septiembre-Diciembre.
+         * - Diciembre: Octubre-Enero.
+         * - Enero: Noviembre-Febrero.
+         * - Y así sucesivamente.
          *
-         * Ejemplos:
-         * - Diciembre: elimina septiembre y meses anteriores.
-         * - Enero: elimina octubre y meses anteriores.
-         *
-         * La regla se basa en fecha_inicio, no en updated_at ni en una
-         * espera de 3 días después de desactivar/finalizar.
+         * Solo se eliminan convocatorias cuyo mes de fecha_inicio ya quedó
+         * fuera de esa ventana. No existe ninguna espera de 3 días.
          */
-        $fechaLimite = (new DateTimeImmutable('first day of this month'))
-            ->modify('-2 months')
+        $mesActualCalendario = (int)date('n');
+        $anioCicloActual = $mesActualCalendario >= 9
+            ? (int)date('Y')
+            : (int)date('Y') - 1;
+
+        $mesesDesdeSeptiembre = $mesActualCalendario >= 9
+            ? $mesActualCalendario - 9
+            : $mesActualCalendario + 3;
+
+        $desplazamientoVentana = max(0, $mesesDesdeSeptiembre - 2);
+
+        $fechaLimite = (new DateTimeImmutable(
+            sprintf('%04d-09-01', $anioCicloActual)
+        ))
+            ->modify('+' . $desplazamientoVentana . ' months')
             ->format('Y-m-d');
 
         $sql = "SELECT id, imagen
