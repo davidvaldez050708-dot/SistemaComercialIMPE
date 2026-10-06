@@ -3,6 +3,8 @@
 use Dompdf\Dompdf;
 use Dompdf\Options;
 
+require_once __DIR__ . '/ReporteNombreArchivoService.php';
+
 class DesempenoPdfService
 {
     public function generar(array $datos)
@@ -909,12 +911,49 @@ class DesempenoPdfService
             ? 'Cuenta_Clave'
             : ($areaActual === 'marketing' ? 'Marketing' : 'Analistas');
 
-        return
-            'Desempeno_' .
-            $area .
-            '_' .
-            date('Y-m-d') .
-            '.pdf';
+        $alcance = [$area];
+        $estadoId = max(0, (int)($datos['estado_id'] ?? 0));
+
+        if ($estadoId > 0) {
+            foreach (($datos['territorios'] ?? []) as $territorio) {
+                if ((int)($territorio['id'] ?? 0) === $estadoId) {
+                    $nombreEstado = trim(
+                        (string)($territorio['nombre'] ?? '')
+                    );
+                    if ($nombreEstado !== '') {
+                        $alcance[] = $nombreEstado;
+                    }
+                    break;
+                }
+            }
+        }
+
+        $vista = (string)($datos['vista'] ?? '');
+        $personaId = max(0, (int)($datos['persona_id'] ?? 0));
+        $ranking = is_array($datos['ranking'] ?? null)
+            ? $datos['ranking']
+            : [];
+
+        if (
+            ($vista === 'propio' || $personaId > 0) &&
+            count($ranking) === 1
+        ) {
+            $nombrePersona = trim(
+                (string)($ranking[0]['nombre_completo'] ?? '')
+            );
+            if ($nombrePersona !== '') {
+                $alcance[] = $nombrePersona;
+            }
+        }
+
+        return ReporteNombreArchivoService::conPeriodo(
+            'Desempeno',
+            $alcance,
+            is_array($datos['periodo'] ?? null)
+                ? $datos['periodo']
+                : [],
+            date('Y-m-d')
+        );
     }
 
     private function logoDataUri()
