@@ -534,8 +534,8 @@ if ($modoAnalisis === 'estado') {
                     </span>
                     <div>
                         <strong><?= (int)($actividadPeriodo['seguimientos'] ?? 0) ?></strong>
-                        <span>Seguimientos</span>
-                        <small>Actualizaciones registradas</small>
+                        <span>Actualizaciones</span>
+                        <small>Cambios de seguimiento registrados</small>
                     </div>
                 </article>
                 <article>
