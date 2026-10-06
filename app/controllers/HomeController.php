@@ -102,6 +102,9 @@ class HomeController
                     tienePermiso('seguimientos_vinculacion.ver');
                 $puedeAliadosCuentaClave =
                     tienePermiso('aliados.ver');
+                $puedeSeguimientoAliadosCuentaClave =
+                    $puedeAliadosCuentaClave &&
+                    tienePermiso('aliados.seguimiento_convocatorias');
                 $puedeTerritoriosCuentaClave =
                     tienePermiso('territorios.ver');
 
@@ -124,7 +127,8 @@ class HomeController
                     $servicioCuentaClaveDashboard->obtener(
                         (int)$_SESSION['usuario_id'],
                         $puedeSeguimientoCuentaClave,
-                        $puedeAliadosCuentaClave
+                        $puedeAliadosCuentaClave,
+                        $puedeSeguimientoAliadosCuentaClave
                     );
 
                 $vistaPanel =
