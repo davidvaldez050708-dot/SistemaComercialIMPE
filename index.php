@@ -364,6 +364,17 @@ switch ($controller) {
         break;
 
 
+    case 'desempeno':
+
+        require_once __DIR__ .
+            '/app/controllers/DesempenoController.php';
+
+        $controllerInstance =
+            new DesempenoController();
+
+        break;
+
+
     case 'reporteAdministrador':
 
         require_once __DIR__ .
