@@ -458,6 +458,37 @@ class DesempenoPdfService
             return $html . '</tbody></table>';
         }
 
+        if ($area === 'marketing') {
+            $html =
+                '<table class="table"><thead><tr>' .
+                '<th>Persona</th>' .
+                '<th class="num">Publicaciones</th>' .
+                '<th class="num">Territorios</th>' .
+                '<th class="num">Actualizaciones</th>' .
+                '<th class="num">Vigentes</th>' .
+                '</tr></thead><tbody>';
+
+            foreach ($ranking as $fila) {
+                $html .= '<tr>';
+                $html .= $this->tdPersona($fila);
+                $html .= $this->tdNum(
+                    $fila['publicaciones'] ?? 0
+                );
+                $html .= $this->tdNum(
+                    $fila['territorios_cubiertos'] ?? 0
+                );
+                $html .= $this->tdNum(
+                    $fila['actualizaciones'] ?? 0
+                );
+                $html .= $this->tdNum(
+                    $fila['vigentes'] ?? 0
+                );
+                $html .= '</tr>';
+            }
+
+            return $html . '</tbody></table>';
+        }
+
         $html =
             '<table class="table"><thead><tr>' .
             ($esComparativo ? '<th>#</th>' : '') .
