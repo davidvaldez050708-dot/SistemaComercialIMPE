@@ -44,6 +44,39 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     };
 
+    const periodSelect = document.getElementById(
+        'reporte_aliados_periodo'
+    );
+    const customPeriod = document.querySelector(
+        '[data-aliados-custom-period]'
+    );
+    const dateFrom = document.getElementById(
+        'reporte_aliados_fecha_desde'
+    );
+    const dateTo = document.getElementById(
+        'reporte_aliados_fecha_hasta'
+    );
+
+    const syncPeriod = function () {
+        if (!periodSelect || !customPeriod) {
+            return;
+        }
+
+        const custom = periodSelect.value === 'personalizado';
+        customPeriod.classList.toggle('d-none', !custom);
+
+        if (dateFrom) {
+            dateFrom.required = custom;
+        }
+
+        if (dateTo) {
+            dateTo.required = custom;
+        }
+    };
+
     stateSelect.addEventListener('change', syncMunicipalities);
+    periodSelect?.addEventListener('change', syncPeriod);
+
     syncMunicipalities();
+    syncPeriod();
 });
