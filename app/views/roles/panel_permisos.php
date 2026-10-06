@@ -37,14 +37,16 @@ foreach ($permisosAgrupados as $permisos) {
     }
 }
 
-$permisosHabilitados = $rolEsAdministrador
-    ? $totalPermisos
-    : count(array_filter(
-        array_keys($permisosRol),
-        static function ($permisoId) use ($permisosSoloAdministradorIds) {
-            return !isset($permisosSoloAdministradorIds[(int)$permisoId]);
-        }
-    ));
+$permisosHabilitados = count(array_filter(
+    array_keys($permisosRol),
+    static function ($permisoId) use (
+        $permisosSoloAdministradorIds,
+        $rolEsAdministrador
+    ) {
+        return $rolEsAdministrador ||
+            !isset($permisosSoloAdministradorIds[(int)$permisoId]);
+    }
+));
 
 ?>
 
@@ -77,10 +79,8 @@ $permisosHabilitados = $rolEsAdministrador
                 class="permissions-count"
                 data-permissions-count
                 data-total="<?= (int)$totalPermisos ?>">
-                <?= $rolEsAdministrador
-                    ? 'Acceso completo'
-                    : (int)$permisosHabilitados . ' de ' .
-                        (int)$totalPermisos . ' permisos habilitados' ?>
+                <?= (int)$permisosHabilitados . ' de ' .
+                    (int)$totalPermisos . ' permisos habilitados' ?>
             </span>
 
             <span class="status-pill <?= (int)$rolSeleccionado['estado'] === 1
@@ -95,7 +95,7 @@ $permisosHabilitados = $rolEsAdministrador
 
         <div class="roles-note">
             <i class="bi bi-shield-check"></i>
-            El rol Administrador conserva acceso administrativo completo; en Seguimiento de vinculación opera en modo consulta.
+            El Administrador conserva acceso transversal de consulta, configuración y reportes. Las acciones operativas permanecen reservadas al rol responsable de cada área.
         </div>
 
     <?php elseif (!$puedeAsignarPermisos): ?>
@@ -164,7 +164,13 @@ $permisosHabilitados = $rolEsAdministrador
                                 ],
                                 true
                             );
-                            $permisoActivo = $rolEsAdministrador ||
+                            $permisoRestringidoAdministrador =
+                                $rolEsAdministrador &&
+                                permisoOperativoRestringidoAdministrador(
+                                    (string)($permiso['codigo'] ?? '')
+                                );
+                            $permisoActivo =
+                                !$permisoRestringidoAdministrador &&
                                 isset($permisosRol[(int)$permiso['id']]);
                             $permisoBloqueado =
                                 $panelBloqueado ||
@@ -202,6 +208,8 @@ $permisosHabilitados = $rolEsAdministrador
                                         <?= $textoRol($permiso['nombre']) ?>
                                         <?php if ($permisoSoloAdministrador && !$rolEsAdministrador): ?>
                                             <span class="role-system-pill ms-2">Solo Administrador</span>
+                                        <?php elseif ($permisoRestringidoAdministrador): ?>
+                                            <span class="role-system-pill ms-2">Operación del área</span>
                                         <?php endif; ?>
                                     </strong>
                                     <small><?= $textoRol($permiso['descripcion']) ?></small>
@@ -219,7 +227,7 @@ $permisosHabilitados = $rolEsAdministrador
             <span
                 class="permissions-changes-status"
                 data-permissions-status>
-                <?= $rolEsAdministrador ? 'Acceso completo' : 'Sin cambios pendientes' ?>
+                <?= $rolEsAdministrador ? 'Política protegida' : 'Sin cambios pendientes' ?>
             </span>
 
             <button
