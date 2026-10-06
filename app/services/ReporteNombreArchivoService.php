@@ -72,6 +72,95 @@ class ReporteNombreArchivoService
         return self::finalizar($segmentos, $conExtension);
     }
 
+    public static function seguimiento(
+        array $datos,
+        bool $conExtension = true
+    ): string {
+        $filtros = is_array($datos['filtros_reporte'] ?? null)
+            ? $datos['filtros_reporte']
+            : [];
+        $resumen = is_array($datos['resumen_filtros'] ?? null)
+            ? $datos['resumen_filtros']
+            : [];
+
+        $tipo = strtolower(trim(
+            (string)($filtros['tipo_reporte'] ?? 'cartera')
+        ));
+        if (!in_array($tipo, ['cartera', 'actividad', 'institucion'], true)) {
+            $tipo = 'cartera';
+        }
+
+        $nombres = [
+            'cartera' => 'Seguimiento_Cartera',
+            'actividad' => 'Seguimiento_Actividad',
+            'institucion' => 'Seguimiento_Institucion'
+        ];
+
+        $alcance = [];
+        $institucion = trim(
+            (string)($resumen['Institución'] ?? '')
+        );
+        $responsable = trim(
+            (string)($resumen['Responsable'] ?? '')
+        );
+        $estado = trim(
+            (string)($resumen['Estado'] ?? '')
+        );
+        $municipio = trim(
+            (string)($resumen['Municipio'] ?? '')
+        );
+
+        if (
+            $tipo === 'institucion' &&
+            $institucion !== '' &&
+            strcasecmp($institucion, 'Todas') !== 0
+        ) {
+            $alcance[] = $institucion;
+        } elseif (
+            $responsable !== '' &&
+            strcasecmp($responsable, 'Todos') !== 0
+        ) {
+            $alcance[] = $responsable;
+        }
+
+        if (
+            $municipio !== '' &&
+            strcasecmp($municipio, 'Todos') !== 0
+        ) {
+            $alcance[] = $municipio;
+        } elseif (
+            $estado !== '' &&
+            strcasecmp($estado, 'Todos') !== 0
+        ) {
+            $alcance[] = $estado;
+        }
+
+        if ($tipo === 'actividad') {
+            return self::conPeriodo(
+                $nombres[$tipo],
+                $alcance,
+                [
+                    'clave' => '',
+                    'fecha_desde' => (string)(
+                        $filtros['fecha_inicial'] ?? ''
+                    ),
+                    'fecha_hasta' => (string)(
+                        $filtros['fecha_final'] ?? ''
+                    )
+                ],
+                date('Y-m-d'),
+                $conExtension
+            );
+        }
+
+        return self::corte(
+            $nombres[$tipo],
+            $alcance,
+            date('Y-m-d'),
+            $conExtension
+        );
+    }
+
     public static function seguro(string $texto, int $maximo = 64): string
     {
         $texto = trim($texto);
