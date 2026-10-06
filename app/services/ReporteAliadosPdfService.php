@@ -1,9 +1,9 @@
 <?php
 
-require_once __DIR__ . '/ReporteNombreArchivoService.php';
-
 use Dompdf\Dompdf;
 use Dompdf\Options;
+
+require_once __DIR__ . '/ReporteNombreArchivoService.php';
 
 class ReporteAliadosPdfService
 {
