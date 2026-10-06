@@ -1,0 +1,589 @@
+<?php
+
+use Dompdf\Dompdf;
+use Dompdf\Options;
+
+class DesempenoPdfService
+{
+    public function generar(array $datos)
+    {
+        $autoload = dirname(__DIR__, 2) . '/vendor/autoload.php';
+
+        if (!is_file($autoload)) {
+            return $this->error(
+                'No fue posible preparar el PDF de desempeño.',
+                'No se encontró vendor/autoload.php.'
+            );
+        }
+
+        require_once $autoload;
+
+        if (!class_exists(Dompdf::class) || !class_exists(Options::class)) {
+            return $this->error(
+                'No fue posible preparar el PDF de desempeño.',
+                'Dompdf no está disponible.'
+            );
+        }
+
+        try {
+            $options = new Options();
+            $options->set('isRemoteEnabled', true);
+            $options->set('isHtml5ParserEnabled', true);
+            $options->set('defaultFont', 'DejaVu Sans');
+
+            $dompdf = new Dompdf($options);
+            $dompdf->loadHtml(
+                $this->html($datos),
+                'UTF-8'
+            );
+            $dompdf->setPaper('A4', 'portrait');
+            $dompdf->render();
+
+            $canvas = $dompdf->getCanvas();
+            $fontMetrics = $dompdf->getFontMetrics();
+            $font = $fontMetrics->getFont(
+                'DejaVu Sans',
+                'normal'
+            );
+            $bold = $fontMetrics->getFont(
+                'DejaVu Sans',
+                'bold'
+            );
+
+            $canvas->page_script(
+                static function (
+                    $pageNumber,
+                    $pageCount,
+                    $canvas,
+                    $fontMetrics
+                ) use ($font, $bold) {
+                    $y = $canvas->get_height() - 24;
+                    $canvas->line(
+                        44,
+                        $y - 7,
+                        $canvas->get_width() - 44,
+                        $y - 7,
+                        [0.90, 0.91, 0.94],
+                        0.5
+                    );
+
+                    $canvas->text(
+                        44,
+                        $y,
+                        'Grupo Porcayo - Sistema de Gestión Comercial',
+                        $bold,
+                        6.2,
+                        [0.15, 0.23, 0.54]
+                    );
+
+                    $pagina =
+                        'Página ' . $pageNumber . ' de ' . $pageCount;
+                    $ancho = $fontMetrics->getTextWidth(
+                        $pagina,
+                        $font,
+                        6.2
+                    );
+
+                    $canvas->text(
+                        $canvas->get_width() - 44 - $ancho,
+                        $y,
+                        $pagina,
+                        $font,
+                        6.2,
+                        [0.43, 0.45, 0.50]
+                    );
+                }
+            );
+
+            return [
+                'ok' => true,
+                'contenido_pdf' => $dompdf->output(),
+                'nombre_archivo' => $this->nombreArchivo($datos)
+            ];
+        } catch (Throwable $error) {
+            return $this->error(
+                'No fue posible generar el PDF de desempeño.',
+                $error->getMessage()
+            );
+        }
+    }
+
+    private function html(array $datos)
+    {
+        $area = (string)($datos['area'] ?? 'analistas');
+        $areaLabel = (string)(
+            $datos['area_label'] ?? 'Analistas'
+        );
+        $vista = (string)($datos['vista'] ?? 'propio');
+        $periodo = is_array($datos['periodo'] ?? null)
+            ? $datos['periodo']
+            : [];
+        $resumen = is_array($datos['resumen'] ?? null)
+            ? $datos['resumen']
+            : [];
+        $ranking = is_array($datos['ranking'] ?? null)
+            ? $datos['ranking']
+            : [];
+        $reconocimientos = is_array(
+            $datos['reconocimientos'] ?? null
+        )
+            ? $datos['reconocimientos']
+            : [];
+        $tendencia = is_array($datos['tendencia'] ?? null)
+            ? $datos['tendencia']
+            : [];
+        $criterios = is_array($datos['criterios'] ?? null)
+            ? $datos['criterios']
+            : [];
+
+        $logo = $this->logoDataUri();
+        $html =
+            '<!doctype html><html lang="es"><head><meta charset="UTF-8">' .
+            '<style>' . $this->css() . '</style></head><body>';
+
+        $html .= '<div class="top-rule"></div>';
+        $html .= '<table class="header"><tr>';
+        $html .= '<td class="brand">';
+        if ($logo !== '') {
+            $html .= '<img src="' . $logo . '" alt="Grupo Porcayo">';
+        }
+        $html .= '</td><td class="header-copy">';
+        $html .= '<div class="system-name">Sistema de Gestión Comercial</div>';
+        $html .= '<h1>Desempeño y Reconocimientos</h1>';
+        $html .= '<table class="header-meta">';
+
+        if (trim((string)($datos['generado_por'] ?? '')) !== '') {
+            $html .=
+                '<tr><td>Generado por</td><th>' .
+                $this->e($datos['generado_por']) .
+                '</th></tr>';
+        }
+
+        $html .=
+            '<tr><td>Rol</td><th>' .
+            $this->e($datos['generado_por_rol'] ?? '') .
+            '</th></tr>';
+        $html .=
+            '<tr><td>Fecha</td><th>' .
+            $this->e(
+                $datos['fecha_generacion']
+                    ?? date('d/m/Y H:i')
+            ) .
+            '</th></tr>';
+        $html .= '</table></td></tr></table>';
+        $html .= '<div class="header-rule"></div>';
+
+        $html .= '<table class="scope"><tr>';
+        $html .= $this->scope(
+            'Área',
+            $areaLabel
+        );
+        $html .= $this->scope(
+            'Vista',
+            $this->vistaLabel($vista)
+        );
+        $html .= $this->scope(
+            'Periodo',
+            (string)($periodo['label'] ?? '')
+        );
+        $html .= $this->scope(
+            'Rango',
+            $this->rangoPeriodo($periodo)
+        );
+        $html .= '</tr></table>';
+
+        $html .= '<section class="section keep">';
+        $html .= $this->titulo('Resumen del periodo');
+        $html .= '<table class="metrics"><tr>';
+
+        if ($area === 'cuenta_clave') {
+            $html .= $this->metric(
+                'Aliados trabajados',
+                $resumen['aliados_trabajados'] ?? 0
+            );
+            $html .= $this->metric(
+                'Difusiones',
+                $resumen['difusiones'] ?? 0
+            );
+            $html .= $this->metric(
+                'Actualizaciones',
+                $resumen['seguimientos'] ?? 0
+            );
+            $html .= $this->metric(
+                'Confirmaciones',
+                $resumen['confirmaciones'] ?? 0
+            );
+        } else {
+            $html .= $this->metric(
+                'Llamadas válidas',
+                $resumen['llamadas_realizadas'] ?? 0
+            );
+            $html .= $this->metric(
+                'Llamadas efectivas',
+                $resumen['llamadas_efectivas'] ?? 0
+            );
+            $html .= $this->metric(
+                'Tasa de contacto',
+                number_format(
+                    (float)($resumen['tasa_contacto'] ?? 0),
+                    1
+                ) . '%'
+            );
+            $html .= $this->metric(
+                'Interacciones útiles',
+                $resumen['interacciones'] ?? 0
+            );
+        }
+
+        $html .= '</tr></table></section>';
+
+        $html .= '<section class="section">';
+        $html .= $this->titulo(
+            $vista === 'propio'
+                ? 'Detalle de desempeño'
+                : 'Ranking operativo del periodo'
+        );
+
+        if (empty($ranking)) {
+            $html .=
+                '<div class="empty">No existen datos de desempeño para el alcance seleccionado.</div>';
+        } else {
+            $html .= $this->tablaRanking($ranking, $area);
+        }
+        $html .= '</section>';
+
+        if (!empty($reconocimientos)) {
+            $html .= '<section class="section keep">';
+            $html .= $this->titulo('Reconocimientos del periodo');
+            $html .= '<table class="recognitions"><tr>';
+
+            foreach ($reconocimientos as $reconocimiento) {
+                $html .=
+                    '<td><span>' .
+                    $this->e($reconocimiento['titulo'] ?? '') .
+                    '</span><strong>' .
+                    $this->e($reconocimiento['nombre'] ?? '') .
+                    '</strong><small>' .
+                    $this->e($reconocimiento['valor'] ?? '') .
+                    ' ' .
+                    $this->e($reconocimiento['unidad'] ?? '') .
+                    '</small></td>';
+            }
+
+            $html .= '</tr></table></section>';
+        }
+
+        if (!empty($tendencia)) {
+            $html .= '<section class="section">';
+            $html .= $this->titulo('Historial diario del periodo');
+            $html .= $this->tablaTendencia($tendencia, $area);
+            $html .= '</section>';
+        }
+
+        $html .= '<section class="section keep">';
+        $html .= $this->titulo('Criterios de medición');
+        $html .= '<ol class="criteria">';
+        foreach ($criterios as $criterio) {
+            $html .= '<li>' . $this->e($criterio) . '</li>';
+        }
+        $html .= '</ol>';
+        $html .=
+            '<div class="notice"><strong>Uso de la información.</strong> Este reporte apoya la supervisión y el reconocimiento del trabajo registrado en el sistema. No asigna automáticamente bonos, sanciones o decisiones laborales.</div>';
+        $html .= '</section>';
+
+        return $html . '</body></html>';
+    }
+
+    private function tablaRanking(array $ranking, $area)
+    {
+        if ($area === 'cuenta_clave') {
+            $html =
+                '<table class="table"><thead><tr>' .
+                '<th>#</th><th>Persona</th>' .
+                '<th class="num">Aliados</th>' .
+                '<th class="num">Difusiones</th>' .
+                '<th class="num">Actualizaciones</th>' .
+                '<th class="num">Confirmaciones</th>' .
+                '<th class="num">Índice</th>' .
+                '</tr></thead><tbody>';
+
+            foreach ($ranking as $fila) {
+                $html .= '<tr>';
+                $html .= '<td>' .
+                    (int)($fila['posicion'] ?? 0) .
+                    '</td>';
+                $html .= '<td><strong>' .
+                    $this->e($fila['nombre_completo'] ?? '') .
+                    '</strong></td>';
+                $html .= $this->tdNum(
+                    $fila['aliados_trabajados'] ?? 0
+                );
+                $html .= $this->tdNum(
+                    $fila['difusiones'] ?? 0
+                );
+                $html .= $this->tdNum(
+                    $fila['seguimientos'] ?? 0
+                );
+                $html .= $this->tdNum(
+                    $fila['confirmaciones'] ?? 0
+                );
+                $html .= $this->tdNum(
+                    $fila['indice'] === null
+                        ? '—'
+                        : number_format(
+                            (float)$fila['indice'],
+                            1
+                        )
+                );
+                $html .= '</tr>';
+            }
+
+            return $html . '</tbody></table>';
+        }
+
+        $html =
+            '<table class="table"><thead><tr>' .
+            '<th>#</th><th>Persona</th>' .
+            '<th class="num">Llamadas</th>' .
+            '<th class="num">Efectivas</th>' .
+            '<th class="num">Efectividad</th>' .
+            '<th class="num">Interacciones</th>' .
+            '<th class="num">Verificaciones</th>' .
+            '<th class="num">Índice</th>' .
+            '</tr></thead><tbody>';
+
+        foreach ($ranking as $fila) {
+            $html .= '<tr>';
+            $html .= '<td>' .
+                (int)($fila['posicion'] ?? 0) .
+                '</td>';
+            $html .= '<td><strong>' .
+                $this->e($fila['nombre_completo'] ?? '') .
+                '</strong></td>';
+            $html .= $this->tdNum(
+                $fila['llamadas_realizadas'] ?? 0
+            );
+            $html .= $this->tdNum(
+                $fila['llamadas_efectivas'] ?? 0
+            );
+            $html .= $this->tdNum(
+                number_format(
+                    (float)($fila['tasa_contacto'] ?? 0),
+                    1
+                ) . '%'
+            );
+            $html .= $this->tdNum(
+                $fila['interacciones'] ?? 0
+            );
+            $html .= $this->tdNum(
+                $fila['verificaciones_efectivas'] ?? 0
+            );
+            $html .= $this->tdNum(
+                $fila['indice'] === null
+                    ? '—'
+                    : number_format(
+                        (float)$fila['indice'],
+                        1
+                    )
+            );
+            $html .= '</tr>';
+        }
+
+        return $html . '</tbody></table>';
+    }
+
+    private function tablaTendencia(array $filas, $area)
+    {
+        if ($area === 'cuenta_clave') {
+            $html =
+                '<table class="table compact"><thead><tr>' .
+                '<th>Fecha</th>' .
+                '<th class="num">Difusiones</th>' .
+                '<th class="num">Actualizaciones</th>' .
+                '<th class="num">Confirmaciones</th>' .
+                '</tr></thead><tbody>';
+
+            foreach ($filas as $fila) {
+                $html .= '<tr><td>' .
+                    $this->e($fila['fecha'] ?? '') .
+                    '</td>';
+                $html .= $this->tdNum(
+                    $fila['principal'] ?? 0
+                );
+                $html .= $this->tdNum(
+                    $fila['secundario'] ?? 0
+                );
+                $html .= $this->tdNum(
+                    $fila['terciario'] ?? 0
+                );
+                $html .= '</tr>';
+            }
+
+            return $html . '</tbody></table>';
+        }
+
+        $html =
+            '<table class="table compact"><thead><tr>' .
+            '<th>Fecha</th>' .
+            '<th class="num">Interacciones</th>' .
+            '<th class="num">Llamadas efectivas</th>' .
+            '</tr></thead><tbody>';
+
+        foreach ($filas as $fila) {
+            $html .= '<tr><td>' .
+                $this->e($fila['fecha'] ?? '') .
+                '</td>';
+            $html .= $this->tdNum(
+                $fila['principal'] ?? 0
+            );
+            $html .= $this->tdNum(
+                $fila['secundario'] ?? 0
+            );
+            $html .= '</tr>';
+        }
+
+        return $html . '</tbody></table>';
+    }
+
+    private function scope($label, $value)
+    {
+        return '<td><span>' .
+            $this->e($label) .
+            '</span><strong>' .
+            $this->e($value) .
+            '</strong></td>';
+    }
+
+    private function metric($label, $value)
+    {
+        return '<td><span>' .
+            $this->e($label) .
+            '</span><strong>' .
+            $this->e($value) .
+            '</strong></td>';
+    }
+
+    private function tdNum($value)
+    {
+        return '<td class="num">' .
+            $this->e($value) .
+            '</td>';
+    }
+
+    private function titulo($titulo)
+    {
+        return '<div class="section-title"><h2>' .
+            $this->e($titulo) .
+            '</h2></div>';
+    }
+
+    private function vistaLabel($vista)
+    {
+        $mapa = [
+            'global' => 'Vista global',
+            'equipo' => 'Mi equipo',
+            'propio' => 'Mi desempeño'
+        ];
+
+        return $mapa[$vista] ?? 'Desempeño';
+    }
+
+    private function rangoPeriodo(array $periodo)
+    {
+        $desde = trim(
+            (string)($periodo['fecha_desde'] ?? '')
+        );
+        $hasta = trim(
+            (string)($periodo['fecha_hasta'] ?? '')
+        );
+
+        if ($desde === '' || $hasta === '') {
+            return '—';
+        }
+
+        try {
+            return
+                (new DateTimeImmutable($desde))->format('d/m/Y') .
+                ' - ' .
+                (new DateTimeImmutable($hasta))->format('d/m/Y');
+        } catch (Throwable $error) {
+            return $desde . ' - ' . $hasta;
+        }
+    }
+
+    private function nombreArchivo(array $datos)
+    {
+        $area = $datos['area'] === 'cuenta_clave'
+            ? 'Cuenta_Clave'
+            : 'Analistas';
+
+        return
+            'Desempeno_' .
+            $area .
+            '_' .
+            date('Y-m-d') .
+            '.pdf';
+    }
+
+    private function logoDataUri()
+    {
+        $rutas = [
+            dirname(__DIR__, 2) .
+                '/public/img/brand/porcayo-grupo.png',
+            dirname(__DIR__, 2) .
+                '/public/img/brand/porcayo-grupo8.png'
+        ];
+
+        foreach ($rutas as $ruta) {
+            if (!is_file($ruta) || !is_readable($ruta)) {
+                continue;
+            }
+
+            $contenido = file_get_contents($ruta);
+            if ($contenido === false || $contenido === '') {
+                continue;
+            }
+
+            return
+                'data:image/png;base64,' .
+                base64_encode($contenido);
+        }
+
+        return '';
+    }
+
+    private function css()
+    {
+        return '@page{margin:17mm 14mm 17mm 14mm}' .
+            'body{font-family:"DejaVu Sans",sans-serif;color:#263247;font-size:7pt;line-height:1.35;margin:0}' .
+            '.top-rule{height:4px;background:#273A8A;margin:-17mm -14mm 10px}' .
+            '.header{width:100%;border-collapse:collapse;table-layout:fixed}.brand{width:170px;vertical-align:middle}.brand img{width:145px;height:auto}' .
+            '.header-copy{text-align:right;vertical-align:middle}.system-name{font-size:6pt;font-weight:700;color:#273A8A}.header h1{margin:2px 0 5px;font-size:13pt;color:#16223B}' .
+            '.header-meta{margin-left:auto;border-collapse:collapse;font-size:5.8pt}.header-meta td{color:#7A8493;padding:1px 0 1px 10px}.header-meta th{padding:1px 0 1px 7px;color:#16223B;text-align:right}' .
+            '.header-rule{height:2px;background:#273A8A;margin:8px 0 10px}' .
+            '.scope{width:100%;table-layout:fixed;border-collapse:collapse;border:1px solid #D9E1EB;background:#F8FAFC;margin-bottom:12px}.scope td{width:25%;padding:7px 8px;border-right:1px solid #D9E1EB}.scope td:last-child{border-right:0}.scope span,.metrics span,.recognitions span{display:block;color:#737F90;font-size:5.5pt}.scope strong{display:block;margin-top:2px;color:#16223B;font-size:6.6pt}' .
+            '.section{margin:0 0 13px}.keep{page-break-inside:avoid}.section-title{border-left:3px solid #273A8A;padding-left:7px;margin-bottom:7px;page-break-after:avoid}.section-title h2{margin:0;color:#16223B;font-size:10pt}' .
+            '.metrics{width:100%;table-layout:fixed;border-collapse:separate;border-spacing:4px 0}.metrics td{padding:8px;border:1px solid #D9E1EB;background:#F9FBFE}.metrics strong{display:block;margin-top:2px;color:#16223B;font-size:11pt}' .
+            '.table{width:100%;border-collapse:collapse;font-size:5.8pt}.table thead{display:table-header-group}.table tr{page-break-inside:avoid}.table th{padding:5px 5px;background:#273A8A;color:#FFF;text-align:left}.table td{padding:5px;border-bottom:1px solid #E5EAF0;vertical-align:middle}.table tbody tr:nth-child(even){background:#F8FAFC}.table .num{text-align:right;white-space:nowrap}.table.compact{width:70%}' .
+            '.recognitions{width:100%;table-layout:fixed;border-collapse:separate;border-spacing:4px}.recognitions td{padding:8px;border:1px solid #D9E1EB;background:#FBFCFE}.recognitions strong{display:block;margin-top:2px;color:#16223B;font-size:7pt}.recognitions small{display:block;margin-top:2px;color:#273A8A;font-size:5.6pt;font-weight:700}' .
+            '.criteria{margin:0;padding-left:17px;color:#556274;font-size:6pt}.criteria li{margin-bottom:4px}.notice{margin-top:8px;padding:7px 8px;border-left:3px solid #0A8F7A;background:#F3FAF8;color:#52635F;font-size:5.8pt}.empty{padding:10px;border:1px dashed #D9E1EB;background:#FAFBFD;color:#737F90}';
+    }
+
+    private function e($value)
+    {
+        return htmlspecialchars(
+            (string)$value,
+            ENT_QUOTES | ENT_SUBSTITUTE,
+            'UTF-8'
+        );
+    }
+
+    private function error($mensaje, $detalle)
+    {
+        return [
+            'ok' => false,
+            'mensaje' => (string)$mensaje,
+            'mensaje_tecnico' => (string)$detalle
+        ];
+    }
+}
