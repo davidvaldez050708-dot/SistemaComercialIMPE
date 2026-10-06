@@ -13,9 +13,13 @@ class ConvocatoriaController
         $modelo = new ConvocatoriaModel();
         $buscar = trim((string)($_GET['buscar'] ?? ''));
         $estadoFiltro = (int)($_GET['territorio_id'] ?? ($_GET['estado_id'] ?? 0));
-        $estatusFiltro = in_array((string)($_GET['estatus'] ?? ''), ['0', '1'], true)
-            ? (string)$_GET['estatus']
-            : '';
+        $estatusFiltro = '';
+        $fechaFiltroSolicitada = trim((string)($_GET['fecha'] ?? ''));
+        $fechaFiltroObjeto = DateTime::createFromFormat('!Y-m-d', $fechaFiltroSolicitada);
+        $fechaFiltro = (
+            $fechaFiltroObjeto &&
+            $fechaFiltroObjeto->format('Y-m-d') === $fechaFiltroSolicitada
+        ) ? $fechaFiltroSolicitada : '';
         $categoriaSolicitada = (string)($_GET['categoria'] ?? '');
         $categoriaFiltro = in_array($categoriaSolicitada, ['', 'IMJUVE'], true)
             ? $categoriaSolicitada
@@ -47,7 +51,8 @@ class ConvocatoriaController
                 $tipoConvocatoria,
                 $subtipoConvocatoria,
                 $anioFiltro,
-                $mesFiltro
+                $mesFiltro,
+                $fechaFiltro
             )
             : [];
 
@@ -123,9 +128,13 @@ class ConvocatoriaController
         ) ? $subtipoConvocatoriaSolicitado : '';
 
         $buscar = trim((string)($_GET['buscar'] ?? ''));
-        $estatusFiltro = in_array((string)($_GET['estatus'] ?? ''), ['0', '1'], true)
-            ? (string)$_GET['estatus']
-            : '';
+        $estatusFiltro = '';
+        $fechaFiltroSolicitada = trim((string)($_GET['fecha'] ?? ''));
+        $fechaFiltroObjeto = DateTime::createFromFormat('!Y-m-d', $fechaFiltroSolicitada);
+        $fechaFiltro = (
+            $fechaFiltroObjeto &&
+            $fechaFiltroObjeto->format('Y-m-d') === $fechaFiltroSolicitada
+        ) ? $fechaFiltroSolicitada : '';
         $anioSolicitado = (int)($_GET['anio'] ?? 0);
         $mesSolicitado = (int)($_GET['mes'] ?? 0);
 
@@ -249,7 +258,8 @@ class ConvocatoriaController
                 $tipoConvocatoria,
                 $subtipoConvocatoria,
                 $mesSeleccionado > 0 ? $anioSeleccionado : 0,
-                $mesSeleccionado
+                $mesSeleccionado,
+                $fechaFiltro
             )
             : [];
 
