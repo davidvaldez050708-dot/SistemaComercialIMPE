@@ -25,6 +25,7 @@ WHERE rp.rol_id = 1
     'aliados.gestionar_contactos',
     'aliados.compartir_correo',
     'aliados.preparar_whatsapp',
+    'aliados.seguimiento_convocatorias',
     'whatsapp.enviar',
     'convocatorias.crear',
     'convocatorias.editar',
