@@ -42,6 +42,8 @@ $esCuentaClaveDesempeno =
     strcasecmp($rolActualDesempeno, 'Cuenta Clave') === 0;
 $esAnalistaDesempeno =
     strcasecmp($rolActualDesempeno, 'Analista de Datos') === 0;
+$esMarketingDesempeno =
+    strcasecmp($rolActualDesempeno, 'Marketing') === 0;
 
 $mostrarTabGlobal = $puedeGlobal;
 $mostrarTabEquipo =
@@ -51,7 +53,8 @@ $mostrarTabPropio =
     $puedePropio &&
     (
         $esCuentaClaveDesempeno ||
-        $esAnalistaDesempeno
+        $esAnalistaDesempeno ||
+        $esMarketingDesempeno
     );
 
 $esc = static function ($valor) {
