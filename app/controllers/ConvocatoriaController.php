@@ -1038,6 +1038,10 @@ class ConvocatoriaController
 
         $anioContexto = (int)($_POST['anio'] ?? ($_GET['anio'] ?? 0));
         $mesContexto = (int)($_POST['mes'] ?? ($_GET['mes'] ?? 0));
+        $vistaContexto = (string)($_POST['vista'] ?? ($_GET['vista'] ?? ''));
+        $vistaContexto = in_array($vistaContexto, ['activas', 'historial'], true)
+            ? $vistaContexto
+            : '';
 
         if ($anioContexto >= 2000 && $anioContexto <= 2100) {
             $url .= '&anio=' . $anioContexto;
@@ -1045,6 +1049,10 @@ class ConvocatoriaController
 
         if ($mesContexto >= 1 && $mesContexto <= 12) {
             $url .= '&mes=' . $mesContexto;
+        }
+
+        if ($vistaContexto !== '') {
+            $url .= '&vista=' . rawurlencode($vistaContexto);
         }
 
         header('Location: ' . $url);
