@@ -7,6 +7,9 @@ $mensajeError = $mensajeError ?? '';
 $erroresFormulario = $erroresFormulario ?? [];
 $datosFormulario = $datosFormulario ?? [];
 $modalAbierto = $modalAbierto ?? '';
+$vistaConvocatoriasInicial = (
+    (string)($_GET['vista'] ?? '') === 'historial'
+) ? 'historial' : 'activas';
 $buscar = $buscar ?? '';
 $estadoFiltro = $estadoFiltro ?? 0;
 $estatusFiltro = $estatusFiltro ?? '';
@@ -1040,10 +1043,10 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
 <div class="convocatoria-status-tabs" role="tablist" aria-label="Estado de convocatorias">
     <button
         type="button"
-        class="convocatoria-status-tab is-active"
+        class="convocatoria-status-tab<?= $vistaConvocatoriasInicial === 'activas' ? ' is-active' : '' ?>"
         data-convocatoria-view="activas"
         role="tab"
-        aria-selected="true">
+        aria-selected="<?= $vistaConvocatoriasInicial === 'activas' ? 'true' : 'false' ?>">
         <span class="convocatoria-status-tab-icon">
             <i class="bi bi-megaphone"></i>
         </span>
@@ -1053,10 +1056,10 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
 
     <button
         type="button"
-        class="convocatoria-status-tab"
+        class="convocatoria-status-tab<?= $vistaConvocatoriasInicial === 'historial' ? ' is-active' : '' ?>"
         data-convocatoria-view="historial"
         role="tab"
-        aria-selected="false">
+        aria-selected="<?= $vistaConvocatoriasInicial === 'historial' ? 'true' : 'false' ?>">
         <span class="convocatoria-status-tab-icon">
             <i class="bi bi-archive"></i>
         </span>
@@ -1105,6 +1108,11 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
         <input type="hidden" name="subtipo" value="<?= $texto($subtipoConvocatoria) ?>">
         <input type="hidden" name="anio" value="<?= (int)$anioSeleccionado ?>">
         <input type="hidden" name="mes" value="<?= (int)$mesSeleccionado ?>">
+        <input
+            type="hidden"
+            name="vista"
+            value="<?= $texto($vistaConvocatoriasInicial) ?>"
+            data-convocatoria-vista>
 
         <div class="convocatoria-filter-field convocatoria-filter-search">
             <label class="form-label login-label" for="filtro_convocatoria_buscar">Buscar convocatoria</label>
@@ -1344,6 +1352,11 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
                 <input type="hidden" name="subtipo" value="<?= $texto($subtipoConvocatoria) ?>">
                 <input type="hidden" name="anio" value="<?= (int)$anioSeleccionado ?>">
                 <input type="hidden" name="mes" value="<?= (int)$mesSeleccionado ?>">
+                <input
+                    type="hidden"
+                    name="vista"
+                    value="<?= $texto($vistaConvocatoriasInicial) ?>"
+                    data-convocatoria-vista>
 
                 <div class="modal-body">
                     <div class="system-form-grid">
@@ -1496,6 +1509,11 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
                 <input type="hidden" name="subtipo" value="<?= $texto($subtipoConvocatoria) ?>">
                 <input type="hidden" name="anio" value="<?= (int)$anioSeleccionado ?>">
                 <input type="hidden" name="mes" value="<?= (int)$mesSeleccionado ?>">
+                <input
+                    type="hidden"
+                    name="vista"
+                    value="<?= $texto($vistaConvocatoriasInicial) ?>"
+                    data-convocatoria-vista>
 
                 <input type="hidden" name="id" id="editar_convocatoria_id">
 
@@ -1625,6 +1643,11 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
                 <input type="hidden" name="subtipo" value="<?= $texto($subtipoConvocatoria) ?>">
                 <input type="hidden" name="anio" value="<?= (int)$anioSeleccionado ?>">
                 <input type="hidden" name="mes" value="<?= (int)$mesSeleccionado ?>">
+                <input
+                    type="hidden"
+                    name="vista"
+                    value="<?= $texto($vistaConvocatoriasInicial) ?>"
+                    data-convocatoria-vista>
                 <input type="hidden" name="id" id="estado_convocatoria_id">
                 <input type="hidden" name="estado" id="estado_convocatoria_nuevo">
 
@@ -1861,7 +1884,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const contadorActivas = document.querySelector('[data-convocatoria-count="activas"]');
     const contadorHistorial = document.querySelector('[data-convocatoria-count="historial"]');
 
-    let vistaConvocatorias = 'activas';
+    let vistaConvocatorias = <?= json_encode($vistaConvocatoriasInicial) ?>;
     let convocatoriasActuales = <?= json_encode(
         $convocatorias,
         JSON_UNESCAPED_UNICODE |
@@ -2119,12 +2142,23 @@ document.addEventListener('DOMContentLoaded', function () {
         }, 300);
     };
 
+    const persistirVistaConvocatorias = function () {
+        document.querySelectorAll('[data-convocatoria-vista]').forEach(function (campo) {
+            campo.value = vistaConvocatorias;
+        });
+
+        const urlActual = new URL(window.location.href);
+        urlActual.searchParams.set('vista', vistaConvocatorias);
+        window.history.replaceState({}, '', urlActual.toString());
+    };
+
     tabsConvocatorias.forEach(function (tab) {
         tab.addEventListener('click', function () {
             vistaConvocatorias = tab.dataset.convocatoriaView === 'historial'
                 ? 'historial'
                 : 'activas';
 
+            persistirVistaConvocatorias();
             renderConvocatorias(convocatoriasActuales, false);
         });
     });
