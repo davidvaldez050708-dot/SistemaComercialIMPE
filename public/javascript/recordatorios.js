@@ -11,6 +11,14 @@
         const endpoint = root.getAttribute('data-reminder-endpoint') || '';
         const badge = root.querySelector('[data-reminder-badge]');
         const contenido = root.querySelector('[data-reminder-content]');
+        const usarTotalBackend =
+            root.getAttribute('data-reminder-count-mode') === 'total';
+        const tituloVacio =
+            root.getAttribute('data-reminder-empty-title') ||
+            'Sin notificaciones pendientes';
+        const mensajeVacio =
+            root.getAttribute('data-reminder-empty-message') ||
+            'No tienes acciones o reuniones pendientes.';
         let consultaEnCurso = false;
         let avisoMigracionMostrado = false;
         let recordatoriosActuales = [];
@@ -339,8 +347,14 @@
             }, espera);
         };
 
-        const renderizarRecordatorios = function (recordatorios) {
+        const renderizarRecordatorios = function (
+            recordatorios,
+            totalBackend
+        ) {
             const lista = Array.isArray(recordatorios) ? recordatorios : [];
+            const totalBadge = usarTotalBackend
+                ? Math.max(0, Number(totalBackend || 0))
+                : lista.length;
             recordatoriosActuales = lista;
 
             if (contenido) {
@@ -348,8 +362,9 @@
             }
 
             if (badge) {
-                if (lista.length > 0) {
-                    badge.textContent = lista.length > 9 ? '9+' : String(lista.length);
+                if (totalBadge > 0) {
+                    badge.textContent =
+                        totalBadge > 9 ? '9+' : String(totalBadge);
                     badge.classList.remove('d-none');
                 } else {
                     badge.textContent = '0';
@@ -365,8 +380,8 @@
                 contenido.innerHTML =
                     '<div class="topbar-reminder-empty">' +
                         '<i class="bi bi-check2-circle"></i>' +
-                        '<strong>Sin notificaciones pendientes</strong>' +
-                        '<span>No tienes acciones o reuniones pendientes.</span>' +
+                        '<strong>' + escapar(tituloVacio) + '</strong>' +
+                        '<span>' + escapar(mensajeVacio) + '</span>' +
                     '</div>';
                 return;
             }
@@ -420,7 +435,10 @@
                     return;
                 }
 
-                renderizarRecordatorios(datos.recordatorios || []);
+                renderizarRecordatorios(
+                    datos.recordatorios || [],
+                    datos.total || 0
+                );
 
                 if (datos.requiere_migracion) {
                     if (!avisoMigracionMostrado) {
