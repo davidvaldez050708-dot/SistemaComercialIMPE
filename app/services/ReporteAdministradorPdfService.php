@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/ReporteNombreArchivoService.php';
+
 class ReporteAdministradorPdfService
 {
     private const W_NS = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
@@ -45,8 +47,6 @@ class ReporteAdministradorPdfService
                 'proc_open no está disponible en este entorno.'
             );
         }
-
-        require_once __DIR__ . '/ReporteNombreArchivoService.php';
 
         $nombreBase = ReporteNombreArchivoService::corte(
             'Reporte_Usuarios',
