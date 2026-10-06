@@ -1347,7 +1347,7 @@
 .convocatoria-overview-kicker {
     display: block;
     margin-bottom: 3px;
-    color: var(--color-primary);
+    color: #07866f;
     font-family: 'Manrope', sans-serif;
     font-size: 9px;
     font-weight: 800;
@@ -1811,7 +1811,7 @@
 .convocatoria-titulacion-hero-copy > span {
     display: block;
     margin-bottom: 3px;
-    color: #4f83ff;
+    color: #07866f;
     font-family: 'Manrope', sans-serif;
     font-size: 9px;
     font-weight: 800;
