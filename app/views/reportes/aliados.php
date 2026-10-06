@@ -53,6 +53,9 @@ $actividadPeriodo = is_array(
     ];
 $errorFiltroPeriodo = (string)($errorFiltroPeriodo ?? '');
 
+$periodoEsHistorico =
+    (string)($periodoReporte['clave'] ?? 'historico') === 'historico';
+
 $texto = static fn($valor) => htmlspecialchars(
     (string)$valor,
     ENT_QUOTES | ENT_SUBSTITUTE,
@@ -339,6 +342,11 @@ if ($modoAnalisis === 'estado') {
             </div>
         </section>
 
+        <div class="aliados-report-section-label">
+            <span>ESTADO ACTUAL</span>
+            <small>Fotografía vigente de la red</small>
+        </div>
+
         <section class="analyst-portfolio-kpis mb-3" aria-label="Indicadores del panorama">
             <?php if ($modoAnalisis === 'red'): ?>
                 <article class="analyst-portfolio-kpi">
@@ -469,41 +477,45 @@ if ($modoAnalisis === 'estado') {
         <section class="dashboard-panel aliados-report-period-panel mb-3">
             <div class="analyst-portfolio-section-heading">
                 <div>
-                    <span class="report-eyebrow">ACTIVIDAD DEL PERIODO</span>
-                    <h3 class="panel-title mb-1">
-                        <?= $texto($periodoReporte['label'] ?? 'Histórico completo') ?>
-                    </h3>
+                    <span class="report-eyebrow">GESTIÓN REGISTRADA</span>
+                    <h3 class="panel-title mb-1">Actividad del periodo</h3>
                     <p class="page-subtitle mb-0">
-                        Distingue la red actual de lo que realmente ocurrió dentro del intervalo seleccionado.
+                        <?= $periodoEsHistorico
+                            ? 'Movimientos acumulados desde el inicio de la operación de esta red.'
+                            : 'Movimientos registrados dentro del intervalo seleccionado, sin alterar la fotografía actual.' ?>
                     </p>
                 </div>
                 <span class="analyst-portfolio-detail-count">
-                    <?= (int)($actividadPeriodo['interacciones'] ?? 0) ?>
-                    <?= (int)($actividadPeriodo['interacciones'] ?? 0) === 1
-                        ? 'interacción'
-                        : 'interacciones' ?>
+                    <?= $texto($periodoReporte['label'] ?? 'Histórico completo') ?>
                 </span>
             </div>
 
-            <div class="aliados-report-period-kpis">
-                <article>
-                    <span class="aliados-report-period-icon">
-                        <i class="bi bi-person-plus"></i>
-                    </span>
-                    <div>
-                        <strong><?= (int)($actividadPeriodo['nuevos_aliados'] ?? 0) ?></strong>
-                        <span>Nuevos aliados</span>
-                        <small>Formalizados en el periodo</small>
-                    </div>
-                </article>
+            <div class="aliados-report-period-kpis <?= $periodoEsHistorico ? 'is-historical' : '' ?>">
+                <?php if (!$periodoEsHistorico): ?>
+                    <article>
+                        <span class="aliados-report-period-icon">
+                            <i class="bi bi-person-plus"></i>
+                        </span>
+                        <div>
+                            <strong><?= (int)($actividadPeriodo['nuevos_aliados'] ?? 0) ?></strong>
+                            <span>Nuevos aliados</span>
+                            <small>Formalizados en el periodo</small>
+                        </div>
+                    </article>
+                <?php endif; ?>
+
                 <article>
                     <span class="aliados-report-period-icon">
                         <i class="bi bi-briefcase"></i>
                     </span>
                     <div>
                         <strong><?= (int)($actividadPeriodo['aliados_trabajados'] ?? 0) ?></strong>
-                        <span>Aliados trabajados</span>
-                        <small>Con alta, difusión o seguimiento</small>
+                        <span><?= $periodoEsHistorico ? 'Aliados con actividad' : 'Aliados trabajados' ?></span>
+                        <small>
+                            <?= $periodoEsHistorico
+                                ? 'Con movimientos registrados'
+                                : 'Con alta, difusión o seguimiento' ?>
+                        </small>
                     </div>
                 </article>
                 <article>
@@ -533,7 +545,7 @@ if ($modoAnalisis === 'estado') {
                     <div>
                         <strong><?= (int)($actividadPeriodo['confirmaciones'] ?? 0) ?></strong>
                         <span>Confirmaciones</span>
-                        <small>Difusiones confirmadas en el periodo</small>
+                        <small>Difusiones confirmadas</small>
                     </div>
                 </article>
             </div>
