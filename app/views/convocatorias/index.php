@@ -10,6 +10,7 @@ $modalAbierto = $modalAbierto ?? '';
 $buscar = $buscar ?? '';
 $estadoFiltro = $estadoFiltro ?? 0;
 $estatusFiltro = $estatusFiltro ?? '';
+$fechaFiltro = $fechaFiltro ?? '';
 $categoriaFiltro = $categoriaFiltro ?? '';
 $territorioSeleccionado = $territorioSeleccionado ?? null;
 $tipoConvocatoria = $tipoConvocatoria ?? '';
@@ -1120,15 +1121,23 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
         </div>
 
         <div class="convocatoria-filter-field">
-            <label class="form-label login-label" for="filtro_convocatoria_estatus">Estatus</label>
-            <select
-                class="form-select system-form-control"
-                id="filtro_convocatoria_estatus"
-                name="estatus">
-                <option value="" <?= $estatusFiltro === '' ? 'selected' : '' ?>>Todos</option>
-                <option value="1" <?= $estatusFiltro === '1' ? 'selected' : '' ?>>Activas</option>
-                <option value="0" <?= $estatusFiltro === '0' ? 'selected' : '' ?>>Inactivas</option>
-            </select>
+            <label class="form-label login-label" for="filtro_convocatoria_fecha">Fecha</label>
+            <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-calendar3"></i></span>
+                <input
+                    type="date"
+                    class="form-control system-form-control"
+                    id="filtro_convocatoria_fecha"
+                    name="fecha"
+                    value="<?= $texto($fechaFiltro) ?>"
+                    <?php if ($mesSeleccionado >= 1 && $mesSeleccionado <= 12): ?>
+                        min="<?= sprintf('%04d-%02d-01', $anioSeleccionado, $mesSeleccionado) ?>"
+                        max="<?= date(
+                            'Y-m-t',
+                            strtotime(sprintf('%04d-%02d-01', $anioSeleccionado, $mesSeleccionado))
+                        ) ?>"
+                    <?php endif; ?>>
+            </div>
         </div>
 
         <input
@@ -1139,7 +1148,7 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
 
         <div class="convocatoria-filter-actions">
             <a
-                class="filter-clear-link <?= ($buscar === '' && $estatusFiltro === '' && $categoriaFiltro === '') ? 'd-none' : '' ?>"
+                class="filter-clear-link <?= ($buscar === '' && $fechaFiltro === '' && $categoriaFiltro === '') ? 'd-none' : '' ?>"
                 href="<?= BASE_URL ?>index.php?controller=convocatoria&action=index&territorio_id=<?= (int)$territorioSeleccionado['id'] ?>&tipo=<?= $texto($tipoConvocatoria) ?>&subtipo=<?= $texto($subtipoConvocatoria) ?>&anio=<?= (int)$anioSeleccionado ?>&mes=<?= (int)$mesSeleccionado ?>"
                 data-convocatoria-clear-filters>
                 Limpiar filtros
@@ -1849,7 +1858,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     const filtroBuscar = document.getElementById('filtro_convocatoria_buscar');
-    const filtroEstatus = document.getElementById('filtro_convocatoria_estatus');
+    const filtroFecha = document.getElementById('filtro_convocatoria_fecha');
     const filtroCategoria = document.getElementById('filtro_convocatoria_categoria');
     const limpiarFiltros = document.querySelector('[data-convocatoria-clear-filters]');
     const listadoConvocatorias = document.querySelector('[data-convocatorias-listado]');
@@ -1863,9 +1872,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const contadorActivas = document.querySelector('[data-convocatoria-count="activas"]');
     const contadorHistorial = document.querySelector('[data-convocatoria-count="historial"]');
 
-    let vistaConvocatorias = String(filtroEstatus?.value || '') === '0'
-        ? 'historial'
-        : 'activas';
+    let vistaConvocatorias = 'activas';
     let convocatoriasActuales = <?= json_encode(
         $convocatorias,
         JSON_UNESCAPED_UNICODE |
@@ -1882,7 +1889,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const actualizarVisibilidadLimpiar = function () {
         const hayFiltros =
             String(filtroBuscar?.value || '').trim() !== '' ||
-            String(filtroEstatus?.value || '') !== '' ||
+            String(filtroFecha?.value || '') !== '' ||
             String(filtroCategoria?.value || '') !== '';
 
         limpiarFiltros?.classList.toggle('d-none', !hayFiltros);
@@ -2071,7 +2078,7 @@ document.addEventListener('DOMContentLoaded', function () {
             territorio_id: <?= json_encode((string)(int)$territorioSeleccionado['id']) ?>,
             tipo: <?= json_encode($tipoConvocatoria) ?>,
             subtipo: <?= json_encode($subtipoConvocatoria) ?>,
-            estatus: String(filtroEstatus?.value || ''),
+            fecha: String(filtroFecha?.value || ''),
             categoria: String(filtroCategoria?.value || ''),
             anio: <?= json_encode((string)(int)$anioSeleccionado) ?>,
             mes: <?= json_encode((string)(int)$mesSeleccionado) ?>
@@ -2137,13 +2144,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     filtroBuscar?.addEventListener('input', programarBusqueda);
 
-    filtroEstatus?.addEventListener('change', function () {
-        if (String(filtroEstatus.value || '') === '1') {
-            vistaConvocatorias = 'activas';
-        } else if (String(filtroEstatus.value || '') === '0') {
-            vistaConvocatorias = 'historial';
-        }
-
+    filtroFecha?.addEventListener('change', function () {
+        window.clearTimeout(temporizadorFiltro);
         actualizarVisibilidadLimpiar();
         cargarListadoFiltrado();
     });
@@ -2162,8 +2164,8 @@ document.addEventListener('DOMContentLoaded', function () {
             filtroBuscar.value = '';
         }
 
-        if (filtroEstatus) {
-            filtroEstatus.value = '';
+        if (filtroFecha) {
+            filtroFecha.value = '';
         }
 
         if (filtroCategoria) {
