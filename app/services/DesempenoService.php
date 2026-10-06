@@ -200,6 +200,10 @@ class DesempenoService
         $esMarketing =
             strcasecmp($rolNombre, 'Marketing') === 0;
 
+        if ($esMarketing) {
+            return 'sin_acceso';
+        }
+
         /*
          * Los perfiles con vista global organizacional (Administrador /
          * Dirección futura) no deben heredar artificialmente una vista
@@ -238,7 +242,7 @@ class DesempenoService
          * con Analistas. Analista y Marketing nunca deben convertirse en
          * "Mi equipo" aunque el permiso se conceda por error.
          */
-        if (($esAnalista || $esMarketing) && !$puedeGlobal) {
+        if ($esAnalista && !$puedeGlobal) {
             return $puedePropio ? 'propio' : 'sin_acceso';
         }
 
@@ -262,7 +266,7 @@ class DesempenoService
             $solicitada = strtolower(trim((string)$solicitada));
             return in_array(
                 $solicitada,
-                ['analistas', 'cuenta_clave', 'marketing'],
+                ['analistas', 'cuenta_clave'],
                 true
             )
                 ? $solicitada
@@ -275,10 +279,6 @@ class DesempenoService
 
         if (strcasecmp($rolNombre, 'Cuenta Clave') === 0) {
             return 'cuenta_clave';
-        }
-
-        if (strcasecmp($rolNombre, 'Marketing') === 0) {
-            return 'marketing';
         }
 
         return 'analistas';
@@ -313,8 +313,6 @@ class DesempenoService
 
             if ($area === 'cuenta_clave') {
                 $rolObjetivo = 'Cuenta Clave';
-            } elseif ($area === 'marketing') {
-                $rolObjetivo = 'Marketing';
             }
 
             return $this->modelo->obtenerUsuariosPorRol(
