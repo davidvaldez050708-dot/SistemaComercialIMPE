@@ -67,7 +67,7 @@ class ConvocatoriaReporteController
             $contenidoPdf = (string)($resultado['contenido_pdf'] ?? '');
             $nombreArchivo = (string)(
                 $resultado['nombre_archivo'] ??
-                'Reporte_Convocatorias.pdf'
+                'Reporte_Convocatorias_Corte_' . date('Y-m-d') . '.pdf'
             );
 
             header('Content-Type: application/pdf');
