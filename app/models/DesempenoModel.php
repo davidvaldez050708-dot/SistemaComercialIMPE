@@ -539,6 +539,211 @@ class DesempenoModel
         return $this->resultadoArreglo($stmt->get_result());
     }
 
+    public function obtenerMetricasMarketing(
+        array $usuarios,
+        $desde,
+        $hasta,
+        $estadoId = 0
+    ) {
+        $salida = [];
+
+        foreach ($usuarios as $usuario) {
+            $usuarioId = (int)($usuario['id'] ?? 0);
+            if ($usuarioId <= 0) {
+                continue;
+            }
+
+            $metricas = [
+                'id' => $usuarioId,
+                'nombre' => (string)($usuario['nombre'] ?? ''),
+                'apellidos' => (string)($usuario['apellidos'] ?? ''),
+                'foto_perfil' => (string)($usuario['foto_perfil'] ?? ''),
+                'usuario' => (string)($usuario['usuario'] ?? ''),
+                'publicaciones' => 0,
+                'territorios_cubiertos' => 0,
+                'actualizaciones' => 0,
+                'vigentes' => 0
+            ];
+
+            $sqlCreadas = "SELECT
+                    COUNT(DISTINCT convocatorias.id) AS publicaciones,
+                    COUNT(DISTINCT convocatoria_estados.estado_id) AS territorios_cubiertos,
+                    COUNT(DISTINCT CASE
+                        WHEN convocatorias.estado = 1
+                        THEN convocatorias.id
+                        ELSE NULL
+                    END) AS vigentes
+                FROM convocatorias
+                LEFT JOIN convocatoria_estados
+                    ON convocatoria_estados.convocatoria_id = convocatorias.id
+                WHERE convocatorias.creado_por = ?
+                  AND convocatorias.created_at >= ?
+                  AND convocatorias.created_at <= ?";
+
+            $tiposCreadas = 'iss';
+            $paramsCreadas = [
+                $usuarioId,
+                (string)$desde,
+                (string)$hasta
+            ];
+
+            if ((int)$estadoId > 0) {
+                $sqlCreadas .= " AND EXISTS (
+                    SELECT 1
+                    FROM convocatoria_estados filtro_estado
+                    WHERE filtro_estado.convocatoria_id = convocatorias.id
+                      AND filtro_estado.estado_id = ?
+                )";
+                $tiposCreadas .= 'i';
+                $paramsCreadas[] = (int)$estadoId;
+            }
+
+            $stmt = $this->connection->prepare($sqlCreadas);
+            $this->vincularParametros(
+                $stmt,
+                $tiposCreadas,
+                $paramsCreadas
+            );
+            $stmt->execute();
+            $creadas = $stmt->get_result()->fetch_assoc() ?: [];
+
+            $metricas['publicaciones'] =
+                (int)($creadas['publicaciones'] ?? 0);
+            $metricas['territorios_cubiertos'] =
+                (int)($creadas['territorios_cubiertos'] ?? 0);
+            $metricas['vigentes'] =
+                (int)($creadas['vigentes'] ?? 0);
+
+            $sqlActualizaciones = "SELECT
+                    COUNT(*) AS actualizaciones
+                FROM convocatorias
+                WHERE convocatorias.actualizado_por = ?
+                  AND convocatorias.updated_at >= ?
+                  AND convocatorias.updated_at <= ?
+                  AND convocatorias.updated_at > convocatorias.created_at";
+
+            $tiposActualizaciones = 'iss';
+            $paramsActualizaciones = [
+                $usuarioId,
+                (string)$desde,
+                (string)$hasta
+            ];
+
+            if ((int)$estadoId > 0) {
+                $sqlActualizaciones .= " AND EXISTS (
+                    SELECT 1
+                    FROM convocatoria_estados filtro_estado
+                    WHERE filtro_estado.convocatoria_id = convocatorias.id
+                      AND filtro_estado.estado_id = ?
+                )";
+                $tiposActualizaciones .= 'i';
+                $paramsActualizaciones[] = (int)$estadoId;
+            }
+
+            $stmt = $this->connection->prepare($sqlActualizaciones);
+            $this->vincularParametros(
+                $stmt,
+                $tiposActualizaciones,
+                $paramsActualizaciones
+            );
+            $stmt->execute();
+            $actualizaciones =
+                $stmt->get_result()->fetch_assoc() ?: [];
+
+            $metricas['actualizaciones'] =
+                (int)($actualizaciones['actualizaciones'] ?? 0);
+
+            $salida[] = $metricas;
+        }
+
+        return $salida;
+    }
+
+    public function obtenerTendenciaMarketing(
+        array $usuarioIds,
+        $desde,
+        $hasta,
+        $estadoId = 0
+    ) {
+        $ids = $this->normalizarIds($usuarioIds);
+        if (empty($ids)) {
+            return [];
+        }
+
+        $marcadores = implode(',', array_fill(0, count($ids), '?'));
+        $sql = "SELECT
+                    movimientos.fecha,
+                    SUM(movimientos.publicaciones) AS publicaciones,
+                    SUM(movimientos.actualizaciones) AS actualizaciones
+                FROM (
+                    SELECT
+                        DATE(convocatorias.created_at) AS fecha,
+                        COUNT(*) AS publicaciones,
+                        0 AS actualizaciones
+                    FROM convocatorias
+                    WHERE convocatorias.creado_por IN ($marcadores)
+                      AND convocatorias.created_at >= ?
+                      AND convocatorias.created_at <= ?";
+
+        $tipos = str_repeat('i', count($ids)) . 'ss';
+        $params = $ids;
+        $params[] = (string)$desde;
+        $params[] = (string)$hasta;
+
+        if ((int)$estadoId > 0) {
+            $sql .= " AND EXISTS (
+                SELECT 1
+                FROM convocatoria_estados filtro_estado_creada
+                WHERE filtro_estado_creada.convocatoria_id = convocatorias.id
+                  AND filtro_estado_creada.estado_id = ?
+            )";
+            $tipos .= 'i';
+            $params[] = (int)$estadoId;
+        }
+
+        $sql .= " GROUP BY DATE(convocatorias.created_at)
+                    UNION ALL
+                    SELECT
+                        DATE(convocatorias.updated_at) AS fecha,
+                        0 AS publicaciones,
+                        COUNT(*) AS actualizaciones
+                    FROM convocatorias
+                    WHERE convocatorias.actualizado_por IN ($marcadores)
+                      AND convocatorias.updated_at >= ?
+                      AND convocatorias.updated_at <= ?
+                      AND convocatorias.updated_at > convocatorias.created_at";
+
+        foreach ($ids as $id) {
+            $tipos .= 'i';
+            $params[] = $id;
+        }
+        $tipos .= 'ss';
+        $params[] = (string)$desde;
+        $params[] = (string)$hasta;
+
+        if ((int)$estadoId > 0) {
+            $sql .= " AND EXISTS (
+                SELECT 1
+                FROM convocatoria_estados filtro_estado_actualizada
+                WHERE filtro_estado_actualizada.convocatoria_id = convocatorias.id
+                  AND filtro_estado_actualizada.estado_id = ?
+            )";
+            $tipos .= 'i';
+            $params[] = (int)$estadoId;
+        }
+
+        $sql .= " GROUP BY DATE(convocatorias.updated_at)
+                ) movimientos
+                GROUP BY movimientos.fecha
+                ORDER BY movimientos.fecha ASC";
+
+        $stmt = $this->connection->prepare($sql);
+        $this->vincularParametros($stmt, $tipos, $params);
+        $stmt->execute();
+
+        return $this->resultadoArreglo($stmt->get_result());
+    }
+
     private function normalizarIds(array $ids)
     {
         return array_values(array_unique(array_filter(
