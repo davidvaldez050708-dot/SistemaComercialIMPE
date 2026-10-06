@@ -20,8 +20,8 @@
 
 .formularios-hero {
     position: relative;
-    min-height: 156px;
-    padding: 22px 28px;
+    min-height: 118px;
+    padding: 14px 28px;
     overflow: hidden;
     display: flex;
     align-items: center;
@@ -102,7 +102,7 @@
     position: relative;
     z-index: 2;
     width: 280px;
-    height: 112px;
+    height: 92px;
     flex: 0 0 280px;
 }
 
