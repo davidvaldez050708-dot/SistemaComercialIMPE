@@ -46,6 +46,11 @@ $mostrarReportesEnAnalisis =
     $mostrarReportes &&
     !$esRolMarketingSidebar;
 
+$mostrarDesempeno = tienePermiso('desempeno.ver');
+$mostrarAnalisis =
+    $mostrarReportesEnAnalisis ||
+    $mostrarDesempeno;
+
 $etiquetaMenuConvocatorias = tienePermiso('convocatorias.gestionar')
     ? 'Gestión de Convocatorias'
     : 'Convocatorias';
@@ -61,6 +66,7 @@ $claseSeguimientoVinculacion =
 $claseAliados = $opcionActiva === 'aliados' ? 'active' : '';
 $claseWhatsapp = $opcionActiva === 'whatsapp' ? 'active' : '';
 $claseReportes = $opcionActiva === 'reportes' ? 'active' : '';
+$claseDesempeno = $opcionActiva === 'desempeno' ? 'active' : '';
 $claseConvocatorias = $opcionActiva === 'convocatorias' ? 'active' : '';
 $claseConvocatoriasReportes =
     $opcionActiva === 'convocatorias_reportes' ? 'active' : '';
@@ -240,19 +246,30 @@ $claseCorreosMarketing =
 
         <?php endif; ?>
 
-        <?php if ($mostrarReportesEnAnalisis): ?>
+        <?php if ($mostrarAnalisis): ?>
 
             <div class="sidebar-section">
                 <p class="sidebar-section-title">
                     ANÁLISIS
                 </p>
 
-                <a
-                    href="<?= BASE_URL ?>index.php?controller=reporte&action=index"
-                    class="sidebar-link <?= $claseReportes ?>">
-                    <i class="bi bi-file-earmark-bar-graph"></i>
-                    Reportes
-                </a>
+                <?php if ($mostrarReportesEnAnalisis): ?>
+                    <a
+                        href="<?= BASE_URL ?>index.php?controller=reporte&action=index"
+                        class="sidebar-link <?= $claseReportes ?>">
+                        <i class="bi bi-file-earmark-bar-graph"></i>
+                        Reportes
+                    </a>
+                <?php endif; ?>
+
+                <?php if ($mostrarDesempeno): ?>
+                    <a
+                        href="<?= BASE_URL ?>index.php?controller=desempeno&action=index"
+                        class="sidebar-link <?= $claseDesempeno ?>">
+                        <i class="bi bi-trophy"></i>
+                        Desempeño
+                    </a>
+                <?php endif; ?>
             </div>
 
         <?php endif; ?>
@@ -515,7 +532,7 @@ $claseCorreosMarketing =
 
 
             <!-- ANÁLISIS -->
-            <?php if ($mostrarReportesEnAnalisis): ?>
+            <?php if ($mostrarAnalisis): ?>
 
                 <div class="sidebar-section">
 
@@ -523,14 +540,27 @@ $claseCorreosMarketing =
                         ANÁLISIS
                     </p>
 
-                    <a
-                        href="<?= BASE_URL ?>index.php?controller=reporte&action=index"
-                        class="sidebar-link <?= $claseReportes ?>">
+                    <?php if ($mostrarReportesEnAnalisis): ?>
+                        <a
+                            href="<?= BASE_URL ?>index.php?controller=reporte&action=index"
+                            class="sidebar-link <?= $claseReportes ?>">
 
-                        <i class="bi bi-file-earmark-bar-graph"></i>
-                        Reportes
+                            <i class="bi bi-file-earmark-bar-graph"></i>
+                            Reportes
 
-                    </a>
+                        </a>
+                    <?php endif; ?>
+
+                    <?php if ($mostrarDesempeno): ?>
+                        <a
+                            href="<?= BASE_URL ?>index.php?controller=desempeno&action=index"
+                            class="sidebar-link <?= $claseDesempeno ?>">
+
+                            <i class="bi bi-trophy"></i>
+                            Desempeño
+
+                        </a>
+                    <?php endif; ?>
 
                 </div>
 
