@@ -26,6 +26,13 @@ $permisos = is_array($tableroCuentaClave['permisos'] ?? null)
 $puedeSeguimiento = (bool)($permisos['seguimiento'] ?? false);
 $puedeAliados = (bool)($permisos['aliados'] ?? false);
 
+$puedeReportes = function_exists('tienePermiso')
+    ? tienePermiso('reportes.ver')
+    : false;
+$puedeTerritorios = function_exists('tienePermiso')
+    ? tienePermiso('territorios.ver')
+    : false;
+
 $esc = static function ($valor) {
     return htmlspecialchars(
         (string)$valor,
@@ -164,7 +171,7 @@ $totalAtencionVinculacion =
     (int)($resumen['requieren_atencion'] ?? count($atenciones));
 $totalAtencionAliados =
     $puedeAliados
-        ? (int)($aliados['pendientes'] ?? 0)
+        ? (int)($aliados['requieren_atencion'] ?? 0)
         : 0;
 $totalAsuntos = $totalAtencionVinculacion + $totalAtencionAliados;
 
@@ -449,7 +456,7 @@ $itemsCobertura = is_array($cobertura['items'] ?? null)
                                         <?= $esc($formatearActividad($analista['ultima_actividad_at'] ?? '')) ?>
                                     </span>
                                     <a href="<?= $esc($analista['cartera_url'] ?? $seguimientoUrl) ?>">
-                                        Ver cartera
+                                        <?= $esc($analista['cartera_url_label'] ?? 'Ver cartera') ?>
                                         <i class="bi bi-arrow-right"></i>
                                     </a>
                                 </div>
@@ -555,10 +562,12 @@ $itemsCobertura = is_array($cobertura['items'] ?? null)
                             : 'Con un solo estado, el tablero profundiza automáticamente a municipios.' ?>
                     </p>
                 </div>
-                <a class="kam-panel-link" href="<?= $esc($territoriosUrl) ?>">
-                    Ver territorios
-                    <i class="bi bi-arrow-right"></i>
-                </a>
+                <?php if ($puedeTerritorios): ?>
+                    <a class="kam-panel-link" href="<?= $esc($territoriosUrl) ?>">
+                        Ver territorios
+                        <i class="bi bi-arrow-right"></i>
+                    </a>
+                <?php endif; ?>
             </div>
 
             <?php if (!empty($itemsCobertura)): ?>
@@ -630,13 +639,15 @@ $itemsCobertura = is_array($cobertura['items'] ?? null)
             </a>
         <?php endif; ?>
 
-        <a href="<?= $esc($reportesUrl) ?>">
-            <i class="bi bi-bar-chart"></i>
-            <span>
-                <strong>Reportes</strong>
-                <small>Analiza operación y resultados</small>
-            </span>
-            <i class="bi bi-arrow-right"></i>
-        </a>
+        <?php if ($puedeReportes): ?>
+            <a href="<?= $esc($reportesUrl) ?>">
+                <i class="bi bi-bar-chart"></i>
+                <span>
+                    <strong>Reportes</strong>
+                    <small>Analiza operación y resultados</small>
+                </span>
+                <i class="bi bi-arrow-right"></i>
+            </a>
+        <?php endif; ?>
     </section>
 </section>
