@@ -1807,27 +1807,30 @@
 
 .convocatoria-titulacion-hero-copy > span {
     display: block;
-    margin-bottom: 4px;
+    margin-bottom: 3px;
     color: #4f83ff;
-    font-size: 14px;
+    font-family: 'Manrope', sans-serif;
+    font-size: 9px;
     font-weight: 800;
-    letter-spacing: .04em;
+    letter-spacing: .06em;
 }
 
 .convocatoria-titulacion-hero-copy h2 {
     margin: 0;
     color: var(--color-text-primary);
-    font-size: 22px;
+    font-family: 'Manrope', sans-serif;
+    font-size: 15px;
     font-weight: 800;
-    line-height: 1.16;
+    line-height: 1.2;
 }
 
 .convocatoria-titulacion-hero-copy p {
-    margin: 6px 0 0;
+    margin: 3px 0 0;
     color: var(--color-text-secondary);
-    font-size: 13px;
+    font-family: 'Manrope', sans-serif;
+    font-size: 10px;
     font-weight: 600;
-    line-height: 1.45;
+    line-height: 1.4;
 }
 
 .convocatoria-titulacion-hero-icon {
