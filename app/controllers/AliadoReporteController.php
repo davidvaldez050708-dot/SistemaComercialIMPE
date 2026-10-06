@@ -114,10 +114,18 @@ class AliadoReporteController
             $situacion = 'todos';
         }
 
+        $filtroPeriodo = $this->normalizarFiltroPeriodo($_GET);
+        $errorFiltroPeriodo = (string)(
+            $filtroPeriodo['error'] ?? ''
+        );
+
         $filtrosReporte = [
             'estado_id' => $estadoId,
             'municipio_id' => $municipioId,
-            'situacion' => $situacion
+            'situacion' => $situacion,
+            'periodo' => $filtroPeriodo['periodo'],
+            'fecha_desde' => $filtroPeriodo['fecha_desde'],
+            'fecha_hasta' => $filtroPeriodo['fecha_hasta']
         ];
 
         $generarReporte = (string)($_GET['generar'] ?? '') === '1';
@@ -149,7 +157,10 @@ class AliadoReporteController
                     'action' => 'exportarPdf',
                     'estado_id' => $estadoId,
                     'municipio_id' => $municipioId,
-                    'situacion' => $situacion
+                    'situacion' => $situacion,
+                    'periodo' => $filtroPeriodo['periodo'],
+                    'fecha_desde' => $filtroPeriodo['fecha_desde'],
+                    'fecha_hasta' => $filtroPeriodo['fecha_hasta']
                 ],
                 '',
                 '&',
@@ -196,6 +207,34 @@ class AliadoReporteController
         ));
         if (!isset($situaciones[$situacion])) {
             $situacion = 'todos';
+        }
+
+        $filtroPeriodo = $this->normalizarFiltroPeriodo($_GET);
+
+        if ((string)($filtroPeriodo['error'] ?? '') !== '') {
+            $_SESSION['error_reporte_aliados_pdf'] =
+                (string)$filtroPeriodo['error'];
+
+            header(
+                'Location: ' .
+                BASE_URL .
+                'index.php?' .
+                http_build_query(
+                    [
+                        'controller' => 'aliadoReporte',
+                        'action' => 'index',
+                        'estado_id' => $estadoId,
+                        'municipio_id' => $municipioId,
+                        'situacion' => $situacion,
+                        'periodo' => 'historico',
+                        'generar' => 1
+                    ],
+                    '',
+                    '&',
+                    PHP_QUERY_RFC3986
+                )
+            );
+            exit;
         }
 
         $modeloAliado = new AliadoModel();
@@ -289,7 +328,10 @@ class AliadoReporteController
         $filtros = [
             'estado_id' => $estadoId,
             'municipio_id' => $municipioId,
-            'situacion' => $situacion
+            'situacion' => $situacion,
+            'periodo' => $filtroPeriodo['periodo'],
+            'fecha_desde' => $filtroPeriodo['fecha_desde'],
+            'fecha_hasta' => $filtroPeriodo['fecha_hasta']
         ];
 
         try {
@@ -342,6 +384,9 @@ class AliadoReporteController
                             'estado_id' => $estadoId,
                             'municipio_id' => $municipioId,
                             'situacion' => $situacion,
+                            'periodo' => $filtroPeriodo['periodo'],
+                            'fecha_desde' => $filtroPeriodo['fecha_desde'],
+                            'fecha_hasta' => $filtroPeriodo['fecha_hasta'],
                             'generar' => 1
                         ],
                         '',
@@ -398,6 +443,93 @@ class AliadoReporteController
             );
             exit;
         }
+    }
+
+    private function normalizarFiltroPeriodo(array $fuente)
+    {
+        $periodo = strtolower(trim(
+            (string)($fuente['periodo'] ?? 'historico')
+        ));
+
+        $permitidos = [
+            'historico',
+            'ultimos_7',
+            'ultimos_30',
+            'este_mes',
+            'mes_anterior',
+            'personalizado'
+        ];
+
+        if (!in_array($periodo, $permitidos, true)) {
+            $periodo = 'historico';
+        }
+
+        $fechaDesde = trim(
+            (string)($fuente['fecha_desde'] ?? '')
+        );
+        $fechaHasta = trim(
+            (string)($fuente['fecha_hasta'] ?? '')
+        );
+        $error = '';
+
+        if ($periodo !== 'personalizado') {
+            $fechaDesde = '';
+            $fechaHasta = '';
+        } else {
+            $desde = $this->parseFechaReporte($fechaDesde);
+            $hasta = $this->parseFechaReporte($fechaHasta);
+
+            if (!$desde || !$hasta) {
+                $error =
+                    'Selecciona una fecha inicial y final válidas para el periodo personalizado.';
+            } elseif ($desde > $hasta) {
+                $error =
+                    'La fecha inicial del periodo no puede ser posterior a la fecha final.';
+            }
+
+            if ($error !== '') {
+                $periodo = 'historico';
+                $fechaDesde = '';
+                $fechaHasta = '';
+            }
+        }
+
+        return [
+            'periodo' => $periodo,
+            'fecha_desde' => $fechaDesde,
+            'fecha_hasta' => $fechaHasta,
+            'error' => $error
+        ];
+    }
+
+    private function parseFechaReporte($valor)
+    {
+        $valor = trim((string)$valor);
+
+        if ($valor === '') {
+            return null;
+        }
+
+        $fecha = DateTimeImmutable::createFromFormat(
+            '!Y-m-d',
+            $valor
+        );
+        $errores = DateTimeImmutable::getLastErrors();
+
+        if (
+            !$fecha ||
+            (
+                is_array($errores) &&
+                (
+                    (int)($errores['warning_count'] ?? 0) > 0 ||
+                    (int)($errores['error_count'] ?? 0) > 0
+                )
+            )
+        ) {
+            return null;
+        }
+
+        return $fecha;
     }
 
     private function validarAcceso($requiereExportar = false)
