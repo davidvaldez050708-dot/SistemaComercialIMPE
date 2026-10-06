@@ -1,3 +1,24 @@
+<?php
+$periodosReporte = [
+    'historico' => 'Histórico completo',
+    'ultimos_7' => 'Últimos 7 días',
+    'ultimos_30' => 'Últimos 30 días',
+    'este_mes' => 'Este mes',
+    'mes_anterior' => 'Mes anterior',
+    'personalizado' => 'Periodo personalizado'
+];
+
+$periodoSeleccionado = (string)(
+    $filtrosReporte['periodo'] ?? 'historico'
+);
+$fechaDesdeSeleccionada = (string)(
+    $filtrosReporte['fecha_desde'] ?? ''
+);
+$fechaHastaSeleccionada = (string)(
+    $filtrosReporte['fecha_hasta'] ?? ''
+);
+?>
+
 <form method="GET" class="aliados-report-filter-form">
     <input type="hidden" name="controller" value="aliadoReporte">
     <input type="hidden" name="action" value="index">
@@ -58,6 +79,22 @@
         </select>
     </div>
 
+    <div class="report-filter-field">
+        <label class="form-label" for="reporte_aliados_periodo">Periodo</label>
+        <select
+            class="form-select"
+            id="reporte_aliados_periodo"
+            name="periodo">
+            <?php foreach ($periodosReporte as $valor => $label): ?>
+                <option
+                    value="<?= $texto($valor) ?>"
+                    <?= $periodoSeleccionado === $valor ? 'selected' : '' ?>>
+                    <?= $texto($label) ?>
+                </option>
+            <?php endforeach; ?>
+        </select>
+    </div>
+
     <div class="aliados-report-filter-actions">
         <a
             class="btn btn-system-light"
@@ -69,5 +106,38 @@
             <i class="bi bi-bar-chart"></i>
             Generar reporte
         </button>
+    </div>
+
+    <div
+        class="aliados-report-custom-period <?= $periodoSeleccionado === 'personalizado' ? '' : 'd-none' ?>"
+        data-aliados-custom-period>
+        <div class="report-filter-field">
+            <label class="form-label" for="reporte_aliados_fecha_desde">
+                Desde
+            </label>
+            <input
+                class="form-control"
+                type="date"
+                id="reporte_aliados_fecha_desde"
+                name="fecha_desde"
+                value="<?= $texto($fechaDesdeSeleccionada) ?>">
+        </div>
+
+        <div class="report-filter-field">
+            <label class="form-label" for="reporte_aliados_fecha_hasta">
+                Hasta
+            </label>
+            <input
+                class="form-control"
+                type="date"
+                id="reporte_aliados_fecha_hasta"
+                name="fecha_hasta"
+                value="<?= $texto($fechaHastaSeleccionada) ?>">
+        </div>
+
+        <p>
+            El periodo limita la actividad histórica; la red actual y los pendientes
+            conservan su estado vigente.
+        </p>
     </div>
 </form>
