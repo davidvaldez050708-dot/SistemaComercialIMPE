@@ -10,9 +10,18 @@ $resumen = is_array($tableroCuentaClave['resumen'] ?? null)
 $atenciones = is_array($tableroCuentaClave['atenciones'] ?? null)
     ? $tableroCuentaClave['atenciones']
     : [];
+$atencionesTotal = (int)(
+    $tableroCuentaClave['atenciones_total'] ?? count($atenciones)
+);
 $analistas = is_array($tableroCuentaClave['analistas'] ?? null)
     ? $tableroCuentaClave['analistas']
     : [];
+$agenda = is_array($tableroCuentaClave['agenda'] ?? null)
+    ? $tableroCuentaClave['agenda']
+    : [];
+$agendaTotal = (int)(
+    $tableroCuentaClave['agenda_total'] ?? count($agenda)
+);
 $aliados = is_array($tableroCuentaClave['aliados'] ?? null)
     ? $tableroCuentaClave['aliados']
     : [];
@@ -25,10 +34,9 @@ $permisos = is_array($tableroCuentaClave['permisos'] ?? null)
 
 $puedeSeguimiento = (bool)($permisos['seguimiento'] ?? false);
 $puedeAliados = (bool)($permisos['aliados'] ?? false);
-
-$puedeReportes = function_exists('tienePermiso')
-    ? tienePermiso('reportes.ver')
-    : false;
+$puedeAgendaAliados = (bool)(
+    $permisos['agenda_aliados'] ?? false
+);
 $puedeTerritorios = function_exists('tienePermiso')
     ? tienePermiso('territorios.ver')
     : false;
@@ -167,13 +175,51 @@ $iniciales = static function ($nombre) {
     return strtoupper($resultado);
 };
 
-$totalAtencionVinculacion =
-    (int)($resumen['requieren_atencion'] ?? count($atenciones));
-$totalAtencionAliados =
-    $puedeAliados
-        ? (int)($aliados['requieren_atencion'] ?? 0)
+$totalAtencionEquipo =
+    (int)($resumen['requieren_atencion'] ?? $atencionesTotal);
+$totalAccionesPropias =
+    $puedeAgendaAliados
+        ? (int)($resumen['acciones_propias'] ?? $agendaTotal)
         : 0;
-$totalAsuntos = $totalAtencionVinculacion + $totalAtencionAliados;
+
+$estadoGeneralAtencion =
+    $totalAtencionEquipo > 0 || $totalAccionesPropias > 0;
+
+if ($totalAtencionEquipo > 0 && $totalAccionesPropias > 0) {
+    $estadoGeneralTitulo =
+        $totalAtencionEquipo .
+        ($totalAtencionEquipo === 1
+            ? ' caso del equipo'
+            : ' casos del equipo') .
+        ' · ' .
+        $totalAccionesPropias .
+        ($totalAccionesPropias === 1
+            ? ' acción tuya'
+            : ' acciones tuyas');
+    $estadoGeneralDetalle =
+        'Separa lo que debes supervisar de las acciones que te corresponden directamente.';
+} elseif ($totalAtencionEquipo > 0) {
+    $estadoGeneralTitulo =
+        $totalAtencionEquipo .
+        ($totalAtencionEquipo === 1
+            ? ' caso del equipo requiere supervisión'
+            : ' casos del equipo requieren supervisión');
+    $estadoGeneralDetalle = $puedeAgendaAliados
+        ? 'Tus acciones programadas con aliados están al día.'
+        : 'Prioriza la cartera de vinculación que requiere seguimiento.';
+} elseif ($totalAccionesPropias > 0) {
+    $estadoGeneralTitulo =
+        $totalAccionesPropias .
+        ($totalAccionesPropias === 1
+            ? ' acción tuya próxima'
+            : ' acciones tuyas próximas');
+    $estadoGeneralDetalle =
+        'Tu equipo no presenta casos prioritarios; revisa tu agenda con aliados.';
+} else {
+    $estadoGeneralTitulo = 'Tu operación está al día';
+    $estadoGeneralDetalle =
+        'No hay casos prioritarios ni acciones programadas que requieran atención inmediata.';
+}
 
 $seguimientoUrl =
     BASE_URL .
@@ -181,21 +227,11 @@ $seguimientoUrl =
 $aliadosUrl =
     BASE_URL .
     'index.php?controller=aliado&action=index';
-$reportesUrl =
-    BASE_URL .
-    'index.php?controller=reporte&action=index';
 $territoriosUrl =
     BASE_URL .
     'index.php?controller=territorio&action=index';
 
 $metricas = [
-    [
-        'valor' => (int)($resumen['territorios'] ?? 0),
-        'etiqueta' => 'Territorios supervisados',
-        'ayuda' => 'Alcance territorial activo',
-        'icono' => 'bi-geo-alt',
-        'clase' => ''
-    ],
     [
         'valor' => (int)($resumen['analistas'] ?? 0),
         'etiqueta' => 'Analistas vinculados',
@@ -206,20 +242,32 @@ $metricas = [
     [
         'valor' => (int)($resumen['seguimientos_activos'] ?? 0),
         'etiqueta' => 'Cartera supervisada',
-        'ayuda' => 'Seguimientos de vinculación activos',
+        'ayuda' => 'Vinculaciones activas del equipo',
         'icono' => 'bi-list-check',
         'clase' => ''
     ],
     [
-        'valor' => $totalAtencionVinculacion,
-        'etiqueta' => 'Requieren atención',
-        'ayuda' => 'Pendientes prioritarios del equipo',
+        'valor' => $totalAtencionEquipo,
+        'etiqueta' => 'Atención del equipo',
+        'ayuda' => 'Casos prioritarios para supervisar',
         'icono' => 'bi-exclamation-circle',
-        'clase' => $totalAtencionVinculacion > 0
+        'clase' => $totalAtencionEquipo > 0
             ? 'is-attention'
             : 'is-clear'
     ]
 ];
+
+if ($puedeAgendaAliados) {
+    $metricas[] = [
+        'valor' => $totalAccionesPropias,
+        'etiqueta' => 'Tus próximas acciones',
+        'ayuda' => 'Agenda con aliados a 7 días',
+        'icono' => 'bi-calendar-check',
+        'clase' => $totalAccionesPropias > 0
+            ? 'is-personal'
+            : 'is-clear'
+    ];
+}
 
 if ($puedeAliados) {
     $metricas[] = [
@@ -234,6 +282,17 @@ if ($puedeAliados) {
 $itemsCobertura = is_array($cobertura['items'] ?? null)
     ? $cobertura['items']
     : [];
+$territoriosTotal = (int)(
+    $cobertura['territorios_total']
+        ?? $resumen['territorios']
+        ?? 0
+);
+$territoriosSinActividad = (int)(
+    $cobertura['sin_actividad'] ?? 0
+);
+$mostrarAnalistasCobertura = count($analistas) > 1;
+$mostrarZonaPrincipal =
+    $puedeSeguimiento || $puedeAgendaAliados;
 ?>
 
 <section class="kam-dashboard" data-kam-dashboard>
@@ -243,41 +302,32 @@ $itemsCobertura = is_array($cobertura['items'] ?? null)
             <h2><?= $esc($saludo . ', ' . $nombreCuentaClave) ?></h2>
             <p><?= $esc($fechaLarga) ?></p>
             <p class="kam-welcome-tagline">
-                Supervisa la vinculación de tu equipo y la relación con tu red de aliados.
+                Supervisa la vinculación de tu equipo y atiende la relación con tu red de aliados.
             </p>
         </div>
 
         <div class="kam-welcome-status-zone">
-            <div class="kam-welcome-status <?= $totalAsuntos > 0 ? 'is-attention' : 'is-clear' ?>">
+            <div class="kam-welcome-status <?= $estadoGeneralAtencion ? 'is-attention' : 'is-clear' ?>">
                 <span class="kam-welcome-status-icon" aria-hidden="true">
-                    <i class="bi <?= $totalAsuntos > 0 ? 'bi-exclamation-circle' : 'bi-check-circle' ?>"></i>
+                    <i class="bi <?= $estadoGeneralAtencion ? 'bi-exclamation-circle' : 'bi-check-circle' ?>"></i>
                 </span>
                 <div>
-                    <strong>
-                        <?php if ($totalAsuntos > 0): ?>
-                            <?= $totalAsuntos ?>
-                            <?= $totalAsuntos === 1
-                                ? ' asunto requiere revisión'
-                                : ' asuntos requieren revisión' ?>
-                        <?php else: ?>
-                            Tu operación está al día
-                        <?php endif; ?>
-                    </strong>
-                    <span>
-                        <?= $totalAsuntos > 0
-                            ? 'Prioriza los casos de vinculación y aliados que necesitan continuidad.'
-                            : 'No hay pendientes prioritarios detectados en este momento.' ?>
-                    </span>
+                    <strong><?= $esc($estadoGeneralTitulo) ?></strong>
+                    <span><?= $esc($estadoGeneralDetalle) ?></span>
                 </div>
             </div>
         </div>
     </section>
 
-    <section class="kam-kpi-panel" aria-label="Indicadores principales">
-        <div class="kam-kpi-heading">
+    <section class="kam-kpi-section" aria-label="Resumen operativo">
+        <div class="kam-kpi-section-heading">
             <span class="kam-eyebrow">RESUMEN OPERATIVO</span>
-            <h2>Tu alcance actual</h2>
-            <p>Datos vigentes de supervisión y red institucional.</p>
+            <div>
+                <h2>Lo que necesitas vigilar hoy</h2>
+                <p>
+                    Distingue la supervisión de tu equipo de las acciones que te corresponden directamente.
+                </p>
+            </div>
         </div>
 
         <div class="kam-kpi-grid">
@@ -296,185 +346,275 @@ $itemsCobertura = is_array($cobertura['items'] ?? null)
         </div>
     </section>
 
-    <?php if ($puedeSeguimiento): ?>
-        <div class="kam-primary-grid">
-            <section class="dashboard-panel kam-attention-panel">
-                <div class="kam-panel-heading">
-                    <div>
-                        <span class="kam-section-kicker">PRIORIDAD OPERATIVA</span>
-                        <h2 class="panel-title mb-1">
-                            Seguimientos que conviene revisar
-                        </h2>
-                        <p class="page-subtitle mb-0">
-                            Casos de tus Analistas con acciones vencidas, próximas o sin actividad.
-                        </p>
-                    </div>
-                    <a class="kam-panel-link" href="<?= $esc($seguimientoUrl) ?>">
-                        Ver seguimiento
-                        <i class="bi bi-arrow-right"></i>
-                    </a>
-                </div>
-
-                <?php if (!empty($atenciones)): ?>
-                    <div class="kam-attention-list">
-                        <?php foreach ($atenciones as $item): ?>
-                            <?php
-                            $tipo = (string)($item['tipo_atencion'] ?? 'seguimiento');
-                            $tipoClase = in_array(
-                                $tipo,
-                                ['atrasado', 'hoy', 'espera', 'reunion'],
-                                true
-                            )
-                                ? $tipo
-                                : 'seguimiento';
-                            ?>
-                            <a
-                                class="kam-attention-item"
-                                href="<?= $esc($item['url'] ?? $seguimientoUrl) ?>">
-                                <span class="kam-attention-indicator is-<?= $esc($tipoClase) ?>"></span>
-                                <div class="kam-attention-main">
-                                    <div class="kam-attention-title">
-                                        <strong>
-                                            <?= $esc($item['nombre_entidad'] ?? 'Institución') ?>
-                                        </strong>
-                                        <span class="kam-priority-pill is-<?= $esc($tipoClase) ?>">
-                                            <?= $esc($item['motivo_atencion'] ?? 'Revisar seguimiento') ?>
-                                        </span>
-                                    </div>
-                                    <div class="kam-attention-meta">
-                                        <span>
-                                            <i class="bi bi-person"></i>
-                                            <?= $esc($item['analista_nombre'] ?? 'Analista') ?>
-                                        </span>
-                                        <span>
-                                            <i class="bi bi-geo-alt"></i>
-                                            <?= $esc(
-                                                trim((string)($item['municipio'] ?? '')) !== ''
-                                                    ? $item['municipio']
-                                                    : ($item['estado_nombre'] ?? 'Territorio')
-                                            ) ?>
-                                        </span>
-                                        <?php if (!empty($item['fecha_referencia'])): ?>
-                                            <span>
-                                                <i class="bi bi-clock"></i>
-                                                <?= $esc($formatearFecha($item['fecha_referencia'])) ?>
-                                            </span>
-                                        <?php endif; ?>
-                                    </div>
-                                </div>
-                                <i class="bi bi-chevron-right kam-row-arrow"></i>
-                            </a>
-                        <?php endforeach; ?>
-                    </div>
-                <?php else: ?>
-                    <div class="kam-empty-state">
-                        <span><i class="bi bi-check2-circle"></i></span>
+    <?php if ($mostrarZonaPrincipal): ?>
+        <div class="kam-primary-grid <?= !$puedeSeguimiento ? 'is-single' : '' ?>">
+            <?php if ($puedeSeguimiento): ?>
+                <section class="dashboard-panel kam-attention-panel">
+                    <div class="kam-panel-heading">
                         <div>
-                            <strong>Sin seguimientos prioritarios.</strong>
-                            <p>
-                                La cartera de tus Analistas no presenta acciones que requieran revisión inmediata.
+                            <span class="kam-section-kicker">CARTERA DEL EQUIPO</span>
+                            <h2 class="panel-title mb-1">
+                                Casos que requieren supervisión
+                            </h2>
+                            <p class="page-subtitle mb-0">
+                                Prioridades de todos los Analistas vinculados dentro de tu alcance.
                             </p>
                         </div>
+                        <span class="kam-panel-count <?= $atencionesTotal > 0 ? 'is-attention' : '' ?>">
+                            <?= $atencionesTotal ?>
+                            <?= $atencionesTotal === 1 ? 'caso' : 'casos' ?>
+                        </span>
                     </div>
+
+                    <?php if (!empty($atenciones)): ?>
+                        <div class="kam-attention-list">
+                            <?php foreach ($atenciones as $item): ?>
+                                <?php
+                                $tipo = (string)($item['tipo_atencion'] ?? 'seguimiento');
+                                $tipoClase = in_array(
+                                    $tipo,
+                                    ['atrasado', 'hoy', 'espera', 'reunion'],
+                                    true
+                                )
+                                    ? $tipo
+                                    : 'seguimiento';
+                                ?>
+                                <a
+                                    class="kam-attention-item"
+                                    href="<?= $esc($item['url'] ?? $seguimientoUrl) ?>">
+                                    <span class="kam-attention-indicator is-<?= $esc($tipoClase) ?>"></span>
+                                    <div class="kam-attention-main">
+                                        <div class="kam-attention-title">
+                                            <strong>
+                                                <?= $esc($item['nombre_entidad'] ?? 'Institución') ?>
+                                            </strong>
+                                            <span class="kam-priority-pill is-<?= $esc($tipoClase) ?>">
+                                                <?= $esc($item['motivo_atencion'] ?? 'Revisar seguimiento') ?>
+                                            </span>
+                                        </div>
+                                        <div class="kam-attention-meta">
+                                            <span>
+                                                <i class="bi bi-person"></i>
+                                                <?= $esc($item['analista_nombre'] ?? 'Analista') ?>
+                                            </span>
+                                            <span>
+                                                <i class="bi bi-geo-alt"></i>
+                                                <?= $esc(
+                                                    trim((string)($item['municipio'] ?? '')) !== ''
+                                                        ? $item['municipio']
+                                                        : ($item['estado_nombre'] ?? 'Territorio')
+                                                ) ?>
+                                            </span>
+                                            <?php if (!empty($item['fecha_referencia'])): ?>
+                                                <span>
+                                                    <i class="bi bi-clock"></i>
+                                                    <?= $esc($formatearFecha($item['fecha_referencia'])) ?>
+                                                </span>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                    <i class="bi bi-chevron-right kam-row-arrow"></i>
+                                </a>
+                            <?php endforeach; ?>
+                        </div>
+
+                        <div class="kam-panel-footer-action">
+                            <a href="<?= $esc($seguimientoUrl) ?>">
+                                <?= $atencionesTotal > count($atenciones)
+                                    ? 'Ver los ' . $atencionesTotal . ' casos que requieren atención'
+                                    : 'Abrir seguimiento del equipo' ?>
+                                <i class="bi bi-arrow-right"></i>
+                            </a>
+                        </div>
+                    <?php else: ?>
+                        <div class="kam-empty-state">
+                            <span><i class="bi bi-check2-circle"></i></span>
+                            <div>
+                                <strong>Sin casos prioritarios del equipo.</strong>
+                                <p>
+                                    La cartera de tus Analistas no presenta acciones que requieran supervisión inmediata.
+                                </p>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+                </section>
+            <?php endif; ?>
+
+            <div class="kam-right-stack">
+                <?php if ($puedeSeguimiento): ?>
+                    <section class="dashboard-panel kam-team-panel">
+                        <div class="kam-panel-heading">
+                            <div>
+                                <span class="kam-section-kicker">EQUIPO DE VINCULACIÓN</span>
+                                <h2 class="panel-title mb-1">Carga operativa</h2>
+                                <p class="page-subtitle mb-0">
+                                    Preparado para uno o varios Analistas sin cambiar la estructura del tablero.
+                                </p>
+                            </div>
+                            <span class="kam-panel-count">
+                                <?= count($analistas) ?>
+                                <?= count($analistas) === 1 ? 'Analista' : 'Analistas' ?>
+                            </span>
+                        </div>
+
+                        <?php if (!empty($analistas)): ?>
+                            <div class="kam-team-list">
+                                <?php foreach ($analistas as $analista): ?>
+                                    <?php
+                                    $foto = trim((string)($analista['foto_perfil'] ?? ''));
+                                    $fotoUrl = $foto !== ''
+                                        ? BASE_URL . ltrim($foto, '/')
+                                        : '';
+                                    $territoriosAnalista = is_array(
+                                        $analista['territorios'] ?? null
+                                    )
+                                        ? $analista['territorios']
+                                        : [];
+                                    $territoriosAnalistaTotal = (int)(
+                                        $analista['territorios_total']
+                                            ?? count($territoriosAnalista)
+                                    );
+
+                                    if ($territoriosAnalistaTotal === 0) {
+                                        $territorioTexto = 'Sin territorio activo';
+                                    } elseif ($territoriosAnalistaTotal <= 2) {
+                                        $nombres = array_map(
+                                            static fn($territorio) =>
+                                                (string)($territorio['nombre'] ?? ''),
+                                            $territoriosAnalista
+                                        );
+                                        $territorioTexto = implode(
+                                            ' · ',
+                                            array_filter($nombres)
+                                        );
+                                    } else {
+                                        $territorioTexto =
+                                            $territoriosAnalistaTotal .
+                                            ' territorios asignados';
+                                    }
+                                    ?>
+                                    <article class="kam-team-item">
+                                        <div class="kam-team-person">
+                                            <span class="kam-team-avatar">
+                                                <?php if ($fotoUrl !== ''): ?>
+                                                    <img
+                                                        src="<?= $esc($fotoUrl) ?>"
+                                                        alt="<?= $esc($analista['nombre'] ?? 'Analista') ?>">
+                                                <?php else: ?>
+                                                    <?= $esc($iniciales($analista['nombre'] ?? 'Analista')) ?>
+                                                <?php endif; ?>
+                                            </span>
+                                            <div>
+                                                <strong><?= $esc($analista['nombre'] ?? 'Analista') ?></strong>
+                                                <span><?= $esc($territorioTexto) ?></span>
+                                            </div>
+                                        </div>
+
+                                        <div class="kam-team-metrics">
+                                            <div>
+                                                <strong><?= (int)($analista['seguimientos'] ?? 0) ?></strong>
+                                                <span>Cartera</span>
+                                            </div>
+                                            <div class="<?= (int)($analista['requieren_atencion'] ?? 0) > 0 ? 'is-attention' : '' ?>">
+                                                <strong><?= (int)($analista['requieren_atencion'] ?? 0) ?></strong>
+                                                <span>Atención</span>
+                                            </div>
+                                            <div>
+                                                <strong><?= (int)($analista['para_hoy'] ?? 0) ?></strong>
+                                                <span>Para hoy</span>
+                                            </div>
+                                        </div>
+
+                                        <div class="kam-team-footer">
+                                            <span>
+                                                <?= $esc($formatearActividad($analista['ultima_actividad_at'] ?? '')) ?>
+                                            </span>
+                                            <a href="<?= $esc($analista['cartera_url'] ?? $seguimientoUrl) ?>">
+                                                <?= $esc($analista['cartera_url_label'] ?? 'Ver cartera') ?>
+                                                <i class="bi bi-arrow-right"></i>
+                                            </a>
+                                        </div>
+                                    </article>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php else: ?>
+                            <div class="kam-empty-state is-compact">
+                                <span><i class="bi bi-person-plus"></i></span>
+                                <div>
+                                    <strong>Aún no hay Analistas vinculados.</strong>
+                                    <p>
+                                        Cuando se asigne uno o más Analistas a tus territorios, su carga aparecerá aquí.
+                                    </p>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+                    </section>
                 <?php endif; ?>
-            </section>
 
-            <section class="dashboard-panel kam-team-panel">
-                <div class="kam-panel-heading">
-                    <div>
-                        <span class="kam-section-kicker">EQUIPO DE VINCULACIÓN</span>
-                        <h2 class="panel-title mb-1">Carga operativa</h2>
-                        <p class="page-subtitle mb-0">
-                            La vista crece automáticamente conforme se vinculen más Analistas.
-                        </p>
-                    </div>
-                    <span class="kam-panel-count">
-                        <?= count($analistas) ?>
-                        <?= count($analistas) === 1 ? 'Analista' : 'Analistas' ?>
-                    </span>
-                </div>
+                <?php if ($puedeAgendaAliados): ?>
+                    <section class="dashboard-panel kam-agenda-panel">
+                        <div class="kam-panel-heading">
+                            <div>
+                                <span class="kam-section-kicker">TU AGENDA OPERATIVA</span>
+                                <h2 class="panel-title mb-1">Próximas acciones con aliados</h2>
+                                <p class="page-subtitle mb-0">
+                                    Acciones asignadas directamente a ti, separadas de la cartera de tus Analistas.
+                                </p>
+                            </div>
+                            <span class="kam-panel-count <?= $agendaTotal > 0 ? 'is-personal' : '' ?>">
+                                <?= $agendaTotal ?>
+                                <?= $agendaTotal === 1 ? 'acción' : 'acciones' ?>
+                            </span>
+                        </div>
 
-                <?php if (!empty($analistas)): ?>
-                    <div class="kam-team-list">
-                        <?php foreach ($analistas as $analista): ?>
-                            <?php
-                            $foto = trim((string)($analista['foto_perfil'] ?? ''));
-                            $fotoUrl = $foto !== ''
-                                ? BASE_URL . ltrim($foto, '/')
-                                : '';
-                            $territoriosAnalista = is_array($analista['territorios'] ?? null)
-                                ? $analista['territorios']
-                                : [];
-                            $territorioTexto = '';
-                            if (!empty($territoriosAnalista)) {
-                                $nombres = array_map(
-                                    static fn($territorio) =>
-                                        (string)($territorio['nombre'] ?? ''),
-                                    $territoriosAnalista
-                                );
-                                $territorioTexto = implode(' · ', array_filter($nombres));
-                            }
-                            ?>
-                            <article class="kam-team-item">
-                                <div class="kam-team-person">
-                                    <span class="kam-team-avatar">
-                                        <?php if ($fotoUrl !== ''): ?>
-                                            <img
-                                                src="<?= $esc($fotoUrl) ?>"
-                                                alt="<?= $esc($analista['nombre'] ?? 'Analista') ?>">
-                                        <?php else: ?>
-                                            <?= $esc($iniciales($analista['nombre'] ?? 'Analista')) ?>
-                                        <?php endif; ?>
-                                    </span>
-                                    <div>
-                                        <strong><?= $esc($analista['nombre'] ?? 'Analista') ?></strong>
-                                        <span>
-                                            <?= $territorioTexto !== ''
-                                                ? $esc($territorioTexto)
-                                                : 'Sin territorio activo' ?>
+                        <?php if (!empty($agenda)): ?>
+                            <div class="kam-agenda-list">
+                                <?php foreach ($agenda as $accion): ?>
+                                    <a
+                                        class="kam-agenda-item"
+                                        href="<?= $esc($accion['url'] ?? $aliadosUrl) ?>">
+                                        <span class="kam-agenda-time is-<?= $esc($accion['estado_tiempo'] ?? 'proxima') ?>">
+                                            <strong><?= $esc($accion['etiqueta_tiempo'] ?? 'Próxima') ?></strong>
+                                            <small><?= $esc($formatearFecha($accion['fecha'] ?? '')) ?></small>
                                         </span>
-                                    </div>
-                                </div>
+                                        <div class="kam-agenda-main">
+                                            <strong><?= $esc($accion['institucion'] ?? 'Aliado') ?></strong>
+                                            <span><?= $esc($accion['accion'] ?? 'Dar seguimiento') ?></span>
+                                            <?php if (trim((string)($accion['convocatoria'] ?? '')) !== ''): ?>
+                                                <small>
+                                                    Convocatoria: <?= $esc($accion['convocatoria']) ?>
+                                                </small>
+                                            <?php endif; ?>
+                                        </div>
+                                        <i class="bi bi-chevron-right"></i>
+                                    </a>
+                                <?php endforeach; ?>
+                            </div>
 
-                                <div class="kam-team-metrics">
-                                    <div>
-                                        <strong><?= (int)($analista['seguimientos'] ?? 0) ?></strong>
-                                        <span>Seguimientos</span>
-                                    </div>
-                                    <div class="<?= (int)($analista['requieren_atencion'] ?? 0) > 0 ? 'is-attention' : '' ?>">
-                                        <strong><?= (int)($analista['requieren_atencion'] ?? 0) ?></strong>
-                                        <span>Atención</span>
-                                    </div>
-                                    <div>
-                                        <strong><?= (int)($analista['para_hoy'] ?? 0) ?></strong>
-                                        <span>Para hoy</span>
-                                    </div>
-                                </div>
-
-                                <div class="kam-team-footer">
-                                    <span>
-                                        <?= $esc($formatearActividad($analista['ultima_actividad_at'] ?? '')) ?>
-                                    </span>
-                                    <a href="<?= $esc($analista['cartera_url'] ?? $seguimientoUrl) ?>">
-                                        <?= $esc($analista['cartera_url_label'] ?? 'Ver cartera') ?>
+                            <?php if ($agendaTotal > count($agenda)): ?>
+                                <div class="kam-panel-footer-action">
+                                    <a href="<?= $esc($aliadosUrl) ?>">
+                                        Ver agenda completa en Aliados
                                         <i class="bi bi-arrow-right"></i>
                                     </a>
                                 </div>
-                            </article>
-                        <?php endforeach; ?>
-                    </div>
-                <?php else: ?>
-                    <div class="kam-empty-state is-compact">
-                        <span><i class="bi bi-person-plus"></i></span>
-                        <div>
-                            <strong>Aún no hay Analistas vinculados.</strong>
-                            <p>
-                                Cuando se asigne uno o más Analistas a tus territorios, su carga aparecerá aquí.
-                            </p>
-                        </div>
-                    </div>
+                            <?php endif; ?>
+                        <?php else: ?>
+                            <div class="kam-inline-clear is-agenda">
+                                <span class="kam-inline-clear-icon">
+                                    <i class="bi bi-check-circle"></i>
+                                </span>
+                                <div>
+                                    <strong>Tu agenda está al día.</strong>
+                                    <span>
+                                        No tienes contactos programados con aliados para los próximos 7 días.
+                                    </span>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+                    </section>
                 <?php endif; ?>
-            </section>
+            </div>
         </div>
     <?php endif; ?>
 
@@ -486,7 +626,7 @@ $itemsCobertura = is_array($cobertura['items'] ?? null)
                         <span class="kam-section-kicker">RED INSTITUCIONAL</span>
                         <h2 class="panel-title mb-1">Estado de tus aliados</h2>
                         <p class="page-subtitle mb-0">
-                            Relaciones formalizadas y continuidad de convocatorias.
+                            Salud actual de las relaciones formalizadas y sus convocatorias.
                         </p>
                     </div>
                     <a class="kam-panel-link" href="<?= $esc($aliadosUrl) ?>">
@@ -540,10 +680,15 @@ $itemsCobertura = is_array($cobertura['items'] ?? null)
                     </div>
                 <?php else: ?>
                     <div class="kam-inline-clear">
-                        <i class="bi bi-check-circle"></i>
-                        <span>
-                            No hay aliados con seguimiento pendiente en este momento.
+                        <span class="kam-inline-clear-icon">
+                            <i class="bi bi-check-circle"></i>
                         </span>
+                        <div>
+                            <strong>Red sin seguimientos pendientes.</strong>
+                            <span>
+                                No hay aliados que requieran continuidad en este momento.
+                            </span>
+                        </div>
                     </div>
                 <?php endif; ?>
             </section>
@@ -558,16 +703,24 @@ $itemsCobertura = is_array($cobertura['items'] ?? null)
                     </h2>
                     <p class="page-subtitle mb-0">
                         <?= ($cobertura['modo'] ?? '') === 'estados'
-                            ? 'Compara la carga bajo tu responsabilidad entre territorios.'
+                            ? 'Muestra primero los territorios donde existe actividad real de vinculación o aliados.'
                             : 'Con un solo estado, el tablero profundiza automáticamente a municipios.' ?>
                     </p>
                 </div>
-                <?php if ($puedeTerritorios): ?>
-                    <a class="kam-panel-link" href="<?= $esc($territoriosUrl) ?>">
-                        Ver territorios
-                        <i class="bi bi-arrow-right"></i>
-                    </a>
-                <?php endif; ?>
+                <div class="kam-coverage-heading-actions">
+                    <?php if (($cobertura['modo'] ?? '') === 'estados'): ?>
+                        <span class="kam-panel-count">
+                            <?= $territoriosTotal ?>
+                            <?= $territoriosTotal === 1 ? 'territorio' : 'territorios' ?>
+                        </span>
+                    <?php endif; ?>
+                    <?php if ($puedeTerritorios): ?>
+                        <a class="kam-panel-link" href="<?= $esc($territoriosUrl) ?>">
+                            Ver territorios
+                            <i class="bi bi-arrow-right"></i>
+                        </a>
+                    <?php endif; ?>
+                </div>
             </div>
 
             <?php if (!empty($itemsCobertura)): ?>
@@ -587,7 +740,10 @@ $itemsCobertura = is_array($cobertura['items'] ?? null)
                                     </span>
                                 </div>
                             </div>
-                            <?php if (($cobertura['modo'] ?? '') === 'estados'): ?>
+                            <?php if (
+                                ($cobertura['modo'] ?? '') === 'estados' &&
+                                $mostrarAnalistasCobertura
+                            ): ?>
                                 <span class="kam-coverage-team">
                                     <?= (int)($item['analistas'] ?? 0) ?>
                                     <?= (int)($item['analistas'] ?? 0) === 1
@@ -602,6 +758,21 @@ $itemsCobertura = is_array($cobertura['items'] ?? null)
                         </article>
                     <?php endforeach; ?>
                 </div>
+
+                <?php if (
+                    ($cobertura['modo'] ?? '') === 'estados' &&
+                    $territoriosSinActividad > 0
+                ): ?>
+                    <div class="kam-coverage-inactive">
+                        <i class="bi bi-info-circle"></i>
+                        <span>
+                            <?= $territoriosSinActividad ?>
+                            <?= $territoriosSinActividad === 1
+                                ? ' territorio sin actividad registrada.'
+                                : ' territorios sin actividad registrada.' ?>
+                        </span>
+                    </div>
+                <?php endif; ?>
             <?php else: ?>
                 <div class="kam-empty-state is-compact">
                     <span><i class="bi bi-geo"></i></span>
@@ -615,39 +786,4 @@ $itemsCobertura = is_array($cobertura['items'] ?? null)
             <?php endif; ?>
         </section>
     </div>
-
-    <section class="kam-quick-actions" aria-label="Accesos rápidos">
-        <?php if ($puedeSeguimiento): ?>
-            <a href="<?= $esc($seguimientoUrl) ?>">
-                <i class="bi bi-list-task"></i>
-                <span>
-                    <strong>Seguimiento</strong>
-                    <small>Supervisa la cartera de vinculación</small>
-                </span>
-                <i class="bi bi-arrow-right"></i>
-            </a>
-        <?php endif; ?>
-
-        <?php if ($puedeAliados): ?>
-            <a href="<?= $esc($aliadosUrl) ?>">
-                <i class="bi bi-building-check"></i>
-                <span>
-                    <strong>Aliados</strong>
-                    <small>Gestiona tu red formalizada</small>
-                </span>
-                <i class="bi bi-arrow-right"></i>
-            </a>
-        <?php endif; ?>
-
-        <?php if ($puedeReportes): ?>
-            <a href="<?= $esc($reportesUrl) ?>">
-                <i class="bi bi-bar-chart"></i>
-                <span>
-                    <strong>Reportes</strong>
-                    <small>Analiza operación y resultados</small>
-                </span>
-                <i class="bi bi-arrow-right"></i>
-            </a>
-        <?php endif; ?>
-    </section>
 </section>
