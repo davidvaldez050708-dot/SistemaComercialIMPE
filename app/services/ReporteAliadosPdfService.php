@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/ReporteNombreArchivoService.php';
+
 use Dompdf\Dompdf;
 use Dompdf\Options;
 
@@ -999,18 +1001,26 @@ class ReporteAliadosPdfService
             );
         }
 
-        $alcance = preg_replace(
-            '/[^A-Za-z0-9_-]+/',
-            '_',
-            $this->sinAcentos($alcance)
+        $partes = [$alcance !== '' ? $alcance : 'Red'];
+        $situacion = trim(
+            (string)($reporte['situacion_label'] ?? '')
         );
-        $alcance = trim((string)$alcance, '_');
 
-        return 'Reporte_Aliados_' .
-            ($alcance !== '' ? $alcance : 'Red') .
-            '_' .
-            date('Y-m-d') .
-            '.pdf';
+        if (
+            $situacion !== '' &&
+            strcasecmp($situacion, 'Todos los aliados') !== 0
+        ) {
+            $partes[] = $situacion;
+        }
+
+        return ReporteNombreArchivoService::conPeriodo(
+            'Reporte_Aliados',
+            $partes,
+            is_array($reporte['periodo'] ?? null)
+                ? $reporte['periodo']
+                : [],
+            date('Y-m-d')
+        );
     }
 
     private function logoDataUri(): string
