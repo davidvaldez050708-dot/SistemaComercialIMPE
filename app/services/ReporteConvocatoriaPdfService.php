@@ -46,7 +46,14 @@ class ReporteConvocatoriaPdfService
             );
         }
 
-        $nombreBase = 'Reporte_Convocatorias_' . date('Y-m-d');
+        require_once __DIR__ . '/ReporteNombreArchivoService.php';
+
+        $nombreBase = ReporteNombreArchivoService::corte(
+            'Reporte_Convocatorias',
+            [],
+            date('Y-m-d'),
+            false
+        );
         $directorioTemporal = $this->rootPath . DIRECTORY_SEPARATOR . 'storage' .
             DIRECTORY_SEPARATOR . 'tmp' . DIRECTORY_SEPARATOR . 'reportes' .
             DIRECTORY_SEPARATOR . 'convocatorias' . DIRECTORY_SEPARATOR .
