@@ -37,6 +37,22 @@ $criterios = is_array($desempeno['criterios'] ?? null)
 $puedeGlobal = tienePermiso('desempeno.ver_global');
 $puedeEquipo = tienePermiso('desempeno.ver_equipo');
 $puedePropio = tienePermiso('desempeno.ver_propio');
+$rolActualDesempeno = trim((string)($_SESSION['rol'] ?? ''));
+$esCuentaClaveDesempeno =
+    strcasecmp($rolActualDesempeno, 'Cuenta Clave') === 0;
+$esAnalistaDesempeno =
+    strcasecmp($rolActualDesempeno, 'Analista de Datos') === 0;
+
+$mostrarTabGlobal = $puedeGlobal;
+$mostrarTabEquipo =
+    $puedeEquipo &&
+    $esCuentaClaveDesempeno;
+$mostrarTabPropio =
+    $puedePropio &&
+    (
+        $esCuentaClaveDesempeno ||
+        $esAnalistaDesempeno
+    );
 
 $esc = static function ($valor) {
     return htmlspecialchars(
@@ -181,12 +197,12 @@ $rankingTitle = $vista === 'propio'
     </section>
 
     <?php if (
-        ($puedeGlobal ? 1 : 0) +
-        ($puedeEquipo ? 1 : 0) +
-        ($puedePropio ? 1 : 0) > 1
+        ($mostrarTabGlobal ? 1 : 0) +
+        ($mostrarTabEquipo ? 1 : 0) +
+        ($mostrarTabPropio ? 1 : 0) > 1
     ): ?>
         <nav class="performance-view-tabs" aria-label="Vista de desempeño">
-            <?php if ($puedeGlobal): ?>
+            <?php if ($mostrarTabGlobal): ?>
                 <a
                     href="<?= $esc($urlVista('global')) ?>"
                     class="<?= $vista === 'global' ? 'is-active' : '' ?>">
@@ -195,7 +211,7 @@ $rankingTitle = $vista === 'propio'
                 </a>
             <?php endif; ?>
 
-            <?php if ($puedeEquipo): ?>
+            <?php if ($mostrarTabEquipo): ?>
                 <a
                     href="<?= $esc($urlVista('equipo')) ?>"
                     class="<?= $vista === 'equipo' ? 'is-active' : '' ?>">
@@ -204,7 +220,7 @@ $rankingTitle = $vista === 'propio'
                 </a>
             <?php endif; ?>
 
-            <?php if ($puedePropio): ?>
+            <?php if ($mostrarTabPropio): ?>
                 <a
                     href="<?= $esc($urlVista('propio')) ?>"
                     class="<?= $vista === 'propio' ? 'is-active' : '' ?>">
