@@ -300,6 +300,15 @@ class DesempenoPdfService
         }
         $html .= '</section>';
 
+        if ($esComparativo) {
+            $html .= '<section class="section ranking-chart-section">';
+            $html .= $this->titulo('Gráfica comparativa del ranking');
+            $html .=
+                '<div class="ranking-chart-note">Índice operativo por participante en escala de 0 a 100. La gráfica utiliza el mismo índice y el mismo orden mostrados en la tabla del ranking.</div>';
+            $html .= $this->graficaRanking($ranking);
+            $html .= '</section>';
+        }
+
         if (!empty($reconocimientos)) {
             $html .= '<section class="section keep">';
             $html .= $this->titulo('Reconocimientos del periodo');
@@ -545,6 +554,70 @@ class DesempenoPdfService
         }
 
         return $html . '</tbody></table>';
+    }
+
+    private function graficaRanking(array $ranking)
+    {
+        if (count($ranking) < 2) {
+            return '';
+        }
+
+        $html = '<div class="ranking-chart">';
+
+        foreach ($ranking as $fila) {
+            $nombre = trim(
+                (string)($fila['nombre_completo'] ?? '')
+            );
+            $posicion = max(
+                1,
+                (int)($fila['posicion'] ?? 0)
+            );
+            $indiceRaw = $fila['indice'] ?? null;
+            $indice = $indiceRaw === null
+                ? 0.0
+                : min(
+                    100.0,
+                    max(0.0, (float)$indiceRaw)
+                );
+            $restante = max(0.0, 100.0 - $indice);
+            $valor = $indiceRaw === null
+                ? '—'
+                : number_format($indice, 1);
+
+            $html .=
+                '<div class="ranking-chart-row">' .
+                '<table class="ranking-chart-row-table"><tr>' .
+                '<td class="ranking-chart-person">' .
+                '<strong>#' . $posicion . '</strong>' .
+                '<span>' . $this->e($nombre) . '</span>' .
+                '</td>' .
+                '<td class="ranking-chart-bar-cell">' .
+                '<table class="ranking-chart-track"><tr>' .
+                '<td class="ranking-chart-fill" style="width:' .
+                number_format($indice, 2, '.', '') .
+                '%">&nbsp;</td>' .
+                '<td class="ranking-chart-rest" style="width:' .
+                number_format($restante, 2, '.', '') .
+                '%">&nbsp;</td>' .
+                '</tr></table>' .
+                '</td>' .
+                '<td class="ranking-chart-value">' .
+                $this->e($valor) .
+                '</td>' .
+                '</tr></table>' .
+                '</div>';
+        }
+
+        $html .=
+            '<table class="ranking-chart-axis"><tr>' .
+            '<td>0</td>' .
+            '<td>25</td>' .
+            '<td>50</td>' .
+            '<td>75</td>' .
+            '<td class="is-end">100</td>' .
+            '</tr></table>';
+
+        return $html . '</div>';
     }
 
     private function tablaTendencia(array $filas, $area)
@@ -1070,7 +1143,7 @@ class DesempenoPdfService
             '.section{margin:0 0 13px}.keep{page-break-inside:avoid}.section-title{border-left:3px solid #273A8A;padding-left:7px;margin-bottom:7px;page-break-after:avoid}.section-title h2{margin:0;color:#16223B;font-size:10pt}' .
             '.metrics{width:100%;table-layout:fixed;border-collapse:separate;border-spacing:4px 0}.metrics td{padding:8px;border:1px solid #D9E1EB;background:#F9FBFE}.metrics strong{display:block;margin-top:2px;color:#16223B;font-size:11pt}' .
             '.table{width:100%;border-collapse:collapse;font-size:5.8pt}.table thead{display:table-header-group}.table tr{page-break-inside:avoid}.table th{padding:5px 5px;background:#273A8A;color:#FFF;text-align:left}.table td{padding:5px;border-bottom:1px solid #E5EAF0;vertical-align:middle}.table tbody tr:nth-child(even){background:#F8FAFC}.table .num{text-align:right;white-space:nowrap}.table.compact{width:84%;margin-left:auto;margin-right:auto}.table.compact.has-person{width:94%}.history-table th,.history-table td{padding:3.6px 5px}.history-note{width:84%;margin:0 auto 4px;color:#7A8493;font-size:5.4pt}.inactive-analysts{width:84%;margin:5px auto 0;padding:5px 7px;border:1px solid #E1E7EF;background:#F8FAFC;color:#667386;font-size:5.4pt;line-height:1.3}.inactive-analysts strong{color:#263247}.person-column{min-width:112px}.person-wrap{display:inline-block;vertical-align:middle}.person-avatar{display:inline-block;width:20px;height:20px;margin-right:5px;border:1px solid #D7E0EC;border-radius:50%;overflow:hidden;background:#EEF3FB;color:#273A8A;text-align:center;vertical-align:middle;font-size:6.2pt;font-weight:700;line-height:20px}.person-avatar img{width:20px;height:20px;border-radius:50%}.person-avatar.is-initials{line-height:20px}.person-name{display:inline-block;max-width:118px;vertical-align:middle;line-height:1.25}' .
-            '.recognitions{width:100%;table-layout:fixed;border-collapse:separate;border-spacing:4px}.recognitions td{padding:8px;border:1px solid #D9E1EB;background:#FBFCFE}.recognitions strong{display:block;margin-top:2px;color:#16223B;font-size:7pt}.recognitions small{display:block;margin-top:2px;color:#273A8A;font-size:5.6pt;font-weight:700}' .
+            '.ranking-chart-section{page-break-inside:auto}.ranking-chart-note{margin:-1px 0 7px;color:#737F90;font-size:5.6pt;line-height:1.35}.ranking-chart{width:100%;padding:7px 8px;border:1px solid #D9E1EB;background:#FBFCFE}.ranking-chart-row{page-break-inside:avoid;margin:0 0 5px}.ranking-chart-row-table{width:100%;table-layout:fixed;border-collapse:collapse}.ranking-chart-person{width:31%;padding-right:7px;vertical-align:middle}.ranking-chart-person strong{display:inline-block;width:23px;color:#273A8A;font-size:6pt}.ranking-chart-person span{display:inline-block;max-width:125px;overflow:hidden;color:#263247;font-size:6pt;font-weight:700;white-space:nowrap}.ranking-chart-bar-cell{width:59%;vertical-align:middle}.ranking-chart-track{width:100%;height:9px;table-layout:fixed;border-collapse:collapse;background:#EDF1F7}.ranking-chart-track td{height:9px;padding:0;border:0}.ranking-chart-fill{background:#273A8A}.ranking-chart-rest{background:#EDF1F7}.ranking-chart-value{width:10%;padding-left:7px;color:#16223B;font-size:6pt;font-weight:700;text-align:right;vertical-align:middle}.ranking-chart-axis{width:59%;margin:2px 10% 0 31%;table-layout:fixed;border-collapse:collapse;color:#8A94A3;font-size:5pt}.ranking-chart-axis td{text-align:left}.ranking-chart-axis .is-end{text-align:right}.recognitions{width:100%;table-layout:fixed;border-collapse:separate;border-spacing:4px}.recognitions td{padding:8px;border:1px solid #D9E1EB;background:#FBFCFE}.recognitions strong{display:block;margin-top:2px;color:#16223B;font-size:7pt}.recognitions small{display:block;margin-top:2px;color:#273A8A;font-size:5.6pt;font-weight:700}' .
             '.criteria{margin:0;padding-left:17px;color:#556274;font-size:6pt}.criteria li{margin-bottom:4px}.notice{margin-top:8px;padding:7px 8px;border-left:3px solid #0A8F7A;background:#F3FAF8;color:#52635F;font-size:5.8pt}.empty{padding:10px;border:1px dashed #D9E1EB;background:#FAFBFD;color:#737F90}';
     }
 
