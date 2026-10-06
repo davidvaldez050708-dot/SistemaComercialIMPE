@@ -120,6 +120,7 @@ $fechaHastaSeleccionada = (string)(
                 type="date"
                 id="reporte_aliados_fecha_desde"
                 name="fecha_desde"
+                max="<?= $texto(date('Y-m-d')) ?>"
                 value="<?= $texto($fechaDesdeSeleccionada) ?>">
         </div>
 
@@ -132,6 +133,7 @@ $fechaHastaSeleccionada = (string)(
                 type="date"
                 id="reporte_aliados_fecha_hasta"
                 name="fecha_hasta"
+                max="<?= $texto(date('Y-m-d')) ?>"
                 value="<?= $texto($fechaHastaSeleccionada) ?>">
         </div>
 
