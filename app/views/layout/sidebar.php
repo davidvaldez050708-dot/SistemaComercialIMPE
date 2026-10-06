@@ -96,7 +96,10 @@ $claseFormularios =
 
     </div>
 
-    <nav class="sidebar-navigation">
+    <nav
+        class="sidebar-navigation"
+        data-sidebar-scroll="desktop"
+        data-sidebar-user="<?= (int)($_SESSION['usuario_id'] ?? 0) ?>">
         <div class="sidebar-section">
             <p class="sidebar-section-title">
                 INICIO
@@ -357,7 +360,10 @@ $claseFormularios =
 
     <div class="offcanvas-body d-flex flex-column">
 
-        <nav class="sidebar-navigation">
+        <nav
+            class="sidebar-navigation"
+            data-sidebar-scroll="mobile"
+            data-sidebar-user="<?= (int)($_SESSION['usuario_id'] ?? 0) ?>">
 
             <!-- INICIO -->
             <div class="sidebar-section">
