@@ -236,8 +236,8 @@ class DesempenoPdfService
                 $resumen['llamadas_realizadas'] ?? 0
             );
             $html .= $this->metric(
-                'Llamadas efectivas',
-                $resumen['llamadas_efectivas'] ?? 0
+                'Con contacto',
+                $resumen['llamadas_con_contacto'] ?? 0
             );
             $html .= $this->metric(
                 'Tasa de contacto',
@@ -249,6 +249,10 @@ class DesempenoPdfService
             $html .= $this->metric(
                 'Interacciones útiles',
                 $resumen['interacciones'] ?? 0
+            );
+            $html .= $this->metric(
+                'Llamadas efectivas',
+                $resumen['llamadas_efectivas'] ?? 0
             );
         }
 
@@ -407,10 +411,10 @@ class DesempenoPdfService
             '<table class="table"><thead><tr>' .
             '<th>#</th><th>Persona</th>' .
             '<th class="num">Llamadas</th>' .
-            '<th class="num">Efectivas</th>' .
-            '<th class="num">Efectividad</th>' .
+            '<th class="num">Con contacto</th>' .
+            '<th class="num">Tasa contacto</th>' .
             '<th class="num">Interacciones</th>' .
-            '<th class="num">Verificaciones</th>' .
+            '<th class="num">Efectivas</th>' .
             '<th class="num">Índice</th>' .
             '</tr></thead><tbody>';
 
@@ -426,7 +430,7 @@ class DesempenoPdfService
                 $fila['llamadas_realizadas'] ?? 0
             );
             $html .= $this->tdNum(
-                $fila['llamadas_efectivas'] ?? 0
+                $fila['llamadas_con_contacto'] ?? 0
             );
             $html .= $this->tdNum(
                 number_format(
@@ -438,7 +442,7 @@ class DesempenoPdfService
                 $fila['interacciones'] ?? 0
             );
             $html .= $this->tdNum(
-                $fila['verificaciones_efectivas'] ?? 0
+                $fila['llamadas_efectivas'] ?? 0
             );
             $html .= $this->tdNum(
                 $fila['indice'] === null
@@ -512,6 +516,7 @@ class DesempenoPdfService
             '<table class="table compact"><thead><tr>' .
             '<th>Fecha</th>' .
             '<th class="num">Interacciones</th>' .
+            '<th class="num">Con contacto</th>' .
             '<th class="num">Llamadas efectivas</th>' .
             '</tr></thead><tbody>';
 
@@ -524,6 +529,9 @@ class DesempenoPdfService
             );
             $html .= $this->tdNum(
                 $fila['secundario'] ?? 0
+            );
+            $html .= $this->tdNum(
+                $fila['terciario'] ?? 0
             );
             $html .= '</tr>';
         }
