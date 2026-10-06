@@ -54,6 +54,34 @@ document.addEventListener('DOMContentLoaded', function () {
             element.addEventListener('change', submitForm);
         });
 
+    const submitCustomPeriodIfReady = function () {
+        if (
+            !periodSelect ||
+            periodSelect.value !== 'personalizado' ||
+            !dateFrom ||
+            !dateTo ||
+            dateFrom.value === '' ||
+            dateTo.value === ''
+        ) {
+            return;
+        }
+
+        if (dateFrom.value > dateTo.value) {
+            return;
+        }
+
+        submitForm();
+    };
+
+    dateFrom?.addEventListener(
+        'change',
+        submitCustomPeriodIfReady
+    );
+    dateTo?.addEventListener(
+        'change',
+        submitCustomPeriodIfReady
+    );
+
     syncCustomPeriod();
 
     const refreshEveryMs = 60000;
