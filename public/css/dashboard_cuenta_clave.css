@@ -17,7 +17,7 @@
 
 .kam-welcome {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(320px, .72fr);
+    grid-template-columns: minmax(0, 1fr) minmax(340px, .72fr);
     align-items: center;
     gap: 18px;
     min-height: 148px;
@@ -57,7 +57,7 @@
 }
 
 .kam-welcome-status {
-    width: min(100%, 430px);
+    width: min(100%, 470px);
     display: grid;
     grid-template-columns: 38px minmax(0, 1fr);
     align-items: center;
@@ -78,11 +78,18 @@
     background: rgba(10, 143, 122, .04);
 }
 
+.kam-welcome-status-icon,
+.kam-metric-icon,
+.kam-coverage-icon,
+.kam-empty-state > span,
+.kam-inline-clear-icon {
+    display: grid;
+    place-items: center;
+}
+
 .kam-welcome-status-icon {
     width: 36px;
     height: 36px;
-    display: grid;
-    place-items: center;
     border-radius: 10px;
     background: var(--color-primary-soft);
     color: var(--color-primary);
@@ -118,40 +125,66 @@
     line-height: 1.35;
 }
 
-.kam-kpi-panel {
-    display: grid;
-    grid-template-columns: 190px minmax(0, 1fr);
-    gap: 12px;
-    align-items: stretch;
-}
-
-.kam-kpi-heading {
+/* Bootstrap Icons conserva línea base; estos iconos deben quedar
+   ópticamente centrados dentro de sus contenedores. */
+.kam-welcome-status-icon i,
+.kam-metric-icon i,
+.kam-coverage-icon i,
+.kam-empty-state > span i,
+.kam-inline-clear-icon i {
     display: flex;
-    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    align-items: center;
     justify-content: center;
-    padding: 14px 16px;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    background: #fff;
+    line-height: 1;
 }
 
-.kam-kpi-heading h2 {
-    margin: 4px 0 2px;
+.kam-welcome-status-icon i::before,
+.kam-metric-icon i::before,
+.kam-coverage-icon i::before,
+.kam-empty-state > span i::before,
+.kam-inline-clear-icon i::before {
+    display: block;
+    margin: 0;
+    line-height: 1;
+}
+
+.kam-kpi-section {
+    padding: 2px 0 0;
+}
+
+.kam-kpi-section-heading {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 18px;
+    margin-bottom: 8px;
+    padding: 0 2px;
+}
+
+.kam-kpi-section-heading > div {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+}
+
+.kam-kpi-section-heading h2 {
+    margin: 0;
     color: var(--color-text-primary);
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 800;
 }
 
-.kam-kpi-heading p {
+.kam-kpi-section-heading p {
     margin: 0;
     color: var(--color-text-secondary);
-    font-size: 8.8px;
-    line-height: 1.35;
+    font-size: 8.4px;
 }
 
 .kam-kpi-grid {
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     gap: 10px;
 }
 
@@ -172,8 +205,6 @@
 .kam-metric-icon {
     width: 34px;
     height: 34px;
-    display: grid;
-    place-items: center;
     border: 1px solid #d8e4f5;
     border-radius: 9px;
     background: var(--color-primary-soft);
@@ -196,6 +227,12 @@
     border-color: rgba(10, 143, 122, .16);
     background: rgba(10, 143, 122, .07);
     color: #087966;
+}
+
+.kam-metric-card.is-personal .kam-metric-icon {
+    border-color: rgba(39, 58, 138, .17);
+    background: rgba(39, 58, 138, .07);
+    color: var(--color-primary);
 }
 
 .kam-metric-card strong,
@@ -237,16 +274,24 @@
     grid-template-columns: minmax(0, 1.35fr) minmax(360px, .78fr);
 }
 
-.kam-secondary-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
+.kam-primary-grid.is-single,
 .kam-secondary-grid.is-single {
     grid-template-columns: 1fr;
 }
 
+.kam-right-stack {
+    display: grid;
+    gap: 14px;
+    min-width: 0;
+}
+
+.kam-secondary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .kam-attention-panel,
 .kam-team-panel,
+.kam-agenda-panel,
 .kam-allies-panel,
 .kam-coverage-panel {
     padding: 16px 18px;
@@ -297,6 +342,19 @@
     color: var(--color-text-secondary);
     font-size: 8px;
     font-weight: 800;
+    white-space: nowrap;
+}
+
+.kam-panel-count.is-attention {
+    border-color: rgba(190, 74, 55, .14);
+    background: rgba(190, 74, 55, .06);
+    color: #a54034;
+}
+
+.kam-panel-count.is-personal {
+    border-color: rgba(39, 58, 138, .14);
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
 }
 
 .kam-attention-list {
@@ -322,7 +380,9 @@
 }
 
 .kam-attention-item:hover,
-.kam-attention-item:focus {
+.kam-attention-item:focus,
+.kam-agenda-item:hover,
+.kam-agenda-item:focus {
     border-color: rgba(39, 58, 138, .25);
     background: #fff;
     transform: translateY(-1px);
@@ -423,6 +483,23 @@
     font-size: 10px;
 }
 
+.kam-panel-footer-action {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 9px;
+    padding-top: 8px;
+    border-top: 1px solid #edf0f4;
+}
+
+.kam-panel-footer-action a {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--color-primary);
+    font-size: 8px;
+    font-weight: 800;
+}
+
 .kam-empty-state {
     min-height: 120px;
     display: flex;
@@ -443,8 +520,6 @@
     width: 34px;
     height: 34px;
     flex: 0 0 34px;
-    display: grid;
-    place-items: center;
     border-radius: 9px;
     background: rgba(10, 143, 122, .08);
     color: #087966;
@@ -582,6 +657,118 @@
     font-weight: 800;
 }
 
+.kam-agenda-list {
+    display: grid;
+    gap: 6px;
+}
+
+.kam-agenda-item {
+    display: grid;
+    grid-template-columns: 78px minmax(0, 1fr) 14px;
+    gap: 8px;
+    align-items: center;
+    min-height: 58px;
+    padding: 7px 8px;
+    border: 1px solid #e3e8f0;
+    border-radius: 9px;
+    background: #fbfcfe;
+    color: inherit;
+    transition:
+        border-color .16s ease,
+        background-color .16s ease,
+        transform .16s ease;
+}
+
+.kam-agenda-time {
+    display: grid;
+    align-content: center;
+    min-height: 43px;
+    padding: 5px 7px;
+    border-radius: 7px;
+    background: #f0f3f8;
+}
+
+.kam-agenda-time strong,
+.kam-agenda-time small {
+    display: block;
+}
+
+.kam-agenda-time strong {
+    color: #56657a;
+    font-size: 7px;
+    font-weight: 800;
+}
+
+.kam-agenda-time small {
+    margin-top: 2px;
+    color: #748196;
+    font-size: 6.7px;
+    line-height: 1.25;
+}
+
+.kam-agenda-time.is-vencida {
+    background: rgba(186, 75, 61, .08);
+}
+
+.kam-agenda-time.is-vencida strong {
+    color: #a54034;
+}
+
+.kam-agenda-time.is-hoy {
+    background: rgba(191, 124, 31, .08);
+}
+
+.kam-agenda-time.is-hoy strong {
+    color: #95601a;
+}
+
+.kam-agenda-time.is-manana,
+.kam-agenda-time.is-proxima {
+    background: var(--color-primary-soft);
+}
+
+.kam-agenda-time.is-manana strong,
+.kam-agenda-time.is-proxima strong {
+    color: var(--color-primary);
+}
+
+.kam-agenda-main {
+    min-width: 0;
+}
+
+.kam-agenda-main strong,
+.kam-agenda-main span,
+.kam-agenda-main small {
+    display: block;
+}
+
+.kam-agenda-main strong {
+    overflow: hidden;
+    color: var(--color-text-primary);
+    font-size: 8.8px;
+    font-weight: 800;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.kam-agenda-main span {
+    margin-top: 2px;
+    color: #4e5c70;
+    font-size: 7.7px;
+    font-weight: 700;
+}
+
+.kam-agenda-main small {
+    margin-top: 2px;
+    color: var(--color-text-secondary);
+    font-size: 7px;
+}
+
+.kam-agenda-item > i {
+    color: #9ba5b4;
+    font-size: 9px;
+}
+
 .kam-allies-summary {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -667,14 +854,48 @@
 .kam-inline-clear {
     display: flex;
     align-items: center;
-    gap: 7px;
+    gap: 8px;
     padding: 9px 10px;
     border: 1px solid rgba(10, 143, 122, .14);
     border-radius: 8px;
     background: rgba(10, 143, 122, .045);
     color: #087966;
-    font-size: 8.4px;
-    font-weight: 700;
+}
+
+.kam-inline-clear.is-agenda {
+    min-height: 72px;
+}
+
+.kam-inline-clear-icon {
+    width: 28px;
+    height: 28px;
+    flex: 0 0 28px;
+    border-radius: 8px;
+    background: rgba(10, 143, 122, .09);
+    font-size: 11px;
+}
+
+.kam-inline-clear strong,
+.kam-inline-clear span {
+    display: block;
+}
+
+.kam-inline-clear strong {
+    font-size: 8.5px;
+    font-weight: 800;
+}
+
+.kam-inline-clear div > span {
+    margin-top: 2px;
+    color: #4e796f;
+    font-size: 7.5px;
+    line-height: 1.35;
+}
+
+.kam-coverage-heading-actions {
+    display: flex;
+    align-items: center;
+    gap: 7px;
 }
 
 .kam-coverage-list {
@@ -705,8 +926,6 @@
     width: 29px;
     height: 29px;
     flex: 0 0 29px;
-    display: grid;
-    place-items: center;
     border-radius: 8px;
     background: var(--color-primary-soft);
     color: var(--color-primary);
@@ -746,80 +965,28 @@
     color: #a54034;
 }
 
-.kam-quick-actions {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 9px;
-}
-
-.kam-quick-actions > a {
-    display: grid;
-    grid-template-columns: 32px minmax(0, 1fr) 14px;
-    gap: 9px;
+.kam-coverage-inactive {
+    display: flex;
     align-items: center;
-    min-height: 58px;
-    padding: 9px 11px;
-    border: 1px solid var(--color-border);
-    border-radius: 10px;
-    background: #fff;
-    color: inherit;
-    transition:
-        border-color .16s ease,
-        transform .16s ease,
-        box-shadow .16s ease;
-}
-
-.kam-quick-actions > a:hover,
-.kam-quick-actions > a:focus {
-    border-color: rgba(39, 58, 138, .25);
-    transform: translateY(-1px);
-    box-shadow: 0 7px 15px rgba(28, 46, 74, .04);
-}
-
-.kam-quick-actions > a > i:first-child {
-    width: 30px;
-    height: 30px;
-    display: grid;
-    place-items: center;
-    border-radius: 8px;
-    background: var(--color-primary-soft);
-    color: var(--color-primary);
-    font-size: 11px;
-}
-
-.kam-quick-actions strong,
-.kam-quick-actions small {
-    display: block;
-}
-
-.kam-quick-actions strong {
-    color: var(--color-text-primary);
-    font-size: 8.8px;
-    font-weight: 800;
-}
-
-.kam-quick-actions small {
-    margin-top: 2px;
+    gap: 6px;
+    margin-top: 8px;
+    padding: 7px 8px;
+    border-top: 1px solid #edf0f4;
     color: var(--color-text-secondary);
-    font-size: 7.2px;
+    font-size: 7.7px;
 }
 
-.kam-quick-actions > a > i:last-child {
-    color: #98a3b2;
-    font-size: 9px;
+.kam-coverage-inactive i {
+    color: var(--color-primary);
 }
 
 @media (max-width: 1399.98px) {
-    .kam-kpi-panel {
-        grid-template-columns: 170px minmax(0, 1fr);
-    }
-
     .kam-kpi-grid {
         grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 
     .kam-primary-grid {
-        grid-template-columns: minmax(0, 1.2fr) minmax(330px, .8fr);
+        grid-template-columns: minmax(0, 1.18fr) minmax(330px, .82fr);
     }
 }
 
@@ -830,14 +997,6 @@
 
     .kam-welcome-status-zone {
         justify-content: flex-start;
-    }
-
-    .kam-kpi-panel {
-        grid-template-columns: 1fr;
-    }
-
-    .kam-kpi-heading {
-        min-height: auto;
     }
 
     .kam-primary-grid,
@@ -855,8 +1014,19 @@
         padding: 18px;
     }
 
-    .kam-kpi-grid,
-    .kam-quick-actions {
+    .kam-kpi-section-heading {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 3px;
+    }
+
+    .kam-kpi-section-heading > div {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .kam-kpi-grid {
         grid-template-columns: 1fr;
     }
 
@@ -873,6 +1043,15 @@
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
+    .kam-agenda-item {
+        grid-template-columns: 1fr 14px;
+    }
+
+    .kam-agenda-time {
+        grid-column: 1 / -1;
+        min-height: auto;
+    }
+
     .kam-coverage-item {
         grid-template-columns: minmax(0, 1fr);
     }
@@ -884,5 +1063,10 @@
 
     .kam-panel-heading {
         flex-direction: column;
+    }
+
+    .kam-coverage-heading-actions {
+        width: 100%;
+        justify-content: space-between;
     }
 }
