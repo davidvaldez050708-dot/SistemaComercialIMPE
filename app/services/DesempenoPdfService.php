@@ -331,8 +331,14 @@ class DesempenoPdfService
             }
 
             $html .= $this->titulo($tituloHistorial);
-            $html .=
-                '<div class="history-note">Se muestran únicamente los días con movimientos registrados.</div>';
+
+            if ($area === 'analistas') {
+                $html .=
+                    '<div class="history-note">Se muestran únicamente los días y analistas con movimientos registrados.</div>';
+            } else {
+                $html .=
+                    '<div class="history-note">Se muestran únicamente los días con movimientos registrados.</div>';
+            }
 
             if ($hayDetalleAnalistas) {
                 $html .= $this->tablaTendenciaAnalistasPorPersona(
@@ -344,6 +350,18 @@ class DesempenoPdfService
                     $tendenciaActiva,
                     $area
                 );
+            }
+
+            if ($area === 'analistas') {
+                $sinActividad =
+                    $this->analistasSinActividad($ranking);
+
+                if (!empty($sinActividad)) {
+                    $html .=
+                        '<div class="inactive-analysts"><strong>Sin actividad en el periodo:</strong> ' .
+                        $this->e(implode(', ', $sinActividad)) .
+                        '.</div>';
+                }
             }
 
             $html .= '</section>';
@@ -644,6 +662,33 @@ class DesempenoPdfService
         }
 
         return $html . '</tbody></table>';
+    }
+
+    private function analistasSinActividad(array $ranking)
+    {
+        $nombres = [];
+
+        foreach ($ranking as $fila) {
+            $actividad =
+                (int)($fila['llamadas_realizadas'] ?? 0) +
+                (int)($fila['llamadas_con_contacto'] ?? 0) +
+                (int)($fila['interacciones'] ?? 0) +
+                (int)($fila['llamadas_efectivas'] ?? 0);
+
+            if ($actividad > 0) {
+                continue;
+            }
+
+            $nombre = trim(
+                (string)($fila['nombre_completo'] ?? '')
+            );
+
+            if ($nombre !== '') {
+                $nombres[] = $nombre;
+            }
+        }
+
+        return array_values(array_unique($nombres));
     }
 
     private function filtrarTendenciaActiva(array $filas)
@@ -995,7 +1040,7 @@ class DesempenoPdfService
             '.scope{width:100%;table-layout:fixed;border-collapse:collapse;border:1px solid #D9E1EB;background:#F8FAFC;margin-bottom:12px}.scope td{width:25%;padding:7px 8px;border-right:1px solid #D9E1EB}.scope td:last-child{border-right:0}.scope span,.metrics span,.recognitions span{display:block;color:#737F90;font-size:5.5pt}.scope strong{display:block;margin-top:2px;color:#16223B;font-size:6.6pt}' .
             '.section{margin:0 0 13px}.keep{page-break-inside:avoid}.section-title{border-left:3px solid #273A8A;padding-left:7px;margin-bottom:7px;page-break-after:avoid}.section-title h2{margin:0;color:#16223B;font-size:10pt}' .
             '.metrics{width:100%;table-layout:fixed;border-collapse:separate;border-spacing:4px 0}.metrics td{padding:8px;border:1px solid #D9E1EB;background:#F9FBFE}.metrics strong{display:block;margin-top:2px;color:#16223B;font-size:11pt}' .
-            '.table{width:100%;border-collapse:collapse;font-size:5.8pt}.table thead{display:table-header-group}.table tr{page-break-inside:avoid}.table th{padding:5px 5px;background:#273A8A;color:#FFF;text-align:left}.table td{padding:5px;border-bottom:1px solid #E5EAF0;vertical-align:middle}.table tbody tr:nth-child(even){background:#F8FAFC}.table .num{text-align:right;white-space:nowrap}.table.compact{width:84%;margin-left:auto;margin-right:auto}.table.compact.has-person{width:94%}.history-note{width:84%;margin:0 auto 5px;color:#7A8493;font-size:5.5pt}.person-column{min-width:112px}.person-wrap{display:inline-block;vertical-align:middle}.person-avatar{display:inline-block;width:20px;height:20px;margin-right:5px;border:1px solid #D7E0EC;border-radius:50%;overflow:hidden;background:#EEF3FB;color:#273A8A;text-align:center;vertical-align:middle;font-size:6.2pt;font-weight:700;line-height:20px}.person-avatar img{width:20px;height:20px;border-radius:50%}.person-avatar.is-initials{line-height:20px}.person-name{display:inline-block;max-width:118px;vertical-align:middle;line-height:1.25}' .
+            '.table{width:100%;border-collapse:collapse;font-size:5.8pt}.table thead{display:table-header-group}.table tr{page-break-inside:avoid}.table th{padding:5px 5px;background:#273A8A;color:#FFF;text-align:left}.table td{padding:5px;border-bottom:1px solid #E5EAF0;vertical-align:middle}.table tbody tr:nth-child(even){background:#F8FAFC}.table .num{text-align:right;white-space:nowrap}.table.compact{width:84%;margin-left:auto;margin-right:auto}.table.compact.has-person{width:94%}.history-table th,.history-table td{padding:3.6px 5px}.history-note{width:84%;margin:0 auto 4px;color:#7A8493;font-size:5.4pt}.inactive-analysts{width:84%;margin:5px auto 0;padding:5px 7px;border:1px solid #E1E7EF;background:#F8FAFC;color:#667386;font-size:5.4pt;line-height:1.3}.inactive-analysts strong{color:#263247}.person-column{min-width:112px}.person-wrap{display:inline-block;vertical-align:middle}.person-avatar{display:inline-block;width:20px;height:20px;margin-right:5px;border:1px solid #D7E0EC;border-radius:50%;overflow:hidden;background:#EEF3FB;color:#273A8A;text-align:center;vertical-align:middle;font-size:6.2pt;font-weight:700;line-height:20px}.person-avatar img{width:20px;height:20px;border-radius:50%}.person-avatar.is-initials{line-height:20px}.person-name{display:inline-block;max-width:118px;vertical-align:middle;line-height:1.25}' .
             '.recognitions{width:100%;table-layout:fixed;border-collapse:separate;border-spacing:4px}.recognitions td{padding:8px;border:1px solid #D9E1EB;background:#FBFCFE}.recognitions strong{display:block;margin-top:2px;color:#16223B;font-size:7pt}.recognitions small{display:block;margin-top:2px;color:#273A8A;font-size:5.6pt;font-weight:700}' .
             '.criteria{margin:0;padding-left:17px;color:#556274;font-size:6pt}.criteria li{margin-bottom:4px}.notice{margin-top:8px;padding:7px 8px;border-left:3px solid #0A8F7A;background:#F3FAF8;color:#52635F;font-size:5.8pt}.empty{padding:10px;border:1px dashed #D9E1EB;background:#FAFBFD;color:#737F90}';
     }
