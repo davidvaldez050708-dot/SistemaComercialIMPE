@@ -61,7 +61,7 @@ class DesempenoController
 
         $tituloPagina = 'Desempeño';
         $subtituloPagina =
-            'Ranking, historial operativo y reconocimientos por periodo.';
+            'Desempeño, historial operativo y reconocimientos por periodo.';
         $opcionActiva = 'desempeno';
 
         require_once __DIR__ . '/../views/layout/dashboard_head.php';
