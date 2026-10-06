@@ -228,12 +228,18 @@ class AliadoController
         $puedePrepararWhatsapp =
             tienePermiso('aliados.preparar_whatsapp') &&
             $puedeConsultarConvocatorias;
-        $puedeSeguimientoConvocatorias =
-            tienePermiso('aliados.seguimiento_convocatorias') &&
+        $seguimientoConvocatoriasDisponible =
             $modeloAliado->seguimientoConvocatoriasDisponible();
+        $puedeSeguimientoConvocatorias =
+            $seguimientoConvocatoriasDisponible &&
+            (
+                $esAdministrador ||
+                tienePermiso('aliados.seguimiento_convocatorias')
+            );
         $puedeOperarSeguimientoConvocatorias =
             !$esAdministrador &&
-            $puedeSeguimientoConvocatorias;
+            $seguimientoConvocatoriasDisponible &&
+            tienePermiso('aliados.seguimiento_convocatorias');
 
         $filtros = [
             'buscar' => trim((string)($_GET['buscar'] ?? '')),
@@ -403,11 +409,14 @@ class AliadoController
     public function seguimientoConvocatoria()
     {
         $this->validarPermiso('aliados.ver');
-        $this->validarPermiso('aliados.seguimiento_convocatorias');
+
+        $esAdministrador = (int)($_SESSION['rol_id'] ?? 0) === 1;
+        if (!$esAdministrador) {
+            $this->validarPermiso('aliados.seguimiento_convocatorias');
+        }
 
         $modelo = new AliadoModel();
         $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
-        $esAdministrador = (int)($_SESSION['rol_id'] ?? 0) === 1;
         $seguimientoId = (int)($_GET['id'] ?? 0);
         $seguimientoConvocatoriaId =
             (int)($_GET['seguimiento_convocatoria_id'] ?? 0);
@@ -456,13 +465,9 @@ class AliadoController
     public function guardarSeguimientoConvocatoria()
     {
         $this->validarPermiso('aliados.ver');
-        $this->validarPermiso('aliados.seguimiento_convocatorias');
         $this->validarMetodoPost();
 
-        $modelo = new AliadoModel();
-        $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
         $esAdministrador = (int)($_SESSION['rol_id'] ?? 0) === 1;
-
         if ($esAdministrador) {
             $this->responder([
                 'ok' => false,
@@ -470,6 +475,11 @@ class AliadoController
                     'El Administrador puede supervisar este seguimiento, pero no modificarlo.'
             ], 403);
         }
+
+        $this->validarPermiso('aliados.seguimiento_convocatorias');
+
+        $modelo = new AliadoModel();
+        $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
 
         $seguimientoId = (int)($_POST['seguimiento_id'] ?? 0);
         $seguimientoConvocatoriaId =
