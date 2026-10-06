@@ -183,6 +183,8 @@ class DesempenoService
             strcasecmp($rolNombre, 'Cuenta Clave') === 0;
         $esAnalista =
             strcasecmp($rolNombre, 'Analista de Datos') === 0;
+        $esMarketing =
+            strcasecmp($rolNombre, 'Marketing') === 0;
 
         /*
          * Los perfiles con vista global organizacional (Administrador /
@@ -217,7 +219,16 @@ class DesempenoService
             return 'global';
         }
 
-        if ($puedeEquipo) {
+        /*
+         * Solo Cuenta Clave posee una relación de supervisión territorial
+         * con Analistas. Analista y Marketing nunca deben convertirse en
+         * "Mi equipo" aunque el permiso se conceda por error.
+         */
+        if (($esAnalista || $esMarketing) && !$puedeGlobal) {
+            return $puedePropio ? 'propio' : 'sin_acceso';
+        }
+
+        if ($puedeEquipo && $esCuentaClave) {
             if ($solicitada === 'propio' && $puedePropio) {
                 return 'propio';
             }
@@ -913,6 +924,7 @@ class DesempenoService
         }
 
         return [
+            'Interacción útil: registro operativo distinto de SISTEMA dentro del periodo; las llamadas de prueba se excluyen.',
             'Llamada realizada: llamada IP vinculada a proveedor, identificador externo y duración mayor a cero.',
             'Llamada efectiva: llamada válida con contacto real registrado; las llamadas de prueba se excluyen.',
             'Verificación efectiva: evidencia de verificación asociada a una llamada telefónica válida.',
