@@ -540,6 +540,17 @@ switch ($controller) {
         break;
 
 
+    case 'formulario':
+
+        require_once __DIR__ .
+            '/app/controllers/FormularioController.php';
+
+        $controllerInstance =
+            new FormularioController();
+
+        break;
+
+
     case 'aliado':
 
         require_once __DIR__ .
