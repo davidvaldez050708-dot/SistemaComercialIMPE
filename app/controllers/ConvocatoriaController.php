@@ -269,6 +269,11 @@ class ConvocatoriaController
         $datosFormulario = $_SESSION['datos_convocatoria'] ?? [];
         $modalAbierto = $_SESSION['modal_convocatoria'] ?? '';
 
+        if ($mensajeError === '' && !empty($erroresFormulario)) {
+            $mensajeError =
+                'Completa los campos obligatorios y revisa los datos antes de guardar la convocatoria.';
+        }
+
         unset(
             $_SESSION['mensaje_convocatoria'],
             $_SESSION['error_convocatoria'],
