@@ -1674,3 +1674,28 @@
         font-size: 6.8px;
     }
 }
+
+
+.performance-person-row.is-summary {
+    grid-template-columns: minmax(210px, .85fr) minmax(420px, 1.65fr);
+}
+
+@media (max-width: 1199.98px) {
+    .performance-person-row.is-summary {
+        grid-template-columns: minmax(180px, .8fr) minmax(0, 1.4fr);
+    }
+
+    .performance-person-row.is-summary .performance-row-metrics {
+        grid-column: auto;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .performance-person-row.is-summary {
+        grid-template-columns: 1fr;
+    }
+
+    .performance-person-row.is-summary .performance-row-metrics {
+        grid-column: 1;
+    }
+}
