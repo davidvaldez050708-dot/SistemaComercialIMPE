@@ -1765,8 +1765,8 @@
 }
 
 
-/* Diseño visual de Opciones de Titulación inspirado en la referencia proporcionada.
- * No modifica rutas, datos ni comportamiento funcional.
+/* Diseño visual de Opciones de Titulación/Bachillerato.
+ * Cambio exclusivamente visual: conserva rutas, datos y comportamiento.
  */
 .convocatoria-titulacion-hero,
 .convocatoria-titulacion-cards,
@@ -1845,97 +1845,177 @@
 
 .convocatoria-titulacion-cards {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 420px));
-    justify-content: center;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 16px;
     margin-top: 16px;
 }
 
 .convocatoria-titulacion-card {
+    position: relative;
+    isolation: isolate;
     min-width: 0;
-    min-height: 312px;
-    padding: 18px;
+    min-height: 365px;
+    padding: 20px 22px 18px;
     display: grid;
     grid-template-rows: auto 1fr auto;
-    gap: 12px;
-    border-left: 6px solid var(--color-primary);
+    gap: 14px;
+    overflow: hidden;
+    border: 1px solid #dfe7f2;
+    border-radius: 16px;
+    background:
+        radial-gradient(circle at 86% 8%, rgba(89, 132, 226, .08), transparent 26%),
+        linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+    box-shadow: 0 7px 20px rgba(31, 56, 90, .045);
+}
+
+.convocatoria-titulacion-card::before {
+    content: '';
+    position: absolute;
+    z-index: 0;
+    width: 178px;
+    height: 138px;
+    right: -28px;
+    top: -30px;
+    border-radius: 46% 54% 60% 40%;
+    background: rgba(78, 125, 226, .055);
+    transform: rotate(-10deg);
+    pointer-events: none;
+}
+
+.convocatoria-titulacion-card::after {
+    content: '';
+    position: absolute;
+    z-index: 0;
+    width: 72px;
+    height: 92px;
+    right: 26px;
+    top: 22px;
+    border: 1px solid rgba(85, 128, 220, .08);
+    border-radius: 10px;
+    background:
+        linear-gradient(rgba(78, 120, 214, .13), rgba(78, 120, 214, .13)) 17px 24px / 40px 6px no-repeat,
+        linear-gradient(rgba(78, 120, 214, .10), rgba(78, 120, 214, .10)) 17px 40px / 32px 5px no-repeat,
+        linear-gradient(rgba(78, 120, 214, .08), rgba(78, 120, 214, .08)) 17px 55px / 36px 5px no-repeat,
+        rgba(234, 242, 255, .72);
+    transform: rotate(5deg);
+    box-shadow: 0 7px 18px rgba(47, 78, 145, .04);
+    pointer-events: none;
+}
+
+.convocatoria-titulacion-card > * {
+    position: relative;
+    z-index: 2;
 }
 
 .convocatoria-titulacion-card-icon {
-    width: 52px;
-    height: 52px;
+    width: 54px;
+    height: 54px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     border: 1px solid #d8e4f5;
-    border-radius: 12px;
-    background: var(--color-primary-soft);
-    color: var(--color-primary);
-    font-size: 22px;
+    border-radius: 13px;
+    background: linear-gradient(180deg, #f2f7ff 0%, #e9f2ff 100%);
+    color: #1746b2;
+    font-size: 24px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.8);
 }
 
 .convocatoria-titulacion-card-copy {
     min-width: 0;
+    align-self: start;
 }
 
 .convocatoria-titulacion-card-copy h3 {
+    max-width: 88%;
     margin: 0;
     color: var(--color-text-primary);
-    font-size: 15.5px;
+    font-size: 15px;
     font-weight: 800;
-    line-height: 1.28;
+    line-height: 1.3;
 }
 
 .convocatoria-titulacion-card-copy > p {
-    min-height: 40px;
+    max-width: 94%;
+    min-height: 38px;
     margin: 6px 0 0;
     color: var(--color-text-secondary);
-    font-size: 11.5px;
+    font-size: 10.5px;
     font-weight: 600;
-    line-height: 1.45;
+    line-height: 1.5;
 }
 
 .convocatoria-titulacion-benefits {
-    margin: 12px 0 0;
-    padding: 0;
+    margin: 13px 0 0;
+    padding: 13px 0 0;
     display: grid;
-    gap: 8px;
+    gap: 9px;
+    border-top: 1px solid #e7edf5;
     list-style: none;
 }
 
 .convocatoria-titulacion-benefits li {
     display: flex;
     align-items: center;
-    gap: 10px;
-    color: var(--color-text-secondary);
-    font-size: 11.5px;
+    gap: 9px;
+    color: #63718a;
+    font-size: 10.5px;
     font-weight: 600;
 }
 
 .convocatoria-titulacion-benefits i {
-    color: #4f83ff;
-    font-size: 16px;
-}
-
-.convocatoria-titulacion-card-button {
-    min-height: 38px;
-    width: 100%;
+    width: 22px;
+    height: 22px;
+    flex: 0 0 22px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 10px;
-    font-size: 12px;
-    font-weight: 700;
+    border-radius: 50%;
+    background: #eef4ff;
+    color: #2f6df6;
+    font-size: 13px;
+}
+
+.convocatoria-titulacion-card .convocatoria-titulacion-card-button {
+    min-height: 44px;
+    width: 100%;
+    padding: 0 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    border: 1px solid #214399;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #1f3f90 0%, #2854bb 100%);
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 800;
+    box-shadow: 0 7px 15px rgba(31, 63, 144, .12);
+}
+
+.convocatoria-titulacion-card .convocatoria-titulacion-card-button:hover,
+.convocatoria-titulacion-card .convocatoria-titulacion-card-button:focus {
+    border-color: #1b3885;
+    background: linear-gradient(135deg, #1b3885 0%, #244caa 100%);
+    color: #ffffff;
+}
+
+.convocatoria-titulacion-card .convocatoria-titulacion-card-button i {
+    font-size: 13px;
 }
 
 @media (hover: hover) and (pointer: fine) {
     .convocatoria-titulacion-card {
-        transition: transform .2s ease, box-shadow .2s ease;
+        transition:
+            transform .2s ease,
+            box-shadow .2s ease,
+            border-color .2s ease;
     }
 
     .convocatoria-titulacion-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 10px 24px rgba(15, 23, 42, .08);
+        transform: translateY(-3px);
+        border-color: #cfdaea;
+        box-shadow: 0 13px 28px rgba(15, 23, 42, .08);
     }
 }
 
@@ -1951,10 +2031,6 @@
         padding: 14px 18px;
     }
 
-    .convocatoria-titulacion-hero-copy h2 {
-        font-size: 22px;
-    }
-
     .convocatoria-titulacion-hero-icon {
         display: none;
     }
@@ -1964,7 +2040,12 @@
     }
 
     .convocatoria-titulacion-card {
-        min-height: 0;
+        min-height: 340px;
+    }
+
+    .convocatoria-titulacion-card-copy h3,
+    .convocatoria-titulacion-card-copy > p {
+        max-width: 100%;
     }
 }
 
