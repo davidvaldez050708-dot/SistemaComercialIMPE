@@ -116,7 +116,7 @@ class DesempenoController
             );
             $nombre = (string)(
                 $resultado['nombre_archivo']
-                    ?? 'Reporte_Desempeno.pdf'
+                    ?? 'Desempeno_Corte_' . date('Y-m-d') . '.pdf'
             );
 
             header('Content-Type: application/pdf');
