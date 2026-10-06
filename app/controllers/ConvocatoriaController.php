@@ -277,10 +277,14 @@ class ConvocatoriaController
             $_SESSION['modal_convocatoria']
         );
 
-        $tituloPagina = tienePermiso('convocatorias.gestionar')
+        $puedeGestionarConvocatorias =
+            tienePermiso('convocatorias.gestionar');
+        $tituloPagina = $puedeGestionarConvocatorias
             ? 'Gestión de Convocatorias'
             : 'Convocatorias';
-        $subtituloPagina = 'Administra publicaciones y su vigencia territorial.';
+        $subtituloPagina = $puedeGestionarConvocatorias
+            ? 'Administra publicaciones y su vigencia territorial.'
+            : 'Consulta publicaciones y su vigencia territorial.';
         $opcionActiva = 'convocatorias';
 
         require_once __DIR__ . '/../views/layout/dashboard_head.php';
