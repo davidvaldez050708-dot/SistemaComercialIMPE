@@ -25,6 +25,9 @@ $puedeUsarWhatsapp = $puedeUsarWhatsapp ?? false;
 $puedePrepararWhatsapp = $puedePrepararWhatsapp ?? false;
 $puedeSeguimientoConvocatorias =
     $puedeSeguimientoConvocatorias ?? false;
+$puedeOperarSeguimientoConvocatorias =
+    $puedeOperarSeguimientoConvocatorias ?? false;
+$esAdministrador = (bool)($esAdministrador ?? false);
 
 $texto = static function ($valor) {
     return htmlspecialchars((string)$valor, ENT_QUOTES, 'UTF-8');
@@ -181,8 +184,13 @@ $seguimientoVista = static function ($estado) {
                     <span class="aliados-eyebrow">DIRECTORIO TERRITORIAL</span>
                     <h3>Instituciones aliadas</h3>
                     <p>
-                        Consulta y difunde convocatorias entre los aliados de
-                        <?= $texto($estado['nombre'] ?? 'este Estado') ?>.
+                        <?php if ($esAdministrador): ?>
+                            Consulta la red de aliados y su actividad de difusión en
+                            <?= $texto($estado['nombre'] ?? 'este Estado') ?>.
+                        <?php else: ?>
+                            Consulta y difunde convocatorias entre los aliados de
+                            <?= $texto($estado['nombre'] ?? 'este Estado') ?>.
+                        <?php endif; ?>
                     </p>
                 </div>
 
@@ -996,7 +1004,9 @@ $seguimientoVista = static function ($estado) {
                         Seguimiento de convocatoria
                     </h2>
                     <p data-aliado-followup-context>
-                        Consulta el último envío y registra únicamente lo relevante.
+                        <?= $puedeOperarSeguimientoConvocatorias
+                            ? 'Consulta el último envío y registra únicamente lo relevante.'
+                            : 'Consulta el último envío y la evolución registrada por el responsable.' ?>
                     </p>
                 </div>
                 <button
@@ -1053,7 +1063,8 @@ $seguimientoVista = static function ($estado) {
                                     class="form-select"
                                     id="aliado_seguimiento_estado"
                                     name="estado"
-                                    required>
+                                    required
+                                    <?= $puedeOperarSeguimientoConvocatorias ? '' : 'disabled' ?>>
                                     <option value="ESPERANDO_RESPUESTA">Esperando respuesta</option>
                                     <option value="DIFUSION_CONFIRMADA">La institución confirmó la difusión</option>
                                     <option value="SOLICITA_INFORMACION">Solicita información</option>
@@ -1073,7 +1084,8 @@ $seguimientoVista = static function ($estado) {
                                     type="datetime-local"
                                     class="form-control"
                                     id="aliado_seguimiento_proximo"
-                                    name="proximo_seguimiento_at">
+                                    name="proximo_seguimiento_at"
+                                    <?= $puedeOperarSeguimientoConvocatorias ? '' : 'disabled' ?>>
                                 <small class="aliados-followup-state-help">
                                     Opcional. Si indicas una fecha, aparecerá en notificaciones.
                                 </small>
@@ -1090,7 +1102,8 @@ $seguimientoVista = static function ($estado) {
                                 name="nota"
                                 rows="3"
                                 maxlength="1000"
-                                placeholder="Ej. Confirmó que la compartirá con alumnos y docentes."></textarea>
+                                placeholder="Ej. Confirmó que la compartirá con alumnos y docentes."
+                                <?= $puedeOperarSeguimientoConvocatorias ? '' : 'disabled' ?>></textarea>
                             <small>
                                 Registra solo el contexto útil; no es necesario copiar toda la conversación de WhatsApp.
                             </small>
@@ -1116,14 +1129,21 @@ $seguimientoVista = static function ($estado) {
                     data-bs-dismiss="modal">
                     Cancelar
                 </button>
-                <button
-                    type="button"
-                    class="btn aliados-btn-primary"
-                    data-aliado-followup-save
-                    disabled>
-                    <i class="bi bi-check2-circle"></i>
-                    Guardar seguimiento
-                </button>
+                <?php if ($puedeOperarSeguimientoConvocatorias): ?>
+                    <button
+                        type="button"
+                        class="btn aliados-btn-primary"
+                        data-aliado-followup-save
+                        disabled>
+                        <i class="bi bi-check2-circle"></i>
+                        Guardar seguimiento
+                    </button>
+                <?php else: ?>
+                    <span class="text-muted small">
+                        <i class="bi bi-eye me-1"></i>
+                        Vista de supervisión · solo lectura
+                    </span>
+                <?php endif; ?>
             </div>
         </div>
     </div>
