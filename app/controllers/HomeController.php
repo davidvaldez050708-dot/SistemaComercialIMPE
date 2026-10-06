@@ -7,6 +7,7 @@ require_once __DIR__ . '/../models/ConvocatoriaModel.php';
 require_once __DIR__ . '/../services/AnalistaDashboardReunionService.php';
 require_once __DIR__ . '/../services/AnalistaDashboardIntegrityService.php';
 require_once __DIR__ . '/../services/SeguimientoAtencionOperativaService.php';
+require_once __DIR__ . '/../services/CuentaClaveDashboardService.php';
 require_once __DIR__ . '/../helpers/PermissionHelper.php';
 
 class HomeController
@@ -95,24 +96,39 @@ class HomeController
                 break;
 
             case 6:
-                $tituloPagina = 'Panel de Cuenta Clave';
+                $tituloPagina = 'Inicio';
+
+                $puedeSeguimientoCuentaClave =
+                    tienePermiso('seguimientos_vinculacion.ver');
+                $puedeAliadosCuentaClave =
+                    tienePermiso('aliados.ver');
+                $puedeTerritoriosCuentaClave =
+                    tienePermiso('territorios.ver');
 
                 if (
-                    !tienePermiso('territorios.ver') &&
-                    !tienePermiso('seguimientos_vinculacion.ver')
+                    !$puedeTerritoriosCuentaClave &&
+                    !$puedeSeguimientoCuentaClave &&
+                    !$puedeAliadosCuentaClave
                 ) {
-                    $subtituloPagina = 'No tienes módulos operativos habilitados actualmente.';
+                    $subtituloPagina =
+                        'No tienes módulos operativos habilitados actualmente.';
                     break;
                 }
 
-                $subtituloPagina = 'Gestión de vinculación institucional';
+                $subtituloPagina =
+                    'Resumen de supervisión, vinculación y red institucional';
 
-                $modeloTerritorio = new TerritorioModel();
-                $resumenCuentaClave = $modeloTerritorio->obtenerResumenCuentaClave(
-                    (int)$_SESSION['usuario_id']
-                );
+                $servicioCuentaClaveDashboard =
+                    new CuentaClaveDashboardService();
+                $tableroCuentaClave =
+                    $servicioCuentaClaveDashboard->obtener(
+                        (int)$_SESSION['usuario_id'],
+                        $puedeSeguimientoCuentaClave,
+                        $puedeAliadosCuentaClave
+                    );
 
-                $vistaPanel = __DIR__ . '/../views/dashboard/cuenta_clave.php';
+                $vistaPanel =
+                    __DIR__ . '/../views/dashboard/cuenta_clave.php';
                 break;
 
             default:
