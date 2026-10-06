@@ -1139,9 +1139,10 @@ $seguimientoVista = static function ($estado) {
                         Guardar seguimiento
                     </button>
                 <?php else: ?>
-                    <span class="text-muted small">
-                        <i class="bi bi-eye me-1"></i>
-                        Vista de supervisión · solo lectura
+                    <span class="aliados-readonly-badge">
+                        <i class="bi bi-eye"></i>
+                        <span>Vista de supervisión</span>
+                        <small>Solo lectura</small>
                     </span>
                 <?php endif; ?>
             </div>
