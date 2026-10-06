@@ -160,7 +160,9 @@ class CuentaClaveDashboardService
                         'seguimientos' => 0,
                         'requieren_atencion' => 0,
                         'para_hoy' => 0,
-                        'ultima_actividad_at' => ''
+                        'ultima_actividad_at' => '',
+                        'cartera_url' => '',
+                        'cartera_url_label' => 'Ver cartera'
                     ];
                 }
 
@@ -278,14 +280,24 @@ class CuentaClaveDashboardService
             $analista['territorios_total'] = count($territorios);
 
             $estadoPrincipal = $territorios[0] ?? null;
-            $analista['cartera_url'] = $estadoPrincipal
-                ? BASE_URL .
+
+            if ($estadoPrincipal && count($territorios) === 1) {
+                $analista['cartera_url'] =
+                    BASE_URL .
                     'index.php?controller=seguimientoVinculacion&action=estado&estado_id=' .
                     (int)$estadoPrincipal['id'] .
                     '&analista_id=' .
-                    (int)$analista['id']
-                : BASE_URL .
+                    (int)$analista['id'];
+                $analista['cartera_url_label'] = 'Ver cartera';
+            } else {
+                $analista['cartera_url'] =
+                    BASE_URL .
                     'index.php?controller=seguimientoVinculacion&action=index';
+                $analista['cartera_url_label'] =
+                    count($territorios) > 1
+                        ? 'Ver territorios'
+                        : 'Ver seguimiento';
+            }
         }
         unset($analista);
 
@@ -346,6 +358,7 @@ class CuentaClaveDashboardService
             'pendientes' => 0,
             'vencidos' => 0,
             'confirmados' => 0,
+            'requieren_atencion' => 0,
             'atencion' => []
         ];
 
@@ -408,6 +421,17 @@ class CuentaClaveDashboardService
                                 : 50
                         )
                 );
+
+            if (
+                $vencido ||
+                in_array(
+                    $estado,
+                    ['SOLICITA_INFORMACION', 'SIN_RESPUESTA'],
+                    true
+                )
+            ) {
+                $resumen['requieren_atencion']++;
+            }
 
             $resumen['atencion'][] = [
                 'seguimiento_id' => (int)(
@@ -672,6 +696,7 @@ class CuentaClaveDashboardService
                 'pendientes' => 0,
                 'vencidos' => 0,
                 'confirmados' => 0,
+                'requieren_atencion' => 0,
                 'atencion' => []
             ],
             'cobertura' => [
