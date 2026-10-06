@@ -78,6 +78,8 @@ $esConvocatoriaReportePreviewDashboard =
     $controllerDashboard === 'convocatoriareporte';
 $esCorreosMarketingDashboard =
     $controllerDashboard === 'correomarketing';
+$esDesempenoDashboard =
+    $controllerDashboard === 'desempeno';
 
 $cssOpcionalDashboard = [];
 
@@ -186,6 +188,10 @@ if ($esCorreosMarketingDashboard) {
     $cssOpcionalDashboard[] = 'correos_marketing.css';
 }
 
+if ($esDesempenoDashboard) {
+    $cssOpcionalDashboard[] = 'desempeno.css';
+}
+
 if (
     $esConvocatoriaReportesDashboard ||
     $esConvocatoriaReportePreviewDashboard
@@ -237,6 +243,10 @@ if ($esWhatsappDashboard) {
 
 if ($esCorreosMarketingDashboard) {
     $jsOpcionalHead[] = 'correos_marketing.js';
+}
+
+if ($esDesempenoDashboard) {
+    $jsOpcionalHead[] = 'desempeno.js';
 }
 
 if ($esHomeDashboard) {
