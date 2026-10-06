@@ -40,6 +40,24 @@
     flex-wrap: wrap;
 }
 
+.aliados-report-result-actions .btn {
+    display: inline-flex;
+    min-height: 40px;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding-top: 0;
+    padding-bottom: 0;
+    line-height: 1;
+}
+
+.aliados-report-result-actions .btn i {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
 .aliados-report-generated {
     display: inline-flex;
     min-height: 35px;
@@ -62,9 +80,10 @@
 .aliados-report-filter-form {
     display: grid;
     grid-template-columns:
-        minmax(175px, .85fr)
-        minmax(190px, 1fr)
-        minmax(205px, 1fr)
+        minmax(150px, .8fr)
+        minmax(165px, .9fr)
+        minmax(180px, 1fr)
+        minmax(170px, .9fr)
         auto;
     align-items: end;
     gap: 10px;
@@ -86,6 +105,41 @@
     color: var(--color-text);
     font-size: 10.5px;
     box-shadow: none;
+}
+
+.aliados-report-filter-form .form-control {
+    min-height: 39px;
+    border-color: var(--color-border);
+    border-radius: 9px;
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    font-size: 10.5px;
+    box-shadow: none;
+}
+
+.aliados-report-filter-form .form-control:focus {
+    border-color: var(--color-primary);
+    background-color: #fff;
+    box-shadow: 0 0 0 3px rgba(39, 58, 138, .07);
+}
+
+.aliados-report-custom-period {
+    display: grid;
+    grid-template-columns: minmax(180px, 230px) minmax(180px, 230px) minmax(0, 1fr);
+    grid-column: 1 / -1;
+    align-items: end;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--color-border);
+    border-radius: 9px;
+    background: #fbfcfe;
+}
+
+.aliados-report-custom-period p {
+    margin: 0 0 8px;
+    color: var(--color-text-soft);
+    font-size: 8.7px;
+    line-height: 1.4;
 }
 
 .aliados-report-filter-form .form-select:focus {
@@ -325,9 +379,86 @@
     font-size: 9.5px;
 }
 
+.aliados-report-period-panel {
+    padding: 16px 18px;
+}
+
+.aliados-report-period-kpis {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.aliados-report-period-kpis article {
+    display: flex;
+    min-width: 0;
+    min-height: 82px;
+    align-items: center;
+    gap: 9px;
+    padding: 10px 11px;
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    background: var(--color-bg);
+}
+
+.aliados-report-period-kpis article > div {
+    min-width: 0;
+}
+
+.aliados-report-period-icon {
+    display: grid;
+    width: 31px;
+    height: 31px;
+    flex: 0 0 31px;
+    place-items: center;
+    border: 1px solid rgba(39, 58, 138, .12);
+    border-radius: 9px;
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
+    font-size: 11px;
+}
+
+.aliados-report-period-icon.is-success {
+    border-color: rgba(10, 143, 122, .16);
+    background: rgba(10, 143, 122, .07);
+    color: #087966;
+}
+
+.aliados-report-period-kpis strong,
+.aliados-report-period-kpis span,
+.aliados-report-period-kpis small {
+    display: block;
+}
+
+.aliados-report-period-kpis strong {
+    color: var(--color-text);
+    font-size: 17px;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.aliados-report-period-kpis span {
+    margin-top: 3px;
+    color: var(--color-text);
+    font-size: 8.8px;
+    font-weight: 750;
+    line-height: 1.2;
+}
+
+.aliados-report-period-kpis small {
+    margin-top: 2px;
+    color: var(--color-text-soft);
+    font-size: 7.6px;
+    line-height: 1.25;
+}
+
 @media (max-width: 1199.98px) {
     .aliados-report-filter-form {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .aliados-report-period-kpis {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 
     .aliados-report-filter-actions {
@@ -350,7 +481,9 @@
     }
 
     .aliados-report-filter-form,
-    .aliados-report-followup-grid {
+    .aliados-report-followup-grid,
+    .aliados-report-period-kpis,
+    .aliados-report-custom-period {
         grid-template-columns: 1fr;
     }
 
