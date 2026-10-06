@@ -2879,6 +2879,15 @@
 .convocatoria-month-page {
     display: grid;
     gap: 22px;
+    font-family: 'Manrope', sans-serif;
+}
+
+.convocatoria-month-page,
+.convocatoria-month-page button,
+.convocatoria-month-page input,
+.convocatoria-month-page select,
+.convocatoria-month-page a {
+    font-family: 'Manrope', sans-serif;
 }
 
 .convocatoria-month-context {
@@ -2941,18 +2950,20 @@
 
 .convocatoria-month-heading h2 {
     margin: 0;
-    color: #0f172a;
-    font-size: 21px;
+    color: var(--color-text-primary);
+    font-family: 'Manrope', sans-serif;
+    font-size: 17px;
     font-weight: 800;
     line-height: 1.2;
-    letter-spacing: -.2px;
+    letter-spacing: -.1px;
 }
 
 .convocatoria-month-heading p {
-    margin: 5px 0 0;
-    color: #6f7f98;
-    font-size: 12px;
-    font-weight: 500;
+    margin: 4px 0 0;
+    color: var(--color-text-secondary);
+    font-family: 'Manrope', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
 }
 
 .convocatoria-month-year-form {
@@ -2997,8 +3008,9 @@
     outline: 0;
     appearance: none;
     background: transparent;
-    color: #0f172a;
-    font-size: 13px;
+    color: var(--color-text-primary);
+    font-family: 'Manrope', sans-serif;
+    font-size: 12px;
     font-weight: 800;
     cursor: pointer;
 }
@@ -3071,7 +3083,8 @@
     border-radius: 9px;
     background: linear-gradient(135deg, #3e61cf 0%, #456ddd 100%);
     color: #ffffff;
-    font-size: 10.5px;
+    font-family: 'Manrope', sans-serif;
+    font-size: 10px;
     font-weight: 800;
     line-height: 1;
     box-shadow: 0 5px 12px rgba(49, 78, 171, .22);
@@ -3147,18 +3160,20 @@
 }
 
 .convocatoria-month-card-title strong {
-    color: #0f172a;
-    font-size: 18px;
+    color: var(--color-text-primary);
+    font-family: 'Manrope', sans-serif;
+    font-size: 16px;
     font-weight: 800;
-    line-height: 1.15;
-    letter-spacing: -.15px;
+    line-height: 1.2;
+    letter-spacing: -.1px;
 }
 
 .convocatoria-month-card-title small {
     overflow: hidden;
-    color: #718098;
-    font-size: 11.5px;
-    font-weight: 500;
+    color: var(--color-text-secondary);
+    font-family: 'Manrope', sans-serif;
+    font-size: 10.5px;
+    font-weight: 600;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
@@ -3172,8 +3187,9 @@
     justify-self: end;
     border-radius: 50%;
     background: linear-gradient(180deg, #f1f5fb 0%, #eaf0f8 100%);
-    color: #0f172a;
-    font-size: 13px;
+    color: var(--color-text-primary);
+    font-family: 'Manrope', sans-serif;
+    font-size: 12px;
     font-weight: 800;
 }
 
@@ -3220,7 +3236,8 @@
     min-width: 0;
     overflow: hidden;
     color: #34445f;
-    font-size: 12px;
+    font-family: 'Manrope', sans-serif;
+    font-size: 11px;
     font-weight: 700;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -3260,7 +3277,8 @@
     align-items: center;
     gap: 10px;
     color: #7f8ca1;
-    font-size: 11.5px;
+    font-family: 'Manrope', sans-serif;
+    font-size: 10.5px;
     font-weight: 600;
 }
 
@@ -3280,7 +3298,8 @@
     border-radius: 11px;
     background: linear-gradient(180deg, #ffffff 0%, #f6f9fd 100%);
     color: var(--color-primary);
-    font-size: 12px;
+    font-family: 'Manrope', sans-serif;
+    font-size: 11px;
     font-weight: 800;
     box-shadow: none;
     transition:
