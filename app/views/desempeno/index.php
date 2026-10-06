@@ -515,17 +515,17 @@ $rankingTitle = $vista === 'propio'
             <article>
                 <span class="performance-kpi-icon is-success"><i class="bi bi-person-check"></i></span>
                 <div>
-                    <strong><?= (int)($resumen['llamadas_efectivas'] ?? 0) ?></strong>
-                    <span>Llamadas efectivas</span>
-                    <small>Con contacto real</small>
+                    <strong><?= (int)($resumen['llamadas_con_contacto'] ?? 0) ?></strong>
+                    <span>Llamadas con contacto</span>
+                    <small>Se habló con una persona</small>
                 </div>
             </article>
             <article>
                 <span class="performance-kpi-icon"><i class="bi bi-bullseye"></i></span>
                 <div>
                     <strong><?= $esc(number_format((float)($resumen['tasa_contacto'] ?? 0), 1)) ?>%</strong>
-                    <span>Efectividad</span>
-                    <small>Efectivas / válidas</small>
+                    <span>Tasa de contacto</span>
+                    <small>Con contacto / válidas</small>
                 </div>
             </article>
             <article>
@@ -539,9 +539,9 @@ $rankingTitle = $vista === 'propio'
             <article>
                 <span class="performance-kpi-icon"><i class="bi bi-shield-check"></i></span>
                 <div>
-                    <strong><?= (int)($resumen['verificaciones_efectivas'] ?? 0) ?></strong>
-                    <span>Verificaciones</span>
-                    <small>Con evidencia telefónica</small>
+                    <strong><?= (int)($resumen['llamadas_efectivas'] ?? 0) ?></strong>
+                    <span>Llamadas efectivas</span>
+                    <small>Verificación con evidencia</small>
                 </div>
             </article>
         </section>
@@ -653,20 +653,20 @@ $rankingTitle = $vista === 'propio'
                             <?php else: ?>
                                 <div class="performance-row-metrics">
                                     <div>
-                                        <strong><?= (int)($fila['llamadas_efectivas'] ?? 0) ?></strong>
-                                        <span>Efectivas</span>
+                                        <strong><?= (int)($fila['llamadas_con_contacto'] ?? 0) ?></strong>
+                                        <span>Con contacto</span>
                                     </div>
                                     <div>
                                         <strong><?= $esc(number_format((float)($fila['tasa_contacto'] ?? 0), 1)) ?>%</strong>
-                                        <span>Efectividad</span>
+                                        <span>Tasa contacto</span>
                                     </div>
                                     <div>
                                         <strong><?= (int)($fila['interacciones'] ?? 0) ?></strong>
                                         <span>Interacciones</span>
                                     </div>
                                     <div>
-                                        <strong><?= (int)($fila['verificaciones_efectivas'] ?? 0) ?></strong>
-                                        <span>Verificaciones</span>
+                                        <strong><?= (int)($fila['llamadas_efectivas'] ?? 0) ?></strong>
+                                        <span>Efectivas</span>
                                     </div>
                                 </div>
                             <?php endif; ?>
@@ -741,7 +741,7 @@ $rankingTitle = $vista === 'propio'
                         ? 'Difusiones, actualizaciones y confirmaciones registradas por día.'
                         : ($area === 'marketing'
                             ? 'Convocatorias publicadas y actualizadas por día.'
-                            : 'Interacciones útiles y llamadas efectivas registradas por día.') ?>
+                            : 'Interacciones útiles, llamadas con contacto y llamadas efectivas registradas por día.') ?>
                 </p>
             </div>
             <span class="performance-period-badge">
@@ -794,7 +794,7 @@ $rankingTitle = $vista === 'propio'
                                     class="is-secondary"
                                     style="height: <?= $esc(number_format($altoSecundario, 2, '.', '')) ?>%"
                                     title="<?= $secundario ?>"></span>
-                                <?php if ($area === 'cuenta_clave'): ?>
+                                <?php if ($area === 'cuenta_clave' || $area === 'analistas'): ?>
                                     <span
                                         class="is-tertiary"
                                         style="height: <?= $esc(number_format($altoTerciario, 2, '.', '')) ?>%"
@@ -821,7 +821,8 @@ $rankingTitle = $vista === 'propio'
                     <span><i class="is-secondary"></i> Actualizaciones</span>
                 <?php else: ?>
                     <span><i class="is-primary"></i> Interacciones</span>
-                    <span><i class="is-secondary"></i> Llamadas efectivas</span>
+                    <span><i class="is-secondary"></i> Con contacto</span>
+                    <span><i class="is-tertiary"></i> Llamadas efectivas</span>
                 <?php endif; ?>
             </div>
         <?php endif; ?>
