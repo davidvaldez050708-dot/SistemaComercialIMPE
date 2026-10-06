@@ -176,15 +176,17 @@
 
 .formularios-options {
     width: 100%;
+    max-width: 1040px;
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 18px;
+    justify-self: center;
 }
 
 .formularios-option-card {
     position: relative;
-    min-height: 390px;
-    padding: 24px 26px 22px;
+    min-height: 340px;
+    padding: 22px 24px 20px;
     display: grid;
     grid-template-rows: auto auto 1fr auto;
     gap: 16px;
@@ -416,16 +418,17 @@
     box-shadow: 0 7px 14px rgba(30, 57, 118, .10);
 }
 
-.formularios-option-card.is-registro .formularios-option-action {
-    background: linear-gradient(135deg, #294395 0%, #3659c1 100%);
-}
-
+.formularios-option-card.is-registro .formularios-option-action,
 .formularios-option-card.is-inscripcion .formularios-option-action {
-    background: linear-gradient(135deg, #07866f 0%, #0aa77d 100%);
+    background: #16223B;
+    border-color: #16223B;
 }
 
-.formularios-option-card:hover .formularios-option-action {
-    filter: brightness(.98);
+.formularios-option-card:hover .formularios-option-action,
+.formularios-option-card:focus .formularios-option-action {
+    background: #1b2b49;
+    border-color: #1b2b49;
+    filter: none;
 }
 
 .formularios-back-row {
@@ -490,8 +493,8 @@
     }
 
     .formularios-option-card {
-        min-height: 360px;
-        padding: 22px;
+        min-height: 330px;
+        padding: 20px;
     }
 
     .formularios-card-decoration {
@@ -550,6 +553,6 @@
     }
 
     .formularios-option-card {
-        min-height: 350px;
+        min-height: 320px;
     }
 }
