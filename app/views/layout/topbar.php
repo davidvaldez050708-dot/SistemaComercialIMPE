@@ -187,7 +187,9 @@ $totalRecordatoriosSeguimiento = 0;
                     class="dropdown"
                     data-reminder-root
                     data-reminder-endpoint="<?= BASE_URL ?>index.php?controller=reminder&action=pendientes"
-                    <?= $esAdministradorTopbar ? 'data-reminder-count-mode="total"' : '' ?>>
+                    <?= $esAdministradorTopbar
+                        ? 'data-reminder-count-mode="total" data-reminder-empty-title="Sin alertas administrativas" data-reminder-empty-message="No hay pendientes globales que requieran supervisión."'
+                        : '' ?>>
                     <button
                         class="topbar-reminder-button dropdown-toggle"
                         type="button"
