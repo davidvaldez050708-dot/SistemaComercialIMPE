@@ -219,7 +219,7 @@ class DesempenoPdfService
                 $resumen['publicaciones'] ?? 0
             );
             $html .= $this->metric(
-                'Territorios cubiertos',
+                'Cobertura acumulada',
                 $resumen['territorios_cubiertos'] ?? 0
             );
             $html .= $this->metric(
