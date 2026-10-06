@@ -72,6 +72,8 @@ $claseConvocatoriasReportes =
     $opcionActiva === 'convocatorias_reportes' ? 'active' : '';
 $claseCorreosMarketing =
     $opcionActiva === 'correos_marketing' ? 'active' : '';
+$claseFormularios =
+    $opcionActiva === 'formularios' ? 'active' : '';
 
 ?>
 
@@ -180,6 +182,13 @@ $claseCorreosMarketing =
                         class="sidebar-link <?= $claseCorreosMarketing ?>">
                         <i class="bi bi-envelope"></i>
                         Correos
+                    </a>
+
+                    <a
+                        href="<?= BASE_URL ?>index.php?controller=formulario&action=index"
+                        class="sidebar-link <?= $claseFormularios ?>">
+                        <i class="bi bi-ui-checks-grid"></i>
+                        Formularios
                     </a>
                 <?php endif; ?>
             </div>
@@ -453,6 +462,13 @@ $claseCorreosMarketing =
                             class="sidebar-link <?= $claseCorreosMarketing ?>">
                             <i class="bi bi-envelope"></i>
                             Correos
+                        </a>
+
+                        <a
+                            href="<?= BASE_URL ?>index.php?controller=formulario&action=index"
+                            class="sidebar-link <?= $claseFormularios ?>">
+                            <i class="bi bi-ui-checks-grid"></i>
+                            Formularios
                         </a>
                     <?php endif; ?>
                 </div>
