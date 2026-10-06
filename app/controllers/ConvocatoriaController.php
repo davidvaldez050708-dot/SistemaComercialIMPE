@@ -128,10 +128,17 @@ class ConvocatoriaController
             : '';
         $anioSolicitado = (int)($_GET['anio'] ?? 0);
         $mesSolicitado = (int)($_GET['mes'] ?? 0);
+
+        $mesActualCalendario = (int)date('n');
+        $anioCicloActual = $mesActualCalendario >= 9
+            ? (int)date('Y')
+            : (int)date('Y') - 1;
+
         $anioSeleccionado = (
             $anioSolicitado >= 2000 &&
             $anioSolicitado <= 2100
-        ) ? $anioSolicitado : (int)date('Y');
+        ) ? $anioSolicitado : $anioCicloActual;
+
         $mesSeleccionado = (
             $mesSolicitado >= 1 &&
             $mesSolicitado <= 12
@@ -151,6 +158,7 @@ class ConvocatoriaController
 
         $aniosConvocatorias = [];
         $resumenMensualConvocatorias = [];
+        $mesesVisiblesConvocatorias = [];
         $mostrarSelectorMes = false;
 
         if (
@@ -164,14 +172,14 @@ class ConvocatoriaController
                 $subtipoConvocatoria
             );
 
-            if (!in_array((int)date('Y'), $aniosConvocatorias, true)) {
-                $aniosConvocatorias[] = (int)date('Y');
+            if (!in_array($anioCicloActual, $aniosConvocatorias, true)) {
+                $aniosConvocatorias[] = $anioCicloActual;
             }
 
             rsort($aniosConvocatorias, SORT_NUMERIC);
 
             if (!in_array($anioSeleccionado, $aniosConvocatorias, true)) {
-                $anioSeleccionado = (int)date('Y');
+                $anioSeleccionado = $anioCicloActual;
             }
 
             $mostrarSelectorMes =
@@ -179,12 +187,51 @@ class ConvocatoriaController
                 $buscar === '';
 
             if ($mostrarSelectorMes) {
-                $resumenMensualConvocatorias = $modelo->obtenerResumenMensual(
-                    $estadoFiltro,
-                    $tipoConvocatoria,
-                    $subtipoConvocatoria,
-                    $anioSeleccionado
-                );
+                /*
+                 * Ventana móvil de 4 meses.
+                 * De septiembre a noviembre se conserva Septiembre-Diciembre.
+                 * En diciembre avanza a Octubre-Enero y a partir de ahí
+                 * continúa desplazándose un mes conforme termina cada periodo.
+                 */
+                $mesesDesdeSeptiembre = $mesActualCalendario >= 9
+                    ? $mesActualCalendario - 9
+                    : $mesActualCalendario + 3;
+                $desplazamientoVentana = max(0, $mesesDesdeSeptiembre - 2);
+
+                $inicioVentana = (new DateTimeImmutable(
+                    sprintf('%04d-09-01', $anioSeleccionado)
+                ))->modify('+' . $desplazamientoVentana . ' months');
+
+                $resumenesPorAnio = [];
+
+                for ($indiceMes = 0; $indiceMes < 4; $indiceMes++) {
+                    $fechaVentana = $inicioVentana->modify(
+                        '+' . $indiceMes . ' months'
+                    );
+                    $anioVentana = (int)$fechaVentana->format('Y');
+                    $mesVentana = (int)$fechaVentana->format('n');
+
+                    if (!isset($resumenesPorAnio[$anioVentana])) {
+                        $resumenesPorAnio[$anioVentana] =
+                            $modelo->obtenerResumenMensual(
+                                $estadoFiltro,
+                                $tipoConvocatoria,
+                                $subtipoConvocatoria,
+                                $anioVentana
+                            );
+                    }
+
+                    $mesesVisiblesConvocatorias[] = [
+                        'anio' => $anioVentana,
+                        'mes' => $mesVentana,
+                        'datos' => $resumenesPorAnio[$anioVentana][$mesVentana] ?? [
+                            'total' => 0,
+                            'convocatorias' => []
+                        ]
+                    ];
+                }
+
+                $resumenMensualConvocatorias = $resumenesPorAnio;
             }
         }
 
