@@ -143,7 +143,7 @@ class DesempenoModel
                              AND COALESCE(interacciones.notas, '') NOT LIKE '%[REGISTRO_LLAMADA_PRUEBA]%'
                             THEN 1 ELSE 0
                         END
-                    ), 0) AS llamadas_efectivas,
+                    ), 0) AS llamadas_con_contacto,
                     COUNT(DISTINCT CASE
                         WHEN interacciones.canal = 'LLAMADA_IP'
                          AND COALESCE(interacciones.notas, '') LIKE '%[VERIFICACION_EFECTIVA]%'
@@ -157,7 +157,7 @@ class DesempenoModel
                             DATE(interacciones.fecha_inicio)
                         )
                         ELSE NULL
-                    END) AS verificaciones_efectivas,
+                    END) AS llamadas_efectivas,
                     COUNT(DISTINCT CASE
                         WHEN interacciones.id IS NOT NULL
                          AND UPPER(TRIM(COALESCE(interacciones.canal, ''))) <> 'SISTEMA'
@@ -242,7 +242,16 @@ class DesempenoModel
                              AND COALESCE(interacciones.notas, '') NOT LIKE '%[SIN_CONTACTO_EFECTIVO]%'
                             THEN 1 ELSE 0
                         END
-                    ), 0) AS efectivas
+                    ), 0) AS contactos,
+                    COUNT(DISTINCT CASE
+                        WHEN interacciones.canal = 'LLAMADA_IP'
+                         AND COALESCE(interacciones.notas, '') LIKE '%[VERIFICACION_EFECTIVA]%'
+                         AND TRIM(COALESCE(interacciones.proveedor_externo, '')) <> ''
+                         AND TRIM(COALESCE(interacciones.id_externo, '')) <> ''
+                         AND COALESCE(interacciones.duracion_segundos, 0) > 0
+                        THEN interacciones.seguimiento_id
+                        ELSE NULL
+                    END) AS efectivas
                 FROM interacciones_vinculacion interacciones
                 INNER JOIN seguimientos_vinculacion seguimientos
                     ON seguimientos.id = interacciones.seguimiento_id
