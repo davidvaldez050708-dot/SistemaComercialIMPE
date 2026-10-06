@@ -20,8 +20,11 @@
 
 .formularios-hero {
     position: relative;
+    width: 100%;
+    max-width: 1040px;
     min-height: 156px;
     padding: 22px 28px;
+    justify-self: center;
     overflow: hidden;
     display: flex;
     align-items: center;
