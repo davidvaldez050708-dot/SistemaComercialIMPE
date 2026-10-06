@@ -3549,7 +3549,7 @@
 
 .convocatoria-list-workspace-icon.is-active {
     background-color: #e2f7f0;
-    color: #07866f;
+    color: var(--color-primary);
 }
 
 .convocatoria-list-workspace-icon.is-history {
