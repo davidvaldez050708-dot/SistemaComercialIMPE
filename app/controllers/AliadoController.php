@@ -231,6 +231,9 @@ class AliadoController
         $puedeSeguimientoConvocatorias =
             tienePermiso('aliados.seguimiento_convocatorias') &&
             $modeloAliado->seguimientoConvocatoriasDisponible();
+        $puedeOperarSeguimientoConvocatorias =
+            !$esAdministrador &&
+            $puedeSeguimientoConvocatorias;
 
         $filtros = [
             'buscar' => trim((string)($_GET['buscar'] ?? '')),
@@ -459,6 +462,15 @@ class AliadoController
         $modelo = new AliadoModel();
         $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
         $esAdministrador = (int)($_SESSION['rol_id'] ?? 0) === 1;
+
+        if ($esAdministrador) {
+            $this->responder([
+                'ok' => false,
+                'mensaje' =>
+                    'El Administrador puede supervisar este seguimiento, pero no modificarlo.'
+            ], 403);
+        }
+
         $seguimientoId = (int)($_POST['seguimiento_id'] ?? 0);
         $seguimientoConvocatoriaId =
             (int)($_POST['seguimiento_convocatoria_id'] ?? 0);
