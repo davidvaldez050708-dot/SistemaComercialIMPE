@@ -132,6 +132,11 @@ class DesempenoPdfService
         $tendencia = is_array($datos['tendencia'] ?? null)
             ? $datos['tendencia']
             : [];
+        $tendenciaPersonas = is_array(
+            $datos['tendencia_personas'] ?? null
+        )
+            ? $datos['tendencia_personas']
+            : [];
         $criterios = is_array($datos['criterios'] ?? null)
             ? $datos['criterios']
             : [];
@@ -294,10 +299,51 @@ class DesempenoPdfService
             $html .= '</tr></table></section>';
         }
 
-        if (!empty($tendencia)) {
+        $tendenciaActiva = $this->filtrarTendenciaActiva(
+            $tendencia
+        );
+        $hayDetalleAnalistas =
+            $area === 'analistas' &&
+            !empty($tendenciaPersonas);
+
+        if (!empty($tendenciaActiva) || $hayDetalleAnalistas) {
             $html .= '<section class="section">';
-            $html .= $this->titulo('Historial diario del periodo');
-            $html .= $this->tablaTendencia($tendencia, $area);
+            $tituloHistorial = 'Historial diario del periodo';
+
+            if ($area === 'analistas') {
+                if (count($ranking) === 1) {
+                    $nombreHistorial = trim(
+                        (string)(
+                            $ranking[0]['nombre_completo'] ?? ''
+                        )
+                    );
+                    if ($nombreHistorial !== '') {
+                        $tituloHistorial =
+                            'Historial diario · ' .
+                            $nombreHistorial;
+                    }
+                } elseif (count($ranking) > 1) {
+                    $tituloHistorial =
+                        'Historial diario por analista';
+                }
+            }
+
+            $html .= $this->titulo($tituloHistorial);
+            $html .=
+                '<div class="history-note">Se muestran únicamente los días con movimientos registrados.</div>';
+
+            if ($hayDetalleAnalistas) {
+                $html .= $this->tablaTendenciaAnalistasPorPersona(
+                    $tendenciaPersonas,
+                    count($ranking) > 1
+                );
+            } else {
+                $html .= $this->tablaTendencia(
+                    $tendenciaActiva,
+                    $area
+                );
+            }
+
             $html .= '</section>';
         }
 
@@ -333,9 +379,7 @@ class DesempenoPdfService
                 $html .= '<td>' .
                     (int)($fila['posicion'] ?? 0) .
                     '</td>';
-                $html .= '<td><strong>' .
-                    $this->e($fila['nombre_completo'] ?? '') .
-                    '</strong></td>';
+                $html .= $this->tdPersona($fila);
                 $html .= $this->tdNum(
                     $fila['aliados_trabajados'] ?? 0
                 );
@@ -378,9 +422,7 @@ class DesempenoPdfService
                 $html .= '<td>' .
                     (int)($fila['posicion'] ?? 0) .
                     '</td>';
-                $html .= '<td><strong>' .
-                    $this->e($fila['nombre_completo'] ?? '') .
-                    '</strong></td>';
+                $html .= $this->tdPersona($fila);
                 $html .= $this->tdNum(
                     $fila['publicaciones'] ?? 0
                 );
@@ -423,9 +465,7 @@ class DesempenoPdfService
             $html .= '<td>' .
                 (int)($fila['posicion'] ?? 0) .
                 '</td>';
-            $html .= '<td><strong>' .
-                $this->e($fila['nombre_completo'] ?? '') .
-                '</strong></td>';
+            $html .= $this->tdPersona($fila);
             $html .= $this->tdNum(
                 $fila['llamadas_realizadas'] ?? 0
             );
@@ -537,6 +577,233 @@ class DesempenoPdfService
         }
 
         return $html . '</tbody></table>';
+    }
+
+    private function tablaTendenciaAnalistasPorPersona(
+        array $filas,
+        $mostrarPersona
+    ) {
+        $filas = array_values(array_filter(
+            $filas,
+            static function ($fila) {
+                return
+                    (int)($fila['interacciones'] ?? 0) > 0 ||
+                    (int)($fila['contactos'] ?? 0) > 0 ||
+                    (int)($fila['efectivas'] ?? 0) > 0;
+            }
+        ));
+
+        if (empty($filas)) {
+            return '<div class="empty">No hubo movimientos registrados en el periodo.</div>';
+        }
+
+        $html =
+            '<table class="table compact history-table' .
+            ($mostrarPersona ? ' has-person' : '') .
+            '"><thead><tr>' .
+            '<th>Fecha</th>';
+
+        if ($mostrarPersona) {
+            $html .= '<th>Analista</th>';
+        }
+
+        $html .=
+            '<th class="num">Interacciones</th>' .
+            '<th class="num">Con contacto</th>' .
+            '<th class="num">Llamadas efectivas</th>' .
+            '</tr></thead><tbody>';
+
+        foreach ($filas as $fila) {
+            $nombre = trim(
+                (string)($fila['nombre'] ?? '') . ' ' .
+                (string)($fila['apellidos'] ?? '')
+            );
+
+            $html .= '<tr><td>' .
+                $this->e($this->fechaLegible($fila['fecha'] ?? '')) .
+                '</td>';
+
+            if ($mostrarPersona) {
+                $html .= '<td><strong>' .
+                    $this->e($nombre) .
+                    '</strong></td>';
+            }
+
+            $html .= $this->tdNum(
+                $fila['interacciones'] ?? 0
+            );
+            $html .= $this->tdNum(
+                $fila['contactos'] ?? 0
+            );
+            $html .= $this->tdNum(
+                $fila['efectivas'] ?? 0
+            );
+            $html .= '</tr>';
+        }
+
+        return $html . '</tbody></table>';
+    }
+
+    private function filtrarTendenciaActiva(array $filas)
+    {
+        return array_values(array_filter(
+            $filas,
+            static function ($fila) {
+                return
+                    (int)($fila['principal'] ?? 0) > 0 ||
+                    (int)($fila['secundario'] ?? 0) > 0 ||
+                    (int)($fila['terciario'] ?? 0) > 0;
+            }
+        ));
+    }
+
+    private function tdPersona(array $fila)
+    {
+        $nombre = trim(
+            (string)($fila['nombre_completo'] ?? '')
+        );
+        $foto = $this->fotoPerfilDataUri(
+            $fila['foto_perfil'] ?? ''
+        );
+
+        if ($foto !== '') {
+            $avatar =
+                '<span class="person-avatar">' .
+                '<img src="' . $this->e($foto) . '" alt="">' .
+                '</span>';
+        } else {
+            $avatar =
+                '<span class="person-avatar is-initials">' .
+                $this->e($this->iniciales($nombre)) .
+                '</span>';
+        }
+
+        return
+            '<td class="person-column">' .
+            '<span class="person-wrap">' .
+            $avatar .
+            '<strong class="person-name">' .
+            $this->e($nombre) .
+            '</strong>' .
+            '</span></td>';
+    }
+
+    private function fotoPerfilDataUri($ruta)
+    {
+        $ruta = trim((string)$ruta);
+        if ($ruta === '') {
+            return '';
+        }
+
+        if (strpos($ruta, 'data:image/') === 0) {
+            return $ruta;
+        }
+
+        $rutaUrl = parse_url($ruta, PHP_URL_PATH);
+        $rutaLimpia = urldecode(
+            trim((string)($rutaUrl ?: $ruta))
+        );
+
+        $posicionPublic = strpos($rutaLimpia, '/public/');
+        if ($posicionPublic !== false) {
+            $rutaLimpia = substr(
+                $rutaLimpia,
+                $posicionPublic + 1
+            );
+        }
+
+        $rutaLimpia = ltrim(
+            str_replace('\\', '/', $rutaLimpia),
+            '/'
+        );
+
+        $raiz = realpath(dirname(__DIR__, 2));
+        if ($raiz === false) {
+            return '';
+        }
+
+        $candidatas = [
+            $raiz . DIRECTORY_SEPARATOR .
+                str_replace('/', DIRECTORY_SEPARATOR, $rutaLimpia),
+            $raiz . DIRECTORY_SEPARATOR . 'public' .
+                DIRECTORY_SEPARATOR .
+                str_replace('/', DIRECTORY_SEPARATOR, $rutaLimpia)
+        ];
+
+        foreach (array_unique($candidatas) as $candidata) {
+            $real = realpath($candidata);
+            if (
+                $real === false ||
+                strpos($real, $raiz . DIRECTORY_SEPARATOR) !== 0 ||
+                !is_file($real) ||
+                !is_readable($real)
+            ) {
+                continue;
+            }
+
+            $mime = '';
+            if (function_exists('mime_content_type')) {
+                $mime = (string)mime_content_type($real);
+            }
+
+            if (
+                !in_array(
+                    $mime,
+                    ['image/png', 'image/jpeg', 'image/gif'],
+                    true
+                )
+            ) {
+                continue;
+            }
+
+            $contenido = file_get_contents($real);
+            if ($contenido === false || $contenido === '') {
+                continue;
+            }
+
+            return
+                'data:' . $mime . ';base64,' .
+                base64_encode($contenido);
+        }
+
+        return '';
+    }
+
+    private function iniciales($nombre)
+    {
+        $partes = preg_split(
+            '/\s+/u',
+            trim((string)$nombre),
+            -1,
+            PREG_SPLIT_NO_EMPTY
+        );
+
+        if (empty($partes)) {
+            return 'U';
+        }
+
+        $resultado = '';
+        foreach (array_slice($partes, 0, 2) as $parte) {
+            $resultado .= function_exists('mb_substr')
+                ? mb_substr($parte, 0, 1, 'UTF-8')
+                : substr($parte, 0, 1);
+        }
+
+        return strtoupper($resultado);
+    }
+
+    private function fechaLegible($fecha)
+    {
+        $fecha = trim((string)$fecha);
+        if ($fecha === '') {
+            return '—';
+        }
+
+        try {
+            return (new DateTimeImmutable($fecha))->format('d/m/Y');
+        } catch (Throwable $error) {
+            return $fecha;
+        }
     }
 
     private function scope($label, $value)
@@ -659,7 +926,7 @@ class DesempenoPdfService
             '.scope{width:100%;table-layout:fixed;border-collapse:collapse;border:1px solid #D9E1EB;background:#F8FAFC;margin-bottom:12px}.scope td{width:25%;padding:7px 8px;border-right:1px solid #D9E1EB}.scope td:last-child{border-right:0}.scope span,.metrics span,.recognitions span{display:block;color:#737F90;font-size:5.5pt}.scope strong{display:block;margin-top:2px;color:#16223B;font-size:6.6pt}' .
             '.section{margin:0 0 13px}.keep{page-break-inside:avoid}.section-title{border-left:3px solid #273A8A;padding-left:7px;margin-bottom:7px;page-break-after:avoid}.section-title h2{margin:0;color:#16223B;font-size:10pt}' .
             '.metrics{width:100%;table-layout:fixed;border-collapse:separate;border-spacing:4px 0}.metrics td{padding:8px;border:1px solid #D9E1EB;background:#F9FBFE}.metrics strong{display:block;margin-top:2px;color:#16223B;font-size:11pt}' .
-            '.table{width:100%;border-collapse:collapse;font-size:5.8pt}.table thead{display:table-header-group}.table tr{page-break-inside:avoid}.table th{padding:5px 5px;background:#273A8A;color:#FFF;text-align:left}.table td{padding:5px;border-bottom:1px solid #E5EAF0;vertical-align:middle}.table tbody tr:nth-child(even){background:#F8FAFC}.table .num{text-align:right;white-space:nowrap}.table.compact{width:70%}' .
+            '.table{width:100%;border-collapse:collapse;font-size:5.8pt}.table thead{display:table-header-group}.table tr{page-break-inside:avoid}.table th{padding:5px 5px;background:#273A8A;color:#FFF;text-align:left}.table td{padding:5px;border-bottom:1px solid #E5EAF0;vertical-align:middle}.table tbody tr:nth-child(even){background:#F8FAFC}.table .num{text-align:right;white-space:nowrap}.table.compact{width:84%;margin-left:auto;margin-right:auto}.table.compact.has-person{width:94%}.history-note{width:84%;margin:0 auto 5px;color:#7A8493;font-size:5.5pt}.person-column{min-width:112px}.person-wrap{display:inline-block;vertical-align:middle}.person-avatar{display:inline-block;width:20px;height:20px;margin-right:5px;border:1px solid #D7E0EC;border-radius:50%;overflow:hidden;background:#EEF3FB;color:#273A8A;text-align:center;vertical-align:middle;font-size:6.2pt;font-weight:700;line-height:20px}.person-avatar img{width:20px;height:20px}.person-avatar.is-initials{line-height:20px}.person-name{display:inline-block;max-width:118px;vertical-align:middle;line-height:1.25}' .
             '.recognitions{width:100%;table-layout:fixed;border-collapse:separate;border-spacing:4px}.recognitions td{padding:8px;border:1px solid #D9E1EB;background:#FBFCFE}.recognitions strong{display:block;margin-top:2px;color:#16223B;font-size:7pt}.recognitions small{display:block;margin-top:2px;color:#273A8A;font-size:5.6pt;font-weight:700}' .
             '.criteria{margin:0;padding-left:17px;color:#556274;font-size:6pt}.criteria li{margin-bottom:4px}.notice{margin-top:8px;padding:7px 8px;border-left:3px solid #0A8F7A;background:#F3FAF8;color:#52635F;font-size:5.8pt}.empty{padding:10px;border:1px dashed #D9E1EB;background:#FAFBFD;color:#737F90}';
     }
