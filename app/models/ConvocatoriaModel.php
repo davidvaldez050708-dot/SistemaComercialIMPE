@@ -133,7 +133,8 @@ class ConvocatoriaModel
         $tipoConvocatoria = '',
         $subtipoConvocatoria = '',
         $anio = 0,
-        $mes = 0
+        $mes = 0,
+        $fecha = ''
     )
     {
         $sql = "SELECT
@@ -211,6 +212,12 @@ class ConvocatoriaModel
             $sql .= " AND MONTH(convocatorias.fecha_inicio) = ?";
             $tipos .= 'i';
             $parametros[] = (int)$mes;
+        }
+
+        if ($fecha !== '') {
+            $sql .= " AND ? BETWEEN convocatorias.fecha_inicio AND convocatorias.fecha_termino";
+            $tipos .= 's';
+            $parametros[] = $fecha;
         }
 
         $sql .= " GROUP BY convocatorias.id
