@@ -46,7 +46,9 @@ $mostrarReportesEnAnalisis =
     $mostrarReportes &&
     !$esRolMarketingSidebar;
 
-$mostrarDesempeno = tienePermiso('desempeno.ver');
+$mostrarDesempeno =
+    tienePermiso('desempeno.ver') &&
+    !$esRolMarketingSidebar;
 $mostrarAnalisis =
     $mostrarReportesEnAnalisis ||
     $mostrarDesempeno;
