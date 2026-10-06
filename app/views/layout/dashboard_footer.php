@@ -184,6 +184,7 @@ $esTerritorialFooter = in_array(
 $jsDashboardFooter = [
     'cambiar_password.js',
     'mi_perfil.js',
+    'sidebar_scroll_state.js',
     'recordatorios.js'
 ];
 
