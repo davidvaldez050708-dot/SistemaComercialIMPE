@@ -97,6 +97,19 @@ class DesempenoService
                 $hastaSql,
                 $estadoId
             );
+        } elseif ($area === 'marketing') {
+            $metricas = $this->modelo->obtenerMetricasMarketing(
+                $personasAnalizadas,
+                $desdeSql,
+                $hastaSql,
+                $estadoId
+            );
+            $tendenciaRaw = $this->modelo->obtenerTendenciaMarketing(
+                array_column($personasAnalizadas, 'id'),
+                $desdeSql,
+                $hastaSql,
+                $estadoId
+            );
         } else {
             $metricas = $this->modelo->obtenerMetricasAnalistas(
                 $personasAnalizadas,
@@ -140,7 +153,7 @@ class DesempenoService
             'area' => $area,
             'area_label' => $area === 'cuenta_clave'
                 ? 'Cuenta Clave'
-                : 'Analistas',
+                : ($area === 'marketing' ? 'Marketing' : 'Analistas'),
             'periodo' => $periodo,
             'territorios' => $territorios,
             'personas' => $personas,
@@ -224,7 +237,7 @@ class DesempenoService
             $solicitada = strtolower(trim((string)$solicitada));
             return in_array(
                 $solicitada,
-                ['analistas', 'cuenta_clave'],
+                ['analistas', 'cuenta_clave', 'marketing'],
                 true
             )
                 ? $solicitada
@@ -235,9 +248,15 @@ class DesempenoService
             return 'analistas';
         }
 
-        return strcasecmp($rolNombre, 'Cuenta Clave') === 0
-            ? 'cuenta_clave'
-            : 'analistas';
+        if (strcasecmp($rolNombre, 'Cuenta Clave') === 0) {
+            return 'cuenta_clave';
+        }
+
+        if (strcasecmp($rolNombre, 'Marketing') === 0) {
+            return 'marketing';
+        }
+
+        return 'analistas';
     }
 
     private function obtenerTerritorios($vista, $usuarioId, $rolNombre)
@@ -261,10 +280,16 @@ class DesempenoService
     private function obtenerPersonas($vista, $area, $usuarioId)
     {
         if ($vista === 'global') {
+            $rolObjetivo = 'Analista de Datos';
+
+            if ($area === 'cuenta_clave') {
+                $rolObjetivo = 'Cuenta Clave';
+            } elseif ($area === 'marketing') {
+                $rolObjetivo = 'Marketing';
+            }
+
             return $this->modelo->obtenerUsuariosPorRol(
-                $area === 'cuenta_clave'
-                    ? 'Cuenta Clave'
-                    : 'Analista de Datos'
+                $rolObjetivo
             );
         }
 
@@ -428,6 +453,59 @@ class DesempenoService
                     (int)($fila['seguimientos'] ?? 0);
             }
             unset($fila);
+        } elseif ($area === 'marketing') {
+            $maxPublicaciones = $this->maximo(
+                $filas,
+                'publicaciones'
+            );
+            $maxTerritorios = $this->maximo(
+                $filas,
+                'territorios_cubiertos'
+            );
+            $maxActualizaciones = $this->maximo(
+                $filas,
+                'actualizaciones'
+            );
+            $maxVigentes = $this->maximo(
+                $filas,
+                'vigentes'
+            );
+
+            foreach ($filas as &$fila) {
+                $fila['indice'] = count($filas) > 1
+                    ? round(
+                        (
+                            $this->normalizado(
+                                $fila['publicaciones'] ?? 0,
+                                $maxPublicaciones
+                            ) * 35
+                        ) +
+                        (
+                            $this->normalizado(
+                                $fila['territorios_cubiertos'] ?? 0,
+                                $maxTerritorios
+                            ) * 25
+                        ) +
+                        (
+                            $this->normalizado(
+                                $fila['actualizaciones'] ?? 0,
+                                $maxActualizaciones
+                            ) * 20
+                        ) +
+                        (
+                            $this->normalizado(
+                                $fila['vigentes'] ?? 0,
+                                $maxVigentes
+                            ) * 20
+                        ),
+                        1
+                    )
+                    : null;
+                $fila['actividad_total'] =
+                    (int)($fila['publicaciones'] ?? 0) +
+                    (int)($fila['actualizaciones'] ?? 0);
+            }
+            unset($fila);
         } else {
             $maxEfectivas = $this->maximo(
                 $filas,
@@ -494,7 +572,11 @@ class DesempenoService
                 }
             }
 
-            $clave = $area === 'cuenta_clave'
+            $clave = in_array(
+                $area,
+                ['cuenta_clave', 'marketing'],
+                true
+            )
                 ? 'actividad_total'
                 : 'llamadas_efectivas';
 
@@ -546,6 +628,24 @@ class DesempenoService
                 ),
                 'confirmaciones' => array_sum(
                     array_column($ranking, 'confirmaciones')
+                )
+            ];
+        }
+
+        if ($area === 'marketing') {
+            return [
+                'personas' => count($ranking),
+                'publicaciones' => array_sum(
+                    array_column($ranking, 'publicaciones')
+                ),
+                'territorios_cubiertos' => array_sum(
+                    array_column($ranking, 'territorios_cubiertos')
+                ),
+                'actualizaciones' => array_sum(
+                    array_column($ranking, 'actualizaciones')
+                ),
+                'vigentes' => array_sum(
+                    array_column($ranking, 'vigentes')
                 )
             ];
         }
@@ -606,6 +706,39 @@ class DesempenoService
                     'Más confirmaciones',
                     'bi-patch-check',
                     'confirmaciones'
+                )
+            ]));
+        }
+
+        if ($area === 'marketing') {
+            return array_values(array_filter([
+                $this->reconocimiento(
+                    $ranking,
+                    'publicaciones',
+                    'Mayor publicación',
+                    'bi-megaphone',
+                    'convocatorias'
+                ),
+                $this->reconocimiento(
+                    $ranking,
+                    'territorios_cubiertos',
+                    'Mayor cobertura territorial',
+                    'bi-map',
+                    'territorios'
+                ),
+                $this->reconocimiento(
+                    $ranking,
+                    'actualizaciones',
+                    'Mayor actualización',
+                    'bi-pencil-square',
+                    'convocatorias actualizadas'
+                ),
+                $this->reconocimiento(
+                    $ranking,
+                    'vigentes',
+                    'Mayor vigencia activa',
+                    'bi-calendar-check',
+                    'convocatorias vigentes'
                 )
             ]));
         }
@@ -725,21 +858,31 @@ class DesempenoService
             $clave = $fecha->format('Y-m-d');
             $fila = $porFecha[$clave] ?? [];
 
-            $salida[] = $area === 'cuenta_clave'
-                ? [
+            if ($area === 'cuenta_clave') {
+                $salida[] = [
                     'fecha' => $clave,
                     'label' => $fecha->format('d/m'),
                     'principal' => (int)($fila['difusiones'] ?? 0),
                     'secundario' => (int)($fila['seguimientos'] ?? 0),
                     'terciario' => (int)($fila['confirmaciones'] ?? 0)
-                ]
-                : [
+                ];
+            } elseif ($area === 'marketing') {
+                $salida[] = [
+                    'fecha' => $clave,
+                    'label' => $fecha->format('d/m'),
+                    'principal' => (int)($fila['publicaciones'] ?? 0),
+                    'secundario' => (int)($fila['actualizaciones'] ?? 0),
+                    'terciario' => 0
+                ];
+            } else {
+                $salida[] = [
                     'fecha' => $clave,
                     'label' => $fecha->format('d/m'),
                     'principal' => (int)($fila['interacciones'] ?? 0),
                     'secundario' => (int)($fila['efectivas'] ?? 0),
                     'terciario' => 0
                 ];
+            }
         }
 
         return $salida;
@@ -752,6 +895,16 @@ class DesempenoService
                 'El índice operativo, cuando existe más de una persona, pondera por igual aliados trabajados, difusiones, actualizaciones de seguimiento y confirmaciones.',
                 'La vista es informativa y no asigna automáticamente bonos o incentivos.',
                 'Los datos se calculan con los movimientos registrados dentro del periodo seleccionado.'
+            ];
+        }
+
+        if ($area === 'marketing') {
+            return [
+                'Publicación: convocatoria creada por la persona dentro del periodo seleccionado.',
+                'Cobertura territorial: estados asociados a las convocatorias creadas en el periodo.',
+                'Actualización: convocatoria cuya última modificación registrada fue realizada por la persona dentro del periodo.',
+                'El índice operativo pondera publicaciones (35%), cobertura territorial (25%), actualizaciones (20%) y convocatorias vigentes creadas en el periodo (20%).',
+                'El ranking es un apoyo de gestión; no decide automáticamente bonos, sanciones ni incentivos.'
             ];
         }
 
