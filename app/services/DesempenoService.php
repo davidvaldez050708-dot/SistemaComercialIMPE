@@ -200,10 +200,6 @@ class DesempenoService
         $esMarketing =
             strcasecmp($rolNombre, 'Marketing') === 0;
 
-        if ($esMarketing) {
-            return 'sin_acceso';
-        }
-
         /*
          * Los perfiles con vista global organizacional (Administrador /
          * Dirección futura) no deben heredar artificialmente una vista
@@ -239,10 +235,10 @@ class DesempenoService
 
         /*
          * Solo Cuenta Clave posee una relación de supervisión territorial
-         * con Analistas. Analista y Marketing nunca deben convertirse en
-         * "Mi equipo" aunque el permiso se conceda por error.
+         * con Analistas. Analista y Marketing conservan únicamente su vista
+         * personal aunque el permiso de equipo se conceda por error.
          */
-        if ($esAnalista && !$puedeGlobal) {
+        if (($esAnalista || $esMarketing) && !$puedeGlobal) {
             return $puedePropio ? 'propio' : 'sin_acceso';
         }
 
@@ -279,6 +275,10 @@ class DesempenoService
 
         if (strcasecmp($rolNombre, 'Cuenta Clave') === 0) {
             return 'cuenta_clave';
+        }
+
+        if (strcasecmp($rolNombre, 'Marketing') === 0) {
+            return 'marketing';
         }
 
         return 'analistas';
