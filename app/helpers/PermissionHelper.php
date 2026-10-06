@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/AdminRolePolicy.php';
+
 if (!function_exists('tienePermiso')) {
     function tienePermiso($codigo)
     {
@@ -16,12 +18,16 @@ if (!function_exists('tienePermiso')) {
         $rolId = (int)($_SESSION['rol_id'] ?? 0);
 
         /*
-         * El Administrador es el único rol protegido del sistema. En la ruta
-         * de vinculación conserva deliberadamente modo de observación, aunque
-         * el catálogo administrativo mantenga sus relaciones completas.
+         * El Administrador es un rol transversal de supervisión y gobierno del
+         * sistema. Puede consultar información de todas las áreas, pero no
+         * ejecutar acciones operativas que corresponden al trabajo diario de
+         * Analistas, Cuenta Clave, Marketing, Ventas o Finanzas.
          */
-        if ($rolId === 1 && strpos($codigo, 'seguimientos_vinculacion.') === 0) {
-            return $codigo === 'seguimientos_vinculacion.ver';
+        if (
+            $rolId === 1 &&
+            permisoOperativoRestringidoAdministrador($codigo)
+        ) {
+            return false;
         }
 
         $permisos = is_array($_SESSION['permisos'] ?? null)
