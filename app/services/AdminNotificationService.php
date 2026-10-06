@@ -60,11 +60,33 @@ class AdminNotificationService
             if ((int)$seguimientos['total'] > 0) {
                 $cantidad = (int)$seguimientos['total'];
                 $total += $cantidad;
+
+                $seguimientoId = (int)(
+                    $seguimientos['seguimiento_id'] ?? 0
+                );
+                $nombreEntidad = trim(
+                    (string)($seguimientos['nombre_entidad'] ?? '')
+                );
+
+                $urlSeguimiento =
+                    'index.php?controller=seguimientoVinculacion&action=index';
+
+                if ($cantidad === 1 && $seguimientoId > 0) {
+                    $urlSeguimiento =
+                        'index.php?controller=seguimientoVinculacion&action=detalle&id=' .
+                        $seguimientoId;
+                }
+
                 $recordatorios[] = [
-                    'id' => 0,
-                    'nombre_entidad' => 'Seguimiento comercial',
+                    'id' => $cantidad === 1 ? $seguimientoId : 0,
+                    'seguimiento_id' =>
+                        $cantidad === 1 ? $seguimientoId : 0,
+                    'nombre_entidad' =>
+                        $cantidad === 1 && $nombreEntidad !== ''
+                            ? $nombreEntidad
+                            : 'Seguimiento comercial',
                     'accion' => $cantidad === 1
-                        ? '1 próxima acción está vencida'
+                        ? 'Próxima acción vencida · revisar seguimiento'
                         : $cantidad . ' próximas acciones están vencidas',
                     'fecha' => (string)($seguimientos['fecha'] ?? ''),
                     'etiqueta' => $cantidad . ' vencida' .
@@ -74,7 +96,7 @@ class AdminNotificationService
                     'estado' => 'normal',
                     'icono' => 'bi-exclamation-circle',
                     'prioridad' => 2,
-                    'url' => 'index.php?controller=seguimientoVinculacionReporte&action=index&tipo_reporte=cartera'
+                    'url' => $urlSeguimiento
                 ];
             }
 
@@ -179,7 +201,12 @@ class AdminNotificationService
     private function resumenSeguimientosVencidos()
     {
         if (!$this->tablaDisponible('seguimientos_vinculacion')) {
-            return ['total' => 0, 'fecha' => ''];
+            return [
+                'total' => 0,
+                'fecha' => '',
+                'seguimiento_id' => 0,
+                'nombre_entidad' => ''
+            ];
         }
 
         $sql = "SELECT
@@ -193,10 +220,41 @@ class AdminNotificationService
 
         $resultado = $this->connection->query($sql);
         $fila = $resultado ? $resultado->fetch_assoc() : [];
+        $total = (int)($fila['total'] ?? 0);
+
+        $seguimientoId = 0;
+        $nombreEntidad = '';
+
+        if ($total === 1) {
+            $detalle = $this->connection->query(
+                "SELECT
+                    id,
+                    nombre_entidad
+                 FROM seguimientos_vinculacion
+                 WHERE activo = 1
+                   AND estado_seguimiento <> 'DESCARTADO'
+                   AND proxima_accion_at IS NOT NULL
+                   AND proxima_accion_at < NOW()
+                 ORDER BY proxima_accion_at ASC, id ASC
+                 LIMIT 1"
+            );
+
+            $filaDetalle = $detalle
+                ? $detalle->fetch_assoc()
+                : [];
+
+            $seguimientoId =
+                (int)($filaDetalle['id'] ?? 0);
+            $nombreEntidad = trim(
+                (string)($filaDetalle['nombre_entidad'] ?? '')
+            );
+        }
 
         return [
-            'total' => (int)($fila['total'] ?? 0),
-            'fecha' => (string)($fila['fecha'] ?? '')
+            'total' => $total,
+            'fecha' => (string)($fila['fecha'] ?? ''),
+            'seguimiento_id' => $seguimientoId,
+            'nombre_entidad' => $nombreEntidad
         ];
     }
 
