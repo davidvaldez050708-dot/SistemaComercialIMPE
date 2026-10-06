@@ -890,12 +890,21 @@ $urlCambiarOpcionMes = $tipoConvocatoria === 'sindicatos'
             </form>
         </div>
 
+        <?php
+        $mesActualSistema = (int)date('n');
+        $anioActualSistema = (int)date('Y');
+        ?>
+
         <div class="convocatoria-month-grid">
             <?php foreach ($mesesVisiblesConvocatorias as $mesVisible): ?>
                 <?php
                 $numeroMes = (int)($mesVisible['mes'] ?? 0);
                 $anioMes = (int)($mesVisible['anio'] ?? $anioSeleccionado);
                 $nombreMes = $nombresMesesConvocatoria[$numeroMes] ?? '';
+                $esMesActual = (
+                    $numeroMes === $mesActualSistema &&
+                    $anioMes === $anioActualSistema
+                );
                 $datosMes = is_array($mesVisible['datos'] ?? null)
                     ? $mesVisible['datos']
                     : ['total' => 0, 'convocatorias' => []];
@@ -914,7 +923,19 @@ $urlCambiarOpcionMes = $tipoConvocatoria === 'sindicatos'
                     '&mes=' . $numeroMes;
                 ?>
 
-                <article class="dashboard-panel convocatoria-month-card">
+                <article
+                    class="dashboard-panel convocatoria-month-card<?= $esMesActual ? ' is-current-month' : '' ?>"
+                    <?= $esMesActual ? 'aria-current="date"' : '' ?>>
+                    <?php if ($esMesActual): ?>
+                        <span class="convocatoria-month-current-badge">
+                            Mes actual
+                        </span>
+                    <?php endif; ?>
+
+                    <i
+                        class="bi bi-calendar3 convocatoria-month-watermark"
+                        aria-hidden="true"></i>
+
                     <div class="convocatoria-month-card-header">
                         <span class="convocatoria-month-icon">
                             <i class="bi bi-calendar3"></i>
