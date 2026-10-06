@@ -2029,3 +2029,59 @@ button.aliados-followup-summary:hover .aliados-followup-pill {
     font-size: 8px;
     font-weight: 700;
 }
+
+
+/* Paginación de territorios en Aliados */
+.aliados-territory-pagination [data-ally-territory-pages] {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.aliados-territory-pagination .data-pagination-button {
+    width: 30px;
+    height: 30px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    padding: 0;
+    border: 1px solid var(--color-border, #dfe5ef);
+    border-radius: 8px;
+    background: #fff;
+    color: var(--color-text-secondary, #6b7280);
+    font: inherit;
+    font-size: 10px;
+    font-weight: 800;
+    line-height: 1;
+    cursor: pointer;
+    box-shadow: none;
+    appearance: none;
+    -webkit-appearance: none;
+    transition:
+        border-color .16s ease,
+        background-color .16s ease,
+        color .16s ease,
+        box-shadow .16s ease,
+        transform .16s ease;
+}
+
+.aliados-territory-pagination .data-pagination-button:hover,
+.aliados-territory-pagination .data-pagination-button:focus-visible {
+    border-color: var(--color-primary, #273a8a);
+    background: var(--color-primary-soft, #f1f4ff);
+    color: var(--color-primary, #273a8a);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(39, 58, 138, .08);
+}
+
+.aliados-territory-pagination .data-pagination-button:active {
+    transform: translateY(1px);
+}
+
+.aliados-territory-pagination .data-pagination-button.active {
+    border-color: var(--color-primary, #273a8a);
+    background: var(--color-primary, #273a8a);
+    color: #fff;
+    box-shadow: 0 4px 10px rgba(39, 58, 138, .16);
+}
