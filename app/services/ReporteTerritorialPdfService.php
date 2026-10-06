@@ -3,6 +3,8 @@
 use Dompdf\Dompdf;
 use Dompdf\Options;
 
+require_once __DIR__ . '/ReporteNombreArchivoService.php';
+
 class ReporteTerritorialPdfService
 {
     public function generar(array $reporte): array
@@ -51,14 +53,23 @@ class ReporteTerritorialPdfService
             });
 
             $estado = $reporte['estado'] ?? [];
-            $nombreEstado = trim((string)($estado['nombre'] ?? 'Territorio'));
-            $nombreSeguro = preg_replace('/[^A-Za-z0-9_-]+/', '_', $this->sinAcentos($nombreEstado));
-            $nombreSeguro = trim((string)$nombreSeguro, '_');
+            $nombreEstado = trim(
+                (string)($estado['nombre'] ?? 'Territorio')
+            );
 
             return [
                 'ok' => true,
                 'contenido_pdf' => $dompdf->output(),
-                'nombre_archivo' => 'Reporte_Informacion_Territorial_' . ($nombreSeguro !== '' ? $nombreSeguro : 'Territorio') . '.pdf'
+                'nombre_archivo' =>
+                    ReporteNombreArchivoService::corte(
+                        'Informacion_Territorial',
+                        [
+                            $nombreEstado !== ''
+                                ? $nombreEstado
+                                : 'Territorio'
+                        ],
+                        date('Y-m-d')
+                    )
             ];
         } catch (Throwable $error) {
             return $this->error(
