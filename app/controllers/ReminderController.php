@@ -10,6 +10,7 @@ require_once __DIR__ . '/../services/ReminderObservacionService.php';
 require_once __DIR__ . '/../services/ReminderMeetingConfirmationService.php';
 require_once __DIR__ . '/../services/SeguimientoCambioDatosService.php';
 require_once __DIR__ . '/../services/AliadoSeguimientoReminderService.php';
+require_once __DIR__ . '/../services/AdminNotificationService.php';
 
 class ReminderController
 {
@@ -40,6 +41,7 @@ class ReminderController
         header('Content-Type: application/json; charset=utf-8');
 
         $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
+        $esAdministrador = (int)($_SESSION['rol_id'] ?? 0) === 1;
         $esSupervisor = tienePermiso('reuniones.gestionar');
         $esAnalista = tienePermiso('reuniones.solicitar');
         $puedeCentroReuniones =
@@ -50,13 +52,28 @@ class ReminderController
 
         if (
             $usuarioId <= 0 ||
-            (!$puedeCentroReuniones && !$puedeSeguimientoAliados)
+            (
+                !$esAdministrador &&
+                !$puedeCentroReuniones &&
+                !$puedeSeguimientoAliados
+            )
         ) {
             http_response_code(403);
             echo json_encode([
                 'ok' => false,
                 'mensaje' => 'No tienes acceso a estas notificaciones.'
             ], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        if ($esAdministrador) {
+            $resultado = (new AdminNotificationService())->obtener();
+
+            echo json_encode(
+                $resultado,
+                JSON_UNESCAPED_UNICODE |
+                JSON_INVALID_UTF8_SUBSTITUTE
+            );
             exit;
         }
 
