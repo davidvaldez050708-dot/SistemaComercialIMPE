@@ -513,7 +513,7 @@ $rankingTitle = $vista === 'propio'
                 </div>
             </article>
             <article>
-                <span class="performance-kpi-icon is-success"><i class="bi bi-telephone-check"></i></span>
+                <span class="performance-kpi-icon is-success"><i class="bi bi-person-check"></i></span>
                 <div>
                     <strong><?= (int)($resumen['llamadas_efectivas'] ?? 0) ?></strong>
                     <span>Llamadas efectivas</span>
