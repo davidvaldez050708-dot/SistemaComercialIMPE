@@ -872,6 +872,80 @@ class AliadoModel
         }
     }
 
+    public function obtenerAgendaSeguimientoAliados(
+        $usuarioId,
+        $dias = 7,
+        $limite = 50
+    ) {
+        if (!$this->seguimientoConvocatoriasDisponible()) {
+            return [];
+        }
+
+        $usuarioId = (int)$usuarioId;
+        $dias = max(1, min(30, (int)$dias));
+        $limite = max(1, min(100, (int)$limite));
+
+        $sql = "SELECT
+                    seguimiento.id AS seguimiento_convocatoria_id,
+                    seguimiento.seguimiento_id,
+                    seguimiento.estado,
+                    seguimiento.nota,
+                    seguimiento.proximo_seguimiento_at,
+                    envio.convocatoria_titulo,
+                    envio.canal,
+                    envio.enviado_at,
+                    vinculacion.nombre_entidad,
+                    vinculacion.estado_id,
+                    vinculacion.municipio_id,
+                    COALESCE(municipio.nombre, '') AS municipio_nombre
+                FROM aliados_convocatorias_seguimientos seguimiento
+                INNER JOIN aliados_convocatorias_envios envio
+                    ON envio.id = seguimiento.envio_id
+                INNER JOIN seguimientos_vinculacion vinculacion
+                    ON vinculacion.id = seguimiento.seguimiento_id
+                LEFT JOIN municipios municipio
+                    ON municipio.id = vinculacion.municipio_id
+                WHERE seguimiento.responsable_usuario_id = ?
+                  AND seguimiento.activo = 1
+                  AND vinculacion.activo = 1
+                  AND seguimiento.proximo_seguimiento_at IS NOT NULL
+                  AND seguimiento.proximo_seguimiento_at <=
+                      DATE_ADD(NOW(), INTERVAL ? DAY)
+                  AND seguimiento.estado NOT IN (
+                      'DIFUSION_CONFIRMADA',
+                      'NO_PARTICIPARA'
+                  )
+                ORDER BY
+                    CASE
+                        WHEN seguimiento.proximo_seguimiento_at < NOW()
+                        THEN 0
+                        ELSE 1
+                    END ASC,
+                    CASE
+                        WHEN seguimiento.proximo_seguimiento_at < NOW()
+                        THEN seguimiento.proximo_seguimiento_at
+                    END DESC,
+                    CASE
+                        WHEN seguimiento.proximo_seguimiento_at >= NOW()
+                        THEN seguimiento.proximo_seguimiento_at
+                    END ASC,
+                    seguimiento.id ASC
+                LIMIT ?";
+
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param(
+            'iii',
+            $usuarioId,
+            $dias,
+            $limite
+        );
+        $stmt->execute();
+
+        return $this->convertirResultadoEnArreglo(
+            $stmt->get_result()
+        );
+    }
+
     public function obtenerRecordatoriosSeguimientoAliados(
         $usuarioId,
         $limite = 10
