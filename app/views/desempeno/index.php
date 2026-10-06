@@ -42,8 +42,6 @@ $esCuentaClaveDesempeno =
     strcasecmp($rolActualDesempeno, 'Cuenta Clave') === 0;
 $esAnalistaDesempeno =
     strcasecmp($rolActualDesempeno, 'Analista de Datos') === 0;
-$esMarketingDesempeno =
-    strcasecmp($rolActualDesempeno, 'Marketing') === 0;
 
 $mostrarTabGlobal = $puedeGlobal;
 $mostrarTabEquipo =
@@ -53,8 +51,7 @@ $mostrarTabPropio =
     $puedePropio &&
     (
         $esCuentaClaveDesempeno ||
-        $esAnalistaDesempeno ||
-        $esMarketingDesempeno
+        $esAnalistaDesempeno
     );
 
 $esc = static function ($valor) {
@@ -172,12 +169,24 @@ $vistaLabel = [
     'propio' => 'Mi desempeño'
 ][$vista] ?? 'Desempeño';
 
+$esComparativo =
+    count($ranking) > 1 &&
+    in_array($vista, ['global', 'equipo'], true);
+
 $rankingTitle = $vista === 'propio'
     ? 'Mi desempeño en el periodo'
     : (
         $vista === 'equipo'
-            ? 'Ranking de mi equipo'
-            : 'Ranking del área'
+            ? (
+                $esComparativo
+                    ? 'Ranking de mi equipo'
+                    : 'Desempeño de mi equipo'
+            )
+            : (
+                $esComparativo
+                    ? 'Ranking del área'
+                    : 'Desempeño del área'
+            )
     );
 ?>
 
@@ -284,11 +293,6 @@ $rankingTitle = $vista === 'propio'
                             <?= $area === 'cuenta_clave' ? 'selected' : '' ?>>
                             Cuenta Clave
                         </option>
-                        <option
-                            value="marketing"
-                            <?= $area === 'marketing' ? 'selected' : '' ?>>
-                            Marketing
-                        </option>
                     </select>
                 </div>
             <?php else: ?>
@@ -339,7 +343,7 @@ $rankingTitle = $vista === 'propio'
                     <label for="performance_persona">
                         <?= $area === 'cuenta_clave'
                             ? 'Cuenta Clave'
-                            : ($area === 'marketing' ? 'Marketing' : 'Analista') ?>
+                            : 'Analista' ?>
                     </label>
                     <select
                         id="performance_persona"
@@ -552,13 +556,21 @@ $rankingTitle = $vista === 'propio'
             <div class="performance-panel-heading">
                 <div>
                     <span class="performance-eyebrow">
-                        <?= $vista === 'propio' ? 'HISTORIAL PERSONAL' : 'RANKING DEL PERIODO' ?>
+                        <?= $vista === 'propio'
+                            ? 'RESUMEN PERSONAL'
+                            : ($esComparativo
+                                ? 'RANKING DEL PERIODO'
+                                : 'DESEMPEÑO DEL PERIODO') ?>
                     </span>
                     <h2><?= $esc($rankingTitle) ?></h2>
                     <p>
                         <?= $vista === 'propio'
-                            ? 'Tus métricas se muestran sin compararte con personas fuera de tu alcance.'
-                            : 'Compara resultados e identifica fortalezas para reconocimientos. El índice operativo resume la actividad con criterios visibles y no asigna incentivos automáticamente.' ?>
+                            ? 'Consulta tus métricas e historial del periodo sin convertir tu desempeño individual en un ranking.'
+                            : (
+                                $esComparativo
+                                    ? 'Compara resultados e identifica fortalezas para reconocimientos. El índice operativo resume la actividad con criterios visibles y no asigna incentivos automáticamente.'
+                                    : 'Consulta las métricas del alcance seleccionado. El ranking se habilita automáticamente cuando existen al menos dos participantes.'
+                            ) ?>
                     </p>
                 </div>
                 <?php if (count($ranking) > 1): ?>
@@ -584,13 +596,15 @@ $rankingTitle = $vista === 'propio'
                         $foto = $fotoUrl($fila['foto_perfil'] ?? '');
                         $posicion = (int)($fila['posicion'] ?? 0);
                         ?>
-                        <article class="performance-person-row <?= $posicion <= 3 && count($ranking) > 1 ? 'is-top' : '' ?>">
-                            <div class="performance-position">
-                                <?php if (count($ranking) > 1 && $posicion <= 3): ?>
-                                    <i class="bi bi-award"></i>
-                                <?php endif; ?>
-                                <strong><?= $posicion ?></strong>
-                            </div>
+                        <article class="performance-person-row <?= $posicion <= 3 && $esComparativo ? 'is-top' : '' ?> <?= !$esComparativo ? 'is-summary' : '' ?>">
+                            <?php if ($esComparativo): ?>
+                                <div class="performance-position">
+                                    <?php if ($posicion <= 3): ?>
+                                        <i class="bi bi-award"></i>
+                                    <?php endif; ?>
+                                    <strong><?= $posicion ?></strong>
+                                </div>
+                            <?php endif; ?>
 
                             <div class="performance-person">
                                 <span class="performance-avatar">
@@ -671,14 +685,16 @@ $rankingTitle = $vista === 'propio'
                                 </div>
                             <?php endif; ?>
 
-                            <div class="performance-index">
-                                <span>Índice operativo</span>
-                                <strong>
-                                    <?= $fila['indice'] === null
-                                        ? '—'
-                                        : $esc(number_format((float)$fila['indice'], 1)) ?>
-                                </strong>
-                            </div>
+                            <?php if ($esComparativo): ?>
+                                <div class="performance-index">
+                                    <span>Índice operativo</span>
+                                    <strong>
+                                        <?= $fila['indice'] === null
+                                            ? '—'
+                                            : $esc(number_format((float)$fila['indice'], 1)) ?>
+                                    </strong>
+                                </div>
+                            <?php endif; ?>
                         </article>
                     <?php endforeach; ?>
                 </div>
