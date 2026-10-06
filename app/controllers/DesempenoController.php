@@ -189,13 +189,6 @@ class DesempenoController
 
     private function validarAcceso($requiereExportar = false)
     {
-        $rolNombre = trim((string)($_SESSION['rol'] ?? ''));
-
-        if (strcasecmp($rolNombre, 'Marketing') === 0) {
-            http_response_code(403);
-            die('El módulo de Desempeño está disponible para Analistas, Cuenta Clave y supervisión administrativa.');
-        }
-
         if (!tienePermiso('desempeno.ver')) {
             http_response_code(403);
             die('No tienes permiso para consultar Desempeño.');
