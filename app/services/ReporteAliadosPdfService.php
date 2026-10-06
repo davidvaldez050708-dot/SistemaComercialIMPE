@@ -122,6 +122,18 @@ class ReporteAliadosPdfService
         $filtros = is_array($reporte['filtros'] ?? null)
             ? $reporte['filtros']
             : [];
+        $periodo = is_array($reporte['periodo'] ?? null)
+            ? $reporte['periodo']
+            : [
+                'label' => 'Histórico completo',
+                'fecha_desde' => '',
+                'fecha_hasta' => ''
+            ];
+        $actividadPeriodo = is_array(
+            $reporte['actividad_periodo'] ?? null
+        )
+            ? $reporte['actividad_periodo']
+            : [];
         $modo = (string)($reporte['modo'] ?? 'red');
 
         $estadoNombre = trim(
@@ -195,6 +207,10 @@ class ReporteAliadosPdfService
         $html .= '<table class="scope"><tr>';
         $html .= $this->scopeCell('Alcance', $tituloAlcance);
         $html .= $this->scopeCell('Situación', $situacion);
+        $html .= $this->scopeCell(
+            'Periodo analizado',
+            (string)($periodo['label'] ?? 'Histórico completo')
+        );
         $html .= $this->scopeCell(
             'Aliados incluidos',
             (string)((int)($resumen['total'] ?? 0))
@@ -276,6 +292,54 @@ class ReporteAliadosPdfService
             'Requieren atención',
             $this->numero($resumen['requieren_atencion'] ?? 0),
             'prioridad operativa'
+        );
+        $html .= '</tr></table></section>';
+
+        $html .= '<section class="report-section keep">';
+        $html .= $this->sectionTitle('Actividad del periodo');
+        $html .=
+            '<p class="section-note">Mide lo ocurrido dentro de ' .
+            $this->e(
+                strtolower(
+                    (string)($periodo['label'] ?? 'el periodo')
+                )
+            ) .
+            ', sin confundirlo con el estado actual de la red.</p>';
+        $html .= '<table class="metrics five"><tr>';
+        $html .= $this->metric(
+            'Nuevos aliados',
+            $this->numero(
+                $actividadPeriodo['nuevos_aliados'] ?? 0
+            ),
+            'formalizados'
+        );
+        $html .= $this->metric(
+            'Aliados trabajados',
+            $this->numero(
+                $actividadPeriodo['aliados_trabajados'] ?? 0
+            ),
+            'con actividad'
+        );
+        $html .= $this->metric(
+            'Difusiones',
+            $this->numero(
+                $actividadPeriodo['difusiones'] ?? 0
+            ),
+            'convocatorias compartidas'
+        );
+        $html .= $this->metric(
+            'Seguimientos',
+            $this->numero(
+                $actividadPeriodo['seguimientos'] ?? 0
+            ),
+            'actualizaciones'
+        );
+        $html .= $this->metric(
+            'Confirmaciones',
+            $this->numero(
+                $actividadPeriodo['confirmaciones'] ?? 0
+            ),
+            'difusión confirmada'
         );
         $html .= '</tr></table></section>';
 
@@ -436,7 +500,7 @@ class ReporteAliadosPdfService
         $html .= '<section class="report-section">';
         $html .= $this->sectionTitle('Detalle de aliados');
         $html .=
-            '<p class="section-note">El PDF amplía la vista del sistema con datos de contacto, última difusión, situación actual, próxima acción y nota de seguimiento.</p>';
+            '<p class="section-note">El PDF amplía la vista del sistema con datos de contacto, situación actual y una cronología de la actividad registrada dentro del periodo analizado.</p>';
 
         if (empty($detalle)) {
             $html .= $this->emptyBlock(
@@ -463,7 +527,7 @@ class ReporteAliadosPdfService
         $html = '<section class="report-section">';
         $html .= $this->sectionTitle('Comparativo territorial por estado');
         $html .=
-            '<p class="section-note">Permite comparar tamaño de red, cobertura de difusión, confirmaciones y carga de seguimiento entre territorios.</p>';
+            '<p class="section-note">Combina el tamaño actual de la red con la actividad registrada en el periodo seleccionado.</p>';
 
         if (empty($filas)) {
             return $html .
@@ -475,12 +539,12 @@ class ReporteAliadosPdfService
 
         $html .=
             '<table class="data-table"><thead><tr>' .
-            '<th>Estado</th><th class="num">Aliados</th>' .
-            '<th class="num">Municipios</th>' .
-            '<th class="num">Con difusión</th>' .
-            '<th class="num">Confirmadas</th>' .
+            '<th>Estado</th><th class="num">Red actual</th>' .
+            '<th class="num">Nuevos</th>' .
+            '<th class="num">Trabajados</th>' .
+            '<th class="num">Difusiones</th>' .
+            '<th class="num">Confirmaciones</th>' .
             '<th class="num">Pendientes</th>' .
-            '<th class="num">Vencidos</th>' .
             '</tr></thead><tbody>';
 
         foreach ($filas as $fila) {
@@ -493,30 +557,35 @@ class ReporteAliadosPdfService
                     $fila['cobertura_difusion'] ?? 0,
                     1
                 ) .
-                '% con difusión</small></td>';
+                '% con difusión actual</small></td>';
             $html .=
                 '<td class="num">' .
                 $this->numero($fila['aliados'] ?? 0) .
                 '</td>';
             $html .=
                 '<td class="num">' .
-                $this->numero($fila['municipios'] ?? 0) .
+                $this->numero($fila['nuevos_periodo'] ?? 0) .
                 '</td>';
             $html .=
                 '<td class="num">' .
-                $this->numero($fila['con_difusion'] ?? 0) .
+                $this->numero($fila['trabajados_periodo'] ?? 0) .
                 '</td>';
             $html .=
                 '<td class="num">' .
-                $this->numero($fila['difusion_confirmada'] ?? 0) .
+                $this->numero($fila['difusiones_periodo'] ?? 0) .
                 '</td>';
             $html .=
                 '<td class="num">' .
-                $this->numero($fila['pendientes'] ?? 0) .
+                $this->numero($fila['confirmaciones_periodo'] ?? 0) .
                 '</td>';
+            $pendientes = $this->numero($fila['pendientes'] ?? 0);
+            $vencidos = (int)($fila['vencidos'] ?? 0);
             $html .=
                 '<td class="num">' .
-                $this->numero($fila['vencidos'] ?? 0) .
+                $pendientes .
+                ($vencidos > 0
+                    ? '<small>' . $vencidos . ' vencido(s)</small>'
+                    : '') .
                 '</td>';
             $html .= '</tr>';
         }
@@ -529,7 +598,7 @@ class ReporteAliadosPdfService
         $html = '<section class="report-section">';
         $html .= $this->sectionTitle('Desglose municipal');
         $html .=
-            '<p class="section-note">Profundiza en la cobertura y el seguimiento de los municipios incluidos dentro del estado seleccionado.</p>';
+            '<p class="section-note">Compara la red actual y la actividad del periodo dentro de los municipios del estado seleccionado.</p>';
 
         if (empty($filas)) {
             return $html .
@@ -541,12 +610,12 @@ class ReporteAliadosPdfService
 
         $html .=
             '<table class="data-table"><thead><tr>' .
-            '<th>Municipio</th><th class="num">Aliados</th>' .
-            '<th class="num">Con difusión</th>' .
-            '<th class="num">Confirmadas</th>' .
-            '<th class="num">Sin respuesta</th>' .
+            '<th>Municipio</th><th class="num">Red actual</th>' .
+            '<th class="num">Nuevos</th>' .
+            '<th class="num">Trabajados</th>' .
+            '<th class="num">Difusiones</th>' .
+            '<th class="num">Confirmaciones</th>' .
             '<th class="num">Pendientes</th>' .
-            '<th class="num">Vencidos</th>' .
             '</tr></thead><tbody>';
 
         foreach ($filas as $fila) {
@@ -559,30 +628,35 @@ class ReporteAliadosPdfService
                     $fila['cobertura_difusion'] ?? 0,
                     1
                 ) .
-                '% con difusión</small></td>';
+                '% con difusión actual</small></td>';
             $html .=
                 '<td class="num">' .
                 $this->numero($fila['aliados'] ?? 0) .
                 '</td>';
             $html .=
                 '<td class="num">' .
-                $this->numero($fila['con_difusion'] ?? 0) .
+                $this->numero($fila['nuevos_periodo'] ?? 0) .
                 '</td>';
             $html .=
                 '<td class="num">' .
-                $this->numero($fila['difusion_confirmada'] ?? 0) .
+                $this->numero($fila['trabajados_periodo'] ?? 0) .
                 '</td>';
             $html .=
                 '<td class="num">' .
-                $this->numero($fila['sin_respuesta'] ?? 0) .
+                $this->numero($fila['difusiones_periodo'] ?? 0) .
                 '</td>';
             $html .=
                 '<td class="num">' .
-                $this->numero($fila['pendientes'] ?? 0) .
+                $this->numero($fila['confirmaciones_periodo'] ?? 0) .
                 '</td>';
+            $pendientes = $this->numero($fila['pendientes'] ?? 0);
+            $vencidos = (int)($fila['vencidos'] ?? 0);
             $html .=
                 '<td class="num">' .
-                $this->numero($fila['vencidos'] ?? 0) .
+                $pendientes .
+                ($vencidos > 0
+                    ? '<small>' . $vencidos . ' vencido(s)</small>'
+                    : '') .
                 '</td>';
             $html .= '</tr>';
         }
@@ -712,7 +786,60 @@ class ReporteAliadosPdfService
                 '</p></div>';
         }
 
-        return $html . '</article>';
+        $actividades = is_array($fila['actividad_periodo'] ?? null)
+            ? $fila['actividad_periodo']
+            : [];
+
+        $html .= '</article>';
+
+        $html .= '<div class="ally-history">';
+        $html .= '<div class="ally-history-title">Actividad del periodo</div>';
+
+        if (empty($actividades)) {
+            $html .=
+                '<div class="ally-history-empty">Sin actividad registrada dentro del periodo seleccionado.</div>';
+        } else {
+            $html .=
+                '<table class="activity-table"><thead><tr>' .
+                '<th>Fecha</th><th>Actividad</th><th>Detalle</th><th>Responsable</th>' .
+                '</tr></thead><tbody>';
+
+            foreach ($actividades as $actividad) {
+                $html .= '<tr>';
+                $html .=
+                    '<td>' .
+                    $this->e(
+                        $this->fecha(
+                            (string)($actividad['fecha'] ?? ''),
+                            true
+                        )
+                    ) .
+                    '</td>';
+                $html .=
+                    '<td><strong>' .
+                    $this->e($actividad['titulo'] ?? '-') .
+                    '</strong></td>';
+                $html .=
+                    '<td>' .
+                    $this->e($actividad['detalle'] ?? '-') .
+                    '</td>';
+                $html .=
+                    '<td>' .
+                    $this->e(
+                        trim((string)($actividad['usuario'] ?? '')) !== ''
+                            ? $actividad['usuario']
+                            : '-'
+                    ) .
+                    '</td>';
+                $html .= '</tr>';
+            }
+
+            $html .= '</tbody></table>';
+        }
+
+        $html .= '</div>';
+
+        return $html;
     }
 
     private function scopeCell(string $label, string $value): string
@@ -903,7 +1030,7 @@ class ReporteAliadosPdfService
             '.header-meta th{color:#16223B;text-align:right;padding:.5px 0 .5px 7px;font-weight:700}' .
             '.header-rule{height:2px;background:#273A8A;margin:0 0 10px}' .
             '.scope{width:100%;table-layout:fixed;border-collapse:collapse;background:#F7F9FC;border:1px solid #D7DFEA;margin-bottom:12px}' .
-            '.scope td{width:33.33%;padding:8px 10px;vertical-align:middle;border-right:1px solid #D7DFEA}' .
+            '.scope td{width:25%;padding:8px 10px;vertical-align:middle;border-right:1px solid #D7DFEA}' .
             '.scope td:last-child{border-right:0}.scope span,.metric span,.status-grid span,.ally-grid span,.ally-note span{display:block;color:#6D7480;font-size:5.8pt;margin-bottom:2px}' .
             '.scope strong{display:block;color:#16223B;font-size:7pt}' .
             '.report-section{margin:0 0 14px}.keep{page-break-inside:avoid}' .
@@ -938,6 +1065,15 @@ class ReporteAliadosPdfService
             '.ally-grid td:nth-child(3n){border-right:0}.ally-grid strong{display:block;color:#16223B;font-size:6.2pt;line-height:1.35;overflow-wrap:anywhere}' .
             '.ally-note{padding:7px 9px;background:#FCFDFE}.ally-note p{margin:0;color:#4F5968;font-size:5.8pt;line-height:1.4}' .
             '.ally-note span{color:#273A8A;font-weight:700}' .
+            '.ally-history{margin:-4px 0 11px;padding:0 9px 9px;border:1px solid #D9E1EB;border-top:0;background:#FFF}' .
+            '.ally-history-title{padding:6px 0 4px;color:#273A8A;font-size:5.7pt;font-weight:800;text-transform:uppercase;letter-spacing:.03em}' .
+            '.ally-history-empty{padding:6px 7px;background:#F8FAFC;color:#6D7480;font-size:5.6pt}' .
+            '.activity-table{width:100%;border-collapse:collapse;font-size:5.55pt;page-break-inside:auto}' .
+            '.activity-table thead{display:table-header-group}.activity-table tr{page-break-inside:avoid}' .
+            '.activity-table th{padding:5px 6px;background:#EDF2FA;color:#273A8A;text-align:left;font-weight:700}' .
+            '.activity-table td{padding:5px 6px;border-bottom:1px solid #E5E9EF;vertical-align:top;color:#4F5968}' .
+            '.activity-table td:first-child{width:18%;white-space:nowrap}.activity-table td:nth-child(2){width:22%}.activity-table td:nth-child(4){width:20%}' .
+            '.activity-table strong{color:#16223B;font-size:5.6pt}' .
             '.num{white-space:nowrap}';
     }
 
