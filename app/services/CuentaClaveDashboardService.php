@@ -20,11 +20,14 @@ class CuentaClaveDashboardService
     public function obtener(
         $usuarioId,
         $puedeSeguimiento = true,
-        $puedeAliados = true
+        $puedeAliados = true,
+        $puedeSeguimientoAliados = true
     ) {
         $usuarioId = (int)$usuarioId;
         $puedeSeguimiento = (bool)$puedeSeguimiento;
         $puedeAliados = (bool)$puedeAliados;
+        $puedeSeguimientoAliados =
+            (bool)$puedeSeguimientoAliados && $puedeAliados;
 
         if ($usuarioId <= 0) {
             return $this->tableroVacio();
@@ -41,9 +44,9 @@ class CuentaClaveDashboardService
         $aliados = [];
         if ($this->aliados->estructuraDisponible()) {
             /*
-             * También se consulta cuando el bloque visual de Aliados está
-             * oculto para no contar convenios formalizados como cartera de
-             * vinculación activa.
+             * Se consulta aun cuando la vista de Aliados no esté habilitada,
+             * únicamente para excluir convenios formalizados de la cartera
+             * de vinculación y evitar duplicar instituciones.
              */
             $aliados = $this->aliados->obtenerListado(
                 $usuarioId,
@@ -87,6 +90,20 @@ class CuentaClaveDashboardService
             $puedeAliados
         );
 
+        $agenda = [];
+        if (
+            $puedeSeguimientoAliados &&
+            $this->aliados->seguimientoConvocatoriasDisponible()
+        ) {
+            $agenda = $this->construirAgenda(
+                $this->aliados->obtenerAgendaSeguimientoAliados(
+                    $usuarioId,
+                    7,
+                    100
+                )
+            );
+        }
+
         $cobertura = $this->construirCobertura(
             $territorios,
             $cartera,
@@ -100,6 +117,7 @@ class CuentaClaveDashboardService
                 'analistas' => count($analistas),
                 'seguimientos_activos' => count($cartera),
                 'requieren_atencion' => count($atenciones),
+                'acciones_propias' => count($agenda),
                 'aliados' => $puedeAliados
                     ? (int)$resumenAliados['total']
                     : 0
@@ -110,14 +128,18 @@ class CuentaClaveDashboardService
                     $analistas
                 ),
                 0,
-                6
+                4
             ),
+            'atenciones_total' => count($atenciones),
             'analistas' => array_values($analistas),
+            'agenda' => array_slice($agenda, 0, 5),
+            'agenda_total' => count($agenda),
             'aliados' => $resumenAliados,
             'cobertura' => $cobertura,
             'permisos' => [
                 'seguimiento' => $puedeSeguimiento,
-                'aliados' => $puedeAliados
+                'aliados' => $puedeAliados,
+                'agenda_aliados' => $puedeSeguimientoAliados
             ]
         ];
     }
@@ -345,6 +367,83 @@ class CuentaClaveDashboardService
         unset($atencion);
 
         return $atenciones;
+    }
+
+    private function construirAgenda(array $filas)
+    {
+        $agenda = [];
+        $ahora = new DateTimeImmutable();
+        $hoy = new DateTimeImmutable('today');
+        $manana = $hoy->modify('+1 day');
+
+        foreach ($filas as $fila) {
+            $fechaTexto = trim(
+                (string)($fila['proximo_seguimiento_at'] ?? '')
+            );
+
+            if ($fechaTexto === '') {
+                continue;
+            }
+
+            try {
+                $fecha = new DateTimeImmutable($fechaTexto);
+            } catch (Throwable $error) {
+                continue;
+            }
+
+            $estado = strtoupper(trim(
+                (string)($fila['estado'] ?? '')
+            ));
+            $accion = $estado === 'SOLICITA_INFORMACION'
+                ? 'Responder información solicitada'
+                : 'Volver a escribir por WhatsApp';
+
+            $convocatoria = trim(
+                (string)($fila['convocatoria_titulo'] ?? '')
+            );
+
+            $estadoTiempo = 'proxima';
+            $etiquetaTiempo = 'Próxima';
+
+            if ($fecha < $ahora) {
+                $estadoTiempo = 'vencida';
+                $etiquetaTiempo = 'Vencida';
+            } elseif (
+                $fecha->format('Y-m-d') === $hoy->format('Y-m-d')
+            ) {
+                $estadoTiempo = 'hoy';
+                $etiquetaTiempo = 'Hoy';
+            } elseif (
+                $fecha->format('Y-m-d') === $manana->format('Y-m-d')
+            ) {
+                $estadoTiempo = 'manana';
+                $etiquetaTiempo = 'Mañana';
+            }
+
+            $agenda[] = [
+                'seguimiento_id' => (int)(
+                    $fila['seguimiento_id'] ?? 0
+                ),
+                'seguimiento_convocatoria_id' => (int)(
+                    $fila['seguimiento_convocatoria_id'] ?? 0
+                ),
+                'estado_id' => (int)($fila['estado_id'] ?? 0),
+                'institucion' => (string)(
+                    $fila['nombre_entidad'] ?? 'Aliado'
+                ),
+                'municipio' => (string)(
+                    $fila['municipio_nombre'] ?? ''
+                ),
+                'convocatoria' => $convocatoria,
+                'accion' => $accion,
+                'fecha' => $fecha->format('Y-m-d H:i:s'),
+                'estado_tiempo' => $estadoTiempo,
+                'etiqueta_tiempo' => $etiquetaTiempo,
+                'url' => $this->urlAgendaAliado($fila)
+            ];
+        }
+
+        return $agenda;
     }
 
     private function resumirAliados(
@@ -590,23 +689,44 @@ class CuentaClaveDashboardService
         }
 
         if (count($porEstado) > 1) {
-            $items = array_values($porEstado);
-            usort($items, static function ($a, $b) {
+            $todos = array_values($porEstado);
+            $activos = array_values(array_filter(
+                $todos,
+                static function ($item) {
+                    return
+                        (int)($item['seguimientos'] ?? 0) > 0 ||
+                        (int)($item['aliados'] ?? 0) > 0 ||
+                        (int)($item['requieren_atencion'] ?? 0) > 0;
+                }
+            ));
+
+            usort($activos, static function ($a, $b) {
                 $atencion =
                     (int)$b['requieren_atencion'] <=>
                     (int)$a['requieren_atencion'];
-                return $atencion !== 0
-                    ? $atencion
-                    : (
-                        (int)$b['seguimientos'] <=>
-                        (int)$a['seguimientos']
-                    );
+
+                if ($atencion !== 0) {
+                    return $atencion;
+                }
+
+                $cargaA =
+                    (int)$a['seguimientos'] +
+                    (int)$a['aliados'];
+                $cargaB =
+                    (int)$b['seguimientos'] +
+                    (int)$b['aliados'];
+
+                return $cargaB <=> $cargaA;
             });
 
             return [
                 'modo' => 'estados',
                 'titulo' => 'Cobertura por territorio',
-                'items' => array_slice($items, 0, 6)
+                'territorios_total' => count($todos),
+                'activos_total' => count($activos),
+                'sin_actividad' =>
+                    max(0, count($todos) - count($activos)),
+                'items' => array_slice($activos, 0, 6)
             ];
         }
 
@@ -625,6 +745,9 @@ class CuentaClaveDashboardService
         return [
             'modo' => 'municipios',
             'titulo' => 'Cobertura municipal',
+            'territorios_total' => count($porEstado),
+            'activos_total' => count($items),
+            'sin_actividad' => 0,
             'items' => array_slice($items, 0, 6)
         ];
     }
@@ -644,6 +767,29 @@ class CuentaClaveDashboardService
         ];
 
         return $mapa[$estado] ?? 'Seguimiento pendiente';
+    }
+
+    private function urlAgendaAliado(array $fila)
+    {
+        $estadoId = (int)($fila['estado_id'] ?? 0);
+        $seguimientoId = (int)($fila['seguimiento_id'] ?? 0);
+        $seguimientoConvocatoriaId = (int)(
+            $fila['seguimiento_convocatoria_id'] ?? 0
+        );
+
+        if ($estadoId <= 0) {
+            return BASE_URL .
+                'index.php?controller=aliado&action=index';
+        }
+
+        return
+            BASE_URL .
+            'index.php?controller=aliado&action=estado&estado_id=' .
+            $estadoId .
+            '&abrir_seguimiento=' .
+            $seguimientoId .
+            '&seguimiento_convocatoria_id=' .
+            $seguimientoConvocatoriaId;
     }
 
     private function urlAliado(array $aliado)
@@ -685,10 +831,14 @@ class CuentaClaveDashboardService
                 'analistas' => 0,
                 'seguimientos_activos' => 0,
                 'requieren_atencion' => 0,
+                'acciones_propias' => 0,
                 'aliados' => 0
             ],
             'atenciones' => [],
+            'atenciones_total' => 0,
             'analistas' => [],
+            'agenda' => [],
+            'agenda_total' => 0,
             'aliados' => [
                 'visible' => false,
                 'total' => 0,
@@ -702,11 +852,15 @@ class CuentaClaveDashboardService
             'cobertura' => [
                 'modo' => 'estados',
                 'titulo' => 'Cobertura territorial',
+                'territorios_total' => 0,
+                'activos_total' => 0,
+                'sin_actividad' => 0,
                 'items' => []
             ],
             'permisos' => [
                 'seguimiento' => false,
-                'aliados' => false
+                'aliados' => false,
+                'agenda_aliados' => false
             ]
         ];
     }
