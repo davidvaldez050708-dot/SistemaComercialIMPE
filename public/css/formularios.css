@@ -420,14 +420,14 @@
 
 .formularios-option-card.is-registro .formularios-option-action,
 .formularios-option-card.is-inscripcion .formularios-option-action {
-    background: #16223B;
-    border-color: #16223B;
+    background-color: #223A84;
+    border-color: #223A84;
 }
 
 .formularios-option-card:hover .formularios-option-action,
 .formularios-option-card:focus .formularios-option-action {
-    background: #1b2b49;
-    border-color: #1b2b49;
+    background-color: #1C2544;
+    border-color: #1C2544;
     filter: none;
 }
 
