@@ -522,6 +522,10 @@ class DesempenoService
             }
             unset($fila);
         } else {
+            $maxContactos = $this->maximo(
+                $filas,
+                'llamadas_con_contacto'
+            );
             $maxEfectivas = $this->maximo(
                 $filas,
                 'llamadas_efectivas'
@@ -530,18 +534,16 @@ class DesempenoService
                 $filas,
                 'interacciones'
             );
-            $maxVerificaciones = $this->maximo(
-                $filas,
-                'verificaciones_efectivas'
-            );
 
             foreach ($filas as &$fila) {
                 $llamadas =
                     (int)($fila['llamadas_realizadas'] ?? 0);
+                $contactos =
+                    (int)($fila['llamadas_con_contacto'] ?? 0);
                 $efectivas =
                     (int)($fila['llamadas_efectivas'] ?? 0);
                 $tasa = $llamadas > 0
-                    ? ($efectivas / $llamadas) * 100
+                    ? ($contactos / $llamadas) * 100
                     : 0.0;
 
                 $fila['tasa_contacto'] = round($tasa, 1);
@@ -562,8 +564,8 @@ class DesempenoService
                         ) +
                         (
                             $this->normalizado(
-                                $fila['verificaciones_efectivas'] ?? 0,
-                                $maxVerificaciones
+                                $contactos,
+                                $maxContactos
                             ) * 20
                         ),
                         1
@@ -668,6 +670,9 @@ class DesempenoService
         $llamadas = (int)array_sum(
             array_column($ranking, 'llamadas_realizadas')
         );
+        $contactos = (int)array_sum(
+            array_column($ranking, 'llamadas_con_contacto')
+        );
         $efectivas = (int)array_sum(
             array_column($ranking, 'llamadas_efectivas')
         );
@@ -675,15 +680,13 @@ class DesempenoService
         return [
             'personas' => count($ranking),
             'llamadas_realizadas' => $llamadas,
+            'llamadas_con_contacto' => $contactos,
             'llamadas_efectivas' => $efectivas,
             'tasa_contacto' => $llamadas > 0
-                ? round(($efectivas / $llamadas) * 100, 1)
+                ? round(($contactos / $llamadas) * 100, 1)
                 : 0.0,
             'interacciones' => array_sum(
                 array_column($ranking, 'interacciones')
-            ),
-            'verificaciones_efectivas' => array_sum(
-                array_column($ranking, 'verificaciones_efectivas')
             )
         ];
     }
@@ -762,9 +765,16 @@ class DesempenoService
             $this->reconocimiento(
                 $ranking,
                 'llamadas_efectivas',
-                'Mayor contacto efectivo',
-                'bi-telephone-check',
+                'Más llamadas efectivas',
+                'bi-shield-check',
                 'llamadas efectivas'
+            ),
+            $this->reconocimiento(
+                $ranking,
+                'llamadas_con_contacto',
+                'Mayor contacto',
+                'bi-person-check',
+                'llamadas con contacto'
             ),
             $this->reconocimiento(
                 $ranking,
@@ -772,13 +782,6 @@ class DesempenoService
                 'Mayor actividad útil',
                 'bi-activity',
                 'interacciones'
-            ),
-            $this->reconocimiento(
-                $ranking,
-                'verificaciones_efectivas',
-                'Mayor verificación efectiva',
-                'bi-shield-check',
-                'verificaciones'
             )
         ];
 
@@ -793,7 +796,7 @@ class DesempenoService
             $reconocimientos[] = $this->reconocimiento(
                 $elegiblesTasa,
                 'tasa_contacto',
-                'Mejor efectividad',
+                'Mejor tasa de contacto',
                 'bi-bullseye',
                 '% de contacto',
                 true
@@ -894,8 +897,8 @@ class DesempenoService
                     'fecha' => $clave,
                     'label' => $fecha->format('d/m'),
                     'principal' => (int)($fila['interacciones'] ?? 0),
-                    'secundario' => (int)($fila['efectivas'] ?? 0),
-                    'terciario' => 0
+                    'secundario' => (int)($fila['contactos'] ?? 0),
+                    'terciario' => (int)($fila['efectivas'] ?? 0)
                 ];
             }
         }
@@ -925,10 +928,11 @@ class DesempenoService
 
         return [
             'Interacción útil: registro operativo distinto de SISTEMA dentro del periodo; las llamadas de prueba se excluyen.',
-            'Llamada realizada: llamada IP vinculada a proveedor, identificador externo y duración mayor a cero.',
-            'Llamada efectiva: llamada válida con contacto real registrado; las llamadas de prueba se excluyen.',
-            'Verificación efectiva: evidencia de verificación asociada a una llamada telefónica válida.',
-            'El índice operativo pondera llamadas efectivas (30%), tasa de contacto (25%), interacciones útiles (25%) y verificaciones efectivas (20%).',
+            'Llamada válida: llamada IP vinculada a proveedor, identificador externo y duración mayor a cero.',
+            'Llamada con contacto: llamada válida en la que se registró contacto real con una persona.',
+            'Tasa de contacto: llamadas con contacto divididas entre llamadas válidas.',
+            'Llamada efectiva: llamada válida con evidencia de verificación de información; se contabiliza una por institución y día.',
+            'El índice operativo pondera llamadas efectivas (30%), tasa de contacto (25%), interacciones útiles (25%) y volumen de llamadas con contacto (20%).',
             'El ranking es un apoyo de gestión; no decide automáticamente bonos, sanciones ni incentivos.'
         ];
     }
