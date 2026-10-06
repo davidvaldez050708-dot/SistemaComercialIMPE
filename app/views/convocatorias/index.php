@@ -839,9 +839,15 @@ $urlCambiarOpcionMes = $tipoConvocatoria === 'sindicatos'
 
     <section class="dashboard-panel convocatoria-month-shell">
         <div class="convocatoria-month-heading">
-            <div>
-                <h2>Convocatorias por mes</h2>
-                <p>Selecciona un mes para consultar las convocatorias disponibles.</p>
+            <div class="convocatoria-month-heading-main">
+                <span class="convocatoria-month-heading-icon" aria-hidden="true">
+                    <i class="bi bi-calendar3"></i>
+                </span>
+
+                <div class="convocatoria-month-heading-copy">
+                    <h2>Convocatorias por mes</h2>
+                    <p>Selecciona un mes para consultar las convocatorias disponibles.</p>
+                </div>
             </div>
 
             <form
