@@ -261,6 +261,11 @@ $rankingTitle = $vista === 'propio'
                             <?= $area === 'cuenta_clave' ? 'selected' : '' ?>>
                             Cuenta Clave
                         </option>
+                        <option
+                            value="marketing"
+                            <?= $area === 'marketing' ? 'selected' : '' ?>>
+                            Marketing
+                        </option>
                     </select>
                 </div>
             <?php else: ?>
@@ -311,7 +316,7 @@ $rankingTitle = $vista === 'propio'
                     <label for="performance_persona">
                         <?= $area === 'cuenta_clave'
                             ? 'Cuenta Clave'
-                            : 'Analista' ?>
+                            : ($area === 'marketing' ? 'Marketing' : 'Analista') ?>
                     </label>
                     <select
                         id="performance_persona"
@@ -439,6 +444,41 @@ $rankingTitle = $vista === 'propio'
                 </div>
             </article>
         </section>
+    <?php elseif ($area === 'marketing'): ?>
+        <section class="performance-kpi-grid">
+            <article>
+                <span class="performance-kpi-icon"><i class="bi bi-megaphone"></i></span>
+                <div>
+                    <strong><?= (int)($resumen['publicaciones'] ?? 0) ?></strong>
+                    <span>Convocatorias publicadas</span>
+                    <small>Creadas en el periodo</small>
+                </div>
+            </article>
+            <article>
+                <span class="performance-kpi-icon"><i class="bi bi-map"></i></span>
+                <div>
+                    <strong><?= (int)($resumen['territorios_cubiertos'] ?? 0) ?></strong>
+                    <span>Cobertura territorial</span>
+                    <small>Estados alcanzados</small>
+                </div>
+            </article>
+            <article>
+                <span class="performance-kpi-icon"><i class="bi bi-pencil-square"></i></span>
+                <div>
+                    <strong><?= (int)($resumen['actualizaciones'] ?? 0) ?></strong>
+                    <span>Actualizaciones</span>
+                    <small>Convocatorias modificadas</small>
+                </div>
+            </article>
+            <article>
+                <span class="performance-kpi-icon is-success"><i class="bi bi-calendar-check"></i></span>
+                <div>
+                    <strong><?= (int)($resumen['vigentes'] ?? 0) ?></strong>
+                    <span>Vigentes creadas</span>
+                    <small>Continúan activas</small>
+                </div>
+            </article>
+        </section>
     <?php else: ?>
         <section class="performance-kpi-grid is-five">
             <article>
@@ -542,7 +582,9 @@ $rankingTitle = $vista === 'propio'
                                     <span>
                                         <?= $area === 'cuenta_clave'
                                             ? 'Cuenta Clave'
-                                            : 'Analista de Datos' ?>
+                                            : ($area === 'marketing'
+                                                ? 'Marketing'
+                                                : 'Analista de Datos') ?>
                                     </span>
                                 </div>
                             </div>
@@ -564,6 +606,25 @@ $rankingTitle = $vista === 'propio'
                                     <div>
                                         <strong><?= (int)($fila['confirmaciones'] ?? 0) ?></strong>
                                         <span>Confirmaciones</span>
+                                    </div>
+                                </div>
+                            <?php elseif ($area === 'marketing'): ?>
+                                <div class="performance-row-metrics">
+                                    <div>
+                                        <strong><?= (int)($fila['publicaciones'] ?? 0) ?></strong>
+                                        <span>Publicadas</span>
+                                    </div>
+                                    <div>
+                                        <strong><?= (int)($fila['territorios_cubiertos'] ?? 0) ?></strong>
+                                        <span>Territorios</span>
+                                    </div>
+                                    <div>
+                                        <strong><?= (int)($fila['actualizaciones'] ?? 0) ?></strong>
+                                        <span>Actualizadas</span>
+                                    </div>
+                                    <div>
+                                        <strong><?= (int)($fila['vigentes'] ?? 0) ?></strong>
+                                        <span>Vigentes</span>
                                     </div>
                                 </div>
                             <?php else: ?>
@@ -655,7 +716,9 @@ $rankingTitle = $vista === 'propio'
                 <p>
                     <?= $area === 'cuenta_clave'
                         ? 'Difusiones, actualizaciones y confirmaciones registradas por día.'
-                        : 'Interacciones útiles y llamadas efectivas registradas por día.' ?>
+                        : ($area === 'marketing'
+                            ? 'Convocatorias publicadas y actualizadas por día.'
+                            : 'Interacciones útiles y llamadas efectivas registradas por día.') ?>
                 </p>
             </div>
             <span class="performance-period-badge">
@@ -710,6 +773,9 @@ $rankingTitle = $vista === 'propio'
                 <span><i class="is-primary"></i> Difusiones</span>
                 <span><i class="is-secondary"></i> Actualizaciones</span>
                 <span><i class="is-tertiary"></i> Confirmaciones</span>
+            <?php elseif ($area === 'marketing'): ?>
+                <span><i class="is-primary"></i> Publicaciones</span>
+                <span><i class="is-secondary"></i> Actualizaciones</span>
             <?php else: ?>
                 <span><i class="is-primary"></i> Interacciones</span>
                 <span><i class="is-secondary"></i> Llamadas efectivas</span>
