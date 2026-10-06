@@ -161,7 +161,7 @@ class ReporteNombreArchivoService
         );
     }
 
-    public static function seguro(string $texto, int $maximo = 64): string
+    public static function seguro(string $texto, int $maximo = 36): string
     {
         $texto = trim($texto);
         if ($texto === '') {
@@ -322,7 +322,7 @@ class ReporteNombreArchivoService
             $nombre = 'Reporte';
         }
 
-        $limite = $conExtension ? 190 : 194;
+        $limite = $conExtension ? 145 : 149;
         if (strlen($nombre) > $limite) {
             $nombre = rtrim(
                 substr($nombre, 0, $limite),
