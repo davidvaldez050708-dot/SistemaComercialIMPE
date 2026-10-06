@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../../config/db_connection.php';
+require_once __DIR__ . '/../helpers/AdminRolePolicy.php';
 
 class RolModel
 {
@@ -414,15 +415,78 @@ class RolModel
 
     public function asegurarPermisosAdministrador()
     {
-        $sql = "INSERT IGNORE INTO rol_permisos (
-                    rol_id,
-                    permiso_id
-                )
-                SELECT 1, permisos.id
-                FROM permisos
-                WHERE permisos.estado = 1";
+        $restringidos =
+            permisosOperativosRestringidosAdministrador();
 
-        return $this->connection->query($sql);
+        $this->connection->begin_transaction();
+
+        try {
+            if (!empty($restringidos)) {
+                $marcadores = implode(
+                    ',',
+                    array_fill(0, count($restringidos), '?')
+                );
+                $tipos = str_repeat('s', count($restringidos));
+
+                $sqlRetirar =
+                    "DELETE rp
+                     FROM rol_permisos rp
+                     INNER JOIN permisos p
+                        ON p.id = rp.permiso_id
+                     WHERE rp.rol_id = 1
+                       AND p.codigo IN ($marcadores)";
+
+                $stmtRetirar = $this->connection->prepare(
+                    $sqlRetirar
+                );
+                $this->vincularParametros(
+                    $stmtRetirar,
+                    $tipos,
+                    $restringidos
+                );
+                $stmtRetirar->execute();
+
+                $sqlAsignar =
+                    "INSERT IGNORE INTO rol_permisos (
+                        rol_id,
+                        permiso_id
+                     )
+                     SELECT 1, p.id
+                     FROM permisos p
+                     WHERE p.estado = 1
+                       AND p.codigo NOT IN ($marcadores)";
+
+                $stmtAsignar = $this->connection->prepare(
+                    $sqlAsignar
+                );
+                $this->vincularParametros(
+                    $stmtAsignar,
+                    $tipos,
+                    $restringidos
+                );
+                $stmtAsignar->execute();
+            } else {
+                $this->connection->query(
+                    "INSERT IGNORE INTO rol_permisos (
+                        rol_id,
+                        permiso_id
+                     )
+                     SELECT 1, p.id
+                     FROM permisos p
+                     WHERE p.estado = 1"
+                );
+            }
+
+            $this->connection->commit();
+            return true;
+        } catch (Throwable $error) {
+            $this->connection->rollback();
+            error_log(
+                'No fue posible normalizar permisos del Administrador: ' .
+                $error->getMessage()
+            );
+            return false;
+        }
     }
 
     private function sincronizarPermisosBasePorRol()
