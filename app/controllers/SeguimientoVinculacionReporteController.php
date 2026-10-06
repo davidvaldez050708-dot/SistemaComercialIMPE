@@ -406,7 +406,7 @@ class SeguimientoVinculacionReporteController
 
             if ($puedeUsarCache) {
                 $claveCache = $cachePdf->crearClave([
-                    'version' => 'seguimiento-pdf-profesional-v23',
+                    'version' => 'seguimiento-pdf-profesional-v24',
                     'usuario_id' => $usuarioId,
                     'rol_id' => (int)($_SESSION['rol_id'] ?? 0),
                     'modo' => $modoSeguimientoCache,
@@ -583,7 +583,7 @@ class SeguimientoVinculacionReporteController
         }
 
         $contenidoPdf = (string)($resultado['contenido_pdf'] ?? '');
-        $nombreArchivo = (string)($resultado['nombre_archivo'] ?? 'Reporte_Seguimiento_Vinculacion.pdf');
+        $nombreArchivo = (string)($resultado['nombre_archivo'] ?? 'Seguimiento_Corte_' . date('Y-m-d') . '.pdf');
 
         if ($claveCache !== '' && $contenidoPdf !== '') {
             try {
