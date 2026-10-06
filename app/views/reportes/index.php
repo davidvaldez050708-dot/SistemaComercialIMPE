@@ -8,7 +8,7 @@ $tiposReporteSeguimiento = $tiposReporteSeguimiento ?? [];
 $puedeExportarReportes = tienePermiso('reportes.exportar');
 ?>
 
-<section class="report-module">
+<section class="report-module report-catalog-page">
     <section class="dashboard-panel report-intro-panel">
         <div>
             <span class="report-eyebrow">CENTRO DE REPORTES</span>
