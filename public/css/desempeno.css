@@ -866,3 +866,572 @@
         text-align: left;
     }
 }
+
+
+/* =========================================================
+   AJUSTE VISUAL 2026-10-06
+   Escala tipográfica, filtros compactos y gráfica sin
+   desbordamiento horizontal en periodos mensuales.
+   ========================================================= */
+
+.performance-module,
+.performance-module > *,
+.performance-main-grid,
+.performance-main-grid > *,
+.performance-history-panel,
+.performance-ranking-panel,
+.performance-recognition-panel,
+.performance-criteria-panel {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.performance-module {
+    gap: 16px;
+    overflow-x: clip;
+}
+
+.performance-eyebrow {
+    font-size: 10px;
+    letter-spacing: .06em;
+}
+
+.performance-hero {
+    min-height: 144px;
+    padding: 22px 26px;
+}
+
+.performance-hero h1 {
+    margin-top: 6px;
+    font-size: 25px;
+}
+
+.performance-hero p {
+    max-width: 780px;
+    font-size: 11.5px;
+    line-height: 1.5;
+}
+
+.performance-live-state {
+    min-width: 225px;
+    padding: 12px 14px;
+}
+
+.performance-live-state strong {
+    font-size: 10px;
+}
+
+.performance-live-state small {
+    font-size: 8.5px;
+}
+
+.performance-view-tabs a {
+    min-height: 36px;
+    padding: 7px 12px;
+    font-size: 10px;
+}
+
+.performance-filter-panel {
+    padding: 16px 18px;
+}
+
+.performance-filter-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: end;
+}
+
+.performance-filter-field {
+    flex: 1 1 230px;
+    width: auto;
+    max-width: 330px;
+}
+
+.performance-filter-field label {
+    margin-bottom: 6px;
+    font-size: 9.5px;
+}
+
+.performance-filter-field .form-select,
+.performance-filter-field .form-control {
+    min-height: 40px;
+    padding-top: 7px;
+    padding-bottom: 7px;
+    font-size: 11.5px;
+    font-weight: 600;
+}
+
+.performance-filter-actions {
+    flex: 0 0 auto;
+    margin-left: auto;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.performance-filter-actions .btn {
+    width: auto;
+    min-width: 118px;
+    height: 40px;
+    min-height: 40px !important;
+    padding: 0 14px !important;
+    border-radius: 8px !important;
+    font-family: 'Manrope', sans-serif;
+    font-size: 10.5px !important;
+    font-weight: 800 !important;
+    line-height: 1 !important;
+    box-shadow: none !important;
+}
+
+.performance-filter-actions .btn i {
+    margin: 0 !important;
+    font-size: 12px;
+    line-height: 1;
+}
+
+.performance-filter-actions .btn-system-light {
+    border: 1px solid var(--color-border) !important;
+    background: #ffffff !important;
+    color: var(--color-text-secondary) !important;
+}
+
+.performance-filter-actions .btn-system-light:hover,
+.performance-filter-actions .btn-system-light:focus {
+    border-color: #cbd8ec !important;
+    background: var(--color-primary-soft) !important;
+    color: var(--color-primary) !important;
+}
+
+.performance-filter-actions .btn-system-save {
+    border: 1px solid var(--color-primary) !important;
+    background: var(--color-primary) !important;
+    color: #ffffff !important;
+}
+
+.performance-filter-actions .btn-system-save:hover,
+.performance-filter-actions .btn-system-save:focus {
+    border-color: var(--color-primary-dark) !important;
+    background: var(--color-primary-dark) !important;
+    color: #ffffff !important;
+}
+
+.performance-custom-period {
+    flex: 1 0 100%;
+    grid-template-columns: minmax(190px, 240px) minmax(190px, 240px) minmax(0, 1fr);
+    padding: 12px;
+}
+
+.performance-custom-period p {
+    font-size: 9px;
+}
+
+.performance-context-row {
+    gap: 10px;
+}
+
+.performance-context-row > div {
+    padding: 11px 12px;
+}
+
+.performance-context-row span {
+    font-size: 8px;
+}
+
+.performance-context-row strong {
+    margin-top: 3px;
+    font-size: 10.5px;
+}
+
+.performance-kpi-grid {
+    gap: 11px;
+}
+
+.performance-kpi-grid article {
+    grid-template-columns: 42px minmax(0, 1fr);
+    min-height: 104px;
+    gap: 11px;
+    padding: 14px;
+}
+
+.performance-kpi-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 14px;
+}
+
+.performance-kpi-grid strong {
+    font-size: 23px;
+}
+
+.performance-kpi-grid span {
+    margin-top: 4px;
+    font-size: 10px;
+}
+
+.performance-kpi-grid small {
+    margin-top: 3px;
+    font-size: 8.5px;
+    line-height: 1.35;
+}
+
+.performance-ranking-panel,
+.performance-recognition-panel,
+.performance-history-panel,
+.performance-criteria-panel {
+    padding: 19px 21px;
+}
+
+.performance-panel-heading {
+    margin-bottom: 15px;
+}
+
+.performance-panel-heading h2 {
+    margin-top: 4px;
+    font-size: 15.5px;
+}
+
+.performance-panel-heading p {
+    font-size: 9.7px;
+    line-height: 1.5;
+}
+
+.performance-ranking-count,
+.performance-period-badge {
+    padding: 6px 10px;
+    font-size: 8.5px;
+}
+
+.performance-ranking-list {
+    gap: 8px;
+}
+
+.performance-person-row {
+    grid-template-columns: 46px minmax(190px, .95fr) minmax(380px, 1.45fr) 94px;
+    min-height: 76px;
+    gap: 11px;
+    padding: 9px 11px;
+}
+
+.performance-position i {
+    font-size: 12px;
+}
+
+.performance-position strong {
+    font-size: 14px;
+}
+
+.performance-avatar {
+    width: 40px;
+    height: 40px;
+    flex-basis: 40px;
+    font-size: 9.5px;
+}
+
+.performance-avatar.is-small {
+    width: 34px;
+    height: 34px;
+    flex-basis: 34px;
+    font-size: 8.5px;
+}
+
+.performance-person {
+    gap: 10px;
+}
+
+.performance-person strong {
+    font-size: 10.5px;
+}
+
+.performance-person span {
+    margin-top: 3px;
+    font-size: 8.3px;
+}
+
+.performance-row-metrics {
+    gap: 7px;
+}
+
+.performance-row-metrics > div {
+    padding: 8px 9px;
+}
+
+.performance-row-metrics strong {
+    font-size: 12.5px;
+}
+
+.performance-row-metrics span {
+    margin-top: 3px;
+    font-size: 7.8px;
+}
+
+.performance-index span {
+    font-size: 7.8px;
+}
+
+.performance-index strong {
+    margin-top: 4px;
+    font-size: 18px;
+}
+
+.performance-recognition-list {
+    gap: 9px;
+}
+
+.performance-recognition-list article {
+    grid-template-columns: 36px minmax(0, 1fr) auto;
+    min-height: 64px;
+    gap: 10px;
+    padding: 10px 11px;
+}
+
+.performance-recognition-icon {
+    width: 35px;
+    height: 35px;
+    font-size: 13px;
+}
+
+.performance-recognition-person > div > span {
+    font-size: 8px;
+}
+
+.performance-recognition-person > div > strong {
+    margin-top: 3px;
+    font-size: 9.5px;
+}
+
+.performance-recognition-value strong {
+    font-size: 13px;
+}
+
+.performance-recognition-value span {
+    font-size: 7.5px;
+}
+
+.performance-empty {
+    min-height: 145px;
+}
+
+.performance-empty i {
+    font-size: 20px;
+}
+
+.performance-empty strong {
+    font-size: 10.5px;
+}
+
+.performance-empty span {
+    font-size: 9px;
+}
+
+.performance-chart-scroll {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: hidden;
+    overflow-y: hidden;
+    padding-bottom: 0;
+}
+
+.performance-bar-chart {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    grid-template-columns: repeat(
+        var(--performance-days),
+        minmax(0, 1fr)
+    );
+    gap: clamp(1px, .35vw, 6px);
+    height: 220px;
+    padding: 16px 4px 0;
+    overflow: hidden;
+}
+
+.performance-day {
+    min-width: 0;
+    grid-template-rows: 1fr 24px;
+}
+
+.performance-bars {
+    min-width: 0;
+    gap: 2px;
+}
+
+.performance-bars > span {
+    width: clamp(3px, 24%, 9px);
+    max-width: 9px;
+}
+
+.performance-day > strong {
+    overflow: hidden;
+    font-size: 7.5px;
+    text-overflow: clip;
+    white-space: nowrap;
+}
+
+.performance-day > strong.is-hidden-label {
+    visibility: hidden;
+}
+
+.performance-chart-legend {
+    gap: 12px 20px;
+    margin-top: 10px;
+    font-size: 8.5px;
+}
+
+.performance-chart-legend i {
+    width: 9px;
+    height: 9px;
+}
+
+.performance-chart-empty {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 112px;
+    padding: 18px;
+    border: 1px dashed #d8e0ea;
+    border-radius: 10px;
+    background: #fbfcfe;
+}
+
+.performance-chart-empty-icon {
+    width: 40px;
+    height: 40px;
+    flex: 0 0 40px;
+    display: grid;
+    place-items: center;
+    border-radius: 10px;
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
+    font-size: 16px;
+}
+
+.performance-chart-empty strong,
+.performance-chart-empty span {
+    display: block;
+}
+
+.performance-chart-empty strong {
+    color: var(--color-text-primary);
+    font-size: 10.5px;
+    font-weight: 800;
+}
+
+.performance-chart-empty span {
+    margin-top: 3px;
+    color: var(--color-text-secondary);
+    font-size: 9px;
+    line-height: 1.45;
+}
+
+.performance-criteria-list {
+    gap: 8px 14px;
+}
+
+.performance-criteria-list > div {
+    grid-template-columns: 18px minmax(0, 1fr);
+    gap: 8px;
+    padding: 9px 10px;
+}
+
+.performance-criteria-list i {
+    font-size: 10.5px;
+}
+
+.performance-criteria-list span {
+    font-size: 8.8px;
+    line-height: 1.5;
+}
+
+.performance-decision-note {
+    gap: 8px;
+    margin-top: 11px;
+    padding: 10px 11px;
+    font-size: 8.8px;
+    line-height: 1.5;
+}
+
+@media (max-width: 1399.98px) {
+    .performance-filter-form {
+        display: flex;
+    }
+
+    .performance-filter-actions {
+        margin-left: 0;
+    }
+
+    .performance-person-row {
+        grid-template-columns:
+            42px
+            minmax(175px, .9fr)
+            minmax(310px, 1.35fr)
+            82px;
+    }
+}
+
+@media (max-width: 1199.98px) {
+    .performance-filter-field {
+        flex-basis: calc(50% - 6px);
+        max-width: none;
+    }
+
+    .performance-filter-actions {
+        flex: 1 0 100%;
+        justify-content: flex-start;
+    }
+
+    .performance-person-row {
+        grid-template-columns: 42px minmax(180px, 1fr) 82px;
+    }
+
+    .performance-bar-chart {
+        height: 205px;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .performance-module {
+        overflow-x: hidden;
+    }
+
+    .performance-hero {
+        min-height: 0;
+        padding: 18px;
+    }
+
+    .performance-hero h1 {
+        font-size: 22px;
+    }
+
+    .performance-filter-field,
+    .performance-filter-actions {
+        flex: 1 0 100%;
+        max-width: none;
+    }
+
+    .performance-filter-actions .btn {
+        flex: 1 1 calc(50% - 4px);
+        min-width: 0;
+    }
+
+    .performance-custom-period {
+        grid-template-columns: 1fr;
+    }
+
+    .performance-person-row {
+        grid-template-columns: 38px minmax(0, 1fr);
+    }
+
+    .performance-bar-chart {
+        height: 190px;
+        gap: 1px;
+    }
+
+    .performance-bars > span {
+        width: clamp(2px, 28%, 7px);
+    }
+
+    .performance-day > strong {
+        font-size: 6.8px;
+    }
+}
