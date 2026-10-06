@@ -765,7 +765,7 @@ if ($tipoConvocatoria === 'sindicatos') {
                 <a
                     class="btn btn-system-light convocatoria-titulacion-card-button"
                     href="<?= BASE_URL ?>index.php?controller=convocatoria&action=index&territorio_id=<?= (int)$territorioSeleccionado['id'] ?>&tipo=<?= $texto($tipoConvocatoria) ?>&subtipo=<?= $texto($opcionSubtipo['slug']) ?>">
-                    Ver
+                    Ver convocatorias
                     <i class="bi bi-arrow-right"></i>
                 </a>
             </article>
