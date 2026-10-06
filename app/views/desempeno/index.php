@@ -195,7 +195,7 @@ $rankingTitle = $vista === 'propio'
             <h1><?= $esc($vistaLabel) ?></h1>
             <p>
                 <?= $vista === 'equipo'
-                    ? 'Compara la actividad de tus Analistas dentro de tu alcance autorizado.'
+                    ? 'Revisa el desempeño de tus Analistas, identifica quién destaca y en qué métricas dentro de tu alcance autorizado.'
                     : (
                         $vista === 'global'
                             ? 'Consulta el desempeño del área seleccionada con métricas comparables y criterios visibles.'
@@ -552,13 +552,13 @@ $rankingTitle = $vista === 'propio'
             <div class="performance-panel-heading">
                 <div>
                     <span class="performance-eyebrow">
-                        <?= $vista === 'propio' ? 'HISTORIAL PERSONAL' : 'COMPARATIVO DEL PERIODO' ?>
+                        <?= $vista === 'propio' ? 'HISTORIAL PERSONAL' : 'RANKING DEL PERIODO' ?>
                     </span>
                     <h2><?= $esc($rankingTitle) ?></h2>
                     <p>
                         <?= $vista === 'propio'
                             ? 'Tus métricas se muestran sin compararte con personas fuera de tu alcance.'
-                            : 'Ordenado por un índice operativo transparente; no representa una decisión automática de incentivo.' ?>
+                            : 'Compara resultados e identifica fortalezas para reconocimientos. El índice operativo resume la actividad con criterios visibles y no asigna incentivos automáticamente.' ?>
                     </p>
                 </div>
                 <?php if (count($ranking) > 1): ?>
@@ -690,7 +690,7 @@ $rankingTitle = $vista === 'propio'
                 <div class="performance-panel-heading">
                     <div>
                         <span class="performance-eyebrow">RECONOCIMIENTOS</span>
-                        <h2>Fortalezas destacadas</h2>
+                        <h2>Destacados del periodo</h2>
                         <p>
                             Reconocimientos por métrica objetiva dentro del mismo periodo y área.
                         </p>
