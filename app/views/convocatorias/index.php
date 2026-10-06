@@ -1346,17 +1346,6 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
                 <input type="hidden" name="mes" value="<?= (int)$mesSeleccionado ?>">
 
                 <div class="modal-body">
-                    <?php if ($modalAbierto === 'crear' && !empty($erroresFormulario)): ?>
-                        <div class="alert alert-danger login-alert" role="alert">
-                            <i class="bi bi-exclamation-circle"></i>
-                            <div>
-                                <?php foreach ($erroresFormulario as $error): ?>
-                                    <div><?= $texto($error) ?></div>
-                                <?php endforeach; ?>
-                            </div>
-                        </div>
-                    <?php endif; ?>
-
                     <div class="system-form-grid">
                         <div class="system-form-full">
                             <label class="form-label login-label" for="crear_convocatoria_titulo">Título</label>
