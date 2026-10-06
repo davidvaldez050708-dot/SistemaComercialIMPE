@@ -1990,19 +1990,19 @@
     align-items: center;
     justify-content: center;
     gap: 12px;
-    border: 1px solid #214399;
+    border: 1px solid #223A84;
     border-radius: 10px;
-    background: linear-gradient(135deg, #1f3f90 0%, #2854bb 100%);
+    background-color: #223A84;
     color: #ffffff;
     font-size: 11px;
     font-weight: 800;
-    box-shadow: 0 7px 15px rgba(31, 63, 144, .12);
+    box-shadow: 0 7px 15px rgba(34, 58, 132, .12);
 }
 
 .convocatoria-titulacion-card .convocatoria-titulacion-card-button:hover,
 .convocatoria-titulacion-card .convocatoria-titulacion-card-button:focus {
-    border-color: #1b3885;
-    background: linear-gradient(135deg, #1b3885 0%, #244caa 100%);
+    border-color: #1C2544;
+    background-color: #1C2544;
     color: #ffffff;
 }
 
