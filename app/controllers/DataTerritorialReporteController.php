@@ -103,7 +103,7 @@ class DataTerritorialReporteController
         }
 
         $contenido = (string)($resultadoPdf['contenido_pdf'] ?? '');
-        $nombreArchivo = (string)($resultadoPdf['nombre_archivo'] ?? 'Reporte_Informacion_Territorial.pdf');
+        $nombreArchivo = (string)($resultadoPdf['nombre_archivo'] ?? 'Informacion_Territorial_Corte_' . date('Y-m-d') . '.pdf');
 
         header('Content-Type: application/pdf');
         header('Content-Disposition: attachment; filename="' . $nombreArchivo . '"');
