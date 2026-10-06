@@ -209,7 +209,7 @@ class ReporteAliadosPdfService
         $html .= $this->scopeCell('Situación', $situacion);
         $html .= $this->scopeCell(
             'Periodo analizado',
-            (string)($periodo['label'] ?? 'Histórico completo')
+            $this->etiquetaPeriodo($periodo)
         );
         $html .= $this->scopeCell(
             'Aliados incluidos',
@@ -328,11 +328,11 @@ class ReporteAliadosPdfService
             'convocatorias compartidas'
         );
         $html .= $this->metric(
-            'Seguimientos',
+            'Actualizaciones',
             $this->numero(
                 $actividadPeriodo['seguimientos'] ?? 0
             ),
-            'actualizaciones'
+            'de seguimiento'
         );
         $html .= $this->metric(
             'Confirmaciones',
@@ -496,7 +496,6 @@ class ReporteAliadosPdfService
         }
         $html .= '</section>';
 
-        $html .= '<div class="page-break"></div>';
         $html .= '<section class="report-section">';
         $html .= $this->sectionTitle('Detalle de aliados');
         $html .=
@@ -910,6 +909,39 @@ class ReporteAliadosPdfService
         return 'Todos los territorios autorizados';
     }
 
+    private function etiquetaPeriodo(array $periodo): string
+    {
+        $label = trim(
+            (string)($periodo['label'] ?? 'Histórico completo')
+        );
+        $desde = trim(
+            (string)($periodo['fecha_desde'] ?? '')
+        );
+        $hasta = trim(
+            (string)($periodo['fecha_hasta'] ?? '')
+        );
+
+        if ($desde === '' || $hasta === '') {
+            return $label !== '' ? $label : 'Histórico completo';
+        }
+
+        try {
+            $desdeFormateado =
+                (new DateTimeImmutable($desde))->format('d/m/Y');
+            $hastaFormateado =
+                (new DateTimeImmutable($hasta))->format('d/m/Y');
+
+            return
+                ($label !== '' ? $label : 'Periodo seleccionado') .
+                ' · ' .
+                $desdeFormateado .
+                ' al ' .
+                $hastaFormateado;
+        } catch (Throwable $error) {
+            return $label !== '' ? $label : 'Periodo seleccionado';
+        }
+    }
+
     private function etiquetaModo(string $modo): string
     {
         if ($modo === 'estado') {
@@ -920,7 +952,7 @@ class ReporteAliadosPdfService
             return 'Municipio';
         }
 
-        return 'Red multiestado';
+        return 'Red territorial';
     }
 
     private function canal(string $canal): string
@@ -1055,7 +1087,6 @@ class ReporteAliadosPdfService
             '.insight{display:table;width:100%;border-bottom:1px solid #E5E9EF;padding:6px 0}.insight:last-child{border-bottom:0}' .
             '.insight span,.insight p{display:table-cell;vertical-align:top}.insight span{width:15px;color:#273A8A;font-weight:800}.insight p{margin:0;color:#4F5968;font-size:6.1pt}' .
             '.empty{border-left:3px solid #BFD9D4;background:#F4FAF8;padding:8px 10px;color:#4F5968;font-size:6.2pt}' .
-            '.page-break{page-break-before:always;height:0}' .
             '.ally-card{page-break-inside:avoid;border:1px solid #D9E1EB;margin:0 0 9px;background:#FFF}' .
             '.ally-head{width:100%;border-collapse:collapse;background:#F7F9FC;border-bottom:1px solid #D9E1EB}' .
             '.ally-head td{padding:8px 9px;vertical-align:middle}.ally-head span{display:block;color:#0A8F7A;font-size:5.2pt;font-weight:800;letter-spacing:.04em}' .
