@@ -5,8 +5,10 @@ require_once __DIR__ . '/../../helpers/ReminderHelper.php';
 
 $puedeSolicitarReuniones = tienePermiso('reuniones.solicitar');
 $puedeGestionarReuniones = tienePermiso('reuniones.gestionar');
-$esAnalistaDatos = tienePermiso('seguimientos_vinculacion.operar_propios');
 $esAdministradorTopbar = (int)($_SESSION['rol_id'] ?? 0) === 1;
+$esAnalistaDatos =
+    !$esAdministradorTopbar &&
+    tienePermiso('seguimientos_vinculacion.operar_propios');
 $esMarketingTopbar =
     !$esAdministradorTopbar &&
     tienePermiso('convocatorias.gestionar');
