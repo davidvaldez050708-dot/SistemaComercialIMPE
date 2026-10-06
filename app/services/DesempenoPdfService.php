@@ -265,18 +265,38 @@ class DesempenoPdfService
 
         $html .= '</tr></table></section>';
 
+        $esComparativo =
+            count($ranking) > 1 &&
+            in_array($vista, ['global', 'equipo'], true);
+
+        $tituloDesempeno = $vista === 'propio'
+            ? 'Detalle de desempeño'
+            : (
+                $vista === 'equipo'
+                    ? (
+                        $esComparativo
+                            ? 'Ranking operativo de mi equipo'
+                            : 'Desempeño de mi equipo'
+                    )
+                    : (
+                        $esComparativo
+                            ? 'Ranking operativo del periodo'
+                            : 'Desempeño del área'
+                    )
+            );
+
         $html .= '<section class="section">';
-        $html .= $this->titulo(
-            $vista === 'propio'
-                ? 'Detalle de desempeño'
-                : 'Ranking operativo del periodo'
-        );
+        $html .= $this->titulo($tituloDesempeno);
 
         if (empty($ranking)) {
             $html .=
                 '<div class="empty">No existen datos de desempeño para el alcance seleccionado.</div>';
         } else {
-            $html .= $this->tablaRanking($ranking, $area);
+            $html .= $this->tablaRanking(
+                $ranking,
+                $area,
+                $esComparativo
+            );
         }
         $html .= '</section>';
 
@@ -381,24 +401,32 @@ class DesempenoPdfService
         return $html . '</body></html>';
     }
 
-    private function tablaRanking(array $ranking, $area)
-    {
+    private function tablaRanking(
+        array $ranking,
+        $area,
+        $esComparativo = true
+    ) {
         if ($area === 'cuenta_clave') {
             $html =
                 '<table class="table"><thead><tr>' .
-                '<th>#</th><th>Persona</th>' .
+                ($esComparativo ? '<th>#</th>' : '') .
+                '<th>Persona</th>' .
                 '<th class="num">Aliados</th>' .
                 '<th class="num">Difusiones</th>' .
                 '<th class="num">Actualizaciones</th>' .
                 '<th class="num">Confirmaciones</th>' .
-                '<th class="num">Índice</th>' .
+                ($esComparativo ? '<th class="num">Índice</th>' : '') .
                 '</tr></thead><tbody>';
 
             foreach ($ranking as $fila) {
                 $html .= '<tr>';
-                $html .= '<td>' .
-                    (int)($fila['posicion'] ?? 0) .
-                    '</td>';
+
+                if ($esComparativo) {
+                    $html .= '<td>' .
+                        (int)($fila['posicion'] ?? 0) .
+                        '</td>';
+                }
+
                 $html .= $this->tdPersona($fila);
                 $html .= $this->tdNum(
                     $fila['aliados_trabajados'] ?? 0
@@ -412,57 +440,18 @@ class DesempenoPdfService
                 $html .= $this->tdNum(
                     $fila['confirmaciones'] ?? 0
                 );
-                $html .= $this->tdNum(
-                    $fila['indice'] === null
-                        ? '—'
-                        : number_format(
-                            (float)$fila['indice'],
-                            1
-                        )
-                );
-                $html .= '</tr>';
-            }
 
-            return $html . '</tbody></table>';
-        }
+                if ($esComparativo) {
+                    $html .= $this->tdNum(
+                        $fila['indice'] === null
+                            ? '—'
+                            : number_format(
+                                (float)$fila['indice'],
+                                1
+                            )
+                    );
+                }
 
-        if ($area === 'marketing') {
-            $html =
-                '<table class="table"><thead><tr>' .
-                '<th>#</th><th>Persona</th>' .
-                '<th class="num">Publicaciones</th>' .
-                '<th class="num">Territorios</th>' .
-                '<th class="num">Actualizaciones</th>' .
-                '<th class="num">Vigentes</th>' .
-                '<th class="num">Índice</th>' .
-                '</tr></thead><tbody>';
-
-            foreach ($ranking as $fila) {
-                $html .= '<tr>';
-                $html .= '<td>' .
-                    (int)($fila['posicion'] ?? 0) .
-                    '</td>';
-                $html .= $this->tdPersona($fila);
-                $html .= $this->tdNum(
-                    $fila['publicaciones'] ?? 0
-                );
-                $html .= $this->tdNum(
-                    $fila['territorios_cubiertos'] ?? 0
-                );
-                $html .= $this->tdNum(
-                    $fila['actualizaciones'] ?? 0
-                );
-                $html .= $this->tdNum(
-                    $fila['vigentes'] ?? 0
-                );
-                $html .= $this->tdNum(
-                    $fila['indice'] === null
-                        ? '—'
-                        : number_format(
-                            (float)$fila['indice'],
-                            1
-                        )
-                );
                 $html .= '</tr>';
             }
 
@@ -471,20 +460,25 @@ class DesempenoPdfService
 
         $html =
             '<table class="table"><thead><tr>' .
-            '<th>#</th><th>Persona</th>' .
+            ($esComparativo ? '<th>#</th>' : '') .
+            '<th>Persona</th>' .
             '<th class="num">Llamadas</th>' .
             '<th class="num">Con contacto</th>' .
             '<th class="num">Tasa contacto</th>' .
             '<th class="num">Interacciones</th>' .
             '<th class="num">Efectivas</th>' .
-            '<th class="num">Índice</th>' .
+            ($esComparativo ? '<th class="num">Índice</th>' : '') .
             '</tr></thead><tbody>';
 
         foreach ($ranking as $fila) {
             $html .= '<tr>';
-            $html .= '<td>' .
-                (int)($fila['posicion'] ?? 0) .
-                '</td>';
+
+            if ($esComparativo) {
+                $html .= '<td>' .
+                    (int)($fila['posicion'] ?? 0) .
+                    '</td>';
+            }
+
             $html .= $this->tdPersona($fila);
             $html .= $this->tdNum(
                 $fila['llamadas_realizadas'] ?? 0
@@ -504,14 +498,18 @@ class DesempenoPdfService
             $html .= $this->tdNum(
                 $fila['llamadas_efectivas'] ?? 0
             );
-            $html .= $this->tdNum(
-                $fila['indice'] === null
-                    ? '—'
-                    : number_format(
-                        (float)$fila['indice'],
-                        1
-                    )
-            );
+
+            if ($esComparativo) {
+                $html .= $this->tdNum(
+                    $fila['indice'] === null
+                        ? '—'
+                        : number_format(
+                            (float)$fila['indice'],
+                            1
+                        )
+                );
+            }
+
             $html .= '</tr>';
         }
 
