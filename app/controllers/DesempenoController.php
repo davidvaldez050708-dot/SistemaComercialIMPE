@@ -85,7 +85,8 @@ class DesempenoController
             tienePermiso('desempeno.ver_global'),
             tienePermiso('desempeno.ver_equipo'),
             tienePermiso('desempeno.ver_propio'),
-            $this->obtenerFiltros()
+            $this->obtenerFiltros(),
+            true
         );
 
         $desempeno['generado_por'] = trim(
