@@ -91,7 +91,7 @@ class CuentaClaveDashboardService
             $territorios,
             $cartera,
             $atenciones,
-            $aliados
+            $puedeAliados ? $aliados : []
         );
 
         return [
