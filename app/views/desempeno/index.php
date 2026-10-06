@@ -133,14 +133,37 @@ $esPersonalizado =
     (string)($periodo['clave'] ?? '') === 'personalizado';
 
 $maxTendencia = 0;
+$actividadTendenciaTotal = 0;
+
 foreach ($tendencia as $filaTendencia) {
+    $principalTendencia =
+        (int)($filaTendencia['principal'] ?? 0);
+    $secundarioTendencia =
+        (int)($filaTendencia['secundario'] ?? 0);
+    $terciarioTendencia =
+        (int)($filaTendencia['terciario'] ?? 0);
+
+    $actividadTendenciaTotal +=
+        $principalTendencia +
+        $secundarioTendencia +
+        $terciarioTendencia;
+
     $maxTendencia = max(
         $maxTendencia,
-        (int)($filaTendencia['principal'] ?? 0),
-        (int)($filaTendencia['secundario'] ?? 0),
-        (int)($filaTendencia['terciario'] ?? 0)
+        $principalTendencia,
+        $secundarioTendencia,
+        $terciarioTendencia
     );
 }
+
+$totalDiasTendencia = count($tendencia);
+$saltoEtiquetaTendencia =
+    $totalDiasTendencia <= 10
+        ? 1
+        : ($totalDiasTendencia <= 20
+            ? 2
+            : ($totalDiasTendencia <= 31 ? 3 : 5));
+
 $maxTendencia = max(1, $maxTendencia);
 
 $vistaLabel = [
@@ -726,61 +749,82 @@ $rankingTitle = $vista === 'propio'
             </span>
         </div>
 
-        <div class="performance-chart-scroll">
-            <div
-                class="performance-bar-chart"
-                style="--performance-days: <?= max(1, count($tendencia)) ?>">
-                <?php foreach ($tendencia as $dia): ?>
-                    <?php
-                    $principal = (int)($dia['principal'] ?? 0);
-                    $secundario = (int)($dia['secundario'] ?? 0);
-                    $terciario = (int)($dia['terciario'] ?? 0);
-                    $altoPrincipal = $principal > 0
-                        ? max(6, ($principal / $maxTendencia) * 100)
-                        : 0;
-                    $altoSecundario = $secundario > 0
-                        ? max(6, ($secundario / $maxTendencia) * 100)
-                        : 0;
-                    $altoTerciario = $terciario > 0
-                        ? max(6, ($terciario / $maxTendencia) * 100)
-                        : 0;
-                    ?>
-                    <div class="performance-day">
-                        <div class="performance-bars">
-                            <span
-                                class="is-primary"
-                                style="height: <?= $esc(number_format($altoPrincipal, 2, '.', '')) ?>%"
-                                title="<?= $principal ?>"></span>
-                            <span
-                                class="is-secondary"
-                                style="height: <?= $esc(number_format($altoSecundario, 2, '.', '')) ?>%"
-                                title="<?= $secundario ?>"></span>
-                            <?php if ($area === 'cuenta_clave'): ?>
-                                <span
-                                    class="is-tertiary"
-                                    style="height: <?= $esc(number_format($altoTerciario, 2, '.', '')) ?>%"
-                                    title="<?= $terciario ?>"></span>
-                            <?php endif; ?>
-                        </div>
-                        <strong><?= $esc($dia['label'] ?? '') ?></strong>
-                    </div>
-                <?php endforeach; ?>
+        <?php if ($actividadTendenciaTotal <= 0): ?>
+            <div class="performance-chart-empty">
+                <span class="performance-chart-empty-icon">
+                    <i class="bi bi-bar-chart"></i>
+                </span>
+                <div>
+                    <strong>Sin actividad registrada en este periodo</strong>
+                    <span>
+                        La gráfica aparecerá cuando existan movimientos dentro del rango seleccionado.
+                    </span>
+                </div>
             </div>
-        </div>
+        <?php else: ?>
+            <div class="performance-chart-scroll">
+                <div
+                    class="performance-bar-chart"
+                    style="--performance-days: <?= max(1, $totalDiasTendencia) ?>">
+                    <?php foreach ($tendencia as $indiceDia => $dia): ?>
+                        <?php
+                        $principal = (int)($dia['principal'] ?? 0);
+                        $secundario = (int)($dia['secundario'] ?? 0);
+                        $terciario = (int)($dia['terciario'] ?? 0);
+                        $altoPrincipal = $principal > 0
+                            ? max(6, ($principal / $maxTendencia) * 100)
+                            : 0;
+                        $altoSecundario = $secundario > 0
+                            ? max(6, ($secundario / $maxTendencia) * 100)
+                            : 0;
+                        $altoTerciario = $terciario > 0
+                            ? max(6, ($terciario / $maxTendencia) * 100)
+                            : 0;
+                        $mostrarEtiqueta =
+                            ($indiceDia % $saltoEtiquetaTendencia) === 0 ||
+                            $indiceDia === ($totalDiasTendencia - 1);
+                        ?>
+                        <div class="performance-day">
+                            <div class="performance-bars">
+                                <span
+                                    class="is-primary"
+                                    style="height: <?= $esc(number_format($altoPrincipal, 2, '.', '')) ?>%"
+                                    title="<?= $principal ?>"></span>
+                                <span
+                                    class="is-secondary"
+                                    style="height: <?= $esc(number_format($altoSecundario, 2, '.', '')) ?>%"
+                                    title="<?= $secundario ?>"></span>
+                                <?php if ($area === 'cuenta_clave'): ?>
+                                    <span
+                                        class="is-tertiary"
+                                        style="height: <?= $esc(number_format($altoTerciario, 2, '.', '')) ?>%"
+                                        title="<?= $terciario ?>"></span>
+                                <?php endif; ?>
+                            </div>
+                            <strong
+                                class="<?= $mostrarEtiqueta ? '' : 'is-hidden-label' ?>"
+                                title="<?= $esc($dia['fecha'] ?? '') ?>">
+                                <?= $esc($dia['label'] ?? '') ?>
+                            </strong>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
 
-        <div class="performance-chart-legend">
-            <?php if ($area === 'cuenta_clave'): ?>
-                <span><i class="is-primary"></i> Difusiones</span>
-                <span><i class="is-secondary"></i> Actualizaciones</span>
-                <span><i class="is-tertiary"></i> Confirmaciones</span>
-            <?php elseif ($area === 'marketing'): ?>
-                <span><i class="is-primary"></i> Publicaciones</span>
-                <span><i class="is-secondary"></i> Actualizaciones</span>
-            <?php else: ?>
-                <span><i class="is-primary"></i> Interacciones</span>
-                <span><i class="is-secondary"></i> Llamadas efectivas</span>
-            <?php endif; ?>
-        </div>
+            <div class="performance-chart-legend">
+                <?php if ($area === 'cuenta_clave'): ?>
+                    <span><i class="is-primary"></i> Difusiones</span>
+                    <span><i class="is-secondary"></i> Actualizaciones</span>
+                    <span><i class="is-tertiary"></i> Confirmaciones</span>
+                <?php elseif ($area === 'marketing'): ?>
+                    <span><i class="is-primary"></i> Publicaciones</span>
+                    <span><i class="is-secondary"></i> Actualizaciones</span>
+                <?php else: ?>
+                    <span><i class="is-primary"></i> Interacciones</span>
+                    <span><i class="is-secondary"></i> Llamadas efectivas</span>
+                <?php endif; ?>
+            </div>
+        <?php endif; ?>
     </section>
 
     <section class="dashboard-panel performance-criteria-panel">
