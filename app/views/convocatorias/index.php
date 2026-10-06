@@ -23,6 +23,9 @@ $aniosConvocatorias = is_array($aniosConvocatorias ?? null)
 $resumenMensualConvocatorias = is_array($resumenMensualConvocatorias ?? null)
     ? $resumenMensualConvocatorias
     : [];
+$mesesVisiblesConvocatorias = is_array($mesesVisiblesConvocatorias ?? null)
+    ? $mesesVisiblesConvocatorias
+    : [];
 $mostrarSelectorMes = (bool)($mostrarSelectorMes ?? false);
 $nombresMesesConvocatoria = [
     1 => 'Enero',
@@ -882,10 +885,13 @@ $urlCambiarOpcionMes = $tipoConvocatoria === 'sindicatos'
         </div>
 
         <div class="convocatoria-month-grid">
-            <?php foreach ($nombresMesesConvocatoria as $numeroMes => $nombreMes): ?>
+            <?php foreach ($mesesVisiblesConvocatorias as $mesVisible): ?>
                 <?php
-                $datosMes = is_array($resumenMensualConvocatorias[$numeroMes] ?? null)
-                    ? $resumenMensualConvocatorias[$numeroMes]
+                $numeroMes = (int)($mesVisible['mes'] ?? 0);
+                $anioMes = (int)($mesVisible['anio'] ?? $anioSeleccionado);
+                $nombreMes = $nombresMesesConvocatoria[$numeroMes] ?? '';
+                $datosMes = is_array($mesVisible['datos'] ?? null)
+                    ? $mesVisible['datos']
                     : ['total' => 0, 'convocatorias' => []];
 
                 $totalMes = (int)($datosMes['total'] ?? 0);
@@ -898,7 +904,7 @@ $urlCambiarOpcionMes = $tipoConvocatoria === 'sindicatos'
                     (int)$territorioSeleccionado['id'] .
                     '&tipo=' . rawurlencode($tipoConvocatoria) .
                     '&subtipo=' . rawurlencode($subtipoConvocatoria) .
-                    '&anio=' . $anioSeleccionado .
+                    '&anio=' . $anioMes .
                     '&mes=' . $numeroMes;
                 ?>
 
@@ -909,7 +915,12 @@ $urlCambiarOpcionMes = $tipoConvocatoria === 'sindicatos'
                         </span>
 
                         <div class="convocatoria-month-card-title">
-                            <strong><?= $texto($nombreMes) ?></strong>
+                            <strong>
+                                <?= $texto($nombreMes) ?>
+                                <?php if ($anioMes !== $anioSeleccionado): ?>
+                                    <?= (int)$anioMes ?>
+                                <?php endif; ?>
+                            </strong>
                             <small>Consulta las convocatorias de <?= $texto(mb_strtolower($nombreMes, 'UTF-8')) ?>.</small>
                         </div>
 
