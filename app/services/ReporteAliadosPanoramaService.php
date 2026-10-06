@@ -959,11 +959,15 @@ class ReporteAliadosPanoramaService
                 $totalMunicipios . ' ' .
                 ($totalMunicipios === 1 ? 'municipio' : 'municipios') . '.';
 
-            if (!empty($estados)) {
+            if (count($estados) > 1) {
                 $principal = $estados[0];
                 $hallazgos[] =
-                    (string)$principal['estado'] . ' concentra el mayor número de aliados: ' .
-                    (int)$principal['aliados'] . ' de ' . $totalAliados . '.';
+                    (string)$principal['estado'] .
+                    ' concentra el mayor número de aliados: ' .
+                    (int)$principal['aliados'] .
+                    ' de ' .
+                    $totalAliados .
+                    '.';
 
                 $menorCobertura = $estados[0];
                 foreach ($estados as $filaEstado) {
@@ -975,15 +979,31 @@ class ReporteAliadosPanoramaService
                     }
                 }
 
-                if (count($estados) > 1) {
-                    $hallazgos[] =
-                        (string)$menorCobertura['estado'] .
-                        ' presenta la menor cobertura de difusión de la red: ' .
-                        number_format(
-                            (float)($menorCobertura['cobertura_difusion'] ?? 0),
-                            1
-                        ) . '%.';
-                }
+                $hallazgos[] =
+                    (string)$menorCobertura['estado'] .
+                    ' presenta la menor cobertura de difusión de la red: ' .
+                    number_format(
+                        (float)($menorCobertura['cobertura_difusion'] ?? 0),
+                        1
+                    ) .
+                    '%.';
+            } elseif (count($estados) === 1) {
+                $estadoUnico = $estados[0];
+                $aliadosEstado = (int)($estadoUnico['aliados'] ?? 0);
+                $confirmadosEstado = (int)(
+                    $estadoUnico['difusion_confirmada'] ?? 0
+                );
+
+                $hallazgos[] =
+                    'En ' .
+                    (string)($estadoUnico['estado'] ?? 'el territorio') .
+                    ', ' .
+                    $confirmadosEstado .
+                    ' de ' .
+                    $aliadosEstado .
+                    ' ' .
+                    ($aliadosEstado === 1 ? 'aliado tiene' : 'aliados tienen') .
+                    ' difusión confirmada.';
             }
         } elseif ($modo === 'estado') {
             $nombreEstado = !empty($estados)
