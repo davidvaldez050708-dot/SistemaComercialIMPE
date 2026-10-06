@@ -6,8 +6,12 @@ require_once __DIR__ . '/../../helpers/ReminderHelper.php';
 $puedeSolicitarReuniones = tienePermiso('reuniones.solicitar');
 $puedeGestionarReuniones = tienePermiso('reuniones.gestionar');
 $esAnalistaDatos = tienePermiso('seguimientos_vinculacion.operar_propios');
-$esMarketingTopbar = tienePermiso('convocatorias.gestionar');
+$esAdministradorTopbar = (int)($_SESSION['rol_id'] ?? 0) === 1;
+$esMarketingTopbar =
+    !$esAdministradorTopbar &&
+    tienePermiso('convocatorias.gestionar');
 $mostrarCentroAvisos =
+    $esAdministradorTopbar ||
     (
         tienePermiso('reuniones.ver') &&
         ($puedeSolicitarReuniones || $puedeGestionarReuniones)
@@ -182,7 +186,8 @@ $totalRecordatoriosSeguimiento = 0;
                 <div
                     class="dropdown"
                     data-reminder-root
-                    data-reminder-endpoint="<?= BASE_URL ?>index.php?controller=reminder&action=pendientes">
+                    data-reminder-endpoint="<?= BASE_URL ?>index.php?controller=reminder&action=pendientes"
+                    <?= $esAdministradorTopbar ? 'data-reminder-count-mode="total"' : '' ?>>
                     <button
                         class="topbar-reminder-button dropdown-toggle"
                         type="button"
@@ -201,15 +206,24 @@ $totalRecordatoriosSeguimiento = 0;
 
                     <div class="dropdown-menu dropdown-menu-end topbar-reminder-menu">
                         <div class="topbar-reminder-header">
-                            <strong>Notificaciones</strong>
-                            <span>Reuniones, seguimientos y acciones próximas.</span>
+                            <?php if ($esAdministradorTopbar): ?>
+                                <strong>Notificaciones administrativas</strong>
+                                <span>Supervisión global de reuniones, seguimientos y convocatorias.</span>
+                            <?php else: ?>
+                                <strong>Notificaciones</strong>
+                                <span>Reuniones, seguimientos y acciones próximas.</span>
+                            <?php endif; ?>
                         </div>
 
                         <div data-reminder-content aria-live="polite" aria-busy="true">
                             <div class="topbar-reminder-empty">
                                 <i class="bi bi-arrow-repeat"></i>
                                 <strong>Actualizando notificaciones</strong>
-                                <span>Consultando acciones y seguimientos pendientes.</span>
+                                <span>
+                                    <?= $esAdministradorTopbar
+                                        ? 'Consultando alertas de supervisión global.'
+                                        : 'Consultando acciones y seguimientos pendientes.' ?>
+                                </span>
                             </div>
                         </div>
                     </div>
