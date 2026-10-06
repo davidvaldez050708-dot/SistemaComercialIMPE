@@ -3,6 +3,8 @@
 use Dompdf\Dompdf;
 use Dompdf\Options;
 
+require_once __DIR__ . '/ReporteNombreArchivoService.php';
+
 class ReporteSeguimientoVinculacionPdfProfesionalService
 {
     private const PRIMARY = '#273A8A';
@@ -2102,16 +2104,10 @@ class ReporteSeguimientoVinculacionPdfProfesionalService
 
     private function nombreArchivo(array $datos): string
     {
-        $f = is_array($datos['resumen_filtros'] ?? null) ? $datos['resumen_filtros'] : [];
-        $institucion = trim((string)($f['Institución'] ?? ''));
-        $estado = trim((string)($f['Estado'] ?? ''));
-        $sufijo = '';
-        if ($institucion !== '' && strcasecmp($institucion, 'Todas') !== 0) {
-            $sufijo = '_' . $this->seguro($institucion);
-        } elseif ($estado !== '' && strcasecmp($estado, 'Todos') !== 0) {
-            $sufijo = '_' . $this->seguro($estado);
-        }
-        return 'Reporte_Seguimiento_Vinculacion' . $sufijo . '_' . date('Y-m-d') . '.pdf';
+        return ReporteNombreArchivoService::seguimiento(
+            $datos,
+            true
+        );
     }
 
     private function seguro(string $texto): string
