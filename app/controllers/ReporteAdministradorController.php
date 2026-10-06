@@ -41,7 +41,7 @@ class ReporteAdministradorController
             }
 
             $contenidoPdf = (string)($resultado['contenido_pdf'] ?? '');
-            $nombreArchivo = (string)($resultado['nombre_archivo'] ?? 'Reporte_Administrativo_Usuarios.pdf');
+            $nombreArchivo = (string)($resultado['nombre_archivo'] ?? 'Reporte_Usuarios_Corte_' . date('Y-m-d') . '.pdf');
 
             header('Content-Type: application/pdf');
             header('Content-Disposition: attachment; filename="' . $nombreArchivo . '"');
