@@ -458,8 +458,8 @@ $rankingTitle = $vista === 'propio'
                 <span class="performance-kpi-icon"><i class="bi bi-map"></i></span>
                 <div>
                     <strong><?= (int)($resumen['territorios_cubiertos'] ?? 0) ?></strong>
-                    <span>Cobertura territorial</span>
-                    <small>Estados alcanzados</small>
+                    <span>Cobertura acumulada</span>
+                    <small>Suma de territorios cubiertos por persona</small>
                 </div>
             </article>
             <article>
