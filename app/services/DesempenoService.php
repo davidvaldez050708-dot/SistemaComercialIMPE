@@ -20,7 +20,8 @@ class DesempenoService
         $puedeGlobal,
         $puedeEquipo,
         $puedePropio,
-        array $filtros = []
+        array $filtros = [],
+        $incluirDetalle = false
     ) {
         $usuarioId = (int)$usuarioId;
         $rolNombre = trim((string)$rolNombre);
@@ -83,6 +84,7 @@ class DesempenoService
             (string)$periodo['fecha_desde'] . ' 00:00:00';
         $hastaSql =
             (string)$periodo['fecha_hasta'] . ' 23:59:59';
+        $tendenciaPersonas = [];
 
         if ($area === 'cuenta_clave') {
             $metricas = $this->modelo->obtenerMetricasCuentaClave(
@@ -117,12 +119,23 @@ class DesempenoService
                 $hastaSql,
                 $estadoId
             );
+            $idsAnalistas = array_column($personasAnalizadas, 'id');
             $tendenciaRaw = $this->modelo->obtenerTendenciaAnalistas(
-                array_column($personasAnalizadas, 'id'),
+                $idsAnalistas,
                 $desdeSql,
                 $hastaSql,
                 $estadoId
             );
+
+            if ((bool)$incluirDetalle) {
+                $tendenciaPersonas =
+                    $this->modelo->obtenerTendenciaAnalistasPorPersona(
+                        $idsAnalistas,
+                        $desdeSql,
+                        $hastaSql,
+                        $estadoId
+                    );
+            }
         }
 
         $ranking = $this->construirRanking(
@@ -163,6 +176,7 @@ class DesempenoService
             'resumen' => $resumen,
             'reconocimientos' => $reconocimientos,
             'tendencia' => $tendencia,
+            'tendencia_personas' => $tendenciaPersonas,
             'criterios' => $this->criterios($area),
             'actualizado_at' => date('d/m/Y H:i:s'),
             'puede_cambiar_area' => $vista === 'global',
