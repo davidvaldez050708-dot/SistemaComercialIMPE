@@ -273,6 +273,10 @@ class DesempenoService
                 ->obtenerEstadosSupervisadosCuentaClave($usuarioId);
         }
 
+        if (strcasecmp($rolNombre, 'Marketing') === 0) {
+            return $this->seguimientos->obtenerEstadosAdministrador();
+        }
+
         return $this->seguimientos
             ->obtenerEstadosAsignadosAnalista($usuarioId);
     }
