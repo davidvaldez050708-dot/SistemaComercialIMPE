@@ -64,20 +64,6 @@ WHERE r.nombre = 'Analista de Datos'
   AND r.estado = 1
   AND p.estado = 1;
 
--- Marketing: únicamente su desempeño dentro de las métricas de su área.
-INSERT IGNORE INTO rol_permisos (rol_id, permiso_id)
-SELECT r.id, p.id
-FROM roles r
-INNER JOIN permisos p
-    ON p.codigo IN (
-        'desempeno.ver',
-        'desempeno.ver_propio',
-        'desempeno.exportar'
-    )
-WHERE r.nombre = 'Marketing'
-  AND r.estado = 1
-  AND p.estado = 1;
-
 -- Cuenta Clave: su desempeño y la vista global de su propio equipo.
 INSERT IGNORE INTO rol_permisos (rol_id, permiso_id)
 SELECT r.id, p.id
