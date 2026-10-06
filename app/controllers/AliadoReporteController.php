@@ -485,6 +485,12 @@ class AliadoReporteController
             } elseif ($desde > $hasta) {
                 $error =
                     'La fecha inicial del periodo no puede ser posterior a la fecha final.';
+            } elseif (
+                $desde > new DateTimeImmutable('today') ||
+                $hasta > new DateTimeImmutable('today')
+            ) {
+                $error =
+                    'El periodo del reporte no puede incluir fechas futuras.';
             }
 
             if ($error !== '') {
