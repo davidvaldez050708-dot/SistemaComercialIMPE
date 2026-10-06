@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/ReporteNombreArchivoService.php';
+
 class ReporteSeguimientoVinculacionPdfService
 {
     private const W_NS = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
@@ -1307,12 +1309,10 @@ POWERSHELL;
 
     private function nombreArchivo(array $datosReporte)
     {
-        $estado = trim((string)(($datosReporte['resumen_filtros']['Estado'] ?? '')));
-        $sufijoEstado = $estado !== '' && strcasecmp($estado, 'Todos') !== 0
-            ? '_' . $this->sanitizarNombre($estado)
-            : '';
-
-        return 'Reporte_Seguimiento_Vinculacion' . $sufijoEstado . '_' . date('Y-m-d');
+        return ReporteNombreArchivoService::seguimiento(
+            $datosReporte,
+            false
+        );
     }
 
     private function sanitizarNombre($valor)
