@@ -885,6 +885,10 @@ class AliadoModel
         $dias = max(1, min(30, (int)$dias));
         $limite = max(1, min(100, (int)$limite));
 
+        $hasta = (new DateTimeImmutable())
+            ->modify('+' . $dias . ' days')
+            ->format('Y-m-d H:i:s');
+
         $sql = "SELECT
                     seguimiento.id AS seguimiento_convocatoria_id,
                     seguimiento.seguimiento_id,
@@ -909,8 +913,7 @@ class AliadoModel
                   AND seguimiento.activo = 1
                   AND vinculacion.activo = 1
                   AND seguimiento.proximo_seguimiento_at IS NOT NULL
-                  AND seguimiento.proximo_seguimiento_at <=
-                      DATE_ADD(NOW(), INTERVAL ? DAY)
+                  AND seguimiento.proximo_seguimiento_at <= ?
                   AND seguimiento.estado NOT IN (
                       'DIFUSION_CONFIRMADA',
                       'NO_PARTICIPARA'
@@ -934,9 +937,9 @@ class AliadoModel
 
         $stmt = $this->connection->prepare($sql);
         $stmt->bind_param(
-            'iii',
+            'isi',
             $usuarioId,
-            $dias,
+            $hasta,
             $limite
         );
         $stmt->execute();
