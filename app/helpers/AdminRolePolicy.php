@@ -30,6 +30,7 @@ if (!function_exists('permisosOperativosRestringidosAdministrador')) {
             'aliados.gestionar_contactos',
             'aliados.compartir_correo',
             'aliados.preparar_whatsapp',
+            'aliados.seguimiento_convocatorias',
             'whatsapp.enviar',
             'convocatorias.crear',
             'convocatorias.editar',
