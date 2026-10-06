@@ -20,9 +20,10 @@ class ConvocatoriaModel
             ? $this->sincronizarConvocatoriasPorFecha()
             : $this->desactivarSoloVencidas();
 
-        // Una convocatoria inactiva permanece disponible durante 3 días.
-        // Después de ese periodo se elimina definitivamente del sistema.
-        $this->eliminarConvocatoriasInactivasAntiguas(3);
+        // La eliminación ya no depende de días desde la desactivación.
+        // Las convocatorias se conservan mientras su mes siga dentro de la
+        // ventana operativa y se eliminan cuando ese mes sale de ella.
+        $this->eliminarConvocatoriasFueraVentanaMensual();
 
         return $resultado;
     }
@@ -1044,23 +1045,36 @@ class ConvocatoriaModel
         return $salida;
     }
 
-    private function eliminarConvocatoriasInactivasAntiguas($dias = 3)
+    private function eliminarConvocatoriasFueraVentanaMensual()
     {
-        $dias = max(1, (int)$dias);
-
-        $condicionProgramada = $this->soportaActivacionAutomatica()
-            ? " AND COALESCE(activacion_automatica, 0) = 0"
-            : "";
+        /*
+         * Conserva las convocatorias del mes actual y de los dos meses
+         * anteriores. Cuando inicia un nuevo mes, el mes más antiguo sale
+         * de la ventana y sus convocatorias se eliminan.
+         *
+         * Ejemplos:
+         * - Diciembre: elimina septiembre y meses anteriores.
+         * - Enero: elimina octubre y meses anteriores.
+         *
+         * La regla se basa en fecha_inicio, no en updated_at ni en una
+         * espera de 3 días después de desactivar/finalizar.
+         */
+        $fechaLimite = (new DateTimeImmutable('first day of this month'))
+            ->modify('-2 months')
+            ->format('Y-m-d');
 
         $sql = "SELECT id, imagen
                 FROM convocatorias
-                WHERE estado = 0
-                  AND updated_at <= DATE_SUB(NOW(), INTERVAL " . $dias . " DAY)" .
-                  $condicionProgramada . "
-                ORDER BY updated_at ASC, id ASC";
+                WHERE fecha_inicio < ?
+                ORDER BY fecha_inicio ASC, id ASC";
+
+        $transaccionIniciada = false;
 
         try {
-            $resultado = $this->connection->query($sql);
+            $stmt = $this->connection->prepare($sql);
+            $stmt->bind_param('s', $fechaLimite);
+            $stmt->execute();
+            $resultado = $stmt->get_result();
 
             if (!$resultado || $resultado->num_rows === 0) {
                 return 0;
@@ -1072,6 +1086,7 @@ class ConvocatoriaModel
             }
 
             $this->connection->begin_transaction();
+            $transaccionIniciada = true;
 
             foreach ($convocatorias as $convocatoria) {
                 $convocatoriaId = (int)($convocatoria['id'] ?? 0);
@@ -1099,13 +1114,18 @@ class ConvocatoriaModel
                 $stmtConvocatoria = $this->connection->prepare(
                     "DELETE FROM convocatorias
                      WHERE id = ?
-                       AND estado = 0"
+                       AND fecha_inicio < ?"
                 );
-                $stmtConvocatoria->bind_param('i', $convocatoriaId);
+                $stmtConvocatoria->bind_param(
+                    'is',
+                    $convocatoriaId,
+                    $fechaLimite
+                );
                 $stmtConvocatoria->execute();
             }
 
             $this->connection->commit();
+            $transaccionIniciada = false;
 
             foreach ($convocatorias as $convocatoria) {
                 $rutaImagen = trim((string)($convocatoria['imagen'] ?? ''));
@@ -1134,9 +1154,7 @@ class ConvocatoriaModel
 
             return count($convocatorias);
         } catch (Throwable $error) {
-            if ($this->connection->errno === 0) {
-                // No hay una transacción pendiente que revertir.
-            } else {
+            if ($transaccionIniciada) {
                 try {
                     $this->connection->rollback();
                 } catch (Throwable $rollbackError) {
@@ -1145,7 +1163,7 @@ class ConvocatoriaModel
             }
 
             error_log(
-                'Depuración de convocatorias inactivas: ' .
+                'Depuración mensual de convocatorias: ' .
                 $error->getMessage()
             );
 
