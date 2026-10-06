@@ -166,6 +166,24 @@ class DesempenoService
         $solicitada
     ) {
         $solicitada = strtolower(trim((string)$solicitada));
+        $esCuentaClave =
+            strcasecmp($rolNombre, 'Cuenta Clave') === 0;
+        $esAnalista =
+            strcasecmp($rolNombre, 'Analista de Datos') === 0;
+
+        /*
+         * Los perfiles con vista global organizacional (Administrador /
+         * Dirección futura) no deben heredar artificialmente una vista
+         * "Mi equipo" o "Mi desempeño" que no corresponde a su relación
+         * territorial.
+         */
+        if (
+            $puedeGlobal &&
+            !$esCuentaClave &&
+            !$esAnalista
+        ) {
+            return 'global';
+        }
 
         if ($puedeGlobal) {
             if (
