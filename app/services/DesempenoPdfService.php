@@ -213,6 +213,23 @@ class DesempenoPdfService
                 'Confirmaciones',
                 $resumen['confirmaciones'] ?? 0
             );
+        } elseif ($area === 'marketing') {
+            $html .= $this->metric(
+                'Publicaciones',
+                $resumen['publicaciones'] ?? 0
+            );
+            $html .= $this->metric(
+                'Territorios cubiertos',
+                $resumen['territorios_cubiertos'] ?? 0
+            );
+            $html .= $this->metric(
+                'Actualizaciones',
+                $resumen['actualizaciones'] ?? 0
+            );
+            $html .= $this->metric(
+                'Vigentes creadas',
+                $resumen['vigentes'] ?? 0
+            );
         } else {
             $html .= $this->metric(
                 'Llamadas válidas',
@@ -341,6 +358,51 @@ class DesempenoPdfService
             return $html . '</tbody></table>';
         }
 
+        if ($area === 'marketing') {
+            $html =
+                '<table class="table"><thead><tr>' .
+                '<th>#</th><th>Persona</th>' .
+                '<th class="num">Publicaciones</th>' .
+                '<th class="num">Territorios</th>' .
+                '<th class="num">Actualizaciones</th>' .
+                '<th class="num">Vigentes</th>' .
+                '<th class="num">Índice</th>' .
+                '</tr></thead><tbody>';
+
+            foreach ($ranking as $fila) {
+                $html .= '<tr>';
+                $html .= '<td>' .
+                    (int)($fila['posicion'] ?? 0) .
+                    '</td>';
+                $html .= '<td><strong>' .
+                    $this->e($fila['nombre_completo'] ?? '') .
+                    '</strong></td>';
+                $html .= $this->tdNum(
+                    $fila['publicaciones'] ?? 0
+                );
+                $html .= $this->tdNum(
+                    $fila['territorios_cubiertos'] ?? 0
+                );
+                $html .= $this->tdNum(
+                    $fila['actualizaciones'] ?? 0
+                );
+                $html .= $this->tdNum(
+                    $fila['vigentes'] ?? 0
+                );
+                $html .= $this->tdNum(
+                    $fila['indice'] === null
+                        ? '—'
+                        : number_format(
+                            (float)$fila['indice'],
+                            1
+                        )
+                );
+                $html .= '</tr>';
+            }
+
+            return $html . '</tbody></table>';
+        }
+
         $html =
             '<table class="table"><thead><tr>' .
             '<th>#</th><th>Persona</th>' .
@@ -415,6 +477,30 @@ class DesempenoPdfService
                 );
                 $html .= $this->tdNum(
                     $fila['terciario'] ?? 0
+                );
+                $html .= '</tr>';
+            }
+
+            return $html . '</tbody></table>';
+        }
+
+        if ($area === 'marketing') {
+            $html =
+                '<table class="table compact"><thead><tr>' .
+                '<th>Fecha</th>' .
+                '<th class="num">Publicaciones</th>' .
+                '<th class="num">Actualizaciones</th>' .
+                '</tr></thead><tbody>';
+
+            foreach ($filas as $fila) {
+                $html .= '<tr><td>' .
+                    $this->e($fila['fecha'] ?? '') .
+                    '</td>';
+                $html .= $this->tdNum(
+                    $fila['principal'] ?? 0
+                );
+                $html .= $this->tdNum(
+                    $fila['secundario'] ?? 0
                 );
                 $html .= '</tr>';
             }
@@ -513,9 +599,10 @@ class DesempenoPdfService
 
     private function nombreArchivo(array $datos)
     {
-        $area = $datos['area'] === 'cuenta_clave'
+        $areaActual = (string)($datos['area'] ?? 'analistas');
+        $area = $areaActual === 'cuenta_clave'
             ? 'Cuenta_Clave'
-            : 'Analistas';
+            : ($areaActual === 'marketing' ? 'Marketing' : 'Analistas');
 
         return
             'Desempeno_' .
