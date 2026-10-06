@@ -590,11 +590,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
-            if (esAdministrador) {
-                contador.textContent = 'Acceso completo';
-                return;
-            }
-
             const total = parseInt(contador.dataset.total || checkboxes.length, 10);
             const marcados = checkboxes.filter(function (checkbox) {
                 return checkbox.checked;
@@ -618,7 +613,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (estado) {
                 estado.textContent = modificado
                     ? 'Cambios sin guardar'
-                    : (esAdministrador ? 'Acceso completo' : 'Sin cambios pendientes');
+                    : (esAdministrador ? 'Política protegida' : 'Sin cambios pendientes');
                 estado.classList.toggle('has-changes', modificado);
             }
 
