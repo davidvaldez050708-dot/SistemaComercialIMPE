@@ -95,6 +95,13 @@ if ($esHomeDashboard) {
     );
 }
 
+if (
+    $esHomeDashboard &&
+    (int)($_SESSION['rol_id'] ?? 0) === 6
+) {
+    $cssOpcionalDashboard[] = 'dashboard_cuenta_clave.css';
+}
+
 if ($esSeguimientoEstado) {
     $cssOpcionalDashboard = array_merge(
         $cssOpcionalDashboard,
