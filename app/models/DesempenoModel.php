@@ -282,6 +282,93 @@ class DesempenoModel
         return $this->resultadoArreglo($stmt->get_result());
     }
 
+    public function obtenerTendenciaAnalistasPorPersona(
+        array $usuarioIds,
+        $desde,
+        $hasta,
+        $estadoId = 0
+    ) {
+        $ids = $this->normalizarIds($usuarioIds);
+        if (empty($ids)) {
+            return [];
+        }
+
+        $marcadores = implode(',', array_fill(0, count($ids), '?'));
+        $sql = "SELECT
+                    DATE(interacciones.fecha_inicio) AS fecha,
+                    usuarios.id AS usuario_id,
+                    usuarios.nombre,
+                    usuarios.apellidos,
+                    usuarios.foto_perfil,
+                    COUNT(*) AS interacciones,
+                    COALESCE(SUM(
+                        CASE
+                            WHEN interacciones.canal = 'LLAMADA_IP'
+                             AND TRIM(COALESCE(interacciones.proveedor_externo, '')) <> ''
+                             AND TRIM(COALESCE(interacciones.id_externo, '')) <> ''
+                             AND COALESCE(interacciones.duracion_segundos, 0) > 0
+                             AND (
+                                UPPER(TRIM(COALESCE(interacciones.resultado, ''))) IN (
+                                    'CONTACTADO',
+                                    'SOLICITO_INFORMACION',
+                                    'SOLICITO_LLAMAR_DESPUES',
+                                    'NO_INTERESADO'
+                                )
+                                OR COALESCE(interacciones.notas, '') LIKE '%[CONTACTO_EFECTIVO]%'
+                             )
+                             AND COALESCE(interacciones.notas, '') NOT LIKE '%[SIN_CONTACTO_EFECTIVO]%'
+                            THEN 1 ELSE 0
+                        END
+                    ), 0) AS contactos,
+                    COUNT(DISTINCT CASE
+                        WHEN interacciones.canal = 'LLAMADA_IP'
+                         AND COALESCE(interacciones.notas, '') LIKE '%[VERIFICACION_EFECTIVA]%'
+                         AND TRIM(COALESCE(interacciones.proveedor_externo, '')) <> ''
+                         AND TRIM(COALESCE(interacciones.id_externo, '')) <> ''
+                         AND COALESCE(interacciones.duracion_segundos, 0) > 0
+                        THEN interacciones.seguimiento_id
+                        ELSE NULL
+                    END) AS efectivas
+                FROM interacciones_vinculacion interacciones
+                INNER JOIN seguimientos_vinculacion seguimientos
+                    ON seguimientos.id = interacciones.seguimiento_id
+                INNER JOIN usuarios
+                    ON usuarios.id = interacciones.usuario_id
+                WHERE interacciones.usuario_id IN ($marcadores)
+                  AND interacciones.fecha_inicio >= ?
+                  AND interacciones.fecha_inicio <= ?
+                  AND UPPER(TRIM(COALESCE(interacciones.canal, ''))) <> 'SISTEMA'
+                  AND COALESCE(interacciones.notas, '') NOT LIKE '%[REGISTRO_LLAMADA_PRUEBA]%'";
+
+        $tipos = str_repeat('i', count($ids)) . 'ss';
+        $parametros = $ids;
+        $parametros[] = (string)$desde;
+        $parametros[] = (string)$hasta;
+
+        if ((int)$estadoId > 0) {
+            $sql .= " AND seguimientos.estado_id = ?";
+            $tipos .= 'i';
+            $parametros[] = (int)$estadoId;
+        }
+
+        $sql .= " GROUP BY
+                    DATE(interacciones.fecha_inicio),
+                    usuarios.id,
+                    usuarios.nombre,
+                    usuarios.apellidos,
+                    usuarios.foto_perfil
+                  ORDER BY
+                    fecha ASC,
+                    usuarios.nombre ASC,
+                    usuarios.apellidos ASC";
+
+        $stmt = $this->connection->prepare($sql);
+        $this->vincularParametros($stmt, $tipos, $parametros);
+        $stmt->execute();
+
+        return $this->resultadoArreglo($stmt->get_result());
+    }
+
     public function obtenerMetricasCuentaClave(
         array $usuarios,
         $desde,
