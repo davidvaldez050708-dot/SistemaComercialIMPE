@@ -29,6 +29,7 @@ class ReporteAliadosPanoramaService
         $situacion = $this->normalizarSituacion(
             (string)($filtros['situacion'] ?? 'todos')
         );
+        $periodo = $this->resolverPeriodo($filtros);
 
         $modoAnalisis = $municipioId > 0
             ? 'municipio'
@@ -73,12 +74,28 @@ class ReporteAliadosPanoramaService
             'tasa_confirmacion' => 0
         ];
 
+        $actividadPeriodo = [
+            'nuevos_aliados' => 0,
+            'aliados_trabajados' => 0,
+            'difusiones' => 0,
+            'seguimientos' => 0,
+            'confirmaciones' => 0,
+            'sin_respuesta' => 0,
+            'solicita_informacion' => 0,
+            'interacciones' => 0
+        ];
+
         $estadosVistos = [];
         $municipiosVistos = [];
         $porEstado = [];
         $porMunicipio = [];
         $detalle = [];
         $atencion = [];
+        $aliadosPorId = [];
+        $actividadPorAliado = [];
+        $trabajados = [];
+        $trabajadosEstado = [];
+        $trabajadosMunicipio = [];
 
         foreach ($aliados as $aliado) {
             $seguimientoId = (int)($aliado['seguimiento_id'] ?? 0);
@@ -90,6 +107,16 @@ class ReporteAliadosPanoramaService
             $municipioNombre = trim(
                 (string)($aliado['municipio_nombre'] ?? '')
             );
+            $claveMunicipio =
+                $estadoTerritorioId . ':' . $municipioActualId;
+
+            $aliadosPorId[$seguimientoId] = [
+                'estado_id' => $estadoTerritorioId,
+                'municipio_id' => $municipioActualId,
+                'clave_municipio' => $claveMunicipio,
+                'institucion' => (string)($aliado['nombre_entidad'] ?? '')
+            ];
+            $actividadPorAliado[$seguimientoId] = [];
             $estadoSeguimiento = strtoupper(trim(
                 (string)($aliado['seguimiento_convocatoria_estado'] ?? '')
             ));
@@ -161,7 +188,12 @@ class ReporteAliadosPanoramaService
                     'solicita_informacion' => 0,
                     'con_whatsapp' => 0,
                     'pendientes' => 0,
-                    'vencidos' => 0
+                    'vencidos' => 0,
+                    'nuevos_periodo' => 0,
+                    'trabajados_periodo' => 0,
+                    'difusiones_periodo' => 0,
+                    'seguimientos_periodo' => 0,
+                    'confirmaciones_periodo' => 0
                 ];
             }
 
@@ -191,7 +223,6 @@ class ReporteAliadosPanoramaService
                 $porEstado[$estadoTerritorioId]['vencidos']++;
             }
 
-            $claveMunicipio = $estadoTerritorioId . ':' . $municipioActualId;
             if (!isset($porMunicipio[$claveMunicipio])) {
                 $porMunicipio[$claveMunicipio] = [
                     'estado_id' => $estadoTerritorioId,
@@ -209,7 +240,12 @@ class ReporteAliadosPanoramaService
                     'solicita_informacion' => 0,
                     'con_whatsapp' => 0,
                     'pendientes' => 0,
-                    'vencidos' => 0
+                    'vencidos' => 0,
+                    'nuevos_periodo' => 0,
+                    'trabajados_periodo' => 0,
+                    'difusiones_periodo' => 0,
+                    'seguimientos_periodo' => 0,
+                    'confirmaciones_periodo' => 0
                 ];
             }
 
@@ -320,6 +356,234 @@ class ReporteAliadosPanoramaService
                 ];
             }
         }
+
+        $seguimientoIds = array_keys($aliadosPorId);
+
+        foreach ($aliados as $aliado) {
+            $seguimientoId = (int)($aliado['seguimiento_id'] ?? 0);
+            $formalizadoAt = trim(
+                (string)($aliado['convenio_formalizado_at'] ?? '')
+            );
+
+            if (
+                $seguimientoId <= 0 ||
+                !$this->fechaDentroPeriodo($formalizadoAt, $periodo)
+            ) {
+                continue;
+            }
+
+            $meta = $aliadosPorId[$seguimientoId] ?? [];
+            $estadoTerritorioId = (int)($meta['estado_id'] ?? 0);
+            $claveMunicipio = (string)(
+                $meta['clave_municipio'] ?? ''
+            );
+
+            $actividadPeriodo['nuevos_aliados']++;
+            $trabajados[$seguimientoId] = true;
+            $trabajadosEstado[$estadoTerritorioId][$seguimientoId] = true;
+            $trabajadosMunicipio[$claveMunicipio][$seguimientoId] = true;
+
+            if (isset($porEstado[$estadoTerritorioId])) {
+                $porEstado[$estadoTerritorioId]['nuevos_periodo']++;
+            }
+
+            if (
+                $claveMunicipio !== '' &&
+                isset($porMunicipio[$claveMunicipio])
+            ) {
+                $porMunicipio[$claveMunicipio]['nuevos_periodo']++;
+            }
+
+            $actividadPorAliado[$seguimientoId][] = [
+                'tipo' => 'ALTA',
+                'titulo' => 'Aliado incorporado a la red',
+                'detalle' => 'Convenio formalizado',
+                'fecha' => $formalizadoAt,
+                'usuario' => ''
+            ];
+        }
+
+        $difusionesPeriodo = $this->modelo->obtenerDifusionesReporte(
+            $seguimientoIds,
+            $periodo['desde_sql'],
+            $periodo['hasta_sql']
+        );
+
+        foreach ($difusionesPeriodo as $difusion) {
+            $seguimientoId = (int)($difusion['seguimiento_id'] ?? 0);
+            if (!isset($aliadosPorId[$seguimientoId])) {
+                continue;
+            }
+
+            $meta = $aliadosPorId[$seguimientoId];
+            $estadoTerritorioId = (int)($meta['estado_id'] ?? 0);
+            $claveMunicipio = (string)(
+                $meta['clave_municipio'] ?? ''
+            );
+
+            $actividadPeriodo['difusiones']++;
+            $actividadPeriodo['interacciones']++;
+            $trabajados[$seguimientoId] = true;
+            $trabajadosEstado[$estadoTerritorioId][$seguimientoId] = true;
+            $trabajadosMunicipio[$claveMunicipio][$seguimientoId] = true;
+
+            if (isset($porEstado[$estadoTerritorioId])) {
+                $porEstado[$estadoTerritorioId]['difusiones_periodo']++;
+            }
+
+            if (
+                $claveMunicipio !== '' &&
+                isset($porMunicipio[$claveMunicipio])
+            ) {
+                $porMunicipio[$claveMunicipio]['difusiones_periodo']++;
+            }
+
+            $tituloConvocatoria = trim(
+                (string)($difusion['convocatoria_titulo'] ?? '')
+            );
+            $canal = $this->etiquetaCanal(
+                (string)($difusion['canal'] ?? '')
+            );
+
+            $actividadPorAliado[$seguimientoId][] = [
+                'tipo' => 'DIFUSION',
+                'titulo' => 'Convocatoria compartida',
+                'detalle' =>
+                    ($tituloConvocatoria !== ''
+                        ? $tituloConvocatoria
+                        : 'Convocatoria') .
+                    ' · ' .
+                    $canal,
+                'fecha' => (string)($difusion['enviado_at'] ?? ''),
+                'usuario' => trim(
+                    (string)($difusion['enviado_por_nombre'] ?? '')
+                )
+            ];
+        }
+
+        $eventosPeriodo = $this->modelo
+            ->obtenerEventosSeguimientoReporte(
+                $seguimientoIds,
+                $periodo['desde_sql'],
+                $periodo['hasta_sql']
+            );
+
+        foreach ($eventosPeriodo as $evento) {
+            if ($this->esEventoInicialAutomatico($evento)) {
+                continue;
+            }
+
+            $seguimientoId = (int)($evento['seguimiento_id'] ?? 0);
+            if (!isset($aliadosPorId[$seguimientoId])) {
+                continue;
+            }
+
+            $meta = $aliadosPorId[$seguimientoId];
+            $estadoTerritorioId = (int)($meta['estado_id'] ?? 0);
+            $claveMunicipio = (string)(
+                $meta['clave_municipio'] ?? ''
+            );
+            $estadoNuevo = strtoupper(trim(
+                (string)($evento['estado_nuevo'] ?? '')
+            ));
+
+            $actividadPeriodo['seguimientos']++;
+            $actividadPeriodo['interacciones']++;
+            $trabajados[$seguimientoId] = true;
+            $trabajadosEstado[$estadoTerritorioId][$seguimientoId] = true;
+            $trabajadosMunicipio[$claveMunicipio][$seguimientoId] = true;
+
+            if ($estadoNuevo === 'DIFUSION_CONFIRMADA') {
+                $actividadPeriodo['confirmaciones']++;
+            }
+
+            if ($estadoNuevo === 'SIN_RESPUESTA') {
+                $actividadPeriodo['sin_respuesta']++;
+            }
+
+            if ($estadoNuevo === 'SOLICITA_INFORMACION') {
+                $actividadPeriodo['solicita_informacion']++;
+            }
+
+            if (isset($porEstado[$estadoTerritorioId])) {
+                $porEstado[$estadoTerritorioId]['seguimientos_periodo']++;
+
+                if ($estadoNuevo === 'DIFUSION_CONFIRMADA') {
+                    $porEstado[$estadoTerritorioId]
+                        ['confirmaciones_periodo']++;
+                }
+            }
+
+            if (
+                $claveMunicipio !== '' &&
+                isset($porMunicipio[$claveMunicipio])
+            ) {
+                $porMunicipio[$claveMunicipio]
+                    ['seguimientos_periodo']++;
+
+                if ($estadoNuevo === 'DIFUSION_CONFIRMADA') {
+                    $porMunicipio[$claveMunicipio]
+                        ['confirmaciones_periodo']++;
+                }
+            }
+
+            $actividadPorAliado[$seguimientoId][] = [
+                'tipo' => 'SEGUIMIENTO',
+                'titulo' => $this->tituloEventoSeguimiento($evento),
+                'detalle' => $this->detalleEventoSeguimiento($evento),
+                'fecha' => (string)($evento['created_at'] ?? ''),
+                'usuario' => trim(
+                    (string)($evento['usuario_nombre'] ?? '')
+                )
+            ];
+        }
+
+        $actividadPeriodo['aliados_trabajados'] = count($trabajados);
+
+        foreach ($porEstado as $estadoKey => &$filaEstadoActividad) {
+            $filaEstadoActividad['trabajados_periodo'] = count(
+                $trabajadosEstado[$estadoKey] ?? []
+            );
+        }
+        unset($filaEstadoActividad);
+
+        foreach (
+            $porMunicipio as $municipioKey => &$filaMunicipioActividad
+        ) {
+            $filaMunicipioActividad['trabajados_periodo'] = count(
+                $trabajadosMunicipio[$municipioKey] ?? []
+            );
+        }
+        unset($filaMunicipioActividad);
+
+        foreach ($detalle as &$filaDetalle) {
+            $seguimientoId = (int)($filaDetalle['seguimiento_id'] ?? 0);
+            $actividades = $actividadPorAliado[$seguimientoId] ?? [];
+
+            usort($actividades, static function ($a, $b) {
+                return strcmp(
+                    (string)($b['fecha'] ?? ''),
+                    (string)($a['fecha'] ?? '')
+                );
+            });
+
+            $filaDetalle['actividad_periodo'] = $actividades;
+            $filaDetalle['metricas_periodo'] = [
+                'difusiones' => count(array_filter(
+                    $actividades,
+                    static function ($actividad) {
+                        return ($actividad['tipo'] ?? '') === 'DIFUSION';
+                    }
+                )),
+                'seguimientos' => count(array_filter(
+                    $actividades,
+                    static function ($actividad) {
+                        return ($actividad['tipo'] ?? '') === 'SEGUIMIENTO';
+                    }
+                ))
+            ];
+        }
+        unset($filaDetalle);
 
         $resumen['estados'] = count($estadosVistos);
         $resumen['municipios'] = count($municipiosVistos);
@@ -465,16 +729,23 @@ class ReporteAliadosPanoramaService
             'atencion' => $atencion,
             'detalle' => $detalle,
             'modo' => $modoAnalisis,
+            'periodo' => $periodo,
+            'actividad_periodo' => $actividadPeriodo,
             'hallazgos' => $this->construirHallazgos(
                 $resumen,
                 $porEstado,
                 $porMunicipio,
-                $modoAnalisis
+                $modoAnalisis,
+                $actividadPeriodo,
+                $periodo
             ),
             'filtros' => [
                 'estado_id' => $estadoId,
                 'municipio_id' => $municipioId,
-                'situacion' => $situacion
+                'situacion' => $situacion,
+                'periodo' => $periodo['clave'],
+                'fecha_desde' => $periodo['fecha_desde'],
+                'fecha_hasta' => $periodo['fecha_hasta']
             ]
         ];
     }
@@ -643,7 +914,9 @@ class ReporteAliadosPanoramaService
         array $resumen,
         array $estados,
         array $municipios,
-        $modo
+        $modo,
+        array $actividadPeriodo,
+        array $periodo
     ) {
         if ((int)($resumen['total'] ?? 0) <= 0) {
             return [
@@ -761,6 +1034,30 @@ class ReporteAliadosPanoramaService
             }
         }
 
+        $hallazgos[] =
+            'En ' . strtolower((string)($periodo['label'] ?? 'el periodo')) .
+            ' se incorporaron ' .
+            (int)($actividadPeriodo['nuevos_aliados'] ?? 0) . ' ' .
+            (
+                (int)($actividadPeriodo['nuevos_aliados'] ?? 0) === 1
+                    ? 'aliado'
+                    : 'aliados'
+            ) .
+            ' y hubo actividad con ' .
+            (int)($actividadPeriodo['aliados_trabajados'] ?? 0) . ' ' .
+            (
+                (int)($actividadPeriodo['aliados_trabajados'] ?? 0) === 1
+                    ? 'institución'
+                    : 'instituciones'
+            ) . '.';
+
+        $hallazgos[] =
+            'Durante el periodo se registraron ' .
+            (int)($actividadPeriodo['difusiones'] ?? 0) .
+            ' difusión(es) y ' .
+            (int)($actividadPeriodo['confirmaciones'] ?? 0) .
+            ' confirmación(es) de difusión.';
+
         if ((int)($resumen['requieren_atencion'] ?? 0) > 0) {
             $hallazgos[] =
                 'Hay ' . (int)$resumen['requieren_atencion'] . ' ' .
@@ -793,6 +1090,235 @@ class ReporteAliadosPanoramaService
         }
 
         return array_slice($hallazgos, 0, 6);
+    }
+
+
+    private function resolverPeriodo(array $filtros)
+    {
+        $clave = strtolower(trim(
+            (string)($filtros['periodo'] ?? 'historico')
+        ));
+        $permitidos = [
+            'historico',
+            'ultimos_7',
+            'ultimos_30',
+            'este_mes',
+            'mes_anterior',
+            'personalizado'
+        ];
+
+        if (!in_array($clave, $permitidos, true)) {
+            $clave = 'historico';
+        }
+
+        $hoy = new DateTimeImmutable('today');
+        $desde = null;
+        $hasta = null;
+        $label = 'Histórico completo';
+
+        if ($clave === 'ultimos_7') {
+            $desde = $hoy->modify('-6 days');
+            $hasta = $hoy;
+            $label = 'Últimos 7 días';
+        } elseif ($clave === 'ultimos_30') {
+            $desde = $hoy->modify('-29 days');
+            $hasta = $hoy;
+            $label = 'Últimos 30 días';
+        } elseif ($clave === 'este_mes') {
+            $desde = $hoy->modify('first day of this month');
+            $hasta = $hoy;
+            $label = 'Este mes';
+        } elseif ($clave === 'mes_anterior') {
+            $desde = $hoy->modify('first day of last month');
+            $hasta = $hoy->modify('last day of last month');
+            $label = 'Mes anterior';
+        } elseif ($clave === 'personalizado') {
+            $desdeTexto = trim(
+                (string)($filtros['fecha_desde'] ?? '')
+            );
+            $hastaTexto = trim(
+                (string)($filtros['fecha_hasta'] ?? '')
+            );
+
+            $desde = $this->parseFechaFiltro($desdeTexto);
+            $hasta = $this->parseFechaFiltro($hastaTexto);
+
+            if (
+                !$desde ||
+                !$hasta ||
+                $desde > $hasta
+            ) {
+                $clave = 'historico';
+                $desde = null;
+                $hasta = null;
+                $label = 'Histórico completo';
+            } else {
+                $label =
+                    $desde->format('d/m/Y') .
+                    ' al ' .
+                    $hasta->format('d/m/Y');
+            }
+        }
+
+        return [
+            'clave' => $clave,
+            'label' => $label,
+            'fecha_desde' => $desde ? $desde->format('Y-m-d') : '',
+            'fecha_hasta' => $hasta ? $hasta->format('Y-m-d') : '',
+            'desde_sql' => $desde
+                ? $desde->format('Y-m-d 00:00:00')
+                : '',
+            'hasta_sql' => $hasta
+                ? $hasta->format('Y-m-d 23:59:59')
+                : ''
+        ];
+    }
+
+    private function parseFechaFiltro($valor)
+    {
+        $valor = trim((string)$valor);
+
+        if ($valor === '') {
+            return null;
+        }
+
+        $fecha = DateTimeImmutable::createFromFormat(
+            '!Y-m-d',
+            $valor
+        );
+        $errores = DateTimeImmutable::getLastErrors();
+
+        if (
+            !$fecha ||
+            (
+                is_array($errores) &&
+                (
+                    (int)($errores['warning_count'] ?? 0) > 0 ||
+                    (int)($errores['error_count'] ?? 0) > 0
+                )
+            )
+        ) {
+            return null;
+        }
+
+        return $fecha;
+    }
+
+    private function fechaDentroPeriodo($valor, array $periodo)
+    {
+        $valor = trim((string)$valor);
+
+        if ($valor === '') {
+            return false;
+        }
+
+        if (
+            ($periodo['desde_sql'] ?? '') === '' &&
+            ($periodo['hasta_sql'] ?? '') === ''
+        ) {
+            return true;
+        }
+
+        try {
+            $fecha = new DateTimeImmutable($valor);
+        } catch (Throwable $error) {
+            return false;
+        }
+
+        if (($periodo['desde_sql'] ?? '') !== '') {
+            $desde = new DateTimeImmutable($periodo['desde_sql']);
+            if ($fecha < $desde) {
+                return false;
+            }
+        }
+
+        if (($periodo['hasta_sql'] ?? '') !== '') {
+            $hasta = new DateTimeImmutable($periodo['hasta_sql']);
+            if ($fecha > $hasta) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private function esEventoInicialAutomatico(array $evento)
+    {
+        return
+            trim((string)($evento['estado_anterior'] ?? '')) === '' &&
+            strtoupper(trim(
+                (string)($evento['estado_nuevo'] ?? '')
+            )) === 'ESPERANDO_RESPUESTA';
+    }
+
+    private function tituloEventoSeguimiento(array $evento)
+    {
+        $anterior = strtoupper(trim(
+            (string)($evento['estado_anterior'] ?? '')
+        ));
+        $nuevo = strtoupper(trim(
+            (string)($evento['estado_nuevo'] ?? '')
+        ));
+        $proximo = trim(
+            (string)($evento['proximo_seguimiento_at'] ?? '')
+        );
+        $nota = trim((string)($evento['nota'] ?? ''));
+
+        if ($anterior !== '' && $anterior === $nuevo) {
+            if ($proximo !== '') {
+                return 'Seguimiento programado';
+            }
+
+            if ($nota !== '') {
+                return 'Nota actualizada';
+            }
+
+            return 'Seguimiento actualizado';
+        }
+
+        return $this->etiquetaEstado($nuevo);
+    }
+
+    private function detalleEventoSeguimiento(array $evento)
+    {
+        $partes = [];
+        $nota = trim((string)($evento['nota'] ?? ''));
+        $proximo = trim(
+            (string)($evento['proximo_seguimiento_at'] ?? '')
+        );
+
+        if ($nota !== '') {
+            $partes[] = $nota;
+        }
+
+        if ($proximo !== '') {
+            try {
+                $partes[] =
+                    'Próximo contacto: ' .
+                    (new DateTimeImmutable($proximo))
+                        ->format('d/m/Y H:i');
+            } catch (Throwable $error) {
+                $partes[] = 'Próximo contacto: ' . $proximo;
+            }
+        }
+
+        return !empty($partes)
+            ? implode(' · ', $partes)
+            : 'Actualización de seguimiento';
+    }
+
+    private function etiquetaCanal($canal)
+    {
+        $canal = strtoupper(trim((string)$canal));
+        $mapa = [
+            'WHATSAPP_MANUAL' => 'WhatsApp manual',
+            'WHATSAPP' => 'WhatsApp',
+            'CORREO' => 'Correo'
+        ];
+
+        return $mapa[$canal] ?? (
+            $canal !== '' ? $canal : 'Canal no especificado'
+        );
     }
 
 }
