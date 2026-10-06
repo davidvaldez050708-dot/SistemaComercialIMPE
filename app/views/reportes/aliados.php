@@ -29,6 +29,30 @@ $hallazgos = is_array($reporteAliados['hallazgos'] ?? null)
     ? $reporteAliados['hallazgos']
     : [];
 
+$periodoReporte = is_array($reporteAliados['periodo'] ?? null)
+    ? $reporteAliados['periodo']
+    : [
+        'clave' => (string)($filtrosReporte['periodo'] ?? 'historico'),
+        'label' => 'Histórico completo',
+        'fecha_desde' => '',
+        'fecha_hasta' => ''
+    ];
+$actividadPeriodo = is_array(
+    $reporteAliados['actividad_periodo'] ?? null
+)
+    ? $reporteAliados['actividad_periodo']
+    : [
+        'nuevos_aliados' => 0,
+        'aliados_trabajados' => 0,
+        'difusiones' => 0,
+        'seguimientos' => 0,
+        'confirmaciones' => 0,
+        'sin_respuesta' => 0,
+        'solicita_informacion' => 0,
+        'interacciones' => 0
+    ];
+$errorFiltroPeriodo = (string)($errorFiltroPeriodo ?? '');
+
 $texto = static fn($valor) => htmlspecialchars(
     (string)$valor,
     ENT_QUOTES | ENT_SUBSTITUTE,
@@ -111,20 +135,31 @@ if ($modoAnalisis === '') {
 }
 
 $tituloResultado = 'Panorama de Aliados';
-$subtituloResultado = 'Todos mis territorios · ' . $situacionSeleccionadaTexto;
+$subtituloResultado =
+    'Todos mis territorios · ' .
+    $situacionSeleccionadaTexto .
+    ' · ' .
+    (string)($periodoReporte['label'] ?? 'Histórico completo');
 $descripcionContexto =
     'Fotografía general de la red institucional dentro de todos tus territorios autorizados.';
 
 if ($modoAnalisis === 'estado') {
     $tituloResultado = 'Aliados en ' . $estadoSeleccionado;
     $subtituloResultado =
-        'Análisis municipal · ' . $situacionSeleccionadaTexto;
+        'Análisis municipal · ' .
+        $situacionSeleccionadaTexto .
+        ' · ' .
+        (string)($periodoReporte['label'] ?? 'Histórico completo');
     $descripcionContexto =
         'Lectura del estado seleccionado con desglose de cobertura y seguimiento por municipio.';
 } elseif ($modoAnalisis === 'municipio') {
     $tituloResultado = 'Aliados en ' . $municipioSeleccionado;
     $subtituloResultado =
-        $estadoSeleccionado . ' · ' . $situacionSeleccionadaTexto;
+        $estadoSeleccionado .
+        ' · ' .
+        $situacionSeleccionadaTexto .
+        ' · ' .
+        (string)($periodoReporte['label'] ?? 'Histórico completo');
     $descripcionContexto =
         'Vista operativa de las instituciones aliadas dentro del municipio seleccionado.';
 }
@@ -142,6 +177,13 @@ if ($modoAnalisis === 'estado') {
         <div class="alert alert-danger login-alert mb-3" role="alert">
             <i class="bi bi-exclamation-circle"></i>
             <span><?= $texto($errorExportacionPdf) ?></span>
+        </div>
+    <?php endif; ?>
+
+    <?php if ($errorFiltroPeriodo !== ''): ?>
+        <div class="alert alert-warning login-alert mb-3" role="alert">
+            <i class="bi bi-calendar-x"></i>
+            <span><?= $texto($errorFiltroPeriodo) ?></span>
         </div>
     <?php endif; ?>
 
@@ -424,6 +466,79 @@ if ($modoAnalisis === 'estado') {
             <?php endif; ?>
         </section>
 
+        <section class="dashboard-panel aliados-report-period-panel mb-3">
+            <div class="analyst-portfolio-section-heading">
+                <div>
+                    <span class="report-eyebrow">ACTIVIDAD DEL PERIODO</span>
+                    <h3 class="panel-title mb-1">
+                        <?= $texto($periodoReporte['label'] ?? 'Histórico completo') ?>
+                    </h3>
+                    <p class="page-subtitle mb-0">
+                        Distingue la red actual de lo que realmente ocurrió dentro del intervalo seleccionado.
+                    </p>
+                </div>
+                <span class="analyst-portfolio-detail-count">
+                    <?= (int)($actividadPeriodo['interacciones'] ?? 0) ?>
+                    <?= (int)($actividadPeriodo['interacciones'] ?? 0) === 1
+                        ? 'interacción'
+                        : 'interacciones' ?>
+                </span>
+            </div>
+
+            <div class="aliados-report-period-kpis">
+                <article>
+                    <span class="aliados-report-period-icon">
+                        <i class="bi bi-person-plus"></i>
+                    </span>
+                    <div>
+                        <strong><?= (int)($actividadPeriodo['nuevos_aliados'] ?? 0) ?></strong>
+                        <span>Nuevos aliados</span>
+                        <small>Formalizados en el periodo</small>
+                    </div>
+                </article>
+                <article>
+                    <span class="aliados-report-period-icon">
+                        <i class="bi bi-briefcase"></i>
+                    </span>
+                    <div>
+                        <strong><?= (int)($actividadPeriodo['aliados_trabajados'] ?? 0) ?></strong>
+                        <span>Aliados trabajados</span>
+                        <small>Con alta, difusión o seguimiento</small>
+                    </div>
+                </article>
+                <article>
+                    <span class="aliados-report-period-icon">
+                        <i class="bi bi-megaphone"></i>
+                    </span>
+                    <div>
+                        <strong><?= (int)($actividadPeriodo['difusiones'] ?? 0) ?></strong>
+                        <span>Difusiones</span>
+                        <small>Convocatorias compartidas</small>
+                    </div>
+                </article>
+                <article>
+                    <span class="aliados-report-period-icon">
+                        <i class="bi bi-arrow-repeat"></i>
+                    </span>
+                    <div>
+                        <strong><?= (int)($actividadPeriodo['seguimientos'] ?? 0) ?></strong>
+                        <span>Seguimientos</span>
+                        <small>Actualizaciones registradas</small>
+                    </div>
+                </article>
+                <article>
+                    <span class="aliados-report-period-icon is-success">
+                        <i class="bi bi-check2-circle"></i>
+                    </span>
+                    <div>
+                        <strong><?= (int)($actividadPeriodo['confirmaciones'] ?? 0) ?></strong>
+                        <span>Confirmaciones</span>
+                        <small>Difusiones confirmadas en el periodo</small>
+                    </div>
+                </article>
+            </div>
+        </section>
+
         <?php if ($modoAnalisis === 'red'): ?>
             <section class="dashboard-panel p-0 overflow-hidden mb-3">
                 <div class="table-panel-header">
@@ -444,12 +559,12 @@ if ($modoAnalisis === 'estado') {
                         <thead>
                             <tr>
                                 <th>Estado</th>
-                                <th class="text-end">Aliados</th>
-                                <th class="text-end">Municipios</th>
-                                <th class="text-end">Con difusión</th>
-                                <th class="text-end">Confirmadas</th>
-                                <th class="text-end">Pendientes</th>
-                                <th class="text-end">Vencidos</th>
+                                <th class="text-end">Red actual</th>
+                                <th class="text-end">Nuevos</th>
+                                <th class="text-end">Trabajados</th>
+                                <th class="text-end">Difusiones</th>
+                                <th class="text-end">Confirmaciones</th>
+                                <th class="text-end">Pendientes actuales</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -471,14 +586,17 @@ if ($modoAnalisis === 'estado') {
                                             </small>
                                         </td>
                                         <td class="text-end"><?= (int)($fila['aliados'] ?? 0) ?></td>
-                                        <td class="text-end"><?= (int)($fila['municipios'] ?? 0) ?></td>
-                                        <td class="text-end"><?= (int)($fila['con_difusion'] ?? 0) ?></td>
-                                        <td class="text-end"><?= (int)($fila['difusion_confirmada'] ?? 0) ?></td>
-                                        <td class="text-end"><?= (int)($fila['pendientes'] ?? 0) ?></td>
+                                        <td class="text-end"><?= (int)($fila['nuevos_periodo'] ?? 0) ?></td>
+                                        <td class="text-end"><?= (int)($fila['trabajados_periodo'] ?? 0) ?></td>
+                                        <td class="text-end"><?= (int)($fila['difusiones_periodo'] ?? 0) ?></td>
+                                        <td class="text-end"><?= (int)($fila['confirmaciones_periodo'] ?? 0) ?></td>
                                         <td class="text-end">
-                                            <strong class="<?= (int)($fila['vencidos'] ?? 0) > 0 ? 'text-danger' : '' ?>">
-                                                <?= (int)($fila['vencidos'] ?? 0) ?>
-                                            </strong>
+                                            <?= (int)($fila['pendientes'] ?? 0) ?>
+                                            <?php if ((int)($fila['vencidos'] ?? 0) > 0): ?>
+                                                <small class="d-block text-danger">
+                                                    <?= (int)$fila['vencidos'] ?> vencido<?= (int)$fila['vencidos'] === 1 ? '' : 's' ?>
+                                                </small>
+                                            <?php endif; ?>
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>
@@ -507,12 +625,12 @@ if ($modoAnalisis === 'estado') {
                         <thead>
                             <tr>
                                 <th>Municipio</th>
-                                <th class="text-end">Aliados</th>
-                                <th class="text-end">Con difusión</th>
-                                <th class="text-end">Confirmadas</th>
-                                <th class="text-end">Sin respuesta</th>
-                                <th class="text-end">Pendientes</th>
-                                <th class="text-end">Vencidos</th>
+                                <th class="text-end">Red actual</th>
+                                <th class="text-end">Nuevos</th>
+                                <th class="text-end">Trabajados</th>
+                                <th class="text-end">Difusiones</th>
+                                <th class="text-end">Confirmaciones</th>
+                                <th class="text-end">Pendientes actuales</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -534,14 +652,17 @@ if ($modoAnalisis === 'estado') {
                                             </small>
                                         </td>
                                         <td class="text-end"><?= (int)($fila['aliados'] ?? 0) ?></td>
-                                        <td class="text-end"><?= (int)($fila['con_difusion'] ?? 0) ?></td>
-                                        <td class="text-end"><?= (int)($fila['difusion_confirmada'] ?? 0) ?></td>
-                                        <td class="text-end"><?= (int)($fila['sin_respuesta'] ?? 0) ?></td>
-                                        <td class="text-end"><?= (int)($fila['pendientes'] ?? 0) ?></td>
+                                        <td class="text-end"><?= (int)($fila['nuevos_periodo'] ?? 0) ?></td>
+                                        <td class="text-end"><?= (int)($fila['trabajados_periodo'] ?? 0) ?></td>
+                                        <td class="text-end"><?= (int)($fila['difusiones_periodo'] ?? 0) ?></td>
+                                        <td class="text-end"><?= (int)($fila['confirmaciones_periodo'] ?? 0) ?></td>
                                         <td class="text-end">
-                                            <strong class="<?= (int)($fila['vencidos'] ?? 0) > 0 ? 'text-danger' : '' ?>">
-                                                <?= (int)($fila['vencidos'] ?? 0) ?>
-                                            </strong>
+                                            <?= (int)($fila['pendientes'] ?? 0) ?>
+                                            <?php if ((int)($fila['vencidos'] ?? 0) > 0): ?>
+                                                <small class="d-block text-danger">
+                                                    <?= (int)$fila['vencidos'] ?> vencido<?= (int)$fila['vencidos'] === 1 ? '' : 's' ?>
+                                                </small>
+                                            <?php endif; ?>
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>
