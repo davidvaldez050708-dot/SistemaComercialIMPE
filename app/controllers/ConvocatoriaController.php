@@ -376,7 +376,12 @@ class ConvocatoriaController
             $estadosIds[] = $territorioId;
         }
 
-        $errores = $this->validarDatos($datos, $estadosIds, true);
+        $errores = $this->validarDatos(
+            $datos,
+            $estadosIds,
+            true,
+            $subtipoConvocatoria === 'inscripciones-abiertas'
+        );
 
         if (!$this->esClasificacionValida($tipoConvocatoria, $subtipoConvocatoria, $esChihuahua)) {
             $errores[] = 'La opción de convocatoria seleccionada no es válida.';
@@ -447,7 +452,12 @@ class ConvocatoriaController
 
         $datos = $this->limpiarDatos($_POST);
         $estadosIds = $this->limpiarEstados($_POST['estados'] ?? []);
-        $errores = $this->validarDatos($datos, $estadosIds, false);
+        $errores = $this->validarDatos(
+            $datos,
+            $estadosIds,
+            false,
+            $subtipoConvocatoria === 'inscripciones-abiertas'
+        );
         $imagen = $this->procesarImagen((string)$convocatoriaOriginal['imagen']);
 
         if ($imagen['error'] !== '') {
@@ -823,8 +833,12 @@ class ConvocatoriaController
         return array_values(array_unique($ids));
     }
 
-    private function validarDatos($datos, $estadosIds, $requiereImagen)
-    {
+    private function validarDatos(
+        $datos,
+        $estadosIds,
+        $requiereImagen,
+        $fechasOpcionales = false
+    ) {
         $errores = [];
 
         if ($datos['titulo'] === '') {
@@ -845,12 +859,36 @@ class ConvocatoriaController
             $errores[] = 'El enlace de registro debe ser una URL válida con http o https.';
         }
 
-        if (!$this->fechaValida($datos['fecha_inicio'])) {
-            $errores[] = 'La fecha de inicio es obligatoria y debe ser válida.';
-        }
+        if ($fechasOpcionales) {
+            if (
+                $datos['fecha_inicio'] !== '' &&
+                !$this->fechaValida($datos['fecha_inicio'])
+            ) {
+                $errores[] = 'La fecha de inicio debe ser válida.';
+            }
 
-        if (!$this->fechaValida($datos['fecha_termino'])) {
-            $errores[] = 'La fecha de término es obligatoria y debe ser válida.';
+            if (
+                $datos['fecha_termino'] !== '' &&
+                !$this->fechaValida($datos['fecha_termino'])
+            ) {
+                $errores[] = 'La fecha de término debe ser válida.';
+            }
+
+            if (
+                $datos['fecha_inicio'] === '' &&
+                $datos['fecha_termino'] !== ''
+            ) {
+                $errores[] =
+                    'Para registrar una fecha de término debes indicar una fecha de inicio.';
+            }
+        } else {
+            if (!$this->fechaValida($datos['fecha_inicio'])) {
+                $errores[] = 'La fecha de inicio es obligatoria y debe ser válida.';
+            }
+
+            if (!$this->fechaValida($datos['fecha_termino'])) {
+                $errores[] = 'La fecha de término es obligatoria y debe ser válida.';
+            }
         }
 
         if (
