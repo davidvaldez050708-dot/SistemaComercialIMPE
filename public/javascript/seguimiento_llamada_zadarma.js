@@ -761,6 +761,30 @@
         }
 
         const abrirLlamada = function () {
+            const estadoActual =
+                phone.getState();
+
+            if (estadoActual?.active) {
+                mostrarToast(
+                    'Ya existe una llamada activa. Usa el control flotante para continuarla o finalizarla.',
+                    true
+                );
+                phone.openContext(false);
+                return;
+            }
+
+            if (
+                estadoActual?.phase === 'finished' &&
+                estadoActual?.finalMetadata
+            ) {
+                mostrarToast(
+                    'Primero registra el resultado de la llamada anterior.',
+                    true
+                );
+                phone.openContext(true);
+                return;
+            }
+
             const telefonoPanel =
                 String(
                     offcanvas.querySelector(
