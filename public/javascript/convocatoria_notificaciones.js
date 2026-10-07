@@ -199,7 +199,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 const visual = getNotificationVisual(item);
                 const timeTone = visual.tone === 'danger'
                     ? 'vencida'
-                    : (visual.tone === 'warning' ? 'proxima' : 'manana');
+                    : (
+                        visual.tone === 'warning'
+                            ? 'proxima'
+                            : (visual.tone === 'success' ? 'activa' : 'manana')
+                    );
 
                 return (
                     '<a class="topbar-reminder-item' + (unread ? ' is-unread' : '') + '"' +
