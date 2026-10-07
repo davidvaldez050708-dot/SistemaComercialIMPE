@@ -286,6 +286,12 @@ $texto = static fn($valor) => htmlspecialchars(
                 enctype="multipart/form-data"
                 data-marketing-mail-form>
 
+                <input
+                    type="hidden"
+                    name="correo_id"
+                    value=""
+                    data-marketing-mail-id>
+
                 <div class="modal-header system-form-modal-header">
                     <div>
                         <h5
@@ -560,6 +566,14 @@ $texto = static fn($valor) => htmlspecialchars(
             </div>
 
             <div class="modal-footer system-form-modal-footer">
+                <button
+                    type="button"
+                    class="btn btn-system-light d-none"
+                    data-marketing-mail-detail-edit>
+                    <i class="bi bi-pencil-square me-2"></i>
+                    Seguir editando
+                </button>
+
                 <button
                     type="button"
                     class="btn btn-system-light"
