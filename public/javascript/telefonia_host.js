@@ -9,6 +9,62 @@
         return;
     }
 
+    const concealOwnWindow = function () {
+        const screenLeft =
+            Number(window.screen?.availLeft || 0);
+        const screenTop =
+            Number(window.screen?.availTop || 0);
+        const screenWidth =
+            Number(
+                window.screen?.availWidth ||
+                window.screen?.width ||
+                0
+            );
+        const screenHeight =
+            Number(
+                window.screen?.availHeight ||
+                window.screen?.height ||
+                0
+            );
+
+        try {
+            window.resizeTo(120, 80);
+        } catch (error) {
+            // Chrome puede imponer dimensiones mínimas.
+        }
+
+        try {
+            window.moveTo(
+                screenLeft + screenWidth + 80,
+                screenTop + screenHeight + 80
+            );
+        } catch (error) {
+            // Chrome puede limitar ventanas fuera de pantalla.
+        }
+
+        try {
+            window.blur();
+
+            if (
+                window.opener &&
+                !window.opener.closed
+            ) {
+                window.opener.focus();
+            }
+        } catch (error) {
+            // El navegador decide finalmente el foco.
+        }
+    };
+
+    concealOwnWindow();
+
+    [80, 250, 700].forEach(function (delay) {
+        window.setTimeout(
+            concealOwnWindow,
+            delay
+        );
+    });
+
     const stateKey = 'impe:telephony:state:' + userId;
     const commandKey = 'impe:telephony:command:' + userId;
     const channelName = 'impe-telephony-' + userId;

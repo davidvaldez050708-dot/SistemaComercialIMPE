@@ -45,7 +45,6 @@ body > *:not(.telephony-host-sentinel):not(script) {
     max-height: 1px !important;
     overflow: hidden !important;
     opacity: 0 !important;
-    visibility: hidden !important;
     pointer-events: none !important;
 }
 

@@ -13,7 +13,7 @@
     const viewKey = 'impe:telephony:view:' + userId;
     const channelName = 'impe-telephony-' + userId;
     const hostWindowName = 'impe_telephony_host_' + userId;
-    const hostVersion = '2';
+    const hostVersion = '3';
 
     const statusUrl =
         new URL(

@@ -17,13 +17,14 @@ if ($usuarioHost === '') {
 <html
     lang="es"
     data-impe-telephony-host="1"
-    data-impe-telephony-host-version="2">
+    data-impe-telephony-host-version="3">
 <head>
     <meta charset="UTF-8">
     <meta
         name="viewport"
         content="width=device-width, initial-scale=1.0">
-    <title>Telefonía del sistema</title>
+    <title>Telefonía</title>
+    <link rel="icon" href="data:,">
 
     <link
         href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap"
