@@ -607,6 +607,7 @@
 
             switch (resultado) {
                 case 'SIN_RESPUESTA':
+                case 'OCUPADO':
                     accionSugerida = 'Volver a llamar';
                     break;
                 case 'NUMERO_INCORRECTO':
@@ -798,7 +799,8 @@
 
                 document.dispatchEvent(new CustomEvent('impe:interaction-informative-saved', {
                     detail: {
-                        seguimientoId: Number(formData.get('seguimiento_id') || 0)
+                        seguimientoId: Number(formData.get('seguimiento_id') || 0),
+                        interaccionId: Number(datos.interaccion?.id || 0)
                     }
                 }));
             } catch (error) {
