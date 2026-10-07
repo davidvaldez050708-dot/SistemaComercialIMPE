@@ -44,7 +44,7 @@ class ConvocatoriaModel
                      activacion_automatica = 1,
                      updated_at = NOW()
                  WHERE fecha_inicio > CURDATE()
-                   AND fecha_termino >= fecha_inicio
+                   AND (fecha_termino IS NULL OR fecha_termino >= fecha_inicio)
                    AND (estado <> 0 OR activacion_automatica <> 1)"
             );
 
@@ -60,7 +60,7 @@ class ConvocatoriaModel
                  WHERE estado = 0
                    AND activacion_automatica = 1
                    AND fecha_inicio <= CURDATE()
-                   AND fecha_termino >= CURDATE()
+                   AND (fecha_termino IS NULL OR fecha_termino >= CURDATE())
                  ORDER BY fecha_inicio ASC, id ASC
                  FOR UPDATE"
             );
@@ -203,20 +203,22 @@ class ConvocatoriaModel
         }
 
         if ((int)$anio > 0) {
-            $sql .= " AND YEAR(convocatorias.fecha_inicio) = ?";
+            $sql .= " AND YEAR(COALESCE(convocatorias.fecha_inicio, convocatorias.created_at)) = ?";
             $tipos .= 'i';
             $parametros[] = (int)$anio;
         }
 
         if ((int)$mes >= 1 && (int)$mes <= 12) {
-            $sql .= " AND MONTH(convocatorias.fecha_inicio) = ?";
+            $sql .= " AND MONTH(COALESCE(convocatorias.fecha_inicio, convocatorias.created_at)) = ?";
             $tipos .= 'i';
             $parametros[] = (int)$mes;
         }
 
         if ($fecha !== '') {
-            $sql .= " AND ? BETWEEN convocatorias.fecha_inicio AND convocatorias.fecha_termino";
-            $tipos .= 's';
+            $sql .= " AND ? >= COALESCE(convocatorias.fecha_inicio, DATE(convocatorias.created_at))
+                      AND (convocatorias.fecha_termino IS NULL OR ? <= convocatorias.fecha_termino)";
+            $tipos .= 'ss';
+            $parametros[] = $fecha;
             $parametros[] = $fecha;
         }
 
@@ -245,14 +247,14 @@ class ConvocatoriaModel
         $subtipoConvocatoria
     )
     {
-        $sql = "SELECT DISTINCT YEAR(convocatorias.fecha_inicio) AS anio
+        $sql = "SELECT DISTINCT
+                    YEAR(COALESCE(convocatorias.fecha_inicio, convocatorias.created_at)) AS anio
                 FROM convocatorias
                 INNER JOIN convocatoria_estados
                     ON convocatoria_estados.convocatoria_id = convocatorias.id
                 WHERE convocatoria_estados.estado_id = ?
                   AND convocatorias.tipo_convocatoria = ?
                   AND convocatorias.subtipo_convocatoria = ?
-                  AND convocatorias.fecha_inicio IS NOT NULL
                 ORDER BY anio DESC";
 
         $stmt = $this->connection->prepare($sql);
@@ -300,11 +302,13 @@ class ConvocatoriaModel
                     convocatorias.fecha_inicio,
                     convocatorias.fecha_termino,
                     convocatorias.estado,
-                    MONTH(convocatorias.fecha_inicio) AS mes,
+                    MONTH(COALESCE(convocatorias.fecha_inicio, convocatorias.created_at)) AS mes,
                     CASE
-                        WHEN convocatorias.fecha_termino < CURDATE()
+                        WHEN convocatorias.fecha_termino IS NOT NULL
+                            AND convocatorias.fecha_termino < CURDATE()
                             THEN 'finalizada'
                         WHEN convocatorias.estado = 1
+                            AND convocatorias.fecha_termino IS NOT NULL
                             AND convocatorias.fecha_termino BETWEEN CURDATE()
                                 AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)
                             THEN 'proxima'
@@ -318,10 +322,10 @@ class ConvocatoriaModel
                 WHERE convocatoria_estados.estado_id = ?
                   AND convocatorias.tipo_convocatoria = ?
                   AND convocatorias.subtipo_convocatoria = ?
-                  AND YEAR(convocatorias.fecha_inicio) = ?
+                  AND YEAR(COALESCE(convocatorias.fecha_inicio, convocatorias.created_at)) = ?
                 ORDER BY
-                    MONTH(convocatorias.fecha_inicio) ASC,
-                    convocatorias.fecha_inicio DESC,
+                    MONTH(COALESCE(convocatorias.fecha_inicio, convocatorias.created_at)) ASC,
+                    COALESCE(convocatorias.fecha_inicio, DATE(convocatorias.created_at)) DESC,
                     convocatorias.id DESC";
 
         $stmt = $this->connection->prepare($sql);
@@ -396,6 +400,12 @@ class ConvocatoriaModel
 
             $estado = (int)$datos['estado'];
             $activacionAutomatica = 0;
+            $datos['fecha_inicio'] = trim((string)$datos['fecha_inicio']) !== ''
+                ? $datos['fecha_inicio']
+                : null;
+            $datos['fecha_termino'] = trim((string)$datos['fecha_termino']) !== ''
+                ? $datos['fecha_termino']
+                : null;
 
             if (
                 $this->soportaActivacionAutomatica() &&
@@ -498,6 +508,12 @@ class ConvocatoriaModel
 
             $estado = (int)$datos['estado'];
             $activacionAutomatica = 0;
+            $datos['fecha_inicio'] = trim((string)$datos['fecha_inicio']) !== ''
+                ? $datos['fecha_inicio']
+                : null;
+            $datos['fecha_termino'] = trim((string)$datos['fecha_termino']) !== ''
+                ? $datos['fecha_termino']
+                : null;
 
             if (
                 $this->soportaActivacionAutomatica() &&
@@ -1084,8 +1100,8 @@ class ConvocatoriaModel
 
         $sql = "SELECT id, imagen
                 FROM convocatorias
-                WHERE fecha_inicio < ?
-                ORDER BY fecha_inicio ASC, id ASC";
+                WHERE COALESCE(fecha_inicio, DATE(created_at)) < ?
+                ORDER BY COALESCE(fecha_inicio, DATE(created_at)) ASC, id ASC";
 
         $transaccionIniciada = false;
 
@@ -1133,7 +1149,7 @@ class ConvocatoriaModel
                 $stmtConvocatoria = $this->connection->prepare(
                     "DELETE FROM convocatorias
                      WHERE id = ?
-                       AND fecha_inicio < ?"
+                       AND COALESCE(fecha_inicio, DATE(created_at)) < ?"
                 );
                 $stmtConvocatoria->bind_param(
                     'is',
