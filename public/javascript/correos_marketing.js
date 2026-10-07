@@ -260,7 +260,6 @@
             const mapaEstados = {
                 todos: '',
                 enviados: 'enviado',
-                pendientes: 'pendiente',
                 borradores: 'borrador'
             };
 
@@ -301,7 +300,6 @@
             const mapaTabs = {
                 '': 'todos',
                 enviado: 'enviados',
-                pendiente: 'pendientes',
                 borrador: 'borradores'
             };
 
@@ -312,7 +310,11 @@
         });
 
         const tabInicial = sessionStorage.getItem('correoMarketingTab');
-        activarTab(tabInicial || 'todos');
+        activarTab(
+            ['todos', 'enviados', 'borradores'].includes(tabInicial)
+                ? tabInicial
+                : 'todos'
+        );
 
         const limpiarDetalle = function () {
             correoDetalleActual = null;
