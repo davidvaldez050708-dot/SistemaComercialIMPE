@@ -67,6 +67,41 @@ class SeguimientoActividadPresentacionService
         array $presentacion
     ) {
         if (preg_match(
+            '/^\[IMPORTACION_HISTORICA_[^\]]+\]\s*(.*)$/ui',
+            $notas,
+            $m
+        )) {
+            $detalle = trim((string)($m[1] ?? ''));
+            $detalleNormalizado = function_exists('mb_strtolower')
+                ? mb_strtolower($detalle, 'UTF-8')
+                : strtolower($detalle);
+
+            $presentacion['titulo'] = 'Historial importado';
+            $presentacion['tipo_visual'] = 'sistema';
+            $presentacion['resultado_label'] = 'Migración histórica';
+
+            if (
+                strpos($detalleNormalizado, 'convenio') !== false ||
+                strpos($detalleNormalizado, 'firma') !== false
+            ) {
+                $presentacion['resumen'] = 'Etapa histórica de convenio';
+            } elseif (strpos($detalleNormalizado, 'reun') !== false) {
+                $presentacion['resumen'] = 'Etapa histórica de reunión';
+            } elseif (strpos($detalleNormalizado, 'correo') !== false) {
+                $presentacion['resumen'] = 'Actividad histórica de correo';
+            } else {
+                $presentacion['resumen'] = 'Actividad histórica migrada';
+            }
+
+            $presentacion['detalles'] = array_values(array_filter([
+                $this->detalle('Fuente', 'Excel histórico'),
+                $this->detalle('Evidencia migrada', $detalle)
+            ]));
+
+            return $presentacion;
+        }
+
+        if (preg_match(
             '/^Datos del seguimiento actualizados:\s*(.+?)\.\s*(Cuenta Clave fue notificada de los cambios relevantes\.)?$/ui',
             $notas,
             $m
