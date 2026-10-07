@@ -71,6 +71,18 @@ $fechaLegible = static function ($fecha) {
 
 $datosCrear = $modalAbierto === 'crear' ? $datosFormulario : [];
 $datosEditar = $modalAbierto === 'editar' ? $datosFormulario : [];
+
+$territorioActualId = (int)($territorioSeleccionado['id'] ?? 0);
+$estadosCrearSeleccionados = array_map(
+    'intval',
+    $datosCrear['estados_ids'] ?? []
+);
+$hayEstadosAdicionalesCrear = count(
+    array_filter(
+        $estadosCrearSeleccionados,
+        static fn($estadoId) => $estadoId !== $territorioActualId
+    )
+) > 0;
 ?>
 
 <?php if ($mensajeExito !== ''): ?>
@@ -1430,41 +1442,70 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
                         </div>
 
                         <div class="system-form-full">
-                            <label class="form-label login-label" for="crear_convocatoria_estados">Estados</label>
-                            <div class="convocatoria-state-picker" data-state-picker>
-                                <input
-                                    type="search"
-                                    class="form-control system-form-control convocatoria-state-search"
-                                    placeholder="Buscar estado..."
-                                    data-state-search>
+                            <label class="form-label login-label">Estados adicionales</label>
 
-                                <div class="convocatoria-state-list">
-                                    <label class="convocatoria-state-option convocatoria-state-option-all">
-                                        <input
-                                            type="checkbox"
-                                            class="form-check-input"
-                                            data-state-select-all>
-                                        <span>Seleccionar todos</span>
-                                    </label>
+                            <input
+                                type="hidden"
+                                name="estados[]"
+                                value="<?= $territorioActualId ?>">
 
-                                    <?php foreach ($estados as $estado): ?>
-                                        <?php $estadoIdActual = (int)$estado['id']; ?>
-                                        <label
-                                            class="convocatoria-state-option"
-                                            data-state-option
-                                            data-state-name="<?= $texto(mb_strtolower((string)$estado['nombre'], 'UTF-8')) ?>">
+                            <button
+                                type="button"
+                                class="convocatoria-state-toggle"
+                                data-bs-toggle="collapse"
+                                data-bs-target="#crearEstadosAdicionales"
+                                aria-expanded="<?= $hayEstadosAdicionalesCrear ? 'true' : 'false' ?>"
+                                aria-controls="crearEstadosAdicionales">
+                                <span>
+                                    <i class="bi bi-geo-alt"></i>
+                                    Seleccionar otros estados
+                                </span>
+                                <i class="bi bi-chevron-down"></i>
+                            </button>
+
+                            <small class="form-text convocatoria-state-help">
+                                Solo utiliza esta opción si deseas publicar también en otros estados.
+                                Si no necesitas agregar más, puedes omitirla.
+                            </small>
+
+                            <div
+                                class="collapse<?= $hayEstadosAdicionalesCrear ? ' show' : '' ?> convocatoria-state-extra-panel"
+                                id="crearEstadosAdicionales">
+                                <div class="convocatoria-state-picker" data-state-picker>
+                                    <input
+                                        type="search"
+                                        class="form-control system-form-control convocatoria-state-search"
+                                        placeholder="Buscar estado..."
+                                        data-state-search>
+
+                                    <div class="convocatoria-state-list">
+                                        <label class="convocatoria-state-option convocatoria-state-option-all">
                                             <input
                                                 type="checkbox"
                                                 class="form-check-input"
-                                                name="estados[]"
-                                                value="<?= $estadoIdActual ?>"
-                                                <?= in_array($estadoIdActual, array_map('intval', $datosCrear['estados_ids'] ?? []), true) ? 'checked' : '' ?>>
-                                            <span><?= $texto($estado['nombre']) ?></span>
+                                                data-state-select-all>
+                                            <span>Seleccionar todos</span>
                                         </label>
-                                    <?php endforeach; ?>
+
+                                        <?php foreach ($estados as $estado): ?>
+                                            <?php $estadoIdActual = (int)$estado['id']; ?>
+                                            <?php if ($estadoIdActual === $territorioActualId) { continue; } ?>
+                                            <label
+                                                class="convocatoria-state-option"
+                                                data-state-option
+                                                data-state-name="<?= $texto(mb_strtolower((string)$estado['nombre'], 'UTF-8')) ?>">
+                                                <input
+                                                    type="checkbox"
+                                                    class="form-check-input"
+                                                    name="estados[]"
+                                                    value="<?= $estadoIdActual ?>"
+                                                    <?= in_array($estadoIdActual, $estadosCrearSeleccionados, true) ? 'checked' : '' ?>>
+                                                <span><?= $texto($estado['nombre']) ?></span>
+                                            </label>
+                                        <?php endforeach; ?>
+                                    </div>
                                 </div>
                             </div>
-                            <small class="form-text">Puedes seleccionar uno o varios estados.</small>
                         </div>
                     </div>
                 </div>
@@ -1570,38 +1611,67 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
                         </div>
 
                         <div class="system-form-full">
-                            <label class="form-label login-label" for="editar_convocatoria_estados">Estados</label>
-                            <div class="convocatoria-state-picker" data-state-picker>
-                                <input
-                                    type="search"
-                                    class="form-control system-form-control convocatoria-state-search"
-                                    placeholder="Buscar estado..."
-                                    data-state-search>
+                            <label class="form-label login-label">Estados adicionales</label>
 
-                                <div class="convocatoria-state-list">
-                                    <label class="convocatoria-state-option convocatoria-state-option-all">
-                                        <input
-                                            type="checkbox"
-                                            class="form-check-input"
-                                            data-state-select-all>
-                                        <span>Seleccionar todos</span>
-                                    </label>
+                            <input
+                                type="hidden"
+                                name="estados[]"
+                                value="<?= $territorioActualId ?>">
 
-                                    <?php foreach ($estados as $estado): ?>
-                                        <?php $estadoIdActual = (int)$estado['id']; ?>
-                                        <label
-                                            class="convocatoria-state-option"
-                                            data-state-option
-                                            data-state-name="<?= $texto(mb_strtolower((string)$estado['nombre'], 'UTF-8')) ?>">
+                            <button
+                                type="button"
+                                class="convocatoria-state-toggle"
+                                data-bs-toggle="collapse"
+                                data-bs-target="#editarEstadosAdicionales"
+                                aria-expanded="false"
+                                aria-controls="editarEstadosAdicionales">
+                                <span>
+                                    <i class="bi bi-geo-alt"></i>
+                                    Seleccionar otros estados
+                                </span>
+                                <i class="bi bi-chevron-down"></i>
+                            </button>
+
+                            <small class="form-text convocatoria-state-help">
+                                Solo utiliza esta opción si deseas publicar también en otros estados.
+                                Si no necesitas agregar más, puedes omitirla.
+                            </small>
+
+                            <div
+                                class="collapse convocatoria-state-extra-panel"
+                                id="editarEstadosAdicionales">
+                                <div class="convocatoria-state-picker" data-state-picker>
+                                    <input
+                                        type="search"
+                                        class="form-control system-form-control convocatoria-state-search"
+                                        placeholder="Buscar estado..."
+                                        data-state-search>
+
+                                    <div class="convocatoria-state-list">
+                                        <label class="convocatoria-state-option convocatoria-state-option-all">
                                             <input
                                                 type="checkbox"
                                                 class="form-check-input"
-                                                name="estados[]"
-                                                value="<?= $estadoIdActual ?>"
-                                                >
-                                            <span><?= $texto($estado['nombre']) ?></span>
+                                                data-state-select-all>
+                                            <span>Seleccionar todos</span>
                                         </label>
-                                    <?php endforeach; ?>
+
+                                        <?php foreach ($estados as $estado): ?>
+                                            <?php $estadoIdActual = (int)$estado['id']; ?>
+                                            <?php if ($estadoIdActual === $territorioActualId) { continue; } ?>
+                                            <label
+                                                class="convocatoria-state-option"
+                                                data-state-option
+                                                data-state-name="<?= $texto(mb_strtolower((string)$estado['nombre'], 'UTF-8')) ?>">
+                                                <input
+                                                    type="checkbox"
+                                                    class="form-check-input"
+                                                    name="estados[]"
+                                                    value="<?= $estadoIdActual ?>">
+                                                <span><?= $texto($estado['nombre']) ?></span>
+                                            </label>
+                                        <?php endforeach; ?>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1787,12 +1857,32 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 const seleccion = new Set((convocatoria.estados_ids || []).map(String));
                 const modalEditar = document.getElementById('modalEditarConvocatoria');
+                const territorioActualId = <?= json_encode((string)$territorioActualId) ?>;
 
                 modalEditar.querySelectorAll('[data-state-option] input[type="checkbox"]').forEach(function (checkbox) {
                     checkbox.checked = seleccion.has(String(checkbox.value));
                 });
 
-                actualizarSeleccionTodos(modalEditar.querySelector('[data-state-picker]'));
+                const pickerEditar = modalEditar.querySelector('[data-state-picker]');
+                actualizarSeleccionTodos(pickerEditar);
+
+                const panelEstadosAdicionales = document.getElementById('editarEstadosAdicionales');
+                const tieneEstadosAdicionales = Array.from(seleccion).some(function (estadoId) {
+                    return String(estadoId) !== String(territorioActualId);
+                });
+
+                if (panelEstadosAdicionales) {
+                    const collapseEstados = bootstrap.Collapse.getOrCreateInstance(
+                        panelEstadosAdicionales,
+                        { toggle: false }
+                    );
+
+                    if (tieneEstadosAdicionales) {
+                        collapseEstados.show();
+                    } else {
+                        collapseEstados.hide();
+                    }
+                }
 
                 new bootstrap.Modal(document.getElementById('modalEditarConvocatoria')).show();
             } catch (error) {
