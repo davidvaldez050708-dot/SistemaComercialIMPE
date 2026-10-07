@@ -21,7 +21,7 @@ function responderJson(array $data, int $status = 200): void
 }
 
 $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
-$rolId = (int)($_SESSION['rol_id'] ?? 0);
+$rol = trim((string)($_SESSION['rol'] ?? ''));
 
 if ($usuarioId <= 0) {
     responderJson([
@@ -30,11 +30,16 @@ if ($usuarioId <= 0) {
     ], 401);
 }
 
-// Durante la prueba técnica, WebRTC se habilita únicamente para Analistas.
-if ($rolId !== 4) {
+if (
+    !in_array(
+        $rol,
+        ['Analista de Datos', 'Asesor de Ventas'],
+        true
+    )
+) {
     responderJson([
         'ok' => false,
-        'mensaje' => 'La prueba WebRTC de Zadarma está disponible únicamente para Analistas.'
+        'mensaje' => 'Tu perfil no tiene acceso al motor WebRTC.'
     ], 403);
 }
 
