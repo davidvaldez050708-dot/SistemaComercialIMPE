@@ -496,6 +496,53 @@ class ConvocatoriaController
         if ($modelo->actualizar($id, $datos, $estadosIds)) {
             $_SESSION['mensaje_convocatoria'] = 'Convocatoria actualizada correctamente.';
 
+            /*
+             * Cuando se entra desde una notificación o desde el dashboard,
+             * la convocatoria se abre mediante un filtro por su título.
+             * Si el título cambia, conservar el filtro anterior provoca que
+             * la convocatoria "desaparezca" hasta abandonar y volver a entrar.
+             * Actualizamos únicamente ese filtro automático para mantener
+             * visible la misma convocatoria después de guardar.
+             */
+            $retornoQuery = trim((string)($_POST['retorno_query'] ?? ''));
+
+            if ($retornoQuery !== '') {
+                $retornoContexto = [];
+                parse_str($retornoQuery, $retornoContexto);
+
+                $buscarRetorno = trim((string)($retornoContexto['buscar'] ?? ''));
+                $tituloOriginal = trim((string)($convocatoriaOriginal['titulo'] ?? ''));
+                $tituloNuevo = trim((string)($datos['titulo'] ?? ''));
+
+                if (
+                    $buscarRetorno !== '' &&
+                    $tituloOriginal !== '' &&
+                    mb_strtolower($buscarRetorno, 'UTF-8') ===
+                        mb_strtolower($tituloOriginal, 'UTF-8')
+                ) {
+                    $retornoContexto['buscar'] = $tituloNuevo;
+                }
+
+                /*
+                 * Si existía un filtro de fecha y la nueva vigencia ya no
+                 * contiene esa fecha, quitamos solamente ese filtro para
+                 * evitar un listado vacío después de editar.
+                 */
+                $fechaRetorno = trim((string)($retornoContexto['fecha'] ?? ''));
+
+                if ($cambioFechas && $fechaRetorno !== '') {
+                    $fueraDeNuevaVigencia =
+                        ($fechaInicioNueva !== '' && $fechaRetorno < $fechaInicioNueva) ||
+                        ($fechaTerminoNueva !== '' && $fechaRetorno > $fechaTerminoNueva);
+
+                    if ($fueraDeNuevaVigencia) {
+                        unset($retornoContexto['fecha']);
+                    }
+                }
+
+                $_POST['retorno_query'] = http_build_query($retornoContexto);
+            }
+
             if ($cambioFechas || $estadoNuevo === 0) {
                 $modelo->eliminarNotificacionesVencimiento($id);
             }
