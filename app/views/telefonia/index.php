@@ -65,7 +65,7 @@ $esc = static function ($valor) {
 
         <article class="telephony-summary-card">
             <span class="telephony-summary-icon">
-                <i class="bi bi-telephone-check"></i>
+                <i class="bi bi-telephone-fill"></i>
             </span>
             <div>
                 <strong><?= (int)($resumenTelefonia['activos'] ?? 0) ?></strong>
@@ -396,12 +396,17 @@ $esc = static function ($valor) {
                                     <small>Permite originar llamadas desde el sistema.</small>
                                 </span>
                             </span>
-                            <input
-                                class="form-check-input"
-                                type="checkbox"
-                                name="permite_salientes"
-                                value="1"
-                                data-telephony-outgoing>
+                            <span class="telephony-toggle">
+                                <input
+                                    class="telephony-toggle-input"
+                                    type="checkbox"
+                                    name="permite_salientes"
+                                    value="1"
+                                    data-telephony-outgoing>
+                                <span
+                                    class="telephony-toggle-track"
+                                    aria-hidden="true"></span>
+                            </span>
                         </label>
 
                         <label class="telephony-switch-row">
@@ -412,12 +417,17 @@ $esc = static function ($valor) {
                                     <small>Prepara la extensión para recibir llamadas.</small>
                                 </span>
                             </span>
-                            <input
-                                class="form-check-input"
-                                type="checkbox"
-                                name="permite_entrantes"
-                                value="1"
-                                data-telephony-incoming>
+                            <span class="telephony-toggle">
+                                <input
+                                    class="telephony-toggle-input"
+                                    type="checkbox"
+                                    name="permite_entrantes"
+                                    value="1"
+                                    data-telephony-incoming>
+                                <span
+                                    class="telephony-toggle-track"
+                                    aria-hidden="true"></span>
+                            </span>
                         </label>
 
                         <label class="telephony-switch-row telephony-active-row">
@@ -430,12 +440,17 @@ $esc = static function ($valor) {
                                     </small>
                                 </span>
                             </span>
-                            <input
-                                class="form-check-input"
-                                type="checkbox"
-                                name="activo"
-                                value="1"
-                                data-telephony-active>
+                            <span class="telephony-toggle">
+                                <input
+                                    class="telephony-toggle-input"
+                                    type="checkbox"
+                                    name="activo"
+                                    value="1"
+                                    data-telephony-active>
+                                <span
+                                    class="telephony-toggle-track"
+                                    aria-hidden="true"></span>
+                            </span>
                         </label>
                     </div>
                 </div>

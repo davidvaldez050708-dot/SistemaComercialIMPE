@@ -470,16 +470,74 @@
     font-weight: 600;
 }
 
-.telephony-switch-row .form-check-input {
-    width: 2.2em;
-    height: 1.1em;
+.telephony-toggle {
+    position: relative;
+    width: 38px;
+    min-width: 38px;
+    height: 22px;
+    display: inline-flex;
+    align-items: center;
+}
+
+.telephony-toggle-input {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    width: 100%;
+    height: 100%;
     margin: 0;
+    opacity: 0;
     cursor: pointer;
 }
 
-.telephony-switch-row .form-check-input:checked {
+.telephony-toggle-track {
+    position: relative;
+    width: 38px;
+    height: 22px;
+    display: block;
+    border: 1px solid #cfd7e4;
+    border-radius: 999px;
+    background: #e9edf3;
+    box-shadow: inset 0 1px 2px rgba(28, 46, 74, .05);
+    transition:
+        border-color .16s ease,
+        background-color .16s ease,
+        box-shadow .16s ease;
+}
+
+.telephony-toggle-track::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(28, 46, 74, .18);
+    transition: transform .16s ease;
+}
+
+.telephony-toggle-input:checked + .telephony-toggle-track {
     border-color: var(--color-primary);
-    background-color: var(--color-primary);
+    background: var(--color-primary);
+}
+
+.telephony-toggle-input:checked + .telephony-toggle-track::after {
+    transform: translateX(16px);
+}
+
+.telephony-toggle-input:focus-visible + .telephony-toggle-track {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(39, 58, 138, .12);
+}
+
+.telephony-toggle-input:disabled {
+    cursor: not-allowed;
+}
+
+.telephony-toggle-input:disabled + .telephony-toggle-track {
+    opacity: .55;
 }
 
 .telephony-active-row {
