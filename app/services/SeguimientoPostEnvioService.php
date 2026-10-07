@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../../config/db_connection.php';
+require_once __DIR__ . '/SeguimientoHistorialImportadoService.php';
 
 class SeguimientoPostEnvioService
 {
@@ -29,7 +30,9 @@ class SeguimientoPostEnvioService
 
         $correoEnviado = trim((string)($seguimiento['fecha_envio'] ?? '')) !== '' ||
             strtoupper(trim((string)($seguimiento['estado_oficio'] ?? ''))) === 'ENVIADO' ||
-            trim((string)($seguimiento['respuesta_at'] ?? '')) !== '';
+            trim((string)($seguimiento['respuesta_at'] ?? '')) !== '' ||
+            (new SeguimientoHistorialImportadoService())
+                ->esConvenioHistorico($seguimiento);
 
         if (!$correoEnviado) {
             return ['ok' => true, 'aplica' => false];
@@ -67,7 +70,9 @@ class SeguimientoPostEnvioService
 
         $correoEnviado = trim((string)($seguimiento['fecha_envio'] ?? '')) !== '' ||
             strtoupper(trim((string)($seguimiento['estado_oficio'] ?? ''))) === 'ENVIADO' ||
-            trim((string)($seguimiento['respuesta_at'] ?? '')) !== '';
+            trim((string)($seguimiento['respuesta_at'] ?? '')) !== '' ||
+            (new SeguimientoHistorialImportadoService())
+                ->esConvenioHistorico($seguimiento);
 
         if (!$correoEnviado) {
             return $this->error(
@@ -506,7 +511,15 @@ class SeguimientoPostEnvioService
     private function formalizarConvenio($seguimientoId, $usuarioId, $datos)
     {
         $actual = $this->obtenerPostEnvio($seguimientoId);
-        if (trim((string)($actual['reunion_realizada_at'] ?? '')) === '') {
+        $seguimiento = $this->obtenerSeguimiento($seguimientoId, $usuarioId);
+        $historico = is_array($seguimiento) &&
+            (new SeguimientoHistorialImportadoService())
+                ->esConvenioHistorico($seguimiento);
+
+        if (
+            !$historico &&
+            trim((string)($actual['reunion_realizada_at'] ?? '')) === ''
+        ) {
             throw new RuntimeException('Primero registra la reunión realizada.');
         }
         if (trim((string)($actual['convenio_formalizado_at'] ?? '')) !== '') {
@@ -681,6 +694,8 @@ class SeguimientoPostEnvioService
                     seguimientos.id,
                     seguimientos.analista_id,
                     seguimientos.estado_seguimiento,
+                    seguimientos.clave_origen,
+                    seguimientos.observaciones,
                     seguimientos.proxima_accion_at,
                     oficio.estado_oficio,
                     oficio.fecha_envio,
