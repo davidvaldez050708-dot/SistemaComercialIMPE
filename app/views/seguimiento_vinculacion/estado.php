@@ -565,6 +565,8 @@ if (!empty($seguimientosSinMunicipio)) {
                     $rutaTitulo = trim((string)($seguimiento['ruta_titulo'] ?? ''));
                     $rutaEtapa = trim((string)($seguimiento['ruta_etapa_label'] ?? ''));
                     $esAliado = (int)($seguimiento['es_aliado'] ?? 0) === 1;
+                    $esHistoricoImportado =
+                        (int)($seguimiento['ruta_historico_importado'] ?? 0) === 1;
                     $etapaFila = $esAliado
                         ? 'Aliado'
                         : ($rutaLista && $rutaEtapa !== ''
@@ -606,7 +608,11 @@ if (!empty($seguimientosSinMunicipio)) {
                         <?php endif; ?>
                         <td>
                             <span class="linkage-activity-date" data-row-last-activity>
-                                <?= $texto($etiquetaCanal($seguimiento['ultimo_canal'] ?? '')) ?>
+                                <?= $texto(
+                                    $esHistoricoImportado
+                                        ? 'Historial importado'
+                                        : $etiquetaCanal($seguimiento['ultimo_canal'] ?? '')
+                                ) ?>
                             </span>
                             <small
                                 class="<?= trim((string)($seguimiento['ultima_interaccion_at'] ?? '')) !== '' ? '' : 'd-none' ?>"
