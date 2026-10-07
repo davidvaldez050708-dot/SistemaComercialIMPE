@@ -290,7 +290,7 @@ $texto = static fn($valor) => htmlspecialchars(
     aria-labelledby="modalCorreoMarketingTitulo"
     aria-hidden="true">
 
-    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable correo-marketing-compose-dialog">
         <div class="modal-content system-form-modal correo-marketing-compose-modal">
             <form
                 enctype="multipart/form-data"
@@ -377,7 +377,7 @@ $texto = static fn($valor) => htmlspecialchars(
                             class="form-control system-form-control correo-marketing-message"
                             id="correo_marketing_mensaje"
                             name="cuerpo"
-                            rows="9"
+                            rows="5"
                             maxlength="20000"
                             placeholder="Escribe tu mensaje..."
                             data-marketing-mail-body
