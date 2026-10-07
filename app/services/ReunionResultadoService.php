@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../../config/db_connection.php';
+require_once __DIR__ . '/SeguimientoHistorialImportadoService.php';
 
 class ReunionResultadoService
 {
@@ -407,14 +408,24 @@ class ReunionResultadoService
             return $this->error('No tienes acceso a este seguimiento.', 403);
         }
 
-        if (strtoupper(trim((string)($estado['reunion_resultado'] ?? ''))) !== 'AVANZAR_CONVENIO') {
+        $historico = (new SeguimientoHistorialImportadoService())
+            ->esConvenioHistorico($estado);
+
+        if (
+            !$historico &&
+            strtoupper(trim((string)($estado['reunion_resultado'] ?? ''))) !==
+                'AVANZAR_CONVENIO'
+        ) {
             return $this->error(
                 'El resultado de la reunión todavía no permite formalizar un convenio.',
                 409
             );
         }
 
-        return ['ok' => true];
+        return [
+            'ok' => true,
+            'historico_importado' => $historico
+        ];
     }
 
     private function obtenerEstado($seguimientoId, $analistaId)
@@ -444,6 +455,8 @@ class ReunionResultadoService
             $sql = "SELECT
                         s.id,
                         s.estado_seguimiento,
+                        s.clave_origen,
+                        s.observaciones,
                         s.proxima_accion_at,
                         CASE
                             WHEN reunion.id IS NOT NULL
@@ -470,6 +483,8 @@ class ReunionResultadoService
             $sql = "SELECT
                         s.id,
                         s.estado_seguimiento,
+                        s.clave_origen,
+                        s.observaciones,
                         s.proxima_accion_at,
                         p.reunion_resultado,
                         p.reunion_realizada_at,
