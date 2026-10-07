@@ -205,6 +205,11 @@ class ReporteConvocatoriaPdfService
         $porTipo = is_array($datosReporte['por_tipo'] ?? null)
             ? $datosReporte['por_tipo']
             : [];
+        $publicacionesPorUsuario = is_array(
+            $datosReporte['publicaciones_por_usuario'] ?? null
+        )
+            ? $datosReporte['publicaciones_por_usuario']
+            : [];
         $territorios = is_array($cobertura['territorios'] ?? null)
             ? $cobertura['territorios']
             : [];
@@ -226,6 +231,66 @@ class ReporteConvocatoriaPdfService
             ],
             $anchoUtil,
             4
+        );
+        $elementos[] = $this->crearEspaciador($documento, 120);
+
+        $elementos[] = $this->crearTituloSeccion(
+            $documento,
+            'PUBLICACIONES POR USUARIO'
+        );
+        $filasUsuarios = [];
+
+        foreach ($publicacionesPorUsuario as $usuarioPublicador) {
+            $nombrePublicador = trim(
+                (string)($usuarioPublicador['nombre'] ?? '') . ' ' .
+                (string)($usuarioPublicador['apellidos'] ?? '')
+            );
+
+            if ($nombrePublicador === '') {
+                $nombrePublicador = trim(
+                    (string)($usuarioPublicador['usuario'] ?? '')
+                );
+            }
+
+            if ($nombrePublicador === '') {
+                $nombrePublicador = 'Usuario no identificado';
+            }
+
+            $filasUsuarios[] = [
+                $nombrePublicador,
+                (string)($usuarioPublicador['rol'] ?? '—'),
+                (string)((int)($usuarioPublicador['total_publicaciones'] ?? 0)),
+                (string)((int)($usuarioPublicador['activas'] ?? 0)),
+                (string)((int)($usuarioPublicador['inactivas'] ?? 0)),
+                $this->formatearFechaSimple(
+                    $usuarioPublicador['ultima_publicacion'] ?? null
+                )
+            ];
+        }
+
+        if (empty($filasUsuarios)) {
+            $filasUsuarios[] = [
+                'Sin publicaciones asociadas',
+                '—',
+                '0',
+                '0',
+                '0',
+                '—'
+            ];
+        }
+
+        $elementos[] = $this->crearTablaDetalle(
+            $documento,
+            [
+                'Usuario',
+                'Rol',
+                'Publicaciones',
+                'Activas',
+                'Inactivas',
+                'Última publicación'
+            ],
+            $filasUsuarios,
+            $this->anchos($anchoUtil, [26, 16, 14, 12, 12, 20])
         );
         $elementos[] = $this->crearEspaciador($documento, 120);
 
