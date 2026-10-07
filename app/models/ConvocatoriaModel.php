@@ -901,6 +901,50 @@ class ConvocatoriaModel
         return $this->convertirResultadoEnArreglo($resultado);
     }
 
+    public function obtenerPublicacionesPorUsuarioReporte()
+    {
+        $sql = "SELECT
+                    usuarios.id AS usuario_id,
+                    usuarios.nombre,
+                    usuarios.apellidos,
+                    usuarios.usuario,
+                    roles.nombre AS rol,
+                    COUNT(convocatorias.id) AS total_publicaciones,
+                    SUM(
+                        CASE
+                            WHEN convocatorias.estado = 1 THEN 1
+                            ELSE 0
+                        END
+                    ) AS activas,
+                    SUM(
+                        CASE
+                            WHEN convocatorias.estado = 0 THEN 1
+                            ELSE 0
+                        END
+                    ) AS inactivas,
+                    MAX(convocatorias.created_at) AS ultima_publicacion
+                FROM convocatorias
+                LEFT JOIN usuarios
+                    ON usuarios.id = convocatorias.creado_por
+                LEFT JOIN roles
+                    ON roles.id = usuarios.rol_id
+                GROUP BY
+                    usuarios.id,
+                    usuarios.nombre,
+                    usuarios.apellidos,
+                    usuarios.usuario,
+                    roles.nombre
+                ORDER BY
+                    total_publicaciones DESC,
+                    usuarios.nombre ASC,
+                    usuarios.apellidos ASC,
+                    usuarios.usuario ASC";
+
+        $resultado = $this->connection->query($sql);
+
+        return $this->convertirResultadoEnArreglo($resultado);
+    }
+
     public function obtenerResumenDashboard()
     {
         $sql = "SELECT
