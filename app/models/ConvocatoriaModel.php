@@ -645,6 +645,40 @@ class ConvocatoriaModel
         }
     }
 
+    public function eliminarNotificacionesVencimiento($convocatoriaId)
+    {
+        $convocatoriaId = (int)$convocatoriaId;
+
+        if (
+            $convocatoriaId <= 0 ||
+            !$this->soportaNotificacionesConvocatorias()
+        ) {
+            return true;
+        }
+
+        try {
+            $sql = "DELETE FROM notificaciones_convocatorias
+                    WHERE convocatoria_id = ?
+                      AND tipo_evento IN (
+                          'vencimiento_2_dias',
+                          'vencimiento_1_dia',
+                          'vencimiento_hoy'
+                      )";
+
+            $stmt = $this->connection->prepare($sql);
+            $stmt->bind_param('i', $convocatoriaId);
+
+            return $stmt->execute();
+        } catch (Throwable $error) {
+            error_log(
+                'Convocatorias - limpieza de alertas de vencimiento: ' .
+                $error->getMessage()
+            );
+
+            return false;
+        }
+    }
+
     public function cambiarEstado($id, $estado, $usuarioId)
     {
         if ($this->soportaActivacionAutomatica()) {
