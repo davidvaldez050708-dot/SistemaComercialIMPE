@@ -939,7 +939,7 @@ class DesempenoService
         }
 
         return [
-            'Interacción útil: registro operativo distinto de SISTEMA dentro del periodo; las llamadas de prueba se excluyen.',
+            'Interacción útil: registro operativo distinto de SISTEMA dentro del periodo; se excluyen llamadas de prueba y trazas de importación histórica.',
             'Llamada válida: llamada IP vinculada a proveedor, identificador externo y duración mayor a cero.',
             'Llamada con contacto: llamada válida en la que se registró contacto real con una persona.',
             'Tasa de contacto: llamadas con contacto divididas entre llamadas válidas.',
