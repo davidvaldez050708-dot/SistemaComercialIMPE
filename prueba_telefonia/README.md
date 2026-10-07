@@ -118,6 +118,22 @@ No se intenta mostrar grabación para resultados sin conversación, como:
 - fuera de servicio;
 - número incorrecto.
 
+## Verificador antes de llamar
+
+Antes de una prueba real ejecuta desde la raíz del proyecto:
+
+```powershell
+C:\xampp\php\php.exe tools\verificar_telefonia_zadarma.php
+```
+
+En un servidor Linux/Hostinger con PHP disponible por CLI:
+
+```bash
+php tools/verificar_telefonia_zadarma.php
+```
+
+El script no imprime API key ni API secret. Comprueba PHP/cURL, Composer, base de datos, tablas, extensiones activas y conectividad real con la centralita Zadarma.
+
 ## Prueba integral recomendada
 
 Realiza al menos estos casos con un seguimiento real de prueba:
