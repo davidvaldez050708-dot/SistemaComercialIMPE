@@ -3395,6 +3395,59 @@
     font-size: 24px;
 }
 
+.convocatoria-calendar-glyph {
+    position: relative;
+    width: 34px;
+    height: 34px;
+    display: inline-flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding-bottom: 4px;
+    border: 2px solid var(--color-primary);
+    border-radius: 6px;
+    background-color: #ffffff;
+    color: var(--color-primary);
+    box-sizing: border-box;
+}
+
+.convocatoria-calendar-glyph::before {
+    content: "";
+    position: absolute;
+    top: 8px;
+    left: -2px;
+    right: -2px;
+    height: 2px;
+    background-color: var(--color-primary);
+}
+
+.convocatoria-calendar-glyph-rings::before,
+.convocatoria-calendar-glyph-rings::after {
+    content: "";
+    position: absolute;
+    top: -5px;
+    width: 3px;
+    height: 9px;
+    border-radius: 3px;
+    background-color: var(--color-primary);
+}
+
+.convocatoria-calendar-glyph-rings::before {
+    left: 7px;
+}
+
+.convocatoria-calendar-glyph-rings::after {
+    right: 7px;
+}
+
+.convocatoria-calendar-glyph-day {
+    position: relative;
+    z-index: 1;
+    font-family: 'Manrope', sans-serif;
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1;
+}
+
 .convocatoria-month-card-title {
     min-width: 0;
     display: grid;
