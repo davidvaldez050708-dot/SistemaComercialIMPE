@@ -52,15 +52,7 @@ SELECT
     s.clave_origen,
     s.nombre_entidad,
     s.estado_seguimiento,
-    CASE
-        WHEN LOWER(COALESCE(s.observaciones, '')) LIKE '%estado(s) excel: convenio%'
-          OR LOWER(COALESCE(s.observaciones, '')) LIKE '%firma de convenio%'
-        THEN 'CONVENIO_EN_PROCESO'
-        WHEN LOWER(COALESCE(s.observaciones, '')) LIKE '%se agenda reunión%'
-          OR LOWER(COALESCE(s.observaciones, '')) LIKE '%se agenda reunion%'
-        THEN 'REUNION_EN_COORDINACION'
-        ELSE 'SIN_ETAPA_HISTORICA_AVANZADA'
-    END AS etapa_historica_detectada
+    'CONVENIO_EN_PROCESO' AS etapa_historica_detectada
 FROM seguimientos_vinculacion s
 WHERE s.analista_id = @analista_id
   AND s.estado_id = @estado_id
@@ -69,10 +61,23 @@ WHERE s.analista_id = @analista_id
   AND (
       LOWER(COALESCE(s.observaciones, '')) LIKE '%estado(s) excel: convenio%'
       OR LOWER(COALESCE(s.observaciones, '')) LIKE '%firma de convenio%'
-      OR LOWER(COALESCE(s.observaciones, '')) LIKE '%se agenda reunión%'
+  )
+UNION ALL
+SELECT
+    s.clave_origen,
+    s.nombre_entidad,
+    s.estado_seguimiento,
+    'REUNION_EN_COORDINACION' AS etapa_historica_detectada
+FROM seguimientos_vinculacion s
+WHERE s.analista_id = @analista_id
+  AND s.estado_id = @estado_id
+  AND s.activo = 1
+  AND s.clave_origen LIKE 'XLSX:GTO:B1:%'
+  AND (
+      LOWER(COALESCE(s.observaciones, '')) LIKE '%se agenda reunión%'
       OR LOWER(COALESCE(s.observaciones, '')) LIKE '%se agenda reunion%'
   )
-ORDER BY s.clave_origen;
+ORDER BY clave_origen;
 
 UPDATE seguimientos_vinculacion s
 SET s.estado_seguimiento = 'ESPERANDO_RESPUESTA',
@@ -208,15 +213,7 @@ SELECT
         ORDER BY o.id DESC
         LIMIT 1
     ) AS folio,
-    CASE
-        WHEN LOWER(COALESCE(s.observaciones, '')) LIKE '%estado(s) excel: convenio%'
-          OR LOWER(COALESCE(s.observaciones, '')) LIKE '%firma de convenio%'
-        THEN 'Convenio en proceso'
-        WHEN LOWER(COALESCE(s.observaciones, '')) LIKE '%se agenda reunión%'
-          OR LOWER(COALESCE(s.observaciones, '')) LIKE '%se agenda reunion%'
-        THEN 'Reunión en coordinación'
-        ELSE ''
-    END AS etapa_historica
+    'Convenio en proceso' AS etapa_historica
 FROM seguimientos_vinculacion s
 WHERE s.analista_id = @analista_id
   AND s.estado_id = @estado_id
@@ -225,9 +222,29 @@ WHERE s.analista_id = @analista_id
   AND (
       LOWER(COALESCE(s.observaciones, '')) LIKE '%estado(s) excel: convenio%'
       OR LOWER(COALESCE(s.observaciones, '')) LIKE '%firma de convenio%'
-      OR LOWER(COALESCE(s.observaciones, '')) LIKE '%se agenda reunión%'
+  )
+UNION ALL
+SELECT
+    s.clave_origen,
+    s.nombre_entidad,
+    s.estado_seguimiento,
+    (
+        SELECT o.folio
+        FROM oficios_vinculacion o
+        WHERE o.seguimiento_id = s.id
+        ORDER BY o.id DESC
+        LIMIT 1
+    ) AS folio,
+    'Reunión en coordinación' AS etapa_historica
+FROM seguimientos_vinculacion s
+WHERE s.analista_id = @analista_id
+  AND s.estado_id = @estado_id
+  AND s.activo = 1
+  AND s.clave_origen LIKE 'XLSX:GTO:B1:%'
+  AND (
+      LOWER(COALESCE(s.observaciones, '')) LIKE '%se agenda reunión%'
       OR LOWER(COALESCE(s.observaciones, '')) LIKE '%se agenda reunion%'
   )
-ORDER BY s.clave_origen;
+ORDER BY clave_origen;
 
 COMMIT;
