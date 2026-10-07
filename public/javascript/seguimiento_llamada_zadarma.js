@@ -33,6 +33,7 @@
         let linkingMetadata = false;
         let pendingInteractionFeedback = null;
         let lastFinishedToken = '';
+        let telefonoFlotanteOculto = false;
 
         window.IMPE_ZADARMA_TELEPHONY_READY = false;
 
@@ -259,6 +260,7 @@
                         }
                     );
                 lastFinishedToken = token;
+                telefonoFlotanteOculto = false;
                 return;
             }
 
@@ -619,9 +621,14 @@
         }
 
         const ocultarTelefonoTrasInteraccion = function () {
-            if (!pendingMetadata) {
+            if (
+                !pendingMetadata ||
+                telefonoFlotanteOculto
+            ) {
                 return;
             }
+
+            telefonoFlotanteOculto = true;
 
             const token =
                 String(
@@ -972,6 +979,14 @@
                     tieneEvidencia:
                         evidence
                 };
+
+                /*
+                 * En cuanto el usuario confirma "Registrar interacción",
+                 * el teléfono deja de ser parte del flujo visual. Los datos
+                 * técnicos permanecen en memoria para vincularse cuando el
+                 * guardado de la interacción sea confirmado por el backend.
+                 */
+                ocultarTelefonoTrasInteraccion();
             },
             true
         );
