@@ -111,6 +111,7 @@ class DesempenoModel
                             WHEN interacciones.id IS NOT NULL
                              AND UPPER(TRIM(COALESCE(interacciones.canal, ''))) <> 'SISTEMA'
                              AND COALESCE(interacciones.notas, '') NOT LIKE '%[REGISTRO_LLAMADA_PRUEBA]%'
+                             AND INSTR(COALESCE(interacciones.notas, ''), '[IMPORTACION_HISTORICA_') = 0
                             THEN 1 ELSE 0
                         END
                     ), 0) AS interacciones,
@@ -121,6 +122,7 @@ class DesempenoModel
                              AND TRIM(COALESCE(interacciones.id_externo, '')) <> ''
                              AND COALESCE(interacciones.duracion_segundos, 0) > 0
                              AND COALESCE(interacciones.notas, '') NOT LIKE '%[REGISTRO_LLAMADA_PRUEBA]%'
+                             AND INSTR(COALESCE(interacciones.notas, ''), '[IMPORTACION_HISTORICA_') = 0
                             THEN 1 ELSE 0
                         END
                     ), 0) AS llamadas_realizadas,
@@ -141,6 +143,7 @@ class DesempenoModel
                              )
                              AND COALESCE(interacciones.notas, '') NOT LIKE '%[SIN_CONTACTO_EFECTIVO]%'
                              AND COALESCE(interacciones.notas, '') NOT LIKE '%[REGISTRO_LLAMADA_PRUEBA]%'
+                             AND INSTR(COALESCE(interacciones.notas, ''), '[IMPORTACION_HISTORICA_') = 0
                             THEN 1 ELSE 0
                         END
                     ), 0) AS llamadas_con_contacto,
@@ -151,6 +154,7 @@ class DesempenoModel
                          AND TRIM(COALESCE(interacciones.id_externo, '')) <> ''
                          AND COALESCE(interacciones.duracion_segundos, 0) > 0
                          AND COALESCE(interacciones.notas, '') NOT LIKE '%[REGISTRO_LLAMADA_PRUEBA]%'
+                             AND INSTR(COALESCE(interacciones.notas, ''), '[IMPORTACION_HISTORICA_') = 0
                         THEN CONCAT(
                             interacciones.seguimiento_id,
                             ':',
@@ -162,6 +166,7 @@ class DesempenoModel
                         WHEN interacciones.id IS NOT NULL
                          AND UPPER(TRIM(COALESCE(interacciones.canal, ''))) <> 'SISTEMA'
                          AND COALESCE(interacciones.notas, '') NOT LIKE '%[REGISTRO_LLAMADA_PRUEBA]%'
+                             AND INSTR(COALESCE(interacciones.notas, ''), '[IMPORTACION_HISTORICA_') = 0
                         THEN interacciones.seguimiento_id
                         ELSE NULL
                     END) AS instituciones_trabajadas
@@ -259,7 +264,8 @@ class DesempenoModel
                   AND interacciones.fecha_inicio >= ?
                   AND interacciones.fecha_inicio <= ?
                   AND UPPER(TRIM(COALESCE(interacciones.canal, ''))) <> 'SISTEMA'
-                  AND COALESCE(interacciones.notas, '') NOT LIKE '%[REGISTRO_LLAMADA_PRUEBA]%'";
+                  AND COALESCE(interacciones.notas, '') NOT LIKE '%[REGISTRO_LLAMADA_PRUEBA]%'
+                             AND INSTR(COALESCE(interacciones.notas, ''), '[IMPORTACION_HISTORICA_') = 0";
 
         $tipos = str_repeat('i', count($ids)) . 'ss';
         $parametros = $ids;
@@ -338,7 +344,8 @@ class DesempenoModel
                   AND interacciones.fecha_inicio >= ?
                   AND interacciones.fecha_inicio <= ?
                   AND UPPER(TRIM(COALESCE(interacciones.canal, ''))) <> 'SISTEMA'
-                  AND COALESCE(interacciones.notas, '') NOT LIKE '%[REGISTRO_LLAMADA_PRUEBA]%'";
+                  AND COALESCE(interacciones.notas, '') NOT LIKE '%[REGISTRO_LLAMADA_PRUEBA]%'
+                             AND INSTR(COALESCE(interacciones.notas, ''), '[IMPORTACION_HISTORICA_') = 0";
 
         $tipos = str_repeat('i', count($ids)) . 'ss';
         $parametros = $ids;
