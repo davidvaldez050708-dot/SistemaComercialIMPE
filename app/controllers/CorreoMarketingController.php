@@ -169,6 +169,32 @@ class CorreoMarketingController
         $this->responder($resultado, $codigoHttp);
     }
 
+    public function guardarBorrador()
+    {
+        $this->validarAccesoMarketing();
+
+        if (
+            strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST'
+        ) {
+            $this->responder([
+                'ok' => false,
+                'mensaje' => 'Método no permitido.'
+            ], 405);
+        }
+
+        $service = new CorreoMarketingService();
+        $resultado = $service->guardarBorrador(
+            (int)($_SESSION['usuario_id'] ?? 0),
+            $_POST,
+            $_FILES['adjuntos'] ?? null
+        );
+
+        $codigoHttp = (int)($resultado['codigo_http'] ?? 200);
+        unset($resultado['codigo_http']);
+
+        $this->responder($resultado, $codigoHttp);
+    }
+
     public function enviar()
     {
         $this->validarAccesoMarketing();
