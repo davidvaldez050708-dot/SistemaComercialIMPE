@@ -21,6 +21,95 @@
 
         const vincularUrl =
             'prueba_telefonia/api/vincular_interaccion_zadarma.php';
+        const usuarioId =
+            Number(window.IMPE_CURRENT_USER_ID || 0);
+        const pendingLinkKey =
+            'impe:zadarma:pending-link:' +
+            String(usuarioId || 0);
+
+        const guardarVinculoPendiente = function (
+            seguimientoId,
+            interaccionId,
+            callToken
+        ) {
+            if (
+                usuarioId <= 0 ||
+                Number(seguimientoId || 0) <= 0 ||
+                Number(interaccionId || 0) <= 0
+            ) {
+                return;
+            }
+
+            try {
+                localStorage.setItem(
+                    pendingLinkKey,
+                    JSON.stringify({
+                        seguimientoId:
+                            Number(seguimientoId),
+                        interaccionId:
+                            Number(interaccionId),
+                        callToken:
+                            String(callToken || ''),
+                        savedAt: Date.now()
+                    })
+                );
+            } catch (error) {
+                // El vínculo sigue disponible en memoria durante esta vista.
+            }
+        };
+
+        const leerVinculoPendiente = function () {
+            if (usuarioId <= 0) {
+                return null;
+            }
+
+            try {
+                const raw =
+                    localStorage.getItem(
+                        pendingLinkKey
+                    );
+                const data =
+                    raw ? JSON.parse(raw) : null;
+
+                if (
+                    !data ||
+                    Number(data.seguimientoId || 0) <= 0 ||
+                    Number(data.interaccionId || 0) <= 0
+                ) {
+                    return null;
+                }
+
+                /*
+                 * Un vínculo técnico no debe quedar bloqueando llamadas por
+                 * tiempo indefinido si el navegador se cerró abruptamente.
+                 */
+                if (
+                    Date.now() -
+                        Number(data.savedAt || 0) >
+                    6 * 60 * 60 * 1000
+                ) {
+                    localStorage.removeItem(
+                        pendingLinkKey
+                    );
+                    return null;
+                }
+
+                return data;
+            } catch (error) {
+                return null;
+            }
+        };
+
+        const limpiarVinculoPendiente =
+            function () {
+                try {
+                    localStorage.removeItem(
+                        pendingLinkKey
+                    );
+                } catch (error) {
+                    // No bloquea la finalización de la llamada.
+                }
+            };
 
         let extension = '';
         let phoneReady = false;
@@ -262,6 +351,37 @@
                     );
                 lastFinishedToken = token;
                 telefonoFlotanteOculto = false;
+
+                const vinculoGuardado =
+                    leerVinculoPendiente();
+
+                if (
+                    vinculoGuardado &&
+                    Number(
+                        vinculoGuardado
+                            .seguimientoId || 0
+                    ) === currentSeguimientoId &&
+                    (
+                        String(
+                            vinculoGuardado
+                                .callToken || ''
+                        ) === '' ||
+                        token === '' ||
+                        String(
+                            vinculoGuardado
+                                .callToken || ''
+                        ) === token
+                    )
+                ) {
+                    pendingInteractionId =
+                        Number(
+                            vinculoGuardado
+                                .interaccionId || 0
+                        );
+                    awaitingInteractionSave =
+                        pendingInteractionId > 0;
+                }
+
                 return;
             }
 
@@ -351,6 +471,7 @@
             pendingMetadata = null;
             pendingInteractionId = 0;
             awaitingInteractionSave = false;
+            limpiarVinculoPendiente();
 
             /*
              * El primer clic solo prepara el teléfono flotante. La llamada
@@ -794,6 +915,7 @@
                     pendingInteractionId = 0;
                     awaitingInteractionSave =
                         false;
+                    limpiarVinculoPendiente();
 
                     const feedback =
                         pendingInteractionFeedback ||
@@ -1058,6 +1180,20 @@
                                 ?.interaccionId || 0
                         );
 
+                    if (pendingInteractionId > 0) {
+                        guardarVinculoPendiente(
+                            Number(
+                                pendingMetadata
+                                    .seguimiento_id || 0
+                            ),
+                            pendingInteractionId,
+                            String(
+                                pendingMetadata
+                                    .call_token || ''
+                            )
+                        );
+                    }
+
                     window.setTimeout(
                         function () {
                             void vincularMetadata(0);
@@ -1096,6 +1232,17 @@
 
                     if (exactId > 0) {
                         pendingInteractionId = exactId;
+                        guardarVinculoPendiente(
+                            Number(
+                                pendingMetadata
+                                    .seguimiento_id || 0
+                            ),
+                            pendingInteractionId,
+                            String(
+                                pendingMetadata
+                                    .call_token || ''
+                            )
+                        );
                     }
 
                     window.setTimeout(
@@ -1263,6 +1410,19 @@
                     telephonyState
                 );
             }
+        );
+
+        window.setTimeout(
+            function () {
+                if (
+                    pendingMetadata &&
+                    pendingInteractionId > 0 &&
+                    awaitingInteractionSave
+                ) {
+                    void vincularMetadata(0);
+                }
+            },
+            250
         );
 
         const probe = function () {
