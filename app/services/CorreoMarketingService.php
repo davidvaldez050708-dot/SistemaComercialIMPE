@@ -456,6 +456,7 @@ class CorreoMarketingService
     public function guardarBorrador($usuarioId, $datos, $archivos = null)
     {
         $usuarioId = (int)$usuarioId;
+        $correoId = (int)($datos['correo_id'] ?? 0);
         $destinatario = strtolower(
             trim((string)($datos['destinatario'] ?? ''))
         );
@@ -490,7 +491,8 @@ class CorreoMarketingService
             $destinatario === '' &&
             $asunto === '' &&
             $cuerpo === '' &&
-            empty($archivos['name'] ?? [])
+            empty($archivos['name'] ?? []) &&
+            $correoId <= 0
         ) {
             return $this->error(
                 'Agrega al menos un dato antes de guardar el borrador.',
@@ -505,16 +507,33 @@ class CorreoMarketingService
             );
         }
 
+        $borradorExistente = null;
+
+        if ($correoId > 0) {
+            $borradorExistente = $this->obtener($usuarioId, $correoId);
+
+            if (
+                !$borradorExistente ||
+                strtolower((string)($borradorExistente['estado_codigo'] ?? '')) !==
+                    'borrador'
+            ) {
+                return $this->error(
+                    'El borrador que intentas editar ya no está disponible.',
+                    404
+                );
+            }
+        }
+
         $preparacion = $this->prepararAdjuntos($archivos);
 
         if (!($preparacion['ok'] ?? false)) {
             return $preparacion;
         }
 
-        $adjuntos = $preparacion['adjuntos'] ?? [];
+        $adjuntosNuevos = $preparacion['adjuntos'] ?? [];
         $rutasTemporales = $preparacion['rutas_temporales'] ?? [];
 
-        if (!empty($adjuntos) && !$this->tablaAdjuntosDisponible()) {
+        if (!empty($adjuntosNuevos) && !$this->tablaAdjuntosDisponible()) {
             $this->limpiarTemporales($rutasTemporales);
 
             return $this->error(
@@ -523,20 +542,52 @@ class CorreoMarketingService
             );
         }
 
-        $nombresAdjuntos = array_map(
+        $nombresExistentes = [];
+        if (is_array($borradorExistente['adjuntos'] ?? null)) {
+            foreach ($borradorExistente['adjuntos'] as $adjuntoExistente) {
+                $nombreExistente = trim((string)(
+                    is_array($adjuntoExistente)
+                        ? ($adjuntoExistente['nombre'] ?? '')
+                        : $adjuntoExistente
+                ));
+
+                if ($nombreExistente !== '') {
+                    $nombresExistentes[] = $nombreExistente;
+                }
+            }
+        }
+
+        $nombresNuevos = array_map(
             static fn($adjunto) => (string)($adjunto['nombre'] ?? ''),
-            $adjuntos
+            $adjuntosNuevos
         );
+        $nombresAdjuntos = array_values(array_filter(array_merge(
+            $nombresExistentes,
+            $nombresNuevos
+        )));
 
         try {
-            $registroId = $this->crearRegistroBorrador(
-                $usuarioId,
-                $destinatario,
-                $destinatarioNombre,
-                $asunto,
-                $cuerpo,
-                $nombresAdjuntos
-            );
+            if ($correoId > 0) {
+                $this->actualizarRegistroBorrador(
+                    $correoId,
+                    $usuarioId,
+                    $destinatario,
+                    $destinatarioNombre,
+                    $asunto,
+                    $cuerpo,
+                    $nombresAdjuntos
+                );
+                $registroId = $correoId;
+            } else {
+                $registroId = $this->crearRegistroBorrador(
+                    $usuarioId,
+                    $destinatario,
+                    $destinatarioNombre,
+                    $asunto,
+                    $cuerpo,
+                    $nombresAdjuntos
+                );
+            }
 
             if ($registroId <= 0) {
                 return $this->error(
@@ -545,17 +596,19 @@ class CorreoMarketingService
                 );
             }
 
-            if (!empty($adjuntos)) {
+            if (!empty($adjuntosNuevos)) {
                 $this->guardarAdjuntosPersistentes(
                     $registroId,
                     $usuarioId,
-                    $adjuntos
+                    $adjuntosNuevos
                 );
             }
 
             return [
                 'ok' => true,
-                'mensaje' => 'Borrador guardado correctamente.',
+                'mensaje' => $correoId > 0
+                    ? 'Borrador actualizado correctamente.'
+                    : 'Borrador guardado correctamente.',
                 'correo_id' => $registroId
             ];
         } catch (Throwable $error) {
@@ -576,6 +629,7 @@ class CorreoMarketingService
     public function enviar($usuarioId, $datos, $archivos = null)
     {
         $usuarioId = (int)$usuarioId;
+        $correoId = (int)($datos['correo_id'] ?? 0);
         $destinatario = strtolower(trim((string)($datos['destinatario'] ?? '')));
         $destinatarioNombre = trim((string)($datos['destinatario_nombre'] ?? ''));
         $asunto = trim((string)($datos['asunto'] ?? ''));
@@ -595,6 +649,23 @@ class CorreoMarketingService
 
         if (mb_strlen($asunto) > 255 || mb_strlen($cuerpo) > 20000) {
             return $this->error('El asunto o el mensaje supera el tamaño permitido.', 422);
+        }
+
+        $borradorExistente = null;
+
+        if ($correoId > 0) {
+            $borradorExistente = $this->obtener($usuarioId, $correoId);
+
+            if (
+                !$borradorExistente ||
+                strtolower((string)($borradorExistente['estado_codigo'] ?? '')) !==
+                    'borrador'
+            ) {
+                return $this->error(
+                    'El borrador que intentas enviar ya no está disponible.',
+                    404
+                );
+            }
         }
 
         $modeloUsuario = new UsuarioModel();
@@ -617,10 +688,10 @@ class CorreoMarketingService
             return $preparacion;
         }
 
-        $adjuntos = $preparacion['adjuntos'] ?? [];
+        $adjuntosNuevos = $preparacion['adjuntos'] ?? [];
         $rutasTemporales = $preparacion['rutas_temporales'] ?? [];
 
-        if (!empty($adjuntos) && !$this->tablaAdjuntosDisponible()) {
+        if (!empty($adjuntosNuevos) && !$this->tablaAdjuntosDisponible()) {
             $this->limpiarTemporales($rutasTemporales);
 
             return $this->error(
@@ -629,23 +700,40 @@ class CorreoMarketingService
             );
         }
 
+        $adjuntosExistentes = $correoId > 0
+            ? $this->obtenerAdjuntosParaEnvio($correoId, $usuarioId)
+            : [];
+        $adjuntosEnvio = array_merge($adjuntosExistentes, $adjuntosNuevos);
         $nombresAdjuntos = array_map(
             static fn($adjunto) => (string)($adjunto['nombre'] ?? ''),
-            $adjuntos
+            $adjuntosEnvio
         );
 
         $registroId = 0;
 
         try {
             if ($this->tablaDisponible()) {
-                $registroId = $this->crearRegistroPendiente(
-                    $usuarioId,
-                    $destinatario,
-                    $destinatarioNombre,
-                    $asunto,
-                    $cuerpo,
-                    $nombresAdjuntos
-                );
+                if ($correoId > 0) {
+                    $this->actualizarRegistroPendienteDesdeBorrador(
+                        $correoId,
+                        $usuarioId,
+                        $destinatario,
+                        $destinatarioNombre,
+                        $asunto,
+                        $cuerpo,
+                        $nombresAdjuntos
+                    );
+                    $registroId = $correoId;
+                } else {
+                    $registroId = $this->crearRegistroPendiente(
+                        $usuarioId,
+                        $destinatario,
+                        $destinatarioNombre,
+                        $asunto,
+                        $cuerpo,
+                        $nombresAdjuntos
+                    );
+                }
             }
 
             $envio = $this->sender->enviar([
@@ -658,7 +746,7 @@ class CorreoMarketingService
                 'nombre_destinatario' => $destinatarioNombre,
                 'asunto' => $asunto,
                 'cuerpo' => $cuerpo,
-                'adjuntos' => $adjuntos
+                'adjuntos' => $adjuntosEnvio
             ]);
 
             if (!($envio['ok'] ?? false)) {
@@ -673,11 +761,11 @@ class CorreoMarketingService
             }
 
             if ($registroId > 0) {
-                if (!empty($adjuntos)) {
+                if (!empty($adjuntosNuevos)) {
                     $this->guardarAdjuntosPersistentes(
                         $registroId,
                         $usuarioId,
-                        $adjuntos
+                        $adjuntosNuevos
                     );
                 }
 
@@ -694,14 +782,10 @@ class CorreoMarketingService
                 'correo_id' => $registroId,
                 'proveedor' => (string)($envio['proveedor'] ?? ''),
                 'firma_incluida' => (bool)($envio['firma_incluida'] ?? false),
-                'adjuntos' => count($adjuntos)
+                'adjuntos' => count($adjuntosEnvio)
             ];
         } finally {
-            foreach ($rutasTemporales as $ruta) {
-                if (is_string($ruta) && $ruta !== '' && is_file($ruta)) {
-                    @unlink($ruta);
-                }
-            }
+            $this->limpiarTemporales($rutasTemporales);
         }
     }
 
@@ -1033,6 +1117,146 @@ class CorreoMarketingService
             str_replace('/', DIRECTORY_SEPARATOR, $rutaRelativa);
 
         return is_file($ruta) ? $ruta : null;
+    }
+
+    private function actualizarRegistroBorrador(
+        $correoId,
+        $usuarioId,
+        $destinatario,
+        $destinatarioNombre,
+        $asunto,
+        $cuerpo,
+        $nombresAdjuntos
+    ) {
+        $adjuntosCount = count($nombresAdjuntos);
+        $adjuntosNombres = json_encode(
+            array_values($nombresAdjuntos),
+            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+        );
+        $estado = 'BORRADOR';
+
+        $sql = "UPDATE correos_marketing
+                SET destinatario = ?,
+                    destinatario_nombre = NULLIF(?, ''),
+                    asunto = ?,
+                    cuerpo = ?,
+                    estado = ?,
+                    adjuntos_count = ?,
+                    adjuntos_nombres = ?,
+                    proveedor = NULL,
+                    firma_incluida = 0,
+                    error_envio = NULL,
+                    fecha_envio = NULL
+                WHERE id = ?
+                  AND usuario_id = ?
+                  AND estado = 'BORRADOR'";
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param(
+            'sssssisii',
+            $destinatario,
+            $destinatarioNombre,
+            $asunto,
+            $cuerpo,
+            $estado,
+            $adjuntosCount,
+            $adjuntosNombres,
+            $correoId,
+            $usuarioId
+        );
+        $stmt->execute();
+    }
+
+    private function actualizarRegistroPendienteDesdeBorrador(
+        $correoId,
+        $usuarioId,
+        $destinatario,
+        $destinatarioNombre,
+        $asunto,
+        $cuerpo,
+        $nombresAdjuntos
+    ) {
+        $adjuntosCount = count($nombresAdjuntos);
+        $adjuntosNombres = json_encode(
+            array_values($nombresAdjuntos),
+            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+        );
+        $estado = 'PENDIENTE';
+
+        $sql = "UPDATE correos_marketing
+                SET destinatario = ?,
+                    destinatario_nombre = NULLIF(?, ''),
+                    asunto = ?,
+                    cuerpo = ?,
+                    estado = ?,
+                    adjuntos_count = ?,
+                    adjuntos_nombres = ?,
+                    proveedor = NULL,
+                    firma_incluida = 0,
+                    error_envio = NULL,
+                    fecha_envio = NULL
+                WHERE id = ?
+                  AND usuario_id = ?
+                  AND estado = 'BORRADOR'";
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param(
+            'sssssisii',
+            $destinatario,
+            $destinatarioNombre,
+            $asunto,
+            $cuerpo,
+            $estado,
+            $adjuntosCount,
+            $adjuntosNombres,
+            $correoId,
+            $usuarioId
+        );
+        $stmt->execute();
+    }
+
+    private function obtenerAdjuntosParaEnvio($correoId, $usuarioId)
+    {
+        if (
+            (int)$correoId <= 0 ||
+            (int)$usuarioId <= 0 ||
+            !$this->tablaAdjuntosDisponible()
+        ) {
+            return [];
+        }
+
+        $sql = "SELECT
+                    archivo,
+                    nombre_original,
+                    mime,
+                    tamano
+                FROM correos_marketing_adjuntos
+                WHERE correo_id = ?
+                  AND usuario_id = ?
+                ORDER BY id ASC";
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param('ii', $correoId, $usuarioId);
+        $stmt->execute();
+
+        $salida = [];
+        $resultado = $stmt->get_result();
+
+        while ($fila = $resultado->fetch_assoc()) {
+            $ruta = $this->rutaAdjuntoAbsoluta(
+                (string)($fila['archivo'] ?? '')
+            );
+
+            if ($ruta === null) {
+                continue;
+            }
+
+            $salida[] = [
+                'ruta' => $ruta,
+                'nombre' => (string)($fila['nombre_original'] ?? 'archivo'),
+                'mime' => (string)($fila['mime'] ?? 'application/octet-stream'),
+                'tamano' => (int)($fila['tamano'] ?? filesize($ruta))
+            ];
+        }
+
+        return $salida;
     }
 
     private function crearRegistroBorrador(
