@@ -7,6 +7,7 @@ require_once __DIR__ . '/AgendaReunionService.php';
 require_once __DIR__ . '/ReunionFechaGuardService.php';
 require_once __DIR__ . '/ReunionResultadoService.php';
 require_once __DIR__ . '/ConvenioDocumentosService.php';
+require_once __DIR__ . '/SeguimientoHistorialImportadoService.php';
 
 class SeguimientoRutaOperativaService
 {
@@ -17,6 +18,7 @@ class SeguimientoRutaOperativaService
     private $fechaGuardService;
     private $resultadoService;
     private $convenioDocumentosService;
+    private $historialImportadoService;
 
     public function __construct(
         $flujoService = null,
@@ -25,7 +27,8 @@ class SeguimientoRutaOperativaService
         $agendaService = null,
         $fechaGuardService = null,
         $resultadoService = null,
-        $convenioDocumentosService = null
+        $convenioDocumentosService = null,
+        $historialImportadoService = null
     ) {
         $this->flujoService = $flujoService ?: new SeguimientoFlujoService();
         $this->postEnvioService = $postEnvioService ?: new SeguimientoPostEnvioService();
@@ -34,12 +37,17 @@ class SeguimientoRutaOperativaService
         $this->fechaGuardService = $fechaGuardService ?: new ReunionFechaGuardService();
         $this->resultadoService = $resultadoService ?: new ReunionResultadoService();
         $this->convenioDocumentosService = $convenioDocumentosService ?: new ConvenioDocumentosService();
+        $this->historialImportadoService = $historialImportadoService
+            ?: new SeguimientoHistorialImportadoService();
     }
 
     public function resolver($seguimientoId, $analistaId, $seguimientoBase = [])
     {
         $seguimientoId = (int)$seguimientoId;
         $analistaId = (int)$analistaId;
+        $seguimientoBase = is_array($seguimientoBase)
+            ? $seguimientoBase
+            : [];
 
         if ($seguimientoId <= 0 || $analistaId <= 0) {
             return [
@@ -50,6 +58,7 @@ class SeguimientoRutaOperativaService
         }
 
         try {
+            $flujo = null;
             $postEnvio = $this->postEnvioService->obtenerFlujoSiAplica(
                 $seguimientoId,
                 $analistaId
@@ -87,29 +96,48 @@ class SeguimientoRutaOperativaService
                     $analistaId,
                     $flujo
                 );
+            } else {
+                $resultado = $this->flujoService->obtenerEstado(
+                    $seguimientoId,
+                    $analistaId
+                );
 
-                return [
-                    'ok' => true,
-                    'flujo' => $flujo
-                ];
-            }
+                if (
+                    !($resultado['ok'] ?? false) ||
+                    !is_array($resultado['flujo'] ?? null)
+                ) {
+                    return $resultado;
+                }
 
-            $resultado = $this->flujoService->obtenerEstado(
-                $seguimientoId,
-                $analistaId
-            );
-
-            if (
-                ($resultado['ok'] ?? false) &&
-                is_array($resultado['flujo'] ?? null)
-            ) {
-                $resultado['flujo'] = $this->ajustarPasoInicial(
+                $flujo = $this->ajustarPasoInicial(
                     $resultado['flujo'],
-                    is_array($seguimientoBase) ? $seguimientoBase : []
+                    $seguimientoBase
                 );
             }
 
-            return $resultado;
+            $flujo = $this->aplicarPisoHistoricoImportado(
+                $flujo,
+                $seguimientoBase
+            );
+
+            /*
+             * Si el piso histórico coloca el expediente en Convenio, dejamos
+             * que el servicio documental complete la acción vigente. Esto
+             * permite continuar el proceso real sin fabricar reuniones ni
+             * respuestas anteriores a la migración.
+             */
+            if ((int)($flujo['paso_actual'] ?? 0) === 13) {
+                $flujo = $this->convenioDocumentosService->ajustarFlujo(
+                    $seguimientoId,
+                    $analistaId,
+                    $flujo
+                );
+            }
+
+            return [
+                'ok' => true,
+                'flujo' => $flujo
+            ];
         } catch (Throwable $error) {
             error_log(
                 '[SeguimientoRutaOperativaService] ' . $error->getMessage()
@@ -121,6 +149,91 @@ class SeguimientoRutaOperativaService
                 'codigo_http' => 500
             ];
         }
+    }
+
+    private function aplicarPisoHistoricoImportado($flujo, $seguimiento)
+    {
+        if (!is_array($flujo) || !is_array($seguimiento)) {
+            return $flujo;
+        }
+
+        $etapa = $this->historialImportadoService->resolverEtapa($seguimiento);
+
+        if (!is_array($etapa)) {
+            return $flujo;
+        }
+
+        $pasoHistorico = (int)($etapa['paso'] ?? 0);
+        $pasoActual = (int)($flujo['paso_actual'] ?? 0);
+
+        /*
+         * El historial importado funciona como piso, nunca como techo.
+         * En cuanto el CRM tenga evidencia real igual o más avanzada, esa
+         * evidencia operativa vuelve a ser la fuente autoritativa.
+         */
+        if ($pasoHistorico <= 0 || $pasoActual >= $pasoHistorico) {
+            return $flujo;
+        }
+
+        return $this->construirFlujoHistoricoImportado(
+            $seguimiento,
+            $etapa
+        );
+    }
+
+    private function construirFlujoHistoricoImportado($seguimiento, $etapa)
+    {
+        $pasos = [
+            ['numero' => 1, 'clave' => 'INICIO', 'titulo' => 'Seguimiento iniciado'],
+            ['numero' => 2, 'clave' => 'INVESTIGACION', 'titulo' => 'Investigación de datos'],
+            ['numero' => 3, 'clave' => 'CONTACTO', 'titulo' => 'Contacto y validación'],
+            ['numero' => 4, 'clave' => 'VERIFICACION', 'titulo' => 'Datos verificados'],
+            ['numero' => 5, 'clave' => 'OFICIO', 'titulo' => 'Oficio preparado'],
+            ['numero' => 6, 'clave' => 'PDF', 'titulo' => 'PDF generado'],
+            ['numero' => 7, 'clave' => 'ENVIO', 'titulo' => 'Oficio / correo enviado'],
+            ['numero' => 8, 'clave' => 'ESPERA', 'titulo' => 'Esperando respuesta'],
+            ['numero' => 9, 'clave' => 'RESPUESTA', 'titulo' => 'Respuesta recibida'],
+            ['numero' => 10, 'clave' => 'SEGUIMIENTO_CORREO', 'titulo' => 'Seguimiento por correo'],
+            ['numero' => 11, 'clave' => 'REUNION_AGENDADA', 'titulo' => 'Reunión agendada'],
+            ['numero' => 12, 'clave' => 'REUNION_REALIZADA', 'titulo' => 'Reunión y acuerdos'],
+            ['numero' => 13, 'clave' => 'CONVENIO', 'titulo' => 'Convenio']
+        ];
+
+        $paso = max(1, min(13, (int)($etapa['paso'] ?? 1)));
+        $indice = $paso - 1;
+        $actual = $pasos[$indice];
+
+        if (trim((string)($etapa['etapa'] ?? '')) !== '') {
+            $actual['titulo'] = (string)$etapa['etapa'];
+        }
+
+        return [
+            'seguimiento_id' => (int)($seguimiento['id'] ?? 0),
+            'paso_actual' => $paso,
+            'total_pasos' => 13,
+            'porcentaje' => (int)round(($paso / 13) * 100),
+            'titulo' => (string)($etapa['titulo'] ?? $actual['titulo']),
+            'descripcion' => (string)($etapa['descripcion'] ?? ''),
+            'faltantes' => [],
+            'accion_principal' => null,
+            'accion_secundaria' => null,
+            'ventana' => [
+                'anterior' => $indice > 0 ? $pasos[$indice - 1] : null,
+                'actual' => $actual,
+                'siguiente' => isset($pasos[$indice + 1])
+                    ? $pasos[$indice + 1]
+                    : null
+            ],
+            'contexto' => [
+                'estado_seguimiento' =>
+                    (string)($seguimiento['estado_seguimiento'] ?? ''),
+                'historico_importado' => true,
+                'historico_fuente' => 'Excel',
+                'historico_evidencia' =>
+                    (string)($etapa['evidencia'] ?? ''),
+                'es_aliado' => false
+            ]
+        ];
     }
 
     private function ajustarPasoInicial($flujo, $seguimiento)
