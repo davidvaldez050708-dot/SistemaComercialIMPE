@@ -197,6 +197,11 @@
     color: var(--color-primary);
 }
 
+.topbar-reminder-time.is-activa {
+    background-color: #e8f8f2;
+    color: #07866f;
+}
+
 .topbar-reminder-empty {
     padding: 24px 16px;
 
