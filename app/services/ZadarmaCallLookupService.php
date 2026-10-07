@@ -115,7 +115,7 @@ class ZadarmaCallLookupService
                 'end' => $fin,
                 'version' => 2,
                 'call_type' => 'out',
-                'limit' => 100,
+                'limit' => 1000,
             ],
             'get'
         );
