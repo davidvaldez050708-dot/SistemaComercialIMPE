@@ -7,6 +7,7 @@ class ConvocatoriaModel
     private $connection;
     private $soportaActivacionAutomatica = null;
     private $soportaNotificacionesConvocatorias = null;
+    private $fechasOpcionalesConfiguradas = null;
 
     public function __construct()
     {
@@ -391,6 +392,24 @@ class ConvocatoriaModel
 
     public function crear($datos, $estadosIds)
     {
+        $esInscripcionesAbiertas =
+            (string)($datos['subtipo_convocatoria'] ?? '') === 'inscripciones-abiertas';
+        $requiereFechasNulas =
+            trim((string)($datos['fecha_inicio'] ?? '')) === '' ||
+            trim((string)($datos['fecha_termino'] ?? '')) === '';
+
+        if (
+            $esInscripcionesAbiertas &&
+            $requiereFechasNulas &&
+            !$this->asegurarFechasOpcionalesInscripciones()
+        ) {
+            error_log(
+                'Convocatorias: no fue posible habilitar fechas opcionales ' .
+                'para Inscripciones Abiertas.'
+            );
+            return false;
+        }
+
         $this->connection->begin_transaction();
 
         try {
@@ -499,6 +518,24 @@ class ConvocatoriaModel
 
     public function actualizar($id, $datos, $estadosIds)
     {
+        $esInscripcionesAbiertas =
+            (string)($datos['subtipo_convocatoria'] ?? '') === 'inscripciones-abiertas';
+        $requiereFechasNulas =
+            trim((string)($datos['fecha_inicio'] ?? '')) === '' ||
+            trim((string)($datos['fecha_termino'] ?? '')) === '';
+
+        if (
+            $esInscripcionesAbiertas &&
+            $requiereFechasNulas &&
+            !$this->asegurarFechasOpcionalesInscripciones()
+        ) {
+            error_log(
+                'Convocatorias: no fue posible habilitar fechas opcionales ' .
+                'para Inscripciones Abiertas.'
+            );
+            return false;
+        }
+
         $this->connection->begin_transaction();
 
         try {
@@ -1215,6 +1252,59 @@ class ConvocatoriaModel
                   AND fecha_termino < CURDATE()";
 
         return $this->connection->query($sql);
+    }
+
+    private function asegurarFechasOpcionalesInscripciones()
+    {
+        if ($this->fechasOpcionalesConfiguradas !== null) {
+            return $this->fechasOpcionalesConfiguradas;
+        }
+
+        try {
+            $columnas = [
+                'fecha_inicio' => false,
+                'fecha_termino' => false
+            ];
+
+            foreach (array_keys($columnas) as $columna) {
+                $resultado = $this->connection->query(
+                    "SHOW COLUMNS FROM convocatorias LIKE '" . $columna . "'"
+                );
+
+                if ($resultado && ($fila = $resultado->fetch_assoc())) {
+                    $columnas[$columna] =
+                        strtoupper((string)($fila['Null'] ?? 'NO')) === 'YES';
+                }
+            }
+
+            if ($columnas['fecha_inicio'] && $columnas['fecha_termino']) {
+                $this->fechasOpcionalesConfiguradas = true;
+                return true;
+            }
+
+            /*
+             * Compatibilidad para entornos locales que aún no hayan ejecutado
+             * la migración de fechas opcionales. Solo cambia la nulabilidad de
+             * las columnas; las reglas de obligatoriedad siguen en el
+             * controlador y aplican a todos los subtipos excepto
+             * Inscripciones Abiertas.
+             */
+            $this->connection->query(
+                "ALTER TABLE convocatorias
+                 MODIFY COLUMN fecha_inicio DATE NULL,
+                 MODIFY COLUMN fecha_termino DATE NULL"
+            );
+
+            $this->fechasOpcionalesConfiguradas = true;
+            return true;
+        } catch (Throwable $error) {
+            error_log(
+                'Convocatorias - fechas opcionales: ' .
+                $error->getMessage()
+            );
+            $this->fechasOpcionalesConfiguradas = false;
+            return false;
+        }
     }
 
     private function soportaActivacionAutomatica()
