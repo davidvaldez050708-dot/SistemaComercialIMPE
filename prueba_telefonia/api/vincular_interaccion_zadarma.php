@@ -4,6 +4,8 @@ session_start();
 require_once dirname(__DIR__, 2) . '/app/services/ZadarmaCallLookupService.php';
 require_once dirname(__DIR__, 2) .
     '/app/services/TelefoniaExtensionService.php';
+require_once dirname(__DIR__, 2) .
+    '/app/services/ZadarmaWebhookEventStoreService.php';
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
@@ -153,25 +155,45 @@ if (!preg_match('/^\d{3,6}$/', $extension)) {
     ], 422);
 }
 
-$lineas = is_file($logPath)
-    ? (file($logPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [])
-    : [];
 $inicio = null;
 $respuesta = null;
 $fin = null;
 $grabacion = null;
+$eventosLlamada = [];
 
 if ($pbxCallId !== '') {
-    foreach ($lineas as $linea) {
-        $fila = json_decode($linea, true);
-        if (!is_array($fila)) {
-            continue;
-        }
+    try {
+        $eventosLlamada =
+            (new ZadarmaWebhookEventStoreService())
+                ->obtenerPorPbxCallId($pbxCallId);
+    } catch (Throwable $errorStore) {
+        error_log('[zadarma_vincular_store] ' . $errorStore->getMessage());
+    }
 
-        if (!hash_equals($pbxCallId, trim((string)($fila['pbx_call_id'] ?? '')))) {
-            continue;
-        }
+    /*
+     * Respaldo para llamadas antiguas o contingencia de almacenamiento.
+     */
+    if (empty($eventosLlamada) && is_file($logPath)) {
+        $lineas = file(
+            $logPath,
+            FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES
+        ) ?: [];
 
+        foreach ($lineas as $linea) {
+            $fila = json_decode($linea, true);
+            if (
+                is_array($fila) &&
+                hash_equals(
+                    $pbxCallId,
+                    trim((string)($fila['pbx_call_id'] ?? ''))
+                )
+            ) {
+                $eventosLlamada[] = $fila;
+            }
+        }
+    }
+
+    foreach ($eventosLlamada as $fila) {
         $evento = (string)($fila['event'] ?? '');
         if ($evento === 'NOTIFY_OUT_START') {
             $inicio = $fila;
