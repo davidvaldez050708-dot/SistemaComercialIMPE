@@ -1091,6 +1091,10 @@
                     json.mensaje || 'Correo enviado correctamente.',
                     false
                 );
+                sessionStorage.setItem(
+                    'correoMarketingTab',
+                    'enviados'
+                );
 
                 window.setTimeout(function () {
                     window.location.reload();
