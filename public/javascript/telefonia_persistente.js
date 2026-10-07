@@ -13,6 +13,7 @@
     const viewKey = 'impe:telephony:view:' + userId;
     const channelName = 'impe-telephony-' + userId;
     const hostWindowName = 'impe_telephony_host_' + userId;
+    const hostVersion = '2';
 
     const statusUrl =
         new URL(
@@ -338,12 +339,29 @@
         hostWindow = popup;
 
         try {
+            const root =
+                popup.document?.documentElement;
             const isHost =
-                popup.document?.documentElement
-                    ?.dataset?.impeTelephonyHost === '1';
+                root?.dataset
+                    ?.impeTelephonyHost === '1';
+            const currentVersion =
+                String(
+                    root?.dataset
+                        ?.impeTelephonyHostVersion ||
+                    ''
+                );
 
-            if (!isHost) {
+            if (
+                !isHost ||
+                currentVersion !== hostVersion
+            ) {
                 popup.location.replace(hostUrl);
+            }
+
+            try {
+                popup.resizeTo(360, 170);
+            } catch (resizeError) {
+                // El navegador puede decidir conservar el tamaño anterior.
             }
         } catch (error) {
             // Si temporalmente no se puede inspeccionar, se conserva la ventana nombrada.
