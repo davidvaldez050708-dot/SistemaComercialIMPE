@@ -71,6 +71,82 @@ class TelefoniaController
         require_once __DIR__ . '/../views/layout/dashboard_footer.php';
     }
 
+    public function estadoUsuario()
+    {
+        $this->validarUsuarioTelefoniaJson();
+
+        try {
+            $asignacion = $this->service->resolverParaUsuario(
+                (int)($_SESSION['usuario_id'] ?? 0)
+            );
+
+            if (!$asignacion) {
+                $this->responderJson([
+                    'ok' => false,
+                    'mensaje' => 'Tu usuario no tiene una extensión Zadarma activa asignada.'
+                ], 422);
+            }
+
+            if (empty($asignacion['permite_salientes'])) {
+                $this->responderJson([
+                    'ok' => false,
+                    'mensaje' => 'Tu extensión no tiene habilitadas llamadas salientes.'
+                ], 403);
+            }
+
+            $this->responderJson([
+                'ok' => true,
+                'extension' => (string)($asignacion['extension'] ?? ''),
+                'caller_id' => (string)($asignacion['caller_id'] ?? ''),
+                'permite_salientes' => !empty($asignacion['permite_salientes']),
+                'permite_entrantes' => !empty($asignacion['permite_entrantes']),
+                'origen' => (string)($asignacion['origen'] ?? 'USUARIO')
+            ]);
+        } catch (Throwable $e) {
+            error_log(
+                'No fue posible consultar estado de telefonía: ' .
+                $e->getMessage()
+            );
+
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'No fue posible consultar tu configuración de telefonía.'
+            ], 500);
+        }
+    }
+
+    public function host()
+    {
+        $this->validarUsuarioTelefoniaHtml();
+
+        try {
+            $asignacionTelefonica =
+                $this->service->resolverParaUsuario(
+                    (int)($_SESSION['usuario_id'] ?? 0)
+                );
+
+            if (
+                !$asignacionTelefonica ||
+                empty($asignacionTelefonica['permite_salientes'])
+            ) {
+                http_response_code(403);
+                die(
+                    'Tu usuario no tiene una extensión activa para llamadas salientes.'
+                );
+            }
+        } catch (Throwable $e) {
+            http_response_code(500);
+            die('No fue posible preparar el motor de telefonía.');
+        }
+
+        header(
+            'Cache-Control: no-store, no-cache, must-revalidate, max-age=0'
+        );
+        header('Pragma: no-cache');
+
+        require_once __DIR__ . '/../views/telefonia/host.php';
+    }
+
     public function guardarExtension()
     {
         $this->validarAdministrador();
@@ -145,6 +221,61 @@ class TelefoniaController
         }
 
         $this->volver();
+    }
+
+    private function validarUsuarioTelefoniaJson()
+    {
+        $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
+        $rol = trim((string)($_SESSION['rol'] ?? ''));
+
+        if (
+            $usuarioId <= 0 ||
+            !in_array(
+                $rol,
+                ['Analista de Datos', 'Asesor de Ventas'],
+                true
+            )
+        ) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'Tu perfil no tiene acceso al motor de telefonía.'
+            ], 403);
+        }
+    }
+
+    private function validarUsuarioTelefoniaHtml()
+    {
+        $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
+        $rol = trim((string)($_SESSION['rol'] ?? ''));
+
+        if (
+            $usuarioId <= 0 ||
+            !in_array(
+                $rol,
+                ['Analista de Datos', 'Asesor de Ventas'],
+                true
+            )
+        ) {
+            http_response_code(403);
+            die('Tu perfil no tiene acceso al motor de telefonía.');
+        }
+    }
+
+    private function responderJson(array $datos, $status = 200)
+    {
+        http_response_code((int)$status);
+        header('Content-Type: application/json; charset=utf-8');
+        header(
+            'Cache-Control: no-store, no-cache, must-revalidate, max-age=0'
+        );
+
+        echo json_encode(
+            $datos,
+            JSON_UNESCAPED_UNICODE |
+            JSON_UNESCAPED_SLASHES |
+            JSON_INVALID_UTF8_SUBSTITUTE
+        );
+        exit;
     }
 
     private function validarAdministrador()
