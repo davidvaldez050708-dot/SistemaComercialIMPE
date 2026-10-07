@@ -1223,7 +1223,8 @@ class RolModel
              FROM permisos
              WHERE codigo IN (
                 'reportes.usuarios',
-                'whatsapp.gestionar_cuentas'
+                'whatsapp.gestionar_cuentas',
+                'telefonia.configurar'
              )"
         );
 
@@ -1327,6 +1328,7 @@ class RolModel
             ['modulo' => 'WhatsApp', 'codigo' => 'whatsapp.enviar', 'nombre' => 'Enviar mensajes por WhatsApp', 'descripcion' => 'Enviar mensajes mediante cuentas de WhatsApp Business autorizadas.'],
             ['modulo' => 'WhatsApp', 'codigo' => 'whatsapp.gestionar_conversaciones', 'nombre' => 'Supervisar conversaciones de WhatsApp', 'descripcion' => 'Consultar las conversaciones del equipo dentro del alcance autorizado.'],
             ['modulo' => 'WhatsApp', 'codigo' => 'whatsapp.gestionar_cuentas', 'nombre' => 'Gestionar cuentas de WhatsApp', 'descripcion' => 'Configurar números empresariales y asignarlos a usuarios. Exclusivo del Administrador.'],
+            ['modulo' => 'Telefonía', 'codigo' => 'telefonia.configurar', 'nombre' => 'Configurar telefonía', 'descripcion' => 'Asignar y administrar extensiones PBX de los usuarios. Exclusivo del Administrador.'],
             ['modulo' => 'Convocatorias', 'codigo' => 'convocatorias.ver', 'nombre' => 'Ver convocatorias', 'descripcion' => 'Consultar convocatorias registradas.'],
             ['modulo' => 'Convocatorias', 'codigo' => 'convocatorias.crear', 'nombre' => 'Crear convocatorias', 'descripcion' => 'Registrar nuevas convocatorias.'],
             ['modulo' => 'Convocatorias', 'codigo' => 'convocatorias.editar', 'nombre' => 'Editar convocatorias', 'descripcion' => 'Actualizar información de convocatorias.'],

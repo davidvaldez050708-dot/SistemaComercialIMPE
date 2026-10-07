@@ -225,7 +225,8 @@ $controladoresProtegidosCsrf = [
     'aliado',
     'whatsapp',
     'rol',
-    'usuario'
+    'usuario',
+    'telefonia'
 ];
 
 if (
@@ -305,6 +306,17 @@ switch ($controller) {
 
         $controllerInstance =
             new FirmaCorreoController();
+
+        break;
+
+
+    case 'telefonia':
+
+        require_once __DIR__ .
+            '/app/controllers/TelefoniaController.php';
+
+        $controllerInstance =
+            new TelefoniaController();
 
         break;
 

@@ -82,6 +82,8 @@ $esFormulariosDashboard =
     $controllerDashboard === 'formulario';
 $esDesempenoDashboard =
     $controllerDashboard === 'desempeno';
+$esTelefoniaDashboard =
+    $controllerDashboard === 'telefonia';
 
 $cssOpcionalDashboard = [];
 
@@ -198,6 +200,10 @@ if ($esDesempenoDashboard) {
     $cssOpcionalDashboard[] = 'desempeno.css';
 }
 
+if ($esTelefoniaDashboard) {
+    $cssOpcionalDashboard[] = 'telefonia.css';
+}
+
 if (
     $esConvocatoriaReportesDashboard ||
     $esConvocatoriaReportePreviewDashboard
@@ -253,6 +259,10 @@ if ($esCorreosMarketingDashboard) {
 
 if ($esDesempenoDashboard) {
     $jsOpcionalHead[] = 'desempeno.js';
+}
+
+if ($esTelefoniaDashboard) {
+    $jsOpcionalHead[] = 'telefonia_admin.js';
 }
 
 if ($esHomeDashboard) {

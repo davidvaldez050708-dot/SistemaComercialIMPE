@@ -6,6 +6,8 @@ $opcionActiva = $opcionActiva ?? 'inicio';
 $mostrarUsuarios = tienePermiso('usuarios.ver');
 $mostrarRoles = tienePermiso('roles.ver');
 $mostrarTerritorios = tienePermiso('territorios.ver');
+$mostrarTelefoniaConfiguracion =
+    (int)($_SESSION['rol_id'] ?? 0) === 1;
 $mostrarDataTerritorial = tienePermiso('data_territorial.ver');
 $mostrarSeguimientoVinculacion = tienePermiso('seguimientos_vinculacion.ver');
 $mostrarAliados = tienePermiso('aliados.ver');
@@ -58,6 +60,7 @@ $claseInicio = $opcionActiva === 'inicio' ? 'active' : '';
 $claseUsuarios = $opcionActiva === 'usuarios' ? 'active' : '';
 $claseRoles = $opcionActiva === 'roles' ? 'active' : '';
 $claseTerritorios = $opcionActiva === 'territorios' ? 'active' : '';
+$claseTelefonia = $opcionActiva === 'telefonia' ? 'active' : '';
 $claseDataTerritorial =
     $opcionActiva === 'data_territorial' ? 'active' : '';
 $claseSeguimientoVinculacion =
@@ -112,7 +115,12 @@ $claseFormularios =
             </a>
         </div>
 
-        <?php if ($mostrarUsuarios || $mostrarRoles || $mostrarTerritorios): ?>
+        <?php if (
+            $mostrarUsuarios ||
+            $mostrarRoles ||
+            $mostrarTerritorios ||
+            $mostrarTelefoniaConfiguracion
+        ): ?>
 
             <div class="sidebar-section">
                 <p class="sidebar-section-title">
@@ -148,6 +156,17 @@ $claseFormularios =
                         class="sidebar-link <?= $claseTerritorios ?>">
                         <i class="bi bi-geo-alt"></i>
                         Territorios
+                    </a>
+
+                <?php endif; ?>
+
+                <?php if ($mostrarTelefoniaConfiguracion): ?>
+
+                    <a
+                        href="<?= BASE_URL ?>index.php?controller=telefonia&action=index"
+                        class="sidebar-link <?= $claseTelefonia ?>">
+                        <i class="bi bi-telephone-gear"></i>
+                        Telefonía
                     </a>
 
                 <?php endif; ?>
@@ -375,7 +394,12 @@ $claseFormularios =
 
 
             <!-- GESTIÓN -->
-            <?php if ($mostrarUsuarios || $mostrarRoles || $mostrarTerritorios): ?>
+            <?php if (
+                $mostrarUsuarios ||
+                $mostrarRoles ||
+                $mostrarTerritorios ||
+                $mostrarTelefoniaConfiguracion
+            ): ?>
 
                 <div class="sidebar-section">
 
@@ -420,6 +444,19 @@ $claseFormularios =
 
                             <i class="bi bi-geo-alt"></i>
                             Territorios
+
+                        </a>
+
+                    <?php endif; ?>
+
+                    <?php if ($mostrarTelefoniaConfiguracion): ?>
+
+                        <a
+                            href="<?= BASE_URL ?>index.php?controller=telefonia&action=index"
+                            class="sidebar-link <?= $claseTelefonia ?>">
+
+                            <i class="bi bi-telephone-gear"></i>
+                            Telefonía
 
                         </a>
 
