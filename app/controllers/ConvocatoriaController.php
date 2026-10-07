@@ -1060,6 +1060,32 @@ class ConvocatoriaController
 
     private function redirigir($territorioId = 0, $tipo = '', $subtipo = '')
     {
+        $retornoContexto = [];
+        $retornoQuery = trim((string)($_POST['retorno_query'] ?? ''));
+
+        if ($retornoQuery !== '') {
+            parse_str($retornoQuery, $retornoContexto);
+
+            if (
+                (string)($retornoContexto['controller'] ?? '') !== 'convocatoria' ||
+                (string)($retornoContexto['action'] ?? '') !== 'index'
+            ) {
+                $retornoContexto = [];
+            }
+        }
+
+        if ((int)$territorioId <= 0) {
+            $territorioId = (int)($retornoContexto['territorio_id'] ?? 0);
+        }
+
+        if ($tipo === '') {
+            $tipo = strtolower(trim((string)($retornoContexto['tipo'] ?? '')));
+        }
+
+        if ($subtipo === '') {
+            $subtipo = strtolower(trim((string)($retornoContexto['subtipo'] ?? '')));
+        }
+
         $url = BASE_URL . 'index.php?controller=convocatoria&action=index';
 
         if ((int)$territorioId > 0) {
@@ -1074,12 +1100,34 @@ class ConvocatoriaController
             $url .= '&subtipo=' . rawurlencode($subtipo);
         }
 
-        $anioContexto = (int)($_POST['anio'] ?? ($_GET['anio'] ?? 0));
-        $mesContexto = (int)($_POST['mes'] ?? ($_GET['mes'] ?? 0));
-        $vistaContexto = (string)($_POST['vista'] ?? ($_GET['vista'] ?? ''));
+        $anioContexto = (int)(
+            $_POST['anio'] ??
+            ($retornoContexto['anio'] ?? ($_GET['anio'] ?? 0))
+        );
+        $mesContexto = (int)(
+            $_POST['mes'] ??
+            ($retornoContexto['mes'] ?? ($_GET['mes'] ?? 0))
+        );
+        $vistaContexto = (string)(
+            $_POST['vista'] ??
+            ($retornoContexto['vista'] ?? ($_GET['vista'] ?? ''))
+        );
         $vistaContexto = in_array($vistaContexto, ['activas', 'historial'], true)
             ? $vistaContexto
             : '';
+
+        $buscarContexto = trim((string)(
+            $retornoContexto['buscar'] ??
+            ($_POST['buscar'] ?? ($_GET['buscar'] ?? ''))
+        ));
+        $fechaContexto = trim((string)(
+            $retornoContexto['fecha'] ??
+            ($_POST['fecha'] ?? ($_GET['fecha'] ?? ''))
+        ));
+        $categoriaContexto = trim((string)(
+            $retornoContexto['categoria'] ??
+            ($_POST['categoria'] ?? ($_GET['categoria'] ?? ''))
+        ));
 
         if ($anioContexto >= 2000 && $anioContexto <= 2100) {
             $url .= '&anio=' . $anioContexto;
@@ -1091,6 +1139,18 @@ class ConvocatoriaController
 
         if ($vistaContexto !== '') {
             $url .= '&vista=' . rawurlencode($vistaContexto);
+        }
+
+        if ($buscarContexto !== '') {
+            $url .= '&buscar=' . rawurlencode($buscarContexto);
+        }
+
+        if ($fechaContexto !== '') {
+            $url .= '&fecha=' . rawurlencode($fechaContexto);
+        }
+
+        if ($categoriaContexto !== '') {
+            $url .= '&categoria=' . rawurlencode($categoriaContexto);
         }
 
         header('Location: ' . $url);
