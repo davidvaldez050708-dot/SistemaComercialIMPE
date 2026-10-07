@@ -33,6 +33,10 @@ class ConvocatoriaNotificacionModel
                     created_at
                 FROM notificaciones_convocatorias
                 WHERE usuario_id = ?
+                  AND NOT (
+                      tipo_evento = 'vencimiento_2_dias'
+                      AND leida = 1
+                  )
                 ORDER BY created_at DESC, id DESC
                 LIMIT " . $limite;
 
