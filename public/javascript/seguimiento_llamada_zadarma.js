@@ -750,13 +750,18 @@
                         await response.json();
 
                     if (
-                        [404, 409].includes(
-                            response.status
+                        (
+                            [404, 409].includes(response.status) ||
+                            response.status >= 500
                         ) &&
                         attempt < 24
                     ) {
                         linkingMetadata = false;
-                        await sleep(1000);
+                        await sleep(
+                            response.status >= 500
+                                ? 1500
+                                : 1000
+                        );
                         void vincularMetadata(
                             attempt + 1
                         );
@@ -767,10 +772,14 @@
                         !response.ok ||
                         !data.ok
                     ) {
-                        throw new Error(
-                            data.mensaje ||
-                            'No fue posible vincular los datos técnicos de la llamada.'
-                        );
+                        const errorVinculo =
+                            new Error(
+                                data.mensaje ||
+                                'No fue posible vincular los datos técnicos de la llamada.'
+                            );
+                        errorVinculo.status =
+                            response.status;
+                        throw errorVinculo;
                     }
 
                     const token =
@@ -865,11 +874,23 @@
                         )
                     );
                 } catch (error) {
+                    if (
+                        attempt < 10 &&
+                        Number(error?.status || 0) === 0
+                    ) {
+                        linkingMetadata = false;
+                        await sleep(1500);
+                        void vincularMetadata(
+                            attempt + 1
+                        );
+                        return;
+                    }
+
                     awaitingInteractionSave =
                         false;
                     mostrarToast(
                         error.message ||
-                        'La interacción se guardó, pero no fue posible vincular los datos técnicos de la llamada.',
+                        'La interacción se guardó, pero no fue posible vincular los datos técnicos de la llamada. El estado de la llamada se conserva para reintentar.',
                         true
                     );
                 } finally {
@@ -1135,8 +1156,11 @@
                             );
 
                         if (success) {
-                            ocultarTelefonoTrasInteraccion();
-
+                            /*
+                             * Compatibilidad con respuestas antiguas que solo
+                             * mostraban toast. No se descarta el estado final:
+                             * se conserva hasta confirmar el vínculo técnico.
+                             */
                             window.setTimeout(
                                 function () {
                                     void vincularMetadata(0);
