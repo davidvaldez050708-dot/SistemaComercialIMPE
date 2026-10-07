@@ -220,6 +220,9 @@ class CorreoMarketingService
             'cuerpo' => (string)($fila['cuerpo'] ?? ''),
             'tipo' => $this->etiquetaTipo($fila['tipo'] ?? ''),
             'estado' => $this->etiquetaEstado($fila['estado'] ?? ''),
+            'estado_codigo' => strtolower(
+                trim((string)($fila['estado'] ?? 'pendiente'))
+            ),
             'proveedor' => (string)($fila['proveedor'] ?? ''),
             'firma_incluida' =>
                 (bool)((int)($fila['firma_incluida'] ?? 0)),
@@ -448,6 +451,126 @@ class CorreoMarketingService
             'ok' => true,
             'mensaje' => 'Archivo recuperado correctamente.'
         ];
+    }
+
+    public function guardarBorrador($usuarioId, $datos, $archivos = null)
+    {
+        $usuarioId = (int)$usuarioId;
+        $destinatario = strtolower(
+            trim((string)($datos['destinatario'] ?? ''))
+        );
+        $destinatarioNombre = trim(
+            (string)($datos['destinatario_nombre'] ?? '')
+        );
+        $asunto = trim((string)($datos['asunto'] ?? ''));
+        $cuerpo = trim((string)($datos['cuerpo'] ?? ''));
+
+        if ($usuarioId <= 0) {
+            return $this->error('La sesión no está activa.', 401);
+        }
+
+        if (
+            $destinatario !== '' &&
+            !filter_var($destinatario, FILTER_VALIDATE_EMAIL)
+        ) {
+            return $this->error(
+                'El correo destinatario no tiene un formato válido.',
+                422
+            );
+        }
+
+        if (mb_strlen($asunto) > 255 || mb_strlen($cuerpo) > 20000) {
+            return $this->error(
+                'El asunto o el mensaje supera el tamaño permitido.',
+                422
+            );
+        }
+
+        if (
+            $destinatario === '' &&
+            $asunto === '' &&
+            $cuerpo === '' &&
+            empty($archivos['name'] ?? [])
+        ) {
+            return $this->error(
+                'Agrega al menos un dato antes de guardar el borrador.',
+                422
+            );
+        }
+
+        if (!$this->tablaDisponible()) {
+            return $this->error(
+                'La bandeja de Correos de Marketing no está disponible.',
+                500
+            );
+        }
+
+        $preparacion = $this->prepararAdjuntos($archivos);
+
+        if (!($preparacion['ok'] ?? false)) {
+            return $preparacion;
+        }
+
+        $adjuntos = $preparacion['adjuntos'] ?? [];
+        $rutasTemporales = $preparacion['rutas_temporales'] ?? [];
+
+        if (!empty($adjuntos) && !$this->tablaAdjuntosDisponible()) {
+            $this->limpiarTemporales($rutasTemporales);
+
+            return $this->error(
+                'Falta aplicar la migración de adjuntos de Correos de Marketing.',
+                500
+            );
+        }
+
+        $nombresAdjuntos = array_map(
+            static fn($adjunto) => (string)($adjunto['nombre'] ?? ''),
+            $adjuntos
+        );
+
+        try {
+            $registroId = $this->crearRegistroBorrador(
+                $usuarioId,
+                $destinatario,
+                $destinatarioNombre,
+                $asunto,
+                $cuerpo,
+                $nombresAdjuntos
+            );
+
+            if ($registroId <= 0) {
+                return $this->error(
+                    'No fue posible guardar el borrador.',
+                    500
+                );
+            }
+
+            if (!empty($adjuntos)) {
+                $this->guardarAdjuntosPersistentes(
+                    $registroId,
+                    $usuarioId,
+                    $adjuntos
+                );
+            }
+
+            return [
+                'ok' => true,
+                'mensaje' => 'Borrador guardado correctamente.',
+                'correo_id' => $registroId
+            ];
+        } catch (Throwable $error) {
+            error_log(
+                'Borrador de correo de Marketing: ' .
+                $error->getMessage()
+            );
+
+            return $this->error(
+                'No fue posible guardar el borrador.',
+                500
+            );
+        } finally {
+            $this->limpiarTemporales($rutasTemporales);
+        }
     }
 
     public function enviar($usuarioId, $datos, $archivos = null)
@@ -910,6 +1033,53 @@ class CorreoMarketingService
             str_replace('/', DIRECTORY_SEPARATOR, $rutaRelativa);
 
         return is_file($ruta) ? $ruta : null;
+    }
+
+    private function crearRegistroBorrador(
+        $usuarioId,
+        $destinatario,
+        $destinatarioNombre,
+        $asunto,
+        $cuerpo,
+        $nombresAdjuntos
+    ) {
+        $adjuntosCount = count($nombresAdjuntos);
+        $adjuntosNombres = json_encode(
+            array_values($nombresAdjuntos),
+            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+        );
+
+        $tipo = 'GENERAL';
+        $estado = 'BORRADOR';
+
+        $sql = "INSERT INTO correos_marketing (
+                    usuario_id,
+                    destinatario,
+                    destinatario_nombre,
+                    asunto,
+                    cuerpo,
+                    tipo,
+                    estado,
+                    adjuntos_count,
+                    adjuntos_nombres,
+                    created_at
+                ) VALUES (?, ?, NULLIF(?, ''), ?, ?, ?, ?, ?, ?, NOW())";
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param(
+            'issssssis',
+            $usuarioId,
+            $destinatario,
+            $destinatarioNombre,
+            $asunto,
+            $cuerpo,
+            $tipo,
+            $estado,
+            $adjuntosCount,
+            $adjuntosNombres
+        );
+        $stmt->execute();
+
+        return (int)$this->connection->insert_id;
     }
 
     private function crearRegistroPendiente(
