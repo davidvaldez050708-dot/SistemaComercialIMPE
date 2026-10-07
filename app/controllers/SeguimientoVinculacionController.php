@@ -2711,6 +2711,16 @@ class SeguimientoVinculacionController
             return 'Reunión en coordinación';
         }
 
+        if (
+            (int)$pasoActual === 10 &&
+            (
+                strpos($titulo, 'colaboracion institucional') !== false ||
+                strpos($titulo, 'difusion activa') !== false
+            )
+        ) {
+            return 'Difusión activa';
+        }
+
         if ((int)$pasoActual === 12) {
             if (strpos($titulo, 'programad') !== false) {
                 return 'Reunión programada';
