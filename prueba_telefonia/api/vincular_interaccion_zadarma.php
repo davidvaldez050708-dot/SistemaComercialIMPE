@@ -111,6 +111,11 @@ $pbxCallId = trim((string)($_POST['pbx_call_id'] ?? ''));
 $destino = trim((string)($_POST['destination'] ?? ''));
 $desdeUnix = max(0, (int)($_POST['since'] ?? 0));
 $duracionCliente = max(0, (int)($_POST['duration_client'] ?? 0));
+$lookupAttempt = max(0, (int)($_POST['lookup_attempt'] ?? 0));
+$permitirLookupEstadisticas =
+    $lookupAttempt === 0 ||
+    $lookupAttempt === 12 ||
+    $lookupAttempt >= 24;
 
 if (
     $seguimientoId <= 0 ||
@@ -208,7 +213,10 @@ if ($pbxCallId !== '') {
 }
 
 $estadistica = null;
-if (!$inicio || !$fin || $pbxCallId === '') {
+if (
+    (!$inicio || !$fin || $pbxCallId === '') &&
+    $permitirLookupEstadisticas
+) {
     try {
         $lookup = new ZadarmaCallLookupService();
 
