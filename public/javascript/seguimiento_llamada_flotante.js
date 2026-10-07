@@ -206,27 +206,20 @@
         }
 
         /*
-         * El listener histórico de Twilio corta la llamada al cerrar el
-         * panel lateral. Para Zadarma persistente detenemos solamente ese
-         * listener: el audio vive en el host independiente y continúa.
+         * Al cerrar el panel lateral solo se minimiza la interfaz.
+         * El audio permanece en el host telefónico independiente.
          */
         offcanvas?.addEventListener(
             'hidden.bs.offcanvas',
-            function (event) {
-                if (!callIsActive()) {
-                    return;
-                }
-
-                event.stopImmediatePropagation();
-
+            function () {
                 if (
+                    callIsActive() &&
                     modalEl?.classList
                         .contains('show')
                 ) {
                     minimize();
                 }
-            },
-            true
+            }
         );
 
         document.addEventListener(
