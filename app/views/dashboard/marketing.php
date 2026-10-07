@@ -15,7 +15,107 @@ $estadosCubiertos = (int)($coberturaMarketing['estados_cubiertos'] ?? 0);
 $territoriosCobertura = is_array($coberturaMarketing['territorios'] ?? null)
     ? $coberturaMarketing['territorios']
     : [];
+$estadosSinConvocatoria = is_array($estadosSinConvocatoria ?? null)
+    ? $estadosSinConvocatoria
+    : [];
+
+$nombreMarketing = trim((string)($_SESSION['nombre'] ?? ''));
+if ($nombreMarketing === '') {
+    $nombreMarketing = trim((string)($_SESSION['usuario'] ?? 'Marketing'));
+}
+
+$horaMarketing = (int)date('G');
+$saludoMarketing = $horaMarketing < 12
+    ? 'Buenos días'
+    : ($horaMarketing < 19 ? 'Buenas tardes' : 'Buenas noches');
+
+$mesesMarketing = [
+    1 => 'enero',
+    2 => 'febrero',
+    3 => 'marzo',
+    4 => 'abril',
+    5 => 'mayo',
+    6 => 'junio',
+    7 => 'julio',
+    8 => 'agosto',
+    9 => 'septiembre',
+    10 => 'octubre',
+    11 => 'noviembre',
+    12 => 'diciembre'
+];
+$diasMarketing = [
+    1 => 'lunes',
+    2 => 'martes',
+    3 => 'miércoles',
+    4 => 'jueves',
+    5 => 'viernes',
+    6 => 'sábado',
+    7 => 'domingo'
+];
+
+$fechaMarketingActual = new DateTimeImmutable();
+$fechaLargaMarketing =
+    ucfirst($diasMarketing[(int)$fechaMarketingActual->format('N')]) . ', ' .
+    $fechaMarketingActual->format('j') . ' de ' .
+    $mesesMarketing[(int)$fechaMarketingActual->format('n')] . ' de ' .
+    $fechaMarketingActual->format('Y');
+
+$totalCoberturaPendienteMarketing = count($estadosSinConvocatoria);
 ?>
+
+<section class="analyst-dashboard-v2 marketing-welcome-shell">
+    <section class="analyst-welcome marketing-welcome">
+        <div class="analyst-welcome-copy">
+            <span class="analyst-welcome-eyebrow">TU JORNADA</span>
+            <h2>
+                <?= htmlspecialchars(
+                    $saludoMarketing . ', ' . $nombreMarketing,
+                    ENT_QUOTES,
+                    'UTF-8'
+                ) ?>
+            </h2>
+            <p>
+                <?= htmlspecialchars(
+                    $fechaLargaMarketing,
+                    ENT_QUOTES,
+                    'UTF-8'
+                ) ?>
+            </p>
+            <p class="analyst-welcome-tagline">
+                Mantengamos tus convocatorias vigentes, visibles y actualizadas.
+            </p>
+        </div>
+
+        <div class="analyst-welcome-status-zone">
+            <a
+                class="analyst-welcome-status <?= $totalCoberturaPendienteMarketing > 0 ? 'is-attention' : 'is-clear' ?> is-dashboard-action marketing-welcome-status-link"
+                href="#marketingPendingCoverage">
+                <span class="analyst-welcome-status-icon" aria-hidden="true">
+                    <i class="bi"></i>
+                </span>
+                <strong>
+                    <?php if ($totalCoberturaPendienteMarketing > 0): ?>
+                        <?= $totalCoberturaPendienteMarketing ?>
+                        <?= $totalCoberturaPendienteMarketing === 1
+                            ? 'territorio requiere cobertura'
+                            : 'territorios requieren cobertura' ?>
+                    <?php else: ?>
+                        Cobertura territorial completa
+                    <?php endif; ?>
+                </strong>
+                <i
+                    class="bi bi-chevron-down analyst-welcome-status-arrow"
+                    aria-hidden="true"></i>
+            </a>
+
+            <span class="analyst-welcome-status-copy">
+                <?= $totalCoberturaPendienteMarketing > 0
+                    ? 'Consulta los estados que aún no cuentan con una convocatoria activa.'
+                    : 'Todos los estados cuentan con al menos una convocatoria activa.' ?>
+            </span>
+        </div>
+    </section>
+</section>
 
 <div class="metric-grid mb-4">
     <article class="metric-card">
@@ -545,7 +645,9 @@ $porcentajeSinConvocatoria = $totalEstadosCobertura > 0
     </div>
 </section>
 
-    <section class="dashboard-panel marketing-pending-coverage">
+    <section
+        class="dashboard-panel marketing-pending-coverage"
+        id="marketingPendingCoverage">
         <div class="marketing-pending-heading">
             <div>
                 <span class="analyst-section-kicker">COBERTURA PENDIENTE</span>
