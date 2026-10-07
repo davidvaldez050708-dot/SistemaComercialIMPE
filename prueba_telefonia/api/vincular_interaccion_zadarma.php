@@ -370,7 +370,9 @@ try {
         duracionConversacion($respuesta, $fin),
         max(0, (int)($fin['duration'] ?? 0))
     );
-    $duracion = $duracionProveedor;
+    $duracion = $huboRespuesta
+        ? $duracionProveedor
+        : 0;
 
     if ($huboRespuesta && $duracion <= 0) {
         $duracion = $duracionCliente;
