@@ -668,7 +668,10 @@
         ].includes(String(status || ''));
     };
 
-    const fetchCallState = async function (forceFinal) {
+    const fetchCallState = async function (
+        forceFinal,
+        useStatisticsFallback
+    ) {
         if (!state.destination || !state.requestedAt) {
             return null;
         }
@@ -680,6 +683,10 @@
 
         if (forceFinal) {
             params.set('final', '1');
+
+            if (useStatisticsFallback === true) {
+                params.set('stats', '1');
+            }
         }
 
         const response = await fetch(
@@ -826,7 +833,10 @@
         pollBusy = true;
 
         try {
-            const call = await fetchCallState(false);
+            const call = await fetchCallState(
+                false,
+                false
+            );
 
             if (call) {
                 applyCallState(call);
@@ -963,7 +973,10 @@
             }
 
             try {
-                const call = await fetchCallState(true);
+                const call = await fetchCallState(
+                    true,
+                    attempt === 2
+                );
 
                 if (call) {
                     lastCall = call;
