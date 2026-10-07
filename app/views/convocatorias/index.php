@@ -1225,14 +1225,13 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
 
                                 <td>
                                     <?php if (!empty($convocatoria['enlace_registro'])): ?>
-                                        <a
+                                        <button
+                                            type="button"
                                             class="convocatoria-external-link"
-                                            href="<?= $texto($convocatoria['enlace_registro']) ?>"
-                                            target="_blank"
-                                            rel="noopener noreferrer">
-                                            <i class="bi bi-link-45deg"></i>
-                                            Abrir enlace
-                                        </a>
+                                            data-copy-convocatoria-link="<?= $texto($convocatoria['enlace_registro']) ?>">
+                                            <i class="bi bi-copy"></i>
+                                            <span>Copiar enlace</span>
+                                        </button>
                                     <?php else: ?>
                                         <span class="convocatoria-link-empty">—</span>
                                     <?php endif; ?>
@@ -1759,7 +1758,58 @@ document.addEventListener('DOMContentLoaded', function () {
     const imagenPreview = modalImagenElemento?.querySelector('[data-convocatoria-image-preview]');
     const imagenTitulo = document.getElementById('modalImagenConvocatoriaTitulo');
 
-    document.addEventListener('click', function (event) {
+    document.addEventListener('click', async function (event) {
+        const botonCopiar = event.target.closest('[data-copy-convocatoria-link]');
+
+        if (botonCopiar) {
+            const enlace = botonCopiar.dataset.copyConvocatoriaLink || '';
+
+            if (enlace === '') {
+                return;
+            }
+
+            try {
+                if (navigator.clipboard && window.isSecureContext) {
+                    await navigator.clipboard.writeText(enlace);
+                } else {
+                    const temporal = document.createElement('textarea');
+                    temporal.value = enlace;
+                    temporal.setAttribute('readonly', '');
+                    temporal.style.position = 'fixed';
+                    temporal.style.opacity = '0';
+                    document.body.appendChild(temporal);
+                    temporal.select();
+                    document.execCommand('copy');
+                    temporal.remove();
+                }
+
+                const textoBoton = botonCopiar.querySelector('span');
+                const iconoBoton = botonCopiar.querySelector('i');
+
+                if (textoBoton) {
+                    textoBoton.textContent = 'Copiado';
+                }
+
+                if (iconoBoton) {
+                    iconoBoton.className = 'bi bi-check2';
+                }
+
+                window.setTimeout(function () {
+                    if (textoBoton) {
+                        textoBoton.textContent = 'Copiar enlace';
+                    }
+
+                    if (iconoBoton) {
+                        iconoBoton.className = 'bi bi-copy';
+                    }
+                }, 1800);
+            } catch (error) {
+                window.alert('No fue posible copiar el enlace.');
+            }
+
+            return;
+        }
+
         const botonImagen = event.target.closest('[data-convocatoria-image]');
 
         if (!botonImagen || !modalImagen || !imagenPreview) {
@@ -2154,10 +2204,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 '<td>' + escapeHtml(convocatoria.estados || 'Sin estados') + '</td>' +
                 '<td>' +
                     (convocatoria.enlace_registro
-                        ? '<a class="convocatoria-external-link" href="' +
-                            escapeHtml(convocatoria.enlace_registro) +
-                            '" target="_blank" rel="noopener noreferrer">' +
-                            '<i class="bi bi-link-45deg"></i> Abrir enlace</a>'
+                        ? '<button type="button" class="convocatoria-external-link" ' +
+                            'data-copy-convocatoria-link="' +
+                            escapeHtml(convocatoria.enlace_registro) + '">' +
+                            '<i class="bi bi-copy"></i><span>Copiar enlace</span></button>'
                         : '<span class="convocatoria-link-empty">—</span>') +
                 '</td>' +
                 '<td><span class="status-pill ' +
