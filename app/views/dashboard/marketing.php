@@ -7,6 +7,9 @@ $coberturaMarketing = $coberturaMarketing ?? [
     'territorios' => []
 ];
 $convocatoriasUrl = BASE_URL . 'index.php?controller=convocatoria&action=index';
+$proximasFinalizarMarketing = is_array($proximasFinalizarMarketing ?? null)
+    ? $proximasFinalizarMarketing
+    : [];
 $totalEstadosCobertura = (int)($coberturaMarketing['total_estados'] ?? 0);
 $estadosCubiertos = (int)($coberturaMarketing['estados_cubiertos'] ?? 0);
 $territoriosCobertura = is_array($coberturaMarketing['territorios'] ?? null)
@@ -48,10 +51,10 @@ $territoriosCobertura = is_array($coberturaMarketing['territorios'] ?? null)
     </article>
 </div>
 
-<section class="dashboard-panel">
+<section class="dashboard-panel marketing-expiring-panel">
     <div class="table-panel-header">
         <div>
-            <h2 class="panel-title mb-0">Gestión de Convocatorias</h2>
+            <h2 class="panel-title mb-0 marketing-expiring-title">Gestión de Convocatorias</h2>
             <p class="panel-subtitle mb-0">
                 <?= (int)($resumenMarketing['proximas_finalizar'] ?? 0) ?>
                 convocatorias activas finalizan en los próximos 7 días.
@@ -59,10 +62,14 @@ $territoriosCobertura = is_array($coberturaMarketing['territorios'] ?? null)
         </div>
 
         <?php if (tienePermiso('convocatorias.ver')): ?>
-            <a class="btn btn-system-light" href="<?= $convocatoriasUrl ?>">
+            <button
+                type="button"
+                class="btn btn-system-primary marketing-expiring-trigger"
+                data-bs-toggle="modal"
+                data-bs-target="#modalConvocatoriasPorVencer">
                 <i class="bi bi-arrow-right-circle me-2"></i>
                 Ir a convocatorias
-            </a>
+            </button>
         <?php endif; ?>
     </div>
 </section>
@@ -91,6 +98,131 @@ $estadoEtiquetasMarketing = [
     'inactiva' => 'Inactiva'
 ];
 ?>
+
+<?php if (tienePermiso('convocatorias.ver')): ?>
+<div
+    class="modal fade"
+    id="modalConvocatoriasPorVencer"
+    tabindex="-1"
+    aria-labelledby="modalConvocatoriasPorVencerTitulo"
+    aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered marketing-expiring-dialog">
+        <div class="modal-content system-form-modal">
+            <div class="modal-header">
+                <div>
+                    <h2
+                        class="modal-title"
+                        id="modalConvocatoriasPorVencerTitulo">
+                        Convocatorias próximas a vencer
+                    </h2>
+                    <p class="modal-subtitle">
+                        Selecciona una convocatoria para ir directamente a su ubicación.
+                    </p>
+                </div>
+                <button
+                    type="button"
+                    class="btn-close"
+                    data-bs-dismiss="modal"
+                    aria-label="Cerrar"></button>
+            </div>
+
+            <div class="modal-body marketing-expiring-modal-body">
+                <?php if (!empty($proximasFinalizarMarketing)): ?>
+                    <div class="marketing-expiring-list">
+                        <?php foreach ($proximasFinalizarMarketing as $convocatoriaPorVencer): ?>
+                            <?php
+                            $territorioVencimientoId =
+                                (int)($convocatoriaPorVencer['territorio_id'] ?? 0);
+                            $tipoVencimiento =
+                                trim((string)($convocatoriaPorVencer['tipo_convocatoria'] ?? ''));
+                            $subtipoVencimiento =
+                                trim((string)($convocatoriaPorVencer['subtipo_convocatoria'] ?? ''));
+                            $tituloVencimiento =
+                                trim((string)($convocatoriaPorVencer['titulo'] ?? 'Convocatoria'));
+                            $urlVencimiento = $convocatoriasUrl;
+
+                            if ($territorioVencimientoId > 0) {
+                                $urlVencimiento .=
+                                    '&territorio_id=' . $territorioVencimientoId;
+                            }
+
+                            if ($tipoVencimiento !== '') {
+                                $urlVencimiento .=
+                                    '&tipo=' . rawurlencode($tipoVencimiento);
+                            }
+
+                            if ($subtipoVencimiento !== '') {
+                                $urlVencimiento .=
+                                    '&subtipo=' . rawurlencode($subtipoVencimiento);
+                            }
+
+                            if ($tituloVencimiento !== '') {
+                                $urlVencimiento .=
+                                    '&buscar=' . rawurlencode($tituloVencimiento);
+                            }
+
+                            $diasRestantesVencimiento =
+                                max(0, (int)($convocatoriaPorVencer['dias_restantes'] ?? 0));
+
+                            if ($diasRestantesVencimiento === 0) {
+                                $textoVencimiento = 'Vence hoy';
+                            } elseif ($diasRestantesVencimiento === 1) {
+                                $textoVencimiento = 'Vence mañana';
+                            } else {
+                                $textoVencimiento =
+                                    'Vence en ' . $diasRestantesVencimiento . ' días';
+                            }
+                            ?>
+                            <a
+                                class="marketing-expiring-item"
+                                href="<?= htmlspecialchars($urlVencimiento, ENT_QUOTES, 'UTF-8') ?>">
+                                <span class="marketing-expiring-item-icon">
+                                    <i class="bi bi-calendar-event"></i>
+                                </span>
+
+                                <span class="marketing-expiring-item-copy">
+                                    <strong>
+                                        <?= htmlspecialchars($tituloVencimiento, ENT_QUOTES, 'UTF-8') ?>
+                                    </strong>
+                                    <small>
+                                        <?= htmlspecialchars(
+                                            (string)($convocatoriaPorVencer['estados'] ?? 'Sin territorio'),
+                                            ENT_QUOTES,
+                                            'UTF-8'
+                                        ) ?>
+                                        ·
+                                        <?= htmlspecialchars(
+                                            $formatearFechaMarketing(
+                                                $convocatoriaPorVencer['fecha_termino'] ?? ''
+                                            ),
+                                            ENT_QUOTES,
+                                            'UTF-8'
+                                        ) ?>
+                                    </small>
+                                </span>
+
+                                <span class="marketing-expiring-item-status">
+                                    <?= htmlspecialchars($textoVencimiento, ENT_QUOTES, 'UTF-8') ?>
+                                </span>
+
+                                <i class="bi bi-chevron-right marketing-expiring-item-arrow"></i>
+                            </a>
+                        <?php endforeach; ?>
+                    </div>
+                <?php else: ?>
+                    <div class="marketing-expiring-empty">
+                        <i class="bi bi-check-circle"></i>
+                        <strong>No hay convocatorias próximas a vencer.</strong>
+                        <span>
+                            No existen convocatorias activas con vencimiento en los próximos 7 días.
+                        </span>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
 
 <section class="dashboard-panel marketing-recent-publications mt-4">
     <div class="marketing-recent-heading">
