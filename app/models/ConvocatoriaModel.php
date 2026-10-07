@@ -901,6 +901,50 @@ class ConvocatoriaModel
         ];
     }
 
+    public function obtenerProximasFinalizarDashboard($limite = 20)
+    {
+        $limite = max(1, min(100, (int)$limite));
+
+        $sql = "SELECT
+                    convocatorias.id,
+                    convocatorias.titulo,
+                    convocatorias.tipo_convocatoria,
+                    convocatorias.subtipo_convocatoria,
+                    convocatorias.fecha_inicio,
+                    convocatorias.fecha_termino,
+                    MIN(convocatoria_estados.estado_id) AS territorio_id,
+                    GROUP_CONCAT(
+                        DISTINCT estados.nombre
+                        ORDER BY estados.nombre
+                        SEPARATOR ', '
+                    ) AS estados,
+                    DATEDIFF(convocatorias.fecha_termino, CURDATE()) AS dias_restantes
+                FROM convocatorias
+                LEFT JOIN convocatoria_estados
+                    ON convocatoria_estados.convocatoria_id = convocatorias.id
+                LEFT JOIN estados
+                    ON estados.id = convocatoria_estados.estado_id
+                WHERE convocatorias.estado = 1
+                  AND convocatorias.fecha_termino IS NOT NULL
+                  AND convocatorias.fecha_termino
+                      BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)
+                GROUP BY
+                    convocatorias.id,
+                    convocatorias.titulo,
+                    convocatorias.tipo_convocatoria,
+                    convocatorias.subtipo_convocatoria,
+                    convocatorias.fecha_inicio,
+                    convocatorias.fecha_termino
+                ORDER BY
+                    convocatorias.fecha_termino ASC,
+                    convocatorias.titulo ASC
+                LIMIT " . $limite;
+
+        $resultado = $this->connection->query($sql);
+
+        return $this->convertirResultadoEnArreglo($resultado);
+    }
+
     public function obtenerCoberturaTerritorialDashboard($limite = 4)
     {
         $sqlTotalEstados = "SELECT COUNT(*) AS total_estados
