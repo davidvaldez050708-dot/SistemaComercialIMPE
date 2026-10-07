@@ -149,6 +149,8 @@ class HomeController
                     $modeloConvocatoria = new ConvocatoriaModel();
                     $modeloConvocatoria->desactivarConvocatoriasVencidas();
                     $resumenMarketing = $modeloConvocatoria->obtenerResumenDashboard();
+                    $proximasFinalizarMarketing = $modeloConvocatoria
+                        ->obtenerProximasFinalizarDashboard(20);
                     $coberturaMarketing = $modeloConvocatoria->obtenerCoberturaTerritorialDashboard(4);
                     $estadosSinConvocatoria = $modeloConvocatoria
                         ->obtenerEstadosSinConvocatoriaActivaDashboard();
