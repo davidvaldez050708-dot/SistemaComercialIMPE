@@ -952,6 +952,11 @@ $urlCambiarOpcionMes = $tipoConvocatoria === 'sindicatos'
                 $numeroMes = (int)($mesVisible['mes'] ?? 0);
                 $anioMes = (int)($mesVisible['anio'] ?? $anioSeleccionado);
                 $nombreMes = $nombresMesesConvocatoria[$numeroMes] ?? '';
+                $diasDelMes = (int)(
+                    new DateTimeImmutable(
+                        sprintf('%04d-%02d-01', $anioMes, $numeroMes)
+                    )
+                )->format('t');
                 $esMesActual = (
                     $numeroMes === $mesActualSistema &&
                     $anioMes === $anioActualSistema
@@ -988,8 +993,13 @@ $urlCambiarOpcionMes = $tipoConvocatoria === 'sindicatos'
                         aria-hidden="true"></i>
 
                     <div class="convocatoria-month-card-header">
-                        <span class="convocatoria-month-icon">
-                            <i class="bi bi-calendar3"></i>
+                        <span class="convocatoria-month-icon" aria-hidden="true">
+                            <span class="convocatoria-calendar-glyph">
+                                <span class="convocatoria-calendar-glyph-rings"></span>
+                                <span class="convocatoria-calendar-glyph-day">
+                                    <?= $diasDelMes ?>
+                                </span>
+                            </span>
                         </span>
 
                         <div class="convocatoria-month-card-title">
