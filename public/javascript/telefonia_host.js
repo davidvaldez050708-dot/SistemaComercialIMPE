@@ -1,0 +1,831 @@
+(function () {
+    'use strict';
+
+    const config = window.IMPE_TELEPHONY_HOST || {};
+    const userId = Number(config.userId || 0);
+    const extension = String(config.extension || '').trim();
+
+    if (userId <= 0 || extension === '') {
+        return;
+    }
+
+    const stateKey = 'impe:telephony:state:' + userId;
+    const commandKey = 'impe:telephony:command:' + userId;
+    const channelName = 'impe-telephony-' + userId;
+
+    const sdkLibUrl =
+        'https://my.zadarma.com/webphoneWebRTCWidget/v8/js/loader-phone-lib.js?v=23';
+    const sdkFnUrl =
+        'https://my.zadarma.com/webphoneWebRTCWidget/v8/js/loader-phone-fn.js?v=23';
+
+    const channel = typeof BroadcastChannel === 'function'
+        ? new BroadcastChannel(channelName)
+        : null;
+
+    const titleEl = document.querySelector('[data-host-title]');
+    const statusEl = document.querySelector('[data-host-status]');
+    const liveEl = document.querySelector('[data-host-live]');
+    const timerEl = document.querySelector('[data-host-timer]');
+
+    let widgetReady = false;
+    let widgetInitialized = false;
+    let sipLogin = '';
+    let webRtcKey = '';
+    let pollInterval = null;
+    let pollBusy = false;
+    let hangingUp = false;
+    let muted = false;
+    let answeredAtMs = 0;
+    let lastCall = null;
+    let lastCommandId = '';
+    const microphoneTracks = new Set();
+
+    const emptyState = function () {
+        return {
+            version: 1,
+            userId: userId,
+            extension: extension,
+            provider: 'ZADARMA',
+            hostReady: false,
+            phase: 'idle',
+            active: false,
+            muted: false,
+            destination: '',
+            institution: '',
+            status: 'idle',
+            duration: 0,
+            requestedAt: 0,
+            answeredAtMs: 0,
+            pbxCallId: '',
+            callToken: '',
+            context: null,
+            finalMetadata: null,
+            message: '',
+            updatedAt: Date.now()
+        };
+    };
+
+    const readState = function () {
+        try {
+            const raw = localStorage.getItem(stateKey);
+            const parsed = raw ? JSON.parse(raw) : null;
+
+            if (parsed && Number(parsed.userId || 0) === userId) {
+                return Object.assign(emptyState(), parsed);
+            }
+        } catch (error) {
+            // Se reconstruye un estado limpio.
+        }
+
+        return emptyState();
+    };
+
+    let state = readState();
+
+    /*
+     * Si esta página se cargó de nuevo, el PeerConnection anterior ya no existe.
+     * Se elimina cualquier bandera activa antigua para evitar una llamada fantasma.
+     */
+    if (state.active) {
+        state = Object.assign(emptyState(), {
+            phase: 'interrupted',
+            status: 'interrupted',
+            destination: state.destination || '',
+            institution: state.institution || '',
+            context: state.context || null,
+            message:
+                'La ventana telefónica se reinició. Verifica la llamada antes de volver a marcar.'
+        });
+    }
+
+    const formatDuration = function (seconds) {
+        const total = Math.max(0, Number(seconds) || 0);
+        const minutes = Math.floor(total / 60);
+        const secs = total % 60;
+
+        return String(minutes).padStart(2, '0') +
+            ':' +
+            String(secs).padStart(2, '0');
+    };
+
+    const currentDuration = function () {
+        let duration = Math.max(0, Number(state.duration || 0));
+
+        if (state.active && answeredAtMs > 0) {
+            duration = Math.max(
+                duration,
+                Math.floor((Date.now() - answeredAtMs) / 1000)
+            );
+        }
+
+        return duration;
+    };
+
+    const render = function () {
+        if (timerEl) {
+            timerEl.textContent = formatDuration(currentDuration());
+        }
+
+        if (liveEl) {
+            liveEl.hidden = !state.active;
+        }
+
+        if (titleEl) {
+            titleEl.textContent = state.active
+                ? (state.institution || state.destination || 'Llamada en curso')
+                : 'Extensión ' + extension + ' disponible';
+        }
+
+        if (statusEl) {
+            const labels = {
+                dialing: 'Marcando…',
+                ringing: 'Timbrando…',
+                'in-progress': 'Llamada en curso',
+                finishing: 'Finalizando…'
+            };
+
+            if (state.active) {
+                statusEl.textContent =
+                    labels[state.status] || 'Llamada activa';
+            } else if (state.phase === 'finished') {
+                statusEl.textContent =
+                    'Llamada finalizada. Continúa el registro desde el sistema.';
+            } else if (state.message) {
+                statusEl.textContent = state.message;
+            } else {
+                statusEl.textContent =
+                    'Mantén esta ventana abierta mientras utilices llamadas.';
+            }
+        }
+    };
+
+    const publish = function (patch) {
+        state = Object.assign({}, state, patch || {}, {
+            userId: userId,
+            extension: extension,
+            provider: 'ZADARMA',
+            hostReady: true,
+            duration: currentDuration(),
+            updatedAt: Date.now()
+        });
+
+        try {
+            localStorage.setItem(stateKey, JSON.stringify(state));
+        } catch (error) {
+            // BroadcastChannel puede seguir sincronizando la sesión.
+        }
+
+        if (channel) {
+            channel.postMessage({
+                type: 'STATE',
+                state: state
+            });
+        }
+
+        render();
+        return state;
+    };
+
+    const sleep = function (ms) {
+        return new Promise(function (resolve) {
+            setTimeout(resolve, ms);
+        });
+    };
+
+    const waitFor = function (check, timeoutMs, stepMs) {
+        const timeout = Number(timeoutMs) || 15000;
+        const step = Number(stepMs) || 100;
+
+        if (check()) {
+            return Promise.resolve(true);
+        }
+
+        return new Promise(function (resolve) {
+            const startedAt = Date.now();
+            const interval = setInterval(function () {
+                if (check()) {
+                    clearInterval(interval);
+                    resolve(true);
+                    return;
+                }
+
+                if (Date.now() - startedAt >= timeout) {
+                    clearInterval(interval);
+                    resolve(false);
+                }
+            }, step);
+        });
+    };
+
+    const loadScript = function (src, marker) {
+        const selector =
+            'script[data-impe-telephony-host-' + marker + ']';
+        const existing = document.querySelector(selector);
+
+        if (existing) {
+            if (existing.dataset.loaded === '1') {
+                return Promise.resolve();
+            }
+
+            return new Promise(function (resolve, reject) {
+                existing.addEventListener('load', resolve, { once: true });
+                existing.addEventListener('error', reject, { once: true });
+            });
+        }
+
+        return new Promise(function (resolve, reject) {
+            const script = document.createElement('script');
+            script.src = src;
+            script.async = true;
+            script.setAttribute(
+                'data-impe-telephony-host-' + marker,
+                ''
+            );
+            script.addEventListener('load', function () {
+                script.dataset.loaded = '1';
+                resolve();
+            }, { once: true });
+            script.addEventListener('error', function () {
+                reject(new Error('No fue posible cargar el teléfono WebRTC.'));
+            }, { once: true });
+            document.head.appendChild(script);
+        });
+    };
+
+    const captureMicrophone = function () {
+        const mediaDevices = navigator.mediaDevices;
+
+        if (
+            !mediaDevices ||
+            typeof mediaDevices.getUserMedia !== 'function' ||
+            mediaDevices.getUserMedia.__impePersistentWrapped
+        ) {
+            return;
+        }
+
+        try {
+            const original = mediaDevices.getUserMedia.bind(mediaDevices);
+
+            const wrapped = function (constraints) {
+                return original(constraints).then(function (stream) {
+                    if (constraints && constraints.audio) {
+                        stream.getAudioTracks().forEach(function (track) {
+                            microphoneTracks.add(track);
+                            track.enabled = !muted;
+                            track.addEventListener('ended', function () {
+                                microphoneTracks.delete(track);
+                            }, { once: true });
+                        });
+                    }
+
+                    return stream;
+                });
+            };
+
+            wrapped.__impePersistentWrapped = true;
+            mediaDevices.getUserMedia = wrapped;
+        } catch (error) {
+            console.debug('No fue necesario envolver el micrófono.', error);
+        }
+    };
+
+    const setMuted = function (value) {
+        muted = Boolean(value);
+
+        microphoneTracks.forEach(function (track) {
+            if (track && track.readyState === 'live') {
+                track.enabled = !muted;
+            }
+        });
+
+        publish({ muted: muted });
+    };
+
+    const fetchWebRtcSession = async function () {
+        const response = await fetch(String(config.webrtcUrl || ''), {
+            method: 'GET',
+            credentials: 'same-origin',
+            cache: 'no-store',
+            headers: {
+                Accept: 'application/json',
+                'X-Requested-With': 'fetch'
+            }
+        });
+        const data = await response.json();
+
+        if (
+            !response.ok ||
+            !data.ok ||
+            !data.webrtc_key ||
+            !data.sip_login
+        ) {
+            throw new Error(
+                data.mensaje ||
+                'No fue posible preparar la telefonía WebRTC.'
+            );
+        }
+
+        sipLogin = String(data.sip_login || '').trim();
+        webRtcKey = String(data.webrtc_key || '').trim();
+    };
+
+    const ensureWidget = async function () {
+        if (
+            widgetReady &&
+            window.zdrmWebPhone &&
+            typeof window.zdrmWebPhone.regToCall === 'function'
+        ) {
+            return;
+        }
+
+        if (location.protocol !== 'https:') {
+            throw new Error(
+                'La telefonía WebRTC requiere abrir el sistema mediante HTTPS.'
+            );
+        }
+
+        if (!webRtcKey || !sipLogin) {
+            await fetchWebRtcSession();
+        }
+
+        await loadScript(sdkLibUrl, 'lib');
+        await loadScript(sdkFnUrl, 'fn');
+
+        const loadersReady = await waitFor(function () {
+            return (
+                typeof window.zadarmaWidgetFn === 'function' &&
+                typeof window.zdrmWebrtcPhoneInterface === 'function'
+            );
+        }, 15000, 100);
+
+        if (!loadersReady) {
+            throw new Error(
+                'El componente WebRTC de Zadarma no terminó de cargar.'
+            );
+        }
+
+        if (!widgetInitialized) {
+            window.zadarmaWidgetFn(
+                webRtcKey,
+                sipLogin,
+                'rounded',
+                'es',
+                true,
+                "{right:'-9999px',bottom:'-9999px'}"
+            );
+            widgetInitialized = true;
+        }
+
+        const apiReady = await waitFor(function () {
+            return (
+                window.zdrmWebPhone &&
+                typeof window.zdrmWebPhone.regToCall === 'function'
+            );
+        }, 15000, 100);
+
+        if (!apiReady) {
+            throw new Error(
+                'Zadarma no publicó el control WebRTC para este dominio.'
+            );
+        }
+
+        widgetReady = true;
+        publish({
+            phase: state.active ? state.phase : 'ready',
+            message: ''
+        });
+    };
+
+    const stopPolling = function () {
+        if (pollInterval) {
+            clearInterval(pollInterval);
+            pollInterval = null;
+        }
+
+        pollBusy = false;
+    };
+
+    const isFinal = function (status) {
+        return [
+            'completed',
+            'busy',
+            'no-answer',
+            'failed',
+            'canceled'
+        ].includes(String(status || ''));
+    };
+
+    const fetchCallState = async function (forceFinal) {
+        if (!state.destination || !state.requestedAt) {
+            return null;
+        }
+
+        const params = new URLSearchParams({
+            destination: state.destination,
+            since: String(state.requestedAt)
+        });
+
+        if (forceFinal) {
+            params.set('final', '1');
+        }
+
+        const response = await fetch(
+            String(config.estadoUrl || '') + '?' + params.toString(),
+            {
+                method: 'GET',
+                credentials: 'same-origin',
+                cache: 'no-store',
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'fetch'
+                }
+            }
+        );
+        const data = await response.json();
+
+        if (!response.ok || !data.ok) {
+            throw new Error(
+                data.mensaje ||
+                'No fue posible consultar el estado de la llamada.'
+            );
+        }
+
+        return data.call || null;
+    };
+
+    const finishCall = function (call, fallbackStatus) {
+        stopPolling();
+        hangingUp = false;
+
+        const finalCall = call || lastCall || {};
+        let finalStatus = String(
+            finalCall.status || fallbackStatus || 'failed'
+        );
+        const duration = Math.max(
+            currentDuration(),
+            Number(finalCall.duration || 0)
+        );
+
+        if (
+            duration > 0 &&
+            ['ringing', 'in-progress', 'dialing', ''].includes(finalStatus)
+        ) {
+            finalStatus = 'completed';
+        }
+
+        const callIdWithRec =
+            String(finalCall.call_id_with_rec || '').trim();
+        const isRecorded =
+            finalCall.is_recorded === true ||
+            String(finalCall.is_recorded || '') === '1';
+        const recordReady =
+            finalCall.record_ready === true ||
+            String(finalCall.record_ready || '') === '1';
+
+        let recordingState = 'none';
+
+        if (recordReady) {
+            recordingState = 'available';
+        } else if (
+            finalStatus === 'completed' &&
+            duration > 0 &&
+            (isRecorded || callIdWithRec !== '' || answeredAtMs > 0)
+        ) {
+            recordingState = 'processing';
+        }
+
+        const finalMetadata = {
+            seguimiento_id: Number(state.context?.seguimientoId || 0),
+            pbx_call_id: String(
+                finalCall.pbx_call_id || state.pbxCallId || ''
+            ),
+            status: finalStatus,
+            duration: duration,
+            start_time: finalCall.start_time || null,
+            end_time: finalCall.end_time || null,
+            requested_at: Number(state.requestedAt || 0),
+            to: finalCall.destination || state.destination || '',
+            is_recorded: isRecorded,
+            record_ready: recordReady,
+            recording_state: recordingState,
+            call_id_with_rec: callIdWithRec,
+            call_token: state.callToken
+        };
+
+        answeredAtMs = 0;
+        muted = false;
+
+        publish({
+            phase: 'finished',
+            active: false,
+            muted: false,
+            status: finalStatus,
+            duration: duration,
+            answeredAtMs: 0,
+            pbxCallId: finalMetadata.pbx_call_id,
+            finalMetadata: finalMetadata,
+            message: ''
+        });
+    };
+
+    const applyCallState = function (call) {
+        if (!call || !state.active) {
+            return;
+        }
+
+        lastCall = call;
+        const status = String(call.status || 'ringing');
+        const providerDuration =
+            Math.max(0, Number(call.duration || 0));
+
+        if (status === 'in-progress' && answeredAtMs <= 0) {
+            answeredAtMs =
+                Date.now() - (providerDuration * 1000);
+        }
+
+        publish({
+            phase:
+                status === 'in-progress'
+                    ? 'in-progress'
+                    : (
+                        status === 'ringing'
+                            ? 'ringing'
+                            : state.phase
+                    ),
+            status: status,
+            duration: Math.max(currentDuration(), providerDuration),
+            answeredAtMs: answeredAtMs,
+            pbxCallId: String(
+                call.pbx_call_id || state.pbxCallId || ''
+            )
+        });
+
+        if (isFinal(status)) {
+            finishCall(call, status);
+        }
+    };
+
+    const poll = async function () {
+        if (!state.active || pollBusy) {
+            return;
+        }
+
+        pollBusy = true;
+
+        try {
+            const call = await fetchCallState(false);
+
+            if (call) {
+                applyCallState(call);
+            }
+        } catch (error) {
+            console.warn(error);
+        } finally {
+            pollBusy = false;
+        }
+    };
+
+    const startPolling = function () {
+        stopPolling();
+        void poll();
+        pollInterval = setInterval(poll, 800);
+    };
+
+    const randomToken = function () {
+        if (
+            window.crypto &&
+            typeof window.crypto.randomUUID === 'function'
+        ) {
+            return window.crypto.randomUUID();
+        }
+
+        return Date.now().toString(36) +
+            '-' +
+            Math.random().toString(36).slice(2);
+    };
+
+    const startCall = async function (payload) {
+        if (state.active) {
+            publish({
+                message: 'Ya existe una llamada activa en esta extensión.'
+            });
+            return;
+        }
+
+        const destination =
+            String(payload.destination || '').trim();
+
+        if (destination === '') {
+            publish({
+                phase: 'error',
+                message: 'El número telefónico no es válido.'
+            });
+            return;
+        }
+
+        try {
+            await ensureWidget();
+
+            muted = false;
+            answeredAtMs = 0;
+            lastCall = null;
+            hangingUp = false;
+
+            const requestedAt = Math.floor(Date.now() / 1000);
+            const callToken = randomToken();
+
+            publish({
+                phase: 'dialing',
+                active: true,
+                muted: false,
+                destination: destination,
+                institution: String(payload.institution || '').trim(),
+                status: 'dialing',
+                duration: 0,
+                requestedAt: requestedAt,
+                answeredAtMs: 0,
+                pbxCallId: '',
+                callToken: callToken,
+                context: payload.context || null,
+                finalMetadata: null,
+                message: ''
+            });
+
+            const result = window.zdrmWebPhone.regToCall(
+                destination.replace(/^\+/, '')
+            );
+
+            if (typeof result === 'string' && result.trim() !== '') {
+                throw new Error(result.trim());
+            }
+
+            startPolling();
+        } catch (error) {
+            stopPolling();
+
+            publish({
+                phase: 'error',
+                active: false,
+                status: 'failed',
+                message:
+                    error.message ||
+                    'No fue posible iniciar la llamada.'
+            });
+        }
+    };
+
+    const hangup = async function () {
+        if (!state.active || hangingUp) {
+            return;
+        }
+
+        hangingUp = true;
+
+        publish({
+            phase: 'finishing',
+            status: 'finishing'
+        });
+
+        try {
+            if (
+                window.zdrmWebPhone &&
+                typeof window.zdrmWebPhone.regToCancel === 'function'
+            ) {
+                window.zdrmWebPhone.regToCancel();
+            } else if (
+                window.zdrmWebPhone &&
+                typeof window.zdrmWebPhone.finishCall === 'function'
+            ) {
+                window.zdrmWebPhone.finishCall();
+            }
+        } catch (error) {
+            console.warn(error);
+        }
+
+        for (let attempt = 0; attempt < 6; attempt += 1) {
+            await sleep(attempt === 0 ? 900 : 700);
+
+            if (!state.active) {
+                return;
+            }
+
+            try {
+                const call = await fetchCallState(true);
+
+                if (call) {
+                    lastCall = call;
+
+                    if (isFinal(call.status)) {
+                        finishCall(call, call.status);
+                        return;
+                    }
+                }
+            } catch (error) {
+                console.warn(error);
+            }
+        }
+
+        finishCall(
+            lastCall,
+            currentDuration() > 0 ? 'completed' : 'canceled'
+        );
+    };
+
+    const clearFinished = function (callToken) {
+        if (
+            state.active ||
+            (
+                callToken &&
+                state.callToken &&
+                String(callToken) !== String(state.callToken)
+            )
+        ) {
+            return;
+        }
+
+        state = emptyState();
+        state.hostReady = true;
+        state.phase = widgetReady ? 'ready' : 'idle';
+        publish(state);
+    };
+
+    const processCommand = function (message) {
+        if (!message || message.type !== 'COMMAND') {
+            return;
+        }
+
+        const commandId = String(message.id || '');
+
+        if (commandId && commandId === lastCommandId) {
+            return;
+        }
+
+        lastCommandId = commandId;
+        const action = String(message.action || '');
+        const payload = message.payload || {};
+
+        if (action === 'PING') {
+            publish({});
+        } else if (action === 'START') {
+            void startCall(payload);
+        } else if (action === 'HANGUP') {
+            void hangup();
+        } else if (action === 'MUTE' && state.active) {
+            setMuted(Boolean(payload.muted));
+        } else if (action === 'CLEAR_FINISHED') {
+            clearFinished(String(payload.callToken || ''));
+        }
+    };
+
+    if (channel) {
+        channel.addEventListener('message', function (event) {
+            processCommand(event.data);
+        });
+    }
+
+    addEventListener('storage', function (event) {
+        if (event.key !== commandKey || !event.newValue) {
+            return;
+        }
+
+        try {
+            processCommand(JSON.parse(event.newValue));
+        } catch (error) {
+            console.debug('Comando telefónico inválido.', error);
+        }
+    });
+
+    addEventListener('beforeunload', function (event) {
+        if (!state.active) {
+            return;
+        }
+
+        event.preventDefault();
+        event.returnValue = '';
+    });
+
+    captureMicrophone();
+
+    publish({
+        phase: 'loading',
+        active: false,
+        message: 'Preparando extensión ' + extension + '…'
+    });
+
+    void ensureWidget().catch(function (error) {
+        publish({
+            phase: 'error',
+            active: false,
+            message:
+                error.message ||
+                'No fue posible preparar el motor WebRTC.'
+        });
+    });
+
+    setInterval(function () {
+        publish({});
+    }, 1500);
+
+    setInterval(render, 500);
+    render();
+})();
