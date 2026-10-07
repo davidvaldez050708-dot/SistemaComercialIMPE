@@ -40,7 +40,10 @@ class SeguimientoHistorialImportadoService
             ];
         }
 
-        if (strpos($texto, 'reunion excel:') !== false) {
+        if (
+            strpos($texto, 'reunion excel:') !== false ||
+            strpos($texto, 'coordinando una fecha') !== false
+        ) {
             return [
                 'paso' => 11,
                 'clave' => 'REUNION_HISTORICA_FECHA',
@@ -88,13 +91,18 @@ class SeguimientoHistorialImportadoService
             strpos($texto, 'red ocupada') !== false ||
             strpos($texto, 'se transfiere llamada sin respuesta') !== false ||
             strpos($texto, 'da tono') !== false ||
+            strpos($texto, 'numero ha cambiado') !== false ||
+            strpos($texto, 'temporalmente suspendido') !== false ||
+            strpos($texto, 'se confirma numero') !== false ||
             strpos($texto, 'enviar correo') !== false ||
-            strpos($texto, 'enviar informacion') !== false;
+            strpos($texto, 'enviar informacion') !== false ||
+            strpos($texto, 'se envie informacion') !== false;
 
         if ($intentoContacto) {
             $correoPendiente =
                 strpos($texto, 'enviar correo') !== false ||
-                strpos($texto, 'enviar informacion') !== false;
+                strpos($texto, 'enviar informacion') !== false ||
+                strpos($texto, 'se envie informacion') !== false;
 
             return [
                 'paso' => 3,
