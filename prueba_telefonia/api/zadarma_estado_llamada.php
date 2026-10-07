@@ -324,14 +324,16 @@ if ($fin) {
     $callIdWithRec = trim((string)($fin['call_id_with_rec'] ?? ''));
     $endTime = $fin['received_at'] ?? null;
 
-    if ($disposition === 'answered' || $duration > 0) {
+    if ($disposition === 'answered') {
         $status = 'completed';
     } elseif ($disposition === 'busy') {
         $status = 'busy';
     } elseif (in_array($disposition, ['no answer', 'no-answer', 'no_answer'], true)) {
         $status = 'no-answer';
-    } elseif (in_array($disposition, ['cancelled', 'canceled'], true)) {
+    } elseif (in_array($disposition, ['cancel', 'cancelled', 'canceled'], true)) {
         $status = 'canceled';
+    } elseif ($respuesta !== null && $duration > 0) {
+        $status = 'completed';
     } else {
         $status = 'failed';
     }
@@ -344,7 +346,11 @@ if ($grabacion) {
     $callIdWithRec = trim((string)($grabacion['call_id_with_rec'] ?? $callIdWithRec));
 }
 
-if ($forzarFinal && !$fin) {
+if (
+    $forzarFinal &&
+    !$fin &&
+    $usarEstadisticas
+) {
     try {
         $estadistica = (new ZadarmaCallLookupService())->buscarPorPbxCallId($pbxCallId);
         if ($estadistica) {
