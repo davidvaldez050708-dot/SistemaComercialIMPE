@@ -2617,6 +2617,8 @@ class SeguimientoVinculacionController
 
             $seguimientos[$indice]['ruta_paso'] = $pasoActual;
             $seguimientos[$indice]['ruta_titulo'] = $titulo;
+            $seguimientos[$indice]['ruta_historico_importado'] =
+                !empty($flujo['contexto']['historico_importado']) ? 1 : 0;
             $seguimientos[$indice]['es_aliado'] = $esAliado ? 1 : 0;
             $seguimientos[$indice]['ruta_etapa_label'] =
                 $this->etiquetarEtapaRutaInicial(
