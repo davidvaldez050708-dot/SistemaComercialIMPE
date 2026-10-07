@@ -40,6 +40,36 @@ class SeguimientoHistorialImportadoService
             ];
         }
 
+        if (
+            strpos($texto, 'se envia correo') !== false ||
+            strpos($texto, 'se envio correo') !== false
+        ) {
+            return [
+                'paso' => 8,
+                'clave' => 'CORREO_HISTORICO_ENVIADO',
+                'etapa' => 'Esperando respuesta',
+                'titulo' => 'Esperar respuesta',
+                'descripcion' =>
+                    'El historial migrado desde Excel acredita que ya se envió correo. El envío se conserva como evidencia histórica y no se contabiliza como actividad productiva realizada dentro del CRM.',
+                'evidencia' => 'Correo histórico enviado'
+            ];
+        }
+
+        if (
+            strpos($texto, 'folio excel: redmex/') !== false ||
+            strpos($texto, 'folio(s) excel: redmex/') !== false
+        ) {
+            return [
+                'paso' => 6,
+                'clave' => 'OFICIO_HISTORICO',
+                'etapa' => 'Generación de PDF',
+                'titulo' => 'Revisar oficio histórico',
+                'descripcion' =>
+                    'El historial migrado desde Excel conserva un folio institucional REDMEX. No se asume que el oficio fue enviado si la fuente no lo indica.',
+                'evidencia' => 'Folio histórico REDMEX'
+            ];
+        }
+
         $intentoContacto =
             strpos($texto, 'no responden') !== false ||
             strpos($texto, 'no hay respuesta') !== false ||
