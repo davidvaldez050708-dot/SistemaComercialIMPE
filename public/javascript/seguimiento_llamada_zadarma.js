@@ -618,6 +618,22 @@
             );
         }
 
+        const ocultarTelefonoTrasInteraccion = function () {
+            if (!pendingMetadata) {
+                return;
+            }
+
+            const token =
+                String(
+                    pendingMetadata
+                        .call_token ||
+                    lastFinishedToken ||
+                    ''
+                );
+
+            phone.clearFinished(token);
+        };
+
         const sleep = function (ms) {
             return new Promise(
                 function (resolve) {
@@ -980,6 +996,8 @@
                             .seguimiento_id
                     )
                 ) {
+                    ocultarTelefonoTrasInteraccion();
+
                     window.setTimeout(
                         function () {
                             void vincularMetadata(0);
@@ -1010,6 +1028,8 @@
                             .seguimiento_id
                     )
                 ) {
+                    ocultarTelefonoTrasInteraccion();
+
                     window.setTimeout(
                         function () {
                             void vincularMetadata(0);
@@ -1068,6 +1088,8 @@
                             );
 
                         if (success) {
+                            ocultarTelefonoTrasInteraccion();
+
                             window.setTimeout(
                                 function () {
                                     void vincularMetadata(0);

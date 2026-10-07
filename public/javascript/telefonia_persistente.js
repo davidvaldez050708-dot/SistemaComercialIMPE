@@ -40,6 +40,7 @@
     let drag = null;
     let compact = false;
     let startingCall = false;
+    let dismissedFinishedToken = '';
 
     try {
         compact =
@@ -181,10 +182,42 @@
         const previousToken =
             String(state?.callToken || '');
 
+        const incomingToken =
+            String(
+                nextState.callToken ||
+                nextState.finalMetadata
+                    ?.call_token ||
+                ''
+            );
+
+        if (
+            dismissedFinishedToken &&
+            String(nextState.phase || '') ===
+                'finished' &&
+            incomingToken ===
+                dismissedFinishedToken
+        ) {
+            return;
+        }
+
         state = Object.assign(
             emptyState(),
             nextState
         );
+
+        if (
+            dismissedFinishedToken &&
+            (
+                state.active ||
+                (
+                    incomingToken &&
+                    incomingToken !==
+                        dismissedFinishedToken
+                )
+            )
+        ) {
+            dismissedFinishedToken = '';
+        }
 
         if (state.hostReady) {
             hostSeenAt = Date.now();
@@ -309,13 +342,112 @@
         return availabilityPromise;
     };
 
+    const concealHostWindow = function (popup) {
+        if (!popup || popup.closed) {
+            return;
+        }
+
+        const screenLeft =
+            Number(window.screen?.availLeft || 0);
+        const screenTop =
+            Number(window.screen?.availTop || 0);
+        const screenWidth =
+            Number(
+                window.screen?.availWidth ||
+                window.screen?.width ||
+                0
+            );
+        const screenHeight =
+            Number(
+                window.screen?.availHeight ||
+                window.screen?.height ||
+                0
+            );
+
+        /*
+         * Primero intentamos desplazar el host fuera del área visible.
+         * Algunos navegadores lo limitan por seguridad; en ese caso queda
+         * pegado a la esquina inferior derecha con el tamaño mínimo posible.
+         */
+        const hiddenLeft =
+            screenLeft + screenWidth + 80;
+        const hiddenTop =
+            screenTop + screenHeight + 80;
+        const fallbackLeft =
+            Math.max(
+                screenLeft,
+                screenLeft + screenWidth - 130
+            );
+        const fallbackTop =
+            Math.max(
+                screenTop,
+                screenTop + screenHeight - 90
+            );
+
+        try {
+            popup.resizeTo(120, 80);
+        } catch (error) {
+            // El navegador puede imponer un tamaño mínimo mayor.
+        }
+
+        try {
+            popup.moveTo(
+                hiddenLeft,
+                hiddenTop
+            );
+        } catch (error) {
+            try {
+                popup.moveTo(
+                    fallbackLeft,
+                    fallbackTop
+                );
+            } catch (moveError) {
+                // La posición final queda bajo control del navegador.
+            }
+        }
+
+        try {
+            popup.blur();
+            window.focus();
+        } catch (error) {
+            // El foco también puede quedar bajo control del navegador.
+        }
+    };
+
     const openHostSynchronously = function () {
+        const screenLeft =
+            Number(window.screen?.availLeft || 0);
+        const screenTop =
+            Number(window.screen?.availTop || 0);
+        const screenWidth =
+            Number(
+                window.screen?.availWidth ||
+                window.screen?.width ||
+                0
+            );
+        const screenHeight =
+            Number(
+                window.screen?.availHeight ||
+                window.screen?.height ||
+                0
+            );
+        const hiddenLeft =
+            screenLeft + screenWidth + 80;
+        const hiddenTop =
+            screenTop + screenHeight + 80;
+
         const features = [
             'popup=yes',
-            'width=330',
-            'height=140',
-            'resizable=yes',
-            'scrollbars=no'
+            'width=120',
+            'height=80',
+            'left=' + hiddenLeft,
+            'top=' + hiddenTop,
+            'resizable=no',
+            'scrollbars=no',
+            'menubar=no',
+            'toolbar=no',
+            'location=no',
+            'status=no'
         ].join(',');
 
         let popup = null;
@@ -357,24 +489,24 @@
             ) {
                 popup.location.replace(hostUrl);
             }
-
-            try {
-                popup.resizeTo(360, 170);
-            } catch (resizeError) {
-                // El navegador puede decidir conservar el tamaño anterior.
-            }
         } catch (error) {
             // Si temporalmente no se puede inspeccionar, se conserva la ventana nombrada.
         }
 
-        setTimeout(function () {
-            try {
-                popup.blur();
-                window.focus();
-            } catch (error) {
-                // Algunos navegadores no permiten controlar el foco.
-            }
-        }, 120);
+        /*
+         * Se repite el intento porque Chrome puede reposicionar la ventana
+         * durante la carga del documento de destino.
+         */
+        concealHostWindow(popup);
+
+        [40, 140, 350, 800].forEach(function (delay) {
+            window.setTimeout(
+                function () {
+                    concealHostWindow(popup);
+                },
+                delay
+            );
+        });
 
         return popup;
     };
@@ -659,9 +791,54 @@
     };
 
     const clearFinished = function (callToken) {
+        const token =
+            String(
+                callToken ||
+                state?.callToken ||
+                state?.finalMetadata
+                    ?.call_token ||
+                ''
+            );
+
+        if (state?.active) {
+            return;
+        }
+
+        dismissedFinishedToken = token;
+
+        state = Object.assign(
+            emptyState(),
+            {
+                extension:
+                    String(
+                        availability
+                            ?.extension || ''
+                    ),
+                hostReady:
+                    Boolean(
+                        state?.hostReady
+                    ),
+                phase: 'idle',
+                status: 'idle',
+                updatedAt: Date.now()
+            }
+        );
+
+        try {
+            localStorage.setItem(
+                stateKey,
+                JSON.stringify(state)
+            );
+        } catch (error) {
+            // La tarjeta ya se ocultó en memoria; el host se sincroniza aparte.
+        }
+
+        renderPanel();
+        emit();
+
         sendCommand(
             'CLEAR_FINISHED',
-            { callToken: String(callToken || '') }
+            { callToken: token }
         );
     };
 

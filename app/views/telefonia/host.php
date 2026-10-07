@@ -23,7 +23,7 @@ if ($usuarioHost === '') {
     <meta
         name="viewport"
         content="width=device-width, initial-scale=1.0">
-    <title>Telefonía activa | Sistema Comercial</title>
+    <title>Telefonía del sistema</title>
 
     <link
         href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap"
@@ -40,31 +40,10 @@ if ($usuarioHost === '') {
     data-user-id="<?= (int)($_SESSION['usuario_id'] ?? 0) ?>"
     data-extension="<?= htmlspecialchars($extensionHost, ENT_QUOTES, 'UTF-8') ?>">
 
-    <main class="telephony-host-card">
-        <div class="telephony-host-icon" aria-hidden="true">
-            <i class="bi bi-headset"></i>
-        </div>
-
-        <div class="telephony-host-copy">
-            <span>TELEFONÍA DEL SISTEMA</span>
-            <strong data-host-title>
-                Preparando extensión <?= htmlspecialchars($extensionHost, ENT_QUOTES, 'UTF-8') ?>
-            </strong>
-            <small data-host-status>
-                Mantén esta ventana abierta mientras utilices llamadas.
-            </small>
-        </div>
-
-        <div class="telephony-host-live" data-host-live hidden>
-            <i></i>
-            <span data-host-timer>00:00</span>
-        </div>
-    </main>
-
-    <p class="telephony-host-user">
-        <?= htmlspecialchars($usuarioHost, ENT_QUOTES, 'UTF-8') ?>
-        · Ext. <?= htmlspecialchars($extensionHost, ENT_QUOTES, 'UTF-8') ?>
-    </p>
+    <div
+        class="telephony-host-sentinel"
+        aria-hidden="true">
+    </div>
 
     <script>
         window.IMPE_TELEPHONY_HOST = <?= json_encode([
