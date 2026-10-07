@@ -18,6 +18,22 @@
         const listaArchivos = modalElement.querySelector('[data-marketing-mail-files-list]');
         const error = modalElement.querySelector('[data-marketing-mail-error]');
         const botonEnviar = modalElement.querySelector('[data-marketing-mail-send]');
+        const botonBorrador = modalElement.querySelector('[data-marketing-mail-draft]');
+        const tabsCorreo = Array.from(
+            document.querySelectorAll('[data-correo-tab]')
+        );
+        const filasCorreo = Array.from(
+            document.querySelectorAll('[data-correo-row]')
+        );
+        const filaFiltroVacio = document.querySelector(
+            '[data-correo-filter-empty]'
+        );
+        const contadorResultados = document.querySelector(
+            '[data-correo-results-count]'
+        );
+        const filtroBuscar = document.getElementById('correo_marketing_buscar');
+        const filtroEstado = document.getElementById('correo_marketing_estado');
+        const filtroTipo = document.getElementById('correo_marketing_tipo');
         const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
         const modalDetalleElement =
             document.getElementById('modalCorreoMarketingDetalle');
@@ -25,6 +41,8 @@
             ? bootstrap.Modal.getOrCreateInstance(modalDetalleElement)
             : null;
         const urlEnviar = 'index.php?controller=correoMarketing&action=enviar';
+        const urlGuardarBorrador =
+            'index.php?controller=correoMarketing&action=guardarBorrador';
         const urlVer = 'index.php?controller=correoMarketing&action=ver';
         const urlRecuperarAdjunto =
             'index.php?controller=correoMarketing&action=recuperarAdjunto';
@@ -153,6 +171,13 @@
                 botonEnviar.innerHTML =
                     '<i class="bi bi-send me-2"></i>Enviar correo';
             }
+
+            if (botonBorrador) {
+                botonBorrador.disabled = false;
+                botonBorrador.innerHTML =
+                    '<i class="bi bi-file-earmark-arrow-down me-2"></i>' +
+                    'Guardar borrador';
+            }
         };
 
         const validarArchivos = function () {
@@ -178,6 +203,116 @@
 
             return '';
         };
+
+        const normalizarTexto = function (valor) {
+            return String(valor == null ? '' : valor)
+                .toLocaleLowerCase('es-MX')
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .trim();
+        };
+
+        const aplicarFiltros = function () {
+            const buscar = normalizarTexto(filtroBuscar?.value || '');
+            const estado = String(filtroEstado?.value || '').toLowerCase();
+            const tipo = String(filtroTipo?.value || '').toLowerCase();
+            let visibles = 0;
+
+            filasCorreo.forEach(function (fila) {
+                const estadoFila = String(
+                    fila.getAttribute('data-correo-estado') || ''
+                ).toLowerCase();
+                const tipoFila = String(
+                    fila.getAttribute('data-correo-tipo') || ''
+                ).toLowerCase();
+                const busquedaFila = normalizarTexto(
+                    fila.getAttribute('data-correo-busqueda') || ''
+                );
+
+                const coincideEstado =
+                    estado === '' || estadoFila === estado;
+                const coincideTipo =
+                    tipo === '' || tipoFila === tipo;
+                const coincideBusqueda =
+                    buscar === '' || busquedaFila.indexOf(buscar) !== -1;
+
+                const visible =
+                    coincideEstado &&
+                    coincideTipo &&
+                    coincideBusqueda;
+
+                fila.classList.toggle('d-none', !visible);
+
+                if (visible) {
+                    visibles++;
+                }
+            });
+
+            filaFiltroVacio?.classList.toggle('d-none', visibles !== 0);
+
+            if (contadorResultados) {
+                contadorResultados.textContent =
+                    visibles + (visibles === 1 ? ' resultado' : ' resultados');
+            }
+        };
+
+        const activarTab = function (tabCodigo) {
+            const mapaEstados = {
+                todos: '',
+                enviados: 'enviado',
+                pendientes: 'pendiente',
+                borradores: 'borrador'
+            };
+
+            const codigo = Object.prototype.hasOwnProperty.call(
+                mapaEstados,
+                tabCodigo
+            ) ? tabCodigo : 'todos';
+
+            tabsCorreo.forEach(function (tab) {
+                const activo =
+                    tab.getAttribute('data-correo-tab') === codigo;
+                tab.classList.toggle('is-active', activo);
+                tab.setAttribute(
+                    'aria-selected',
+                    activo ? 'true' : 'false'
+                );
+            });
+
+            if (filtroEstado) {
+                filtroEstado.value = mapaEstados[codigo];
+            }
+
+            sessionStorage.setItem('correoMarketingTab', codigo);
+            aplicarFiltros();
+        };
+
+        tabsCorreo.forEach(function (tab) {
+            tab.addEventListener('click', function () {
+                activarTab(
+                    tab.getAttribute('data-correo-tab') || 'todos'
+                );
+            });
+        });
+
+        filtroBuscar?.addEventListener('input', aplicarFiltros);
+        filtroTipo?.addEventListener('change', aplicarFiltros);
+        filtroEstado?.addEventListener('change', function () {
+            const mapaTabs = {
+                '': 'todos',
+                enviado: 'enviados',
+                pendiente: 'pendientes',
+                borrador: 'borradores'
+            };
+
+            activarTab(
+                mapaTabs[String(filtroEstado.value || '').toLowerCase()] ||
+                'todos'
+            );
+        });
+
+        const tabInicial = sessionStorage.getItem('correoMarketingTab');
+        activarTab(tabInicial || 'todos');
 
         const limpiarDetalle = function () {
             correoDetalleActual = null;
@@ -223,6 +358,47 @@
 
             correoDetalleActual = correo;
 
+            const estadoCodigo = String(
+                correo.estado_codigo || ''
+            ).toLowerCase();
+            const esBorrador = estadoCodigo === 'borrador';
+
+            const tituloDetalle = modalDetalleElement.querySelector(
+                '#modalCorreoMarketingDetalleTitulo'
+            );
+            const subtituloDetalle = tituloDetalle
+                ?.closest('.system-form-modal-header')
+                ?.querySelector('.system-form-modal-subtitle');
+            const etiquetaFecha = modalDetalleElement.querySelector(
+                '[data-marketing-mail-detail-date-label]'
+            );
+
+            if (tituloDetalle) {
+                tituloDetalle.textContent = esBorrador
+                    ? 'Borrador de correo'
+                    : (
+                        estadoCodigo === 'enviado'
+                            ? 'Correo enviado'
+                            : 'Correo pendiente'
+                    );
+            }
+
+            if (subtituloDetalle) {
+                subtituloDetalle.textContent = esBorrador
+                    ? 'Consulta el contenido guardado en este borrador.'
+                    : 'Consulta el contenido del correo registrado.';
+            }
+
+            if (etiquetaFecha) {
+                etiquetaFecha.textContent = esBorrador
+                    ? 'FECHA DE GUARDADO'
+                    : (
+                        estadoCodigo === 'enviado'
+                            ? 'FECHA DE ENVÍO'
+                            : 'FECHA DE REGISTRO'
+                    );
+            }
+
             const asignarTexto = function (selector, valor) {
                 const nodo = modalDetalleElement.querySelector(selector);
                 if (nodo) {
@@ -260,9 +436,13 @@
             const proveedor = String(correo.proveedor || '').trim();
             asignarTexto(
                 '[data-marketing-mail-detail-provider]',
-                proveedor !== ''
-                    ? 'Enviado mediante ' + proveedor
-                    : 'Correo registrado en el sistema'
+                esBorrador
+                    ? 'Borrador guardado en el sistema'
+                    : (
+                        proveedor !== ''
+                            ? 'Enviado mediante ' + proveedor
+                            : 'Correo registrado en el sistema'
+                    )
             );
 
             const firma = modalDetalleElement.querySelector(
@@ -747,6 +927,89 @@
 
         destinatario?.addEventListener('input', actualizarDestinatario);
         archivos?.addEventListener('change', renderizarArchivos);
+
+        botonBorrador?.addEventListener('click', async function () {
+            if (enviando) {
+                return;
+            }
+
+            limpiarError();
+
+            const errorArchivos = validarArchivos();
+            if (errorArchivos !== '') {
+                mostrarError(errorArchivos);
+                return;
+            }
+
+            const datos = new FormData(form);
+            const htmlOriginal = botonBorrador.innerHTML;
+
+            enviando = true;
+            botonBorrador.disabled = true;
+
+            if (botonEnviar) {
+                botonEnviar.disabled = true;
+            }
+
+            botonBorrador.innerHTML =
+                '<span class="spinner-border spinner-border-sm me-2" ' +
+                'aria-hidden="true"></span>Guardando...';
+
+            try {
+                const respuesta = await fetch(urlGuardarBorrador, {
+                    method: 'POST',
+                    body: datos,
+                    headers: {
+                        'X-Requested-With': 'fetch'
+                    }
+                });
+
+                let json = null;
+
+                try {
+                    json = await respuesta.json();
+                } catch (errorJson) {
+                    throw new Error(
+                        'El servidor no devolvió una respuesta válida.'
+                    );
+                }
+
+                if (!respuesta.ok || !json.ok) {
+                    throw new Error(
+                        json.mensaje ||
+                        'No fue posible guardar el borrador.'
+                    );
+                }
+
+                modal.hide();
+                mostrarToast(
+                    json.mensaje || 'Borrador guardado correctamente.',
+                    false
+                );
+                sessionStorage.setItem(
+                    'correoMarketingTab',
+                    'borradores'
+                );
+
+                window.setTimeout(function () {
+                    window.location.reload();
+                }, 650);
+            } catch (errorBorrador) {
+                console.error(errorBorrador);
+                mostrarError(
+                    errorBorrador.message ||
+                    'No fue posible guardar el borrador.'
+                );
+            } finally {
+                enviando = false;
+                botonBorrador.disabled = false;
+                botonBorrador.innerHTML = htmlOriginal;
+
+                if (botonEnviar) {
+                    botonEnviar.disabled = false;
+                }
+            }
+        });
 
         form?.addEventListener('submit', async function (event) {
             event.preventDefault();
