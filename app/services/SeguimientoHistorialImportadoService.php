@@ -106,6 +106,30 @@ class SeguimientoHistorialImportadoService
             ];
         }
 
+        if (strpos($texto, 'esperar a que se nombre un nuevo titular') !== false) {
+            return [
+                'paso' => 3,
+                'clave' => 'CONTACTO_HISTORICO_EN_ESPERA',
+                'etapa' => 'Contacto en espera',
+                'titulo' => 'Esperar nuevo titular',
+                'descripcion' =>
+                    'El historial migrado desde Excel indica que el seguimiento quedó en espera de que la institución nombre un nuevo titular. No se registra una llamada o interacción ficticia.',
+                'evidencia' => 'Seguimiento en espera de nuevo titular'
+            ];
+        }
+
+        if (strpos($texto, 'sede presencial') !== false) {
+            return [
+                'paso' => 3,
+                'clave' => 'CONTACTO_HISTORICO_CONDICIONADO',
+                'etapa' => 'Contacto condicionado',
+                'titulo' => 'Revisar condición de colaboración',
+                'descripcion' =>
+                    'El historial migrado desde Excel registra una condición previa para colaborar. Se conserva como contexto operativo sin asumir rechazo ni avance adicional.',
+                'evidencia' => 'Condición de colaboración registrada en Excel'
+            ];
+        }
+
         $intentoContacto =
             strpos($texto, 'no responden') !== false ||
             strpos($texto, 'no hay respuesta') !== false ||
