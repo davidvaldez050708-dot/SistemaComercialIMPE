@@ -1,11 +1,14 @@
 <?php
 
+require_once __DIR__ . '/ZadarmaWebhookEventStoreService.php';
+
 class ZadarmaRecordingService
 {
     private string $apiKey;
     private string $apiSecret;
     private string $rootPath;
     private \Zadarma_API\Api $api;
+    private ?ZadarmaWebhookEventStoreService $eventStore = null;
 
     public function __construct()
     {
@@ -37,6 +40,13 @@ class ZadarmaRecordingService
         }
 
         $this->api = new \Zadarma_API\Api($this->apiKey, $this->apiSecret, false);
+
+        try {
+            $this->eventStore = new ZadarmaWebhookEventStoreService();
+        } catch (Throwable $errorStore) {
+            $this->eventStore = null;
+            error_log('[zadarma_recording_store] ' . $errorStore->getMessage());
+        }
     }
 
     public function obtenerGrabacionParaLlamada(string $pbxCallId): ?array
@@ -142,6 +152,17 @@ class ZadarmaRecordingService
 
     private function buscarCallIdEnWebhook(string $pbxCallId): string
     {
+        if ($this->eventStore !== null) {
+            try {
+                $callId = $this->eventStore->buscarCallIdGrabacion($pbxCallId);
+                if ($callId !== '') {
+                    return $callId;
+                }
+            } catch (Throwable $errorStore) {
+                error_log('[zadarma_recording_lookup_store] ' . $errorStore->getMessage());
+            }
+        }
+
         $logPath = $this->rootPath . '/storage/zadarma_webhooks.log';
         if (!is_file($logPath)) {
             return '';
