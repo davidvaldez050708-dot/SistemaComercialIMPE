@@ -157,6 +157,23 @@ $fechasOpcionalesConvocatoria =
     </script>
 <?php endif; ?>
 
+<div class="toast-container position-fixed top-0 end-0 p-3">
+    <div
+        class="toast system-toast"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        data-bs-delay="3200"
+        data-convocatoria-download-toast>
+        <div class="toast-body">
+            <i class="bi bi-check2-circle" data-convocatoria-download-toast-icon></i>
+            <span data-convocatoria-download-toast-text>
+                La imagen se descargó correctamente.
+            </span>
+        </div>
+    </div>
+</div>
+
 <?php if (!$territorioSeleccionado): ?>
 <section class="data-territorial-module convocatoria-territory-selector">
     <section class="dashboard-panel data-territorial-selector">
@@ -1286,6 +1303,7 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
                                             <a
                                                 class="table-action-button"
                                                 href="<?= BASE_URL ?>index.php?controller=convocatoria&action=descargarImagen&id=<?= (int)$convocatoria['id'] ?>"
+                                                data-download-convocatoria
                                                 aria-label="Descargar imagen">
                                                 <i class="bi bi-download"></i>
                                             </a>
@@ -1807,6 +1825,92 @@ document.addEventListener('DOMContentLoaded', function () {
     const imagenTitulo = document.getElementById('modalImagenConvocatoriaTitulo');
 
     document.addEventListener('click', async function (event) {
+        const enlaceDescarga = event.target.closest('[data-download-convocatoria]');
+
+        if (enlaceDescarga) {
+            event.preventDefault();
+
+            const urlDescarga = enlaceDescarga.getAttribute('href') || '';
+            const toastDescarga = document.querySelector('[data-convocatoria-download-toast]');
+            const toastTexto = toastDescarga?.querySelector('[data-convocatoria-download-toast-text]');
+            const toastIcono = toastDescarga?.querySelector('[data-convocatoria-download-toast-icon]');
+
+            if (urlDescarga === '') {
+                return;
+            }
+
+            enlaceDescarga.setAttribute('aria-busy', 'true');
+
+            try {
+                const respuesta = await fetch(urlDescarga, {
+                    method: 'GET',
+                    credentials: 'same-origin'
+                });
+
+                if (!respuesta.ok) {
+                    throw new Error('No fue posible descargar la imagen.');
+                }
+
+                const blob = await respuesta.blob();
+                const contentDisposition = respuesta.headers.get('Content-Disposition') || '';
+                let nombreArchivo = 'convocatoria';
+
+                const coincidenciaUtf8 = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i);
+                const coincidenciaSimple = contentDisposition.match(/filename="?([^";]+)"?/i);
+
+                if (coincidenciaUtf8 && coincidenciaUtf8[1]) {
+                    nombreArchivo = decodeURIComponent(coincidenciaUtf8[1]);
+                } else if (coincidenciaSimple && coincidenciaSimple[1]) {
+                    nombreArchivo = coincidenciaSimple[1].trim();
+                }
+
+                const urlTemporal = URL.createObjectURL(blob);
+                const descargaTemporal = document.createElement('a');
+                descargaTemporal.href = urlTemporal;
+                descargaTemporal.download = nombreArchivo;
+                descargaTemporal.style.display = 'none';
+                document.body.appendChild(descargaTemporal);
+                descargaTemporal.click();
+                descargaTemporal.remove();
+
+                window.setTimeout(function () {
+                    URL.revokeObjectURL(urlTemporal);
+                }, 1000);
+
+                if (toastDescarga && window.bootstrap) {
+                    toastDescarga.classList.remove('system-toast-error');
+
+                    if (toastTexto) {
+                        toastTexto.textContent = 'La imagen se descargó correctamente.';
+                    }
+
+                    if (toastIcono) {
+                        toastIcono.className = 'bi bi-check2-circle';
+                    }
+
+                    bootstrap.Toast.getOrCreateInstance(toastDescarga).show();
+                }
+            } catch (error) {
+                if (toastDescarga && window.bootstrap) {
+                    toastDescarga.classList.add('system-toast-error');
+
+                    if (toastTexto) {
+                        toastTexto.textContent = 'No fue posible descargar la imagen.';
+                    }
+
+                    if (toastIcono) {
+                        toastIcono.className = 'bi bi-exclamation-circle';
+                    }
+
+                    bootstrap.Toast.getOrCreateInstance(toastDescarga).show();
+                }
+            } finally {
+                enlaceDescarga.removeAttribute('aria-busy');
+            }
+
+            return;
+        }
+
         const botonCopiar = event.target.closest('[data-copy-convocatoria-link]');
 
         if (botonCopiar) {
@@ -2227,7 +2331,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 '<a class="table-action-button" href="' +
                 <?= json_encode(BASE_URL . 'index.php?controller=convocatoria&action=descargarImagen&id=') ?> +
                 Number(convocatoria.id) +
-                '" aria-label="Descargar imagen"><i class="bi bi-download"></i></a>'
+                '" data-download-convocatoria aria-label="Descargar imagen">' +
+                '<i class="bi bi-download"></i></a>'
             );
             <?php endif; ?>
 
