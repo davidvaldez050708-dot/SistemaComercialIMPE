@@ -1237,7 +1237,8 @@
                 '<button type="button" class="persistent-phone-toggle" data-phone-toggle title="Minimizar" aria-label="Minimizar llamada">' +
                     '<i class="bi bi-dash-lg"></i>' +
                     '<span>Minimizar</span>' +
-                '</button>' +                '<button type="button" class="persistent-phone-close" data-phone-close title="Cerrar" aria-label="Cerrar teléfono">' +
+                '</button>' +
+                '<button type="button" class="persistent-phone-close" data-phone-close title="Cerrar" aria-label="Cerrar teléfono">' +
                     '<i class="bi bi-x-lg"></i>' +
                 '</button>' +
             '</header>' +
