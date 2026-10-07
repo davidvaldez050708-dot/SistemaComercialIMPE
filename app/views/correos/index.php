@@ -138,7 +138,7 @@ $texto = static fn($valor) => htmlspecialchars(
     </section>
 
     <div class="correo-marketing-results">
-        <span>
+        <span data-correo-results-count>
             <?= count($correos) ?>
             <?= count($correos) === 1 ? 'resultado' : 'resultados' ?>
         </span>
@@ -217,7 +217,24 @@ $texto = static fn($valor) => htmlspecialchars(
                         </tr>
                     <?php else: ?>
                         <?php foreach ($correos as $correo): ?>
-                            <tr>
+                            <?php
+                            $estadoCodigoCorreo = strtolower(
+                                trim((string)($correo['estado_codigo'] ?? 'pendiente'))
+                            );
+                            $tipoCodigoCorreo = strtolower(
+                                trim((string)($correo['tipo_codigo'] ?? 'general'))
+                            );
+                            $busquedaCorreo = trim(
+                                (string)($correo['destinatario'] ?? '') . ' ' .
+                                (string)($correo['correo'] ?? '') . ' ' .
+                                (string)($correo['asunto'] ?? '')
+                            );
+                            ?>
+                            <tr
+                                data-correo-row
+                                data-correo-estado="<?= $texto($estadoCodigoCorreo) ?>"
+                                data-correo-tipo="<?= $texto($tipoCodigoCorreo) ?>"
+                                data-correo-busqueda="<?= $texto($busquedaCorreo) ?>">
                                 <td>
                                     <strong><?= $texto($correo['destinatario'] ?? '—') ?></strong>
                                     <small><?= $texto($correo['correo'] ?? '') ?></small>
@@ -242,6 +259,22 @@ $texto = static fn($valor) => htmlspecialchars(
                                 </td>
                             </tr>
                         <?php endforeach; ?>
+
+                        <tr class="d-none" data-correo-filter-empty>
+                            <td colspan="6">
+                                <div class="correo-marketing-empty">
+                                    <span class="correo-marketing-empty-icon">
+                                        <i class="bi bi-envelope"></i>
+                                    </span>
+                                    <div>
+                                        <h3>No hay correos en esta vista</h3>
+                                        <p>
+                                            Ajusta los filtros o selecciona otra bandeja.
+                                        </p>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
                     <?php endif; ?>
                 </tbody>
             </table>
@@ -398,6 +431,14 @@ $texto = static fn($valor) => htmlspecialchars(
                     </button>
 
                     <button
+                        type="button"
+                        class="btn btn-system-light"
+                        data-marketing-mail-draft>
+                        <i class="bi bi-file-earmark-arrow-down me-2"></i>
+                        Guardar borrador
+                    </button>
+
+                    <button
                         type="submit"
                         class="btn btn-system-save"
                         data-marketing-mail-send>
@@ -468,7 +509,7 @@ $texto = static fn($valor) => htmlspecialchars(
                         </div>
 
                         <div>
-                            <span>FECHA DE ENVÍO</span>
+                            <span data-marketing-mail-detail-date-label>FECHA</span>
                             <strong data-marketing-mail-detail-date>—</strong>
                         </div>
 
