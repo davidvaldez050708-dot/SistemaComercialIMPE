@@ -456,8 +456,43 @@
     font-weight: 800;
 }
 
+.correo-marketing-compose-dialog {
+    width: calc(100% - 32px);
+    max-width: 720px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.correo-marketing-compose-modal {
+    max-height: calc(100vh - 32px);
+    overflow: hidden;
+}
+
+.correo-marketing-compose-modal > form {
+    min-height: 0;
+    max-height: calc(100vh - 32px);
+    display: flex;
+    flex-direction: column;
+}
+
+.correo-marketing-compose-modal .modal-header {
+    flex: 0 0 auto;
+    padding: 16px 18px;
+}
+
 .correo-marketing-compose-modal .modal-body {
-    padding: 20px 22px;
+    min-height: 0;
+    padding: 14px 18px;
+    overflow-y: auto;
+}
+
+.correo-marketing-compose-modal .modal-footer {
+    position: relative;
+    z-index: 2;
+    flex: 0 0 auto;
+    padding: 12px 18px;
+    border-top: 1px solid var(--color-border);
+    background-color: #ffffff;
 }
 
 .correo-marketing-compose-modal .form-label {
@@ -478,10 +513,12 @@
 }
 
 .correo-marketing-compose-modal textarea.system-form-control {
-    min-height: 190px;
-    padding-top: 11px;
+    min-height: 112px;
+    height: 120px;
+    max-height: 170px;
+    padding-top: 10px;
     resize: vertical;
-    line-height: 1.55;
+    line-height: 1.5;
 }
 
 .correo-marketing-compose-modal .system-form-control:focus {
@@ -490,7 +527,7 @@
 }
 
 .correo-marketing-recipient-card {
-    padding: 12px 14px;
+    padding: 9px 12px;
     display: grid;
     gap: 3px;
     border: 1px solid #dce5f1;
@@ -559,8 +596,8 @@
 }
 
 .correo-marketing-mail-note {
-    margin-top: 16px;
-    padding: 11px 13px;
+    margin-top: 10px;
+    padding: 9px 11px;
     display: flex;
     align-items: flex-start;
     gap: 9px;
@@ -597,6 +634,48 @@
     }
 }
 
+
+
+.correo-marketing-compose-modal .mb-3 {
+    margin-bottom: 12px !important;
+}
+
+.correo-marketing-compose-modal .system-form-modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.correo-marketing-compose-modal .system-form-modal-footer .btn {
+    min-height: 40px;
+}
+
+@media (max-width: 767.98px) {
+    .correo-marketing-compose-dialog {
+        width: calc(100% - 20px);
+        max-width: none;
+        margin: 10px auto;
+    }
+
+    .correo-marketing-compose-modal,
+    .correo-marketing-compose-modal > form {
+        max-height: calc(100vh - 20px);
+    }
+
+    .correo-marketing-compose-modal .modal-header,
+    .correo-marketing-compose-modal .modal-body,
+    .correo-marketing-compose-modal .modal-footer {
+        padding-left: 14px;
+        padding-right: 14px;
+    }
+
+    .correo-marketing-compose-modal textarea.system-form-control {
+        min-height: 100px;
+        height: 108px;
+    }
+}
 
 /* =========================================================
    DETALLE DE CORREO ENVIADO · MARKETING
