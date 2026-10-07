@@ -118,7 +118,6 @@ $texto = static fn($valor) => htmlspecialchars(
                     name="estado">
                     <option value="">Todos</option>
                     <option value="enviado">Enviados</option>
-                    <option value="pendiente">Pendientes</option>
                     <option value="borrador">Borradores</option>
                 </select>
             </div>
@@ -162,15 +161,6 @@ $texto = static fn($valor) => htmlspecialchars(
                 aria-selected="false">
                 <i class="bi bi-send-check"></i>
                 Enviados
-            </button>
-
-            <button
-                type="button"
-                class="correo-marketing-tab"
-                data-correo-tab="pendientes"
-                aria-selected="false">
-                <i class="bi bi-clock-history"></i>
-                Pendientes
             </button>
 
             <button
