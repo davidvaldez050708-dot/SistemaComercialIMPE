@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../../config/db_connection.php';
+require_once __DIR__ . '/SeguimientoHistorialImportadoService.php';
 require_once __DIR__ . '/CorreoSalidaInstitucionalService.php';
 require_once __DIR__ . '/OficioDocxPdfService.php';
 
@@ -993,9 +994,15 @@ class ConvenioDocumentosService
             return $flujo;
         }
 
+        $historico = (new SeguimientoHistorialImportadoService())
+            ->esConvenioHistorico($seguimiento);
+
         if (
-            trim((string)($seguimiento['reunion_realizada_at'] ?? '')) === '' ||
-            strtoupper(trim((string)($seguimiento['reunion_resultado'] ?? ''))) !== 'AVANZAR_CONVENIO'
+            !$historico &&
+            (
+                trim((string)($seguimiento['reunion_realizada_at'] ?? '')) === '' ||
+                strtoupper(trim((string)($seguimiento['reunion_resultado'] ?? ''))) !== 'AVANZAR_CONVENIO'
+            )
         ) {
             return $flujo;
         }
@@ -1177,13 +1184,20 @@ class ConvenioDocumentosService
             return $this->error('Este seguimiento ya fue descartado.', 409);
         }
 
-        if (trim((string)($seguimiento['reunion_realizada_at'] ?? '')) === '') {
+        $historico = (new SeguimientoHistorialImportadoService())
+            ->esConvenioHistorico($seguimiento);
+
+        if (
+            !$historico &&
+            trim((string)($seguimiento['reunion_realizada_at'] ?? '')) === ''
+        ) {
             return $this->error('Primero registra la reunión como realizada.', 409);
         }
 
         if (
+            !$historico &&
             strtoupper(trim((string)($seguimiento['reunion_resultado'] ?? ''))) !==
-            'AVANZAR_CONVENIO'
+                'AVANZAR_CONVENIO'
         ) {
             return $this->error(
                 'El resultado de la reunión todavía no permite avanzar al convenio.',
@@ -1222,6 +1236,8 @@ class ConvenioDocumentosService
                     s.contacto_nombre,
                     s.contacto_cargo,
                     s.estado_seguimiento,
+                    s.clave_origen,
+                    s.observaciones,
                     COALESCE(
                         NULLIF(TRIM(s.correo_verificado), ''),
                         NULLIF(TRIM(s.correo_fuente), '')
