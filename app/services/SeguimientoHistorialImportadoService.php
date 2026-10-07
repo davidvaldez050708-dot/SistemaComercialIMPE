@@ -40,6 +40,18 @@ class SeguimientoHistorialImportadoService
             ];
         }
 
+        if (strpos($texto, 'reunion excel:') !== false) {
+            return [
+                'paso' => 11,
+                'clave' => 'REUNION_HISTORICA_FECHA',
+                'etapa' => 'Reunión histórica',
+                'titulo' => 'Revisar seguimiento de reunión',
+                'descripcion' =>
+                    'El historial migrado desde Excel contiene una fecha de reunión. Se reconoce como hito histórico sin inventar que la reunión fue realizada ni contabilizarla como actividad productiva del CRM.',
+                'evidencia' => 'Fecha de reunión registrada en Excel'
+            ];
+        }
+
         if (
             strpos($texto, 'se envia correo') !== false ||
             strpos($texto, 'se envio correo') !== false
