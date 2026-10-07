@@ -76,6 +76,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
 }
 
 $rootPath = dirname(__DIR__, 2);
+require_once $rootPath . '/app/services/ZadarmaWebhookEventStoreService.php';
 $configPath = $rootPath . '/config/zadarma_config.php';
 
 if (!is_file($configPath)) {
@@ -140,7 +141,28 @@ foreach ($camposPermitidos as $campo) {
     }
 }
 
+try {
+    (new ZadarmaWebhookEventStoreService())->registrar($registro);
+} catch (Throwable $errorPersistencia) {
+    error_log(
+        '[zadarma_webhook_store] ' .
+        $errorPersistencia->getMessage()
+    );
+}
+
+/*
+ * El archivo queda como respaldo diagnóstico, no como fuente primaria.
+ * Se rota para evitar crecimiento indefinido en producción.
+ */
 $logPath = $rootPath . '/storage/zadarma_webhooks.log';
+$maxLogBytes = 5 * 1024 * 1024;
+
+if (is_file($logPath) && filesize($logPath) > $maxLogBytes) {
+    $backupPath = $logPath . '.1';
+    @unlink($backupPath);
+    @rename($logPath, $backupPath);
+}
+
 $linea = json_encode(
     $registro,
     JSON_UNESCAPED_UNICODE |
