@@ -3662,6 +3662,34 @@
     justify-content: center;
 }
 
+.convocatoria-external-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #223A84;
+    font-family: 'Manrope', sans-serif;
+    font-size: 10.5px;
+    font-weight: 700;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.convocatoria-external-link:hover,
+.convocatoria-external-link:focus {
+    color: #1C2544;
+    text-decoration: underline;
+}
+
+.convocatoria-external-link i {
+    font-size: 13px;
+}
+
+.convocatoria-link-empty {
+    color: var(--color-text-secondary);
+    font-family: 'Manrope', sans-serif;
+    font-size: 11px;
+}
+
 @media (max-width: 991.98px) {
     .convocatoria-status-tabs {
         grid-template-columns: 1fr;
