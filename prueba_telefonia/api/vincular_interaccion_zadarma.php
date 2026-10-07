@@ -347,11 +347,26 @@ try {
 
     $fechaInicio = fechaMysqlLocal($inicio['call_start'] ?? null) ?? date('Y-m-d H:i:s');
     $fechaFin = fechaMysqlDesdeIso($fin['received_at'] ?? null);
-    $duracion = max(
+    $disposicion = strtoupper(trim((string)($fin['disposition'] ?? '')));
+    $huboRespuesta =
+        $respuesta !== null ||
+        in_array($disposicion, ['ANSWERED', 'ANSWER', 'CONNECTED', 'SUCCESS'], true);
+
+    /*
+     * La duración contabilizable debe representar conversación real.
+     * El cronómetro del navegador incluye timbrado, por lo que solo sirve
+     * como respaldo cuando Zadarma confirma que la llamada fue contestada
+     * pero todavía no publica una duración positiva.
+     */
+    $duracionProveedor = max(
         duracionConversacion($respuesta, $fin),
-        max(0, (int)($fin['duration'] ?? 0)),
-        $duracionCliente
+        max(0, (int)($fin['duration'] ?? 0))
     );
+    $duracion = $duracionProveedor;
+
+    if ($huboRespuesta && $duracion <= 0) {
+        $duracion = $duracionCliente;
+    }
 
     if ($fechaFin === null && $duracion > 0) {
         try {
@@ -372,10 +387,6 @@ try {
      * sin respuesta en verificación efectiva.
      */
     $notasInteraccion = (string)($interaccion['notas'] ?? '');
-    $disposicion = strtoupper(trim((string)($fin['disposition'] ?? '')));
-    $huboRespuesta =
-        $respuesta !== null ||
-        in_array($disposicion, ['ANSWERED', 'ANSWER', 'CONNECTED', 'SUCCESS'], true);
 
     $notasInteraccion = str_replace(
         '[VERIFICACION_PENDIENTE_TELEFONIA]',
