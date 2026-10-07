@@ -84,6 +84,14 @@ $esDesempenoDashboard =
     $controllerDashboard === 'desempeno';
 $esTelefoniaDashboard =
     $controllerDashboard === 'telefonia';
+$rolTelefoniaPersistente = trim(
+    (string)($_SESSION['rol'] ?? '')
+);
+$usarTelefoniaPersistente = in_array(
+    $rolTelefoniaPersistente,
+    ['Analista de Datos', 'Asesor de Ventas'],
+    true
+);
 
 $cssOpcionalDashboard = [];
 
@@ -204,6 +212,10 @@ if ($esTelefoniaDashboard) {
     $cssOpcionalDashboard[] = 'telefonia.css';
 }
 
+if ($usarTelefoniaPersistente) {
+    $cssOpcionalDashboard[] = 'telefonia_persistente.css';
+}
+
 if (
     $esConvocatoriaReportesDashboard ||
     $esConvocatoriaReportePreviewDashboard
@@ -231,6 +243,10 @@ $cssOpcionalDashboard = array_values(array_unique($cssOpcionalDashboard));
 $jsOpcionalHead = [
     'firma_correo_perfil.js'
 ];
+
+if ($usarTelefoniaPersistente) {
+    $jsOpcionalHead[] = 'telefonia_persistente.js';
+}
 
 if (tienePermiso('convocatorias.gestionar')) {
     $jsOpcionalHead[] = 'convocatoria_notificaciones.js';
@@ -286,7 +302,6 @@ if ($esSeguimientoEstado) {
             'seguimiento_interaccion_id_bridge.js',
             'seguimiento_llamada_zadarma.js',
             'seguimiento_zadarma_marcado_e164.js',
-            'seguimiento_zadarma_widget_oculto.js',
             'seguimiento_caller_id_usuario.js',
             'seguimiento_llamada_twilio.js',
             'seguimiento_llamada_flotante.js',
