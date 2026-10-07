@@ -12,9 +12,41 @@
         const estado = modal.querySelector('[data-mail-signature-status]');
         const guardar = modal.querySelector('[data-mail-signature-save]');
         const eliminar = modal.querySelector('[data-mail-signature-delete]');
+        const confirmacion = document.querySelector(
+            '[data-mail-signature-confirm-modal]'
+        );
+        const confirmarEliminar = confirmacion
+            ? confirmacion.querySelector(
+                '[data-mail-signature-confirm-delete]'
+            )
+            : null;
+        const errorConfirmacion = confirmacion
+            ? confirmacion.querySelector(
+                '[data-mail-signature-confirm-error]'
+            )
+            : null;
+        const modalPerfil = window.bootstrap
+            ? bootstrap.Modal.getOrCreateInstance(modal)
+            : null;
+        const modalConfirmacion =
+            window.bootstrap && confirmacion
+                ? bootstrap.Modal.getOrCreateInstance(confirmacion)
+                : null;
         let firmaDisponible = false;
+        let reabrirPerfil = false;
+        let eliminandoFirma = false;
 
-        if (!archivo || !preview || !estado || !guardar || !eliminar) {
+        if (
+            !archivo ||
+            !preview ||
+            !estado ||
+            !guardar ||
+            !eliminar ||
+            !confirmacion ||
+            !confirmarEliminar ||
+            !modalPerfil ||
+            !modalConfirmacion
+        ) {
             return;
         }
 
@@ -135,18 +167,66 @@
             }
         });
 
-        eliminar.addEventListener('click', async function () {
+        const limpiarErrorConfirmacion = function () {
+            if (!errorConfirmacion) {
+                return;
+            }
+
+            errorConfirmacion.textContent = '';
+            errorConfirmacion.classList.add('d-none');
+        };
+
+        const mostrarErrorConfirmacion = function (mensaje) {
+            if (!errorConfirmacion) {
+                return;
+            }
+
+            errorConfirmacion.textContent = String(
+                mensaje || 'No fue posible quitar la firma.'
+            );
+            errorConfirmacion.classList.remove('d-none');
+        };
+
+        eliminar.addEventListener('click', function () {
             const url = String(modal.dataset.signatureDeleteUrl || '');
-            if (!url || !firmaDisponible) {
+            if (!url || !firmaDisponible || eliminandoFirma) {
                 return;
             }
 
-            if (!window.confirm('¿Quitar tu firma de los próximos correos?')) {
+            limpiarErrorConfirmacion();
+            reabrirPerfil = true;
+
+            const abrirConfirmacion = function () {
+                modalConfirmacion.show();
+            };
+
+            if (modal.classList.contains('show')) {
+                modal.addEventListener(
+                    'hidden.bs.modal',
+                    abrirConfirmacion,
+                    { once: true }
+                );
+                modalPerfil.hide();
                 return;
             }
 
-            eliminar.disabled = true;
-            guardar.disabled = true;
+            abrirConfirmacion();
+        });
+
+        confirmarEliminar.addEventListener('click', async function () {
+            const url = String(modal.dataset.signatureDeleteUrl || '');
+            if (!url || !firmaDisponible || eliminandoFirma) {
+                return;
+            }
+
+            eliminandoFirma = true;
+            limpiarErrorConfirmacion();
+            confirmarEliminar.disabled = true;
+
+            const textoOriginal = confirmarEliminar.innerHTML;
+            confirmarEliminar.innerHTML =
+                '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span>' +
+                '<span>Quitando...</span>';
 
             try {
                 const respuesta = await fetch(url, {
@@ -154,19 +234,42 @@
                     headers: { 'X-Requested-With': 'fetch' }
                 });
                 const json = await respuesta.json();
+
                 if (!respuesta.ok || !json.ok) {
-                    throw new Error(json.mensaje || 'No fue posible eliminar la firma.');
+                    throw new Error(
+                        json.mensaje ||
+                        'No fue posible eliminar la firma.'
+                    );
                 }
 
                 archivo.value = '';
                 firmaDisponible = false;
                 mostrarPreview('');
-                mostrarMensaje(json.mensaje || 'Firma eliminada.', false);
+                mostrarMensaje(
+                    json.mensaje || 'Firma eliminada.',
+                    false
+                );
                 eliminar.disabled = true;
+                guardar.disabled = true;
+                modalConfirmacion.hide();
             } catch (error) {
-                mostrarMensaje(error.message, true);
-                eliminar.disabled = false;
+                mostrarErrorConfirmacion(error.message);
+            } finally {
+                eliminandoFirma = false;
+                confirmarEliminar.disabled = false;
+                confirmarEliminar.innerHTML = textoOriginal;
             }
+        });
+
+        confirmacion.addEventListener('hidden.bs.modal', function () {
+            limpiarErrorConfirmacion();
+
+            if (!reabrirPerfil) {
+                return;
+            }
+
+            reabrirPerfil = false;
+            modalPerfil.show();
         });
 
         modal.addEventListener('shown.bs.modal', cargar);
