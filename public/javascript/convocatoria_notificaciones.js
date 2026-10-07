@@ -204,9 +204,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     '<span class="convocatoria-notification-copy">' +
                         '<strong>' + escapeHtml(item.titulo || visual.fallbackTitle) + '</strong>' +
                         '<span>' + escapeHtml(item.mensaje || '') + '</span>' +
-                        '<small>' + escapeHtml(formatDate(item.created_at)) + '</small>' +
                     '</span>' +
-                    (unread ? '<span class="convocatoria-notification-dot" aria-label="No leída"></span>' : '') +
+                    '<span class="convocatoria-notification-time">' +
+                        escapeHtml(formatDate(item.created_at)) +
+                    '</span>' +
                 '</a>'
             );
         }).join('');
