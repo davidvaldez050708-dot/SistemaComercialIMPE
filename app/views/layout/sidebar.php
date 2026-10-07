@@ -165,7 +165,7 @@ $claseFormularios =
                     <a
                         href="<?= BASE_URL ?>index.php?controller=telefonia&action=index"
                         class="sidebar-link <?= $claseTelefonia ?>">
-                        <i class="bi bi-telephone-gear"></i>
+                        <i class="bi bi-headset"></i>
                         Telefonía
                     </a>
 
@@ -455,7 +455,7 @@ $claseFormularios =
                             href="<?= BASE_URL ?>index.php?controller=telefonia&action=index"
                             class="sidebar-link <?= $claseTelefonia ?>">
 
-                            <i class="bi bi-telephone-gear"></i>
+                            <i class="bi bi-headset"></i>
                             Telefonía
 
                         </a>
