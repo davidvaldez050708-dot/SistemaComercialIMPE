@@ -2622,7 +2622,6 @@ class SeguimientoVinculacionController
             )));
             $soloActividadMigrada =
                 strpos($claveOrigen, 'XLSX:') === 0 &&
-                strtoupper(trim((string)($seguimiento['ultimo_canal'] ?? ''))) === 'SISTEMA' &&
                 trim((string)($seguimiento['ultima_interaccion_at'] ?? '')) === '';
 
             $seguimientos[$indice]['ruta_historico_importado'] =
