@@ -2292,6 +2292,27 @@
 }
 
 
+/* Bienvenida del panel principal de Marketing. */
+.marketing-welcome-shell {
+    margin-bottom: 16px;
+}
+
+.marketing-welcome-status-link {
+    color: inherit;
+    text-decoration: none;
+}
+
+.marketing-welcome-status-link:hover,
+.marketing-welcome-status-link:focus {
+    color: inherit;
+    text-decoration: none;
+}
+
+#marketingPendingCoverage {
+    scroll-margin-top: 88px;
+}
+
+
 /* Panel de convocatorias próximas a vencer en Marketing. */
 .marketing-expiring-title {
     color: var(--color-text-primary) !important;
