@@ -17,7 +17,7 @@ if ($usuarioHost === '') {
 <html
     lang="es"
     data-impe-telephony-host="1"
-    data-impe-telephony-host-version="3">
+    data-impe-telephony-host-version="4">
 <head>
     <meta charset="UTF-8">
     <meta

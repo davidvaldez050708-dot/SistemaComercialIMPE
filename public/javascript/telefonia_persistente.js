@@ -13,7 +13,7 @@
     const viewKey = 'impe:telephony:view:' + userId;
     const channelName = 'impe-telephony-' + userId;
     const hostWindowName = 'impe_telephony_host_' + userId;
-    const hostVersion = '3';
+    const hostVersion = '4';
 
     const statusUrl =
         new URL(
@@ -41,6 +41,8 @@
     let compact = false;
     let startingCall = false;
     let dismissedFinishedToken = '';
+    let preparedDismissed = false;
+    let stageRequestId = 0;
 
     try {
         compact =
@@ -175,6 +177,21 @@
             Number(nextState.userId || 0) !== userId
         ) {
             return;
+        }
+
+        const incomingPhase =
+            String(nextState.phase || '');
+
+        if (
+            preparedDismissed &&
+            !nextState.active &&
+            incomingPhase === 'prepared'
+        ) {
+            return;
+        }
+
+        if (nextState.active) {
+            preparedDismissed = false;
         }
 
         const previousActive =
@@ -617,6 +634,10 @@
     };
 
     const stageCall = async function (payload) {
+        const requestId =
+            ++stageRequestId;
+        preparedDismissed = false;
+
         const data = payload || {};
         const destination =
             String(data.destination || '').trim();
@@ -664,6 +685,13 @@
         try {
             const info = await probe();
 
+            if (
+                requestId !== stageRequestId ||
+                preparedDismissed
+            ) {
+                return state;
+            }
+
             state = Object.assign(
                 {},
                 state,
@@ -682,6 +710,13 @@
              * también actualizamos su contexto para que no sobrescriba la
              * preparación mientras espera el clic definitivo en "Llamar".
              */
+            if (
+                requestId !== stageRequestId ||
+                preparedDismissed
+            ) {
+                return state;
+            }
+
             sendCommand(
                 'STAGE',
                 {
@@ -694,6 +729,13 @@
 
             return state;
         } catch (error) {
+            if (
+                requestId !== stageRequestId ||
+                preparedDismissed
+            ) {
+                return state;
+            }
+
             state = emptyState();
             persistClientState();
             throw error;
@@ -786,6 +828,8 @@
         }
 
         startingCall = false;
+        preparedDismissed = true;
+        stageRequestId += 1;
         compact = false;
         saveViewMode();
 
