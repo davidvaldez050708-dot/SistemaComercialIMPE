@@ -10,6 +10,13 @@
         }
 
         const form = modalElement.querySelector('[data-marketing-mail-form]');
+        const correoIdInput = modalElement.querySelector('[data-marketing-mail-id]');
+        const tituloComponer = modalElement.querySelector(
+            '#modalCorreoMarketingTitulo'
+        );
+        const subtituloComponer = tituloComponer
+            ?.closest('.system-form-modal-header')
+            ?.querySelector('.system-form-modal-subtitle');
         const destinatario = modalElement.querySelector('[data-marketing-mail-to]');
         const destinatarioResumen = modalElement.querySelector('[data-marketing-mail-recipient]');
         const asunto = modalElement.querySelector('[data-marketing-mail-subject]');
@@ -40,6 +47,9 @@
         const modalDetalle = modalDetalleElement
             ? bootstrap.Modal.getOrCreateInstance(modalDetalleElement)
             : null;
+        const botonEditarDetalle = modalDetalleElement?.querySelector(
+            '[data-marketing-mail-detail-edit]'
+        );
         const urlEnviar = 'index.php?controller=correoMarketing&action=enviar';
         const urlGuardarBorrador =
             'index.php?controller=correoMarketing&action=guardarBorrador';
@@ -48,6 +58,7 @@
             'index.php?controller=correoMarketing&action=recuperarAdjunto';
         let enviando = false;
         let correoDetalleActual = null;
+        let adjuntosBorradorActual = [];
 
         const escapar = function (valor) {
             const div = document.createElement('div');
@@ -124,30 +135,52 @@
             }
 
             const seleccionados = Array.from(archivos.files || []);
-            listaArchivos.classList.toggle(
-                'd-none',
-                seleccionados.length === 0
-            );
+            const existentes = Array.isArray(adjuntosBorradorActual)
+                ? adjuntosBorradorActual
+                : [];
+            const hayArchivos =
+                seleccionados.length > 0 || existentes.length > 0;
 
-            listaArchivos.innerHTML = seleccionados.length === 0
-                ? ''
-                : seleccionados.map(function (archivo) {
-                    const mb = Number(archivo.size || 0) / (1024 * 1024);
-                    const tamano = mb >= 1
-                        ? mb.toFixed(1) + ' MB'
-                        : Math.max(
-                            1,
-                            Math.round(Number(archivo.size || 0) / 1024)
-                        ) + ' KB';
+            listaArchivos.classList.toggle('d-none', !hayArchivos);
 
-                    return (
-                        '<span>' +
-                            '<i class="bi bi-paperclip"></i>' +
-                            '<strong>' + escapar(archivo.name) + '</strong>' +
-                            '<small>' + escapar(tamano) + '</small>' +
-                        '</span>'
-                    );
-                }).join('');
+            const renderExistente = existentes.map(function (adjuntoOriginal) {
+                const adjunto = typeof adjuntoOriginal === 'string'
+                    ? { nombre: adjuntoOriginal }
+                    : (adjuntoOriginal || {});
+                const nombre = String(
+                    adjunto.nombre || 'Archivo adjunto'
+                );
+
+                return (
+                    '<span>' +
+                        '<i class="bi bi-paperclip"></i>' +
+                        '<strong>' + escapar(nombre) + '</strong>' +
+                        '<small>Guardado</small>' +
+                    '</span>'
+                );
+            });
+
+            const renderNuevo = seleccionados.map(function (archivo) {
+                const mb = Number(archivo.size || 0) / (1024 * 1024);
+                const tamano = mb >= 1
+                    ? mb.toFixed(1) + ' MB'
+                    : Math.max(
+                        1,
+                        Math.round(Number(archivo.size || 0) / 1024)
+                    ) + ' KB';
+
+                return (
+                    '<span>' +
+                        '<i class="bi bi-paperclip"></i>' +
+                        '<strong>' + escapar(archivo.name) + '</strong>' +
+                        '<small>' + escapar(tamano) + '</small>' +
+                    '</span>'
+                );
+            });
+
+            listaArchivos.innerHTML = renderExistente
+                .concat(renderNuevo)
+                .join('');
         };
 
         const actualizarDestinatario = function () {
@@ -162,6 +195,21 @@
 
         const limpiarFormulario = function () {
             form?.reset();
+            adjuntosBorradorActual = [];
+
+            if (correoIdInput) {
+                correoIdInput.value = '';
+            }
+
+            if (tituloComponer) {
+                tituloComponer.textContent = 'Redactar correo';
+            }
+
+            if (subtituloComponer) {
+                subtituloComponer.textContent =
+                    'Redacta el mensaje y, si lo necesitas, adjunta documentos.';
+            }
+
             limpiarError();
             actualizarDestinatario();
             renderizarArchivos();
@@ -344,6 +392,7 @@
                 errorDetalle.textContent = '';
             }
 
+            botonEditarDetalle?.classList.add('d-none');
             cargando?.classList.remove('d-none');
             contenido?.classList.add('d-none');
             adjuntosSeccion?.classList.add('d-none');
@@ -364,6 +413,11 @@
                 correo.estado_codigo || ''
             ).toLowerCase();
             const esBorrador = estadoCodigo === 'borrador';
+
+            botonEditarDetalle?.classList.toggle(
+                'd-none',
+                !esBorrador
+            );
 
             const tituloDetalle = modalDetalleElement.querySelector(
                 '#modalCorreoMarketingDetalleTitulo'
@@ -910,6 +964,79 @@
                     );
                 }
             });
+
+        const cargarBorradorEnFormulario = function (correo) {
+            limpiarFormulario();
+
+            if (correoIdInput) {
+                correoIdInput.value = String(correo.id || '');
+            }
+
+            if (destinatario) {
+                destinatario.value = String(correo.destinatario || '');
+            }
+
+            if (asunto) {
+                asunto.value = String(correo.asunto || '');
+            }
+
+            if (cuerpo) {
+                cuerpo.value = String(correo.cuerpo || '');
+            }
+
+            adjuntosBorradorActual = Array.isArray(correo.adjuntos)
+                ? correo.adjuntos.slice()
+                : [];
+
+            if (tituloComponer) {
+                tituloComponer.textContent = 'Editar borrador';
+            }
+
+            if (subtituloComponer) {
+                subtituloComponer.textContent =
+                    'Continúa redactando y guarda los cambios o envía el correo.';
+            }
+
+            actualizarDestinatario();
+            renderizarArchivos();
+        };
+
+        botonEditarDetalle?.addEventListener('click', function () {
+            if (
+                !correoDetalleActual ||
+                String(correoDetalleActual.estado_codigo || '').toLowerCase() !==
+                    'borrador'
+            ) {
+                return;
+            }
+
+            cargarBorradorEnFormulario(correoDetalleActual);
+
+            const abrirEditor = function () {
+                modalDetalleElement?.removeEventListener(
+                    'hidden.bs.modal',
+                    abrirEditor
+                );
+                modal.show();
+
+                modalElement.addEventListener(
+                    'shown.bs.modal',
+                    function enfocarBorrador() {
+                        modalElement.removeEventListener(
+                            'shown.bs.modal',
+                            enfocarBorrador
+                        );
+                        destinatario?.focus();
+                    }
+                );
+            };
+
+            modalDetalleElement?.addEventListener(
+                'hidden.bs.modal',
+                abrirEditor
+            );
+            modalDetalle?.hide();
+        });
 
         botonRedactar.addEventListener('click', function () {
             limpiarFormulario();
