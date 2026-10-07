@@ -18,6 +18,8 @@ class ReporteConvocatoriaDataService
         $resumen = $this->modelo->obtenerResumenDashboard();
         $cobertura = $this->modelo->obtenerCoberturaTerritorialDashboard(32);
         $porTipo = $this->modelo->obtenerPublicacionesPorTipoDashboard(30);
+        $publicacionesPorUsuario =
+            $this->modelo->obtenerPublicacionesPorUsuarioReporte();
         $detalle = $this->modelo->obtenerDetalleReporteConvocatorias();
 
         $estadosCubiertos = (int)($cobertura['estados_cubiertos'] ?? 0);
@@ -172,6 +174,7 @@ class ReporteConvocatoriaDataService
             ],
             'cobertura' => $cobertura,
             'por_tipo' => $porTipo,
+            'publicaciones_por_usuario' => $publicacionesPorUsuario,
             'detalle' => $detalle,
             'alertas_vencimiento' => $alertasVencimiento,
             'hallazgos' => $hallazgos
