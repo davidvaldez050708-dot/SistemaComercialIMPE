@@ -483,8 +483,22 @@ class ConvocatoriaController
         $datos['tipo_convocatoria'] = $tipoConvocatoria;
         $datos['subtipo_convocatoria'] = $subtipoConvocatoria;
 
+        $fechaInicioOriginal = trim((string)($convocatoriaOriginal['fecha_inicio'] ?? ''));
+        $fechaTerminoOriginal = trim((string)($convocatoriaOriginal['fecha_termino'] ?? ''));
+        $fechaInicioNueva = trim((string)($datos['fecha_inicio'] ?? ''));
+        $fechaTerminoNueva = trim((string)($datos['fecha_termino'] ?? ''));
+        $estadoNuevo = (int)($datos['estado'] ?? 1);
+
+        $cambioFechas =
+            $fechaInicioOriginal !== $fechaInicioNueva ||
+            $fechaTerminoOriginal !== $fechaTerminoNueva;
+
         if ($modelo->actualizar($id, $datos, $estadosIds)) {
             $_SESSION['mensaje_convocatoria'] = 'Convocatoria actualizada correctamente.';
+
+            if ($cambioFechas || $estadoNuevo === 0) {
+                $modelo->eliminarNotificacionesVencimiento($id);
+            }
 
             if (
                 !empty($imagen['nueva']) &&
@@ -556,6 +570,10 @@ class ConvocatoriaController
         }
 
         if ($modelo->cambiarEstado($id, $estado, (int)$_SESSION['usuario_id'])) {
+            if ($estado === 0) {
+                $modelo->eliminarNotificacionesVencimiento($id);
+            }
+
             $_SESSION['mensaje_convocatoria'] = $estado === 1
                 ? 'Convocatoria activada correctamente.'
                 : 'Convocatoria desactivada correctamente.';
