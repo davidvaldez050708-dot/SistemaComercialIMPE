@@ -651,6 +651,23 @@
     background-color: #fbfcff;
 }
 
+.convocatoria-notification-list .topbar-reminder-item.is-unread .topbar-reminder-icon {
+    position: relative;
+}
+
+.convocatoria-notification-list .topbar-reminder-item.is-unread .topbar-reminder-icon::after {
+    content: "";
+    width: 7px;
+    height: 7px;
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    border: 2px solid #ffffff;
+    border-radius: 50%;
+    background-color: #223A84;
+    box-sizing: content-box;
+}
+
 @media (max-width: 575.98px) {
     .convocatoria-notification-header {
         align-items: stretch;
