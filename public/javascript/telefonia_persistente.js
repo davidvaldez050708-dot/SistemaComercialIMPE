@@ -14,9 +14,15 @@
     const hostWindowName = 'impe_telephony_host_' + userId;
 
     const statusUrl =
-        'index.php?controller=telefonia&action=estadoUsuario';
+        new URL(
+            'index.php?controller=telefonia&action=estadoUsuario',
+            window.location.href
+        ).toString();
     const hostUrl =
-        'index.php?controller=telefonia&action=host';
+        new URL(
+            'index.php?controller=telefonia&action=host',
+            window.location.href
+        ).toString();
 
     const channel = typeof BroadcastChannel === 'function'
         ? new BroadcastChannel(channelName)
@@ -298,11 +304,29 @@
         return popup;
     };
 
-    const waitForHost = function () {
-        if (
+    const hostUsable = function () {
+        const recent =
             state?.hostReady &&
-            Date.now() - hostSeenAt < 3500
-        ) {
+            Date.now() - hostSeenAt < 3500;
+
+        if (!recent) {
+            return false;
+        }
+
+        if (state?.active) {
+            return true;
+        }
+
+        return [
+            'ready',
+            'finished'
+        ].includes(
+            String(state?.phase || '')
+        );
+    };
+
+    const waitForHost = function () {
+        if (hostUsable()) {
             return Promise.resolve(true);
         }
 
@@ -314,8 +338,19 @@
 
                 if (
                     state?.hostReady &&
-                    Date.now() - hostSeenAt < 3500
+                    Date.now() - hostSeenAt < 3500 &&
+                    String(state?.phase || '') === 'error'
                 ) {
+                    reject(
+                        new Error(
+                            state.message ||
+                            'No fue posible iniciar el motor WebRTC.'
+                        )
+                    );
+                    return;
+                }
+
+                if (hostUsable()) {
                     resolve(true);
                     return;
                 }
