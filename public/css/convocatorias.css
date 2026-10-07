@@ -3296,20 +3296,20 @@
 }
 
 .convocatoria-month-card.is-current-month {
-    border-color: #4167db;
+    border-color: var(--color-primary);
     background:
-        radial-gradient(circle at 88% 18%, rgba(65, 103, 219, .08), transparent 34%),
+        radial-gradient(circle at 88% 18%, rgba(39, 58, 138, .08), transparent 34%),
         linear-gradient(135deg, #ffffff 0%, #f4f7ff 100%);
     box-shadow:
-        0 12px 28px rgba(48, 79, 176, .11),
-        inset 0 0 0 1px rgba(65, 103, 219, .08);
+        0 12px 28px rgba(39, 58, 138, .11),
+        inset 0 0 0 1px rgba(39, 58, 138, .08);
 }
 
 .convocatoria-month-card.is-current-month:hover {
-    border-color: #3459cf;
+    border-color: var(--color-primary-dark);
     box-shadow:
-        0 16px 32px rgba(48, 79, 176, .15),
-        inset 0 0 0 1px rgba(65, 103, 219, .10);
+        0 16px 32px rgba(39, 58, 138, .15),
+        inset 0 0 0 1px rgba(39, 58, 138, .10);
 }
 
 .convocatoria-month-current-badge {
@@ -3323,13 +3323,13 @@
     align-items: center;
     justify-content: center;
     border-radius: 9px;
-    background: linear-gradient(135deg, #3e61cf 0%, #456ddd 100%);
+    background: var(--color-primary);
     color: #ffffff;
     font-family: 'Manrope', sans-serif;
     font-size: 10px;
     font-weight: 800;
     line-height: 1;
-    box-shadow: 0 5px 12px rgba(49, 78, 171, .22);
+    box-shadow: 0 5px 12px rgba(39, 58, 138, .22);
     white-space: nowrap;
 }
 
@@ -3345,7 +3345,7 @@
 }
 
 .convocatoria-month-card.is-current-month .convocatoria-month-watermark {
-    color: rgba(65, 103, 219, .07);
+    color: rgba(39, 58, 138, .07);
 }
 
 .convocatoria-month-card-header,
@@ -3356,21 +3356,21 @@
 }
 
 .convocatoria-month-card.is-current-month .convocatoria-month-count {
-    background: #edf2ff;
-    color: #2348b5;
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
 }
 
 .convocatoria-month-card.is-current-month .convocatoria-month-button {
-    border-color: #2f4aa5;
-    background: linear-gradient(135deg, #29408f 0%, #354fb5 100%);
+    border-color: var(--color-primary);
+    background: var(--color-primary);
     color: #ffffff;
-    box-shadow: 0 8px 18px rgba(41, 64, 143, .18);
+    box-shadow: 0 8px 18px rgba(39, 58, 138, .18);
 }
 
 .convocatoria-month-card.is-current-month .convocatoria-month-button:hover,
 .convocatoria-month-card.is-current-month .convocatoria-month-button:focus {
-    border-color: #263e91;
-    background: linear-gradient(135deg, #23387f 0%, #2f49a7 100%);
+    border-color: var(--color-primary-dark);
+    background: var(--color-primary-dark);
     color: #ffffff;
 }
 
@@ -3465,7 +3465,7 @@
 }
 
 .convocatoria-month-dot.is-proxima {
-    background-color: #4f8ee8;
+    background-color: var(--color-primary);
 }
 
 .convocatoria-month-dot.is-finalizada,
@@ -3503,8 +3503,8 @@
 }
 
 .convocatoria-month-status.is-proxima {
-    background-color: #eaf3ff;
-    color: #1e67c6;
+    background-color: var(--color-primary-soft);
+    color: var(--color-primary);
 }
 
 .convocatoria-month-status.is-finalizada,
