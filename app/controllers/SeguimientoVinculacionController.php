@@ -2695,6 +2695,10 @@ class SeguimientoVinculacionController
             return 'Aliado';
         }
 
+        if ((int)$pasoActual === 11 && strpos($titulo, 'coordina') !== false) {
+            return 'Reunión en coordinación';
+        }
+
         if ((int)$pasoActual === 12) {
             if (strpos($titulo, 'programad') !== false) {
                 return 'Reunión programada';
@@ -2708,6 +2712,16 @@ class SeguimientoVinculacionController
             }
 
             return 'Reunión y acuerdos';
+        }
+
+        if (
+            (int)$pasoActual === 13 &&
+            (
+                strpos($titulo, 'seguimiento de convenio') !== false ||
+                strpos($titulo, 'convenio en proceso') !== false
+            )
+        ) {
+            return 'Convenio en proceso';
         }
 
         $etiquetas = [
