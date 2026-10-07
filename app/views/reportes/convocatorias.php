@@ -15,6 +15,12 @@ $porTipo = is_array($reporteConvocatorias['por_tipo'] ?? null)
     ? $reporteConvocatorias['por_tipo']
     : [];
 
+$publicacionesPorUsuario = is_array(
+    $reporteConvocatorias['publicaciones_por_usuario'] ?? null
+)
+    ? $reporteConvocatorias['publicaciones_por_usuario']
+    : [];
+
 $detalle = is_array($reporteConvocatorias['detalle'] ?? null)
     ? $reporteConvocatorias['detalle']
     : [];
@@ -242,6 +248,89 @@ for ($indiceMes = 0; $indiceMes < max(count($mesesBachillerato), count($mesesTit
                 <p class="metric-label">Cobertura territorial</p>
             </div>
         </article>
+    </section>
+
+    <div class="territorial-section-title">
+        <h2>PUBLICACIONES POR USUARIO</h2>
+        <p>Conteo de convocatorias registradas por cada usuario que ha realizado publicaciones.</p>
+    </div>
+
+    <section class="dashboard-panel convocatoria-report-table-panel mb-4">
+        <div class="table-responsive">
+            <table class="table users-table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Usuario</th>
+                        <th>Rol</th>
+                        <th class="text-end">Publicaciones</th>
+                        <th class="text-end">Activas</th>
+                        <th class="text-end">Inactivas</th>
+                        <th>Última publicación</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if (empty($publicacionesPorUsuario)): ?>
+                        <tr>
+                            <td colspan="6">
+                                <div class="empty-table-message">
+                                    No hay publicaciones asociadas a usuarios.
+                                </div>
+                            </td>
+                        </tr>
+                    <?php else: ?>
+                        <?php foreach ($publicacionesPorUsuario as $usuarioPublicador): ?>
+                            <?php
+                            $nombrePublicador = trim(
+                                (string)($usuarioPublicador['nombre'] ?? '') . ' ' .
+                                (string)($usuarioPublicador['apellidos'] ?? '')
+                            );
+
+                            if ($nombrePublicador === '') {
+                                $nombrePublicador = trim(
+                                    (string)($usuarioPublicador['usuario'] ?? '')
+                                );
+                            }
+
+                            if ($nombrePublicador === '') {
+                                $nombrePublicador = 'Usuario no identificado';
+                            }
+
+                            $cuentaPublicador = trim(
+                                (string)($usuarioPublicador['usuario'] ?? '')
+                            );
+                            ?>
+                            <tr>
+                                <td>
+                                    <strong><?= $texto($nombrePublicador) ?></strong>
+                                    <?php if ($cuentaPublicador !== ''): ?>
+                                        <small class="d-block text-muted">
+                                            @<?= $texto($cuentaPublicador) ?>
+                                        </small>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <?= $texto($usuarioPublicador['rol'] ?? '—') ?>
+                                </td>
+                                <td class="text-end">
+                                    <strong>
+                                        <?= (int)($usuarioPublicador['total_publicaciones'] ?? 0) ?>
+                                    </strong>
+                                </td>
+                                <td class="text-end">
+                                    <?= (int)($usuarioPublicador['activas'] ?? 0) ?>
+                                </td>
+                                <td class="text-end">
+                                    <?= (int)($usuarioPublicador['inactivas'] ?? 0) ?>
+                                </td>
+                                <td>
+                                    <?= $texto($fecha($usuarioPublicador['ultima_publicacion'] ?? '')) ?>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
     </section>
 
     <div class="territorial-section-title">
