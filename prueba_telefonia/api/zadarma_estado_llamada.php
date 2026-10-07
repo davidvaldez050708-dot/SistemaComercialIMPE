@@ -4,6 +4,8 @@ session_start();
 require_once dirname(__DIR__, 2) . '/app/services/ZadarmaCallLookupService.php';
 require_once dirname(__DIR__, 2) .
     '/app/services/TelefoniaExtensionService.php';
+require_once dirname(__DIR__, 2) .
+    '/app/services/ZadarmaWebhookEventStoreService.php';
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
@@ -156,53 +158,79 @@ if (!preg_match('/^\d{3,6}$/', $extension)) {
     ], 422);
 }
 
-if (!is_file($logPath)) {
-    responderJson(['ok' => true, 'call' => null]);
-}
-
 $ahora = time();
 $desde = $desdeSolicitado > 0
     ? max($ahora - 900, min($desdeSolicitado, $ahora + 5))
     : $ahora - 120;
 $desde -= 10;
 
-$lineas = file($logPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
 $registros = [];
-
-foreach ($lineas as $linea) {
-    $fila = json_decode($linea, true);
-    if (is_array($fila)) {
-        $registros[] = $fila;
-    }
-}
-
 $pbxCallId = '';
 $inicioSeleccionado = null;
+$eventStore = null;
 
-foreach ($registros as $registro) {
-    if (($registro['event'] ?? '') !== 'NOTIFY_OUT_START') {
-        continue;
+try {
+    $eventStore = new ZadarmaWebhookEventStoreService();
+    $inicioPersistido = $eventStore->buscarInicioSalienteReciente(
+        $extension,
+        $destino,
+        $desde
+    );
+
+    if ($inicioPersistido) {
+        $pbxCallId = trim((string)($inicioPersistido['pbx_call_id'] ?? ''));
+        $inicioSeleccionado = $inicioPersistido;
+
+        if ($pbxCallId !== '') {
+            $registros = $eventStore->obtenerPorPbxCallId($pbxCallId);
+        }
+    }
+} catch (Throwable $errorStore) {
+    error_log('[zadarma_estado_store] ' . $errorStore->getMessage());
+}
+
+/*
+ * Compatibilidad con llamadas registradas antes de habilitar la tabla o
+ * contingencia si la persistencia de eventos no estuviera disponible.
+ */
+if ($pbxCallId === '' && is_file($logPath)) {
+    $lineas = file(
+        $logPath,
+        FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES
+    ) ?: [];
+
+    foreach ($lineas as $linea) {
+        $fila = json_decode($linea, true);
+        if (is_array($fila)) {
+            $registros[] = $fila;
+        }
     }
 
-    if (trim((string)($registro['internal'] ?? '')) !== $extension) {
-        continue;
-    }
+    foreach ($registros as $registro) {
+        if (($registro['event'] ?? '') !== 'NOTIFY_OUT_START') {
+            continue;
+        }
 
-    if (!telefonosCoinciden((string)($registro['destination'] ?? ''), $destino)) {
-        continue;
-    }
+        if (trim((string)($registro['internal'] ?? '')) !== $extension) {
+            continue;
+        }
 
-    if (timestampRegistro($registro) < $desde) {
-        continue;
-    }
+        if (!telefonosCoinciden((string)($registro['destination'] ?? ''), $destino)) {
+            continue;
+        }
 
-    $id = trim((string)($registro['pbx_call_id'] ?? ''));
-    if ($id === '') {
-        continue;
-    }
+        if (timestampRegistro($registro) < $desde) {
+            continue;
+        }
 
-    $pbxCallId = $id;
-    $inicioSeleccionado = $registro;
+        $id = trim((string)($registro['pbx_call_id'] ?? ''));
+        if ($id === '') {
+            continue;
+        }
+
+        $pbxCallId = $id;
+        $inicioSeleccionado = $registro;
+    }
 }
 
 if ($pbxCallId === '' && $forzarFinal) {
