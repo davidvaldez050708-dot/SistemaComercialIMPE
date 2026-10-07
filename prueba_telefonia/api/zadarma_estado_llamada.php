@@ -2,6 +2,8 @@
 session_start();
 
 require_once dirname(__DIR__, 2) . '/app/services/ZadarmaCallLookupService.php';
+require_once dirname(__DIR__, 2) .
+    '/app/services/TelefoniaExtensionService.php';
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
@@ -117,18 +119,35 @@ if ($destino === '' || strlen(soloDigitos($destino)) < 8) {
 }
 
 $rootPath = dirname(__DIR__, 2);
-$configPath = $rootPath . '/config/zadarma_config.php';
 $logPath = $rootPath . '/storage/zadarma_webhooks.log';
 
-if (!is_file($configPath)) {
-    responderJson(['ok' => false, 'mensaje' => 'Falta config/zadarma_config.php.'], 500);
+try {
+    $asignacionTelefonica =
+        (new TelefoniaExtensionService())
+            ->resolverParaUsuario($usuarioId);
+} catch (Throwable $e) {
+    responderJson([
+        'ok' => false,
+        'mensaje' => 'No fue posible consultar la extensión telefónica del usuario.'
+    ], 500);
 }
 
-$config = require $configPath;
-$extension = trim((string)($config['pbx_extension'] ?? ''));
+if (!$asignacionTelefonica) {
+    responderJson([
+        'ok' => false,
+        'mensaje' => 'Tu usuario no tiene una extensión Zadarma activa asignada.'
+    ], 422);
+}
+
+$extension = trim(
+    (string)($asignacionTelefonica['extension'] ?? '')
+);
 
 if (!preg_match('/^\d{3,6}$/', $extension)) {
-    responderJson(['ok' => false, 'mensaje' => 'La extensión Zadarma no está configurada correctamente.'], 500);
+    responderJson([
+        'ok' => false,
+        'mensaje' => 'La extensión Zadarma asignada no es válida.'
+    ], 422);
 }
 
 if (!is_file($logPath)) {

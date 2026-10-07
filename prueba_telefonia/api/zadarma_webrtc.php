@@ -1,6 +1,9 @@
 <?php
 session_start();
 
+require_once dirname(__DIR__, 2) .
+    '/app/services/TelefoniaExtensionService.php';
+
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
@@ -58,20 +61,48 @@ require_once $autoloadPath;
 $config = require $configPath;
 $apiKey = trim((string)($config['api_key'] ?? ''));
 $apiSecret = trim((string)($config['api_secret'] ?? ''));
-$extension = trim((string)($config['pbx_extension'] ?? ''));
 
-if ($apiKey === '' || $apiSecret === '' || $extension === '') {
+if ($apiKey === '' || $apiSecret === '') {
     responderJson([
         'ok' => false,
         'mensaje' => 'La configuración privada de Zadarma está incompleta.'
     ], 500);
 }
 
-if (!preg_match('/^\d{3}$/', $extension)) {
+try {
+    $asignacionTelefonica =
+        (new TelefoniaExtensionService())
+            ->resolverParaUsuario($usuarioId);
+} catch (Throwable $e) {
     responderJson([
         'ok' => false,
-        'mensaje' => 'La extensión PBX configurada no es válida.'
+        'mensaje' => 'No fue posible consultar la extensión telefónica del usuario.'
     ], 500);
+}
+
+if (!$asignacionTelefonica) {
+    responderJson([
+        'ok' => false,
+        'mensaje' => 'Tu usuario no tiene una extensión Zadarma activa asignada.'
+    ], 422);
+}
+
+if (empty($asignacionTelefonica['permite_salientes'])) {
+    responderJson([
+        'ok' => false,
+        'mensaje' => 'Tu extensión no tiene habilitadas llamadas salientes.'
+    ], 403);
+}
+
+$extension = trim(
+    (string)($asignacionTelefonica['extension'] ?? '')
+);
+
+if (!preg_match('/^\d{3,6}$/', $extension)) {
+    responderJson([
+        'ok' => false,
+        'mensaje' => 'La extensión Zadarma asignada no es válida.'
+    ], 422);
 }
 
 try {
@@ -107,6 +138,8 @@ try {
         'sip_login' => $sipLogin,
         'webrtc_key' => $webrtcKey,
         'expires_in_hours' => 72,
+        'extension_source' =>
+            (string)($asignacionTelefonica['origen'] ?? 'USUARIO'),
     ]);
 } catch (\Zadarma_API\ApiException $e) {
     responderJson([
