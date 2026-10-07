@@ -40,10 +40,19 @@ class SeguimientoHistorialImportadoService
             ];
         }
 
-        if (
-            strpos($texto, 'reunion excel:') !== false ||
-            strpos($texto, 'coordinando una fecha') !== false
-        ) {
+        if (strpos($texto, 'coordinando una fecha') !== false) {
+            return [
+                'paso' => 11,
+                'clave' => 'REUNION_HISTORICA_COORDINACION',
+                'etapa' => 'Reunión en coordinación',
+                'titulo' => 'Continuar coordinación de reunión',
+                'descripcion' =>
+                    'El historial migrado desde Excel indica que ya se estaba coordinando una fecha de reunión. No se inventa una fecha ni se registra una reunión realizada.',
+                'evidencia' => 'Coordinación de reunión registrada en Excel'
+            ];
+        }
+
+        if (strpos($texto, 'reunion excel:') !== false) {
             return [
                 'paso' => 11,
                 'clave' => 'REUNION_HISTORICA_FECHA',
