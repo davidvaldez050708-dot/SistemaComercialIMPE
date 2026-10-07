@@ -548,65 +548,12 @@
                     );
             }
 
-            if (!els) {
-                return;
-            }
-
-            if (
-                isLinkage &&
-                currentSeguimientoId > 0
-            ) {
-                els.institution.textContent =
-                    currentInstitution ||
-                    'Institución';
-                els.number.textContent =
-                    currentPhone || '—';
-            }
-
-            els.extension.textContent =
-                extension
-                    ? 'Extensión ' + extension
-                    : 'Extensión —';
-
             if (
                 telephonyState.active &&
                 isLinkage
             ) {
                 activeCall = true;
                 pendingMetadata = null;
-
-                els.status.textContent =
-                    statusLabel(
-                        telephonyState.status ||
-                        telephonyState.phase
-                    );
-                els.timer.textContent =
-                    formatDuration(
-                        stateDuration(
-                            telephonyState
-                        )
-                    );
-                els.start.disabled = true;
-                els.hangup.disabled =
-                    String(
-                        telephonyState.status ||
-                        ''
-                    ) === 'finishing';
-                els.mute.disabled =
-                    String(
-                        telephonyState.status ||
-                        ''
-                    ) !== 'in-progress';
-                els.mute.innerHTML =
-                    telephonyState.muted
-                        ? '<i class="bi bi-mic"></i> Activar micrófono'
-                        : '<i class="bi bi-mic-mute"></i> Silenciar';
-                els.result.classList.add(
-                    'd-none'
-                );
-                els.register.classList.add(
-                    'd-none'
-                );
                 return;
             }
 
@@ -639,29 +586,6 @@
                         }
                     );
                 lastFinishedToken = token;
-
-                els.status.textContent =
-                    statusLabel(
-                        pendingMetadata.status
-                    );
-                els.timer.textContent =
-                    formatDuration(
-                        pendingMetadata.duration
-                    );
-                els.start.disabled =
-                    !phoneReady;
-                els.mute.disabled = true;
-                els.hangup.disabled = true;
-                els.resultText.textContent =
-                    buildFinishedText(
-                        pendingMetadata
-                    );
-                els.result.classList.remove(
-                    'd-none'
-                );
-                els.register.classList.remove(
-                    'd-none'
-                );
                 return;
             }
 
@@ -671,8 +595,6 @@
                     'finished'
             ) {
                 activeCall = false;
-                els.hangup.disabled = true;
-                els.mute.disabled = true;
             }
         };
 
@@ -691,31 +613,12 @@
                     .IMPE_ZADARMA_TELEPHONY_READY =
                     true;
 
-                if (els) {
-                    els.extension.textContent =
-                        extension
-                            ? 'Extensión ' +
-                                extension
-                            : 'Extensión —';
-
-                    if (
-                        !activeCall &&
-                        !pendingMetadata
-                    ) {
-                        els.status.textContent =
-                            'Teléfono listo';
-                        els.start.disabled =
-                            false;
-                    }
-                }
-
                 return info;
             });
         };
 
         async function makeCall() {
             if (
-                !phoneReady ||
                 activeCall ||
                 !currentPhone
             ) {
@@ -725,11 +628,6 @@
             try {
                 activeCall = true;
                 pendingMetadata = null;
-                els.status.textContent =
-                    'Marcando…';
-                els.start.disabled = true;
-                els.mute.disabled = true;
-                els.hangup.disabled = false;
 
                 await phone.startCall({
                     destination: currentPhone,
@@ -746,11 +644,6 @@
                 });
             } catch (error) {
                 activeCall = false;
-                els.start.disabled =
-                    !phoneReady;
-                els.hangup.disabled = true;
-                els.status.textContent =
-                    'No se pudo iniciar la llamada';
 
                 mostrarToast(
                     error.message ||
@@ -766,10 +659,16 @@
 
             if (estadoActual?.active) {
                 mostrarToast(
-                    'Ya existe una llamada activa. Usa el control flotante para continuarla o finalizarla.',
+                    'Ya existe una llamada activa. Continúa desde el teléfono flotante.',
                     true
                 );
-                phone.openContext(false);
+
+                if (
+                    typeof phone.expand ===
+                    'function'
+                ) {
+                    phone.expand();
+                }
                 return;
             }
 
@@ -817,10 +716,6 @@
                 return;
             }
 
-            if (!els) {
-                createModal();
-            }
-
             currentPhone = telefono;
             currentSeguimientoId =
                 seguimientoId;
@@ -834,38 +729,12 @@
 
             pendingMetadata = null;
             awaitingInteractionSave = false;
-            resetModal();
-
-            els.institution.textContent =
-                currentInstitution ||
-                'Institución';
-            els.number.textContent =
-                currentPhone;
-            els.extension.textContent =
-                extension
-                    ? 'Extensión ' + extension
-                    : 'Extensión —';
-            els.status.textContent =
-                'Preparando teléfono…';
-            modal.show();
 
             /*
-             * Se abre el host dentro del gesto del usuario para que
-             * el navegador permita mantener el WebRTC fuera de esta página.
+             * El botón de llamada inicia directamente el motor persistente.
+             * Ya no se abre un segundo modal de telefonía.
              */
-            ensureReady(true).catch(
-                function (error) {
-                    els.status.textContent =
-                        'Telefonía no disponible';
-                    els.start.disabled = true;
-
-                    mostrarToast(
-                        error.message ||
-                        'No fue posible iniciar la telefonía WebRTC.',
-                        true
-                    );
-                }
-            );
+            void makeCall();
         };
 
         const agregarResumenTecnico =
@@ -958,20 +827,6 @@
 
             const metadata =
                 pendingMetadata;
-
-            if (modal) {
-                const modalEl =
-                    document.getElementById(
-                        'modalLlamadaVinculacion'
-                    );
-
-                if (modalEl) {
-                    modalEl.dataset
-                        .allowPersistentHide = '1';
-                }
-
-                modal.hide();
-            }
 
             const boton =
                 offcanvas.querySelector(
@@ -1624,14 +1479,16 @@
                     return;
                 }
 
-                if (!els) {
-                    createModal();
-                }
-
                 applyState(
                     telephonyState
                 );
-                modal.show();
+
+                if (
+                    typeof phone.expand ===
+                    'function'
+                ) {
+                    phone.expand();
+                }
             }
         );
 
@@ -1650,10 +1507,6 @@
                         ?.finalMetadata
                 ) {
                     return;
-                }
-
-                if (!els) {
-                    createModal();
                 }
 
                 applyState(

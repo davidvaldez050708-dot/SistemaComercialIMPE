@@ -3,39 +3,42 @@
     right: 18px;
     bottom: 18px;
     z-index: 1190;
-    width: min(340px, calc(100vw - 24px));
+    width: min(560px, calc(100vw - 28px));
     overflow: hidden;
-    border: 1px solid #d8e1ed;
-    border-radius: 14px;
-    background: #ffffff;
-    box-shadow: 0 18px 42px rgba(23, 38, 61, .19);
+    border: 1px solid #d7e0ec;
+    border-radius: 16px;
+    background: #fff;
+    box-shadow: 0 20px 48px rgba(22, 36, 58, .2);
     color: var(--color-text-primary, #172033);
     user-select: none;
     touch-action: none;
+    transition:
+        width .18s ease,
+        box-shadow .18s ease;
 }
 
 .persistent-phone-panel[hidden] {
     display: none !important;
 }
 
-body.impe-call-modal-expanded .persistent-phone-panel {
-    display: none !important;
+.persistent-phone-panel.is-compact {
+    width: min(345px, calc(100vw - 20px));
 }
 
 .persistent-phone-panel.is-dragging {
     cursor: grabbing;
-    box-shadow: 0 22px 50px rgba(23, 38, 61, .24);
+    box-shadow: 0 24px 56px rgba(22, 36, 58, .26);
 }
 
 .persistent-phone-header {
-    min-height: 57px;
-    padding: 10px 11px;
+    min-height: 72px;
+    padding: 14px 16px;
     display: grid;
-    grid-template-columns: 13px minmax(0, 1fr) 31px;
+    grid-template-columns: 12px minmax(0, 1fr) auto auto;
     align-items: center;
-    gap: 9px;
-    border-bottom: 1px solid #e8edf4;
-    background: #ffffff;
+    gap: 10px;
+    border-bottom: 1px solid #e6ebf2;
+    background: #fff;
     cursor: grab;
 }
 
@@ -69,73 +72,113 @@ body.impe-call-modal-expanded .persistent-phone-panel {
 }
 
 .persistent-phone-heading span,
-.persistent-phone-heading strong,
-.persistent-phone-heading small {
+.persistent-phone-heading strong {
     display: block;
 }
 
 .persistent-phone-heading span {
-    margin-bottom: 2px;
-    color: #718096;
-    font-size: 8px;
+    margin-bottom: 3px;
+    color: #77849a;
+    font-size: 9px;
     font-weight: 800;
-    letter-spacing: .065em;
+    letter-spacing: .07em;
 }
 
 .persistent-phone-heading strong {
     overflow: hidden;
     color: var(--color-text-primary, #172033);
-    font-size: 11.5px;
+    font-size: 15px;
     font-weight: 800;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-.persistent-phone-heading small {
-    margin-top: 1px;
-    overflow: hidden;
-    color: #7b8798;
-    font-size: 9px;
-    font-weight: 600;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+.persistent-phone-header-timer {
+    min-width: 52px;
+    color: #172033;
+    font-size: 18px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
 }
 
-.persistent-phone-open {
-    width: 31px;
-    height: 31px;
-    display: grid;
-    place-items: center;
-    border: 1px solid #dbe3ee;
+.persistent-phone-toggle {
+    min-height: 32px;
+    padding: 0 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    border: 1px solid #d8e1ed;
     border-radius: 8px;
     background: #f8fafc;
     color: var(--color-primary, #273a8a);
-    font-size: 11px;
+    font: inherit;
+    font-size: 9.5px;
+    font-weight: 800;
     cursor: pointer;
 }
 
-.persistent-phone-open:hover,
-.persistent-phone-open:focus-visible {
+.persistent-phone-toggle:hover,
+.persistent-phone-toggle:focus-visible {
     border-color: #c5d3e7;
     background: var(--color-primary-soft, #eef4ff);
     outline: none;
 }
 
+.persistent-phone-body {
+    padding: 14px 16px 16px;
+}
+
+.persistent-phone-number {
+    min-height: 44px;
+    padding: 11px 13px;
+    display: flex;
+    align-items: center;
+    border: 1px solid #dfe6ef;
+    border-radius: 10px;
+    background: #f8fafc;
+    color: #51627e;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: .01em;
+}
+
+.persistent-phone-origin {
+    padding: 10px 2px 9px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    color: #69778c;
+    font-size: 10px;
+    font-weight: 650;
+}
+
+.persistent-phone-origin i {
+    color: var(--color-primary, #273a8a);
+}
+
+.persistent-phone-origin strong {
+    color: #506078;
+    font-weight: 800;
+}
+
 .persistent-phone-state {
-    min-height: 45px;
-    padding: 8px 11px;
+    min-height: 58px;
+    padding: 10px 13px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    background: #f8fafc;
+    gap: 14px;
+    border-radius: 11px;
+    background: #f5f7fb;
 }
 
 .persistent-phone-state span {
     min-width: 0;
     overflow: hidden;
-    color: #59687e;
-    font-size: 9.5px;
+    color: #69778c;
+    font-size: 10.5px;
     font-weight: 700;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -144,16 +187,16 @@ body.impe-call-modal-expanded .persistent-phone-panel {
 .persistent-phone-state strong {
     flex: 0 0 auto;
     color: #172033;
-    font-size: 17px;
+    font-size: 25px;
     font-weight: 800;
     font-variant-numeric: tabular-nums;
 }
 
 .persistent-phone-actions {
-    padding: 9px 11px 11px;
+    margin-top: 12px;
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 7px;
+    gap: 9px;
 }
 
 .persistent-phone-actions[hidden] {
@@ -162,16 +205,17 @@ body.impe-call-modal-expanded .persistent-phone-panel {
 
 .persistent-phone-action,
 .persistent-phone-result {
-    min-height: 34px;
+    min-height: 44px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
-    border: 1px solid #dbe3ee;
-    border-radius: 8px;
-    background: #ffffff;
+    gap: 7px;
+    border: 1px solid #d8e1ed;
+    border-radius: 9px;
+    background: #fff;
     color: #34445f;
-    font-size: 9.5px;
+    font: inherit;
+    font-size: 10.5px;
     font-weight: 800;
     cursor: pointer;
 }
@@ -201,17 +245,18 @@ body.impe-call-modal-expanded .persistent-phone-panel {
     color: #9f1f16;
 }
 
-.persistent-phone-action:disabled {
+.persistent-phone-action:disabled,
+.persistent-phone-compact-button:disabled {
     opacity: .5;
     cursor: not-allowed;
 }
 
 .persistent-phone-result {
-    width: calc(100% - 22px);
-    margin: 9px 11px 11px;
+    width: 100%;
+    margin-top: 12px;
     border-color: var(--color-primary, #273a8a);
     background: var(--color-primary, #273a8a);
-    color: #ffffff;
+    color: #fff;
 }
 
 .persistent-phone-result[hidden] {
@@ -221,14 +266,123 @@ body.impe-call-modal-expanded .persistent-phone-panel {
 .persistent-phone-result:hover,
 .persistent-phone-result:focus-visible {
     background: #1f3178;
-    color: #ffffff;
+    color: #fff;
     outline: none;
+}
+
+.persistent-phone-compact-actions {
+    display: none;
+}
+
+.persistent-phone-panel.is-compact .persistent-phone-header {
+    min-height: 58px;
+    padding: 9px 10px;
+    grid-template-columns: 11px minmax(0, 1fr) auto 32px;
+    gap: 8px;
+    border-bottom: 0;
+}
+
+.persistent-phone-panel.is-compact .persistent-phone-heading span {
+    margin-bottom: 1px;
+    font-size: 7.5px;
+}
+
+.persistent-phone-panel.is-compact .persistent-phone-heading strong {
+    font-size: 10.5px;
+}
+
+.persistent-phone-panel.is-compact .persistent-phone-header-timer {
+    min-width: 45px;
+    font-size: 14px;
+}
+
+.persistent-phone-panel.is-compact .persistent-phone-toggle {
+    width: 32px;
+    min-width: 32px;
+    height: 32px;
+    padding: 0;
+}
+
+.persistent-phone-panel.is-compact .persistent-phone-toggle span {
+    display: none;
+}
+
+.persistent-phone-panel.is-compact .persistent-phone-body {
+    display: none;
+}
+
+.persistent-phone-panel.is-compact .persistent-phone-compact-actions {
+    padding: 0 10px 10px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    background: #fff;
+}
+
+.persistent-phone-compact-button {
+    width: 31px;
+    height: 31px;
+    display: grid;
+    place-items: center;
+    border: 1px solid #dbe3ee;
+    border-radius: 8px;
+    background: #fff;
+    color: #34445f;
+    font: inherit;
+    font-size: 11px;
+    cursor: pointer;
+}
+
+.persistent-phone-compact-button.is-active {
+    border-color: #c7d5ef;
+    background: #eef4ff;
+    color: var(--color-primary, #273a8a);
+}
+
+.persistent-phone-compact-button.is-danger {
+    border-color: #efc3c3;
+    color: #b42318;
+}
+
+.persistent-phone-compact-result {
+    min-height: 31px;
+    padding: 0 9px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    border: 1px solid var(--color-primary, #273a8a);
+    border-radius: 8px;
+    background: var(--color-primary, #273a8a);
+    color: #fff;
+    font: inherit;
+    font-size: 9px;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.persistent-phone-compact-result[hidden] {
+    display: none !important;
 }
 
 @media (max-width: 575.98px) {
     .persistent-phone-panel {
         right: 10px;
         bottom: 10px;
-        width: min(320px, calc(100vw - 20px));
+        width: min(520px, calc(100vw - 20px));
+    }
+
+    .persistent-phone-panel.is-compact {
+        width: min(330px, calc(100vw - 20px));
+    }
+
+    .persistent-phone-toggle span {
+        display: none;
+    }
+
+    .persistent-phone-toggle {
+        width: 32px;
+        min-width: 32px;
+        padding: 0;
     }
 }

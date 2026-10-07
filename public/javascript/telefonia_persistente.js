@@ -10,6 +10,7 @@
     const stateKey = 'impe:telephony:state:' + userId;
     const commandKey = 'impe:telephony:command:' + userId;
     const positionKey = 'impe:telephony:position:' + userId;
+    const viewKey = 'impe:telephony:view:' + userId;
     const channelName = 'impe-telephony-' + userId;
     const hostWindowName = 'impe_telephony_host_' + userId;
 
@@ -36,6 +37,15 @@
     let hostSeenAt = 0;
     let hostWindow = null;
     let drag = null;
+    let compact = false;
+
+    try {
+        compact =
+            localStorage.getItem(viewKey) ===
+            'compact';
+    } catch (error) {
+        compact = false;
+    }
 
     const emptyState = function () {
         return {
@@ -162,10 +172,42 @@
             return;
         }
 
-        state = Object.assign(emptyState(), nextState);
+        const previousActive =
+            Boolean(state?.active);
+        const previousToken =
+            String(state?.callToken || '');
+
+        state = Object.assign(
+            emptyState(),
+            nextState
+        );
 
         if (state.hostReady) {
             hostSeenAt = Date.now();
+        }
+
+        const startedNewCall =
+            state.active &&
+            (
+                !previousActive ||
+                (
+                    state.callToken &&
+                    String(state.callToken) !==
+                        previousToken
+                )
+            );
+
+        if (startedNewCall) {
+            compact = false;
+
+            try {
+                localStorage.setItem(
+                    viewKey,
+                    'expanded'
+                );
+            } catch (error) {
+                // El modo visual no afecta la llamada.
+            }
         }
 
         renderPanel();
@@ -254,8 +296,8 @@
     const openHostSynchronously = function () {
         const features = [
             'popup=yes',
-            'width=410',
-            'height=170',
+            'width=330',
+            'height=140',
             'resizable=yes',
             'scrollbars=no'
         ].join(',');
@@ -735,6 +777,34 @@
         savePosition();
     };
 
+    const saveViewMode = function () {
+        try {
+            localStorage.setItem(
+                viewKey,
+                compact
+                    ? 'compact'
+                    : 'expanded'
+            );
+        } catch (error) {
+            // El modo visual no es crítico.
+        }
+    };
+
+    const setCompact = function (value) {
+        compact = Boolean(value);
+        saveViewMode();
+        renderPanel();
+
+        window.setTimeout(
+            clampPanel,
+            0
+        );
+    };
+
+    const expand = function () {
+        setCompact(false);
+    };
+
     const createPanel = function () {
         if (panel) {
             return;
@@ -751,30 +821,50 @@
             '<header class="persistent-phone-header" data-phone-drag-handle>' +
                 '<span class="persistent-phone-live" aria-hidden="true"><i></i></span>' +
                 '<div class="persistent-phone-heading">' +
-                    '<span data-phone-eyebrow>LLAMADA EN CURSO</span>' +
+                    '<span data-phone-eyebrow>LLAMADA INSTITUCIONAL</span>' +
                     '<strong data-phone-title>Telefonía</strong>' +
-                    '<small data-phone-number>—</small>' +
                 '</div>' +
-                '<button type="button" class="persistent-phone-open" data-phone-open title="Abrir llamada" aria-label="Abrir llamada">' +
-                    '<i class="bi bi-arrows-angle-expand"></i>' +
+                '<strong class="persistent-phone-header-timer" data-phone-header-timer>00:00</strong>' +
+                '<button type="button" class="persistent-phone-toggle" data-phone-toggle title="Minimizar" aria-label="Minimizar llamada">' +
+                    '<i class="bi bi-dash-lg"></i>' +
+                    '<span>Minimizar</span>' +
                 '</button>' +
             '</header>' +
-            '<div class="persistent-phone-state">' +
-                '<span data-phone-status>Preparando…</span>' +
-                '<strong data-phone-timer>00:00</strong>' +
-            '</div>' +
-            '<div class="persistent-phone-actions" data-phone-active-actions>' +
-                '<button type="button" class="persistent-phone-action" data-phone-mute>' +
-                    '<i class="bi bi-mic-mute"></i><span>Silenciar</span>' +
+            '<div class="persistent-phone-body">' +
+                '<div class="persistent-phone-number" data-phone-number>—</div>' +
+                '<div class="persistent-phone-origin">' +
+                    '<i class="bi bi-building-check" aria-hidden="true"></i>' +
+                    '<span>Desde: <strong data-phone-extension>Extensión —</strong> · Telefonía IP</span>' +
+                '</div>' +
+                '<div class="persistent-phone-state">' +
+                    '<span data-phone-status>Preparando…</span>' +
+                    '<strong data-phone-timer>00:00</strong>' +
+                '</div>' +
+                '<div class="persistent-phone-actions" data-phone-active-actions>' +
+                    '<button type="button" class="persistent-phone-action" data-phone-mute>' +
+                        '<i class="bi bi-mic-mute"></i><span>Silenciar</span>' +
+                    '</button>' +
+                    '<button type="button" class="persistent-phone-action is-danger" data-phone-hangup>' +
+                        '<i class="bi bi-telephone-x"></i><span>Colgar</span>' +
+                    '</button>' +
+                '</div>' +
+                '<button type="button" class="persistent-phone-result" data-phone-result hidden>' +
+                    '<i class="bi bi-journal-check"></i>' +
+                    '<span>Registrar resultado</span>' +
                 '</button>' +
-                '<button type="button" class="persistent-phone-action is-danger" data-phone-hangup>' +
-                    '<i class="bi bi-telephone-x"></i><span>Colgar</span>' +
-                '</button>' +
             '</div>' +
-            '<button type="button" class="persistent-phone-result" data-phone-result hidden>' +
-                '<i class="bi bi-journal-check"></i>' +
-                '<span>Registrar resultado</span>' +
-            '</button>';
+            '<div class="persistent-phone-compact-actions" data-phone-compact-actions>' +
+                '<button type="button" class="persistent-phone-compact-button" data-phone-compact-mute title="Silenciar" aria-label="Silenciar">' +
+                    '<i class="bi bi-mic-mute"></i>' +
+                '</button>' +
+                '<button type="button" class="persistent-phone-compact-button is-danger" data-phone-compact-hangup title="Colgar" aria-label="Colgar">' +
+                    '<i class="bi bi-telephone-x"></i>' +
+                '</button>' +
+                '<button type="button" class="persistent-phone-compact-result" data-phone-compact-result hidden>' +
+                    '<i class="bi bi-journal-check"></i>' +
+                    '<span>Registrar resultado</span>' +
+                '</button>' +
+            '</div>';
 
         document.body.appendChild(panel);
         restorePosition();
@@ -801,36 +891,48 @@
         );
 
         panel.querySelector(
-            '[data-phone-mute]'
-        )?.addEventListener(
-            'click',
-            toggleMute
-        );
-
-        panel.querySelector(
-            '[data-phone-hangup]'
-        )?.addEventListener(
-            'click',
-            hangup
-        );
-
-        panel.querySelector(
-            '[data-phone-open]'
+            '[data-phone-toggle]'
         )?.addEventListener(
             'click',
             function () {
-                openContext(false);
+                setCompact(!compact);
             }
         );
 
-        panel.querySelector(
-            '[data-phone-result]'
-        )?.addEventListener(
-            'click',
-            function () {
-                openContext(true);
-            }
-        );
+        [
+            '[data-phone-mute]',
+            '[data-phone-compact-mute]'
+        ].forEach(function (selector) {
+            panel.querySelector(selector)
+                ?.addEventListener(
+                    'click',
+                    toggleMute
+                );
+        });
+
+        [
+            '[data-phone-hangup]',
+            '[data-phone-compact-hangup]'
+        ].forEach(function (selector) {
+            panel.querySelector(selector)
+                ?.addEventListener(
+                    'click',
+                    hangup
+                );
+        });
+
+        [
+            '[data-phone-result]',
+            '[data-phone-compact-result]'
+        ].forEach(function (selector) {
+            panel.querySelector(selector)
+                ?.addEventListener(
+                    'click',
+                    function () {
+                        openContext(true);
+                    }
+                );
+        });
     };
 
     function renderPanel() {
@@ -849,6 +951,11 @@
             return;
         }
 
+        panel.classList.toggle(
+            'is-compact',
+            compact
+        );
+
         const title =
             panel.querySelector(
                 '[data-phone-title]'
@@ -856,6 +963,10 @@
         const number =
             panel.querySelector(
                 '[data-phone-number]'
+            );
+        const extensionEl =
+            panel.querySelector(
+                '[data-phone-extension]'
             );
         const status =
             panel.querySelector(
@@ -865,17 +976,33 @@
             panel.querySelector(
                 '[data-phone-timer]'
             );
+        const headerTimer =
+            panel.querySelector(
+                '[data-phone-header-timer]'
+            );
         const eyebrow =
             panel.querySelector(
                 '[data-phone-eyebrow]'
+            );
+        const toggle =
+            panel.querySelector(
+                '[data-phone-toggle]'
             );
         const mute =
             panel.querySelector(
                 '[data-phone-mute]'
             );
+        const compactMute =
+            panel.querySelector(
+                '[data-phone-compact-mute]'
+            );
         const hangupButton =
             panel.querySelector(
                 '[data-phone-hangup]'
+            );
+        const compactHangup =
+            panel.querySelector(
+                '[data-phone-compact-hangup]'
             );
         const activeActions =
             panel.querySelector(
@@ -885,10 +1012,22 @@
             panel.querySelector(
                 '[data-phone-result]'
             );
+        const compactResult =
+            panel.querySelector(
+                '[data-phone-compact-result]'
+            );
         const live =
             panel.querySelector(
                 '.persistent-phone-live'
             );
+
+        const duration =
+            formatDuration(
+                currentDuration()
+            );
+        const finished =
+            String(state.phase || '') ===
+                'finished';
 
         if (title) {
             title.textContent =
@@ -899,13 +1038,15 @@
 
         if (number) {
             number.textContent =
-                state.destination ||
-                (
-                    state.extension
-                        ? 'Extensión ' +
-                            state.extension
-                        : '—'
-                );
+                state.destination || '—';
+        }
+
+        if (extensionEl) {
+            extensionEl.textContent =
+                state.extension
+                    ? 'Extensión ' +
+                        state.extension
+                    : 'Extensión —';
         }
 
         if (status) {
@@ -914,20 +1055,31 @@
         }
 
         if (timer) {
-            timer.textContent =
-                formatDuration(
-                    currentDuration()
-                );
+            timer.textContent = duration;
         }
 
-        const finished =
-            String(state.phase || '') ===
-                'finished';
+        if (headerTimer) {
+            headerTimer.textContent =
+                duration;
+        }
 
         if (eyebrow) {
             eyebrow.textContent = finished
                 ? 'LLAMADA FINALIZADA'
-                : 'LLAMADA EN CURSO';
+                : 'LLAMADA INSTITUCIONAL';
+        }
+
+        if (toggle) {
+            toggle.title = compact
+                ? 'Expandir llamada'
+                : 'Minimizar llamada';
+            toggle.setAttribute(
+                'aria-label',
+                toggle.title
+            );
+            toggle.innerHTML = compact
+                ? '<i class="bi bi-arrows-angle-expand"></i><span>Expandir</span>'
+                : '<i class="bi bi-dash-lg"></i><span>Minimizar</span>';
         }
 
         live?.classList.toggle(
@@ -945,28 +1097,59 @@
                 !finished;
         }
 
-        if (mute) {
-            mute.disabled =
-                !state.active ||
-                String(state.status || '') !==
-                    'in-progress';
-            mute.classList.toggle(
-                'is-active',
-                Boolean(state.muted)
-            );
-            mute.innerHTML = state.muted
-                ? '<i class="bi bi-mic"></i><span>Activar micrófono</span>'
-                : '<i class="bi bi-mic-mute"></i><span>Silenciar</span>';
+        if (compactResult) {
+            compactResult.hidden =
+                !finished;
         }
 
-        if (hangupButton) {
-            hangupButton.disabled =
-                !state.active ||
-                String(state.status || '') ===
-                    'finishing';
-        }
+        const callInProgress =
+            state.active &&
+            String(state.status || '') ===
+                'in-progress';
+        const finishing =
+            String(state.status || '') ===
+                'finishing';
 
-        setTimeout(clampPanel, 0);
+        [mute, compactMute].forEach(
+            function (button) {
+                if (!button) {
+                    return;
+                }
+
+                button.disabled =
+                    !callInProgress;
+                button.classList.toggle(
+                    'is-active',
+                    Boolean(state.muted)
+                );
+                button.innerHTML =
+                    state.muted
+                        ? '<i class="bi bi-mic"></i>' +
+                            (button === mute
+                                ? '<span>Activar micrófono</span>'
+                                : '')
+                        : '<i class="bi bi-mic-mute"></i>' +
+                            (button === mute
+                                ? '<span>Silenciar</span>'
+                                : '');
+            }
+        );
+
+        [hangupButton, compactHangup]
+            .forEach(function (button) {
+                if (!button) {
+                    return;
+                }
+
+                button.disabled =
+                    !state.active ||
+                    finishing;
+            });
+
+        window.setTimeout(
+            clampPanel,
+            0
+        );
     }
 
     const restoreContextFromQuery = function () {
@@ -1143,6 +1326,7 @@
         subscribe: subscribe,
         getState: getState,
         openContext: openContext,
+        expand: expand,
         currentUrlWithoutPhoneParams:
             currentUrlWithoutPhoneParams
     };

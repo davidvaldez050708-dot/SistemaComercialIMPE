@@ -22,6 +22,185 @@
         ? new BroadcastChannel(channelName)
         : null;
 
+    const normalizarTextoNativo = function (valor) {
+        return String(valor || '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase();
+    };
+
+    const pareceInterfazNativa = function (elemento) {
+        if (!(elemento instanceof HTMLElement)) {
+            return false;
+        }
+
+        const firma = [
+            elemento.id || '',
+            typeof elemento.className === 'string'
+                ? elemento.className
+                : ''
+        ].join(' ');
+
+        return /(zadarma|zdrm|webphone)/i.test(firma);
+    };
+
+    const localizarRaizNativa = function (origen) {
+        let actual = origen;
+        let candidato = null;
+
+        for (
+            let nivel = 0;
+            actual && nivel < 9;
+            nivel += 1
+        ) {
+            if (
+                !(actual instanceof HTMLElement) ||
+                actual.matches(
+                    '.telephony-host-card, .telephony-host-user'
+                ) ||
+                actual === document.body ||
+                actual === document.documentElement
+            ) {
+                break;
+            }
+
+            if (pareceInterfazNativa(actual)) {
+                candidato = actual;
+            }
+
+            const estilo =
+                getComputedStyle(actual);
+            const rect =
+                actual.getBoundingClientRect();
+
+            if (
+                ['fixed', 'absolute', 'sticky']
+                    .includes(estilo.position) &&
+                rect.width >= 30 &&
+                rect.width <= 760 &&
+                rect.height >= 25 &&
+                rect.height <= 520
+            ) {
+                return actual;
+            }
+
+            actual = actual.parentElement;
+        }
+
+        return candidato;
+    };
+
+    const ocultarInterfazNativa = function () {
+        const candidatos = new Set();
+
+        document.querySelectorAll(
+            '[id*="zadarma" i], [class*="zadarma" i], ' +
+            '[id*="zdrm" i], [class*="zdrm" i], ' +
+            '[id*="webphone" i], [class*="webphone" i]'
+        ).forEach(function (elemento) {
+            if (elemento instanceof HTMLElement) {
+                candidatos.add(elemento);
+            }
+        });
+
+        document.querySelectorAll(
+            'input[placeholder]'
+        ).forEach(function (input) {
+            const placeholder =
+                normalizarTextoNativo(
+                    input.getAttribute(
+                        'placeholder'
+                    )
+                );
+
+            if (
+                placeholder.includes(
+                    'introduce el numero'
+                ) ||
+                placeholder.includes(
+                    'introducir el numero'
+                ) ||
+                placeholder.includes(
+                    'numero de telefono'
+                )
+            ) {
+                candidatos.add(input);
+            }
+        });
+
+        candidatos.forEach(function (elemento) {
+            const raiz =
+                localizarRaizNativa(elemento);
+
+            if (
+                !raiz ||
+                raiz.dataset
+                    .impeNativePhoneHidden === '1'
+            ) {
+                return;
+            }
+
+            raiz.dataset
+                .impeNativePhoneHidden = '1';
+            raiz.setAttribute(
+                'aria-hidden',
+                'true'
+            );
+            raiz.style.setProperty(
+                'position',
+                'fixed',
+                'important'
+            );
+            raiz.style.setProperty(
+                'left',
+                '-10000px',
+                'important'
+            );
+            raiz.style.setProperty(
+                'top',
+                '-10000px',
+                'important'
+            );
+            raiz.style.setProperty(
+                'right',
+                'auto',
+                'important'
+            );
+            raiz.style.setProperty(
+                'bottom',
+                'auto',
+                'important'
+            );
+            raiz.style.setProperty(
+                'opacity',
+                '0',
+                'important'
+            );
+            raiz.style.setProperty(
+                'pointer-events',
+                'none',
+                'important'
+            );
+        });
+    };
+
+    const observerNativo =
+        typeof MutationObserver === 'function'
+            ? new MutationObserver(function () {
+                requestAnimationFrame(
+                    ocultarInterfazNativa
+                );
+            })
+            : null;
+
+    observerNativo?.observe(
+        document.body,
+        {
+            childList: true,
+            subtree: true
+        }
+    );
+
     const titleEl = document.querySelector('[data-host-title]');
     const statusEl = document.querySelector('[data-host-status]');
     const liveEl = document.querySelector('[data-host-live]');
@@ -374,6 +553,7 @@
                 "{right:'-9999px',bottom:'-9999px'}"
             );
             widgetInitialized = true;
+            ocultarInterfazNativa();
         }
 
         const apiReady = await waitFor(function () {
