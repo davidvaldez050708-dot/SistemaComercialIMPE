@@ -40,6 +40,24 @@ class TelefoniaExtensionService
             return null;
         }
 
+        /*
+         * El fallback global pertenece únicamente a la prueba histórica de
+         * Analistas. Nunca debe habilitar accidentalmente a Ventas con la
+         * extensión compartida 100.
+         */
+        $usuarioLegacy =
+            $this->obtenerUsuarioConfigurable($usuarioId);
+
+        if (
+            !$usuarioLegacy ||
+            strcasecmp(
+                (string)($usuarioLegacy['rol'] ?? ''),
+                'Analista de Datos'
+            ) !== 0
+        ) {
+            return null;
+        }
+
         $config = $this->cargarConfig();
         $extension = trim((string)($config['pbx_extension'] ?? ''));
 
