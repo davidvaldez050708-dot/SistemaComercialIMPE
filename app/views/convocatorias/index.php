@@ -69,6 +69,21 @@ $fechaLegible = static function ($fecha) {
     }
 };
 
+$periodoLegible = static function ($fechaInicio, $fechaTermino) use ($fechaLegible) {
+    $fechaInicio = trim((string)$fechaInicio);
+    $fechaTermino = trim((string)$fechaTermino);
+
+    if ($fechaInicio === '' && $fechaTermino === '') {
+        return 'Sin fecha';
+    }
+
+    if ($fechaInicio !== '' && $fechaTermino === '') {
+        return $fechaLegible($fechaInicio) . ' — Sin vencimiento';
+    }
+
+    return $fechaLegible($fechaInicio) . ' — ' . $fechaLegible($fechaTermino);
+};
+
 $datosCrear = $modalAbierto === 'crear' ? $datosFormulario : [];
 $datosEditar = $modalAbierto === 'editar' ? $datosFormulario : [];
 
@@ -83,6 +98,9 @@ $hayEstadosAdicionalesCrear = count(
         static fn($estadoId) => $estadoId !== $territorioActualId
     )
 ) > 0;
+
+$fechasOpcionalesConvocatoria =
+    $subtipoConvocatoria === 'inscripciones-abiertas';
 ?>
 
 <?php if ($mensajeExito !== ''): ?>
@@ -1216,9 +1234,10 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
                                 <td><?= $texto($convocatoria['titulo']) ?></td>
 
                                 <td>
-                                    <?= $texto($fechaLegible($convocatoria['fecha_inicio'])) ?>
-                                    —
-                                    <?= $texto($fechaLegible($convocatoria['fecha_termino'])) ?>
+                                    <?= $texto($periodoLegible(
+                                        $convocatoria['fecha_inicio'] ?? '',
+                                        $convocatoria['fecha_termino'] ?? ''
+                                    )) ?>
                                 </td>
 
                                 <td><?= $texto($convocatoria['estados'] ?: 'Sin estados') ?></td>
@@ -1423,7 +1442,7 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
                                 id="crear_convocatoria_fecha_inicio"
                                 name="fecha_inicio"
                                 value="<?= $texto($datosCrear['fecha_inicio'] ?? '') ?>"
-                                required>
+                                <?= $fechasOpcionalesConvocatoria ? '' : 'required' ?>>
                         </div>
 
                         <div>
@@ -1434,8 +1453,18 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
                                 id="crear_convocatoria_fecha_termino"
                                 name="fecha_termino"
                                 value="<?= $texto($datosCrear['fecha_termino'] ?? '') ?>"
-                                required>
+                                <?= $fechasOpcionalesConvocatoria ? '' : 'required' ?>>
                         </div>
+
+                        <?php if ($fechasOpcionalesConvocatoria): ?>
+                            <div class="system-form-full">
+                                <small class="form-text">
+                                    En Inscripciones Abiertas las fechas son opcionales.
+                                    Puedes indicar solo la fecha de inicio y dejar la fecha de término vacía,
+                                    o registrar la convocatoria sin fechas.
+                                </small>
+                            </div>
+                        <?php endif; ?>
 
                         <div>
                             <label class="form-label login-label" for="crear_convocatoria_estado">Disponibilidad</label>
@@ -1598,13 +1627,32 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
 
                         <div>
                             <label class="form-label login-label" for="editar_convocatoria_fecha_inicio">Fecha de inicio</label>
-                            <input type="date" class="form-control system-form-control" id="editar_convocatoria_fecha_inicio" name="fecha_inicio" required>
+                            <input
+                                type="date"
+                                class="form-control system-form-control"
+                                id="editar_convocatoria_fecha_inicio"
+                                name="fecha_inicio"
+                                <?= $fechasOpcionalesConvocatoria ? '' : 'required' ?>>
                         </div>
 
                         <div>
                             <label class="form-label login-label" for="editar_convocatoria_fecha_termino">Fecha de término</label>
-                            <input type="date" class="form-control system-form-control" id="editar_convocatoria_fecha_termino" name="fecha_termino" required>
+                            <input
+                                type="date"
+                                class="form-control system-form-control"
+                                id="editar_convocatoria_fecha_termino"
+                                name="fecha_termino"
+                                <?= $fechasOpcionalesConvocatoria ? '' : 'required' ?>>
                         </div>
+
+                        <?php if ($fechasOpcionalesConvocatoria): ?>
+                            <div class="system-form-full">
+                                <small class="form-text">
+                                    En Inscripciones Abiertas las fechas son opcionales.
+                                    Puedes conservar únicamente una fecha de inicio o dejar ambas vacías.
+                                </small>
+                            </div>
+                        <?php endif; ?>
 
                         <div>
                             <label class="form-label login-label" for="editar_convocatoria_estado">Disponibilidad</label>
@@ -1879,7 +1927,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     '<div class="user-detail-info-icon"><i class="bi bi-calendar3"></i></div>' +
                     '<div class="user-detail-info-label">Periodo</div>' +
                     '<div class="user-detail-info-value">' +
-                    escapeHtml((convocatoria.fecha_inicio || '—') + ' — ' + (convocatoria.fecha_termino || '—')) +
+                    escapeHtml(formatearPeriodo(convocatoria.fecha_inicio, convocatoria.fecha_termino)) +
                     '</div></div>' +
                     '<div class="user-detail-info-row">' +
                     '<div class="user-detail-info-icon"><i class="bi bi-link-45deg"></i></div>' +
@@ -2199,8 +2247,10 @@ document.addEventListener('DOMContentLoaded', function () {
             return '<tr>' +
                 '<td>' + imagen + '</td>' +
                 '<td>' + escapeHtml(convocatoria.titulo || '') + '</td>' +
-                '<td>' + escapeHtml(formatearFecha(convocatoria.fecha_inicio)) +
-                    ' — ' + escapeHtml(formatearFecha(convocatoria.fecha_termino)) + '</td>' +
+                '<td>' + escapeHtml(formatearPeriodo(
+                    convocatoria.fecha_inicio,
+                    convocatoria.fecha_termino
+                )) + '</td>' +
                 '<td>' + escapeHtml(convocatoria.estados || 'Sin estados') + '</td>' +
                 '<td>' +
                     (convocatoria.enlace_registro
@@ -2232,6 +2282,21 @@ document.addEventListener('DOMContentLoaded', function () {
         return partes.length === 3
             ? partes[2] + '/' + partes[1] + '/' + partes[0]
             : String(fecha);
+    };
+
+    const formatearPeriodo = function (fechaInicio, fechaTermino) {
+        const inicio = String(fechaInicio || '').trim();
+        const termino = String(fechaTermino || '').trim();
+
+        if (inicio === '' && termino === '') {
+            return 'Sin fecha';
+        }
+
+        if (inicio !== '' && termino === '') {
+            return formatearFecha(inicio) + ' — Sin vencimiento';
+        }
+
+        return formatearFecha(inicio) + ' — ' + formatearFecha(termino);
     };
 
     const cargarListadoFiltrado = async function () {
