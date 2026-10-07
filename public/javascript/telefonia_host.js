@@ -1037,6 +1037,18 @@
                 finalMetadata: null,
                 message: ''
             });
+        } else if (
+            action === 'CANCEL_STAGE' &&
+            !state.active
+        ) {
+            state = emptyState();
+            state.hostReady = true;
+            state.phase =
+                widgetReady
+                    ? 'ready'
+                    : 'idle';
+            state.status = 'idle';
+            publish(state);
         } else if (action === 'START') {
             void startCall(payload);
         } else if (action === 'HANGUP') {

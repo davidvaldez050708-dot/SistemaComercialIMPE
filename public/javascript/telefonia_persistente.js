@@ -771,6 +771,45 @@
         }
     };
 
+    const cancelPrepared = function () {
+        if (
+            state?.active ||
+            ![
+                'preparing',
+                'prepared',
+                'error'
+            ].includes(
+                String(state?.phase || '')
+            )
+        ) {
+            return;
+        }
+
+        startingCall = false;
+        compact = false;
+        saveViewMode();
+
+        state = Object.assign(
+            emptyState(),
+            {
+                extension: String(
+                    availability?.extension ||
+                    state?.extension ||
+                    ''
+                ),
+                hostReady: Boolean(
+                    state?.hostReady
+                ),
+                phase: 'idle',
+                status: 'idle',
+                updatedAt: Date.now()
+            }
+        );
+
+        persistClientState();
+        sendCommand('CANCEL_STAGE', {});
+    };
+
     const hangup = function () {
         if (!state?.active) {
             return;
@@ -1198,6 +1237,8 @@
                 '<button type="button" class="persistent-phone-toggle" data-phone-toggle title="Minimizar" aria-label="Minimizar llamada">' +
                     '<i class="bi bi-dash-lg"></i>' +
                     '<span>Minimizar</span>' +
+                '</button>' +                '<button type="button" class="persistent-phone-close" data-phone-close title="Cerrar" aria-label="Cerrar teléfono">' +
+                    '<i class="bi bi-x-lg"></i>' +
                 '</button>' +
             '</header>' +
             '<div class="persistent-phone-body">' +
@@ -1273,6 +1314,13 @@
             function () {
                 setCompact(!compact);
             }
+        );
+
+        panel.querySelector(
+            '[data-phone-close]'
+        )?.addEventListener(
+            'click',
+            cancelPrepared
         );
 
         [
@@ -1391,6 +1439,10 @@
             panel.querySelector(
                 '[data-phone-toggle]'
             );
+        const closeButton =
+            panel.querySelector(
+                '[data-phone-close]'
+            );
         const startButton =
             panel.querySelector(
                 '[data-phone-start]'
@@ -1497,6 +1549,17 @@
             'is-finished',
             finished
         );
+
+        if (closeButton) {
+            closeButton.hidden =
+                state.active ||
+                finished ||
+                ![
+                    'preparing',
+                    'prepared',
+                    'error'
+                ].includes(phase);
+        }
 
         if (activeActions) {
             activeActions.hidden =
@@ -1747,6 +1810,7 @@
         prepare: prepare,
         stageCall: stageCall,
         startCall: startCall,
+        cancelPrepared: cancelPrepared,
         hangup: hangup,
         toggleMute: toggleMute,
         clearFinished: clearFinished,

@@ -1232,21 +1232,6 @@
                         .IMPE_ZADARMA_TELEPHONY_READY =
                         true;
 
-                    if (
-                        els &&
-                        !activeCall &&
-                        !pendingMetadata
-                    ) {
-                        els.extension
-                            .textContent =
-                            'Extensión ' +
-                            extension;
-                        els.status
-                            .textContent =
-                            'Teléfono listo';
-                        els.start.disabled =
-                            false;
-                    }
                 })
                 .catch(function (error) {
                     phoneReady = false;
