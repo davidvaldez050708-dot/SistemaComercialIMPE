@@ -90,7 +90,7 @@ $excluirGrabacion =
     strpos($notas, '[FUERA_SERVICIO]') !== false ||
     in_array(
         $resultado,
-        ['NO_CONTESTO', 'SIN_RESPUESTA', 'BUZON_VOZ', 'FUERA_SERVICIO', 'NUMERO_INCORRECTO'],
+        ['NO_CONTESTO', 'SIN_RESPUESTA', 'OCUPADO', 'BUZON_VOZ', 'FUERA_SERVICIO', 'NUMERO_INCORRECTO'],
         true
     );
 
