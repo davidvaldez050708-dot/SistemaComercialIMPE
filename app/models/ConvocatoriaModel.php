@@ -901,10 +901,8 @@ class ConvocatoriaModel
         ];
     }
 
-    public function obtenerProximasFinalizarDashboard($limite = 20)
+    public function obtenerProximasFinalizarDashboard()
     {
-        $limite = max(1, min(100, (int)$limite));
-
         $sql = "SELECT
                     convocatorias.id,
                     convocatorias.titulo,
@@ -937,8 +935,7 @@ class ConvocatoriaModel
                     convocatorias.fecha_termino
                 ORDER BY
                     convocatorias.fecha_termino ASC,
-                    convocatorias.titulo ASC
-                LIMIT " . $limite;
+                    convocatorias.titulo ASC";
 
         $resultado = $this->connection->query($sql);
 
