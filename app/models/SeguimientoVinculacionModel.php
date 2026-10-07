@@ -1989,12 +1989,55 @@ class SeguimientoVinculacionModel
                     usuarios.nombre AS analista_nombre,
                     usuarios.apellidos AS analista_apellidos,
                     usuarios.foto_perfil AS analista_foto,
-                    (
-                        SELECT MAX(oficios_consulta.folio)
-                        FROM oficios_vinculacion oficios_consulta
-                        WHERE oficios_consulta.seguimiento_id = seguimientos.id
-                          AND oficios_consulta.folio IS NOT NULL
-                          AND oficios_consulta.folio <> ''
+                    COALESCE(
+                        (
+                            SELECT MAX(oficios_consulta.folio)
+                            FROM oficios_vinculacion oficios_consulta
+                            WHERE oficios_consulta.seguimiento_id = seguimientos.id
+                              AND oficios_consulta.folio IS NOT NULL
+                              AND oficios_consulta.folio <> ''
+                        ),
+                        IF(
+                            LOCATE(
+                                'Folio Excel: ',
+                                COALESCE(seguimientos.observaciones, '')
+                            ) > 0,
+                            NULLIF(
+                                TRIM(
+                                    SUBSTRING_INDEX(
+                                        SUBSTRING_INDEX(
+                                            seguimientos.observaciones,
+                                            'Folio Excel: ',
+                                            -1
+                                        ),
+                                        ' ·',
+                                        1
+                                    )
+                                ),
+                                ''
+                            ),
+                            IF(
+                                LOCATE(
+                                    'Folio(s) Excel: ',
+                                    COALESCE(seguimientos.observaciones, '')
+                                ) > 0,
+                                NULLIF(
+                                    TRIM(
+                                        SUBSTRING_INDEX(
+                                            SUBSTRING_INDEX(
+                                                seguimientos.observaciones,
+                                                'Folio(s) Excel: ',
+                                                -1
+                                            ),
+                                            ' ·',
+                                            1
+                                        )
+                                    ),
+                                    ''
+                                ),
+                                NULL
+                            )
+                        )
                     ) AS folio,
                     (
                         SELECT interacciones_canal.canal
