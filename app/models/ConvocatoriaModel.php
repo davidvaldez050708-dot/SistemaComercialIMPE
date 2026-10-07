@@ -1579,6 +1579,32 @@ class ConvocatoriaModel
                 $url .= '&buscar=' . rawurlencode($tituloConvocatoria);
             }
 
+            /*
+             * Sustituye la alerta anterior conforme avanza el vencimiento.
+             * De 2 días pasa a "mañana" y, al llegar la fecha, a "vence hoy".
+             * La nueva etapa vuelve a mostrarse como no leída.
+             */
+            if ($diasRestantes === 1) {
+                $stmtLimpiar = $this->connection->prepare(
+                    "DELETE FROM notificaciones_convocatorias
+                     WHERE convocatoria_id = ?
+                       AND tipo_evento = 'vencimiento_2_dias'"
+                );
+                $stmtLimpiar->bind_param('i', $convocatoriaId);
+                $stmtLimpiar->execute();
+            } elseif ($diasRestantes === 0) {
+                $stmtLimpiar = $this->connection->prepare(
+                    "DELETE FROM notificaciones_convocatorias
+                     WHERE convocatoria_id = ?
+                       AND tipo_evento IN (
+                           'vencimiento_2_dias',
+                           'vencimiento_1_dia'
+                       )"
+                );
+                $stmtLimpiar->bind_param('i', $convocatoriaId);
+                $stmtLimpiar->execute();
+            }
+
             $sql = "INSERT INTO notificaciones_convocatorias (
                         usuario_id,
                         convocatoria_id,

@@ -34,7 +34,10 @@ class ConvocatoriaNotificacionModel
                 FROM notificaciones_convocatorias
                 WHERE usuario_id = ?
                   AND NOT (
-                      tipo_evento = 'vencimiento_2_dias'
+                      tipo_evento IN (
+                          'vencimiento_2_dias',
+                          'vencimiento_1_dia'
+                      )
                       AND leida = 1
                   )
                 ORDER BY created_at DESC, id DESC
