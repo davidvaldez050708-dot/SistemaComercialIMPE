@@ -183,7 +183,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (!Array.isArray(items) || items.length === 0) {
             content.innerHTML =
-                '<div class="topbar-reminder-empty convocatoria-notification-empty">' +
+                '<div class="topbar-reminder-empty">' +
                     '<i class="bi bi-bell"></i>' +
                     '<strong>Sin alertas nuevas</strong>' +
                     '<span>Las activaciones y vencimientos próximos aparecerán aquí.</span>' +
@@ -191,26 +191,34 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        content.innerHTML = items.map(function (item) {
-            const unread = Number(item.leida || 0) === 0;
-            const url = String(item.url || '#');
-            const visual = getNotificationVisual(item);
+        content.innerHTML =
+            '<div class="topbar-reminder-list">' +
+            items.map(function (item) {
+                const unread = Number(item.leida || 0) === 0;
+                const url = String(item.url || '#');
+                const visual = getNotificationVisual(item);
+                const timeTone = visual.tone === 'danger'
+                    ? 'vencida'
+                    : (visual.tone === 'warning' ? 'proxima' : 'manana');
 
-            return (
-                '<a class="convocatoria-notification-item' + (unread ? ' is-unread' : '') + '"' +
-                    ' href="' + escapeHtml(url) + '"' +
-                    ' data-convocatoria-notification-id="' + Number(item.id || 0) + '">' +
-                    '<span class="convocatoria-notification-icon is-' + visual.tone + '"><i class="bi ' + visual.icon + '"></i></span>' +
-                    '<span class="convocatoria-notification-copy">' +
-                        '<strong>' + escapeHtml(item.titulo || visual.fallbackTitle) + '</strong>' +
-                        '<span>' + escapeHtml(item.mensaje || '') + '</span>' +
-                    '</span>' +
-                    '<span class="convocatoria-notification-time">' +
-                        escapeHtml(formatDate(item.created_at)) +
-                    '</span>' +
-                '</a>'
-            );
-        }).join('');
+                return (
+                    '<a class="topbar-reminder-item' + (unread ? ' is-unread' : '') + '"' +
+                        ' href="' + escapeHtml(url) + '"' +
+                        ' data-convocatoria-notification-id="' + Number(item.id || 0) + '">' +
+                        '<span class="topbar-reminder-icon">' +
+                            '<i class="bi ' + visual.icon + '"></i>' +
+                        '</span>' +
+                        '<span class="topbar-reminder-copy">' +
+                            '<strong>' + escapeHtml(item.titulo || visual.fallbackTitle) + '</strong>' +
+                            '<span>' + escapeHtml(item.mensaje || '') + '</span>' +
+                        '</span>' +
+                        '<span class="topbar-reminder-time is-' + timeTone + '">' +
+                            escapeHtml(formatDate(item.created_at)) +
+                        '</span>' +
+                    '</a>'
+                );
+            }).join('') +
+            '</div>';
     };
 
     const load = async function () {
