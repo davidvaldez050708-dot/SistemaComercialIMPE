@@ -549,6 +549,38 @@
     font-weight: 800;
 }
 
+.correo-marketing-compose-modal #correo_marketing_adjuntos {
+    height: 44px;
+    min-height: 44px;
+    padding: 0 12px 0 0;
+    line-height: 42px;
+    overflow: hidden;
+}
+
+.correo-marketing-compose-modal #correo_marketing_adjuntos::file-selector-button {
+    height: 42px;
+    margin: 0 12px 0 0;
+    padding: 0 14px;
+    border: 0;
+    border-right: 1px solid var(--color-border);
+    background-color: #ffffff;
+    color: var(--color-text-primary);
+    line-height: 42px;
+    vertical-align: middle;
+}
+
+.correo-marketing-compose-modal #correo_marketing_adjuntos::-webkit-file-upload-button {
+    height: 42px;
+    margin: 0 12px 0 0;
+    padding: 0 14px;
+    border: 0;
+    border-right: 1px solid var(--color-border);
+    background-color: #ffffff;
+    color: var(--color-text-primary);
+    line-height: 42px;
+    vertical-align: middle;
+}
+
 .correo-marketing-file-help {
     margin-top: 7px;
     color: var(--color-text-secondary);
