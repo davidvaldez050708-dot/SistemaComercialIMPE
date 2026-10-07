@@ -2743,7 +2743,7 @@ class SeguimientoVinculacionController
             3 => 'Contacto y validación',
             4 => 'Datos verificados',
             5 => 'Oficio preparado',
-            6 => 'PDF generado',
+            6 => 'Generación de PDF',
             7 => 'Oficio / correo enviado',
             8 => 'Esperando respuesta',
             9 => 'Respuesta recibida',
