@@ -137,6 +137,76 @@
     </div>
 </div>
 
+<div
+    class="modal fade"
+    id="modalConfirmarQuitarFirma"
+    tabindex="-1"
+    aria-labelledby="modalConfirmarQuitarFirmaTitulo"
+    aria-hidden="true"
+    data-mail-signature-confirm-modal>
+    <div class="modal-dialog modal-dialog-centered system-confirm-dialog">
+        <div class="modal-content system-form-modal">
+            <div class="modal-header system-form-modal-header">
+                <div>
+                    <h5
+                        class="system-form-modal-title"
+                        id="modalConfirmarQuitarFirmaTitulo">
+                        Quitar firma de correo
+                    </h5>
+                    <p class="system-form-modal-subtitle">
+                        Confirma esta acción antes de continuar.
+                    </p>
+                </div>
+                <button
+                    type="button"
+                    class="btn-close"
+                    data-bs-dismiss="modal"
+                    aria-label="Cerrar">
+                </button>
+            </div>
+
+            <div class="modal-body signature-confirm-body">
+                <div class="signature-confirm-icon" aria-hidden="true">
+                    <i class="bi bi-trash3"></i>
+                </div>
+
+                <div class="signature-confirm-copy">
+                    <strong>¿Quieres quitar tu firma?</strong>
+                    <p>
+                        Tu firma dejará de agregarse automáticamente a los
+                        próximos correos enviados desde el sistema.
+                    </p>
+                    <small>
+                        Los correos enviados anteriormente no se modificarán.
+                    </small>
+                </div>
+
+                <div
+                    class="alert alert-danger login-alert d-none"
+                    role="alert"
+                    data-mail-signature-confirm-error>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button
+                    type="button"
+                    class="btn btn-system-cancel"
+                    data-bs-dismiss="modal">
+                    Cancelar
+                </button>
+                <button
+                    type="button"
+                    class="btn btn-system-danger"
+                    data-mail-signature-confirm-delete>
+                    <i class="bi bi-trash3"></i>
+                    Quitar firma
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <style>
 #modalMiPerfil .mail-signature-box {
     padding: .8rem .9rem;
@@ -196,5 +266,71 @@
 
 #modalMiPerfil .mail-signature-help {
     margin-top: .18rem;
+}
+
+#modalConfirmarQuitarFirma .signature-confirm-body {
+    padding: 22px 22px 20px;
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr);
+    gap: 14px;
+    align-items: start;
+}
+
+#modalConfirmarQuitarFirma .signature-confirm-icon {
+    width: 44px;
+    height: 44px;
+    display: grid;
+    place-items: center;
+    border: 1px solid #f0c9c4;
+    border-radius: 12px;
+    background: #fff6f5;
+    color: #b42318;
+    font-size: 18px;
+}
+
+#modalConfirmarQuitarFirma .signature-confirm-copy {
+    min-width: 0;
+}
+
+#modalConfirmarQuitarFirma .signature-confirm-copy strong {
+    display: block;
+    margin: 1px 0 6px;
+    color: var(--color-text-primary);
+    font-size: 13px;
+    font-weight: 800;
+}
+
+#modalConfirmarQuitarFirma .signature-confirm-copy p {
+    margin: 0;
+    color: var(--color-text-secondary);
+    font-size: 11.5px;
+    font-weight: 600;
+    line-height: 1.55;
+}
+
+#modalConfirmarQuitarFirma .signature-confirm-copy small {
+    display: block;
+    margin-top: 7px;
+    color: var(--color-text-muted, #8792a3);
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 1.45;
+}
+
+#modalConfirmarQuitarFirma [data-mail-signature-confirm-error] {
+    grid-column: 1 / -1;
+    margin: 3px 0 0;
+}
+
+#modalConfirmarQuitarFirma .modal-footer .btn-system-danger {
+    min-width: 118px;
+    min-height: 40px;
+    padding: 0 18px;
+}
+
+@media (max-width: 575.98px) {
+    #modalConfirmarQuitarFirma .signature-confirm-body {
+        grid-template-columns: 1fr;
+    }
 }
 </style>
