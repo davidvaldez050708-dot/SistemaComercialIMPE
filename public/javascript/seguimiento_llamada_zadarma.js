@@ -851,6 +851,15 @@
                         )
                     )
                 );
+                formData.set(
+                    'lookup_attempt',
+                    String(
+                        Math.max(
+                            0,
+                            Number(attempt || 0)
+                        )
+                    )
+                );
 
                 try {
                     const response =
