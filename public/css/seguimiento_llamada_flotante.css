@@ -1,5 +1,6 @@
 /* =========================================================
-   LLAMADA INSTITUCIONAL · MODO FLOTANTE
+   LLAMADA INSTITUCIONAL · CONTROL DE VENTANA
+   El panel minimizado persistente vive en telefonia_persistente.css.
    ========================================================= */
 
 .linkage-call-window-actions {
@@ -27,279 +28,23 @@
     font-size: 10px;
     font-weight: 800;
     line-height: 1;
-    transition: border-color .16s ease, background-color .16s ease, color .16s ease;
+    transition:
+        border-color .16s ease,
+        background-color .16s ease,
+        color .16s ease;
 }
 
-.linkage-call-window-toggle:hover:not(:disabled),
-.linkage-call-window-toggle:focus-visible:not(:disabled) {
+.linkage-call-window-toggle:hover,
+.linkage-call-window-toggle:focus-visible {
     border-color: #cbd8ec;
     background: var(--color-primary-soft, #eef4ff);
     color: var(--color-primary, #17478c);
     outline: none;
 }
 
-.linkage-call-window-toggle:disabled {
-    opacity: .55;
-    cursor: not-allowed;
-}
-
 .linkage-call-window-toggle i {
     margin: 0;
     font-size: 11px;
-}
-
-body.impe-call-workspace-mode {
-    overflow: auto !important;
-}
-
-body.impe-call-workspace-mode .modal-backdrop,
-body.impe-call-workspace-mode .offcanvas-backdrop {
-    display: none !important;
-}
-
-body.impe-call-workspace-mode.impe-call-navigation-guard-open {
-    overflow: hidden !important;
-}
-
-#modalLlamadaVinculacion.linkage-call-minimized {
-    position: fixed !important;
-    inset: auto 18px 18px auto !important;
-    width: min(355px, calc(100vw - 28px)) !important;
-    height: auto !important;
-    padding: 0 !important;
-    overflow: visible !important;
-    background: transparent !important;
-    pointer-events: none !important;
-    z-index: 1095 !important;
-}
-
-#modalLlamadaVinculacion.linkage-call-minimized .modal-dialog {
-    width: 100% !important;
-    max-width: none !important;
-    min-height: 0 !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    transform: none !important;
-    pointer-events: auto !important;
-}
-
-#modalLlamadaVinculacion.linkage-call-minimized .linkage-call-modal {
-    overflow: hidden;
-    border-color: #dce4ef;
-    border-radius: 14px;
-    background: #ffffff;
-    box-shadow: 0 16px 38px rgba(28, 46, 74, .17);
-}
-
-#modalLlamadaVinculacion.linkage-call-minimized .modal-header {
-    padding: 12px 13px 8px;
-    align-items: flex-start;
-    gap: 10px;
-}
-
-#modalLlamadaVinculacion.linkage-call-minimized .modal-header > div:first-child {
-    min-width: 0;
-    flex: 1 1 auto;
-}
-
-#modalLlamadaVinculacion.linkage-call-minimized .linkage-call-eyebrow {
-    margin-bottom: 2px;
-    font-size: 8.8px;
-    letter-spacing: .055em;
-}
-
-#modalLlamadaVinculacion.linkage-call-minimized .modal-title {
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-    font-size: 12px;
-    line-height: 1.32;
-}
-
-#modalLlamadaVinculacion.linkage-call-minimized .linkage-call-window-actions {
-    flex: 0 0 auto;
-}
-
-#modalLlamadaVinculacion.linkage-call-minimized .linkage-call-window-toggle {
-    min-height: 28px;
-    padding: 4px 8px;
-    border-color: #d8e2ef;
-    background: #f7f9fc;
-    font-size: 9.5px;
-}
-
-#modalLlamadaVinculacion.linkage-call-minimized .btn-close {
-    display: none;
-}
-
-#modalLlamadaVinculacion.linkage-call-minimized .modal-body {
-    padding: 4px 13px 12px;
-}
-
-#modalLlamadaVinculacion.linkage-call-minimized .linkage-call-number,
-#modalLlamadaVinculacion.linkage-call-minimized .linkage-call-meters,
-#modalLlamadaVinculacion.linkage-call-minimized [data-call-result],
-#modalLlamadaVinculacion.linkage-call-minimized .modal-footer,
-#modalLlamadaVinculacion.linkage-call-minimized [data-call-start] {
-    display: none !important;
-}
-
-#modalLlamadaVinculacion.linkage-call-minimized .linkage-call-state {
-    margin: 0 0 9px;
-    padding: 9px 10px;
-    border: 1px solid #e3e9f1;
-    border-radius: 9px;
-    background: #f7f9fc;
-}
-
-#modalLlamadaVinculacion.linkage-call-minimized .linkage-call-state span {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    color: #5f6d82;
-    font-size: 10px;
-    font-weight: 750;
-    white-space: nowrap;
-}
-
-#modalLlamadaVinculacion.linkage-call-minimized .linkage-call-state strong {
-    flex: 0 0 auto;
-    font-size: 18px;
-}
-
-#modalLlamadaVinculacion.linkage-call-minimized .linkage-call-actions {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 7px;
-}
-
-#modalLlamadaVinculacion.linkage-call-minimized .linkage-call-actions .btn {
-    min-height: 34px;
-    padding: 6px 8px;
-    border-radius: 8px;
-    font-size: 10px;
-}
-
-#modalLlamadaVinculacion.linkage-call-minimized .linkage-call-actions .btn i {
-    font-size: 11px;
-}
-
-/* =========================================================
-   PROTECCIÓN DE NAVEGACIÓN DURANTE LLAMADA
-   ========================================================= */
-
-.linkage-call-navigation-guard[hidden] {
-    display: none !important;
-}
-
-.linkage-call-navigation-guard {
-    position: fixed;
-    inset: 0;
-    z-index: 1210;
-    padding: 20px;
-    display: grid;
-    place-items: center;
-}
-
-.linkage-call-navigation-guard-backdrop {
-    position: absolute;
-    inset: 0;
-    background: rgba(18, 27, 44, .42);
-    backdrop-filter: blur(1.5px);
-}
-
-.linkage-call-navigation-card {
-    position: relative;
-    z-index: 1;
-    width: min(430px, 100%);
-    padding: 20px;
-    display: grid;
-    grid-template-columns: 42px minmax(0, 1fr);
-    column-gap: 13px;
-    row-gap: 16px;
-    border: 1px solid #dde5ef;
-    border-radius: 14px;
-    background: #ffffff;
-    box-shadow: 0 22px 54px rgba(20, 34, 56, .20);
-}
-
-.linkage-call-navigation-icon {
-    width: 42px;
-    height: 42px;
-    display: inline-grid;
-    place-items: center;
-    border: 1px solid #cfdaef;
-    border-radius: 11px;
-    background: var(--color-primary-soft, #eef4ff);
-    color: var(--color-primary, #17478c);
-    font-size: 16px;
-}
-
-.linkage-call-navigation-copy {
-    min-width: 0;
-}
-
-.linkage-call-navigation-eyebrow {
-    display: block;
-    margin-bottom: 3px;
-    color: #6f7d95;
-    font-size: 9.5px;
-    font-weight: 800;
-    letter-spacing: .065em;
-}
-
-.linkage-call-navigation-copy h3 {
-    margin: 0;
-    color: var(--color-text-primary, #172033);
-    font-size: 16px;
-    font-weight: 800;
-    line-height: 1.3;
-}
-
-.linkage-call-navigation-copy p {
-    margin: 6px 0 0;
-    color: var(--color-text-secondary, #657188);
-    font-size: 11.5px;
-    font-weight: 600;
-    line-height: 1.5;
-}
-
-.linkage-call-navigation-actions {
-    grid-column: 1 / -1;
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-}
-
-.linkage-call-navigation-actions .btn {
-    min-height: 39px;
-    padding: 8px 11px;
-    border-radius: 8px;
-    font-size: 10.8px;
-    font-weight: 800;
-    line-height: 1.2;
-}
-
-.linkage-call-navigation-actions .btn i {
-    margin-right: 4px;
-    font-size: 11px;
-}
-
-.linkage-call-navigation-actions .btn-outline-danger {
-    border-color: #e5a0a6;
-    background: #ffffff;
-    color: #bd4f59;
-}
-
-.linkage-call-navigation-actions .btn-outline-danger:hover:not(:disabled),
-.linkage-call-navigation-actions .btn-outline-danger:focus-visible:not(:disabled) {
-    border-color: #dc6670;
-    background: #fff7f8;
-    color: #a83e48;
-}
-
-.linkage-call-navigation-actions .btn:disabled {
-    opacity: .68;
 }
 
 @media (max-width: 575.98px) {
@@ -311,46 +56,5 @@ body.impe-call-workspace-mode.impe-call-navigation-guard-open {
         width: 30px;
         min-width: 30px;
         padding: 0;
-    }
-
-    #modalLlamadaVinculacion.linkage-call-minimized {
-        inset: auto 10px 10px 10px !important;
-        width: auto !important;
-    }
-
-    #modalLlamadaVinculacion.linkage-call-minimized .linkage-call-actions {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .linkage-call-navigation-guard {
-        padding: 14px;
-        align-items: end;
-    }
-
-    .linkage-call-navigation-card {
-        padding: 16px;
-        grid-template-columns: 38px minmax(0, 1fr);
-        column-gap: 11px;
-        row-gap: 14px;
-        border-radius: 13px;
-    }
-
-    .linkage-call-navigation-icon {
-        width: 38px;
-        height: 38px;
-        border-radius: 10px;
-        font-size: 14px;
-    }
-
-    .linkage-call-navigation-copy h3 {
-        font-size: 14px;
-    }
-
-    .linkage-call-navigation-copy p {
-        font-size: 10.8px;
-    }
-
-    .linkage-call-navigation-actions {
-        grid-template-columns: 1fr;
     }
 }
