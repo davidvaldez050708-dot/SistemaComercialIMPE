@@ -29,6 +29,7 @@
         let currentSeguimientoId = 0;
         let currentInstitution = '';
         let pendingMetadata = null;
+        let pendingInteractionId = 0;
         let awaitingInteractionSave = false;
         let linkingMetadata = false;
         let pendingInteractionFeedback = null;
@@ -348,6 +349,7 @@
                 ).trim();
 
             pendingMetadata = null;
+            pendingInteractionId = 0;
             awaitingInteractionSave = false;
 
             /*
@@ -668,12 +670,31 @@
                 const formData =
                     new FormData();
 
+                if (pendingInteractionId <= 0) {
+                    linkingMetadata = false;
+
+                    if (attempt < 24) {
+                        await sleep(500);
+                        void vincularMetadata(attempt + 1);
+                    } else {
+                        mostrarToast(
+                            'La interacción se guardó, pero no fue posible identificarla para vincular la llamada. Recarga el seguimiento antes de continuar.',
+                            true
+                        );
+                    }
+                    return;
+                }
+
                 formData.set(
                     'seguimiento_id',
                     String(
                         metadata
                             .seguimiento_id
                     )
+                );
+                formData.set(
+                    'interaccion_id',
+                    String(pendingInteractionId)
                 );
                 formData.set(
                     'pbx_call_id',
@@ -761,6 +782,7 @@
                         );
 
                     pendingMetadata = null;
+                    pendingInteractionId = 0;
                     awaitingInteractionSave =
                         false;
 
@@ -981,12 +1003,10 @@
                 };
 
                 /*
-                 * En cuanto el usuario confirma "Registrar interacción",
-                 * el teléfono deja de ser parte del flujo visual. Los datos
-                 * técnicos permanecen en memoria para vincularse cuando el
-                 * guardado de la interacción sea confirmado por el backend.
+                 * El estado final de la llamada se conserva hasta que el
+                 * backend confirme el vínculo técnico. Esto permite recuperar
+                 * la llamada si el proveedor o la red tardan unos segundos.
                  */
-                ocultarTelefonoTrasInteraccion();
             },
             true
         );
@@ -1011,7 +1031,11 @@
                             .seguimiento_id
                     )
                 ) {
-                    ocultarTelefonoTrasInteraccion();
+                    pendingInteractionId =
+                        Number(
+                            event.detail
+                                ?.interaccionId || 0
+                        );
 
                     window.setTimeout(
                         function () {
@@ -1043,7 +1067,15 @@
                             .seguimiento_id
                     )
                 ) {
-                    ocultarTelefonoTrasInteraccion();
+                    const exactId =
+                        Number(
+                            event.detail
+                                ?.interaccionId || 0
+                        );
+
+                    if (exactId > 0) {
+                        pendingInteractionId = exactId;
+                    }
 
                     window.setTimeout(
                         function () {
