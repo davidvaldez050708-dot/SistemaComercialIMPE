@@ -59,6 +59,66 @@
     white-space: nowrap;
 }
 
+.convocatoria-state-toggle {
+    width: 100%;
+    min-height: 44px;
+    padding: 0 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: #ffffff;
+    color: var(--color-text-primary);
+    font-family: 'Manrope', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    text-align: left;
+    transition:
+        border-color .18s ease,
+        background-color .18s ease,
+        box-shadow .18s ease;
+}
+
+.convocatoria-state-toggle:hover,
+.convocatoria-state-toggle:focus {
+    border-color: #c8d6ea;
+    background: #f8faff;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(34, 58, 132, .06);
+}
+
+.convocatoria-state-toggle > span {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+}
+
+.convocatoria-state-toggle > span i {
+    color: #223A84;
+    font-size: 14px;
+}
+
+.convocatoria-state-toggle > .bi-chevron-down {
+    color: #69768b;
+    font-size: 12px;
+    transition: transform .18s ease;
+}
+
+.convocatoria-state-toggle[aria-expanded="true"] > .bi-chevron-down {
+    transform: rotate(180deg);
+}
+
+.convocatoria-state-help {
+    display: block;
+    margin-top: 6px;
+}
+
+.convocatoria-state-extra-panel {
+    margin-top: 10px;
+}
+
 .convocatoria-state-picker {
     border: 1px solid var(--color-border);
     border-radius: var(--radius-sm);
