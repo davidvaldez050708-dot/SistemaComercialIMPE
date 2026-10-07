@@ -97,16 +97,22 @@ function duracionConversacion(?array $respuesta, ?array $fin): int
 }
 
 $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
-$rolId = (int)($_SESSION['rol_id'] ?? 0);
+$rol = trim((string)($_SESSION['rol'] ?? ''));
 
 if ($usuarioId <= 0) {
     responderJson(['ok' => false, 'mensaje' => 'Sesión no activa.'], 401);
 }
 
-if ($rolId !== 4) {
+if (
+    !in_array(
+        $rol,
+        ['Analista de Datos', 'Asesor de Ventas'],
+        true
+    )
+) {
     responderJson([
         'ok' => false,
-        'mensaje' => 'La consulta de estado telefónico está disponible únicamente para Analistas.'
+        'mensaje' => 'Tu perfil no tiene acceso al estado telefónico.'
     ], 403);
 }
 
