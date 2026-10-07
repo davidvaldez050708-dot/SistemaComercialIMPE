@@ -1418,6 +1418,10 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
                 <input type="hidden" name="mes" value="<?= (int)$mesSeleccionado ?>">
                 <input
                     type="hidden"
+                    name="retorno_query"
+                    value="<?= $texto(http_build_query($_GET)) ?>">
+                <input
+                    type="hidden"
                     name="vista"
                     value="<?= $texto($vistaConvocatoriasInicial) ?>"
                     data-convocatoria-vista>
@@ -1612,6 +1616,10 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
                 <input type="hidden" name="subtipo" value="<?= $texto($subtipoConvocatoria) ?>">
                 <input type="hidden" name="anio" value="<?= (int)$anioSeleccionado ?>">
                 <input type="hidden" name="mes" value="<?= (int)$mesSeleccionado ?>">
+                <input
+                    type="hidden"
+                    name="retorno_query"
+                    value="<?= $texto(http_build_query($_GET)) ?>">
                 <input
                     type="hidden"
                     name="vista"
