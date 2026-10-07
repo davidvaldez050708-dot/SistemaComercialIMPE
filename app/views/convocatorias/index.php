@@ -1796,6 +1796,10 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
                 <input type="hidden" name="mes" value="<?= (int)$mesSeleccionado ?>">
                 <input
                     type="hidden"
+                    name="retorno_query"
+                    value="<?= $texto(http_build_query($_GET)) ?>">
+                <input
+                    type="hidden"
                     name="vista"
                     value="<?= $texto($vistaConvocatoriasInicial) ?>"
                     data-convocatoria-vista>
