@@ -121,6 +121,7 @@ if (
 $destino = trim((string)($_GET['destination'] ?? ''));
 $desdeSolicitado = (int)($_GET['since'] ?? 0);
 $forzarFinal = (int)($_GET['final'] ?? 0) === 1;
+$usarEstadisticas = (int)($_GET['stats'] ?? 0) === 1;
 
 if ($destino === '' || strlen(soloDigitos($destino)) < 8) {
     responderJson(['ok' => false, 'mensaje' => 'Destino telefónico no válido.'], 422);
@@ -233,7 +234,11 @@ if ($pbxCallId === '' && is_file($logPath)) {
     }
 }
 
-if ($pbxCallId === '' && $forzarFinal) {
+if (
+    $pbxCallId === '' &&
+    $forzarFinal &&
+    $usarEstadisticas
+) {
     try {
         $estadistica = (new ZadarmaCallLookupService())->buscarSalienteReciente(
             $extension,
