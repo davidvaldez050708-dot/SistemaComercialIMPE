@@ -64,6 +64,18 @@ class SeguimientoHistorialImportadoService
             ];
         }
 
+        if (strpos($texto, 'publican nuestras convocatorias') !== false) {
+            return [
+                'paso' => 10,
+                'clave' => 'DIFUSION_HISTORICA_ACTIVA',
+                'etapa' => 'Difusión activa',
+                'titulo' => 'Continuar colaboración institucional',
+                'descripcion' =>
+                    'El historial migrado desde Excel indica que la institución ya publicaba convocatorias. Se reconoce como colaboración histórica activa, sin asumir convenio formalizado ni convertir el expediente en Aliado.',
+                'evidencia' => 'Publicación histórica de convocatorias'
+            ];
+        }
+
         if (
             strpos($texto, 'se envia correo') !== false ||
             strpos($texto, 'se envio correo') !== false
