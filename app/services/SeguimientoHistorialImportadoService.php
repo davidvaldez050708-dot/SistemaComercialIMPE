@@ -14,7 +14,9 @@ class SeguimientoHistorialImportadoService
 
         if (
             strpos($texto, 'estado(s) excel: convenio') !== false ||
+            strpos($texto, 'estado excel: convenio') !== false ||
             strpos($texto, 'firma de convenio') !== false ||
+            strpos($texto, 'firmar convenio') !== false ||
             strpos($texto, 'validar el convenio') !== false ||
             strpos($texto, 'convenio en revision') !== false
         ) {
@@ -26,6 +28,21 @@ class SeguimientoHistorialImportadoService
                 'descripcion' =>
                     'El historial migrado desde Excel indica que este expediente ya se encontraba en etapa de convenio o seguimiento de firma. No se considera convenio formalizado ni Aliado hasta registrar la formalización real en el CRM.',
                 'evidencia' => 'Etapa histórica de convenio / firma'
+            ];
+        }
+
+        if (
+            strpos($texto, 'se llevara a cabo la reunion') !== false ||
+            strpos($texto, 'se llevara a cabo reunion') !== false
+        ) {
+            return [
+                'paso' => 11,
+                'clave' => 'REUNION_HISTORICA_PROGRAMADA',
+                'etapa' => 'Reunión agendada',
+                'titulo' => 'Revisar reunión histórica programada',
+                'descripcion' =>
+                    'El historial migrado desde Excel indica que ya se había programado o anunciado una reunión. Se conserva como hito histórico sin registrarla como reunión realizada dentro del CRM.',
+                'evidencia' => 'Reunión histórica programada'
             ];
         }
 
@@ -167,6 +184,8 @@ class SeguimientoHistorialImportadoService
             strpos($texto, 'numero ha cambiado') !== false ||
             strpos($texto, 'temporalmente suspendido') !== false ||
             strpos($texto, 'se confirma numero') !== false ||
+            strpos($texto, 'llamar en') !== false ||
+            strpos($texto, 'llamar antes') !== false ||
             strpos($texto, 'enviar correo') !== false ||
             strpos($texto, 'enviar informacion') !== false ||
             strpos($texto, 'se envie informacion') !== false;
