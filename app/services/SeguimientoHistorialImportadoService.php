@@ -15,7 +15,8 @@ class SeguimientoHistorialImportadoService
         if (
             strpos($texto, 'estado(s) excel: convenio') !== false ||
             strpos($texto, 'firma de convenio') !== false ||
-            strpos($texto, 'validar el convenio') !== false
+            strpos($texto, 'validar el convenio') !== false ||
+            strpos($texto, 'convenio en revision') !== false
         ) {
             return [
                 'paso' => 13,
@@ -61,6 +62,33 @@ class SeguimientoHistorialImportadoService
                 'descripcion' =>
                     'El historial migrado desde Excel contiene una fecha de reunión. Se reconoce como hito histórico sin inventar que la reunión fue realizada ni contabilizarla como actividad productiva del CRM.',
                 'evidencia' => 'Fecha de reunión registrada en Excel'
+            ];
+        }
+
+        if (
+            strpos($texto, 'reunion impartida') !== false ||
+            strpos($texto, 'reunion informativa') !== false
+        ) {
+            return [
+                'paso' => 12,
+                'clave' => 'REUNION_HISTORICA_REALIZADA',
+                'etapa' => 'Reunión realizada histórica',
+                'titulo' => 'Revisar acuerdos de reunión',
+                'descripcion' =>
+                    'El historial migrado desde Excel indica que ya se realizó una reunión informativa. Se reconoce únicamente como hito histórico, sin registrar una reunión ficticia ni contabilizar actividad productiva en el CRM.',
+                'evidencia' => 'Reunión histórica realizada'
+            ];
+        }
+
+        if (strpos($texto, 'acuse de recibido') !== false) {
+            return [
+                'paso' => 9,
+                'clave' => 'ACUSE_HISTORICO',
+                'etapa' => 'Respuesta recibida',
+                'titulo' => 'Continuar seguimiento de respuesta',
+                'descripcion' =>
+                    'El historial migrado desde Excel registra un acuse de recibido. Se conserva como evidencia histórica sin inventar una respuesta adicional dentro del CRM.',
+                'evidencia' => 'Acuse de recibido registrado en Excel'
             ];
         }
 
