@@ -11,6 +11,8 @@ body {
 }
 
 body {
+    position: relative;
+    overflow: hidden;
     padding: 12px;
     display: grid;
     align-content: center;
@@ -113,4 +115,25 @@ body {
     font-size: 8px;
     font-weight: 700;
     text-align: center;
+}
+
+/*
+ * El SDK de Zadarma debe seguir vivo para WebRTC, pero su marcador nativo no
+ * forma parte de la interfaz del CRM. Todo elemento que el proveedor inyecte
+ * directamente en <body> se conserva activo fuera del área visible.
+ */
+body > *:not(.telephony-host-card):not(.telephony-host-user):not(script) {
+    position: fixed !important;
+    left: -10000px !important;
+    top: -10000px !important;
+    right: auto !important;
+    bottom: auto !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
+.telephony-host-card,
+.telephony-host-user {
+    position: relative;
+    z-index: 2147483647;
 }

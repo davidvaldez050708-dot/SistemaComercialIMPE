@@ -570,8 +570,25 @@
         }
 
         widgetReady = true;
+
+        const staged =
+            !state.active &&
+            state.destination &&
+            state.context;
+
         publish({
-            phase: state.active ? state.phase : 'ready',
+            phase:
+                state.active
+                    ? state.phase
+                    : (
+                        staged
+                            ? 'prepared'
+                            : 'ready'
+                    ),
+            status:
+                staged
+                    ? 'ready'
+                    : state.status,
             message: ''
         });
     };
@@ -946,6 +963,24 @@
 
         if (action === 'PING') {
             publish({});
+        } else if (
+            action === 'STAGE' &&
+            !state.active
+        ) {
+            publish({
+                phase: 'prepared',
+                active: false,
+                status: 'ready',
+                duration: 0,
+                destination:
+                    String(payload.destination || '').trim(),
+                institution:
+                    String(payload.institution || '').trim(),
+                context:
+                    payload.context || null,
+                finalMetadata: null,
+                message: ''
+            });
         } else if (action === 'START') {
             void startCall(payload);
         } else if (action === 'HANGUP') {

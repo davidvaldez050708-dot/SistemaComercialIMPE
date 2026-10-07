@@ -271,61 +271,6 @@
             }
         };
 
-        const ensureReady = function (openHost) {
-            return phone.prepare({
-                openHost: Boolean(openHost)
-            }).then(function (info) {
-                extension =
-                    String(
-                        info.extension ||
-                        extension ||
-                        ''
-                    );
-                phoneReady = true;
-                window
-                    .IMPE_ZADARMA_TELEPHONY_READY =
-                    true;
-
-                return info;
-            });
-        };
-
-        async function makeCall() {
-            if (
-                activeCall ||
-                !currentPhone
-            ) {
-                return;
-            }
-
-            try {
-                activeCall = true;
-                pendingMetadata = null;
-
-                await phone.startCall({
-                    destination: currentPhone,
-                    institution:
-                        currentInstitution,
-                    context: {
-                        type: 'VINCULACION',
-                        seguimientoId:
-                            currentSeguimientoId,
-                        originUrl:
-                            phone
-                                .currentUrlWithoutPhoneParams()
-                    }
-                });
-            } catch (error) {
-                activeCall = false;
-
-                mostrarToast(
-                    error.message ||
-                    'No fue posible iniciar la llamada con el proveedor de telefonía.',
-                    true
-                );
-            }
-        }
-
         const abrirLlamada = function () {
             const estadoActual =
                 phone.getState();
@@ -404,10 +349,36 @@
             awaitingInteractionSave = false;
 
             /*
-             * El botón de llamada inicia directamente el motor persistente.
-             * Ya no se abre un segundo modal de telefonía.
+             * El primer clic solo prepara el teléfono flotante. La llamada
+             * real comienza cuando el usuario confirma con "Llamar" dentro
+             * de la tarjeta, igual que en el modal anterior.
              */
-            void makeCall();
+            void phone.stageCall({
+                destination: currentPhone,
+                institution:
+                    currentInstitution,
+                context: {
+                    type: 'VINCULACION',
+                    seguimientoId:
+                        currentSeguimientoId,
+                    originUrl:
+                        phone
+                            .currentUrlWithoutPhoneParams()
+                }
+            }).then(function () {
+                if (
+                    typeof phone.expand ===
+                    'function'
+                ) {
+                    phone.expand();
+                }
+            }).catch(function (error) {
+                mostrarToast(
+                    error.message ||
+                    'No fue posible preparar la llamada.',
+                    true
+                );
+            });
         };
 
         const agregarResumenTecnico =

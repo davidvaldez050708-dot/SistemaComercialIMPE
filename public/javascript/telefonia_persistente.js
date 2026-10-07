@@ -38,6 +38,7 @@
     let hostWindow = null;
     let drag = null;
     let compact = false;
+    let startingCall = false;
 
     try {
         compact =
@@ -133,6 +134,8 @@
             failed: 'Llamada fallida',
             canceled: 'Llamada cancelada',
             interrupted: 'Telefonía interrumpida',
+            preparing: 'Preparando llamada…',
+            prepared: 'Teléfono listo',
             error: 'Telefonía no disponible'
         };
 
@@ -184,6 +187,18 @@
 
         if (state.hostReady) {
             hostSeenAt = Date.now();
+        }
+
+        if (
+            state.active ||
+            [
+                'finished',
+                'error'
+            ].includes(
+                String(state.phase || '')
+            )
+        ) {
+            startingCall = false;
         }
 
         const startedNewCall =
@@ -361,6 +376,7 @@
 
         return [
             'ready',
+            'prepared',
             'finished'
         ].includes(
             String(state?.phase || '')
@@ -434,8 +450,32 @@
         });
     };
 
-    const startCall = async function (payload) {
-        await prepare({ openHost: true });
+    const persistClientState = function () {
+        state.updatedAt = Date.now();
+
+        try {
+            localStorage.setItem(
+                stateKey,
+                JSON.stringify(state)
+            );
+        } catch (error) {
+            // BroadcastChannel y el estado en memoria siguen disponibles.
+        }
+
+        renderPanel();
+        emit();
+    };
+
+    const stageCall = async function (payload) {
+        const data = payload || {};
+        const destination =
+            String(data.destination || '').trim();
+
+        if (!destination) {
+            throw new Error(
+                'El número telefónico no es válido.'
+            );
+        }
 
         if (state?.active) {
             throw new Error(
@@ -443,7 +483,142 @@
             );
         }
 
-        sendCommand('START', payload || {});
+        if (
+            state?.phase === 'finished' &&
+            state?.finalMetadata
+        ) {
+            throw new Error(
+                'Primero registra el resultado de la llamada anterior.'
+            );
+        }
+
+        startingCall = false;
+        compact = false;
+        saveViewMode();
+
+        state = Object.assign(
+            emptyState(),
+            {
+                phase: 'preparing',
+                status: 'preparing',
+                active: false,
+                destination: destination,
+                institution:
+                    String(data.institution || '').trim(),
+                context: data.context || null,
+                message: ''
+            }
+        );
+        persistClientState();
+
+        try {
+            const info = await probe();
+
+            state = Object.assign(
+                {},
+                state,
+                {
+                    extension:
+                        String(info.extension || ''),
+                    phase: 'prepared',
+                    status: 'ready',
+                    message: ''
+                }
+            );
+            persistClientState();
+
+            /*
+             * Si el host técnico ya estaba abierto por una llamada anterior,
+             * también actualizamos su contexto para que no sobrescriba la
+             * preparación mientras espera el clic definitivo en "Llamar".
+             */
+            sendCommand(
+                'STAGE',
+                {
+                    destination: destination,
+                    institution:
+                        String(data.institution || '').trim(),
+                    context: data.context || null
+                }
+            );
+
+            return state;
+        } catch (error) {
+            state = emptyState();
+            persistClientState();
+            throw error;
+        }
+    };
+
+    const startCall = async function (payload) {
+        if (startingCall) {
+            return;
+        }
+
+        if (state?.active) {
+            throw new Error(
+                'Ya existe una llamada activa.'
+            );
+        }
+
+        const data = payload || {
+            destination: state?.destination || '',
+            institution: state?.institution || '',
+            context: state?.context || null
+        };
+
+        const destination =
+            String(data.destination || '').trim();
+
+        if (!destination) {
+            throw new Error(
+                'No hay una llamada preparada.'
+            );
+        }
+
+        startingCall = true;
+        renderPanel();
+
+        try {
+            /*
+             * prepare() abre la ventana dentro del clic real del usuario.
+             * El primer botón del flujo solo prepara la tarjeta del CRM.
+             */
+            await prepare({ openHost: true });
+
+            if (state?.active) {
+                startingCall = false;
+                throw new Error(
+                    'Ya existe una llamada activa.'
+                );
+            }
+
+            sendCommand(
+                'START',
+                {
+                    destination: destination,
+                    institution:
+                        String(data.institution || '').trim(),
+                    context: data.context || null
+                }
+            );
+        } catch (error) {
+            startingCall = false;
+
+            state = Object.assign(
+                {},
+                state,
+                {
+                    phase: 'prepared',
+                    status: 'ready',
+                    message:
+                        error.message ||
+                        'No fue posible preparar la llamada.'
+                }
+            );
+            persistClientState();
+            throw error;
+        }
     };
 
     const hangup = function () {
@@ -841,6 +1016,9 @@
                     '<strong data-phone-timer>00:00</strong>' +
                 '</div>' +
                 '<div class="persistent-phone-actions" data-phone-active-actions>' +
+                    '<button type="button" class="persistent-phone-action is-primary" data-phone-start>' +
+                        '<i class="bi bi-telephone"></i><span>Llamar</span>' +
+                    '</button>' +
                     '<button type="button" class="persistent-phone-action" data-phone-mute>' +
                         '<i class="bi bi-mic-mute"></i><span>Silenciar</span>' +
                     '</button>' +
@@ -854,6 +1032,9 @@
                 '</button>' +
             '</div>' +
             '<div class="persistent-phone-compact-actions" data-phone-compact-actions>' +
+                '<button type="button" class="persistent-phone-compact-button is-primary" data-phone-compact-start title="Llamar" aria-label="Llamar">' +
+                    '<i class="bi bi-telephone"></i>' +
+                '</button>' +
                 '<button type="button" class="persistent-phone-compact-button" data-phone-compact-mute title="Silenciar" aria-label="Silenciar">' +
                     '<i class="bi bi-mic-mute"></i>' +
                 '</button>' +
@@ -900,6 +1081,28 @@
         );
 
         [
+            '[data-phone-start]',
+            '[data-phone-compact-start]'
+        ].forEach(function (selector) {
+            panel.querySelector(selector)
+                ?.addEventListener(
+                    'click',
+                    function () {
+                        void startCall({
+                            destination:
+                                state?.destination || '',
+                            institution:
+                                state?.institution || '',
+                            context:
+                                state?.context || null
+                        }).catch(function (error) {
+                            console.warn(error);
+                        });
+                    }
+                );
+        });
+
+        [
             '[data-phone-mute]',
             '[data-phone-compact-mute]'
         ].forEach(function (selector) {
@@ -940,10 +1143,15 @@
             return;
         }
 
+        const phase =
+            String(state?.phase || '');
         const show =
             Boolean(state?.active) ||
-            String(state?.phase || '') ===
-                'finished';
+            [
+                'preparing',
+                'prepared',
+                'finished'
+            ].includes(phase);
 
         panel.hidden = !show;
 
@@ -987,6 +1195,14 @@
         const toggle =
             panel.querySelector(
                 '[data-phone-toggle]'
+            );
+        const startButton =
+            panel.querySelector(
+                '[data-phone-start]'
+            );
+        const compactStart =
+            panel.querySelector(
+                '[data-phone-compact-start]'
             );
         const mute =
             panel.querySelector(
@@ -1089,7 +1305,7 @@
 
         if (activeActions) {
             activeActions.hidden =
-                !state.active;
+                finished;
         }
 
         if (resultButton) {
@@ -1101,6 +1317,21 @@
             compactResult.hidden =
                 !finished;
         }
+
+        const readyToStart =
+            !state.active &&
+            phase === 'prepared' &&
+            !startingCall;
+
+        [startButton, compactStart]
+            .forEach(function (button) {
+                if (!button) {
+                    return;
+                }
+
+                button.disabled =
+                    !readyToStart;
+            });
 
         const callInProgress =
             state.active &&
@@ -1319,6 +1550,7 @@
     window.IMPE_TELEPHONY_PERSISTENT = {
         probe: probe,
         prepare: prepare,
+        stageCall: stageCall,
         startCall: startCall,
         hangup: hangup,
         toggleMute: toggleMute,
@@ -1349,7 +1581,12 @@
 
             if (
                 state?.active ||
-                state?.phase === 'finished'
+                [
+                    'prepared',
+                    'finished'
+                ].includes(
+                    String(state?.phase || '')
+                )
             ) {
                 sendCommand('PING', {});
             }

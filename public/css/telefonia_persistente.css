@@ -195,7 +195,7 @@
 .persistent-phone-actions {
     margin-top: 12px;
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 9px;
 }
 
@@ -225,6 +225,19 @@
     border-color: #c8d4e5;
     background: #f7f9fc;
     outline: none;
+}
+
+.persistent-phone-action.is-primary {
+    border-color: var(--color-primary, #273a8a);
+    background: var(--color-primary, #273a8a);
+    color: #fff;
+}
+
+.persistent-phone-action.is-primary:hover:not(:disabled),
+.persistent-phone-action.is-primary:focus-visible:not(:disabled) {
+    border-color: #1f3178;
+    background: #1f3178;
+    color: #fff;
 }
 
 .persistent-phone-action.is-active {
@@ -332,6 +345,12 @@
     font: inherit;
     font-size: 11px;
     cursor: pointer;
+}
+
+.persistent-phone-compact-button.is-primary {
+    border-color: var(--color-primary, #273a8a);
+    background: var(--color-primary, #273a8a);
+    color: #fff;
 }
 
 .persistent-phone-compact-button.is-active {
