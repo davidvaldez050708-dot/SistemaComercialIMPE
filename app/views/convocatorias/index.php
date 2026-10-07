@@ -1185,6 +1185,7 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
                         <th>Título</th>
                         <th>Periodo</th>
                         <th>Estados</th>
+                        <th>Enlace</th>
                         <th>Estatus</th>
                         <th class="text-end">Acciones</th>
                     </tr>
@@ -1221,6 +1222,21 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
                                 </td>
 
                                 <td><?= $texto($convocatoria['estados'] ?: 'Sin estados') ?></td>
+
+                                <td>
+                                    <?php if (!empty($convocatoria['enlace_registro'])): ?>
+                                        <a
+                                            class="convocatoria-external-link"
+                                            href="<?= $texto($convocatoria['enlace_registro']) ?>"
+                                            target="_blank"
+                                            rel="noopener noreferrer">
+                                            <i class="bi bi-link-45deg"></i>
+                                            Abrir enlace
+                                        </a>
+                                    <?php else: ?>
+                                        <span class="convocatoria-link-empty">—</span>
+                                    <?php endif; ?>
+                                </td>
 
                                 <td>
                                     <span class="status-pill status-pill-active">
@@ -1276,7 +1292,7 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
                         <?php endforeach; ?>
                     <?php else: ?>
                         <tr>
-                            <td colspan="6">
+                            <td colspan="7">
                                 <div class="empty-table-message">
                                     No hay convocatorias activas con los filtros seleccionados.
                                 </div>
@@ -2072,7 +2088,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 : 'No hay convocatorias en el historial con los filtros seleccionados.';
 
             listadoConvocatorias.innerHTML =
-                '<tr><td colspan="6"><div class="empty-table-message">' +
+                '<tr><td colspan="7"><div class="empty-table-message">' +
                 mensajeVacio +
                 '</div></td></tr>';
             return;
@@ -2136,6 +2152,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 '<td>' + escapeHtml(formatearFecha(convocatoria.fecha_inicio)) +
                     ' — ' + escapeHtml(formatearFecha(convocatoria.fecha_termino)) + '</td>' +
                 '<td>' + escapeHtml(convocatoria.estados || 'Sin estados') + '</td>' +
+                '<td>' +
+                    (convocatoria.enlace_registro
+                        ? '<a class="convocatoria-external-link" href="' +
+                            escapeHtml(convocatoria.enlace_registro) +
+                            '" target="_blank" rel="noopener noreferrer">' +
+                            '<i class="bi bi-link-45deg"></i> Abrir enlace</a>'
+                        : '<span class="convocatoria-link-empty">—</span>') +
+                '</td>' +
                 '<td><span class="status-pill ' +
                     (estadoActivo ? 'status-pill-active' : 'status-pill-inactive') + '">' +
                     (estadoActivo ? 'Activa' : 'Inactiva') +
@@ -2212,7 +2236,7 @@ document.addEventListener('DOMContentLoaded', function () {
         } catch (error) {
             if (error.name !== 'AbortError') {
                 listadoConvocatorias.innerHTML =
-                    '<tr><td colspan="6"><div class="alert alert-danger mb-0">' +
+                    '<tr><td colspan="7"><div class="alert alert-danger mb-0">' +
                     escapeHtml(error.message) +
                     '</div></td></tr>';
             }
