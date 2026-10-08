@@ -224,12 +224,16 @@ class DataTerritorialController
         if (!$estado) {
             $this->responderJson(['ok' => false, 'mensaje' => 'Estado no encontrado o inactivo.'], 404);
         }
-        $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
-        $rolId = (int)($_SESSION['rol_id'] ?? 0);
-        if (!$modeloTerritorial->puedeAccederEstado($usuarioId, $rolId, $estadoId) && $rolId !== 1) {
-            $this->responderJson(['ok' => false, 'mensaje' => 'Sin acceso a este Estado.'], 403);
-        }
-
+        /*
+         * La actualización de fuentes oficiales se autoriza por el permiso
+         * global data_territorial.actualizar_oficial, comprobado arriba.
+         * El modal masivo ofrece los 32 Estados a quienes tienen ese permiso,
+         * y el resto de los endpoints oficiales siguen la misma regla.
+         *
+         * No exigir aquí asignación territorial: esa restricción corresponde
+         * a la consulta/edición de fichas, no a sincronizar un dato público
+         * de INEGI. El Estado activo ya se validó con obtenerEstado().
+         */
         $clave = str_pad(preg_replace('/\D+/', '', (string)($estado['clave_inegi'] ?? '')) ?? '', 2, '0', STR_PAD_LEFT);
         if (!preg_match('/^(0[1-9]|[12][0-9]|3[0-2])$/', $clave)) {
             $this->responderJson(['ok' => false, 'mensaje' => 'El Estado no tiene una clave INEGI válida.'], 422);
