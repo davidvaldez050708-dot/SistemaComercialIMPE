@@ -259,16 +259,71 @@ class ZadarmaWebhookEventStoreService
             return null;
         }
 
-        $inicioNormalizado = $this->normalizarFila($inicio);
-        $pbxCallId = trim(
-            (string)($inicioNormalizado['pbx_call_id'] ?? '')
+        return $this->construirEstadoEntrante(
+            $extension,
+            $this->normalizarFila($inicio)
         );
+    }
 
-        if ($pbxCallId === '') {
+    public function obtenerEstadoEntrantePorPbxCallId(
+        $extension,
+        $pbxCallId
+    ) {
+        $extension = trim((string)$extension);
+        $pbxCallId = trim((string)$pbxCallId);
+
+        if ($extension === '' || $pbxCallId === '') {
             return null;
         }
 
         $eventos = $this->obtenerPorPbxCallId($pbxCallId);
+        $inicio = null;
+
+        foreach ($eventos as $evento) {
+            if (
+                strtoupper(
+                    trim((string)($evento['event'] ?? ''))
+                ) === 'NOTIFY_INTERNAL' &&
+                trim((string)($evento['internal'] ?? '')) ===
+                    $extension
+            ) {
+                $inicio = $evento;
+                break;
+            }
+        }
+
+        if (!$inicio) {
+            return null;
+        }
+
+        return $this->construirEstadoEntrante(
+            $extension,
+            $inicio,
+            $eventos
+        );
+    }
+
+    private function construirEstadoEntrante(
+        $extension,
+        array $inicio,
+        array $eventos = []
+    ) {
+        $extension = trim((string)$extension);
+        $pbxCallId = trim(
+            (string)($inicio['pbx_call_id'] ?? '')
+        );
+
+        if ($extension === '' || $pbxCallId === '') {
+            return null;
+        }
+
+        if (empty($eventos)) {
+            $eventos =
+                $this->obtenerPorPbxCallId(
+                    $pbxCallId
+                );
+        }
+
         $respuesta = null;
         $fin = null;
         $transferida = null;
@@ -277,25 +332,32 @@ class ZadarmaWebhookEventStoreService
             $tipo = strtoupper(
                 trim((string)($evento['event'] ?? ''))
             );
+            $internal = trim(
+                (string)($evento['internal'] ?? '')
+            );
 
             if (
                 $tipo === 'NOTIFY_ANSWER' &&
-                trim((string)($evento['internal'] ?? '')) === $extension
+                $internal === $extension
             ) {
                 $respuesta = $evento;
             }
 
             if (
                 $tipo === 'NOTIFY_END' &&
-                trim((string)($evento['internal'] ?? '')) === $extension
+                $internal === $extension
             ) {
                 $fin = $evento;
             }
 
             if (
                 $tipo === 'NOTIFY_INTERNAL' &&
-                trim((string)($evento['internal'] ?? '')) !== $extension &&
-                trim((string)($evento['transfer_from'] ?? '')) === $extension
+                $internal !== $extension &&
+                trim(
+                    (string)(
+                        $evento['transfer_from'] ?? ''
+                    )
+                ) === $extension
             ) {
                 $transferida = $evento;
             }
@@ -314,14 +376,21 @@ class ZadarmaWebhookEventStoreService
         return [
             'pbx_call_id' => $pbxCallId,
             'estado' => $estado,
-            'caller_id' => (string)($inicioNormalizado['caller_id'] ?? ''),
-            'called_did' => (string)($inicioNormalizado['called_did'] ?? ''),
+            'caller_id' =>
+                (string)($inicio['caller_id'] ?? ''),
+            'called_did' =>
+                (string)($inicio['called_did'] ?? ''),
             'internal' => $extension,
-            'call_start' => (string)($inicioNormalizado['call_start'] ?? ''),
-            'answer_at' => (string)($respuesta['received_at'] ?? ''),
-            'end_at' => (string)($fin['received_at'] ?? ''),
-            'duration' => max(0, (int)($fin['duration'] ?? 0)),
-            'disposition' => (string)($fin['disposition'] ?? ''),
+            'call_start' =>
+                (string)($inicio['call_start'] ?? ''),
+            'answer_at' =>
+                (string)($respuesta['received_at'] ?? ''),
+            'end_at' =>
+                (string)($fin['received_at'] ?? ''),
+            'duration' =>
+                max(0, (int)($fin['duration'] ?? 0)),
+            'disposition' =>
+                (string)($fin['disposition'] ?? ''),
             'transfer_to' =>
                 (string)($transferida['internal'] ?? ''),
             'transfer_type' =>
