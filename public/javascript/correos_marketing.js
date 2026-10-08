@@ -39,7 +39,6 @@
             '[data-correo-results-count]'
         );
         const filtroBuscar = document.getElementById('correo_marketing_buscar');
-        const filtroEstado = document.getElementById('correo_marketing_estado');
         const filtroTipo = document.getElementById('correo_marketing_tipo');
         const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
         const modalDetalleElement =
@@ -59,6 +58,7 @@
         let enviando = false;
         let correoDetalleActual = null;
         let adjuntosBorradorActual = [];
+        let estadoBandeja = '';
 
         const escapar = function (valor) {
             const div = document.createElement('div');
@@ -262,7 +262,7 @@
 
         const aplicarFiltros = function () {
             const buscar = normalizarTexto(filtroBuscar?.value || '');
-            const estado = String(filtroEstado?.value || '').toLowerCase();
+            const estado = String(estadoBandeja || '').toLowerCase();
             const tipo = String(filtroTipo?.value || '').toLowerCase();
             let visibles = 0;
 
@@ -326,9 +326,7 @@
                 );
             });
 
-            if (filtroEstado) {
-                filtroEstado.value = mapaEstados[codigo];
-            }
+            estadoBandeja = mapaEstados[codigo];
 
             sessionStorage.setItem('correoMarketingTab', codigo);
             aplicarFiltros();
@@ -344,19 +342,6 @@
 
         filtroBuscar?.addEventListener('input', aplicarFiltros);
         filtroTipo?.addEventListener('change', aplicarFiltros);
-        filtroEstado?.addEventListener('change', function () {
-            const mapaTabs = {
-                '': 'todos',
-                enviado: 'enviados',
-                borrador: 'borradores'
-            };
-
-            activarTab(
-                mapaTabs[String(filtroEstado.value || '').toLowerCase()] ||
-                'todos'
-            );
-        });
-
         const tabInicial = sessionStorage.getItem('correoMarketingTab');
         activarTab(
             ['todos', 'enviados', 'borradores'].includes(tabInicial)
