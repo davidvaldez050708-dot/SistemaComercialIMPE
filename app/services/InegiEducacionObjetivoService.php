@@ -21,10 +21,23 @@ class InegiEducacionObjetivoService
         }
 
         /*
-         * La versión anterior construía primero los candidatos 2025, lo que
-         * implicaba consultar páginas de INEGI antes de revisar el cache 2020.
-         * Así una pantalla podía tardar varios segundos incluso teniendo datos
-         * locales válidos. Revisamos primero las fuentes estables cacheadas.
+         * La navegación nunca debe depender de una llamada remota si ya existe
+         * una sincronización válida. Primero elegimos el cache local de periodo
+         * más reciente, incluido un eventual producto 2025 compatible.
+         */
+        $mejorCacheLocal = $this->leerMejorCacheLocal($claveEstado);
+
+        if ($mejorCacheLocal !== null) {
+            $mejorCacheLocal['cache'] = [
+                'estado' => 'HIT',
+                'fuente' => 'LOCAL',
+                'ttl_segundos' => self::CACHE_TTL_SEGUNDOS
+            ];
+            return $mejorCacheLocal;
+        }
+
+        /*
+         * Compatibilidad con nombres estables históricos de cache.
          */
         foreach (['CPV2020_ARCGIS_FULL', 'CPV2020_ZIP_FULL'] as $idCacheEstable) {
             $cacheEstable = $this->rutaCache($claveEstado, $idCacheEstable);
@@ -978,6 +991,56 @@ class InegiEducacionObjetivoService
     {
         $valor = preg_replace('/\D+/', '', trim((string)$valor)) ?? '';
         return str_pad($valor === '' ? '0' : $valor, $longitud, '0', STR_PAD_LEFT);
+    }
+
+    private function leerMejorCacheLocal(string $claveEstado): ?array
+    {
+        $claveEstado = preg_replace('/\\D+/', '', $claveEstado) ?? '';
+
+        if (!preg_match('/^\\d{2}$/', $claveEstado)) {
+            return null;
+        }
+
+        $patron =
+            ROOT_PATH .
+            '/storage/cache/inegi/educacion_objetivo_' .
+            self::CACHE_VERSION .
+            '_' .
+            $claveEstado .
+            '_*.json';
+        $archivos = glob($patron) ?: [];
+        $mejor = null;
+        $mejorPeriodo = -1;
+        $mejorMtime = -1;
+
+        foreach ($archivos as $archivo) {
+            $datos = $this->leerCache($archivo);
+
+            if (
+                !is_array($datos) ||
+                ($datos['ok'] ?? false) !== true
+            ) {
+                continue;
+            }
+
+            $periodo = (int)($datos['periodo'] ?? 0);
+            $mtime = (int)(@filemtime($archivo) ?: 0);
+
+            if (
+                $mejor === null ||
+                $periodo > $mejorPeriodo ||
+                (
+                    $periodo === $mejorPeriodo &&
+                    $mtime > $mejorMtime
+                )
+            ) {
+                $mejor = $datos;
+                $mejorPeriodo = $periodo;
+                $mejorMtime = $mtime;
+            }
+        }
+
+        return $mejor;
     }
 
     private function rutaCache(string $claveEstado, string $candidatoId): string
