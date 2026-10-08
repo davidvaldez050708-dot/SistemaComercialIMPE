@@ -3,7 +3,7 @@
 class InegiEducacionObjetivoService
 {
     private const MAX_DESCARGA_BYTES = 67108864;
-    private const CACHE_TTL_SEGUNDOS = 21600;
+    private const CACHE_TTL_SEGUNDOS = 604800; // 7 días; fuente censal estable
     private const CACHE_VERSION = 'v3_perfil_completo';
     private const MAX_LINEAS_CABECERA = 50;
 
@@ -17,6 +17,26 @@ class InegiEducacionObjetivoService
             return $this->respuestaError('La clave del Estado no es válida.');
         }
 
+        /*
+         * La versión anterior construía primero los candidatos 2025, lo que
+         * implicaba consultar páginas de INEGI antes de revisar el cache 2020.
+         * Así una pantalla podía tardar varios segundos incluso teniendo datos
+         * locales válidos. Revisamos primero las fuentes estables cacheadas.
+         */
+        foreach (['CPV2020_ARCGIS_FULL', 'CPV2020_ZIP_FULL'] as $idCacheEstable) {
+            $cacheEstable = $this->rutaCache($claveEstado, $idCacheEstable);
+            $datosEstables = $this->leerCache($cacheEstable);
+
+            if ($datosEstables !== null) {
+                $datosEstables['cache'] = [
+                    'estado' => 'HIT',
+                    'fuente' => 'LOCAL',
+                    'ttl_segundos' => self::CACHE_TTL_SEGUNDOS
+                ];
+                return $datosEstables;
+            }
+        }
+
         $errores = [];
 
         foreach ($this->construirCandidatos($claveEstado) as $candidato) {
@@ -24,6 +44,11 @@ class InegiEducacionObjetivoService
             $cacheDatos = $this->leerCache($cache);
 
             if ($cacheDatos !== null) {
+                $cacheDatos['cache'] = [
+                    'estado' => 'HIT',
+                    'fuente' => 'LOCAL',
+                    'ttl_segundos' => self::CACHE_TTL_SEGUNDOS
+                ];
                 return $cacheDatos;
             }
 
@@ -33,6 +58,11 @@ class InegiEducacionObjetivoService
 
             if (($resultado['ok'] ?? false) === true) {
                 $this->guardarCache($cache, $resultado);
+                $resultado['cache'] = [
+                    'estado' => 'MISS',
+                    'fuente' => 'INEGI',
+                    'ttl_segundos' => self::CACHE_TTL_SEGUNDOS
+                ];
                 return $resultado;
             }
 
