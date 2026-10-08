@@ -5,6 +5,9 @@ on:
       - ".github/workflows/inegi-oaxaca-diagnostic.yml"
       - "tests/inegi_veracruz_real_smoke.php"
       - "tests/inspeccionar_inegi_nacional.php"
+      - "tests/inegi_oaxaca_nacional_smoke.php"
+      - "app/services/InegiEscolaridadAdultaXlsxService.php"
+      - "app/services/InegiPerfilEducativoPrioritarioAutoService.php"
   workflow_dispatch:
 permissions:
   contents: read
@@ -22,13 +25,13 @@ jobs:
       - name: Probar fuentes Oaxaca y nacional
         shell: bash
         run: |
-          set +e
+          set -euo pipefail
           mkdir -p /tmp/oaxaca
           echo '## Fuentes oficiales de Oaxaca' >/tmp/reporte_oaxaca.txt
           url="https://www.inegi.org.mx/contenidos/programas/ccpv/2020/tabulados/cpv2020_b_eum_07_educacion.xlsx"
           curl --fail -sSL --retry 2 --connect-timeout 12 --max-time 120 -o /tmp/oaxaca/nacional.xlsx "$url"
           echo "XLSX nacional descargado: $(wc -c </tmp/oaxaca/nacional.xlsx) bytes" >>/tmp/reporte_oaxaca.txt
-          php tests/inspeccionar_inegi_nacional.php /tmp/oaxaca/nacional.xlsx >>/tmp/reporte_oaxaca.txt 2>&1
+          php tests/inegi_oaxaca_nacional_smoke.php /tmp/oaxaca/nacional.xlsx >>/tmp/reporte_oaxaca.txt 2>&1
           cat /tmp/reporte_oaxaca.txt | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Publicar diagnostico
         if: always() && github.event_name == 'pull_request'
