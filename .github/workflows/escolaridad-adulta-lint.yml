@@ -1,0 +1,31 @@
+name: Lint escolaridad adulta
+
+on:
+  pull_request:
+    paths:
+      - "app/controllers/DataTerritorialController.php"
+      - "app/models/EscolaridadAdultaModel.php"
+      - "app/services/EscolaridadAdultaImportService.php"
+      - "app/services/ReporteTerritorialService.php"
+      - "app/services/ReporteTerritorialPdfService.php"
+      - "app/views/data_territorial/index.php"
+      - "app/views/reportes/data_territorial.php"
+  push:
+    branches:
+      - "feature/indicadores-escolaridad-adulta-estados"
+
+jobs:
+  php-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validar sintaxis PHP
+        run: |
+          php -v
+          php -l app/controllers/DataTerritorialController.php
+          php -l app/models/EscolaridadAdultaModel.php
+          php -l app/services/EscolaridadAdultaImportService.php
+          php -l app/services/ReporteTerritorialService.php
+          php -l app/services/ReporteTerritorialPdfService.php
+          php -l app/views/data_territorial/index.php
+          php -l app/views/reportes/data_territorial.php

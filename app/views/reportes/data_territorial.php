@@ -44,6 +44,7 @@ $poder = is_array($reporte) ? ($reporte['poder_adquisitivo'] ?? []) : [];
 $rezago = is_array($reporte) ? ($reporte['rezago_educativo'] ?? []) : [];
 $perfil = is_array($reporte) ? ($reporte['perfil_educativo'] ?? []) : [];
 $perfil2549 = is_array($reporte) ? ($reporte['perfil_educativo_25_49'] ?? []) : [];
+$escolaridadAdulta = is_array($reporte) ? ($reporte['escolaridad_adulta'] ?? []) : [];
 $indicadores = is_array($reporte) ? ($reporte['indicadores_educativos'] ?? []) : [];
 $priorizacion = is_array($reporte) ? ($reporte['priorizacion_municipal'] ?? []) : [];
 $secretarias = is_array($reporte) ? ($reporte['secretarias'] ?? []) : [];
@@ -461,6 +462,40 @@ foreach ($sectoresGrafica as $sectorGrafica) {
                 </article>
             </section>
 
+            <section class="dashboard-panel report-section territorial-education-profile mb-4">
+                <div class="territorial-report-section-heading">
+                    <div>
+                        <span>ESCOLARIDAD ADULTA</span>
+                        <h3>Brecha de escolaridad por grupo de edad</h3>
+                        <p>Indicadores incorporados de tabulados con fuente y metodología declaradas, sin estimaciones de datos faltantes.</p>
+                    </div>
+                </div>
+                <div class="territorial-education-grid territorial-education-grid-adultos">
+                    <?php foreach ([
+                        ['codigo' => 'SIN_EDUCACION_SUPERIOR_25_MAS', 'nombre' => 'Sin educación superior · 25 años o más'],
+                        ['codigo' => 'SIN_MEDIA_SUPERIOR_CONCLUIDA_18_MAS', 'nombre' => 'Sin media superior concluida · 18 años o más']
+                    ] as $tipoAdulto): ?>
+                        <?php
+                            $adulto = $escolaridadAdulta[$tipoAdulto['codigo']] ?? [];
+                            $adultoDisponible = ($adulto['disponible'] ?? false) === true;
+                        ?>
+                        <article>
+                            <span><?= $texto($tipoAdulto['nombre']) ?></span>
+                            <strong><?= $adultoDisponible ? $numero($adulto['cantidad_personas']) : 'Pendiente' ?></strong>
+                            <?php if ($adultoDisponible): ?>
+                                <small><?= $numero($adulto['porcentaje'], 2) ?> % de <?= $numero($adulto['poblacion_base']) ?> personas · <?= (int)$adulto['anio'] ?></small>
+                                <small>Fuente declarada: <?= $texto($adulto['fuente']) ?></small>
+                                <small><a href="<?= $texto($adulto['referencia_url']) ?>" target="_blank" rel="noopener noreferrer">Consultar referencia INEGI</a></small>
+                                <small>Metodología: <?= $texto($adulto['metodologia']) ?></small>
+                            <?php else: ?>
+                                <small>Sin información validada para el rango de edad.</small>
+                            <?php endif; ?>
+                        </article>
+                    <?php endforeach; ?>
+                </div>
+                <p class="territorial-education-note">La importación no certifica la coincidencia con INEGI; las cifras deben cotejarse con la referencia citada.</p>
+            </section>
+
             <?php if (($perfil2549['disponible'] ?? false) === true): ?>
                 <section class="dashboard-panel report-section territorial-education-profile mb-4">
                     <div class="territorial-report-section-heading">
@@ -484,7 +519,7 @@ foreach ($sectoresGrafica as $sectorGrafica) {
                             <small>Base agregada de municipios con información</small>
                         </article>
                         <article class="territorial-education-card-emphasis">
-                            <span>Sin media superior concluida</span>
+                            <span>Sin estudios de media superior</span>
                             <strong><?= $numero($perfil2549['sin_media_superior_25_49'] ?? null) ?></strong>
                             <small><?= $numero($perfil2549['sin_media_superior_25_49_pct'] ?? null, 2) ?> % del grupo 25–49</small>
                         </article>

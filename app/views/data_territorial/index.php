@@ -43,6 +43,7 @@ $rezagoEducativoOficial = $rezagoEducativoOficial ?? [
     'referencia_nacional' => null,
     'historico' => []
 ];
+$escolaridadAdulta = $escolaridadAdulta ?? [];
 $fuentes = $fuentes ?? [];
 $buscarTerritorio = $buscarTerritorio ?? '';
 $buscarMunicipio = $buscarMunicipio ?? '';
@@ -1193,6 +1194,120 @@ $urlPaginaTerritorio = function ($pagina) use ($buscarTerritorio, $filtroInforma
                     <h3>Educación</h3>
                 </div>
 
+            </div>
+
+            <div class="data-education-official">
+                <div class="data-education-official-heading">
+                    <div>
+                        <span>ESCOLARIDAD ADULTA · INEGI</span>
+                        <h4>Brecha de escolaridad en población adulta</h4>
+                        <p>Indicadores por rango de edad, con cantidades, porcentajes y procedencia documental independiente del rezago educativo.</p>
+                    </div>
+                </div>
+                <div class="data-education-metrics">
+                    <?php
+                        $indicadoresEscolaridadAdulta = [
+                            [
+                                'codigo' => 'SIN_EDUCACION_SUPERIOR_25_MAS',
+                                'nombre' => 'Sin educación superior',
+                                'edad' => '25 años o más'
+                            ],
+                            [
+                                'codigo' => 'SIN_MEDIA_SUPERIOR_CONCLUIDA_18_MAS',
+                                'nombre' => 'Sin media superior concluida',
+                                'edad' => '18 años o más'
+                            ]
+                        ];
+                    ?>
+                    <?php foreach ($indicadoresEscolaridadAdulta as $definicionAdulta): ?>
+                        <?php
+                            $datoAdulto = $escolaridadAdulta[$definicionAdulta['codigo']] ?? [];
+                            $disponibleAdulto = ($datoAdulto['disponible'] ?? false) === true;
+                        ?>
+                        <article class="data-education-metric">
+                            <span><?= $texto($definicionAdulta['nombre']) ?> · <?= $texto($definicionAdulta['edad']) ?></span>
+                            <?php if ($disponibleAdulto): ?>
+                                <strong><?= $numero($datoAdulto['cantidad_personas']) ?> personas</strong>
+                                <div class="data-education-reference">
+                                    <span><b><?= $numeroDecimal($datoAdulto['porcentaje']) ?> %</b> del grupo de edad</span>
+                                </div>
+                                <small>Base: <?= $numero($datoAdulto['poblacion_base']) ?> personas · <?= (int)$datoAdulto['anio'] ?></small>
+                                <p class="data-education-note">
+                                    Fuente declarada: <?= $texto($datoAdulto['fuente']) ?>.
+                                    <a href="<?= $texto($datoAdulto['referencia_url']) ?>" target="_blank" rel="noopener noreferrer">Consultar referencia</a>.
+                                </p>
+                                <details class="data-education-note">
+                                    <summary>Metodología declarada</summary>
+                                    <p><?= $texto($datoAdulto['metodologia']) ?></p>
+                                </details>
+                            <?php else: ?>
+                                <strong>Pendiente</strong>
+                                <small>No se ha importado una cifra de este rango con metodología documentada.</small>
+                            <?php endif; ?>
+                        </article>
+                    <?php endforeach; ?>
+                </div>
+                <p class="data-education-note">
+                    Las cantidades se importan desde un CSV cotejado con tabulados INEGI; el sistema valida estructura y coherencia,
+                    pero no verifica automáticamente su correspondencia con el documento citado. No se estiman cifras faltantes.
+                </p>
+                <?php if ($puedeActualizarInformacionOficial): ?>
+                    <form id="formEscolaridadAdultaCsv"
+                        action="<?= BASE_URL ?>index.php?controller=dataTerritorial&amp;action=importarEscolaridadAdultaCsv"
+                        method="POST" enctype="multipart/form-data" class="data-power-import">
+                        <div class="data-power-import-heading">
+                            <div>
+                                <strong>Importar escolaridad adulta · CSV oficial preparado</strong>
+                                <span>Archivo UTF-8 con dos indicadores y el mismo año por Estado. Admite uno o los 32 Estados.</span>
+                            </div>
+                            <i class="bi bi-file-earmark-spreadsheet" aria-hidden="true"></i>
+                        </div>
+                        <label class="data-power-import-file" for="archivoEscolaridadAdulta">
+                            <span>Seleccionar CSV</span>
+                            <input type="file" id="archivoEscolaridadAdulta" name="archivo_escolaridad_adulta"
+                                accept=".csv,text/csv" required>
+                        </label>
+                        <small class="data-power-import-help">
+                            Columnas: clave_estado, codigo_indicador, anio, poblacion_base, cantidad_personas, fuente, referencia_url, metodologia.
+                            <a href="<?= BASE_URL ?>plantillas/escolaridad_adulta_inegi.csv" download>Descargar plantilla CSV</a>.
+                            Antes de importar, consulta la metodología y las instrucciones en el repositorio.
+                        </small>
+                        <button type="submit" class="btn btn-system-save" id="importarEscolaridadAdultaBtn">
+                            <i class="bi bi-cloud-upload me-1"></i> Importar indicadores
+                        </button>
+                        <div id="estadoEscolaridadAdulta" role="status" aria-live="polite"></div>
+                    </form>
+                    <script>
+                        (() => {
+                            const form = document.getElementById('formEscolaridadAdultaCsv');
+                            if (!form) return;
+                            form.addEventListener('submit', async (event) => {
+                                event.preventDefault();
+                                const estado = document.getElementById('estadoEscolaridadAdulta');
+                                const boton = document.getElementById('importarEscolaridadAdultaBtn');
+                                boton.disabled = true;
+                                estado.textContent = 'Validando el CSV…';
+                                try {
+                                    const respuesta = await fetch(form.action, {
+                                        method: 'POST',
+                                        body: new FormData(form),
+                                        credentials: 'same-origin'
+                                    });
+                                    const datos = await respuesta.json();
+                                    if (!respuesta.ok || datos.ok !== true) {
+                                        throw new Error(datos.mensaje || 'No fue posible importar el archivo.');
+                                    }
+                                    estado.textContent = datos.mensaje;
+                                    window.location.reload();
+                                } catch (error) {
+                                    estado.textContent = error.message || 'No fue posible importar el archivo.';
+                                } finally {
+                                    boton.disabled = false;
+                                }
+                            });
+                        })();
+                    </script>
+                <?php endif; ?>
             </div>
 
             <div class="data-education-official">

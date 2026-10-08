@@ -11,6 +11,8 @@ require_once __DIR__ . '/../services/InegiPerfilAdultoLaboralService.php';
 require_once __DIR__ . '/../services/InegiPerfilEducativoPrioritarioAutoService.php';
 require_once __DIR__ . '/../services/InegiPerfilEducativoPrioritarioImportService.php';
 require_once __DIR__ . '/../models/PerfilAdultoLaboralModel.php';
+require_once __DIR__ . '/../models/EscolaridadAdultaModel.php';
+require_once __DIR__ . '/../services/EscolaridadAdultaImportService.php';
 require_once __DIR__ . '/../helpers/PermissionHelper.php';
 
 class DataTerritorialController
@@ -97,6 +99,7 @@ class DataTerritorialController
             'disponible' => false,
             'referencia_nacional' => null
         ];
+        $escolaridadAdulta = (new EscolaridadAdultaModel())->obtenerPorEstado(0);
         $rezagoEducativoOficial = [
             'disponible' => false,
             'referencia_nacional' => null,
@@ -130,6 +133,7 @@ class DataTerritorialController
                 $modelo->obtenerPoderAdquisitivoEstado($estadoId);
             $rezagoEducativoOficial =
                 $modelo->obtenerRezagoEducativoOficialEstado($estadoId);
+            $escolaridadAdulta = (new EscolaridadAdultaModel())->obtenerPorEstado($estadoId);
             $municipios = $modelo->obtenerMunicipios(
                 $estadoId,
                 ['buscar' => $buscarMunicipio],
@@ -196,6 +200,47 @@ class DataTerritorialController
         require_once __DIR__ . '/../views/layout/topbar.php';
         require_once __DIR__ . '/../views/data_territorial/index.php';
         require_once __DIR__ . '/../views/layout/dashboard_footer.php';
+    }
+
+    /**
+     * Importa un CSV normalizado por Estado desde fuentes INEGI declaradas.
+     * Requiere el mismo permiso de actualización oficial de Información Territorial.
+     */
+    public function importarEscolaridadAdultaCsv()
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->responderJson(['ok' => false, 'mensaje' => 'Método no permitido.'], 405);
+        }
+        $this->validarPermisoActualizacionOficialJson();
+
+        $archivo = $_FILES['archivo_escolaridad_adulta'] ?? null;
+        if (!is_array($archivo) || (int)($archivo['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+            $this->responderJson(['ok' => false, 'mensaje' => 'Selecciona un archivo CSV válido.'], 422);
+        }
+        $nombre = basename((string)($archivo['name'] ?? ''));
+        $ruta = (string)($archivo['tmp_name'] ?? '');
+        $tamano = (int)($archivo['size'] ?? 0);
+        if (strtolower(pathinfo($nombre, PATHINFO_EXTENSION)) !== 'csv' ||
+            $tamano <= 0 || $tamano > 1024 * 1024 ||
+            $ruta === '' || !is_uploaded_file($ruta)) {
+            $this->responderJson(['ok' => false, 'mensaje' => 'El archivo debe ser CSV UTF-8 y no superar 1 MB.'], 422);
+        }
+
+        $resultado = (new EscolaridadAdultaImportService())->importarCsv($ruta, $nombre);
+        if (($resultado['ok'] ?? false) !== true) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => $resultado['mensaje'] ?? 'No fue posible importar escolaridad adulta.'
+            ], 422);
+        }
+        $this->responderJson([
+            'ok' => true,
+            'mensaje' => 'Indicadores de escolaridad adulta importados. Verifica los valores contra las fuentes citadas.',
+            'datos' => [
+                'estados' => (int)$resultado['estados'],
+                'indicadores' => (int)$resultado['indicadores']
+            ]
+        ]);
     }
 
     public function municipiosTabla()
