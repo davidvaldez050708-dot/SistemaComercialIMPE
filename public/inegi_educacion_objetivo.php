@@ -6,8 +6,7 @@ require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../app/helpers/PermissionHelper.php';
 require_once __DIR__ . '/../app/models/DataTerritorialModel.php';
 require_once __DIR__ . '/../app/services/InegiEducacionObjetivoService.php';
-require_once __DIR__ . '/../app/services/InegiEducacionPerfilDetalleService.php';
-require_once __DIR__ . '/../app/services/InegiPerfilAdultoLaboralService.php';
+
 require_once __DIR__ . '/../app/models/PerfilEducativoPrioritarioModel.php';
 require_once __DIR__ . '/../app/services/InegiPerfilEducativoPrioritarioAutoService.php';
 
@@ -67,35 +66,64 @@ if (!preg_match('/^\d{2}$/', $claveInegi)) {
     ], 422);
 }
 
+/*
+ * Esta ruta es de LECTURA. No descarga XLSX/ZIP ni consulta servicios remotos
+ * pesados mientras un analista navega por Información territorial.
+ *
+ * La sincronización oficial se realiza desde Administración >
+ * "Actualizar información oficial" y aquí se consume el cache/local DB.
+ */
 $servicio = new InegiEducacionObjetivoService();
-$resultado = $servicio->obtenerPorEstado($claveInegi);
+$resultadoGeneral = $servicio->obtenerPorEstado(
+    $claveInegi,
+    false
+);
 
-if (($resultado['ok'] ?? false) !== true) {
-    $responder($resultado, 502);
+if (($resultadoGeneral['ok'] ?? false) === true) {
+    $resultado = $resultadoGeneral;
+    $resultado['contexto_general_disponible'] = true;
+} else {
+    $resultado = [
+        'ok' => true,
+        'fuente' => 'INEGI - Censo de Población y Vivienda 2020',
+        'periodo' => '2020',
+        'producto' => 'CPV',
+        'estado' => [
+            'clave' => $claveInegi,
+            'nombre' => (string)($estado['nombre'] ?? ''),
+            'metricas' => []
+        ],
+        'municipios' => [],
+        'municipios_total' => 0,
+        'contexto_general_disponible' => false,
+        'mensaje_contexto_general' =>
+            'El contexto educativo general todavía no está sincronizado localmente.'
+    ];
 }
 
-$detalle = new InegiEducacionPerfilDetalleService();
-$resultado = $detalle->enriquecer($resultado, $claveInegi);
-
 /*
- * El rango adulto 25-49 se obtiene de ITER con grupos quinquenales exactos.
- * El cruce edad × escolaridad se consulta por separado y sólo se presenta
- * cuando existe información oficial cargada del tabulado B2020_07_08_M.
- * Nunca se estima a partir de porcentajes generales.
+ * El perfil prioritario 25-49 sí se lee desde la tabla local.
+ * Si falta, se informa "Sin sincronizar"; nunca se dispara una descarga
+ * pesada desde esta pantalla.
  */
-$perfilAdulto = (new InegiPerfilAdultoLaboralService())
-    ->obtenerPorEstado($claveInegi);
-
-$resultado['perfil_adulto'] = ($perfilAdulto['ok'] ?? false) === true
-    ? $perfilAdulto
-    : [
-        'ok' => false,
-        'mensaje' => (string)($perfilAdulto['mensaje'] ?? '')
-    ];
-
 $resultado['perfil_educativo_prioritario'] =
     (new InegiPerfilEducativoPrioritarioAutoService())
-        ->obtenerOActualizar($estadoId, $claveInegi);
+        ->obtenerOActualizar(
+            $estadoId,
+            $claveInegi,
+            false
+        );
 
+/*
+ * El contexto adulto/laboral municipal se persiste por separado desde la
+ * actualización oficial. Esta pantalla no lo vuelve a descargar de INEGI.
+ */
+$resultado['perfil_adulto'] = [
+    'ok' => false,
+    'mensaje' =>
+        'El perfil adulto/laboral se consulta desde la información oficial sincronizada.'
+];
+
+$resultado['modo_lectura'] = 'LOCAL';
 
 $responder($resultado);
