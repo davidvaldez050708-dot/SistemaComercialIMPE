@@ -876,13 +876,22 @@
         const cargar = async function () {
             renderCarga();
 
+            const controlador = new AbortController();
+            const timeout = window.setTimeout(
+                function () {
+                    controlador.abort();
+                },
+                10000
+            );
+
             try {
                 const respuesta = await fetch(
                     'public/inegi_educacion_objetivo.php?estado_id=' +
                         encodeURIComponent(estadoId),
                     {
                         headers: { 'X-Requested-With': 'fetch' },
-                        cache: 'no-store'
+                        cache: 'no-store',
+                        signal: controlador.signal
                     }
                 );
 
@@ -908,10 +917,16 @@
             } catch (error) {
                 consultaEducativaTerminada = true;
                 renderError(
-                    error.message ||
-                    'No fue posible consultar la información de INEGI.'
+                    error?.name === 'AbortError'
+                        ? 'La información local tardó más de lo esperado. Recarga la vista o solicita una sincronización oficial.'
+                        : (
+                            error.message ||
+                            'No fue posible consultar la información educativa.'
+                        )
                 );
                 asegurarContextoAdicional();
+            } finally {
+                window.clearTimeout(timeout);
             }
         };
 
