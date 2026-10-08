@@ -174,7 +174,7 @@ class InegiEscolaridadAdultaXlsxService
             foreach ([2, 3, 4, 8, 12, 18] as $categoria) {
                 $minimo += (int)$m[$categoria];
             }
-            foreach ([13, 20, 21, 28] as $categoria) {
+            foreach ([14, 16, 20, 21, 28] as $categoria) {
                 $indeterminados += (int)$m[$categoria];
             }
         }
