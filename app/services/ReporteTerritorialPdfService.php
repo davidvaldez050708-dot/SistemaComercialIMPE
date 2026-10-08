@@ -88,6 +88,7 @@ class ReporteTerritorialPdfService
         $perfil = is_array($reporte['perfil_educativo'] ?? null) ? $reporte['perfil_educativo'] : [];
         $perfil2549 = is_array($reporte['perfil_educativo_25_49'] ?? null) ? $reporte['perfil_educativo_25_49'] : [];
         $escolaridadAdulta = is_array($reporte['escolaridad_adulta'] ?? null) ? $reporte['escolaridad_adulta'] : [];
+        $escolaridadJuvenil = is_array($reporte['escolaridad_juvenil'] ?? null) ? $reporte['escolaridad_juvenil'] : [];
         $indicadores = is_array($reporte['indicadores_educativos'] ?? null) ? $reporte['indicadores_educativos'] : [];
         $priorizacion = is_array($reporte['priorizacion_municipal'] ?? null) ? $reporte['priorizacion_municipal'] : [];
         $secretarias = is_array($reporte['secretarias'] ?? null) ? $reporte['secretarias'] : [];
@@ -359,35 +360,37 @@ class ReporteTerritorialPdfService
         }
 
         $html .= '<section class="report-section keep education-priority">' .
-            $this->sectionTitle('Brecha de escolaridad en población adulta');
-        $html .= '<p class="section-note">Rangos y definiciones independientes del perfil 25–49. Los valores se importan con referencia oficial declarada, sin estimaciones.</p>';
+            $this->sectionTitle('Brechas de escolaridad por edad · Censo 2020');
+        $html .= '<p class="section-note">Información INEGI B2020_07_08_M de jóvenes 15–17 y adultos 18+/25+. Cada indicador usa su propio universo poblacional.</p>';
         $html .= '<table class="education-profile-grid"><tr>';
-        foreach ([
-            ['codigo' => 'SIN_EDUCACION_SUPERIOR_25_MAS', 'titulo' => 'Sin educación superior · 25 años o más'],
-            ['codigo' => 'SIN_MEDIA_SUPERIOR_CONCLUIDA_18_MAS', 'titulo' => 'Sin media superior concluida · 18 años o más']
-        ] as $definicionAdulta) {
-            $dato = $escolaridadAdulta[$definicionAdulta['codigo']] ?? [];
+        $indicadoresBrecha = [
+            ['codigo' => 'JUVENIL', 'titulo' => 'Sin media superior concluida · 15–17 años', 'minimo' => true],
+            ['codigo' => 'SIN_EDUCACION_SUPERIOR_25_MAS', 'titulo' => 'Sin educación superior · 25 años o más', 'minimo' => false],
+            ['codigo' => 'SIN_MEDIA_SUPERIOR_CONCLUIDA_18_MAS', 'titulo' => 'Sin media superior concluida · 18 años o más', 'minimo' => true]
+        ];
+        foreach ($indicadoresBrecha as $indicadorBrecha) {
+            $dato = $indicadorBrecha['codigo'] === 'JUVENIL'
+                ? $escolaridadJuvenil
+                : ($escolaridadAdulta[$indicadorBrecha['codigo']] ?? []);
             $disponible = ($dato['disponible'] ?? false) === true;
-            $esMinimo = str_contains((string)($dato['metodologia'] ?? ''), 'Conteo mínimo identificable');
-            $html .= '<td><span>' . $this->e($definicionAdulta['titulo']) .
-                ($esMinimo ? ' (mínimo identificado)' : '') . '</span>';
+            $html .= '<td><span>' . $this->e($indicadorBrecha['titulo']) .
+                ($indicadorBrecha['minimo'] ? ' (mínimo identificado)' : '') . '</span>';
             $html .= '<strong>' . ($disponible
-                ? $this->numero($dato['cantidad_personas'])
-                : 'Pendiente') . '</strong>';
+                ? $this->numero($dato['cantidad_personas']) : 'Pendiente') . '</strong>';
             if ($disponible) {
-                $html .= '<small>' . $this->decimal($dato['porcentaje'], 2) .
-                    '% de ' . $this->numero($dato['poblacion_base']) . ' personas</small>';
-                $html .= '<small>Periodo: ' . (int)$dato['anio'] .
-                    ' · Fuente declarada: ' . $this->e($dato['fuente']) . '</small>';
+                $html .= '<small>' . $this->decimal($dato['porcentaje'], 2) . '% de ' .
+                    $this->numero($dato['poblacion_base']) . ' personas · ' . (int)$dato['anio'] . '</small>';
+                $html .= '<small>Fuente: ' . $this->e($dato['fuente']) . '</small>';
                 $html .= '<small>Metodología: ' . $this->e($dato['metodologia']) . '</small>';
-                $html .= '<small><a href="' . $this->e($dato['referencia_url']) . '">Consultar referencia INEGI</a></small>';
+                $html .= '<small><a href="' . $this->e($dato['referencia_url']) .
+                    '">Consultar fuente INEGI</a></small>';
             } else {
-                $html .= '<small>Sin cifra del rango con metodología documentada.</small>';
+                $html .= '<small>Sin cifra validada para este grupo de edad.</small>';
             }
             $html .= '</td>';
         }
         $html .= '</tr></table>';
-        $html .= '<p class="section-note">La importación valida estructura y consistencia, no certifica las cifras contra el documento INEGI citado.</p></section>';
+        $html .= '<p class="section-note">Los valores 15–17 y 18+ son mínimos identificables, no tasas de abandono escolar.</p></section>';
 
         $html .= '<section class="report-section keep">' . $this->sectionTitle('Contexto institucional');
         $html .= '<table class="territory-grid government"><tr>';
