@@ -12,6 +12,9 @@ on:
       - "app/services/ReporteTerritorialService.php"
       - "app/services/ReporteTerritorialPdfService.php"
       - "app/views/data_territorial/index.php"
+      - "public/javascript/educacion_objetivo.js"
+      - "public/css/dashboard.css"
+      - "tests/orden_brechas_educacion_test.py"
       - "app/views/reportes/data_territorial.php"
   push:
     branches:
@@ -44,3 +47,8 @@ jobs:
 
       - name: Prueba estructural de edades sin acceso a base de datos
         run: php tests/inegi_escolaridad_adulta_xlsx_test.php
+
+      - name: Comprobar orden y estilos de Educación
+        run: |
+          node --check public/javascript/educacion_objetivo.js
+          python3 tests/orden_brechas_educacion_test.py
