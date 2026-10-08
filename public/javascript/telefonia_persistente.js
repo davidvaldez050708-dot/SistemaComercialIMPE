@@ -2137,7 +2137,18 @@
             );
 
             void probe().then(
-                renderReceptionState
+                function (info) {
+                    if (info?.permite_entrantes) {
+                        sendCommand('PING', {});
+
+                        window.setTimeout(
+                            renderReceptionState,
+                            260
+                        );
+                    } else {
+                        renderReceptionState();
+                    }
+                }
             ).catch(function () {
                 renderReceptionState();
             });
