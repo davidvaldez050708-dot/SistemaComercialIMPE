@@ -9497,30 +9497,6 @@
     font-size: 10.5px;
 }
 #educacion .data-education-gap-base strong { color: #14213a; font-weight: 800; }
-#educacion .data-education-gap-source {
-    margin-top: 10px;
-    color: #657186;
-    font-size: 10.5px;
-}
-#educacion .data-education-gap-source summary {
-    cursor: pointer;
-    color: #254d8b;
-    font-size: 10.5px;
-    font-weight: 750;
-}
-#educacion .data-education-gap-source summary i { margin-left: 4px; font-size: 9px; }
-#educacion .data-education-gap-source[open] summary i { transform: rotate(180deg); }
-#educacion .data-education-gap-source p {
-    margin: 7px 0 0;
-    line-height: 1.55;
-    overflow-wrap: anywhere;
-}
-#educacion .data-education-gap-source a {
-    display: inline-block;
-    margin-top: 7px;
-    color: #254d8b;
-    overflow-wrap: anywhere;
-}
 #educacion .data-education-gap-reference {
     display: flex;
     align-items: flex-start;
@@ -9540,46 +9516,6 @@
     font-size: 14px;
 }
 #educacion .data-education-gap-reference p { margin: 0; }
-#educacion .data-education-gap-import {
-    margin-top: 11px;
-    padding-top: 10px;
-    border-top: 1px solid #edf0f5;
-}
-#educacion .data-education-gap-import > summary {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    cursor: pointer;
-    color: #657186;
-    font-size: 10.5px;
-    font-weight: 700;
-}
-#educacion .data-education-gap-import > summary > i:last-child {
-    margin-left: auto;
-    font-size: 9px;
-}
-#educacion .data-education-gap-import[open] > summary > i:last-child { transform: rotate(180deg); }
-#educacion .data-education-gap-import > p {
-    margin: 10px 0;
-    color: #657186;
-    font-size: 11px;
-    line-height: 1.5;
-}
-#educacion .data-education-gap-import-form {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 9px 14px;
-}
-#educacion .data-education-gap-import-form label {
-    color: #4b5870;
-    font-size: 11px;
-    font-weight: 700;
-}
-#educacion .data-education-gap-import-form input { min-width: 0; max-width: 100%; font-size: 11px; }
-#educacion .data-education-gap-import-form a { color: #273a8a; font-size: 11px; }
-#educacion .data-education-gap-import-form button { font-size: 11px; }
-#educacion .data-education-gap-import-form [role="status"] { flex-basis: 100%; font-size: 11px; }
 @media (max-width: 991.98px) {
     #educacion .data-education-gap-cards { grid-template-columns: minmax(0, 1fr); }
     #educacion .data-education-gap-heading { flex-wrap: wrap; }

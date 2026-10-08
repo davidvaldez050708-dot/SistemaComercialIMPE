@@ -28,9 +28,22 @@ for code in ("SIN_EDUCACION_SUPERIOR_25_MAS",
              "SIN_MEDIA_SUPERIOR_CONCLUIDA_18_MAS",
              "SIN_MEDIA_SUPERIOR_CONCLUIDA_15_17"):
     assert code in view, f"Falta el indicador {code}"
-assert view.count('id="formEscolaridadAdultaCsv"') == 1, "No duplicar formulario de importación"
+# Los detalles documentales se conservan en BD, pero no deben ocupar la vista.
+brechas = view.split('<section class="data-education-gap"', 1)[1].split('<div class="data-education-official">', 1)[0]
+for eliminado in (
+    'id="formEscolaridadAdultaCsv"',
+    'data-education-gap-import',
+    'data-education-gap-source',
+    'Fuente y metodología',
+    'Importación manual alternativa',
+):
+    assert eliminado not in brechas, f"El bloque muestra un elemento eliminado: {eliminado}"
+# La actualización INEGI (masiva e individual) sigue vigente.
+assert view.count('value="escolaridad_adulta"') == 2, (
+    "La actualización oficial individual y masiva debe seguir disponible"
+)
 assert '.data-education-gap-card-youth' not in css, "No restaurar tarjeta juvenil de ancho completo"
 assert 'grid-template-columns: repeat(3, minmax(0, 1fr));' in css, (
     "Las tres tarjetas deben compartir el mismo grid responsive"
 )
-print("OK: prioridad primero, tres tarjetas con diseño unificado y CSV conservado.")
+print("OK: prioridad primero, tres tarjetas, sin CSV ni fuente/metodología visible, INEGI automático vigente.")
