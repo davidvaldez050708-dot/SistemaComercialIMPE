@@ -155,17 +155,6 @@ class InegiPerfilEducativoPrioritarioAutoService
             }
         }
 
-        /*
-         * Fallback oficial nacional. Algunos Estados (Oaxaca entre ellos)
-         * ya no exponen un binario estatal estable en la ruta histórica,
-         * mientras el libro nacional de Educación 2020 sigue siendo la misma
-         * fuente del Censo. El importador filtra estrictamente el Estado
-         * solicitado y exige desglose municipal antes de guardar.
-         */
-        $urls[] =
-            'https://www.inegi.org.mx/contenidos/programas/ccpv/2020/tabulados/' .
-            'cpv2020_b_eum_07_educacion.xlsx';
-
         $urls = array_values(array_unique($urls));
 
         if (empty($urls)) {
@@ -363,13 +352,26 @@ class InegiPerfilEducativoPrioritarioAutoService
                 break;
             }
 
-            if ($intento < 3) {
-                usleep(
-                    $intento === 1
-                        ? 900000
-                        : 1800000
+            $mensajeDescarga =
+                strtolower(
+                    trim(
+                        (string)($descarga['mensaje'] ?? '')
+                    )
                 );
+            $errorDeterminista =
+                strpos($mensajeDescarga, 'text/html') !== false ||
+                strpos($mensajeDescarga, 'no es zip/xlsx') !== false ||
+                strpos($mensajeDescarga, 'no contiene la estructura') !== false;
+
+            if ($errorDeterminista || $intento >= 3) {
+                break;
             }
+
+            usleep(
+                $intento === 1
+                    ? 900000
+                    : 1800000
+            );
         }
 
         if (($descarga['ok'] ?? false) !== true) {
