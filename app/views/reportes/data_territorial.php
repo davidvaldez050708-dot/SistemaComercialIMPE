@@ -45,6 +45,7 @@ $rezago = is_array($reporte) ? ($reporte['rezago_educativo'] ?? []) : [];
 $perfil = is_array($reporte) ? ($reporte['perfil_educativo'] ?? []) : [];
 $perfil2549 = is_array($reporte) ? ($reporte['perfil_educativo_25_49'] ?? []) : [];
 $escolaridadAdulta = is_array($reporte) ? ($reporte['escolaridad_adulta'] ?? []) : [];
+$escolaridadJuvenil = is_array($reporte) ? ($reporte['escolaridad_juvenil'] ?? []) : [];
 $indicadores = is_array($reporte) ? ($reporte['indicadores_educativos'] ?? []) : [];
 $priorizacion = is_array($reporte) ? ($reporte['priorizacion_municipal'] ?? []) : [];
 $secretarias = is_array($reporte) ? ($reporte['secretarias'] ?? []) : [];
@@ -465,38 +466,47 @@ foreach ($sectoresGrafica as $sectorGrafica) {
             <section class="dashboard-panel report-section territorial-education-profile mb-4">
                 <div class="territorial-report-section-heading">
                     <div>
-                        <span>ESCOLARIDAD ADULTA</span>
-                        <h3>Brecha de escolaridad por grupo de edad</h3>
-                        <p>Indicadores incorporados de tabulados con fuente y metodología declaradas, sin estimaciones de datos faltantes.</p>
+                        <span>BRECHAS EDUCATIVAS · CENSO 2020</span>
+                        <h3>Escolaridad por grupos de edad</h3>
+                        <p>Indicadores independientes para jóvenes de 15–17 años y población adulta, con universo y fuente INEGI.</p>
                     </div>
                 </div>
                 <div class="territorial-education-grid territorial-education-grid-adultos">
                     <?php foreach ([
-                        ['codigo' => 'SIN_EDUCACION_SUPERIOR_25_MAS', 'nombre' => 'Sin educación superior · 25 años o más'],
-                        ['codigo' => 'SIN_MEDIA_SUPERIOR_CONCLUIDA_18_MAS', 'nombre' => 'Sin media superior concluida · 18 años o más']
-                    ] as $tipoAdulto): ?>
+                        ['codigo' => 'JUVENIL', 'nombre' => 'Sin media superior concluida · 15 a 17 años', 'minimo' => true],
+                        ['codigo' => 'SIN_EDUCACION_SUPERIOR_25_MAS', 'nombre' => 'Sin educación superior · 25 años o más', 'minimo' => false],
+                        ['codigo' => 'SIN_MEDIA_SUPERIOR_CONCLUIDA_18_MAS', 'nombre' => 'Sin media superior concluida · 18 años o más', 'minimo' => true]
+                    ] as $tipoEscolaridad): ?>
                         <?php
-                            $adulto = $escolaridadAdulta[$tipoAdulto['codigo']] ?? [];
-                            $adultoDisponible = ($adulto['disponible'] ?? false) === true;
+                            $dato = $tipoEscolaridad['codigo'] === 'JUVENIL'
+                                ? $escolaridadJuvenil
+                                : ($escolaridadAdulta[$tipoEscolaridad['codigo']] ?? []);
+                            $disponible = ($dato['disponible'] ?? false) === true;
                         ?>
                         <article>
-                            <span><?= $texto($tipoAdulto['nombre']) ?><?= str_contains((string)($adulto['metodologia'] ?? ''), 'Conteo mínimo identificable') ? ' (mínimo identificado)' : '' ?></span>
-                            <strong><?= $adultoDisponible ? $numero($adulto['cantidad_personas']) : 'Pendiente' ?></strong>
-                            <?php if ($adultoDisponible): ?>
-                                <small><?= $numero($adulto['porcentaje'], 2) ?> % de <?= $numero($adulto['poblacion_base']) ?> personas · <?= (int)$adulto['anio'] ?></small>
-                                <small>Fuente declarada: <?= $texto($adulto['fuente']) ?></small>
-                                <small><a href="<?= $texto($adulto['referencia_url']) ?>" target="_blank" rel="noopener noreferrer">Consultar referencia INEGI</a></small>
-                                <?php if (str_contains((string)($adulto['metodologia'] ?? ''), 'Conteo mínimo identificable')): ?>
-                                    <small>Valor mínimo: no implica que toda la población sin media superior concluida haya sido identificada.</small>
+                            <span><?= $texto($tipoEscolaridad['nombre']) ?><?= $tipoEscolaridad['minimo'] ? ' · mínimo identificado' : '' ?></span>
+                            <strong><?= $disponible ? $numero($dato['cantidad_personas']) : 'Pendiente' ?></strong>
+                            <?php if ($disponible): ?>
+                                <small><?= $numero($dato['porcentaje'], 2) ?>% de <?= $numero($dato['poblacion_base']) ?> personas · <?= (int)$dato['anio'] ?></small>
+                                <small>Fuente: <?= $texto($dato['fuente']) ?></small>
+                                <small><a href="<?= $texto($dato['referencia_url']) ?>" target="_blank" rel="noopener noreferrer">Consultar tabulado INEGI</a></small>
+                                <?php if ($tipoEscolaridad['minimo']): ?>
+                                    <small>Valor mínimo por categorías indeterminadas, no tasa de abandono escolar.</small>
                                 <?php endif; ?>
-                                <small>Metodología: <?= $texto($adulto['metodologia']) ?></small>
+                                <details>
+                                    <summary>Ver metodología</summary>
+                                    <small><?= $texto($dato['metodologia']) ?></small>
+                                </details>
                             <?php else: ?>
-                                <small>Sin información validada para el rango de edad.</small>
+                                <small>Sin información sincronizada para este grupo de edad.</small>
                             <?php endif; ?>
                         </article>
                     <?php endforeach; ?>
                 </div>
-                <p class="territorial-education-note">La importación no certifica la coincidencia con INEGI; las cifras deben cotejarse con la referencia citada.</p>
+                <p class="territorial-education-note">
+                    Fuente: INEGI, Censo de Población y Vivienda 2020, B2020_07_08_M.
+                    Los grupos de edad son distintos y no deben sumarse entre sí.
+                </p>
             </section>
 
             <?php if (($perfil2549['disponible'] ?? false) === true): ?>
