@@ -480,12 +480,15 @@ foreach ($sectoresGrafica as $sectorGrafica) {
                             $adultoDisponible = ($adulto['disponible'] ?? false) === true;
                         ?>
                         <article>
-                            <span><?= $texto($tipoAdulto['nombre']) ?></span>
+                            <span><?= $texto($tipoAdulto['nombre']) ?><?= str_contains((string)($adulto['metodologia'] ?? ''), 'Conteo mínimo identificable') ? ' (mínimo identificado)' : '' ?></span>
                             <strong><?= $adultoDisponible ? $numero($adulto['cantidad_personas']) : 'Pendiente' ?></strong>
                             <?php if ($adultoDisponible): ?>
                                 <small><?= $numero($adulto['porcentaje'], 2) ?> % de <?= $numero($adulto['poblacion_base']) ?> personas · <?= (int)$adulto['anio'] ?></small>
                                 <small>Fuente declarada: <?= $texto($adulto['fuente']) ?></small>
                                 <small><a href="<?= $texto($adulto['referencia_url']) ?>" target="_blank" rel="noopener noreferrer">Consultar referencia INEGI</a></small>
+                                <?php if (str_contains((string)($adulto['metodologia'] ?? ''), 'Conteo mínimo identificable')): ?>
+                                    <small>Valor mínimo: no implica que toda la población sin media superior concluida haya sido identificada.</small>
+                                <?php endif; ?>
                                 <small>Metodología: <?= $texto($adulto['metodologia']) ?></small>
                             <?php else: ?>
                                 <small>Sin información validada para el rango de edad.</small>
