@@ -770,8 +770,8 @@ class ReporteConvocatoriaPdfService
 
         /*
          * Gráfica vertical para el PDF.
-         * Conserva exactamente los mismos datos del reporte y únicamente
-         * cambia su presentación: las barras crecen de abajo hacia arriba.
+         * Cada categoría conserva su propio espacio y la barra ocupa sólo
+         * una fracción central, dejando separación visible entre columnas.
          */
         $valores = array_map(static function ($dato) {
             return max(0, (int)($dato['valor'] ?? 0));
@@ -779,24 +779,62 @@ class ReporteConvocatoriaPdfService
 
         $maximo = max(1, max($valores));
         $columnas = count($datos);
-        $porcentajeColumna = 100 / max(1, $columnas);
-        $porcentajes = array_fill(0, $columnas, $porcentajeColumna);
-        $anchos = $this->anchos($anchoUtil, $porcentajes);
+
+        /*
+         * Cada dato utiliza tres columnas físicas:
+         * espacio izquierdo + barra angosta + espacio derecho.
+         * Así las barras no quedan pegadas entre sí.
+         */
+        $anchoGrupo = max(3, (int)floor($anchoUtil / max(1, $columnas)));
+        $anchoEspacioIzquierdo = max(1, (int)round($anchoGrupo * 0.33));
+        $anchoBarra = max(1, (int)round($anchoGrupo * 0.34));
+        $anchoEspacioDerecho = max(
+            1,
+            $anchoGrupo - $anchoEspacioIzquierdo - $anchoBarra
+        );
+
+        $anchosGrafica = [];
+        foreach ($datos as $_dato) {
+            $anchosGrafica[] = $anchoEspacioIzquierdo;
+            $anchosGrafica[] = $anchoBarra;
+            $anchosGrafica[] = $anchoEspacioDerecho;
+        }
+
+        /*
+         * Ajusta el último espacio para absorber cualquier diferencia de
+         * redondeo y conservar el ancho total del reporte.
+         */
+        $diferenciaAncho = $anchoUtil - array_sum($anchosGrafica);
+        $ultimoIndice = count($anchosGrafica) - 1;
+
+        if ($ultimoIndice >= 0) {
+            $anchosGrafica[$ultimoIndice] = max(
+                1,
+                $anchosGrafica[$ultimoIndice] + $diferenciaAncho
+            );
+        }
+
         $tabla = $this->crearTablaBase(
             $documento,
             $anchoUtil,
-            $anchos,
+            $anchosGrafica,
             false
         );
 
-        // Valor numérico sobre cada barra.
+        // Valor numérico centrado sobre cada barra.
         $filaValores = $this->crearFila($documento, false);
 
         foreach ($datos as $indice => $dato) {
-            $filaValores->appendChild($this->crearCelda(
+            $anchoCombinado =
+                $anchosGrafica[$indice * 3] +
+                $anchosGrafica[($indice * 3) + 1] +
+                $anchosGrafica[($indice * 3) + 2];
+
+            $filaValores->appendChild($this->crearCeldaGraficaAgrupada(
                 $documento,
                 (string)max(0, (int)($dato['valor'] ?? 0)),
-                $anchos[$indice],
+                $anchoCombinado,
+                3,
                 [
                     'tamano' => 13,
                     'negrita' => true,
@@ -808,10 +846,6 @@ class ReporteConvocatoriaPdfService
 
         $tabla->appendChild($filaValores);
 
-        /*
-         * El área de barras se construye en segmentos para que Word/PDF
-         * mantenga una gráfica estable sin depender de imágenes o librerías.
-         */
         $segmentos = 12;
 
         for ($segmento = $segmentos; $segmento >= 1; $segmento--) {
@@ -832,20 +866,31 @@ class ReporteConvocatoriaPdfService
                     : 0;
 
                 $activo = $segmento <= $segmentosActivos;
+                $base = $indice * 3;
 
                 $fila->appendChild($this->crearCeldaSegmentoGrafica(
                     $documento,
-                    $anchos[$indice],
+                    $anchosGrafica[$base],
+                    'FFFFFF'
+                ));
+                $fila->appendChild($this->crearCeldaSegmentoGrafica(
+                    $documento,
+                    $anchosGrafica[$base + 1],
                     $activo
                         ? self::COLOR_PRIMARIO
                         : self::COLOR_FONDO_PRIMARIO
+                ));
+                $fila->appendChild($this->crearCeldaSegmentoGrafica(
+                    $documento,
+                    $anchosGrafica[$base + 2],
+                    'FFFFFF'
                 ));
             }
 
             $tabla->appendChild($fila);
         }
 
-        // Abreviatura de tipo debajo de cada barra.
+        // Etiquetas centradas debajo de cada barra.
         $filaTipos = $this->crearFila($documento, false);
         $filaMeses = $this->crearFila($documento, false);
 
@@ -863,10 +908,16 @@ class ReporteConvocatoriaPdfService
                 $tipoCorto = $partes[1] ?? '';
             }
 
-            $filaTipos->appendChild($this->crearCelda(
+            $anchoCombinado =
+                $anchosGrafica[$indice * 3] +
+                $anchosGrafica[($indice * 3) + 1] +
+                $anchosGrafica[($indice * 3) + 2];
+
+            $filaTipos->appendChild($this->crearCeldaGraficaAgrupada(
                 $documento,
                 $tipoCorto,
-                $anchos[$indice],
+                $anchoCombinado,
+                3,
                 [
                     'tamano' => 10,
                     'color' => self::COLOR_SECUNDARIO,
@@ -874,10 +925,11 @@ class ReporteConvocatoriaPdfService
                 ]
             ));
 
-            $filaMeses->appendChild($this->crearCelda(
+            $filaMeses->appendChild($this->crearCeldaGraficaAgrupada(
                 $documento,
                 $mes,
-                $anchos[$indice],
+                $anchoCombinado,
+                3,
                 [
                     'tamano' => 12,
                     'negrita' => true,
@@ -892,6 +944,7 @@ class ReporteConvocatoriaPdfService
 
         return $tabla;
     }
+
 
     private function crearFilaGraficaVertical(DOMDocument $documento, $altura)
     {
@@ -913,6 +966,52 @@ class ReporteConvocatoriaPdfService
         $fila->appendChild($propiedades);
 
         return $fila;
+    }
+
+    private function crearCeldaGraficaAgrupada(
+        DOMDocument $documento,
+        $texto,
+        $ancho,
+        $columnas,
+        array $opciones = []
+    ) {
+        $celda = $this->w($documento, 'tc');
+        $propiedades = $this->w($documento, 'tcPr');
+
+        $anchoNodo = $this->w($documento, 'tcW');
+        $this->attr($anchoNodo, 'w', 'w', 'w', (string)$ancho);
+        $this->attr($anchoNodo, 'w', 'w', 'type', 'dxa');
+        $propiedades->appendChild($anchoNodo);
+
+        $gridSpan = $this->w($documento, 'gridSpan');
+        $this->attr(
+            $gridSpan,
+            'w',
+            'w',
+            'val',
+            (string)max(1, (int)$columnas)
+        );
+        $propiedades->appendChild($gridSpan);
+
+        $vertical = $this->w($documento, 'vAlign');
+        $this->attr($vertical, 'w', 'w', 'val', 'center');
+        $propiedades->appendChild($vertical);
+
+        $celda->appendChild($propiedades);
+        $celda->appendChild($this->crearParrafo(
+            $documento,
+            (string)$texto,
+            [
+                'tamano' => $opciones['tamano'] ?? 12,
+                'negrita' => $opciones['negrita'] ?? false,
+                'color' => $opciones['color'] ?? self::COLOR_TEXTO,
+                'alineacion' => $opciones['alineacion'] ?? 'center',
+                'antes' => 20,
+                'despues' => 20
+            ]
+        ));
+
+        return $celda;
     }
 
     private function crearCeldaSegmentoGrafica(
