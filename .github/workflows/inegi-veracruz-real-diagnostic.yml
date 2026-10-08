@@ -23,6 +23,7 @@ jobs:
         shell: bash
         run: |
           set +e
+          fallos=0
           mkdir -p /tmp/tabulados
           echo '## Resultado de lectura de tabulados reales' > /tmp/reporte_inegi.txt
           for par in 'ver:30' 'mor:17'; do
@@ -35,15 +36,24 @@ jobs:
             echo "HTTP ${code}, bytes: ${size}" >> /tmp/reporte_inegi.txt
             if [ "${code}" != 200 ] || [ "${size}" -lt 200 ]; then
               echo 'Archivo oficial no descargable desde GitHub Actions.' >> /tmp/reporte_inegi.txt
+              fallos=$((fallos + 1))
               continue
             fi
             php tests/inegi_veracruz_real_smoke.php "/tmp/tabulados/${abrev}.xlsx" "$clave" >> /tmp/reporte_inegi.txt 2>&1
-            echo "Salida PHP: $?" >> /tmp/reporte_inegi.txt
+            salida=$?
+            echo "Salida PHP: ${salida}" >> /tmp/reporte_inegi.txt
+            if [ "${salida}" -ne 0 ]; then
+              fallos=$((fallos + 1))
+            fi
           done
           cat /tmp/reporte_inegi.txt >> "$GITHUB_STEP_SUMMARY"
           cat /tmp/reporte_inegi.txt
+          if [ "${fallos}" -ne 0 ]; then
+            echo "${fallos} archivos con errores de descarga o lectura." >&2
+            exit 1
+          fi
       - name: Publicar diagnóstico en PR
-        if: github.event_name == 'pull_request'
+        if: always() && github.event_name == 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
