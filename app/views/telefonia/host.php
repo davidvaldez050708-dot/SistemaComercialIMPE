@@ -53,6 +53,7 @@ if ($usuarioHost === '') {
             'webrtcUrl' => BASE_URL . 'prueba_telefonia/api/zadarma_webrtc.php',
             'estadoUrl' => BASE_URL . 'prueba_telefonia/api/zadarma_estado_llamada.php',
             'entradaUrl' => BASE_URL . 'prueba_telefonia/api/zadarma_entrada_activa.php',
+            'destinosTransferenciaUrl' => BASE_URL . 'prueba_telefonia/api/zadarma_destinos_transferencia.php',
             'permiteSalientes' => !empty($asignacionTelefonica['permite_salientes']),
             'permiteEntrantes' => !empty($asignacionTelefonica['permite_entrantes']),
             'permiteTransferir' =>
