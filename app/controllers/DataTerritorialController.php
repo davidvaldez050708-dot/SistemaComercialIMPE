@@ -203,6 +203,93 @@ class DataTerritorialController
     }
 
     /**
+     * Importación automática INEGI 2020: fuente B2020_07_08_M.
+     * El valor 18+ se reporta como mínimo verificable, no un total exacto.
+     */
+    public function actualizarEscolaridadAdultaOficial()
+    {
+        if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+            $this->responderJson(['ok' => false, 'mensaje' => 'Método no permitido.'], 405);
+        }
+        $this->validarPermisoActualizacionOficialJson();
+
+        $estadoIdTexto = trim((string)($_POST['estado_id'] ?? ''));
+        if ($estadoIdTexto === '' || !ctype_digit($estadoIdTexto) || (int)$estadoIdTexto <= 0) {
+            $this->responderJson(['ok' => false, 'mensaje' => 'Estado inválido.'], 422);
+        }
+
+        $estadoId = (int)$estadoIdTexto;
+        $modeloTerritorial = new DataTerritorialModel();
+        $estado = $modeloTerritorial->obtenerEstado($estadoId);
+        if (!$estado) {
+            $this->responderJson(['ok' => false, 'mensaje' => 'Estado no encontrado o inactivo.'], 404);
+        }
+        $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
+        $rolId = (int)($_SESSION['rol_id'] ?? 0);
+        if (!$modeloTerritorial->puedeAccederEstado($usuarioId, $rolId, $estadoId) && $rolId !== 1) {
+            $this->responderJson(['ok' => false, 'mensaje' => 'Sin acceso a este Estado.'], 403);
+        }
+
+        $clave = str_pad(preg_replace('/\D+/', '', (string)($estado['clave_inegi'] ?? '')) ?? '', 2, '0', STR_PAD_LEFT);
+        if (!preg_match('/^(0[1-9]|[12][0-9]|3[0-2])$/', $clave)) {
+            $this->responderJson(['ok' => false, 'mensaje' => 'El Estado no tiene una clave INEGI válida.'], 422);
+        }
+        $modeloAdultos = new EscolaridadAdultaModel();
+        if (!$modeloAdultos->tablaDisponible()) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'Aplica primero la migración 2026_10_08_escolaridad_adulta.sql.'
+            ], 503);
+        }
+
+        $actuales = $modeloAdultos->obtenerPorEstado($estadoId);
+        $codigos = [
+            EscolaridadAdultaModel::SIN_SUPERIOR_25,
+            EscolaridadAdultaModel::SIN_MEDIA_CONCLUIDA_18
+        ];
+        $completos = true;
+        foreach ($codigos as $codigo) {
+            $dato = $actuales[$codigo] ?? [];
+            if (($dato['disponible'] ?? false) !== true ||
+                (int)($dato['anio'] ?? 0) !== 2020 ||
+                !str_contains((string)($dato['fuente'] ?? ''), 'B2020_07_08_M')) {
+                $completos = false;
+                break;
+            }
+        }
+        if ($completos) {
+            $this->responderJson([
+                'ok' => true,
+                'mensaje' => 'Los dos indicadores censales de 2020 ya estaban sincronizados para este Estado.',
+                'datos' => ['estado_id' => $estadoId, 'indicadores' => 2, 'periodo' => 2020, 'sin_descarga' => true]
+            ]);
+        }
+
+        @set_time_limit(240);
+        $resultado = (new InegiPerfilEducativoPrioritarioAutoService())
+            ->actualizarEscolaridadAdulta($clave);
+        if (($resultado['ok'] ?? false) !== true) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'INEGI no proporcionó un archivo compatible para ' .
+                    (string)$estado['nombre'] . '. ' .
+                    (string)($resultado['mensaje'] ?? 'Inténtalo posteriormente.') .
+                    ' No se modificaron los indicadores.'
+            ], 502);
+        }
+
+        $this->responderJson([
+            'ok' => true,
+            'mensaje' => (string)($resultado['mensaje'] ?? 'Escolaridad adulta sincronizada desde INEGI.'),
+            'datos' => [
+                'estado_id' => $estadoId, 'periodo' => 2020, 'indicadores' => 2,
+                'cota_minima_18' => true,
+                'personas_grado_indeterminado' => (int)($resultado['personas_grado_indeterminado'] ?? 0)
+            ]
+        ]);
+    }
+
+    /**
      * Importa un CSV normalizado por Estado desde fuentes INEGI declaradas.
      * Requiere el mismo permiso de actualización oficial de Información Territorial.
      */
