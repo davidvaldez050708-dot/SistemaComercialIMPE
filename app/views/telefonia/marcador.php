@@ -7,6 +7,11 @@ $extension = (string)($panelTelefono['extension'] ?? '');
 $callerId = (string)($panelTelefono['caller_id'] ?? '');
 $historial = is_array($panelTelefono['historial'] ?? null) ? $panelTelefono['historial'] : [];
 $contactos = is_array($panelTelefono['contactos'] ?? null) ? $panelTelefono['contactos'] : [];
+$urlActualizarMarcador = BASE_URL . (
+    strtolower((string)($_GET['controller'] ?? '')) === 'home'
+        ? 'index.php?controller=home&action=index'
+        : 'index.php?controller=telefonia&action=marcador'
+);
 ?>
 <div class="telephony-dialer-page"
     data-telephony-dialer
@@ -169,7 +174,7 @@ $contactos = is_array($panelTelefono['contactos'] ?? null) ? $panelTelefono['con
                 <h2>Llamadas recientes</h2>
                 <p>Últimos 30 días · hasta 30 atenciones registradas de tu extensión</p>
             </div>
-            <a class="btn btn-system-light" href="<?= $esc(BASE_URL . 'index.php?controller=telefonia&action=marcador') ?>">
+            <a class="btn btn-system-light" href="<?= $esc($urlActualizarMarcador) ?>">
                 <i class="bi bi-arrow-clockwise" aria-hidden="true"></i>
                 Actualizar
             </a>
