@@ -1069,7 +1069,6 @@ class RolModel
             'telefonia.salientes' => 'telefonia.usar',
             'telefonia.recibir' => 'telefonia.usar',
             'telefonia.transferir' => 'telefonia.recibir',
-            'telefonia.configurar' => 'telefonia.usar',
             'reportes.exportar' => 'reportes.ver',
             'reportes.seguimiento.cartera' => 'reportes.ver',
             'reportes.seguimiento.actividad' => 'reportes.ver',
