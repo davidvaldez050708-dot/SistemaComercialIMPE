@@ -35,6 +35,47 @@ $alertasVencimiento = is_array(
     ? $reporteConvocatorias['alertas_vencimiento']
     : [];
 
+$filtrosReporte = is_array($reporteConvocatorias['filtros'] ?? null)
+    ? $reporteConvocatorias['filtros']
+    : ['tipo' => '', 'subtipo' => ''];
+
+$opcionesFiltro = is_array(
+    $reporteConvocatorias['opciones_filtro'] ?? null
+)
+    ? $reporteConvocatorias['opciones_filtro']
+    : [];
+
+$tiposFiltro = is_array($opcionesFiltro['tipos'] ?? null)
+    ? $opcionesFiltro['tipos']
+    : [];
+
+$subtiposFiltro = is_array($opcionesFiltro['subtipos'] ?? null)
+    ? $opcionesFiltro['subtipos']
+    : [];
+
+$tipoFiltro = trim((string)($filtrosReporte['tipo'] ?? ''));
+$subtipoFiltro = trim((string)($filtrosReporte['subtipo'] ?? ''));
+
+$programasFiltro = [];
+foreach ($subtiposFiltro as $tipoPrograma => $programasTipo) {
+    foreach ($programasTipo as $slugPrograma => $etiquetaPrograma) {
+        if (!isset($programasFiltro[$slugPrograma])) {
+            $programasFiltro[$slugPrograma] = [
+                'label' => (string)$etiquetaPrograma,
+                'tipos' => []
+            ];
+        }
+
+        if (!in_array(
+            $tipoPrograma,
+            $programasFiltro[$slugPrograma]['tipos'],
+            true
+        )) {
+            $programasFiltro[$slugPrograma]['tipos'][] = $tipoPrograma;
+        }
+    }
+}
+
 $territorios = is_array($cobertura['territorios'] ?? null)
     ? $cobertura['territorios']
     : [];
@@ -79,11 +120,24 @@ $tipoLabel = static function ($tipo) {
 };
 
 $subtipoLabel = static function ($subtipo) {
-    $subtipo = trim((string)$subtipo);
+    $subtipo = strtolower(trim((string)$subtipo));
 
-    return $subtipo !== ''
-        ? ucwords(str_replace('-', ' ', $subtipo))
-        : '—';
+    $etiquetas = [
+        'ejecutivas' => 'Ejecutivas',
+        'experiencia-laboral' => 'Titulación por experiencia laboral',
+        'inscripciones-abiertas' => 'Inscripciones Abiertas',
+        'bachillerato-2-anos' => 'Bachillerato en 2 años',
+        'bachillerato-286' => 'Bachillerato 286',
+        'ingles' => 'Inglés',
+        'sindicatos' => 'Sindicatos'
+    ];
+
+    if ($subtipo === '') {
+        return '—';
+    }
+
+    return $etiquetas[$subtipo] ??
+        ucwords(str_replace('-', ' ', $subtipo));
 };
 
 $estadoLabels = [
@@ -161,6 +215,79 @@ for ($indiceMes = 0; $indiceMes < max(count($mesesBachillerato), count($mesesTit
         <span class="metric-icon report-intro-icon" aria-hidden="true">
             <i class="bi bi-file-earmark-bar-graph"></i>
         </span>
+    </section>
+
+    <section class="dashboard-panel convocatoria-report-filter-panel mb-4">
+        <div class="convocatoria-report-filter-heading">
+            <div>
+                <span class="report-card-kicker">FILTROS DEL REPORTE</span>
+                <h3>Consulta por categoría y programa</h3>
+                <p>
+                    Selecciona primero Titulación, Bachillerato o Todos y,
+                    si lo necesitas, filtra por un programa específico.
+                </p>
+            </div>
+            <i class="bi bi-funnel"></i>
+        </div>
+
+        <form
+            class="convocatoria-report-filter-form"
+            method="get"
+            action="<?= BASE_URL ?>index.php">
+            <input type="hidden" name="controller" value="convocatoriaReporte">
+            <input type="hidden" name="action" value="index">
+
+            <div class="convocatoria-report-filter-field">
+                <label for="convocatoria_reporte_tipo">Categoría</label>
+                <select
+                    class="form-select"
+                    id="convocatoria_reporte_tipo"
+                    name="tipo"
+                    data-report-category-filter>
+                    <?php foreach ($tiposFiltro as $valorTipo => $etiquetaTipo): ?>
+                        <option
+                            value="<?= $texto($valorTipo) ?>"
+                            <?= $tipoFiltro === (string)$valorTipo ? 'selected' : '' ?>>
+                            <?= $texto($etiquetaTipo) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
+            <div class="convocatoria-report-filter-field">
+                <label for="convocatoria_reporte_subtipo">Programa</label>
+                <select
+                    class="form-select"
+                    id="convocatoria_reporte_subtipo"
+                    name="subtipo"
+                    data-report-program-filter>
+                    <option value="">Todos los programas</option>
+                    <?php foreach ($programasFiltro as $slugPrograma => $programa): ?>
+                        <option
+                            value="<?= $texto($slugPrograma) ?>"
+                            data-program-types="<?= $texto(implode(',', $programa['tipos'])) ?>"
+                            <?= $subtipoFiltro === (string)$slugPrograma ? 'selected' : '' ?>>
+                            <?= $texto($programa['label']) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
+            <div class="convocatoria-report-filter-actions">
+                <button
+                    type="submit"
+                    class="btn btn-system-save">
+                    <i class="bi bi-funnel"></i>
+                    Aplicar filtros
+                </button>
+
+                <a
+                    class="btn btn-system-cancel"
+                    href="<?= BASE_URL ?>index.php?controller=convocatoriaReporte&action=index">
+                    Limpiar
+                </a>
+            </div>
+        </form>
     </section>
 
     <div class="territorial-section-title">
@@ -562,3 +689,52 @@ for ($indiceMes = 0; $indiceMes < max(count($mesesBachillerato), count($mesesTit
         </div>
     </section>
 </section>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const categoria = document.querySelector('[data-report-category-filter]');
+    const programa = document.querySelector('[data-report-program-filter]');
+
+    if (!categoria || !programa) {
+        return;
+    }
+
+    const sincronizarProgramas = function (reiniciarSeleccion) {
+        const tipo = String(categoria.value || '').toLowerCase();
+        const opciones = Array.from(
+            programa.querySelectorAll('option[data-program-types]')
+        );
+
+        opciones.forEach(function (opcion) {
+            const tipos = String(
+                opcion.getAttribute('data-program-types') || ''
+            )
+                .split(',')
+                .map(function (valor) {
+                    return valor.trim().toLowerCase();
+                })
+                .filter(Boolean);
+
+            const visible = tipo === '' || tipos.includes(tipo);
+            opcion.hidden = !visible;
+            opcion.disabled = !visible;
+        });
+
+        const seleccionada = programa.options[programa.selectedIndex];
+        const seleccionInvalida =
+            seleccionada &&
+            seleccionada.value !== '' &&
+            seleccionada.disabled;
+
+        if (reiniciarSeleccion || seleccionInvalida) {
+            programa.value = '';
+        }
+    };
+
+    categoria.addEventListener('change', function () {
+        sincronizarProgramas(true);
+    });
+
+    sincronizarProgramas(false);
+});
+</script>
