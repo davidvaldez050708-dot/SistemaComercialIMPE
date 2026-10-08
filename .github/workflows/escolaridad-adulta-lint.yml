@@ -15,6 +15,7 @@ on:
       - "public/javascript/educacion_objetivo.js"
       - "public/css/dashboard.css"
       - "tests/orden_brechas_educacion_test.py"
+      - "tests/permisos_escolaridad_oficial_test.py"
       - "app/views/reportes/data_territorial.php"
   push:
     branches:
@@ -52,3 +53,6 @@ jobs:
         run: |
           node --check public/javascript/educacion_objetivo.js
           python3 tests/orden_brechas_educacion_test.py
+
+      - name: Comprobar permisos de sincronización oficial por Estado
+        run: python3 tests/permisos_escolaridad_oficial_test.py
