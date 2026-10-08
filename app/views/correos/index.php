@@ -301,11 +301,6 @@ $texto = static fn($valor) => htmlspecialchars(
                 </div>
 
                 <div class="modal-body">
-                    <div
-                        class="alert alert-danger d-none mb-3"
-                        data-marketing-mail-error>
-                    </div>
-
                     <div class="correo-marketing-recipient-card mb-3">
                         <span>DESTINATARIO</span>
                         <strong data-marketing-mail-recipient>
