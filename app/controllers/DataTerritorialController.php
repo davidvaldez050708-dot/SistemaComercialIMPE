@@ -8,6 +8,7 @@ require_once __DIR__ . '/../services/PobrezaLaboralImportService.php';
 require_once __DIR__ . '/../services/RezagoEducativoImportService.php';
 require_once __DIR__ . '/../services/InegiGeoService.php';
 require_once __DIR__ . '/../services/InegiPerfilAdultoLaboralService.php';
+require_once __DIR__ . '/../services/InegiPerfilEducativoPrioritarioAutoService.php';
 require_once __DIR__ . '/../models/PerfilAdultoLaboralModel.php';
 require_once __DIR__ . '/../helpers/PermissionHelper.php';
 
@@ -889,6 +890,111 @@ class DataTerritorialController
                 'municipios_procesados' => (int)($guardado['procesados'] ?? 0),
                 'total_municipios' => $totalMunicipios,
                 'fuente' => 'INEGI - Catálogo Único de Claves Geoestadísticas'
+            ]
+        ]);
+    }
+
+    public function actualizarPerfilEducativoPrioritarioOficial()
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'Método no permitido.'
+            ], 405);
+        }
+
+        $this->validarPermisoActualizacionOficialJson();
+        $estadoIdPost = trim((string)($_POST['estado_id'] ?? ''));
+
+        if (
+            $estadoIdPost === '' ||
+            !ctype_digit($estadoIdPost) ||
+            (int)$estadoIdPost <= 0
+        ) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'El territorio seleccionado no es válido.'
+            ], 422);
+        }
+
+        $modeloTerritorial = new DataTerritorialModel();
+        $estadoId = (int)$estadoIdPost;
+        $estado = $modeloTerritorial->obtenerEstado($estadoId);
+
+        if (!$estado) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'El territorio seleccionado no existe o no está activo.'
+            ], 404);
+        }
+
+        $claveEstado = str_pad(
+            preg_replace(
+                '/\\D+/',
+                '',
+                (string)($estado['clave_inegi'] ?? '')
+            ) ?? '',
+            2,
+            '0',
+            STR_PAD_LEFT
+        );
+
+        if (!preg_match('/^\\d{2}$/', $claveEstado)) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'El territorio no tiene una clave INEGI válida.'
+            ], 422);
+        }
+
+        @set_time_limit(180);
+
+        $resultado =
+            (new InegiPerfilEducativoPrioritarioAutoService())
+                ->obtenerOActualizar(
+                    $estadoId,
+                    $claveEstado,
+                    true,
+                    true
+                );
+
+        if (($resultado['disponible'] ?? false) !== true) {
+            $mensaje = trim((string)(
+                $resultado['actualizacion_automatica']['mensaje']
+                ?? ''
+            ));
+
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => $mensaje !== ''
+                    ? $mensaje
+                    : 'No fue posible sincronizar el cruce oficial edad × escolaridad de INEGI.'
+            ], 502);
+        }
+
+        $municipios = is_array($resultado['municipios'] ?? null)
+            ? $resultado['municipios']
+            : [];
+        $meta = is_array($resultado['meta'] ?? null)
+            ? $resultado['meta']
+            : [];
+
+        $this->responderJson([
+            'ok' => true,
+            'mensaje' =>
+                'El perfil educativo prioritario de 25 a 49 años se sincronizó correctamente.',
+            'datos' => [
+                'estado_id' => $estadoId,
+                'estado' => (string)($estado['nombre'] ?? ''),
+                'periodo' => (int)($meta['anio'] ?? 2020),
+                'municipios_disponibles' => count($municipios),
+                'fuente' => (string)(
+                    $meta['fuente']
+                    ?? 'INEGI - Censo de Población y Vivienda 2020'
+                ),
+                'referencia_fuente' => (string)(
+                    $meta['referencia_fuente']
+                    ?? 'B2020_07_08_M'
+                )
             ]
         ]);
     }
