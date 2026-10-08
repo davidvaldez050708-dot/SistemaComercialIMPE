@@ -60,7 +60,7 @@ $tarjetasPorPagina = 12;
     <section class="dashboard-panel data-territorial-selector aliados-territory-selector">
         <div class="data-selector-heading">
             <div class="data-territorial-selector-copy">
-                <h2 class="panel-title">Seleccionar territorio</h2>
+                <h2 class="panel-title mb-1">Seleccionar territorio</h2>
                 <p>Busca o selecciona un Estado para consultar sus instituciones aliadas.</p>
             </div>
         </div>

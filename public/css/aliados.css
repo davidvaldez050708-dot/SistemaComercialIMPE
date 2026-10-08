@@ -1799,25 +1799,8 @@ button.aliados-followup-summary:hover .aliados-followup-pill {
 
 /* ===== Navegación territorial de Aliados ===== */
 .aliados-territory-selector {
+    /* Mismo padding y espaciado del selector de Información Territorial. */
     margin-bottom: 14px;
-    padding: 20px 22px;
-}
-
-.aliados-territory-selector .data-selector-heading {
-    margin-bottom: 16px;
-}
-
-.aliados-territory-selector .panel-title {
-    margin: 0 0 5px;
-    color: var(--color-text, #172642);
-    font-size: 16px;
-    font-weight: 800;
-}
-
-.aliados-territory-selector .data-territorial-selector-copy p {
-    margin: 0;
-    color: var(--color-text-soft, #6b7280);
-    font-size: 11px;
 }
 
 .aliados-territory-toolbar {
@@ -1971,10 +1954,6 @@ button.aliados-followup-summary:hover .aliados-followup-pill {
 }
 
 @media (max-width: 767.98px) {
-    .aliados-territory-selector {
-        padding: 16px;
-    }
-
     .aliados-territory-toolbar,
     .aliados-state-filter-grid {
         grid-template-columns: 1fr;

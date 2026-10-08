@@ -89,9 +89,9 @@ $tarjetasPorPaginaSeguimiento = 12;
 
 <?php if (!empty($territorios)): ?>
     <section class="dashboard-panel data-territorial-selector linkage-selector">
-        <div class="data-selector-heading d-flex flex-column flex-sm-row justify-content-between align-items-sm-start gap-3">
+        <div class="data-selector-heading">
             <div class="data-territorial-selector-copy">
-                <h2 class="panel-title">Seleccionar territorio</h2>
+                <h2 class="panel-title mb-1">Seleccionar territorio</h2>
                 <p>Busca o selecciona un Estado para consultar su seguimiento de vinculación.</p>
             </div>
 
