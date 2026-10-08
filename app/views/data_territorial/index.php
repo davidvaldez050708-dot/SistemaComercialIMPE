@@ -3587,7 +3587,12 @@ document.addEventListener('DOMContentLoaded', function () {
             throw new Error('No hay municipios disponibles para actualizar.');
         }
 
-        const tamanoLote = 20;
+        /*
+         * En pruebas reales, 20 municipios con actividad=0 superan el tiempo
+         * de respuesta de DENUE en algunos Estados. Seis mantiene la ventaja
+         * multiárea y responde de forma mucho más estable.
+         */
+        const tamanoLote = 6;
         const lotes = [];
 
         for (
