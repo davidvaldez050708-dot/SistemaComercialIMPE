@@ -152,7 +152,7 @@ class InegiEscolaridadAdultaXlsxService
             throw new RuntimeException('El archivo temporal de INEGI no está disponible.');
         }
         $reader = new XMLReader();
-        $uri = 'zip://' . $rutaZip . '#' . $nombre;
+        $uri = 'zip://' . str_replace('\\', '/', $rutaZip) . '#' . $nombre;
         if (!$reader->open($uri, null, LIBXML_NONET | LIBXML_NOERROR | LIBXML_NOWARNING)) {
             throw new RuntimeException('No se pudo abrir la hoja XLSX como flujo XML.');
         }
