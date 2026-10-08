@@ -1,3 +1,24 @@
+## Oaxaca · respaldo oficial nacional del Censo 2020
+
+Si el archivo municipal `cpv2020_b_oax_07_educacion.xlsx` responde con HTML en
+lugar de XLSX, el sincronizador intenta exclusivamente para Oaxaca (clave 20)
+el libro **oficial nacional**:
+`https://www.inegi.org.mx/contenidos/programas/ccpv/2020/tabulados/cpv2020_b_eum_07_educacion.xlsx`.
+
+La hoja nacional de educación tiene un **cuadro por entidad federativa** con las
+mismas 28 categorías educativas necesarias. El lector comprueba sus encabezados,
+selecciona solo las filas `20 Oaxaca`, `Sexo = Total`, valida totales y grupos
+15–17, 18+ y 25+ y guarda los tres indicadores como parte de la actualización
+oficial normal. No inventa porcentajes ni utiliza el tabulado de tamaño de
+localidad.
+
+**Prueba automatizada:** `tests/inegi_oaxaca_nacional_smoke.php` descarga el libro
+real en GitHub Actions y comprueba todos los grupos y universos sin acceso a la BD.
+Los demás estados conservan sus URLs originales. Basta con repetir la
+actualización masiva: los 31 estados ya completos se omiten y Oaxaca se reintenta.
+
+---
+
 # Sincronización automática de escolaridad por edades — INEGI
 
 ## Importación automática (recomendada)
