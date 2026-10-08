@@ -24,6 +24,8 @@ $mostrarAgendaReuniones =
     tienePermiso('reuniones.ver') &&
     $agendaDisponible;
 $trabajarNotificacionId = (int)($_GET['trabajar_id'] ?? 0);
+$puedeUsarTelefoniaTopbar = tienePermiso('telefonia.usar');
+$puedeRecibirTelefoniaTopbar = tienePermiso('telefonia.recibir');
 
 /*
  * La campana se hidrata únicamente desde ReminderController.
@@ -63,6 +65,22 @@ $totalRecordatoriosSeguimiento = 0;
         </div>
 
         <div class="topbar-actions">
+            <?php if ($puedeUsarTelefoniaTopbar && $puedeRecibirTelefoniaTopbar): ?>
+                <button
+                    class="topbar-reminder-button telephony-reception-toggle"
+                    type="button"
+                    data-telephony-reception-toggle
+                    aria-label="Activar recepción telefónica"
+                    title="Activar recepción telefónica">
+                    <i class="bi bi-headset"></i>
+                    <span
+                        class="telephony-reception-indicator"
+                        data-telephony-reception-indicator
+                        aria-hidden="true">
+                    </span>
+                </button>
+            <?php endif; ?>
+
             <?php if ($mostrarAgendaReuniones): ?>
                 <a
                     class="topbar-reminder-button"
