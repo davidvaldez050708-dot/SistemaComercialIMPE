@@ -1587,7 +1587,8 @@
             [
                 'preparing',
                 'prepared',
-                'finished'
+                'finished',
+                'incoming-finished'
             ].includes(phase);
 
         panel.hidden = !show;
@@ -1691,8 +1692,12 @@
                 currentDuration()
             );
         const finished =
-            String(state.phase || '') ===
-                'finished';
+            [
+                'finished',
+                'incoming-finished'
+            ].includes(
+                String(state.phase || '')
+            );
 
         const incoming =
             String(state.direction || '') ===
