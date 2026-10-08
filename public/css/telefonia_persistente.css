@@ -1,3 +1,29 @@
+.telephony-reception-toggle {
+    position: relative;
+}
+
+.telephony-reception-toggle.is-active {
+    border-color: rgba(10, 143, 117, .28) !important;
+    background: rgba(10, 143, 117, .08) !important;
+    color: #08755f !important;
+}
+
+.telephony-reception-indicator {
+    position: absolute;
+    right: 5px;
+    bottom: 5px;
+    width: 7px;
+    height: 7px;
+    border: 1.5px solid #fff;
+    border-radius: 50%;
+    background: #98a3b5;
+}
+
+.telephony-reception-indicator.is-active {
+    background: #0a8f75;
+    box-shadow: 0 0 0 3px rgba(10, 143, 117, .11);
+}
+
 .persistent-phone-panel {
     position: fixed;
     right: 18px;
