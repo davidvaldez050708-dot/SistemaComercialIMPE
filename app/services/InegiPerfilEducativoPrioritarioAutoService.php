@@ -19,7 +19,11 @@ class InegiPerfilEducativoPrioritarioAutoService
         'https://www.inegi.org.mx/sistemas/Olap/Proyectos/bd/censos/cpv2020/P3Mas.asp'
     ];
 
-    public function obtenerOActualizar(int $estadoId, string $claveEstado): array
+    public function obtenerOActualizar(
+        int $estadoId,
+        string $claveEstado,
+        bool $permitirActualizacion = true
+    ): array
     {
         $modelo = new PerfilEducativoPrioritarioModel();
         $actual = $modelo->obtenerPorEstado($estadoId, $claveEstado);
@@ -37,6 +41,16 @@ class InegiPerfilEducativoPrioritarioAutoService
                 'intentada' => false,
                 'estado' => 'MIGRACION_PENDIENTE',
                 'mensaje' => 'Falta aplicar la migración del perfil educativo prioritario.'
+            ];
+            return $actual;
+        }
+
+        if (!$permitirActualizacion) {
+            $actual['actualizacion_automatica'] = [
+                'intentada' => false,
+                'estado' => 'PENDIENTE_SINCRONIZACION',
+                'mensaje' =>
+                    'El cruce oficial de 25 a 49 años todavía no está sincronizado para este territorio. Un administrador puede cargarlo desde “Actualizar información oficial”.'
             ];
             return $actual;
         }
