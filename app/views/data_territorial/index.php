@@ -1196,190 +1196,100 @@ $urlPaginaTerritorio = function ($pagina) use ($buscarTerritorio, $filtroInforma
 
             </div>
 
-            <section class="data-education-gap" aria-labelledby="tituloBrechaEscolaridad">
-                <header class="data-education-gap-heading">
-                    <div class="data-education-gap-heading-icon" aria-hidden="true">
-                        <i class="bi bi-mortarboard"></i>
-                    </div>
-                    <div class="data-education-gap-heading-copy">
-                        <span class="data-education-gap-eyebrow">PANORAMA EDUCATIVO · INEGI</span>
-                        <h4 id="tituloBrechaEscolaridad">Brecha de escolaridad por grupo de edad</h4>
-                        <p>Dimensiona la población con estudios pendientes de conclusión, distinguiendo adultos y jóvenes, con el Censo 2020.</p>
-                    </div>
-                    <span class="data-education-gap-period">Censo 2020</span>
-                </header>
+            <!-- El perfil prioritario se prepara primero y se completa mediante educacion_objetivo.js. -->
+            <section class="data-education-target" data-education-target
+                aria-label="Población educativa prioritaria">
+                <div class="data-education-target-loading">
+                    Cargando población educativa prioritaria…
+                </div>
+            </section>
 
-                <div class="data-education-gap-group">
-                    <div class="data-education-gap-subheading">
-                        <div>
-                            <i class="bi bi-people" aria-hidden="true"></i>
-                            <strong>Población adulta</strong>
-                        </div>
-                        <span>Indicadores de 18 y 25 años o más</span>
+            <section class="data-education-gap" aria-labelledby="tituloBrechaEscolaridad">
+                <div class="data-education-gap-heading">
+                    <div>
+                        <span class="data-education-target-eyebrow">BRECHAS EDUCATIVAS · INEGI</span>
+                        <h4 id="tituloBrechaEscolaridad">Escolaridad por grupos de edad</h4>
+                        <p>Indicadores complementarios del perfil prioritario. Cada cantidad y porcentaje utiliza su propio universo poblacional.</p>
                     </div>
-                    <div class="data-education-gap-cards">
+                    <span class="data-education-target-period">Censo 2020</span>
+                </div>
+
+                <div class="data-education-priority-segment-label">Indicadores oficiales por rango de edad</div>
+                <?php
+                    $indicadoresBrecha = [
+                        [
+                            'codigo' => 'SIN_EDUCACION_SUPERIOR_25_MAS',
+                            'titulo' => 'Sin educación superior · 25 años o más',
+                            'descripcion' => 'Personas sin estudios de nivel superior registrados.',
+                            'clase' => 'is-focus',
+                            'minimo' => false
+                        ],
+                        [
+                            'codigo' => 'SIN_MEDIA_SUPERIOR_CONCLUIDA_18_MAS',
+                            'titulo' => 'Sin media superior concluida · 18 años o más',
+                            'descripcion' => 'Mínimo identificable de personas sin bachillerato concluido.',
+                            'clase' => '',
+                            'minimo' => true
+                        ],
+                        [
+                            'codigo' => 'SIN_MEDIA_SUPERIOR_CONCLUIDA_15_17',
+                            'titulo' => 'Jóvenes sin media superior concluida · 15 a 17 años',
+                            'descripcion' => 'Incluye a jóvenes que todavía están cursando sus estudios.',
+                            'clase' => 'is-positive',
+                            'minimo' => true
+                        ]
+                    ];
+                ?>
+                <div class="data-education-priority-cards is-segmented data-education-gap-cards">
+                    <?php foreach ($indicadoresBrecha as $indicadorBrecha): ?>
                         <?php
-                            $indicadoresAdultos = [
-                                [
-                                    'codigo' => 'SIN_EDUCACION_SUPERIOR_25_MAS',
-                                    'nombre' => 'Sin educación superior',
-                                    'edad' => '25 años o más',
-                                    'descripcion' => 'Población sin estudios de nivel superior registrados.',
-                                    'icono' => 'bi-book'
-                                ],
-                                [
-                                    'codigo' => 'SIN_MEDIA_SUPERIOR_CONCLUIDA_18_MAS',
-                                    'nombre' => 'Sin media superior concluida',
-                                    'edad' => '18 años o más',
-                                    'descripcion' => 'Conteo mínimo identificable de población que no terminó la media superior.',
-                                    'icono' => 'bi-journal-bookmark'
-                                ]
-                            ];
+                            $datoBrecha = $escolaridadAdulta[$indicadorBrecha['codigo']] ?? [];
+                            $disponibleBrecha = ($datoBrecha['disponible'] ?? false) === true;
                         ?>
-                        <?php foreach ($indicadoresAdultos as $definicion): ?>
-                            <?php
-                                $dato = $escolaridadAdulta[$definicion['codigo']] ?? [];
-                                $disponible = ($dato['disponible'] ?? false) === true;
-                                $minimo = $disponible &&
-                                    str_contains((string)($dato['metodologia'] ?? ''), 'Conteo mínimo identificable');
-                                $progreso = $disponible
-                                    ? number_format(max(0, min(100, (float)$dato['porcentaje'])), 2, '.', '')
-                                    : '0';
-                            ?>
-                            <article class="data-education-gap-card">
-                                <div class="data-education-gap-card-top">
-                                    <span class="data-education-gap-card-icon" aria-hidden="true">
-                                        <i class="bi <?= $texto($definicion['icono']) ?>"></i>
-                                    </span>
-                                    <span class="data-education-gap-age"><?= $texto($definicion['edad']) ?></span>
+                        <article class="data-education-priority-card data-education-gap-card <?= $texto($indicadorBrecha['clase']) ?>">
+                            <span><?= $texto($indicadorBrecha['titulo']) ?></span>
+                            <strong><?= $disponibleBrecha ? $numero($datoBrecha['cantidad_personas']) : 'Pendiente' ?></strong>
+                            <?php if ($disponibleBrecha): ?>
+                                <b><?= $numeroDecimal($datoBrecha['porcentaje']) ?>% del grupo de edad<?= $indicadorBrecha['minimo'] ? ' · mínimo identificado' : '' ?></b>
+                                <small><?= $texto($indicadorBrecha['descripcion']) ?></small>
+                                <div class="data-education-gap-base">
+                                    <span>Universo: <strong><?= $numero($datoBrecha['poblacion_base']) ?></strong> personas</span>
+                                    <span><?= (int)$datoBrecha['anio'] ?></span>
                                 </div>
-                                <h5><?= $texto($definicion['nombre']) ?></h5>
-                                <p class="data-education-gap-description"><?= $texto($definicion['descripcion']) ?></p>
-                                <?php if ($disponible): ?>
-                                    <div class="data-education-gap-value"><?= $numero($dato['cantidad_personas']) ?></div>
-                                    <div class="data-education-gap-value-caption">personas identificadas</div>
-                                    <div class="data-education-gap-percent-row">
-                                        <span>Proporción del grupo</span>
-                                        <strong><?= $numeroDecimal($dato['porcentaje']) ?>%</strong>
-                                    </div>
-                                    <div class="data-education-gap-track" role="progressbar"
-                                        aria-label="Proporción del grupo de edad"
-                                        aria-valuemin="0" aria-valuemax="100"
-                                        aria-valuenow="<?= $progreso ?>">
-                                        <span style="width: <?= $progreso ?>%"></span>
-                                    </div>
-                                    <div class="data-education-gap-card-footer">
-                                        <span><i class="bi bi-people" aria-hidden="true"></i> Base: <?= $numero($dato['poblacion_base']) ?></span>
-                                        <span><i class="bi bi-calendar3" aria-hidden="true"></i> <?= (int)$dato['anio'] ?></span>
-                                    </div>
-                                    <?php if ($minimo): ?>
-                                        <p class="data-education-gap-warning">
-                                            <i class="bi bi-info-circle" aria-hidden="true"></i>
-                                            Mínimo identificado; no es el total exacto.
-                                        </p>
-                                    <?php endif; ?>
-                                    <details class="data-education-gap-method">
-                                        <summary>Fuente y metodología <i class="bi bi-chevron-down" aria-hidden="true"></i></summary>
-                                        <p><?= $texto($dato['fuente']) ?></p>
-                                        <p><?= $texto($dato['metodologia']) ?></p>
-                                        <a href="<?= $texto($dato['referencia_url']) ?>" target="_blank" rel="noopener noreferrer">
+                                <details class="data-education-gap-source">
+                                    <summary>Fuente y metodología <i class="bi bi-chevron-down" aria-hidden="true"></i></summary>
+                                    <p><?= $texto($datoBrecha['fuente'] ?? 'INEGI · Censo 2020') ?></p>
+                                    <p><?= $texto($datoBrecha['metodologia'] ?? '') ?></p>
+                                    <?php if (!empty($datoBrecha['referencia_url'])): ?>
+                                        <a href="<?= $texto($datoBrecha['referencia_url']) ?>"
+                                            target="_blank" rel="noopener noreferrer">
                                             Consultar tabulado INEGI <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
                                         </a>
-                                    </details>
-                                <?php else: ?>
-                                    <div class="data-education-gap-pending">
-                                        <i class="bi bi-clock-history" aria-hidden="true"></i>
-                                        <strong>Pendiente de sincronización</strong>
-                                        <span>Actualiza desde INEGI para consultar la cifra oficial disponible.</span>
-                                    </div>
-                                <?php endif; ?>
-                            </article>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
-
-                <div class="data-education-gap-group data-education-gap-group-youth">
-                    <div class="data-education-gap-subheading">
-                        <div>
-                            <i class="bi bi-person-standing" aria-hidden="true"></i>
-                            <strong>Población joven</strong>
-                        </div>
-                        <span>Adolescentes de 15 a 17 años</span>
-                    </div>
-                    <?php
-                        $indicadorJoven = $escolaridadAdulta['SIN_MEDIA_SUPERIOR_CONCLUIDA_15_17'] ?? [];
-                        $jovenDisponible = ($indicadorJoven['disponible'] ?? false) === true;
-                        $progresoJoven = $jovenDisponible
-                            ? number_format(max(0, min(100, (float)$indicadorJoven['porcentaje'])), 2, '.', '')
-                            : '0';
-                    ?>
-                    <article class="data-education-gap-card data-education-gap-card-youth">
-                        <div class="data-education-gap-youth-copy">
-                            <div class="data-education-gap-card-top">
-                                <span class="data-education-gap-card-icon" aria-hidden="true">
-                                    <i class="bi bi-mortarboard" aria-hidden="true"></i>
-                                </span>
-                                <span class="data-education-gap-age">15 a 17 años</span>
-                            </div>
-                            <h5>Jóvenes sin media superior concluida</h5>
-                            <p class="data-education-gap-description">
-                                Incluye a quienes todavía cursan el bachillerato. No es una medición de abandono escolar.
-                            </p>
-                            <?php if ($jovenDisponible): ?>
-                                <details class="data-education-gap-method">
-                                    <summary>Fuente y metodología <i class="bi bi-chevron-down" aria-hidden="true"></i></summary>
-                                    <p><?= $texto($indicadorJoven['fuente']) ?></p>
-                                    <p><?= $texto($indicadorJoven['metodologia']) ?></p>
-                                    <a href="<?= $texto($indicadorJoven['referencia_url']) ?>" target="_blank" rel="noopener noreferrer">
-                                        Consultar tabulado INEGI <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
-                                    </a>
+                                    <?php endif; ?>
                                 </details>
-                            <?php endif; ?>
-                        </div>
-                        <div class="data-education-gap-youth-stats">
-                            <?php if ($jovenDisponible): ?>
-                                <div class="data-education-gap-value"><?= $numero($indicadorJoven['cantidad_personas']) ?></div>
-                                <div class="data-education-gap-value-caption">jóvenes identificados como mínimo</div>
-                                <div class="data-education-gap-percent-row">
-                                    <span>Del total de jóvenes de 15 a 17 años</span>
-                                    <strong><?= $numeroDecimal($indicadorJoven['porcentaje']) ?>%</strong>
-                                </div>
-                                <div class="data-education-gap-track" role="progressbar"
-                                    aria-label="Porcentaje mínimo de jóvenes sin media superior concluida"
-                                    aria-valuemin="0" aria-valuemax="100"
-                                    aria-valuenow="<?= $progresoJoven ?>">
-                                    <span style="width: <?= $progresoJoven ?>%"></span>
-                                </div>
-                                <div class="data-education-gap-card-footer">
-                                    <span><i class="bi bi-people" aria-hidden="true"></i> Base: <?= $numero($indicadorJoven['poblacion_base']) ?></span>
-                                    <span><i class="bi bi-calendar3" aria-hidden="true"></i> <?= (int)$indicadorJoven['anio'] ?></span>
-                                </div>
-                                <p class="data-education-gap-warning">
-                                    <i class="bi bi-info-circle" aria-hidden="true"></i>
-                                    Mínimo identificado: algunos grados y niveles no permiten determinar la conclusión.
-                                </p>
                             <?php else: ?>
-                                <div class="data-education-gap-pending">
-                                    <i class="bi bi-clock-history" aria-hidden="true"></i>
-                                    <strong>Pendiente de sincronización</strong>
-                                    <span>Se calcula de las edades individuales 15, 16 y 17 de INEGI, al actualizar.</span>
-                                </div>
+                                <b class="data-education-gap-waiting">Pendiente de sincronización oficial</b>
+                                <small><?= $texto($indicadorBrecha['descripcion']) ?></small>
+                                <small>Disponible al actualizar Información Territorial desde INEGI.</small>
                             <?php endif; ?>
-                        </div>
-                    </article>
+                        </article>
+                    <?php endforeach; ?>
                 </div>
 
-                <footer class="data-education-gap-footer">
-                    <span><i class="bi bi-shield-check" aria-hidden="true"></i> Fuente: INEGI · Censo 2020</span>
-                    <span>Las cifras automáticas corresponden a los rangos indicados; las categorías indeterminadas no se estiman.</span>
-                </footer>
+                <div class="data-education-gap-reference">
+                    <i class="bi bi-info-circle" aria-hidden="true"></i>
+                    <p>Los indicadores de 15–17 y 18+ representan un mínimo comprobable, no tasas de abandono escolar.
+                       Los tres grupos tienen universos distintos y no deben sumarse. Fuente: INEGI, Censo 2020.</p>
+                </div>
 
                 <?php if ($puedeActualizarInformacionOficial): ?>
                     <details class="data-education-gap-import">
-                        <summary><i class="bi bi-file-earmark-arrow-up" aria-hidden="true"></i>
-                            Importación manual alternativa <i class="bi bi-chevron-down" aria-hidden="true"></i>
+                        <summary>
+                            <i class="bi bi-file-earmark-spreadsheet" aria-hidden="true"></i>
+                            Importación manual alternativa (CSV)
+                            <i class="bi bi-chevron-down" aria-hidden="true"></i>
                         </summary>
-                        <p>Recomendada solo si falla «Actualizar información oficial → Escolaridad por edades». Necesitas un CSV cotejado con INEGI.</p>
+                        <p>La opción recomendada es «Actualizar información oficial → Escolaridad por edades». Utiliza CSV únicamente cuando la descarga oficial no esté disponible.</p>
                         <form id="formEscolaridadAdultaCsv"
                             action="<?= BASE_URL ?>index.php?controller=dataTerritorial&amp;action=importarEscolaridadAdultaCsv"
                             method="POST" enctype="multipart/form-data" class="data-education-gap-import-form">

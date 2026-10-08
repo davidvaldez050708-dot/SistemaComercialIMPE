@@ -68,7 +68,10 @@
             contenedor = document.createElement('section');
             contenedor.className = 'data-education-target';
             contenedor.setAttribute('data-education-target', '');
-            rezago.insertAdjacentElement('beforebegin', contenedor);
+            // El perfil prioritario debe abrir Educación; la brecha de
+            // escolaridad es contexto secundario y se muestra después.
+            const brecha = seccionEducacion.querySelector('.data-education-gap');
+            (brecha || rezago).insertAdjacentElement('beforebegin', contenedor);
         }
 
         const numero = function (valor) {
@@ -113,7 +116,10 @@
                     '</summary>' +
                     '<div class="data-education-complementary-context-body" data-education-complementary-context-body></div>';
 
-                contenedor.insertAdjacentElement('afterend', contexto);
+                // Orden: perfil prioritario → brechas por edad → contexto
+                // adicional. El rezago sigue dentro del contexto plegable.
+                const brecha = seccionEducacion.querySelector('.data-education-gap');
+                (brecha || contenedor).insertAdjacentElement('afterend', contexto);
             }
 
             const cuerpo = contexto.querySelector(
