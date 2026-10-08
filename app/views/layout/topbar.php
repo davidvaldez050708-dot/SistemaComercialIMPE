@@ -70,7 +70,6 @@ $totalRecordatoriosSeguimiento = 0;
                     class="topbar-reminder-button telephony-reception-toggle"
                     type="button"
                     data-telephony-reception-toggle
-                    data-telephony-transfer-targets-url="<?= BASE_URL ?>prueba_telefonia/api/zadarma_destinos_transferencia.php"
                     aria-label="Activar recepción telefónica"
                     title="Activar recepción telefónica">
                     <i class="bi bi-headset"></i>
