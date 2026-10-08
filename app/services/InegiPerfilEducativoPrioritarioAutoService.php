@@ -11,7 +11,7 @@ require_once __DIR__ . '/InegiPerfilEducativoPrioritarioImportService.php';
 class InegiPerfilEducativoPrioritarioAutoService
 {
     private const TTL_FALLO = 21600; // 6 horas
-    private const MAX_BYTES = 33554432; // 32 MB
+    private const MAX_BYTES = 134217728; // 128 MB; algunos tabulados estatales son voluminosos
     private const CACHE_VERSION = 'v2_direct_tabulados';
 
     private const PAGINAS_DESCUBRIMIENTO = [
@@ -298,16 +298,29 @@ class InegiPerfilEducativoPrioritarioAutoService
             return $this->error('No fue posible preparar la descarga temporal.');
         }
 
-        $descarga = $this->descargarArchivo($url, $temporal);
+        $descarga = [
+            'ok' => false,
+            'mensaje' => 'No fue posible descargar la fuente oficial localizada.'
+        ];
 
-        if (($descarga['ok'] ?? false) !== true) {
-            /*
-             * Durante una actualización masiva INEGI puede responder de forma
-             * transitoria con HTML/503 aun cuando la ruta sea correcta.
-             * Reintentamos una sola vez antes de probar la siguiente variante.
-             */
-            usleep(700000);
-            $descarga = $this->descargarArchivo($url, $temporal);
+        for ($intento = 1; $intento <= 3; $intento++) {
+            $descarga =
+                $this->descargarArchivo(
+                    $url,
+                    $temporal
+                );
+
+            if (($descarga['ok'] ?? false) === true) {
+                break;
+            }
+
+            if ($intento < 3) {
+                usleep(
+                    $intento === 1
+                        ? 900000
+                        : 1800000
+                );
+            }
         }
 
         if (($descarga['ok'] ?? false) !== true) {
@@ -427,93 +440,282 @@ class InegiPerfilEducativoPrioritarioAutoService
             : null;
     }
 
-    private function descargarArchivo(string $url, string $destino): array
-    {
+    private function descargarArchivo(
+        string $url,
+        string $destino
+    ): array {
         if (!$this->esUrlInegi($url)) {
-            return $this->error('La URL localizada no pertenece a INEGI.');
+            return $this->error(
+                'La URL localizada no pertenece a INEGI.'
+            );
         }
 
         $archivo = fopen($destino, 'wb');
+
         if ($archivo === false) {
-            return $this->error('No fue posible crear el archivo temporal.');
+            return $this->error(
+                'No fue posible crear el archivo temporal.'
+            );
         }
 
         $bytes = 0;
         $exceso = false;
         $ch = curl_init();
 
-        curl_setopt_array($ch, [
-            CURLOPT_URL => $url,
-            CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_MAXREDIRS => 3,
-            CURLOPT_CONNECTTIMEOUT => 10,
-            CURLOPT_TIMEOUT => 60,
-            CURLOPT_SSL_VERIFYPEER => true,
-            CURLOPT_USERAGENT => 'SistemaComercialIMPE/1.0',
-            CURLOPT_WRITEFUNCTION => static function ($curl, $bloque) use (
-                $archivo,
-                &$bytes,
-                &$exceso
-            ) {
-                $longitud = strlen((string)$bloque);
-                $bytes += $longitud;
-
-                if ($bytes > self::MAX_BYTES) {
-                    $exceso = true;
-                    return 0;
-                }
-
-                $escritos = fwrite($archivo, (string)$bloque);
-                return $escritos === false ? 0 : $escritos;
-            }
-        ]);
-
-        $ok = curl_exec($ch);
-        $http = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $tipo = strtolower((string)curl_getinfo($ch, CURLINFO_CONTENT_TYPE));
-        $error = curl_error($ch);
-        unset($ch);
-        fflush($archivo);
-        fclose($archivo);
-
-        if ($exceso || $ok === false || $error !== '' || $http < 200 || $http >= 300) {
+        if ($ch === false) {
+            fclose($archivo);
             return $this->error(
-                $exceso
-                    ? 'La descarga oficial supera el tamaño máximo permitido.'
-                    : 'No fue posible descargar la fuente oficial localizada.'
+                'No fue posible inicializar la descarga oficial.'
             );
         }
 
-        $firma = @file_get_contents($destino, false, null, 0, 4);
-        $ruta = strtolower((string)parse_url($url, PHP_URL_PATH));
+        curl_setopt_array($ch, [
+            CURLOPT_URL => $url,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_MAXREDIRS => 5,
+            CURLOPT_CONNECTTIMEOUT => 15,
+            CURLOPT_TIMEOUT => 180,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_USERAGENT =>
+                'Mozilla/5.0 SistemaComercialIMPE/1.0',
+            CURLOPT_HTTPHEADER => [
+                'Accept: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/zip,application/octet-stream;q=0.9,*/*;q=0.5',
+                'Cache-Control: no-cache',
+                'Pragma: no-cache'
+            ],
+            CURLOPT_WRITEFUNCTION =>
+                static function (
+                    $curl,
+                    $bloque
+                ) use (
+                    $archivo,
+                    &$bytes,
+                    &$exceso
+                ) {
+                    $longitud =
+                        strlen((string)$bloque);
+                    $bytes += $longitud;
 
-        /*
-         * XLSX y ZIP comparten contenedor ZIP. No confiamos únicamente en la
-         * extensión de la URL: INEGI puede responder una página HTML de error
-         * conservando una ruta terminada en .xlsx.
-         */
-        $esZipReal = $firma === "PK\x03\x04";
-        $extension = '';
+                    if ($bytes > self::MAX_BYTES) {
+                        $exceso = true;
+                        return 0;
+                    }
 
-        if ($esZipReal && substr($ruta, -5) === '.xlsx') {
-            $extension = 'xlsx';
-        } elseif (
-            $esZipReal &&
-            (
-                substr($ruta, -4) === '.zip' ||
-                strpos($tipo, 'zip') !== false
-            )
+                    $escritos =
+                        fwrite(
+                            $archivo,
+                            (string)$bloque
+                        );
+
+                    return $escritos === false
+                        ? 0
+                        : $escritos;
+                }
+        ]);
+
+        $ok = curl_exec($ch);
+        $http =
+            (int)curl_getinfo(
+                $ch,
+                CURLINFO_HTTP_CODE
+            );
+        $tipo =
+            strtolower(
+                (string)curl_getinfo(
+                    $ch,
+                    CURLINFO_CONTENT_TYPE
+                )
+            );
+        $urlFinal =
+            (string)curl_getinfo(
+                $ch,
+                CURLINFO_EFFECTIVE_URL
+            );
+        $error = curl_error($ch);
+
+        $contentLength = -1.0;
+
+        if (
+            defined('CURLINFO_CONTENT_LENGTH_DOWNLOAD_T')
         ) {
-            $extension = 'zip';
+            $contentLength =
+                (float)curl_getinfo(
+                    $ch,
+                    CURLINFO_CONTENT_LENGTH_DOWNLOAD_T
+                );
+        } elseif (
+            defined('CURLINFO_CONTENT_LENGTH_DOWNLOAD')
+        ) {
+            $contentLength =
+                (float)curl_getinfo(
+                    $ch,
+                    CURLINFO_CONTENT_LENGTH_DOWNLOAD
+                );
         }
 
-        return [
-            'ok' => $extension !== '',
-            'extension' => $extension,
-            'mensaje' => $extension === ''
-                ? 'INEGI respondió, pero el archivo recibido no es un XLSX/ZIP válido.'
-                : ''
-        ];
+        curl_close($ch);
+        fflush($archivo);
+        fclose($archivo);
+
+        $tamanoReal =
+            is_file($destino)
+                ? (int)(filesize($destino) ?: 0)
+                : 0;
+
+        if (
+            $exceso ||
+            $ok === false ||
+            $error !== '' ||
+            $http < 200 ||
+            $http >= 300
+        ) {
+            return $this->error(
+                $exceso
+                    ? 'La descarga oficial supera 128 MB.'
+                    : (
+                        'No fue posible descargar la fuente oficial localizada' .
+                        (
+                            $http > 0
+                                ? ' (HTTP ' . $http . ')'
+                                : ''
+                        ) .
+                        (
+                            $error !== ''
+                                ? ': ' . $error
+                                : '.'
+                        )
+                    )
+            );
+        }
+
+        /*
+         * Si el servidor publicó Content-Length, una descarga más corta es un
+         * archivo truncado aunque cURL haya terminado sin error.
+         */
+        if (
+            $contentLength > 0 &&
+            $tamanoReal > 0 &&
+            $tamanoReal + 16 <
+                (int)$contentLength
+        ) {
+            return $this->error(
+                'La descarga oficial llegó incompleta: ' .
+                $tamanoReal .
+                ' de ' .
+                (int)$contentLength .
+                ' bytes.'
+            );
+        }
+
+        if ($tamanoReal < 4) {
+            return $this->error(
+                'INEGI devolvió un archivo vacío o incompleto.'
+            );
+        }
+
+        $firma =
+            @file_get_contents(
+                $destino,
+                false,
+                null,
+                0,
+                4
+            );
+        $ruta =
+            strtolower(
+                (string)parse_url(
+                    $urlFinal !== ''
+                        ? $urlFinal
+                        : $url,
+                    PHP_URL_PATH
+                )
+            );
+
+        if ($firma !== "PK\x03\x04") {
+            return $this->error(
+                'INEGI respondió con un contenido que no es ZIP/XLSX' .
+                ($tipo !== '' ? ' (' . $tipo . ')' : '') .
+                '.'
+            );
+        }
+
+        /*
+         * La firma PK no basta: un ZIP truncado también conserva esos cuatro
+         * bytes. Abrimos el contenedor antes de entregarlo al importador.
+         */
+        if (!class_exists('ZipArchive')) {
+            return $this->error(
+                'El servidor no tiene ZipArchive habilitado.'
+            );
+        }
+
+        $zip = new ZipArchive();
+        $codigoZip = $zip->open(
+            $destino,
+            ZipArchive::CHECKCONS
+        );
+
+        if ($codigoZip !== true) {
+            return $this->error(
+                'El archivo recibido está incompleto o no es un ZIP válido ' .
+                '(ZipArchive ' .
+                (string)$codigoZip .
+                ', ' .
+                $tamanoReal .
+                ' bytes' .
+                (
+                    $contentLength > 0
+                        ? ' de ' .
+                            (int)$contentLength
+                        : ''
+                ) .
+                ').'
+            );
+        }
+
+        $esXlsx =
+            $zip->locateName(
+                '[Content_Types].xml',
+                ZipArchive::FL_NODIR
+            ) !== false &&
+            $zip->locateName(
+                'xl/workbook.xml',
+                ZipArchive::FL_NODIR
+            ) !== false;
+
+        $zip->close();
+
+        $esRutaXlsx =
+            substr($ruta, -5) === '.xlsx';
+        $esRutaZip =
+            substr($ruta, -4) === '.zip';
+
+        if ($esXlsx) {
+            return [
+                'ok' => true,
+                'extension' => 'xlsx',
+                'bytes' => $tamanoReal,
+                'url_final' => $urlFinal,
+                'mensaje' => ''
+            ];
+        }
+
+        if (
+            $esRutaZip ||
+            strpos($tipo, 'zip') !== false
+        ) {
+            return [
+                'ok' => true,
+                'extension' => 'zip',
+                'bytes' => $tamanoReal,
+                'url_final' => $urlFinal,
+                'mensaje' => ''
+            ];
+        }
+
+        return $this->error(
+            'El contenedor descargado es ZIP, pero no contiene la estructura de un XLSX.'
+        );
     }
 
     private function urlAbsoluta(string $url, string $base): string
