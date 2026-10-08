@@ -163,7 +163,7 @@ class InegiPerfilEducativoPrioritarioAutoService
             );
         }
 
-        $primerError = '';
+        $erroresIntentos = [];
 
         foreach ($urls as $url) {
             $resultado = $this->procesarDescarga($url);
@@ -172,14 +172,37 @@ class InegiPerfilEducativoPrioritarioAutoService
                 return $resultado;
             }
 
-            if ($primerError === '') {
-                $primerError = trim((string)($resultado['mensaje'] ?? ''));
+            $mensajeIntento =
+                trim((string)($resultado['mensaje'] ?? ''));
+
+            if ($mensajeIntento !== '') {
+                $rutaIntento =
+                    basename(
+                        (string)parse_url(
+                            $url,
+                            PHP_URL_PATH
+                        )
+                    );
+
+                $erroresIntentos[] =
+                    ($rutaIntento !== ''
+                        ? $rutaIntento . ': '
+                        : '') .
+                    $mensajeIntento;
             }
         }
 
+        $erroresIntentos =
+            array_values(
+                array_unique($erroresIntentos)
+            );
+
         return $this->error(
-            $primerError !== ''
-                ? $primerError
+            !empty($erroresIntentos)
+                ? implode(
+                    ' | ',
+                    array_slice($erroresIntentos, 0, 4)
+                )
                 : 'Las descargas oficiales localizadas no tuvieron una estructura compatible.'
         );
     }
@@ -244,11 +267,20 @@ class InegiPerfilEducativoPrioritarioAutoService
         $urls = [];
 
         foreach ($variantes as $abreviatura) {
-            $urls[] =
+            $prefijo =
                 $base .
                 'cpv2020_b_' .
                 $abreviatura .
-                '_07_educacion.xlsx';
+                '_07_educacion';
+
+            /*
+             * La mayoría de las entidades responde el XLSX directamente,
+             * pero algunas publicaciones históricas de INEGI pueden estar
+             * empaquetadas. Probar ambos formatos es seguro porque la descarga
+             * valida firma y estructura antes de importar.
+             */
+            $urls[] = $prefijo . '.xlsx';
+            $urls[] = $prefijo . '.zip';
         }
 
         return array_values(array_unique($urls));
@@ -364,12 +396,12 @@ class InegiPerfilEducativoPrioritarioAutoService
                 $normalizado = mb_strtolower($nombre, 'UTF-8');
 
                 if (
-                    strtolower(pathinfo($nombre, PATHINFO_EXTENSION)) !== 'xlsx' ||
-                    (
-                        strpos($normalizado, '07_08') === false &&
-                        strpos($normalizado, 'b2020_07_08_m') === false &&
-                        strpos($normalizado, '_07_educacion') === false
-                    )
+                    strtolower(
+                        pathinfo(
+                            $nombre,
+                            PATHINFO_EXTENSION
+                        )
+                    ) !== 'xlsx'
                 ) {
                     continue;
                 }
