@@ -393,6 +393,96 @@ class DataTerritorialModel
         ];
     }
 
+    public function obtenerMapaActividadEconomicaMunicipios(
+        int $estadoId
+    ): array {
+        if ($estadoId <= 0) {
+            return [];
+        }
+
+        $consultaTabla = $this->connection->query(
+            "SHOW TABLES LIKE 'actividad_economica_municipio'"
+        );
+        $tablaDisponible =
+            $consultaTabla instanceof mysqli_result &&
+            $consultaTabla->num_rows > 0;
+
+        if ($consultaTabla instanceof mysqli_result) {
+            $consultaTabla->free();
+        }
+
+        if (!$tablaDisponible) {
+            return [];
+        }
+
+        $sql = "SELECT
+                    municipio_id,
+                    clave_sector,
+                    nombre_sector,
+                    establecimientos,
+                    porcentaje,
+                    fuente,
+                    fecha_consulta,
+                    tipo_actualizacion
+                FROM actividad_economica_municipio
+                WHERE estado_id = ?
+                ORDER BY
+                    municipio_id ASC,
+                    establecimientos DESC,
+                    nombre_sector ASC";
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param('i', $estadoId);
+        $stmt->execute();
+        $resultado = $stmt->get_result();
+
+        $clavesVinculacion = [
+            '31-33', '48-49', '52', '54', '55',
+            '56', '61', '62', '81', '93'
+        ];
+        $mapa = [];
+
+        while ($sector = $resultado->fetch_assoc()) {
+            $municipioId =
+                (int)($sector['municipio_id'] ?? 0);
+
+            if ($municipioId <= 0) {
+                continue;
+            }
+
+            if (!isset($mapa[$municipioId])) {
+                $mapa[$municipioId] = [
+                    'disponible' => true,
+                    'total_establecimientos' => 0,
+                    'establecimientos_vinculacion' => 0,
+                    'sectores' => [],
+                    'sectores_vinculacion' => []
+                ];
+            }
+
+            $establecimientos =
+                (int)($sector['establecimientos'] ?? 0);
+
+            $mapa[$municipioId]['total_establecimientos'] +=
+                $establecimientos;
+            $mapa[$municipioId]['sectores'][] = $sector;
+
+            if (
+                in_array(
+                    (string)($sector['clave_sector'] ?? ''),
+                    $clavesVinculacion,
+                    true
+                )
+            ) {
+                $mapa[$municipioId]['establecimientos_vinculacion'] +=
+                    $establecimientos;
+                $mapa[$municipioId]['sectores_vinculacion'][] =
+                    $sector;
+            }
+        }
+
+        return $mapa;
+    }
+
     public function actualizarActividadEconomicaMunicipioOficial(
         int $estadoId,
         int $municipioId,
