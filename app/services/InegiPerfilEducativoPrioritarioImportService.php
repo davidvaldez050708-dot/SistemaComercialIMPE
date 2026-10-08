@@ -45,7 +45,11 @@ class InegiPerfilEducativoPrioritarioImportService
         $this->connection = $database->connect();
     }
 
-    public function importarXlsx(string $ruta, string $nombreOriginal = ''): array
+    public function importarXlsx(
+        string $ruta,
+        string $nombreOriginal = '',
+        string $claveEstadoEsperada = ''
+    ): array
     {
         if (
             $ruta === '' ||
@@ -109,9 +113,54 @@ class InegiPerfilEducativoPrioritarioImportService
                 );
             }
 
+            $claveEstadoEsperada = str_pad(
+                preg_replace(
+                    '/\\D+/',
+                    '',
+                    $claveEstadoEsperada
+                ) ?? '',
+                2,
+                '0',
+                STR_PAD_LEFT
+            );
+
+            if (
+                $claveEstadoEsperada !== '00' &&
+                preg_match('/^\\d{2}$/', $claveEstadoEsperada)
+            ) {
+                $registros = array_filter(
+                    $registros,
+                    static function ($registro) use ($claveEstadoEsperada) {
+                        return (string)(
+                            $registro['clave_estado'] ?? ''
+                        ) === $claveEstadoEsperada;
+                    }
+                );
+
+                if (empty($registros)) {
+                    return $this->error(
+                        'El libro oficial no contiene el Estado ' .
+                        $claveEstadoEsperada .
+                        ' en el tabulado B2020_07_08_M.'
+                    );
+                }
+            }
+
             $validacion = $this->validarCobertura(array_values($registros));
             if (($validacion['ok'] ?? false) !== true) {
                 return $validacion;
+            }
+
+            if (
+                $claveEstadoEsperada !== '00' &&
+                preg_match('/^\\d{2}$/', $claveEstadoEsperada) &&
+                (int)($validacion['municipios'] ?? 0) <= 0
+            ) {
+                return $this->error(
+                    'El libro contiene el total estatal, pero no el desglose municipal requerido para ' .
+                    $claveEstadoEsperada .
+                    '.'
+                );
             }
 
             $guardados = $this->guardar(
