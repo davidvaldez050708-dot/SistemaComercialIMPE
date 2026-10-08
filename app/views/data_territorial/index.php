@@ -3273,7 +3273,7 @@ document.addEventListener('DOMContentLoaded', function () {
             nombre: 'Tejido económico municipal',
             action: 'actualizarActividadEconomicaMunicipalOficial',
             mensajeError: 'No fue posible obtener el tejido económico municipal de DENUE.',
-            pausaPosterior: 500
+            pausaPosterior: 900
         },
         municipios: {
             nombre: 'Municipios',
@@ -3579,34 +3579,90 @@ document.addEventListener('DOMContentLoaded', function () {
     const actualizarTejidoEconomicoMunicipal = async function (estado, onProgress) {
         const configuracion = tiposActualizacionOficial.actividad_municipal;
         const inicial = await actualizarEstadoOperacion(estado, 'actividad_municipal');
-        const municipios = Array.isArray(inicial.datos?.municipios) ? inicial.datos.municipios : [];
+        const municipios = Array.isArray(inicial.datos?.municipios)
+            ? inicial.datos.municipios
+            : [];
 
         if (municipios.length === 0) {
             throw new Error('No hay municipios disponibles para actualizar.');
+        }
+
+        const tamanoLote = 20;
+        const lotes = [];
+
+        for (
+            let inicio = 0;
+            inicio < municipios.length;
+            inicio += tamanoLote
+        ) {
+            lotes.push(
+                municipios.slice(
+                    inicio,
+                    inicio + tamanoLote
+                )
+            );
         }
 
         const errores = [];
         let exitosos = 0;
         let establecimientos = 0;
         let establecimientosVinculacion = 0;
+        let procesados = 0;
 
-        for (let indice = 0; indice < municipios.length; indice += 1) {
-            const municipio = municipios[indice];
+        for (
+            let indiceLote = 0;
+            indiceLote < lotes.length;
+            indiceLote += 1
+        ) {
+            const lote = lotes[indiceLote];
+            const municipioReferencia =
+                lote[0] || {};
+
             if (typeof onProgress === 'function') {
-                onProgress(indice, municipios.length, municipio);
+                onProgress(
+                    procesados,
+                    municipios.length,
+                    {
+                        nombre:
+                            (municipioReferencia.nombre || 'Municipios') +
+                            (
+                                lote.length > 1
+                                    ? ' +' + (lote.length - 1)
+                                    : ''
+                            ),
+                        clave:
+                            municipioReferencia.clave || ''
+                    }
+                );
             }
 
             const datos = new URLSearchParams();
-            datos.set('estado_id', String(estado.id || ''));
-            datos.set('clave_municipio', String(municipio.clave || ''));
+            datos.set(
+                'estado_id',
+                String(estado.id || '')
+            );
+            datos.set(
+                'claves_municipios',
+                lote
+                    .map(function (municipio) {
+                        return String(
+                            municipio.clave || ''
+                        );
+                    })
+                    .filter(Boolean)
+                    .join(',')
+            );
 
             try {
                 const respuesta = await fetch(
-                    baseUrl + '?controller=dataTerritorial&action=' + configuracion.action,
+                    baseUrl +
+                        '?controller=dataTerritorial&action=' +
+                        configuracion.action,
                     {
                         method: 'POST',
                         headers: {
-                            'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                            'Content-Type':
+                                'application/x-www-form-urlencoded;charset=UTF-8',
                             'X-Requested-With': 'fetch'
                         },
                         body: datos.toString()
@@ -3614,41 +3670,98 @@ document.addEventListener('DOMContentLoaded', function () {
                 );
                 const texto = await respuesta.text();
                 let resultado;
+
                 try {
                     resultado = JSON.parse(texto);
                 } catch (error) {
-                    throw new Error('El servidor devolvió una respuesta no válida.');
-                }
-                if (!respuesta.ok || resultado.ok !== true) {
-                    throw new Error(resultado.mensaje || configuracion.mensajeError);
+                    throw new Error(
+                        'El servidor devolvió una respuesta no válida.'
+                    );
                 }
 
-                exitosos += 1;
-                establecimientos += Number(resultado.datos?.total_establecimientos || 0);
-                establecimientosVinculacion += Number(resultado.datos?.establecimientos_vinculacion || 0);
+                if (
+                    !respuesta.ok ||
+                    resultado.ok !== true
+                ) {
+                    throw new Error(
+                        resultado.mensaje ||
+                        configuracion.mensajeError
+                    );
+                }
+
+                const datosResultado =
+                    resultado.datos || {};
+                exitosos += Number(
+                    datosResultado.municipios_guardados || 0
+                );
+                establecimientos += Number(
+                    datosResultado.establecimientos || 0
+                );
+                establecimientosVinculacion += Number(
+                    datosResultado.establecimientos_vinculacion || 0
+                );
+
+                (
+                    Array.isArray(datosResultado.errores)
+                        ? datosResultado.errores
+                        : []
+                ).forEach(function (mensaje) {
+                    errores.push(mensaje);
+                });
             } catch (error) {
-                errores.push((municipio.nombre || municipio.clave) + ': ' +
-                    (error.message || configuracion.mensajeError));
+                const mensaje =
+                    error.message ||
+                    configuracion.mensajeError;
+
+                lote.forEach(function (municipio) {
+                    errores.push(
+                        (municipio.nombre || municipio.clave) +
+                        ': ' +
+                        mensaje
+                    );
+                });
             }
 
+            procesados += lote.length;
+
             if (typeof onProgress === 'function') {
-                onProgress(indice + 1, municipios.length, municipio);
+                onProgress(
+                    Math.min(
+                        procesados,
+                        municipios.length
+                    ),
+                    municipios.length,
+                    lote[lote.length - 1] || {}
+                );
+            }
+
+            if (indiceLote < lotes.length - 1) {
+                await esperar(650);
             }
         }
 
         if (exitosos === 0) {
-            throw new Error(errores[0] || configuracion.mensajeError);
+            throw new Error(
+                errores[0] ||
+                configuracion.mensajeError
+            );
         }
 
         return {
             ok: true,
             datos: {
-                municipios_recibidos: municipios.length,
-                municipios_guardados: exitosos,
-                municipios_con_error: errores.length,
-                establecimientos: establecimientos,
-                establecimientos_vinculacion: establecimientosVinculacion,
-                errores: errores
+                municipios_recibidos:
+                    municipios.length,
+                municipios_guardados:
+                    exitosos,
+                municipios_con_error:
+                    errores.length,
+                establecimientos:
+                    establecimientos,
+                establecimientos_vinculacion:
+                    establecimientosVinculacion,
+                errores:
+                    errores
             }
         };
     };
@@ -4185,14 +4298,45 @@ document.addEventListener('DOMContentLoaded', function () {
                                 );
                             }
                         );
-                        resultados[tipo].exitosos += 1;
-                        if (Number(detalle.datos?.municipios_con_error || 0) > 0) {
-                            (detalle.datos.errores || []).forEach(function (mensaje) {
-                                errores.push({
-                                    estado: estado.nombre || 'Estado sin nombre',
-                                    tipo: configuracion.nombre,
-                                    mensaje: mensaje
-                                });
+                        const erroresMunicipales =
+                            Number(
+                                detalle.datos?.municipios_con_error || 0
+                            );
+                        const guardadosMunicipales =
+                            Number(
+                                detalle.datos?.municipios_guardados || 0
+                            );
+                        const recibidosMunicipales =
+                            Number(
+                                detalle.datos?.municipios_recibidos || 0
+                            );
+
+                        if (erroresMunicipales === 0) {
+                            resultados[tipo].exitosos += 1;
+                        } else {
+                            resultados[tipo].errores += 1;
+                            const ejemplos =
+                                (detalle.datos?.errores || [])
+                                    .slice(0, 3)
+                                    .join(' · ');
+                            errores.push({
+                                estado:
+                                    estado.nombre ||
+                                    'Estado sin nombre',
+                                tipo:
+                                    configuracion.nombre,
+                                mensaje:
+                                    guardadosMunicipales +
+                                    ' de ' +
+                                    recibidosMunicipales +
+                                    ' municipios actualizados; ' +
+                                    erroresMunicipales +
+                                    ' pendientes.' +
+                                    (
+                                        ejemplos
+                                            ? ' Ejemplos: ' + ejemplos
+                                            : ''
+                                    )
                             });
                         }
                     } else {
@@ -4352,14 +4496,45 @@ document.addEventListener('DOMContentLoaded', function () {
                                     );
                                 }
                             );
-                            resultados[tipo].exitosos += 1;
-                            if (Number(detalle.datos?.municipios_con_error || 0) > 0) {
-                                (detalle.datos.errores || []).forEach(function (mensaje) {
-                                    errores.push({
-                                        estado: estado.nombre || 'Estado sin nombre',
-                                        tipo: configuracion.nombre,
-                                        mensaje: mensaje
-                                    });
+                            const erroresMunicipales =
+                                Number(
+                                    detalle.datos?.municipios_con_error || 0
+                                );
+                            const guardadosMunicipales =
+                                Number(
+                                    detalle.datos?.municipios_guardados || 0
+                                );
+                            const recibidosMunicipales =
+                                Number(
+                                    detalle.datos?.municipios_recibidos || 0
+                                );
+
+                            if (erroresMunicipales === 0) {
+                                resultados[tipo].exitosos += 1;
+                            } else {
+                                resultados[tipo].errores += 1;
+                                const ejemplos =
+                                    (detalle.datos?.errores || [])
+                                        .slice(0, 3)
+                                        .join(' · ');
+                                errores.push({
+                                    estado:
+                                        estado.nombre ||
+                                        'Estado sin nombre',
+                                    tipo:
+                                        configuracion.nombre,
+                                    mensaje:
+                                        guardadosMunicipales +
+                                        ' de ' +
+                                        recibidosMunicipales +
+                                        ' municipios actualizados; ' +
+                                        erroresMunicipales +
+                                        ' pendientes.' +
+                                        (
+                                            ejemplos
+                                                ? ' Ejemplos: ' + ejemplos
+                                                : ''
+                                        )
                                 });
                             }
                         } else {
