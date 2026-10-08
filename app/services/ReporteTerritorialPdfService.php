@@ -378,6 +378,7 @@ class ReporteTerritorialPdfService
                 $html .= '<small>Periodo: ' . (int)$dato['anio'] .
                     ' · Fuente declarada: ' . $this->e($dato['fuente']) . '</small>';
                 $html .= '<small>Metodología: ' . $this->e($dato['metodologia']) . '</small>';
+                $html .= '<small><a href="' . $this->e($dato['referencia_url']) . '">Consultar referencia INEGI</a></small>';
             } else {
                 $html .= '<small>Sin cifra del rango con metodología documentada.</small>';
             }
