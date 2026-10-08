@@ -1,0 +1,44 @@
+name: Diagnostico Oaxaca INEGI oficial
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/inegi-oaxaca-diagnostic.yml"
+      - "tests/inegi_veracruz_real_smoke.php"
+      - "tests/inspeccionar_inegi_nacional.php"
+      - "tests/inegi_oaxaca_nacional_smoke.php"
+      - "app/services/InegiEscolaridadAdultaXlsxService.php"
+      - "app/services/InegiPerfilEducativoPrioritarioAutoService.php"
+  workflow_dispatch:
+permissions:
+  contents: read
+  pull-requests: write
+jobs:
+  comprobar-oaxaca:
+    runs-on: ubuntu-latest
+    timeout-minutes: 13
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: curl, zip, dom, xmlreader, mbstring, mysqli
+      - name: Probar fuentes Oaxaca y nacional
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/oaxaca
+          echo '## Fuentes oficiales de Oaxaca' >/tmp/reporte_oaxaca.txt
+          url="https://www.inegi.org.mx/contenidos/programas/ccpv/2020/tabulados/cpv2020_b_eum_07_educacion.xlsx"
+          curl --fail -sSL --retry 2 --connect-timeout 12 --max-time 120 -o /tmp/oaxaca/nacional.xlsx "$url"
+          echo "XLSX nacional descargado: $(wc -c </tmp/oaxaca/nacional.xlsx) bytes" >>/tmp/reporte_oaxaca.txt
+          php tests/inegi_oaxaca_nacional_smoke.php /tmp/oaxaca/nacional.xlsx >>/tmp/reporte_oaxaca.txt 2>&1
+          cat /tmp/reporte_oaxaca.txt | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Publicar diagnostico
+        if: always() && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        shell: bash
+        run: |
+          test -f /tmp/reporte_oaxaca.txt && gh pr comment "$PR_NUMBER" --body-file /tmp/reporte_oaxaca.txt || true

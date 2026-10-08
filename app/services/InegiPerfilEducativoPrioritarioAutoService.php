@@ -145,6 +145,18 @@ class InegiPerfilEducativoPrioritarioAutoService
             $urls[] = $urlDirecta;
         }
 
+        /*
+         * INEGI está devolviendo HTML al pedir la publicación municipal de
+         * Oaxaca. Su libro nacional sí incluye el desglose por Estado, sexo,
+         * edad y las 28 categorías del cuadro de escolaridad. Usar solo como
+         * respaldo para la sincronización por edades de Oaxaca; no sirve para
+         * el perfil municipal de 25–49 ni para otros Estados sin comprobarlos.
+         */
+        if ($soloAdultos && $claveEstado === '20') {
+            $urls[] = 'https://www.inegi.org.mx/contenidos/programas/ccpv/2020/tabulados/' .
+                'cpv2020_b_eum_07_educacion.xlsx';
+        }
+
         $urlConfigurada = trim((string)getenv('INEGI_EDU_PRIORITARIO_URL'));
         if ($urlConfigurada !== '' && $this->esUrlInegi($urlConfigurada)) {
             $urls[] = $urlConfigurada;

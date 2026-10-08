@@ -33,6 +33,11 @@ class InegiEscolaridadAdultaXlsxService
             !($host === 'inegi.org.mx' || str_ends_with($host, '.inegi.org.mx'))) {
             return $this->error('La referencia descargada no pertenece a INEGI.');
         }
+        // El libro nacional de INEGI usa cuatro columnas descriptivas antes
+        // de la población y no contiene la columna Municipio. Solo aceptar
+        // este esquema si procede del nombre oficial nacional conocido.
+        $modoNacional = strtolower((string)basename((string)parse_url($urlFuente, PHP_URL_PATH))) ===
+            'cpv2020_b_eum_07_educacion.xlsx';
         $zip = new ZipArchive();
         if ($zip->open($archivo, ZipArchive::CHECKCONS) !== true) {
             return $this->error('INEGI no entregó un XLSX válido.');
@@ -47,7 +52,7 @@ class InegiEscolaridadAdultaXlsxService
                 if (!preg_match('#^xl/worksheets/sheet\d+\.xml$#i', $hoja)) {
                     continue;
                 }
-                $resultado = $this->extraerHoja($zip, $hoja, $compartidas, $claveEstado);
+                $resultado = $this->extraerHoja($zip, $hoja, $compartidas, $claveEstado, $modoNacional);
                 $estructura = $estructura || $resultado['estructura'];
                 foreach ($resultado['grupos'] as $edad => $medidas) {
                     // Un total estatal repetido no debe sumarse dos veces.
@@ -132,19 +137,33 @@ class InegiEscolaridadAdultaXlsxService
             }
 
             $ref = 'https://www.inegi.org.mx/contenidos/programas/ccpv/2020/doc/Censo2020_criterios_tabulados_CPV_est_mun.pdf';
+            $notaFuenteNacional = $modoNacional
+                ? ' Archivo de procedencia: cpv2020_b_eum_07_educacion.xlsx, ' .
+                  'cuadro nacional con desglose por entidad federativa y las mismas ' .
+                  '28 categorías educativas. Selección exclusiva del Estado ' .
+                  $claveEstado . ' (Oaxaca), sexo Total; los otros Estados no se mezclan.'
+                : '';
+            $fuenteSeleccionada = $modoNacional
+                ? 'INEGI - Censo de Población y Vivienda 2020, B2020_07_08_M ' .
+                  '(desglose estatal equivalente del tabulado nacional de Educación)'
+                : self::FUENTE;
             $metodo25 = 'INEGI B2020_07_08_M (2020): grupos de 25 a 29 hasta 85 años y más, sólo filas Total estatal y sexo Total. Suma de categorías 2,3,4,8,12,13,17,21 de niveles que no acreditan estudios superiores; se excluyen no especificados del numerador. Denominador: población total 25 años y más.';
             $metodo18 = 'INEGI B2020_07_08_M (2020): edad desplegada 18 y 19; grupo 20-24; grupos 25-29 hasta 85 años y más, sin duplicar subtotales. Conteo mínimo identificable sin media superior concluida: categorías 2,3,4,8,12 y 1–2 años de bachillerato 18. Estudios técnicos de 1–2 grados o grado no especificado (14,16), la normal básica (21) y los grados no especificados (20,28) no permiten determinar conclusión. NO es un conteo exacto de todas las personas sin media superior concluida; denominador: toda la población 18 años y más. Personas con grado o nivel indeterminado: ' . $incierto18 . '. Criterios: ' . $ref;
             $metodoJoven = 'INEGI B2020_07_08_M (2020): únicamente edades individuales 15, 16 y 17 años, sexo Total y total estatal, evitando el subtotal 15–19 y las filas municipales. Conteo mínimo identificable sin media superior concluida: categorías de nivel 2,3,4,8,12 y 1–2 grados de bachillerato 18. No se confunde con abandono escolar: incluye a quienes todavía cursan bachillerato. Se dejan indeterminados los estudios técnicos de 1–2 grados o no especificados (14,16), normal básica (21) ni grados no especificados (20,28). Personas en categorías no determinantes: ' . $indeterminadoJoven . '. Denominador: toda la población de 15 a 17 años. Criterios: ' . $ref;
+            // Documentar siempre si la importación vino del archivo nacional.
+            $metodo25 .= $notaFuenteNacional;
+            $metodo18 .= $notaFuenteNacional;
+            $metodoJoven .= $notaFuenteNacional;
             $filas = [
                 ['estado_id' => $estadoId, 'codigo_indicador' => EscolaridadAdultaModel::SIN_SUPERIOR_25,
                  'anio' => 2020, 'poblacion_base' => $base25, 'cantidad_personas' => $sinSuperior,
-                 'fuente' => self::FUENTE, 'referencia_url' => $urlFuente, 'metodologia' => $metodo25],
+                 'fuente' => $fuenteSeleccionada, 'referencia_url' => $urlFuente, 'metodologia' => $metodo25],
                 ['estado_id' => $estadoId, 'codigo_indicador' => EscolaridadAdultaModel::SIN_MEDIA_CONCLUIDA_18,
                  'anio' => 2020, 'poblacion_base' => $base18, 'cantidad_personas' => $sinMediaConfirmada,
-                 'fuente' => self::FUENTE, 'referencia_url' => $urlFuente, 'metodologia' => $metodo18],
+                 'fuente' => $fuenteSeleccionada, 'referencia_url' => $urlFuente, 'metodologia' => $metodo18],
                 ['estado_id' => $estadoId, 'codigo_indicador' => EscolaridadAdultaModel::SIN_MEDIA_CONCLUIDA_15_17,
                  'anio' => 2020, 'poblacion_base' => $baseJoven, 'cantidad_personas' => $sinMediaJoven,
-                 'fuente' => self::FUENTE, 'referencia_url' => $urlFuente, 'metodologia' => $metodoJoven]
+                 'fuente' => $fuenteSeleccionada, 'referencia_url' => $urlFuente, 'metodologia' => $metodoJoven]
             ];
             $etapa = 'guardado de indicadores en MySQL';
             $modelo->importarLote($filas, 'AUTO_INEGI:' . basename($nombre));
@@ -164,7 +183,13 @@ class InegiEscolaridadAdultaXlsxService
         }
     }
 
-    private function extraerHoja(ZipArchive $zip, string $nombre, array $compartidas, string $estadoEsperado): array
+    private function extraerHoja(
+        ZipArchive $zip,
+        string $nombre,
+        array $compartidas,
+        string $estadoEsperado,
+        bool $modoNacional = false
+    ): array
     {
         // Un archivo estatal puede contener cientos de miles de filas municipales.
         // Leerlo completo en DOM agota la memoria de PHP/XAMPP.
@@ -185,6 +210,7 @@ class InegiEscolaridadAdultaXlsxService
         $totales = [];
         $rechazados = 0;
         $ejemplosRechazo = [];
+        $cuadroNacionalIdentificado = false;
         try {
             while ($reader->read()) {
                 if ($reader->nodeType !== XMLReader::ELEMENT || $reader->localName !== 'row') {
@@ -207,6 +233,42 @@ class InegiEscolaridadAdultaXlsxService
             if (!$celdas) {
                 continue;
             }
+
+            if ($modoNacional) {
+                /*
+                 * Cuadro de escolaridad por ENTIDAD FEDERATIVA (no tamaño de
+                 * localidad ni asistencia/alfabetismo). Verificar encabezados
+                 * literales antes de interpretar valores; no mezclar tablas.
+                 *
+                 * Nacional: A=Entidad, B=Sexo, C=Grupo de edad,
+                 * D=Edad desplegada, E..AF=28 métricas.
+                 * Estatal:  B=Entidad, C=Municipio, D=Sexo,
+                 * E=Grupo, F=Edad, G..AH=28 métricas.
+                 */
+                if (!$cuadroNacionalIdentificado) {
+                    $a = $this->normalizarTexto((string)($celdas[1] ?? ''));
+                    $b = $this->normalizarTexto((string)($celdas[2] ?? ''));
+                    $d = $this->normalizarTexto((string)($celdas[4] ?? ''));
+                    if ($a === 'ENTIDAD FEDERATIVA' && $b === 'SEXO' &&
+                        str_starts_with($this->normalizarTexto((string)($celdas[3] ?? '')), 'GRUPOS DE EDAD') &&
+                        $d === 'EDAD DESPLEGADA') {
+                        $cuadroNacionalIdentificado = true;
+                    }
+                    continue;
+                }
+                $originales = $celdas;
+                $celdas = [
+                    1 => $originales[1] ?? '',
+                    2 => 'Entidad federativa',
+                    3 => $originales[2] ?? '',
+                    4 => $originales[3] ?? '',
+                    5 => $originales[4] ?? ''
+                ];
+                for ($col = 1; $col <= 28; $col++) {
+                    $celdas[5 + $col] = $originales[4 + $col] ?? null;
+                }
+            }
+
             $texto = mb_strtolower(implode(' ', $celdas), 'UTF-8');
             if (str_contains($texto, 'población') && str_contains($texto, 'escolaridad')) {
                 $estructura = true;
