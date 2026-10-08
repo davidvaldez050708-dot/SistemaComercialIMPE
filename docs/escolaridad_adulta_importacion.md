@@ -1,5 +1,22 @@
-# Indicadores de escolaridad adulta — Información Territorial
+# Sincronización automática de escolaridad adulta — INEGI
 
+## Importación automática (recomendada)
+
+1. Aplica una sola vez la migración database/migrations/2026_10_08_escolaridad_adulta.sql.
+2. En Información Territorial, abre Veracruz, Morelos u otro Estado y selecciona Actualizar información oficial → Escolaridad adulta · 18+ y 25+.
+3. Pulsa Actualizar información. El CRM intenta descargar de INEGI el tabulado del Censo 2020 B2020_07_08_M, valida el ZIP/XLSX, totales estatales y grupos de edad, y guarda las cifras.
+4. Para los 32 Estados, desde la pantalla general de Información Territorial usa la misma opción en Actualizar información oficial y revisa las incidencias por Estado.
+
+No hace falta preparar un CSV. Se requiere PHP con cURL, ZipArchive, DOMDocument y mbstring, y permiso data_territorial.actualizar_oficial. Una respuesta HTML, ZIP corrupto o archivo incompleto no produce ninguna cifra; el Estado queda pendiente y puede reintentarse.
+
+## Definiciones y límites del cálculo censal
+
+- 25+ sin educación superior: suma de categorías censales sin nivel superior aprobado; no especificados fuera del numerador. Denominador: población de 25 años o más.
+- 18+ sin media superior concluida (MÍNIMO IDENTIFICADO): niveles inferiores a media superior y uno o dos grados de preparatoria/bachillerato. Los grados de estudios técnicos con secundaria, normal básica y escolaridad no especificada no acreditan ni excluyen conclusión: no se suman automáticamente. Por tanto el número calculado es un mínimo documentable, NO el total exacto de quienes no concluyeron media superior.
+
+El tabulado presenta edades individuales 18 y 19, 20–24 y grupos desde 25–29 hasta 85+. No se duplica el subtotal 20–24 con las edades individuales. Referencia metodológica: https://www.inegi.org.mx/contenidos/programas/ccpv/2020/doc/Censo2020_criterios_tabulados_CPV_est_mun.pdf (B2020_07_08_M).
+
+## CSV manual (solo si la descarga automática falla)
 La actualización importa dos indicadores estatales con rangos definidos:
 * SIN_EDUCACION_SUPERIOR_25_MAS — Personas de **25 años y más sin ningún grado de educación superior**.
 * SIN_MEDIA_SUPERIOR_CONCLUIDA_18_MAS — Personas de **18 años y más sin media superior concluida**, incluyendo estudios incompletos.
