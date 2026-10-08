@@ -4,6 +4,7 @@ on:
     paths:
       - ".github/workflows/inegi-oaxaca-diagnostic.yml"
       - "tests/inegi_veracruz_real_smoke.php"
+      - "tests/inspeccionar_inegi_nacional.php"
   workflow_dispatch:
 permissions:
   contents: read
@@ -24,29 +25,10 @@ jobs:
           set +e
           mkdir -p /tmp/oaxaca
           echo '## Fuentes oficiales de Oaxaca' >/tmp/reporte_oaxaca.txt
-          for id in oax_e oax_z eum_e eum_z; do
-            case "$id" in
-              oax_e) nombre=cpv2020_b_oax_07_educacion.xlsx;;
-              oax_z) nombre=cpv2020_b_oax_07_educacion.zip;;
-              eum_e) nombre=cpv2020_b_eum_07_educacion.xlsx;;
-              eum_z) nombre=cpv2020_b_eum_07_educacion.zip;;
-            esac
-            url="https://www.inegi.org.mx/contenidos/programas/ccpv/2020/tabulados/${nombre}"
-            echo "### ${nombre}" >>/tmp/reporte_oaxaca.txt
-            curl -sSL --retry 1 --connect-timeout 12 --max-time 110 --max-filesize 130000000 -w 'HTTP %{http_code} MIME %{content_type} BYTES %{size_download} FINAL %{url_effective}\n' -o "/tmp/oaxaca/${nombre}" "$url" >>/tmp/reporte_oaxaca.txt 2>&1
-            file -b "/tmp/oaxaca/${nombre}" >>/tmp/reporte_oaxaca.txt 2>&1
-            if unzip -tqq "/tmp/oaxaca/${nombre}" >/dev/null 2>&1; then
-              echo 'CONTENEDOR ZIP VALIDO' >>/tmp/reporte_oaxaca.txt
-              if [[ "$nombre" == *.xlsx ]]; then
-                php tests/inegi_veracruz_real_smoke.php "/tmp/oaxaca/${nombre}" 20 >>/tmp/reporte_oaxaca.txt 2>&1
-                echo "RESULTADO_PHP=$?" >>/tmp/reporte_oaxaca.txt
-              else
-                unzip -Z1 "/tmp/oaxaca/${nombre}" | head -10 >>/tmp/reporte_oaxaca.txt
-              fi
-            else
-              echo 'NO ES CONTENEDOR ZIP VALIDO' >>/tmp/reporte_oaxaca.txt
-            fi
-          done
+          url="https://www.inegi.org.mx/contenidos/programas/ccpv/2020/tabulados/cpv2020_b_eum_07_educacion.xlsx"
+          curl --fail -sSL --retry 2 --connect-timeout 12 --max-time 120 -o /tmp/oaxaca/nacional.xlsx "$url"
+          echo "XLSX nacional descargado: $(wc -c </tmp/oaxaca/nacional.xlsx) bytes" >>/tmp/reporte_oaxaca.txt
+          php tests/inspeccionar_inegi_nacional.php /tmp/oaxaca/nacional.xlsx >>/tmp/reporte_oaxaca.txt 2>&1
           cat /tmp/reporte_oaxaca.txt | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Publicar diagnostico
         if: always() && github.event_name == 'pull_request'
