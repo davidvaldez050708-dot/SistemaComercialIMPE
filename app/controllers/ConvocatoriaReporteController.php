@@ -11,10 +11,23 @@ class ConvocatoriaReporteController
         $this->validarAcceso(false);
 
         $service = new ReporteConvocatoriaDataService();
-        $reporteConvocatorias = $service->prepararDatos();
+        $reporteConvocatorias = $service->prepararDatos([
+            'tipo' => $_GET['tipo'] ?? '',
+            'subtipo' => $_GET['subtipo'] ?? ''
+        ]);
+
+        $filtrosReporte = is_array($reporteConvocatorias['filtros'] ?? null)
+            ? $reporteConvocatorias['filtros']
+            : ['tipo' => '', 'subtipo' => ''];
+
+        $queryExportar = http_build_query(array_filter(
+            $filtrosReporte,
+            static fn($valor) => trim((string)$valor) !== ''
+        ));
 
         $urlExportarPdf = BASE_URL .
-            'index.php?controller=convocatoriaReporte&action=exportarPdf';
+            'index.php?controller=convocatoriaReporte&action=exportarPdf' .
+            ($queryExportar !== '' ? '&' . $queryExportar : '');
 
         $tituloPagina = 'Reporte de Convocatorias';
         $subtituloPagina = 'Resumen ejecutivo y detalle del módulo de convocatorias.';
@@ -33,7 +46,10 @@ class ConvocatoriaReporteController
 
         try {
             $service = new ReporteConvocatoriaDataService();
-            $datosReporte = $service->prepararDatos();
+            $datosReporte = $service->prepararDatos([
+                'tipo' => $_GET['tipo'] ?? '',
+                'subtipo' => $_GET['subtipo'] ?? ''
+            ]);
 
             $datosReporte['fecha_generacion'] = date('d/m/Y H:i');
             $datosReporte['generado_por'] = trim(
