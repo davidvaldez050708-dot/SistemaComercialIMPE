@@ -25,6 +25,11 @@
             'index.php?controller=telefonia&action=host',
             window.location.href
         ).toString();
+    const transferDestinationsUrl =
+        new URL(
+            'index.php?controller=telefonia&action=destinosTransferencia',
+            window.location.href
+        ).toString();
 
     const channel = typeof BroadcastChannel === 'function'
         ? new BroadcastChannel(channelName)
@@ -43,6 +48,8 @@
     let dismissedFinishedToken = '';
     let preparedDismissed = false;
     let stageRequestId = 0;
+    let transferDestinations = null;
+    let transferDestinationsPromise = null;
 
     try {
         compact =
@@ -894,6 +901,63 @@
         );
     };
 
+    const loadTransferDestinations =
+        function () {
+            if (transferDestinations !== null) {
+                return Promise.resolve(
+                    transferDestinations
+                );
+            }
+
+            if (transferDestinationsPromise) {
+                return transferDestinationsPromise;
+            }
+
+            transferDestinationsPromise =
+                fetch(
+                    transferDestinationsUrl,
+                    {
+                        method: 'GET',
+                        credentials: 'same-origin',
+                        cache: 'no-store',
+                        headers: {
+                            Accept: 'application/json',
+                            'X-Requested-With':
+                                'fetch'
+                        }
+                    }
+                ).then(
+                    async function (response) {
+                        const data =
+                            await response.json();
+
+                        if (
+                            !response.ok ||
+                            !data.ok
+                        ) {
+                            throw new Error(
+                                data.mensaje ||
+                                'No fue posible consultar las extensiones.'
+                            );
+                        }
+
+                        transferDestinations =
+                            Array.isArray(
+                                data.destinos
+                            )
+                                ? data.destinos
+                                : [];
+
+                        return transferDestinations;
+                    }
+                ).finally(function () {
+                    transferDestinationsPromise =
+                        null;
+                });
+
+            return transferDestinationsPromise;
+        };
+
     const transferCall = function (
         extension,
         attended
@@ -1372,6 +1436,9 @@
                         '<strong>Transferir llamada</strong>' +
                         '<button type="button" data-phone-provider-controls>Controles Zadarma</button>' +
                     '</div>' +
+                    '<select data-phone-transfer-destination>' +
+                        '<option value="">Selecciona un usuario o escribe la extensión</option>' +
+                    '</select>' +
                     '<input type="text" inputmode="numeric" maxlength="6" placeholder="Extensión, ej. 101" data-phone-transfer-extension>' +
                     '<div class="persistent-phone-transfer-actions">' +
                         '<button type="button" data-phone-transfer-directa>Transferencia directa</button>' +
@@ -1492,6 +1559,69 @@
             panel.querySelector(
                 '[data-phone-transfer-extension]'
             );
+        const transferSelect =
+            panel.querySelector(
+                '[data-phone-transfer-destination]'
+            );
+        const transferHelp =
+            panel.querySelector(
+                '[data-phone-transfer-help]'
+            );
+
+        const renderTransferDestinations =
+            function (destinations) {
+                if (!transferSelect) {
+                    return;
+                }
+
+                transferSelect.innerHTML =
+                    '<option value="">Selecciona un usuario o escribe la extensión</option>';
+
+                destinations.forEach(
+                    function (destination) {
+                        const extension =
+                            String(
+                                destination.extension ||
+                                ''
+                            ).trim();
+
+                        if (extension === '') {
+                            return;
+                        }
+
+                        const option =
+                            document.createElement(
+                                'option'
+                            );
+                        option.value = extension;
+                        option.textContent =
+                            (
+                                String(
+                                    destination.nombre ||
+                                    'Usuario'
+                                ).trim() ||
+                                'Usuario'
+                            ) +
+                            ' · Ext. ' +
+                            extension +
+                            (
+                                String(
+                                    destination.rol ||
+                                    ''
+                                ).trim() !== ''
+                                    ? ' · ' +
+                                        String(
+                                            destination.rol
+                                        ).trim()
+                                    : ''
+                            );
+
+                        transferSelect.appendChild(
+                            option
+                        );
+                    }
+                );
+            };
 
         panel.querySelector(
             '[data-phone-transfer-toggle]'
@@ -1506,7 +1636,62 @@
                     !transferPanel.hidden;
 
                 if (!transferPanel.hidden) {
-                    transferInput?.focus();
+                    if (
+                        transferSelect &&
+                        transferSelect.options.length <= 1
+                    ) {
+                        if (transferHelp) {
+                            transferHelp.textContent =
+                                'Cargando extensiones disponibles…';
+                        }
+
+                        void loadTransferDestinations()
+                            .then(
+                                function (destinations) {
+                                    renderTransferDestinations(
+                                        destinations
+                                    );
+
+                                    if (transferHelp) {
+                                        transferHelp.textContent =
+                                            destinations.length > 0
+                                                ? 'Elige un usuario o captura una extensión manualmente.'
+                                                : 'No hay otros usuarios disponibles; puedes capturar una extensión manualmente.';
+                                    }
+                                }
+                            )
+                            .catch(
+                                function (error) {
+                                    if (transferHelp) {
+                                        transferHelp.textContent =
+                                            error.message ||
+                                            'No fue posible cargar las extensiones.';
+                                    }
+                                }
+                            );
+                    }
+
+                    transferSelect?.focus();
+                    transferInput?.focus({
+                        preventScroll: true
+                    });
+                }
+            }
+        );
+
+        transferSelect?.addEventListener(
+            'change',
+            function () {
+                if (
+                    transferInput &&
+                    String(
+                        transferSelect.value || ''
+                    ).trim() !== ''
+                ) {
+                    transferInput.value =
+                        String(
+                            transferSelect.value
+                        );
                 }
             }
         );
