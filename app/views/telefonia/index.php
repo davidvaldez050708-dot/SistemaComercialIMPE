@@ -145,9 +145,9 @@ $esc = static function ($valor) {
             <i class="bi bi-info-circle"></i>
             <span>
                 El Caller ID es opcional por ahora. Podrás colocar el número
-                institucional cuando quede definido en Zadarma. Asignar una
-                extensión al Asesor de Ventas todavía no habilita su marcador;
-                eso se activará en el siguiente paso.
+                institucional cuando quede activado y autorizado en Zadarma.
+                El marcador de Ventas ya está disponible con una extensión
+                activa y el permiso de llamadas salientes.
             </span>
         </div>
 

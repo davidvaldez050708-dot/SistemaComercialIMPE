@@ -44,6 +44,12 @@ class HomeController
                 break;
 
             case 3:
+                // Ventas trabaja exclusivamente en el marcador cuando tiene permisos.
+                // Si el administrador revoca telefonía, conserva su vista informativa.
+                if (tienePermiso('telefonia.usar') && tienePermiso('telefonia.salientes')) {
+                    header('Location: ' . BASE_URL . 'index.php?controller=telefonia&action=marcador');
+                    exit;
+                }
                 $subtituloPagina = 'Panel de Asesor de Ventas';
                 $vistaPanel = __DIR__ . '/../views/dashboard/asesor.php';
                 break;

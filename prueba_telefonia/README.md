@@ -213,3 +213,42 @@ Después verifica:
 ## Compatibilidad histórica
 
 Los endpoints y servicios Twilio se conservan para no romper llamadas antiguas ya vinculadas con ese proveedor. No deben utilizarse para iniciar nuevas llamadas de Vinculación salvo que explícitamente se reactive ese proveedor.
+
+
+## Marcador independiente de Ventas (2026-10-07)
+
+- En **Teléfono > Marcador** el Asesor puede teclear números nacionales de diez dígitos
+  (se antepone 52) o números en formato internacional.
+- Reutiliza la misma sesión WebRTC Zadarma y la extensión personal; no hay pipeline comercial.
+- Al entrar a Inicio, el Asesor con permisos se dirige al marcador.
+- Muestra sus atenciones registradas en los últimos 30 días. Solo consulta su extensión.
+- Administración > Telefonía muestra atenciones por extensión y minutos observados por
+  webhooks. **No es saldo, coste o minutos incluidos del plan**; requiere consultar la
+  API de estadísticas y facturación de Zadarma cuando estén disponibles sus credenciales.
+- Una transferencia puede producir varios registros por extensión del mismo pbx_call_id:
+  no equivalen al total de llamadas externas únicas.
+- Para habilitar llamadas entrantes transferidas, se requiere `telefonia.recibir`,
+  extensión habilitada para recepción y activación de WebRTC en la barra superior.
+
+## Activación de la cuenta y número institucional
+
+1. Activar la centralita virtual en Zadarma y definir las extensiones de Tania,
+   analistas y Ventas; validar que todas existan en PBX.
+2. Definir si el número existente en Callpicker se portará o se conectará como
+   línea externa SIP. No asumir que el paquete contratado importa el número
+   automáticamente. Coordinar con ambos proveedores y evitar dar de baja
+   la línea hasta que el cambio esté validado.
+3. Asociar el número entrante al escenario de recepción de Tania y configurar
+   en PBX los reintentos/fallback cuando no atienda.
+4. Obtener **API key y API secret** en Configuración > Integraciones y API,
+   así como credenciales/extensiones PBX y Caller ID autorizado.
+   Guardar solo en `config/zadarma_config.php` excluido del repositorio;
+   nunca pegarlas en el chat ni en el código versionado.
+5. Configurar URL HTTPS pública del webhook y notificaciones
+   `NOTIFY_START`, `NOTIFY_INTERNAL`, `NOTIFY_ANSWER`,
+   `NOTIFY_END`, `NOTIFY_OUT_START`, `NOTIFY_OUT_END`.
+6. Ejecutar `php tools/verificar_telefonia_zadarma.php` y probar:
+   entrante a Tania, transferencia directa/consultada a una extensión,
+   devolución por ausencia, saliente desde Ventas y registro en historial.
+7. Conciliar el reporte local de minutos observados con los segundos facturados
+   de la API Zadarma antes de utilizarlo como indicador de consumo del paquete.
