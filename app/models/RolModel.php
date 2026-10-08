@@ -43,6 +43,11 @@ class RolModel
             !$this->existePermisoPorCodigo('whatsapp.enviar') ||
             !$this->existePermisoPorCodigo('whatsapp.gestionar_conversaciones') ||
             !$this->existePermisoPorCodigo('whatsapp.gestionar_cuentas');
+        $permisosTelefoniaNuevos =
+            !$this->existePermisoPorCodigo('telefonia.usar') ||
+            !$this->existePermisoPorCodigo('telefonia.salientes') ||
+            !$this->existePermisoPorCodigo('telefonia.recibir') ||
+            !$this->existePermisoPorCodigo('telefonia.transferir');
 
         $sql = "INSERT INTO permisos (
                     modulo,
@@ -109,6 +114,10 @@ class RolModel
 
         if ($permisosWhatsappNuevos) {
             $this->asignarPermisosInicialesWhatsapp();
+        }
+
+        if ($permisosTelefoniaNuevos) {
+            $this->asignarPermisosInicialesTelefonia();
         }
 
         $this->asegurarPermisosAdministrador();
@@ -947,6 +956,47 @@ class RolModel
         }
     }
 
+    private function asignarPermisosInicialesTelefonia()
+    {
+        $asignaciones = [
+            'Analista de Datos' => [
+                'telefonia.usar',
+                'telefonia.salientes',
+                'telefonia.recibir'
+            ],
+            'Asesor de Ventas' => [
+                'telefonia.usar',
+                'telefonia.salientes',
+                'telefonia.recibir'
+            ],
+            'Marketing' => [
+                'telefonia.usar',
+                'telefonia.recibir',
+                'telefonia.transferir'
+            ]
+        ];
+
+        $sql = "INSERT IGNORE INTO rol_permisos (
+                    rol_id,
+                    permiso_id
+                )
+                SELECT roles.id, permisos.id
+                FROM roles
+                INNER JOIN permisos
+                    ON permisos.codigo = ?
+                WHERE roles.nombre = ?
+                  AND permisos.estado = 1";
+
+        $stmt = $this->connection->prepare($sql);
+
+        foreach ($asignaciones as $nombreRol => $codigos) {
+            foreach ($codigos as $codigo) {
+                $stmt->bind_param("ss", $codigo, $nombreRol);
+                $stmt->execute();
+            }
+        }
+    }
+
     private function asignarPermisosInicialesReporteConvocatorias()
     {
         $nombreRol = 'Marketing';
@@ -1016,6 +1066,10 @@ class RolModel
             'whatsapp.enviar' => 'whatsapp.ver',
             'whatsapp.gestionar_conversaciones' => 'whatsapp.ver',
             'whatsapp.gestionar_cuentas' => 'whatsapp.ver',
+            'telefonia.salientes' => 'telefonia.usar',
+            'telefonia.recibir' => 'telefonia.usar',
+            'telefonia.transferir' => 'telefonia.recibir',
+            'telefonia.configurar' => 'telefonia.usar',
             'reportes.exportar' => 'reportes.ver',
             'reportes.seguimiento.cartera' => 'reportes.ver',
             'reportes.seguimiento.actividad' => 'reportes.ver',
@@ -1328,6 +1382,10 @@ class RolModel
             ['modulo' => 'WhatsApp', 'codigo' => 'whatsapp.enviar', 'nombre' => 'Enviar mensajes por WhatsApp', 'descripcion' => 'Enviar mensajes mediante cuentas de WhatsApp Business autorizadas.'],
             ['modulo' => 'WhatsApp', 'codigo' => 'whatsapp.gestionar_conversaciones', 'nombre' => 'Supervisar conversaciones de WhatsApp', 'descripcion' => 'Consultar las conversaciones del equipo dentro del alcance autorizado.'],
             ['modulo' => 'WhatsApp', 'codigo' => 'whatsapp.gestionar_cuentas', 'nombre' => 'Gestionar cuentas de WhatsApp', 'descripcion' => 'Configurar números empresariales y asignarlos a usuarios. Exclusivo del Administrador.'],
+            ['modulo' => 'Telefonía', 'codigo' => 'telefonia.usar', 'nombre' => 'Usar telefonía', 'descripcion' => 'Acceder al motor WebRTC y a la extensión PBX asignada.'],
+            ['modulo' => 'Telefonía', 'codigo' => 'telefonia.salientes', 'nombre' => 'Realizar llamadas salientes', 'descripcion' => 'Originar llamadas desde el CRM mediante la extensión PBX asignada.'],
+            ['modulo' => 'Telefonía', 'codigo' => 'telefonia.recibir', 'nombre' => 'Recibir llamadas', 'descripcion' => 'Mantener la extensión disponible para llamadas entrantes y recibir avisos de llamadas en el CRM.'],
+            ['modulo' => 'Telefonía', 'codigo' => 'telefonia.transferir', 'nombre' => 'Transferir llamadas', 'descripcion' => 'Transferir una llamada activa a otra extensión o área autorizada.'],
             ['modulo' => 'Telefonía', 'codigo' => 'telefonia.configurar', 'nombre' => 'Configurar telefonía', 'descripcion' => 'Asignar y administrar extensiones PBX de los usuarios. Exclusivo del Administrador.'],
             ['modulo' => 'Convocatorias', 'codigo' => 'convocatorias.ver', 'nombre' => 'Ver convocatorias', 'descripcion' => 'Consultar convocatorias registradas.'],
             ['modulo' => 'Convocatorias', 'codigo' => 'convocatorias.crear', 'nombre' => 'Crear convocatorias', 'descripcion' => 'Registrar nuevas convocatorias.'],
