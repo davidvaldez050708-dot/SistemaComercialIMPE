@@ -9,7 +9,10 @@ class InegiEducacionObjetivoService
 
     private $enlacesIntercensal2025 = null;
 
-    public function obtenerPorEstado(string $claveEstado): array
+    public function obtenerPorEstado(
+        string $claveEstado,
+        bool $permitirRed = true
+    ): array
     {
         $claveEstado = str_pad(trim($claveEstado), 2, '0', STR_PAD_LEFT);
 
@@ -35,6 +38,12 @@ class InegiEducacionObjetivoService
                 ];
                 return $datosEstables;
             }
+        }
+
+        if (!$permitirRed) {
+            return $this->respuestaError(
+                'El contexto educativo general todavía no está sincronizado localmente.'
+            );
         }
 
         $errores = [];
