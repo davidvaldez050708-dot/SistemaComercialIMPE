@@ -235,13 +235,17 @@
                     gruposAdultos(metricas).map(function (item) {
                         const clave = item[0].replace('–', '-');
                         const grupo = gruposPrioridad?.[clave] || {};
+                        const poblacionGrupo =
+                            item[1] ??
+                            grupo.poblacion_total ??
+                            null;
                         const brecha = grupo.sin_estudios_media_superior ??
                             grupo.sin_media_superior_concluida;
                         const brechaPct = grupo.sin_estudios_media_superior_pct;
                         return (
                             '<div>' +
                                 '<span>' + escapar(item[0]) + ' años</span>' +
-                                '<strong>' + numero(item[1]) + '</strong>' +
+                                '<strong>' + numero(poblacionGrupo) + '</strong>' +
                                 '<small>' +
                                     (brecha !== null && brecha !== undefined
                                         ? numero(brecha) +
@@ -613,8 +617,28 @@
             const poblacion2549 = adultoMetricas.poblacion_25_49 ??
                 prioridadMetricas.poblacion_25_49;
 
-            if (!perfilAdulto?.ok && !prioridadDisponible) {
-                return '';
+            if (!prioridadDisponible) {
+                const mensaje =
+                    perfilPrioritario?.actualizacion_automatica?.mensaje ||
+                    'El cruce oficial edad × escolaridad para 25–49 años todavía no está sincronizado en este territorio.';
+
+                return (
+                    '<div class="data-education-priority">' +
+                        '<div class="data-education-priority-heading">' +
+                            '<div>' +
+                                '<span class="data-education-target-eyebrow">Población educativa prioritaria</span>' +
+                                '<h4>Adultos de 25 a 49 años</h4>' +
+                                '<p>La ficha utilizará únicamente el cruce oficial de edad × escolaridad; no se estiman cifras con porcentajes generales.</p>' +
+                            '</div>' +
+                            '<span class="data-education-target-period">Sin sincronizar</span>' +
+                        '</div>' +
+                        '<div class="data-education-priority-method">' +
+                            '<i class="bi bi-cloud-arrow-down"></i>' +
+                            '<div><strong>Información oficial pendiente de sincronización</strong>' +
+                            '<span>' + escapar(mensaje) + '</span></div>' +
+                        '</div>' +
+                    '</div>'
+                );
             }
 
             return (
@@ -762,6 +786,24 @@
         const renderContexto = function (datos) {
             const estado = datos?.estado || {};
             const m = estado.metricas || {};
+            const disponible =
+                datos?.contexto_general_disponible !== false &&
+                Object.keys(m).length > 0;
+
+            if (!disponible) {
+                return (
+                    '<div class="data-education-priority-method">' +
+                        '<i class="bi bi-info-circle"></i>' +
+                        '<div><strong>Contexto educativo adicional sin sincronizar</strong>' +
+                        '<span>' +
+                            escapar(
+                                datos?.mensaje_contexto_general ||
+                                'El contexto general se cargará desde la próxima sincronización oficial.'
+                            ) +
+                        '</span></div>' +
+                    '</div>'
+                );
+            }
 
             return (
                 '<details class="data-education-subcontext">' +
