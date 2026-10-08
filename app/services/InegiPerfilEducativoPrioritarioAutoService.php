@@ -121,7 +121,13 @@ class InegiPerfilEducativoPrioritarioAutoService
         return $this->actualizarDesdeInegi($claveEstado, true);
     }
 
-    private function actualizarDesdeInegi(string $claveEstado, bool $soloAdultos = false): array
+    /** Descarga el mismo cuadro B2020_07_08_M para un indicador separado de 15–17. */
+    public function actualizarEscolaridadJuvenil(string $claveEstado): array
+    {
+        return $this->actualizarDesdeInegi($claveEstado, true, true);
+    }
+
+    private function actualizarDesdeInegi(string $claveEstado, bool $soloAdultos = false, bool $soloJuvenil = false): array
     {
         if (!function_exists('curl_init')) {
             return $this->error('El servidor no tiene cURL habilitado.');
@@ -176,7 +182,8 @@ class InegiPerfilEducativoPrioritarioAutoService
             $resultado = $this->procesarDescarga(
                 $url,
                 $claveEstado,
-                $soloAdultos
+                $soloAdultos,
+                $soloJuvenil
             );
 
             if (($resultado['ok'] ?? false) === true) {
@@ -336,7 +343,8 @@ class InegiPerfilEducativoPrioritarioAutoService
     private function procesarDescarga(
         string $url,
         string $claveEstado,
-        bool $soloAdultos = false
+        bool $soloAdultos = false,
+        bool $soloJuvenil = false
     ): array
     {
         $temporal = tempnam(sys_get_temp_dir(), 'inegi_edu_prior_');
@@ -396,7 +404,8 @@ class InegiPerfilEducativoPrioritarioAutoService
                     $temporal,
                     basename((string)parse_url($url, PHP_URL_PATH)),
                     $claveEstado,
-                    $url
+                    $url,
+                    $soloJuvenil
                 );
             }
 
@@ -419,7 +428,8 @@ class InegiPerfilEducativoPrioritarioAutoService
                     $temporal,
                     $claveEstado,
                     $soloAdultos,
-                    $url
+                    $url,
+                    $soloJuvenil
                 );
             }
 
@@ -433,7 +443,8 @@ class InegiPerfilEducativoPrioritarioAutoService
         string $ruta,
         string $claveEstado,
         bool $soloAdultos = false,
-        string $urlFuente = ''
+        string $urlFuente = '',
+        bool $soloJuvenil = false
     ): array
     {
         if (!class_exists('ZipArchive')) {
@@ -479,7 +490,7 @@ class InegiPerfilEducativoPrioritarioAutoService
 
                     $resultado = $soloAdultos
                         ? (new InegiEscolaridadAdultaXlsxService())->importarXlsx(
-                            $tmp, basename($nombre), $claveEstado, $urlFuente
+                            $tmp, basename($nombre), $claveEstado, $urlFuente, $soloJuvenil
                         )
                         : (new InegiPerfilEducativoPrioritarioImportService())
                             ->importarXlsx($tmp, basename($nombre), $claveEstado);
