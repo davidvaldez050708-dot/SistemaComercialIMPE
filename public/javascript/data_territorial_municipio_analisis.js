@@ -177,8 +177,8 @@
                     escapeHtml(educationalProfile.fuente || 'INEGI - Censo de Población y Vivienda 2020') + '.</p>' +
               '</section>'
             : '<section class="data-municipality-analysis-section data-municipality-analysis-adult-section">' +
-                '<div class="data-municipality-analysis-section-heading"><h4>Perfil educativo prioritario</h4><span>Pendiente</span></div>' +
-                '<p class="data-municipality-analysis-empty">Este municipio todavía no cuenta con el cruce oficial de edad × escolaridad para 25–49 años.</p>' +
+                '<div class="data-municipality-analysis-section-heading"><h4>Perfil educativo prioritario</h4><span>Sin sincronizar</span></div>' +
+                '<p class="data-municipality-analysis-empty">El cruce oficial edad × escolaridad para 25–49 años todavía no está sincronizado para este municipio. Se carga desde “Actualizar información oficial”.</p>' +
               '</section>';
 
         const adultAvailable = adultProfile.disponible === true;
@@ -194,8 +194,8 @@
                     escapeHtml(adultSource) + '.</p>' +
               '</section>'
             : '<section class="data-municipality-analysis-section">' +
-                '<div class="data-municipality-analysis-section-heading"><h4>Contexto laboral municipal</h4><span>Pendiente</span></div>' +
-                '<p class="data-municipality-analysis-empty">Todavía no hay contexto laboral oficial disponible para este municipio.</p>' +
+                '<div class="data-municipality-analysis-section-heading"><h4>Contexto laboral municipal</h4><span>Sin sincronizar</span></div>' +
+                '<p class="data-municipality-analysis-empty">El perfil adulto/laboral oficial todavía no está sincronizado para este municipio.</p>' +
               '</section>';
 
         const economicAvailable = economicProfile.disponible === true;
@@ -229,8 +229,8 @@
                 '<div class="data-municipality-candidates" data-municipality-candidates></div>' +
               '</section>'
             : '<section class="data-municipality-analysis-section">' +
-                '<div class="data-municipality-analysis-section-heading"><h4>Tejido económico y organizacional</h4><span>Pendiente</span></div>' +
-                '<p class="data-municipality-analysis-empty">Todavía no hay información DENUE municipal disponible.</p>' +
+                '<div class="data-municipality-analysis-section-heading"><h4>Tejido económico y organizacional</h4><span>Sin sincronizar</span></div>' +
+                '<p class="data-municipality-analysis-empty">La información municipal de DENUE todavía no está sincronizada para este territorio.</p>' +
               '</section>';
 
         const methodology = limitations.length
