@@ -70,12 +70,21 @@ try {
     );
 
     $desde = (int)($_GET['since'] ?? 0);
-    $llamada =
-        (new ZadarmaWebhookEventStoreService())
-            ->buscarEntranteRecientePorExtension(
-                $extension,
-                $desde
-            );
+    $pbxCallId = trim(
+        (string)($_GET['pbx_call_id'] ?? '')
+    );
+    $eventStore =
+        new ZadarmaWebhookEventStoreService();
+
+    $llamada = $pbxCallId !== ''
+        ? $eventStore->obtenerEstadoEntrantePorPbxCallId(
+            $extension,
+            $pbxCallId
+        )
+        : $eventStore->buscarEntranteRecientePorExtension(
+            $extension,
+            $desde
+        );
 
     responderEntrada([
         'ok' => true,
