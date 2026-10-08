@@ -98,6 +98,59 @@ class PerfilAdultoLaboralModel
         return $fila ? $this->normalizarFila($fila) : $this->respuestaVacia();
     }
 
+    public function obtenerMapaMunicipiosEstado(int $estadoId): array
+    {
+        if ($estadoId <= 0 || !$this->tablaDisponible()) {
+            return [];
+        }
+
+        $sql = "SELECT
+                    estado_id,
+                    municipio_id,
+                    clave_geografica,
+                    anio,
+                    poblacion_25_34,
+                    poblacion_35_44,
+                    poblacion_45_54,
+                    poblacion_25_54,
+                    poblacion_economicamente_activa,
+                    poblacion_ocupada,
+                    fuente,
+                    archivo_origen,
+                    metodologia,
+                    fecha_consulta,
+                    tipo_actualizacion
+                FROM perfil_adulto_laboral_oficial
+                WHERE estado_id = ?
+                  AND municipio_id IS NOT NULL
+                ORDER BY
+                    municipio_id ASC,
+                    anio DESC,
+                    fecha_consulta DESC";
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param('i', $estadoId);
+        $stmt->execute();
+        $resultado = $stmt->get_result();
+
+        $mapa = [];
+
+        while ($fila = $resultado->fetch_assoc()) {
+            $municipioId = (int)($fila['municipio_id'] ?? 0);
+
+            if (
+                $municipioId <= 0 ||
+                isset($mapa[$municipioId])
+            ) {
+                continue;
+            }
+
+            $mapa[$municipioId] =
+                $this->normalizarFila($fila);
+        }
+
+        return $mapa;
+    }
+
     public function guardarPerfil(
         int $estadoId,
         ?int $municipioId,
