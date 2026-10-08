@@ -118,6 +118,32 @@ $esc = static function ($valor) {
                 </tbody>
             </table>
         </div>
+        <div class="telephony-config-heading mt-4">
+            <div>
+                <h2>Historial reciente de la centralita</h2>
+                <p>Últimas 30 atenciones por extensión registradas mediante webhooks.</p>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table telephony-table align-middle mb-0">
+                <thead><tr><th>Fecha</th><th>Extensión</th><th>Tipo</th><th>Número</th><th>Resultado</th><th>Duración</th></tr></thead>
+                <tbody>
+                    <?php foreach ($actividadTelefonica['recientes'] as $llamada): ?>
+                        <tr>
+                            <td><?= $esc($llamada['fecha']) ?></td>
+                            <td><?= $esc($llamada['extension']) ?></td>
+                            <td><?= $esc($llamada['tipo']) ?></td>
+                            <td><?= $esc($llamada['numero'] ?: 'No disponible') ?></td>
+                            <td><?= !empty($llamada['contestada']) ? 'Contestada' : 'Sin respuesta confirmada' ?></td>
+                            <td><?= sprintf('%02d:%02d', intdiv((int)$llamada['segundos'],60), (int)$llamada['segundos']%60) ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                    <?php if (empty($actividadTelefonica['recientes'])): ?>
+                        <tr><td colspan="6" class="text-center text-muted py-4">No hay actividad telefónica registrada todavía.</td></tr>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
     </section>
 
     <section class="dashboard-panel telephony-config-panel">
