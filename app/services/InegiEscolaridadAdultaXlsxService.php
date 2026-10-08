@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../models/EscolaridadAdultaModel.php';
+require_once __DIR__ . '/../models/EscolaridadJuvenilModel.php';
 
 /**
  * Importa los indicadores estatales a partir del tabulado censal B2020_07_08_M.
@@ -17,7 +18,7 @@ class InegiEscolaridadAdultaXlsxService
     ];
     private const GRUPOS_18 = ['18', '19', '20-24'];
 
-    public function importarXlsx(string $archivo, string $nombre, string $claveEstado, string $urlFuente): array
+    public function importarXlsx(string $archivo, string $nombre, string $claveEstado, string $urlFuente, bool $soloJuvenil = false): array
     {
         if (!class_exists('ZipArchive') || !class_exists('DOMDocument') || !class_exists('XMLReader') || !is_readable($archivo)) {
             return $this->error('Servidor sin soporte ZIP/XML o archivo ilegible.');
@@ -59,6 +60,10 @@ class InegiEscolaridadAdultaXlsxService
             if (!$estructura || !$grupos) {
                 return $this->error('No se identificó el cruce estatal edad × escolaridad B2020_07_08_M.');
             }
+            if ($soloJuvenil) {
+                return $this->importarJuvenil($grupos, $nombre, $claveEstado, $urlFuente);
+            }
+
             // Si el tabulado trae edades 20,21,22,23,24 sin subtotal, agrupar
             // esas cinco filas; si hay subtotal, excluir edades individuales.
             if (!isset($grupos['20-24'])) {
@@ -141,6 +146,85 @@ class InegiEscolaridadAdultaXlsxService
         } finally {
             $zip->close();
         }
+    }
+
+    /**
+     * Calcula únicamente el mínimo identificable del Censo para 15-17.
+     * No sumar categorías técnicas con secundaria de duración indeterminada
+     * ni grados de bachillerato no especificados.
+     */
+    public static function calcularJuvenil(array $grupos): array
+    {
+        $base = $minimo = $indeterminados = 0;
+        foreach (['15', '16', '17'] as $edad) {
+            $m = $grupos[$edad] ?? null;
+            if (!is_array($m) || count($m) !== 28 || (int)($m[1] ?? 0) <= 0) {
+                throw new InvalidArgumentException('Falta la edad ' . $edad . ' en el tabulado oficial.');
+            }
+            $totalNivel = 0;
+            foreach ([2, 3, 4, 8, 12, 13, 17, 21, 22, 23, 27, 28] as $categoria) {
+                $totalNivel += (int)$m[$categoria];
+            }
+            if ($totalNivel !== (int)$m[1] ||
+                (int)$m[13] !== (int)$m[14] + (int)$m[15] + (int)$m[16] ||
+                (int)$m[17] !== (int)$m[18] + (int)$m[19] + (int)$m[20]) {
+                throw new InvalidArgumentException('Totales de escolaridad incompatibles a los ' . $edad . ' años.');
+            }
+            $base += (int)$m[1];
+            foreach ([2, 3, 4, 8, 12, 18] as $categoria) {
+                $minimo += (int)$m[$categoria];
+            }
+            foreach ([13, 20, 21, 28] as $categoria) {
+                $indeterminados += (int)$m[$categoria];
+            }
+        }
+        if ($base <= 0 || $minimo > $base) {
+            throw new InvalidArgumentException('El universo 15-17 no es válido.');
+        }
+        return [
+            'poblacion_base' => $base,
+            'cantidad_personas' => $minimo,
+            'porcentaje' => round(100 * $minimo / $base, 2),
+            'personas_indeterminadas' => $indeterminados
+        ];
+    }
+
+    private function importarJuvenil(array $grupos, string $nombre, string $claveEstado, string $urlFuente): array
+    {
+        $datos = self::calcularJuvenil($grupos);
+        $modelo = new EscolaridadJuvenilModel();
+        if (!$modelo->tablaDisponible()) {
+            return $this->error('Falta aplicar la migración 2026_10_08_escolaridad_juvenil.sql.');
+        }
+        $db = (new Database())->connect();
+        $stmt = $db->prepare('SELECT id FROM estados WHERE clave_inegi = ? AND estado = 1 LIMIT 1');
+        $stmt->bind_param('s', $claveEstado);
+        $stmt->execute();
+        $estadoId = (int)($stmt->get_result()->fetch_assoc()['id'] ?? 0);
+        $stmt->close();
+        if ($estadoId <= 0) {
+            return $this->error('El Estado no está activo en el CRM o no coincide con la clave INEGI.');
+        }
+        $metodologia = 'INEGI, Censo de Población y Vivienda 2020, cuadro B2020_07_08_M. ' .
+            'Universo: total estatal de sexo Total, edades individuales 15, 16 y 17. ' .
+            'Mínimo identificable de personas sin media superior concluida: categorías 2 sin escolaridad, ' .
+            '3 preescolar, 4 primaria total, 8 secundaria total, 12 técnicos con primaria terminada ' .
+            'y 18 preparatoria/bachillerato con uno o dos grados aprobados. ' .
+            'Se excluyen del numerador los grados técnicos con secundaria de duración no comprobable, ' .
+            'normal básica y niveles/grados no especificados. ' .
+            'La categoría bachillerato con tres o más grados aprobados no se considera inconclusa. ' .
+            'Este valor es un mínimo, no un total exhaustivo ni una tasa de abandono escolar. ' .
+            'Casos de conclusión no determinable: ' . $datos['personas_indeterminadas'] . '. ' .
+            'El porcentaje usa la población total de 15 a 17 años de la entidad.';
+        $modelo->importarDesdeInegi(
+            $estadoId, 2020, $datos['poblacion_base'], $datos['cantidad_personas'],
+            self::FUENTE, $urlFuente, $metodologia, 'AUTO_INEGI:' . basename($nombre)
+        );
+        return [
+            'ok' => true, 'estado_id' => $estadoId, 'indicadores' => 1,
+            'anio' => 2020, 'datos' => $datos,
+            'mensaje' => 'INEGI: escolaridad juvenil 15–17 sincronizada. La cifra representa un mínimo identificado, no abandono escolar.'
+        ];
     }
 
     private function extraerHoja(ZipArchive $zip, string $nombre, array $compartidas, string $estadoEsperado): array
@@ -229,7 +313,7 @@ class InegiEscolaridadAdultaXlsxService
                 } elseif (in_array($detallada, ['20','21','22','23','24'], true)) {
                     $edad = $detallada;
                 }
-            } elseif ($grupo === '15-19' && ($detallada === '18' || $detallada === '19')) {
+            } elseif ($grupo === '15-19' && in_array($detallada, ['15', '16', '17', '18', '19'], true)) {
                 $edad = $detallada;
             }
             if ($edad === '') {
