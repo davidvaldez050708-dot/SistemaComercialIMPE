@@ -1223,15 +1223,20 @@ $urlPaginaTerritorio = function ($pagina) use ($buscarTerritorio, $filtroInforma
                         <?php
                             $datoAdulto = $escolaridadAdulta[$definicionAdulta['codigo']] ?? [];
                             $disponibleAdulto = ($datoAdulto['disponible'] ?? false) === true;
+                            $minimoAdulto = $disponibleAdulto &&
+                                str_contains((string)($datoAdulto['metodologia'] ?? ''), 'Conteo mínimo identificable');
                         ?>
                         <article class="data-education-metric">
-                            <span><?= $texto($definicionAdulta['nombre']) ?> · <?= $texto($definicionAdulta['edad']) ?></span>
+                            <span><?= $texto($definicionAdulta['nombre']) ?> · <?= $texto($definicionAdulta['edad']) ?><?= $minimoAdulto ? ' (mínimo identificado)' : '' ?></span>
                             <?php if ($disponibleAdulto): ?>
                                 <strong><?= $numero($datoAdulto['cantidad_personas']) ?> personas</strong>
                                 <div class="data-education-reference">
                                     <span><b><?= $numeroDecimal($datoAdulto['porcentaje']) ?> %</b> del grupo de edad</span>
                                 </div>
                                 <small>Base: <?= $numero($datoAdulto['poblacion_base']) ?> personas · <?= (int)$datoAdulto['anio'] ?></small>
+                                <?php if ($minimoAdulto): ?>
+                                    <small>No incluye categorías cuyo grado de conclusión se desconoce. No es el total exacto.</small>
+                                <?php endif; ?>
                                 <p class="data-education-note">
                                     Fuente declarada: <?= $texto($datoAdulto['fuente']) ?>.
                                     <a href="<?= $texto($datoAdulto['referencia_url']) ?>" target="_blank" rel="noopener noreferrer">Consultar referencia</a>.
@@ -1257,8 +1262,8 @@ $urlPaginaTerritorio = function ($pagina) use ($buscarTerritorio, $filtroInforma
                         method="POST" enctype="multipart/form-data" class="data-power-import">
                         <div class="data-power-import-heading">
                             <div>
-                                <strong>Importar escolaridad adulta · CSV oficial preparado</strong>
-                                <span>Archivo UTF-8 con dos indicadores y el mismo año por Estado. Admite uno o los 32 Estados.</span>
+                                <strong>Alternativa manual · CSV cotejado</strong>
+                                <span>Se recomienda usar «Actualizar información oficial → Escolaridad adulta». Este CSV es una alternativa cuando INEGI no permite una descarga compatible.</span>
                             </div>
                             <i class="bi bi-file-earmark-spreadsheet" aria-hidden="true"></i>
                         </div>
@@ -2262,6 +2267,14 @@ $urlPaginaTerritorio = function ($pagina) use ($buscarTerritorio, $filtroInforma
                                     </label>
 
                                     <label class="data-official-option-card">
+                                        <input class="form-check-input" type="checkbox" value="escolaridad_adulta" data-official-option>
+                                        <span>
+                                            <strong>Escolaridad adulta · 18+ y 25+</strong>
+                                            <small>INEGI · Censo 2020 · B2020_07_08_M</small>
+                                            <em>Consulta automáticamente el tabulado oficial por Estado. Calcula población sin estudios superiores (25+) y el mínimo identificable sin media superior concluida (18+); los datos faltantes no se estiman.</em>
+                                        </span>
+                                    </label>
+                                    <label class="data-official-option-card">
                                         <input
                                             class="form-check-input"
                                             type="checkbox"
@@ -2496,6 +2509,14 @@ $urlPaginaTerritorio = function ($pagina) use ($buscarTerritorio, $filtroInforma
                                     </span>
                                 </label>
 
+                                <label class="data-official-option-card">
+                                    <input class="form-check-input" type="checkbox" value="escolaridad_adulta" data-official-option>
+                                    <span>
+                                        <strong>Escolaridad adulta · 18+ y 25+</strong>
+                                        <small>INEGI · Censo 2020 · B2020_07_08_M</small>
+                                        <em>Consulta automáticamente el tabulado oficial por Estado. Calcula población sin estudios superiores (25+) y el mínimo identificable sin media superior concluida (18+); los datos faltantes no se estiman.</em>
+                                    </span>
+                                </label>
                                 <label class="data-official-option-card">
                                     <input
                                         class="form-check-input"
@@ -3437,6 +3458,12 @@ document.addEventListener('DOMContentLoaded', function () {
             action: 'actualizarMunicipiosOficiales',
             mensajeError: 'No fue posible obtener la información municipal de INEGI.',
             pausaPosterior: 250
+        },
+        escolaridad_adulta: {
+            nombre: 'Escolaridad adulta 18+ y 25+',
+            action: 'actualizarEscolaridadAdultaOficial',
+            mensajeError: 'No fue posible descargar o validar el tabulado educativo oficial de INEGI.',
+            pausaPosterior: 900
         },
         perfil_educativo_prioritario: {
             nombre: 'Perfil educativo prioritario 25–49',
