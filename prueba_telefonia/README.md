@@ -537,3 +537,30 @@ Verificar el historial exclusivo, las métricas, el comportamiento cuando
 no existe extensión y el bloqueo de audio de transferidas. Comprobar que
 un usuario de otra extensión o sin permisos no pueda descargar el audio
 alterando el `pbx_call_id`.
+
+## Ajuste de prioridad del panel Marketing y audífonos por usuario (2026-10-08)
+
+El rol Marketing se comparte entre quienes trabajan convocatorias y la
+persona encargada de recibir llamadas. Los permisos de recepción se
+administran por rol, pero **la interfaz telefónica de Marketing solo debe
+mostrarse si ese usuario concreto tiene una extensión PBX Zadarma activa
+y `permite_entrantes=1`**. La comprobación está centralizada en
+`TelefoniaMarketingAccessHelper::marketingTieneRecepcionAsignada()` y se
+aplica tanto al icono de audífonos de la barra superior como al panel de
+Inicio. No se identifican usuarios por nombre, correo o rol especial.
+
+Una cuenta Marketing sin extensión (p. ej. quien se dedica exclusivamente
+a convocatorias) conserva el panel principal de convocatorias sin la
+tarjeta de recepción ni un icono de audífonos que no pueda activar.
+
+Cuando la extensión se haya asignado desde Administrador > Telefonía,
+la cuenta recibirá los controles de recepción en su siguiente carga del
+CRM. El botón abrirá el host WebRTC, sujeto a la conexión real con Zadarma;
+no se puede activar sin extensión.
+
+Se prioriza el contenido de Marketing: encabezado, indicadores de
+convocatorias, gestión de convocatorias y publicaciones recientes. La
+sección Recepción telefónica aparece **después de Publicaciones recientes**
+y comienza **compacta**. Su botón «Ver historial» expande los indicadores,
+filtros, grabaciones y paginación de recepción, sin abandonar la página.
+No se elimina ni se mezcla ningún dato de las demás áreas.

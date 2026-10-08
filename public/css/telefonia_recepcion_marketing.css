@@ -2,7 +2,7 @@
 /* Marketing · Recepción telefónica.
    Usa las mismas superficies, bordes y tamaños operativos del CRM. */
 .marketing-reception-panel {
-    margin: 0 0 19px;
+    margin: 17px 0 0;
     padding: 17px 19px;
     min-width: 0;
 }
@@ -339,4 +339,38 @@
     .marketing-reception-status-filter { flex: 1 1 150px; }
     .marketing-reception-history-head { align-items: stretch; }
     .marketing-reception-footer { align-items: flex-start; }
+}
+
+/* Marketing prioriza Convocatorias: historial opcional y plegado de inicio. */
+.marketing-reception-panel .marketing-reception-heading {
+    min-height: 44px;
+}
+.marketing-reception-details[hidden] {
+    display: none !important;
+}
+.marketing-reception-details {
+    border-top: 1px solid var(--color-border);
+    margin-top: 14px;
+    padding-top: 10px;
+}
+.marketing-reception-details-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+}
+.marketing-reception-details-toggle .bi-chevron-down {
+    font-size: 10px;
+    transition: transform .18s ease;
+}
+.marketing-reception-details-toggle.is-expanded .bi-chevron-down {
+    transform: rotate(180deg);
+}
+.marketing-reception-filters > .marketing-reception-refresh {
+    min-height: 34px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
 }

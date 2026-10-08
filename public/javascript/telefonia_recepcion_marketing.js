@@ -11,6 +11,9 @@
         const count = root.querySelector('[data-marketing-reception-count]');
         const pages = root.querySelector('[data-marketing-reception-pages]');
         const refresh = root.querySelector('[data-marketing-reception-refresh]');
+        const detailPanel = root.querySelector('[data-marketing-reception-details]');
+        const detailToggle = root.querySelector('[data-marketing-reception-details-toggle]');
+        const detailLabel = root.querySelector('[data-marketing-reception-details-label]');
         const metrics = {
             total: root.querySelector('[data-marketing-reception-total]'),
             atendidas: root.querySelector('[data-marketing-reception-answered]'),
@@ -249,6 +252,16 @@
                 page = next;
                 renderList();
             }
+        });
+        detailToggle?.addEventListener('click', function () {
+            if (!detailPanel) return;
+            const open = detailPanel.hidden;
+            detailPanel.hidden = !open;
+            detailToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+            detailToggle.classList.toggle('is-expanded', open);
+            if (detailLabel) detailLabel.textContent =
+                open ? 'Ocultar historial' : 'Ver historial';
+            if (open && !loading) void loadHistory(false);
         });
         refresh.addEventListener('click', function () {
             void loadHistory(true);

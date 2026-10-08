@@ -86,11 +86,9 @@ $esTelefoniaDashboard =
     $controllerDashboard === 'telefonia';
 $usarTelefoniaPersistente =
     tienePermiso('telefonia.usar');
+require_once __DIR__ . '/../../helpers/TelefoniaMarketingAccessHelper.php';
 $esRecepcionMarketingDashboard =
-    $esHomeDashboard &&
-    strcasecmp(trim((string)($_SESSION['rol'] ?? '')), 'Marketing') === 0 &&
-    tienePermiso('telefonia.usar') &&
-    tienePermiso('telefonia.recibir');
+    $esHomeDashboard && marketingTieneRecepcionAsignada();
 
 $cssOpcionalDashboard = [];
 

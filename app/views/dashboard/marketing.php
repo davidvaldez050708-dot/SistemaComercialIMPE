@@ -117,8 +117,6 @@ $totalCoberturaPendienteMarketing = count($estadosSinConvocatoria);
     </section>
 </section>
 
-<?php require __DIR__ . '/../telefonia/recepcion_marketing.php'; ?>
-
 <div class="metric-grid mb-4">
     <article class="metric-card">
         <div class="metric-icon"><i class="bi bi-megaphone"></i></div>
@@ -449,6 +447,9 @@ $estadoEtiquetasMarketing = [
         </div>
     <?php endif; ?>
 </section>
+
+<?php // Recepción es secundaria: las convocatorias y publicaciones van primero. ?>
+<?php require __DIR__ . '/../telefonia/recepcion_marketing.php'; ?>
 
 <?php
 $porcentajeCobertura = $totalEstadosCobertura > 0

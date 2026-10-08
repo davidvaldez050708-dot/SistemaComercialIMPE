@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/../../helpers/AvatarHelper.php';
 require_once __DIR__ . '/../../helpers/ReminderHelper.php';
+require_once __DIR__ . '/../../helpers/TelefoniaMarketingAccessHelper.php';
 
 $puedeSolicitarReuniones = tienePermiso('reuniones.solicitar');
 $puedeGestionarReuniones = tienePermiso('reuniones.gestionar');
@@ -26,6 +27,12 @@ $mostrarAgendaReuniones =
 $trabajarNotificacionId = (int)($_GET['trabajar_id'] ?? 0);
 $puedeUsarTelefoniaTopbar = tienePermiso('telefonia.usar');
 $puedeRecibirTelefoniaTopbar = tienePermiso('telefonia.recibir');
+// En Marketing, los permisos son del rol pero la recepción depende de la
+// extensión personal. No ofrecer audífonos inactivos a otras cuentas.
+if (strcasecmp(trim((string)($_SESSION['rol'] ?? '')), 'Marketing') === 0) {
+    $puedeRecibirTelefoniaTopbar =
+        $puedeRecibirTelefoniaTopbar && marketingTieneRecepcionAsignada();
+}
 
 /*
  * La campana se hidrata únicamente desde ReminderController.
