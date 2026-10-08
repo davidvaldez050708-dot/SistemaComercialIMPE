@@ -1,3 +1,40 @@
+# Escolaridad juvenil (15–17) y adulta (18+ / 25+): INEGI 2020
+
+## Instalación del indicador de jóvenes
+
+**Nueva migración obligatoria (una sola vez):** ejecutar `database/migrations/2026_10_08_escolaridad_juvenil.sql` sobre la misma BD del CRM. La anterior tabla adulta permanece intacta.
+
+Desde **Información Territorial → Actualizar información oficial**, marcar:
+
+- **Escolaridad juvenil · 15–17 años**: descarga el cuadro del Censo 2020 B2020_07_08_M, suma las edades individuales 15, 16 y 17 y guarda el mínimo identificable de jóvenes sin media superior concluida.
+- **Escolaridad adulta · 18+ y 25+**: conserva la actualización existente de adultos.
+
+Ambas opciones están disponibles por Estado o en la modalidad masiva para 32 Estados. Cada una usa un archivo oficial descargado de INEGI, validación de totales y tratamiento independiente de fallos. No se necesita CSV para jóvenes. La alternativa CSV visible en Educación corresponde **solo a adultos** y permanece contraída por defecto.
+
+### Fórmula juvenil (2020)
+
+**Población base:** suma de población Total estatal, sexo Total, edades 15, 16 y 17 (columna estadística 1).
+
+**Numerador mínimo identificable:** para cada una de esas tres edades, suma de categorías 2 (sin escolaridad), 3 (preescolar), 4 (primaria total), 8 (secundaria total), 12 (técnicos con primaria) y 18 (uno o dos grados aprobados de preparatoria/bachillerato). No sumar simultáneamente subtotales y sus grados.
+
+**Indeterminados:** categorías 14 (uno/dos grados técnicos con secundaria), 16 (grados técnicos sin especificar), 20 (grado de bachillerato sin especificar), 21 (normal básica) y 28 (nivel no especificado). No sumarlos al numerador. **Técnicos con secundaria de 3 o más grados (15)** se consideran acreditación identificable y tampoco entran al numerador.
+
+**Incidencia (%):** `100 × numerador mínimo / población total 15–17`. No es una tasa de deserción, rezago educativo ni abandono escolar. En esta edad numerosas personas continúan cursando bachillerato.
+
+### Valores de control contra fuentes reales de INEGI
+
+| Entidad | Población 15–17 | Sin media superior concluida, mínimo | Porcentaje | Indeterminados |
+| --- | ---: | ---: | ---: | ---: |
+| Veracruz (clave 30) | 418,032 | 405,268 | 96.95% | 1,264 |
+| Morelos (clave 17) | 100,192 | 96,646 | 96.46% | 876 |
+
+**Archivos oficiales de control:**
+- Veracruz: https://www.inegi.org.mx/contenidos/programas/ccpv/2020/tabulados/cpv2020_b_ver_07_educacion.xlsx
+- Morelos: https://www.inegi.org.mx/contenidos/programas/ccpv/2020/tabulados/cpv2020_b_mor_07_educacion.xlsx
+
+La prueba automatizada `tests/inegi_veracruz_real_smoke.php` comprueba ambos XLSX sin modificar la base de datos. Cada actualización real requiere que INEGI entregue un XLSX válido y que las tablas existan. Estados pendientes se mantienen como Pendiente.
+
+---
 # Sincronización automática de escolaridad adulta — INEGI
 
 ## Importación automática (recomendada)
