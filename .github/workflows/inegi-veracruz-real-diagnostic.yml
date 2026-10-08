@@ -1,0 +1,53 @@
+name: Diagnóstico XLSX INEGI real (Veracruz y Morelos)
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "app/services/InegiEscolaridadAdultaXlsxService.php"
+      - "tests/inegi_veracruz_real_smoke.php"
+permissions:
+  contents: read
+  pull-requests: write
+jobs:
+  probar-inegi:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: curl, zip, dom, xmlreader, mbstring, mysqli
+      - name: Descargar y diagnosticar 2 tabulados oficiales
+        id: prueba
+        shell: bash
+        run: |
+          set +e
+          mkdir -p /tmp/tabulados
+          echo '## Resultado de lectura de tabulados reales' > /tmp/reporte_inegi.txt
+          for par in 'ver:30' 'mor:17'; do
+            abrev="${par%%:*}"
+            clave="${par##*:}"
+            echo "### ${abrev}" >> /tmp/reporte_inegi.txt
+            url="https://www.inegi.org.mx/contenidos/programas/ccpv/2020/tabulados/cpv2020_b_${abrev}_07_educacion.xlsx"
+            code=$(curl -sSL --connect-timeout 12 --max-time 110 --retry 1 -w '%{http_code}' -o "/tmp/tabulados/${abrev}.xlsx" "$url")
+            size=$(wc -c < "/tmp/tabulados/${abrev}.xlsx")
+            echo "HTTP ${code}, bytes: ${size}" >> /tmp/reporte_inegi.txt
+            if [ "${code}" != 200 ] || [ "${size}" -lt 200 ]; then
+              echo 'Archivo oficial no descargable desde GitHub Actions.' >> /tmp/reporte_inegi.txt
+              continue
+            fi
+            php tests/inegi_veracruz_real_smoke.php "/tmp/tabulados/${abrev}.xlsx" "$clave" >> /tmp/reporte_inegi.txt 2>&1
+            echo "Salida PHP: $?" >> /tmp/reporte_inegi.txt
+          done
+          cat /tmp/reporte_inegi.txt >> "$GITHUB_STEP_SUMMARY"
+          cat /tmp/reporte_inegi.txt
+      - name: Publicar diagnóstico en PR
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        shell: bash
+        run: |
+          gh pr comment "$PR_NUMBER" --body-file /tmp/reporte_inegi.txt || true
