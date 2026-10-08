@@ -155,13 +155,34 @@ class ZadarmaWebhookEventStoreService
         return true;
     }
 
+    /**
+     * Marca de agua previa a una nueva marcación WebRTC. Al volver a llamar
+     * al mismo destino evita reutilizar un NOTIFY_OUT_END anterior.
+     */
+    public function ultimoInicioSalienteId($extension)
+    {
+        $stmt = $this->connection->prepare(
+            "SELECT COALESCE(MAX(id), 0) AS ultimo_id
+             FROM telefonia_zadarma_eventos
+             WHERE evento = 'NOTIFY_OUT_START' AND internal = ?"
+        );
+        $stmt->bind_param('s', $extension);
+        $stmt->execute();
+        $fila = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        return (int)($fila['ultimo_id'] ?? 0);
+    }
+
     public function buscarInicioSalienteReciente(
         $extension,
         $destino,
-        $desdeUnix
+        $desdeUnix,
+        $despuesDeId = 0
     ) {
         $extension = trim((string)$extension);
         $destinoDigits = $this->soloDigitos($destino);
+        $despuesDeId = max(0, (int)$despuesDeId);
         $desdeUnix = max(time() - 1800, (int)$desdeUnix - 15);
 
         if (
@@ -181,6 +202,7 @@ class ZadarmaWebhookEventStoreService
                 WHERE evento = 'NOTIFY_OUT_START'
                   AND internal = ?
                   AND received_at >= ?
+                  AND id > ?
                   AND (
                     destination_digits = ?
                     OR RIGHT(destination_digits, 10) = ?
@@ -189,9 +211,10 @@ class ZadarmaWebhookEventStoreService
                 LIMIT 1";
         $stmt = $this->connection->prepare($sql);
         $stmt->bind_param(
-            'ssss',
+            'ssiss',
             $extension,
             $desde,
+            $despuesDeId,
             $destinoDigits,
             $ultimos10
         );

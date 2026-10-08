@@ -611,3 +611,43 @@ llamada única y dos atenciones; probar clasificaciones Ventas y
 Vinculación incluyendo buzón; filtrar y ordenar ranking, revisar 90 días;
 guardar y liberar extensión; verificar que otros perfiles no accedan al
 Centro ni a Extensiones mediante URL directa.
+
+## Prueba de regresión: cierre, registro y rellamada WebRTC (2026-10-08)
+
+En Vinculación, el teléfono flotante y el host de Zadarma viven en ventanas
+distintas. Cuando el analista pulsa **Registrar resultado**, el teléfono
+desaparece inmediatamente y se abre el formulario de interacción, pero sus
+metadatos técnicos no se descartan hasta que el servidor confirme la
+vinculación. Si el formulario no está disponible, la tarjeta reaparece.
+
+Para que una nueva llamada al **mismo destino** no se marque como terminada
+debido al intento anterior, el host consulta un punto de partida de eventos
+(`checkpoint=1`) desde la extensión autenticada **antes** de ejecutar
+`regToCall`. Las consultas de estado incluyen `after_id` y no permiten
+reutilizar eventos ni estadísticas anteriores a esa marcación. Las respuestas
+asíncronas tardías del sondeo se ignoran si ya cambió el token de llamada.
+
+El host también ejecuta el cierre de la sesión SDK al colgar o al recibir una
+finalización PBX, para que el audio no siga sonando mientras se registra el
+resultado. El contrato de eventos PBX firmado y su historial no cambian.
+
+### Escenarios manuales en localhost con HTTPS público temporal
+
+1. Desde Diego/extensión 100, realizar una llamada (también sirve buzón).
+   Colgar; esperar `Registrar resultado`. Pulsarlo: debe ocultarse la tarjeta
+   y abrirse el formulario sin marcar la interacción como guardada.
+2. Guardar la interacción y comprobar que se vinculó al expediente;
+   no debe reaparecer el teléfono finalizado.
+3. Pulsar **Volver a llamar**, marcar el **mismo destino** enseguida.
+   La nueva llamada no debe pasar a `Registrar resultado` usando el evento
+   de la anterior, ni debe persistir audio al colgar.
+4. Repetir con `busy`, `no-answer` y `failed`. Ninguna llamada sin
+   conversación humana debe contarse como verificación efectiva por sí sola.
+5. Comprobar `telefonia_zadarma_eventos` usando `pbx_call_id`,
+   `NOTIFY_OUT_START`/`NOTIFY_OUT_END`, `disposition` y `duration`;
+   no confundir `answered` por buzón con contacto humano.
+6. Abrir el resultado desde otra sección del CRM, verificando el traslado al
+   panel de Vinculación con la tarjeta oculta hasta guardar.
+
+Nota: no se han realizado llamadas reales automáticamente; esta regresión
+debe validarse manualmente en el navegador y cuenta del usuario.

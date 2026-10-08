@@ -407,6 +407,8 @@
             status: 'idle',
             duration: 0,
             requestedAt: 0,
+            afterEventId: 0,
+            checkpointReady: false,
             answeredAtMs: 0,
             pbxCallId: '',
             callToken: '',
@@ -1091,6 +1093,38 @@
         ].includes(String(status || ''));
     };
 
+    /**
+     * Reserva un punto de partida en los eventos PBX ANTES de marcar.
+     * Sin esto, una devolución rápida al mismo número podría heredar
+     * la finalización de la llamada anterior.
+     */
+    const fetchDialCheckpoint = async function (destination) {
+        const params = new URLSearchParams({
+            destination: destination,
+            checkpoint: '1'
+        });
+        const response = await fetch(
+            String(config.estadoUrl || '') + '?' + params.toString(),
+            {
+                method: 'GET',
+                credentials: 'same-origin',
+                cache: 'no-store',
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'fetch'
+                }
+            }
+        );
+        const data = await response.json();
+        if (!response.ok || !data.ok) {
+            throw new Error(
+                data.mensaje ||
+                'No fue posible preparar el seguimiento de esta llamada.'
+            );
+        }
+        return Math.max(0, Number(data.after_id || 0));
+    };
+
     const fetchCallState = async function (
         forceFinal,
         useStatisticsFallback
@@ -1103,6 +1137,10 @@
             destination: state.destination,
             since: String(state.requestedAt)
         });
+
+        if (state.checkpointReady) {
+            params.set('after_id', String(state.afterEventId || 0));
+        }
 
         if (forceFinal) {
             params.set('final', '1');
@@ -1136,13 +1174,46 @@
         return data.call || null;
     };
 
+    /**
+     * Desconecta el audio del SDK además de cambiar el estado del CRM.
+     * La respuesta del webhook, por sí sola, no cuelga el WebRTC local.
+     */
+    const endOutgoingWebrtc = function (cancelEarly) {
+        if (state.direction !== 'outgoing') {
+            return;
+        }
+        const sdk = window.zdrmWebPhone;
+        if (!sdk) {
+            return;
+        }
+
+        try {
+            if (typeof sdk.finishCall === 'function') {
+                sdk.finishCall();
+            }
+        } catch (error) {
+            console.warn('No fue posible finalizar WebRTC.', error);
+        }
+
+        if (cancelEarly && typeof sdk.regToCancel === 'function') {
+            try {
+                sdk.regToCancel();
+            } catch (error) {
+                console.warn('No fue posible cancelar el marcado.', error);
+            }
+        }
+    };
+
     const finishCall = function (call, fallbackStatus) {
         stopPolling();
+        endOutgoingWebrtc(false);
         hangingUp = false;
 
         const finalCall = call || lastCall || {};
         let finalStatus = String(
-            finalCall.status || fallbackStatus || 'failed'
+            isFinal(finalCall.status)
+                ? finalCall.status
+                : (fallbackStatus || 'failed')
         );
         const duration = Math.max(
             currentDuration(),
@@ -1253,6 +1324,7 @@
             return;
         }
 
+        const token = String(state.callToken || '');
         pollBusy = true;
 
         try {
@@ -1260,6 +1332,11 @@
                 false,
                 false
             );
+
+            // Una respuesta tardía nunca debe finalizar la nueva marcación.
+            if (!state.active || String(state.callToken || '') !== token) {
+                return;
+            }
 
             if (call) {
                 applyCallState(call);
@@ -1341,6 +1418,11 @@
 
         try {
             await ensureWidget();
+            const afterEventId = await fetchDialCheckpoint(destination);
+
+            if (state.active) {
+                throw new Error('Ya existe una llamada activa en esta extensión.');
+            }
 
             muted = false;
             answeredAtMs = 0;
@@ -1361,6 +1443,8 @@
                 status: 'dialing',
                 duration: 0,
                 requestedAt: requestedAt,
+                afterEventId: afterEventId,
+                checkpointReady: true,
                 answeredAtMs: 0,
                 pbxCallId: '',
                 callToken: callToken,
@@ -1404,21 +1488,12 @@
             status: 'finishing'
         });
 
-        try {
-            if (
-                window.zdrmWebPhone &&
-                typeof window.zdrmWebPhone.regToCancel === 'function'
-            ) {
-                window.zdrmWebPhone.regToCancel();
-            } else if (
-                window.zdrmWebPhone &&
-                typeof window.zdrmWebPhone.finishCall === 'function'
-            ) {
-                window.zdrmWebPhone.finishCall();
-            }
-        } catch (error) {
-            console.warn(error);
-        }
+        // Al hablar (incluido el buzón) se finaliza la sesión de audio;
+        // si aún marca, también se cancela el intento pendiente.
+        endOutgoingWebrtc(
+            String(state.status || '') !== 'in-progress' &&
+            Number(state.answeredAtMs || 0) <= 0
+        );
 
         for (let attempt = 0; attempt < 6; attempt += 1) {
             await sleep(attempt === 0 ? 900 : 700);
@@ -1464,6 +1539,8 @@
             return;
         }
 
+        // También libera el WebRTC si la PBX notificó el final tarde.
+        endOutgoingWebrtc(false);
         state = emptyState();
         state.hostReady = true;
         state.phase = widgetReady ? 'ready' : 'idle';

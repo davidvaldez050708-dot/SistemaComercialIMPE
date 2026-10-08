@@ -591,6 +591,9 @@
 
         function abrirRegistroResultado() {
             if (!pendingMetadata) {
+                document.dispatchEvent(
+                    new Event('impe:telephony-registration-unavailable')
+                );
                 return;
             }
 
@@ -607,6 +610,9 @@
                 );
 
             if (!formulario) {
+                document.dispatchEvent(
+                    new Event('impe:telephony-registration-unavailable')
+                );
                 mostrarToast(
                     'No se encontró el formulario para registrar el resultado.',
                     true

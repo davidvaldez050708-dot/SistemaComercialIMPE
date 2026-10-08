@@ -11,9 +11,10 @@
     const commandKey = 'impe:telephony:command:' + userId;
     const positionKey = 'impe:telephony:position:' + userId;
     const viewKey = 'impe:telephony:view:' + userId;
+    const registrationKey = 'impe:telephony:registration:' + userId;
     const channelName = 'impe-telephony-' + userId;
     const hostWindowName = 'impe_telephony_host_' + userId;
-    const hostVersion = '7';
+    const hostVersion = '8';
 
     const statusUrl =
         new URL(
@@ -47,6 +48,35 @@
     let startingCall = false;
     let dismissedFinishedToken = '';
     let preparedDismissed = false;
+    let registrationOpenToken = '';
+
+    try {
+        registrationOpenToken =
+            String(localStorage.getItem(registrationKey) || '');
+    } catch (error) {
+        // El estado visual también funciona sin almacenamiento local.
+    }
+
+    const setRegistrationOpenToken = function (token) {
+        registrationOpenToken = String(token || '');
+        try {
+            if (registrationOpenToken) {
+                localStorage.setItem(registrationKey, registrationOpenToken);
+            } else {
+                localStorage.removeItem(registrationKey);
+            }
+        } catch (error) {
+            // No se bloquea el formulario si falla el almacenamiento.
+        }
+    };
+
+    const finishedToken = function () {
+        return String(
+            state?.callToken ||
+            state?.finalMetadata?.call_token ||
+            ''
+        );
+    };
     let stageRequestId = 0;
     let transferDestinations = null;
     let transferDestinationsPromise = null;
@@ -276,6 +306,7 @@
             );
 
         if (startedNewCall) {
+            setRegistrationOpenToken('');
             compact = false;
 
             try {
@@ -1015,6 +1046,7 @@
         }
 
         dismissedFinishedToken = token;
+        setRegistrationOpenToken('');
 
         state = Object.assign(
             emptyState(),
@@ -1171,6 +1203,19 @@
     };
 
     const openContext = function (resultMode) {
+        if (
+            resultMode &&
+            !state?.active &&
+            state?.phase === 'finished' &&
+            String(state?.context?.type || '').toUpperCase() ===
+                'VINCULACION'
+        ) {
+            // Solo se oculta la tarjeta. Nunca se borra la evidencia
+            // técnica hasta guardar y vincular la interacción.
+            setRegistrationOpenToken(finishedToken());
+            renderPanel();
+        }
+
         if (tryOpenContextHere(Boolean(resultMode))) {
             return;
         }
@@ -1783,13 +1828,20 @@
         const phase =
             String(state?.phase || '');
         const show =
-            Boolean(state?.active) ||
-            [
-                'preparing',
-                'prepared',
-                'finished',
-                'incoming-finished'
-            ].includes(phase);
+            (
+                Boolean(state?.active) ||
+                [
+                    'preparing',
+                    'prepared',
+                    'finished',
+                    'incoming-finished'
+                ].includes(phase)
+            ) &&
+            !(
+                phase === 'finished' &&
+                registrationOpenToken !== '' &&
+                registrationOpenToken === finishedToken()
+            );
 
         panel.hidden = !show;
 
@@ -2233,6 +2285,12 @@
     addEventListener(
         'storage',
         function (event) {
+            if (event.key === registrationKey) {
+                registrationOpenToken = String(event.newValue || '');
+                renderPanel();
+                return;
+            }
+
             if (
                 event.key !== stateKey ||
                 !event.newValue
@@ -2252,6 +2310,14 @@
                     error
                 );
             }
+        }
+    );
+
+    document.addEventListener(
+        'impe:telephony-registration-unavailable',
+        function () {
+            setRegistrationOpenToken('');
+            renderPanel();
         }
     );
 

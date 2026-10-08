@@ -122,6 +122,9 @@ $destino = trim((string)($_GET['destination'] ?? ''));
 $desdeSolicitado = (int)($_GET['since'] ?? 0);
 $forzarFinal = (int)($_GET['final'] ?? 0) === 1;
 $usarEstadisticas = (int)($_GET['stats'] ?? 0) === 1;
+$solicitarCheckpoint = (int)($_GET['checkpoint'] ?? 0) === 1;
+$conMarcaDeAgua = array_key_exists('after_id', $_GET);
+$despuesDeId = $conMarcaDeAgua ? max(0, (int)$_GET['after_id']) : 0;
 
 if ($destino === '' || strlen(soloDigitos($destino)) < 8) {
     responderJson(['ok' => false, 'mensaje' => 'Destino telefónico no válido.'], 422);
@@ -159,6 +162,24 @@ if (!preg_match('/^\d{3,6}$/', $extension)) {
     ], 422);
 }
 
+/*
+ * La marca de agua corresponde a la extensión del usuario autenticado,
+ * antes de enviar la orden de marcado al SDK de Zadarma.
+ */
+if ($solicitarCheckpoint) {
+    try {
+        $ultimoId = (new ZadarmaWebhookEventStoreService())
+            ->ultimoInicioSalienteId($extension);
+        responderJson(['ok' => true, 'after_id' => $ultimoId]);
+    } catch (Throwable $error) {
+        error_log('[zadarma_checkpoint] ' . $error->getMessage());
+        responderJson([
+            'ok' => false,
+            'mensaje' => 'No fue posible preparar el seguimiento de la llamada.'
+        ], 503);
+    }
+}
+
 $ahora = time();
 $desde = $desdeSolicitado > 0
     ? max($ahora - 900, min($desdeSolicitado, $ahora + 5))
@@ -175,7 +196,8 @@ try {
     $inicioPersistido = $eventStore->buscarInicioSalienteReciente(
         $extension,
         $destino,
-        $desde
+        $desde,
+        $despuesDeId
     );
 
     if ($inicioPersistido) {
@@ -194,7 +216,7 @@ try {
  * Compatibilidad con llamadas registradas antes de habilitar la tabla o
  * contingencia si la persistencia de eventos no estuviera disponible.
  */
-if ($pbxCallId === '' && is_file($logPath)) {
+if ($pbxCallId === '' && !$conMarcaDeAgua && is_file($logPath)) {
     $lineas = file(
         $logPath,
         FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES
@@ -237,7 +259,8 @@ if ($pbxCallId === '' && is_file($logPath)) {
 if (
     $pbxCallId === '' &&
     $forzarFinal &&
-    $usarEstadisticas
+    $usarEstadisticas &&
+    !$conMarcaDeAgua
 ) {
     try {
         $estadistica = (new ZadarmaCallLookupService())->buscarSalienteReciente(
