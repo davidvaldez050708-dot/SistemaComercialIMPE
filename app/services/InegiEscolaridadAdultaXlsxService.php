@@ -196,7 +196,12 @@ class InegiEscolaridadAdultaXlsxService
                 $grupo = '';
             }
             $geoMunicipio = trim((string)($celdas[2] ?? ''));
-            if (preg_match('/^([0-9]{3})\s+.+$/u', $geoMunicipio)) {
+            // Las hojas incluyen estratos por tamaño de localidad, no son
+            // totales estatales ni municipios: no mezclarlos con el Estado.
+            if (preg_match('/habitantes|tama(?:ñ|n)o\\s+de\\s+localidad|rango\\s+de\\s+poblaci[oó]n/iu', $geoMunicipio)) {
+                $municipio = '';
+                $grupo = '';
+            } elseif (preg_match('/^([0-9]{3})\s+.+$/u', $geoMunicipio)) {
                 $municipio = substr($geoMunicipio, 0, 3);
                 $grupo = '';
             } elseif (in_array(mb_strtoupper($geoMunicipio, 'UTF-8'), ['ENTIDAD FEDERATIVA', 'TOTAL', 'ESTADO'], true)) {
@@ -260,7 +265,13 @@ class InegiEscolaridadAdultaXlsxService
                 continue;
             }
             if (isset($totales[$edad]) && $totales[$edad] !== $m) {
-                throw new RuntimeException('Grupos estatales contradictorios.');
+                throw new RuntimeException('Grupos estatales contradictorios para ' . $edad .
+                    ' (previo=' . $totales[$edad][1] . ', actual=' . $m[1] .
+                    '; geoEstado=' . ($celdas[1] ?? '') .
+                    '; geoMunicipio=' . ($celdas[2] ?? '') .
+                    '; sexo=' . ($celdas[3] ?? '') .
+                    '; grupo=' . ($celdas[4] ?? '') .
+                    '; edadDesplegada=' . ($celdas[5] ?? '') . ').');
             }
             $totales[$edad] = $m;
             }
