@@ -85,6 +85,16 @@ class TelefoniaController
 
     public function marcador()
     {
+        // Compatibilidad con favoritos y enlaces previos: el asesor de
+        // Ventas tiene todo su teléfono en Inicio, no una pantalla duplicada.
+        if (
+            (int)($_SESSION['usuario_id'] ?? 0) > 0 &&
+            (int)($_SESSION['rol_id'] ?? 0) === 3
+        ) {
+            header('Location: ' . BASE_URL . 'index.php?controller=home&action=index');
+            exit;
+        }
+
         if ((int)($_SESSION['usuario_id'] ?? 0) <= 0 ||
             !tienePermiso('telefonia.usar') ||
             !tienePermiso('telefonia.salientes')) {

@@ -215,12 +215,16 @@ Después verifica:
 Los endpoints y servicios Twilio se conservan para no romper llamadas antiguas ya vinculadas con ese proveedor. No deben utilizarse para iniciar nuevas llamadas de Vinculación salvo que explícitamente se reactive ese proveedor.
 
 
-## Marcador independiente de Ventas (2026-10-07)
+## Teléfono de Ventas integrado en Inicio (2026-10-07)
 
-- En **Teléfono > Marcador** el Asesor puede teclear números nacionales de diez dígitos
+- En **Inicio** el Asesor puede teclear números nacionales de diez dígitos
   (se antepone 52) o números en formato internacional.
 - Reutiliza la misma sesión WebRTC Zadarma y la extensión personal; no hay pipeline comercial.
 - El Inicio del Asesor con permisos muestra el marcador, historial y agenda personal en su propio dashboard.
+- El menú **Marcador** se oculta para el rol Asesor de Ventas (escritorio y móvil).
+  Los enlaces anteriores a `telefonia&action=marcador` redirigen a Inicio en ese rol.
+  Para otros roles con permisos de telefonía se conserva el acceso independiente,
+  sin alterar sus llamadas ni la configuración administrativa.
 - Muestra sus atenciones registradas en los últimos 30 días. Solo consulta su extensión.
 - Administración > Telefonía muestra atenciones por extensión y minutos observados por
   webhooks. **No es saldo, coste o minutos incluidos del plan**; requiere consultar la
@@ -257,7 +261,7 @@ Los endpoints y servicios Twilio se conservan para no romper llamadas antiguas y
 ## Inicio del Asesor de Ventas y agenda personal
 
 El perfil de Ventas no utiliza el proceso de vinculación ni crea un CRM comercial.
-En Inicio y en Teléfono > Marcador se presenta el mismo bloque de telefonía:
+En **Inicio** se presenta un único bloque de telefonía para Ventas:
 
 - Teclado y marcación desde la extensión PBX individual asignada.
 - Identificador de llamada (Caller ID) solo cuando esté configurado en la cuenta.

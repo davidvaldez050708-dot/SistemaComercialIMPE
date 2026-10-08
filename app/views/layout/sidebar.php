@@ -8,7 +8,12 @@ $mostrarRoles = tienePermiso('roles.ver');
 $mostrarTerritorios = tienePermiso('territorios.ver');
 $mostrarTelefoniaConfiguracion =
     (int)($_SESSION['rol_id'] ?? 0) === 1;
-$mostrarMarcadorTelefonia = tienePermiso('telefonia.usar') && tienePermiso('telefonia.salientes');
+// Ventas utiliza el marcador exclusivamente desde su Inicio.
+// Otros perfiles conservan la opción independiente si su rol tiene permisos.
+$mostrarMarcadorTelefonia =
+    (int)($_SESSION['rol_id'] ?? 0) !== 3 &&
+    tienePermiso('telefonia.usar') &&
+    tienePermiso('telefonia.salientes');
 $mostrarDataTerritorial = tienePermiso('data_territorial.ver');
 $mostrarSeguimientoVinculacion = tienePermiso('seguimientos_vinculacion.ver');
 $mostrarAliados = tienePermiso('aliados.ver');
