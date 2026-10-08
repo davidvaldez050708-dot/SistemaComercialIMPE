@@ -44,6 +44,7 @@ $rezagoEducativoOficial = $rezagoEducativoOficial ?? [
     'historico' => []
 ];
 $escolaridadAdulta = $escolaridadAdulta ?? [];
+$escolaridadJuvenil = $escolaridadJuvenil ?? ['disponible' => false];
 $fuentes = $fuentes ?? [];
 $buscarTerritorio = $buscarTerritorio ?? '';
 $buscarMunicipio = $buscarMunicipio ?? '';
@@ -1196,92 +1197,143 @@ $urlPaginaTerritorio = function ($pagina) use ($buscarTerritorio, $filtroInforma
 
             </div>
 
-            <div class="data-education-official">
-                <div class="data-education-official-heading">
+            <section class="data-school-gap" aria-labelledby="tituloBrechaEscolaridad">
+                <div class="data-school-gap-header">
                     <div>
-                        <span>ESCOLARIDAD ADULTA · INEGI</span>
-                        <h4>Brecha de escolaridad en población adulta</h4>
-                        <p>Indicadores por rango de edad, con cantidades, porcentajes y procedencia documental independiente del rezago educativo.</p>
+                        <span class="data-school-gap-eyebrow">Población educativa · INEGI</span>
+                        <h4 id="tituloBrechaEscolaridad">Brechas de escolaridad por grupo de edad</h4>
+                        <p>Jóvenes de 15 a 17 años y población adulta. Cantidad, incidencia, universo y fuente oficial, sin mezclar los rangos.</p>
                     </div>
+                    <span class="data-school-gap-period"><i class="bi bi-calendar3" aria-hidden="true"></i> Censo 2020</span>
                 </div>
-                <div class="data-education-metrics">
-                    <?php
-                        $indicadoresEscolaridadAdulta = [
-                            [
-                                'codigo' => 'SIN_EDUCACION_SUPERIOR_25_MAS',
-                                'nombre' => 'Sin educación superior',
-                                'edad' => '25 años o más'
-                            ],
-                            [
-                                'codigo' => 'SIN_MEDIA_SUPERIOR_CONCLUIDA_18_MAS',
-                                'nombre' => 'Sin media superior concluida',
-                                'edad' => '18 años o más'
-                            ]
-                        ];
-                    ?>
-                    <?php foreach ($indicadoresEscolaridadAdulta as $definicionAdulta): ?>
+                <?php
+                    $definicionesBrechaEscolaridad = [
+                        [
+                            'nombre' => 'Sin media superior concluida',
+                            'edad' => 'Jóvenes de 15 a 17 años',
+                            'icono' => 'bi-person-badge',
+                            'prioridad' => true,
+                            'minimo' => true,
+                            'dato' => $escolaridadJuvenil
+                        ],
+                        [
+                            'nombre' => 'Sin educación superior',
+                            'edad' => 'Población de 25 años o más',
+                            'icono' => 'bi-mortarboard',
+                            'prioridad' => false,
+                            'minimo' => false,
+                            'dato' => $escolaridadAdulta['SIN_EDUCACION_SUPERIOR_25_MAS'] ?? []
+                        ],
+                        [
+                            'nombre' => 'Sin media superior concluida',
+                            'edad' => 'Población de 18 años o más',
+                            'icono' => 'bi-journal-bookmark',
+                            'prioridad' => false,
+                            'minimo' => true,
+                            'dato' => $escolaridadAdulta['SIN_MEDIA_SUPERIOR_CONCLUIDA_18_MAS'] ?? []
+                        ]
+                    ];
+                ?>
+                <div class="data-school-gap-grid">
+                    <?php foreach ($definicionesBrechaEscolaridad as $brecha): ?>
                         <?php
-                            $datoAdulto = $escolaridadAdulta[$definicionAdulta['codigo']] ?? [];
-                            $disponibleAdulto = ($datoAdulto['disponible'] ?? false) === true;
-                            $minimoAdulto = $disponibleAdulto &&
-                                str_contains((string)($datoAdulto['metodologia'] ?? ''), 'Conteo mínimo identificable');
+                            $datoBrecha = $brecha['dato'];
+                            $hayBrecha = ($datoBrecha['disponible'] ?? false) === true;
+                            $porcentajeBrecha = $hayBrecha
+                                ? max(0, min(100, (float)$datoBrecha['porcentaje']))
+                                : 0;
                         ?>
-                        <article class="data-education-metric">
-                            <span><?= $texto($definicionAdulta['nombre']) ?> · <?= $texto($definicionAdulta['edad']) ?><?= $minimoAdulto ? ' (mínimo identificado)' : '' ?></span>
-                            <?php if ($disponibleAdulto): ?>
-                                <strong><?= $numero($datoAdulto['cantidad_personas']) ?> personas</strong>
-                                <div class="data-education-reference">
-                                    <span><b><?= $numeroDecimal($datoAdulto['porcentaje']) ?> %</b> del grupo de edad</span>
+                        <article class="data-school-gap-card<?= $brecha['prioridad'] ? ' is-priority' : '' ?>">
+                            <div class="data-school-gap-card-head">
+                                <span class="data-school-gap-card-icon" aria-hidden="true">
+                                    <i class="bi <?= $brecha['icono'] ?>"></i>
+                                </span>
+                                <div>
+                                    <strong class="data-school-gap-card-title"><?= $texto($brecha['nombre']) ?></strong>
+                                    <span class="data-school-gap-card-range"><?= $texto($brecha['edad']) ?></span>
                                 </div>
-                                <small>Base: <?= $numero($datoAdulto['poblacion_base']) ?> personas · <?= (int)$datoAdulto['anio'] ?></small>
-                                <?php if ($minimoAdulto): ?>
-                                    <small>No incluye categorías cuyo grado de conclusión se desconoce. No es el total exacto.</small>
-                                <?php endif; ?>
-                                <p class="data-education-note">
-                                    Fuente declarada: <?= $texto($datoAdulto['fuente']) ?>.
-                                    <a href="<?= $texto($datoAdulto['referencia_url']) ?>" target="_blank" rel="noopener noreferrer">Consultar referencia</a>.
-                                </p>
-                                <details class="data-education-note">
-                                    <summary>Metodología declarada</summary>
-                                    <p><?= $texto($datoAdulto['metodologia']) ?></p>
-                                </details>
+                            </div>
+                            <?php if ($hayBrecha): ?>
+                                <div class="data-school-gap-count">
+                                    <?= $numero($datoBrecha['cantidad_personas']) ?> <span>personas</span>
+                                </div>
+                                <div>
+                                    <div class="data-school-gap-rate">
+                                        <strong><?= $numeroDecimal($porcentajeBrecha) ?>%</strong>
+                                        <span>del total en ese grupo de edad</span>
+                                    </div>
+                                    <div class="data-school-gap-track" role="meter"
+                                         aria-label="Porcentaje de personas del grupo"
+                                         aria-valuemin="0" aria-valuemax="100"
+                                         aria-valuenow="<?= $porcentajeBrecha ?>">
+                                        <div class="data-school-gap-progress"
+                                             style="width: <?= $porcentajeBrecha ?>%"></div>
+                                    </div>
+                                </div>
+                                <div class="data-school-gap-card-footer">
+                                    <span>Universo: <b><?= $numero($datoBrecha['poblacion_base']) ?></b> personas · <?= (int)$datoBrecha['anio'] ?></span>
+                                    <?php if ($brecha['minimo']): ?>
+                                        <span><i class="bi bi-info-circle" aria-hidden="true"></i>
+                                            Mínimo identificado; no es una tasa de abandono escolar.</span>
+                                    <?php endif; ?>
+                                    <span>Fuente: <?= $texto($datoBrecha['fuente'] ?? 'INEGI') ?>
+                                        <?php if (!empty($datoBrecha['referencia_url'])): ?>
+                                            · <a href="<?= $texto($datoBrecha['referencia_url']) ?>"
+                                                 target="_blank" rel="noopener noreferrer">Consultar INEGI
+                                                <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
+                                            </a>
+                                        <?php endif; ?>
+                                    </span>
+                                    <?php if (!empty($datoBrecha['metodologia'])): ?>
+                                        <details class="data-school-gap-method">
+                                            <summary>Ver metodología del indicador</summary>
+                                            <p><?= $texto($datoBrecha['metodologia']) ?></p>
+                                        </details>
+                                    <?php endif; ?>
+                                </div>
                             <?php else: ?>
-                                <strong>Pendiente</strong>
-                                <small>No se ha importado una cifra de este rango con metodología documentada.</small>
+                                <div class="data-school-gap-count data-school-gap-empty">Pendiente de actualizar</div>
+                                <div class="data-school-gap-card-footer">
+                                    <span>Usa «Actualizar información oficial» para consultar el tabulado INEGI de este Estado.</span>
+                                </div>
                             <?php endif; ?>
                         </article>
                     <?php endforeach; ?>
                 </div>
-                <p class="data-education-note">
-                    Las cantidades se importan desde un CSV cotejado con tabulados INEGI; el sistema valida estructura y coherencia,
-                    pero no verifica automáticamente su correspondencia con el documento citado. No se estiman cifras faltantes.
-                </p>
+                <div class="data-school-gap-note">
+                    <i class="bi bi-info-circle" aria-hidden="true"></i>
+                    <span>Los indicadores de 15–17 y 18+ representan un <strong>mínimo identificable</strong>
+                    de personas sin media superior concluida; algunas categorías de INEGI no permiten confirmar su conclusión.
+                    La fuente censal es de 2020. No equivale a deserción ni a rezago educativo.</span>
+                </div>
                 <?php if ($puedeActualizarInformacionOficial): ?>
-                    <form id="formEscolaridadAdultaCsv"
-                        action="<?= BASE_URL ?>index.php?controller=dataTerritorial&amp;action=importarEscolaridadAdultaCsv"
-                        method="POST" enctype="multipart/form-data" class="data-power-import">
-                        <div class="data-power-import-heading">
-                            <div>
-                                <strong>Alternativa manual · CSV cotejado</strong>
-                                <span>Se recomienda usar «Actualizar información oficial → Escolaridad adulta». Este CSV es una alternativa cuando INEGI no permite una descarga compatible.</span>
+                    <details class="data-school-gap-import">
+                        <summary>Alternativa manual: importar CSV de escolaridad adulta</summary>
+                        <form id="formEscolaridadAdultaCsv"
+                            action="<?= BASE_URL ?>index.php?controller=dataTerritorial&amp;action=importarEscolaridadAdultaCsv"
+                            method="POST" enctype="multipart/form-data" class="data-power-import">
+                            <div class="data-power-import-heading">
+                                <div>
+                                    <strong>CSV adulto · carga excepcional</strong>
+                                    <span>La actualización normal es «Actualizar información oficial → Escolaridad adulta o juvenil».
+                                        Este CSV solo permite los dos indicadores adultos y debe cotejarse con INEGI.</span>
+                                </div>
+                                <i class="bi bi-file-earmark-spreadsheet" aria-hidden="true"></i>
                             </div>
-                            <i class="bi bi-file-earmark-spreadsheet" aria-hidden="true"></i>
-                        </div>
-                        <label class="data-power-import-file" for="archivoEscolaridadAdulta">
-                            <span>Seleccionar CSV</span>
-                            <input type="file" id="archivoEscolaridadAdulta" name="archivo_escolaridad_adulta"
-                                accept=".csv,text/csv" required>
-                        </label>
-                        <small class="data-power-import-help">
-                            Columnas: clave_estado, codigo_indicador, anio, poblacion_base, cantidad_personas, fuente, referencia_url, metodologia.
-                            <a href="<?= BASE_URL ?>plantillas/escolaridad_adulta_inegi.csv" download>Descargar plantilla CSV</a>.
-                            Antes de importar, consulta la metodología y las instrucciones en el repositorio.
-                        </small>
-                        <button type="submit" class="btn btn-system-save" id="importarEscolaridadAdultaBtn">
-                            <i class="bi bi-cloud-upload me-1"></i> Importar indicadores
-                        </button>
-                        <div id="estadoEscolaridadAdulta" role="status" aria-live="polite"></div>
-                    </form>
+                            <label class="data-power-import-file" for="archivoEscolaridadAdulta">
+                                <span>Seleccionar CSV</span>
+                                <input type="file" id="archivoEscolaridadAdulta" name="archivo_escolaridad_adulta"
+                                    accept=".csv,text/csv" required>
+                            </label>
+                            <small class="data-power-import-help">
+                                <a href="<?= BASE_URL ?>plantillas/escolaridad_adulta_inegi.csv" download>Descargar plantilla CSV</a>.
+                                Requiere los dos indicadores adultos del mismo año por Estado.
+                            </small>
+                            <button type="submit" class="btn btn-system-save" id="importarEscolaridadAdultaBtn">
+                                <i class="bi bi-cloud-upload me-1"></i> Importar CSV
+                            </button>
+                            <div id="estadoEscolaridadAdulta" role="status" aria-live="polite"></div>
+                        </form>
                     <script>
                         (() => {
                             const form = document.getElementById('formEscolaridadAdultaCsv');
@@ -1312,8 +1364,9 @@ $urlPaginaTerritorio = function ($pagina) use ($buscarTerritorio, $filtroInforma
                             });
                         })();
                     </script>
+                    </details>
                 <?php endif; ?>
-            </div>
+            </section>
 
             <div class="data-education-official">
                 <div class="data-education-official-heading">
