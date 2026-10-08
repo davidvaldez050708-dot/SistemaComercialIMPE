@@ -267,9 +267,16 @@ class InegiEscolaridadAdultaXlsxService
         } finally {
             $reader->close();
         }
+        // El XLSX oficial reúne diferentes cuadros de educación. Las hojas
+        // de asistencia/alfabetismo tienen 2-3 métricas y NO corresponden al
+        // cuadro B2020_07_08_M (28 métricas): omitirlas, no abortar el libro.
         if ($rechazados > 0 && count($totales) === 0) {
-            throw new RuntimeException('No se encontraron filas censales completas: ' . $rechazados .
-                ' grupos estatales con valores inválidos. ' . implode(' | ', $ejemplosRechazo));
+            return [
+                'estructura' => false,
+                'grupos' => [],
+                'diagnostico' => 'Hoja incompatible: ' . $rechazados .
+                    ' filas de otra tabla. ' . implode(' | ', $ejemplosRechazo)
+            ];
         }
         return ['estructura' => $estructura || count($totales) > 0, 'grupos' => $totales];
     }
