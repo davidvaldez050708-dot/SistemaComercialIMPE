@@ -1196,6 +1196,14 @@ $urlPaginaTerritorio = function ($pagina) use ($buscarTerritorio, $filtroInforma
 
             </div>
 
+            <!-- El perfil prioritario se prepara primero y se completa mediante educacion_objetivo.js. -->
+            <section class="data-education-target" data-education-target
+                aria-label="Población educativa prioritaria">
+                <div class="data-education-target-loading">
+                    Cargando población educativa prioritaria…
+                </div>
+            </section>
+
             <section class="data-education-gap" aria-labelledby="tituloBrechaEscolaridad">
                 <div class="data-education-gap-heading">
                     <div>
