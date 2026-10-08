@@ -861,6 +861,11 @@ class ConvocatoriaModel
                     convocatorias.fecha_termino,
                     convocatorias.estado,
                     convocatorias.created_at,
+                    convocatorias.creado_por,
+                    usuarios.nombre AS creador_nombre,
+                    usuarios.apellidos AS creador_apellidos,
+                    usuarios.usuario AS creador_usuario,
+                    roles.nombre AS creador_rol,
                     GROUP_CONCAT(
                         DISTINCT estados.nombre
                         ORDER BY estados.nombre
@@ -882,6 +887,10 @@ class ConvocatoriaModel
                     ON convocatoria_estados.convocatoria_id = convocatorias.id
                 LEFT JOIN estados
                     ON estados.id = convocatoria_estados.estado_id
+                LEFT JOIN usuarios
+                    ON usuarios.id = convocatorias.creado_por
+                LEFT JOIN roles
+                    ON roles.id = usuarios.rol_id
                 GROUP BY
                     convocatorias.id,
                     convocatorias.titulo,
@@ -891,7 +900,12 @@ class ConvocatoriaModel
                     convocatorias.fecha_inicio,
                     convocatorias.fecha_termino,
                     convocatorias.estado,
-                    convocatorias.created_at
+                    convocatorias.created_at,
+                    convocatorias.creado_por,
+                    usuarios.nombre,
+                    usuarios.apellidos,
+                    usuarios.usuario,
+                    roles.nombre
                 ORDER BY
                     convocatorias.fecha_inicio DESC,
                     convocatorias.id DESC";
