@@ -38,6 +38,10 @@
             configModalEl.querySelector('[data-telephony-active]');
         const activeHelp =
             configModalEl.querySelector('[data-telephony-active-help]');
+        const outgoingHelp =
+            configModalEl.querySelector('[data-telephony-outgoing-help]');
+        const incomingHelp =
+            configModalEl.querySelector('[data-telephony-incoming-help]');
 
         const releaseUserId =
             releaseModalEl.querySelector(
@@ -66,14 +70,47 @@
 
         const cargarConfig = function (data) {
             const usuarioActivo = bool(data.userActive);
+            const puedeSalientes = bool(data.canOutgoing);
+            const puedeEntrantes = bool(data.canIncoming);
+            const puedeTransferir = bool(data.canTransfer);
 
             userId.value = String(data.userId || '');
             extension.value = String(data.extension || '');
             callerId.value = String(data.callerId || '');
-            outgoing.checked = bool(data.outgoing);
-            incoming.checked = bool(data.incoming);
-            active.checked = usuarioActivo && bool(data.active);
-            active.disabled = !usuarioActivo;
+            outgoing.checked =
+                puedeSalientes &&
+                bool(data.outgoing);
+            incoming.checked =
+                puedeEntrantes &&
+                bool(data.incoming);
+            outgoing.disabled = !puedeSalientes;
+            incoming.disabled = !puedeEntrantes;
+            active.checked =
+                usuarioActivo &&
+                bool(data.active) &&
+                (
+                    outgoing.checked ||
+                    incoming.checked
+                );
+            active.disabled =
+                !usuarioActivo ||
+                (!puedeSalientes && !puedeEntrantes);
+
+            if (outgoingHelp) {
+                outgoingHelp.textContent = puedeSalientes
+                    ? 'Permite originar llamadas desde el sistema.'
+                    : 'El rol de este usuario no tiene permiso para llamadas salientes.';
+            }
+
+            if (incomingHelp) {
+                incomingHelp.textContent = puedeEntrantes
+                    ? (
+                        puedeTransferir
+                            ? 'Puede recibir llamadas y transferirlas a otras extensiones.'
+                            : 'Prepara la extensión para recibir llamadas.'
+                    )
+                    : 'El rol de este usuario no tiene permiso para recibir llamadas.';
+            }
 
             if (userLabel) {
                 userLabel.textContent =
