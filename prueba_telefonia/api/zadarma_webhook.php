@@ -129,6 +129,7 @@ $camposPermitidos = [
     'call_id_with_rec',
     'transfer_from',
     'transfer_type',
+    'last_internal',
 ];
 
 $registro = [
