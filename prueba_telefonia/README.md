@@ -4,6 +4,25 @@ La telefonía del sistema utiliza **Zadarma WebRTC** como flujo principal para l
 
 Twilio permanece como compatibilidad histórica para llamadas/grabaciones antiguas y no debe ser el proveedor principal de nuevas llamadas de Vinculación.
 
+## Arquitectura productiva
+
+La telefonía se gobierna por permisos, no por nombres de rol:
+
+- `telefonia.usar`: acceder al motor WebRTC.
+- `telefonia.salientes`: originar llamadas.
+- `telefonia.recibir`: mantener la extensión disponible para llamadas entrantes.
+- `telefonia.transferir`: transferir una conversación a otra extensión.
+- `telefonia.configurar`: administrar asignaciones PBX; reservado al Administrador.
+
+Configuración inicial recomendada para Fundación Red Educativa:
+
+- Extensión **100**: recepción / Marketing (Lic. Tania), entrantes + transferencias.
+- Extensión **101**: Diego Bahena, llamadas salientes y entrantes.
+- Extensiones siguientes: equipo conforme se incorporen.
+- Número público: **800 044 0189** cuando finalice su portabilidad a Zadarma.
+
+El número 800 debe apuntar en Zadarma al escenario/extensión de recepción. La extensión 100 recibe la llamada y puede transferirla a cualquier usuario con extensión activa y capacidad de recibir llamadas.
+
 ## Flujo productivo
 
 1. El Administrador asigna una extensión PBX Zadarma a cada usuario desde **Telefonía**.
@@ -16,6 +35,35 @@ Twilio permanece como compatibilidad histórica para llamadas/grabaciones antigu
 8. La interacción exacta se vincula al `pbx_call_id`, duración y proveedor.
 9. Si existe grabación, se muestra en el expediente cuando Zadarma termina de procesarla.
 10. Solo las llamadas técnicamente válidas pueden alimentar las métricas de desempeño.
+
+## Recepción y transferencias
+
+Un usuario con `telefonia.recibir` dispone de un botón de auriculares en la barra superior.
+
+Al comenzar la jornada debe pulsar **Activar recepción telefónica**. Ese clic abre el host WebRTC persistente y registra su extensión en Zadarma. La ventana técnica puede permanecer minimizada mientras el usuario navega por el CRM.
+
+Cuando Zadarma publica `NOTIFY_INTERNAL` para la extensión:
+
+1. el CRM identifica la llamada entrante por `pbx_call_id`;
+2. muestra el número que llama;
+3. trae al frente los controles oficiales WebRTC para contestar;
+4. al recibir `NOTIFY_ANSWER`, cambia a conversación activa;
+5. al recibir `NOTIFY_END`, finaliza el estado;
+6. si aparece otro `NOTIFY_INTERNAL` con `transfer_from`, identifica la transferencia.
+
+El panel **Transferir** consulta únicamente usuarios que tengan:
+
+- extensión Zadarma activa;
+- llamadas entrantes habilitadas;
+- permiso `telefonia.usar`;
+- permiso `telefonia.recibir`.
+
+Zadarma define las combinaciones PBX:
+
+- transferencia directa: `#101#`;
+- transferencia consultada: `*101#`.
+
+El CRM intenta enviar esa secuencia DTMF cuando la versión del widget la expone. Si el SDK no publica un método compatible, abre los controles oficiales de Zadarma y muestra el código exacto, evitando depender de una API JavaScript no documentada.
 
 ## Requisitos del servidor
 
