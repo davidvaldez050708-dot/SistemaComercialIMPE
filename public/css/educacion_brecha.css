@@ -1,0 +1,202 @@
+/* Información Territorial · brechas educativas por edad (Censo 2020).
+   Sigue las variables, radios y densidad del perfil educativo prioritario. */
+.data-school-gap {
+    margin-top: 20px;
+    padding: 20px;
+    border: 1px solid #e1e7ef;
+    border-radius: 14px;
+    background: #fff;
+}
+.data-school-gap-header {
+    display: flex;
+    align-items: start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 17px;
+}
+.data-school-gap-header > div { min-width: 0; }
+.data-school-gap-eyebrow {
+    display: block;
+    color: #0064ad;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .06em;
+    margin-bottom: 5px;
+    text-transform: uppercase;
+}
+.data-school-gap-header h4 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 800;
+    color: var(--color-text-primary, #15213a);
+}
+.data-school-gap-header p {
+    margin: 5px 0 0;
+    max-width: 770px;
+    line-height: 1.55;
+    color: var(--color-text-secondary, #667287);
+    font-size: 12px;
+}
+.data-school-gap-period {
+    border: 1px solid #d7e8df;
+    background: #f2faf6;
+    color: #087f69;
+    border-radius: 999px;
+    padding: 7px 11px;
+    font-size: 10.5px;
+    font-weight: 750;
+    white-space: nowrap;
+}
+.data-school-gap-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+}
+.data-school-gap-card {
+    min-width: 0;
+    padding: 16px;
+    border: 1px solid #dce4ee;
+    border-radius: 12px;
+    background: #fafbfd;
+    display: flex;
+    flex-direction: column;
+    gap: 11px;
+}
+.data-school-gap-card.is-priority {
+    border-color: #a7d9cb;
+    background: #f1f9f6;
+    box-shadow: inset 3px 0 0 #0a8f7a;
+}
+.data-school-gap-card-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+}
+.data-school-gap-card-icon {
+    width: 32px;
+    height: 32px;
+    display: grid;
+    place-items: center;
+    flex: 0 0 32px;
+    border-radius: 10px;
+    background: #eaf0f9;
+    color: #244589;
+    font-size: 15px;
+}
+.is-priority .data-school-gap-card-icon {
+    color: #078371;
+    background: #dff2eb;
+}
+.data-school-gap-card-head > div { min-width: 0; }
+.data-school-gap-card-title {
+    display: block;
+    color: #263a55;
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1.35;
+}
+.data-school-gap-card-range {
+    display: block;
+    margin-top: 3px;
+    font-size: 11px;
+    color: #6b778d;
+}
+.data-school-gap-count {
+    color: #13223b;
+    font-size: clamp(23px, 2vw, 28px);
+    font-weight: 850;
+    line-height: 1.12;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -.025em;
+    overflow-wrap: anywhere;
+}
+.data-school-gap-count span {
+    color: #6b778d;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: normal;
+}
+.data-school-gap-rate {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    flex-wrap: wrap;
+    color: #516078;
+    font-size: 10.5px;
+}
+.data-school-gap-rate strong {
+    color: #087e6d;
+    font-size: 16px;
+    font-weight: 850;
+    font-variant-numeric: tabular-nums;
+}
+.data-school-gap-track {
+    overflow: hidden;
+    height: 6px;
+    width: 100%;
+    border-radius: 999px;
+    background: #e4ebf1;
+}
+.data-school-gap-progress {
+    height: 100%;
+    background: #3d648e;
+    border-radius: 999px;
+}
+.is-priority .data-school-gap-progress { background: #0b947c; }
+.data-school-gap-card-footer {
+    border-top: 1px solid #e2e8ef;
+    padding-top: 9px;
+    margin-top: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    color: #64748b;
+    font-size: 10.5px;
+    line-height: 1.5;
+}
+.data-school-gap-card-footer a {
+    color: #185aa5;
+    text-decoration: none;
+    font-weight: 700;
+}
+.data-school-gap-card-footer a:hover { text-decoration: underline; }
+.data-school-gap-method summary { cursor: pointer; font-size: 10.5px; color: #185aa5; font-weight: 700; }
+.data-school-gap-method p { margin: 7px 0 0; overflow-wrap: anywhere; line-height: 1.55; }
+.data-school-gap-empty { font-size: 12px; font-weight: 700; color: #728099; }
+.data-school-gap-note {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    margin-top: 13px;
+    border-radius: 9px;
+    padding: 10px 12px;
+    color: #52627a;
+    background: #f4f7fa;
+    font-size: 11px;
+    line-height: 1.6;
+}
+.data-school-gap-note i { color: #2169ac; font-size: 15px; margin-top: 1px; }
+.data-school-gap-import {
+    margin-top: 12px;
+    border-top: 1px solid #e7edf3;
+    padding-top: 12px;
+}
+.data-school-gap-import > summary {
+    color: #465673;
+    font-size: 11px;
+    font-weight: 750;
+    cursor: pointer;
+}
+.data-school-gap-import .data-power-import { margin-top: 12px; }
+@media (max-width: 1120px) {
+    .data-school-gap-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+    .data-school-gap-card.is-priority { grid-column: 1 / -1; }
+}
+@media (max-width: 680px) {
+    .data-school-gap { padding: 14px; }
+    .data-school-gap-grid { grid-template-columns: 1fr; }
+    .data-school-gap-card.is-priority { grid-column: auto; }
+    .data-school-gap-card { padding: 13px; }
+    .data-school-gap-period { white-space: normal; }
+}
