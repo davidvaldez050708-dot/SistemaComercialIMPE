@@ -354,7 +354,8 @@ class InegiPerfilEducativoPrioritarioAutoService
                     strtolower(pathinfo($nombre, PATHINFO_EXTENSION)) !== 'xlsx' ||
                     (
                         strpos($normalizado, '07_08') === false &&
-                        strpos($normalizado, 'b2020_07_08_m') === false
+                        strpos($normalizado, 'b2020_07_08_m') === false &&
+                        strpos($normalizado, '_07_educacion') === false
                     )
                 ) {
                     continue;
