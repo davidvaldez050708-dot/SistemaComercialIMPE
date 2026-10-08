@@ -267,18 +267,41 @@
 
             raiz.dataset.impeNativePhoneHidden = '0';
             raiz.removeAttribute('aria-hidden');
-
-            [
+            raiz.style.setProperty(
                 'position',
+                'fixed',
+                'important'
+            );
+            raiz.style.setProperty(
                 'left',
+                'auto',
+                'important'
+            );
+            raiz.style.setProperty(
                 'top',
+                'auto',
+                'important'
+            );
+            raiz.style.setProperty(
                 'right',
+                '10px',
+                'important'
+            );
+            raiz.style.setProperty(
                 'bottom',
+                '10px',
+                'important'
+            );
+            raiz.style.setProperty(
                 'opacity',
-                'pointer-events'
-            ].forEach(function (propiedad) {
-                raiz.style.removeProperty(propiedad);
-            });
+                '1',
+                'important'
+            );
+            raiz.style.setProperty(
+                'pointer-events',
+                'auto',
+                'important'
+            );
         });
     };
 
@@ -943,11 +966,12 @@
         const answered =
             incomingStatus === 'answered';
 
-        if (
+        const nuevaLlamadaEntrante =
             state.direction !== 'incoming' ||
             String(state.pbxCallId || '') !==
-                pbxCallId
-        ) {
+                pbxCallId;
+
+        if (nuevaLlamadaEntrante) {
             answeredAtMs = 0;
         }
 
@@ -1004,7 +1028,9 @@
                     extension
         });
 
-        mostrarHostEntrante();
+        if (nuevaLlamadaEntrante) {
+            mostrarHostEntrante();
+        }
     };
 
     const pollIncoming = async function () {
@@ -1051,7 +1077,7 @@
         incomingPollInterval =
             window.setInterval(
                 pollIncoming,
-                1200
+                1800
             );
     };
 
