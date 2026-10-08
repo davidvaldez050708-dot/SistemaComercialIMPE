@@ -48,7 +48,10 @@ $metricas[27] = 5;
 $sheet = fila(1, [1 => 'Población', 2 => 'Escolaridad']);
 $n = 2;
 $edades = [
-    ['15-19 años', '18 años'],
+    ['15-19 años', '15 años'],
+    ['', '16 años'],
+    ['', '17 años'],
+    ['', '18 años'],
     ['', '19 años'],
     ['20-24 años', 'Total']
 ];
@@ -88,20 +91,20 @@ try {
     $method = new ReflectionMethod($parser, 'extraerHoja');
     $resultado = $method->invoke($parser, $zip, 'xl/worksheets/sheet1.xml', [], '17');
     $grupos = $resultado['grupos'] ?? [];
-    $esperados = ['18','19','20-24','25-29','30-34','35-39','40-44','45-49',
+    $esperados = ['15','16','17','18','19','20-24','25-29','30-34','35-39','40-44','45-49',
         '50-54','55-59','60-64','65-69','70-74','75-79','80-84','85+'];
     if (array_diff($esperados, array_keys($grupos)) ||
         count($grupos) !== count($esperados) ||
-        array_sum(array_column(array_values($grupos), 1)) !== 1600 ||
+        array_sum(array_column(array_values($grupos), 1)) !== 1900 ||
         isset($grupos['15-19'])) {
-        throw new RuntimeException('El desglose de 18 y 19 años o los grupos de 25+ son incorrectos: ' .
+        throw new RuntimeException('El desglose de 15, 16, 17, 18, 19 años o 25+ es incorrecto: ' .
             implode(', ', array_keys($grupos)));
     }
     $otro = $method->invoke($parser, $zip, 'xl/worksheets/sheet1.xml', [], '30');
     if (($otro['grupos'] ?? []) !== []) {
         throw new RuntimeException('El parser aceptó otro Estado sin validación de clave.');
     }
-    echo "OK: 16 grupos estatales exactos, sin duplicar 15-19 y sin mezclar municipios.\n";
+    echo "OK: 19 grupos estatales exactos, con 15-17, sin duplicar 15-19 ni municipios.\n";
 } finally {
     $zip->close();
     unlink($nombreArchivo);

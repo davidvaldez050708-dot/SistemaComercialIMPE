@@ -2004,3 +2004,9 @@
         grid-template-columns: minmax(0, 1fr);
     }
 }
+
+
+/* Reporte territorial: adultos en dos columnas y jóvenes en una tarjeta completa. */
+.territorial-education-grid-adultos > article:last-child:nth-child(3) {
+    grid-column: 1 / -1;
+}

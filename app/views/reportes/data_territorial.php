@@ -466,14 +466,15 @@ foreach ($sectoresGrafica as $sectorGrafica) {
                 <div class="territorial-report-section-heading">
                     <div>
                         <span>ESCOLARIDAD ADULTA</span>
-                        <h3>Brecha de escolaridad por grupo de edad</h3>
+                        <h3>Brecha de escolaridad: adultos y jóvenes</h3>
                         <p>Indicadores incorporados de tabulados con fuente y metodología declaradas, sin estimaciones de datos faltantes.</p>
                     </div>
                 </div>
                 <div class="territorial-education-grid territorial-education-grid-adultos">
                     <?php foreach ([
                         ['codigo' => 'SIN_EDUCACION_SUPERIOR_25_MAS', 'nombre' => 'Sin educación superior · 25 años o más'],
-                        ['codigo' => 'SIN_MEDIA_SUPERIOR_CONCLUIDA_18_MAS', 'nombre' => 'Sin media superior concluida · 18 años o más']
+                        ['codigo' => 'SIN_MEDIA_SUPERIOR_CONCLUIDA_18_MAS', 'nombre' => 'Sin media superior concluida · 18 años o más'],
+                        ['codigo' => 'SIN_MEDIA_SUPERIOR_CONCLUIDA_15_17', 'nombre' => 'Jóvenes sin media superior concluida · 15–17 años']
                     ] as $tipoAdulto): ?>
                         <?php
                             $adulto = $escolaridadAdulta[$tipoAdulto['codigo']] ?? [];
@@ -487,7 +488,7 @@ foreach ($sectoresGrafica as $sectorGrafica) {
                                 <small>Fuente declarada: <?= $texto($adulto['fuente']) ?></small>
                                 <small><a href="<?= $texto($adulto['referencia_url']) ?>" target="_blank" rel="noopener noreferrer">Consultar referencia INEGI</a></small>
                                 <?php if (str_contains((string)($adulto['metodologia'] ?? ''), 'Conteo mínimo identificable')): ?>
-                                    <small>Valor mínimo: no implica que toda la población sin media superior concluida haya sido identificada.</small>
+                                    <small>Valor mínimo identificable. No equivale a abandono escolar ni a un total exacto de personas sin media superior concluida.</small>
                                 <?php endif; ?>
                                 <small>Metodología: <?= $texto($adulto['metodologia']) ?></small>
                             <?php else: ?>
@@ -496,7 +497,7 @@ foreach ($sectoresGrafica as $sectorGrafica) {
                         </article>
                     <?php endforeach; ?>
                 </div>
-                <p class="territorial-education-note">La importación no certifica la coincidencia con INEGI; las cifras deben cotejarse con la referencia citada.</p>
+                <p class="territorial-education-note">En 15–17 años se consideran edades individuales 15, 16 y 17; las cifras mínimas no equivalen a abandono escolar. La importación CSV requiere cotejo con la referencia INEGI.</p>
             </section>
 
             <?php if (($perfil2549['disponible'] ?? false) === true): ?>

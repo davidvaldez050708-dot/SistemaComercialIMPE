@@ -245,7 +245,8 @@ class DataTerritorialController
         $actuales = $modeloAdultos->obtenerPorEstado($estadoId);
         $codigos = [
             EscolaridadAdultaModel::SIN_SUPERIOR_25,
-            EscolaridadAdultaModel::SIN_MEDIA_CONCLUIDA_18
+            EscolaridadAdultaModel::SIN_MEDIA_CONCLUIDA_18,
+            EscolaridadAdultaModel::SIN_MEDIA_CONCLUIDA_15_17
         ];
         $completos = true;
         foreach ($codigos as $codigo) {
@@ -260,8 +261,8 @@ class DataTerritorialController
         if ($completos) {
             $this->responderJson([
                 'ok' => true,
-                'mensaje' => 'Los dos indicadores censales de 2020 ya estaban sincronizados para este Estado.',
-                'datos' => ['estado_id' => $estadoId, 'indicadores' => 2, 'periodo' => 2020, 'sin_descarga' => true]
+                'mensaje' => 'Los tres indicadores educativos (jóvenes y adultos) ya están sincronizados con el Censo 2020.',
+                'datos' => ['estado_id' => $estadoId, 'indicadores' => 3, 'periodo' => 2020, 'sin_descarga' => true]
             ]);
         }
 
@@ -282,8 +283,8 @@ class DataTerritorialController
             'ok' => true,
             'mensaje' => (string)($resultado['mensaje'] ?? 'Escolaridad adulta sincronizada desde INEGI.'),
             'datos' => [
-                'estado_id' => $estadoId, 'periodo' => 2020, 'indicadores' => 2,
-                'cota_minima_18' => true,
+                'estado_id' => $estadoId, 'periodo' => 2020, 'indicadores' => 3,
+                'cota_minima_18' => true, 'cota_minima_15_17' => true,
                 'personas_grado_indeterminado' => (int)($resultado['personas_grado_indeterminado'] ?? 0)
             ]
         ]);
