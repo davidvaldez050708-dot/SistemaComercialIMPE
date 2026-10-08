@@ -49,6 +49,24 @@ try {
         throw new RuntimeException('Los totales del rango 18+ y 25+ no son consistentes.');
     }
     echo 'Población base 18+: ' . $total18 . '; 25+: ' . $total25 . "\n";
+    $juvenil = InegiEscolaridadAdultaXlsxService::calcularJuvenil($grupos);
+    $esperadosJuveniles = [
+        '30' => ['base' => 418032, 'minimo' => 405268, 'indeterminados' => 1264],
+        '17' => ['base' => 100192, 'minimo' => 96646, 'indeterminados' => 876]
+    ];
+    $esperado = $esperadosJuveniles[$clave] ?? null;
+    if (!$esperado ||
+        $juvenil['poblacion_base'] !== $esperado['base'] ||
+        $juvenil['cantidad_personas'] !== $esperado['minimo'] ||
+        $juvenil['personas_indeterminadas'] !== $esperado['indeterminados']) {
+        throw new RuntimeException('La clasificación juvenil 15-17 difiere del cuadro INEGI comprobado: ' .
+            json_encode($juvenil, JSON_UNESCAPED_UNICODE));
+    }
+    echo 'Jóvenes de 15-17: total ' . $juvenil['poblacion_base'] .
+        '; sin media superior concluida (mínimo) ' .
+        $juvenil['cantidad_personas'] . '; incidencia ' .
+        $juvenil['porcentaje'] . '%; no determinables ' .
+        $juvenil['personas_indeterminadas'] . "\n";
     echo "VALIDACION_OK\n";
 } finally {
     $zip->close();
