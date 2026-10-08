@@ -288,6 +288,10 @@ if ($esCorreosMarketingDashboard) {
     $jsOpcionalHead[] = 'correos_marketing.js';
 }
 
+if ($esFormulariosDashboard) {
+    $jsOpcionalHead[] = 'formularios_registro.js';
+}
+
 if ($esDesempenoDashboard) {
     $jsOpcionalHead[] = 'desempeno.js';
 }
