@@ -1,0 +1,44 @@
+name: Calculo INEGI edad 15 a 17
+on:
+  pull_request:
+    paths:
+      - "tests/inegi_edades_15_17_report.php"
+      - ".github/workflows/inegi-edades-15-17.yml"
+permissions:
+  contents: read
+  pull-requests: write
+jobs:
+  calcular:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: zip, dom, mbstring, xmlreader
+      - name: Procesar XLSX originales de Veracruz y Morelos
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "## Estadísticas censales 15–17 por estado (2020)" > /tmp/resultado.txt
+          for par in "ver:30" "mor:17"; do
+            abreviatura=${par%%:*}
+            clave=${par##*:}
+            echo "### ${abreviatura}" >> /tmp/resultado.txt
+            url="https://www.inegi.org.mx/contenidos/programas/ccpv/2020/tabulados/cpv2020_b_${abreviatura}_07_educacion.xlsx"
+            curl --fail -sSL --retry 2 --connect-timeout 20 --max-time 150 "$url" -o "/tmp/${abreviatura}.xlsx"
+            echo "Archivo oficial bytes: $(wc -c < /tmp/${abreviatura}.xlsx)" >> /tmp/resultado.txt
+            php tests/inegi_edades_15_17_report.php "/tmp/${abreviatura}.xlsx" "$clave" >> /tmp/resultado.txt 2>&1
+          done
+          cat /tmp/resultado.txt >> "$GITHUB_STEP_SUMMARY"
+          cat /tmp/resultado.txt
+      - name: Comunicar resultados a comentario de PR
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+        shell: bash
+        run: |
+          test -f /tmp/resultado.txt && gh pr comment "$PR" --body-file /tmp/resultado.txt || true
