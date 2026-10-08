@@ -223,7 +223,7 @@
 .persistent-phone-actions {
     margin-top: 12px;
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 9px;
 }
 
@@ -290,6 +290,97 @@
 .persistent-phone-compact-button:disabled {
     opacity: .5;
     cursor: not-allowed;
+}
+
+.persistent-phone-transfer {
+    margin-top: 12px;
+    padding: 12px;
+    border: 1px solid #dfe6ef;
+    border-radius: 11px;
+    background: #f8fafc;
+}
+
+.persistent-phone-transfer[hidden] {
+    display: none !important;
+}
+
+.persistent-phone-transfer-head {
+    margin-bottom: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.persistent-phone-transfer-head strong {
+    color: #26354d;
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.persistent-phone-transfer-head button {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--color-primary, #273a8a);
+    font: inherit;
+    font-size: 9px;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.persistent-phone-transfer input {
+    width: 100%;
+    min-height: 39px;
+    padding: 8px 10px;
+    border: 1px solid #d5deea;
+    border-radius: 8px;
+    background: #fff;
+    color: #26354d;
+    font: inherit;
+    font-size: 11px;
+    font-weight: 700;
+    outline: none;
+}
+
+.persistent-phone-transfer input:focus {
+    border-color: var(--color-primary, #273a8a);
+    box-shadow: 0 0 0 3px rgba(39, 58, 138, .09);
+}
+
+.persistent-phone-transfer-actions {
+    margin-top: 8px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 7px;
+}
+
+.persistent-phone-transfer-actions button {
+    min-height: 37px;
+    border: 1px solid #d7e0ec;
+    border-radius: 8px;
+    background: #fff;
+    color: #34445f;
+    font: inherit;
+    font-size: 9.5px;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.persistent-phone-transfer-actions button:hover,
+.persistent-phone-transfer-actions button:focus-visible {
+    border-color: #bfcde2;
+    background: var(--color-primary-soft, #eef4ff);
+    color: var(--color-primary, #273a8a);
+    outline: none;
+}
+
+.persistent-phone-transfer small {
+    margin-top: 8px;
+    display: block;
+    color: #77849a;
+    font-size: 8.5px;
+    font-weight: 650;
 }
 
 .persistent-phone-result {
@@ -411,6 +502,12 @@
 
 .persistent-phone-compact-result[hidden] {
     display: none !important;
+}
+
+@media (max-width: 720px) {
+    .persistent-phone-actions {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
 }
 
 @media (max-width: 575.98px) {
