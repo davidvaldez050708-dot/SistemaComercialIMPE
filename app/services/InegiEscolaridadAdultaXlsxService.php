@@ -163,6 +163,7 @@ class InegiEscolaridadAdultaXlsxService
         $estructura = false;
         $totales = [];
         $rechazados = 0;
+        $ejemplosRechazo = [];
         try {
             while ($reader->read()) {
                 if ($reader->nodeType !== XMLReader::ELEMENT || $reader->localName !== 'row') {
@@ -235,6 +236,10 @@ class InegiEscolaridadAdultaXlsxService
             }
             if (in_array(null, $m, true)) {
                 $rechazados++;
+                if (count($ejemplosRechazo) < 3) {
+                    $ejemplosRechazo[] = $edad . ': celdas no numéricas ' .
+                        implode(',', array_keys(array_filter($m, static fn($v) => $v === null)));
+                }
                 continue;
             }
             $totalesNivel = $this->sumar($m, [2, 3, 4, 8, 12, 13, 17, 21, 22, 23, 27, 28]);
@@ -242,6 +247,16 @@ class InegiEscolaridadAdultaXlsxService
                 $m[14] + $m[15] + $m[16] !== $m[13] ||
                 $m[18] + $m[19] + $m[20] !== $m[17]) {
                 $rechazados++;
+                if (count($ejemplosRechazo) < 3) {
+                    $ejemplosRechazo[] = $edad . ': total=' . $m[1] .
+                        ' sumaNiveles=' . $totalesNivel . ' categoria13=' . $m[13] .
+                        ' partes13=' . ($m[14] + $m[15] + $m[16]) .
+                        ' categoria17=' . $m[17] .
+                        ' partes17=' . ($m[18] + $m[19] + $m[20]) .
+                        ' crudos=' . implode(',', array_map(
+                            static fn($v) => trim((string)$v), array_slice($celdas, 5, 28, true)
+                        ));
+                }
                 continue;
             }
             if (isset($totales[$edad]) && $totales[$edad] !== $m) {
@@ -253,7 +268,8 @@ class InegiEscolaridadAdultaXlsxService
             $reader->close();
         }
         if ($rechazados > 0 && count($totales) === 0) {
-            throw new RuntimeException('No se encontraron filas censales completas: ' . $rechazados . ' grupos estatales con valores inválidos.');
+            throw new RuntimeException('No se encontraron filas censales completas: ' . $rechazados .
+                ' grupos estatales con valores inválidos. ' . implode(' | ', $ejemplosRechazo));
         }
         return ['estructura' => $estructura || count($totales) > 0, 'grupos' => $totales];
     }
