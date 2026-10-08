@@ -269,7 +269,7 @@
     background: var(--color-surface);
     box-shadow: 0 8px 18px rgba(28, 46, 74, .03);
 }
-.telephony-summary-icon {
+.telephony-summary-strip .telephony-summary-icon {
     width: 38px;
     height: 38px;
     flex: 0 0 38px;
@@ -478,7 +478,7 @@
     .telephony-dialer-heading { gap: 8px; }
     .telephony-dialer-heading h2 { font-size: 14px; }
     .telephony-summary-item { padding: 10px; gap: 8px; }
-    .telephony-summary-icon { width: 32px; height: 32px; flex-basis: 32px; }
+    .telephony-summary-strip .telephony-summary-icon { width: 32px; height: 32px; flex-basis: 32px; }
     .telephony-summary-item strong { font-size: 18px; }
 }
 @media (prefers-reduced-motion: reduce) {
