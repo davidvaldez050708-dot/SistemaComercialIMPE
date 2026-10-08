@@ -1165,11 +1165,15 @@ class DataTerritorialController
                 ?? ''
             ));
 
+            $mensajeBase = $mensaje !== ''
+                ? $mensaje
+                : 'No fue posible sincronizar el cruce oficial edad × escolaridad de INEGI.';
+
             $this->responderJson([
                 'ok' => false,
-                'mensaje' => $mensaje !== ''
-                    ? $mensaje
-                    : 'No fue posible sincronizar el cruce oficial edad × escolaridad de INEGI.'
+                'mensaje' =>
+                    $mensajeBase .
+                    ' Si INEGI no publica una descarga directa para este Estado, selecciona el XLSX oficial B2020_07_08_M en este mismo modal.'
             ], 502);
         }
 
