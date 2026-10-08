@@ -16,10 +16,10 @@ $extensionVentas = trim((string)($panelTelefonoVentas['extension'] ?? ''));
                     <i class="bi bi-headset"></i>
                 </span>
                 <div>
-                    <strong><?= $extensionVentas !== ''
+                    <strong data-telephony-sales-extension-status><?= $extensionVentas !== ''
                         ? 'Extensión ' . htmlspecialchars($extensionVentas, ENT_QUOTES, 'UTF-8')
                         : 'Extensión pendiente' ?></strong>
-                    <span><?= $extensionVentas !== ''
+                    <span data-telephony-sales-extension-caption><?= $extensionVentas !== ''
                         ? 'Teléfono asignado a tu usuario'
                         : 'Solicita la configuración al administrador' ?></span>
                 </div>

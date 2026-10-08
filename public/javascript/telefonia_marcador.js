@@ -9,7 +9,16 @@
         const numberInput = root.querySelector('[data-telephony-dial-number]');
         const callButton = root.querySelector('[data-telephony-dial-call]');
         const hangupButton = root.querySelector('[data-telephony-dial-hangup]');
+        const muteButton = root.querySelector('[data-telephony-dial-mute]');
+        const muteLabel = root.querySelector('[data-telephony-dial-mute-label]');
+        const muteIcon = root.querySelector('[data-telephony-dial-mute-icon]');
         const newButton = root.querySelector('[data-telephony-dial-new]');
+        const afterCall = root.querySelector('[data-telephony-aftercall]');
+        const saveAfterCall = root.querySelector('[data-telephony-aftercall-save]');
+        const warning = root.querySelector('[data-telephony-assignment-warning]');
+        const identity = root.querySelector('[data-telephony-extension-identity]');
+        const salesStatus = document.querySelector('[data-telephony-sales-extension-status]');
+        const salesCaption = document.querySelector('[data-telephony-sales-extension-caption]');
         const callStatus = root.querySelector('[data-telephony-dial-status]');
         const contactForm = root.querySelector('[data-telephony-contact-form]');
         const contactName = root.querySelector('[data-telephony-contact-name]');
@@ -18,11 +27,11 @@
         const contactEmpty = root.querySelector('[data-telephony-contacts-empty]');
         const contactFeedback = root.querySelector('[data-telephony-contact-status]');
         const saveButton = root.querySelector('[data-telephony-contact-save]');
-        const hasAssignedExtension = root.dataset.canCall === '1';
-
         let ready = false;
         let dialing = false;
         let saving = false;
+        let checkingPhone = false;
+        let extensionAssigned = root.dataset.canCall === '1';
 
         function say(text, error) {
             callStatus.textContent = String(text || '');
@@ -57,14 +66,22 @@
             const ownFinished = phase === 'finished' &&
                 String(state.context?.type || '').toUpperCase() === 'DIALER';
 
-            callButton.disabled = !ready || dialing || active;
+            callButton.disabled = !ready || dialing || active || ownFinished;
             hangupButton.disabled = !active;
+            const canMute = active && String(state.status || '') === 'in-progress';
+            muteButton.disabled = !canMute;
+            const muted = Boolean(state.muted);
+            muteButton.setAttribute('aria-pressed', muted ? 'true' : 'false');
+            muteLabel.textContent = muted ? 'Activar micrófono' : 'Silenciar';
+            muteIcon.className = muted ? 'bi bi-mic' : 'bi bi-mic-mute';
             newButton.hidden = !ownFinished;
+            afterCall.hidden = !ownFinished ||
+                !String(state.destination || numberInput.value || '').trim();
 
             if (active) {
-                say(state.message || 'Llamada en curso…');
+                say(muted ? 'Micrófono silenciado' : (state.message || 'Llamada en curso…'));
             } else if (ownFinished) {
-                say(state.message || 'Llamada finalizada. Puedes marcar otro número.');
+                say('Llamada finalizada. Puedes iniciar otra o guardar el número.');
             } else if (phase === 'error') {
                 say(state.message || 'No fue posible realizar la llamada.', true);
             }
@@ -119,6 +136,22 @@
         hangupButton.addEventListener('click', function () {
             api?.hangup?.();
             say('Finalizando llamada…');
+        });
+
+        muteButton.addEventListener('click', function () {
+            if (!muteButton.disabled) {
+                api?.toggleMute?.();
+            }
+        });
+
+        saveAfterCall.addEventListener('click', function () {
+            const state = api?.getState?.() || {};
+            if (state.active || String(state.context?.type || '').toUpperCase() !== 'DIALER') {
+                return;
+            }
+            contactNumber.value = String(state.destination || numberInput.value || '');
+            sayContact('Añade un nombre o referencia y pulsa Guardar número.');
+            contactName.focus();
         });
 
         newButton.addEventListener('click', function () {
@@ -299,26 +332,82 @@
             });
         });
 
+        function applyExtension(info) {
+            const extension = String(info?.extension || '').trim();
+            extensionAssigned = /^\d{3,6}$/.test(extension);
+            ready = extensionAssigned && Boolean(info?.permite_salientes);
+            root.dataset.canCall = ready ? '1' : '0';
+
+            if (identity) {
+                identity.textContent = extensionAssigned
+                    ? 'Extensión ' + extension : 'Sin extensión asignada';
+            }
+            if (salesStatus) {
+                salesStatus.textContent = extensionAssigned
+                    ? 'Extensión ' + extension : 'Extensión pendiente';
+            }
+            if (salesCaption) {
+                salesCaption.textContent = ready
+                    ? 'Teléfono disponible para realizar llamadas'
+                    : 'Solicita la configuración al administrador';
+            }
+            if (warning) {
+                warning.hidden = ready;
+            }
+
+            const state = api?.getState?.() || {};
+            if (!state.active && state.phase !== 'finished') {
+                if (ready) {
+                    say('Listo para marcar. Autoriza el micrófono cuando el navegador lo solicite.');
+                } else if (warning && !warning.hidden) {
+                    // El mensaje amarillo explica el pendiente sin duplicar avisos.
+                    say('');
+                } else {
+                    say('La extensión no tiene llamadas salientes habilitadas.', true);
+                }
+            }
+            renderCall();
+        }
+
+        function verifyExtension(forceRefresh) {
+            if (!api || typeof api.probe !== 'function' || checkingPhone) return;
+            if (api?.getState?.()?.active) return;
+            checkingPhone = true;
+            void api.probe(Boolean(forceRefresh)).then(function (info) {
+                applyExtension(info);
+            }).catch(function (error) {
+                ready = false;
+                extensionAssigned = false;
+                root.dataset.canCall = '0';
+                if (salesStatus) salesStatus.textContent = 'Extensión pendiente';
+                if (salesCaption) salesCaption.textContent = 'Solicita la configuración al administrador';
+                if (identity) identity.textContent = 'Sin extensión asignada';
+                if (warning && !warning.hidden) {
+                    say('');
+                } else {
+                    say(error.message || 'No fue posible consultar la extensión.', true);
+                }
+                renderCall();
+            }).finally(function () {
+                checkingPhone = false;
+            });
+        }
+
         if (!api || typeof api.probe !== 'function') {
             say('El motor telefónico no está disponible en este perfil.', true);
             return;
         }
 
-        void api.probe().then(function (info) {
-            ready = hasAssignedExtension && Boolean(info?.permite_salientes);
-            say(
-                ready
-                    ? 'Listo para marcar. Autoriza el micrófono cuando el navegador lo solicite.'
-                    : 'Solicita al administrador una extensión activa con llamadas salientes.',
-                !ready
-            );
-            renderCall();
-        }).catch(function (error) {
-            say(error.message || 'No fue posible conectar el marcador.', true);
-        });
-
         api.subscribe(renderCall);
         renderCall();
         updateEmpty();
+        verifyExtension(true);
+        // Sin recargar el Inicio, detecta una extensión asignada por el administrador.
+        window.setInterval(function () {
+            if (!ready && !checkingPhone) verifyExtension(true);
+        }, 30000);
+        window.addEventListener('focus', function () {
+            if (!ready) verifyExtension(true);
+        });
     });
 })();

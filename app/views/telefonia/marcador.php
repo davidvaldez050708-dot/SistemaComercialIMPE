@@ -55,7 +55,7 @@ $urlActualizarMarcador = BASE_URL . (
             <div class="telephony-identity">
                 <span class="telephony-extension-pill">
                     <i class="bi bi-headset" aria-hidden="true"></i>
-                    <?= $esc($extension !== '' ? 'Extensión ' . $extension : 'Sin extensión asignada') ?>
+                    <span data-telephony-extension-identity><?= $esc($extension !== '' ? 'Extensión ' . $extension : 'Sin extensión asignada') ?></span>
                 </span>
                 <?php if ($callerId !== ''): ?>
                     <small>Identificador configurado: <?= $esc($callerId) ?></small>
@@ -64,7 +64,10 @@ $urlActualizarMarcador = BASE_URL . (
         </div>
 
         <?php if (($panelTelefono['mensaje'] ?? '') !== ''): ?>
-            <div class="alert alert-warning" role="alert">
+            <div class="alert alert-warning" role="alert"
+                <?= ($extension === '' && ($panelTelefono['mensaje'] ?? '') ===
+                    'El administrador debe asignarte una extensión activa con llamadas salientes.')
+                    ? 'data-telephony-assignment-warning' : '' ?>>
                 <?= $esc($panelTelefono['mensaje']) ?>
             </div>
         <?php endif; ?>
@@ -99,9 +102,22 @@ $urlActualizarMarcador = BASE_URL . (
                 </div>
                 <div class="telephony-dial-secondary">
                     <button type="button" class="btn btn-system-light"
-                        data-telephony-dial-hangup disabled>Colgar llamada</button>
+                        data-telephony-dial-mute aria-pressed="false" disabled>
+                        <i class="bi bi-mic-mute" data-telephony-dial-mute-icon aria-hidden="true"></i>
+                        <span data-telephony-dial-mute-label>Silenciar</span>
+                    </button>
                     <button type="button" class="btn btn-system-light"
+                        data-telephony-dial-hangup disabled>Colgar llamada</button>
+                    <button type="button" class="btn btn-system-light telephony-dial-new"
                         data-telephony-dial-new hidden>Nueva llamada</button>
+                </div>
+                <div class="telephony-aftercall" data-telephony-aftercall hidden>
+                    <span>¿Necesitas llamar de nuevo a este número?</span>
+                    <button type="button" class="btn btn-system-light"
+                        data-telephony-aftercall-save>
+                        <i class="bi bi-bookmark-plus" aria-hidden="true"></i>
+                        Guardar en mi agenda
+                    </button>
                 </div>
             </form>
 

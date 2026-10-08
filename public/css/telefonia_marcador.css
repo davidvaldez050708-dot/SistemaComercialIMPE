@@ -484,3 +484,45 @@
 @media (prefers-reduced-motion: reduce) {
     .telephony-key-grid button { transition: none; }
 }
+/* Controles visibles dentro del marcador de Ventas: mismo motor de audio
+   que el botón de silenciar del teléfono flotante del Analista. */
+.telephony-dial-secondary [data-telephony-dial-mute] {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+}
+.telephony-dial-secondary [data-telephony-dial-mute][aria-pressed="true"] {
+    color: var(--color-primary);
+    border-color: var(--color-primary);
+    background: var(--color-primary-soft);
+}
+.telephony-dial-secondary .telephony-dial-new {
+    grid-column: 1 / -1;
+}
+.telephony-aftercall {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 9px;
+    flex-wrap: wrap;
+    padding: 9px 10px;
+    border: 1px solid var(--color-border);
+    border-radius: 9px;
+    background: #f8faff;
+    font-size: 10.5px;
+    color: var(--color-text-secondary);
+}
+.telephony-aftercall[hidden],
+.telephony-dialer-page [data-telephony-assignment-warning][hidden] {
+    display: none !important;
+}
+.telephony-aftercall .btn {
+    min-height: 33px;
+    padding: 6px 9px;
+    font-size: 10.5px;
+}
+@media (max-width: 520px) {
+    .telephony-aftercall { align-items: stretch; }
+    .telephony-aftercall .btn { width: 100%; }
+}

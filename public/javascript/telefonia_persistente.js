@@ -332,7 +332,13 @@
         }
     };
 
-    const probe = async function () {
+    const probe = async function (forceRefresh = false) {
+        // Cuando el administrador asigne una extensión durante esta sesión,
+        // invalidar la caché para que el marcador detecte el cambio sin salir.
+        if (forceRefresh && !state?.active) {
+            availability = null;
+        }
+
         if (availability) {
             return availability;
         }
