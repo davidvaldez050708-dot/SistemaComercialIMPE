@@ -293,7 +293,11 @@ if ($esDesempenoDashboard) {
 }
 
 if ($esTelefoniaDashboard) {
-    $jsOpcionalHead[] = $actionDashboard === 'marcador' ? 'telefonia_marcador.js' : 'telefonia_admin.js';
+    $jsOpcionalHead[] = $actionDashboard === 'marcador'
+        ? 'telefonia_marcador.js'
+        : ($actionDashboard === 'extensiones'
+            ? 'telefonia_admin.js'
+            : 'telefonia_control.js');
 }
 if (
     ($esHomeDashboard && (int)($_SESSION['rol_id'] ?? 0) === 3) ||

@@ -564,3 +564,50 @@ sección Recepción telefónica aparece **después de Publicaciones recientes**
 y comienza **compacta**. Su botón «Ver historial» expande los indicadores,
 filtros, grabaciones y paginación de recepción, sin abandonar la página.
 No se elimina ni se mezcla ningún dato de las demás áreas.
+
+
+## Administrador · Centro de Control Telefónico (2026-10-08)
+
+`Telefonía > Control de llamadas` (`telefonia&action=index`) es
+la pantalla principal de supervisión. Su consulta
+`TelefoniaControlService` procesa webhooks firmados, permitiendo:
+
+- Períodos personalizados de hasta 90 días recientes, fecha inicial y
+  final incluidas; filtros por rol, usuario y dirección
+- Llamadas únicas por PBX Call ID (distintas de las atenciones por extensión)
+- Conectadas PBX (no necesariamente una conversación humana)
+- Conversaciones verificadas por resultados humanos de Ventas/Vinculación,
+  excluyendo buzón y notas `[SIN_CONTACTO_EFECTIVO]`
+- Duración de atención observada (horas, minutos y segundos), no los
+  minutos que facture Zadarma
+- Ranking por usuario que puede ordenarse por atenciones, tiempo o
+  conversaciones; tabla de distribución por roles y por extensiones
+- Tendencia de los últimos 14 días del intervalo seleccionado
+- Historial global de hasta 500 atenciones recientes, búsqueda en vivo
+  y paginación de 10 filas; las métricas comprenden el período completo
+
+**Precaución de atribución:** para asignar una llamada a una persona se
+requiere un vínculo específico con el proceso: `interacciones_vinculacion`
+para analistas, `telefonia_ventas_marcaciones` para Ventas o una
+recepción entrante de Marketing ocurrida después de la última fecha de
+asignación de su extensión. Las llamadas sin vínculo suficiente se
+muestran como **Sin atribución verificada** y no se adjudican al usuario
+actual en el ranking. Una transferencia puede generar varias atenciones
+de una misma llamada y sumar tiempo en más de una extensión.
+
+`Telefonía > Extensiones` (`telefonia&action=extensiones`) es
+la pantalla separada de configuración. Mantiene los modales existentes,
+las validaciones y los permisos `telefonia.configurar`. Los formularios
+de guardar y liberar regresan a Extensiones para mostrar el resultado.
+Los usuarios elegibles provienen de los permisos del rol, sin limitarse
+a Analistas, Ventas ni Marketing; un rol futuro como Cuenta Clave podrá
+aparecer si se le otorga `telefonia.usar`, siempre que cuente con las
+capacidades y flujo telefónico necesarios. No se cambiaron esos permisos
+automáticamente.
+
+**Pruebas de aceptación pendientes con la PBX y base de datos reales:**
+comprobar que 1 PBX ID transferido a dos extensiones cuenta como una
+llamada única y dos atenciones; probar clasificaciones Ventas y
+Vinculación incluyendo buzón; filtrar y ordenar ranking, revisar 90 días;
+guardar y liberar extensión; verificar que otros perfiles no accedan al
+Centro ni a Extensiones mediante URL directa.

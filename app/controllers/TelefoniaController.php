@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/../services/TelefoniaExtensionService.php';
 require_once __DIR__ . '/../services/TelefoniaActividadService.php';
+require_once __DIR__ . '/../services/TelefoniaControlService.php';
 require_once __DIR__ . '/../services/TelefoniaMarcadorPanelService.php';
 require_once __DIR__ . '/../services/TelefoniaContactosService.php';
 require_once __DIR__ . '/../services/TelefoniaResultadoVentasService.php';
@@ -28,60 +29,89 @@ class TelefoniaController
         $this->service = new TelefoniaExtensionService();
     }
 
+    /**
+     * Centro de Control Telefónico: reportes y tendencias.
+     * No consulta ni mezcla los formularios de extensiones.
+     */
     public function index()
     {
         $this->validarAdministrador();
 
-        $usuariosTelefonia = [];
-        $resumenTelefonia = [
-            'usuarios' => 0,
-            'configurados' => 0,
-            'activos' => 0,
-            'pendientes' => 0,
+        $actividadTelefonicaError = '';
+        $controlTelefonia = [];
+        $filtros = [
+            'desde' => (string)($_GET['desde'] ?? date('Y-m-d', strtotime('-29 days'))),
+            'hasta' => (string)($_GET['hasta'] ?? date('Y-m-d')),
+            'rol' => (string)($_GET['rol'] ?? ''),
+            'usuario_id' => (int)($_GET['usuario_id'] ?? 0),
+            'direccion' => (string)($_GET['direccion'] ?? ''),
+            'orden' => (string)($_GET['orden'] ?? '')
         ];
 
-        $actividadTelefonica = ['atenciones'=>0, 'contestadas'=>0, 'salientes'=>0, 'entrantes'=>0, 'segundos'=>0, 'por_extension'=>[], 'recientes'=>[]];
-        $actividadTelefonicaError = '';
         try {
-            $actividadTelefonica = (new TelefoniaActividadService())->consultar();
+            $controlTelefonia = (new TelefoniaControlService())->consultar($filtros);
+        } catch (InvalidArgumentException $e) {
+            $actividadTelefonicaError = $e->getMessage();
+            $controlTelefonia = (new TelefoniaControlService())->consultar();
         } catch (Throwable $e) {
-            error_log('Telefonía: ' . $e->getMessage());
-            $actividadTelefonicaError = 'No se pudo consultar la actividad reciente.';
+            error_log('[telefonia_control_admin] ' . $e->getMessage());
+            $actividadTelefonicaError =
+                'No fue posible recuperar las estadísticas telefónicas. Verifica la conexión de Zadarma y los webhooks.';
+            $controlTelefonia = [
+                'stats' => ['llamadas_unicas'=>0, 'atenciones'=>0, 'conectadas'=>0,
+                    'efectivas'=>0, 'segundos'=>0, 'sin_atribucion'=>0,
+                    'por_rol'=>[], 'por_extension'=>[], 'por_usuario'=>[],
+                    'historial'=>[], 'historial_total'=>0, 'tendencia'=>[]],
+                'filtros' => ['desde'=>date('Y-m-d', strtotime('-29 days')),
+                    'hasta'=>date('Y-m-d'), 'rol'=>'', 'usuario_id'=>0,
+                    'direccion'=>'', 'orden'=>'atenciones'],
+                'roles'=>[], 'usuarios'=>[]
+            ];
         }
 
-        $mensajeExito = $_SESSION['mensaje_telefonia'] ?? '';
-        $mensajeError = $_SESSION['error_telefonia'] ?? '';
-        $datosFormulario = $_SESSION['datos_telefonia'] ?? [];
-
-        unset(
-            $_SESSION['mensaje_telefonia'],
-            $_SESSION['error_telefonia'],
-            $_SESSION['datos_telefonia']
-        );
-
-        try {
-            $usuariosTelefonia =
-                $this->service->listarUsuariosConfigurables();
-
-            $resumenTelefonia =
-                $this->service->resumenConfiguracion(
-                    $usuariosTelefonia
-                );
-        } catch (Throwable $e) {
-            $mensajeError = $mensajeError !== ''
-                ? $mensajeError
-                : 'No fue posible preparar la configuración de telefonía.';
-        }
-
-        $tituloPagina = 'Telefonía';
-        $subtituloPagina =
-            'Asigna extensiones Zadarma a los usuarios que utilizarán llamadas';
+        $tituloPagina = 'Telefonía · Control de llamadas';
+        $subtituloPagina = 'Supervisa llamadas, duración, resultados y desempeño del equipo';
         $opcionActiva = 'telefonia';
 
         require_once __DIR__ . '/../views/layout/dashboard_head.php';
         require_once __DIR__ . '/../views/layout/sidebar.php';
         require_once __DIR__ . '/../views/layout/topbar.php';
         require_once __DIR__ . '/../views/telefonia/index.php';
+        require_once __DIR__ . '/../views/layout/dashboard_footer.php';
+    }
+
+    /**
+     * Configuración PBX separada del reporte administrativo.
+     * Conserva los formularios y modales de asignación existentes.
+     */
+    public function extensiones()
+    {
+        $this->validarAdministrador();
+
+        $usuariosTelefonia = [];
+        $resumenTelefonia = ['usuarios'=>0,'configurados'=>0,'activos'=>0,'pendientes'=>0];
+        $mensajeExito = $_SESSION['mensaje_telefonia'] ?? '';
+        $mensajeError = $_SESSION['error_telefonia'] ?? '';
+        $datosFormulario = $_SESSION['datos_telefonia'] ?? [];
+        unset($_SESSION['mensaje_telefonia'], $_SESSION['error_telefonia'], $_SESSION['datos_telefonia']);
+
+        try {
+            $usuariosTelefonia = $this->service->listarUsuariosConfigurables();
+            $resumenTelefonia = $this->service->resumenConfiguracion($usuariosTelefonia);
+        } catch (Throwable $e) {
+            error_log('[telefonia_extensiones_admin] ' . $e->getMessage());
+            $mensajeError = $mensajeError !== '' ? $mensajeError
+                : 'No fue posible recuperar la configuración de extensiones.';
+        }
+
+        $tituloPagina = 'Telefonía · Extensiones';
+        $subtituloPagina = 'Administra las extensiones y capacidades de los usuarios autorizados';
+        $opcionActiva = 'telefonia';
+
+        require_once __DIR__ . '/../views/layout/dashboard_head.php';
+        require_once __DIR__ . '/../views/layout/sidebar.php';
+        require_once __DIR__ . '/../views/layout/topbar.php';
+        require_once __DIR__ . '/../views/telefonia/extensiones.php';
         require_once __DIR__ . '/../views/layout/dashboard_footer.php';
     }
 
@@ -546,7 +576,7 @@ class TelefoniaController
         header(
             'Location: ' .
             BASE_URL .
-            'index.php?controller=telefonia&action=index'
+            'index.php?controller=telefonia&action=extensiones'
         );
         exit;
     }
