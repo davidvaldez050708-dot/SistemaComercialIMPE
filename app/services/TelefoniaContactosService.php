@@ -3,7 +3,8 @@
 require_once __DIR__ . '/../../config/db_connection.php';
 
 /**
- * Agenda personal de teléfonos: no crea instituciones ni seguimientos.
+ * Agenda telefónica personal de prospectos (personas físicas):
+ * no crea instituciones ni expedientes comerciales.
  * Todas las operaciones se limitan al usuario autenticado.
  */
 class TelefoniaContactosService
@@ -120,7 +121,7 @@ class TelefoniaContactosService
             mb_strlen($nombre, 'UTF-8') > 90 ||
             mb_strlen($nombre, 'UTF-8') < 2
         ) {
-            throw new InvalidArgumentException('Escribe un nombre de entre 2 y 90 caracteres.');
+            throw new InvalidArgumentException('Escribe el nombre del prospecto (entre 2 y 90 caracteres).');
         }
 
         $telefono = self::normalizarTelefono($telefono);

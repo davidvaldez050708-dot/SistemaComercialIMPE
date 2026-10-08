@@ -133,8 +133,8 @@ $urlActualizarMarcador = BASE_URL . (
         <div class="telephony-dialer-heading">
             <div>
                 <span class="telephony-eyebrow">AGENDA PERSONAL</span>
-                <h2>Teléfonos guardados</h2>
-                <p>Tus números frecuentes, privados y listos para marcar.</p>
+                <h2>Contactos telefónicos</h2>
+                <p>Guarda los nombres y teléfonos de las personas prospecto con las que hablas.</p>
             </div>
         </div>
         <?php if (($panelTelefono['mensaje_contactos'] ?? '') !== ''): ?>
@@ -142,9 +142,9 @@ $urlActualizarMarcador = BASE_URL . (
         <?php endif; ?>
         <form class="telephony-contact-form" data-telephony-contact-form autocomplete="off">
             <div>
-                <label for="telefono-contacto-nombre">Nombre o referencia</label>
+                <label for="telefono-contacto-nombre">Nombre del prospecto</label>
                 <input id="telefono-contacto-nombre" type="text" class="form-control"
-                    maxlength="90" placeholder="Ej. Oficina Guanajuato" required
+                    maxlength="90" placeholder="Ej. Mariana López" required
                     data-telephony-contact-name>
             </div>
             <div>
@@ -187,7 +187,7 @@ $urlActualizarMarcador = BASE_URL . (
         </div>
         <p class="telephony-contacts-empty" data-telephony-contacts-empty
             <?= !empty($contactos) ? 'hidden' : '' ?>>
-            No hay teléfonos guardados. Agrega el primero arriba.
+            Aún no has guardado prospectos en tu agenda. Agrega el primero arriba.
         </p>
     </section>
     </div>

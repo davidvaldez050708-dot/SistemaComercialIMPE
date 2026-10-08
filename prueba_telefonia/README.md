@@ -262,10 +262,13 @@ En Inicio y en Teléfono > Marcador se presenta el mismo bloque de telefonía:
 - Teclado y marcación desde la extensión PBX individual asignada.
 - Identificador de llamada (Caller ID) solo cuando esté configurado en la cuenta.
 - Resumen e historial personal de eventos PBX de los últimos 30 días.
-- Agenda privada para guardar hasta 150 nombres y teléfonos, seleccionar números
-  para marcar y eliminar registros. Pulsar "Usar número" **no inicia una llamada**.
+- Agenda privada para guardar hasta 150 personas prospecto con nombre y teléfono,
+  seleccionar números para marcar y eliminar registros. No se deben guardar
+  nombres de instituciones en este formulario. Pulsar "Usar número"
+  **no inicia una llamada**.
 - El historial es técnico, no facturación, y depende de los eventos recibidos
-  por el webhook. La agenda no crea instituciones, oportunidades ni seguimientos.
+  por el webhook. La agenda guarda solamente contactos telefónicos de personas;
+  no crea instituciones, oportunidades, expedientes de prospecto ni seguimientos.
 
 La agenda se prepara mediante la migración
 `database/migrations/2026_10_07_d_telefonia_contactos_personales.sql`.

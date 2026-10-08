@@ -9,7 +9,7 @@ $extensionVentas = trim((string)($panelTelefonoVentas['extension'] ?? ''));
             <div class="telephony-sales-intro-copy">
                 <span class="telephony-eyebrow">TU JORNADA</span>
                 <h2>Mi teléfono</h2>
-                <p>Tu espacio para llamar, consultar actividad y organizar números frecuentes.</p>
+                <p>Tu espacio para llamar y organizar teléfonos de personas prospecto.</p>
             </div>
             <div class="telephony-sales-intro-status">
                 <span class="telephony-sales-status-icon" aria-hidden="true">

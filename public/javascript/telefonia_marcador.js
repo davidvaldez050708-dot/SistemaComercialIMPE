@@ -150,7 +150,7 @@
                 return;
             }
             contactNumber.value = String(state.destination || numberInput.value || '');
-            sayContact('Añade un nombre o referencia y pulsa Guardar número.');
+            sayContact('Escribe el nombre del prospecto y pulsa Guardar número.');
             contactName.focus();
         });
 
@@ -266,7 +266,7 @@
                 contactName.focus();
                 sayContact(
                     contactNumber.value
-                        ? 'Completa el nombre y guarda el número.'
+                        ? 'Escribe el nombre del prospecto para guardar su teléfono.'
                         : 'Primero escribe un número en el marcador.'
                 );
             });
@@ -282,7 +282,7 @@
                 return;
             }
             if (contactName.value.trim().length < 2) {
-                sayContact('Escribe un nombre de al menos 2 caracteres.', true);
+                sayContact('Escribe el nombre del prospecto (mínimo 2 caracteres).', true);
                 return;
             }
 
