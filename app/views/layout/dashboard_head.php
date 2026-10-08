@@ -182,6 +182,7 @@ if ($controllerDashboard === 'aliadoreporte') {
 
 if ($esTerritorialDashboard) {
     $cssOpcionalDashboard[] = 'territorios_resumen_refinamientos.css';
+    $cssOpcionalDashboard[] = 'educacion_brecha.css';
 }
 
 if ($esAliadosDashboard) {
