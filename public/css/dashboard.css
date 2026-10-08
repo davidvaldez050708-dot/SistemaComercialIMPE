@@ -9392,3 +9392,304 @@
         justify-content: flex-start;
     }
 }
+
+
+/* Información territorial · Brecha de escolaridad por grupos de edad
+   Misma escala visual, contraste y superficie de las tarjetas oficiales. */
+.data-education-gap {
+    margin-top: 18px;
+    padding: 20px;
+    border: 1px solid #e5e9ef;
+    border-radius: 14px;
+    background: #fff;
+    min-width: 0;
+}
+.data-education-gap-heading {
+    display: flex;
+    align-items: flex-start;
+    gap: 13px;
+    margin-bottom: 20px;
+}
+.data-education-gap-heading-icon {
+    display: grid;
+    place-items: center;
+    width: 39px;
+    height: 39px;
+    flex: 0 0 39px;
+    color: #273a8a;
+    background: #f0f3fb;
+    border: 1px solid #e4eaf8;
+    border-radius: 11px;
+    font-size: 18px;
+}
+.data-education-gap-heading-copy { flex: 1 1 auto; min-width: 0; }
+.data-education-gap-eyebrow {
+    display: block;
+    margin-bottom: 4px;
+    color: #6d7480;
+    font-size: 10px;
+    font-weight: 750;
+    letter-spacing: .075em;
+}
+.data-education-gap-heading h4 {
+    margin: 0;
+    color: #16223b;
+    font-size: 16px;
+    font-weight: 750;
+    line-height: 1.35;
+}
+.data-education-gap-heading p {
+    margin: 5px 0 0;
+    max-width: 770px;
+    color: #6d7480;
+    font-size: 12px;
+    line-height: 1.55;
+}
+.data-education-gap-period {
+    flex: 0 0 auto;
+    border: 1px solid rgba(10, 143, 122, .18);
+    border-radius: 999px;
+    padding: 6px 10px;
+    background: rgba(10, 143, 122, .06);
+    color: #0a7868;
+    font-size: 11px;
+    font-weight: 750;
+}
+.data-education-gap-group + .data-education-gap-group {
+    margin-top: 18px;
+}
+.data-education-gap-subheading {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+    margin-bottom: 10px;
+}
+.data-education-gap-subheading > div {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    color: #16223b;
+    font-size: 12px;
+}
+.data-education-gap-subheading i { color: #273a8a; font-size: 14px; }
+.data-education-gap-subheading > span { color: #77808d; font-size: 10.5px; }
+.data-education-gap-cards {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+.data-education-gap-card {
+    min-width: 0;
+    padding: 17px;
+    border: 1px solid #e5e9ef;
+    border-radius: 12px;
+    background: #f9fafc;
+}
+.data-education-gap-card-top {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+.data-education-gap-card-icon {
+    display: inline-grid;
+    place-items: center;
+    width: 31px;
+    height: 31px;
+    flex: 0 0 31px;
+    border-radius: 9px;
+    color: #273a8a;
+    background: #eef1f9;
+    font-size: 15px;
+}
+.data-education-gap-age {
+    display: inline-block;
+    padding: 5px 9px;
+    border: 1px solid #e1e7f0;
+    border-radius: 999px;
+    background: #fff;
+    color: #556179;
+    font-size: 10px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+.data-education-gap-card h5 {
+    margin: 0;
+    color: #16223b;
+    font-size: 13px;
+    font-weight: 750;
+    line-height: 1.4;
+}
+.data-education-gap-description {
+    margin: 4px 0 13px;
+    color: #6d7480;
+    font-size: 11.5px;
+    line-height: 1.5;
+}
+.data-education-gap-value {
+    overflow-wrap: anywhere;
+    color: #16223b;
+    font-size: clamp(23px, 2.2vw, 30px);
+    font-weight: 780;
+    letter-spacing: -.035em;
+    line-height: 1.15;
+    font-variant-numeric: tabular-nums;
+}
+.data-education-gap-value-caption {
+    margin-top: 2px;
+    margin-bottom: 16px;
+    color: #6d7480;
+    font-size: 10.5px;
+}
+.data-education-gap-percent-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 7px;
+}
+.data-education-gap-percent-row span { color: #6d7480; font-size: 10.5px; }
+.data-education-gap-percent-row strong {
+    color: #0a7868;
+    font-size: 14px;
+    font-weight: 750;
+    font-variant-numeric: tabular-nums;
+}
+.data-education-gap-track {
+    height: 7px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #e6eaf1;
+}
+.data-education-gap-track span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: #0a8f7a;
+}
+.data-education-gap-card-footer {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 5px 14px;
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid #e5e9ef;
+    color: #657084;
+    font-size: 10.5px;
+}
+.data-education-gap-card-footer i { margin-right: 3px; color: #798aa2; }
+.data-education-gap-warning {
+    display: flex;
+    align-items: flex-start;
+    gap: 7px;
+    margin: 12px 0 0;
+    color: #6d7480;
+    font-size: 10.5px;
+    line-height: 1.5;
+}
+.data-education-gap-warning i { flex: 0 0 auto; color: #0a7868; }
+.data-education-gap-method { margin-top: 12px; font-size: 10.5px; }
+.data-education-gap-method summary {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    cursor: pointer;
+    color: #273a8a;
+    font-size: 10.5px;
+    font-weight: 700;
+    list-style: none;
+}
+.data-education-gap-method summary::-webkit-details-marker { display: none; }
+.data-education-gap-method summary i { font-size: 9px; transition: transform .15s; }
+.data-education-gap-method[open] summary i { transform: rotate(180deg); }
+.data-education-gap-method p {
+    margin: 8px 0 0;
+    color: #6d7480;
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+}
+.data-education-gap-method a { display: inline-block; margin-top: 8px; color: #273a8a; overflow-wrap: anywhere; }
+.data-education-gap-pending {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    margin-top: 17px;
+    padding: 16px;
+    border: 1px dashed #dfe5ee;
+    border-radius: 10px;
+    background: #fff;
+}
+.data-education-gap-pending i { font-size: 17px; color: #8693a6; }
+.data-education-gap-pending strong { color: #516078; font-size: 12px; }
+.data-education-gap-pending span { color: #77808d; font-size: 11px; line-height: 1.5; }
+.data-education-gap-card-youth {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 24px;
+    border-color: rgba(39, 58, 138, .15);
+    background: #f7f9fe;
+}
+.data-education-gap-youth-copy,
+.data-education-gap-youth-stats { min-width: 0; }
+.data-education-gap-card-youth .data-education-gap-card-top {
+    justify-content: flex-start;
+}
+.data-education-gap-youth-stats {
+    padding-left: 20px;
+    border-left: 1px solid #e1e7f0;
+}
+.data-education-gap-footer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 20px;
+    justify-content: space-between;
+    margin-top: 15px;
+    color: #6d7480;
+    font-size: 10.5px;
+    line-height: 1.55;
+}
+.data-education-gap-footer i { color: #0a7868; }
+.data-education-gap-import {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid #edf0f5;
+}
+.data-education-gap-import > summary {
+    display: flex;
+    gap: 9px;
+    align-items: center;
+    cursor: pointer;
+    list-style: none;
+    color: #617089;
+    font-size: 11px;
+    font-weight: 650;
+}
+.data-education-gap-import > summary::-webkit-details-marker { display: none; }
+.data-education-gap-import > summary > i:last-child { margin-left: auto; font-size: 10px; }
+.data-education-gap-import[open] > summary > i:last-child { transform: rotate(180deg); }
+.data-education-gap-import > p {
+    margin: 10px 0;
+    color: #6d7480;
+    font-size: 11px;
+}
+.data-education-gap-import-form { display: flex; flex-wrap: wrap; align-items: center; gap: 9px 14px; }
+.data-education-gap-import-form label { font-size: 11px; font-weight: 700; color: #4b5870; }
+.data-education-gap-import-form input { min-width: 0; max-width: 100%; font-size: 11px; }
+.data-education-gap-import-form a { font-size: 11px; color: #273a8a; }
+.data-education-gap-import-form button { font-size: 11px; }
+.data-education-gap-import-form [role="status"] { flex-basis: 100%; font-size: 11px; }
+@media (max-width: 767.98px) {
+    .data-education-gap { padding: 16px; }
+    .data-education-gap-heading { flex-wrap: wrap; }
+    .data-education-gap-heading-copy { flex-basis: calc(100% - 52px); }
+    .data-education-gap-period { margin-left: 52px; }
+    .data-education-gap-cards { grid-template-columns: minmax(0, 1fr); }
+    .data-education-gap-card-youth { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+    .data-education-gap-youth-stats { border-left: 0; border-top: 1px solid #e1e7f0; padding: 15px 0 0; }
+    .data-education-gap-value { font-size: 25px; }
+}
