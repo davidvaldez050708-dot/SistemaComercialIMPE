@@ -760,102 +760,204 @@ class ReporteConvocatoriaPdfService
             return $this->crearParrafo(
                 $documento,
                 'No hay información disponible.',
-                ['tamano' => 15, 'color' => self::COLOR_SECUNDARIO, 'despues' => 60]
+                [
+                    'tamano' => 15,
+                    'color' => self::COLOR_SECUNDARIO,
+                    'despues' => 60
+                ]
             );
         }
 
+        /*
+         * Gráfica vertical para el PDF.
+         * Conserva exactamente los mismos datos del reporte y únicamente
+         * cambia su presentación: las barras crecen de abajo hacia arriba.
+         */
         $valores = array_map(static function ($dato) {
             return max(0, (int)($dato['valor'] ?? 0));
         }, $datos);
+
         $maximo = max(1, max($valores));
-        $anchos = $this->anchos($anchoUtil, [32, 56, 12]);
-        $tabla = $this->crearTablaBase($documento, $anchoUtil, $anchos, false);
+        $columnas = count($datos);
+        $porcentajeColumna = 100 / max(1, $columnas);
+        $porcentajes = array_fill(0, $columnas, $porcentajeColumna);
+        $anchos = $this->anchos($anchoUtil, $porcentajes);
+        $tabla = $this->crearTablaBase(
+            $documento,
+            $anchoUtil,
+            $anchos,
+            false
+        );
 
-        foreach ($datos as $dato) {
-            $etiqueta = (string)($dato['etiqueta'] ?? '—');
-            $valor = max(0, (int)($dato['valor'] ?? 0));
-            $fila = $this->crearFila($documento, false);
-            $fila->appendChild($this->crearCelda(
-                $documento,
-                $etiqueta,
-                $anchos[0],
-                ['tamano' => 14, 'color' => self::COLOR_TEXTO]
-            ));
+        // Valor numérico sobre cada barra.
+        $filaValores = $this->crearFila($documento, false);
 
-            $celdaBarra = $this->crearCelda(
+        foreach ($datos as $indice => $dato) {
+            $filaValores->appendChild($this->crearCelda(
                 $documento,
-                '',
-                $anchos[1],
-                ['tamano' => 4, 'color' => self::COLOR_TEXTO]
-            );
-            $parrafoExistente = $celdaBarra->getElementsByTagNameNS(self::W_NS, 'p')->item(0);
-            if ($parrafoExistente instanceof DOMNode) {
-                $celdaBarra->removeChild($parrafoExistente);
-            }
-
-            if ($valor <= 0) {
-                $barra = $this->crearTablaBase($documento, $anchos[1], [$anchos[1]], false);
-                $filaBarra = $this->crearFila($documento, false);
-                $filaBarra->appendChild($this->crearCeldaBarra(
-                    $documento,
-                    $anchos[1],
-                    self::COLOR_FONDO_PRIMARIO
-                ));
-                $barra->appendChild($filaBarra);
-            } elseif ($valor >= $maximo) {
-                $barra = $this->crearTablaBase($documento, $anchos[1], [$anchos[1]], false);
-                $filaBarra = $this->crearFila($documento, false);
-                $filaBarra->appendChild($this->crearCeldaBarra(
-                    $documento,
-                    $anchos[1],
-                    self::COLOR_PRIMARIO
-                ));
-                $barra->appendChild($filaBarra);
-            } else {
-                $relleno = max(1, (int)round($anchos[1] * ($valor / $maximo)));
-                $vacio = max(1, $anchos[1] - $relleno);
-                $barra = $this->crearTablaBase(
-                    $documento,
-                    $anchos[1],
-                    [$relleno, $vacio],
-                    false
-                );
-                $filaBarra = $this->crearFila($documento, false);
-                $filaBarra->appendChild($this->crearCeldaBarra(
-                    $documento,
-                    $relleno,
-                    self::COLOR_PRIMARIO
-                ));
-                $filaBarra->appendChild($this->crearCeldaBarra(
-                    $documento,
-                    $vacio,
-                    self::COLOR_FONDO_PRIMARIO
-                ));
-                $barra->appendChild($filaBarra);
-            }
-
-            $celdaBarra->appendChild($barra);
-            $celdaBarra->appendChild($this->crearParrafo(
-                $documento,
-                '',
-                ['tamano' => 4, 'despues' => 0]
-            ));
-            $fila->appendChild($celdaBarra);
-            $fila->appendChild($this->crearCelda(
-                $documento,
-                (string)$valor,
-                $anchos[2],
+                (string)max(0, (int)($dato['valor'] ?? 0)),
+                $anchos[$indice],
                 [
-                    'tamano' => 14,
+                    'tamano' => 13,
                     'negrita' => true,
                     'color' => self::COLOR_TEXTO,
-                    'alineacion' => 'right'
+                    'alineacion' => 'center'
                 ]
             ));
+        }
+
+        $tabla->appendChild($filaValores);
+
+        /*
+         * El área de barras se construye en segmentos para que Word/PDF
+         * mantenga una gráfica estable sin depender de imágenes o librerías.
+         */
+        $segmentos = 12;
+
+        for ($segmento = $segmentos; $segmento >= 1; $segmento--) {
+            $fila = $this->crearFilaGraficaVertical(
+                $documento,
+                155
+            );
+
+            foreach ($datos as $indice => $dato) {
+                $valor = max(0, (int)($dato['valor'] ?? 0));
+                $segmentosActivos = $valor > 0
+                    ? max(
+                        1,
+                        (int)ceil(
+                            ($valor / $maximo) * $segmentos
+                        )
+                    )
+                    : 0;
+
+                $activo = $segmento <= $segmentosActivos;
+
+                $fila->appendChild($this->crearCeldaSegmentoGrafica(
+                    $documento,
+                    $anchos[$indice],
+                    $activo
+                        ? self::COLOR_PRIMARIO
+                        : self::COLOR_FONDO_PRIMARIO
+                ));
+            }
+
             $tabla->appendChild($fila);
         }
 
+        // Abreviatura de tipo debajo de cada barra.
+        $filaTipos = $this->crearFila($documento, false);
+        $filaMeses = $this->crearFila($documento, false);
+
+        foreach ($datos as $indice => $dato) {
+            $etiqueta = trim((string)($dato['etiqueta'] ?? '—'));
+            $partes = array_map('trim', explode('·', $etiqueta, 2));
+            $mes = $partes[0] ?? '—';
+            $tipo = strtolower($partes[1] ?? '');
+
+            if (strpos($tipo, 'bachillerato') !== false) {
+                $tipoCorto = 'Bach.';
+            } elseif (strpos($tipo, 'titul') !== false) {
+                $tipoCorto = 'Tit.';
+            } else {
+                $tipoCorto = $partes[1] ?? '';
+            }
+
+            $filaTipos->appendChild($this->crearCelda(
+                $documento,
+                $tipoCorto,
+                $anchos[$indice],
+                [
+                    'tamano' => 10,
+                    'color' => self::COLOR_SECUNDARIO,
+                    'alineacion' => 'center'
+                ]
+            ));
+
+            $filaMeses->appendChild($this->crearCelda(
+                $documento,
+                $mes,
+                $anchos[$indice],
+                [
+                    'tamano' => 12,
+                    'negrita' => true,
+                    'color' => self::COLOR_TEXTO,
+                    'alineacion' => 'center'
+                ]
+            ));
+        }
+
+        $tabla->appendChild($filaTipos);
+        $tabla->appendChild($filaMeses);
+
         return $tabla;
+    }
+
+    private function crearFilaGraficaVertical(DOMDocument $documento, $altura)
+    {
+        $fila = $this->w($documento, 'tr');
+        $propiedades = $this->w($documento, 'trPr');
+        $propiedades->appendChild($this->w($documento, 'cantSplit'));
+
+        $alturaNodo = $this->w($documento, 'trHeight');
+        $this->attr(
+            $alturaNodo,
+            'w',
+            'w',
+            'val',
+            (string)max(1, (int)$altura)
+        );
+        $this->attr($alturaNodo, 'w', 'w', 'hRule', 'exact');
+        $propiedades->appendChild($alturaNodo);
+
+        $fila->appendChild($propiedades);
+
+        return $fila;
+    }
+
+    private function crearCeldaSegmentoGrafica(
+        DOMDocument $documento,
+        $ancho,
+        $color
+    ) {
+        $celda = $this->w($documento, 'tc');
+        $propiedades = $this->w($documento, 'tcPr');
+
+        $anchoNodo = $this->w($documento, 'tcW');
+        $this->attr($anchoNodo, 'w', 'w', 'w', (string)$ancho);
+        $this->attr($anchoNodo, 'w', 'w', 'type', 'dxa');
+        $propiedades->appendChild($anchoNodo);
+
+        $relleno = $this->w($documento, 'shd');
+        $this->attr($relleno, 'w', 'w', 'val', 'clear');
+        $this->attr($relleno, 'w', 'w', 'fill', (string)$color);
+        $propiedades->appendChild($relleno);
+
+        $margenes = $this->w($documento, 'tcMar');
+
+        foreach (['top', 'left', 'bottom', 'right'] as $lado) {
+            $margen = $this->w($documento, $lado);
+            $valor = in_array($lado, ['left', 'right'], true) ? 55 : 0;
+            $this->attr($margen, 'w', 'w', 'w', (string)$valor);
+            $this->attr($margen, 'w', 'w', 'type', 'dxa');
+            $margenes->appendChild($margen);
+        }
+
+        $propiedades->appendChild($margenes);
+        $celda->appendChild($propiedades);
+
+        $celda->appendChild($this->crearParrafo(
+            $documento,
+            '',
+            [
+                'tamano' => 2,
+                'antes' => 0,
+                'despues' => 0,
+                'alineacion' => 'center'
+            ]
+        ));
+
+        return $celda;
     }
 
     private function crearCeldaBarra(DOMDocument $documento, $ancho, $color)
