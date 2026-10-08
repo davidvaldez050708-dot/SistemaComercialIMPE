@@ -966,13 +966,24 @@ class DataTerritorialController
 
         @set_time_limit(180);
 
+        /*
+         * En una actualización masiva no volvemos a descargar Estados que ya
+         * tienen el cruce 25-49 disponible. Los faltantes sí se fuerzan para
+         * saltar el TTL de un error anterior y reintentar de inmediato.
+         */
+        $perfilActual =
+            (new PerfilEducativoPrioritarioModel())
+                ->obtenerPorEstado($estadoId, $claveEstado);
+        $yaDisponible =
+            ($perfilActual['disponible'] ?? false) === true;
+
         $resultado =
             (new InegiPerfilEducativoPrioritarioAutoService())
                 ->obtenerOActualizar(
                     $estadoId,
                     $claveEstado,
                     true,
-                    true
+                    !$yaDisponible
                 );
 
         $estadoSincronizacion = strtoupper(trim((string)(
@@ -982,7 +993,11 @@ class DataTerritorialController
 
         if (
             ($resultado['disponible'] ?? false) !== true ||
-            $estadoSincronizacion !== 'ACTUALIZADO'
+            !in_array(
+                $estadoSincronizacion,
+                ['ACTUALIZADO', 'DISPONIBLE'],
+                true
+            )
         ) {
             $mensaje = trim((string)(
                 $resultado['actualizacion_automatica']['mensaje']
