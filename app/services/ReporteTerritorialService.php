@@ -3,6 +3,7 @@
 require_once __DIR__ . '/../models/DataTerritorialModel.php';
 require_once __DIR__ . '/../models/PoblacionObjetivoEducativaModel.php';
 require_once __DIR__ . '/../models/EscolaridadAdultaModel.php';
+require_once __DIR__ . '/../models/EscolaridadJuvenilModel.php';
 
 class ReporteTerritorialService
 {
@@ -32,6 +33,7 @@ class ReporteTerritorialService
         $rezagoEducativo = $this->modeloTerritorial->obtenerRezagoEducativoOficialEstado($estadoId);
         $indicadoresEducativos = $this->modeloTerritorial->obtenerIndicadoresEducativos($estadoId);
         $escolaridadAdulta = (new EscolaridadAdultaModel())->obtenerPorEstado($estadoId);
+        $escolaridadJuvenil = (new EscolaridadJuvenilModel())->obtenerPorEstado($estadoId);
         $priorizacionMunicipal = $this->modeloTerritorial->obtenerPriorizacionMunicipal($estadoId, 5);
         $secretarias = $this->modeloTerritorial->obtenerSecretarias($estadoId);
         $fuentes = $this->modeloTerritorial->obtenerFuentesPorEstado($estadoId);
@@ -66,6 +68,7 @@ class ReporteTerritorialService
             'rezago_educativo' => $rezagoEducativo,
             'indicadores_educativos' => $indicadoresEducativos,
             'escolaridad_adulta' => $escolaridadAdulta,
+            'escolaridad_juvenil' => $escolaridadJuvenil,
             'perfil_educativo' => $perfilEducativo,
             'perfil_educativo_25_49' => $perfilEducativo2549,
             'priorizacion_municipal' => $priorizacionMunicipal,
