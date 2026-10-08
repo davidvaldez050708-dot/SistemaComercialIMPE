@@ -3,6 +3,10 @@ session_start();
 
 require_once dirname(__DIR__, 2) .
     '/app/services/TelefoniaExtensionService.php';
+require_once dirname(__DIR__, 2) .
+    '/app/models/RolModel.php';
+require_once dirname(__DIR__, 2) .
+    '/app/helpers/PermissionHelper.php';
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
@@ -21,7 +25,6 @@ function responderJson(array $data, int $status = 200): void
 }
 
 $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
-$rol = trim((string)($_SESSION['rol'] ?? ''));
 
 if ($usuarioId <= 0) {
     responderJson([
@@ -30,16 +33,19 @@ if ($usuarioId <= 0) {
     ], 401);
 }
 
-if (
-    !in_array(
-        $rol,
-        ['Analista de Datos', 'Asesor de Ventas'],
-        true
-    )
-) {
+if (!isset($_SESSION['permisos'])) {
+    $modeloRol = new RolModel();
+    $modeloRol->inicializarPermisosSistema();
+    $_SESSION['permisos'] =
+        $modeloRol->obtenerCodigosPermisosPorRol(
+            (int)($_SESSION['rol_id'] ?? 0)
+        );
+}
+
+if (!tienePermiso('telefonia.usar')) {
     responderJson([
         'ok' => false,
-        'mensaje' => 'Tu perfil no tiene acceso al motor WebRTC.'
+        'mensaje' => 'Tu perfil no tiene permiso para utilizar el motor WebRTC.'
     ], 403);
 }
 
@@ -92,10 +98,13 @@ if (!$asignacionTelefonica) {
     ], 422);
 }
 
-if (empty($asignacionTelefonica['permite_salientes'])) {
+if (
+    empty($asignacionTelefonica['permite_salientes']) &&
+    empty($asignacionTelefonica['permite_entrantes'])
+) {
     responderJson([
         'ok' => false,
-        'mensaje' => 'Tu extensión no tiene habilitadas llamadas salientes.'
+        'mensaje' => 'Tu extensión no tiene capacidades telefónicas habilitadas.'
     ], 403);
 }
 
@@ -143,6 +152,11 @@ try {
         'sip_login' => $sipLogin,
         'webrtc_key' => $webrtcKey,
         'expires_in_hours' => 72,
+        'permite_salientes' => !empty($asignacionTelefonica['permite_salientes']),
+        'permite_entrantes' => !empty($asignacionTelefonica['permite_entrantes']),
+        'permite_transferir' =>
+            !empty($asignacionTelefonica['permite_transferir']) &&
+            tienePermiso('telefonia.transferir'),
         'extension_source' =>
             (string)($asignacionTelefonica['origen'] ?? 'USUARIO'),
     ]);
