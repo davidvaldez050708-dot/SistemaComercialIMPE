@@ -1,288 +1,486 @@
-/* Inicio telefónico para Asesores de Ventas y marcador compartido. */
-.telephony-sales-intro {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 16px;
+/* Telefonía de Ventas: sigue las proporciones de Inicio Analista y Cuenta Clave.
+   Solo se aplica al área telefónica; no modifica formularios globales. */
+.telephony-sales-dashboard,
+.telephony-dialer-page {
+    display: grid;
+    gap: 14px;
+    min-width: 0;
+    width: 100%;
 }
+.telephony-sales-intro {
+    min-height: 100px;
+    padding: 17px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface);
+    box-shadow: 0 8px 18px rgba(28, 46, 74, .03);
+}
+.telephony-sales-intro-copy { min-width: 0; }
 .telephony-sales-intro h2 {
-    margin: 5px 0 5px;
-    font-size: 21px;
+    margin: 4px 0 3px;
+    font-size: 20px;
+    line-height: 1.25;
     font-weight: 800;
     color: var(--color-text-primary);
 }
 .telephony-sales-intro p {
     margin: 0;
-    font-size: 12px;
+    font-size: 11.5px;
+    line-height: 1.5;
     color: var(--color-text-secondary);
 }
-.telephony-dialer-page {
-    display: grid;
-    gap: 16px;
-    max-width: 1250px;
+.telephony-sales-intro-status {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 13px;
+    border: 1px solid #dce4ef;
+    border-radius: var(--radius-md);
+    background: #f8faff;
+    flex: 0 1 340px;
+    min-width: 0;
 }
-.telephony-dialer-card,
-.telephony-dial-history,
-.telephony-contacts-card,
-.telephony-activity-panel {
-    padding: 22px;
+.telephony-sales-status-icon {
+    width: 36px;
+    height: 36px;
+    flex: 0 0 36px;
+    display: grid;
+    place-items: center;
+    border-radius: 10px;
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
+    font-size: 16px;
+}
+.telephony-sales-intro-status div { min-width: 0; }
+.telephony-sales-intro-status strong,
+.telephony-sales-intro-status div > span {
+    display: block;
+    overflow-wrap: anywhere;
+}
+.telephony-sales-intro-status strong {
+    font-size: 12px;
+    font-weight: 800;
+    color: var(--color-text-primary);
+}
+.telephony-sales-intro-status div > span {
+    margin-top: 2px;
+    font-size: 10px;
+    line-height: 1.4;
+    color: var(--color-text-secondary);
+}
+.telephony-sales-dashboard .telephony-identity { display: none; }
+/* La etiqueta del marcador se había quedado con la fuente predeterminada
+   en Inicio; la clase .telephony-eyebrow solo existía en telefonia.css. */
+.telephony-sales-dashboard .telephony-eyebrow,
+.telephony-dialer-page .telephony-eyebrow,
+.telephony-sales-permission .telephony-eyebrow {
+    display: block;
+    margin: 0 0 5px;
+    font-size: 9px;
+    line-height: 1.4;
+    font-weight: 800;
+    color: var(--color-primary);
+    letter-spacing: .075em;
+    text-transform: uppercase;
+}
+.telephony-workspace-grid {
+    display: grid;
+    grid-template-columns: minmax(320px, 410px) minmax(0, 1fr);
+    gap: 14px;
+    align-items: stretch;
+    min-width: 0;
+}
+.telephony-workspace-grid > * { min-width: 0; }
+.telephony-dialer-page > .dashboard-panel,
+.telephony-workspace-grid > .dashboard-panel,
+.telephony-sales-permission {
+    padding: 17px 18px;
+}
+.telephony-sales-permission { max-width: 680px; }
+.telephony-sales-permission .panel-title { margin: 4px 0 10px; }
+.telephony-sales-permission p {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--color-text-secondary);
 }
 .telephony-dialer-heading {
     display: flex;
-    align-items: flex-start;
     justify-content: space-between;
-    gap: 18px;
-    margin-bottom: 20px;
+    align-items: flex-start;
+    gap: 12px;
+    margin: 0 0 14px;
 }
+.telephony-dialer-heading > div { min-width: 0; }
 .telephony-dialer-heading h2 {
-    font-size: 17px;
-    font-weight: 800;
+    margin: 3px 0 4px;
     color: var(--color-text-primary);
-    margin: 4px 0 6px;
+    font-size: 14px;
+    font-weight: 800;
+    line-height: 1.3;
 }
-.telephony-dialer-heading p,
-.telephony-dial-info p {
-    font-size: 12px;
-    line-height: 1.6;
+.telephony-dialer-heading p {
+    margin: 0;
     color: var(--color-text-secondary);
-    margin: 0 0 10px;
+    font-size: 11px;
+    line-height: 1.45;
 }
 .telephony-identity {
     display: grid;
-    gap: 7px;
-    text-align: right;
     justify-items: end;
+    gap: 5px;
+    min-width: 0;
 }
-.telephony-identity small {
-    color: var(--color-text-secondary);
-    font-size: 11px;
-}
+.telephony-identity small { font-size: 10px; color: var(--color-text-secondary); }
 .telephony-extension-pill {
-    padding: 9px 13px;
     display: inline-flex;
     align-items: center;
-    gap: 9px;
-    border: 1px solid var(--color-border);
-    border-radius: 11px;
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--color-primary);
+    gap: 8px;
+    padding: 8px 11px;
     white-space: nowrap;
-    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    color: var(--color-primary);
+    font-size: 11px;
+    font-weight: 800;
+    background: #f8faff;
 }
-.telephony-dialer-body {
-    display: grid;
-    grid-template-columns: minmax(265px, 390px) minmax(0, 1fr);
-    gap: 24px;
-    align-items: start;
+.telephony-dialer-page .telephony-dialer-card .alert {
+    padding: 9px 11px;
+    margin: 0 0 13px;
+    border-radius: 9px;
+    font-size: 11px;
+    line-height: 1.5;
 }
-.telephony-keypad { display: grid; gap: 10px; min-width: 0; }
+.telephony-dialer-body { display: block; }
+.telephony-keypad { display: grid; gap: 8px; min-width: 0; }
 .telephony-keypad label,
 .telephony-contact-form label {
-    font-size: 12px;
-    font-weight: 700;
+    display: block;
+    margin: 0;
     color: var(--color-text-secondary);
-}
-.telephony-keypad input {
-    min-height: 53px;
-    font-size: 22px;
+    font-size: 11px;
     font-weight: 700;
-    letter-spacing: .5px;
+}
+.telephony-dialer-page .telephony-keypad input {
+    min-height: 45px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: .035em;
     background: #f8fafc;
 }
 .telephony-keypad small {
-    font-size: 11px;
     color: var(--color-text-secondary);
-    line-height: 1.5;
+    font-size: 10px;
+    line-height: 1.45;
 }
 .telephony-key-grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 9px;
-    margin: 2px 0;
+    gap: 7px;
+    margin: 2px 0 3px;
 }
 .telephony-key-grid button {
-    min-height: 50px;
+    height: 40px;
+    min-height: 40px;
+    padding: 4px;
     border: 1px solid var(--color-border);
-    border-radius: 11px;
-    background: var(--color-surface);
+    border-radius: 9px;
+    background: #fff;
     color: var(--color-text-primary);
-    font-size: 19px;
-    font-weight: 700;
+    font-size: 16px;
+    font-weight: 750;
+    line-height: 1;
+    transition: background-color .15s ease, border-color .15s ease;
 }
 .telephony-key-grid button:hover {
-    border-color: var(--color-primary);
     background: #f1f5ff;
+    border-color: var(--color-primary);
 }
 .telephony-key-grid button:focus-visible,
 .telephony-contact-remove:focus-visible {
     outline: 2px solid var(--color-primary);
     outline-offset: 2px;
 }
-.telephony-dial-submit {
+.telephony-dialer-page .telephony-dial-submit {
+    min-height: 40px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 9px;
-    min-height: 45px;
+    gap: 7px;
+    border-radius: 9px;
+    font-size: 12px;
 }
 .telephony-dial-status {
-    min-height: 20px;
+    min-height: 17px;
+    font-size: 10.5px;
+    line-height: 1.4;
     color: var(--color-text-secondary);
-    font-size: 12px;
 }
 .telephony-dial-status.is-error,
 .telephony-contacts-feedback.is-error { color: #a02929; }
 .telephony-dial-secondary {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 9px;
+    gap: 7px;
+}
+.telephony-dial-secondary > .btn {
+    min-height: 36px;
+    padding: 7px 10px;
+    font-size: 11px;
+    border-radius: 9px;
 }
 .telephony-dial-secondary [hidden],
 .telephony-contacts-empty[hidden] { display: none !important; }
-.telephony-dial-info {
-    padding: 19px;
-    border: 1px solid var(--color-border);
-    border-radius: 13px;
-    background: #f8fafc;
+.telephony-dial-footnote {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin: 10px 0 0;
+    padding: 9px;
+    border-radius: 9px;
+    background: #f8faff;
+    color: var(--color-text-secondary);
+    font-size: 10px;
+    line-height: 1.45;
 }
-.telephony-dial-info h3 {
-    font-size: 14px;
-    font-weight: 800;
-    margin: 0 0 16px;
-    color: var(--color-text-primary);
-}
-.telephony-dial-kpis,
-.telephony-activity-metrics {
+.telephony-dial-footnote i { flex: 0 0 auto; color: var(--color-primary); }
+/* Indicadores compactos y separados, como los de los otros dashboards. */
+.telephony-summary-strip {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 10px;
-    margin: 0 0 17px;
-}
-.telephony-dial-kpis > div,
-.telephony-activity-metrics > div {
-    display: grid;
-    align-content: start;
-    gap: 6px;
-    padding: 13px;
-    border: 1px solid var(--color-border);
-    border-radius: 10px;
-    background: var(--color-surface);
-    min-width: 0;
-}
-.telephony-dial-kpis strong,
-.telephony-activity-metrics strong {
-    font-size: 22px;
-    font-weight: 800;
-    color: var(--color-primary);
-}
-.telephony-dial-kpis span,
-.telephony-activity-metrics span {
-    font-size: 11px;
-    line-height: 1.45;
-    color: var(--color-text-secondary);
-}
-.telephony-activity-panel { margin-bottom: 16px; }
-.telephony-activity-metrics { grid-template-columns: repeat(5, minmax(0, 1fr)); }
-.telephony-dial-tip {
-    display: flex;
-    gap: 9px;
-    align-items: flex-start;
-    padding: 11px;
-    margin-bottom: 13px;
-    border-radius: 10px;
-    background: var(--color-surface);
-}
-.telephony-dial-tip i { color: var(--color-primary); }
-.telephony-dial-tip p { margin: 0; }
-.telephony-contact-form {
-    display: grid;
-    grid-template-columns: minmax(160px, 1fr) minmax(160px, 1fr) auto;
-    align-items: end;
     gap: 12px;
 }
-.telephony-contact-form > div { display: grid; min-width: 0; gap: 6px; }
-.telephony-contact-form .form-control { min-height: 42px; background: #f8fafc; }
-.telephony-contact-form-actions {
-    display: flex !important;
-    flex-wrap: wrap;
-    align-items: flex-end;
-    gap: 8px !important;
-}
-.telephony-contact-form-actions .btn { min-height: 42px; font-size: 12px; }
-.telephony-contacts-feedback {
-    margin: 9px 0;
-    min-height: 17px;
-    font-size: 12px;
-    color: var(--color-text-secondary);
-}
-.telephony-contacts-list {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-}
-.telephony-contact-row {
+.telephony-summary-item {
+    min-height: 78px;
     display: flex;
-    justify-content: space-between;
     align-items: center;
     gap: 12px;
     min-width: 0;
-    padding: 11px 13px;
+    padding: 12px 15px;
     border: 1px solid var(--color-border);
-    border-radius: 12px;
+    border-radius: var(--radius-lg);
+    background: var(--color-surface);
+    box-shadow: 0 8px 18px rgba(28, 46, 74, .03);
+}
+.telephony-summary-icon {
+    width: 38px;
+    height: 38px;
+    flex: 0 0 38px;
+    display: grid;
+    place-items: center;
+    border-radius: 10px;
+    border: 1px solid #d8e4f5;
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
+    font-size: 15px;
+}
+.telephony-summary-item > div { min-width: 0; }
+.telephony-summary-item strong {
+    display: block;
+    color: var(--color-text-primary);
+    font-size: 20px;
+    font-weight: 800;
+    line-height: 1.05;
+}
+.telephony-summary-item div > span {
+    display: block;
+    margin-top: 5px;
+    color: var(--color-text-secondary);
+    font-size: 10.5px;
+    font-weight: 650;
+    line-height: 1.4;
+}
+/* Agenda: se adapta al espacio restante, sin filas excesivamente altas. */
+.telephony-contact-form {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    align-items: end;
+}
+.telephony-contact-form > div { display: grid; gap: 6px; min-width: 0; }
+.telephony-contact-form .form-control {
+    min-height: 39px;
+    padding: 8px 11px;
+    border-radius: 9px;
+    background: #f8fafc;
+    font-size: 12px;
+}
+.telephony-contact-form-actions {
+    grid-column: 1 / -1;
+    display: flex !important;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px !important;
+}
+.telephony-contact-form-actions .btn {
+    min-height: 36px;
+    border-radius: 9px;
+    padding: 8px 12px;
+    font-size: 11px;
+}
+.telephony-contacts-feedback {
+    min-height: 0;
+    margin: 7px 0 4px;
+    font-size: 10.5px;
+    color: var(--color-text-secondary);
+    line-height: 1.45;
+}
+.telephony-contacts-feedback:empty { display: none; }
+.telephony-contacts-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    align-content: start;
+    max-height: 270px;
+    overflow-y: auto;
+}
+.telephony-contact-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 9px;
+    min-width: 0;
+    padding: 9px 10px;
+    border: 1px solid var(--color-border);
+    border-radius: 9px;
     background: #f8fafc;
 }
-.telephony-contact-name { display: grid; gap: 4px; min-width: 0; }
+.telephony-contact-name {
+    display: grid;
+    gap: 3px;
+    min-width: 0;
+}
 .telephony-contact-name strong {
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 800;
     color: var(--color-text-primary);
     overflow-wrap: anywhere;
 }
-.telephony-contact-name small { font-size: 11px; color: var(--color-text-secondary); }
-.telephony-contact-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-.telephony-contact-actions .btn { font-size: 11px; padding: 8px 10px; }
+.telephony-contact-name small {
+    font-size: 10px;
+    color: var(--color-text-secondary);
+    overflow-wrap: anywhere;
+}
+.telephony-contact-actions {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 6px;
+}
+.telephony-contact-actions .btn { padding: 7px 8px; font-size: 10px; }
 .telephony-contact-remove {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 34px;
-    min-height: 34px;
+    width: 32px;
+    min-width: 32px;
+    height: 32px;
     border: 1px solid var(--color-border);
-    border-radius: 9px;
-    color: #b02e37;
-    background: var(--color-surface);
+    border-radius: 8px;
+    color: #ad3e48;
+    background: #fff;
 }
 .telephony-contacts-empty {
-    margin: 0;
-    padding: 15px;
-    text-align: center;
-    font-size: 12px;
-    color: var(--color-text-secondary);
+    margin: 9px 0 0;
+    padding: 13px;
+    border-radius: 9px;
     background: #f8fafc;
+    color: var(--color-text-secondary);
+    text-align: center;
+    font-size: 11px;
+}
+/* Historial: densidad consistente con las tablas operativas del CRM. */
+.telephony-dial-history .table-responsive { min-width: 0; }
+.telephony-dial-history .table { margin: 0; }
+.telephony-dial-history .telephony-dialer-heading > .btn {
+    min-height: 34px;
+    padding: 7px 11px;
+    border-radius: 9px;
+    font-size: 11px;
+    white-space: nowrap;
+}
+.telephony-history-table th {
+    padding: 9px 12px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+}
+.telephony-history-table td {
+    padding: 10px 12px;
+    font-size: 11px;
+    color: var(--color-text-primary);
+    line-height: 1.45;
+}
+.telephony-history-table td.text-center { padding: 18px 12px !important; }
+.telephony-activity-panel { margin-bottom: 16px; }
+.telephony-activity-metrics {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 10px;
+    margin: 0 0 17px;
+}
+.telephony-activity-metrics > div {
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+    padding: 13px;
+    border: 1px solid var(--color-border);
     border-radius: 10px;
+    background: var(--color-surface);
 }
-.telephony-history-table th { font-size: 11px; white-space: nowrap; }
-.telephony-history-table td { font-size: 12px; }
-@media (max-width: 1180px) {
-    .telephony-contact-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .telephony-contact-form-actions { grid-column: 1 / -1; }
+.telephony-activity-metrics strong {
+    font-size: 21px;
+    font-weight: 800;
+    color: var(--color-primary);
 }
-@media (max-width: 880px) {
-    .telephony-dialer-body { grid-template-columns: 1fr; }
-    .telephony-activity-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.telephony-activity-metrics span {
+    font-size: 11px;
+    color: var(--color-text-secondary);
 }
-@media (max-width: 660px) {
-    .telephony-dialer-card,
-    .telephony-dial-history,
-    .telephony-contacts-card { padding: 16px; }
-    .telephony-dialer-heading { flex-direction: column; }
-    .telephony-identity { justify-items: start; text-align: left; }
-    .telephony-dial-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .telephony-contact-form { grid-template-columns: 1fr; }
+@media (max-width: 1199px) {
+    .telephony-workspace-grid {
+        grid-template-columns: minmax(310px, 390px) minmax(0, 1fr);
+    }
     .telephony-contacts-list { grid-template-columns: 1fr; }
 }
-@media (max-width: 380px) {
-    .telephony-dial-kpis { grid-template-columns: 1fr; }
-    .telephony-dial-secondary { grid-template-columns: 1fr; }
+@media (max-width: 960px) {
+    .telephony-workspace-grid { grid-template-columns: minmax(0, 1fr); }
+    .telephony-contacts-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .telephony-dialer-page .telephony-dialer-card { max-width: none; }
+}
+@media (max-width: 720px) {
+    .telephony-sales-intro {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 13px;
+        padding: 16px;
+    }
+    .telephony-sales-intro-status { flex: 0 0 auto; }
+    .telephony-workspace-grid > .dashboard-panel,
+    .telephony-dialer-page > .dashboard-panel { padding: 15px; }
+    .telephony-summary-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .telephony-summary-item:last-child { grid-column: 1 / -1; }
+    .telephony-activity-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 520px) {
+    .telephony-contact-form { grid-template-columns: 1fr; }
+    .telephony-contact-form-actions { justify-content: stretch; }
+    .telephony-contacts-list { grid-template-columns: 1fr; }
+    .telephony-dialer-heading { gap: 8px; }
+    .telephony-dialer-heading h2 { font-size: 14px; }
+    .telephony-summary-item { padding: 10px; gap: 8px; }
+    .telephony-summary-icon { width: 32px; height: 32px; flex-basis: 32px; }
+    .telephony-summary-item strong { font-size: 18px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .telephony-key-grid button { transition: none; }
 }

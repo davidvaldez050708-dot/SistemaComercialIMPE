@@ -20,12 +20,37 @@ $urlActualizarMarcador = BASE_URL . (
     data-contact-delete-url="<?= $esc(BASE_URL . 'index.php?controller=telefonia&action=eliminarContacto') ?>"
     data-csrf-token="<?= $esc($panelTelefono['csrf'] ?? '') ?>">
 
+    <section class="telephony-summary-strip" aria-label="Resumen telefónico de los últimos 30 días">
+        <article class="telephony-summary-item">
+            <span class="telephony-summary-icon" aria-hidden="true"><i class="bi bi-telephone"></i></span>
+            <div>
+                <strong><?= (int)($historial['atenciones'] ?? 0) ?></strong>
+                <span>Atenciones · 30 días</span>
+            </div>
+        </article>
+        <article class="telephony-summary-item">
+            <span class="telephony-summary-icon" aria-hidden="true"><i class="bi bi-telephone-inbound"></i></span>
+            <div>
+                <strong><?= (int)($historial['contestadas'] ?? 0) ?></strong>
+                <span>Contestadas</span>
+            </div>
+        </article>
+        <article class="telephony-summary-item">
+            <span class="telephony-summary-icon" aria-hidden="true"><i class="bi bi-clock-history"></i></span>
+            <div>
+                <strong><?= number_format((int)($historial['segundos'] ?? 0) / 60, 1) ?></strong>
+                <span>Minutos observados</span>
+            </div>
+        </article>
+    </section>
+
+    <div class="telephony-workspace-grid">
     <section class="dashboard-panel telephony-dialer-card">
         <div class="telephony-dialer-heading">
             <div>
-                <span class="telephony-eyebrow">TELÉFONO · EXTENSIÓN PERSONAL</span>
-                <h2>Marcador telefónico</h2>
-                <p>Marca directamente. No necesitas crear instituciones ni registrar una etapa comercial.</p>
+                <span class="telephony-eyebrow">MARCACIÓN</span>
+                <h2>Marcar número</h2>
+                <p>Escribe o selecciona un teléfono para llamar.</p>
             </div>
             <div class="telephony-identity">
                 <span class="telephony-extension-pill">
@@ -50,7 +75,7 @@ $urlActualizarMarcador = BASE_URL . (
                 <input id="numero-dialer" class="form-control" type="tel"
                     inputmode="tel" maxlength="22" placeholder="Ej. 477 123 4567"
                     data-telephony-dial-number>
-                <small>Para México escribe 10 dígitos. Para otros países incluye el prefijo internacional.</small>
+                <small>México: 10 dígitos. Otros países: agrega el prefijo.</small>
 
                 <div class="telephony-key-grid" role="group" aria-label="Teclado telefónico">
                     <?php foreach (['1', '2', '3', '4', '5', '6', '7', '8', '9', '+', '0', '⌫'] as $tecla): ?>
@@ -80,37 +105,20 @@ $urlActualizarMarcador = BASE_URL . (
                 </div>
             </form>
 
-            <aside class="telephony-dial-info">
-                <h3>Resumen de mi actividad</h3>
-                <div class="telephony-dial-kpis">
-                    <div>
-                        <strong><?= (int)($historial['atenciones'] ?? 0) ?></strong>
-                        <span>Atenciones (30 días)</span>
-                    </div>
-                    <div>
-                        <strong><?= (int)($historial['contestadas'] ?? 0) ?></strong>
-                        <span>Contestadas</span>
-                    </div>
-                    <div>
-                        <strong><?= number_format((int)($historial['segundos'] ?? 0) / 60, 1) ?></strong>
-                        <span>Minutos observados</span>
-                    </div>
-                </div>
-                <div class="telephony-dial-tip">
-                    <i class="bi bi-info-circle" aria-hidden="true"></i>
-                    <p>Las llamadas del historial provienen de las notificaciones de Zadarma. La duración observada no representa el saldo ni la facturación del plan.</p>
-                </div>
-                <p>Si tu extensión tiene permiso para recibir transferencias, activa los auriculares de la barra superior al empezar tu jornada.</p>
-            </aside>
+            <p class="telephony-dial-footnote">
+                <i class="bi bi-info-circle" aria-hidden="true"></i>
+                Los minutos se calculan con eventos de Zadarma; no equivalen al saldo del plan.
+            </p>
+
         </div>
     </section>
 
     <section class="dashboard-panel telephony-contacts-card">
         <div class="telephony-dialer-heading">
             <div>
-                <span class="telephony-eyebrow">MI AGENDA PERSONAL</span>
+                <span class="telephony-eyebrow">AGENDA PERSONAL</span>
                 <h2>Teléfonos guardados</h2>
-                <p>Guarda números frecuentes para volver a marcarlos. Solo tú puedes consultarlos.</p>
+                <p>Tus números frecuentes, privados y listos para marcar.</p>
             </div>
         </div>
         <?php if (($panelTelefono['mensaje_contactos'] ?? '') !== ''): ?>
@@ -131,7 +139,7 @@ $urlActualizarMarcador = BASE_URL . (
             </div>
             <div class="telephony-contact-form-actions">
                 <button type="button" class="btn btn-system-light"
-                    data-telephony-contact-from-dialer>Usar número del marcador</button>
+                    data-telephony-contact-from-dialer>Tomar del marcador</button>
                 <button type="submit" class="btn btn-system-save"
                     data-telephony-contact-save>
                     <i class="bi bi-bookmark-plus" aria-hidden="true"></i>
@@ -163,16 +171,17 @@ $urlActualizarMarcador = BASE_URL . (
         </div>
         <p class="telephony-contacts-empty" data-telephony-contacts-empty
             <?= !empty($contactos) ? 'hidden' : '' ?>>
-            Todavía no tienes números guardados. Agrega uno para comenzar.
+            No hay teléfonos guardados. Agrega el primero arriba.
         </p>
     </section>
+    </div>
 
     <section class="dashboard-panel telephony-dial-history">
         <div class="telephony-dialer-heading">
             <div>
-                <span class="telephony-eyebrow">MI HISTORIAL</span>
+                <span class="telephony-eyebrow">ACTIVIDAD RECIENTE</span>
                 <h2>Llamadas recientes</h2>
-                <p>Últimos 30 días · hasta 30 atenciones registradas de tu extensión</p>
+                <p>Hasta 30 llamadas de tu extensión registradas en los últimos 30 días.</p>
             </div>
             <a class="btn btn-system-light" href="<?= $esc($urlActualizarMarcador) ?>">
                 <i class="bi bi-arrow-clockwise" aria-hidden="true"></i>
@@ -205,7 +214,7 @@ $urlActualizarMarcador = BASE_URL . (
                     <?php if (empty($historial['recientes'])): ?>
                         <tr>
                             <td colspan="5" class="text-center text-muted py-4">
-                                Aún no hay llamadas registradas para tu extensión.
+                                Todavía no hay llamadas registradas en tu extensión.
                             </td>
                         </tr>
                     <?php endif; ?>
