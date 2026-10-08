@@ -345,18 +345,18 @@ $texto = static fn($valor) => htmlspecialchars(
                             required>
                     </div>
 
-                    <div class="mb-3">
+                    <div class="mb-3 correo-marketing-message-editor">
                         <label
-                            class="form-label"
+                            class="correo-marketing-message-editor-label"
                             for="correo_marketing_mensaje">
                             Mensaje
                         </label>
 
                         <textarea
-                            class="form-control system-form-control correo-marketing-message"
+                            class="correo-marketing-message"
                             id="correo_marketing_mensaje"
                             name="cuerpo"
-                            rows="5"
+                            rows="8"
                             maxlength="20000"
                             placeholder="Escribe tu mensaje..."
                             data-marketing-mail-body
