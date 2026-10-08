@@ -5,6 +5,7 @@ on:
     paths:
       - "app/controllers/DataTerritorialController.php"
       - "app/models/EscolaridadAdultaModel.php"
+      - "app/models/EscolaridadJuvenilModel.php"
       - "app/services/EscolaridadAdultaImportService.php"
       - "app/services/InegiEscolaridadAdultaXlsxService.php"
       - "app/services/InegiPerfilEducativoPrioritarioAutoService.php"
@@ -13,10 +14,14 @@ on:
       - "app/services/ReporteTerritorialPdfService.php"
       - "app/views/data_territorial/index.php"
       - "app/views/reportes/data_territorial.php"
+      - "app/views/layout/dashboard_head.php"
+      - "public/css/educacion_brecha.css"
+      - "database/migrations/2026_10_08_escolaridad_juvenil.sql"
   push:
     branches:
       - "feature/indicadores-escolaridad-adulta-estados"
       - "feature/inegi-escolaridad-adulta-auto-2020"
+      - "feature/escolaridad-juvenil-y-diseno-brecha-20261008"
 
 jobs:
   php-lint:
@@ -33,6 +38,7 @@ jobs:
           php -v
           php -l app/controllers/DataTerritorialController.php
           php -l app/models/EscolaridadAdultaModel.php
+          php -l app/models/EscolaridadJuvenilModel.php
           php -l app/services/EscolaridadAdultaImportService.php
           php -l app/services/InegiEscolaridadAdultaXlsxService.php
           php -l app/services/InegiPerfilEducativoPrioritarioAutoService.php
@@ -41,6 +47,7 @@ jobs:
           php -l app/services/ReporteTerritorialPdfService.php
           php -l app/views/data_territorial/index.php
           php -l app/views/reportes/data_territorial.php
+          php -l app/views/layout/dashboard_head.php
 
       - name: Prueba estructural de edades sin acceso a base de datos
         run: php tests/inegi_escolaridad_adulta_xlsx_test.php
