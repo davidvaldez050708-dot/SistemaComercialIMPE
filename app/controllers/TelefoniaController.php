@@ -87,10 +87,13 @@ class TelefoniaController
                 ], 422);
             }
 
-            if (empty($asignacion['permite_salientes'])) {
+            if (
+                empty($asignacion['permite_salientes']) &&
+                empty($asignacion['permite_entrantes'])
+            ) {
                 $this->responderJson([
                     'ok' => false,
-                    'mensaje' => 'Tu extensión no tiene habilitadas llamadas salientes.'
+                    'mensaje' => 'Tu extensión no tiene capacidades telefónicas habilitadas.'
                 ], 403);
             }
 
@@ -100,6 +103,9 @@ class TelefoniaController
                 'caller_id' => (string)($asignacion['caller_id'] ?? ''),
                 'permite_salientes' => !empty($asignacion['permite_salientes']),
                 'permite_entrantes' => !empty($asignacion['permite_entrantes']),
+                'permite_transferir' =>
+                    !empty($asignacion['permite_transferir']) &&
+                    tienePermiso('telefonia.transferir'),
                 'origen' => (string)($asignacion['origen'] ?? 'USUARIO')
             ]);
         } catch (Throwable $e) {
@@ -127,11 +133,14 @@ class TelefoniaController
 
             if (
                 !$asignacionTelefonica ||
-                empty($asignacionTelefonica['permite_salientes'])
+                (
+                    empty($asignacionTelefonica['permite_salientes']) &&
+                    empty($asignacionTelefonica['permite_entrantes'])
+                )
             ) {
                 http_response_code(403);
                 die(
-                    'Tu usuario no tiene una extensión activa para llamadas salientes.'
+                    'Tu usuario no tiene una extensión activa con capacidades telefónicas.'
                 );
             }
         } catch (Throwable $e) {
@@ -226,19 +235,14 @@ class TelefoniaController
     private function validarUsuarioTelefoniaJson()
     {
         $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
-        $rol = trim((string)($_SESSION['rol'] ?? ''));
 
         if (
             $usuarioId <= 0 ||
-            !in_array(
-                $rol,
-                ['Analista de Datos', 'Asesor de Ventas'],
-                true
-            )
+            !tienePermiso('telefonia.usar')
         ) {
             $this->responderJson([
                 'ok' => false,
-                'mensaje' => 'Tu perfil no tiene acceso al motor de telefonía.'
+                'mensaje' => 'Tu perfil no tiene permiso para utilizar telefonía.'
             ], 403);
         }
     }
@@ -246,18 +250,13 @@ class TelefoniaController
     private function validarUsuarioTelefoniaHtml()
     {
         $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
-        $rol = trim((string)($_SESSION['rol'] ?? ''));
 
         if (
             $usuarioId <= 0 ||
-            !in_array(
-                $rol,
-                ['Analista de Datos', 'Asesor de Ventas'],
-                true
-            )
+            !tienePermiso('telefonia.usar')
         ) {
             http_response_code(403);
-            die('Tu perfil no tiene acceso al motor de telefonía.');
+            die('Tu perfil no tiene permiso para utilizar telefonía.');
         }
     }
 
