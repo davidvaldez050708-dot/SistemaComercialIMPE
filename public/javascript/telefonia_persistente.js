@@ -1504,7 +1504,16 @@
             '[data-phone-close]'
         )?.addEventListener(
             'click',
-            cancelPrepared
+            function () {
+                if (
+                    state?.phase === 'finished' &&
+                    String(state?.context?.type || '').toUpperCase() === 'DIALER'
+                ) {
+                    clearFinished();
+                } else {
+                    cancelPrepared();
+                }
+            }
         );
 
         [
@@ -1887,6 +1896,8 @@
         const incoming =
             String(state.direction || '') ===
                 'incoming';
+        const isIndependentDialer =
+            String(state.context?.type || '').toUpperCase() === 'DIALER';
 
         if (title) {
             title.textContent =
@@ -1964,12 +1975,18 @@
         if (closeButton) {
             closeButton.hidden =
                 state.active ||
-                finished ||
-                ![
-                    'preparing',
-                    'prepared',
-                    'error'
-                ].includes(phase);
+                (
+                    finished
+                        ? !isIndependentDialer
+                        : ![
+                            'preparing',
+                            'prepared',
+                            'error'
+                        ].includes(phase)
+                );
+            closeButton.title = finished && isIndependentDialer
+                ? 'Cerrar llamada finalizada'
+                : 'Cerrar teléfono';
         }
 
         if (activeActions) {
@@ -1980,13 +1997,15 @@
         if (resultButton) {
             resultButton.hidden =
                 !finished ||
-                incoming;
+                incoming ||
+                isIndependentDialer;
         }
 
         if (compactResult) {
             compactResult.hidden =
                 !finished ||
-                incoming;
+                incoming ||
+                isIndependentDialer;
         }
 
         const readyToStart =
