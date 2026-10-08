@@ -186,39 +186,46 @@ class InegiPerfilEducativoPrioritarioAutoService
 
     private function urlsTabuladoEstado(string $claveEstado): array
     {
+        /*
+         * INEGI no usa una convención única de abreviaturas en todos sus
+         * productos históricos. Para algunos tabulados 2020 el nombre físico
+         * difiere de la abreviatura habitual (p. ej. Campeche=cam,
+         * Chiapas=chs). Conservamos variantes para que una respuesta 404/HTML
+         * no bloquee la sincronización del Estado.
+         */
         $abreviaturas = [
-            '01' => 'ags',
-            '02' => 'bc',
-            '03' => 'bcs',
-            '04' => 'camp',
-            '05' => 'coah',
-            '06' => 'col',
-            '07' => 'chis',
-            '08' => 'chih',
-            '09' => 'cdmx',
-            '10' => 'dgo',
-            '11' => 'gto',
-            '12' => 'gro',
-            '13' => 'hgo',
-            '14' => 'jal',
-            '15' => 'mex',
-            '16' => 'mich',
-            '17' => 'mor',
-            '18' => 'nay',
-            '19' => 'nl',
-            '20' => 'oax',
-            '21' => 'pue',
-            '22' => 'qro',
-            '23' => 'qroo',
-            '24' => 'slp',
-            '25' => 'sin',
-            '26' => 'son',
-            '27' => 'tab',
-            '28' => 'tamps',
-            '29' => 'tlax',
-            '30' => 'ver',
-            '31' => 'yuc',
-            '32' => 'zac'
+            '01' => ['ags'],
+            '02' => ['bc'],
+            '03' => ['bcs'],
+            '04' => ['cam', 'camp'],
+            '05' => ['coa', 'coah'],
+            '06' => ['col'],
+            '07' => ['chs', 'chis'],
+            '08' => ['chh', 'chih'],
+            '09' => ['cdmx', 'df'],
+            '10' => ['dgo'],
+            '11' => ['gto'],
+            '12' => ['gro'],
+            '13' => ['hgo'],
+            '14' => ['jal'],
+            '15' => ['mex'],
+            '16' => ['mich', 'mic'],
+            '17' => ['mor'],
+            '18' => ['nay'],
+            '19' => ['nl'],
+            '20' => ['oax'],
+            '21' => ['pue'],
+            '22' => ['qro'],
+            '23' => ['qroo'],
+            '24' => ['slp'],
+            '25' => ['sin'],
+            '26' => ['son'],
+            '27' => ['tab'],
+            '28' => ['tam', 'tamps'],
+            '29' => ['tla', 'tlax'],
+            '30' => ['ver'],
+            '31' => ['yuc'],
+            '32' => ['zac']
         ];
 
         $claveEstado = str_pad(
@@ -227,17 +234,24 @@ class InegiPerfilEducativoPrioritarioAutoService
             '0',
             STR_PAD_LEFT
         );
-        $abreviatura = $abreviaturas[$claveEstado] ?? '';
+        $variantes = $abreviaturas[$claveEstado] ?? [];
 
-        if ($abreviatura === '') {
+        if (empty($variantes)) {
             return [];
         }
 
         $base = 'https://www.inegi.org.mx/contenidos/programas/ccpv/2020/tabulados/';
+        $urls = [];
 
-        return [
-            $base . 'cpv2020_b_' . $abreviatura . '_07_educacion.xlsx'
-        ];
+        foreach ($variantes as $abreviatura) {
+            $urls[] =
+                $base .
+                'cpv2020_b_' .
+                $abreviatura .
+                '_07_educacion.xlsx';
+        }
+
+        return array_values(array_unique($urls));
     }
 
     private function extraerEnlacesCompatibles(string $html, string $base): array
@@ -256,7 +270,8 @@ class InegiPerfilEducativoPrioritarioAutoService
 
             if (
                 strpos($texto, '07_08') === false &&
-                strpos($texto, 'b2020_07_08_m') === false
+                strpos($texto, 'b2020_07_08_m') === false &&
+                strpos($texto, '_07_educacion') === false
             ) {
                 continue;
             }
@@ -461,22 +476,31 @@ class InegiPerfilEducativoPrioritarioAutoService
         $firma = @file_get_contents($destino, false, null, 0, 4);
         $ruta = strtolower((string)parse_url($url, PHP_URL_PATH));
 
-        $extension =
-            substr($ruta, -5) === '.xlsx'
-                ? 'xlsx'
-                : (
-                    substr($ruta, -4) === '.zip' ||
-                    strpos($tipo, 'zip') !== false ||
-                    $firma === "PK\x03\x04"
-                        ? 'zip'
-                        : ''
-                );
+        /*
+         * XLSX y ZIP comparten contenedor ZIP. No confiamos únicamente en la
+         * extensión de la URL: INEGI puede responder una página HTML de error
+         * conservando una ruta terminada en .xlsx.
+         */
+        $esZipReal = $firma === "PK\x03\x04";
+        $extension = '';
+
+        if ($esZipReal && substr($ruta, -5) === '.xlsx') {
+            $extension = 'xlsx';
+        } elseif (
+            $esZipReal &&
+            (
+                substr($ruta, -4) === '.zip' ||
+                strpos($tipo, 'zip') !== false
+            )
+        ) {
+            $extension = 'zip';
+        }
 
         return [
             'ok' => $extension !== '',
             'extension' => $extension,
             'mensaje' => $extension === ''
-                ? 'La descarga oficial no tiene formato XLSX/ZIP reconocible.'
+                ? 'INEGI respondió, pero el archivo recibido no es un XLSX/ZIP válido.'
                 : ''
         ];
     }
