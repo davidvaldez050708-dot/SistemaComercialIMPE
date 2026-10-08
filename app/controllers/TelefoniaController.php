@@ -156,6 +156,40 @@ class TelefoniaController
         require_once __DIR__ . '/../views/telefonia/host.php';
     }
 
+    public function destinosTransferencia()
+    {
+        $this->validarUsuarioTelefoniaJson();
+
+        if (!tienePermiso('telefonia.transferir')) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'Tu perfil no tiene permiso para transferir llamadas.'
+            ], 403);
+        }
+
+        try {
+            $destinos =
+                $this->service->listarDestinosTransferencia(
+                    (int)($_SESSION['usuario_id'] ?? 0)
+                );
+
+            $this->responderJson([
+                'ok' => true,
+                'destinos' => $destinos
+            ]);
+        } catch (Throwable $e) {
+            error_log(
+                'No fue posible consultar destinos de transferencia: ' .
+                $e->getMessage()
+            );
+
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'No fue posible consultar las extensiones disponibles.'
+            ], 500);
+        }
+    }
+
     public function guardarExtension()
     {
         $this->validarAdministrador();
