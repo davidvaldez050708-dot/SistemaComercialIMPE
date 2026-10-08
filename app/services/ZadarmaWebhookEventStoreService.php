@@ -54,6 +54,22 @@ class ZadarmaWebhookEventStoreService
             );
         }
 
+        $indice = $this->connection->query(
+            "SHOW INDEX FROM telefonia_zadarma_eventos
+             WHERE Key_name = 'idx_zadarma_incoming_lookup'"
+        );
+
+        if (!$indice || $indice->num_rows === 0) {
+            $this->connection->query(
+                "ALTER TABLE telefonia_zadarma_eventos
+                 ADD KEY idx_zadarma_incoming_lookup (
+                    internal,
+                    evento,
+                    received_at
+                 )"
+            );
+        }
+
         return true;
     }
 
@@ -209,6 +225,110 @@ class ZadarmaWebhookEventStoreService
         return $filas;
     }
 
+    public function buscarEntranteRecientePorExtension(
+        $extension,
+        $desdeUnix = 0
+    ) {
+        $extension = trim((string)$extension);
+        $desdeUnix = (int)$desdeUnix;
+
+        if ($extension === '') {
+            return null;
+        }
+
+        if ($desdeUnix <= 0) {
+            $desdeUnix = time() - 600;
+        }
+
+        $desdeUnix = max(time() - 3600, $desdeUnix);
+        $desde = date('Y-m-d H:i:s', $desdeUnix);
+
+        $sql = "SELECT *
+                FROM telefonia_zadarma_eventos
+                WHERE evento = 'NOTIFY_INTERNAL'
+                  AND internal = ?
+                  AND received_at >= ?
+                ORDER BY id DESC
+                LIMIT 1";
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param('ss', $extension, $desde);
+        $stmt->execute();
+        $inicio = $stmt->get_result()->fetch_assoc();
+
+        if (!$inicio) {
+            return null;
+        }
+
+        $inicioNormalizado = $this->normalizarFila($inicio);
+        $pbxCallId = trim(
+            (string)($inicioNormalizado['pbx_call_id'] ?? '')
+        );
+
+        if ($pbxCallId === '') {
+            return null;
+        }
+
+        $eventos = $this->obtenerPorPbxCallId($pbxCallId);
+        $respuesta = null;
+        $fin = null;
+        $transferida = null;
+
+        foreach ($eventos as $evento) {
+            $tipo = strtoupper(
+                trim((string)($evento['event'] ?? ''))
+            );
+
+            if (
+                $tipo === 'NOTIFY_ANSWER' &&
+                trim((string)($evento['internal'] ?? '')) === $extension
+            ) {
+                $respuesta = $evento;
+            }
+
+            if (
+                $tipo === 'NOTIFY_END' &&
+                trim((string)($evento['internal'] ?? '')) === $extension
+            ) {
+                $fin = $evento;
+            }
+
+            if (
+                $tipo === 'NOTIFY_INTERNAL' &&
+                trim((string)($evento['internal'] ?? '')) !== $extension &&
+                trim((string)($evento['transfer_from'] ?? '')) === $extension
+            ) {
+                $transferida = $evento;
+            }
+        }
+
+        $estado = 'ringing';
+
+        if ($fin) {
+            $estado = 'ended';
+        } elseif ($transferida) {
+            $estado = 'transferred';
+        } elseif ($respuesta) {
+            $estado = 'answered';
+        }
+
+        return [
+            'pbx_call_id' => $pbxCallId,
+            'estado' => $estado,
+            'caller_id' => (string)($inicioNormalizado['caller_id'] ?? ''),
+            'called_did' => (string)($inicioNormalizado['called_did'] ?? ''),
+            'internal' => $extension,
+            'call_start' => (string)($inicioNormalizado['call_start'] ?? ''),
+            'answer_at' => (string)($respuesta['received_at'] ?? ''),
+            'end_at' => (string)($fin['received_at'] ?? ''),
+            'duration' => max(0, (int)($fin['duration'] ?? 0)),
+            'disposition' => (string)($fin['disposition'] ?? ''),
+            'transfer_to' =>
+                (string)($transferida['internal'] ?? ''),
+            'transfer_type' =>
+                (string)($transferida['transfer_type'] ?? ''),
+        ];
+    }
+
     public function buscarCallIdGrabacion($pbxCallId)
     {
         $pbxCallId = trim((string)$pbxCallId);
@@ -248,6 +368,12 @@ class ZadarmaWebhookEventStoreService
             (string)($fila['internal'] ?? ($registro['internal'] ?? ''));
         $registro['destination'] =
             (string)($fila['destination'] ?? ($registro['destination'] ?? ''));
+        $registro['called_did'] =
+            (string)($registro['called_did'] ?? '');
+        $registro['transfer_from'] =
+            (string)($registro['transfer_from'] ?? '');
+        $registro['transfer_type'] =
+            (string)($registro['transfer_type'] ?? '');
         $registro['caller_id'] =
             (string)($fila['caller_id'] ?? ($registro['caller_id'] ?? ''));
         $registro['call_start'] =
