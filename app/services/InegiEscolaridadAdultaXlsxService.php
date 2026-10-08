@@ -98,7 +98,7 @@ class InegiEscolaridadAdultaXlsxService
                 // Educación previa a media superior + 1–2 grados de nivel medio superior.
                 $sinMediaConfirmada += $this->sumar($m, [2, 3, 4, 8, 12, 18]);
                 // Niveles o grados insuficientes para confirmar conclusión.
-                $incierto18 += $this->sumar($m, [13, 20, 21, 28]);
+                $incierto18 += $this->sumar($m, [14, 16, 20, 21, 28]);
             }
             $baseJoven = $sinMediaJoven = $indeterminadoJoven = 0;
             foreach (self::EDADES_JOVENES as $edad) {
@@ -107,7 +107,7 @@ class InegiEscolaridadAdultaXlsxService
                 // Mismo método conservador de 18+: inferiores a media superior
                 // y 1–2 grados aprobados de preparatoria o bachillerato.
                 $sinMediaJoven += $this->sumar($m, [2, 3, 4, 8, 12, 18]);
-                $indeterminadoJoven += $this->sumar($m, [13, 20, 21, 28]);
+                $indeterminadoJoven += $this->sumar($m, [14, 16, 20, 21, 28]);
             }
             if ($base25 <= 0 || $base18 <= $base25 || $baseJoven <= 0 ||
                 $sinSuperior > $base25 || $sinMediaConfirmada > $base18 ||
@@ -133,8 +133,8 @@ class InegiEscolaridadAdultaXlsxService
 
             $ref = 'https://www.inegi.org.mx/contenidos/programas/ccpv/2020/doc/Censo2020_criterios_tabulados_CPV_est_mun.pdf';
             $metodo25 = 'INEGI B2020_07_08_M (2020): grupos de 25 a 29 hasta 85 años y más, sólo filas Total estatal y sexo Total. Suma de categorías 2,3,4,8,12,13,17,21 de niveles que no acreditan estudios superiores; se excluyen no especificados del numerador. Denominador: población total 25 años y más.';
-            $metodo18 = 'INEGI B2020_07_08_M (2020): edad desplegada 18 y 19; grupo 20-24; grupos 25-29 hasta 85 años y más, sin duplicar subtotales. Conteo mínimo identificable sin media superior concluida: categorías 2,3,4,8,12 y 1–2 años de bachillerato 18. La duración de estudios técnicos con secundaria (13), la normal básica (21) y los grados no especificados (20,28) no permiten determinar conclusión. NO es un conteo exacto de todas las personas sin media superior concluida; denominador: toda la población 18 años y más. Personas con grado o nivel indeterminado: ' . $incierto18 . '. Criterios: ' . $ref;
-            $metodoJoven = 'INEGI B2020_07_08_M (2020): únicamente edades individuales 15, 16 y 17 años, sexo Total y total estatal, evitando el subtotal 15–19 y las filas municipales. Conteo mínimo identificable sin media superior concluida: categorías de nivel 2,3,4,8,12 y 1–2 grados de bachillerato 18. No se confunde con abandono escolar: incluye a quienes todavía cursan bachillerato. No se atribuye conclusión a estudios técnicos con secundaria (13), normal básica (21) ni grados no especificados (20,28). Personas en categorías no determinantes: ' . $indeterminadoJoven . '. Denominador: toda la población de 15 a 17 años. Criterios: ' . $ref;
+            $metodo18 = 'INEGI B2020_07_08_M (2020): edad desplegada 18 y 19; grupo 20-24; grupos 25-29 hasta 85 años y más, sin duplicar subtotales. Conteo mínimo identificable sin media superior concluida: categorías 2,3,4,8,12 y 1–2 años de bachillerato 18. Estudios técnicos de 1–2 grados o grado no especificado (14,16), la normal básica (21) y los grados no especificados (20,28) no permiten determinar conclusión. NO es un conteo exacto de todas las personas sin media superior concluida; denominador: toda la población 18 años y más. Personas con grado o nivel indeterminado: ' . $incierto18 . '. Criterios: ' . $ref;
+            $metodoJoven = 'INEGI B2020_07_08_M (2020): únicamente edades individuales 15, 16 y 17 años, sexo Total y total estatal, evitando el subtotal 15–19 y las filas municipales. Conteo mínimo identificable sin media superior concluida: categorías de nivel 2,3,4,8,12 y 1–2 grados de bachillerato 18. No se confunde con abandono escolar: incluye a quienes todavía cursan bachillerato. Se dejan indeterminados los estudios técnicos de 1–2 grados o no especificados (14,16), normal básica (21) ni grados no especificados (20,28). Personas en categorías no determinantes: ' . $indeterminadoJoven . '. Denominador: toda la población de 15 a 17 años. Criterios: ' . $ref;
             $filas = [
                 ['estado_id' => $estadoId, 'codigo_indicador' => EscolaridadAdultaModel::SIN_SUPERIOR_25,
                  'anio' => 2020, 'poblacion_base' => $base25, 'cantidad_personas' => $sinSuperior,
