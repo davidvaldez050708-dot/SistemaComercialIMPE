@@ -355,6 +355,7 @@
     cursor: pointer;
 }
 
+.persistent-phone-transfer select,
 .persistent-phone-transfer input {
     width: 100%;
     min-height: 39px;
@@ -369,9 +370,15 @@
     outline: none;
 }
 
+.persistent-phone-transfer select:focus,
 .persistent-phone-transfer input:focus {
     border-color: var(--color-primary, #273a8a);
     box-shadow: 0 0 0 3px rgba(39, 58, 138, .09);
+}
+
+.persistent-phone-transfer select {
+    margin-bottom: 7px;
+    appearance: auto;
 }
 
 .persistent-phone-transfer-actions {
