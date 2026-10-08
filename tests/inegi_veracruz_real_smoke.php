@@ -30,7 +30,7 @@ try {
         }
         echo $hoja . ': ' . count($res['grupos']) . " edades encontradas\n";
     }
-    $necesarios = ['18','19','20-24','25-29','30-34','35-39','40-44','45-49','50-54','55-59','60-64','65-69','70-74','75-79','80-84','85+'];
+    $necesarios = ['15','16','17','18','19','20-24','25-29','30-34','35-39','40-44','45-49','50-54','55-59','60-64','65-69','70-74','75-79','80-84','85+'];
     $faltantes = array_values(array_diff($necesarios, array_keys($grupos)));
     echo "Grupos: " . implode(',', array_keys($grupos)) . "\n";
     echo "Faltantes: " . ($faltantes ? implode(',', $faltantes) : 'NINGUNO') . "\n";
@@ -39,7 +39,18 @@ try {
     }
     $total25 = 0;
     $total18 = 0;
+    $totalJoven = 0;
+    $minimoJoven = 0;
+    foreach (['15','16','17'] as $edadJoven) {
+        $medidasJoven = $grupos[$edadJoven];
+        $totalJoven += $medidasJoven[1];
+        $minimoJoven += $medidasJoven[2] + $medidasJoven[3] +
+            $medidasJoven[4] + $medidasJoven[8] + $medidasJoven[12] + $medidasJoven[18];
+    }
     foreach ($necesarios as $edad) {
+        if (in_array($edad, ['15', '16', '17'], true)) {
+            continue;
+        }
         $total18 += $grupos[$edad][1];
         if ($edad !== '18' && $edad !== '19' && $edad !== '20-24') {
             $total25 += $grupos[$edad][1];
@@ -48,6 +59,17 @@ try {
     if ($total18 <= $total25 || $total25 <= 0) {
         throw new RuntimeException('Los totales del rango 18+ y 25+ no son consistentes.');
     }
+    $esperadosPorEstado = [
+        '30' => ['base' => 418032, 'minimo' => 405268],
+        '17' => ['base' => 100192, 'minimo' => 96646]
+    ];
+    $esperado = $esperadosPorEstado[$clave] ?? null;
+    if ($esperado &&
+        ($totalJoven !== $esperado['base'] || $minimoJoven !== $esperado['minimo'])) {
+        throw new RuntimeException('El cálculo juvenil ya no coincide con los tabulados oficiales del Censo 2020.');
+    }
+    echo '15–17 años: base ' . $totalJoven .
+        '; mínimo identificado sin media superior concluida ' . $minimoJoven . "\n";
     echo 'Población base 18+: ' . $total18 . '; 25+: ' . $total25 . "\n";
     echo "VALIDACION_OK\n";
 } finally {
