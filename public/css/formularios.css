@@ -230,7 +230,7 @@
 
 .formularios-option-card.is-inscripcion::before,
 .formularios-option-card.is-inscripcion::after {
-    background: #e5f8f2;
+    background: #e9f1ff;
 }
 
 .formularios-option-card:hover,
@@ -247,7 +247,7 @@
 
 .formularios-option-card.is-inscripcion:hover,
 .formularios-option-card.is-inscripcion:focus {
-    border-color: #c9e9df;
+    border-color: #cbd8f2;
 }
 
 .formularios-option-top,
@@ -281,7 +281,11 @@
     color: #2458b7;
 }
 
-.formularios-option-icon.is-inscripcion,
+.formularios-option-icon.is-inscripcion {
+    background: #eaf3ff;
+    color: #2458b7;
+}
+
 .formularios-detail-icon.is-inscripcion {
     background: #e7f7f2;
     color: #07866f;
@@ -349,8 +353,8 @@
 }
 
 .formularios-option-card.is-inscripcion .formularios-card-features span {
-    background: #e5f6f0;
-    color: #07866f;
+    background: #eaf2ff;
+    color: #2d58bb;
 }
 
 .formularios-card-features small {
@@ -399,7 +403,7 @@
 }
 
 .formularios-option-card.is-inscripcion .formularios-card-decoration {
-    color: #26a785;
+    color: #4e79d3;
 }
 
 .formularios-option-action {
