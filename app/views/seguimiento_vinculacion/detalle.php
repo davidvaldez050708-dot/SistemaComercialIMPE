@@ -353,7 +353,7 @@ usort($actividadExpediente, function ($eventoA, $eventoB) {
 </section>
 
 
-<section class="dashboard-panel linkage-detail-panel linkage-expediente-supervision">
+<section class="dashboard-panel linkage-detail-panel linkage-expediente-supervision" data-expediente-supervision>
     <div class="linkage-expediente-supervision-heading">
         <span class="linkage-expediente-supervision-icon">
             <i class="bi bi-chat-left-text"></i>

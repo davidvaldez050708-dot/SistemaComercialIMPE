@@ -291,9 +291,19 @@
             const titulo = seccion.querySelector('.panel-title');
             return normalizar(titulo?.textContent) === 'oficios';
         });
+        // Supervisión pertenece exclusivamente a Resumen.
+        // No depender del título: cambia entre Analista y Cuenta Clave.
         const seccionObservaciones = encontrarSeccion(function (seccion) {
-            const titulo = seccion.querySelector('.users-list-header h2');
-            return normalizar(titulo?.textContent) === 'observaciones del cuenta clave';
+            return seccion.matches('[data-expediente-supervision]') ||
+                seccion.classList.contains('linkage-expediente-supervision') ||
+                [
+                    'observaciones del cuenta clave',
+                    'indicaciones de cuenta clave',
+                    'observacion para el analista'
+                ].includes(normalizar(
+                    seccion.querySelector('.users-list-header h2, .linkage-expediente-supervision-heading h2')
+                        ?.textContent
+                ));
         });
 
         nav.setAttribute('role', 'tablist');
