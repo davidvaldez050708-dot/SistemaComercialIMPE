@@ -87,6 +87,7 @@ class ReporteTerritorialPdfService
         $rezago = is_array($reporte['rezago_educativo'] ?? null) ? $reporte['rezago_educativo'] : [];
         $perfil = is_array($reporte['perfil_educativo'] ?? null) ? $reporte['perfil_educativo'] : [];
         $perfil2549 = is_array($reporte['perfil_educativo_25_49'] ?? null) ? $reporte['perfil_educativo_25_49'] : [];
+        $escolaridadAdulta = is_array($reporte['escolaridad_adulta'] ?? null) ? $reporte['escolaridad_adulta'] : [];
         $indicadores = is_array($reporte['indicadores_educativos'] ?? null) ? $reporte['indicadores_educativos'] : [];
         $priorizacion = is_array($reporte['priorizacion_municipal'] ?? null) ? $reporte['priorizacion_municipal'] : [];
         $secretarias = is_array($reporte['secretarias'] ?? null) ? $reporte['secretarias'] : [];
@@ -327,7 +328,7 @@ class ReporteTerritorialPdfService
             $html .= '<td><span>Población 25–49 con perfil</span><strong>' .
                 $this->numero($perfil2549['poblacion_25_49'] ?? null) .
                 '</strong><small>Base agregada disponible</small></td>';
-            $html .= '<td class="emphasis"><span>Sin media superior concluida</span><strong>' .
+            $html .= '<td class="emphasis"><span>Sin estudios de media superior</span><strong>' .
                 $this->numero($perfil2549['sin_media_superior_25_49'] ?? null) .
                 '</strong><small>' .
                 $this->decimal($perfil2549['sin_media_superior_25_49_pct'] ?? 0, 2) .
@@ -356,6 +357,34 @@ class ReporteTerritorialPdfService
             }
             $html .= '.</div></section>';
         }
+
+        $html .= '<section class="report-section keep education-priority">' .
+            $this->sectionTitle('Brecha de escolaridad en población adulta');
+        $html .= '<p class="section-note">Rangos y definiciones independientes del perfil 25–49. Los valores se importan con referencia oficial declarada, sin estimaciones.</p>';
+        $html .= '<table class="education-profile-grid"><tr>';
+        foreach ([
+            ['codigo' => 'SIN_EDUCACION_SUPERIOR_25_MAS', 'titulo' => 'Sin educación superior · 25 años o más'],
+            ['codigo' => 'SIN_MEDIA_SUPERIOR_CONCLUIDA_18_MAS', 'titulo' => 'Sin media superior concluida · 18 años o más']
+        ] as $definicionAdulta) {
+            $dato = $escolaridadAdulta[$definicionAdulta['codigo']] ?? [];
+            $disponible = ($dato['disponible'] ?? false) === true;
+            $html .= '<td><span>' . $this->e($definicionAdulta['titulo']) . '</span>';
+            $html .= '<strong>' . ($disponible
+                ? $this->numero($dato['cantidad_personas'])
+                : 'Pendiente') . '</strong>';
+            if ($disponible) {
+                $html .= '<small>' . $this->decimal($dato['porcentaje'], 2) .
+                    '% de ' . $this->numero($dato['poblacion_base']) . ' personas</small>';
+                $html .= '<small>Periodo: ' . (int)$dato['anio'] .
+                    ' · Fuente declarada: ' . $this->e($dato['fuente']) . '</small>';
+                $html .= '<small>Metodología: ' . $this->e($dato['metodologia']) . '</small>';
+            } else {
+                $html .= '<small>Sin cifra del rango con metodología documentada.</small>';
+            }
+            $html .= '</td>';
+        }
+        $html .= '</tr></table>';
+        $html .= '<p class="section-note">La importación valida estructura y consistencia, no certifica las cifras contra el documento INEGI citado.</p></section>';
 
         $html .= '<section class="report-section keep">' . $this->sectionTitle('Contexto institucional');
         $html .= '<table class="territory-grid government"><tr>';
