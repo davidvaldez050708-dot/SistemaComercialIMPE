@@ -140,6 +140,81 @@ class DenueService
             );
 
         if (($respuesta['ok'] ?? false) !== true) {
+            /*
+             * DENUE puede tardar demasiado cuando una petición Cuantificar
+             * incluye muchas áreas con actividad=0. En lugar de perder todo el
+             * lote, lo dividimos y conservamos cualquier municipio que sí logre
+             * responder. El caso base es una sola área.
+             */
+            if (count($claves) > 1) {
+                $mitad = (int)ceil(count($claves) / 2);
+                $subLotes = [
+                    array_slice($claves, 0, $mitad),
+                    array_slice($claves, $mitad)
+                ];
+                $municipiosCombinados = [];
+                $erroresCombinados = [];
+
+                foreach ($subLotes as $subLote) {
+                    if (empty($subLote)) {
+                        continue;
+                    }
+
+                    usleep(350000);
+
+                    $subResultado =
+                        $this->obtenerSectoresMunicipios(
+                            $claveEstado,
+                            $subLote
+                        );
+
+                    if (($subResultado['ok'] ?? false) !== true) {
+                        foreach ($subLote as $claveSubLote) {
+                            $municipiosCombinados[$claveSubLote] = [
+                                'ok' => false,
+                                'mensaje' =>
+                                    (string)(
+                                        $subResultado['mensaje']
+                                        ?? 'No fue posible conectar con DENUE.'
+                                    )
+                            ];
+                            $erroresCombinados[$claveSubLote] =
+                                $municipiosCombinados[$claveSubLote]['mensaje'];
+                        }
+                        continue;
+                    }
+
+                    foreach (
+                        ($subResultado['municipios'] ?? [])
+                        as $claveSubLote => $municipioSubLote
+                    ) {
+                        $municipiosCombinados[$claveSubLote] =
+                            $municipioSubLote;
+                    }
+
+                    foreach (
+                        ($subResultado['errores'] ?? [])
+                        as $claveSubLote => $mensajeSubLote
+                    ) {
+                        $erroresCombinados[$claveSubLote] =
+                            $mensajeSubLote;
+                    }
+                }
+
+                return [
+                    'ok' => true,
+                    'clave_estado' => $claveEstado,
+                    'municipios' => $municipiosCombinados,
+                    'errores' => $erroresCombinados,
+                    'municipios_solicitados' =>
+                        count($claves),
+                    'municipios_con_datos' =>
+                        count($claves) -
+                        count($erroresCombinados),
+                    'lote_dividido' => true
+                ];
+            }
+
             return $respuesta;
         }
 
