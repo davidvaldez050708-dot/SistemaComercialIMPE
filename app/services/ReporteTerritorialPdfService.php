@@ -359,12 +359,13 @@ class ReporteTerritorialPdfService
         }
 
         $html .= '<section class="report-section keep education-priority">' .
-            $this->sectionTitle('Brecha de escolaridad en población adulta');
+            $this->sectionTitle('Brecha de escolaridad: adultos y jóvenes');
         $html .= '<p class="section-note">Rangos y definiciones independientes del perfil 25–49. Los valores se importan con referencia oficial declarada, sin estimaciones.</p>';
         $html .= '<table class="education-profile-grid"><tr>';
         foreach ([
             ['codigo' => 'SIN_EDUCACION_SUPERIOR_25_MAS', 'titulo' => 'Sin educación superior · 25 años o más'],
-            ['codigo' => 'SIN_MEDIA_SUPERIOR_CONCLUIDA_18_MAS', 'titulo' => 'Sin media superior concluida · 18 años o más']
+            ['codigo' => 'SIN_MEDIA_SUPERIOR_CONCLUIDA_18_MAS', 'titulo' => 'Sin media superior concluida · 18 años o más'],
+            ['codigo' => 'SIN_MEDIA_SUPERIOR_CONCLUIDA_15_17', 'titulo' => 'Jóvenes sin media superior concluida · 15 a 17 años']
         ] as $definicionAdulta) {
             $dato = $escolaridadAdulta[$definicionAdulta['codigo']] ?? [];
             $disponible = ($dato['disponible'] ?? false) === true;
@@ -387,7 +388,7 @@ class ReporteTerritorialPdfService
             $html .= '</td>';
         }
         $html .= '</tr></table>';
-        $html .= '<p class="section-note">La importación valida estructura y consistencia, no certifica las cifras contra el documento INEGI citado.</p></section>';
+        $html .= '<p class="section-note">Los datos juveniles se extraen de edades individuales 15, 16 y 17 de INEGI. El indicador es un mínimo identificable y no implica abandono escolar. La importación CSV requiere cotejo documental.</p></section>';
 
         $html .= '<section class="report-section keep">' . $this->sectionTitle('Contexto institucional');
         $html .= '<table class="territory-grid government"><tr>';
