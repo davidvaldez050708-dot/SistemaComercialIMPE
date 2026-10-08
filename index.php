@@ -222,6 +222,7 @@ $controladoresProtegidosCsrf = [
     'oficioCorreo',
     'convocatoria',
     'convocatoriaNotificacion',
+    'formulario',
     'aliado',
     'whatsapp',
     'rol',
