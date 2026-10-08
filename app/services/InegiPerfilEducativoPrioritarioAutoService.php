@@ -29,7 +29,10 @@ class InegiPerfilEducativoPrioritarioAutoService
         $modelo = new PerfilEducativoPrioritarioModel();
         $actual = $modelo->obtenerPorEstado($estadoId, $claveEstado);
 
-        if (($actual['disponible'] ?? false) === true) {
+        if (
+            ($actual['disponible'] ?? false) === true &&
+            !$forzarActualizacion
+        ) {
             $actual['actualizacion_automatica'] = [
                 'intentada' => false,
                 'estado' => 'DISPONIBLE'
