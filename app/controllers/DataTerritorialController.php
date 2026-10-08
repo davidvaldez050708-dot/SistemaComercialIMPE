@@ -1201,6 +1201,225 @@ class DataTerritorialController
         ]);
     }
 
+    public function importarPerfilEducativoPrioritarioArchivo()
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'Método no permitido.'
+            ], 405);
+        }
+
+        $this->validarPermisoActualizacionOficialJson();
+
+        $estadoIdPost =
+            trim((string)($_POST['estado_id'] ?? ''));
+        $archivo =
+            $_FILES['archivo_perfil_educativo_prioritario']
+            ?? null;
+
+        if (
+            $estadoIdPost === '' ||
+            !ctype_digit($estadoIdPost) ||
+            (int)$estadoIdPost <= 0
+        ) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' =>
+                    'El territorio seleccionado no es válido.'
+            ], 422);
+        }
+
+        $modeloTerritorial =
+            new DataTerritorialModel();
+        $estadoId = (int)$estadoIdPost;
+        $estado =
+            $modeloTerritorial->obtenerEstado(
+                $estadoId
+            );
+
+        if (!$estado) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' =>
+                    'El territorio seleccionado no existe o no está activo.'
+            ], 404);
+        }
+
+        $claveEstado = str_pad(
+            preg_replace(
+                '/\\D+/',
+                '',
+                (string)($estado['clave_inegi'] ?? '')
+            ) ?? '',
+            2,
+            '0',
+            STR_PAD_LEFT
+        );
+
+        if (!preg_match('/^\\d{2}$/', $claveEstado)) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' =>
+                    'El territorio no tiene una clave INEGI válida.'
+            ], 422);
+        }
+
+        if (!is_array($archivo)) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' =>
+                    'Selecciona el XLSX oficial del tabulado B2020_07_08_M.'
+            ], 422);
+        }
+
+        $errorCarga =
+            (int)($archivo['error'] ?? UPLOAD_ERR_NO_FILE);
+
+        if ($errorCarga !== UPLOAD_ERR_OK) {
+            $mensajeCarga = match ($errorCarga) {
+                UPLOAD_ERR_INI_SIZE,
+                UPLOAD_ERR_FORM_SIZE =>
+                    'El archivo XLSX supera el tamaño permitido por el servidor.',
+                UPLOAD_ERR_PARTIAL =>
+                    'El archivo no se cargó completamente. Intenta nuevamente.',
+                UPLOAD_ERR_NO_FILE =>
+                    'Selecciona el XLSX oficial del tabulado B2020_07_08_M.',
+                default =>
+                    'No fue posible cargar el archivo XLSX.'
+            };
+
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => $mensajeCarga
+            ], 422);
+        }
+
+        $nombreOriginal =
+            trim(
+                basename(
+                    (string)($archivo['name'] ?? '')
+                )
+            );
+        $rutaTemporal =
+            (string)($archivo['tmp_name'] ?? '');
+        $tamano =
+            (int)($archivo['size'] ?? 0);
+
+        if (
+            $nombreOriginal === '' ||
+            strtolower(
+                pathinfo(
+                    $nombreOriginal,
+                    PATHINFO_EXTENSION
+                )
+            ) !== 'xlsx'
+        ) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' =>
+                    'El archivo debe estar en formato XLSX.'
+            ], 422);
+        }
+
+        if (
+            $tamano <= 0 ||
+            $tamano > 128 * 1024 * 1024
+        ) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' =>
+                    'El XLSX está vacío o supera 128 MB.'
+            ], 422);
+        }
+
+        if (
+            $rutaTemporal === '' ||
+            !is_uploaded_file($rutaTemporal)
+        ) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' =>
+                    'No fue posible validar el archivo cargado.'
+            ], 422);
+        }
+
+        @set_time_limit(240);
+
+        $resultado =
+            (new InegiPerfilEducativoPrioritarioImportService())
+                ->importarXlsx(
+                    $rutaTemporal,
+                    $nombreOriginal,
+                    $claveEstado
+                );
+
+        if (($resultado['ok'] ?? false) !== true) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' =>
+                    (string)(
+                        $resultado['mensaje']
+                        ?? 'El archivo no corresponde al tabulado educativo prioritario esperado.'
+                    )
+            ], 422);
+        }
+
+        $perfil =
+            (new PerfilEducativoPrioritarioModel())
+                ->obtenerPorEstado(
+                    $estadoId,
+                    $claveEstado
+                );
+
+        if (($perfil['disponible'] ?? false) !== true) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' =>
+                    'El XLSX se procesó, pero no dejó un perfil estatal 25–49 completo.'
+            ], 409);
+        }
+
+        $municipios =
+            is_array($perfil['municipios'] ?? null)
+                ? $perfil['municipios']
+                : [];
+
+        if (empty($municipios)) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' =>
+                    'El XLSX contiene el total estatal, pero no el desglose municipal requerido.'
+            ], 409);
+        }
+
+        $this->responderJson([
+            'ok' => true,
+            'mensaje' =>
+                'El perfil educativo prioritario 25–49 se importó correctamente desde el XLSX oficial.',
+            'datos' => [
+                'estado_id' => $estadoId,
+                'estado' =>
+                    (string)($estado['nombre'] ?? ''),
+                'clave_estado' => $claveEstado,
+                'periodo' =>
+                    (int)(
+                        $perfil['meta']['anio']
+                        ?? 2020
+                    ),
+                'municipios_importados' =>
+                    count($municipios),
+                'registros_procesados' =>
+                    (int)($resultado['registros'] ?? 0),
+                'archivo' => $nombreOriginal,
+                'fuente' =>
+                    'INEGI - Censo de Población y Vivienda 2020',
+                'referencia_fuente' =>
+                    'B2020_07_08_M'
+            ]
+        ]);
+    }
+
     public function actualizarPerfilAdultoLaboralOficial()
     {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
