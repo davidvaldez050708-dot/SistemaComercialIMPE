@@ -754,7 +754,13 @@ class DenueService
             '/Cuantificar/' .
             self::ACTIVIDAD_TODAS .
             '/' .
-            rawurlencode($claveInegi) .
+            implode(
+                ',',
+                array_map(
+                    'rawurlencode',
+                    explode(',', $claveInegi)
+                )
+            ) .
             '/' .
             self::ESTRATO_TODOS .
             '/' .
@@ -1271,14 +1277,30 @@ class DenueService
         if ($contenido === false || $errorCurl !== '') {
             return [
                 'ok' => false,
-                'mensaje' => 'No fue posible conectar con DENUE.'
+                'mensaje' =>
+                    'No fue posible conectar con DENUE (conexión/timeout).'
             ];
         }
 
         if ($codigoHttp !== 200) {
+            if ($codigoHttp === 429) {
+                $mensaje =
+                    'DENUE limitó temporalmente las solicitudes (HTTP 429).';
+            } elseif ($codigoHttp >= 500) {
+                $mensaje =
+                    'DENUE presentó una indisponibilidad temporal (HTTP ' .
+                    $codigoHttp .
+                    ').';
+            } else {
+                $mensaje =
+                    'DENUE respondió con HTTP ' .
+                    $codigoHttp .
+                    '.';
+            }
+
             return [
                 'ok' => false,
-                'mensaje' => 'DENUE respondió con un código HTTP no válido.'
+                'mensaje' => $mensaje
             ];
         }
 
