@@ -3285,7 +3285,7 @@ document.addEventListener('DOMContentLoaded', function () {
             nombre: 'Perfil educativo prioritario 25–49',
             action: 'actualizarPerfilEducativoPrioritarioOficial',
             mensajeError: 'No fue posible sincronizar el cruce oficial edad × escolaridad de INEGI.',
-            pausaPosterior: 300
+            pausaPosterior: 900
         },
         perfil_adulto_laboral: {
             nombre: 'Perfil adulto/laboral',
