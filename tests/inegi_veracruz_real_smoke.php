@@ -22,6 +22,10 @@ try {
         }
         $res = $extraer->invoke($parser, $zip, $hoja, $strings, $clave);
         foreach ($res['grupos'] as $edad => $medidas) {
+            if (isset($grupos[$edad]) && $grupos[$edad] !== $medidas) {
+                throw new RuntimeException('Las hojas de INEGI difieren para ' . $edad .
+                    ': primera base=' . $grupos[$edad][1] . ', otra=' . $medidas[1]);
+            }
             $grupos[$edad] = $medidas;
         }
         echo $hoja . ': ' . count($res['grupos']) . " edades encontradas\n";
@@ -33,6 +37,18 @@ try {
     if ($faltantes) {
         throw new RuntimeException('No se recuperaron todos los grupos requeridos.');
     }
+    $total25 = 0;
+    $total18 = 0;
+    foreach ($necesarios as $edad) {
+        $total18 += $grupos[$edad][1];
+        if ($edad !== '18' && $edad !== '19' && $edad !== '20-24') {
+            $total25 += $grupos[$edad][1];
+        }
+    }
+    if ($total18 <= $total25 || $total25 <= 0) {
+        throw new RuntimeException('Los totales del rango 18+ y 25+ no son consistentes.');
+    }
+    echo 'Población base 18+: ' . $total18 . '; 25+: ' . $total25 . "\n";
     echo "VALIDACION_OK\n";
 } finally {
     $zip->close();
