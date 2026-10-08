@@ -142,26 +142,36 @@ class DataTerritorialController
             $municipiosCargados = $modelo->contarMunicipiosActivos($estadoId);
             $priorizacionMunicipal = $modelo->obtenerPriorizacionMunicipal($estadoId, 3);
 
-            // El perfil adulto/laboral se incorpora únicamente como lectura
-            // municipal. Todavía no modifica el índice de priorización.
+            /*
+             * Lectura municipal por lotes. Evita una consulta independiente por
+             * municipio para perfil adulto y DENUE al renderizar la tabla.
+             */
             $perfilAdultoLaboralModel = new PerfilAdultoLaboralModel();
-            if ($perfilAdultoLaboralModel->tablaDisponible()) {
-                foreach ($municipios as &$municipioTerritorial) {
-                    $municipioTerritorial['perfil_adulto_laboral'] =
-                        $perfilAdultoLaboralModel->obtenerPorMunicipio(
-                            $estadoId,
-                            (int)($municipioTerritorial['id'] ?? 0)
-                        );
-                }
-                unset($municipioTerritorial);
-            }
+            $mapaPerfilAdulto =
+                $perfilAdultoLaboralModel->tablaDisponible()
+                    ? $perfilAdultoLaboralModel
+                        ->obtenerMapaMunicipiosEstado($estadoId)
+                    : [];
+            $mapaEconomiaMunicipal =
+                $modelo->obtenerMapaActividadEconomicaMunicipios(
+                    $estadoId
+                );
 
             foreach ($municipios as &$municipioTerritorial) {
+                $municipioIdTerritorial =
+                    (int)($municipioTerritorial['id'] ?? 0);
+                $municipioTerritorial['perfil_adulto_laboral'] =
+                    $mapaPerfilAdulto[$municipioIdTerritorial]
+                    ?? ['disponible' => false];
                 $municipioTerritorial['actividad_economica_municipal'] =
-                    $modelo->obtenerActividadEconomicaMunicipio(
-                        $estadoId,
-                        (int)($municipioTerritorial['id'] ?? 0)
-                    );
+                    $mapaEconomiaMunicipal[$municipioIdTerritorial]
+                    ?? [
+                        'disponible' => false,
+                        'total_establecimientos' => 0,
+                        'establecimientos_vinculacion' => 0,
+                        'sectores' => [],
+                        'sectores_vinculacion' => []
+                    ];
             }
             unset($municipioTerritorial);
 
@@ -218,23 +228,31 @@ class DataTerritorialController
         $priorizacionMunicipal = $modelo->obtenerPriorizacionMunicipal($estadoId, 3);
 
         $perfilAdultoLaboralModel = new PerfilAdultoLaboralModel();
-        if ($perfilAdultoLaboralModel->tablaDisponible()) {
-            foreach ($municipios as &$municipioTerritorial) {
-                $municipioTerritorial['perfil_adulto_laboral'] =
-                    $perfilAdultoLaboralModel->obtenerPorMunicipio(
-                        $estadoId,
-                        (int)($municipioTerritorial['id'] ?? 0)
-                    );
-            }
-            unset($municipioTerritorial);
-        }
+        $mapaPerfilAdulto =
+            $perfilAdultoLaboralModel->tablaDisponible()
+                ? $perfilAdultoLaboralModel
+                    ->obtenerMapaMunicipiosEstado($estadoId)
+                : [];
+        $mapaEconomiaMunicipal =
+            $modelo->obtenerMapaActividadEconomicaMunicipios(
+                $estadoId
+            );
 
         foreach ($municipios as &$municipioTerritorial) {
+            $municipioIdTerritorial =
+                (int)($municipioTerritorial['id'] ?? 0);
+            $municipioTerritorial['perfil_adulto_laboral'] =
+                $mapaPerfilAdulto[$municipioIdTerritorial]
+                ?? ['disponible' => false];
             $municipioTerritorial['actividad_economica_municipal'] =
-                $modelo->obtenerActividadEconomicaMunicipio(
-                    $estadoId,
-                    (int)($municipioTerritorial['id'] ?? 0)
-                );
+                $mapaEconomiaMunicipal[$municipioIdTerritorial]
+                ?? [
+                    'disponible' => false,
+                    'total_establecimientos' => 0,
+                    'establecimientos_vinculacion' => 0,
+                    'sectores' => [],
+                    'sectores_vinculacion' => []
+                ];
         }
         unset($municipioTerritorial);
 
