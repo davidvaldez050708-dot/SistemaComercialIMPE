@@ -13,7 +13,7 @@
     const viewKey = 'impe:telephony:view:' + userId;
     const channelName = 'impe-telephony-' + userId;
     const hostWindowName = 'impe_telephony_host_' + userId;
-    const hostVersion = '5';
+    const hostVersion = '6';
 
     const statusUrl =
         new URL(
@@ -61,6 +61,8 @@
             phase: 'idle',
             active: false,
             muted: false,
+            direction: '',
+            calledDid: '',
             destination: '',
             institution: '',
             status: 'idle',
@@ -130,6 +132,9 @@
             ready: 'Teléfono listo',
             dialing: 'Marcando…',
             ringing: 'Timbrando…',
+            'incoming-ringing': 'Llamada entrante…',
+            'incoming-finished': 'Llamada entrante finalizada',
+            transferred: 'Llamada transferida',
             'in-progress': 'Llamada en curso',
             finishing: 'Finalizando…',
             completed: 'Llamada finalizada',
@@ -634,6 +639,14 @@
     };
 
     const stageCall = async function (payload) {
+        const info = await probe();
+
+        if (!info?.permite_salientes) {
+            throw new Error(
+                'Tu extensión no tiene habilitadas llamadas salientes.'
+            );
+        }
+
         const requestId =
             ++stageRequestId;
         preparedDismissed = false;
@@ -743,6 +756,14 @@
     };
 
     const startCall = async function (payload) {
+        const info = await probe();
+
+        if (!info?.permite_salientes) {
+            throw new Error(
+                'Tu extensión no tiene habilitadas llamadas salientes.'
+            );
+        }
+
         if (startingCall) {
             return;
         }
@@ -871,6 +892,42 @@
             'MUTE',
             { muted: !Boolean(state.muted) }
         );
+    };
+
+    const transferCall = function (
+        extension,
+        attended
+    ) {
+        const ext =
+            String(extension || '').replace(/\D+/g, '');
+
+        if (
+            !state?.active ||
+            ext.length < 3 ||
+            ext.length > 6
+        ) {
+            throw new Error(
+                'Indica una extensión válida para transferir la llamada.'
+            );
+        }
+
+        if (!availability?.permite_transferir) {
+            throw new Error(
+                'Tu perfil no tiene permiso para transferir llamadas.'
+            );
+        }
+
+        sendCommand(
+            'TRANSFER',
+            {
+                extension: ext,
+                attended: Boolean(attended)
+            }
+        );
+    };
+
+    const showProviderControls = function () {
+        sendCommand('SHOW_CONTROLS', {});
     };
 
     const clearFinished = function (callToken) {
@@ -1303,9 +1360,24 @@
                     '<button type="button" class="persistent-phone-action" data-phone-mute>' +
                         '<i class="bi bi-mic-mute"></i><span>Silenciar</span>' +
                     '</button>' +
+                    '<button type="button" class="persistent-phone-action" data-phone-transfer-toggle>' +
+                        '<i class="bi bi-arrow-left-right"></i><span>Transferir</span>' +
+                    '</button>' +
                     '<button type="button" class="persistent-phone-action is-danger" data-phone-hangup>' +
                         '<i class="bi bi-telephone-x"></i><span>Colgar</span>' +
                     '</button>' +
+                '</div>' +
+                '<div class="persistent-phone-transfer" data-phone-transfer-panel hidden>' +
+                    '<div class="persistent-phone-transfer-head">' +
+                        '<strong>Transferir llamada</strong>' +
+                        '<button type="button" data-phone-provider-controls>Controles Zadarma</button>' +
+                    '</div>' +
+                    '<input type="text" inputmode="numeric" maxlength="6" placeholder="Extensión, ej. 101" data-phone-transfer-extension>' +
+                    '<div class="persistent-phone-transfer-actions">' +
+                        '<button type="button" data-phone-transfer-directa>Transferencia directa</button>' +
+                        '<button type="button" data-phone-transfer-consultada>Consultar primero</button>' +
+                    '</div>' +
+                    '<small data-phone-transfer-help>Directa: #ext#. Consultada: *ext#.</small>' +
                 '</div>' +
                 '<button type="button" class="persistent-phone-result" data-phone-result hidden>' +
                     '<i class="bi bi-journal-check"></i>' +
@@ -1412,6 +1484,83 @@
                 );
         });
 
+        const transferPanel =
+            panel.querySelector(
+                '[data-phone-transfer-panel]'
+            );
+        const transferInput =
+            panel.querySelector(
+                '[data-phone-transfer-extension]'
+            );
+
+        panel.querySelector(
+            '[data-phone-transfer-toggle]'
+        )?.addEventListener(
+            'click',
+            function () {
+                if (!transferPanel) {
+                    return;
+                }
+
+                transferPanel.hidden =
+                    !transferPanel.hidden;
+
+                if (!transferPanel.hidden) {
+                    transferInput?.focus();
+                }
+            }
+        );
+
+        panel.querySelector(
+            '[data-phone-provider-controls]'
+        )?.addEventListener(
+            'click',
+            showProviderControls
+        );
+
+        const executeTransfer =
+            function (attended) {
+                try {
+                    transferCall(
+                        transferInput?.value || '',
+                        attended
+                    );
+
+                    if (transferPanel) {
+                        transferPanel.hidden = true;
+                    }
+                } catch (error) {
+                    const help =
+                        panel.querySelector(
+                            '[data-phone-transfer-help]'
+                        );
+
+                    if (help) {
+                        help.textContent =
+                            error.message ||
+                            'No fue posible preparar la transferencia.';
+                    }
+                }
+            };
+
+        panel.querySelector(
+            '[data-phone-transfer-directa]'
+        )?.addEventListener(
+            'click',
+            function () {
+                executeTransfer(false);
+            }
+        );
+
+        panel.querySelector(
+            '[data-phone-transfer-consultada]'
+        )?.addEventListener(
+            'click',
+            function () {
+                executeTransfer(true);
+            }
+        );
+
         [
             '[data-phone-result]',
             '[data-phone-compact-result]'
@@ -1508,6 +1657,14 @@
             panel.querySelector(
                 '[data-phone-hangup]'
             );
+        const transferButton =
+            panel.querySelector(
+                '[data-phone-transfer-toggle]'
+            );
+        const transferPanel =
+            panel.querySelector(
+                '[data-phone-transfer-panel]'
+            );
         const compactHangup =
             panel.querySelector(
                 '[data-phone-compact-hangup]'
@@ -1537,16 +1694,31 @@
             String(state.phase || '') ===
                 'finished';
 
+        const incoming =
+            String(state.direction || '') ===
+                'incoming';
+
         if (title) {
             title.textContent =
-                state.institution ||
-                state.destination ||
-                'Telefonía';
+                incoming
+                    ? 'Llamada entrante'
+                    : (
+                        state.institution ||
+                        state.destination ||
+                        'Telefonía'
+                    );
         }
 
         if (number) {
             number.textContent =
-                state.destination || '—';
+                incoming
+                    ? (
+                        'De: ' +
+                        String(
+                            state.destination || 'Número desconocido'
+                        )
+                    )
+                    : (state.destination || '—');
         }
 
         if (extensionEl) {
@@ -1574,7 +1746,11 @@
         if (eyebrow) {
             eyebrow.textContent = finished
                 ? 'LLAMADA FINALIZADA'
-                : 'LLAMADA INSTITUCIONAL';
+                : (
+                    incoming
+                        ? 'RECEPCIÓN TELEFÓNICA'
+                        : 'LLAMADA INSTITUCIONAL'
+                );
         }
 
         if (toggle) {
@@ -1613,12 +1789,14 @@
 
         if (resultButton) {
             resultButton.hidden =
-                !finished;
+                !finished ||
+                incoming;
         }
 
         if (compactResult) {
             compactResult.hidden =
-                !finished;
+                !finished ||
+                incoming;
         }
 
         const readyToStart =
@@ -1640,6 +1818,23 @@
             state.active &&
             String(state.status || '') ===
                 'in-progress';
+        const canTransfer =
+            callInProgress &&
+            Boolean(
+                availability?.permite_transferir
+            );
+
+        if (transferButton) {
+            transferButton.hidden = !canTransfer;
+            transferButton.disabled = !canTransfer;
+        }
+
+        if (
+            transferPanel &&
+            !canTransfer
+        ) {
+            transferPanel.hidden = true;
+        }
         const finishing =
             String(state.status || '') ===
                 'finishing';
@@ -1858,6 +2053,8 @@
         cancelPrepared: cancelPrepared,
         hangup: hangup,
         toggleMute: toggleMute,
+        transferCall: transferCall,
+        showProviderControls: showProviderControls,
         clearFinished: clearFinished,
         subscribe: subscribe,
         getState: getState,
@@ -1871,6 +2068,79 @@
         'DOMContentLoaded',
         function () {
             createPanel();
+
+            const receptionButton =
+                document.querySelector(
+                    '[data-telephony-reception-toggle]'
+                );
+            const receptionIndicator =
+                receptionButton?.querySelector(
+                    '[data-telephony-reception-indicator]'
+                );
+
+            const renderReceptionState =
+                function () {
+                    if (!receptionButton) {
+                        return;
+                    }
+
+                    const enabled =
+                        Boolean(
+                            availability?.permite_entrantes
+                        );
+                    const active =
+                        enabled &&
+                        hostUsable();
+
+                    receptionButton.disabled =
+                        availability !== null &&
+                        !enabled;
+                    receptionButton.classList.toggle(
+                        'is-active',
+                        active
+                    );
+                    receptionButton.title = active
+                        ? 'Recepción telefónica activa'
+                        : 'Activar recepción telefónica';
+                    receptionButton.setAttribute(
+                        'aria-label',
+                        receptionButton.title
+                    );
+
+                    receptionIndicator?.classList.toggle(
+                        'is-active',
+                        active
+                    );
+                };
+
+            receptionButton?.addEventListener(
+                'click',
+                function () {
+                    void prepare({
+                        openHost: true
+                    }).then(function () {
+                        sendCommand('PING', {});
+                        renderReceptionState();
+                    }).catch(function (error) {
+                        console.warn(error);
+                        receptionButton.title =
+                            error.message ||
+                            'No fue posible activar la recepción.';
+                    });
+                }
+            );
+
+            subscribe(
+                function () {
+                    renderReceptionState();
+                }
+            );
+
+            void probe().then(
+                renderReceptionState
+            ).catch(function () {
+                renderReceptionState();
+            });
             renderPanel();
             restoreContextFromQuery();
 
