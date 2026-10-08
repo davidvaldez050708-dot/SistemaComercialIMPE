@@ -9,6 +9,7 @@ require_once __DIR__ . '/../services/RezagoEducativoImportService.php';
 require_once __DIR__ . '/../services/InegiGeoService.php';
 require_once __DIR__ . '/../services/InegiPerfilAdultoLaboralService.php';
 require_once __DIR__ . '/../services/InegiPerfilEducativoPrioritarioAutoService.php';
+require_once __DIR__ . '/../services/InegiPerfilEducativoPrioritarioImportService.php';
 require_once __DIR__ . '/../models/PerfilAdultoLaboralModel.php';
 require_once __DIR__ . '/../helpers/PermissionHelper.php';
 
