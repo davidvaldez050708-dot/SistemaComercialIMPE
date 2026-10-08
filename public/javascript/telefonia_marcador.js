@@ -36,11 +36,11 @@
 
         function normalizeNumber(value) {
             const raw = String(value || '').trim();
-            if (!/^\\+?[\\d\\s().-]+$/.test(raw)) {
+            if (!/^\+?[\d\s().-]+$/.test(raw)) {
                 throw new Error('Escribe un teléfono con dígitos y, si aplica, prefijo internacional.');
             }
 
-            let digits = raw.replace(/\\D/g, '');
+            let digits = raw.replace(/\D/g, '');
             if (digits.length === 10) digits = '52' + digits;
 
             if (!/^[1-9][0-9]{10,14}$/.test(digits)) {
@@ -77,7 +77,7 @@
                     numberInput.value = numberInput.value.slice(0, -1);
                 } else if (key === '+') {
                     if (!numberInput.value) numberInput.value = '+';
-                } else if (/^\\d$/.test(key)) {
+                } else if (/^\d$/.test(key)) {
                     numberInput.value += key;
                 }
                 numberInput.focus();
