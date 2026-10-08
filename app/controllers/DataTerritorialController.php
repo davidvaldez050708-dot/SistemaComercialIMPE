@@ -975,7 +975,15 @@ class DataTerritorialController
                     true
                 );
 
-        if (($resultado['disponible'] ?? false) !== true) {
+        $estadoSincronizacion = strtoupper(trim((string)(
+            $resultado['actualizacion_automatica']['estado']
+            ?? ''
+        )));
+
+        if (
+            ($resultado['disponible'] ?? false) !== true ||
+            $estadoSincronizacion !== 'ACTUALIZADO'
+        ) {
             $mensaje = trim((string)(
                 $resultado['actualizacion_automatica']['mensaje']
                 ?? ''
