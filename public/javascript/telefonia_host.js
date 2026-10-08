@@ -1290,6 +1290,27 @@
             Math.random().toString(36).slice(2);
     };
 
+    /**
+     * Esta PBX utiliza 10 dígitos nacionales para destinos de México.
+     * Los números se mantienen con +52 para identificar y correlacionar
+     * llamadas dentro del CRM, pero WebRTC reside en una ventana distinta.
+     * Las extensiones y los números internacionales no cambian.
+     */
+    const normalizarDestinoWebrtc = function (valor) {
+        let destino = String(valor || '').trim()
+            .replace(/[^0-9+*#]/g, '');
+
+        if (/^\+?521\d{10}$/.test(destino)) {
+            destino = destino.replace(/^\+?521/, '');
+        } else if (/^\+?52\d{10}$/.test(destino)) {
+            destino = destino.replace(/^\+?52/, '');
+        } else {
+            destino = destino.replace(/^\+/, '');
+        }
+
+        return destino;
+    };
+
     const startCall = async function (payload) {
         if (!permiteSalientes) {
             publish({
@@ -1349,7 +1370,7 @@
             });
 
             const result = window.zdrmWebPhone.regToCall(
-                destination.replace(/^\+/, '')
+                normalizarDestinoWebrtc(destination)
             );
 
             if (typeof result === 'string' && result.trim() !== '') {
