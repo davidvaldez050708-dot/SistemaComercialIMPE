@@ -122,6 +122,7 @@ $camposPermitidos = [
     'called_did',
     'destination',
     'internal',
+    'last_internal',
     'duration',
     'disposition',
     'status_code',
