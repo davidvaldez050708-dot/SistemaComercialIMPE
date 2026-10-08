@@ -2150,6 +2150,19 @@ $urlPaginaTerritorio = function ($pagina) use ($buscarTerritorio, $filtroInforma
                                         <input
                                             class="form-check-input"
                                             type="checkbox"
+                                            value="perfil_educativo_prioritario"
+                                            data-official-option>
+                                        <span>
+                                            <strong>Perfil educativo prioritario 25–49</strong>
+                                            <small>Fuente: INEGI - Censo 2020 · edad × escolaridad</small>
+                                            <em>Sincroniza el cruce exacto de 25 a 49 años para el Estado y sus municipios, sin estimaciones.</em>
+                                        </span>
+                                    </label>
+
+                                    <label class="data-official-option-card">
+                                        <input
+                                            class="form-check-input"
+                                            type="checkbox"
                                             value="perfil_adulto_laboral"
                                             data-official-option>
                                         <span>
@@ -2329,6 +2342,19 @@ $urlPaginaTerritorio = function ($pagina) use ($buscarTerritorio, $filtroInforma
                                         <strong>Municipios</strong>
                                         <small>Fuente: INEGI - Catálogo Único de Claves Geoestadísticas</small>
                                         <em>Actualiza nombre, clave INEGI y población municipal en los 32 Estados.</em>
+                                    </span>
+                                </label>
+
+                                <label class="data-official-option-card">
+                                    <input
+                                        class="form-check-input"
+                                        type="checkbox"
+                                        value="perfil_educativo_prioritario"
+                                        data-official-option>
+                                    <span>
+                                        <strong>Perfil educativo prioritario 25–49</strong>
+                                        <small>Fuente: INEGI - Censo 2020 · edad × escolaridad</small>
+                                        <em>Sincroniza el cruce exacto para los Estados y municipios, sin extrapolar porcentajes generales.</em>
                                     </span>
                                 </label>
 
@@ -3254,6 +3280,12 @@ document.addEventListener('DOMContentLoaded', function () {
             action: 'actualizarMunicipiosOficiales',
             mensajeError: 'No fue posible obtener la información municipal de INEGI.',
             pausaPosterior: 250
+        },
+        perfil_educativo_prioritario: {
+            nombre: 'Perfil educativo prioritario 25–49',
+            action: 'actualizarPerfilEducativoPrioritarioOficial',
+            mensajeError: 'No fue posible sincronizar el cruce oficial edad × escolaridad de INEGI.',
+            pausaPosterior: 300
         },
         perfil_adulto_laboral: {
             nombre: 'Perfil adulto/laboral',
