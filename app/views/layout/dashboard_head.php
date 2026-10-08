@@ -203,6 +203,11 @@ if ($esDesempenoDashboard) {
 
 if ($esTelefoniaDashboard) {
     $cssOpcionalDashboard[] = 'telefonia.css';
+}
+if (
+    $esTelefoniaDashboard ||
+    ($esHomeDashboard && (int)($_SESSION['rol_id'] ?? 0) === 3)
+) {
     $cssOpcionalDashboard[] = 'telefonia_marcador.css';
 }
 
@@ -273,6 +278,9 @@ if ($esDesempenoDashboard) {
 
 if ($esTelefoniaDashboard) {
     $jsOpcionalHead[] = $actionDashboard === 'marcador' ? 'telefonia_marcador.js' : 'telefonia_admin.js';
+}
+if ($esHomeDashboard && (int)($_SESSION['rol_id'] ?? 0) === 3) {
+    $jsOpcionalHead[] = 'telefonia_marcador.js';
 }
 
 if ($esHomeDashboard) {

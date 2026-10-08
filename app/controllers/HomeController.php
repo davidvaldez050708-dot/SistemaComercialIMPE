@@ -8,6 +8,7 @@ require_once __DIR__ . '/../services/AnalistaDashboardReunionService.php';
 require_once __DIR__ . '/../services/AnalistaDashboardIntegrityService.php';
 require_once __DIR__ . '/../services/SeguimientoAtencionOperativaService.php';
 require_once __DIR__ . '/../services/CuentaClaveDashboardService.php';
+require_once __DIR__ . '/../services/TelefoniaMarcadorPanelService.php';
 require_once __DIR__ . '/../helpers/PermissionHelper.php';
 
 class HomeController
@@ -44,14 +45,17 @@ class HomeController
                 break;
 
             case 3:
-                // Ventas trabaja exclusivamente en el marcador cuando tiene permisos.
-                // Si el administrador revoca telefonía, conserva su vista informativa.
-                if (tienePermiso('telefonia.usar') && tienePermiso('telefonia.salientes')) {
-                    header('Location: ' . BASE_URL . 'index.php?controller=telefonia&action=marcador');
-                    exit;
-                }
-                $subtituloPagina = 'Panel de Asesor de Ventas';
+                $tituloPagina = 'Inicio';
+                $subtituloPagina = 'Mi teléfono y actividad de llamadas';
                 $vistaPanel = __DIR__ . '/../views/dashboard/asesor.php';
+                $puedeUsarMarcadorVentas =
+                    tienePermiso('telefonia.usar') &&
+                    tienePermiso('telefonia.salientes');
+
+                if ($puedeUsarMarcadorVentas) {
+                    $panelTelefono = (new TelefoniaMarcadorPanelService())
+                        ->obtener((int)$_SESSION['usuario_id']);
+                }
                 break;
 
             case 4:

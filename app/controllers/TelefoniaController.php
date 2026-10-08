@@ -2,6 +2,8 @@
 
 require_once __DIR__ . '/../services/TelefoniaExtensionService.php';
 require_once __DIR__ . '/../services/TelefoniaActividadService.php';
+require_once __DIR__ . '/../services/TelefoniaMarcadorPanelService.php';
+require_once __DIR__ . '/../services/TelefoniaContactosService.php';
 require_once __DIR__ . '/../models/RolModel.php';
 require_once __DIR__ . '/../helpers/PermissionHelper.php';
 
@@ -89,21 +91,8 @@ class TelefoniaController
             http_response_code(403);
             die('Tu perfil no tiene permiso para utilizar el marcador telefónico.');
         }
-        $extensionAsignada = '';
-        $mensajeMarcador = '';
-        $actividadTelefonica = ['atenciones'=>0, 'contestadas'=>0, 'segundos'=>0, 'recientes'=>[]];
-        try {
-            $asignacion = $this->service->resolverParaUsuario((int)$_SESSION['usuario_id']);
-            if ($asignacion && !empty($asignacion['permite_salientes'])) {
-                $extensionAsignada = (string)($asignacion['extension'] ?? '');
-                $actividadTelefonica = (new TelefoniaActividadService())->consultar($extensionAsignada);
-            } else {
-                $mensajeMarcador = 'El administrador debe asignarte una extensión activa con llamadas salientes.';
-            }
-        } catch (Throwable $e) {
-            error_log('Marcador: ' . $e->getMessage());
-            $mensajeMarcador = 'No fue posible consultar tu extensión e historial.';
-        }
+        $panelTelefono = (new TelefoniaMarcadorPanelService())
+            ->obtener((int)$_SESSION['usuario_id']);
         $tituloPagina = 'Teléfono';
         $subtituloPagina = 'Marcador e historial personal';
         $opcionActiva = 'telefono_marcador';
@@ -112,6 +101,97 @@ class TelefoniaController
         require_once __DIR__ . '/../views/layout/topbar.php';
         require_once __DIR__ . '/../views/telefonia/marcador.php';
         require_once __DIR__ . '/../views/layout/dashboard_footer.php';
+    }
+
+    /**
+     * Agenda personal del marcador. Nunca acepta usuario_id del formulario.
+     */
+    public function guardarContacto()
+    {
+        $this->validarMarcadorPersonalJson();
+
+        try {
+            $contacto = (new TelefoniaContactosService())->guardar(
+                (int)$_SESSION['usuario_id'],
+                (string)($_POST['nombre'] ?? ''),
+                (string)($_POST['telefono'] ?? '')
+            );
+            $this->responderJson([
+                'ok' => true,
+                'mensaje' => 'Teléfono guardado en tu agenda.',
+                'contacto' => $contacto
+            ]);
+        } catch (InvalidArgumentException $e) {
+            $this->responderJson(['ok' => false, 'mensaje' => $e->getMessage()], 422);
+        } catch (Throwable $e) {
+            error_log('Guardar teléfono personal: ' . $e->getMessage());
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'No fue posible guardar el teléfono. Inténtalo nuevamente.'
+            ], 500);
+        }
+    }
+
+    public function eliminarContacto()
+    {
+        $this->validarMarcadorPersonalJson();
+
+        try {
+            $eliminado = (new TelefoniaContactosService())->eliminar(
+                (int)$_SESSION['usuario_id'],
+                (int)($_POST['contacto_id'] ?? 0)
+            );
+
+            if (!$eliminado) {
+                $this->responderJson([
+                    'ok' => false,
+                    'mensaje' => 'El teléfono ya no existe en tu agenda.'
+                ], 404);
+            }
+
+            $this->responderJson([
+                'ok' => true,
+                'mensaje' => 'Teléfono eliminado de tu agenda.'
+            ]);
+        } catch (InvalidArgumentException $e) {
+            $this->responderJson(['ok' => false, 'mensaje' => $e->getMessage()], 422);
+        } catch (Throwable $e) {
+            error_log('Eliminar teléfono personal: ' . $e->getMessage());
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'No fue posible eliminar el teléfono.'
+            ], 500);
+        }
+    }
+
+    private function validarMarcadorPersonalJson()
+    {
+        if (
+            (int)($_SESSION['usuario_id'] ?? 0) <= 0 ||
+            !tienePermiso('telefonia.usar') ||
+            !tienePermiso('telefonia.salientes')
+        ) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'No tienes permisos para gestionar teléfonos.'
+            ], 403);
+        }
+
+        if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? '')) !== 'POST') {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'Método no permitido.'
+            ], 405);
+        }
+
+        if (!TelefoniaContactosService::validarToken(
+            (string)($_POST['csrf_token'] ?? '')
+        )) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'La sesión del formulario caducó. Recarga la página.'
+            ], 403);
+        }
     }
 
     public function estadoUsuario()

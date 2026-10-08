@@ -1,13 +1,18 @@
-<section class="dashboard-panel placeholder-panel">
-    <div class="placeholder-icon">
-        <i class="bi bi-person-lines-fill"></i>
+<?php
+$puedeUsarMarcadorVentas = $puedeUsarMarcadorVentas ?? false;
+?>
+<?php if ($puedeUsarMarcadorVentas): ?>
+    <div class="telephony-sales-intro">
+        <div>
+            <span class="telephony-eyebrow">MI ESPACIO DE TRABAJO</span>
+            <h2>Mi teléfono</h2>
+            <p>Marca, guarda números frecuentes y consulta tus llamadas. No se requiere registrar oportunidades ni seguimientos.</p>
+        </div>
     </div>
-
-    <h2 class="placeholder-title">
-        Panel de Asesor de Ventas
-    </h2>
-
-    <p class="placeholder-text">
-        Este panel está en desarrollo.
-    </p>
-</section>
+    <?php require __DIR__ . '/../telefonia/marcador.php'; ?>
+<?php else: ?>
+    <section class="dashboard-panel telephony-dialer-card">
+        <h2 class="panel-title">Teléfono de Ventas</h2>
+        <p>Tu perfil todavía no tiene habilitados los permisos de telefonía. Solicita al administrador <strong>Usar telefonía</strong> y <strong>Realizar llamadas salientes</strong> desde Roles y permisos.</p>
+    </section>
+<?php endif; ?>

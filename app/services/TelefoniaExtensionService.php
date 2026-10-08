@@ -50,7 +50,9 @@ class TelefoniaExtensionService
 
         if (
             !$usuarioLegacy ||
-            empty($usuarioLegacy['puede_salientes'])
+            empty($usuarioLegacy['puede_salientes']) ||
+            (int)($usuarioLegacy['estado'] ?? 0) !== 1 ||
+            strcasecmp(trim((string)($usuarioLegacy['rol'] ?? '')), 'Analista de Datos') !== 0
         ) {
             return null;
         }

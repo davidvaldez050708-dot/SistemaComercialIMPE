@@ -26,7 +26,11 @@ class TelefoniaActividadService
                   MAX(CASE WHEN evento IN ('NOTIFY_INTERNAL','NOTIFY_END') THEN caller_id ELSE NULL END) AS origen
                 FROM telefonia_zadarma_eventos
                 WHERE received_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-                  AND internal IS NOT NULL AND internal <> ''";
+                  AND internal IS NOT NULL AND internal <> ''
+                  AND evento IN (
+                      'NOTIFY_INTERNAL', 'NOTIFY_ANSWER', 'NOTIFY_END',
+                      'NOTIFY_OUT_START', 'NOTIFY_OUT_END'
+                  )";
         if ($extension !== null) $sql .= " AND internal = ?";
         $sql .= " GROUP BY pbx_call_id, internal ORDER BY fecha DESC";
         $stmt = $this->db->prepare($sql);
