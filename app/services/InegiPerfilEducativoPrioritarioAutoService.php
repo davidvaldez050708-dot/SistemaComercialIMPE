@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/../models/PerfilEducativoPrioritarioModel.php';
 require_once __DIR__ . '/InegiPerfilEducativoPrioritarioImportService.php';
+require_once __DIR__ . '/InegiEscolaridadAdultaXlsxService.php';
 
 /**
  * Busca automáticamente el tabulado educativo prioritario en fuentes oficiales
@@ -114,7 +115,13 @@ class InegiPerfilEducativoPrioritarioAutoService
         return $actual;
     }
 
-    private function actualizarDesdeInegi(string $claveEstado): array
+    /** Reutiliza el descubrimiento/descarga oficial para los dos indicadores adultos. */
+    public function actualizarEscolaridadAdulta(string $claveEstado): array
+    {
+        return $this->actualizarDesdeInegi($claveEstado, true);
+    }
+
+    private function actualizarDesdeInegi(string $claveEstado, bool $soloAdultos = false): array
     {
         if (!function_exists('curl_init')) {
             return $this->error('El servidor no tiene cURL habilitado.');
@@ -168,7 +175,8 @@ class InegiPerfilEducativoPrioritarioAutoService
         foreach ($urls as $url) {
             $resultado = $this->procesarDescarga(
                 $url,
-                $claveEstado
+                $claveEstado,
+                $soloAdultos
             );
 
             if (($resultado['ok'] ?? false) === true) {
@@ -327,7 +335,8 @@ class InegiPerfilEducativoPrioritarioAutoService
 
     private function procesarDescarga(
         string $url,
-        string $claveEstado
+        string $claveEstado,
+        bool $soloAdultos = false
     ): array
     {
         $temporal = tempnam(sys_get_temp_dir(), 'inegi_edu_prior_');
@@ -382,6 +391,15 @@ class InegiPerfilEducativoPrioritarioAutoService
         $extension = strtolower((string)($descarga['extension'] ?? ''));
 
         try {
+            if ($extension === 'xlsx' && $soloAdultos) {
+                return (new InegiEscolaridadAdultaXlsxService())->importarXlsx(
+                    $temporal,
+                    basename((string)parse_url($url, PHP_URL_PATH)),
+                    $claveEstado,
+                    $url
+                );
+            }
+
             if ($extension === 'xlsx') {
                 return (new InegiPerfilEducativoPrioritarioImportService())
                     ->importarXlsx(
@@ -399,7 +417,9 @@ class InegiPerfilEducativoPrioritarioAutoService
             if ($extension === 'zip') {
                 return $this->procesarZip(
                     $temporal,
-                    $claveEstado
+                    $claveEstado,
+                    $soloAdultos,
+                    $url
                 );
             }
 
@@ -411,7 +431,9 @@ class InegiPerfilEducativoPrioritarioAutoService
 
     private function procesarZip(
         string $ruta,
-        string $claveEstado
+        string $claveEstado,
+        bool $soloAdultos = false,
+        string $urlFuente = ''
     ): array
     {
         if (!class_exists('ZipArchive')) {
@@ -455,13 +477,12 @@ class InegiPerfilEducativoPrioritarioAutoService
                         continue;
                     }
 
-                    $resultado =
-                        (new InegiPerfilEducativoPrioritarioImportService())
-                            ->importarXlsx(
-                                $tmp,
-                                basename($nombre),
-                                $claveEstado
-                            );
+                    $resultado = $soloAdultos
+                        ? (new InegiEscolaridadAdultaXlsxService())->importarXlsx(
+                            $tmp, basename($nombre), $claveEstado, $urlFuente
+                        )
+                        : (new InegiPerfilEducativoPrioritarioImportService())
+                            ->importarXlsx($tmp, basename($nombre), $claveEstado);
 
                     if (($resultado['ok'] ?? false) === true) {
                         return $resultado;
@@ -656,6 +677,10 @@ class InegiPerfilEducativoPrioritarioAutoService
                         )
                     )
             );
+        }
+
+        if ($urlFinal !== '' && !$this->esUrlInegi($urlFinal)) {
+            return $this->error('La fuente oficial redirigió a un dominio no autorizado.');
         }
 
         /*
