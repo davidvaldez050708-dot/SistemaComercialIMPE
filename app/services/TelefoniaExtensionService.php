@@ -50,10 +50,7 @@ class TelefoniaExtensionService
 
         if (
             !$usuarioLegacy ||
-            strcasecmp(
-                (string)($usuarioLegacy['rol'] ?? ''),
-                'Analista de Datos'
-            ) !== 0
+            empty($usuarioLegacy['puede_salientes'])
         ) {
             return null;
         }
@@ -71,7 +68,8 @@ class TelefoniaExtensionService
             'extension' => $extension,
             'caller_id' => trim((string)($config['caller_id'] ?? '')),
             'permite_salientes' => true,
-            'permite_entrantes' => true,
+            'permite_entrantes' => !empty($usuarioLegacy['puede_entrantes']),
+            'permite_transferir' => !empty($usuarioLegacy['puede_transferir']),
             'origen' => 'LEGACY_CONFIG',
         ];
     }
@@ -190,23 +188,48 @@ class TelefoniaExtensionService
                     te.permite_salientes,
                     te.permite_entrantes,
                     te.activo AS telefonia_activa,
-                    te.updated_at AS telefonia_actualizada_at
+                    te.updated_at AS telefonia_actualizada_at,
+                    EXISTS (
+                        SELECT 1
+                        FROM rol_permisos rp_cap
+                        INNER JOIN permisos p_cap
+                            ON p_cap.id = rp_cap.permiso_id
+                        WHERE rp_cap.rol_id = u.rol_id
+                          AND p_cap.codigo = 'telefonia.salientes'
+                          AND p_cap.estado = 1
+                    ) AS puede_salientes,
+                    EXISTS (
+                        SELECT 1
+                        FROM rol_permisos rp_cap
+                        INNER JOIN permisos p_cap
+                            ON p_cap.id = rp_cap.permiso_id
+                        WHERE rp_cap.rol_id = u.rol_id
+                          AND p_cap.codigo = 'telefonia.recibir'
+                          AND p_cap.estado = 1
+                    ) AS puede_entrantes,
+                    EXISTS (
+                        SELECT 1
+                        FROM rol_permisos rp_cap
+                        INNER JOIN permisos p_cap
+                            ON p_cap.id = rp_cap.permiso_id
+                        WHERE rp_cap.rol_id = u.rol_id
+                          AND p_cap.codigo = 'telefonia.transferir'
+                          AND p_cap.estado = 1
+                    ) AS puede_transferir
                 FROM usuarios u
                 INNER JOIN roles r
                     ON r.id = u.rol_id
+                INNER JOIN rol_permisos rp_uso
+                    ON rp_uso.rol_id = u.rol_id
+                INNER JOIN permisos p_uso
+                    ON p_uso.id = rp_uso.permiso_id
+                   AND p_uso.codigo = 'telefonia.usar'
+                   AND p_uso.estado = 1
                 LEFT JOIN telefonia_extensiones te
                     ON te.usuario_id = u.id
                    AND te.proveedor = 'ZADARMA'
-                WHERE r.nombre IN (
-                    'Analista de Datos',
-                    'Asesor de Ventas'
-                )
                 ORDER BY
-                    CASE
-                        WHEN r.nombre = 'Analista de Datos' THEN 1
-                        WHEN r.nombre = 'Asesor de Ventas' THEN 2
-                        ELSE 9
-                    END,
+                    r.nombre,
                     u.estado DESC,
                     u.nombre,
                     u.apellidos";
@@ -234,6 +257,12 @@ class TelefoniaExtensionService
                 (int)($fila['permite_entrantes'] ?? 0);
             $fila['telefonia_activa'] =
                 (int)($fila['telefonia_activa'] ?? 0);
+            $fila['puede_salientes'] =
+                (int)($fila['puede_salientes'] ?? 0);
+            $fila['puede_entrantes'] =
+                (int)($fila['puede_entrantes'] ?? 0);
+            $fila['puede_transferir'] =
+                (int)($fila['puede_transferir'] ?? 0);
             $usuarios[] = $fila;
         }
 
@@ -304,6 +333,24 @@ class TelefoniaExtensionService
         if ($activo === 1 && (int)$usuario['estado'] !== 1) {
             throw new InvalidArgumentException(
                 'No puedes activar telefonía para un usuario inactivo.'
+            );
+        }
+
+        if (
+            $permiteSalientes === 1 &&
+            empty($usuario['puede_salientes'])
+        ) {
+            throw new InvalidArgumentException(
+                'El rol del usuario no tiene permiso para realizar llamadas salientes.'
+            );
+        }
+
+        if (
+            $permiteEntrantes === 1 &&
+            empty($usuario['puede_entrantes'])
+        ) {
+            throw new InvalidArgumentException(
+                'El rol del usuario no tiene permiso para recibir llamadas.'
             );
         }
 
@@ -482,15 +529,44 @@ class TelefoniaExtensionService
         $sql = "SELECT
                     u.id,
                     u.estado,
-                    r.nombre AS rol
+                    r.nombre AS rol,
+                    EXISTS (
+                        SELECT 1
+                        FROM rol_permisos rp_cap
+                        INNER JOIN permisos p_cap
+                            ON p_cap.id = rp_cap.permiso_id
+                        WHERE rp_cap.rol_id = u.rol_id
+                          AND p_cap.codigo = 'telefonia.salientes'
+                          AND p_cap.estado = 1
+                    ) AS puede_salientes,
+                    EXISTS (
+                        SELECT 1
+                        FROM rol_permisos rp_cap
+                        INNER JOIN permisos p_cap
+                            ON p_cap.id = rp_cap.permiso_id
+                        WHERE rp_cap.rol_id = u.rol_id
+                          AND p_cap.codigo = 'telefonia.recibir'
+                          AND p_cap.estado = 1
+                    ) AS puede_entrantes,
+                    EXISTS (
+                        SELECT 1
+                        FROM rol_permisos rp_cap
+                        INNER JOIN permisos p_cap
+                            ON p_cap.id = rp_cap.permiso_id
+                        WHERE rp_cap.rol_id = u.rol_id
+                          AND p_cap.codigo = 'telefonia.transferir'
+                          AND p_cap.estado = 1
+                    ) AS puede_transferir
                 FROM usuarios u
                 INNER JOIN roles r
                     ON r.id = u.rol_id
+                INNER JOIN rol_permisos rp_uso
+                    ON rp_uso.rol_id = u.rol_id
+                INNER JOIN permisos p_uso
+                    ON p_uso.id = rp_uso.permiso_id
+                   AND p_uso.codigo = 'telefonia.usar'
+                   AND p_uso.estado = 1
                 WHERE u.id = ?
-                  AND r.nombre IN (
-                    'Analista de Datos',
-                    'Asesor de Ventas'
-                  )
                 LIMIT 1";
 
         $stmt = $this->connection->prepare($sql);
@@ -546,10 +622,43 @@ class TelefoniaExtensionService
                     te.extension,
                     te.caller_id,
                     te.permite_salientes,
-                    te.permite_entrantes
+                    te.permite_entrantes,
+                    EXISTS (
+                        SELECT 1
+                        FROM rol_permisos rp_cap
+                        INNER JOIN permisos p_cap
+                            ON p_cap.id = rp_cap.permiso_id
+                        WHERE rp_cap.rol_id = u.rol_id
+                          AND p_cap.codigo = 'telefonia.salientes'
+                          AND p_cap.estado = 1
+                    ) AS puede_salientes,
+                    EXISTS (
+                        SELECT 1
+                        FROM rol_permisos rp_cap
+                        INNER JOIN permisos p_cap
+                            ON p_cap.id = rp_cap.permiso_id
+                        WHERE rp_cap.rol_id = u.rol_id
+                          AND p_cap.codigo = 'telefonia.recibir'
+                          AND p_cap.estado = 1
+                    ) AS puede_entrantes,
+                    EXISTS (
+                        SELECT 1
+                        FROM rol_permisos rp_cap
+                        INNER JOIN permisos p_cap
+                            ON p_cap.id = rp_cap.permiso_id
+                        WHERE rp_cap.rol_id = u.rol_id
+                          AND p_cap.codigo = 'telefonia.transferir'
+                          AND p_cap.estado = 1
+                    ) AS puede_transferir
                 FROM telefonia_extensiones te
                 INNER JOIN usuarios u
                     ON u.id = te.usuario_id
+                INNER JOIN rol_permisos rp_uso
+                    ON rp_uso.rol_id = u.rol_id
+                INNER JOIN permisos p_uso
+                    ON p_uso.id = rp_uso.permiso_id
+                   AND p_uso.codigo = 'telefonia.usar'
+                   AND p_uso.estado = 1
                 WHERE te.usuario_id = ?
                   AND te.proveedor = 'ZADARMA'
                   AND te.activo = 1
@@ -578,9 +687,13 @@ class TelefoniaExtensionService
             'extension' => $extension,
             'caller_id' => trim((string)($fila['caller_id'] ?? '')),
             'permite_salientes' =>
-                (int)($fila['permite_salientes'] ?? 0) === 1,
+                (int)($fila['permite_salientes'] ?? 0) === 1 &&
+                (int)($fila['puede_salientes'] ?? 0) === 1,
             'permite_entrantes' =>
-                (int)($fila['permite_entrantes'] ?? 0) === 1,
+                (int)($fila['permite_entrantes'] ?? 0) === 1 &&
+                (int)($fila['puede_entrantes'] ?? 0) === 1,
+            'permite_transferir' =>
+                (int)($fila['puede_transferir'] ?? 0) === 1,
             'origen' => 'USUARIO',
         ];
     }
