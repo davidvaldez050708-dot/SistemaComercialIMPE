@@ -1269,7 +1269,8 @@ $urlPaginaTerritorio = function ($pagina) use ($buscarTerritorio, $filtroInforma
                         </label>
                         <small class="data-power-import-help">
                             Columnas: clave_estado, codigo_indicador, anio, poblacion_base, cantidad_personas, fuente, referencia_url, metodologia.
-                            Consulta la documentación del repositorio antes de importar.
+                            <a href="<?= BASE_URL ?>plantillas/escolaridad_adulta_inegi.csv" download>Descargar plantilla CSV</a>.
+                            Antes de importar, consulta la metodología y las instrucciones en el repositorio.
                         </small>
                         <button type="submit" class="btn btn-system-save" id="importarEscolaridadAdultaBtn">
                             <i class="bi bi-cloud-upload me-1"></i> Importar indicadores
