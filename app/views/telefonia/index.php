@@ -219,6 +219,15 @@ $esc = static function ($valor) {
                                             </span>
                                         <?php endif; ?>
 
+                                        <?php if (
+                                            (int)($usuario['puede_transferir'] ?? 0) === 1
+                                        ): ?>
+                                            <span>
+                                                <i class="bi bi-arrow-left-right"></i>
+                                                Transferencias
+                                            </span>
+                                        <?php endif; ?>
+
                                         <?php if (!$tieneConfiguracion): ?>
                                             <span class="is-muted">Pendiente</span>
                                         <?php endif; ?>
@@ -264,6 +273,9 @@ $esc = static function ($valor) {
                                             data-caller-id="<?= $esc($usuario['caller_id'] ?? '') ?>"
                                             data-outgoing="<?= (int)($usuario['permite_salientes'] ?? 0) ?>"
                                             data-incoming="<?= (int)($usuario['permite_entrantes'] ?? 0) ?>"
+                                            data-can-outgoing="<?= (int)($usuario['puede_salientes'] ?? 0) ?>"
+                                            data-can-incoming="<?= (int)($usuario['puede_entrantes'] ?? 0) ?>"
+                                            data-can-transfer="<?= (int)($usuario['puede_transferir'] ?? 0) ?>"
                                             data-active="<?= (int)($usuario['telefonia_activa'] ?? 0) ?>">
                                             <i class="bi bi-sliders"></i>
                                             <?= $tieneConfiguracion
@@ -393,7 +405,7 @@ $esc = static function ($valor) {
                                 <i class="bi bi-telephone-outbound"></i>
                                 <span>
                                     <strong>Llamadas salientes</strong>
-                                    <small>Permite originar llamadas desde el sistema.</small>
+                                    <small data-telephony-outgoing-help>Permite originar llamadas desde el sistema.</small>
                                 </span>
                             </span>
                             <span class="telephony-toggle">
@@ -414,7 +426,7 @@ $esc = static function ($valor) {
                                 <i class="bi bi-telephone-inbound"></i>
                                 <span>
                                     <strong>Llamadas entrantes</strong>
-                                    <small>Prepara la extensión para recibir llamadas.</small>
+                                    <small data-telephony-incoming-help>Prepara la extensión para recibir llamadas.</small>
                                 </span>
                             </span>
                             <span class="telephony-toggle">
