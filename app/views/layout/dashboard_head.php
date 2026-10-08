@@ -86,6 +86,11 @@ $esTelefoniaDashboard =
     $controllerDashboard === 'telefonia';
 $usarTelefoniaPersistente =
     tienePermiso('telefonia.usar');
+$esRecepcionMarketingDashboard =
+    $esHomeDashboard &&
+    strcasecmp(trim((string)($_SESSION['rol'] ?? '')), 'Marketing') === 0 &&
+    tienePermiso('telefonia.usar') &&
+    tienePermiso('telefonia.recibir');
 
 $cssOpcionalDashboard = [];
 
@@ -222,6 +227,11 @@ if (
 if ($usarTelefoniaPersistente) {
     $cssOpcionalDashboard[] = 'telefonia_persistente.css';
 }
+if ($esRecepcionMarketingDashboard) {
+    $cssOpcionalDashboard[] = 'seguimiento_llamadas_expediente.css';
+    $cssOpcionalDashboard[] = 'seguimiento_llamadas_player.css';
+    $cssOpcionalDashboard[] = 'telefonia_recepcion_marketing.css';
+}
 
 if (
     $esConvocatoriaReportesDashboard ||
@@ -294,6 +304,11 @@ if (
     if ($esHomeDashboard) {
         $jsOpcionalHead[] = 'telefonia_marcador.js';
     }
+    $jsOpcionalHead[] = 'telefonia_grabaciones_ventas.js';
+}
+if ($esRecepcionMarketingDashboard) {
+    $jsOpcionalHead[] = 'telefonia_recepcion_marketing.js';
+    // Reutiliza exactamente el reproductor del expediente y de Ventas.
     $jsOpcionalHead[] = 'telefonia_grabaciones_ventas.js';
 }
 

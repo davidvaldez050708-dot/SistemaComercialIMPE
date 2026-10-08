@@ -481,3 +481,59 @@ pérdida de conexión antes de NOTIFY_OUT_START y verificar la recuperación
 al recargar; confirmar que un ID de llamada institucional no pueda
 registrarse, reproducirse ni aparecer en el historial comercial;
 validar que el analista siga llamando desde Vinculación.
+
+
+## Marketing · Recepción telefónica en Inicio (2026-10-08)
+
+**No se crea el rol Recepción**: el usuario Marketing con permisos
+`telefonia.usar` y `telefonia.recibir` utiliza el mismo icono de audífonos
+de la barra superior. Solo puede atender llamadas cuando dispone de su
+propia extensión Zadarma activa y con `permite_entrantes` habilitado. El
+indicador muestra **Verificando extensión**, **Extensión pendiente**,
+**Recepción por activar** o **Recepción activa** conforme al estado
+comprobado del motor WebRTC. El botón **Activar recepción** de Inicio abre
+el mismo host WebRTC; no crea un teléfono ni un servicio independiente.
+
+El Inicio de Marketing incorpora **Recepción telefónica**, respetando las
+tarjetas y proporciones del CRM. Presenta los indicadores recibidas,
+atendidas, perdidas y transferidas; tabla de los últimos 30 días,
+búsqueda en vivo por número, filtro por resultado, ocho filas por página,
+botones numerados y actualización automática cada 45 segundos mientras
+el navegador está visible (no interrumpe audio en reproducción).
+
+El endpoint de solo lectura
+`prueba_telefonia/api/historial_recepcion_marketing.php` valida sesión,
+rol Marketing y permisos, y filtra por la extensión activa **del usuario
+autenticado**, excluyendo llamadas anteriores a la asignación o a la
+última actualización de esa asignación para no exponer datos de otros
+usuarios que utilizaron la misma extensión. Se usan únicamente eventos
+`NOTIFY_INTERNAL` para establecer que la llamada entró a la extensión;
+`NOTIFY_ANSWER`, `NOTIFY_END` y los datos de transferencias de los
+webhooks determinan sus estados. No utiliza `telefonia_ventas_marcaciones`
+ni expedientes de Vinculación.
+
+**Grabaciones:** el historial abre el reproductor que también usan
+Seguimientos y Ventas, pero mediante la ruta independiente
+`prueba_telefonia/api/grabacion_recepcion_marketing.php`. El servidor
+verifica sesión, permisos, usuario, extensión vigente, recepción,
+contestación y existencia de audio en Zadarma. Por seguridad, **no se
+habilita la reproducción de grabaciones transferidas**: un mismo archivo
+de PBX puede incluir conversaciones de otra extensión. No se exponen
+links privados de Zadarma al navegador.
+
+**Límites:** el número institucional debe estar direccionado en la PBX
+de Zadarma a la extensión de Tania para recibir llamadas reales. El
+indicador verde confirma el motor WebRTC disponible, no la portabilidad
+ni el enrutamiento del número 800. Las métricas dependen de webhooks
+firmados y actualizados; una llamada transferida atendida puede contar
+tanto en atendidas como en transferidas. Si falta un evento de la PBX,
+el estado puede seguir pendiente. No se añaden tablas nuevas ni se
+alteran grabaciones o resultados de Ventas y Vinculación.
+
+**Pruebas reales pendientes:** asignar a Tania una extensión de recepción
+activa desde el Administrador, activar el botón, llamar al número
+institucional, atender, dejar una llamada sin respuesta y transferir otra.
+Verificar el historial exclusivo, las métricas, el comportamiento cuando
+no existe extensión y el bloqueo de audio de transferidas. Comprobar que
+un usuario de otra extensión o sin permisos no pueda descargar el audio
+alterando el `pbx_call_id`.

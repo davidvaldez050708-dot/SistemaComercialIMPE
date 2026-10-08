@@ -1,0 +1,342 @@
+
+/* Marketing · Recepción telefónica.
+   Usa las mismas superficies, bordes y tamaños operativos del CRM. */
+.marketing-reception-panel {
+    margin: 0 0 19px;
+    padding: 17px 19px;
+    min-width: 0;
+}
+.marketing-reception-heading,
+.marketing-reception-history-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 13px 18px;
+}
+.marketing-reception-heading-main {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+    flex: 1 1 290px;
+}
+.marketing-reception-heading-icon {
+    width: 42px;
+    height: 42px;
+    flex: 0 0 42px;
+    display: grid;
+    place-items: center;
+    border-radius: 12px;
+    background: var(--color-primary-soft, #edf2ff);
+    border: 1px solid #dae4f5;
+    color: var(--color-primary, #293c88);
+    font-size: 18px;
+}
+.marketing-reception-eyebrow {
+    display: block;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: .09em;
+    color: var(--color-text-secondary);
+}
+.marketing-reception-heading h2,
+.marketing-reception-history-head h3 {
+    margin: 3px 0 3px;
+    font-size: 15px;
+    font-weight: 800;
+    line-height: 1.3;
+    color: var(--color-text-primary);
+}
+.marketing-reception-heading p,
+.marketing-reception-history-head p {
+    margin: 0;
+    color: var(--color-text-secondary);
+    font-size: 11px;
+    line-height: 1.5;
+}
+.marketing-reception-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+}
+.marketing-reception-actions .btn {
+    min-height: 34px;
+    padding: 7px 11px;
+    border-radius: 9px;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+.marketing-reception-actions .btn:disabled {
+    opacity: .58;
+    cursor: not-allowed;
+}
+.marketing-reception-state {
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+    max-width: 205px;
+    border: 1px solid #e2e8f0;
+    border-radius: 999px;
+    background: #f8fafc;
+    padding: 6px 9px;
+    color: var(--color-text-secondary);
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1.3;
+}
+.marketing-reception-state i {
+    font-size: 7px;
+    color: #9ca8b8;
+}
+.marketing-reception-state.is-active {
+    background: #effaf6;
+    border-color: #cce8da;
+    color: #13775b;
+}
+.marketing-reception-state.is-active i { color: #19936f; }
+.marketing-reception-state.is-pending {
+    background: #fff8ed;
+    border-color: #f4e3c2;
+    color: #936519;
+}
+.marketing-reception-explainer {
+    margin-top: 8px;
+    color: var(--color-text-secondary);
+    font-size: 10.5px;
+    line-height: 1.5;
+}
+.marketing-reception-metrics {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+    margin: 15px 0 19px;
+}
+.marketing-reception-metric {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    padding: 12px;
+    border: 1px solid var(--color-border);
+    border-radius: 11px;
+    background: var(--color-surface, #fff);
+}
+.marketing-reception-metric-icon {
+    flex: 0 0 34px;
+    height: 34px;
+    display: grid;
+    place-items: center;
+    border-radius: 9px;
+    background: #edf3fc;
+    color: #325b91;
+    font-size: 14px;
+}
+.marketing-reception-metric-icon.is-good {
+    background: #e8f7f0;
+    color: #168060;
+}
+.marketing-reception-metric-icon.is-alert {
+    background: #fff1ed;
+    color: #bc654b;
+}
+.marketing-reception-metric strong {
+    display: block;
+    font-size: 20px;
+    font-weight: 800;
+    line-height: 1.05;
+    color: var(--color-text-primary);
+}
+.marketing-reception-metric span:last-child {
+    display: block;
+    margin-top: 4px;
+    font-size: 10px;
+    font-weight: 650;
+    color: var(--color-text-secondary);
+}
+.marketing-reception-history-head {
+    padding: 0 0 11px;
+    border-bottom: 1px solid var(--color-border);
+}
+.marketing-reception-history-head h3 { font-size: 13px; }
+.marketing-reception-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+.marketing-reception-search {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    width: 190px;
+}
+.marketing-reception-search > i {
+    position: absolute;
+    left: 10px;
+    pointer-events: none;
+    color: var(--color-text-secondary);
+    font-size: 12px;
+}
+.marketing-reception-search .form-control {
+    width: 100%;
+    min-height: 34px;
+    padding: 6px 10px 6px 30px;
+    background: #f8fafc;
+    border-radius: 8px;
+    font-size: 11px;
+}
+.marketing-reception-status-filter {
+    min-height: 34px;
+    min-width: 146px;
+    width: auto;
+    border-radius: 8px;
+    background-color: #f8fafc;
+    font-size: 11px;
+}
+.marketing-reception-table-scroll {
+    margin-top: 7px;
+    min-width: 0;
+}
+.marketing-reception-table {
+    margin: 0;
+    width: 100%;
+}
+.marketing-reception-table th {
+    padding: 10px;
+    font-size: 10.5px;
+    font-weight: 800;
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+}
+.marketing-reception-table td {
+    padding: 10px;
+    font-size: 11px;
+    vertical-align: middle;
+    color: var(--color-text-primary);
+}
+.marketing-reception-table .marketing-reception-placeholder {
+    text-align: center;
+    padding: 23px 10px;
+    color: var(--color-text-secondary);
+    font-size: 11px;
+}
+.marketing-reception-number {
+    font-weight: 750;
+    white-space: nowrap;
+}
+.marketing-reception-status {
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 8px;
+    border: 1px solid #e0e8f3;
+    border-radius: 999px;
+    background: #f5f8fc;
+    color: #496583;
+    font-size: 10px;
+    font-weight: 750;
+}
+.marketing-reception-status.is-answered {
+    background: #edf9f3;
+    border-color: #cfecdd;
+    color: #1c785d;
+}
+.marketing-reception-status.is-missed {
+    background: #fff3ef;
+    border-color: #f4dace;
+    color: #a55742;
+}
+.marketing-reception-status.is-transferred {
+    background: #f1f3fe;
+    border-color: #dfe2f5;
+    color: #545b96;
+}
+.marketing-reception-muted {
+    color: var(--color-text-secondary);
+}
+.marketing-reception-table .linkage-call-audio-state {
+    font-family: inherit;
+    font-size: 10px;
+    white-space: nowrap;
+}
+.marketing-reception-table .telephony-history-recording-row[hidden] {
+    display: none !important;
+}
+.marketing-reception-table .telephony-history-recording-row > td {
+    background: #fbfcfe;
+    padding: 6px 10px 12px;
+}
+.marketing-reception-table .telephony-history-recording-slot {
+    max-width: 730px;
+}
+.marketing-reception-table .linkage-call-inline-player {
+    margin: 0;
+}
+.marketing-reception-table .linkage-call-custom-player {
+    width: 100%;
+}
+.marketing-reception-footer {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+    padding-top: 11px;
+    border-top: 1px solid var(--color-border);
+    color: var(--color-text-secondary);
+    font-size: 10.5px;
+}
+.marketing-reception-pagination {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+.marketing-reception-pagination[hidden] { display: none !important; }
+.marketing-reception-page {
+    min-width: 30px;
+    min-height: 30px;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    background: var(--color-surface, #fff);
+    color: var(--color-text-secondary);
+    font-size: 10.5px;
+    font-weight: 750;
+}
+.marketing-reception-page.is-current {
+    border-color: var(--color-primary);
+    background: var(--color-primary);
+    color: #fff;
+}
+.marketing-reception-page:hover:not(:disabled) {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+    background: var(--color-primary-soft);
+}
+.marketing-reception-page:disabled {
+    opacity: .4;
+}
+.marketing-reception-page:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+}
+@media (max-width: 1050px) {
+    .marketing-reception-metrics {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .marketing-reception-actions { justify-content: flex-start; }
+}
+@media (max-width: 575px) {
+    .marketing-reception-panel { padding: 13px; }
+    .marketing-reception-metrics { gap: 8px; }
+    .marketing-reception-metric { padding: 10px 9px; gap: 7px; }
+    .marketing-reception-metric-icon { flex-basis: 30px; height: 30px; }
+    .marketing-reception-filters { width: 100%; }
+    .marketing-reception-search { flex: 1 1 150px; }
+    .marketing-reception-status-filter { flex: 1 1 150px; }
+    .marketing-reception-history-head { align-items: stretch; }
+    .marketing-reception-footer { align-items: flex-start; }
+}

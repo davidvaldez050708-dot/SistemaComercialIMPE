@@ -2284,89 +2284,138 @@
         function () {
             createPanel();
 
-            const receptionButton =
-                document.querySelector(
-                    '[data-telephony-reception-toggle]'
-                );
-            const receptionIndicator =
-                receptionButton?.querySelector(
-                    '[data-telephony-reception-indicator]'
-                );
-
-            const renderReceptionState =
-                function () {
-                    if (!receptionButton) {
-                        return;
-                    }
-
-                    const enabled =
-                        Boolean(
-                            availability?.permite_entrantes
-                        );
-                    const active =
-                        enabled &&
-                        hostUsable();
-
-                    receptionButton.disabled =
-                        availability !== null &&
-                        !enabled;
-                    receptionButton.classList.toggle(
-                        'is-active',
-                        active
-                    );
-                    receptionButton.title = active
-                        ? 'Recepción telefónica activa'
-                        : 'Activar recepción telefónica';
-                    receptionButton.setAttribute(
-                        'aria-label',
-                        receptionButton.title
-                    );
-
-                    receptionIndicator?.classList.toggle(
-                        'is-active',
-                        active
-                    );
-                };
-
-            receptionButton?.addEventListener(
-                'click',
-                function () {
-                    void prepare({
-                        openHost: true
-                    }).then(function () {
-                        sendCommand('PING', {});
-                        renderReceptionState();
-                    }).catch(function (error) {
-                        console.warn(error);
-                        receptionButton.title =
-                            error.message ||
-                            'No fue posible activar la recepción.';
-                    });
-                }
+            const receptionButton = document.querySelector(
+                '[data-telephony-reception-toggle]'
             );
+            const receptionIndicator = receptionButton?.querySelector(
+                '[data-telephony-reception-indicator]'
+            );
+            const marketingReception = document.querySelector(
+                '[data-marketing-reception]'
+            );
+            const marketingBadge = marketingReception?.querySelector(
+                '[data-marketing-reception-state]'
+            );
+            const marketingLabel = marketingReception?.querySelector(
+                '[data-marketing-reception-state-text]'
+            );
+            const marketingAction = marketingReception?.querySelector(
+                '[data-marketing-reception-activate]'
+            );
+            const marketingHint = marketingReception?.querySelector(
+                '[data-marketing-reception-hint]'
+            );
+            let receptionChecking = true;
+            let receptionBusy = false;
+            let receptionError = '';
 
-            subscribe(
-                function () {
+            const renderReceptionState = function () {
+                if (!receptionButton && !marketingReception) return;
+
+                const assigned = Boolean(availability?.permite_entrantes);
+                const active = assigned && hostUsable();
+                const awaiting = !assigned && receptionChecking;
+                const missing = !assigned && !awaiting &&
+                    /extensi[oó]n|asignada/i.test(receptionError);
+                const extension = assigned
+                    ? String(availability.extension || '')
+                    : '';
+                const label = active
+                    ? 'Recepción activa'
+                    : assigned
+                        ? 'Recepción por activar'
+                        : awaiting
+                            ? 'Verificando extensión…'
+                            : missing
+                                ? 'Extensión pendiente'
+                                : 'Recepción no disponible';
+                const title = active
+                    ? 'Recepción telefónica activa'
+                    : assigned
+                        ? 'Activar recepción telefónica'
+                        : missing
+                            ? 'Extensión pendiente: solicita su asignación al administrador'
+                            : receptionError || 'Verificando recepción telefónica';
+
+                if (receptionButton) {
+                    receptionButton.disabled = !assigned || receptionBusy;
+                    receptionButton.classList.toggle('is-active', active);
+                    receptionButton.title = title;
+                    receptionButton.setAttribute('aria-label', title);
+                }
+                receptionIndicator?.classList.toggle('is-active', active);
+
+                if (marketingBadge) {
+                    marketingBadge.classList.toggle('is-active', active);
+                    marketingBadge.classList.toggle('is-pending', missing);
+                }
+                if (marketingLabel) {
+                    marketingLabel.textContent = label +
+                        (extension ? ' · Ext. ' + extension : '');
+                }
+                if (marketingHint) {
+                    marketingHint.textContent = active
+                        ? 'Extensión ' + extension +
+                            ' conectada a WebRTC. Puedes recibir y transferir llamadas mientras permanezca activa.'
+                        : assigned
+                            ? 'Extensión ' + extension +
+                                ' asignada. Pulsa Activar recepción al comenzar tu jornada.'
+                            : awaiting
+                                ? 'Estamos consultando la extensión telefónica asignada a tu usuario.'
+                                : missing
+                                    ? 'No tienes una extensión habilitada para recibir llamadas. Solicita al administrador que te la asigne.'
+                                    : receptionError || 'La recepción telefónica no está disponible.';
+                }
+                if (marketingAction) {
+                    marketingAction.disabled = !assigned || receptionBusy;
+                    marketingAction.innerHTML = active
+                        ? '<i class="bi bi-headset" aria-hidden="true"></i> Abrir teléfono'
+                        : '<i class="bi bi-headset" aria-hidden="true"></i> Activar recepción';
+                }
+            };
+
+            const activarRecepcion = function () {
+                if (!availability?.permite_entrantes || receptionBusy) return;
+                receptionBusy = true;
+                receptionError = '';
+                renderReceptionState();
+
+                // Mantener la apertura del host WebRTC dentro del clic real:
+                // la ventana no puede abrirse tras otra promesa de validación.
+                void prepare({openHost: true}).then(function () {
+                    sendCommand('PING', {});
+                    window.setTimeout(renderReceptionState, 300);
+                }).catch(function (error) {
+                    console.warn(error);
+                    receptionError = String(error?.message || 'No fue posible activar recepción.');
+                }).finally(function () {
+                    receptionBusy = false;
                     renderReceptionState();
-                }
-            );
+                });
+            };
 
-            void probe().then(
-                function (info) {
-                    if (info?.permite_entrantes) {
-                        sendCommand('PING', {});
+            receptionButton?.addEventListener('click', activarRecepcion);
+            marketingAction?.addEventListener('click', activarRecepcion);
+            subscribe(renderReceptionState);
 
-                        window.setTimeout(
-                            renderReceptionState,
-                            260
-                        );
-                    } else {
-                        renderReceptionState();
-                    }
+            void probe().then(function (info) {
+                receptionError = '';
+                receptionChecking = false;
+                if (info?.permite_entrantes) {
+                    sendCommand('PING', {});
+                    window.setTimeout(renderReceptionState, 260);
                 }
-            ).catch(function () {
+                renderReceptionState();
+            }).catch(function (error) {
+                receptionChecking = false;
+                receptionError = String(error?.message || 'No se encontró una extensión habilitada.');
                 renderReceptionState();
             });
+            renderReceptionState();
+
+            // Si se cierra el host y deja de enviar latidos, el indicador
+            // vuelve a 'Recepción por activar'; nunca queda verde en falso.
+            window.setInterval(renderReceptionState, 3000);
             renderPanel();
             restoreContextFromQuery();
 

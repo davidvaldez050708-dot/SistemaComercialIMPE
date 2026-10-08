@@ -117,6 +117,8 @@ $totalCoberturaPendienteMarketing = count($estadosSinConvocatoria);
     </section>
 </section>
 
+<?php require __DIR__ . '/../telefonia/recepcion_marketing.php'; ?>
+
 <div class="metric-grid mb-4">
     <article class="metric-card">
         <div class="metric-icon"><i class="bi bi-megaphone"></i></div>
