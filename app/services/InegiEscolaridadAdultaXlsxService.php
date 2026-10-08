@@ -311,7 +311,7 @@ class InegiEscolaridadAdultaXlsxService
     private function normalizarEdad(string $valor): string
     {
         $valor = $this->normalizarTexto($valor);
-        $valor = preg_replace('/\\s+ANOS?\\s+Y\\s+MAS$/u', '+', $valor);
+        $valor = preg_replace('/\\s+A(?:Ñ|N)OS?\\s+Y\\s+MAS$/u', '+', $valor);
         $valor = str_replace([' AÑOS', ' ANOS'], '', $valor);
         $valor = preg_replace('/^(\\d{1,2})\\s+A\\s+(\\d{1,2})$/', '$1-$2', $valor);
         $valor = str_replace(' ', '', $valor);
