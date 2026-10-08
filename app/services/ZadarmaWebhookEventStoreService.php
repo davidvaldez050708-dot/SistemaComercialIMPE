@@ -365,6 +365,7 @@ class ZadarmaWebhookEventStoreService
             if (
                 $tipo === 'NOTIFY_END' &&
                 (
+                    $internal === '' ||
                     $internal === $extension ||
                     $lastInternal === $extension
                 )
@@ -387,10 +388,10 @@ class ZadarmaWebhookEventStoreService
 
         $estado = 'ringing';
 
-        if ($fin) {
-            $estado = 'ended';
-        } elseif ($transferida) {
+        if ($transferida) {
             $estado = 'transferred';
+        } elseif ($fin) {
+            $estado = 'ended';
         } elseif ($respuesta) {
             $estado = 'answered';
         }
