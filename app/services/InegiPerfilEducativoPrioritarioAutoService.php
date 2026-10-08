@@ -301,6 +301,16 @@ class InegiPerfilEducativoPrioritarioAutoService
         $descarga = $this->descargarArchivo($url, $temporal);
 
         if (($descarga['ok'] ?? false) !== true) {
+            /*
+             * Durante una actualización masiva INEGI puede responder de forma
+             * transitoria con HTML/503 aun cuando la ruta sea correcta.
+             * Reintentamos una sola vez antes de probar la siguiente variante.
+             */
+            usleep(700000);
+            $descarga = $this->descargarArchivo($url, $temporal);
+        }
+
+        if (($descarga['ok'] ?? false) !== true) {
             @unlink($temporal);
             return $descarga;
         }
