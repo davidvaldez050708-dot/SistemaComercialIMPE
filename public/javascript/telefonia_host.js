@@ -4,12 +4,23 @@
     const config = window.IMPE_TELEPHONY_HOST || {};
     const userId = Number(config.userId || 0);
     const extension = String(config.extension || '').trim();
+    const permiteSalientes =
+        Boolean(config.permiteSalientes);
+    const permiteEntrantes =
+        Boolean(config.permiteEntrantes);
+    const permiteTransferir =
+        Boolean(config.permiteTransferir);
+    let nativeUiVisible = false;
 
     if (userId <= 0 || extension === '') {
         return;
     }
 
     const concealOwnWindow = function () {
+        if (nativeUiVisible) {
+            return;
+        }
+
         const screenLeft =
             Number(window.screen?.availLeft || 0);
         const screenTop =
@@ -147,6 +158,10 @@
     };
 
     const ocultarInterfazNativa = function () {
+        if (nativeUiVisible) {
+            return;
+        }
+
         const candidatos = new Set();
 
         document.querySelectorAll(
@@ -240,6 +255,80 @@
         });
     };
 
+    const mostrarInterfazNativa = function () {
+        nativeUiVisible = true;
+
+        document.querySelectorAll(
+            '[data-impe-native-phone-hidden="1"]'
+        ).forEach(function (raiz) {
+            if (!(raiz instanceof HTMLElement)) {
+                return;
+            }
+
+            raiz.dataset.impeNativePhoneHidden = '0';
+            raiz.removeAttribute('aria-hidden');
+
+            [
+                'position',
+                'left',
+                'top',
+                'right',
+                'bottom',
+                'opacity',
+                'pointer-events'
+            ].forEach(function (propiedad) {
+                raiz.style.removeProperty(propiedad);
+            });
+        });
+    };
+
+    const mostrarHostEntrante = function () {
+        mostrarInterfazNativa();
+
+        const screenLeft =
+            Number(window.screen?.availLeft || 0);
+        const screenTop =
+            Number(window.screen?.availTop || 0);
+        const screenWidth =
+            Number(
+                window.screen?.availWidth ||
+                window.screen?.width ||
+                1280
+            );
+
+        try {
+            window.resizeTo(420, 620);
+        } catch (error) {
+            // El navegador puede limitar dimensiones.
+        }
+
+        try {
+            window.moveTo(
+                screenLeft +
+                    Math.max(20, screenWidth - 450),
+                screenTop + 40
+            );
+        } catch (error) {
+            // El navegador decide la posición final.
+        }
+
+        try {
+            window.focus();
+        } catch (error) {
+            // El foco puede quedar en la ventana principal.
+        }
+    };
+
+    const ocultarHostEntrante = function () {
+        nativeUiVisible = false;
+        ocultarInterfazNativa();
+
+        window.setTimeout(
+            concealOwnWindow,
+            80
+        );
+    };
+
     const observerNativo =
         typeof MutationObserver === 'function'
             ? new MutationObserver(function () {
@@ -268,6 +357,9 @@
     let webRtcKey = '';
     let pollInterval = null;
     let pollBusy = false;
+    let incomingPollInterval = null;
+    let incomingPollBusy = false;
+    let incomingFinishedTimer = null;
     let hangingUp = false;
     let muted = false;
     let answeredAtMs = 0;
@@ -285,6 +377,8 @@
             phase: 'idle',
             active: false,
             muted: false,
+            direction: '',
+            calledDid: '',
             destination: '',
             institution: '',
             status: 'idle',
@@ -367,7 +461,16 @@
 
         if (titleEl) {
             titleEl.textContent = state.active
-                ? (state.institution || state.destination || 'Llamada en curso')
+                ? (
+                    state.direction === 'incoming'
+                        ? 'Entrante · ' +
+                            (state.destination || 'Número desconocido')
+                        : (
+                            state.institution ||
+                            state.destination ||
+                            'Llamada en curso'
+                        )
+                )
                 : 'Extensión ' + extension + ' disponible';
         }
 
@@ -375,7 +478,11 @@
             const labels = {
                 dialing: 'Marcando…',
                 ringing: 'Timbrando…',
-                'in-progress': 'Llamada en curso',
+                'incoming-ringing': 'Llamada entrante…',
+                'in-progress': state.direction === 'incoming'
+                    ? 'Conversación entrante'
+                    : 'Llamada en curso',
+                transferred: 'Llamada transferida',
                 finishing: 'Finalizando…'
             };
 
@@ -626,6 +733,7 @@
         }
 
         widgetReady = true;
+        startIncomingPolling();
 
         const staged =
             !state.active &&
@@ -656,6 +764,285 @@
         }
 
         pollBusy = false;
+    };
+
+    const fetchIncomingState = async function () {
+        if (
+            !permiteEntrantes ||
+            !String(config.entradaUrl || '').trim()
+        ) {
+            return null;
+        }
+
+        const params = new URLSearchParams({
+            since: String(
+                Math.floor(
+                    (Date.now() - 10 * 60 * 1000) /
+                    1000
+                )
+            )
+        });
+
+        const response = await fetch(
+            String(config.entradaUrl) +
+                '?' +
+                params.toString(),
+            {
+                method: 'GET',
+                credentials: 'same-origin',
+                cache: 'no-store',
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'fetch'
+                }
+            }
+        );
+        const data = await response.json();
+
+        if (!response.ok || !data.ok) {
+            throw new Error(
+                data.mensaje ||
+                'No fue posible consultar llamadas entrantes.'
+            );
+        }
+
+        return data.call || null;
+    };
+
+    const finalizarEntrante = function (
+        call,
+        transferred
+    ) {
+        const token =
+            String(
+                call?.pbx_call_id ||
+                state.pbxCallId ||
+                ''
+            );
+
+        window.clearTimeout(
+            incomingFinishedTimer
+        );
+
+        publish({
+            phase: 'incoming-finished',
+            active: false,
+            direction: 'incoming',
+            status: transferred
+                ? 'transferred'
+                : String(
+                    call?.disposition ||
+                    'completed'
+                ),
+            duration: Math.max(
+                0,
+                Number(call?.duration || 0),
+                currentDuration()
+            ),
+            pbxCallId: token,
+            calledDid:
+                String(
+                    call?.called_did ||
+                    state.calledDid ||
+                    ''
+                ),
+            message: transferred
+                ? (
+                    'Llamada transferida a extensión ' +
+                    String(
+                        call?.transfer_to || 'destino'
+                    ) +
+                    '.'
+                )
+                : ''
+        });
+
+        answeredAtMs = 0;
+        ocultarHostEntrante();
+
+        incomingFinishedTimer =
+            window.setTimeout(
+                function () {
+                    if (
+                        state.direction === 'incoming' &&
+                        !state.active &&
+                        String(state.pbxCallId || '') ===
+                            token
+                    ) {
+                        state = emptyState();
+                        state.hostReady = true;
+                        state.phase = widgetReady
+                            ? 'ready'
+                            : 'idle';
+                        publish(state);
+                    }
+                },
+                5000
+            );
+    };
+
+    const applyIncomingState = function (call) {
+        if (!call) {
+            return;
+        }
+
+        const pbxCallId =
+            String(call.pbx_call_id || '').trim();
+        const incomingStatus =
+            String(call.estado || '').trim();
+
+        if (pbxCallId === '') {
+            return;
+        }
+
+        /*
+         * Una llamada saliente activa nunca se sustituye por una entrada
+         * distinta en el mismo host.
+         */
+        if (
+            state.active &&
+            state.direction !== 'incoming' &&
+            String(state.pbxCallId || '') !==
+                pbxCallId
+        ) {
+            return;
+        }
+
+        if (incomingStatus === 'transferred') {
+            if (
+                state.direction === 'incoming' &&
+                String(state.pbxCallId || '') ===
+                    pbxCallId
+            ) {
+                finalizarEntrante(call, true);
+            }
+            return;
+        }
+
+        if (incomingStatus === 'ended') {
+            if (
+                state.direction === 'incoming' &&
+                String(state.pbxCallId || '') ===
+                    pbxCallId
+            ) {
+                finalizarEntrante(call, false);
+            }
+            return;
+        }
+
+        const answered =
+            incomingStatus === 'answered';
+
+        if (
+            state.direction !== 'incoming' ||
+            String(state.pbxCallId || '') !==
+                pbxCallId
+        ) {
+            answeredAtMs = 0;
+        }
+
+        if (
+            answered &&
+            answeredAtMs <= 0
+        ) {
+            const answerAt =
+                Date.parse(
+                    String(call.answer_at || '')
+                        .replace(' ', 'T')
+                );
+            answeredAtMs =
+                Number.isFinite(answerAt)
+                    ? answerAt
+                    : Date.now();
+        }
+
+        publish({
+            phase: answered
+                ? 'in-progress'
+                : 'incoming-ringing',
+            active: true,
+            muted: false,
+            direction: 'incoming',
+            destination:
+                String(call.caller_id || ''),
+            calledDid:
+                String(call.called_did || ''),
+            institution: '',
+            status: answered
+                ? 'in-progress'
+                : 'incoming-ringing',
+            duration: Math.max(
+                0,
+                Number(call.duration || 0)
+            ),
+            requestedAt:
+                Math.floor(Date.now() / 1000),
+            answeredAtMs: answeredAtMs,
+            pbxCallId: pbxCallId,
+            callToken: pbxCallId,
+            context: {
+                type: 'INCOMING',
+                callerId:
+                    String(call.caller_id || ''),
+                calledDid:
+                    String(call.called_did || '')
+            },
+            finalMetadata: null,
+            message: answered
+                ? ''
+                : 'Llamada entrante a la extensión ' +
+                    extension
+        });
+
+        mostrarHostEntrante();
+    };
+
+    const pollIncoming = async function () {
+        if (
+            !permiteEntrantes ||
+            incomingPollBusy ||
+            (
+                state.active &&
+                state.direction !== 'incoming'
+            )
+        ) {
+            return;
+        }
+
+        incomingPollBusy = true;
+
+        try {
+            const call =
+                await fetchIncomingState();
+
+            if (call) {
+                applyIncomingState(call);
+            }
+        } catch (error) {
+            console.debug(
+                'No fue posible consultar la llamada entrante.',
+                error
+            );
+        } finally {
+            incomingPollBusy = false;
+        }
+    };
+
+    const startIncomingPolling = function () {
+        if (
+            !permiteEntrantes ||
+            incomingPollInterval
+        ) {
+            return;
+        }
+
+        void pollIncoming();
+
+        incomingPollInterval =
+            window.setInterval(
+                pollIncoming,
+                1200
+            );
     };
 
     const isFinal = function (status) {
@@ -868,6 +1255,15 @@
     };
 
     const startCall = async function (payload) {
+        if (!permiteSalientes) {
+            publish({
+                phase: 'error',
+                message:
+                    'Esta extensión no tiene habilitadas llamadas salientes.'
+            });
+            return;
+        }
+
         if (state.active) {
             publish({
                 message: 'Ya existe una llamada activa en esta extensión.'
@@ -1015,6 +1411,79 @@
         publish(state);
     };
 
+    const sendTransferDtmf = function (
+        targetExtension,
+        attended
+    ) {
+        const ext =
+            String(targetExtension || '')
+                .replace(/\D+/g, '');
+
+        if (
+            !permiteTransferir ||
+            ext.length < 3 ||
+            ext.length > 6 ||
+            !state.active
+        ) {
+            return false;
+        }
+
+        const code =
+            attended
+                ? '*' + ext + '#'
+                : '#' + ext + '#';
+
+        const candidates = [
+            window.zdrmWebPhone,
+            window.zdrmWebrtcPhoneInterface
+        ].filter(Boolean);
+        const methods = [
+            'sendDtmf',
+            'sendDTMF',
+            'regToDtmf',
+            'regToDTMF',
+            'dtmf'
+        ];
+
+        for (const target of candidates) {
+            for (const method of methods) {
+                if (
+                    typeof target?.[method] ===
+                    'function'
+                ) {
+                    target[method](code);
+
+                    publish({
+                        message:
+                            attended
+                                ? 'Consultando extensión ' +
+                                    ext +
+                                    '…'
+                                : 'Transfiriendo a extensión ' +
+                                    ext +
+                                    '…'
+                    });
+                    return true;
+                }
+            }
+        }
+
+        /*
+         * El widget oficial siempre soporta la combinación DTMF de la PBX.
+         * Si su versión no expone un método JS documentado, mostramos el
+         * control oficial y el código exacto que debe marcarse.
+         */
+        mostrarHostEntrante();
+        publish({
+            message:
+                'Marca ' +
+                code +
+                ' en el teclado de Zadarma para completar la transferencia.'
+        });
+
+        return false;
+    };
+
     const processCommand = function (message) {
         if (!message || message.type !== 'COMMAND') {
             return;
@@ -1068,6 +1537,16 @@
             void hangup();
         } else if (action === 'MUTE' && state.active) {
             setMuted(Boolean(payload.muted));
+        } else if (
+            action === 'TRANSFER' &&
+            state.active
+        ) {
+            sendTransferDtmf(
+                payload.extension,
+                Boolean(payload.attended)
+            );
+        } else if (action === 'SHOW_CONTROLS') {
+            mostrarHostEntrante();
         } else if (action === 'CLEAR_FINISHED') {
             clearFinished(String(payload.callToken || ''));
         }
@@ -1105,7 +1584,14 @@
     publish({
         phase: 'loading',
         active: false,
-        message: 'Preparando extensión ' + extension + '…'
+        message:
+            permiteEntrantes
+                ? 'Preparando recepción en extensión ' +
+                    extension +
+                    '…'
+                : 'Preparando extensión ' +
+                    extension +
+                    '…'
     });
 
     void ensureWidget().catch(function (error) {
