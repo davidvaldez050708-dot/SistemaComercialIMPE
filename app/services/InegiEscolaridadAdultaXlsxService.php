@@ -33,6 +33,11 @@ class InegiEscolaridadAdultaXlsxService
             !($host === 'inegi.org.mx' || str_ends_with($host, '.inegi.org.mx'))) {
             return $this->error('La referencia descargada no pertenece a INEGI.');
         }
+        // El libro nacional de INEGI usa cuatro columnas descriptivas antes
+        // de la población y no contiene la columna Municipio. Solo aceptar
+        // este esquema si procede del nombre oficial nacional conocido.
+        $modoNacional = strtolower((string)basename((string)parse_url($urlFuente, PHP_URL_PATH))) ===
+            'cpv2020_b_eum_07_educacion.xlsx';
         $zip = new ZipArchive();
         if ($zip->open($archivo, ZipArchive::CHECKCONS) !== true) {
             return $this->error('INEGI no entregó un XLSX válido.');
@@ -47,7 +52,7 @@ class InegiEscolaridadAdultaXlsxService
                 if (!preg_match('#^xl/worksheets/sheet\d+\.xml$#i', $hoja)) {
                     continue;
                 }
-                $resultado = $this->extraerHoja($zip, $hoja, $compartidas, $claveEstado);
+                $resultado = $this->extraerHoja($zip, $hoja, $compartidas, $claveEstado, $modoNacional);
                 $estructura = $estructura || $resultado['estructura'];
                 foreach ($resultado['grupos'] as $edad => $medidas) {
                     // Un total estatal repetido no debe sumarse dos veces.
@@ -164,7 +169,13 @@ class InegiEscolaridadAdultaXlsxService
         }
     }
 
-    private function extraerHoja(ZipArchive $zip, string $nombre, array $compartidas, string $estadoEsperado): array
+    private function extraerHoja(
+        ZipArchive $zip,
+        string $nombre,
+        array $compartidas,
+        string $estadoEsperado,
+        bool $modoNacional = false
+    ): array
     {
         // Un archivo estatal puede contener cientos de miles de filas municipales.
         // Leerlo completo en DOM agota la memoria de PHP/XAMPP.
@@ -185,6 +196,7 @@ class InegiEscolaridadAdultaXlsxService
         $totales = [];
         $rechazados = 0;
         $ejemplosRechazo = [];
+        $cuadroNacionalIdentificado = false;
         try {
             while ($reader->read()) {
                 if ($reader->nodeType !== XMLReader::ELEMENT || $reader->localName !== 'row') {
@@ -207,6 +219,42 @@ class InegiEscolaridadAdultaXlsxService
             if (!$celdas) {
                 continue;
             }
+
+            if ($modoNacional) {
+                /*
+                 * Cuadro de escolaridad por ENTIDAD FEDERATIVA (no tamaño de
+                 * localidad ni asistencia/alfabetismo). Verificar encabezados
+                 * literales antes de interpretar valores; no mezclar tablas.
+                 *
+                 * Nacional: A=Entidad, B=Sexo, C=Grupo de edad,
+                 * D=Edad desplegada, E..AF=28 métricas.
+                 * Estatal:  B=Entidad, C=Municipio, D=Sexo,
+                 * E=Grupo, F=Edad, G..AH=28 métricas.
+                 */
+                if (!$cuadroNacionalIdentificado) {
+                    $a = $this->normalizarTexto((string)($celdas[1] ?? ''));
+                    $b = $this->normalizarTexto((string)($celdas[2] ?? ''));
+                    $d = $this->normalizarTexto((string)($celdas[4] ?? ''));
+                    if ($a === 'ENTIDAD FEDERATIVA' && $b === 'SEXO' &&
+                        str_starts_with($this->normalizarTexto((string)($celdas[3] ?? '')), 'GRUPOS DE EDAD') &&
+                        $d === 'EDAD DESPLEGADA') {
+                        $cuadroNacionalIdentificado = true;
+                    }
+                    continue;
+                }
+                $originales = $celdas;
+                $celdas = [
+                    1 => $originales[1] ?? '',
+                    2 => 'Entidad federativa',
+                    3 => $originales[2] ?? '',
+                    4 => $originales[3] ?? '',
+                    5 => $originales[4] ?? ''
+                ];
+                for ($col = 1; $col <= 28; $col++) {
+                    $celdas[5 + $col] = $originales[4 + $col] ?? null;
+                }
+            }
+
             $texto = mb_strtolower(implode(' ', $celdas), 'UTF-8');
             if (str_contains($texto, 'población') && str_contains($texto, 'escolaridad')) {
                 $estructura = true;
