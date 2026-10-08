@@ -453,11 +453,28 @@ class ReporteConvocatoriaPdfService
 
     private function subtipoConvocatoria($subtipo)
     {
-        $subtipo = trim((string)$subtipo);
+        $subtipo = strtolower(trim((string)$subtipo));
 
-        return $subtipo !== ''
-            ? ucwords(str_replace('-', ' ', $subtipo))
-            : '—';
+        $etiquetas = [
+            'ejecutivas' => 'Ejecutivas',
+            'experiencia-laboral' =>
+                'Titulación por experiencia laboral',
+            'inscripciones-abiertas' =>
+                'Inscripciones Abiertas',
+            'bachillerato-2-anos' =>
+                'Bachillerato en 2 años',
+            'bachillerato-286' =>
+                'Bachillerato 286',
+            'ingles' => 'Inglés',
+            'sindicatos' => 'Sindicatos'
+        ];
+
+        if ($subtipo === '') {
+            return '—';
+        }
+
+        return $etiquetas[$subtipo] ??
+            ucwords(str_replace('-', ' ', $subtipo));
     }
 
     private function estadoConvocatoria($estado)
