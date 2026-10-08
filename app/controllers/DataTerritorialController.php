@@ -714,6 +714,9 @@ class DataTerritorialController
         $this->validarPermisoActualizacionOficialJson();
         $estadoIdPost = trim((string)($_POST['estado_id'] ?? ''));
         $claveMunicipioPost = trim((string)($_POST['clave_municipio'] ?? ''));
+        $clavesMunicipiosPost = trim(
+            (string)($_POST['claves_municipios'] ?? '')
+        );
 
         if ($estadoIdPost === '' || !ctype_digit($estadoIdPost) || (int)$estadoIdPost <= 0) {
             $this->responderJson(['ok' => false, 'mensaje' => 'El territorio seleccionado no es válido.'], 422);
@@ -740,10 +743,15 @@ class DataTerritorialController
             ], 422);
         }
 
-        // Una petición procesa un solo municipio. El navegador encadena las
-        // peticiones para evitar mantener una conexión PHP abierta durante
-        // decenas de consultas consecutivas a DENUE.
-        if ($claveMunicipioPost === '') {
+        /*
+         * Sin claves devolvemos el catálogo. Para la sincronización real el
+         * navegador envía lotes de municipios y Cuantificar resuelve varias
+         * áreas geográficas en una sola llamada a DENUE.
+         */
+        if (
+            $claveMunicipioPost === '' &&
+            $clavesMunicipiosPost === ''
+        ) {
             $this->responderJson([
                 'ok' => true,
                 'mensaje' => 'Municipios listos para actualizar.',
@@ -760,6 +768,158 @@ class DataTerritorialController
             ]);
         }
 
+        if ($clavesMunicipiosPost !== '') {
+            $clavesSolicitadas = array_values(
+                array_unique(
+                    array_filter(
+                        array_map(
+                            static function ($clave) {
+                                $digitos = preg_replace(
+                                    '/\\D+/',
+                                    '',
+                                    (string)$clave
+                                ) ?? '';
+
+                                if ($digitos === '') {
+                                    return '';
+                                }
+
+                                return str_pad(
+                                    substr($digitos, -3),
+                                    3,
+                                    '0',
+                                    STR_PAD_LEFT
+                                );
+                            },
+                            explode(',', $clavesMunicipiosPost)
+                        ),
+                        static function ($clave) use ($mapaMunicipios) {
+                            return preg_match('/^\\d{3}$/', $clave) &&
+                                isset($mapaMunicipios[$clave]);
+                        }
+                    )
+                )
+            );
+
+            if (empty($clavesSolicitadas)) {
+                $this->responderJson([
+                    'ok' => false,
+                    'mensaje' => 'El lote no contiene municipios válidos.'
+                ], 422);
+            }
+
+            if (count($clavesSolicitadas) > 30) {
+                $this->responderJson([
+                    'ok' => false,
+                    'mensaje' => 'El lote supera el máximo de 30 municipios.'
+                ], 422);
+            }
+
+            $denue = new DenueService();
+            $resultadoLote =
+                $denue->obtenerSectoresMunicipios(
+                    $claveEstado,
+                    $clavesSolicitadas
+                );
+
+            if (($resultadoLote['ok'] ?? false) !== true) {
+                $this->responderJson([
+                    'ok' => false,
+                    'mensaje' =>
+                        $resultadoLote['mensaje']
+                        ?? 'DENUE no respondió al lote municipal.'
+                ], 502);
+            }
+
+            $guardados = 0;
+            $establecimientos = 0;
+            $establecimientosVinculacion = 0;
+            $errores = [];
+
+            foreach ($clavesSolicitadas as $claveMunicipioLote) {
+                $municipio = $mapaMunicipios[$claveMunicipioLote];
+                $resultadoMunicipio =
+                    $resultadoLote['municipios'][$claveMunicipioLote]
+                    ?? null;
+
+                if (
+                    !is_array($resultadoMunicipio) ||
+                    ($resultadoMunicipio['ok'] ?? false) !== true
+                ) {
+                    $errores[] =
+                        ($municipio['nombre'] ?? $claveMunicipioLote) .
+                        ': ' .
+                        (
+                            $resultadoMunicipio['mensaje']
+                            ?? 'DENUE no devolvió información municipal.'
+                        );
+                    continue;
+                }
+
+                $total =
+                    (int)($resultadoMunicipio['total_establecimientos'] ?? 0);
+                $sectores =
+                    $resultadoMunicipio['sectores'] ?? [];
+
+                if (
+                    $total <= 0 ||
+                    !is_array($sectores) ||
+                    empty($sectores)
+                ) {
+                    $errores[] =
+                        ($municipio['nombre'] ?? $claveMunicipioLote) .
+                        ': DENUE devolvió información municipal incompleta.';
+                    continue;
+                }
+
+                try {
+                    $guardado =
+                        $modelo->actualizarActividadEconomicaMunicipioOficial(
+                            $estadoId,
+                            (int)$municipio['id'],
+                            $total,
+                            $sectores
+                        );
+                } catch (Throwable $error) {
+                    error_log($error->getMessage());
+                    $guardado = false;
+                }
+
+                if (!$guardado) {
+                    $errores[] =
+                        ($municipio['nombre'] ?? $claveMunicipioLote) .
+                        ': No fue posible guardar la actividad económica municipal.';
+                    continue;
+                }
+
+                $guardados++;
+                $establecimientos += $total;
+                $establecimientosVinculacion +=
+                    (int)(
+                        $resultadoMunicipio['establecimientos_vinculacion']
+                        ?? 0
+                    );
+            }
+
+            $this->responderJson([
+                'ok' => true,
+                'mensaje' => 'Lote municipal DENUE procesado.',
+                'datos' => [
+                    'municipios_recibidos' =>
+                        count($clavesSolicitadas),
+                    'municipios_guardados' => $guardados,
+                    'municipios_con_error' => count($errores),
+                    'establecimientos' => $establecimientos,
+                    'establecimientos_vinculacion' =>
+                        $establecimientosVinculacion,
+                    'errores' => $errores
+                ]
+            ]);
+        }
+
+        /*
+         * Compatibilidad con la operación individual anterior.
+         */
         $claveMunicipio = str_pad(preg_replace('/\\D+/', '', $claveMunicipioPost) ?? '', 3, '0', STR_PAD_LEFT);
         if (!preg_match('/^\\d{3}$/', $claveMunicipio) || !isset($mapaMunicipios[$claveMunicipio])) {
             $this->responderJson(['ok' => false, 'mensaje' => 'El municipio solicitado no es válido.'], 422);
