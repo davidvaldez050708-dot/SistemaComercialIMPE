@@ -79,6 +79,7 @@ Migraciones relacionadas:
 - `2026_10_06_e_telefonia_extensiones_multiusuario.sql`
 - `2026_10_06_f_telefonia_configuracion_admin.sql`
 - `2026_10_07_b_zadarma_webhook_eventos.sql`
+- `2026_10_07_c_zadarma_entrantes_indice.sql`
 
 La aplicación también asegura automáticamente la existencia de las tablas de extensiones y eventos, pero las migraciones deben conservarse como fuente de despliegue.
 
@@ -107,12 +108,15 @@ Configura como URL pública:
 
 `https://TU-DOMINIO/RUTA-DEL-SISTEMA/prueba_telefonia/api/zadarma_webhook.php`
 
-Activa los eventos necesarios para llamadas salientes y grabaciones, al menos los equivalentes a:
+Activa las notificaciones PBX necesarias para entrantes y salientes:
 
-- inicio de llamada saliente;
-- respuesta;
-- fin de llamada saliente;
-- grabación disponible.
+- `NOTIFY_START`;
+- `NOTIFY_INTERNAL` (entrada a la extensión);
+- `NOTIFY_ANSWER`;
+- `NOTIFY_END`;
+- `NOTIFY_OUT_START`;
+- `NOTIFY_OUT_END`;
+- `NOTIFY_RECORD` cuando esté disponible para grabaciones.
 
 El endpoint valida la firma de Zadarma antes de aceptar eventos.
 
