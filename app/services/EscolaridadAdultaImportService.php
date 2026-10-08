@@ -20,7 +20,7 @@ class EscolaridadAdultaImportService
         try {
             $primera = fgets($fp);
             if ($primera === false) {
-                throw new RuntimeException('El archivo está vacío.');
+                throw new InvalidArgumentException('El archivo está vacío.');
             }
             $primera = preg_replace('/^\xEF\xBB\xBF/', '', $primera);
             $separador = substr_count($primera, ';') > substr_count($primera, ',') ? ';' : ',';
@@ -28,7 +28,7 @@ class EscolaridadAdultaImportService
             $esperada = ['clave_estado', 'codigo_indicador', 'anio', 'poblacion_base',
                 'cantidad_personas', 'fuente', 'referencia_url', 'metodologia'];
             if ($cabecera !== $esperada) {
-                throw new RuntimeException('Encabezados incompatibles. Consulta la plantilla CSV de escolaridad adulta.');
+                throw new InvalidArgumentException('Encabezados incompatibles. Consulta la plantilla CSV de escolaridad adulta.');
             }
 
             $estados = $this->mapaEstados();
@@ -42,19 +42,19 @@ class EscolaridadAdultaImportService
                     continue;
                 }
                 if (count($campos) !== count($esperada)) {
-                    throw new RuntimeException("Línea $linea: número de columnas incorrecto.");
+                    throw new InvalidArgumentException("Línea $linea: número de columnas incorrecto.");
                 }
                 $fila = array_combine($esperada, array_map('trim', $campos));
                 $clave = $fila['clave_estado'];
                 if (!preg_match('/^\d{2}$/', $clave) || !isset($estados[$clave])) {
-                    throw new RuntimeException("Línea $linea: clave INEGI del Estado inexistente o inactiva.");
+                    throw new InvalidArgumentException("Línea $linea: clave INEGI del Estado inexistente o inactiva.");
                 }
                 $codigo = $fila['codigo_indicador'];
                 if (!in_array($codigo, [
                     EscolaridadAdultaModel::SIN_SUPERIOR_25,
                     EscolaridadAdultaModel::SIN_MEDIA_CONCLUIDA_18
                 ], true)) {
-                    throw new RuntimeException("Línea $linea: código de indicador no permitido.");
+                    throw new InvalidArgumentException("Línea $linea: código de indicador no permitido.");
                 }
                 $anio = $fila['anio'];
                 $base = $fila['poblacion_base'];
@@ -64,7 +64,7 @@ class EscolaridadAdultaImportService
                     !preg_match('/^\d+$/', $cantidad) ||
                     (float)$cantidad > (float)$base ||
                     (float)$base > PHP_INT_MAX || (float)$cantidad > PHP_INT_MAX) {
-                    throw new RuntimeException("Línea $linea: año, población o cantidad inválidos.");
+                    throw new InvalidArgumentException("Línea $linea: año, población o cantidad inválidos.");
                 }
                 $fuente = $fila['fuente'];
                 $url = $fila['referencia_url'];
@@ -76,33 +76,39 @@ class EscolaridadAdultaImportService
                     strlen($url) > 1024 ||
                     mb_strlen($fila['metodologia']) < 35 ||
                     mb_strlen($fila['metodologia']) > 5000) {
-                    throw new RuntimeException("Línea $linea: se requiere fuente INEGI, URL oficial HTTPS y metodología detallada.");
+                    throw new InvalidArgumentException("Línea $linea: se requiere fuente INEGI, URL oficial HTTPS y metodología detallada.");
                 }
                 $llave = $clave . ':' . $codigo;
                 if (isset($vistas[$llave])) {
-                    throw new RuntimeException("Línea $linea: indicador duplicado para el Estado.");
+                    throw new InvalidArgumentException("Línea $linea: indicador duplicado para el Estado.");
                 }
                 $vistas[$llave] = true;
                 $porEstado[$clave][$codigo] = $anio;
                 $fila['estado_id'] = $estados[$clave];
                 $filas[] = $fila;
                 if (count($filas) > 64) {
-                    throw new RuntimeException('El CSV admite un máximo de dos indicadores por cada uno de los 32 Estados.');
+                    throw new InvalidArgumentException('El CSV admite un máximo de dos indicadores por cada uno de los 32 Estados.');
                 }
             }
             if (!$filas) {
-                throw new RuntimeException('El CSV no contiene indicadores.');
+                throw new InvalidArgumentException('El CSV no contiene indicadores.');
             }
             foreach ($porEstado as $clave => $codigos) {
                 if (count($codigos) !== 2 || count(array_unique(array_values($codigos))) !== 1) {
-                    throw new RuntimeException("Estado $clave: se requieren los dos indicadores del mismo año.");
+                    throw new InvalidArgumentException("Estado $clave: se requieren los dos indicadores del mismo año.");
                 }
             }
             $modelo = new EscolaridadAdultaModel();
+            if (!$modelo->tablaDisponible()) {
+                throw new InvalidArgumentException('Falta aplicar la migración de escolaridad adulta.');
+            }
             $modelo->importarLote($filas, basename($archivo));
             return ['ok' => true, 'estados' => count($porEstado), 'indicadores' => count($filas)];
-        } catch (Throwable $e) {
+        } catch (InvalidArgumentException $e) {
             return ['ok' => false, 'mensaje' => $e->getMessage()];
+        } catch (Throwable $e) {
+            error_log('Importación escolaridad adulta: ' . $e->getMessage());
+            return ['ok' => false, 'mensaje' => 'No fue posible procesar o guardar los indicadores. Revisa la migración y el archivo.'];
         } finally {
             fclose($fp);
         }
