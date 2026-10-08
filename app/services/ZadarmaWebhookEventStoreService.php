@@ -420,69 +420,6 @@ class ZadarmaWebhookEventStoreService
         ];
     }
 
-    public function listarDestinosTransferencia($usuarioId)
-    {
-        $usuarioId = (int)$usuarioId;
-
-        if ($usuarioId <= 0) {
-            return [];
-        }
-
-        $sql = "SELECT
-                    u.id AS usuario_id,
-                    u.nombre,
-                    u.apellidos,
-                    r.nombre AS rol,
-                    te.extension
-                FROM telefonia_extensiones te
-                INNER JOIN usuarios u
-                    ON u.id = te.usuario_id
-                INNER JOIN roles r
-                    ON r.id = u.rol_id
-                INNER JOIN rol_permisos rp_uso
-                    ON rp_uso.rol_id = u.rol_id
-                INNER JOIN permisos p_uso
-                    ON p_uso.id = rp_uso.permiso_id
-                   AND p_uso.codigo = 'telefonia.usar'
-                   AND p_uso.estado = 1
-                INNER JOIN rol_permisos rp_recibir
-                    ON rp_recibir.rol_id = u.rol_id
-                INNER JOIN permisos p_recibir
-                    ON p_recibir.id = rp_recibir.permiso_id
-                   AND p_recibir.codigo = 'telefonia.recibir'
-                   AND p_recibir.estado = 1
-                WHERE te.proveedor = 'ZADARMA'
-                  AND te.activo = 1
-                  AND te.permite_entrantes = 1
-                  AND u.estado = 1
-                  AND u.id <> ?
-                ORDER BY
-                    r.nombre,
-                    u.nombre,
-                    u.apellidos";
-        $stmt = $this->connection->prepare($sql);
-        $stmt->bind_param('i', $usuarioId);
-        $stmt->execute();
-        $resultado = $stmt->get_result();
-
-        $destinos = [];
-
-        while ($fila = $resultado->fetch_assoc()) {
-            $destinos[] = [
-                'usuario_id' => (int)$fila['usuario_id'],
-                'nombre' => trim(
-                    (string)($fila['nombre'] ?? '') .
-                    ' ' .
-                    (string)($fila['apellidos'] ?? '')
-                ),
-                'rol' => (string)($fila['rol'] ?? ''),
-                'extension' => (string)($fila['extension'] ?? ''),
-            ];
-        }
-
-        return $destinos;
-    }
-
     public function buscarCallIdGrabacion($pbxCallId)
     {
         $pbxCallId = trim((string)$pbxCallId);
