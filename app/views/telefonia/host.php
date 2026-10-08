@@ -17,7 +17,7 @@ if ($usuarioHost === '') {
 <html
     lang="es"
     data-impe-telephony-host="1"
-    data-impe-telephony-host-version="5">
+    data-impe-telephony-host-version="6">
 <head>
     <meta charset="UTF-8">
     <meta
@@ -51,7 +51,13 @@ if ($usuarioHost === '') {
             'userId' => (int)($_SESSION['usuario_id'] ?? 0),
             'extension' => $extensionHost,
             'webrtcUrl' => BASE_URL . 'prueba_telefonia/api/zadarma_webrtc.php',
-            'estadoUrl' => BASE_URL . 'prueba_telefonia/api/zadarma_estado_llamada.php'
+            'estadoUrl' => BASE_URL . 'prueba_telefonia/api/zadarma_estado_llamada.php',
+            'entradaUrl' => BASE_URL . 'prueba_telefonia/api/zadarma_entrada_activa.php',
+            'permiteSalientes' => !empty($asignacionTelefonica['permite_salientes']),
+            'permiteEntrantes' => !empty($asignacionTelefonica['permite_entrantes']),
+            'permiteTransferir' =>
+                !empty($asignacionTelefonica['permite_transferir']) &&
+                tienePermiso('telefonia.transferir')
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     </script>
     <script
