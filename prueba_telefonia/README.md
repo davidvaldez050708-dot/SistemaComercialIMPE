@@ -408,3 +408,26 @@ afirmar que el audio se borró o que no fue grabado en el proveedor.
    historial; al actualizar, debe desaparecer el botón y rechazarse la
    reproducción directa de una URL previamente conocida.
 6. Comprobar que no se afectaron las grabaciones de los analistas.
+
+
+## Agenda de prospectos: búsqueda y paginación (2026-10-08)
+
+El bloque **Contactos telefónicos** dentro de **Asesor de Ventas > Inicio**
+muestra **6 contactos por página** y controles numéricos para navegar
+entre todas las páginas. Cuando hay muchas, se presentan extremos,
+números próximos a la página activa y puntos suspensivos.
+
+El campo **Buscar prospecto**, encima del formulario, filtra al escribir
+sin botón de búsqueda ni recargar. Encuentra coincidencias por nombre
+(sin distinguir mayúsculas o acentos) y número de teléfono, incluso si
+el usuario introduce espacios o guiones en los dígitos. El paginador
+se recalcula según los resultados; se muestra un aviso cuando no hay
+coincidencias y otro cuando la agenda está vacía.
+
+La agenda personal sigue siendo exclusiva del usuario autenticado y
+tiene su límite actual de **150** registros en
+`TelefoniaContactosService`. Por ese máximo, búsqueda y paginación
+se realizan en el navegador sobre los contactos privados ya cargados.
+Al guardar un prospecto se filtra su nombre para mostrarlo de inmediato;
+al eliminar, la cantidad y el número de páginas se actualizan sin
+recargar. No se modifica la lógica de llamadas, resultados o grabaciones.

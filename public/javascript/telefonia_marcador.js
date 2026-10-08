@@ -27,6 +27,17 @@
         const contactEmpty = root.querySelector('[data-telephony-contacts-empty]');
         const contactFeedback = root.querySelector('[data-telephony-contact-status]');
         const saveButton = root.querySelector('[data-telephony-contact-save]');
+        const contactSearch = root.querySelector('[data-telephony-contact-search]');
+        const contactSearchClear = root.querySelector('[data-telephony-contact-search-clear]');
+        const contactNoResults = root.querySelector('[data-telephony-contacts-no-results]');
+        const contactCount = root.querySelector('[data-telephony-contacts-count]');
+        const contactPagination = root.querySelector('[data-telephony-contact-pagination]');
+        const contactPages = root.querySelector('[data-telephony-contact-pages]');
+        const contactPrev = root.querySelector('[data-telephony-contact-prev]');
+        const contactNext = root.querySelector('[data-telephony-contact-next]');
+        const contactPageSize = 6;
+        const contactSort = new Intl.Collator('es', { sensitivity: 'base', numeric: true });
+        let contactPage = 1;
         const resultBlock = root.querySelector('[data-sales-result-block]');
         const resultSelect = root.querySelector('[data-sales-result-select]');
         const resultButton = root.querySelector('[data-sales-result-submit]');
@@ -189,10 +200,130 @@
             numberInput.focus();
         });
 
-        function updateEmpty() {
-            contactEmpty.hidden =
-                contactList.querySelectorAll('[data-telephony-contact-row]').length > 0;
+        function normalizeContactSearch(value) {
+            return String(value || '').normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .toLocaleLowerCase('es-MX')
+                .trim().replace(/\s+/g, ' ');
         }
+
+        function updateEmpty() {
+            // Las personas guardadas ya vienen de su propia agenda privada.
+            // Búsqueda y paginación se realizan localmente (máximo 150 registros).
+            const all = Array.from(contactList.querySelectorAll('[data-telephony-contact-row]'));
+            const query = normalizeContactSearch(contactSearch.value);
+            const digits = contactSearch.value.replace(/\D/g, '');
+            const phoneQuery = digits !== '' && /^[+\d\s().-]+$/.test(contactSearch.value.trim());
+            const matching = all.filter(function (row) {
+                if (!query) return true;
+                const name = normalizeContactSearch(
+                    row.querySelector('[data-contact-name]')?.textContent || ''
+                );
+                const phone = String(row.dataset.contactNumber || '');
+                return name.includes(query) || normalizeContactSearch(phone).includes(query) ||
+                    (phoneQuery && phone.replace(/\D/g, '').includes(digits));
+            });
+
+            matching.sort(function (a, b) {
+                return contactSort.compare(
+                    a.querySelector('[data-contact-name]')?.textContent || '',
+                    b.querySelector('[data-contact-name]')?.textContent || ''
+                );
+            });
+
+            const totalPages = Math.ceil(matching.length / contactPageSize);
+            contactPage = Math.min(Math.max(contactPage, 1), Math.max(totalPages, 1));
+            const start = (contactPage - 1) * contactPageSize;
+            const visible = new Set(matching.slice(start, start + contactPageSize));
+            all.forEach(function (row) {
+                row.hidden = !visible.has(row);
+            });
+
+            contactEmpty.hidden = all.length > 0;
+            contactNoResults.hidden = all.length === 0 || matching.length > 0;
+            contactSearchClear.hidden = contactSearch.value === '';
+
+            if (all.length === 0) {
+                contactCount.textContent = '0 prospectos guardados';
+            } else if (matching.length === 0) {
+                contactCount.textContent = '0 resultados de ' + all.length + ' contactos';
+            } else {
+                const end = Math.min(start + contactPageSize, matching.length);
+                const noun = query ? (matching.length === 1 ? 'resultado' : 'resultados') : 'contactos';
+                contactCount.textContent = 'Mostrando ' + (start + 1) + '–' + end +
+                    ' de ' + matching.length + ' ' + noun +
+                    (query ? ' · ' + all.length + ' guardados' : '');
+            }
+
+            contactPagination.hidden = totalPages <= 1;
+            contactPrev.disabled = contactPage <= 1;
+            contactNext.disabled = contactPage >= totalPages;
+
+            contactPages.replaceChildren();
+            if (totalPages <= 1) return;
+
+            // Mostrar un tramo de números y los extremos para mantener
+            // compacto el control incluso con 25 páginas (150 contactos).
+            const numbers = new Set([1, totalPages]);
+            for (let page = Math.max(1, contactPage - 2);
+                page <= Math.min(totalPages, contactPage + 2); page++) {
+                numbers.add(page);
+            }
+            if (contactPage <= 3) {
+                for (let page = 1; page <= Math.min(5, totalPages); page++) numbers.add(page);
+            }
+            if (contactPage >= totalPages - 2) {
+                for (let page = Math.max(1, totalPages - 4); page <= totalPages; page++) {
+                    numbers.add(page);
+                }
+            }
+            let previous = 0;
+            Array.from(numbers).sort(function (a, b) { return a - b; })
+                .forEach(function (page) {
+                    if (previous && page - previous > 1) {
+                        const dots = document.createElement('span');
+                        dots.className = 'telephony-contacts-page-ellipsis';
+                        dots.textContent = '…';
+                        dots.setAttribute('aria-hidden', 'true');
+                        contactPages.appendChild(dots);
+                    }
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.className = 'telephony-contacts-page-btn';
+                    button.dataset.telephonyContactPage = String(page);
+                    button.textContent = String(page);
+                    button.setAttribute('aria-label', 'Página ' + page + ' de ' + totalPages);
+                    if (page === contactPage) {
+                        button.classList.add('is-current');
+                        button.setAttribute('aria-current', 'page');
+                    }
+                    contactPages.appendChild(button);
+                    previous = page;
+                });
+        }
+
+        contactSearch.addEventListener('input', function () {
+            contactPage = 1;
+            updateEmpty();
+        });
+        contactSearchClear.addEventListener('click', function () {
+            contactSearch.value = '';
+            contactPage = 1;
+            updateEmpty();
+            contactSearch.focus();
+        });
+        contactPagination.addEventListener('click', function (event) {
+            const button = event.target.closest('button');
+            if (!button || button.disabled) return;
+            const requested = button.hasAttribute('data-telephony-contact-prev')
+                ? contactPage - 1
+                : button.hasAttribute('data-telephony-contact-next')
+                    ? contactPage + 1
+                    : Number(button.dataset.telephonyContactPage);
+            if (!Number.isInteger(requested)) return;
+            contactPage = requested;
+            updateEmpty();
+        });
 
         function createContactRow(contact) {
             const row = document.createElement('article');
@@ -249,6 +380,10 @@
             } else {
                 contactList.prepend(row);
             }
+            // Al guardar, dejar visible el nuevo contacto incluso si está
+            // fuera de la primera página de la agenda.
+            contactSearch.value = String(contact.nombre || '');
+            contactPage = 1;
             updateEmpty();
         }
 
@@ -517,6 +652,8 @@
             });
         }
 
+        // El buscador de prospectos funciona aun si Zadarma no está configurado.
+        updateEmpty();
         if (!api || typeof api.probe !== 'function') {
             say('El motor telefónico no está disponible en este perfil.', true);
             return;
@@ -524,7 +661,6 @@
 
         api.subscribe(renderCall);
         renderCall();
-        updateEmpty();
         verifyExtension(true);
         // Sin recargar el Inicio, detecta una extensión asignada por el administrador.
         window.setInterval(function () {

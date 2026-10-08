@@ -168,6 +168,22 @@ $urlActualizarMarcador = BASE_URL . (
         <?php if (($panelTelefono['mensaje_contactos'] ?? '') !== ''): ?>
             <div class="alert alert-warning" role="alert"><?= $esc($panelTelefono['mensaje_contactos']) ?></div>
         <?php endif; ?>
+        <div class="telephony-contacts-search">
+            <label for="telefono-buscar-prospecto">Buscar prospecto</label>
+            <div class="telephony-contacts-search-field">
+                <i class="bi bi-search" aria-hidden="true"></i>
+                <input id="telefono-buscar-prospecto" type="search" class="form-control"
+                    placeholder="Escribe un nombre o teléfono…"
+                    autocomplete="off" spellcheck="false"
+                    aria-controls="telefonia-lista-contactos"
+                    data-telephony-contact-search>
+                <button type="button" class="telephony-contacts-search-clear"
+                    data-telephony-contact-search-clear
+                    aria-label="Limpiar búsqueda de prospectos" hidden>
+                    <i class="bi bi-x-lg" aria-hidden="true"></i>
+                </button>
+            </div>
+        </div>
         <form class="telephony-contact-form" data-telephony-contact-form autocomplete="off">
             <div>
                 <label for="telefono-contacto-nombre">Nombre del prospecto</label>
@@ -193,7 +209,8 @@ $urlActualizarMarcador = BASE_URL . (
         </form>
         <p class="telephony-contacts-feedback" role="status" aria-live="polite"
             data-telephony-contact-status></p>
-        <div class="telephony-contacts-list" data-telephony-contacts-list>
+        <div id="telefonia-lista-contactos" class="telephony-contacts-list"
+            data-telephony-contacts-list>
             <?php foreach ($contactos as $contacto): ?>
                 <article class="telephony-contact-row" data-telephony-contact-row
                     data-contact-id="<?= (int)$contacto['id'] ?>"
@@ -217,6 +234,25 @@ $urlActualizarMarcador = BASE_URL . (
             <?= !empty($contactos) ? 'hidden' : '' ?>>
             Aún no has guardado prospectos en tu agenda. Agrega el primero arriba.
         </p>
+        <p class="telephony-contacts-empty" data-telephony-contacts-no-results hidden>
+            No se encontraron prospectos con ese nombre o teléfono.
+        </p>
+        <div class="telephony-contacts-footer">
+            <span class="telephony-contacts-count" data-telephony-contacts-count
+                role="status" aria-live="polite" aria-atomic="true"></span>
+            <nav class="telephony-contacts-pagination" data-telephony-contact-pagination
+                aria-label="Páginas de contactos guardados" hidden>
+                <button type="button" class="telephony-contacts-page-btn"
+                    data-telephony-contact-prev aria-label="Página anterior">
+                    <i class="bi bi-chevron-left" aria-hidden="true"></i>
+                </button>
+                <div class="telephony-contacts-page-numbers" data-telephony-contact-pages></div>
+                <button type="button" class="telephony-contacts-page-btn"
+                    data-telephony-contact-next aria-label="Página siguiente">
+                    <i class="bi bi-chevron-right" aria-hidden="true"></i>
+                </button>
+            </nav>
+        </div>
     </section>
     </div>
 

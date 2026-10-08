@@ -663,3 +663,158 @@
     .telephony-summary-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .telephony-summary-item:last-child { grid-column: auto; }
 }
+
+/* Buscador inmediato y paginación de la agenda privada de prospectos. */
+.telephony-contacts-card .telephony-contacts-search {
+    display: grid;
+    gap: 6px;
+    margin: 0 0 13px;
+    min-width: 0;
+}
+.telephony-contacts-search > label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--color-text-secondary);
+}
+.telephony-contacts-search-field {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-width: 0;
+}
+.telephony-contacts-search-field > .bi-search {
+    position: absolute;
+    left: 12px;
+    pointer-events: none;
+    font-size: 13px;
+    color: var(--color-text-secondary);
+}
+.telephony-contacts-search-field .form-control {
+    width: 100%;
+    min-height: 39px;
+    padding: 8px 41px 8px 35px;
+    border: 1px solid var(--color-border);
+    border-radius: 9px;
+    background: #f8fafc;
+    font-size: 12px;
+    color: var(--color-text-primary);
+}
+.telephony-contacts-search-field .form-control:focus {
+    border-color: var(--color-primary);
+    background: var(--color-surface);
+    box-shadow: 0 0 0 3px rgba(39, 58, 138, .09);
+}
+.telephony-contacts-search-field input::-webkit-search-cancel-button {
+    display: none;
+}
+.telephony-contacts-search-clear {
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: grid;
+    place-items: center;
+    width: 29px;
+    height: 29px;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    border-radius: 7px;
+    color: var(--color-text-secondary);
+    font-size: 11px;
+}
+.telephony-contacts-search-clear:hover {
+    background: #e8edf5;
+    color: var(--color-primary);
+}
+.telephony-contacts-search-clear:focus-visible,
+.telephony-contacts-page-btn:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+}
+/* Solo se dibujan seis contactos: eliminar el scroll interno de la agenda. */
+.telephony-contacts-card .telephony-contacts-list {
+    max-height: none;
+    overflow: visible;
+}
+.telephony-contacts-list [data-telephony-contact-row][hidden],
+.telephony-contacts-empty[hidden],
+.telephony-contacts-search-clear[hidden],
+.telephony-contacts-pagination[hidden] {
+    display: none !important;
+}
+.telephony-contacts-footer {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px 12px;
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid var(--color-border);
+    min-width: 0;
+}
+.telephony-contacts-count {
+    font-size: 10.5px;
+    line-height: 1.45;
+    color: var(--color-text-secondary);
+}
+.telephony-contacts-pagination {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 5px;
+    min-width: 0;
+}
+.telephony-contacts-page-numbers {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 5px;
+}
+.telephony-contacts-page-btn {
+    display: inline-grid;
+    place-items: center;
+    min-width: 31px;
+    height: 31px;
+    padding: 0 6px;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    background: var(--color-surface);
+    color: var(--color-text-secondary);
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+}
+.telephony-contacts-page-btn:hover:not(:disabled) {
+    border-color: var(--color-primary);
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
+}
+.telephony-contacts-page-btn.is-current {
+    border-color: var(--color-primary);
+    background: var(--color-primary);
+    color: #fff;
+}
+.telephony-contacts-page-btn:disabled {
+    opacity: .42;
+    cursor: not-allowed;
+}
+.telephony-contacts-page-ellipsis {
+    display: inline-grid;
+    place-items: center;
+    min-width: 12px;
+    color: var(--color-text-secondary);
+    font-size: 12px;
+}
+@media (max-width: 520px) {
+    .telephony-contacts-footer {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .telephony-contacts-pagination {
+        justify-content: flex-start;
+    }
+}
