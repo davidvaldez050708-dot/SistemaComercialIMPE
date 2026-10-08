@@ -155,6 +155,17 @@ class InegiPerfilEducativoPrioritarioAutoService
             }
         }
 
+        /*
+         * Fallback oficial nacional. Algunos Estados (Oaxaca entre ellos)
+         * ya no exponen un binario estatal estable en la ruta histórica,
+         * mientras el libro nacional de Educación 2020 sigue siendo la misma
+         * fuente del Censo. El importador filtra estrictamente el Estado
+         * solicitado y exige desglose municipal antes de guardar.
+         */
+        $urls[] =
+            'https://www.inegi.org.mx/contenidos/programas/ccpv/2020/tabulados/' .
+            'cpv2020_b_eum_07_educacion.xlsx';
+
         $urls = array_values(array_unique($urls));
 
         if (empty($urls)) {
@@ -166,7 +177,10 @@ class InegiPerfilEducativoPrioritarioAutoService
         $erroresIntentos = [];
 
         foreach ($urls as $url) {
-            $resultado = $this->procesarDescarga($url);
+            $resultado = $this->procesarDescarga(
+                $url,
+                $claveEstado
+            );
 
             if (($resultado['ok'] ?? false) === true) {
                 return $resultado;
@@ -322,7 +336,10 @@ class InegiPerfilEducativoPrioritarioAutoService
         return array_values(array_unique($salida));
     }
 
-    private function procesarDescarga(string $url): array
+    private function procesarDescarga(
+        string $url,
+        string $claveEstado
+    ): array
     {
         $temporal = tempnam(sys_get_temp_dir(), 'inegi_edu_prior_');
 
@@ -365,11 +382,23 @@ class InegiPerfilEducativoPrioritarioAutoService
         try {
             if ($extension === 'xlsx') {
                 return (new InegiPerfilEducativoPrioritarioImportService())
-                    ->importarXlsx($temporal, basename((string)parse_url($url, PHP_URL_PATH)));
+                    ->importarXlsx(
+                        $temporal,
+                        basename(
+                            (string)parse_url(
+                                $url,
+                                PHP_URL_PATH
+                            )
+                        ),
+                        $claveEstado
+                    );
             }
 
             if ($extension === 'zip') {
-                return $this->procesarZip($temporal);
+                return $this->procesarZip(
+                    $temporal,
+                    $claveEstado
+                );
             }
 
             return $this->error('INEGI devolvió un formato no compatible.');
@@ -378,7 +407,10 @@ class InegiPerfilEducativoPrioritarioAutoService
         }
     }
 
-    private function procesarZip(string $ruta): array
+    private function procesarZip(
+        string $ruta,
+        string $claveEstado
+    ): array
     {
         if (!class_exists('ZipArchive')) {
             return $this->error('El servidor no tiene ZipArchive habilitado.');
@@ -423,7 +455,11 @@ class InegiPerfilEducativoPrioritarioAutoService
 
                     $resultado =
                         (new InegiPerfilEducativoPrioritarioImportService())
-                            ->importarXlsx($tmp, basename($nombre));
+                            ->importarXlsx(
+                                $tmp,
+                                basename($nombre),
+                                $claveEstado
+                            );
 
                     if (($resultado['ok'] ?? false) === true) {
                         return $resultado;
