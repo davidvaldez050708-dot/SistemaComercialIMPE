@@ -27,6 +27,17 @@
         const contactEmpty = root.querySelector('[data-telephony-contacts-empty]');
         const contactFeedback = root.querySelector('[data-telephony-contact-status]');
         const saveButton = root.querySelector('[data-telephony-contact-save]');
+        const resultBlock = root.querySelector('[data-sales-result-block]');
+        const resultSelect = root.querySelector('[data-sales-result-select]');
+        const resultButton = root.querySelector('[data-sales-result-submit]');
+        const resultFeedback = root.querySelector('[data-sales-result-feedback]');
+        const historyTable = root.querySelector('.telephony-history-table');
+        const classifiedCalls = new Map();
+        historyTable?.querySelectorAll('[data-sales-history-result-form]').forEach(function (form) {
+            const code = form.querySelector('[data-sales-history-result-select]')?.value || '';
+            if (code) classifiedCalls.set(form.dataset.pbxCallId, code);
+        });
+        let savingResult = false;
         let ready = false;
         let dialing = false;
         let saving = false;
@@ -66,6 +77,10 @@
             const ownFinished = phase === 'finished' &&
                 String(state.context?.type || '').toUpperCase() === 'DIALER';
 
+            const pbxId = String(state.finalMetadata?.pbx_call_id || state.pbxCallId || '');
+            const canClassify = ownFinished && /^out_[a-fA-F0-9]{32,64}$/.test(pbxId);
+            const pendingResult = canClassify && !classifiedCalls.has(pbxId);
+
             callButton.disabled = !ready || dialing || active || ownFinished;
             hangupButton.disabled = !active;
             const canMute = active && String(state.status || '') === 'in-progress';
@@ -75,13 +90,21 @@
             muteLabel.textContent = muted ? 'Activar micrófono' : 'Silenciar';
             muteIcon.className = muted ? 'bi bi-mic' : 'bi bi-mic-mute';
             newButton.hidden = !ownFinished;
+            newButton.disabled = pendingResult || savingResult;
+            resultBlock.hidden = !pendingResult;
             afterCall.hidden = !ownFinished ||
                 !String(state.destination || numberInput.value || '').trim();
 
             if (active) {
                 say(muted ? 'Micrófono silenciado' : (state.message || 'Llamada en curso…'));
             } else if (ownFinished) {
-                say('Llamada finalizada. Puedes iniciar otra o guardar el número.');
+                if (!canClassify) {
+                    say('La llamada aún no tiene identificador verificable. Actualiza el historial para clasificarla.');
+                } else {
+                    say(pendingResult
+                        ? 'Registra el resultado de esta llamada para continuar.'
+                        : 'Resultado registrado. Puedes iniciar otra llamada y actualizar el historial.');
+                }
             } else if (phase === 'error') {
                 say(state.message || 'No fue posible realizar la llamada.', true);
             }
@@ -156,7 +179,7 @@
 
         newButton.addEventListener('click', function () {
             const state = api?.getState?.() || {};
-            if (state.active) return;
+            if (state.active || newButton.disabled) return;
             if (String(state.context?.type || '').toUpperCase() === 'DIALER') {
                 api?.clearFinished?.();
             }
@@ -259,6 +282,107 @@
             }
             return result;
         }
+
+        async function guardarClasificacion(pbxId, resultado) {
+            if (!/^out_[a-fA-F0-9]{32,64}$/.test(pbxId) || !resultado) {
+                throw new Error('Selecciona un resultado válido de una llamada finalizada.');
+            }
+            const response = await postContact(root.dataset.resultSaveUrl, {
+                pbx_call_id: pbxId,
+                resultado: resultado
+            });
+            classifiedCalls.set(pbxId, resultado);
+            return response.registro || {};
+        }
+
+        function reflejarResultadoEnFila(form, codigo, registro) {
+            if (!form) return;
+            const select = form.querySelector('[data-sales-history-result-select]');
+            if (select) select.value = codigo;
+            const row = form.closest('tr');
+            const label = form.parentElement?.querySelector('[data-sales-result-badge]');
+            if (label) {
+                label.textContent = registro.etiqueta || codigo;
+                label.classList.add('is-classified');
+            }
+
+            // Si se registró buzón u otro resultado sin contacto humano,
+            // detener cualquier audio que ya estuviera abierto en la página.
+            if (codigo !== 'CONVERSACION_PERSONA' && row) {
+                const next = row.nextElementSibling;
+                if (next?.hasAttribute('data-sales-recording-row')) {
+                    const audio = next.querySelector('audio');
+                    if (audio) {
+                        audio.pause();
+                        audio.removeAttribute('src');
+                        audio.load();
+                    }
+                    next.remove();
+                }
+                const cell = row.querySelector('.telephony-recording-cell');
+                if (cell) {
+                    cell.textContent = 'No aplica';
+                }
+            }
+        }
+
+        resultButton.addEventListener('click', function () {
+            const state = api?.getState?.() || {};
+            const pbxId = String(state.finalMetadata?.pbx_call_id || state.pbxCallId || '');
+            if (state.active || savingResult) return;
+            const codigo = resultSelect.value;
+            if (!codigo) {
+                resultFeedback.textContent = 'Selecciona qué ocurrió durante la llamada.';
+                return;
+            }
+            savingResult = true;
+            resultButton.disabled = true;
+            resultFeedback.textContent = 'Registrando el resultado…';
+            void guardarClasificacion(pbxId, codigo).then(function (registro) {
+                resultFeedback.textContent = 'Resultado registrado. Actualiza el historial para ver los cambios.';
+                historyTable?.querySelectorAll('[data-sales-history-result-form]').forEach(function (form) {
+                    if (form.dataset.pbxCallId === pbxId) {
+                        reflejarResultadoEnFila(form, codigo, registro);
+                    }
+                });
+            }).catch(function (error) {
+                resultFeedback.textContent = error.message ||
+                    'No fue posible registrar el resultado.';
+            }).finally(function () {
+                savingResult = false;
+                resultButton.disabled = false;
+                renderCall();
+            });
+        });
+
+        historyTable?.addEventListener('submit', function (event) {
+            const form = event.target.closest('[data-sales-history-result-form]');
+            if (!form) return;
+            event.preventDefault();
+            if (form.dataset.saving === '1') return;
+            const select = form.querySelector('[data-sales-history-result-select]');
+            const boton = form.querySelector('[data-sales-history-result-submit]');
+            const feedback = form.parentElement?.querySelector('[data-sales-history-feedback]');
+            if (!select?.value) {
+                if (feedback) feedback.textContent = 'Selecciona un resultado.';
+                return;
+            }
+            form.dataset.saving = '1';
+            if (boton) boton.disabled = true;
+            if (feedback) feedback.textContent = 'Guardando…';
+            void guardarClasificacion(form.dataset.pbxCallId || '', select.value)
+                .then(function (registro) {
+                    reflejarResultadoEnFila(form, select.value, registro);
+                    if (feedback) feedback.textContent =
+                        'Guardado. Actualiza para reflejar la grabación.';
+                    renderCall();
+                }).catch(function (error) {
+                    if (feedback) feedback.textContent = error.message;
+                }).finally(function () {
+                    form.dataset.saving = '0';
+                    if (boton) boton.disabled = false;
+                });
+        });
 
         root.querySelector('[data-telephony-contact-from-dialer]')
             .addEventListener('click', function () {

@@ -349,3 +349,62 @@ la extensión/regla PBX, configurar el webhook público firmado, realizar una
 llamada contestada, esperar `NOTIFY_RECORD`, actualizar Inicio y comprobar
 reproducción y descarga. También confirmar que el asesor B **no pueda**
 reproducir la grabación del asesor A cambiando el ID en la URL.
+
+
+## Clasificación del resultado de llamadas de Ventas (2026-10-08)
+
+**Inicio > Marcador:** tras finalizar una llamada Zadarma, el asesor registra
+el resultado antes de iniciar la siguiente. Se ofrece:
+- **Hablé con una persona** (única clasificación que habilita el audio)
+- **Buzón de voz**
+- **Fuera de horario de servicio**
+- **Número inexistente o incorrecto**
+- **No contestó**
+- **Línea ocupada**
+- **Mensaje de operadora o grabadora**
+- **Otra situación sin contacto**
+
+El historial conserva todos los intentos e incluye controles para
+**clasificar o corregir** posteriormente un resultado.
+
+El resultado se guarda en `telefonia_ventas_resultados` (migración
+`database/migrations/2026_10_08_telefonia_ventas_resultados.sql`).
+El método `telefonia&action=guardarResultadoVenta` exige POST, CSRF, sesión
+del asesor, permisos de telefonía y `NOTIFY_OUT_END` firmado para el
+`pbx_call_id` saliente de su propia extensión. No se confía en la etiqueta
+`ANSWERED` del proveedor para contar personas que sí contestaron.
+
+### Regla de grabaciones (cumplimiento del flujo)
+
+Para habilitar audio en el historial son necesarias **ambas** condiciones:
+
+1. La persona asesora marcó **Hablé con una persona** para esa llamada.
+2. Zadarma reportó grabación y todavía está disponible mediante su API.
+
+Si el resultado está pendiente o el asesor eligió buzón, fuera de horario,
+número inexistente, no contestó, ocupado, mensaje automático u otro sin
+contacto, **no se muestra el audio**. La ruta
+`prueba_telefonia/api/grabacion_ventas.php` verifica la clasificación
+en el servidor y devuelve 404 incluso si se intenta abrir la URL directamente.
+
+**Limitación importante:** esta clasificación ocurre después de la llamada.
+Por ello no impide que la centralita Zadarma genere un archivo de audio
+de buzón o locución antes de recibir el resultado. El CRM evita su
+reproducción/descarga, pero la desactivación o eliminación de archivos en
+origen requiere una política/configuración adicional de Zadarma. Nunca
+afirmar que el audio se borró o que no fue grabado en el proveedor.
+
+### Pruebas a realizar con el webhook activo
+
+1. Llamar al buzón de voz; marcar **Buzón de voz**. La llamada aparece
+   en el historial, pero sin reproductor; URL de audio debe responder 404.
+2. Marcar **Fuera de horario** o **Número inexistente** y verificar igual.
+3. Conversar con una persona real, registrar **Hablé con una persona**,
+   esperar `NOTIFY_RECORD`, actualizar y reproducir mediante el mismo
+   reproductor del expediente.
+4. Intentar clasificar un ID ajeno, inexistente o sin evento
+   `NOTIFY_OUT_END`; el servidor debe rechazarlo.
+5. Cambiar de **Hablé con una persona** a **Buzón de voz** desde el
+   historial; al actualizar, debe desaparecer el botón y rechazarse la
+   reproducción directa de una URL previamente conocida.
+6. Comprobar que no se afectaron las grabaciones de los analistas.

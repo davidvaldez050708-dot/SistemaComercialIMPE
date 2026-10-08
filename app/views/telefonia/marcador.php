@@ -18,6 +18,7 @@ $urlActualizarMarcador = BASE_URL . (
     data-can-call="<?= $extension !== '' ? '1' : '0' ?>"
     data-contact-add-url="<?= $esc(BASE_URL . 'index.php?controller=telefonia&action=guardarContacto') ?>"
     data-contact-delete-url="<?= $esc(BASE_URL . 'index.php?controller=telefonia&action=eliminarContacto') ?>"
+    data-result-save-url="<?= $esc(BASE_URL . 'index.php?controller=telefonia&action=guardarResultadoVenta') ?>"
     data-csrf-token="<?= $esc($panelTelefono['csrf'] ?? '') ?>">
 
     <section class="telephony-summary-strip" aria-label="Resumen telefónico de los últimos 30 días">
@@ -32,7 +33,14 @@ $urlActualizarMarcador = BASE_URL . (
             <span class="telephony-summary-icon" aria-hidden="true"><i class="bi bi-telephone-inbound"></i></span>
             <div>
                 <strong><?= (int)($historial['contestadas'] ?? 0) ?></strong>
-                <span>Contestadas</span>
+                <span>Conectadas (incluye buzón)</span>
+            </div>
+        </article>
+        <article class="telephony-summary-item">
+            <span class="telephony-summary-icon" aria-hidden="true"><i class="bi bi-person-check"></i></span>
+            <div>
+                <strong><?= (int)($historial['conversaciones_reales'] ?? 0) ?></strong>
+                <span>Conversaciones reales</span>
             </div>
         </article>
         <article class="telephony-summary-item">
@@ -110,6 +118,26 @@ $urlActualizarMarcador = BASE_URL . (
                         data-telephony-dial-hangup disabled>Colgar llamada</button>
                     <button type="button" class="btn btn-system-light telephony-dial-new"
                         data-telephony-dial-new hidden>Nueva llamada</button>
+                </div>
+                <div class="telephony-sales-result" data-sales-result-block hidden>
+                    <div class="telephony-sales-result-heading">
+                        <strong><i class="bi bi-journal-check" aria-hidden="true"></i> Registrar resultado</strong>
+                        <small>Indica qué ocurrió; buzones y mensajes automáticos no habilitan grabaciones.</small>
+                    </div>
+                    <div data-sales-result-form>
+                        <label for="ventas-resultado-fin">Resultado de la llamada</label>
+                        <select id="ventas-resultado-fin" class="form-select" data-sales-result-select required>
+                            <option value="">Selecciona el resultado</option>
+                            <?php foreach (TelefoniaResultadoVentasService::opciones() as $codigo => $etiqueta): ?>
+                                <option value="<?= $esc($codigo) ?>"><?= $esc($etiqueta) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <button type="button" class="btn btn-system-save" data-sales-result-submit>
+                            Guardar resultado
+                        </button>
+                    </div>
+                    <p class="telephony-sales-result-feedback" role="status" aria-live="polite"
+                        data-sales-result-feedback></p>
                 </div>
                 <div class="telephony-aftercall" data-telephony-aftercall hidden>
                     <span>¿Necesitas llamar de nuevo a este número?</span>
@@ -234,8 +262,35 @@ $urlActualizarMarcador = BASE_URL . (
                             <td><?= $esc($llamada['fecha'] ?? '') ?></td>
                             <td><?= $esc($llamada['tipo'] ?? '') ?></td>
                             <td><?= $esc(($llamada['numero'] ?? '') ?: 'No disponible') ?></td>
-                            <td><?= !empty($llamada['contestada'])
-                                ? 'Contestada' : 'Sin respuesta confirmada' ?></td>
+                            <td class="telephony-sales-result-cell">
+                                <?php $resultadoActual = (string)($llamada['resultado_ventas'] ?? ''); ?>
+                                <?php if (($llamada['tipo'] ?? '') === 'Saliente' &&
+                                    preg_match('/^out_[a-fA-F0-9]{32,64}$/', $pbxId)): ?>
+                                    <span class="telephony-sales-result-badge <?= $resultadoActual !== '' ? 'is-classified' : '' ?>"
+                                        data-sales-result-badge>
+                                        <?= $esc($llamada['resultado_etiqueta'] ?? 'Por clasificar') ?>
+                                    </span>
+                                    <form class="telephony-sales-history-form" data-sales-history-result-form
+                                        data-pbx-call-id="<?= $esc($pbxId) ?>">
+                                        <select class="form-select" aria-label="Resultado de la llamada"
+                                            data-sales-history-result-select required>
+                                            <option value="">Clasificar…</option>
+                                            <?php foreach (TelefoniaResultadoVentasService::opciones() as $codigo => $etiqueta): ?>
+                                                <option value="<?= $esc($codigo) ?>"
+                                                    <?= $resultadoActual === $codigo ? 'selected' : '' ?>>
+                                                    <?= $esc($etiqueta) ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                        <button type="submit" class="btn btn-system-light"
+                                            data-sales-history-result-submit>Guardar</button>
+                                    </form>
+                                    <span class="telephony-sales-history-feedback"
+                                        data-sales-history-feedback role="status" aria-live="polite"></span>
+                                <?php else: ?>
+                                    <?= !empty($llamada['contestada']) ? 'Conectada' : 'Sin respuesta' ?>
+                                <?php endif; ?>
+                            </td>
                             <td><?= sprintf('%02d:%02d', intdiv($duracion, 60), $duracion % 60) ?></td>
                             <td class="telephony-recording-cell">
                                 <?php if ($hayGrabacion): ?>
@@ -250,6 +305,10 @@ $urlActualizarMarcador = BASE_URL . (
                                         <span>Grabación</span>
                                         <i class="bi bi-chevron-down linkage-call-recording-chevron" aria-hidden="true"></i>
                                     </button>
+                                <?php elseif (!empty($llamada['grabacion_excluida'])): ?>
+                                    <span class="telephony-recording-empty"><i class="bi bi-slash-circle" aria-hidden="true"></i> No aplica</span>
+                                <?php elseif (!empty($llamada['resultado_pendiente'])): ?>
+                                    <span class="telephony-recording-empty">Pendiente de clasificar</span>
                                 <?php elseif ($grabacionEnProceso): ?>
                                     <span class="linkage-call-audio-state is-processing">
                                         <i class="bi bi-hourglass-split" aria-hidden="true"></i>

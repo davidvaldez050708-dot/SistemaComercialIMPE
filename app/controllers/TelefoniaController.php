@@ -4,6 +4,7 @@ require_once __DIR__ . '/../services/TelefoniaExtensionService.php';
 require_once __DIR__ . '/../services/TelefoniaActividadService.php';
 require_once __DIR__ . '/../services/TelefoniaMarcadorPanelService.php';
 require_once __DIR__ . '/../services/TelefoniaContactosService.php';
+require_once __DIR__ . '/../services/TelefoniaResultadoVentasService.php';
 require_once __DIR__ . '/../models/RolModel.php';
 require_once __DIR__ . '/../helpers/PermissionHelper.php';
 
@@ -170,6 +171,44 @@ class TelefoniaController
             $this->responderJson([
                 'ok' => false,
                 'mensaje' => 'No fue posible eliminar el teléfono.'
+            ], 500);
+        }
+    }
+
+    /**
+     * Clasificación posterior a la llamada. Nunca considera ANSWERED
+     * prueba suficiente de conversación: el asesor decide el resultado.
+     */
+    public function guardarResultadoVenta()
+    {
+        $this->validarMarcadorPersonalJson();
+        if ((int)($_SESSION['rol_id'] ?? 0) !== 3) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'La clasificación de Ventas solo está disponible para asesores.'
+            ], 403);
+        }
+
+        try {
+            $resultado = (new TelefoniaResultadoVentasService())->guardar(
+                (int)$_SESSION['usuario_id'],
+                (string)($_POST['pbx_call_id'] ?? ''),
+                (string)($_POST['resultado'] ?? '')
+            );
+            $this->responderJson([
+                'ok' => true,
+                'mensaje' => 'Resultado de la llamada registrado.',
+                'registro' => $resultado
+            ]);
+        } catch (InvalidArgumentException $e) {
+            $this->responderJson(['ok' => false, 'mensaje' => $e->getMessage()], 422);
+        } catch (DomainException $e) {
+            $this->responderJson(['ok' => false, 'mensaje' => $e->getMessage()], 409);
+        } catch (Throwable $e) {
+            error_log('[telefonia_ventas_resultado] ' . $e->getMessage());
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'No fue posible registrar el resultado. Inténtalo nuevamente.'
             ], 500);
         }
     }

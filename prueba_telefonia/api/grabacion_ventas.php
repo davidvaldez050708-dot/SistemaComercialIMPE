@@ -12,6 +12,7 @@ require_once $root . '/app/helpers/PermissionHelper.php';
 require_once $root . '/app/models/RolModel.php';
 require_once $root . '/app/services/TelefoniaExtensionService.php';
 require_once $root . '/app/services/ZadarmaRecordingService.php';
+require_once $root . '/app/services/TelefoniaResultadoVentasService.php';
 
 if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'GET') {
     http_response_code(405);
@@ -61,13 +62,21 @@ try {
         exit('No tienes una extensión activa que permita consultar grabaciones.');
     }
 
+    // Verifica clasificación y estructura antes de consultar la grabación.
+    // La existencia de audio en Zadarma no equivale a contacto humano.
+    (new TelefoniaResultadoVentasService())->asegurarEstructura();
     $db = (new Database())->connect();
 
-    // Permiso por objeto: la llamada debe haber salido de la extensión
-    // personal del usuario, y debe existir un evento de grabación firmado.
+    // Permiso por objeto: únicamente conversación humana confirmada de
+    // la extensión propia y evento de audio firmado por Zadarma.
     $consulta = $db->prepare(
         "SELECT 1
          FROM telefonia_zadarma_eventos origen
+         INNER JOIN telefonia_ventas_resultados resultado
+           ON resultado.pbx_call_id = origen.pbx_call_id
+          AND resultado.extension = origen.internal
+          AND resultado.usuario_id = ?
+          AND resultado.resultado = 'CONVERSACION_PERSONA'
          WHERE origen.pbx_call_id = ?
            AND origen.internal = ?
            AND origen.evento IN ('NOTIFY_OUT_START', 'NOTIFY_OUT_END')
@@ -86,7 +95,7 @@ try {
     if (!$consulta) {
         throw new RuntimeException('No fue posible comprobar la propiedad de la grabación.');
     }
-    $consulta->bind_param('ss', $pbxCallId, $extension);
+    $consulta->bind_param('iss', $usuarioId, $pbxCallId, $extension);
     $consulta->execute();
     $autorizada = (bool)$consulta->get_result()->fetch_assoc();
     $consulta->close();

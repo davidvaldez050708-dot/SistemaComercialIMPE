@@ -33,7 +33,7 @@ class TelefoniaMarcadorPanelService
                 $panel['caller_id'] = (string)($asignacion['caller_id'] ?? '');
                 try {
                     $panel['historial'] = (new TelefoniaActividadService())
-                        ->consultar($panel['extension']);
+                        ->consultar($panel['extension'], $usuarioId);
                 } catch (Throwable $e) {
                     error_log('Historial del marcador: ' . $e->getMessage());
                     $panel['mensaje'] = 'La extensión está disponible, pero el historial no se pudo consultar.';

@@ -555,3 +555,111 @@
 .telephony-history-recording-slot .linkage-call-custom-player {
     width: 100%;
 }
+
+/* Clasificación de llamadas · Ventas. Misma densidad que los controles del CRM. */
+.telephony-summary-strip {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.telephony-sales-result {
+    margin-top: 5px;
+    padding: 12px;
+    border: 1px solid #dce4ed;
+    border-radius: 11px;
+    background: #f8fafc;
+}
+.telephony-sales-result[hidden] { display: none !important; }
+.telephony-sales-result-heading {
+    display: grid;
+    gap: 4px;
+    margin-bottom: 10px;
+}
+.telephony-sales-result-heading strong {
+    color: var(--color-text-primary);
+    font-size: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+}
+.telephony-sales-result-heading small {
+    color: var(--color-text-secondary);
+    font-size: 10px;
+    line-height: 1.45;
+}
+.telephony-sales-result [data-sales-result-form] {
+    display: grid;
+    gap: 8px;
+}
+.telephony-sales-result label {
+    color: var(--color-text-secondary);
+    font-size: 11px;
+    font-weight: 700;
+}
+.telephony-sales-result select {
+    min-height: 40px;
+    font-size: 12px;
+    background: #fff;
+}
+.telephony-sales-result .btn {
+    min-height: 37px;
+    font-size: 11px;
+}
+.telephony-sales-result-feedback {
+    margin: 7px 0 0;
+    font-size: 10px;
+    line-height: 1.5;
+    color: var(--color-text-secondary);
+}
+.telephony-sales-result-feedback:empty { display: none; }
+.telephony-sales-result-cell { min-width: 188px; }
+.telephony-sales-result-badge {
+    display: block;
+    width: fit-content;
+    max-width: 240px;
+    padding: 5px 8px;
+    border: 1px solid #e4e9f1;
+    border-radius: 999px;
+    background: #f8fafc;
+    font-size: 10px;
+    font-weight: 750;
+    color: var(--color-text-secondary);
+    white-space: normal;
+}
+.telephony-sales-result-badge.is-classified {
+    color: #2d6361;
+    background: #f0faf7;
+    border-color: #d5e9e2;
+}
+.telephony-sales-history-form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin-top: 7px;
+}
+.telephony-sales-history-form select {
+    width: min(220px, 100%);
+    min-width: 130px;
+    min-height: 33px;
+    padding: 5px 28px 5px 7px;
+    font-size: 10px;
+}
+.telephony-sales-history-form .btn {
+    padding: 6px 9px;
+    min-height: 33px;
+    font-size: 10px;
+}
+.telephony-sales-history-feedback {
+    display: block;
+    margin-top: 5px;
+    font-size: 9.5px;
+    color: var(--color-text-secondary);
+    line-height: 1.4;
+}
+@media (max-width: 970px) {
+    .telephony-summary-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .telephony-summary-item:last-child { grid-column: auto; }
+}
+@media (max-width: 520px) {
+    .telephony-summary-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .telephony-summary-item:last-child { grid-column: auto; }
+}

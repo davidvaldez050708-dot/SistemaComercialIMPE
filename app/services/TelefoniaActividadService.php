@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/ZadarmaWebhookEventStoreService.php';
+require_once __DIR__ . '/TelefoniaResultadoVentasService.php';
 
 /** Registro de atenciones por extensión confirmado por webhooks; no es facturación Zadarma. */
 class TelefoniaActividadService
@@ -13,7 +14,7 @@ class TelefoniaActividadService
         (new ZadarmaWebhookEventStoreService())->asegurarEstructura();
     }
 
-    public function consultar(?string $extension = null): array
+    public function consultar(?string $extension = null, ?int $usuarioId = null): array
     {
         if ($extension !== null && !preg_match('/^\d{3,6}$/', $extension)) {
             throw new InvalidArgumentException('Extensión inválida.');
@@ -48,10 +49,17 @@ class TelefoniaActividadService
         $stmt->execute();
         $result = $stmt->get_result();
 
+        $resultados = [];
+        if ($usuarioId !== null && $usuarioId > 0 && $extension !== null) {
+            $resultados = (new TelefoniaResultadoVentasService())
+                ->consultarExtension($usuarioId, $extension);
+        }
+        $etiquetasResultados = TelefoniaResultadoVentasService::opciones();
+
         $data = [
             'atenciones' => 0, 'contestadas' => 0,
             'entrantes' => 0, 'salientes' => 0, 'segundos' => 0,
-            'por_extension' => [], 'recientes' => []
+            'por_extension' => [], 'recientes' => [], 'conversaciones_reales' => 0
         ];
         while ($row = $result->fetch_assoc()) {
             $ext = (string)$row['internal'];
@@ -69,18 +77,28 @@ class TelefoniaActividadService
             $data['por_extension'][$ext]['contestadas'] += (int)$answered;
             $data['por_extension'][$ext][$out ? 'salientes' : 'entrantes']++;
             $data['por_extension'][$ext]['segundos'] += $secs;
+            $pbxCallId = (string)$row['pbx_call_id'];
+            $esSalienteClasificado = $out &&
+                TelefoniaResultadoVentasService::esConversacion(
+                    (string)($resultados[$pbxCallId] ?? '')
+                );
+            if ($esSalienteClasificado) {
+                $data['conversaciones_reales']++;
+            }
             if (count($data['recientes']) < 30) {
-                $pbxCallId = (string)$row['pbx_call_id'];
                 $esSalienteConIdValido = $out &&
                     (bool)preg_match('/^out_[a-fA-F0-9]{32,64}$/', $pbxCallId);
+                $resultadoRegistrado = (string)($resultados[$pbxCallId] ?? '');
+                $esConversacionReal = $esSalienteConIdValido &&
+                    TelefoniaResultadoVentasService::esConversacion($resultadoRegistrado);
                 $grabacionReportada = (int)$row['grabacion_reportada'] === 1;
-                // El evento NOTIFY_RECORD es más fiable que la duración o
-                // el campo disposition para confirmar un audio disponible.
-                $grabacionLista = $esSalienteConIdValido && $grabacionReportada;
+                // El proveedor puede grabar locuciones: solo exhibir audio
+                // cuando el asesor confirmó conversación con una persona.
+                $grabacionLista = $esConversacionReal && $grabacionReportada;
                 $timestamp = strtotime((string)$row['fecha']);
-                $grabacionProcesando = $esSalienteConIdValido &&
-                    $answered && $secs > 0 && !$grabacionLista &&
-                    $timestamp !== false && $timestamp >= time() - 900;
+                $grabacionProcesando = $esConversacionReal &&
+                    !$grabacionLista && $timestamp !== false &&
+                    $timestamp >= time() - 900;
 
                 $data['recientes'][] = [
                     'extension' => $ext,
@@ -92,6 +110,11 @@ class TelefoniaActividadService
                         : (string)($row['origen'] ?? ''),
                     'contestada' => $answered,
                     'segundos' => $secs,
+                    'resultado_ventas' => $resultadoRegistrado,
+                    'resultado_etiqueta' => (string)($etiquetasResultados[$resultadoRegistrado] ?? 'Por clasificar'),
+                    'resultado_pendiente' => $esSalienteConIdValido && $resultadoRegistrado === '',
+                    'grabacion_excluida' => $esSalienteConIdValido &&
+                        $resultadoRegistrado !== '' && !$esConversacionReal,
                     'tiene_grabacion' => $grabacionLista,
                     'grabacion_procesando' => $grabacionProcesando
                 ];
