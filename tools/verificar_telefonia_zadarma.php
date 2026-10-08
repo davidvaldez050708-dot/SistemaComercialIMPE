@@ -284,6 +284,88 @@ try {
                         );
                     }
                 }
+
+                try {
+                    $callInfoBody = $api->call(
+                        '/v1/pbx/callinfo/',
+                        [],
+                        'get'
+                    );
+                    $callInfo = json_decode(
+                        (string)$callInfoBody,
+                        true
+                    );
+
+                    $webhookUrl = trim(
+                        (string)($callInfo['url'] ?? '')
+                    );
+                    $notifications = is_array(
+                        $callInfo['notifications'] ?? null
+                    )
+                        ? $callInfo['notifications']
+                        : [];
+
+                    if ($webhookUrl === '') {
+                        estadoTelefonia(
+                            'AVISO',
+                            'La nueva cuenta Zadarma todavía no tiene configurada la URL de notificaciones PBX.'
+                        );
+                    } else {
+                        estadoTelefonia(
+                            'OK',
+                            'Zadarma tiene configurada una URL de notificaciones PBX.'
+                        );
+                    }
+
+                    $requiredNotifications = [
+                        'notify_start',
+                        'notify_internal',
+                        'notify_answer',
+                        'notify_end',
+                        'notify_out_start',
+                        'notify_out_end',
+                    ];
+                    $missingNotifications = [];
+
+                    foreach ($requiredNotifications as $notification) {
+                        $enabled = strtolower(
+                            trim(
+                                (string)(
+                                    $notifications[$notification] ??
+                                    'false'
+                                )
+                            )
+                        ) === 'true';
+
+                        if (!$enabled) {
+                            $missingNotifications[] =
+                                $notification;
+                        }
+                    }
+
+                    if (empty($missingNotifications)) {
+                        estadoTelefonia(
+                            'OK',
+                            'Notificaciones PBX necesarias para entrantes y salientes habilitadas.'
+                        );
+                    } else {
+                        estadoTelefonia(
+                            'AVISO',
+                            'Faltan notificaciones PBX: ' .
+                            implode(
+                                ', ',
+                                $missingNotifications
+                            ) .
+                            '.'
+                        );
+                    }
+                } catch (Throwable $errorCallInfo) {
+                    estadoTelefonia(
+                        'AVISO',
+                        'No fue posible consultar la configuración de notificaciones PBX: ' .
+                        $errorCallInfo->getMessage()
+                    );
+                }
             }
         } catch (Throwable $errorApi) {
             estadoTelefonia(
