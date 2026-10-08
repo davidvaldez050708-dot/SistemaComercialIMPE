@@ -368,7 +368,9 @@ class ReporteTerritorialPdfService
         ] as $definicionAdulta) {
             $dato = $escolaridadAdulta[$definicionAdulta['codigo']] ?? [];
             $disponible = ($dato['disponible'] ?? false) === true;
-            $html .= '<td><span>' . $this->e($definicionAdulta['titulo']) . '</span>';
+            $esMinimo = str_contains((string)($dato['metodologia'] ?? ''), 'Conteo mínimo identificable');
+            $html .= '<td><span>' . $this->e($definicionAdulta['titulo']) .
+                ($esMinimo ? ' (mínimo identificado)' : '') . '</span>';
             $html .= '<strong>' . ($disponible
                 ? $this->numero($dato['cantidad_personas'])
                 : 'Pendiente') . '</strong>';
