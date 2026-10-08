@@ -673,15 +673,28 @@ class InegiPerfilEducativoPrioritarioAutoService
             );
         }
 
-        $esXlsx =
+        /*
+         * No usar FL_NODIR aquí: workbook.xml vive dentro de /xl y esa
+         * bandera hace que ZipArchive compare sólo el basename. Eso provocaba
+         * falsos negativos en libros XLSX perfectamente válidos.
+         */
+        $tieneContentTypes =
             $zip->locateName(
-                '[Content_Types].xml',
-                ZipArchive::FL_NODIR
-            ) !== false &&
-            $zip->locateName(
-                'xl/workbook.xml',
-                ZipArchive::FL_NODIR
+                '[Content_Types].xml'
             ) !== false;
+        $tieneWorkbook =
+            $zip->locateName(
+                'xl/workbook.xml'
+            ) !== false;
+        $tieneRels =
+            $zip->locateName(
+                '_rels/.rels'
+            ) !== false;
+
+        $esXlsx =
+            $tieneContentTypes &&
+            $tieneWorkbook &&
+            $tieneRels;
 
         $zip->close();
 
@@ -700,22 +713,18 @@ class InegiPerfilEducativoPrioritarioAutoService
             ];
         }
 
-        if (
-            $esRutaZip ||
-            strpos($tipo, 'zip') !== false
-        ) {
-            return [
-                'ok' => true,
-                'extension' => 'zip',
-                'bytes' => $tamanoReal,
-                'url_final' => $urlFinal,
-                'mensaje' => ''
-            ];
-        }
-
-        return $this->error(
-            'El contenedor descargado es ZIP, pero no contiene la estructura de un XLSX.'
-        );
+        /*
+         * Si el contenedor es un ZIP válido pero no es el libro directamente,
+         * lo tratamos como paquete oficial. procesarZip() buscará dentro el
+         * XLSX compatible. No dependemos del Content-Type del servidor.
+         */
+        return [
+            'ok' => true,
+            'extension' => 'zip',
+            'bytes' => $tamanoReal,
+            'url_final' => $urlFinal,
+            'mensaje' => ''
+        ];
     }
 
     private function urlAbsoluta(string $url, string $base): string
