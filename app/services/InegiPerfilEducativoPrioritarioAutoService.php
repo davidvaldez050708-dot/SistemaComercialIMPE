@@ -22,7 +22,8 @@ class InegiPerfilEducativoPrioritarioAutoService
     public function obtenerOActualizar(
         int $estadoId,
         string $claveEstado,
-        bool $permitirActualizacion = true
+        bool $permitirActualizacion = true,
+        bool $forzarActualizacion = false
     ): array
     {
         $modelo = new PerfilEducativoPrioritarioModel();
@@ -58,6 +59,7 @@ class InegiPerfilEducativoPrioritarioAutoService
         $estadoCache = $this->leerEstadoIntento($claveEstado);
 
         if (
+            !$forzarActualizacion &&
             is_array($estadoCache) &&
             (int)($estadoCache['timestamp'] ?? 0) > time() - self::TTL_FALLO
         ) {
