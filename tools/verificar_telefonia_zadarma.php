@@ -80,6 +80,7 @@ if (!is_file($autoloadPath)) {
 
 try {
     require_once $root . '/config/db_connection.php';
+    require_once $root . '/app/models/RolModel.php';
     require_once $root . '/app/services/TelefoniaExtensionService.php';
     require_once $root . '/app/services/ZadarmaWebhookEventStoreService.php';
 
@@ -92,6 +93,12 @@ try {
 
     estadoTelefonia('OK', 'Conexión a base de datos disponible.');
 
+    (new RolModel())->inicializarPermisosSistema();
+    estadoTelefonia(
+        'OK',
+        'Catálogo y permisos de telefonía inicializados.'
+    );
+
     (new TelefoniaExtensionService())->asegurarEstructura();
     (new ZadarmaWebhookEventStoreService())->asegurarEstructura();
 
@@ -100,14 +107,56 @@ try {
         'Tablas telefonia_extensiones y telefonia_zadarma_eventos disponibles.'
     );
 
+    $permisosRoles = $connection->query(
+        "SELECT
+            r.nombre AS rol,
+            GROUP_CONCAT(
+                p.codigo
+                ORDER BY p.codigo
+                SEPARATOR ', '
+            ) AS permisos
+         FROM roles r
+         LEFT JOIN rol_permisos rp
+            ON rp.rol_id = r.id
+         LEFT JOIN permisos p
+            ON p.id = rp.permiso_id
+           AND p.estado = 1
+           AND p.codigo LIKE 'telefonia.%'
+         WHERE r.nombre IN (
+            'Marketing',
+            'Analista de Datos',
+            'Asesor de Ventas'
+         )
+         GROUP BY r.id, r.nombre
+         ORDER BY r.nombre"
+    );
+
+    if ($permisosRoles) {
+        while ($filaRol = $permisosRoles->fetch_assoc()) {
+            echo '    · ' .
+                (string)($filaRol['rol'] ?? 'Rol') .
+                ': ' .
+                (
+                    trim((string)($filaRol['permisos'] ?? '')) !== ''
+                        ? (string)$filaRol['permisos']
+                        : 'sin permisos de telefonía'
+                ) .
+                PHP_EOL;
+        }
+    }
+
     $sql = "SELECT
                 te.extension,
                 te.permite_salientes,
+                te.permite_entrantes,
                 u.nombre,
-                u.apellidos
+                u.apellidos,
+                r.nombre AS rol
             FROM telefonia_extensiones te
             INNER JOIN usuarios u
                 ON u.id = te.usuario_id
+            INNER JOIN roles r
+                ON r.id = u.rol_id
             WHERE te.proveedor = 'ZADARMA'
               AND te.activo = 1
               AND u.estado = 1
@@ -125,7 +174,7 @@ try {
     if (empty($asignaciones)) {
         estadoTelefonia(
             'AVISO',
-            'No hay extensiones Zadarma activas asignadas a usuarios. En producción asigna la extensión de Diego desde Administración > Telefonía.'
+            'No hay extensiones Zadarma activas asignadas a usuarios. Asigna recepción y equipo desde Administración > Telefonía.'
         );
     } else {
         estadoTelefonia(
@@ -138,15 +187,29 @@ try {
                 (string)($asignacion['nombre'] ?? '') . ' ' .
                 (string)($asignacion['apellidos'] ?? '')
             );
-            $salientes = !empty($asignacion['permite_salientes'])
-                ? 'salientes habilitadas'
-                : 'salientes deshabilitadas';
+            $capacidades = [];
+
+            if (!empty($asignacion['permite_salientes'])) {
+                $capacidades[] = 'salientes';
+            }
+
+            if (!empty($asignacion['permite_entrantes'])) {
+                $capacidades[] = 'entrantes';
+            }
 
             echo '    - ' .
                 ($nombre !== '' ? $nombre : 'Usuario') .
+                ' · ' .
+                trim((string)($asignacion['rol'] ?? '')) .
                 ': extensión ' .
                 (string)($asignacion['extension'] ?? '') .
-                ' (' . $salientes . ')' .
+                ' (' .
+                (
+                    !empty($capacidades)
+                        ? implode(' + ', $capacidades)
+                        : 'sin capacidades habilitadas'
+                ) .
+                ')' .
                 PHP_EOL;
         }
     }
