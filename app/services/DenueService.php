@@ -43,65 +43,176 @@ class DenueService
         string $claveEstado,
         string $claveMunicipio
     ): array {
-        $claveEstado = trim($claveEstado);
-        $claveMunicipio = $this->normalizarClaveMunicipal($claveMunicipio);
+        $claveMunicipio =
+            $this->normalizarClaveMunicipal(
+                $claveMunicipio
+            );
 
-        if (
-            !preg_match('/^\\d{2}$/', $claveEstado) ||
-            $claveMunicipio === '0' ||
-            !preg_match('/^\\d{3}$/', $claveMunicipio)
-        ) {
+        $lote = $this->obtenerSectoresMunicipios(
+            $claveEstado,
+            [$claveMunicipio]
+        );
+
+        if (($lote['ok'] ?? false) !== true) {
+            return $lote;
+        }
+
+        return $lote['municipios'][$claveMunicipio]
+            ?? [
+                'ok' => false,
+                'mensaje' =>
+                    'DENUE no devolvió información económica para el municipio.'
+            ];
+    }
+
+    public function obtenerSectoresMunicipios(
+        string $claveEstado,
+        array $clavesMunicipio
+    ): array {
+        $claveEstado = trim($claveEstado);
+
+        if (!preg_match('/^\\d{2}$/', $claveEstado)) {
             return [
                 'ok' => false,
-                'mensaje' => 'El municipio solicitado no tiene una clave INEGI válida.'
+                'mensaje' =>
+                    'El Estado solicitado no tiene una clave INEGI válida.'
             ];
         }
 
         if (!$this->configuracionDisponible()) {
             return [
                 'ok' => false,
-                'mensaje' => 'La configuración de DENUE no está disponible.'
+                'mensaje' =>
+                    'La configuración de DENUE no está disponible.'
             ];
         }
 
-        // Cuantificar acepta cinco dígitos para nivel municipal:
-        // entidad (2) + municipio (3), por ejemplo 01001.
-        $claveArea = $claveEstado . $claveMunicipio;
-        $respuesta = $this->consultarCuantificar($claveArea);
+        $claves = [];
 
-        if (!$respuesta['ok']) {
+        foreach ($clavesMunicipio as $clave) {
+            $normalizada =
+                $this->normalizarClaveMunicipal(
+                    (string)$clave
+                );
+
+            if (
+                $normalizada !== '0' &&
+                preg_match('/^\\d{3}$/', $normalizada)
+            ) {
+                $claves[$normalizada] = true;
+            }
+        }
+
+        $claves = array_keys($claves);
+
+        if (empty($claves)) {
+            return [
+                'ok' => false,
+                'mensaje' =>
+                    'No se recibieron municipios válidos para consultar.'
+            ];
+        }
+
+        /*
+         * Cuantificar admite varias áreas geográficas separadas por coma.
+         * Limitamos cada llamada a 30 municipios para mantener una solicitud
+         * pequeña y predecible incluso si este método se usa fuera del flujo
+         * masivo del navegador.
+         */
+        if (count($claves) > 30) {
+            return [
+                'ok' => false,
+                'mensaje' =>
+                    'El lote DENUE supera el máximo de 30 municipios.'
+            ];
+        }
+
+        $areas = array_map(
+            static function ($claveMunicipio) use ($claveEstado) {
+                return $claveEstado . $claveMunicipio;
+            },
+            $claves
+        );
+
+        $respuesta =
+            $this->consultarCuantificar(
+                implode(',', $areas)
+            );
+
+        if (($respuesta['ok'] ?? false) !== true) {
             return $respuesta;
         }
 
-        $resultado = $this->procesarSectores($respuesta['datos'], $claveArea);
+        $datosPorArea = [];
 
-        if (($resultado['ok'] ?? false) !== true) {
-            return $resultado;
-        }
-
-        $sectoresVinculacion = ['31-33', '48-49', '52', '54', '55', '56', '61', '62', '81', '93'];
-        $establecimientosVinculacion = 0;
-        $detalleVinculacion = [];
-
-        foreach (($resultado['sectores'] ?? []) as $sector) {
-            if (!in_array((string)($sector['clave_sector'] ?? ''), $sectoresVinculacion, true)) {
+        foreach (($respuesta['datos'] ?? []) as $registro) {
+            if (!is_array($registro)) {
                 continue;
             }
 
-            $establecimientos = (int)($sector['establecimientos'] ?? 0);
-            $establecimientosVinculacion += $establecimientos;
-            $detalleVinculacion[] = $sector;
+            $area = preg_replace(
+                '/\\D+/',
+                '',
+                (string)($registro['AG'] ?? '')
+            ) ?? '';
+
+            if (
+                strlen($area) !== 5 ||
+                substr($area, 0, 2) !== $claveEstado
+            ) {
+                continue;
+            }
+
+            if (!isset($datosPorArea[$area])) {
+                $datosPorArea[$area] = [];
+            }
+
+            $datosPorArea[$area][] = $registro;
         }
 
-        $resultado['clave_estado'] = $claveEstado;
-        $resultado['clave_municipio'] = $claveMunicipio;
-        $resultado['establecimientos_vinculacion'] = $establecimientosVinculacion;
-        $resultado['sectores_vinculacion'] = $detalleVinculacion;
-        $resultado['criterio_vinculacion'] = [
-            '31-33', '48-49', '52', '54', '55', '56', '61', '62', '81', '93'
-        ];
+        $municipios = [];
+        $errores = [];
 
-        return $resultado;
+        foreach ($claves as $claveMunicipio) {
+            $area =
+                $claveEstado .
+                $claveMunicipio;
+            $resultado =
+                $this->procesarSectores(
+                    $datosPorArea[$area] ?? [],
+                    $area
+                );
+
+            if (($resultado['ok'] ?? false) !== true) {
+                $municipios[$claveMunicipio] = $resultado;
+                $errores[$claveMunicipio] =
+                    (string)(
+                        $resultado['mensaje']
+                        ?? 'DENUE no devolvió información económica.'
+                    );
+                continue;
+            }
+
+            $resultado =
+                $this->agregarMetricasVinculacion(
+                    $resultado
+                );
+            $resultado['clave_estado'] = $claveEstado;
+            $resultado['clave_municipio'] =
+                $claveMunicipio;
+            $municipios[$claveMunicipio] =
+                $resultado;
+        }
+
+        return [
+            'ok' => true,
+            'clave_estado' => $claveEstado,
+            'municipios' => $municipios,
+            'errores' => $errores,
+            'municipios_solicitados' => count($claves),
+            'municipios_con_datos' =>
+                count($claves) - count($errores)
+        ];
     }
 
     public function buscarEstablecimientos(
@@ -591,6 +702,52 @@ class DenueService
         ];
     }
 
+    private function agregarMetricasVinculacion(
+        array $resultado
+    ): array {
+        $sectoresVinculacion = [
+            '31-33',
+            '48-49',
+            '52',
+            '54',
+            '55',
+            '56',
+            '61',
+            '62',
+            '81',
+            '93'
+        ];
+        $establecimientosVinculacion = 0;
+        $detalleVinculacion = [];
+
+        foreach (($resultado['sectores'] ?? []) as $sector) {
+            if (
+                !in_array(
+                    (string)($sector['clave_sector'] ?? ''),
+                    $sectoresVinculacion,
+                    true
+                )
+            ) {
+                continue;
+            }
+
+            $establecimientos =
+                (int)($sector['establecimientos'] ?? 0);
+            $establecimientosVinculacion +=
+                $establecimientos;
+            $detalleVinculacion[] = $sector;
+        }
+
+        $resultado['establecimientos_vinculacion'] =
+            $establecimientosVinculacion;
+        $resultado['sectores_vinculacion'] =
+            $detalleVinculacion;
+        $resultado['criterio_vinculacion'] =
+            $sectoresVinculacion;
+
+        return $resultado;
+    }
+
     private function consultarCuantificar(string $claveInegi): array
     {
         $url = rtrim(DENUE_BASE_URL, '/') .
@@ -1030,33 +1187,83 @@ class DenueService
             ];
         }
 
-        $ch = curl_init();
+        $ultimoResultado = [
+            'ok' => false,
+            'mensaje' => 'No fue posible conectar con DENUE.'
+        ];
 
-        if ($ch === false) {
-            return [
-                'ok' => false,
-                'mensaje' => 'No fue posible conectar con DENUE.'
-            ];
+        for ($intento = 1; $intento <= 3; $intento++) {
+            $ch = curl_init();
+
+            if ($ch === false) {
+                return $ultimoResultado;
+            }
+
+            curl_setopt_array($ch, [
+                CURLOPT_URL => $url,
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_CONNECTTIMEOUT => 8,
+                CURLOPT_TIMEOUT => 25,
+                CURLOPT_SSL_VERIFYPEER => true,
+                CURLOPT_USERAGENT =>
+                    'SistemaComercialIMPE/1.0 DENUE-sync',
+                CURLOPT_HTTPHEADER => [
+                    'Accept: application/json'
+                ]
+            ]);
+
+            $contenido = curl_exec($ch);
+            $codigoHttp =
+                (int)curl_getinfo(
+                    $ch,
+                    CURLINFO_HTTP_CODE
+                );
+            $errorCurl = curl_error($ch);
+
+            curl_close($ch);
+
+            $ultimoResultado =
+                $this->procesarRespuestaDenue(
+                    $contenido,
+                    $codigoHttp,
+                    $errorCurl
+                );
+
+            if (($ultimoResultado['ok'] ?? false) === true) {
+                return $ultimoResultado;
+            }
+
+            $transitorio =
+                $contenido === false ||
+                $errorCurl !== '' ||
+                $codigoHttp === 0 ||
+                $codigoHttp === 408 ||
+                $codigoHttp === 429 ||
+                $codigoHttp >= 500;
+
+            error_log(
+                '[DENUE] intento=' .
+                $intento .
+                ' http=' .
+                $codigoHttp .
+                ' curl=' .
+                ($errorCurl !== '' ? $errorCurl : '-') .
+                ' transitorio=' .
+                ($transitorio ? '1' : '0')
+            );
+
+            if (!$transitorio || $intento >= 3) {
+                break;
+            }
+
+            usleep(
+                $intento === 1
+                    ? 700000
+                    : 1600000
+            );
         }
 
-        curl_setopt_array($ch, [
-            CURLOPT_URL => $url,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_CONNECTTIMEOUT => 10,
-            CURLOPT_TIMEOUT => 30,
-            CURLOPT_SSL_VERIFYPEER => true,
-            CURLOPT_HTTPHEADER => [
-                'Accept: application/json'
-            ]
-        ]);
-
-        $contenido = curl_exec($ch);
-        $codigoHttp = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $errorCurl = curl_error($ch);
-
-        curl_close($ch);
-
-        return $this->procesarRespuestaDenue($contenido, $codigoHttp, $errorCurl);
+        return $ultimoResultado;
     }
 
     private function procesarRespuestaDenue($contenido, int $codigoHttp, string $errorCurl): array
