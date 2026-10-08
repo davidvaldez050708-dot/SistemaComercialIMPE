@@ -268,8 +268,10 @@ class InegiEscolaridadAdultaXlsxService
     private function normalizarEdad(string $valor): string
     {
         $valor = $this->normalizarTexto($valor);
-        $valor = str_replace([' AÑOS Y MÁS', ' ANOS Y MAS'], '+', $valor);
-        $valor = str_replace([' AÑOS', ' ANOS', ' '], '', $valor);
+        $valor = preg_replace('/\\s+AÑOS?\\s+Y\\s+MAS$/u', '+', $valor);
+        $valor = str_replace([' AÑOS', ' ANOS'], '', $valor);
+        $valor = preg_replace('/^(\\d{1,2})\\s+A\\s+(\\d{1,2})$/', '$1-$2', $valor);
+        $valor = str_replace(' ', '', $valor);
         $valor = str_replace(['–', '—'], '-', $valor);
         if (preg_match('/^(\d{1,2})-(\d{1,2})$/', $valor, $m)) {
             return (int)$m[1] . '-' . (int)$m[2];
