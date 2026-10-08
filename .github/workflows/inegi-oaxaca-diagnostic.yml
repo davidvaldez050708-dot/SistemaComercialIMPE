@@ -1,0 +1,59 @@
+name: Diagnostico Oaxaca INEGI oficial
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/inegi-oaxaca-diagnostic.yml"
+      - "tests/inegi_veracruz_real_smoke.php"
+  workflow_dispatch:
+permissions:
+  contents: read
+  pull-requests: write
+jobs:
+  comprobar-oaxaca:
+    runs-on: ubuntu-latest
+    timeout-minutes: 13
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: curl, zip, dom, xmlreader, mbstring, mysqli
+      - name: Probar fuentes Oaxaca y nacional
+        shell: bash
+        run: |
+          set +e
+          mkdir -p /tmp/oaxaca
+          echo '## Fuentes oficiales de Oaxaca' >/tmp/reporte_oaxaca.txt
+          for id in oax_e oax_z eum_e eum_z; do
+            case "$id" in
+              oax_e) nombre=cpv2020_b_oax_07_educacion.xlsx;;
+              oax_z) nombre=cpv2020_b_oax_07_educacion.zip;;
+              eum_e) nombre=cpv2020_b_eum_07_educacion.xlsx;;
+              eum_z) nombre=cpv2020_b_eum_07_educacion.zip;;
+            esac
+            url="https://www.inegi.org.mx/contenidos/programas/ccpv/2020/tabulados/${nombre}"
+            echo "### ${nombre}" >>/tmp/reporte_oaxaca.txt
+            curl -sSL --retry 1 --connect-timeout 12 --max-time 110 --max-filesize 130000000 -w 'HTTP %{http_code} MIME %{content_type} BYTES %{size_download} FINAL %{url_effective}\n' -o "/tmp/oaxaca/${nombre}" "$url" >>/tmp/reporte_oaxaca.txt 2>&1
+            file -b "/tmp/oaxaca/${nombre}" >>/tmp/reporte_oaxaca.txt 2>&1
+            if unzip -tqq "/tmp/oaxaca/${nombre}" >/dev/null 2>&1; then
+              echo 'CONTENEDOR ZIP VALIDO' >>/tmp/reporte_oaxaca.txt
+              if [[ "$nombre" == *.xlsx ]]; then
+                php tests/inegi_veracruz_real_smoke.php "/tmp/oaxaca/${nombre}" 20 >>/tmp/reporte_oaxaca.txt 2>&1
+                echo "RESULTADO_PHP=$?" >>/tmp/reporte_oaxaca.txt
+              else
+                unzip -Z1 "/tmp/oaxaca/${nombre}" | head -10 >>/tmp/reporte_oaxaca.txt
+              fi
+            else
+              echo 'NO ES CONTENEDOR ZIP VALIDO' >>/tmp/reporte_oaxaca.txt
+            fi
+          done
+          cat /tmp/reporte_oaxaca.txt | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Publicar diagnostico
+        if: always() && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        shell: bash
+        run: |
+          test -f /tmp/reporte_oaxaca.txt && gh pr comment "$PR_NUMBER" --body-file /tmp/reporte_oaxaca.txt || true
