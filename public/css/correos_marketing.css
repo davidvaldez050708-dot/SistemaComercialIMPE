@@ -98,7 +98,7 @@
 .correo-marketing-toolbar {
     margin-top: 16px;
     display: grid;
-    grid-template-columns: minmax(300px, 1.7fr) minmax(180px, .65fr) minmax(180px, .65fr);
+    grid-template-columns: minmax(300px, 1.9fr) minmax(180px, .7fr);
     gap: 14px;
     align-items: end;
 }
