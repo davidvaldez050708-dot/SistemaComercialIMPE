@@ -52,7 +52,8 @@ class EscolaridadAdultaImportService
                 $codigo = $fila['codigo_indicador'];
                 if (!in_array($codigo, [
                     EscolaridadAdultaModel::SIN_SUPERIOR_25,
-                    EscolaridadAdultaModel::SIN_MEDIA_CONCLUIDA_18
+                    EscolaridadAdultaModel::SIN_MEDIA_CONCLUIDA_18,
+                    EscolaridadAdultaModel::SIN_MEDIA_CONCLUIDA_15_17
                 ], true)) {
                     throw new InvalidArgumentException("Línea $linea: código de indicador no permitido.");
                 }
@@ -86,16 +87,19 @@ class EscolaridadAdultaImportService
                 $porEstado[$clave][$codigo] = $anio;
                 $fila['estado_id'] = $estados[$clave];
                 $filas[] = $fila;
-                if (count($filas) > 64) {
-                    throw new InvalidArgumentException('El CSV admite un máximo de dos indicadores por cada uno de los 32 Estados.');
+                if (count($filas) > 96) {
+                    throw new InvalidArgumentException('El CSV admite hasta tres indicadores por cada uno de los 32 Estados.');
                 }
             }
             if (!$filas) {
                 throw new InvalidArgumentException('El CSV no contiene indicadores.');
             }
             foreach ($porEstado as $clave => $codigos) {
-                if (count($codigos) !== 2 || count(array_unique(array_values($codigos))) !== 1) {
-                    throw new InvalidArgumentException("Estado $clave: se requieren los dos indicadores del mismo año.");
+                if (count($codigos) < 2 ||
+                    !isset($codigos[EscolaridadAdultaModel::SIN_SUPERIOR_25]) ||
+                    !isset($codigos[EscolaridadAdultaModel::SIN_MEDIA_CONCLUIDA_18]) ||
+                    count(array_unique(array_values($codigos))) !== 1) {
+                    throw new InvalidArgumentException("Estado $clave: se requieren los indicadores adultos del mismo año; el juvenil es opcional en CSV heredados.");
                 }
             }
             $modelo = new EscolaridadAdultaModel();
