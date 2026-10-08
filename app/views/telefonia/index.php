@@ -84,6 +84,42 @@ $esc = static function ($valor) {
         </article>
     </section>
 
+    <section class="dashboard-panel telephony-activity-panel">
+        <div class="telephony-config-heading">
+            <div>
+                <span class="telephony-eyebrow">ACTIVIDAD · ÚLTIMOS 30 DÍAS</span>
+                <h2>Control de llamadas</h2>
+                <p>Atenciones por extensión y minutos observados mediante webhooks. No equivalen a los minutos facturados de Zadarma; una transferencia puede generar más de una atención.</p>
+            </div>
+        </div>
+        <?php if ($actividadTelefonicaError !== ''): ?>
+            <div class="alert alert-warning"><?= $esc($actividadTelefonicaError) ?></div>
+        <?php endif; ?>
+        <div class="telephony-activity-metrics">
+            <div><strong><?= (int)$actividadTelefonica['atenciones'] ?></strong><span>Atenciones</span></div>
+            <div><strong><?= (int)$actividadTelefonica['contestadas'] ?></strong><span>Contestadas</span></div>
+            <div><strong><?= (int)$actividadTelefonica['salientes'] ?></strong><span>Salientes</span></div>
+            <div><strong><?= (int)$actividadTelefonica['entrantes'] ?></strong><span>Entrantes</span></div>
+            <div><strong><?= number_format((int)$actividadTelefonica['segundos']/60, 1) ?></strong><span>Minutos observados</span></div>
+        </div>
+        <div class="table-responsive">
+            <table class="table telephony-table align-middle mb-0">
+                <thead><tr><th>Extensión</th><th>Atenciones</th><th>Contestadas</th><th>Salientes</th><th>Entrantes</th><th>Minutos</th></tr></thead>
+                <tbody>
+                <?php foreach ($actividadTelefonica['por_extension'] as $registro): ?>
+                    <tr><td><strong><?= $esc($registro['extension']) ?></strong></td>
+                        <td><?= (int)$registro['atenciones'] ?></td><td><?= (int)$registro['contestadas'] ?></td>
+                        <td><?= (int)$registro['salientes'] ?></td><td><?= (int)$registro['entrantes'] ?></td>
+                        <td><?= number_format($registro['segundos']/60, 1) ?></td></tr>
+                <?php endforeach; ?>
+                <?php if (empty($actividadTelefonica['por_extension'])): ?>
+                    <tr><td colspan="6" class="text-center text-muted py-4">Todavía no hay llamadas registradas en este periodo.</td></tr>
+                <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
     <section class="dashboard-panel telephony-config-panel">
         <div class="telephony-config-heading">
             <div>

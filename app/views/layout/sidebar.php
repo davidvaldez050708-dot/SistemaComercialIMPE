@@ -8,6 +8,7 @@ $mostrarRoles = tienePermiso('roles.ver');
 $mostrarTerritorios = tienePermiso('territorios.ver');
 $mostrarTelefoniaConfiguracion =
     (int)($_SESSION['rol_id'] ?? 0) === 1;
+$mostrarMarcadorTelefonia = tienePermiso('telefonia.usar') && tienePermiso('telefonia.salientes');
 $mostrarDataTerritorial = tienePermiso('data_territorial.ver');
 $mostrarSeguimientoVinculacion = tienePermiso('seguimientos_vinculacion.ver');
 $mostrarAliados = tienePermiso('aliados.ver');
@@ -61,6 +62,7 @@ $claseUsuarios = $opcionActiva === 'usuarios' ? 'active' : '';
 $claseRoles = $opcionActiva === 'roles' ? 'active' : '';
 $claseTerritorios = $opcionActiva === 'territorios' ? 'active' : '';
 $claseTelefonia = $opcionActiva === 'telefonia' ? 'active' : '';
+$claseMarcadorTelefonia = $opcionActiva === 'telefono_marcador' ? 'active' : '';
 $claseDataTerritorial =
     $opcionActiva === 'data_territorial' ? 'active' : '';
 $claseSeguimientoVinculacion =
@@ -172,6 +174,16 @@ $claseFormularios =
                 <?php endif; ?>
             </div>
 
+        <?php endif; ?>
+
+        <?php if ($mostrarMarcadorTelefonia): ?>
+            <div class="sidebar-section">
+                <p class="sidebar-section-title">TELÉFONO</p>
+                <a href="<?= BASE_URL ?>index.php?controller=telefonia&action=marcador"
+                   class="sidebar-link <?= $claseMarcadorTelefonia ?>">
+                    <i class="bi bi-telephone"></i> Marcador
+                </a>
+            </div>
         <?php endif; ?>
 
         <?php if ($mostrarConvocatorias): ?>
@@ -468,7 +480,17 @@ $claseFormularios =
 
 
             <!-- MARKETING -->
-            <?php if ($mostrarConvocatorias): ?>
+            <?php if ($mostrarMarcadorTelefonia): ?>
+            <div class="sidebar-section">
+                <p class="sidebar-section-title">TELÉFONO</p>
+                <a href="<?= BASE_URL ?>index.php?controller=telefonia&action=marcador"
+                   class="sidebar-link <?= $claseMarcadorTelefonia ?>">
+                    <i class="bi bi-telephone"></i> Marcador
+                </a>
+            </div>
+        <?php endif; ?>
+
+        <?php if ($mostrarConvocatorias): ?>
 
                 <div class="sidebar-section">
                     <p class="sidebar-section-title">

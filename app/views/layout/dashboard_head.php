@@ -203,6 +203,7 @@ if ($esDesempenoDashboard) {
 
 if ($esTelefoniaDashboard) {
     $cssOpcionalDashboard[] = 'telefonia.css';
+    $cssOpcionalDashboard[] = 'telefonia_marcador.css';
 }
 
 if ($usarTelefoniaPersistente) {
@@ -271,7 +272,7 @@ if ($esDesempenoDashboard) {
 }
 
 if ($esTelefoniaDashboard) {
-    $jsOpcionalHead[] = 'telefonia_admin.js';
+    $jsOpcionalHead[] = $actionDashboard === 'marcador' ? 'telefonia_marcador.js' : 'telefonia_admin.js';
 }
 
 if ($esHomeDashboard) {

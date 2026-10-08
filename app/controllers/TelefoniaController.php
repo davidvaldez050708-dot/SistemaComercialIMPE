@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../services/TelefoniaExtensionService.php';
+require_once __DIR__ . '/../services/TelefoniaActividadService.php';
 require_once __DIR__ . '/../models/RolModel.php';
 require_once __DIR__ . '/../helpers/PermissionHelper.php';
 
@@ -35,6 +36,15 @@ class TelefoniaController
             'pendientes' => 0,
         ];
 
+        $actividadTelefonica = ['atenciones'=>0, 'contestadas'=>0, 'salientes'=>0, 'entrantes'=>0, 'segundos'=>0, 'por_extension'=>[], 'recientes'=>[]];
+        $actividadTelefonicaError = '';
+        try {
+            $actividadTelefonica = (new TelefoniaActividadService())->consultar();
+        } catch (Throwable $e) {
+            error_log('Telefonía: ' . $e->getMessage());
+            $actividadTelefonicaError = 'No se pudo consultar la actividad reciente.';
+        }
+
         $mensajeExito = $_SESSION['mensaje_telefonia'] ?? '';
         $mensajeError = $_SESSION['error_telefonia'] ?? '';
         $datosFormulario = $_SESSION['datos_telefonia'] ?? [];
@@ -68,6 +78,39 @@ class TelefoniaController
         require_once __DIR__ . '/../views/layout/sidebar.php';
         require_once __DIR__ . '/../views/layout/topbar.php';
         require_once __DIR__ . '/../views/telefonia/index.php';
+        require_once __DIR__ . '/../views/layout/dashboard_footer.php';
+    }
+
+    public function marcador()
+    {
+        if ((int)($_SESSION['usuario_id'] ?? 0) <= 0 ||
+            !tienePermiso('telefonia.usar') ||
+            !tienePermiso('telefonia.salientes')) {
+            http_response_code(403);
+            die('Tu perfil no tiene permiso para utilizar el marcador telefónico.');
+        }
+        $extensionAsignada = '';
+        $mensajeMarcador = '';
+        $actividadTelefonica = ['atenciones'=>0, 'contestadas'=>0, 'segundos'=>0, 'recientes'=>[]];
+        try {
+            $asignacion = $this->service->resolverParaUsuario((int)$_SESSION['usuario_id']);
+            if ($asignacion && !empty($asignacion['permite_salientes'])) {
+                $extensionAsignada = (string)($asignacion['extension'] ?? '');
+                $actividadTelefonica = (new TelefoniaActividadService())->consultar($extensionAsignada);
+            } else {
+                $mensajeMarcador = 'El administrador debe asignarte una extensión activa con llamadas salientes.';
+            }
+        } catch (Throwable $e) {
+            error_log('Marcador: ' . $e->getMessage());
+            $mensajeMarcador = 'No fue posible consultar tu extensión e historial.';
+        }
+        $tituloPagina = 'Teléfono';
+        $subtituloPagina = 'Marcador e historial personal';
+        $opcionActiva = 'telefono_marcador';
+        require_once __DIR__ . '/../views/layout/dashboard_head.php';
+        require_once __DIR__ . '/../views/layout/sidebar.php';
+        require_once __DIR__ . '/../views/layout/topbar.php';
+        require_once __DIR__ . '/../views/telefonia/marcador.php';
         require_once __DIR__ . '/../views/layout/dashboard_footer.php';
     }
 

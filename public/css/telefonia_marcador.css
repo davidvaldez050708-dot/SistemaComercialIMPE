@@ -1,0 +1,26 @@
+.telephony-dialer-page{display:grid;gap:18px;max-width:1200px;margin:0 auto}
+.telephony-dialer-card,.telephony-dial-history,.telephony-activity-panel{padding:22px;margin-bottom:16px}
+.telephony-dialer-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:20px}
+.telephony-dialer-heading h2,.telephony-dial-history h2{font-size:18px;font-weight:800;color:var(--color-text-primary);margin:5px 0}
+.telephony-dialer-heading p,.telephony-dial-info p{font-size:12px;color:var(--color-text-secondary);margin:0 0 12px}
+.telephony-extension-pill{padding:9px 14px;border:1px solid var(--color-border);border-radius:12px;font-size:12px;font-weight:700;color:var(--color-primary);white-space:nowrap}
+.telephony-dialer-body{display:grid;grid-template-columns:minmax(260px,400px) minmax(260px,1fr);gap:28px;align-items:start}
+.telephony-keypad{display:grid;gap:10px}
+.telephony-keypad label{font-size:13px;font-weight:700}
+.telephony-keypad input{min-height:54px;font-size:23px;letter-spacing:1px;background:#f8fafc}
+.telephony-keypad small{font-size:11px;color:var(--color-text-secondary)}
+.telephony-key-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.telephony-key-grid button{min-height:52px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:12px;font-size:20px;font-weight:700}
+.telephony-key-grid button:hover{border-color:var(--color-primary);background:#f1f5ff}
+.telephony-dial-submit{display:flex;min-height:46px;align-items:center;justify-content:center;gap:8px}
+.telephony-dial-status{min-height:28px;font-size:12px;color:var(--color-text-secondary)}
+.telephony-dial-status.is-error{color:#a02929}
+.telephony-dial-info{background:#f8fafc;padding:21px;border-radius:14px;border:1px solid var(--color-border)}
+.telephony-dial-info h3{font-size:15px;font-weight:800;margin:0 0 16px}
+.telephony-dial-kpis,.telephony-activity-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0 0 20px}
+.telephony-dial-kpis div,.telephony-activity-metrics div{padding:13px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:12px;display:grid;gap:6px}
+.telephony-dial-kpis strong,.telephony-activity-metrics strong{font-size:23px;font-weight:800;color:var(--color-primary)}
+.telephony-dial-kpis span,.telephony-activity-metrics span{font-size:11px;color:var(--color-text-secondary)}
+.telephony-activity-metrics{grid-template-columns:repeat(5,minmax(0,1fr))}
+@media(max-width:880px){.telephony-dialer-body{grid-template-columns:1fr}.telephony-activity-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.telephony-dialer-card,.telephony-dial-history{padding:16px}.telephony-dialer-heading{flex-direction:column}.telephony-dial-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
