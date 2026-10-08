@@ -2174,6 +2174,42 @@ $urlPaginaTerritorio = function ($pagina) use ($buscarTerritorio, $filtroInforma
 
                                 </div>
 
+                                <div
+                                    class="data-power-import d-none"
+                                    data-priority-education-import="individual">
+                                    <div class="data-power-import-heading">
+                                        <div>
+                                            <strong>Alternativa: XLSX oficial B2020_07_08_M</strong>
+                                            <span>Úsalo sólo cuando INEGI no exponga una descarga automática compatible para este Estado.</span>
+                                        </div>
+                                        <i class="bi bi-file-earmark-spreadsheet" aria-hidden="true"></i>
+                                    </div>
+
+                                    <label
+                                        class="data-power-import-file"
+                                        for="archivoPerfilEducativoPrioritario">
+                                        <span>Seleccionar XLSX oficial</span>
+                                        <input
+                                            type="file"
+                                            id="archivoPerfilEducativoPrioritario"
+                                            accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                                            data-priority-education-import-file>
+                                    </label>
+
+                                    <small class="data-power-import-help">
+                                        El sistema comprobará el Estado, los municipios y los cinco grupos de 25 a 49 años antes de guardar información.
+                                        <a
+                                            href="https://www.inegi.org.mx/programas/ccpv/2020/#Tabulados"
+                                            target="_blank"
+                                            rel="noopener noreferrer">Abrir tabulados del Censo 2020 en INEGI</a>
+                                    </small>
+
+                                    <div
+                                        class="data-power-import-status d-none"
+                                        data-priority-education-import-status
+                                        role="status"></div>
+                                </div>
+
                                 <div class="data-official-note">
                                     Los datos existentes de las opciones seleccionadas serán actualizados con la información oficial más reciente disponible.
                                 </div>
@@ -2624,6 +2660,12 @@ document.addEventListener('DOMContentLoaded', function () {
     const previewImportacionEducacion = document.querySelector('[data-education-import-preview]');
     let tokenImportacionEducacion = '';
     let importacionEducacionValidando = false;
+    const bloqueImportacionPerfilPrioritario =
+        document.querySelector('[data-priority-education-import="individual"]');
+    const archivoImportacionPerfilPrioritario =
+        document.querySelector('[data-priority-education-import-file]');
+    const estadoImportacionPerfilPrioritario =
+        document.querySelector('[data-priority-education-import-status]');
     let temporizadorMunicipios = null;
     let consultaMunicipios = null;
     let actualizacionOficialEnCurso = false;
@@ -3331,6 +3373,9 @@ document.addEventListener('DOMContentLoaded', function () {
         const notaMunicipios = document.querySelector('[data-municipios-note="' + alcance + '"]');
         const requiereArchivoPoder = alcance === 'mass' && seleccionados.includes('poder_adquisitivo');
         const requiereArchivoEducacion = alcance === 'mass' && seleccionados.includes('rezago_educativo');
+        const mostrarImportacionPerfilPrioritario =
+            alcance === 'individual' &&
+            seleccionados.includes('perfil_educativo_prioritario');
 
         document
             .querySelectorAll('[data-official-options="' + alcance + '"] .data-official-option-card')
@@ -3353,6 +3398,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (alcance === 'mass' && bloqueImportacionEducacion) {
             bloqueImportacionEducacion.classList.toggle('d-none', !requiereArchivoEducacion);
+        }
+
+        if (
+            alcance === 'individual' &&
+            bloqueImportacionPerfilPrioritario
+        ) {
+            bloqueImportacionPerfilPrioritario.classList.toggle(
+                'd-none',
+                !mostrarImportacionPerfilPrioritario
+            );
         }
 
         if (boton) {
@@ -3437,6 +3492,10 @@ document.addEventListener('DOMContentLoaded', function () {
             .forEach(function (control) {
                 control.disabled = bloqueado;
             });
+
+        if (archivoImportacionPerfilPrioritario) {
+            archivoImportacionPerfilPrioritario.disabled = bloqueado;
+        }
 
         const etiqueta = botonActualizarInformacionOficial?.querySelector('.data-official-button-label');
         const carga = botonActualizarInformacionOficial?.querySelector('.data-official-button-loading');
@@ -3525,6 +3584,100 @@ document.addEventListener('DOMContentLoaded', function () {
             'Finalizado'
         );
         establecerVistaActualizacionIndividual('resultado');
+    };
+
+    const mostrarEstadoImportacionPerfilPrioritario = function (
+        mensaje,
+        tipo
+    ) {
+        if (!estadoImportacionPerfilPrioritario) {
+            return;
+        }
+
+        estadoImportacionPerfilPrioritario.textContent =
+            mensaje || '';
+        estadoImportacionPerfilPrioritario.className =
+            'data-power-import-status' +
+            (
+                mensaje
+                    ? ' is-' + tipo
+                    : ' d-none'
+            );
+    };
+
+    const importarArchivoPerfilEducativoPrioritario = async function (
+        estado
+    ) {
+        const archivo =
+            archivoImportacionPerfilPrioritario?.files?.[0]
+            || null;
+
+        if (!archivo) {
+            throw new Error(
+                'Selecciona el XLSX oficial B2020_07_08_M.'
+            );
+        }
+
+        if (!archivo.name.toLowerCase().endsWith('.xlsx')) {
+            throw new Error(
+                'El archivo del perfil educativo debe estar en formato XLSX.'
+            );
+        }
+
+        mostrarEstadoImportacionPerfilPrioritario(
+            'Validando Estado, municipios y grupos 25–49…',
+            'loading'
+        );
+
+        const formulario = new FormData();
+        formulario.append(
+            'estado_id',
+            String(estado.id || '')
+        );
+        formulario.append(
+            'archivo_perfil_educativo_prioritario',
+            archivo
+        );
+
+        const respuesta = await fetch(
+            baseUrl +
+                '?controller=dataTerritorial&action=' +
+                'importarPerfilEducativoPrioritarioArchivo',
+            {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'fetch'
+                },
+                body: formulario
+            }
+        );
+
+        const texto = await respuesta.text();
+        let resultado;
+
+        try {
+            resultado = JSON.parse(texto);
+        } catch (error) {
+            throw new Error(
+                'El servidor devolvió una respuesta no válida al importar el XLSX.'
+            );
+        }
+
+        if (!respuesta.ok || resultado.ok !== true) {
+            throw new Error(
+                resultado.mensaje ||
+                'No fue posible importar el perfil educativo prioritario.'
+            );
+        }
+
+        mostrarEstadoImportacionPerfilPrioritario(
+            'XLSX validado e importado correctamente para ' +
+                String(resultado.datos?.estado || estado.nombre || 'el Estado') +
+                '.',
+            'success'
+        );
+
+        return resultado;
     };
 
     const actualizarEstadoOperacion = async function (estado, tipo) {
@@ -4237,9 +4390,47 @@ document.addEventListener('DOMContentLoaded', function () {
             establecerVistaActualizacionIndividual('inicial');
             establecerBloqueoActualizacionIndividual(false);
             limpiarMensajeActualizacionOficial();
+
+            if (archivoImportacionPerfilPrioritario) {
+                archivoImportacionPerfilPrioritario.value = '';
+            }
+
+            mostrarEstadoImportacionPerfilPrioritario('', 'loading');
             actualizarProgresoIndividual(0, 0, 'En espera', 'En espera');
         });
     }
+
+    archivoImportacionPerfilPrioritario?.addEventListener(
+        'change',
+        function () {
+            const archivo =
+                archivoImportacionPerfilPrioritario.files?.[0]
+                || null;
+
+            if (!archivo) {
+                mostrarEstadoImportacionPerfilPrioritario(
+                    '',
+                    'loading'
+                );
+                return;
+            }
+
+            if (!archivo.name.toLowerCase().endsWith('.xlsx')) {
+                mostrarEstadoImportacionPerfilPrioritario(
+                    'El archivo debe estar en formato XLSX.',
+                    'error'
+                );
+                return;
+            }
+
+            mostrarEstadoImportacionPerfilPrioritario(
+                'Archivo listo: ' +
+                    archivo.name +
+                    '. Al actualizar se validará antes de guardar.',
+                'success'
+            );
+        }
+    );
 
     document
         .querySelectorAll('[data-official-options="individual"] [data-official-option]')
@@ -4344,6 +4535,14 @@ document.addEventListener('DOMContentLoaded', function () {
                                     )
                             });
                         }
+                    } else if (
+                        tipo === 'perfil_educativo_prioritario' &&
+                        archivoImportacionPerfilPrioritario?.files?.length
+                    ) {
+                        await importarArchivoPerfilEducativoPrioritario(
+                            estado
+                        );
+                        resultados[tipo].exitosos += 1;
                     } else {
                         await actualizarEstadoOperacion(estado, tipo);
                         resultados[tipo].exitosos += 1;
