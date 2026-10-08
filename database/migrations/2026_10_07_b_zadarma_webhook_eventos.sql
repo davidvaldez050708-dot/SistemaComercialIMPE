@@ -29,6 +29,11 @@ CREATE TABLE IF NOT EXISTS telefonia_zadarma_eventos (
     KEY idx_zadarma_record_lookup (
         pbx_call_id,
         call_id_with_rec
+    ),
+    KEY idx_zadarma_incoming_lookup (
+        internal,
+        evento,
+        received_at
     )
 ) ENGINE=InnoDB
   DEFAULT CHARSET=utf8mb4
