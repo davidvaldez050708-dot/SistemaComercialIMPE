@@ -209,6 +209,14 @@ if (
     ($esHomeDashboard && (int)($_SESSION['rol_id'] ?? 0) === 3)
 ) {
     $cssOpcionalDashboard[] = 'telefonia_marcador.css';
+    if (
+        ($esHomeDashboard && (int)($_SESSION['rol_id'] ?? 0) === 3) ||
+        ($esTelefoniaDashboard && $actionDashboard === 'marcador')
+    ) {
+        // Los mismos estilos y controles del reproductor de Seguimientos.
+        $cssOpcionalDashboard[] = 'seguimiento_llamadas_expediente.css';
+        $cssOpcionalDashboard[] = 'seguimiento_llamadas_player.css';
+    }
 }
 
 if ($usarTelefoniaPersistente) {
@@ -279,8 +287,14 @@ if ($esDesempenoDashboard) {
 if ($esTelefoniaDashboard) {
     $jsOpcionalHead[] = $actionDashboard === 'marcador' ? 'telefonia_marcador.js' : 'telefonia_admin.js';
 }
-if ($esHomeDashboard && (int)($_SESSION['rol_id'] ?? 0) === 3) {
-    $jsOpcionalHead[] = 'telefonia_marcador.js';
+if (
+    ($esHomeDashboard && (int)($_SESSION['rol_id'] ?? 0) === 3) ||
+    ($esTelefoniaDashboard && $actionDashboard === 'marcador')
+) {
+    if ($esHomeDashboard) {
+        $jsOpcionalHead[] = 'telefonia_marcador.js';
+    }
+    $jsOpcionalHead[] = 'telefonia_grabaciones_ventas.js';
 }
 
 if ($esHomeDashboard) {

@@ -526,3 +526,32 @@
     .telephony-aftercall { align-items: stretch; }
     .telephony-aftercall .btn { width: 100%; }
 }
+
+/* Grabaciones de Ventas: se reutiliza el reproductor del expediente. */
+.telephony-history-table .telephony-recording-cell {
+    white-space: nowrap;
+}
+.telephony-history-table .linkage-call-recording-toggle {
+    font-family: inherit;
+    font-size: 10px;
+}
+.telephony-recording-empty {
+    color: var(--color-text-secondary);
+    font-size: 10.5px;
+}
+.telephony-history-recording-row[hidden] {
+    display: none !important;
+}
+.telephony-history-recording-row > td {
+    padding: 2px 12px 14px !important;
+    background: #fbfcfe;
+}
+.telephony-history-recording-slot {
+    max-width: 740px;
+}
+.telephony-history-recording-slot .linkage-call-inline-player {
+    margin: 0;
+}
+.telephony-history-recording-slot .linkage-call-custom-player {
+    width: 100%;
+}

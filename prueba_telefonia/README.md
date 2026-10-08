@@ -314,3 +314,38 @@ Analista de Datos y no habilita Ventas con la extensión institucional.
    el botón de auriculares.
 7. Comparar los eventos recibidos en el historial con llamadas reales en
    Zadarma antes de habilitar supervisión operativa.
+
+
+## Grabaciones en el historial de Ventas (2026-10-08)
+
+En **Asesor de Ventas > Inicio > Llamadas recientes** se reutiliza el diseño
+**Grabación** de las llamadas del expediente de Seguimientos: un botón despliega
+el mismo reproductor con pausa, desplazamiento, volumen y descarga de audio.
+La tabla utiliza `seguimiento_llamadas_expediente.css` y
+`seguimiento_llamadas_player.css`, sin crear un estilo inconsistente.
+
+- El historial proviene de `TelefoniaActividadService` y agrupa eventos
+  por `pbx_call_id` y extensión asignada.
+- Para llamadas salientes Zadarma con grabación reportada (`NOTIFY_RECORD`,
+  `is_recorded` o `call_id_with_rec`) y un `out_<hash>` válido, aparece
+  **Grabación**. Si una llamada reciente finalizada aún espera el evento
+  puede aparecer **Procesando**; las demás indican **Sin grabación**.
+- El navegador solicita el audio a
+  `prueba_telefonia/api/grabacion_ventas.php?pbx_call_id=...`,
+  no directamente a una URL de Zadarma.
+- La ruta exige sesión activa y permisos `telefonia.usar` y
+  `telefonia.salientes`; vuelve a leer los permisos y comprueba que la
+  llamada saliente provenga de la extensión propia actualmente asignada
+  y que exista un evento de grabación. No recibe enlaces arbitrarios.
+- El servicio reutiliza `ZadarmaRecordingService`, el mismo que
+  reproduce las llamadas del expediente, y admite rangos de bytes
+  para mover la posición de reproducción y la descarga opcional.
+- Solo se muestra actividad de los últimos 30 días y las 30 llamadas
+  más recientes. Sin credenciales reales o con grabación deshabilitada
+  en la PBX no aparecerá audio, aunque existan llamadas en el historial.
+
+**Validación real pendiente con la cuenta Zadarma:** habilitar grabación en
+la extensión/regla PBX, configurar el webhook público firmado, realizar una
+llamada contestada, esperar `NOTIFY_RECORD`, actualizar Inicio y comprobar
+reproducción y descarga. También confirmar que el asesor B **no pueda**
+reproducir la grabación del asesor A cambiando el ID en la URL.

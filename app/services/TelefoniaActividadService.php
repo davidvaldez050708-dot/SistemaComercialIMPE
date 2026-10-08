@@ -21,11 +21,20 @@ class TelefoniaActividadService
         $sql = "SELECT pbx_call_id, internal, MIN(received_at) AS fecha,
                   MAX(CASE WHEN evento IN ('NOTIFY_OUT_START','NOTIFY_OUT_END') THEN 1 ELSE 0 END) AS saliente,
                   MAX(CASE WHEN evento IN ('NOTIFY_END','NOTIFY_OUT_END') THEN GREATEST(duration, 0) ELSE 0 END) AS segundos,
+                  MAX(CASE WHEN EXISTS (
+                      SELECT 1 FROM telefonia_zadarma_eventos grab
+                      WHERE grab.pbx_call_id = e.pbx_call_id
+                        AND (
+                            grab.evento = 'NOTIFY_RECORD'
+                            OR grab.is_recorded = 1
+                            OR NULLIF(grab.call_id_with_rec, '') IS NOT NULL
+                        )
+                  ) THEN 1 ELSE 0 END) AS grabacion_reportada,
                   MAX(CASE WHEN evento = 'NOTIFY_ANSWER' OR LOWER(COALESCE(disposition,'')) = 'answered' THEN 1 ELSE 0 END) AS contestada,
                   MAX(CASE WHEN evento='NOTIFY_OUT_START' THEN destination ELSE NULL END) AS destino,
                   MAX(CASE WHEN evento IN ('NOTIFY_INTERNAL','NOTIFY_END') THEN caller_id ELSE NULL END) AS origen
-                FROM telefonia_zadarma_eventos
-                WHERE received_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+                FROM telefonia_zadarma_eventos e
+                WHERE e.received_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
                   AND internal IS NOT NULL AND internal <> ''
                   AND evento IN (
                       'NOTIFY_INTERNAL', 'NOTIFY_ANSWER', 'NOTIFY_END',
@@ -61,11 +70,30 @@ class TelefoniaActividadService
             $data['por_extension'][$ext][$out ? 'salientes' : 'entrantes']++;
             $data['por_extension'][$ext]['segundos'] += $secs;
             if (count($data['recientes']) < 30) {
+                $pbxCallId = (string)$row['pbx_call_id'];
+                $esSalienteConIdValido = $out &&
+                    (bool)preg_match('/^out_[a-fA-F0-9]{32,64}$/', $pbxCallId);
+                $grabacionReportada = (int)$row['grabacion_reportada'] === 1;
+                // El evento NOTIFY_RECORD es más fiable que la duración o
+                // el campo disposition para confirmar un audio disponible.
+                $grabacionLista = $esSalienteConIdValido && $grabacionReportada;
+                $timestamp = strtotime((string)$row['fecha']);
+                $grabacionProcesando = $esSalienteConIdValido &&
+                    $answered && $secs > 0 && !$grabacionLista &&
+                    $timestamp !== false && $timestamp >= time() - 900;
+
                 $data['recientes'][] = [
-                    'extension'=>$ext, 'fecha'=>(string)$row['fecha'],
-                    'tipo'=>$out ? 'Saliente' : 'Entrante',
-                    'numero'=>$out ? (string)($row['destino'] ?? '') : (string)($row['origen'] ?? ''),
-                    'contestada'=>$answered, 'segundos'=>$secs
+                    'extension' => $ext,
+                    'pbx_call_id' => $pbxCallId,
+                    'fecha' => (string)$row['fecha'],
+                    'tipo' => $out ? 'Saliente' : 'Entrante',
+                    'numero' => $out
+                        ? (string)($row['destino'] ?? '')
+                        : (string)($row['origen'] ?? ''),
+                    'contestada' => $answered,
+                    'segundos' => $secs,
+                    'tiene_grabacion' => $grabacionLista,
+                    'grabacion_procesando' => $grabacionProcesando
                 ];
             }
         }

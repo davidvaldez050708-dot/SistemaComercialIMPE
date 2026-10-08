@@ -213,11 +213,23 @@ $urlActualizarMarcador = BASE_URL . (
                         <th>Número</th>
                         <th>Estado</th>
                         <th>Duración</th>
+                        <th>Grabación</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <?php foreach (($historial['recientes'] ?? []) as $llamada): ?>
-                        <?php $duracion = max(0, (int)($llamada['segundos'] ?? 0)); ?>
+                    <?php foreach (($historial['recientes'] ?? []) as $indiceLlamada => $llamada): ?>
+                        <?php
+                        $duracion = max(0, (int)($llamada['segundos'] ?? 0));
+                        $pbxId = (string)($llamada['pbx_call_id'] ?? '');
+                        $hayGrabacion = !empty($llamada['tiene_grabacion']) &&
+                            (bool)preg_match('/^out_[a-fA-F0-9]{32,64}$/', $pbxId);
+                        $grabacionEnProceso = !$hayGrabacion &&
+                            !empty($llamada['grabacion_procesando']);
+                        $identificadorFila = 'venta-grabacion-' . (int)$indiceLlamada;
+                        $urlGrabacion = BASE_URL .
+                            'prueba_telefonia/api/grabacion_ventas.php?pbx_call_id=' .
+                            rawurlencode($pbxId);
+                        ?>
                         <tr>
                             <td><?= $esc($llamada['fecha'] ?? '') ?></td>
                             <td><?= $esc($llamada['tipo'] ?? '') ?></td>
@@ -225,11 +237,42 @@ $urlActualizarMarcador = BASE_URL . (
                             <td><?= !empty($llamada['contestada'])
                                 ? 'Contestada' : 'Sin respuesta confirmada' ?></td>
                             <td><?= sprintf('%02d:%02d', intdiv($duracion, 60), $duracion % 60) ?></td>
+                            <td class="telephony-recording-cell">
+                                <?php if ($hayGrabacion): ?>
+                                    <button type="button"
+                                        class="linkage-call-audio-state is-available linkage-call-recording-toggle"
+                                        data-sales-recording-toggle
+                                        data-recording-url="<?= $esc($urlGrabacion) ?>"
+                                        data-recording-seconds="<?= $duracion ?>"
+                                        aria-controls="<?= $identificadorFila ?>"
+                                        aria-expanded="false">
+                                        <i class="bi bi-record-circle" aria-hidden="true"></i>
+                                        <span>Grabación</span>
+                                        <i class="bi bi-chevron-down linkage-call-recording-chevron" aria-hidden="true"></i>
+                                    </button>
+                                <?php elseif ($grabacionEnProceso): ?>
+                                    <span class="linkage-call-audio-state is-processing">
+                                        <i class="bi bi-hourglass-split" aria-hidden="true"></i>
+                                        Procesando
+                                    </span>
+                                <?php else: ?>
+                                    <span class="telephony-recording-empty">Sin grabación</span>
+                                <?php endif; ?>
+                            </td>
                         </tr>
+                        <?php if ($hayGrabacion): ?>
+                            <tr id="<?= $identificadorFila ?>" class="telephony-history-recording-row"
+                                data-sales-recording-row hidden>
+                                <td colspan="6">
+                                    <div class="telephony-history-recording-slot"
+                                         data-sales-recording-slot></div>
+                                </td>
+                            </tr>
+                        <?php endif; ?>
                     <?php endforeach; ?>
                     <?php if (empty($historial['recientes'])): ?>
                         <tr>
-                            <td colspan="5" class="text-center text-muted py-4">
+                            <td colspan="6" class="text-center text-muted py-4">
                                 Todavía no hay llamadas registradas en tu extensión.
                             </td>
                         </tr>
