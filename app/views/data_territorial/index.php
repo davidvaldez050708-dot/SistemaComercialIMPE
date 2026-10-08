@@ -1256,17 +1256,6 @@ $urlPaginaTerritorio = function ($pagina) use ($buscarTerritorio, $filtroInforma
                                     <span>Universo: <strong><?= $numero($datoBrecha['poblacion_base']) ?></strong> personas</span>
                                     <span><?= (int)$datoBrecha['anio'] ?></span>
                                 </div>
-                                <details class="data-education-gap-source">
-                                    <summary>Fuente y metodología <i class="bi bi-chevron-down" aria-hidden="true"></i></summary>
-                                    <p><?= $texto($datoBrecha['fuente'] ?? 'INEGI · Censo 2020') ?></p>
-                                    <p><?= $texto($datoBrecha['metodologia'] ?? '') ?></p>
-                                    <?php if (!empty($datoBrecha['referencia_url'])): ?>
-                                        <a href="<?= $texto($datoBrecha['referencia_url']) ?>"
-                                            target="_blank" rel="noopener noreferrer">
-                                            Consultar tabulado INEGI <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
-                                        </a>
-                                    <?php endif; ?>
-                                </details>
                             <?php else: ?>
                                 <b class="data-education-gap-waiting">Pendiente de sincronización oficial</b>
                                 <small><?= $texto($indicadorBrecha['descripcion']) ?></small>
@@ -1279,61 +1268,9 @@ $urlPaginaTerritorio = function ($pagina) use ($buscarTerritorio, $filtroInforma
                 <div class="data-education-gap-reference">
                     <i class="bi bi-info-circle" aria-hidden="true"></i>
                     <p>Los indicadores de 15–17 y 18+ representan un mínimo comprobable, no tasas de abandono escolar.
-                       Los tres grupos tienen universos distintos y no deben sumarse. Fuente: INEGI, Censo 2020.</p>
+                       Los tres grupos tienen universos distintos y no deben sumarse.</p>
                 </div>
 
-                <?php if ($puedeActualizarInformacionOficial): ?>
-                    <details class="data-education-gap-import">
-                        <summary>
-                            <i class="bi bi-file-earmark-spreadsheet" aria-hidden="true"></i>
-                            Importación manual alternativa (CSV)
-                            <i class="bi bi-chevron-down" aria-hidden="true"></i>
-                        </summary>
-                        <p>La opción recomendada es «Actualizar información oficial → Escolaridad por edades». Utiliza CSV únicamente cuando la descarga oficial no esté disponible.</p>
-                        <form id="formEscolaridadAdultaCsv"
-                            action="<?= BASE_URL ?>index.php?controller=dataTerritorial&amp;action=importarEscolaridadAdultaCsv"
-                            method="POST" enctype="multipart/form-data" class="data-education-gap-import-form">
-                            <label for="archivoEscolaridadAdulta">Archivo CSV</label>
-                            <input type="file" id="archivoEscolaridadAdulta" name="archivo_escolaridad_adulta"
-                                accept=".csv,text/csv" required>
-                            <a href="<?= BASE_URL ?>plantillas/escolaridad_adulta_inegi.csv" download>Descargar plantilla CSV</a>
-                            <button type="submit" class="btn btn-system-save" id="importarEscolaridadAdultaBtn">
-                                <i class="bi bi-cloud-upload" aria-hidden="true"></i> Importar CSV
-                            </button>
-                            <div id="estadoEscolaridadAdulta" role="status" aria-live="polite"></div>
-                        </form>
-                    </details>
-                    <script>
-                        (() => {
-                            const form = document.getElementById('formEscolaridadAdultaCsv');
-                            if (!form) return;
-                            form.addEventListener('submit', async (event) => {
-                                event.preventDefault();
-                                const estado = document.getElementById('estadoEscolaridadAdulta');
-                                const boton = document.getElementById('importarEscolaridadAdultaBtn');
-                                boton.disabled = true;
-                                estado.textContent = 'Validando el CSV…';
-                                try {
-                                    const respuesta = await fetch(form.action, {
-                                        method: 'POST',
-                                        body: new FormData(form),
-                                        credentials: 'same-origin'
-                                    });
-                                    const datos = await respuesta.json();
-                                    if (!respuesta.ok || datos.ok !== true) {
-                                        throw new Error(datos.mensaje || 'No fue posible importar el archivo.');
-                                    }
-                                    estado.textContent = datos.mensaje;
-                                    window.location.reload();
-                                } catch (error) {
-                                    estado.textContent = error.message || 'No fue posible importar el archivo.';
-                                } finally {
-                                    boton.disabled = false;
-                                }
-                            });
-                        })();
-                    </script>
-                <?php endif; ?>
             </section>
 
             <div class="data-education-official">
