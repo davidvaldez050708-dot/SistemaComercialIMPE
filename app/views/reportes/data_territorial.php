@@ -470,7 +470,7 @@ foreach ($sectoresGrafica as $sectorGrafica) {
                         <p>Indicadores incorporados de tabulados con fuente y metodología declaradas, sin estimaciones de datos faltantes.</p>
                     </div>
                 </div>
-                <div class="territorial-education-grid">
+                <div class="territorial-education-grid territorial-education-grid-adultos">
                     <?php foreach ([
                         ['codigo' => 'SIN_EDUCACION_SUPERIOR_25_MAS', 'nombre' => 'Sin educación superior · 25 años o más'],
                         ['codigo' => 'SIN_MEDIA_SUPERIOR_CONCLUIDA_18_MAS', 'nombre' => 'Sin media superior concluida · 18 años o más']
@@ -485,6 +485,7 @@ foreach ($sectoresGrafica as $sectorGrafica) {
                             <?php if ($adultoDisponible): ?>
                                 <small><?= $numero($adulto['porcentaje'], 2) ?> % de <?= $numero($adulto['poblacion_base']) ?> personas · <?= (int)$adulto['anio'] ?></small>
                                 <small>Fuente declarada: <?= $texto($adulto['fuente']) ?></small>
+                                <small><a href="<?= $texto($adulto['referencia_url']) ?>" target="_blank" rel="noopener noreferrer">Consultar referencia INEGI</a></small>
                                 <small>Metodología: <?= $texto($adulto['metodologia']) ?></small>
                             <?php else: ?>
                                 <small>Sin información validada para el rango de edad.</small>
