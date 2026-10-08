@@ -783,6 +783,16 @@
             )
         });
 
+        if (
+            state.direction === 'incoming' &&
+            String(state.pbxCallId || '').trim() !== ''
+        ) {
+            params.set(
+                'pbx_call_id',
+                String(state.pbxCallId)
+            );
+        }
+
         const response = await fetch(
             String(config.entradaUrl) +
                 '?' +
@@ -1297,6 +1307,8 @@
                 phase: 'dialing',
                 active: true,
                 muted: false,
+                direction: 'outgoing',
+                calledDid: '',
                 destination: destination,
                 institution: String(payload.institution || '').trim(),
                 status: 'dialing',
@@ -1451,19 +1463,33 @@
                     typeof target?.[method] ===
                     'function'
                 ) {
-                    target[method](code);
+                    try {
+                        const result =
+                            target[method](code);
 
-                    publish({
-                        message:
-                            attended
-                                ? 'Consultando extensión ' +
-                                    ext +
-                                    '…'
-                                : 'Transfiriendo a extensión ' +
-                                    ext +
-                                    '…'
-                    });
-                    return true;
+                        if (result === false) {
+                            continue;
+                        }
+
+                        publish({
+                            message:
+                                attended
+                                    ? 'Consultando extensión ' +
+                                        ext +
+                                        '…'
+                                    : 'Transfiriendo a extensión ' +
+                                        ext +
+                                        '…'
+                        });
+                        return true;
+                    } catch (error) {
+                        console.debug(
+                            'El control WebRTC no aceptó DTMF mediante ' +
+                                method +
+                                '.',
+                            error
+                        );
+                    }
                 }
             }
         }
