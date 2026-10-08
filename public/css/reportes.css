@@ -280,6 +280,142 @@
     font-weight: 700;
 }
 
+.convocatoria-report-filter-panel {
+    padding: 18px 20px;
+}
+
+.convocatoria-report-filter-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+    margin-bottom: 14px;
+}
+
+.convocatoria-report-filter-heading > div {
+    min-width: 0;
+}
+
+.convocatoria-report-filter-heading h3 {
+    margin: 0;
+    color: var(--color-navy);
+    font-size: 17px;
+    font-weight: 800;
+}
+
+.convocatoria-report-filter-heading p {
+    max-width: 760px;
+    margin: 4px 0 0;
+    color: var(--color-text-soft);
+    font-size: 11.5px;
+    line-height: 1.45;
+}
+
+.convocatoria-report-filter-heading > i {
+    flex: 0 0 auto;
+    width: 38px;
+    height: 38px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #d8e4f5;
+    border-radius: 10px;
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
+    font-size: 16px;
+}
+
+.convocatoria-report-filter-form {
+    display: grid;
+    grid-template-columns:
+        minmax(190px, .8fr)
+        minmax(260px, 1.2fr)
+        auto;
+    gap: 12px;
+    align-items: end;
+}
+
+.convocatoria-report-filter-field {
+    min-width: 0;
+}
+
+.convocatoria-report-filter-field label {
+    display: block;
+    margin: 0 0 6px;
+    color: var(--color-text);
+    font-size: 11.5px;
+    font-weight: 700;
+}
+
+.convocatoria-report-filter-field .form-select {
+    width: 100%;
+    min-height: 42px;
+    height: 42px;
+    padding: 0 38px 0 12px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background-color: #f8fafc;
+    color: var(--color-text);
+    font-size: 12px;
+    font-weight: 600;
+    box-shadow: none;
+}
+
+.convocatoria-report-filter-field .form-select:focus {
+    border-color: var(--color-primary);
+    background-color: #fff;
+    box-shadow: 0 0 0 3px rgba(39, 58, 138, .08);
+}
+
+.convocatoria-report-filter-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.convocatoria-report-filter-actions .btn {
+    min-height: 42px;
+    height: 42px;
+    padding: 0 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    white-space: nowrap;
+    font-size: 11.5px;
+    font-weight: 700;
+}
+
+@media (max-width: 991.98px) {
+    .convocatoria-report-filter-form {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .convocatoria-report-filter-actions {
+        grid-column: 1 / -1;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .convocatoria-report-filter-heading {
+        flex-direction: column;
+    }
+
+    .convocatoria-report-filter-form {
+        grid-template-columns: 1fr;
+    }
+
+    .convocatoria-report-filter-actions {
+        grid-column: auto;
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .convocatoria-report-filter-actions .btn {
+        width: 100%;
+    }
+}
+
 .report-summary-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
 }
