@@ -152,9 +152,9 @@ $esc = static function ($valor) {
                 <span class="telephony-eyebrow">CENTRALITA · ZADARMA</span>
                 <h2>Extensiones por usuario</h2>
                 <p>
-                    Cada Analista y Asesor de Ventas debe tener una extensión
-                    distinta. Esta asignación será la identidad utilizada para
-                    llamadas salientes, entrantes, historial y métricas.
+                    Asigna una extensión distinta a cada usuario autorizado:
+                    Analistas, Asesores de Ventas y Marketing (recepción institucional).
+                    Las capacidades dependen de sus permisos y de la centralita Zadarma.
                 </p>
             </div>
 
@@ -182,8 +182,8 @@ $esc = static function ($valor) {
                 <i class="bi bi-telephone-x"></i>
                 <strong>No hay usuarios disponibles para configurar.</strong>
                 <span>
-                    Los usuarios aparecerán aquí cuando tengan el rol
-                    Analista de Datos o Asesor de Ventas.
+                    Los usuarios aparecerán aquí cuando su rol tenga el permiso
+                    Usar telefonía, incluido Marketing para recibir y transferir llamadas.
                 </span>
             </div>
         <?php else: ?>
