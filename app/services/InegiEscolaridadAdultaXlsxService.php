@@ -19,7 +19,7 @@ class InegiEscolaridadAdultaXlsxService
 
     public function importarXlsx(string $archivo, string $nombre, string $claveEstado, string $urlFuente): array
     {
-        if (!class_exists('ZipArchive') || !class_exists('DOMDocument') || !is_readable($archivo)) {
+        if (!class_exists('ZipArchive') || !class_exists('DOMDocument') || !class_exists('XMLReader') || !is_readable($archivo)) {
             return $this->error('Servidor sin soporte ZIP/XML o archivo ilegible.');
         }
         $claveEstado = str_pad(preg_replace('/\D+/', '', $claveEstado) ?? '', 2, '0', STR_PAD_LEFT);
@@ -37,6 +37,7 @@ class InegiEscolaridadAdultaXlsxService
             return $this->error('INEGI no entregó un XLSX válido.');
         }
         try {
+            $etapa = 'lectura del XLSX';
             $compartidas = $this->cadenas($zip);
             $grupos = [];
             $estructura = false;
@@ -100,6 +101,7 @@ class InegiEscolaridadAdultaXlsxService
                 return $this->error('Totales educativos incongruentes; no se guardó ninguna cifra.');
             }
 
+            $etapa = 'preparación de la base de datos';
             $modelo = new EscolaridadAdultaModel();
             if (!$modelo->tablaDisponible()) {
                 return $this->error('Falta aplicar la migración de indicadores de escolaridad adulta.');
@@ -125,6 +127,7 @@ class InegiEscolaridadAdultaXlsxService
                  'anio' => 2020, 'poblacion_base' => $base18, 'cantidad_personas' => $sinMediaConfirmada,
                  'fuente' => self::FUENTE, 'referencia_url' => $urlFuente, 'metodologia' => $metodo18]
             ];
+            $etapa = 'guardado de indicadores en MySQL';
             $modelo->importarLote($filas, 'AUTO_INEGI:' . basename($nombre));
             return [
                 'ok' => true, 'estado_id' => $estadoId,
@@ -133,8 +136,8 @@ class InegiEscolaridadAdultaXlsxService
                 'cota_minima_18' => true, 'personas_grado_indeterminado' => $incierto18
             ];
         } catch (Throwable $e) {
-            error_log('Escolaridad adulta INEGI: ' . $e->getMessage());
-            return $this->error('El tabulado INEGI no pudo ser procesado o guardado.');
+            error_log('Escolaridad adulta INEGI [' . $etapa . '] ' . get_class($e) . ': ' . $e->getMessage());
+            return $this->error('Error durante ' . $etapa . ' (' . get_class($e) . '). Revisa el log de PHP para conocer el motivo.');
         } finally {
             $zip->close();
         }
@@ -142,31 +145,43 @@ class InegiEscolaridadAdultaXlsxService
 
     private function extraerHoja(ZipArchive $zip, string $nombre, array $compartidas, string $estadoEsperado): array
     {
-        $xml = $zip->getFromName($nombre);
-        if ($xml === false || $xml === '') {
-            return ['estructura' => false, 'grupos' => []];
+        // Un archivo estatal puede contener cientos de miles de filas municipales.
+        // Leerlo completo en DOM agota la memoria de PHP/XAMPP.
+        $rutaZip = realpath((string)$zip->filename);
+        if ($rutaZip === false) {
+            throw new RuntimeException('El archivo temporal de INEGI no está disponible.');
         }
-        $dom = new DOMDocument();
-        $previo = libxml_use_internal_errors(true);
-        $correcto = $dom->loadXML($xml, LIBXML_NONET | LIBXML_NOERROR | LIBXML_NOWARNING);
-        libxml_clear_errors();
-        libxml_use_internal_errors($previo);
-        if (!$correcto) {
-            return ['estructura' => false, 'grupos' => []];
+        $reader = new XMLReader();
+        $uri = 'zip://' . $rutaZip . '#' . $nombre;
+        if (!$reader->open($uri, null, LIBXML_NONET | LIBXML_NOERROR | LIBXML_NOWARNING)) {
+            throw new RuntimeException('No se pudo abrir la hoja XLSX como flujo XML.');
         }
-        $xp = new DOMXPath($dom);
-        $filas = $xp->query('//*[local-name()="row"]');
         $estado = '';
         $municipio = '000';
         $sexo = '';
         $grupo = '';
         $estructura = false;
         $totales = [];
-        if ($filas === false) {
-            return ['estructura' => false, 'grupos' => []];
-        }
-        foreach ($filas as $fila) {
-            $celdas = $this->leerFila($xp, $fila, $compartidas);
+        $rechazados = 0;
+        try {
+            while ($reader->read()) {
+                if ($reader->nodeType !== XMLReader::ELEMENT || $reader->localName !== 'row') {
+                    continue;
+                }
+                $fragmento = $reader->readOuterXML();
+                if ($fragmento === '') {
+                    continue;
+                }
+                $dom = new DOMDocument();
+                if (!$dom->loadXML($fragmento, LIBXML_NONET | LIBXML_NOERROR | LIBXML_NOWARNING)) {
+                    continue;
+                }
+                $xp = new DOMXPath($dom);
+                $fila = $dom->documentElement;
+                if (!$fila) {
+                    continue;
+                }
+                $celdas = $this->leerFila($xp, $fila, $compartidas);
             if (!$celdas) {
                 continue;
             }
@@ -219,18 +234,26 @@ class InegiEscolaridadAdultaXlsxService
                 $m[$n] = $this->entero($celdas[5 + $n] ?? null);
             }
             if (in_array(null, $m, true)) {
+                $rechazados++;
                 continue;
             }
             $totalesNivel = $this->sumar($m, [2, 3, 4, 8, 12, 13, 17, 21, 22, 23, 27, 28]);
             if ($m[1] <= 0 || $totalesNivel !== $m[1] ||
                 $m[14] + $m[15] + $m[16] !== $m[13] ||
                 $m[18] + $m[19] + $m[20] !== $m[17]) {
+                $rechazados++;
                 continue;
             }
             if (isset($totales[$edad]) && $totales[$edad] !== $m) {
                 throw new RuntimeException('Grupos estatales contradictorios.');
             }
             $totales[$edad] = $m;
+            }
+        } finally {
+            $reader->close();
+        }
+        if ($rechazados > 0 && count($totales) === 0) {
+            throw new RuntimeException('No se encontraron filas censales completas: ' . $rechazados . ' grupos estatales con valores inválidos.');
         }
         return ['estructura' => $estructura || count($totales) > 0, 'grupos' => $totales];
     }
@@ -288,7 +311,7 @@ class InegiEscolaridadAdultaXlsxService
     private function normalizarEdad(string $valor): string
     {
         $valor = $this->normalizarTexto($valor);
-        $valor = preg_replace('/\\s+AÑOS?\\s+Y\\s+MAS$/u', '+', $valor);
+        $valor = preg_replace('/\\s+ANOS?\\s+Y\\s+MAS$/u', '+', $valor);
         $valor = str_replace([' AÑOS', ' ANOS'], '', $valor);
         $valor = preg_replace('/^(\\d{1,2})\\s+A\\s+(\\d{1,2})$/', '$1-$2', $valor);
         $valor = str_replace(' ', '', $valor);
@@ -315,6 +338,11 @@ class InegiEscolaridadAdultaXlsxService
     private function entero($valor): ?int
     {
         $valor = str_replace([',', ' '], '', trim((string)$valor));
+        // Celdas estadísticas sin valor y guiones suelen representar 0.
+        // Sólo aceptamos el resultado si coincide con los totales y subtotales.
+        if ($valor === '-' || $valor === '–' || $valor === '') {
+            return 0;
+        }
         return preg_match('/^\d+(?:\.0+)?$/', $valor) ? (int)$valor : null;
     }
 
