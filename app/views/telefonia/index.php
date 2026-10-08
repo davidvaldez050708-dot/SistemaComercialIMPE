@@ -125,7 +125,7 @@ $etiquetasResultado = [
         $kpis = [
             ['label'=>'Llamadas únicas', 'valor'=>$numero($stats['llamadas_unicas'] ?? 0), 'icon'=>'bi-telephone', 'help'=>'Identificadores distintos de llamadas en la PBX'],
             ['label'=>'Atenciones', 'valor'=>$numero($stats['atenciones'] ?? 0), 'icon'=>'bi-telephone-outbound', 'help'=>'Registros por extensión, incluidas transferencias'],
-            ['label'=>'Conectadas (PBX)', 'valor'=>$numero($stats['conectadas'] ?? 0), 'icon'=>'bi-telephone-check', 'help'=>'Una conexión puede ser buzón de voz'],
+            ['label'=>'Conectadas (PBX)', 'valor'=>$numero($stats['conectadas'] ?? 0), 'icon'=>'bi-telephone-fill', 'help'=>'Una conexión puede ser buzón de voz'],
             ['label'=>'Conversaciones verificadas', 'valor'=>$numero($stats['efectivas'] ?? 0), 'icon'=>'bi-person-check', 'help'=>'Resultados con contacto humano registrado en Ventas y Vinculación'],
             ['label'=>'Tiempo observado', 'valor'=>$tiempo($stats['segundos'] ?? 0), 'icon'=>'bi-clock-history', 'help'=>'Duración acumulada por atención; no es facturación'],
             ['label'=>'Sin atribución', 'valor'=>$numero($stats['sin_atribucion'] ?? 0), 'icon'=>'bi-person-exclamation', 'help'=>'Sin evidencia suficiente para asignarlas a una persona']
