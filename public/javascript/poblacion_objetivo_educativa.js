@@ -16,9 +16,9 @@ document.addEventListener('DOMContentLoaded', function () {
     opcion.innerHTML =
         '<input class="form-check-input" type="checkbox" data-profile-education-mass-option>' +
         '<span>' +
-            '<strong>Perfil educativo</strong>' +
+            '<strong>Perfil educativo general 15+</strong>' +
             '<small>Fuente: INEGI - fuente sociodemográfica oficial compatible más reciente</small>' +
-            '<em>Detecta, valida y actualiza automáticamente el perfil educativo oficial de todos los Estados.</em>' +
+            '<em>Actualiza indicadores educativos generales de 15 años y más. No sustituye el cruce prioritario de 25–49 por municipio.</em>' +
         '</span>';
     listaOpciones.appendChild(opcion);
 
@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', function () {
     panel.innerHTML =
         '<div class="data-power-import-heading">' +
             '<div>' +
-                '<strong>Actualización automática del perfil educativo</strong>' +
+                '<strong>Actualización del perfil educativo general 15+</strong>' +
                 '<span>El sistema buscará la fuente oficial más reciente de INEGI y sólo la utilizará si conserva variables educativas compatibles y validables.</span>' +
             '</div>' +
             '<i class="bi bi-cloud-arrow-down" aria-hidden="true"></i>' +
