@@ -6,6 +6,7 @@ class EscolaridadAdultaModel
 {
     public const SIN_SUPERIOR_25 = 'SIN_EDUCACION_SUPERIOR_25_MAS';
     public const SIN_MEDIA_CONCLUIDA_18 = 'SIN_MEDIA_SUPERIOR_CONCLUIDA_18_MAS';
+    public const SIN_MEDIA_CONCLUIDA_15_17 = 'SIN_MEDIA_SUPERIOR_CONCLUIDA_15_17';
 
     private mysqli $connection;
 
@@ -27,7 +28,8 @@ class EscolaridadAdultaModel
     {
         $salida = [
             self::SIN_SUPERIOR_25 => ['disponible' => false, 'grupo_edad' => '25 años y más'],
-            self::SIN_MEDIA_CONCLUIDA_18 => ['disponible' => false, 'grupo_edad' => '18 años y más']
+            self::SIN_MEDIA_CONCLUIDA_18 => ['disponible' => false, 'grupo_edad' => '18 años y más'],
+            self::SIN_MEDIA_CONCLUIDA_15_17 => ['disponible' => false, 'grupo_edad' => '15 a 17 años']
         ];
 
         if ($estadoId <= 0 || !$this->tablaDisponible()) {
