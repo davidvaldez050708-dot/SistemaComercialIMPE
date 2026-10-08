@@ -23,7 +23,6 @@
         const cuerpo = modalElement.querySelector('[data-marketing-mail-body]');
         const archivos = modalElement.querySelector('[data-marketing-mail-files]');
         const listaArchivos = modalElement.querySelector('[data-marketing-mail-files-list]');
-        const error = modalElement.querySelector('[data-marketing-mail-error]');
         const botonEnviar = modalElement.querySelector('[data-marketing-mail-send]');
         const botonBorrador = modalElement.querySelector('[data-marketing-mail-draft]');
         const tabsCorreo = Array.from(
@@ -66,24 +65,8 @@
             return div.innerHTML;
         };
 
-        const mostrarError = function (mensaje) {
-            if (!error) {
-                return;
-            }
-
-            error.textContent = String(
-                mensaje || 'No fue posible enviar el correo.'
-            );
-            error.classList.remove('d-none');
-        };
-
         const limpiarError = function () {
-            if (!error) {
-                return;
-            }
-
-            error.textContent = '';
-            error.classList.add('d-none');
+            // Los avisos del formulario se muestran mediante toast.
         };
 
         const mostrarToast = function (mensaje, esError) {
@@ -127,6 +110,13 @@
                 autohide: true,
                 delay: esError ? 4500 : 3000
             }).show();
+        };
+
+        const mostrarError = function (mensaje) {
+            mostrarToast(
+                mensaje || 'No fue posible enviar el correo.',
+                true
+            );
         };
 
         const renderizarArchivos = function () {
