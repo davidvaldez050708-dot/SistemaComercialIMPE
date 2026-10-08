@@ -19,6 +19,8 @@ $urlActualizarMarcador = BASE_URL . (
     data-contact-add-url="<?= $esc(BASE_URL . 'index.php?controller=telefonia&action=guardarContacto') ?>"
     data-contact-delete-url="<?= $esc(BASE_URL . 'index.php?controller=telefonia&action=eliminarContacto') ?>"
     data-result-save-url="<?= $esc(BASE_URL . 'index.php?controller=telefonia&action=guardarResultadoVenta') ?>"
+    data-call-start-url="<?= $esc(BASE_URL . 'index.php?controller=telefonia&action=iniciarMarcacionVenta') ?>"
+    data-call-bind-url="<?= $esc(BASE_URL . 'index.php?controller=telefonia&action=vincularMarcacionVenta') ?>"
     data-csrf-token="<?= $esc($panelTelefono['csrf'] ?? '') ?>">
 
     <section class="telephony-summary-strip" aria-label="Resumen telefónico de los últimos 30 días">

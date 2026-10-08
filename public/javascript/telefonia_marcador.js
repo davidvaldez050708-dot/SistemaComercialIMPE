@@ -44,6 +44,9 @@
         const resultFeedback = root.querySelector('[data-sales-result-feedback]');
         const historyTable = root.querySelector('.telephony-history-table');
         const classifiedCalls = new Map();
+        const registrosInicio = new Map();
+        const vinculosPendientes = new Map();
+        const vinculosCompletados = new Set();
         historyTable?.querySelectorAll('[data-sales-history-result-form]').forEach(function (form) {
             const code = form.querySelector('[data-sales-history-result-select]')?.value || '';
             if (code) classifiedCalls.set(form.dataset.pbxCallId, code);
@@ -81,8 +84,52 @@
             return digits;
         }
 
+        function crearTokenMarcacion() {
+            if (!window.crypto || typeof window.crypto.getRandomValues !== 'function') {
+                throw new Error('El navegador no pudo iniciar una marcación segura. Utiliza HTTPS.');
+            }
+            const values = new Uint8Array(16);
+            window.crypto.getRandomValues(values);
+            return Array.from(values, function (v) {
+                return v.toString(16).padStart(2, '0');
+            }).join('');
+        }
+
+        function vincularEstado(state) {
+            const token = String(state?.context?.venta_intento || '');
+            const pbxId = String(state?.finalMetadata?.pbx_call_id || state?.pbxCallId || '');
+            if (
+                String(state?.context?.type || '').toUpperCase() !== 'DIALER' ||
+                !/^[a-f0-9]{32}$/.test(token) ||
+                !/^out_[a-fA-F0-9]{32,64}$/.test(pbxId)
+            ) {
+                return Promise.resolve(false);
+            }
+            const key = token + ':' + pbxId;
+            if (vinculosCompletados.has(key)) return Promise.resolve(true);
+            if (vinculosPendientes.has(key)) return vinculosPendientes.get(key);
+            const iniciar = registrosInicio.get(token) || Promise.resolve();
+            const binding = Promise.resolve(iniciar).then(function () {
+                return postContact(root.dataset.callBindUrl, {
+                    token: token, pbx_call_id: pbxId
+                });
+            }).then(function () {
+                vinculosCompletados.add(key);
+                return true;
+            }).finally(function () {
+                vinculosPendientes.delete(key);
+            });
+            vinculosPendientes.set(key, binding);
+            return binding;
+        }
+
         function renderCall() {
             const state = api?.getState?.() || {};
+            // Únicamente asociar llamadas nacidas en el botón de Ventas.
+            // La extensión por sí sola no demuestra que sean comerciales.
+            void vincularEstado(state).catch(function () {
+                // Zadarma puede retrasar el webhook; se reintentará después.
+            });
             const active = Boolean(state.active);
             const phase = String(state.phase || '');
             const ownFinished = phase === 'finished' &&
@@ -149,13 +196,35 @@
                     return;
                 }
 
+                let token;
+                try {
+                    token = crearTokenMarcacion();
+                } catch (error) {
+                    say(error.message, true);
+                    return;
+                }
+
                 dialing = true;
                 renderCall();
-                // Reutilizamos el host WebRTC actual, sin procesos de venta.
+                // Enviar el registro al servidor desde el mismo clic,
+                // SIN esperar el POST antes de abrir el host WebRTC.
+                const registrar = postContact(root.dataset.callStartUrl, {
+                    destino: destination,
+                    token: token
+                });
+                registrosInicio.set(token, registrar);
+                void registrar.catch(function (error) {
+                    say(
+                        'La llamada puede continuar, pero no pudo registrarse su origen en Ventas: ' +
+                            error.message,
+                        true
+                    );
+                });
+
                 void api.startCall({
                     destination: destination,
                     institution: '',
-                    context: {type: 'DIALER'}
+                    context: {type: 'DIALER', venta_intento: token}
                 }).then(function () {
                     say('Solicitud de llamada enviada. Esperando a Zadarma…');
                 }).catch(function (error) {
@@ -473,7 +542,9 @@
             savingResult = true;
             resultButton.disabled = true;
             resultFeedback.textContent = 'Registrando el resultado…';
-            void guardarClasificacion(pbxId, codigo).then(function (registro) {
+            void vincularEstado(state).then(function () {
+                return guardarClasificacion(pbxId, codigo);
+            }).then(function (registro) {
                 resultFeedback.textContent = 'Resultado registrado. Actualiza el historial para ver los cambios.';
                 historyTable?.querySelectorAll('[data-sales-history-result-form]').forEach(function (form) {
                     if (form.dataset.pbxCallId === pbxId) {
@@ -662,6 +733,11 @@
         api.subscribe(renderCall);
         renderCall();
         verifyExtension(true);
+        // Reintentar enlaces mientras se confirma el webhook, incluso si
+        // ya acabó la llamada y la interfaz sigue abierta.
+        window.setInterval(function () {
+            void vincularEstado(api?.getState?.() || {}).catch(function () {});
+        }, 8000);
         // Sin recargar el Inicio, detecta una extensión asignada por el administrador.
         window.setInterval(function () {
             if (!ready && !checkingPhone) verifyExtension(true);

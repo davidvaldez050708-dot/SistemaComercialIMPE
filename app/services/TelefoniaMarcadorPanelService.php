@@ -3,6 +3,7 @@
 require_once __DIR__ . '/TelefoniaExtensionService.php';
 require_once __DIR__ . '/TelefoniaActividadService.php';
 require_once __DIR__ . '/TelefoniaContactosService.php';
+require_once __DIR__ . '/TelefoniaMarcacionesVentasService.php';
 
 /** Fuente compartida del Inicio de Ventas y del marcador autónomo. */
 class TelefoniaMarcadorPanelService
@@ -32,6 +33,10 @@ class TelefoniaMarcadorPanelService
                 $panel['extension'] = (string)($asignacion['extension'] ?? '');
                 $panel['caller_id'] = (string)($asignacion['caller_id'] ?? '');
                 try {
+                    // El historiador reconstruye la asociación cuando el
+                    // webhook llegó después de cerrar el marcador.
+                    (new TelefoniaMarcacionesVentasService())
+                        ->reconciliarPendientes($usuarioId, $panel['extension']);
                     $panel['historial'] = (new TelefoniaActividadService())
                         ->consultar($panel['extension'], $usuarioId);
                 } catch (Throwable $e) {

@@ -13,6 +13,7 @@ require_once $root . '/app/models/RolModel.php';
 require_once $root . '/app/services/TelefoniaExtensionService.php';
 require_once $root . '/app/services/ZadarmaRecordingService.php';
 require_once $root . '/app/services/TelefoniaResultadoVentasService.php';
+require_once $root . '/app/services/TelefoniaMarcacionesVentasService.php';
 
 if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'GET') {
     http_response_code(405);
@@ -32,7 +33,11 @@ $modeloRol->inicializarPermisosSistema();
 $_SESSION['permisos'] = $modeloRol->obtenerCodigosPermisosPorRol(
     (int)($_SESSION['rol_id'] ?? 0)
 );
-if (!tienePermiso('telefonia.usar') || !tienePermiso('telefonia.salientes')) {
+if (
+    (int)($_SESSION['rol_id'] ?? 0) !== 3 ||
+    !tienePermiso('telefonia.usar') ||
+    !tienePermiso('telefonia.salientes')
+) {
     http_response_code(403);
     exit('No tienes permiso para escuchar grabaciones telefónicas.');
 }
@@ -72,6 +77,10 @@ try {
     $consulta = $db->prepare(
         "SELECT 1
          FROM telefonia_zadarma_eventos origen
+         INNER JOIN telefonia_ventas_marcaciones ventas
+           ON ventas.pbx_call_id = origen.pbx_call_id
+          AND ventas.extension = origen.internal
+          AND ventas.usuario_id = ?
          INNER JOIN telefonia_ventas_resultados resultado
            ON resultado.pbx_call_id = origen.pbx_call_id
           AND resultado.extension = origen.internal
@@ -95,7 +104,7 @@ try {
     if (!$consulta) {
         throw new RuntimeException('No fue posible comprobar la propiedad de la grabación.');
     }
-    $consulta->bind_param('iss', $usuarioId, $pbxCallId, $extension);
+    $consulta->bind_param('iiss', $usuarioId, $usuarioId, $pbxCallId, $extension);
     $consulta->execute();
     $autorizada = (bool)$consulta->get_result()->fetch_assoc();
     $consulta->close();

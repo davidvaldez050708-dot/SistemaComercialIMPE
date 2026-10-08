@@ -5,6 +5,7 @@ require_once __DIR__ . '/../services/TelefoniaActividadService.php';
 require_once __DIR__ . '/../services/TelefoniaMarcadorPanelService.php';
 require_once __DIR__ . '/../services/TelefoniaContactosService.php';
 require_once __DIR__ . '/../services/TelefoniaResultadoVentasService.php';
+require_once __DIR__ . '/../services/TelefoniaMarcacionesVentasService.php';
 require_once __DIR__ . '/../models/RolModel.php';
 require_once __DIR__ . '/../helpers/PermissionHelper.php';
 
@@ -86,8 +87,8 @@ class TelefoniaController
 
     public function marcador()
     {
-        // Compatibilidad con favoritos y enlaces previos: el asesor de
-        // Ventas tiene todo su teléfono en Inicio, no una pantalla duplicada.
+        // Ventas utiliza el teléfono desde Inicio. Los analistas solo
+        // llaman desde Vinculación; ningún otro rol abre este módulo.
         if (
             (int)($_SESSION['usuario_id'] ?? 0) > 0 &&
             (int)($_SESSION['rol_id'] ?? 0) === 3
@@ -95,23 +96,56 @@ class TelefoniaController
             header('Location: ' . BASE_URL . 'index.php?controller=home&action=index');
             exit;
         }
+        http_response_code(403);
+        die('El marcador comercial está disponible exclusivamente en Inicio de Ventas.');
+    }
 
-        if ((int)($_SESSION['usuario_id'] ?? 0) <= 0 ||
-            !tienePermiso('telefonia.usar') ||
-            !tienePermiso('telefonia.salientes')) {
-            http_response_code(403);
-            die('Tu perfil no tiene permiso para utilizar el marcador telefónico.');
+    /**
+     * Registra el origen comercial ANTES de enviar el número a WebRTC.
+     * Se vincula después al pbx_call_id que confirma Zadarma.
+     */
+    public function iniciarMarcacionVenta()
+    {
+        $this->validarMarcadorPersonalJson();
+        try {
+            $token = (new TelefoniaMarcacionesVentasService())->iniciar(
+                (int)$_SESSION['usuario_id'],
+                (string)($_POST['destino'] ?? ''),
+                (string)($_POST['token'] ?? '')
+            );
+            $this->responderJson(['ok' => true, 'token' => $token]);
+        } catch (InvalidArgumentException $e) {
+            $this->responderJson(['ok' => false, 'mensaje' => $e->getMessage()], 422);
+        } catch (Throwable $e) {
+            error_log('[telefonia_ventas_inicio] ' . $e->getMessage());
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'No se pudo preparar la marcación comercial.'
+            ], 500);
         }
-        $panelTelefono = (new TelefoniaMarcadorPanelService())
-            ->obtener((int)$_SESSION['usuario_id']);
-        $tituloPagina = 'Teléfono';
-        $subtituloPagina = 'Marcador e historial personal';
-        $opcionActiva = 'telefono_marcador';
-        require_once __DIR__ . '/../views/layout/dashboard_head.php';
-        require_once __DIR__ . '/../views/layout/sidebar.php';
-        require_once __DIR__ . '/../views/layout/topbar.php';
-        require_once __DIR__ . '/../views/telefonia/marcador.php';
-        require_once __DIR__ . '/../views/layout/dashboard_footer.php';
+    }
+
+    public function vincularMarcacionVenta()
+    {
+        $this->validarMarcadorPersonalJson();
+        try {
+            (new TelefoniaMarcacionesVentasService())->vincular(
+                (int)$_SESSION['usuario_id'],
+                (string)($_POST['token'] ?? ''),
+                (string)($_POST['pbx_call_id'] ?? '')
+            );
+            $this->responderJson(['ok' => true]);
+        } catch (InvalidArgumentException $e) {
+            $this->responderJson(['ok' => false, 'mensaje' => $e->getMessage()], 422);
+        } catch (DomainException $e) {
+            $this->responderJson(['ok' => false, 'mensaje' => $e->getMessage()], 409);
+        } catch (Throwable $e) {
+            error_log('[telefonia_ventas_vinculo] ' . $e->getMessage());
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'No se pudo asociar la llamada con el historial comercial.'
+            ], 500);
+        }
     }
 
     /**
@@ -217,6 +251,7 @@ class TelefoniaController
     {
         if (
             (int)($_SESSION['usuario_id'] ?? 0) <= 0 ||
+            (int)($_SESSION['rol_id'] ?? 0) !== 3 ||
             !tienePermiso('telefonia.usar') ||
             !tienePermiso('telefonia.salientes')
         ) {

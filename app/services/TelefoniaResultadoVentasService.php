@@ -100,6 +100,14 @@ class TelefoniaResultadoVentasService
             throw new InvalidArgumentException('Selecciona un resultado válido de la llamada.');
         }
         $extension = self::extensionPropia($usuarioId);
+        require_once __DIR__ . '/TelefoniaMarcacionesVentasService.php';
+        if (!(new TelefoniaMarcacionesVentasService())->pertenece(
+            $usuarioId, $extension, $pbxCallId
+        )) {
+            throw new DomainException(
+                'La llamada no fue iniciada desde Inicio de Ventas o aún no está vinculada.'
+            );
+        }
         $stmt = $this->db->prepare(
             "SELECT 1 FROM telefonia_zadarma_eventos
              WHERE pbx_call_id = ? AND internal = ?

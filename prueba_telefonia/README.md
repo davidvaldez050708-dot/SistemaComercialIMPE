@@ -431,3 +431,53 @@ se realizan en el navegador sobre los contactos privados ya cargados.
 Al guardar un prospecto se filtra su nombre para mostrarlo de inmediato;
 al eliminar, la cantidad y el número de páginas se actualizan sin
 recargar. No se modifica la lógica de llamadas, resultados o grabaciones.
+
+
+## Separación definitiva de Marcador de Ventas y llamadas de Vinculación
+
+**Asesor de Ventas (rol 3):** trabaja exclusivamente desde **Inicio** con
+teléfono, agenda personal, registro de resultados, historial y grabaciones
+comerciales. No se muestra un módulo Marcador adicional.
+
+**Analista y otros roles:** no tienen acceso al Marcador comercial, ni
+siquiera escribiendo manualmente la antigua ruta
+`index.php?controller=telefonia&action=marcador`. Los analistas conservan
+sus permisos WebRTC y llaman desde Seguimientos > Vinculación, registrando
+las llamadas en el expediente. El módulo administrativo de Telefonía no
+se elimina.
+
+**Aislamiento del historial comercial:** ya NO basta con filtrar los
+webhooks de Zadarma por extensión. Las extensiones pueden reasignarse y
+mostrar llamadas antiguas de otro usuario o proceso. Antes de cada llamada
+desde Inicio de Ventas se crea un intento exclusivo por asesor en
+`telefonia_ventas_marcaciones` (migración
+`database/migrations/2026_10_08_b_telefonia_ventas_marcaciones.sql`).
+El inicio utiliza un token aleatorio de 128 bits que se mantiene en el
+contexto DIALER del motor WebRTC sin exponerlo a otras cuentas.
+
+Al obtener pbx_call_id, el cliente intenta asociarlo al registro:
+el servidor exige sesión de Ventas, CSRF, extensión propia, destino
+coincidente y evento NOTIFY_OUT_START dentro de la ventana de marcación.
+Se rechazan llamadas asociadas a interacciones_vinculacion.
+Si se cierra la ventana antes de que llegue el webhook, el servicio del
+Inicio reconcilia pendientes con esos mismos controles al recargar.
+
+El historial personal contabiliza únicamente llamadas con registro
+comercial vinculado; por ahora **solo salientes desde Inicio de Ventas**.
+Ni entrantes ni llamadas de Vinculación se suman a sus indicadores.
+La clasificación humana y el acceso a las grabaciones comerciales
+requieren también esa misma asociación comprobada en servidor.
+Las grabaciones de Vinculación continúan en sus expedientes.
+
+**Compatibilidad:** las llamadas antiguas de la extensión que no tengan
+un vínculo comercial comprobable no se importan automáticamente al
+historial de Ventas. Los eventos de Zadarma y las interacciones
+institucionales anteriores se conservan en la base de datos: el cambio
+es de visibilidad y propiedad, no una eliminación de registros.
+
+**Pruebas con Zadarma:** marcar como Ventas desde Inicio, comprobar la
+aparición en su propio historial y la clasificación posterior; simular
+pérdida de conexión antes de NOTIFY_OUT_START y verificar la recuperación
+al recargar; confirmar que un ID de llamada institucional no pueda
+registrarse, reproducirse ni aparecer en el historial comercial;
+validar que el analista siga llamando desde Vinculación.

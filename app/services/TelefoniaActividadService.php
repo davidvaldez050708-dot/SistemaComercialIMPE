@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/ZadarmaWebhookEventStoreService.php';
 require_once __DIR__ . '/TelefoniaResultadoVentasService.php';
+require_once __DIR__ . '/TelefoniaMarcacionesVentasService.php';
 
 /** Registro de atenciones por extensión confirmado por webhooks; no es facturación Zadarma. */
 class TelefoniaActividadService
@@ -41,11 +42,34 @@ class TelefoniaActividadService
                       'NOTIFY_INTERNAL', 'NOTIFY_ANSWER', 'NOTIFY_END',
                       'NOTIFY_OUT_START', 'NOTIFY_OUT_END'
                   )";
-        if ($extension !== null) $sql .= " AND internal = ?";
+        if ($extension !== null) $sql .= " AND e.internal = ?";
+        if ($usuarioId !== null && $usuarioId > 0 && $extension !== null) {
+            // Nunca mezclar eventos antiguos de una extensión que pudo
+            // pertenecer a Vinculación: mostrar solo llamadas atribuibles
+            // al asesor mediante el registro de Inicio de Ventas.
+            (new TelefoniaMarcacionesVentasService())->asegurarEstructura();
+            $sql .= " AND EXISTS (
+                SELECT 1 FROM telefonia_ventas_marcaciones vm
+                WHERE vm.pbx_call_id = e.pbx_call_id
+                  AND vm.extension = e.internal
+                  AND vm.usuario_id = ?
+            )
+            AND NOT EXISTS (
+                SELECT 1 FROM interacciones_vinculacion iv
+                WHERE iv.proveedor_externo = 'ZADARMA'
+                  AND iv.canal = 'LLAMADA_IP'
+                  AND iv.id_externo = e.pbx_call_id
+            )
+            AND e.evento IN ('NOTIFY_OUT_START', 'NOTIFY_OUT_END')";
+        }
         $sql .= " GROUP BY pbx_call_id, internal ORDER BY fecha DESC";
         $stmt = $this->db->prepare($sql);
         if (!$stmt) throw new RuntimeException('No fue posible consultar la actividad telefónica.');
-        if ($extension !== null) $stmt->bind_param('s', $extension);
+        if ($extension !== null && $usuarioId !== null && $usuarioId > 0) {
+            $stmt->bind_param('si', $extension, $usuarioId);
+        } elseif ($extension !== null) {
+            $stmt->bind_param('s', $extension);
+        }
         $stmt->execute();
         $result = $stmt->get_result();
 
