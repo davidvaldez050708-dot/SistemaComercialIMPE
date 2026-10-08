@@ -58,6 +58,24 @@ class InegiEscolaridadAdultaXlsxService
             if (!$estructura || !$grupos) {
                 return $this->error('No se identificó el cruce estatal edad × escolaridad B2020_07_08_M.');
             }
+            // Si el tabulado trae edades 20,21,22,23,24 sin subtotal, agrupar
+            // esas cinco filas; si hay subtotal, excluir edades individuales.
+            if (!isset($grupos['20-24'])) {
+                $cinco = ['20', '21', '22', '23', '24'];
+                if (!array_diff($cinco, array_keys($grupos))) {
+                    $combinado = array_fill(1, 28, 0);
+                    foreach ($cinco as $edad) {
+                        foreach ($grupos[$edad] as $col => $valor) {
+                            $combinado[$col] += $valor;
+                        }
+                    }
+                    $grupos['20-24'] = $combinado;
+                }
+            }
+            foreach (['20','21','22','23','24'] as $edadIndividual) {
+                unset($grupos[$edadIndividual]);
+            }
+
             $faltantes = array_diff(array_merge(self::GRUPOS_18, self::GRUPOS_25), array_keys($grupos));
             if ($faltantes) {
                 return $this->error('Tabulado incompleto para el Estado ' . $claveEstado . ': faltan ' . implode(', ', $faltantes) . '.');
@@ -73,9 +91,9 @@ class InegiEscolaridadAdultaXlsxService
                 $m = $grupos[$edad];
                 $base18 += $m[1];
                 // Educación previa a media superior + 1–2 grados de nivel medio superior.
-                $sinMediaConfirmada += $this->sumar($m, [2, 3, 4, 8, 12, 14, 18]);
+                $sinMediaConfirmada += $this->sumar($m, [2, 3, 4, 8, 12, 18]);
                 // Niveles o grados insuficientes para confirmar conclusión.
-                $incierto18 += $this->sumar($m, [16, 20, 21, 28]);
+                $incierto18 += $this->sumar($m, [13, 20, 21, 28]);
             }
             if ($base25 <= 0 || $base18 <= $base25 ||
                 $sinSuperior > $base25 || $sinMediaConfirmada > $base18) {
@@ -98,7 +116,7 @@ class InegiEscolaridadAdultaXlsxService
 
             $ref = 'https://www.inegi.org.mx/contenidos/programas/ccpv/2020/doc/Censo2020_criterios_tabulados_CPV_est_mun.pdf';
             $metodo25 = 'INEGI B2020_07_08_M (2020): grupos de 25 a 29 hasta 85 años y más, sólo filas Total estatal y sexo Total. Suma de categorías 2,3,4,8,12,13,17,21 de niveles que no acreditan estudios superiores; se excluyen no especificados del numerador. Denominador: población total 25 años y más.';
-            $metodo18 = 'INEGI B2020_07_08_M (2020): edad desplegada 18 y 19; grupo 20-24; grupos 25-29 hasta 85 años y más, sin duplicar subtotales. Conteo mínimo identificable sin media superior concluida: categorías 2,3,4,8,12 y 1–2 años aprobados de media superior 14,18. No se infiere conclusión en normal básica ni en grados no especificados 16,20,28. NO es un conteo exacto de todas las personas sin media superior concluida; denominador: toda la población 18 años y más. Personas con grado o nivel indeterminado: ' . $incierto18 . '. Criterios: ' . $ref;
+            $metodo18 = 'INEGI B2020_07_08_M (2020): edad desplegada 18 y 19; grupo 20-24; grupos 25-29 hasta 85 años y más, sin duplicar subtotales. Conteo mínimo identificable sin media superior concluida: categorías 2,3,4,8,12 y 1–2 años de bachillerato 18. La duración de estudios técnicos con secundaria (13), la normal básica (21) y los grados no especificados (20,28) no permiten determinar conclusión. NO es un conteo exacto de todas las personas sin media superior concluida; denominador: toda la población 18 años y más. Personas con grado o nivel indeterminado: ' . $incierto18 . '. Criterios: ' . $ref;
             $filas = [
                 ['estado_id' => $estadoId, 'codigo_indicador' => EscolaridadAdultaModel::SIN_SUPERIOR_25,
                  'anio' => 2020, 'poblacion_base' => $base25, 'cantidad_personas' => $sinSuperior,
@@ -187,6 +205,8 @@ class InegiEscolaridadAdultaXlsxService
             } elseif ($grupo === '20-24') {
                 if ($detallada === '' || $detallada === 'TOTAL') {
                     $edad = '20-24';
+                } elseif (in_array($detallada, ['20','21','22','23','24'], true)) {
+                    $edad = $detallada;
                 }
             } elseif ($grupo === '15-19' && ($detallada === '18' || $detallada === '19')) {
                 $edad = $detallada;
