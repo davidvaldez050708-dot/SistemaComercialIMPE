@@ -1858,3 +1858,13 @@
         grid-template-columns: 1fr;
     }
 }
+
+/* Los dos indicadores adultos deben ocupar el ancho disponible sin alterar el perfil 25–49. */
+.territorial-education-grid.territorial-education-grid-adultos {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+@media (max-width: 640px) {
+    .territorial-education-grid.territorial-education-grid-adultos {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
