@@ -111,18 +111,6 @@ $texto = static fn($valor) => htmlspecialchars(
             </div>
 
             <div class="data-filter-field">
-                <label for="correo_marketing_estado">Estado</label>
-                <select
-                    class="form-select"
-                    id="correo_marketing_estado"
-                    name="estado">
-                    <option value="">Todos</option>
-                    <option value="enviado">Enviados</option>
-                    <option value="borrador">Borradores</option>
-                </select>
-            </div>
-
-            <div class="data-filter-field">
                 <label for="correo_marketing_tipo">Tipo</label>
                 <select
                     class="form-select"
