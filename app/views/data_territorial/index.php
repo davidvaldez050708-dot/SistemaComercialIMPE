@@ -2320,6 +2320,16 @@ $urlPaginaTerritorio = function ($pagina) use ($buscarTerritorio, $filtroInforma
                                     </label>
 
                                     <label class="data-official-option-card">
+                                        <input class="form-check-input" type="checkbox"
+                                            value="escolaridad_juvenil" data-official-option>
+                                        <span>
+                                            <strong>Escolaridad juvenil · 15–17 años</strong>
+                                            <small>INEGI · Censo 2020 · B2020_07_08_M</small>
+                                            <em>Actualiza jóvenes de 15 a 17 años sin media superior concluida (mínimo identificable),
+                                            con cantidad y porcentaje del grupo de edad.</em>
+                                        </span>
+                                    </label>
+                                    <label class="data-official-option-card">
                                         <input class="form-check-input" type="checkbox" value="escolaridad_adulta" data-official-option>
                                         <span>
                                             <strong>Escolaridad adulta · 18+ y 25+</strong>
@@ -2562,6 +2572,16 @@ $urlPaginaTerritorio = function ($pagina) use ($buscarTerritorio, $filtroInforma
                                     </span>
                                 </label>
 
+                                <label class="data-official-option-card">
+                                    <input class="form-check-input" type="checkbox"
+                                        value="escolaridad_juvenil" data-official-option>
+                                    <span>
+                                        <strong>Escolaridad juvenil · 15–17 años</strong>
+                                        <small>INEGI · Censo 2020 · B2020_07_08_M</small>
+                                        <em>Actualiza jóvenes de 15 a 17 años sin media superior concluida (mínimo identificable),
+                                        con cantidad y porcentaje del grupo de edad.</em>
+                                    </span>
+                                </label>
                                 <label class="data-official-option-card">
                                     <input class="form-check-input" type="checkbox" value="escolaridad_adulta" data-official-option>
                                     <span>
@@ -3511,6 +3531,12 @@ document.addEventListener('DOMContentLoaded', function () {
             action: 'actualizarMunicipiosOficiales',
             mensajeError: 'No fue posible obtener la información municipal de INEGI.',
             pausaPosterior: 250
+        },
+        escolaridad_juvenil: {
+            nombre: 'Escolaridad juvenil 15–17',
+            action: 'actualizarEscolaridadJuvenilOficial',
+            mensajeError: 'No fue posible descargar el tabulado educativo de jóvenes desde INEGI.',
+            pausaPosterior: 900
         },
         escolaridad_adulta: {
             nombre: 'Escolaridad adulta 18+ y 25+',
