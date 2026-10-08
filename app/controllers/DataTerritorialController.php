@@ -12,6 +12,7 @@ require_once __DIR__ . '/../services/InegiPerfilEducativoPrioritarioAutoService.
 require_once __DIR__ . '/../services/InegiPerfilEducativoPrioritarioImportService.php';
 require_once __DIR__ . '/../models/PerfilAdultoLaboralModel.php';
 require_once __DIR__ . '/../models/EscolaridadAdultaModel.php';
+require_once __DIR__ . '/../models/EscolaridadJuvenilModel.php';
 require_once __DIR__ . '/../services/EscolaridadAdultaImportService.php';
 require_once __DIR__ . '/../helpers/PermissionHelper.php';
 
@@ -100,6 +101,7 @@ class DataTerritorialController
             'referencia_nacional' => null
         ];
         $escolaridadAdulta = (new EscolaridadAdultaModel())->obtenerPorEstado(0);
+        $escolaridadJuvenil = ['disponible' => false];
         $rezagoEducativoOficial = [
             'disponible' => false,
             'referencia_nacional' => null,
@@ -134,6 +136,7 @@ class DataTerritorialController
             $rezagoEducativoOficial =
                 $modelo->obtenerRezagoEducativoOficialEstado($estadoId);
             $escolaridadAdulta = (new EscolaridadAdultaModel())->obtenerPorEstado($estadoId);
+            $escolaridadJuvenil = (new EscolaridadJuvenilModel())->obtenerPorEstado($estadoId);
             $municipios = $modelo->obtenerMunicipios(
                 $estadoId,
                 ['buscar' => $buscarMunicipio],
@@ -285,6 +288,77 @@ class DataTerritorialController
                 'estado_id' => $estadoId, 'periodo' => 2020, 'indicadores' => 2,
                 'cota_minima_18' => true,
                 'personas_grado_indeterminado' => (int)($resultado['personas_grado_indeterminado'] ?? 0)
+            ]
+        ]);
+    }
+
+    /** Descarga escolaridad juvenil oficial 15-17 y conserva la fuente. */
+    public function actualizarEscolaridadJuvenilOficial()
+    {
+        if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+            $this->responderJson(['ok' => false, 'mensaje' => 'Método no permitido.'], 405);
+        }
+        $this->validarPermisoActualizacionOficialJson();
+        $estadoTexto = trim((string)($_POST['estado_id'] ?? ''));
+        if ($estadoTexto === '' || !ctype_digit($estadoTexto) || (int)$estadoTexto <= 0) {
+            $this->responderJson(['ok' => false, 'mensaje' => 'Estado inválido.'], 422);
+        }
+        $estadoId = (int)$estadoTexto;
+        $territorial = new DataTerritorialModel();
+        $estado = $territorial->obtenerEstado($estadoId);
+        if (!$estado) {
+            $this->responderJson(['ok' => false, 'mensaje' => 'Estado no encontrado o inactivo.'], 404);
+        }
+        $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
+        $rolId = (int)($_SESSION['rol_id'] ?? 0);
+        if (!$territorial->puedeAccederEstado($usuarioId, $rolId, $estadoId) && $rolId !== 1) {
+            $this->responderJson(['ok' => false, 'mensaje' => 'Sin acceso a este Estado.'], 403);
+        }
+        $clave = str_pad(
+            preg_replace('/\D+/', '', (string)($estado['clave_inegi'] ?? '')) ?? '',
+            2, '0', STR_PAD_LEFT
+        );
+        if (!preg_match('/^(0[1-9]|[12][0-9]|3[0-2])$/', $clave)) {
+            $this->responderJson(['ok' => false, 'mensaje' => 'Clave INEGI de Estado inválida.'], 422);
+        }
+        $modelo = new EscolaridadJuvenilModel();
+        if (!$modelo->tablaDisponible()) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'Ejecuta la migración 2026_10_08_escolaridad_juvenil.sql en phpMyAdmin.'
+            ], 503);
+        }
+        $actual = $modelo->obtenerPorEstado($estadoId);
+        if (($actual['disponible'] ?? false) === true &&
+            (int)($actual['anio'] ?? 0) === 2020 &&
+            str_contains((string)($actual['fuente'] ?? ''), 'B2020_07_08_M') &&
+            str_starts_with((string)($actual['archivo_origen'] ?? ''), 'AUTO_INEGI:')) {
+            $this->responderJson([
+                'ok' => true,
+                'mensaje' => 'Escolaridad juvenil 15–17 ya sincronizada con INEGI 2020.',
+                'datos' => ['estado_id' => $estadoId, 'indicadores' => 1, 'sin_descarga' => true]
+            ]);
+        }
+        @set_time_limit(240);
+        $resultado = (new InegiPerfilEducativoPrioritarioAutoService())
+            ->actualizarEscolaridadJuvenil($clave);
+        if (($resultado['ok'] ?? false) !== true) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'No se pudo validar el tabulado INEGI de ' .
+                    (string)$estado['nombre'] . '. ' .
+                    (string)($resultado['mensaje'] ?? 'Sin respuesta compatible.') .
+                    ' No se modificó la cifra juvenil.'
+            ], 502);
+        }
+        $this->responderJson([
+            'ok' => true,
+            'mensaje' => (string)($resultado['mensaje'] ?? 'Escolaridad juvenil actualizada.'),
+            'datos' => [
+                'estado_id' => $estadoId, 'indicadores' => 1, 'anio' => 2020,
+                'poblacion_base' => (int)($resultado['datos']['poblacion_base'] ?? 0),
+                'cantidad_personas' => (int)($resultado['datos']['cantidad_personas'] ?? 0),
+                'minimo_identificado' => true
             ]
         ]);
     }
