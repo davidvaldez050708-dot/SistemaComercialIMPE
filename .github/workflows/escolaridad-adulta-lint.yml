@@ -6,6 +6,9 @@ on:
       - "app/controllers/DataTerritorialController.php"
       - "app/models/EscolaridadAdultaModel.php"
       - "app/services/EscolaridadAdultaImportService.php"
+      - "app/services/InegiEscolaridadAdultaXlsxService.php"
+      - "app/services/InegiPerfilEducativoPrioritarioAutoService.php"
+      - "tests/inegi_escolaridad_adulta_xlsx_test.php"
       - "app/services/ReporteTerritorialService.php"
       - "app/services/ReporteTerritorialPdfService.php"
       - "app/views/data_territorial/index.php"
@@ -13,19 +16,31 @@ on:
   push:
     branches:
       - "feature/indicadores-escolaridad-adulta-estados"
+      - "feature/inegi-escolaridad-adulta-auto-2020"
 
 jobs:
   php-lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Habilitar PHP 8.3 y extensiones
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: zip, dom, mbstring, mysqli
       - name: Validar sintaxis PHP
         run: |
           php -v
           php -l app/controllers/DataTerritorialController.php
           php -l app/models/EscolaridadAdultaModel.php
           php -l app/services/EscolaridadAdultaImportService.php
+          php -l app/services/InegiEscolaridadAdultaXlsxService.php
+          php -l app/services/InegiPerfilEducativoPrioritarioAutoService.php
+          php -l tests/inegi_escolaridad_adulta_xlsx_test.php
           php -l app/services/ReporteTerritorialService.php
           php -l app/services/ReporteTerritorialPdfService.php
           php -l app/views/data_territorial/index.php
           php -l app/views/reportes/data_territorial.php
+
+      - name: Prueba estructural de edades sin acceso a base de datos
+        run: php tests/inegi_escolaridad_adulta_xlsx_test.php
