@@ -126,7 +126,7 @@ $urlActualizarMarcador = BASE_URL . (
                     </div>
                     <div data-sales-result-form>
                         <label for="ventas-resultado-fin">Resultado de la llamada</label>
-                        <select id="ventas-resultado-fin" class="form-select" data-sales-result-select required>
+                        <select id="ventas-resultado-fin" class="form-select" data-sales-result-select>
                             <option value="">Selecciona el resultado</option>
                             <?php foreach (TelefoniaResultadoVentasService::opciones() as $codigo => $etiqueta): ?>
                                 <option value="<?= $esc($codigo) ?>"><?= $esc($etiqueta) ?></option>
