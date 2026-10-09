@@ -152,6 +152,7 @@ document.addEventListener('DOMContentLoaded', function () {
             validarFecha(),
             validarMovil(),
             validarCorreo(),
+            validarSelect(perfil),
             validarSelect(estado),
             validarSelect(municipio)
         ].every(Boolean);
@@ -258,6 +259,10 @@ document.addEventListener('DOMContentLoaded', function () {
     movil?.addEventListener('blur', validarMovil);
 
     correo?.addEventListener('blur', validarCorreo);
+
+    perfil?.addEventListener('change', function () {
+        validarSelect(perfil);
+    });
 
     estado?.addEventListener('change', function () {
         validarSelect(estado);
