@@ -43,7 +43,10 @@ $fechaMaximaNacimiento = date('Y-m-d');
         <section class="formulario-publico-hero">
             <div class="formulario-publico-hero-copy">
                 <h1>Formulario de registro</h1>
-                <p>Completa la siguiente información.</p>
+                <p class="formulario-publico-hero-slogan">
+                    Estás a un paso de alcanzar un nuevo logro.
+                    Regístrate y da el siguiente paso para concluir tu nivel educativo.
+                </p>
                 <p>Los campos marcados con <strong>*</strong> son obligatorios.</p>
             </div>
 
