@@ -117,6 +117,11 @@ $rutasPublicas = [
     ],
     'whatsappWebhook' => [
         'webhook'
+    ],
+    'formularioPublico' => [
+        'registro',
+        'municipios',
+        'guardarRegistro'
     ]
 ];
 
@@ -560,6 +565,17 @@ switch ($controller) {
 
         $controllerInstance =
             new FormularioController();
+
+        break;
+
+
+    case 'formularioPublico':
+
+        require_once __DIR__ .
+            '/app/controllers/FormularioPublicoController.php';
+
+        $controllerInstance =
+            new FormularioPublicoController();
 
         break;
 
