@@ -159,25 +159,14 @@ class FormularioPublicoController
             '',
             (string)($entrada['movil'] ?? '')
         );
-        $movilConfirmacion = preg_replace(
-            '/\D+/',
-            '',
-            (string)($entrada['movil_confirmacion'] ?? '')
-        );
-
         return [
             'nombre' => $limpiar($entrada['nombre'] ?? ''),
             'apellido' => $limpiar($entrada['apellido'] ?? ''),
             'fecha_nacimiento' =>
                 trim((string)($entrada['fecha_nacimiento'] ?? '')),
             'movil' => $movil !== null ? $movil : '',
-            'movil_confirmacion' =>
-                $movilConfirmacion !== null ? $movilConfirmacion : '',
             'correo' => strtolower(
                 trim((string)($entrada['correo'] ?? ''))
-            ),
-            'correo_confirmacion' => strtolower(
-                trim((string)($entrada['correo_confirmacion'] ?? ''))
             ),
             'perfil_interes' =>
                 $limpiar($entrada['perfil_interes'] ?? ''),
@@ -240,19 +229,17 @@ class FormularioPublicoController
                 'El número móvil debe contener exactamente 10 dígitos.';
         }
 
-        if ($datos['movil'] !== $datos['movil_confirmacion']) {
-            $errores[] = 'Los números móviles no coinciden.';
-        }
-
         if (!filter_var($datos['correo'], FILTER_VALIDATE_EMAIL)) {
             $errores[] = 'Ingresa un correo electrónico válido.';
         }
 
-        if ($datos['correo'] !== $datos['correo_confirmacion']) {
-            $errores[] = 'Los correos electrónicos no coinciden.';
-        }
-
+        /*
+         * Información laboral opcional para el formulario público.
+         * Si el usuario captura Perfil de interés, sí se valida contra
+         * las opciones permitidas.
+         */
         if (
+            $datos['perfil_interes'] !== '' &&
             !in_array(
                 $datos['perfil_interes'],
                 $this->perfilesInteres(),
@@ -262,11 +249,9 @@ class FormularioPublicoController
             $errores[] = 'Selecciona un perfil de interés válido.';
         }
 
-        if (
-            mb_strlen($datos['lugar_laboras']) < 2 ||
-            mb_strlen($datos['lugar_laboras']) > 180
-        ) {
-            $errores[] = 'Indica el lugar donde laboras.';
+        if (mb_strlen($datos['lugar_laboras']) > 180) {
+            $errores[] =
+                'El lugar donde laboras no puede superar 180 caracteres.';
         }
 
         if (mb_strlen($datos['cargo_puesto']) > 160) {
