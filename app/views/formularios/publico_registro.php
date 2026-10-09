@@ -156,6 +156,46 @@ $fechaMaximaNacimiento = date('Y-m-d');
                         </div>
 
                         <div class="formulario-publico-field">
+                            <label for="registro_publico_movil_confirmacion">
+                                Confirmar móvil <strong>*</strong>
+                            </label>
+                            <input
+                                type="tel"
+                                id="registro_publico_movil_confirmacion"
+                                name="movil_confirmacion"
+                                maxlength="10"
+                                inputmode="numeric"
+                                autocomplete="off"
+                                placeholder="Repite el número móvil"
+                                required
+                                data-publico-movil-confirmacion>
+                            <div class="invalid-feedback">
+                                Los números móviles deben coincidir.
+                            </div>
+                        </div>
+
+                        <div class="formulario-publico-field is-full">
+                            <label for="registro_publico_movil_secundario">
+                                Segundo número de contacto
+                            </label>
+                            <input
+                                type="tel"
+                                id="registro_publico_movil_secundario"
+                                name="movil_secundario"
+                                maxlength="10"
+                                inputmode="numeric"
+                                autocomplete="tel"
+                                placeholder="Opcional · 10 dígitos"
+                                data-publico-movil-secundario>
+                            <small class="formulario-publico-help">
+                                Opcional. Si lo capturas, debe ser distinto al móvil principal.
+                            </small>
+                            <div class="invalid-feedback">
+                                Ingresa un segundo número válido de 10 dígitos.
+                            </div>
+                        </div>
+
+                        <div class="formulario-publico-field">
                             <label for="registro_publico_correo">
                                 Correo electrónico <strong>*</strong>
                             </label>
@@ -170,6 +210,24 @@ $fechaMaximaNacimiento = date('Y-m-d');
                                 data-publico-correo>
                             <div class="invalid-feedback">
                                 Ingresa un correo electrónico válido.
+                            </div>
+                        </div>
+
+                        <div class="formulario-publico-field">
+                            <label for="registro_publico_correo_confirmacion">
+                                Confirmar correo electrónico <strong>*</strong>
+                            </label>
+                            <input
+                                type="email"
+                                id="registro_publico_correo_confirmacion"
+                                name="correo_confirmacion"
+                                maxlength="190"
+                                autocomplete="off"
+                                placeholder="Repite el correo electrónico"
+                                required
+                                data-publico-correo-confirmacion>
+                            <div class="invalid-feedback">
+                                Los correos electrónicos deben coincidir.
                             </div>
                         </div>
                     </div>
@@ -242,25 +300,6 @@ $fechaMaximaNacimiento = date('Y-m-d');
                     </div>
 
                     <div class="formulario-publico-grid">
-                        <div class="formulario-publico-field formulario-publico-municipio">
-                            <label for="registro_publico_municipio">
-                                Municipio <strong>*</strong>
-                            </label>
-                            <select
-                                id="registro_publico_municipio"
-                                name="municipio_id"
-                                required
-                                disabled
-                                data-publico-municipio>
-                                <option value="">
-                                    Primero selecciona un estado
-                                </option>
-                            </select>
-                            <div class="invalid-feedback">
-                                Selecciona un municipio.
-                            </div>
-                        </div>
-
                         <div class="formulario-publico-field formulario-publico-estado">
                             <label for="registro_publico_estado">
                                 Estado <strong>*</strong>
@@ -280,6 +319,25 @@ $fechaMaximaNacimiento = date('Y-m-d');
                             </select>
                             <div class="invalid-feedback">
                                 Selecciona un estado.
+                            </div>
+                        </div>
+
+                        <div class="formulario-publico-field formulario-publico-municipio">
+                            <label for="registro_publico_municipio">
+                                Municipio <strong>*</strong>
+                            </label>
+                            <select
+                                id="registro_publico_municipio"
+                                name="municipio_id"
+                                required
+                                disabled
+                                data-publico-municipio>
+                                <option value="">
+                                    Primero selecciona un estado
+                                </option>
+                            </select>
+                            <div class="invalid-feedback">
+                                Selecciona un municipio.
                             </div>
                         </div>
                     </div>
