@@ -327,12 +327,9 @@ class FormularioController
             $errores[] = 'Selecciona un perfil de interés válido.';
         }
 
-        if (
-            mb_strlen($datos['lugar_laboras']) < 2 ||
-            mb_strlen($datos['lugar_laboras']) > 180
-        ) {
+        if (mb_strlen($datos['lugar_laboras']) > 180) {
             $errores[] =
-                'Indica el lugar donde laboras.';
+                'El lugar donde laboras no puede superar 180 caracteres.';
         }
 
         if (mb_strlen($datos['cargo_puesto']) > 160) {
