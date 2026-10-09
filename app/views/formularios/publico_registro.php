@@ -47,7 +47,9 @@ $fechaMaximaNacimiento = date('Y-m-d');
                     Estás a un paso de alcanzar un nuevo logro.
                     Regístrate y da el siguiente paso para concluir tu nivel educativo.
                 </p>
-                <p>Los campos marcados con <strong>*</strong> son obligatorios.</p>
+                <p class="formulario-publico-hero-required">
+                    Los campos marcados con <strong>*</strong> son obligatorios.
+                </p>
             </div>
 
             <div class="formulario-publico-hero-logo">
