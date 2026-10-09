@@ -384,7 +384,7 @@ $urlEnlaceRegistro = trim((string)($urlEnlaceRegistro ?? ''));
                 <div class="formularios-registration-grid">
                     <div class="formularios-field">
                         <label for="form_registro_lugar_laboras">
-                            Lugar donde laboras <strong>*</strong>
+                            Lugar donde laboras
                         </label>
                         <input
                             type="text"
@@ -393,11 +393,8 @@ $urlEnlaceRegistro = trim((string)($urlEnlaceRegistro ?? ''));
                             name="lugar_laboras"
                             maxlength="180"
                             placeholder="Empresa, institución u organización"
-                            required
                             data-registro-lugar-laboras>
-                        <div class="invalid-feedback">
-                            Indica el lugar donde laboras.
-                        </div>
+                        <small>Este campo es opcional.</small>
                     </div>
 
                     <div class="formularios-field">
