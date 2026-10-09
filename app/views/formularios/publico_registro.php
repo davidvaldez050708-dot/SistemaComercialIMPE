@@ -47,8 +47,11 @@ $fechaMaximaNacimiento = date('Y-m-d');
                 <p>Los campos marcados con <strong>*</strong> son obligatorios.</p>
             </div>
 
-            <div class="formulario-publico-hero-icon" aria-hidden="true">
-                <i class="bi bi-file-earmark-text"></i>
+            <div class="formulario-publico-hero-logo">
+                <img
+                    src="<?= BASE_URL ?>public/img/brand/porcayo-grupo8.png"
+                    alt="Porcayo Learning Group"
+                    loading="eager">
             </div>
         </section>
 
