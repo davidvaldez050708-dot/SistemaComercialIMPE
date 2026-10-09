@@ -451,9 +451,6 @@
                 href.startsWith('#') ||
                 hrefLower.startsWith('javascript:') ||
                 hrefLower.startsWith('mailto:') ||
-                hrefLower.startsWith('tel:') ||
-                hrefLower.startsWith('callto:') ||
-                hrefLower.startsWith('sip:') ||
                 target === '_blank'
             ) {
                 return;

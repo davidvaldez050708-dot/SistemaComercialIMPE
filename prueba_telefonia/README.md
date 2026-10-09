@@ -212,7 +212,7 @@ Después verifica:
 
 ## Compatibilidad histórica
 
-Los endpoints y servicios Twilio se conservan para no romper llamadas antiguas ya vinculadas con ese proveedor. No deben utilizarse para iniciar nuevas llamadas de Vinculación salvo que explícitamente se reactive ese proveedor.
+Los identificadores y registros antiguos de otros proveedores se conservan en la base de datos para auditoría. Los endpoints para recuperar su audio ya no están disponibles. Si existen grabaciones históricas necesarias, expórtalas antes de incorporar esta depuración a producción.
 
 
 ## Teléfono de Ventas integrado en Inicio (2026-10-07)
