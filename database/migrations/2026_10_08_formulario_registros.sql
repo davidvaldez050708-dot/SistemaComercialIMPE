@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS formulario_registros (
     apellido VARCHAR(120) NOT NULL,
     fecha_nacimiento DATE NOT NULL,
     movil VARCHAR(10) NOT NULL,
+    movil_secundario VARCHAR(10) NULL,
     correo VARCHAR(190) NOT NULL,
     perfil_interes VARCHAR(100) NOT NULL,
     lugar_laboras VARCHAR(180) NOT NULL,
