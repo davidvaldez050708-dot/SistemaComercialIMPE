@@ -24,6 +24,10 @@ jobs:
         run: |
           node --check public/javascript/seguimiento_canales.js
           node --check public/javascript/seguimiento_llamada_zadarma.js
+          node --check public/javascript/seguimiento_llamada_registro_compacto.js
+          node --check public/javascript/seguimiento_llamada_registro_obligatorio.js
+          node --check public/javascript/seguimiento_llamadas_expediente.js
+          node --check public/javascript/seguimiento_interaccion_id_bridge.js
       - name: Rutas de Twilio retiradas
         run: |
           test ! -e prueba_telefonia/api/token.php
