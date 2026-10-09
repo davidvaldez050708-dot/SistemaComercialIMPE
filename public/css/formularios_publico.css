@@ -271,6 +271,15 @@ html {
     font-weight: 700;
 }
 
+.formulario-publico-help {
+    display: block;
+    margin-top: 6px;
+    color: var(--public-muted);
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 1.4;
+}
+
 .formulario-publico-submit {
     width: 100%;
     min-height: 62px;
