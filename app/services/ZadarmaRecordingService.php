@@ -17,7 +17,7 @@ class ZadarmaRecordingService
         $configPath = impeRutaConfigPrivada('zadarma_config.php');
         $autoloadPath = $this->rootPath . '/vendor/autoload.php';
 
-        if (!is_file($configPath)) {
+        if (!$configPath || !is_file($configPath)) {
             throw new RuntimeException('La telefonía Zadarma no está configurada en este servidor.');
         }
 

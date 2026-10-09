@@ -13,7 +13,7 @@ class ZadarmaCallLookupService
         $configPath = impeRutaConfigPrivada('zadarma_config.php');
         $autoloadPath = $root . '/vendor/autoload.php';
 
-        if (!is_file($configPath)) {
+        if (!$configPath || !is_file($configPath)) {
             throw new RuntimeException('Falta config/zadarma_config.php.');
         }
 

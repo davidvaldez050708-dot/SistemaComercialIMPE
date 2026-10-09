@@ -21,7 +21,7 @@ $configPath = impeRutaConfigPrivada('zadarma_config.php');
 $autoloadPath = $rootPath . '/vendor/autoload.php';
 $logPath = $rootPath . '/storage/zadarma_webhooks.log';
 
-if (!is_file($configPath)) {
+if (!$configPath || !is_file($configPath)) {
     fwrite(STDERR, "ERROR: No existe config/zadarma_config.php\n");
     exit(1);
 }

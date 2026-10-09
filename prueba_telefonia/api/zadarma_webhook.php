@@ -80,7 +80,7 @@ require_once $rootPath . '/app/services/ZadarmaWebhookEventStoreService.php';
 require_once $rootPath . '/config/private_config.php';
 $configPath = impeRutaConfigPrivada('zadarma_config.php');
 
-if (!is_file($configPath)) {
+if (!$configPath || !is_file($configPath)) {
     responderWebhook(['status' => 'error', 'message' => 'Zadarma config not found'], 500);
 }
 

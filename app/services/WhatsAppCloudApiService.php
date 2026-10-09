@@ -456,7 +456,7 @@ class WhatsAppCloudApiService
         require_once dirname(__DIR__, 2) . '/config/private_config.php';
         $rutaLocal = impeRutaConfigPrivada('whatsapp.local.php');
 
-        if (is_file($rutaLocal)) {
+        if ($rutaLocal !== null && is_file($rutaLocal)) {
             $local = require $rutaLocal;
 
             if (is_array($local)) {

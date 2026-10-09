@@ -52,7 +52,7 @@ if ($baseConfigurada !== '') {
     if (!is_array($partes) ||
         !in_array(strtolower((string)($partes['scheme'] ?? '')), ['http', 'https'], true) ||
         empty($partes['host']) ||
-        isset($partes['user'], $partes['pass']) ||
+        (isset($partes['user']) || isset($partes['pass'])) ||
         isset($partes['query']) ||
         isset($partes['fragment']) ||
         ($esProduccion && strtolower((string)$partes['scheme']) !== 'https')) {
