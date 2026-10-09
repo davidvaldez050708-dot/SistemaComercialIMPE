@@ -1,0 +1,12 @@
+# Bloqueo de rutas internas al publicar la raíz del proyecto en Apache/LiteSpeed.
+# PHP puede seguir leyendo estos archivos desde el servidor; los visitantes no.
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^(?:app|config|database|docs|storage|tests|tools|vendor|\.github|\.git)(?:/|$) - [F,L,NC]
+</IfModule>
+
+<FilesMatch "^(?:composer\.json|composer\.lock|\.env(?:\..*)?|\.gitignore|\.htaccess)$">
+    Require all denied
+</FilesMatch>
