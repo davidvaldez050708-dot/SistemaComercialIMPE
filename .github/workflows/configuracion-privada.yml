@@ -51,3 +51,16 @@ jobs:
           test -f app/services/MailService.php
           test -f app/services/DenueService.php
           test -f app/services/InegiService.php
+
+  test-windows-xampp:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configurar PHP en Windows
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+      - name: Verificar sintaxis PHP
+        run: php -l tests/private_config_smoke.php
+      - name: Comprobar rutas privadas usando Windows
+        run: php tests/private_config_smoke.php
