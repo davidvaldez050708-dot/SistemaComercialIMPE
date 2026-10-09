@@ -483,10 +483,6 @@ document.addEventListener('DOMContentLoaded', function () {
             ),
             validarMoviles(),
             validarCorreos(),
-            validarTextoRequerido(
-                lugarLaboras,
-                'Indica el lugar donde laboras.'
-            ),
             validarSelect(
                 estado,
                 'Selecciona un estado.'
@@ -668,13 +664,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 validarCorreos();
             }
         });
-    });
-
-    lugarLaboras?.addEventListener('blur', function () {
-        validarTextoRequerido(
-            lugarLaboras,
-            'Indica el lugar donde laboras.'
-        );
     });
 
     form.addEventListener('reset', function () {
