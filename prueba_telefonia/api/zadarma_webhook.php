@@ -77,9 +77,10 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
 
 $rootPath = dirname(__DIR__, 2);
 require_once $rootPath . '/app/services/ZadarmaWebhookEventStoreService.php';
-$configPath = $rootPath . '/config/zadarma_config.php';
+require_once $rootPath . '/config/private_config.php';
+$configPath = impeRutaConfigPrivada('zadarma_config.php');
 
-if (!is_file($configPath)) {
+if (!$configPath || !is_file($configPath)) {
     responderWebhook(['status' => 'error', 'message' => 'Zadarma config not found'], 500);
 }
 

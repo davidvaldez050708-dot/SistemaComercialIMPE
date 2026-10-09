@@ -9,10 +9,11 @@ class ZadarmaCallLookupService
     public function __construct()
     {
         $root = dirname(__DIR__, 2);
-        $configPath = $root . '/config/zadarma_config.php';
+        require_once $root . '/config/private_config.php';
+        $configPath = impeRutaConfigPrivada('zadarma_config.php');
         $autoloadPath = $root . '/vendor/autoload.php';
 
-        if (!is_file($configPath)) {
+        if (!$configPath || !is_file($configPath)) {
             throw new RuntimeException('Falta config/zadarma_config.php.');
         }
 
