@@ -298,11 +298,6 @@ foreach ($modelo->obtenerInteraccionesSeguimiento($seguimientoId) as $interaccio
         trim((string)($seguimiento['contacto_nombre'] ?? ''))
     );
 
-    $grabacionTwilio =
-        $proveedor === 'TWILIO' &&
-        $duracion > 0 &&
-        preg_match('/^CA[a-fA-F0-9]{32}$/', $idExterno);
-
     $zadarmaValida =
         $proveedor === 'ZADARMA' &&
         $duracion > 0 &&
@@ -353,7 +348,7 @@ foreach ($modelo->obtenerInteraccionesSeguimiento($seguimientoId) as $interaccio
     $puedeTenerGrabacion =
         !$excluirGrabacion &&
         $interaccionId > 0 &&
-        ($grabacionTwilio || $grabacionZadarma);
+        $grabacionZadarma;
 
     $grabacionProcesando =
         !$excluirGrabacion &&

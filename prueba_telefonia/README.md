@@ -2,7 +2,7 @@
 
 La telefonía del sistema utiliza **Zadarma WebRTC** como flujo principal para las llamadas de Vinculación. La carpeta conserva el nombre `prueba_telefonia` por compatibilidad con rutas existentes, pero sus endpoints Zadarma forman parte del flujo operativo actual del CRM.
 
-Twilio permanece como compatibilidad histórica para llamadas/grabaciones antiguas y no debe ser el proveedor principal de nuevas llamadas de Vinculación.
+El flujo operativo y las nuevas grabaciones se gestionan exclusivamente mediante Zadarma. Las referencias históricas de otros proveedores pueden permanecer en la base de datos, pero no utilizan un cliente telefónico antiguo.
 
 ## Arquitectura productiva
 
@@ -212,7 +212,7 @@ Después verifica:
 
 ## Compatibilidad histórica
 
-Los endpoints y servicios Twilio se conservan para no romper llamadas antiguas ya vinculadas con ese proveedor. No deben utilizarse para iniciar nuevas llamadas de Vinculación salvo que explícitamente se reactive ese proveedor.
+Los identificadores y registros antiguos de otros proveedores se conservan en la base de datos para auditoría. Los endpoints para recuperar su audio ya no están disponibles. Si existen grabaciones históricas necesarias, expórtalas antes de incorporar esta depuración a producción.
 
 
 ## Teléfono de Ventas integrado en Inicio (2026-10-07)

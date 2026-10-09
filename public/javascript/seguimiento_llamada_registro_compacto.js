@@ -32,7 +32,7 @@
         };
 
         const obtenerResumenLlamada = function (formulario) {
-            const resumenTecnico = formulario?.querySelector('[data-twilio-call-summary]');
+            const resumenTecnico = formulario?.querySelector('[data-telephony-call-summary]');
             const texto = normalizarTexto(resumenTecnico?.textContent || '');
             const segundos = Math.max(
                 0,
@@ -171,9 +171,9 @@
                         }
 
                         return node.matches?.(
-                            '[data-call-registration-required-note], [data-twilio-call-summary], [data-work-informative-interaction-note]'
+                            '[data-call-registration-required-note], [data-telephony-call-summary], [data-work-informative-interaction-note]'
                         ) || Boolean(node.querySelector?.(
-                            '[data-call-registration-required-note], [data-twilio-call-summary], [data-work-informative-interaction-note]'
+                            '[data-call-registration-required-note], [data-telephony-call-summary], [data-work-informative-interaction-note]'
                         ));
                     });
                 });

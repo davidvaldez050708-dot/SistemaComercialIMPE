@@ -1968,7 +1968,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 : (!puedeOperar
                     ? 'Acción disponible para el Analista responsable'
                     : (telefonoDisponible
-                        ? 'Integración pendiente. Teléfono: ' + telefonoDisponible
+                        ? 'Llamar desde la centralita virtual: ' + telefonoDisponible
                         : 'Captura un teléfono para habilitar esta acción.'));
         }
 
@@ -2395,14 +2395,6 @@ document.addEventListener('DOMContentLoaded', function () {
             botonConfirmarReactivacion.disabled = motivoReactivacionInput.value.trim() === '';
         }
     });
-
-    document
-        .querySelectorAll('[data-work-call-button], [data-work-whatsapp-button]')
-        .forEach(function (boton) {
-            boton.addEventListener('click', function () {
-                mostrarAlertaTrabajo('La integración con proveedor externo queda pendiente para una etapa posterior.');
-            });
-        });
 
     document.querySelector('[data-work-contact-form]')?.addEventListener('submit', async function (event) {
         event.preventDefault();

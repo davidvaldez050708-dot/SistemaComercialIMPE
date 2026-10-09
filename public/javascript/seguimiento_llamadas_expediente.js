@@ -144,7 +144,7 @@
                     return;
                 }
 
-                const resumen = formulario.querySelector('[data-twilio-call-summary] .alert');
+                const resumen = formulario.querySelector('[data-telephony-call-summary] .alert');
                 if (!resumen) {
                     return;
                 }

@@ -1,0 +1,40 @@
+name: Depuracion - PHP JS y rutas
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  syntax-and-legacy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: PHP 8.2
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+      - name: PHP lint modificados
+        run: |
+          php -l app/views/layout/dashboard_head.php
+          php -l app/views/layout/dashboard_footer.php
+          php -l app/views/seguimiento_vinculacion/estado.php
+          php -l prueba_telefonia/api/grabacion_interaccion.php
+          php -l prueba_telefonia/api/llamadas_seguimiento.php
+      - name: JavaScript syntax
+        run: |
+          node --check public/javascript/seguimiento_canales.js
+          node --check public/javascript/seguimiento_llamada_zadarma.js
+          node --check public/javascript/seguimiento_llamada_registro_compacto.js
+          node --check public/javascript/seguimiento_llamada_registro_obligatorio.js
+          node --check public/javascript/seguimiento_llamadas_expediente.js
+          node --check public/javascript/seguimiento_interaccion_id_bridge.js
+      - name: Rutas de Twilio retiradas
+        run: |
+          test ! -e prueba_telefonia/api/token.php
+          test ! -e prueba_telefonia/api/vincular_interaccion.php
+          test ! -e public/javascript/seguimiento_llamada_twilio.js
+          test ! -e app/services/TwilioRecordingService.php
+          test -e prueba_telefonia/api/zadarma_webhook.php
+          test -e public/css/seguimiento_llamada.css
+      - name: Composer manifest
+        run: composer validate --no-check-publish

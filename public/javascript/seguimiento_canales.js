@@ -53,23 +53,6 @@
             return texto === '—' ? '' : texto;
         };
 
-        const normalizarTelefono = function (valor) {
-            let texto = String(valor || '').trim();
-
-            if (texto === '') {
-                return '';
-            }
-
-            const tieneMas = texto.startsWith('+');
-            texto = texto.replace(/[^0-9]/g, '');
-
-            if (texto === '') {
-                return '';
-            }
-
-            return tieneMas ? '+' + texto : texto;
-        };
-
         const normalizarWhatsApp = function (valor) {
             let numero = String(valor || '').replace(/[^0-9]/g, '');
 
@@ -82,48 +65,6 @@
             }
 
             return numero;
-        };
-
-        const uriLlamada = function (telefono) {
-            const esquema = String(window.IMPE_VOIP_SCHEME || 'tel')
-                .replace(':', '')
-                .trim()
-                .toLowerCase();
-
-            if (esquema === 'sip') {
-                const dominio = String(window.IMPE_VOIP_SIP_DOMAIN || '').trim();
-
-                if (dominio !== '') {
-                    return 'sip:' + telefono + '@' + dominio;
-                }
-            }
-
-            if (esquema === 'callto') {
-                return 'callto:' + telefono;
-            }
-
-            return 'tel:' + telefono;
-        };
-
-        const abrirLlamada = function () {
-            const telefono = normalizarTelefono(valorDato('[data-work-phone]'));
-
-            if (telefono === '') {
-                mostrarToast('No hay un teléfono disponible para realizar la llamada.', true);
-                return;
-            }
-
-            const uri = uriLlamada(telefono);
-            const usaSip = uri.startsWith('sip:');
-
-            mostrarToast(
-                usaSip
-                    ? 'Abriendo la llamada en el cliente SIP configurado.'
-                    : 'Abriendo la llamada en la aplicación telefónica del dispositivo.',
-                false
-            );
-
-            window.location.href = uri;
         };
 
         const abrirWhatsApp = function () {
@@ -191,27 +132,15 @@
             temporizadorTitulos = window.setTimeout(actualizarTitulos, 80);
         };
 
+        // Las llamadas se gestionan exclusivamente en seguimiento_llamada_zadarma.js.
+        // Este módulo conserva solamente el acceso rápido a WhatsApp.
         document.addEventListener('click', function (event) {
-            const botonLlamar = event.target.closest('[data-work-call-button]');
             const botonWhatsapp = event.target.closest('[data-work-whatsapp-button]');
-
-            if (!botonLlamar && !botonWhatsapp) {
+            if (!botonWhatsapp || botonWhatsapp.disabled) {
                 return;
             }
-
-            if ((botonLlamar && botonLlamar.disabled) ||
-                (botonWhatsapp && botonWhatsapp.disabled)) {
-                return;
-            }
-
             event.preventDefault();
             event.stopPropagation();
-
-            if (botonLlamar) {
-                abrirLlamada();
-                return;
-            }
-
             abrirWhatsApp();
         }, true);
 

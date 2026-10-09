@@ -5,7 +5,6 @@ $root = dirname(__DIR__, 2);
 require_once $root . '/app/helpers/PermissionHelper.php';
 require_once $root . '/app/models/RolModel.php';
 require_once $root . '/app/models/SeguimientoVinculacionModel.php';
-require_once $root . '/app/services/TwilioRecordingService.php';
 require_once $root . '/app/services/ZadarmaRecordingService.php';
 require_once $root . '/config/db_connection.php';
 
@@ -116,22 +115,7 @@ $forzarDescarga = (int)($_GET['download'] ?? 0) === 1;
 try {
     $audio = null;
 
-    if ($proveedor === 'TWILIO') {
-        if (!preg_match('/^CA[a-fA-F0-9]{32}$/', $idExterno)) {
-            http_response_code(404);
-            exit('Esta llamada no tiene una grabación asociada.');
-        }
-
-        $servicio = new TwilioRecordingService();
-        $grabacion = $servicio->obtenerGrabacionParaLlamada($idExterno);
-
-        if (!$grabacion || empty($grabacion['sid'])) {
-            http_response_code(404);
-            exit('La grabación todavía no está disponible.');
-        }
-
-        $audio = $servicio->descargarGrabacion($grabacion['sid'], $rangeHeader);
-    } elseif ($proveedor === 'ZADARMA') {
+    if ($proveedor === 'ZADARMA') {
         if (!preg_match('/^out_[a-fA-F0-9]{32,64}$/', $idExterno)) {
             http_response_code(404);
             exit('Esta llamada no tiene una grabación asociada.');

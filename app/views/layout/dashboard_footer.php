@@ -141,22 +141,6 @@
 </script>
 
 <?php
-$voipScheme = 'tel';
-$voipSipDomain = '';
-$voipConfigPath = ROOT_PATH . '/config/voip_config.php';
-
-if (is_file($voipConfigPath)) {
-    require_once $voipConfigPath;
-
-    if (defined('VOIP_SCHEME')) {
-        $voipScheme = (string)VOIP_SCHEME;
-    }
-
-    if (defined('VOIP_SIP_DOMAIN')) {
-        $voipSipDomain = (string)VOIP_SIP_DOMAIN;
-    }
-}
-
 $controllerDashboardFooter = strtolower(
     trim((string)($_GET['controller'] ?? 'home'))
 );
@@ -232,11 +216,6 @@ if ($esTerritorialFooter) {
 
 $jsDashboardFooter = array_values(array_unique($jsDashboardFooter));
 ?>
-
-<script>
-window.IMPE_VOIP_SCHEME = <?= json_encode($voipScheme, JSON_UNESCAPED_UNICODE) ?>;
-window.IMPE_VOIP_SIP_DOMAIN = <?= json_encode($voipSipDomain, JSON_UNESCAPED_UNICODE) ?>;
-</script>
 
 <?php foreach ($jsDashboardFooter as $archivoJs): ?>
     <?php $rutaJs = ROOT_PATH . '/public/javascript/' . $archivoJs; ?>
