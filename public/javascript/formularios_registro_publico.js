@@ -430,18 +430,20 @@ document.addEventListener('DOMContentLoaded', function () {
                 );
             }
 
+            const redirectUrl = String(
+                json.redirect_url || ''
+            ).trim();
+
+            if (redirectUrl !== '') {
+                window.location.assign(redirectUrl);
+                return;
+            }
+
             mostrarToast(
                 json.mensaje ||
                 'Tu registro fue enviado correctamente.',
                 false
             );
-
-            form.reset();
-            form.querySelectorAll('.is-valid, .is-invalid')
-                .forEach(function (campo) {
-                    campo.classList.remove('is-valid', 'is-invalid');
-                });
-            limpiarMunicipios();
         } catch (error) {
             console.error(error);
             mostrarToast(
