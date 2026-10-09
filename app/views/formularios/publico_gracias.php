@@ -22,7 +22,7 @@
         <section class="formulario-publico-thanks-card">
             <div class="formulario-publico-thanks-logo">
                 <img
-                    src="<?= BASE_URL ?>public/img/brand/porcayo-grupo8.png"
+                    src="<?= BASE_URL ?>public/img/brand/porcayo-grupo.png"
                     alt="Porcayo Learning Group">
             </div>
 
