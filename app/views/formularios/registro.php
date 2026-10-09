@@ -11,17 +11,25 @@ $texto = static fn($valor) => htmlspecialchars(
 );
 
 $fechaMaximaNacimiento = date('Y-m-d');
+$esFormularioPublico = !empty($esFormularioPublico);
+$registroAction = $registroAction ??
+    BASE_URL . 'index.php?controller=formulario&action=guardarRegistro';
+$municipiosUrl = $municipiosUrl ??
+    BASE_URL . 'index.php?controller=formulario&action=municipios';
+$urlEnlaceRegistro = trim((string)($urlEnlaceRegistro ?? ''));
 ?>
 
 <div class="formularios-page formularios-detail-page">
-    <div class="formularios-back-row">
-        <a
-            class="data-back-link"
-            href="<?= BASE_URL ?>index.php?controller=formulario&action=index">
-            <i class="bi bi-arrow-left"></i>
-            Volver a formularios
-        </a>
-    </div>
+    <?php if (!$esFormularioPublico): ?>
+        <div class="formularios-back-row">
+            <a
+                class="data-back-link"
+                href="<?= BASE_URL ?>index.php?controller=formulario&action=index">
+                <i class="bi bi-arrow-left"></i>
+                Volver a formularios
+            </a>
+        </div>
+    <?php endif; ?>
 
     <section class="dashboard-panel formularios-detail-hero">
         <div class="formularios-detail-heading">
@@ -39,6 +47,113 @@ $fechaMaximaNacimiento = date('Y-m-d');
             </div>
         </div>
     </section>
+
+    <?php if (!$esFormularioPublico): ?>
+        <section
+            class="dashboard-panel formularios-share-panel"
+            data-formulario-share
+            data-generate-link-url="<?= BASE_URL ?>index.php?controller=formulario&action=generarEnlaceRegistro"
+            data-current-link="<?= $texto($urlEnlaceRegistro) ?>"
+            data-quickchart-url="https://quickchart.io/qr">
+            <div class="formularios-share-copy">
+                <span class="formularios-kicker">COMPARTIR FORMULARIO</span>
+                <h3>Enlace y código QR</h3>
+                <p>
+                    Genera un enlace público para compartir este formulario.
+                    Después podrás convertir ese mismo enlace en un código QR.
+                </p>
+            </div>
+
+            <div class="formularios-share-actions">
+                <button
+                    type="button"
+                    class="btn btn-system-save"
+                    data-generate-form-link>
+                    <i class="bi bi-link-45deg"></i>
+                    <?= $urlEnlaceRegistro !== '' ? 'Ver link' : 'Generar link' ?>
+                </button>
+
+                <button
+                    type="button"
+                    class="btn btn-system-save"
+                    data-generate-form-qr
+                    <?= $urlEnlaceRegistro === '' ? 'disabled' : '' ?>>
+                    <i class="bi bi-qr-code"></i>
+                    Generar QR
+                </button>
+            </div>
+
+            <div
+                class="formularios-share-result <?= $urlEnlaceRegistro === '' ? 'd-none' : '' ?>"
+                data-form-link-result>
+                <div class="formularios-share-url">
+                    <i class="bi bi-link-45deg"></i>
+                    <input
+                        type="text"
+                        readonly
+                        value="<?= $texto($urlEnlaceRegistro) ?>"
+                        data-form-link-input>
+                    <button
+                        type="button"
+                        class="btn"
+                        title="Copiar enlace"
+                        aria-label="Copiar enlace"
+                        data-copy-form-link>
+                        <i class="bi bi-copy"></i>
+                    </button>
+                </div>
+                <small data-form-link-note>
+                    El enlace apunta al formulario público de Registro.
+                </small>
+            </div>
+        </section>
+
+        <div
+            class="modal fade"
+            id="modalFormularioRegistroQr"
+            tabindex="-1"
+            aria-labelledby="modalFormularioRegistroQrTitulo"
+            aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered formularios-qr-dialog">
+                <div class="modal-content formularios-qr-modal">
+                    <div class="modal-header">
+                        <div>
+                            <span class="formularios-kicker">CÓDIGO QR</span>
+                            <h2
+                                class="modal-title"
+                                id="modalFormularioRegistroQrTitulo">
+                                Formulario de Registro
+                            </h2>
+                        </div>
+                        <button
+                            type="button"
+                            class="btn-close"
+                            data-bs-dismiss="modal"
+                            aria-label="Cerrar"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="formularios-qr-preview">
+                            <div
+                                class="spinner-border text-primary d-none"
+                                role="status"
+                                data-form-qr-loader>
+                                <span class="visually-hidden">Cargando...</span>
+                            </div>
+                            <img
+                                src=""
+                                alt="Código QR del formulario de Registro"
+                                data-form-qr-image>
+                        </div>
+                        <p>
+                            Al escanearlo, el usuario abrirá el mismo enlace público
+                            generado por el sistema.
+                        </p>
+                        <div class="formularios-qr-link" data-form-qr-link></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    <?php endif; ?>
 
     <section class="dashboard-panel formularios-registration-panel">
         <div class="formularios-registration-heading">
@@ -59,7 +174,7 @@ $fechaMaximaNacimiento = date('Y-m-d');
 
         <form
             class="formularios-registration-form"
-            action="<?= BASE_URL ?>index.php?controller=formulario&action=guardarRegistro"
+            action="<?= $texto($registroAction) ?>"
             method="post"
             novalidate
             data-formulario-registro>
@@ -323,7 +438,7 @@ $fechaMaximaNacimiento = date('Y-m-d');
                             name="estado_id"
                             required
                             data-registro-estado
-                            data-municipios-url="<?= BASE_URL ?>index.php?controller=formulario&action=municipios">
+                            data-municipios-url="<?= $texto($municipiosUrl) ?>">
                             <option value="">Selecciona un estado</option>
                             <?php foreach ($estados as $estado): ?>
                                 <option value="<?= (int)($estado['id'] ?? 0) ?>">
