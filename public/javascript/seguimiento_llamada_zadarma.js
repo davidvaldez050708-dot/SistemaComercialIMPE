@@ -510,7 +510,7 @@
             function (formulario, metadata) {
                 let aviso =
                     formulario.querySelector(
-                        '[data-twilio-call-summary]'
+                        '[data-telephony-call-summary]'
                     );
 
                 if (!aviso) {
@@ -520,7 +520,7 @@
                         );
                     aviso.className = 'col-12';
                     aviso.setAttribute(
-                        'data-twilio-call-summary',
+                        'data-telephony-call-summary',
                         ''
                     );
                     formulario
@@ -1001,12 +1001,6 @@
                     document.dispatchEvent(
                         new CustomEvent(
                             'impe:telephony-call-linked',
-                            { detail: detail }
-                        )
-                    );
-                    document.dispatchEvent(
-                        new CustomEvent(
-                            'impe:twilio-call-linked',
                             { detail: detail }
                         )
                     );
