@@ -13,7 +13,16 @@ document.addEventListener('DOMContentLoaded', function () {
     const apellido = form.querySelector('[data-publico-apellido]');
     const fecha = form.querySelector('[data-publico-fecha]');
     const movil = form.querySelector('[data-publico-movil]');
+    const movilConfirmacion = form.querySelector(
+        '[data-publico-movil-confirmacion]'
+    );
+    const movilSecundario = form.querySelector(
+        '[data-publico-movil-secundario]'
+    );
     const correo = form.querySelector('[data-publico-correo]');
+    const correoConfirmacion = form.querySelector(
+        '[data-publico-correo-confirmacion]'
+    );
     const perfil = form.querySelector('[data-publico-perfil]');
     const lugar = form.querySelector('[data-publico-lugar]');
     const cargo = form.querySelector('[data-publico-cargo]');
@@ -108,34 +117,71 @@ document.addEventListener('DOMContentLoaded', function () {
         );
     };
 
-    const normalizarMovil = function () {
-        const limpio = String(movil?.value || '')
+    const normalizarTelefono = function (campo) {
+        const limpio = String(campo?.value || '')
             .replace(/\D+/g, '')
             .slice(0, 10);
 
-        if (movil) {
-            movil.value = limpio;
+        if (campo) {
+            campo.value = limpio;
         }
 
         return limpio;
     };
 
-    const validarMovil = function () {
-        return marcar(
+    const validarMoviles = function () {
+        const principal = normalizarTelefono(movil);
+        const confirmacion = normalizarTelefono(movilConfirmacion);
+        const secundario = normalizarTelefono(movilSecundario);
+
+        const principalValido = marcar(
             movil,
-            /^\d{10}$/.test(normalizarMovil())
+            /^\d{10}$/.test(principal)
         );
+
+        const confirmacionValida = marcar(
+            movilConfirmacion,
+            /^\d{10}$/.test(confirmacion) &&
+            principal === confirmacion
+        );
+
+        const secundarioValido = marcar(
+            movilSecundario,
+            secundario === '' ||
+            (
+                /^\d{10}$/.test(secundario) &&
+                secundario !== principal
+            )
+        );
+
+        return principalValido &&
+            confirmacionValida &&
+            secundarioValido;
     };
 
-    const validarCorreo = function () {
-        const valor = String(correo?.value || '')
+    const validarCorreos = function () {
+        const principal = String(correo?.value || '')
             .trim()
             .toLowerCase();
+        const confirmacion = String(
+            correoConfirmacion?.value || ''
+        )
+            .trim()
+            .toLowerCase();
+        const formatoValido = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-        return marcar(
+        const principalValido = marcar(
             correo,
-            /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(valor)
+            formatoValido.test(principal)
         );
+
+        const confirmacionValida = marcar(
+            correoConfirmacion,
+            formatoValido.test(confirmacion) &&
+            principal === confirmacion
+        );
+
+        return principalValido && confirmacionValida;
     };
 
     const validarSelect = function (campo) {
@@ -150,8 +196,8 @@ document.addEventListener('DOMContentLoaded', function () {
             validarNombre(nombre),
             validarNombre(apellido),
             validarFecha(),
-            validarMovil(),
-            validarCorreo(),
+            validarMoviles(),
+            validarCorreos(),
             validarSelect(perfil),
             validarSelect(estado),
             validarSelect(municipio)
@@ -255,10 +301,35 @@ document.addEventListener('DOMContentLoaded', function () {
 
     fecha?.addEventListener('change', validarFecha);
 
-    movil?.addEventListener('input', normalizarMovil);
-    movil?.addEventListener('blur', validarMovil);
+    [movil, movilConfirmacion, movilSecundario].forEach(
+        function (campo) {
+            campo?.addEventListener('input', function () {
+                normalizarTelefono(campo);
 
-    correo?.addEventListener('blur', validarCorreo);
+                if (
+                    String(movil?.value || '').length === 10 ||
+                    String(movilConfirmacion?.value || '').length === 10 ||
+                    String(movilSecundario?.value || '').length === 10
+                ) {
+                    validarMoviles();
+                }
+            });
+
+            campo?.addEventListener('blur', validarMoviles);
+        }
+    );
+
+    [correo, correoConfirmacion].forEach(function (campo) {
+        campo?.addEventListener('blur', validarCorreos);
+        campo?.addEventListener('input', function () {
+            if (
+                String(correo?.value || '').trim() !== '' &&
+                String(correoConfirmacion?.value || '').trim() !== ''
+            ) {
+                validarCorreos();
+            }
+        });
+    });
 
     perfil?.addEventListener('change', function () {
         validarSelect(perfil);
@@ -292,9 +363,31 @@ document.addEventListener('DOMContentLoaded', function () {
         const data = new FormData(form);
 
         /*
-         * Los campos laborales son opcionales en la vista pública.
-         * Se envían vacíos cuando el usuario decide no capturarlos.
+         * Lugar de trabajo y cargo son opcionales.
+         * Perfil de interés continúa siendo obligatorio.
          */
+        data.set(
+            'movil',
+            normalizarTelefono(movil)
+        );
+        data.set(
+            'movil_confirmacion',
+            normalizarTelefono(movilConfirmacion)
+        );
+        data.set(
+            'movil_secundario',
+            normalizarTelefono(movilSecundario)
+        );
+        data.set(
+            'correo',
+            String(correo?.value || '').trim().toLowerCase()
+        );
+        data.set(
+            'correo_confirmacion',
+            String(correoConfirmacion?.value || '')
+                .trim()
+                .toLowerCase()
+        );
         data.set(
             'perfil_interes',
             String(perfil?.value || '').trim()
