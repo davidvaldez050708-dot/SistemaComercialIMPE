@@ -1,91 +1,330 @@
 :root {
-    --public-navy: #172743;
-    --public-blue: #223a84;
-    --public-bg: #f3f6fa;
-    --public-border: #dce5f0;
-    --public-text: #15243d;
-    --public-muted: #66758a;
+    --public-navy: #092d63;
+    --public-blue: #0b57a4;
+    --public-blue-bright: #1f78f2;
+    --public-blue-soft: #edf6ff;
+    --public-bg: #f6f9fc;
+    --public-border: #d8e2ee;
+    --public-text: #0d2550;
+    --public-muted: #71809a;
+    --public-danger: #dc2626;
 }
 
 * {
     box-sizing: border-box;
 }
 
-.formulario-publico-body {
-    margin: 0;
-    min-height: 100vh;
+html {
+    min-height: 100%;
     background: var(--public-bg);
+}
+
+.formulario-publico-body {
+    min-height: 100vh;
+    margin: 0;
+    background:
+        radial-gradient(circle at 12% 0%, rgba(43, 126, 220, .07), transparent 26%),
+        linear-gradient(180deg, #f8fbfe 0%, #f3f7fb 100%);
     color: var(--public-text);
     font-family: 'Manrope', sans-serif;
 }
 
-.formulario-publico-header {
-    min-height: 76px;
-    padding: 14px clamp(20px, 4vw, 64px);
-    display: flex;
-    align-items: center;
-    border-bottom: 1px solid var(--public-border);
-    background: #fff;
+.formulario-publico-shell {
+    width: min(980px, calc(100% - 32px));
+    margin: 26px auto 42px;
 }
 
-.formulario-publico-brand {
+.formulario-publico-hero {
+    position: relative;
+    min-height: 160px;
+    padding: 30px 64px;
     display: flex;
     align-items: center;
-    gap: 12px;
+    justify-content: space-between;
+    gap: 24px;
+    overflow: hidden;
+    border-radius: 17px;
+    background:
+        linear-gradient(
+            118deg,
+            #064b87 0%,
+            #075692 48%,
+            #07396c 100%
+        );
+    box-shadow: 0 13px 35px rgba(20, 72, 126, .12);
+    color: #fff;
 }
 
-.formulario-publico-brand-icon {
-    width: 42px;
-    height: 42px;
+.formulario-publico-hero::before,
+.formulario-publico-hero::after {
+    content: "";
+    position: absolute;
+    top: -95px;
+    width: 260px;
+    height: 300px;
+    border-radius: 50%;
+    transform: rotate(18deg);
+    pointer-events: none;
+}
+
+.formulario-publico-hero::before {
+    right: 96px;
+    background: linear-gradient(
+        180deg,
+        rgba(64, 157, 255, .64),
+        rgba(36, 124, 221, .18)
+    );
+}
+
+.formulario-publico-hero::after {
+    right: -70px;
+    background: linear-gradient(
+        180deg,
+        rgba(0, 45, 95, .58),
+        rgba(0, 36, 76, .18)
+    );
+}
+
+.formulario-publico-hero-copy {
+    position: relative;
+    z-index: 2;
+}
+
+.formulario-publico-hero h1 {
+    margin: 0 0 7px;
+    color: #fff;
+    font-size: clamp(28px, 4vw, 46px);
+    font-weight: 800;
+    line-height: 1.08;
+    letter-spacing: -.7px;
+}
+
+.formulario-publico-hero p {
+    margin: 2px 0 0;
+    color: rgba(255, 255, 255, .94);
+    font-size: clamp(13px, 1.7vw, 18px);
+    font-weight: 500;
+    line-height: 1.45;
+}
+
+.formulario-publico-hero p strong {
+    color: #fff;
+}
+
+.formulario-publico-hero-icon {
+    position: relative;
+    z-index: 3;
+    flex: 0 0 auto;
+    color: #fff;
+    font-size: 64px;
+    line-height: 1;
+}
+
+.formulario-publico-card {
+    margin-top: 4px;
+    padding: 32px 34px 24px;
+    border: 1px solid #e4ebf3;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, .97);
+    box-shadow: 0 16px 42px rgba(29, 60, 94, .08);
+}
+
+.formulario-publico-section {
+    padding: 0 0 21px;
+    border-bottom: 1px solid #e4eaf1;
+}
+
+.formulario-publico-section + .formulario-publico-section {
+    padding-top: 22px;
+}
+
+.formulario-publico-section-heading {
+    min-height: 58px;
+    margin-bottom: 22px;
+    display: flex;
+    align-items: center;
+    border-radius: 0 10px 10px 0;
+    background: linear-gradient(
+        90deg,
+        #eef6ff 0%,
+        #e9f4ff 56%,
+        #f0f7fe 100%
+    );
+}
+
+.formulario-publico-section-icon {
+    width: 76px;
+    height: 76px;
+    margin-left: -1px;
+    margin-right: 14px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    border: 1px solid #d7e3f5;
-    border-radius: 12px;
-    background: #edf4ff;
-    color: var(--public-blue);
-    font-size: 18px;
+    border: 1px solid rgba(255, 255, 255, .95);
+    border-radius: 50%;
+    background:
+        radial-gradient(circle at 35% 30%, #fff 0%, #edf6ff 58%, #dceeff 100%);
+    color: #0670e8;
+    box-shadow: inset 0 0 0 1px #e0efff;
+    font-size: 31px;
 }
 
-.formulario-publico-brand strong,
-.formulario-publico-brand small {
+.formulario-publico-section-heading h2 {
+    margin: 0;
+    color: #0b2856;
+    font-size: 20px;
+    font-weight: 800;
+    line-height: 1.2;
+}
+
+.formulario-publico-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 23px 30px;
+}
+
+.formulario-publico-field {
+    min-width: 0;
+}
+
+.formulario-publico-field.is-full {
+    grid-column: 1 / -1;
+}
+
+.formulario-publico-field label {
     display: block;
-}
-
-.formulario-publico-brand strong {
+    margin: 0 0 8px;
+    color: #10264d;
     font-size: 14px;
     font-weight: 800;
 }
 
-.formulario-publico-brand small {
-    margin-top: 2px;
-    color: var(--public-muted);
-    font-size: 10px;
-    font-weight: 600;
+.formulario-publico-field label strong {
+    color: var(--public-danger);
 }
 
-.formulario-publico-main {
-    width: min(1180px, calc(100% - 32px));
-    margin: 24px auto 36px;
-}
-
-.formulario-publico-main .formularios-page {
-    gap: 16px;
-}
-
-.formulario-publico-main .formularios-detail-hero,
-.formulario-publico-main .formularios-registration-panel {
+.formulario-publico-field input,
+.formulario-publico-field select {
     width: 100%;
-    max-width: 1040px;
-    margin-inline: auto;
+    height: 55px;
+    padding: 0 15px;
+    border: 1px solid #cdd9e7;
+    border-radius: 9px;
+    outline: 0;
+    background-color: #fff;
+    color: #213b61;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    transition:
+        border-color .18s ease,
+        box-shadow .18s ease,
+        background-color .18s ease;
 }
 
-.formulario-publico-footer {
-    padding: 0 20px 28px;
-    color: var(--public-muted);
-    text-align: center;
+.formulario-publico-field select {
+    padding-right: 42px;
+}
+
+.formulario-publico-field input::placeholder {
+    color: #8493ab;
+    opacity: 1;
+}
+
+.formulario-publico-field input:focus,
+.formulario-publico-field select:focus {
+    border-color: #2981e6;
+    box-shadow: 0 0 0 3px rgba(41, 129, 230, .11);
+}
+
+.formulario-publico-field input.is-valid,
+.formulario-publico-field select.is-valid {
+    border-color: #5ba38d;
+}
+
+.formulario-publico-field input.is-invalid,
+.formulario-publico-field select.is-invalid {
+    border-color: #dc4b4b;
+}
+
+.formulario-publico-field select:disabled {
+    cursor: not-allowed;
+    background-color: #f3f6fa;
+    color: #929fb0;
+}
+
+.formulario-publico-field .invalid-feedback {
+    margin-top: 6px;
     font-size: 10px;
-    font-weight: 600;
+    font-weight: 700;
+}
+
+.formulario-publico-submit {
+    width: 100%;
+    min-height: 62px;
+    margin-top: 19px;
+    border: 0;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    background: linear-gradient(90deg, #1677ec 0%, #2788f4 100%);
+    color: #fff;
+    font-family: 'Manrope', sans-serif;
+    font-size: 20px;
+    font-weight: 800;
+    box-shadow: 0 9px 20px rgba(34, 116, 224, .17);
+    transition:
+        transform .18s ease,
+        box-shadow .18s ease,
+        opacity .18s ease;
+}
+
+.formulario-publico-submit:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 12px 23px rgba(34, 116, 224, .21);
+}
+
+.formulario-publico-submit:disabled {
+    cursor: wait;
+    opacity: .72;
+    transform: none;
+}
+
+.formulario-publico-submit i {
+    font-size: 22px;
+}
+
+.formulario-publico-body .toast-container {
+    z-index: 1100;
+}
+
+.formulario-publico-body .system-toast {
+    width: min(410px, calc(100vw - 30px));
+    border: 1px solid #dfe7f1;
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 14px 34px rgba(31, 52, 84, .14);
+}
+
+.formulario-publico-body .system-toast .toast-body {
+    padding: 13px 15px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #22344f;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.formulario-publico-body .system-toast .toast-body i {
+    color: #16835f;
+    font-size: 17px;
+}
+
+.formulario-publico-body .system-toast-error .toast-body i {
+    color: #c6362f;
 }
 
 .formulario-publico-unavailable {
@@ -125,14 +364,70 @@
     line-height: 1.6;
 }
 
-@media (max-width: 767.98px) {
-    .formulario-publico-main {
-        width: min(100% - 20px, 1040px);
-        margin-top: 14px;
+@media (max-width: 760px) {
+    .formulario-publico-shell {
+        width: min(100% - 20px, 980px);
+        margin: 12px auto 24px;
     }
 
-    .formulario-publico-header {
-        min-height: 66px;
-        padding: 11px 16px;
+    .formulario-publico-hero {
+        min-height: 138px;
+        padding: 24px 26px;
+        border-radius: 14px;
+    }
+
+    .formulario-publico-hero::before {
+        right: 16px;
+    }
+
+    .formulario-publico-hero::after {
+        right: -126px;
+    }
+
+    .formulario-publico-hero-icon {
+        font-size: 47px;
+    }
+
+    .formulario-publico-card {
+        padding: 23px 18px 18px;
+        border-radius: 14px;
+    }
+
+    .formulario-publico-section-heading {
+        min-height: 52px;
+        margin-bottom: 18px;
+    }
+
+    .formulario-publico-section-icon {
+        width: 62px;
+        height: 62px;
+        margin-right: 10px;
+        font-size: 25px;
+    }
+
+    .formulario-publico-section-heading h2 {
+        font-size: 17px;
+    }
+
+    .formulario-publico-grid {
+        grid-template-columns: 1fr;
+        gap: 17px;
+    }
+
+    .formulario-publico-field.is-full {
+        grid-column: auto;
+    }
+
+    .formulario-publico-estado {
+        order: 1;
+    }
+
+    .formulario-publico-municipio {
+        order: 2;
+    }
+
+    .formulario-publico-submit {
+        min-height: 56px;
+        font-size: 17px;
     }
 }
