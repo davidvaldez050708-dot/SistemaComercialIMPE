@@ -111,13 +111,25 @@ html {
     color: #fff;
 }
 
-.formulario-publico-hero-icon {
+.formulario-publico-hero-logo {
     position: relative;
     z-index: 3;
     flex: 0 0 auto;
-    color: #fff;
-    font-size: 64px;
-    line-height: 1;
+    width: 185px;
+    min-height: 96px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.formulario-publico-hero-logo img {
+    display: block;
+    width: 100%;
+    max-width: 185px;
+    max-height: 112px;
+    object-fit: contain;
+    object-position: center;
+    filter: drop-shadow(0 4px 10px rgba(0, 0, 0, .08));
 }
 
 .formulario-publico-card {
@@ -384,8 +396,14 @@ html {
         right: -126px;
     }
 
-    .formulario-publico-hero-icon {
-        font-size: 47px;
+    .formulario-publico-hero-logo {
+        width: 125px;
+        min-height: 74px;
+    }
+
+    .formulario-publico-hero-logo img {
+        max-width: 125px;
+        max-height: 86px;
     }
 
     .formulario-publico-card {
