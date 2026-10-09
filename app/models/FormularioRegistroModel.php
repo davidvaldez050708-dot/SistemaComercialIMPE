@@ -80,12 +80,16 @@ class FormularioRegistroModel
         $creadoPor = array_key_exists('creado_por', $datos)
             ? $datos['creado_por']
             : null;
+        $movilSecundario = trim(
+            (string)($datos['movil_secundario'] ?? '')
+        );
 
         $sql = "INSERT INTO formulario_registros (
                     nombre,
                     apellido,
                     fecha_nacimiento,
                     movil,
+                    movil_secundario,
                     correo,
                     perfil_interes,
                     lugar_laboras,
@@ -96,7 +100,7 @@ class FormularioRegistroModel
                     origen,
                     created_at,
                     updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, NULLIF(?, ''), ?, ?, ?, ?, NOW(), NOW())";
+                ) VALUES (?, ?, ?, ?, NULLIF(?, ''), ?, ?, ?, NULLIF(?, ''), ?, ?, ?, ?, NOW(), NOW())";
 
         $stmt = $this->connection->prepare($sql);
 
@@ -107,11 +111,12 @@ class FormularioRegistroModel
         }
 
         $stmt->bind_param(
-            'ssssssssiiis',
+            'sssssssssiiis',
             $datos['nombre'],
             $datos['apellido'],
             $datos['fecha_nacimiento'],
             $datos['movil'],
+            $movilSecundario,
             $datos['correo'],
             $datos['perfil_interes'],
             $datos['lugar_laboras'],
