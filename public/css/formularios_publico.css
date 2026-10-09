@@ -111,6 +111,29 @@ html {
     color: #fff;
 }
 
+.formulario-publico-hero .formulario-publico-hero-slogan {
+    max-width: 610px;
+    margin-top: 7px;
+    color: rgba(255, 255, 255, .96);
+    font-size: clamp(13px, 1.5vw, 17px);
+    font-weight: 700;
+    line-height: 1.45;
+}
+
+.formulario-publico-hero .formulario-publico-hero-required {
+    margin-top: 7px;
+    color: rgba(255, 255, 255, .78);
+    font-size: clamp(10px, 1.15vw, 13px);
+    font-weight: 500;
+    line-height: 1.35;
+    letter-spacing: .1px;
+}
+
+.formulario-publico-hero .formulario-publico-hero-required strong {
+    color: #fff;
+    font-weight: 800;
+}
+
 .formulario-publico-hero-logo {
     position: relative;
     z-index: 3;
