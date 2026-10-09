@@ -2,4 +2,4 @@
 -- Aplicar en instalaciones donde formulario_registros ya existe.
 
 ALTER TABLE formulario_registros
-    ADD COLUMN movil_secundario VARCHAR(10) NULL AFTER movil;
+    ADD COLUMN IF NOT EXISTS movil_secundario VARCHAR(10) NULL AFTER movil;
