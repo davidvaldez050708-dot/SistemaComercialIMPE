@@ -186,11 +186,12 @@ $fechaMaximaNacimiento = date('Y-m-d');
                     <div class="formulario-publico-grid">
                         <div class="formulario-publico-field">
                             <label for="registro_publico_perfil">
-                                Perfil de interés
+                                Perfil de interés <strong>*</strong>
                             </label>
                             <select
                                 id="registro_publico_perfil"
                                 name="perfil_interes"
+                                required
                                 data-publico-perfil>
                                 <option value="">Selecciona una opción</option>
                                 <?php foreach ($perfilesInteres as $perfil): ?>
@@ -199,6 +200,9 @@ $fechaMaximaNacimiento = date('Y-m-d');
                                     </option>
                                 <?php endforeach; ?>
                             </select>
+                            <div class="invalid-feedback">
+                                Selecciona un perfil de interés.
+                            </div>
                         </div>
 
                         <div class="formulario-publico-field">
