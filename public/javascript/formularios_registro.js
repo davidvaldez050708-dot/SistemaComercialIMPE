@@ -28,9 +28,44 @@ document.addEventListener('DOMContentLoaded', function () {
         '[data-registro-lugar-laboras]'
     );
     const botonSubmit = form.querySelector('[data-registro-submit]');
+    const compartir = document.querySelector('[data-formulario-share]');
+    const botonGenerarLink = compartir?.querySelector(
+        '[data-generate-form-link]'
+    );
+    const botonGenerarQr = compartir?.querySelector(
+        '[data-generate-form-qr]'
+    );
+    const resultadoLink = compartir?.querySelector(
+        '[data-form-link-result]'
+    );
+    const inputLink = compartir?.querySelector(
+        '[data-form-link-input]'
+    );
+    const botonCopiarLink = compartir?.querySelector(
+        '[data-copy-form-link]'
+    );
+    const notaLink = compartir?.querySelector(
+        '[data-form-link-note]'
+    );
+    const modalQrElement = document.getElementById(
+        'modalFormularioRegistroQr'
+    );
+    const imagenQr = modalQrElement?.querySelector(
+        '[data-form-qr-image]'
+    );
+    const loaderQr = modalQrElement?.querySelector(
+        '[data-form-qr-loader]'
+    );
+    const enlaceQr = modalQrElement?.querySelector(
+        '[data-form-qr-link]'
+    );
 
     let cargandoMunicipios = false;
     let guardando = false;
+    let generandoLink = false;
+    let enlacePublico = String(
+        compartir?.getAttribute('data-current-link') || ''
+    ).trim();
 
     const mostrarToast = function (mensaje, esError) {
         let contenedor = document.querySelector('.toast-container');
@@ -70,6 +105,221 @@ document.addEventListener('DOMContentLoaded', function () {
             delay: esError ? 4500 : 3200
         }).show();
     };
+
+    const actualizarEnlaceCompartido = function (url) {
+        enlacePublico = String(url || '').trim();
+
+        if (compartir) {
+            compartir.setAttribute('data-current-link', enlacePublico);
+        }
+
+        if (inputLink) {
+            inputLink.value = enlacePublico;
+        }
+
+        resultadoLink?.classList.toggle(
+            'd-none',
+            enlacePublico === ''
+        );
+
+        if (botonGenerarQr) {
+            botonGenerarQr.disabled = enlacePublico === '';
+        }
+
+        if (botonGenerarLink) {
+            botonGenerarLink.innerHTML =
+                '<i class="bi bi-link-45deg"></i>' +
+                (enlacePublico === '' ? 'Generar link' : 'Ver link');
+        }
+
+        if (notaLink) {
+            try {
+                const url = new URL(enlacePublico);
+
+                if (
+                    url.hostname === 'localhost' ||
+                    url.hostname === '127.0.0.1'
+                ) {
+                    notaLink.textContent =
+                        'Este enlace funciona en tu entorno local. Para abrirlo desde otro dispositivo, publica el sistema en un dominio o túnel accesible.';
+                } else {
+                    notaLink.textContent =
+                        'El enlace está listo para compartirse con los usuarios.';
+                }
+            } catch (error) {
+                notaLink.textContent =
+                    'El enlace apunta al formulario público de Registro.';
+            }
+        }
+    };
+
+    const generarEnlacePublico = async function () {
+        if (!compartir || !botonGenerarLink || generandoLink) {
+            return;
+        }
+
+        if (enlacePublico !== '') {
+            resultadoLink?.classList.remove('d-none');
+            inputLink?.focus();
+            inputLink?.select();
+            return;
+        }
+
+        const url = String(
+            compartir.getAttribute('data-generate-link-url') || ''
+        ).trim();
+
+        if (url === '') {
+            mostrarToast(
+                'No se encontró la ruta para generar el enlace.',
+                true
+            );
+            return;
+        }
+
+        const htmlOriginal = botonGenerarLink.innerHTML;
+        generandoLink = true;
+        botonGenerarLink.disabled = true;
+        botonGenerarLink.innerHTML =
+            '<span class="spinner-border spinner-border-sm" ' +
+            'aria-hidden="true"></span> Generando...';
+
+        try {
+            const respuesta = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'fetch'
+                }
+            });
+
+            const json = await respuesta.json();
+
+            if (!respuesta.ok || !json.ok) {
+                throw new Error(
+                    json.mensaje ||
+                    'No fue posible generar el enlace.'
+                );
+            }
+
+            actualizarEnlaceCompartido(json.url || '');
+
+            mostrarToast(
+                json.mensaje ||
+                'Enlace generado correctamente.',
+                false
+            );
+        } catch (error) {
+            console.error(error);
+            mostrarToast(
+                error.message ||
+                'No fue posible generar el enlace.',
+                true
+            );
+        } finally {
+            generandoLink = false;
+            botonGenerarLink.disabled = false;
+
+            if (enlacePublico === '') {
+                botonGenerarLink.innerHTML = htmlOriginal;
+            }
+        }
+    };
+
+    const copiarEnlacePublico = async function () {
+        if (enlacePublico === '') {
+            return;
+        }
+
+        try {
+            await navigator.clipboard.writeText(enlacePublico);
+            mostrarToast('Enlace copiado correctamente.', false);
+        } catch (error) {
+            if (inputLink) {
+                inputLink.focus();
+                inputLink.select();
+                document.execCommand('copy');
+                mostrarToast('Enlace copiado correctamente.', false);
+            }
+        }
+    };
+
+    const generarQr = function () {
+        if (
+            enlacePublico === '' ||
+            !compartir ||
+            !modalQrElement ||
+            !imagenQr
+        ) {
+            mostrarToast(
+                'Primero genera el enlace del formulario.',
+                true
+            );
+            return;
+        }
+
+        const quickChartBase = String(
+            compartir.getAttribute('data-quickchart-url') ||
+            'https://quickchart.io/qr'
+        ).trim();
+
+        const parametros = new URLSearchParams({
+            text: enlacePublico,
+            size: '300',
+            margin: '2',
+            dark: '223A84',
+            light: 'ffffff',
+            ecLevel: 'M',
+            format: 'png'
+        });
+
+        const qrUrl = quickChartBase + '?' + parametros.toString();
+
+        if (loaderQr) {
+            loaderQr.classList.remove('d-none');
+        }
+
+        imagenQr.classList.add('is-loading');
+        imagenQr.src = qrUrl;
+
+        if (enlaceQr) {
+            enlaceQr.textContent = enlacePublico;
+        }
+
+        bootstrap.Modal.getOrCreateInstance(
+            modalQrElement
+        ).show();
+    };
+
+    botonGenerarLink?.addEventListener(
+        'click',
+        generarEnlacePublico
+    );
+    botonCopiarLink?.addEventListener(
+        'click',
+        copiarEnlacePublico
+    );
+    botonGenerarQr?.addEventListener(
+        'click',
+        generarQr
+    );
+
+    imagenQr?.addEventListener('load', function () {
+        loaderQr?.classList.add('d-none');
+        imagenQr.classList.remove('is-loading');
+    });
+
+    imagenQr?.addEventListener('error', function () {
+        loaderQr?.classList.add('d-none');
+        imagenQr.classList.remove('is-loading');
+        mostrarToast(
+            'No fue posible generar el código QR en este momento.',
+            true
+        );
+    });
+
+    if (enlacePublico !== '') {
+        actualizarEnlaceCompartido(enlacePublico);
+    }
 
     const escapar = function (valor) {
         const div = document.createElement('div');
