@@ -120,15 +120,23 @@ class FormularioPublicoController
                 'registro_id' => $registroId
             ]);
         } catch (Throwable $error) {
+            $mensajeTecnico = (string)$error->getMessage();
+
             error_log(
                 '[formulario_publico_guardar] ' .
-                $error->getMessage()
+                $mensajeTecnico
             );
+
+            $requiereMigracion =
+                stripos($mensajeTecnico, 'migración') !== false ||
+                stripos($mensajeTecnico, 'movil_secundario') !== false ||
+                stripos($mensajeTecnico, 'unknown column') !== false;
 
             $this->responderJson([
                 'ok' => false,
-                'mensaje' =>
-                    'No fue posible enviar el registro. Intenta nuevamente.'
+                'mensaje' => $requiereMigracion
+                    ? 'La base de datos necesita la actualización del segundo número de contacto antes de poder guardar registros.'
+                    : 'No fue posible enviar el registro. Intenta nuevamente.'
             ], 500);
         }
     }
