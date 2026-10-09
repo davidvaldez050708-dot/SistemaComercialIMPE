@@ -290,12 +290,18 @@ html {
     align-items: center;
     justify-content: center;
     gap: 12px;
-    background: linear-gradient(90deg, #1677ec 0%, #2788f4 100%);
+    background:
+        linear-gradient(
+            118deg,
+            #064b87 0%,
+            #075692 48%,
+            #07396c 100%
+        );
     color: #fff;
     font-family: 'Manrope', sans-serif;
     font-size: 20px;
     font-weight: 800;
-    box-shadow: 0 9px 20px rgba(34, 116, 224, .17);
+    box-shadow: 0 9px 20px rgba(20, 72, 126, .17);
     transition:
         transform .18s ease,
         box-shadow .18s ease,
@@ -304,7 +310,7 @@ html {
 
 .formulario-publico-submit:hover {
     transform: translateY(-1px);
-    box-shadow: 0 12px 23px rgba(34, 116, 224, .21);
+    box-shadow: 0 12px 23px rgba(20, 72, 126, .22);
 }
 
 .formulario-publico-submit:disabled {
