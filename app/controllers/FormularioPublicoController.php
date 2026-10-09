@@ -234,12 +234,11 @@ class FormularioPublicoController
         }
 
         /*
-         * Información laboral opcional para el formulario público.
-         * Si el usuario captura Perfil de interés, sí se valida contra
-         * las opciones permitidas.
+         * El Perfil de interés es obligatorio para el usuario externo.
+         * Los demás campos de Información laboral continúan opcionales.
          */
         if (
-            $datos['perfil_interes'] !== '' &&
+            $datos['perfil_interes'] === '' ||
             !in_array(
                 $datos['perfil_interes'],
                 $this->perfilesInteres(),
