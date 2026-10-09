@@ -27,6 +27,24 @@ class FormularioController
         $estados = $modelo->obtenerEstadosActivos();
         $perfilesInteres = $this->perfilesInteres();
 
+        $enlaceRegistro = null;
+        $urlEnlaceRegistro = '';
+
+        try {
+            $enlaceRegistro = $modelo->obtenerEnlaceActivo('registro');
+
+            if ($enlaceRegistro) {
+                $urlEnlaceRegistro = BASE_URL .
+                    'index.php?controller=formularioPublico&action=registro&token=' .
+                    rawurlencode((string)$enlaceRegistro['token']);
+            }
+        } catch (Throwable $error) {
+            error_log(
+                '[formulario_registro_enlace_actual] ' .
+                $error->getMessage()
+            );
+        }
+
         $tituloPagina = 'Formulario de Registro';
         $subtituloPagina = 'Gestiona la vista destinada al registro.';
         $opcionActiva = 'formularios';
@@ -78,6 +96,50 @@ class FormularioController
                 'ok' => false,
                 'mensaje' => 'No fue posible cargar los municipios.',
                 'municipios' => []
+            ], 500);
+        }
+    }
+
+    public function generarEnlaceRegistro()
+    {
+        $this->validarAccesoMarketing();
+
+        if (
+            strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST'
+        ) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'Método no permitido.'
+            ], 405);
+        }
+
+        try {
+            $modelo = new FormularioRegistroModel();
+            $enlace = $modelo->crearEnlace(
+                'registro',
+                (int)($_SESSION['usuario_id'] ?? 0)
+            );
+
+            $url = BASE_URL .
+                'index.php?controller=formularioPublico&action=registro&token=' .
+                rawurlencode((string)$enlace['token']);
+
+            $this->responderJson([
+                'ok' => true,
+                'mensaje' => 'Enlace del formulario generado correctamente.',
+                'url' => $url,
+                'token' => (string)$enlace['token']
+            ]);
+        } catch (Throwable $error) {
+            error_log(
+                '[formulario_registro_generar_enlace] ' .
+                $error->getMessage()
+            );
+
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' =>
+                    'No fue posible generar el enlace. Verifica que la migración de enlaces esté aplicada.'
             ], 500);
         }
     }
