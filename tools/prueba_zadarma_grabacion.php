@@ -16,7 +16,8 @@ if (PHP_SAPI !== 'cli') {
 }
 
 $rootPath = dirname(__DIR__);
-$configPath = $rootPath . '/config/zadarma_config.php';
+require_once $rootPath . '/config/private_config.php';
+$configPath = impeRutaConfigPrivada('zadarma_config.php');
 $autoloadPath = $rootPath . '/vendor/autoload.php';
 $logPath = $rootPath . '/storage/zadarma_webhooks.log';
 

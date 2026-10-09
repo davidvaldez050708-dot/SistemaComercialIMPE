@@ -12,7 +12,8 @@
 
 require_once dirname(__DIR__) . '/vendor/autoload.php';
 
-$configPath = dirname(__DIR__) . '/config/zadarma_config.php';
+require_once dirname(__DIR__) . '/config/private_config.php';
+$configPath = impeRutaConfigPrivada('zadarma_config.php');
 
 if (!file_exists($configPath)) {
     fwrite(STDERR, "ERROR: No existe config/zadarma_config.php\n");

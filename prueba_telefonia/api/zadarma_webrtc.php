@@ -50,7 +50,8 @@ if (!tienePermiso('telefonia.usar')) {
 }
 
 $rootPath = dirname(__DIR__, 2);
-$configPath = $rootPath . '/config/zadarma_config.php';
+require_once $rootPath . '/config/private_config.php';
+$configPath = impeRutaConfigPrivada('zadarma_config.php');
 $autoloadPath = $rootPath . '/vendor/autoload.php';
 
 if (!is_file($configPath)) {

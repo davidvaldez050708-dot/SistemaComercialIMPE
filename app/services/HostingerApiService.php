@@ -9,8 +9,8 @@ class HostingerApiService
 
     public function __construct()
     {
-        $archivoConfig = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR .
-            'config' . DIRECTORY_SEPARATOR . 'hostinger_mail_config.php';
+        require_once dirname(__DIR__, 2) . '/config/private_config.php';
+        $archivoConfig = impeRutaConfigPrivada('hostinger_mail_config.php');
 
         if (is_file($archivoConfig)) {
             require_once $archivoConfig;

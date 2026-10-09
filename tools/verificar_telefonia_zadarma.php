@@ -6,7 +6,8 @@ if (PHP_SAPI !== 'cli') {
 }
 
 $root = dirname(__DIR__);
-$configPath = $root . '/config/zadarma_config.php';
+require_once $root . '/config/private_config.php';
+$configPath = impeRutaConfigPrivada('zadarma_config.php');
 $autoloadPath = $root . '/vendor/autoload.php';
 
 $errores = 0;

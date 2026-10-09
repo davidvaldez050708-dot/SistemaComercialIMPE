@@ -13,7 +13,8 @@ class ZadarmaRecordingService
     public function __construct()
     {
         $this->rootPath = dirname(__DIR__, 2);
-        $configPath = $this->rootPath . '/config/zadarma_config.php';
+        require_once $this->rootPath . '/config/private_config.php';
+        $configPath = impeRutaConfigPrivada('zadarma_config.php');
         $autoloadPath = $this->rootPath . '/vendor/autoload.php';
 
         if (!is_file($configPath)) {
