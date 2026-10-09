@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Registro | Sistema Comercial</title>
+    <title>Formulario de Registro</title>
 
     <link
         href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
@@ -30,28 +30,9 @@
 </head>
 
 <body class="formulario-publico-body">
-    <header class="formulario-publico-header">
-        <div class="formulario-publico-brand">
-            <span class="formulario-publico-brand-icon">
-                <i class="bi bi-ui-checks-grid"></i>
-            </span>
-            <div>
-                <strong>Sistema Comercial</strong>
-                <small>Formulario de Registro</small>
-            </div>
-        </div>
-    </header>
-
-    <main class="formulario-publico-main">
+    <main class="formulario-publico-main formulario-publico-main-only">
         <?php require __DIR__ . '/registro.php'; ?>
     </main>
-
-    <footer class="formulario-publico-footer">
-        <span>
-            La información capturada será utilizada para dar seguimiento
-            a tu solicitud de información educativa.
-        </span>
-    </footer>
 
     <script
         src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js">
