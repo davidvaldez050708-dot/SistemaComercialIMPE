@@ -24,6 +24,12 @@ class FormularioPublicoController
             '/../views/formularios/publico_registro.php';
     }
 
+    public function gracias()
+    {
+        require_once __DIR__ .
+            '/../views/formularios/publico_gracias.php';
+    }
+
     public function municipios()
     {
         $estadoId = (int)($_GET['estado_id'] ?? 0);
@@ -116,8 +122,10 @@ class FormularioPublicoController
             $this->responderJson([
                 'ok' => true,
                 'mensaje' =>
-                    'Tu registro fue enviado correctamente. Gracias por compartir tu información.',
-                'registro_id' => $registroId
+                    'Tu registro fue enviado correctamente.',
+                'registro_id' => $registroId,
+                'redirect_url' => BASE_URL .
+                    'index.php?controller=formularioPublico&action=gracias'
             ]);
         } catch (Throwable $error) {
             $mensajeTecnico = (string)$error->getMessage();
