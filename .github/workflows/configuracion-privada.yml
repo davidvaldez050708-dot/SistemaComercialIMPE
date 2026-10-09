@@ -1,0 +1,53 @@
+name: Configuracion privada - seguridad
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    paths:
+      - "config/**"
+      - "app/services/*Zadarma*"
+      - "app/services/*Hostinger*"
+      - "app/services/WhatsAppCloudApiService.php"
+      - "prueba_telefonia/api/zadarma_*.php"
+      - "tests/private_config_smoke.php"
+      - ".github/workflows/configuracion-privada.yml"
+
+jobs:
+  test-configuracion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configurar PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+      - name: Verificar sintaxis PHP
+        run: |
+          set -e
+          for file in \
+            config/private_config.php config/config.php config/db_connection.php \
+            config/api_keys.php config/mail_config.php \
+            app/services/ZadarmaCallLookupService.php \
+            app/services/ZadarmaRecordingService.php \
+            app/services/WhatsAppCloudApiService.php \
+            app/services/HostingerApiService.php \
+            app/services/HostingerMailApiService.php \
+            prueba_telefonia/api/zadarma_webrtc.php \
+            prueba_telefonia/api/zadarma_webhook.php \
+            tools/configurar_zadarma_webhook.php \
+            tools/prueba_zadarma_api.php \
+            tools/prueba_zadarma_grabacion.php \
+            tools/verificar_telefonia_zadarma.php \
+            tests/private_config_smoke.php; do
+            php -l "$file"
+          done
+      - name: Probar carga privada con claves ficticias
+        run: php tests/private_config_smoke.php
+      - name: Mantener servicios operativos
+        run: |
+          test -f prueba_telefonia/api/zadarma_webrtc.php
+          test -f prueba_telefonia/api/zadarma_webhook.php
+          test -f app/services/MailService.php
+          test -f app/services/DenueService.php
+          test -f app/services/InegiService.php
