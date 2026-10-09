@@ -1,11 +1,14 @@
 # Configuración privada
 .env
 config/database.local.php
-config/mail_config.php
+config/app.local.php
+config/api_keys.local.php
+config/mail_config.local.php
 config/hostinger_mail_config.php
 config/voip_config.php
 config/zadarma_config.php
 config/ecard_reunion_config.php
+impe-private/
 config/whatsapp.local.php
 
 # Archivos del sistema operativo

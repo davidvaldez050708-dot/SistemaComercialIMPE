@@ -1,11 +1,10 @@
 <?php
 
 /*
-|--------------------------------------------------------------------------
-| Claves privadas de APIs
-|--------------------------------------------------------------------------
-| Este archivo NO debe subirse al repositorio.
-*/
+ * Plantilla SIN credenciales reales para los servicios oficiales.
+ * Copia los valores secretos a config/api_keys.local.php (ignorado por Git),
+ * o al directorio privado de Hostinger.
+ */
 
 define('INEGI_INDICADORES_TOKEN', '');
 
