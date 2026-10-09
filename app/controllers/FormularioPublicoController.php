@@ -159,14 +159,32 @@ class FormularioPublicoController
             '',
             (string)($entrada['movil'] ?? '')
         );
+        $movilConfirmacion = preg_replace(
+            '/\D+/',
+            '',
+            (string)($entrada['movil_confirmacion'] ?? '')
+        );
+        $movilSecundario = preg_replace(
+            '/\D+/',
+            '',
+            (string)($entrada['movil_secundario'] ?? '')
+        );
+
         return [
             'nombre' => $limpiar($entrada['nombre'] ?? ''),
             'apellido' => $limpiar($entrada['apellido'] ?? ''),
             'fecha_nacimiento' =>
                 trim((string)($entrada['fecha_nacimiento'] ?? '')),
             'movil' => $movil !== null ? $movil : '',
+            'movil_confirmacion' =>
+                $movilConfirmacion !== null ? $movilConfirmacion : '',
+            'movil_secundario' =>
+                $movilSecundario !== null ? $movilSecundario : '',
             'correo' => strtolower(
                 trim((string)($entrada['correo'] ?? ''))
+            ),
+            'correo_confirmacion' => strtolower(
+                trim((string)($entrada['correo_confirmacion'] ?? ''))
             ),
             'perfil_interes' =>
                 $limpiar($entrada['perfil_interes'] ?? ''),
@@ -229,8 +247,43 @@ class FormularioPublicoController
                 'El número móvil debe contener exactamente 10 dígitos.';
         }
 
+        if (
+            !preg_match('/^\d{10}$/', $datos['movil_confirmacion']) ||
+            $datos['movil'] !== $datos['movil_confirmacion']
+        ) {
+            $errores[] =
+                'La confirmación del número móvil no coincide.';
+        }
+
+        if (
+            $datos['movil_secundario'] !== '' &&
+            !preg_match('/^\d{10}$/', $datos['movil_secundario'])
+        ) {
+            $errores[] =
+                'El segundo número de contacto debe contener exactamente 10 dígitos.';
+        }
+
+        if (
+            $datos['movil_secundario'] !== '' &&
+            $datos['movil_secundario'] === $datos['movil']
+        ) {
+            $errores[] =
+                'El segundo número de contacto debe ser diferente al móvil principal.';
+        }
+
         if (!filter_var($datos['correo'], FILTER_VALIDATE_EMAIL)) {
             $errores[] = 'Ingresa un correo electrónico válido.';
+        }
+
+        if (
+            !filter_var(
+                $datos['correo_confirmacion'],
+                FILTER_VALIDATE_EMAIL
+            ) ||
+            $datos['correo'] !== $datos['correo_confirmacion']
+        ) {
+            $errores[] =
+                'La confirmación del correo electrónico no coincide.';
         }
 
         /*
