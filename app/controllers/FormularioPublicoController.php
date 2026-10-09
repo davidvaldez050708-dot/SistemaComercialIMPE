@@ -6,26 +6,19 @@ class FormularioPublicoController
 {
     public function registro()
     {
-        $token = $this->tokenSolicitud();
         $modelo = new FormularioRegistroModel();
-        $enlace = $modelo->buscarEnlaceActivoPorToken(
-            $token,
-            'registro'
-        );
-
-        if (!$enlace) {
-            $this->mostrarEnlaceNoDisponible();
-        }
-
         $estados = $modelo->obtenerEstadosActivos();
         $perfilesInteres = $this->perfilesInteres();
+
+        /*
+         * Vista pública: no requiere sesión y no muestra sidebar,
+         * topbar ni controles internos de Marketing.
+         */
         $esFormularioPublico = true;
         $registroAction = BASE_URL .
-            'index.php?controller=formularioPublico&action=guardarRegistro&token=' .
-            rawurlencode($token);
+            'index.php?controller=formularioPublico&action=guardarRegistro';
         $municipiosUrl = BASE_URL .
-            'index.php?controller=formularioPublico&action=municipios&token=' .
-            rawurlencode($token);
+            'index.php?controller=formularioPublico&action=municipios';
 
         require_once __DIR__ .
             '/../views/formularios/publico_registro.php';
@@ -33,21 +26,6 @@ class FormularioPublicoController
 
     public function municipios()
     {
-        $token = $this->tokenSolicitud();
-        $modelo = new FormularioRegistroModel();
-        $enlace = $modelo->buscarEnlaceActivoPorToken(
-            $token,
-            'registro'
-        );
-
-        if (!$enlace) {
-            $this->responderJson([
-                'ok' => false,
-                'mensaje' => 'El enlace del formulario ya no está disponible.',
-                'municipios' => []
-            ], 404);
-        }
-
         $estadoId = (int)($_GET['estado_id'] ?? 0);
 
         if ($estadoId <= 0) {
@@ -59,6 +37,7 @@ class FormularioPublicoController
         }
 
         try {
+            $modelo = new FormularioRegistroModel();
             $municipios = $modelo->obtenerMunicipiosActivos(
                 $estadoId
             );
@@ -103,20 +82,6 @@ class FormularioPublicoController
             ], 405);
         }
 
-        $token = $this->tokenSolicitud();
-        $modelo = new FormularioRegistroModel();
-        $enlace = $modelo->buscarEnlaceActivoPorToken(
-            $token,
-            'registro'
-        );
-
-        if (!$enlace) {
-            $this->responderJson([
-                'ok' => false,
-                'mensaje' => 'El enlace del formulario ya no está disponible.'
-            ], 404);
-        }
-
         $datos = $this->normalizarRegistro($_POST);
         $errores = $this->validarRegistro($datos);
 
@@ -129,6 +94,8 @@ class FormularioPublicoController
         }
 
         try {
+            $modelo = new FormularioRegistroModel();
+
             if (
                 !$modelo->municipioPerteneceAEstado(
                     (int)$datos['municipio_id'],
@@ -145,10 +112,6 @@ class FormularioPublicoController
             $datos['creado_por'] = null;
             $datos['origen'] = 'PUBLICO';
             $registroId = $modelo->guardar($datos);
-
-            $modelo->registrarUsoEnlace(
-                (int)($enlace['id'] ?? 0)
-            );
 
             $this->responderJson([
                 'ok' => true,
@@ -340,27 +303,6 @@ class FormularioPublicoController
         }
 
         return $fecha;
-    }
-
-    private function tokenSolicitud()
-    {
-        $token = strtolower(trim((string)(
-            $_GET['token'] ??
-            $_POST['token'] ??
-            ''
-        )));
-
-        return preg_match('/^[a-f0-9]{64}$/', $token)
-            ? $token
-            : '';
-    }
-
-    private function mostrarEnlaceNoDisponible()
-    {
-        http_response_code(404);
-        require_once __DIR__ .
-            '/../views/formularios/publico_no_disponible.php';
-        exit;
     }
 
     private function responderJson($datos, $codigoHttp = 200)
