@@ -712,3 +712,97 @@
         gap: 10px;
     }
 }
+
+
+/* ================================================================
+   INICIO · ANALISTA DE DATOS
+   Conserva títulos y nombres útiles en móviles sin desbordar ni
+   ocultar los controles del panel. Se aplica solo a Inicio v2.
+   ================================================================ */
+.analyst-dashboard-v2,
+.analyst-dashboard-v2 .analyst-main-grid,
+.analyst-dashboard-v2 .analyst-bottom-grid,
+.analyst-dashboard-v2 .analyst-welcome,
+.analyst-dashboard-v2 .analyst-kpi-panel,
+.analyst-dashboard-v2 .dashboard-panel,
+.analyst-dashboard-v2 .analyst-upcoming-item,
+.analyst-dashboard-v2 .analyst-activity-item,
+.analyst-dashboard-v2 .analyst-territory-item {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.analyst-dashboard-v2 .analyst-panel-heading > div,
+.analyst-dashboard-v2 .analyst-upcoming-copy,
+.analyst-dashboard-v2 .analyst-activity-copy,
+.analyst-dashboard-v2 .analyst-territory-item > div {
+    min-width: 0;
+}
+
+@media (max-width: 767.98px) {
+    .analyst-dashboard-v2 .analyst-welcome h2,
+    .analyst-dashboard-v2 .analyst-panel-heading .panel-title {
+        overflow-wrap: anywhere;
+        line-height: 1.28;
+    }
+
+    .analyst-dashboard-v2 .analyst-kpi-panel,
+    .analyst-dashboard-v2 .analyst-progress-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .analyst-dashboard-v2 .analyst-kpi-panel > *,
+    .analyst-dashboard-v2 .analyst-progress-grid > * {
+        min-width: 0;
+    }
+
+    .analyst-dashboard-v2 .analyst-upcoming-item > div > strong,
+    .analyst-dashboard-v2 .analyst-upcoming-item > div > span:not(.analyst-upcoming-meeting-status),
+    .analyst-dashboard-v2 .analyst-activity-copy strong {
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+        white-space: normal;
+        overflow: hidden;
+        overflow-wrap: anywhere;
+        text-overflow: clip;
+        line-height: 1.45;
+    }
+
+    .analyst-dashboard-v2 .analyst-activity-item time {
+        justify-self: start;
+        white-space: normal;
+    }
+
+    .analyst-dashboard-v2 .analyst-panel-heading {
+        gap: 8px 12px;
+    }
+
+    .analyst-dashboard-v2 .analyst-panel-link {
+        max-width: 100%;
+        overflow-wrap: anywhere;
+    }
+
+    .analyst-dashboard-v2 .analyst-territory-summary {
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+}
+
+@media (max-width: 380px) {
+    .analyst-dashboard-v2 .analyst-kpi-panel {
+        padding: 12px;
+        column-gap: 0;
+    }
+
+    .analyst-dashboard-v2 .analyst-metric-card {
+        min-width: 0;
+        padding-right: 9px;
+        padding-left: 9px;
+    }
+
+    .analyst-dashboard-v2 .analyst-upcoming-item,
+    .analyst-dashboard-v2 .analyst-territory-item {
+        column-gap: 8px;
+    }
+}
