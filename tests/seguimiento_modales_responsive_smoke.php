@@ -18,6 +18,9 @@ $checks = [
         str_contains($css, "position: static;") &&
         str_contains($css, "bottom: auto;") &&
         str_contains($css, '#modalBuscarCandidato .linkage-candidate-page-actions'),
+    'El botón Iniciar seguimiento deja espacio después del contacto en móvil' =>
+        str_contains($css, '.linkage-candidate-secretary-actions > .linkage-candidate-start') &&
+        str_contains($css, 'margin-top: 12px;'),
     'Los tres modales conservan sus IDs' =>
         str_contains($view, 'id="modalBuscarCandidato"') &&
         str_contains($view, 'id="modalConfirmarSeguimiento"') &&
