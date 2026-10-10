@@ -1274,7 +1274,27 @@
    Permitir recorrer todos los campos cuando se abre el teclado.
    No cambiar la lógica de búsqueda, paginación o guardado.
    ================================================================ */
-@media (max-width: 767.98px), (max-height: 680px) {
+/* Escritorio: restaurar ancho de diálogos de Seguimiento.
+   No se debe aplicar el layout móvil a pantallas anchas pero bajas. */
+@media (min-width: 768px) {
+    #modalBuscarCandidato .modal-dialog.linkage-candidate-dialog {
+        width: auto;
+        max-width: min(1120px, calc(100vw - 28px));
+    }
+
+    #modalConfirmarSeguimiento .modal-dialog.system-form-dialog {
+        width: auto;
+        max-width: min(760px, calc(100vw - 28px));
+    }
+
+    #modalAgregarSeguimientoManual .modal-dialog.system-form-dialog {
+        width: auto;
+        max-width: min(800px, calc(100vw - 28px));
+    }
+}
+
+/* Móvil exclusivamente por ancho, no por altura del viewport. */
+@media (max-width: 767.98px) {
     #modalBuscarCandidato .modal-dialog,
     #modalConfirmarSeguimiento .modal-dialog,
     #modalAgregarSeguimientoManual .modal-dialog {
@@ -1358,11 +1378,40 @@
         overflow-wrap: anywhere;
     }
 
+    /* Evitar paginación pegada sobre tarjetas con scroll único de modal. */
     #modalBuscarCandidato .linkage-candidate-pagination {
-        margin-top: 12px;
-        margin-right: 0;
-        margin-left: 0;
+        position: static;
+        bottom: auto;
+        z-index: auto;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px 12px;
+        box-sizing: border-box;
+        width: 100%;
         max-width: 100%;
+        margin: 14px 0 0;
+        padding: 12px 0 6px;
+        border-top: 1px solid var(--color-border);
+        background: #fff;
+    }
+
+    #modalBuscarCandidato .linkage-candidate-pagination > span {
+        flex: 1 1 100%;
+        min-width: 0;
+        margin: 0;
+        overflow-wrap: anywhere;
+    }
+
+    #modalBuscarCandidato .linkage-candidate-page-actions {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-left: auto;
+    }
+
+    #modalBuscarCandidato .linkage-candidate-results {
+        padding-bottom: 4px;
     }
 
     /* El formulario de confirmación/alta mantiene los botones al pie,
