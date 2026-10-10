@@ -67,7 +67,31 @@ if ($baseConfigurada !== '') {
     $baseUrl = 'http://localhost/SistemaComercialIMPE/';
 }
 
-define('BASE_URL', $baseUrl);
+/**
+ * Hostinger puede mostrar el CRM desde la vista previa mientras se verifica
+ * el dominio definitivo. Para ambos accesos, los enlaces y recursos deben
+ * utilizar el mismo host HTTPS que abrió el usuario.
+ *
+ * Lista cerrada: no construir BASE_URL a partir de un HTTP_HOST arbitrario.
+ * En cualquier otro host se respeta la configuración privada existente.
+ */
+function impeResolverBaseUrlHostinger(string $baseUrl, string $host): string
+{
+    $hostsPermitidos = [
+        'fundacionrededumex.org',
+        'www.fundacionrededumex.org',
+        'mediumturquoise-starling-552985.hostingersite.com',
+    ];
+
+    if (!in_array($host, $hostsPermitidos, true)) {
+        return $baseUrl;
+    }
+
+    // Esta instalación Hostinger publica el CRM en la raíz del sitio.
+    return 'https://' . $host . '/';
+}
+
+define('BASE_URL', impeResolverBaseUrlHostinger($baseUrl, $hostDirecto));
 
 $bd = is_array($ajustes['db'] ?? null) ? $ajustes['db'] : [];
 $hostBd = $valorEnv('IMPE_DB_HOST') ?: trim((string)($bd['host'] ?? 'localhost'));
