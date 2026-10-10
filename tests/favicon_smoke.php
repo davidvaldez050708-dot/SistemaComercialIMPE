@@ -24,7 +24,7 @@ $iterador = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(
 ));
 
 foreach ($iterador as $archivo) {
-    if ($archivo->isFile() && strtolower($archivo->getExtension()) === 'php') {
+    if ($archivo->isFile() && $archivo->getPathname() !== $parcial && strtolower($archivo->getExtension()) === 'php') {
         $revisar[] = $archivo->getPathname();
     }
 }

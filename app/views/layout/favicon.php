@@ -1,7 +1,7 @@
 <?php
 /**
  * Un solo favicon APG para todo el sistema.
- * Incluir este parcial dentro del <head> de cualquier vista HTML independiente.
+ * Incluir este parcial en el encabezado de cada vista HTML independiente.
  */
 $impeFaviconBase = defined('BASE_URL')
     ? BASE_URL
