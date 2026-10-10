@@ -31,5 +31,6 @@ jobs:
         run: |
           php tests/responsive_smoke.php
           php tests/responsive_overflow_smoke.php
+          php tests/analista_inicio_responsive_smoke.php
       - name: Verificar script de diagnóstico en navegador
         run: node --check tests/diagnosticar_overflow_navegador.js
