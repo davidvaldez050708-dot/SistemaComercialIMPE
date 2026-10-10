@@ -1,4 +1,5 @@
 <?php
+require_once dirname(__DIR__, 2) . '/helpers/MapaEstadoHelper.php';
 
 $tableroCuentaClave = is_array($tableroCuentaClave ?? null)
     ? $tableroCuentaClave
@@ -726,10 +727,24 @@ $mostrarZonaPrincipal =
             <?php if (!empty($itemsCobertura)): ?>
                 <div class="kam-coverage-list">
                     <?php foreach ($itemsCobertura as $item): ?>
+                        <?php
+                        $nombreMapaCobertura = (string)(
+                            $item['nombre_estado'] ?? $item['nombre'] ?? ''
+                        );
+                        $rutaMapaCobertura = ($cobertura['modo'] ?? '') === 'estados'
+                            ? impeRutaMapaEstado($nombreMapaCobertura)
+                            : '';
+                        ?>
                         <article class="kam-coverage-item">
                             <div class="kam-coverage-name">
                                 <span class="kam-coverage-icon">
-                                    <i class="bi <?= ($cobertura['modo'] ?? '') === 'estados' ? 'bi-map' : 'bi-geo-alt' ?>"></i>
+                                    <?php if ($rutaMapaCobertura !== ''): ?>
+                                        <img src="<?= $esc(BASE_URL . $rutaMapaCobertura) ?>"
+                                            alt="Mapa de <?= $esc($nombreMapaCobertura) ?>"
+                                            loading="lazy" decoding="async">
+                                    <?php else: ?>
+                                        <i class="bi <?= ($cobertura['modo'] ?? '') === 'estados' ? 'bi-map' : 'bi-geo-alt' ?>" aria-hidden="true"></i>
+                                    <?php endif; ?>
                                 </span>
                                 <div>
                                     <strong><?= $esc($item['nombre'] ?? 'Territorio') ?></strong>

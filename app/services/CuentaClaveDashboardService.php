@@ -606,6 +606,12 @@ class CuentaClaveDashboardService
                         ?? $territorio['nombre']
                         ?? ''
                 ),
+                // Resuelve imágenes por el nombre oficial sin cambiar la etiqueta.
+                'nombre_estado' => (string)(
+                    $territorio['nombre']
+                        ?? $territorio['nombre_corto']
+                        ?? ''
+                ),
                 'analistas' => (int)(
                     $territorio['total_analistas'] ?? 0
                 ),
