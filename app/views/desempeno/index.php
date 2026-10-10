@@ -781,7 +781,7 @@ $rankingTitle = $vista === 'propio'
                 </div>
             </div>
         <?php else: ?>
-            <div class="performance-chart-scroll">
+            <div class="performance-chart-scroll" role="region" tabindex="0" aria-label="Historial diario: desplázate horizontalmente para consultar todas las fechas">
                 <div
                     class="performance-bar-chart"
                     style="--performance-days: <?= max(1, $totalDiasTendencia) ?>">
