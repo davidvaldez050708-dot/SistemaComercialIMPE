@@ -5,6 +5,7 @@ header('Content-Type: text/html; charset=utf-8');
 <!DOCTYPE html>
 <html lang="es">
 <head>
+    <?php require __DIR__ . '/app/views/layout/favicon.php'; ?>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="index,follow">

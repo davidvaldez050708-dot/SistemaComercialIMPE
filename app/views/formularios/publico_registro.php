@@ -16,6 +16,7 @@ $fechaMaximaNacimiento = date('Y-m-d');
 <!doctype html>
 <html lang="es">
 <head>
+    <?php require dirname(__DIR__) . '/layout/favicon.php'; ?>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Formulario de registro</title>

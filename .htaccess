@@ -4,6 +4,8 @@ Options -Indexes
 
 <IfModule mod_rewrite.c>
     RewriteEngine On
+    # Respaldo para navegadores y futuras vistas sin etiqueta explicita.
+    RewriteRule ^favicon\.ico$ public/favicon.ico [L,NC]
     RewriteRule ^(?:app|config|database|docs|storage|tests|tools|vendor|\.github|\.git)(?:/|$) - [F,L,NC]
 </IfModule>
 

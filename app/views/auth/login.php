@@ -2,6 +2,7 @@
 <html lang="es">
 
 <head>
+    <?php require dirname(__DIR__) . '/layout/favicon.php'; ?>
     <meta charset="UTF-8">
 
     <meta name="viewport"
