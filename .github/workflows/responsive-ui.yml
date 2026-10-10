@@ -37,5 +37,6 @@ jobs:
           php tests/agenda_toolbar_layout_smoke.php
           php tests/seguimiento_modales_responsive_smoke.php
           php tests/roles_cuenta_clave_marketing_responsive_smoke.php
+          php tests/cuenta_clave_mapa_cobertura_smoke.php
       - name: Verificar script de diagnóstico en navegador
         run: node --check tests/diagnosticar_overflow_navegador.js
