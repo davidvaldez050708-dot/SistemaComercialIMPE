@@ -806,3 +806,285 @@
         column-gap: 8px;
     }
 }
+
+
+/* ================================================================
+   AUDITORÍA MÓVIL · Información Territorial, Desempeño y Reportes
+   Soluciones por módulo, sin recortar el overflow de html/body.
+   ================================================================ */
+
+/* Información Territorial: el selector original tenía min-width: 310px.
+   En teléfonos de 320px puede superar el ancho interior del panel. */
+.data-territorial-module,
+.data-territorial-module > *,
+.data-state-header,
+.data-territorial-detail-nav,
+.data-territorial-detail-switch,
+.data-territorial-detail-select,
+.data-territorial-selector-actions {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.data-territorial-module .data-section-nav {
+    box-sizing: border-box;
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+}
+
+.data-territorial-module .data-territorial-selector-copy h2,
+.data-territorial-module .data-state-title h2 {
+    overflow-wrap: anywhere;
+}
+
+.data-territorial-module .data-mass-update-button {
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-align: center;
+}
+
+/* Desempeño: la gráfica mensual debe permitir consultar todas las fechas.
+   Antes se ocultaba overflow-x, comprimía barras o escondía etiquetas. */
+.performance-module,
+.performance-module > *,
+.performance-module .performance-filter-form,
+.performance-module .performance-filter-panel,
+.performance-module .performance-history-panel,
+.performance-module .performance-panel-heading,
+.performance-module .performance-ranking-panel {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.performance-module .performance-chart-scroll {
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+}
+
+.performance-module .performance-chart-scroll:focus-visible {
+    outline: 3px solid var(--color-accent, #0a8f7a);
+    outline-offset: 2px;
+}
+
+.performance-module .performance-view-tabs {
+    max-width: 100%;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+}
+
+.performance-module .performance-panel-heading > div,
+.performance-module .performance-filter-field {
+    min-width: 0;
+}
+
+.performance-module .performance-panel-heading h2,
+.performance-module .performance-person strong {
+    overflow-wrap: anywhere;
+}
+
+/* Reportes: los títulos y botones largos no deben empujar la página. */
+.report-module,
+.report-module > *,
+.report-module .territorial-report-toolbar,
+.report-module .territorial-report-title,
+.report-module .territorial-report-actions,
+.report-module .report-filter-form,
+.report-module .report-catalog-grid,
+.report-module .report-catalog-card {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.report-module .report-intro-panel > div,
+.report-module .report-filter-heading > div,
+.report-module .report-preview-header > div,
+.report-module .report-card-heading > div {
+    min-width: 0;
+}
+
+.report-module .report-card-heading h3,
+.report-module .report-card-meta span,
+.report-module .territorial-report-title h1,
+.report-module .territorial-report-title p {
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 767.98px) {
+    /* Cambiar territorio: opción a todo el ancho, sin 310px obligatorios. */
+    .data-territorial-module .data-territorial-detail-nav {
+        width: 100%;
+        min-width: 0;
+        align-items: stretch;
+    }
+
+    .data-territorial-module .data-territorial-detail-switch {
+        box-sizing: border-box;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: stretch;
+        justify-content: flex-start;
+        gap: 7px;
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    .data-territorial-module .data-territorial-detail-switch-label {
+        width: 100%;
+        white-space: normal;
+    }
+
+    .data-territorial-module .data-territorial-detail-select {
+        flex: 1 1 100%;
+        box-sizing: border-box;
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+        min-height: 44px;
+    }
+
+    .data-territorial-module .data-territorial-selector-actions,
+    .data-territorial-module .data-mass-update-button {
+        width: 100%;
+        max-width: 100%;
+    }
+
+    /* Ventana gráfica: fecha legible y desplazamiento solo dentro de ella. */
+    .performance-module {
+        overflow-x: visible;
+    }
+
+    .performance-module .performance-chart-scroll {
+        overflow-x: auto;
+        overflow-y: hidden;
+    }
+
+    .performance-module .performance-bar-chart {
+        box-sizing: border-box;
+        width: max-content;
+        min-width: 100%;
+        max-width: none;
+        grid-template-columns: repeat(var(--performance-days), minmax(28px, 1fr));
+        gap: 4px;
+    }
+
+    .performance-module .performance-day > strong {
+        font-size: 9px;
+        line-height: 1.35;
+    }
+
+    .performance-module .performance-filter-form {
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    .performance-module .performance-filter-field {
+        flex: 1 1 100%;
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .performance-module .performance-filter-field .form-select,
+    .performance-module .performance-filter-field .form-control {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+    }
+
+    .performance-module .performance-panel-heading {
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .performance-module .performance-period-badge {
+        max-width: 100%;
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+
+    /* Catálogo y reportes generados. */
+    .report-module .territorial-report-toolbar {
+        align-items: stretch;
+        gap: 12px;
+    }
+
+    .report-module .territorial-report-actions {
+        box-sizing: border-box;
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+    }
+
+    .report-module .territorial-report-actions .btn {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        min-height: 44px;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        line-height: 1.3;
+    }
+
+    .report-module .report-catalog-card .report-card-action {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        min-height: 44px;
+    }
+
+    .report-module .report-filter-form > .btn {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+    }
+}
+
+@media (min-width: 360px) and (max-width: 767.98px) {
+    /* Indicadores legibles pero compactos en la pantalla Desempeño. */
+    .performance-module .performance-kpi-grid,
+    .performance-module .performance-kpi-grid.is-five {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 9px;
+    }
+
+    .performance-module .performance-kpi-grid article {
+        grid-template-columns: 34px minmax(0, 1fr);
+        align-items: center;
+        gap: 7px;
+        min-width: 0;
+        padding: 9px;
+    }
+
+    .performance-module .performance-kpi-icon {
+        width: 34px;
+        height: 34px;
+        font-size: 17px;
+    }
+
+    .performance-module .performance-kpi-icon > i::before {
+        font-size: 17px !important;
+    }
+
+    .performance-module .performance-kpi-grid strong {
+        font-size: 19px;
+    }
+
+    .performance-module .performance-kpi-grid span {
+        font-size: 10px;
+        overflow-wrap: anywhere;
+    }
+}
+
+@media (max-width: 359.98px) {
+    .performance-module .performance-kpi-grid,
+    .performance-module .performance-kpi-grid.is-five {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
