@@ -124,8 +124,14 @@ $pendientesAgenda = array_values(array_filter(
         </div>
     </div>
 
+    <p class="agenda-mobile-scroll-hint">
+        <i class="bi bi-arrows-move" aria-hidden="true"></i>
+        Desliza el calendario hacia los lados para consultar todos los días.
+    </p>
+
     <div class="agenda-layout">
-        <section class="agenda-calendar-card">
+        <section class="agenda-calendar-card" role="region" tabindex="0"
+            aria-label="Calendario mensual de reuniones; se puede desplazar horizontalmente para consultar más días">
             <div class="agenda-week-header" aria-hidden="true">
                 <span>Lun</span>
                 <span>Mar</span>
