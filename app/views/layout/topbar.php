@@ -49,7 +49,7 @@ $totalRecordatoriosSeguimiento = 0;
 
     <header class="admin-topbar">
 
-        <div class="d-flex align-items-center gap-3">
+        <div class="topbar-leading">
             <button
                 class="mobile-menu-button d-lg-none"
                 type="button"
@@ -60,7 +60,7 @@ $totalRecordatoriosSeguimiento = 0;
                 <i class="bi bi-list"></i>
             </button>
 
-            <div>
+            <div class="topbar-page-heading">
                 <h1 class="page-title">
                     <?= htmlspecialchars($tituloPagina) ?>
                 </h1>
@@ -71,7 +71,7 @@ $totalRecordatoriosSeguimiento = 0;
             </div>
         </div>
 
-        <div class="topbar-actions">
+        <div class="topbar-actions" role="group" aria-label="Accesos rápidos">
             <?php if ($puedeUsarTelefoniaTopbar && $puedeRecibirTelefoniaTopbar): ?>
                 <button
                     class="topbar-reminder-button telephony-reception-toggle"
