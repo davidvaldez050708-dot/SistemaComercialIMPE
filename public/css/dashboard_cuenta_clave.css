@@ -1070,3 +1070,145 @@
         justify-content: space-between;
     }
 }
+
+
+/* Revisión móvil: texto legible en supervisión de Cuenta Clave.
+   El diseño de escritorio no cambia. */
+@media (max-width: 767.98px) {
+    .kam-dashboard,
+    .kam-dashboard > *,
+    .kam-dashboard .dashboard-panel,
+    .kam-dashboard .kam-welcome,
+    .kam-dashboard .kam-metric-card,
+    .kam-dashboard .kam-panel-heading,
+    .kam-dashboard .kam-team-item,
+    .kam-dashboard .kam-coverage-item {
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    .kam-dashboard .kam-panel-heading > div,
+    .kam-dashboard .kam-team-person > div,
+    .kam-dashboard .kam-agenda-main,
+    .kam-dashboard .kam-coverage-name {
+        min-width: 0;
+    }
+
+    .kam-dashboard .kam-welcome-copy h2 {
+        overflow-wrap: anywhere;
+    }
+
+    .kam-dashboard .kam-welcome-status div > span,
+    .kam-dashboard .kam-panel-heading .page-subtitle,
+    .kam-dashboard .kam-welcome-tagline {
+        font-size: 11px;
+        line-height: 1.45;
+    }
+
+    .kam-dashboard .kam-metric-card span {
+        font-size: 11px;
+        line-height: 1.3;
+    }
+
+    .kam-dashboard .kam-metric-card small {
+        font-size: 10px;
+        line-height: 1.4;
+    }
+
+    .kam-dashboard .kam-panel-heading .panel-title {
+        font-size: 14px;
+        line-height: 1.35;
+        overflow-wrap: anywhere;
+    }
+
+    .kam-dashboard .kam-attention-title strong,
+    .kam-dashboard .kam-agenda-main strong,
+    .kam-dashboard .kam-ally-item strong {
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+        overflow: hidden;
+        overflow-wrap: anywhere;
+        white-space: normal;
+        line-height: 1.4;
+        font-size: 11px;
+    }
+
+    .kam-dashboard .kam-priority-pill,
+    .kam-dashboard .kam-attention-meta,
+    .kam-dashboard .kam-team-person span,
+    .kam-dashboard .kam-agenda-main span,
+    .kam-dashboard .kam-agenda-main small,
+    .kam-dashboard .kam-ally-item span,
+    .kam-dashboard .kam-coverage-name span,
+    .kam-dashboard .kam-coverage-inactive,
+    .kam-dashboard .kam-inline-clear div > span {
+        font-size: 10px;
+        line-height: 1.4;
+        overflow-wrap: anywhere;
+    }
+
+    .kam-dashboard .kam-team-person strong,
+    .kam-dashboard .kam-coverage-name strong {
+        font-size: 11px;
+        line-height: 1.35;
+        overflow-wrap: anywhere;
+    }
+
+    .kam-dashboard .kam-team-metrics span,
+    .kam-dashboard .kam-allies-summary span {
+        font-size: 9.5px;
+        line-height: 1.3;
+        overflow-wrap: anywhere;
+    }
+
+    .kam-dashboard .kam-team-metrics strong {
+        font-size: 14px;
+    }
+
+    .kam-dashboard .kam-agenda-time strong,
+    .kam-dashboard .kam-agenda-time small,
+    .kam-dashboard .kam-coverage-team,
+    .kam-dashboard .kam-coverage-attention {
+        font-size: 10px;
+        line-height: 1.35;
+        white-space: normal;
+    }
+
+    .kam-dashboard .kam-panel-link,
+    .kam-dashboard .kam-panel-footer-action a,
+    .kam-dashboard .kam-team-footer a {
+        min-height: 40px;
+        align-items: center;
+        font-size: 11px;
+        white-space: normal;
+    }
+
+    .kam-dashboard .kam-panel-count {
+        font-size: 10px;
+        white-space: normal;
+    }
+
+    .kam-dashboard .kam-priority-pill {
+        white-space: normal;
+        text-overflow: clip;
+        max-width: 100%;
+    }
+}
+
+@media (max-width: 379.98px) {
+    .kam-dashboard .kam-metric-card {
+        padding: 10px;
+        grid-template-columns: 34px minmax(0, 1fr);
+        gap: 9px;
+    }
+
+    .kam-dashboard .kam-team-metrics {
+        gap: 4px;
+    }
+
+    .kam-dashboard .kam-team-metrics > div {
+        min-width: 0;
+        padding: 6px 5px;
+    }
+}
