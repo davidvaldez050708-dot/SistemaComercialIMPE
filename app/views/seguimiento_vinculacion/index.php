@@ -96,7 +96,7 @@ $tarjetasPorPaginaSeguimiento = 12;
             </div>
 
             <a
-                class="btn btn-system-save linkage-action-button"
+                class="btn btn-system-save linkage-action-button linkage-report-button"
                 href="<?= BASE_URL ?>index.php?controller=seguimientoVinculacionReporte&action=index"
                 data-bs-toggle="modal"
                 data-bs-target="#modalGenerarReporteSeguimiento">
