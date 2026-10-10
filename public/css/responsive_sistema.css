@@ -1379,6 +1379,14 @@
     }
 
     /* Evitar paginación pegada sobre tarjetas con scroll único de modal. */
+    /* En tarjetas de secretarías, separar el contacto de la acción.
+       Solo móviles: se conserva la distribución de tres columnas del PC. */
+    #modalBuscarCandidato .linkage-candidate-card-secretary
+    .linkage-candidate-secretary-actions > .linkage-candidate-start {
+        margin-top: 12px;
+        min-height: 44px;
+    }
+
     #modalBuscarCandidato .linkage-candidate-pagination {
         position: static;
         bottom: auto;
