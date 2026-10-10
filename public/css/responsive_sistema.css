@@ -504,3 +504,211 @@
         animation-duration: 0.01ms !important;
     }
 }
+
+
+/* ================================================================
+   Auditoría transversal 2026-10: los grid items no deben imponer
+   un ancho mínimo al documento. Las tablas mantienen scroll propio.
+   ================================================================ */
+.admin-content,
+.admin-content > *,
+.admin-content .dashboard-panel,
+.admin-content .metric-card,
+.admin-content .data-territorial-module,
+.admin-content .data-territorial-selector,
+.admin-content .data-territorial-toolbar,
+.admin-content .data-territorial-cards,
+.admin-content .linkage-territory-grid,
+.admin-content .module-toolbar,
+.admin-content .module-filters,
+.admin-content .table-responsive,
+.admin-content .convocatoria-overview-table-wrap,
+.admin-content .marketing-recent-table-wrap,
+.admin-content .marketing-daily-publications-table-wrap,
+.admin-content .aliados-table-wrap,
+.admin-content .aliados-report-table-wrap {
+    box-sizing: border-box;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.admin-content .data-territorial-selector {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.admin-content .data-territorial-selector > *,
+.admin-content .data-territorial-toolbar > *,
+.admin-content .linkage-territory-toolbar > *,
+.admin-content .module-toolbar > *,
+.admin-content .module-filters > * {
+    min-width: 0;
+    max-width: 100%;
+}
+
+/* Seguimiento > territorios: el reporte NO debe ensanchar el panel.
+   Se usa grid minmax(0,1fr) también en el encabezado, evitando
+   el min-content implícito de grid y las bases porcentuales de flex. */
+.admin-content .linkage-selector {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.admin-content .linkage-selector .data-selector-heading {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    justify-items: stretch;
+    gap: 12px;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.admin-content .linkage-selector .data-selector-heading > * {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.admin-content .linkage-selector .data-territorial-selector-copy .panel-title {
+    white-space: normal;
+    overflow-wrap: break-word;
+}
+
+.admin-content .linkage-selector .data-territorial-selector-copy p {
+    overflow-wrap: break-word;
+}
+
+.admin-content .linkage-selector .data-selector-heading > .linkage-report-button {
+    display: inline-flex;
+    width: auto;
+    max-width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    padding: 10px 14px;
+    justify-self: end;
+    justify-content: center;
+    align-items: center;
+    flex: none;
+    gap: 8px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-align: center;
+    line-height: 1.3;
+}
+
+.admin-content .linkage-selector .linkage-report-button i {
+    flex: 0 0 auto;
+}
+
+/* Las tablas anchas de Ventas, Aliados, Territorios, Agenda, Marketing,
+   Seguimiento y Reportes se desplazan EN SU CONTENEDOR y nunca en body. */
+.admin-content .convocatoria-overview-table-wrap,
+.admin-content .marketing-recent-table-wrap,
+.admin-content .marketing-daily-publications-table-wrap,
+.admin-content .aliados-table-wrap,
+.admin-content .aliados-report-table-wrap,
+.admin-content .telephony-table-wrap,
+.admin-content .agenda-week-scroll,
+.admin-content .agenda-calendar-scroll,
+.admin-content .linkage-mail-history-table-wrap {
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Las acciones de las cabeceras, formularios, fichas y reportes
+   no deben crear una segunda pantalla horizontal. */
+@media (max-width: 1199.98px) {
+    .admin-content .linkage-selector .data-selector-heading {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 12px;
+    }
+
+    .admin-content .linkage-selector .data-selector-heading > .linkage-report-button {
+        width: 100%;
+        justify-self: stretch;
+    }
+
+    .admin-content .data-territorial-selector {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+@media (max-width: 767.98px) {
+    .admin-content .linkage-selector {
+        padding: 14px;
+        gap: 14px;
+    }
+
+    .admin-content .linkage-selector .data-selector-heading {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        justify-content: stretch;
+        width: 100%;
+        gap: 12px;
+    }
+
+    .admin-content .linkage-selector .data-territorial-selector-copy {
+        width: 100%;
+    }
+
+    .admin-content .linkage-selector .data-territorial-selector-copy h2 {
+        max-width: 100%;
+        margin: 0 0 5px;
+        font-size: clamp(16px, 4.5vw, 20px);
+        line-height: 1.25;
+    }
+
+    .admin-content .linkage-selector .data-selector-heading > .linkage-report-button {
+        display: flex;
+        width: 100%;
+        max-width: 100%;
+        margin: 0;
+        justify-self: stretch;
+        flex: 0 1 auto;
+        min-height: 44px;
+        white-space: normal;
+    }
+
+    .admin-content .linkage-selector .linkage-territory-toolbar {
+        width: 100%;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 12px;
+    }
+
+    .admin-content .data-territorial-toolbar {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .admin-content .linkage-selector .linkage-territory-toolbar .module-search,
+    .admin-content .linkage-selector .linkage-territory-toolbar .form-select,
+    .admin-content .linkage-selector .linkage-territory-toolbar .form-control {
+        box-sizing: border-box;
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    .admin-content .module-toolbar-actions > *,
+    .admin-content .linkage-tools-actions > * {
+        max-width: 100%;
+    }
+
+    /* Evita modales más anchos que el visor (sin ocultar su contenido). */
+    .admin-content .modal-dialog:not(.modal-fullscreen-sm-down) {
+        width: auto;
+        max-width: calc(100vw - 24px);
+    }
+}
+
+@media (max-width: 380px) {
+    .admin-content .linkage-selector {
+        padding: 12px;
+    }
+
+    .admin-content .linkage-selector .data-selector-heading {
+        gap: 10px;
+    }
+}

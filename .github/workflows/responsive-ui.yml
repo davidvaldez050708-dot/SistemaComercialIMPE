@@ -28,4 +28,8 @@ jobs:
           php -l app/views/layout/dashboard_head.php
           php -l app/views/layout/topbar.php
       - name: Verificar reglas responsive compartidas
-        run: php tests/responsive_smoke.php
+        run: |
+          php tests/responsive_smoke.php
+          php tests/responsive_overflow_smoke.php
+      - name: Verificar script de diagnóstico en navegador
+        run: node --check tests/diagnosticar_overflow_navegador.js
