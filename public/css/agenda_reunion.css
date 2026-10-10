@@ -621,13 +621,37 @@
 }
 
 @media (max-width: 991.98px) {
-    .agenda-toolbar {
-        align-items: flex-start;
-        flex-direction: column;
+    /* La cuadrícula no debe estirar la primera fila al alto de la página. */
+    .agenda-page {
+        align-content: start;
+        grid-auto-rows: max-content;
     }
 
-    .agenda-toolbar-actions {
+    /* Al pasar de fila a columna, space-between separaba el mes y los
+       controles por toda la altura disponible en teléfonos/tablets. */
+    .agenda-page > .agenda-toolbar {
+        align-self: start;
+        align-items: stretch;
+        flex-direction: column;
+        justify-content: flex-start;
+        gap: 12px;
         width: 100%;
+        height: auto;
+        min-height: 0;
+    }
+
+    .agenda-page > .agenda-toolbar > div:first-child {
+        flex: 0 0 auto;
+        min-width: 0;
+        width: 100%;
+    }
+
+    .agenda-page .agenda-toolbar-actions {
+        align-self: stretch;
+        flex: 0 0 auto;
+        min-width: 0;
+        width: 100%;
+        margin: 0;
         justify-content: flex-start;
     }
 
