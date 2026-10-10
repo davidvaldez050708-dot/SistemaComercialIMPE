@@ -456,6 +456,11 @@ $jsOpcionalHead = array_values(array_unique($jsOpcionalHead));
                 href="<?= BASE_URL ?>public/css/<?= htmlspecialchars($archivoCss, ENT_QUOTES, 'UTF-8') ?>?v=<?= filemtime($rutaCss) ?>">
         <?php endif; ?>
     <?php endforeach; ?>
+    <!-- Última hoja: adapta todas las vistas internas y roles sin modificar su lógica. -->
+    <link
+        rel="stylesheet"
+        href="<?= BASE_URL ?>public/css/responsive_sistema.css?v=<?= filemtime(ROOT_PATH . '/public/css/responsive_sistema.css') ?>">
+
 
     <script>
         window.IMPE_CURRENT_ROLE_ID = <?= (int)($_SESSION['rol_id'] ?? 0) ?>;
