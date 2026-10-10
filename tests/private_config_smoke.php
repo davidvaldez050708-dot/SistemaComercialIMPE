@@ -55,6 +55,26 @@ try {
 
     $checks = [
         'base_url_https' => BASE_URL === 'https://crm.ejemplo.org/',
+        'hostinger_vista_previa' => impeResolverBaseUrlHostinger(
+            'https://crm.ejemplo.org/',
+            'mediumturquoise-starling-552985.hostingersite.com'
+        ) === 'https://mediumturquoise-starling-552985.hostingersite.com/',
+        'hostinger_dominio_real' => impeResolverBaseUrlHostinger(
+            'https://crm.ejemplo.org/',
+            'fundacionrededumex.org'
+        ) === 'https://fundacionrededumex.org/',
+        'hostinger_dominio_www' => impeResolverBaseUrlHostinger(
+            'https://crm.ejemplo.org/',
+            'www.fundacionrededumex.org'
+        ) === 'https://www.fundacionrededumex.org/',
+        'host_desconocido_se_mantiene' => impeResolverBaseUrlHostinger(
+            'https://crm.ejemplo.org/',
+            'dominio-externo.example'
+        ) === 'https://crm.ejemplo.org/',
+        'host_header_invalido_rechazado' => impeResolverBaseUrlHostinger(
+            'https://crm.ejemplo.org/',
+            'fundacionrededumex.org.ejemplo.invalid'
+        ) === 'https://crm.ejemplo.org/',
         'usuario_mysql_ficticio' => DB_USER === 'impe_test',
         'password_mysql_ficticio' => DB_PASSWORD === 'solo-para-pruebas',
         'token_inegi_ficticio' => INEGI_INDICADORES_TOKEN === 'indicadores-test',
