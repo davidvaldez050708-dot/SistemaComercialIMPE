@@ -1088,3 +1088,182 @@
         grid-template-columns: minmax(0, 1fr);
     }
 }
+
+
+/* ================================================================
+   AGENDA Y EXPEDIENTE · revisión responsive y accesibilidad
+   ================================================================ */
+.agenda-page,
+.agenda-page > *,
+.agenda-page .agenda-layout,
+.agenda-page .agenda-toolbar,
+.agenda-page .agenda-calendar-card,
+.agenda-page .agenda-side-card,
+.agenda-page .agenda-toolbar-actions {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.agenda-page .agenda-toolbar > div:first-child,
+.agenda-page .agenda-side-card > *,
+.agenda-page .agenda-pending-copy {
+    min-width: 0;
+}
+
+.agenda-page .agenda-toolbar h2,
+.agenda-page .agenda-pending-item strong,
+.agenda-page .agenda-pending-copy {
+    overflow-wrap: anywhere;
+}
+
+.agenda-page .agenda-mobile-scroll-hint {
+    display: none;
+}
+
+.agenda-page .agenda-calendar-card:focus-visible {
+    outline: 3px solid var(--color-accent, #0a8f7a);
+    outline-offset: 2px;
+}
+
+.linkage-expediente-enhanced,
+.linkage-expediente-enhanced > *,
+.linkage-expediente-enhanced .linkage-panel,
+.linkage-expediente-enhanced .linkage-detail-tabs,
+.linkage-expediente-enhanced .linkage-detail-panel,
+.linkage-expediente-enhanced .linkage-expediente-content,
+.linkage-expediente-enhanced .linkage-expediente-pane {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.linkage-expediente-enhanced .linkage-heading > div,
+.linkage-expediente-enhanced .linkage-detail-panel > *,
+.linkage-expediente-enhanced .linkage-activity-actions {
+    min-width: 0;
+}
+
+.linkage-expediente-enhanced .linkage-heading h2,
+.linkage-expediente-enhanced .linkage-heading p,
+.linkage-expediente-enhanced .linkage-detail-header strong,
+.linkage-expediente-enhanced .linkage-detail-header p,
+.linkage-expediente-enhanced .linkage-detail-notes,
+.linkage-expediente-enhanced .linkage-history-item {
+    overflow-wrap: anywhere;
+}
+
+.linkage-expediente-enhanced .linkage-expediente-section-nav {
+    box-sizing: border-box;
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+}
+
+@media (max-width: 991.98px) {
+    .agenda-page .agenda-mobile-scroll-hint {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        margin: -7px 0 -10px;
+        padding: 0 2px;
+        color: var(--color-text-secondary, #627087);
+        font-size: 11px;
+        line-height: 1.4;
+    }
+
+    .agenda-page .agenda-calendar-card {
+        box-sizing: border-box;
+        width: 100%;
+        max-width: 100%;
+        overflow-x: auto;
+        overscroll-behavior-x: contain;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .agenda-page .agenda-week-header,
+    .agenda-page .agenda-calendar-grid {
+        min-width: 760px;
+    }
+
+    .agenda-page .agenda-toolbar-actions {
+        justify-content: flex-start;
+        flex-wrap: wrap;
+    }
+
+    .agenda-page .agenda-nav-button,
+    .agenda-page .agenda-today-button,
+    .agenda-page .agenda-new-button {
+        min-height: 44px;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .agenda-page .agenda-toolbar h2 {
+        font-size: clamp(19px, 5vw, 23px);
+    }
+
+    .agenda-page .agenda-toolbar-actions .agenda-new-button {
+        flex: 1 1 100%;
+        width: 100%;
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+
+    .agenda-page .agenda-modal-dialog,
+    .agenda-page .agenda-mail-modal-dialog,
+    .agenda-page .agenda-ecard-viewer-dialog,
+    #modalAgendaSolicitud .modal-dialog,
+    #modalAgendaDetalle .modal-dialog,
+    #modalAgendaCorreo .modal-dialog,
+    #modalAgendaEcardVista .modal-dialog {
+        box-sizing: border-box;
+        max-width: calc(100vw - 24px);
+    }
+
+    .linkage-expediente-enhanced .linkage-panel .linkage-heading {
+        align-items: flex-start;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .linkage-expediente-enhanced .linkage-panel .linkage-state-pill {
+        min-width: 0;
+        max-width: 100%;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        line-height: 1.3;
+    }
+
+    .linkage-expediente-enhanced .linkage-expediente-section-nav {
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .linkage-expediente-enhanced .linkage-oficio-document-actions,
+    .linkage-expediente-enhanced .linkage-activity-actions {
+        max-width: 100%;
+        flex-wrap: wrap;
+    }
+
+    .linkage-expediente-enhanced .linkage-comment-form .form-control,
+    .linkage-expediente-enhanced .linkage-comment-form textarea {
+        box-sizing: border-box;
+        min-width: 0;
+        max-width: 100%;
+    }
+}
+
+@media (max-width: 380px) {
+    .agenda-page .agenda-toolbar-actions {
+        gap: 7px;
+    }
+
+    .agenda-page .agenda-toolbar-actions .agenda-nav-button {
+        flex: 0 0 44px;
+        width: 44px;
+    }
+
+    .linkage-expediente-enhanced .linkage-detail-panel,
+    .linkage-expediente-enhanced .linkage-panel {
+        min-width: 0;
+    }
+}
