@@ -170,6 +170,15 @@
     .admin-topbar .page-title {
         font-size: clamp(18px, 2vw, 22px);
     }
+
+    /* Los avisos emergentes no deben tapar la segunda fila del encabezado. */
+    .reminder-toast-container {
+        margin-top: 128px;
+    }
+
+    .convocatoria-activation-toast {
+        top: 140px;
+    }
 }
 
 /* Tablet: más aire y ningún panel que se salga de la pantalla. */
@@ -398,6 +407,14 @@
 
     .admin-topbar .topbar-account-text {
         display: none !important;
+    }
+
+    .reminder-toast-container {
+        margin-top: 116px;
+    }
+
+    .convocatoria-activation-toast {
+        top: 128px;
     }
 
     .admin-content .module-toolbar-actions {

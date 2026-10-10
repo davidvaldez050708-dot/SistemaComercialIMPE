@@ -264,6 +264,8 @@ $totalRecordatoriosSeguimiento = 0;
                     class="topbar-account-button dropdown-toggle"
                     type="button"
                     data-bs-toggle="dropdown"
+                    aria-label="Abrir opciones de la cuenta de <?= htmlspecialchars($nombreCompleto, ENT_QUOTES, 'UTF-8') ?>"
+                    title="Opciones de mi cuenta"
                     aria-expanded="false">
                     <?= renderAvatarUsuario(
                         $_SESSION['nombre'] ?? $nombreCompleto,
