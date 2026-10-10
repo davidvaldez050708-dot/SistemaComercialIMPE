@@ -70,6 +70,30 @@ Opcionalmente el servidor admite APP_ENV, IMPE_BASE_URL, IMPE_DB_HOST,
 IMPE_DB_USER, IMPE_DB_PASSWORD, IMPE_DB_NAME, IMPE_PRIVATE_CONFIG_DIR y
 las variables de entorno particulares de los servicios.
 
+## Dominio institucional y vista previa de Hostinger
+
+El CRM se sirve desde la raíz del sitio web en Hostinger.
+
+La función `impeResolverBaseUrlHostinger` en `config/config.php` permite
+que los enlaces absolutos, formularios y archivos CSS/JS utilicen el host
+que abrió el visitante **únicamente** para estas direcciones explícitas:
+
+- `fundacionrededumex.org`
+- `www.fundacionrededumex.org`
+- `mediumturquoise-starling-552985.hostingersite.com` (vista previa)
+
+Los demás hosts continúan utilizando el valor `base_url` del archivo
+privado `app.local.php` o `IMPE_BASE_URL`. No se confía en cualquier
+encabezado HTTP Host. Mantener el `base_url` privado apuntando al dominio
+definitivo HTTPS después de completar la verificación del dominio.
+
+La vista previa **no sustituye** la verificación del registro, la
+activación de HTTPS del dominio definitivo ni la revisión de webhooks
+de Zadarma/WhatsApp. Si Hostinger reemplaza la URL de vista previa,
+actualizar la lista de hosts permitidos y volver a desplegar el código.
+
+Pruebas: `php tests/private_config_smoke.php`.
+
 ## Medidas de seguridad
 
 - En producción la URL HTTPS debe configurarse explícitamente, sin localhost.
