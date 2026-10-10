@@ -11,6 +11,7 @@ unset($_SESSION['mostrar_modal_recuperacion']);
 <html lang="es">
 
 <head>
+    <?php require dirname(__DIR__) . '/layout/favicon.php'; ?>
 
     <meta charset="UTF-8">
 

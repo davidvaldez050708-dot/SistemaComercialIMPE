@@ -408,6 +408,7 @@ $jsOpcionalHead = array_values(array_unique($jsOpcionalHead));
 <html lang="es">
 
 <head>
+    <?php require __DIR__ . '/favicon.php'; ?>
 
     <meta charset="UTF-8">
 
