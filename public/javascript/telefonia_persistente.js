@@ -510,14 +510,17 @@
     const openHostSynchronously = function () {
         // El shell del CRM conserva el motor dentro de la misma pestaña.
         // No abrir una ventana si estamos en su iframe de navegación.
+        let shell = null;
         try {
-            const shell = window.parent !== window
+            shell = window.parent !== window
                 ? window.parent.IMPE_TELEPHONY_SHELL : null;
-            if (shell?.isEmbedded && Number(shell.userId) === userId) {
-                return shell.ensureHost();
-            }
         } catch (error) {
-            // Si no hay shell de mismo origen, mantener respaldo existente.
+            // El marco de otro origen no concede acceso al shell.
+        }
+        if (shell?.isEmbedded && Number(shell.userId) === userId) {
+            // Propagar errores (p. ej. extensión activa en otra pestaña).
+            // Nunca abrir un popup si falló la exclusión del motor embebido.
+            return shell.ensureHost();
         }
 
         const modoPestana = getHostMode() === 'tab';
