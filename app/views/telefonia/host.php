@@ -12,6 +12,7 @@ if ($usuarioHost === '') {
     $usuarioHost = (string)($_SESSION['usuario'] ?? 'Usuario');
 }
 $mostrarPestanaTelefonica = (string)($_GET['display'] ?? '') === 'tab';
+$motorTelefonicoEmbebido = (string)($_GET['display'] ?? '') === 'embed';
 
 ?>
 <!DOCTYPE html>
@@ -38,7 +39,7 @@ $mostrarPestanaTelefonica = (string)($_GET['display'] ?? '') === 'tab';
         href="<?= BASE_URL ?>public/css/telefonia_host.css?v=<?= filemtime(ROOT_PATH . '/public/css/telefonia_host.css') ?>">
 </head>
 <body
-    class="<?= $mostrarPestanaTelefonica ? 'telephony-host-tab' : '' ?>"
+    class="<?= $motorTelefonicoEmbebido ? 'telephony-host-embed' : ($mostrarPestanaTelefonica ? 'telephony-host-tab' : '') ?>"
     data-telephony-host
     data-user-id="<?= (int)($_SESSION['usuario_id'] ?? 0) ?>"
     data-extension="<?= htmlspecialchars($extensionHost, ENT_QUOTES, 'UTF-8') ?>">
