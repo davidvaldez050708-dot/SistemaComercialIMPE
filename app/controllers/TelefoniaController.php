@@ -358,6 +358,42 @@ class TelefoniaController
         }
     }
 
+    /**
+     * Shell persistente para el CRM. El SDK WebRTC reside en un iframe hijo
+     * de esta página, y las vistas PHP se navegan en otro iframe. Esto evita
+     * ventanas adicionales y conserva la llamada al cambiar de módulo.
+     */
+    public function shell()
+    {
+        $this->validarUsuarioTelefoniaHtml();
+        if (!empty($_SESSION['requiere_cambio_password'])) {
+            header('Location: ' . BASE_URL . 'index.php?controller=home&action=index');
+            exit;
+        }
+
+        try {
+            $asignacionTelefonica = $this->service->resolverParaUsuario(
+                (int)($_SESSION['usuario_id'] ?? 0)
+            );
+        } catch (Throwable $error) {
+            error_log('[Telefonia shell] ' . $error->getMessage());
+            $asignacionTelefonica = null;
+        }
+
+        if (!$asignacionTelefonica || (
+            empty($asignacionTelefonica['permite_entrantes']) &&
+            empty($asignacionTelefonica['permite_salientes'])
+        )) {
+            header('Location: ' . BASE_URL . 'index.php?controller=home&action=index');
+            exit;
+        }
+
+        header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+        header('Pragma: no-cache');
+        header('X-Frame-Options: SAMEORIGIN');
+        require __DIR__ . '/../views/telefonia/shell.php';
+    }
+
     public function host()
     {
         $this->validarUsuarioTelefoniaHtml();
