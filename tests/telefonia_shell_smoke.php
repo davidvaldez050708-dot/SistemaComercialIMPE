@@ -49,6 +49,10 @@ $checks = [
         str_contains($host, 'public/javascript/telefonia_host.js') &&
         str_contains($hostJs, 'window.zadarmaWidgetFn(') &&
         str_contains($hostJs, 'sendTransferDtmf('),
+    'Transferencia sin API DTMF muestra panel oficial en CRM' =>
+        str_contains($hostJs, "'IMPE_TELEPHONY_NATIVE_CONTROLS'") &&
+        str_contains($shellJs, "event.data?.type !== 'IMPE_TELEPHONY_NATIVE_CONTROLS'") &&
+        str_contains($shellJs, 'event.source !== hostFrame.contentWindow'),
     'Recepción se activa al entrar Marketing pero exige permisos' =>
         str_contains($shell, 'marketingShell') &&
         str_contains($shell, "tienePermiso('telefonia.recibir')") &&
