@@ -20,9 +20,28 @@ $nombreShell = $nombreShell !== '' ? $nombreShell : 'Usuario';
     <meta name="referrer" content="same-origin">
     <title>Sistema Comercial · Telefonía integrada</title>
     <?php require __DIR__ . '/../layout/favicon.php'; ?>
-    <link rel="stylesheet" href="<?= BASE_URL ?>public/css/telefonia_shell.css?v=<?= filemtime(ROOT_PATH . '/public/css/telefonia_shell.css') ?>">
+    <!-- Estilos críticos servidos con el documento PHP. Si Hostinger bloquea
+         o cachea el CSS estático, el iframe nunca queda a 300 x 150 px. -->
+    <style id="impeShellStyles">
+    <?php
+    $shellCssPath = ROOT_PATH . '/public/css/telefonia_shell.css';
+    $shellCssContent = is_readable($shellCssPath)
+        ? file_get_contents($shellCssPath)
+        : '';
+    // El CSS procede de un archivo local controlado por el proyecto.
+    echo str_ireplace('</style', '<\\/style', (string)$shellCssContent);
+    ?>
+    </style>
 </head>
 <body>
+    <noscript>
+      <p style="margin:20px;font:600 14px system-ui">
+        Activa JavaScript para usar telefonía integrada o
+        <a href="<?= htmlspecialchars(BASE_URL . 'index.php?controller=home&action=index', ENT_QUOTES, 'UTF-8') ?>">
+            entra al CRM clásico
+        </a>.
+      </p>
+    </noscript>
     <main class="impe-phone-shell" aria-label="Sistema comercial">
         <iframe
             id="impeCrmFrame"
@@ -61,6 +80,16 @@ $nombreShell = $nombreShell !== '' ? $nombreShell : 'Usuario';
             'homeUrl' => BASE_URL . 'index.php?controller=home&action=index'
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
     </script>
-    <script src="<?= BASE_URL ?>public/javascript/telefonia_shell.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/telefonia_shell.js') ?>"></script>
+    <!-- El controlador telefónico se incluye desde disco en la respuesta
+         autenticada, sin depender de otra petición HTTP para su carga. -->
+    <script id="impeShellRuntime">
+    <?php
+    $shellJsPath = ROOT_PATH . '/public/javascript/telefonia_shell.js';
+    $shellJsContent = is_readable($shellJsPath)
+        ? file_get_contents($shellJsPath)
+        : '';
+    echo str_ireplace('</script', '<\\/script', (string)$shellJsContent);
+    ?>
+    </script>
 </body>
 </html>
