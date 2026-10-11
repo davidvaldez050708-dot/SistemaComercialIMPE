@@ -2371,6 +2371,9 @@
             const marketingHint = marketingReception?.querySelector(
                 '[data-marketing-reception-hint]'
             );
+            const marketingBrowserNote = marketingReception?.querySelector(
+                '[data-marketing-reception-browser-note]'
+            );
             let receptionChecking = true;
             let receptionBusy = false;
             let receptionError = '';
@@ -2418,6 +2421,9 @@
                 if (marketingLabel) {
                     marketingLabel.textContent = label +
                         (extension ? ' · Ext. ' + extension : '');
+                }
+                if (marketingBrowserNote) {
+                    marketingBrowserNote.hidden = !active;
                 }
                 if (marketingHint) {
                     marketingHint.textContent = active
