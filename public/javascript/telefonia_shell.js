@@ -256,6 +256,14 @@
         }
         render();
     }, 3000);
+    window.addEventListener('beforeunload', function (event) {
+        if (freshState(currentState) && currentState.active) {
+            // Navegar entre módulos internos no descarga este documento.
+            // Sólo advertir si intentan cerrar o recargar la capa persistente.
+            event.preventDefault();
+            event.returnValue = '';
+        }
+    });
     window.addEventListener('pagehide', function () {
         releaseLease();
         channel?.close();
