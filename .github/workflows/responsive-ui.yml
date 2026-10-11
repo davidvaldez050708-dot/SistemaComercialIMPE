@@ -6,6 +6,11 @@ on:
       - "app/views/**"
       - "public/css/**"
       - "tests/responsive_smoke.php"
+      - "tests/seguimiento_candidatos_paginacion_smoke.js"
+      - "tests/seguimiento_candidatos_paginacion_smoke.php"
+      - "public/javascript/seguimiento_candidatos_paginacion.js"
+      - "tools/desplegar_paginacion_candidatos_hostinger.sh"
+      - "tests/seguimiento_candidatos_despliegue_smoke.sh"
       - ".github/workflows/responsive-ui.yml"
   push:
     branches: [main]
@@ -13,6 +18,11 @@ on:
       - "app/views/**"
       - "public/css/**"
       - "tests/responsive_smoke.php"
+      - "tests/seguimiento_candidatos_paginacion_smoke.js"
+      - "tests/seguimiento_candidatos_paginacion_smoke.php"
+      - "public/javascript/seguimiento_candidatos_paginacion.js"
+      - "tools/desplegar_paginacion_candidatos_hostinger.sh"
+      - "tests/seguimiento_candidatos_despliegue_smoke.sh"
       - ".github/workflows/responsive-ui.yml"
 
 jobs:
@@ -36,7 +46,17 @@ jobs:
           php tests/agenda_expediente_responsive_smoke.php
           php tests/agenda_toolbar_layout_smoke.php
           php tests/seguimiento_modales_responsive_smoke.php
+          php -l app/views/seguimiento_vinculacion/estado.php
+          php -l app/views/layout/dashboard_footer.php
+          php tests/seguimiento_candidatos_paginacion_smoke.php
           php tests/roles_cuenta_clave_marketing_responsive_smoke.php
           php tests/cuenta_clave_mapa_cobertura_smoke.php
       - name: Verificar script de diagnóstico en navegador
-        run: node --check tests/diagnosticar_overflow_navegador.js
+        run: |
+          node --check tests/diagnosticar_overflow_navegador.js
+          node --check public/javascript/seguimiento_candidatos_paginacion.js
+          node tests/seguimiento_candidatos_paginacion_smoke.js
+          bash -n tools/desplegar_paginacion_candidatos_hostinger.sh
+          bash -n tests/seguimiento_candidatos_despliegue_smoke.sh
+      - name: Simular despliegue de paginación
+        run: bash tests/seguimiento_candidatos_despliegue_smoke.sh
