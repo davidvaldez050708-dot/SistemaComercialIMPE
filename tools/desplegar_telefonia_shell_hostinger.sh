@@ -43,6 +43,13 @@ NEW=(
   "public/javascript/telefonia_shell.js"
   "public/css/telefonia_shell.css"
 )
+# Versión inicial de los archivos nuevos: permite actualizar sin pisar
+# personalizaciones de una instalación Hostinger anterior.
+NEW_BASES=(
+  "837dd40a0ff0f6130efa7774fd7802d27a31a34d"
+  "b014e07210a3fd09c2df832ab64bac95520b319e"
+  "1be5ce91f7ce0d30104faba62ca3529abef3598f"
+)
 [[ -d "$SRC/.git" && -f "$DST/index.php" ]] || {
   echo "ERROR: no se encuentra el repositorio o la raíz de producción." >&2
   exit 1
@@ -100,15 +107,25 @@ for i in "${!EXISTING[@]}"; do
   }
 done
 
-for file in "${NEW[@]}"; do
+for i in "${!NEW[@]}"; do
+  file="${NEW[$i]}"
   [[ -f "$SRC/$file" ]] || { echo "ERROR: archivo nuevo faltante $file" >&2; exit 1; }
   mkdir -p "$TMP/$(dirname "$file")"
-  if [[ -f "$DST/$file" && "$DST/$file" != "$SRC/$file" ]] &&
-     ! cmp -s "$DST/$file" "$SRC/$file"; then
-    echo "CONFLICTO: hay un $file personalizado en producción." >&2
-    exit 1
+  if [[ ! -f "$DST/$file" ]] || cmp -s "$DST/$file" "$SRC/$file"; then
+    cp "$SRC/$file" "$TMP/$file"
+    continue
   fi
-  cp "$SRC/$file" "$TMP/$file"
+
+  # Una versión anterior del mismo shell ya puede existir en producción.
+  # Fusionar con su base conocida, sin sobreescribir cambios de Hostinger.
+  git -C "$SRC" cat-file blob "${NEW_BASES[$i]}" > "$TMP/new-base-$i" || {
+    echo "ERROR: falta la base Git para $file." >&2
+    exit 1
+  }
+  git merge-file -p "$DST/$file" "$TMP/new-base-$i" "$SRC/$file" > "$TMP/$file" || {
+    echo "CONFLICTO: $file difiere de la versión base; nada publicado." >&2
+    exit 1
+  }
 done
 
 echo "2/4 Comprobando sintaxis y dependencias..."
