@@ -10,8 +10,10 @@
         Boolean(config.permiteEntrantes);
     const permiteTransferir =
         Boolean(config.permiteTransferir);
-    const modoPestana = new URLSearchParams(window.location.search)
-        .get('display') === 'tab';
+    const visualizacionHost = new URLSearchParams(window.location.search)
+        .get('display');
+    const modoPestana = visualizacionHost === 'tab';
+    const modoEmbebido = visualizacionHost === 'embed';
     let nativeUiVisible = false;
 
     if (userId <= 0 || extension === '') {
@@ -19,7 +21,7 @@
     }
 
     const concealOwnWindow = function () {
-        if (modoPestana || nativeUiVisible) {
+        if (modoPestana || modoEmbebido || nativeUiVisible) {
             return;
         }
 
@@ -321,7 +323,7 @@
                 1280
             );
 
-        if (!modoPestana) {
+        if (!modoPestana && !modoEmbebido) {
             try {
                 window.resizeTo(420, 620);
             } catch (error) {
@@ -339,10 +341,12 @@
             }
         }
 
-        try {
-            window.focus();
-        } catch (error) {
-            // El foco puede quedar en la ventana principal.
+        if (!modoEmbebido) {
+            try {
+                window.focus();
+            } catch (error) {
+                // El foco puede quedar en la ventana principal.
+            }
         }
     };
 
