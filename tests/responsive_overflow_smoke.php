@@ -29,7 +29,8 @@ $checks = [
      strpos($css, '.telephony-table-wrap') !== false &&
      strpos($css, '.convocatoria-overview-table-wrap') !== false,
  'La corrección no oculta overflow del documento raíz' =>
-     !preg_match('/(?:html|body)\s*\{[^}]*overflow-x\s*:\s*(?:hidden|clip)/s', $css),
+     // No confundir `.modal-body` con el selector global `body`.
+     !preg_match('/(?<![\\w.#-])(?:html|body)\\s*\\{[^}]*overflow-x\\s*:\\s*(?:hidden|clip)\\b/s', $css),
 ];
 
 foreach ($checks as $name => $ok) {
