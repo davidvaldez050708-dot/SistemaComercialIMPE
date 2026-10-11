@@ -236,12 +236,32 @@ class LoginController
         * Si requiere cambio de contraseña,
         * el dashboard mostrará el modal obligatorio.
         */
-        header(
-            'Location: ' .
-            BASE_URL .
-            'index.php?controller=home&action=index'
-        );
+        // Sólo las cuentas con extensión activa y permiso telefónico usan
+        // navegación persistente. Las demás conservan el dashboard anterior.
+        $destinoInicio = 'index.php?controller=home&action=index';
+        if (
+            empty($_SESSION['requiere_cambio_password']) &&
+            tienePermiso('telefonia.usar')
+        ) {
+            try {
+                require_once __DIR__ . '/../services/TelefoniaExtensionService.php';
+                $ext = (new TelefoniaExtensionService())->resolverParaUsuario(
+                    (int)$usuario['id']
+                );
+                if ($ext && (
+                    !empty($ext['permite_entrantes']) ||
+                    !empty($ext['permite_salientes'])
+                )) {
+                    $destinoInicio = 'index.php?controller=telefonia&action=shell';
+                }
+            } catch (Throwable $error) {
+                error_log('[Login WebRTC] No se pudo determinar la extensión: ' .
+                    $error->getMessage());
+                // Si el módulo telefónico falla no impedimos iniciar sesión.
+            }
+        }
 
+        header('Location: ' . BASE_URL . $destinoInicio);
         exit;
     }
 
