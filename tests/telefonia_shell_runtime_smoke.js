@@ -20,6 +20,7 @@ function boot(opts = {}) {
             contains(k) { return classes.has(k); }
         },
         addEventListener(k, fn) { this.events[k] = fn; },
+        setAttribute(k, value) { this[k] = String(value); },
         removeAttribute(k) { if (k === 'hidden') this.hidden = false; },
         appendChild(node) { this.children.push(node); },
         remove() { this.removed = true; }
