@@ -20,6 +20,11 @@ $recepcionMarketingPermitida = marketingTieneRecepcionAsignada();
             </div>
         </div>
         <div class="marketing-reception-actions">
+            <label class="marketing-reception-tab-preference"
+                title="La pestaña telefónica debe permanecer abierta para recibir llamadas">
+                <input type="checkbox" data-marketing-reception-tab-mode>
+                <span>Usar pestaña, no ventanita</span>
+            </label>
             <span class="marketing-reception-state" data-marketing-reception-state role="status" aria-live="polite">
                 <i class="bi bi-circle-fill" aria-hidden="true"></i>
                 <span data-marketing-reception-state-text>Verificando recepción…</span>
