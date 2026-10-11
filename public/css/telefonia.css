@@ -997,3 +997,9 @@
 .telephony-admin .telephony-user .system-avatar-image {
     display: block;
 }
+
+
+/* Confirmaciones de extensión sobre los menús fijos del CRM. */
+.telephony-admin-flash-container {
+    z-index: 1090;
+}
