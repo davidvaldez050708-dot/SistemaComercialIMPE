@@ -1298,31 +1298,28 @@ $urlPaginaTerritorio = function ($pagina) use ($buscarTerritorio, $filtroInforma
                         $historicoRezago = $rezagoEducativoOficial['historico'] ?? [];
                     ?>
 
-                    <div class="data-education-metrics">
+                    <div class="data-education-metrics <?= is_array($referenciaRezago) ? 'has-reference' : '' ?>">
                         <article class="data-education-metric data-education-metric-primary">
                             <span>Porcentaje de la población</span>
                             <strong><?= $numeroDecimal($rezagoEducativoOficial['porcentaje'] ?? 0) ?> %</strong>
-
-                            <?php if (is_array($referenciaRezago)): ?>
-                                <div class="data-education-reference">
-                                    <span>
-                                        Referencia nacional
-                                        <b><?= $numeroDecimal($referenciaRezago['porcentaje'] ?? 0) ?> %</b>
-                                    </span>
-                                    <?php if ($diferenciaRezago !== null): ?>
-                                        <small>
-                                            <?= (float)$diferenciaRezago >= 0 ? '+' : '-' ?><?= $numeroDecimal(abs((float)$diferenciaRezago)) ?> pts. respecto al país
-                                        </small>
-                                    <?php endif; ?>
-                                </div>
-                            <?php endif; ?>
                         </article>
-
                         <article class="data-education-metric">
                             <span>Personas con rezago educativo</span>
                             <strong><?= $numero($rezagoEducativoOficial['cantidad_personas'] ?? 0) ?></strong>
-                            <small>Estimación de personas para el periodo mostrado.</small>
                         </article>
+                        <?php if (is_array($referenciaRezago)): ?>
+                            <article class="data-education-metric data-education-metric-reference">
+                                <span>Diferencia frente al país</span>
+                                <strong>
+                                    <?php if ($diferenciaRezago !== null): ?>
+                                        <?= (float)$diferenciaRezago >= 0 ? '+' : '−' ?><?= $numeroDecimal(abs((float)$diferenciaRezago)) ?> pts.
+                                    <?php else: ?>
+                                        —
+                                    <?php endif; ?>
+                                </strong>
+                                <small>Referencia nacional: <?= $numeroDecimal($referenciaRezago['porcentaje'] ?? 0) ?> %</small>
+                            </article>
+                        <?php endif; ?>
                     </div>
 
                     <?php if (!empty($historicoRezago)): ?>
@@ -1331,6 +1328,37 @@ $urlPaginaTerritorio = function ($pagina) use ($buscarTerritorio, $filtroInforma
                                 <strong>Evolución registrada</strong>
                                 <span>Porcentaje de población con rezago educativo</span>
                             </div>
+                            <?php
+                                $valoresRezago = array_values(array_map(
+                                    static fn($fila) => (float)($fila['porcentaje'] ?? 0),
+                                    $historicoRezago
+                                ));
+                                $puntosRezago = [];
+                                if (count($valoresRezago) >= 2) {
+                                    $minimoRezago = floor(min($valoresRezago));
+                                    $maximoRezago = ceil(max($valoresRezago));
+                                    $rangoRezago = max(1, $maximoRezago - $minimoRezago);
+                                    foreach ($valoresRezago as $iRezago => $pRezago) {
+                                        $xRezago = 12 + 576 * $iRezago / (count($valoresRezago) - 1);
+                                        $yRezago = 57 - 42 * ($pRezago - $minimoRezago) / $rangoRezago;
+                                        $puntosRezago[] = round($xRezago, 1) . ',' . round($yRezago, 1);
+                                    }
+                                }
+                            ?>
+                            <?php if ($puntosRezago): ?>
+                                <svg class="data-education-history-graph" viewBox="0 0 600 72"
+                                    preserveAspectRatio="none" role="img"
+                                    aria-label="Tendencia histórica del rezago educativo; porcentajes exactos debajo.">
+                                    <line x1="12" y1="57" x2="588" y2="57" stroke="#dfe6ef" stroke-width="1"/>
+                                    <polyline fill="none" stroke="#273a8a" stroke-width="2.5"
+                                        vector-effect="non-scaling-stroke"
+                                        stroke-linejoin="round" stroke-linecap="round"
+                                        points="<?= $texto(implode(' ', $puntosRezago)) ?>"/>
+                                </svg>
+                                <small class="data-education-history-scale">
+                                    Escala: <?= $numeroDecimal($minimoRezago) ?>–<?= $numeroDecimal($maximoRezago) ?> %
+                                </small>
+                            <?php endif; ?>
                             <div class="data-education-history-list">
                                 <?php foreach ($historicoRezago as $periodoRezago): ?>
                                     <div>
@@ -1343,8 +1371,7 @@ $urlPaginaTerritorio = function ($pagina) use ($buscarTerritorio, $filtroInforma
                     <?php endif; ?>
 
                     <p class="data-education-note">
-                        La comparación nacional utiliza el dato de México del mismo periodo. Los valores históricos
-                        se conservan para identificar cambios entre mediciones sin reemplazar los años anteriores.
+                        Referencia nacional del mismo periodo; los valores históricos mantienen sus mediciones originales.
                     </p>
 
                     <?= $fuenteHtml($fuentes['EDUCACION'] ?? null) ?>
