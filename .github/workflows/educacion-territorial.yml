@@ -12,6 +12,8 @@ on:
       - "public/inegi_educacion_objetivo.php"
       - "tests/territorial_educacion_smoke.php"
       - "tests/territorial_educacion_respuesta_smoke.js"
+      - "tools/desplegar_respuesta_educacion_hostinger.sh"
+      - "tests/territorial_educacion_despliegue_smoke.sh"
       - "tests/territorial_modales_oficiales_smoke.js"
       - "tools/desplegar_modales_oficiales_hostinger.sh"
       - "tests/territorial_modales_despliegue_smoke.sh"
@@ -47,7 +49,11 @@ jobs:
           php -l app/views/layout/dashboard_footer.php
           bash -n tools/desplegar_modales_oficiales_hostinger.sh
           bash -n tests/territorial_modales_despliegue_smoke.sh
+          bash -n tools/desplegar_respuesta_educacion_hostinger.sh
+          bash -n tests/territorial_educacion_despliegue_smoke.sh
       - name: Simular despliegue seguro Hostinger
         run: bash tests/territorial_modales_despliegue_smoke.sh
+      - name: Simular despliegue educativo Hostinger
+        run: bash tests/territorial_educacion_despliegue_smoke.sh
       - name: Probar lectura local de cache y presentacion
         run: php tests/territorial_educacion_smoke.php
