@@ -14,6 +14,14 @@
     const registrationKey = 'impe:telephony:registration:' + userId;
     const channelName = 'impe-telephony-' + userId;
     const hostWindowName = 'impe_telephony_host_' + userId;
+    const hostModeKey = 'impe:telephony:host-mode:' + userId;
+    const getHostMode = function () {
+        try {
+            return localStorage.getItem(hostModeKey) === 'tab' ? 'tab' : 'popup';
+        } catch (error) {
+            return 'popup';
+        }
+    };
     const hostVersion = '8';
 
     const statusUrl =
@@ -408,6 +416,18 @@
         return availabilityPromise;
     };
 
+    const setHostMode = function (mode) {
+        if (hostUsable()) {
+            return false; // No cambiar de contexto con WebRTC conectado.
+        }
+        try {
+            localStorage.setItem(hostModeKey, mode === 'tab' ? 'tab' : 'popup');
+            return true;
+        } catch (error) {
+            return false;
+        }
+    };
+
     const concealHostWindow = function (popup) {
         if (!popup || popup.closed) {
             return;
@@ -481,6 +501,7 @@
     };
 
     const openHostSynchronously = function () {
+        const modoPestana = getHostMode() === 'tab';
         const screenLeft =
             Number(window.screen?.availLeft || 0);
         const screenTop =
@@ -519,11 +540,9 @@
         let popup = null;
 
         try {
-            popup = window.open(
-                '',
-                hostWindowName,
-                features
-            );
+            popup = modoPestana
+                ? window.open('', hostWindowName + '_tab')
+                : window.open('', hostWindowName, features);
         } catch (error) {
             popup = null;
         }
@@ -553,7 +572,9 @@
                 !isHost ||
                 currentVersion !== hostVersion
             ) {
-                popup.location.replace(hostUrl);
+                popup.location.replace(
+                    modoPestana ? hostUrl + '&display=tab' : hostUrl
+                );
             }
         } catch (error) {
             // Si temporalmente no se puede inspeccionar, se conserva la ventana nombrada.
@@ -563,16 +584,23 @@
          * Se repite el intento porque Chrome puede reposicionar la ventana
          * durante la carga del documento de destino.
          */
-        concealHostWindow(popup);
-
-        [40, 140, 350, 800].forEach(function (delay) {
-            window.setTimeout(
-                function () {
+        if (!modoPestana) {
+            concealHostWindow(popup);
+            [40, 140, 350, 800].forEach(function (delay) {
+                window.setTimeout(function () {
                     concealHostWindow(popup);
-                },
-                delay
-            );
-        });
+                }, delay);
+            });
+        } else {
+            // Una pestaña no admite resizeTo/moveTo; devolver el foco al CRM
+            // cuando el navegador lo permita. El host sigue vivo al navegar.
+            try {
+                popup.blur();
+                window.focus();
+            } catch (error) {
+                // La política de foco depende del navegador.
+            }
+        }
 
         return popup;
     };
@@ -2335,6 +2363,8 @@
         hangup: hangup,
         toggleMute: toggleMute,
         transferCall: transferCall,
+        getHostMode: getHostMode,
+        setHostMode: setHostMode,
         showProviderControls: showProviderControls,
         clearFinished: clearFinished,
         subscribe: subscribe,
@@ -2374,6 +2404,17 @@
             const marketingBrowserNote = marketingReception?.querySelector(
                 '[data-marketing-reception-browser-note]'
             );
+            const marketingTabMode = marketingReception?.querySelector(
+                '[data-marketing-reception-tab-mode]'
+            );
+            if (marketingTabMode) {
+                marketingTabMode.checked = getHostMode() === 'tab';
+                marketingTabMode.addEventListener('change', function () {
+                    if (!setHostMode(marketingTabMode.checked ? 'tab' : 'popup')) {
+                        marketingTabMode.checked = getHostMode() === 'tab';
+                    }
+                });
+            }
             let receptionChecking = true;
             let receptionBusy = false;
             let receptionError = '';
@@ -2422,8 +2463,19 @@
                     marketingLabel.textContent = label +
                         (extension ? ' · Ext. ' + extension : '');
                 }
+                if (marketingTabMode) {
+                    marketingTabMode.checked = getHostMode() === 'tab';
+                    marketingTabMode.disabled = active || receptionBusy;
+                    marketingTabMode.title = active
+                        ? 'Cierra primero la sesión telefónica para cambiar el modo.'
+                        : 'Una pestaña del navegador reemplaza la ventana flotante.';
+                }
                 if (marketingBrowserNote) {
                     marketingBrowserNote.hidden = !active;
+                    const usingTab = getHostMode() === 'tab';
+                    marketingBrowserNote.querySelector('span').textContent = usingTab
+                        ? 'La conexión WebRTC permanece en una pestaña telefónica. Déjala abierta para seguir recibiendo llamadas y vuelve al CRM para trabajar.'
+                        : 'La conexión WebRTC permanece en una ventana pequeña. Puedes minimizarla, pero no cerrarla mientras recibas llamadas.';
                 }
                 if (marketingHint) {
                     marketingHint.textContent = active
