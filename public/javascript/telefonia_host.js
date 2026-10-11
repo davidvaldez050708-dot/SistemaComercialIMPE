@@ -311,6 +311,14 @@
 
     const mostrarHostEntrante = function () {
         mostrarInterfazNativa();
+        if (modoEmbebido && window.parent && window.parent !== window) {
+            // Puede solicitarse también para un control DTMF no expuesto por
+            // el SDK. El shell muestra estos controles sin ventana nueva.
+            window.parent.postMessage({
+                type: 'IMPE_TELEPHONY_NATIVE_CONTROLS',
+                userId: userId
+            }, window.location.origin);
+        }
 
         const screenLeft =
             Number(window.screen?.availLeft || 0);
