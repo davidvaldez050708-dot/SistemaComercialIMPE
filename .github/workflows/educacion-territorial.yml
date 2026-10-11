@@ -11,6 +11,7 @@ on:
       - "public/css/educacion_objetivo.css"
       - "public/inegi_educacion_objetivo.php"
       - "tests/territorial_educacion_smoke.php"
+      - "tests/territorial_educacion_respuesta_smoke.js"
       - "tests/territorial_modales_oficiales_smoke.js"
       - "tools/desplegar_modales_oficiales_hostinger.sh"
       - "tests/territorial_modales_despliegue_smoke.sh"
@@ -38,6 +39,8 @@ jobs:
       - name: Comprobar sintaxis JavaScript
         run: |
           node --check public/javascript/educacion_objetivo.js
+          node --check tests/territorial_educacion_respuesta_smoke.js
+          node tests/territorial_educacion_respuesta_smoke.js
           node --check public/javascript/data_territorial_modal_oficial.js
           node --check tests/territorial_modales_oficiales_smoke.js
           node tests/territorial_modales_oficiales_smoke.js
