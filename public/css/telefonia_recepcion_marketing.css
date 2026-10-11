@@ -488,3 +488,25 @@
 .marketing-reception-tab-preference input:disabled {
     cursor: not-allowed;
 }
+
+
+/* Configuración opcional de conexión automática del perfil Marketing. */
+.marketing-reception-auto-preference {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 8px;
+    color: #43566f;
+    font-size: 10px;
+    font-weight: 700;
+    cursor: pointer;
+}
+.marketing-reception-auto-preference input {
+    accent-color: #19775d;
+    width: 14px;
+    height: 14px;
+    flex: 0 0 auto;
+}
+.marketing-reception-auto-preference[hidden] {
+    display: none !important;
+}
