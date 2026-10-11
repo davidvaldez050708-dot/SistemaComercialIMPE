@@ -28,6 +28,7 @@
         ? new BroadcastChannel(channelName) : null;
     let hostFrame = null;
     let minimized = false;
+    let forceNativeControls = false;
     let currentState = null;
     let lastHeartbeat = 0;
     let mountFailed = '';
@@ -119,6 +120,7 @@
         const state = freshState(currentState) ? currentState : null;
         const incoming = Boolean(state?.active && state.direction === 'incoming');
         const ongoing = Boolean(state?.active);
+        if (!ongoing) forceNativeControls = false;
         const ready = Boolean(state && state.hostReady &&
             ['ready', 'prepared', 'incoming-ringing', 'in-progress',
                 'dialing', 'ringing', 'finished'].includes(String(state.phase)));
@@ -144,9 +146,9 @@
 
         // Las salientes conservan el panel telefónico del CRM; abrir la UI
         // oficial de Zadarma sólo es necesario para aceptar entrantes.
-        const showCall = incoming && !minimized;
+        const showCall = (incoming || (ongoing && forceNativeControls)) && !minimized;
         call.classList.toggle('is-visible', showCall);
-        restore.hidden = !incoming || showCall;
+        restore.hidden = !(incoming || (ongoing && forceNativeControls)) || showCall;
         callTitle.textContent = incoming ? 'Llamada entrante' :
             ongoing ? 'Llamada en curso' : 'Teléfono institucional';
         callStatus.textContent = incoming ?
@@ -159,6 +161,18 @@
             hostFrame.dataset.callDirection = incoming ? 'incoming' : 'outgoing';
         }
     };
+
+    window.addEventListener('message', function (event) {
+        if (event.origin !== window.location.origin ||
+            !hostFrame || event.source !== hostFrame.contentWindow ||
+            event.data?.type !== 'IMPE_TELEPHONY_NATIVE_CONTROLS' ||
+            Number(event.data.userId) !== userId) {
+            return;
+        }
+        forceNativeControls = true;
+        minimized = false;
+        render();
+    });
 
     const readState = function () {
         try { updateState(JSON.parse(localStorage.getItem(stateKey) || 'null')); }
