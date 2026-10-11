@@ -136,3 +136,49 @@
         grid-column: 1;
     }
 }
+
+/* Buscar candidato · transición de paginación sin colapsar tarjetas.
+   La primera carga permanece igual; solo se atenúa la lista existente
+   si una página requiere consulta adicional al servidor. */
+#modalBuscarCandidato .linkage-candidate-results.is-page-loading {
+    opacity: 0.62;
+    pointer-events: none;
+    transition: opacity 140ms ease;
+}
+
+#modalBuscarCandidato .linkage-candidate-page-loading {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    margin-left: auto;
+    color: #526687;
+    font-size: 11px;
+    font-weight: 750;
+    white-space: nowrap;
+}
+
+#modalBuscarCandidato .linkage-candidate-page-loading .spinner-border {
+    width: 12px;
+    height: 12px;
+    border-width: 2px;
+}
+
+#modalBuscarCandidato .linkage-candidate-pagination.is-page-loading
+.linkage-candidate-page-actions {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+@media (max-width: 767.98px) {
+    #modalBuscarCandidato .linkage-candidate-page-loading {
+        flex: 1 1 auto;
+        min-width: 0;
+        margin-left: 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #modalBuscarCandidato .linkage-candidate-results.is-page-loading {
+        transition: none;
+    }
+}
