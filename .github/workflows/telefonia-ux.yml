@@ -1,0 +1,49 @@
+name: Telefonia - UX extensiones y recepcion
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "app/views/telefonia/**"
+      - "app/models/RolModel.php"
+      - "public/css/telefonia.css"
+      - "public/css/telefonia_recepcion_marketing.css"
+      - "public/css/responsive_sistema.css"
+      - "public/javascript/telefonia_admin.js"
+      - "public/javascript/telefonia_recepcion_marketing.js"
+      - "tools/habilitar_devoluciones_marketing.php"
+      - "tools/desplegar_telefonia_ux_hostinger.sh"
+      - "tests/telefonia_ux_admin_smoke.php"
+      - "tests/telefonia_recepcion_devolucion_smoke.js"
+      - "tests/telefonia_ux_despliegue_smoke.sh"
+      - ".github/workflows/telefonia-ux.yml"
+  pull_request:
+
+jobs:
+  validar-telefonia:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 50
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+      - name: Validar sintaxis PHP
+        run: |
+          php -l app/views/telefonia/extensiones.php
+          php -l app/views/telefonia/recepcion_marketing.php
+          php -l app/models/RolModel.php
+          php -l tools/habilitar_devoluciones_marketing.php
+          php -l tests/telefonia_ux_admin_smoke.php
+      - name: Validar interfaz y retorno de llamadas
+        run: |
+          php tests/telefonia_ux_admin_smoke.php
+          node --check public/javascript/telefonia_admin.js
+          node --check public/javascript/telefonia_recepcion_marketing.js
+          node tests/telefonia_recepcion_devolucion_smoke.js
+      - name: Validar despliegue Hostinger
+        run: |
+          bash -n tools/desplegar_telefonia_ux_hostinger.sh
+          bash -n tests/telefonia_ux_despliegue_smoke.sh
+          bash tests/telefonia_ux_despliegue_smoke.sh
