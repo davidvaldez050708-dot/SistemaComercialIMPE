@@ -3337,7 +3337,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const candidatosRespuesta = Array.isArray(datos.candidatos) ? datos.candidatos : [];
 
-            if (hayCoincidenciasCache && candidatosRespuesta.length === 0) {
+            if (!paginando && hayCoincidenciasCache && candidatosRespuesta.length === 0) {
                 if (Array.isArray(datos.advertencias) && datos.advertencias.length > 0) {
                     mostrarAlerta(alertaBusqueda, datos.advertencias.join(' '), 'warning');
                 }
