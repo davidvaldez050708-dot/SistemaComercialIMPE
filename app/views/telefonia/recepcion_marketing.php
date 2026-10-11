@@ -39,6 +39,11 @@ $recepcionMarketingPermitida = marketingTieneRecepcionAsignada();
     </div>
     <div class="marketing-reception-details" id="marketingRecepcionHistorial"
         data-marketing-reception-details hidden>
+    <p class="marketing-reception-browser-note" data-marketing-reception-browser-note hidden>
+        <i class="bi bi-info-circle" aria-hidden="true"></i>
+        El navegador mantiene la conexión mediante una ventana telefónica independiente.
+        Puedes minimizarla, pero no cerrarla mientras recibas llamadas.
+    </p>
     <div class="marketing-reception-explainer" data-marketing-reception-hint>
         Estamos verificando la extensión telefónica asignada a tu usuario.
     </div>
@@ -48,7 +53,7 @@ $recepcionMarketingPermitida = marketingTieneRecepcionAsignada();
             <div><strong data-marketing-reception-total>0</strong><span>Recibidas</span></div>
         </article>
         <article class="marketing-reception-metric">
-            <span class="marketing-reception-metric-icon is-good"><i class="bi bi-telephone-check" aria-hidden="true"></i></span>
+            <span class="marketing-reception-metric-icon is-good"><i class="bi bi-telephone-fill" aria-hidden="true"></i><i class="bi bi-check-lg marketing-reception-answered-check" aria-hidden="true"></i></span>
             <div><strong data-marketing-reception-answered>0</strong><span>Atendidas</span></div>
         </article>
         <article class="marketing-reception-metric">
