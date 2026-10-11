@@ -28,18 +28,12 @@ $esc = static function ($valor) {
     data-reopen-incoming="<?= (int)($datosFormulario['permite_entrantes'] ?? 0) ?>"
     data-reopen-active="<?= (int)($datosFormulario['activo'] ?? 0) ?>">
 
-    <?php if ($mensajeExito !== ''): ?>
-        <div class="alert alert-success telephony-alert" role="status">
-            <i class="bi bi-check2-circle"></i>
-            <span><?= $esc($mensajeExito) ?></span>
-        </div>
-    <?php endif; ?>
-
-    <?php if ($mensajeError !== ''): ?>
-        <div class="alert alert-danger telephony-alert" role="alert">
-            <i class="bi bi-exclamation-circle"></i>
-            <span><?= $esc($mensajeError) ?></span>
-        </div>
+    <?php if ($mensajeExito !== '' || $mensajeError !== ''): ?>
+        <div
+            data-telephony-flash
+            data-kind="<?= $mensajeError !== '' ? 'error' : 'success' ?>"
+            data-message="<?= $esc($mensajeError !== '' ? $mensajeError : $mensajeExito) ?>"
+            hidden></div>
     <?php endif; ?>
 
     <nav class="telephony-admin-tabs" aria-label="Secciones de Telefonía">
