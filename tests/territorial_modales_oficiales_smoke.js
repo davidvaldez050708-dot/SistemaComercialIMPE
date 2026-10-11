@@ -61,7 +61,7 @@ assert.match(js, /indicadores\.textContent = seleccionadas/);
 assert.match(js, /opcionesDisponibles\.textContent = String\(opciones\.length\)/);
 assert.match(pie, /'data_territorial_modal_oficial\.js'/);
 // La vista sigue manteniendo todas las 10 acciones documentadas en main.
-assert.equal((vista.match(/data-official-options="mass"/g) || []).length, 1);
+assert.equal((vista.match(/<div class="data-official-option-list" data-official-options="mass">/g) || []).length, 1);
 for (const tipo of Object.keys(categorias)) {
     assert.ok(vista.includes('value="' + tipo + '"'), 'falta ' + tipo);
 }
