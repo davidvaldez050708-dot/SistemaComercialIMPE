@@ -1,0 +1,40 @@
+name: Marketing - Recepción WebRTC y presentación
+on:
+  push:
+    branches: [main]
+    paths:
+      - "app/views/dashboard/marketing.php"
+      - "app/views/telefonia/recepcion_marketing.php"
+      - "app/views/telefonia/host.php"
+      - "public/css/telefonia_recepcion_marketing.css"
+      - "public/css/telefonia_host.css"
+      - "public/javascript/telefonia_persistente.js"
+      - "public/javascript/telefonia_host.js"
+      - "tools/desplegar_marketing_recepcion_hostinger.sh"
+      - "tests/marketing_recepcion_pestana_smoke.php"
+      - "tests/marketing_recepcion_deploy_smoke.sh"
+      - ".github/workflows/marketing-recepcion.yml"
+  pull_request:
+jobs:
+  validar-recepcion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 70
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+      - name: Verificar interfaz Marketing y modo pestaña
+        run: |
+          php -l app/views/dashboard/marketing.php
+          php -l app/views/telefonia/recepcion_marketing.php
+          php -l app/views/telefonia/host.php
+          php tests/marketing_recepcion_pestana_smoke.php
+          node --check public/javascript/telefonia_persistente.js
+          node --check public/javascript/telefonia_host.js
+      - name: Simular publicación repetida Hostinger
+        run: |
+          bash -n tools/desplegar_marketing_recepcion_hostinger.sh
+          bash -n tests/marketing_recepcion_deploy_smoke.sh
+          bash tests/marketing_recepcion_deploy_smoke.sh
