@@ -1,6 +1,105 @@
 (function () {
     'use strict';
 
+    /*
+     * Esta pantalla lee datos YA SINCRONIZADOS desde PHP, no consulta
+     * directamente INEGI. Respuestas HTML de Hostinger (p. ej., 503) o
+     * errores de transporte no implican que la información oficial esté mal.
+     * Reintentar una sola vez evita solicitar una recarga de página ante una
+     * interrupción breve. Nunca se reintentan errores 401/403 o datos
+     * JSON que explícitamente indican una falla de negocio.
+     */
+    const consultarEducacionLocal = async function (url, obtener = fetch) {
+        const maxIntentos = 2;
+        const esperar = function (ms) {
+            return new Promise(function (resolver) {
+                setTimeout(resolver, ms);
+            });
+        };
+
+        for (let intento = 0; intento < maxIntentos; intento++) {
+            const controlador = new AbortController();
+            const timeout = setTimeout(function () {
+                controlador.abort();
+            }, 10000);
+
+            try {
+                const respuesta = await obtener(url, {
+                    headers: { 'X-Requested-With': 'fetch' },
+                    cache: 'no-store',
+                    signal: controlador.signal
+                });
+                const texto = await respuesta.text();
+                const tipo = String(respuesta.headers?.get?.('content-type') || '');
+                const status = Number(respuesta.status || 0);
+                let datos;
+
+                try {
+                    datos = JSON.parse(texto);
+                } catch (_errorJson) {
+                    // No registrar ni mostrar el cuerpo: puede contener HTML
+                    // de un proxy, errores PHP o información privada.
+                    console.warn('Información territorial: respuesta no JSON', {
+                        status: status,
+                        tipo: tipo.slice(0, 90),
+                        caracteres: texto.length
+                    });
+                    const error = new Error(
+                        'El servidor no devolvió información educativa válida ' +
+                        '(HTTP ' + (status || 'desconocido') + '). ' +
+                        'Puedes reintentar sin salir de esta pantalla.'
+                    );
+                    error.reintentable = ![400, 401, 403, 404, 422].includes(status);
+                    throw error;
+                }
+
+                if (!datos || typeof datos !== 'object' || Array.isArray(datos)) {
+                    const error = new Error(
+                        'El servidor devolvió un formato inesperado para los indicadores educativos.'
+                    );
+                    error.reintentable = true;
+                    throw error;
+                }
+
+                if (!respuesta.ok || datos.ok !== true) {
+                    const error = new Error(
+                        datos.mensaje ||
+                        'No fue posible consultar los indicadores educativos guardados.'
+                    );
+                    // Una respuesta JSON con ok:false es un diagnóstico del
+                    // servidor: no lanzamos peticiones repetidas.
+                    error.reintentable = false;
+                    throw error;
+                }
+
+                return datos;
+            } catch (error) {
+                const transitorio = error.reintentable === true ||
+                    (error.reintentable === undefined &&
+                        (error.name === 'AbortError' || error.name === 'TypeError'));
+                if (!transitorio || intento === maxIntentos - 1) {
+                    if (error.name === 'AbortError') {
+                        throw new Error(
+                            'La consulta educativa tardó demasiado. Puedes reintentar sin recargar la página.'
+                        );
+                    }
+                    throw error;
+                }
+                await esperar(500);
+            } finally {
+                clearTimeout(timeout);
+            }
+        }
+    };
+
+    // Permite pruebas aisladas de red y JSON sin iniciar una página real.
+    if (typeof module !== 'undefined' && module.exports) {
+        module.exports = { consultarEducacionLocal: consultarEducacionLocal };
+    }
+    if (typeof document === 'undefined') {
+        return;
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
         const seccionEducacion = document.getElementById('educacion');
         const rezago = seccionEducacion?.querySelector('.data-education-official');
@@ -883,57 +982,26 @@
         const cargar = async function () {
             renderCarga();
 
-            const controlador = new AbortController();
-            const timeout = window.setTimeout(
-                function () {
-                    controlador.abort();
-                },
-                10000
-            );
-
             try {
-                const respuesta = await fetch(
+                const datos = await consultarEducacionLocal(
                     'public/inegi_educacion_objetivo.php?estado_id=' +
-                        encodeURIComponent(estadoId),
-                    {
-                        headers: { 'X-Requested-With': 'fetch' },
-                        cache: 'no-store',
-                        signal: controlador.signal
-                    }
+                    encodeURIComponent(estadoId)
                 );
-
-                const texto = await respuesta.text();
-                let datos = null;
-
-                try {
-                    datos = JSON.parse(texto);
-                } catch (error) {
-                    throw new Error(
-                        'La respuesta de INEGI no pudo interpretarse correctamente.'
-                    );
-                }
-
-                if (!respuesta.ok || !datos?.ok) {
-                    throw new Error(
-                        datos?.mensaje ||
-                        'No fue posible consultar la información de INEGI.'
-                    );
-                }
-
                 render(datos);
             } catch (error) {
                 consultaEducativaTerminada = true;
                 renderError(
-                    error?.name === 'AbortError'
-                        ? 'La información local tardó más de lo esperado. Recarga la vista o solicita una sincronización oficial.'
-                        : (
-                            error.message ||
-                            'No fue posible consultar la información educativa.'
-                        )
+                    error.message ||
+                    'No fue posible consultar la información educativa guardada.'
                 );
                 asegurarContextoAdicional();
-            } finally {
-                window.clearTimeout(timeout);
+                const botonReintentar = document.createElement('button');
+                botonReintentar.type = 'button';
+                botonReintentar.className = 'btn btn-system-light data-education-retry';
+                botonReintentar.textContent = 'Reintentar consulta';
+                botonReintentar.addEventListener('click', cargar, { once: true });
+                contenedor.querySelector('.data-education-target-error')
+                    ?.appendChild(botonReintentar);
             }
         };
 
