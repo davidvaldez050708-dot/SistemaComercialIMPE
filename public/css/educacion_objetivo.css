@@ -1338,3 +1338,105 @@
         justify-self: start;
     }
 }
+
+
+/* Información territorial · rezago compacto dentro del contexto plegable.
+   Mantiene intacta la presentación de los demás indicadores. */
+#educacion .data-education-subcontext-body .data-education-official {
+    margin: 0;
+    padding: 10px 0 0;
+    border: 0;
+    border-radius: 0;
+}
+#educacion .data-education-subcontext-body .data-education-official-heading {
+    display: none; /* el encabezado y el periodo ya constan en el summary */
+}
+#educacion .data-education-subcontext-body .data-education-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+#educacion .data-education-subcontext-body .data-education-metrics.has-reference {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+#educacion .data-education-subcontext-body .data-education-metric {
+    padding: 10px 12px;
+    border-radius: 10px;
+}
+#educacion .data-education-subcontext-body .data-education-metric > span {
+    margin-bottom: 5px;
+    font-size: 10px;
+}
+#educacion .data-education-subcontext-body .data-education-metric > strong {
+    font-size: clamp(17px, 1.9vw, 22px);
+    line-height: 1.15;
+    overflow-wrap: anywhere;
+}
+#educacion .data-education-subcontext-body .data-education-metric > small {
+    margin-top: 4px;
+    font-size: 9.5px;
+}
+#educacion .data-education-subcontext-body .data-education-metric-reference {
+    background: #f7fbfa;
+    border-color: #dbeae6;
+}
+#educacion .data-education-subcontext-body .data-education-history {
+    margin-top: 9px;
+    padding: 10px 12px;
+    border-radius: 10px;
+}
+#educacion .data-education-subcontext-body .data-education-history-heading {
+    margin-bottom: 5px;
+}
+#educacion .data-education-subcontext-body .data-education-history-graph {
+    display: block;
+    width: 100%;
+    height: 53px;
+    margin: 1px 0 0;
+}
+#educacion .data-education-subcontext-body .data-education-history-scale {
+    display: block;
+    margin: 0 0 5px;
+    color: #748094;
+    font-size: 9px;
+    text-align: right;
+}
+#educacion .data-education-subcontext-body .data-education-history-list {
+    gap: 5px;
+}
+#educacion .data-education-subcontext-body .data-education-history-list > div {
+    padding: 5px 8px;
+    border-radius: 7px;
+}
+#educacion .data-education-subcontext-body .data-education-note {
+    margin: 7px 0 0;
+    font-size: 9.5px;
+}
+#educacion .data-education-subcontext-body .data-source-box {
+    margin-top: 8px;
+    padding: 8px 10px;
+    gap: 4px 12px;
+    font-size: 9.5px;
+}
+#educacion {
+    scroll-margin-top: 140px;
+}
+@media (max-width: 767.98px) {
+    #educacion .data-education-subcontext-body .data-education-metrics.has-reference {
+        grid-template-columns: minmax(0, 1fr);
+    }
+    #educacion .data-education-subcontext-body .data-education-metrics {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    #educacion .data-education-subcontext-body .data-education-history-heading {
+        flex-wrap: wrap;
+        gap: 3px 8px;
+    }
+    #educacion .data-education-subcontext-body .data-education-history-graph {
+        height: 45px;
+    }
+}
+@media (max-width: 400px) {
+    #educacion .data-education-subcontext-body .data-education-metrics {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
