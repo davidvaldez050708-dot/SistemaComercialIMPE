@@ -57,7 +57,7 @@
         if (!document.querySelector('link[data-education-target-style]')) {
             const link = document.createElement('link');
             link.rel = 'stylesheet';
-            link.href = 'public/css/educacion_objetivo.css?v=20260929-7';
+            link.href = 'public/css/educacion_objetivo.css?v=20261011-1';
             link.setAttribute('data-education-target-style', '');
             document.head.appendChild(link);
         }
@@ -800,12 +800,13 @@
                 return (
                     '<div class="data-education-priority-method">' +
                         '<i class="bi bi-info-circle"></i>' +
-                        '<div><strong>Contexto educativo adicional sin sincronizar</strong>' +
+                        '<div><strong>Contexto educativo general pendiente</strong>' +
                         '<span>' +
                             escapar(
                                 datos?.mensaje_contexto_general ||
-                                'El contexto general se cargará desde la próxima sincronización oficial.'
+                                'No hay datos de contexto general guardados en este servidor.'
                             ) +
+                            ' El administrador puede sincronizarlos desde Información Territorial → Actualizar información oficial → Contexto educativo general.' +
                         '</span></div>' +
                     '</div>'
                 );
