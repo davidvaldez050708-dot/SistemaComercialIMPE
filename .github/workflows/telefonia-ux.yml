@@ -13,6 +13,9 @@ on:
       - "public/javascript/telefonia_recepcion_marketing.js"
       - "tools/habilitar_devoluciones_marketing.php"
       - "tools/desplegar_telefonia_ux_hostinger.sh"
+      - "tools/desplegar_telefonia_visual_v2_hostinger.sh"
+      - "tests/telefonia_visual_v2_smoke.php"
+      - "tests/telefonia_visual_v2_deploy_smoke.sh"
       - "tests/telefonia_ux_admin_smoke.php"
       - "tests/telefonia_recepcion_devolucion_smoke.js"
       - "tests/telefonia_ux_despliegue_smoke.sh"
@@ -39,6 +42,7 @@ jobs:
       - name: Validar interfaz y retorno de llamadas
         run: |
           php tests/telefonia_ux_admin_smoke.php
+          php tests/telefonia_visual_v2_smoke.php
           node --check public/javascript/telefonia_admin.js
           node --check public/javascript/telefonia_recepcion_marketing.js
           node tests/telefonia_recepcion_devolucion_smoke.js
@@ -47,3 +51,6 @@ jobs:
           bash -n tools/desplegar_telefonia_ux_hostinger.sh
           bash -n tests/telefonia_ux_despliegue_smoke.sh
           bash tests/telefonia_ux_despliegue_smoke.sh
+          bash -n tools/desplegar_telefonia_visual_v2_hostinger.sh
+          bash -n tests/telefonia_visual_v2_deploy_smoke.sh
+          bash tests/telefonia_visual_v2_deploy_smoke.sh
