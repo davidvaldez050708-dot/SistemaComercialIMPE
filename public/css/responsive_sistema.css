@@ -1651,3 +1651,54 @@
         max-height: calc(100dvh - 16px);
     }
 }
+
+
+/* Telefonía · extensiones: limitar específicamente los dos diálogos.
+   La regla compartida .admin-content .modal-dialog tiene mayor especificidad
+   que el ancho original de telefonia.css y agrandaba los modales al 100%. */
+#modalTelefoniaExtension .modal-dialog.telephony-modal-dialog {
+    box-sizing: border-box;
+    width: min(650px, calc(100vw - 32px));
+    max-width: min(650px, calc(100vw - 32px));
+    margin: 12px auto;
+}
+#modalTelefoniaLiberar .modal-dialog.system-confirm-dialog {
+    box-sizing: border-box;
+    width: min(480px, calc(100vw - 32px));
+    max-width: min(480px, calc(100vw - 32px));
+    margin: 12px auto;
+}
+#modalTelefoniaExtension .modal-content,
+#modalTelefoniaLiberar .modal-content {
+    max-height: calc(100dvh - 24px);
+    overflow: hidden;
+}
+#modalTelefoniaExtension .modal-content > form,
+#modalTelefoniaLiberar .modal-content > form {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    flex: 1 1 auto;
+}
+#modalTelefoniaExtension .modal-content > form > .modal-body,
+#modalTelefoniaLiberar .modal-content > form > .modal-body {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+}
+#modalTelefoniaExtension .modal-content > form > .modal-footer,
+#modalTelefoniaLiberar .modal-content > form > .modal-footer {
+    flex: 0 0 auto;
+}
+@media (max-width: 575.98px) {
+    #modalTelefoniaExtension .modal-dialog.telephony-modal-dialog,
+    #modalTelefoniaLiberar .modal-dialog.system-confirm-dialog {
+        width: calc(100vw - 20px);
+        max-width: calc(100vw - 20px);
+        margin: 10px auto;
+    }
+    #modalTelefoniaExtension .telephony-form-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
