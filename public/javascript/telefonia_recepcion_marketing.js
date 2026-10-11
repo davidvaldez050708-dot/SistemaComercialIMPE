@@ -5,8 +5,8 @@
     // sin marcar extensiones internas ni números incompletos.
     function normalizarNumeroDevolucion(valor) {
         const original = String(valor || '').trim();
-        if (!/^\\+?[\\d\\s().-]+$/.test(original)) return '';
-        let digitos = original.replace(/\\D/g, '');
+        if (!/^\+?[\d\s().-]+$/.test(original)) return '';
+        let digitos = original.replace(/\D/g, '');
         if (digitos.length === 10) digitos = '52' + digitos;
         return /^[1-9][0-9]{10,14}$/.test(digitos) ? digitos : '';
     }
