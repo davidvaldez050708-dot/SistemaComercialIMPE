@@ -968,3 +968,32 @@
     .telephony-control-trend { gap: 3px; }
     .telephony-control-day small { font-size: 7px; }
 }
+
+
+/* El selector heredado .telephony-user span modificaba el avatar sin foto,
+   agregándole margen, truncado y line-height de los correos del listado. */
+.telephony-admin .telephony-user > .system-avatar.system-avatar-initials {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    line-height: 1;
+    text-align: center;
+    text-overflow: clip;
+    white-space: nowrap;
+    font-size: 11px;
+}
+.telephony-admin .telephony-user > div:last-child > span {
+    display: block;
+    margin-top: 2px;
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.telephony-admin .telephony-user .system-avatar-image {
+    display: block;
+}
