@@ -46,8 +46,8 @@ $recepcionMarketingPermitida = marketingTieneRecepcionAsignada();
         data-marketing-reception-details hidden>
     <p class="marketing-reception-browser-note" data-marketing-reception-browser-note hidden>
         <i class="bi bi-info-circle" aria-hidden="true"></i>
-        El navegador mantiene la conexión mediante una ventana telefónica independiente.
-        Puedes minimizarla, pero no cerrarla mientras recibas llamadas.
+        <span>La conexión WebRTC permanece en una ventana pequeña. Puedes minimizarla,
+            pero no cerrarla mientras recibas llamadas.</span>
     </p>
     <div class="marketing-reception-explainer" data-marketing-reception-hint>
         Estamos verificando la extensión telefónica asignada a tu usuario.
