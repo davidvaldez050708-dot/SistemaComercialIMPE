@@ -821,6 +821,10 @@ if (!empty($seguimientosSinMunicipio)) {
 
                 <div class="data-pagination linkage-candidate-pagination d-none" data-candidate-pagination>
                     <span data-candidate-page-label></span>
+                    <span class="linkage-candidate-page-loading d-none" data-candidate-page-loading role="status" aria-live="polite">
+                        <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                        Cargando página...
+                    </span>
                     <div class="linkage-candidate-page-actions">
                         <a href="#" aria-label="Anterior" data-candidate-page-prev>‹</a>
                         <a href="#" aria-label="Siguiente" data-candidate-page-next>›</a>
@@ -2718,6 +2722,10 @@ document.addEventListener('DOMContentLoaded', function () {
     let busquedaAutomaticaActiva = false;
     let mensajeResultadosVacios = 'No se encontraron candidatos con los criterios seleccionados.';
     const cacheCandidatosAutomaticos = {};
+    // El servidor incluye cache_candidatos con el catálogo COMPLETO
+    // de la búsqueda automática. Se mantiene su orden y metadatos.
+    let catalogoAutomaticoCompleto = null;
+    let paginacionEnCurso = false;
     let secuenciaBusqueda = 0;
     let controladorBusqueda = null;
 
@@ -2842,7 +2850,29 @@ document.addEventListener('DOMContentLoaded', function () {
         contenedorResultados.innerHTML = '';
     };
 
+    const marcarPaginacionEnCurso = function (activo) {
+        paginacionEnCurso = activo;
+        contenedorResultados?.classList.toggle('is-page-loading', activo);
+        contenedorResultados?.setAttribute('aria-busy', String(activo));
+        paginacion?.classList.toggle('is-page-loading', activo);
+        paginacion?.querySelector('[data-candidate-page-loading]')
+            ?.classList.toggle('d-none', !activo);
+        [botonAnterior, botonSiguiente].forEach(function (boton) {
+            boton?.setAttribute('aria-disabled', String(activo));
+            if (boton) {
+                boton.tabIndex = activo ? -1 : 0;
+            }
+        });
+    };
+
     const limpiarResultadosCandidatos = function () {
+        if (controladorBusqueda) {
+            controladorBusqueda.abort();
+            controladorBusqueda = null;
+        }
+        secuenciaBusqueda += 1;
+        catalogoAutomaticoCompleto = null;
+        marcarPaginacionEnCurso(false);
         candidatosActuales = [];
         hayMasCandidatos = false;
         totalResultadosCandidatos = 0;
@@ -3161,19 +3191,64 @@ document.addEventListener('DOMContentLoaded', function () {
         botonSiguiente.classList.toggle('disabled', paginaActual >= totalPaginas || !hayMasCandidatos);
     };
 
-    const buscarCandidatos = async function (automatico = false, suave = false) {
+    const firmaBusquedaActual = function () {
+        return window.SeguimientoCandidatosPaginacion?.crearFirma(
+            estadoId, selectorMunicipio?.value, selectorTipo?.value,
+            campoBusqueda?.value.trim()
+        ) || '';
+    };
+
+    const mostrarPaginaLocal = function (numeroPagina) {
+        const util = window.SeguimientoCandidatosPaginacion;
+        const catalogo = catalogoAutomaticoCompleto;
+        if (!busquedaAutomaticaActiva || !util || !catalogo ||
+            catalogo.firma !== firmaBusquedaActual()) {
+            return false;
+        }
+
+        const datosPagina = util.crearPagina(
+            catalogo.candidatos,
+            catalogo.total,
+            numeroPagina,
+            catalogo.limite
+        );
+        if (!datosPagina) {
+            return false;
+        }
+
+        candidatosActuales = datosPagina.candidatos;
+        paginaCandidatos = datosPagina.pagina;
+        totalResultadosCandidatos = datosPagina.total_resultados;
+        resultadosPorPaginaCandidatos = datosPagina.resultados_por_pagina;
+        hayMasCandidatos = datosPagina.hay_mas;
+        renderizarCandidatos();
+        actualizarPaginacion();
+        resetearScrollResultados();
+        return true;
+    };
+
+    const buscarCandidatos = async function (
+        automatico = false, suave = false, paginando = false, paginaAnterior = 1
+    ) {
         if (!campoBusqueda || !selectorTipo || !selectorMunicipio) {
             return;
         }
 
         busquedaAutomaticaActiva = automatico;
+        if (!paginando) {
+            catalogoAutomaticoCompleto = null;
+            marcarPaginacionEnCurso(false);
+        }
         const termino = campoBusqueda.value.trim();
+        const firmaSolicitada = firmaBusquedaActual();
         const coincidenciasCache = (!automatico && selectorTipo.value !== 'SECRETARIA')
             ? obtenerCoincidenciasCache(termino)
             : [];
         const hayCoincidenciasCache = coincidenciasCache.length > 0;
 
-        mostrarAlerta(alertaBusqueda, '', '');
+        if (!paginando) {
+            mostrarAlerta(alertaBusqueda, '', '');
+        }
 
         if (requiereTextoDenue(automatico)) {
             candidatosActuales = [];
@@ -3185,7 +3260,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        if (hayCoincidenciasCache) {
+        if (hayCoincidenciasCache && !paginando) {
             renderizarCoincidenciasCache(coincidenciasCache);
         }
 
@@ -3197,7 +3272,11 @@ document.addEventListener('DOMContentLoaded', function () {
         secuenciaBusqueda += 1;
         const secuenciaActual = secuenciaBusqueda;
 
-        if (!hayCoincidenciasCache) {
+        if (paginando) {
+            // Mantener las tarjetas y la altura del modal hasta recibir
+            // la página siguiente. Nunca ocultar toda la lista.
+            marcarPaginacionEnCurso(true);
+        } else if (!hayCoincidenciasCache) {
             mostrarEstadoBusqueda(
                 automatico
                     ? 'Buscando candidatos recomendados...'
@@ -3275,6 +3354,22 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (automatico) {
                 guardarCacheCandidatos(datos.cache_candidatos || datos.candidatos);
+                const util = window.SeguimientoCandidatosPaginacion;
+                const catalogo = datos.cache_candidatos;
+                const completo = util?.crearPagina(
+                    catalogo,
+                    totalResultadosCandidatos,
+                    1,
+                    resultadosPorPaginaCandidatos
+                );
+                catalogoAutomaticoCompleto = completo
+                    ? {
+                        firma: firmaSolicitada,
+                        candidatos: catalogo,
+                        total: totalResultadosCandidatos,
+                        limite: resultadosPorPaginaCandidatos
+                    }
+                    : null;
             }
 
             if (Array.isArray(datos.advertencias) && datos.advertencias.length > 0) {
@@ -3298,6 +3393,17 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
+            if (paginando) {
+                paginaCandidatos = paginaAnterior;
+                mostrarAlerta(
+                    alertaBusqueda,
+                    'No fue posible cargar la página solicitada. ' +
+                    'Conservamos los resultados anteriores; puedes intentar nuevamente.',
+                    'warning'
+                );
+                return;
+            }
+
             if (hayCoincidenciasCache) {
                 mostrarAlerta(
                     alertaBusqueda,
@@ -3314,6 +3420,11 @@ document.addEventListener('DOMContentLoaded', function () {
             mostrarEstadoBusqueda('No fue posible consultar candidatos en este momento.');
             mostrarAlerta(alertaBusqueda, error.message, 'error');
             resetearScrollResultados();
+        } finally {
+            if (secuenciaActual === secuenciaBusqueda && paginando) {
+                marcarPaginacionEnCurso(false);
+                actualizarPaginacion();
+            }
         }
     };
 
@@ -3496,26 +3607,40 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    botonAnterior?.addEventListener('click', function (event) {
-        event.preventDefault();
-
-        if (paginaCandidatos <= 1) {
+    const cambiarPaginaCandidatos = function (direccion) {
+        if (paginacionEnCurso || !Array.isArray(candidatosActuales) ||
+            candidatosActuales.length === 0) {
             return;
         }
 
-        paginaCandidatos -= 1;
-        buscarCandidatos(busquedaAutomaticaActiva, true);
+        const anterior = paginaCandidatos;
+        const proxima = anterior + direccion;
+        const totalPaginas = Math.ceil(
+            totalResultadosCandidatos / Math.max(1, resultadosPorPaginaCandidatos)
+        );
+        if (proxima < 1 || proxima > totalPaginas ||
+            (direccion > 0 && !hayMasCandidatos)) {
+            return;
+        }
+
+        if (mostrarPaginaLocal(proxima)) {
+            return;
+        }
+
+        // Respaldo para búsquedas por nombre o catálogos parciales:
+        // consultar sólo la página requerida, sin vaciar la lista.
+        paginaCandidatos = proxima;
+        buscarCandidatos(busquedaAutomaticaActiva, true, true, anterior);
+    };
+
+    botonAnterior?.addEventListener('click', function (event) {
+        event.preventDefault();
+        cambiarPaginaCandidatos(-1);
     });
 
     botonSiguiente?.addEventListener('click', function (event) {
         event.preventDefault();
-
-        if (!hayMasCandidatos) {
-            return;
-        }
-
-        paginaCandidatos += 1;
-        buscarCandidatos(busquedaAutomaticaActiva, true);
+        cambiarPaginaCandidatos(1);
     });
 
     contenedorResultados?.addEventListener('click', function (event) {
