@@ -17,6 +17,7 @@ on:
       - "tools/desplegar_telefonia_shell_hostinger.sh"
       - "tools/revertir_telefonia_shell_hostinger.sh"
       - "tests/telefonia_shell_smoke.php"
+      - "tests/telefonia_shell_render_smoke.php"
       - "tests/telefonia_shell_runtime_smoke.js"
       - "tests/telefonia_shell_despliegue_smoke.sh"
       - ".github/workflows/telefonia-shell.yml"
@@ -41,6 +42,7 @@ jobs:
       - name: Comprobar controles y ciclo de vida del shell
         run: |
           php tests/telefonia_shell_smoke.php
+          php tests/telefonia_shell_render_smoke.php
           node --check public/javascript/telefonia_shell.js
           node --check public/javascript/telefonia_persistente.js
           node --check public/javascript/telefonia_host.js
