@@ -9,7 +9,7 @@
         let digitos = original.replace(/\D/g, '');
         if (digitos.length === 10) digitos = '52' + digitos;
         // Descartar números placeholder del historial, como 0000000000.
-        if (/^52([0-9])\\1{9}$/.test(digitos)) return '';
+        if (/^52([0-9])\1{9}$/.test(digitos)) return '';
         return /^[1-9][0-9]{10,14}$/.test(digitos) ? digitos : '';
     }
 
