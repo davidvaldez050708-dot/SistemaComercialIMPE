@@ -32,7 +32,8 @@ $checks = [
     'El catálogo de reportes adapta sus botones' =>
         str_contains($css, '.report-module .report-catalog-card .report-card-action'),
     'No se oculta el desbordamiento de la página raíz' =>
-        !preg_match('/(?:html|body)\s*\{[^}]*overflow-x\s*:\s*(?:hidden|clip)/s', $css),
+        // Un selector .modal-body no representa al elemento body del documento.
+        !preg_match('/(?<![\\w.#-])(?:html|body)\\s*\\{[^}]*overflow-x\\s*:\\s*(?:hidden|clip)\\b/s', $css),
 ];
 
 foreach ($checks as $name => $passed) {
