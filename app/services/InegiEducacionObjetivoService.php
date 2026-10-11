@@ -3,7 +3,7 @@
 class InegiEducacionObjetivoService
 {
     private const MAX_DESCARGA_BYTES = 67108864;
-    private const CACHE_TTL_SEGUNDOS = 604800; // 7 días; fuente censal estable
+    private const CACHE_TTL_SEGUNDOS = 604800; // 7 días: referencia de antigüedad, no vencimiento del Censo
     private const CACHE_VERSION = 'v3_perfil_completo';
     private const MAX_LINEAS_CABECERA = 50;
 
@@ -79,7 +79,11 @@ class InegiEducacionObjetivoService
                 : $this->descargarArchivo($claveEstado, $candidato);
 
             if (($resultado['ok'] ?? false) === true) {
-                $this->guardarCache($cache, $resultado);
+                if (!$this->guardarCache($cache, $resultado)) {
+                    return $this->respuestaError(
+                        'INEGI respondió correctamente, pero no fue posible guardar el contexto educativo local. Revisa los permisos de storage/cache/inegi.'
+                    );
+                }
                 $resultado['cache'] = [
                     'estado' => 'MISS',
                     'fuente' => 'INEGI',
@@ -1057,42 +1061,37 @@ class InegiEducacionObjetivoService
             return null;
         }
 
-        $mtime = @filemtime($ruta);
-        if ($mtime === false || (time() - $mtime) > self::CACHE_TTL_SEGUNDOS) {
-            @unlink($ruta);
-            return null;
-        }
-
+        /*
+         * Un Censo histórico válido no desaparece de la ficha por llevar
+         * siete días guardado: la antigüedad del archivo no altera su periodo.
+         * La renovación se inicia desde la acción administrativa explícita.
+         */
         $contenido = @file_get_contents($ruta);
         $datos = is_string($contenido) ? json_decode($contenido, true) : null;
 
         if (!is_array($datos) || ($datos['ok'] ?? false) !== true) {
-            @unlink($ruta);
             return null;
         }
 
         $metricas = $datos['estado']['metricas'] ?? null;
         if (!is_array($metricas) || !$this->metricasPerfilCompletas($metricas)) {
-            @unlink($ruta);
             return null;
         }
 
         return $datos;
     }
 
-    private function guardarCache(string $ruta, array $datos): void
+    private function guardarCache(string $ruta, array $datos): bool
     {
         $directorio = dirname($ruta);
 
-        if (!is_dir($directorio)) {
-            @mkdir($directorio, 0775, true);
+        if (!is_dir($directorio) && !@mkdir($directorio, 0775, true) && !is_dir($directorio)) {
+            return false;
         }
 
-        @file_put_contents(
-            $ruta,
-            json_encode($datos, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT),
-            LOCK_EX
-        );
+        $json = json_encode($datos, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+        return is_string($json)
+            && @file_put_contents($ruta, $json, LOCK_EX) !== false;
     }
 
     private function esUrlOficialInegi(string $url): bool
