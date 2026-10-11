@@ -1,6 +1,21 @@
 (function () {
     'use strict';
 
+    // Reutiliza los mismos criterios de normalización del marcador,
+    // sin marcar extensiones internas ni números incompletos.
+    function normalizarNumeroDevolucion(valor) {
+        const original = String(valor || '').trim();
+        if (!/^\\+?[\\d\\s().-]+$/.test(original)) return '';
+        let digitos = original.replace(/\\D/g, '');
+        if (digitos.length === 10) digitos = '52' + digitos;
+        return /^[1-9][0-9]{10,14}$/.test(digitos) ? digitos : '';
+    }
+
+    if (typeof module !== 'undefined' && module.exports) {
+        module.exports = {normalizarNumeroDevolucion: normalizarNumeroDevolucion};
+    }
+    if (typeof document === 'undefined') return;
+
     document.addEventListener('DOMContentLoaded', function () {
         const root = document.querySelector('[data-marketing-reception]');
         if (!root) return;
@@ -19,6 +34,16 @@
             atendidas: root.querySelector('[data-marketing-reception-answered]'),
             perdidas: root.querySelector('[data-marketing-reception-missed]'),
             transferidas: root.querySelector('[data-marketing-reception-transferred]')
+        };
+        const telefono = window.IMPE_TELEPHONY_PERSISTENT || null;
+        let puedeDevolver = false;
+        let marcacionEnCurso = false;
+        const avisoDevolucion = root.querySelector('[data-marketing-reception-callback-status]');
+        const explicarDevolucion = function (mensaje, error) {
+            if (!avisoDevolucion) return;
+            avisoDevolucion.textContent = String(mensaje || '');
+            avisoDevolucion.classList.toggle('is-error', Boolean(error));
+            avisoDevolucion.hidden = !mensaje;
         };
         const pageSize = 8;
         let calls = [];
@@ -92,7 +117,27 @@
         function drawRow(call, index) {
             const row = node('tr');
             addCell(row, String(call.fecha || '').slice(0, 16).replace('T', ' '));
-            addCell(row, call.numero || 'Número no disponible', 'marketing-reception-number');
+            const numeroCelda = addCell(
+                row, '', 'marketing-reception-number'
+            );
+            numeroCelda.appendChild(node('span', '',
+                call.numero || 'Número no disponible'));
+            const telefonoNormalizado = normalizarNumeroDevolucion(call.numero);
+            if (String(call.estado) === 'Perdida' && telefonoNormalizado) {
+                const devolver = node('button',
+                    'marketing-reception-callback btn btn-system-light',
+                    'Devolver llamada');
+                devolver.type = 'button';
+                devolver.dataset.marketingCallback = telefonoNormalizado;
+                devolver.dataset.marketingCallOrigin = String(call.pbx_call_id || '');
+                devolver.disabled = !puedeDevolver || marcacionEnCurso;
+                devolver.title = !puedeDevolver
+                    ? 'Requiere permiso telefonia.salientes y extensión activa con salientes'
+                    : 'Llamar al número que aparece en esta llamada perdida';
+                devolver.setAttribute('aria-label',
+                    'Devolver llamada al ' + String(call.numero || 'número'));
+                numeroCelda.appendChild(devolver);
+            }
             const statusCell = addCell(row, '');
             const status = String(call.estado || '');
             const badge = node('span', 'marketing-reception-status', status);
@@ -235,6 +280,64 @@
                 refresh.querySelector('i')?.classList.remove('marketing-reception-spinning');
             }
         }
+
+        // Solo se habilita la devolución cuando el backend confirme
+        // el permiso del rol Y la capacidad saliente de esta extensión.
+        if (telefono && window.IMPE_CAN_CALL_OUT === true) {
+            void telefono.probe().then(function (configuracion) {
+                puedeDevolver = Boolean(configuracion?.permite_salientes);
+                if (initialized) renderList();
+            }).catch(function () {
+                puedeDevolver = false;
+            });
+        }
+
+        tableBody.addEventListener('click', function (event) {
+            const boton = event.target.closest('[data-marketing-callback]');
+            if (!boton || boton.disabled || marcacionEnCurso ||
+                !telefono || !puedeDevolver) return;
+
+            const destino = normalizarNumeroDevolucion(boton.dataset.marketingCallback);
+            if (!destino) {
+                explicarDevolucion('El número de la llamada perdida no permite devolución automática.', true);
+                return;
+            }
+            if (telefono.getState()?.active) {
+                explicarDevolucion(
+                    'Ya tienes una llamada activa. Finalízala antes de devolver otra.',
+                    true
+                );
+                return;
+            }
+
+            marcacionEnCurso = true;
+            explicarDevolucion('Preparando devolución de llamada…', false);
+            renderList();
+            // La apertura del host WebRTC se solicita desde esta acción
+            // del usuario; las transferencias utilizan el panel telefónico
+            // persistente ya existente.
+            void telefono.startCall({
+                destination: destino,
+                institution: 'Recepción telefónica',
+                context: {
+                    type: 'MARKETING_CALLBACK',
+                    llamada_origen: String(boton.dataset.marketingCallOrigin || '')
+                }
+            }).then(function () {
+                explicarDevolucion(
+                    'Llamada solicitada. Puedes transferirla desde el panel telefónico cuando conteste.',
+                    false
+                );
+            }).catch(function (error) {
+                explicarDevolucion(
+                    error.message || 'No fue posible devolver la llamada.',
+                    true
+                );
+            }).finally(function () {
+                marcacionEnCurso = false;
+                renderList();
+            });
+        });
 
         search.addEventListener('input', function () {
             page = 1;
