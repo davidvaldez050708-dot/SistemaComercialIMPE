@@ -17,6 +17,12 @@
     const hostModeKey = 'impe:telephony:host-mode:' + userId;
     const getHostMode = function () {
         try {
+            if (window.parent !== window &&
+                window.parent.IMPE_TELEPHONY_SHELL?.isEmbedded) {
+                return 'embedded';
+            }
+        } catch (error) { /* sin acceso a marco padre */ }
+        try {
             return localStorage.getItem(hostModeKey) === 'tab' ? 'tab' : 'popup';
         } catch (error) {
             return 'popup';
@@ -417,6 +423,7 @@
     };
 
     const setHostMode = function (mode) {
+        if (getHostMode() === 'embedded') return false;
         if (hostUsable()) {
             return false; // No cambiar de contexto con WebRTC conectado.
         }
@@ -501,6 +508,18 @@
     };
 
     const openHostSynchronously = function () {
+        // El shell del CRM conserva el motor dentro de la misma pestaña.
+        // No abrir una ventana si estamos en su iframe de navegación.
+        try {
+            const shell = window.parent !== window
+                ? window.parent.IMPE_TELEPHONY_SHELL : null;
+            if (shell?.isEmbedded && Number(shell.userId) === userId) {
+                return shell.ensureHost();
+            }
+        } catch (error) {
+            // Si no hay shell de mismo origen, mantener respaldo existente.
+        }
+
         const modoPestana = getHostMode() === 'tab';
         const screenLeft =
             Number(window.screen?.availLeft || 0);
@@ -2408,12 +2427,16 @@
                 '[data-marketing-reception-tab-mode]'
             );
             if (marketingTabMode) {
+                if (getHostMode() === 'embedded') {
+                    marketingTabMode.closest('.marketing-reception-tab-preference')?.remove();
+                } else {
                 marketingTabMode.checked = getHostMode() === 'tab';
                 marketingTabMode.addEventListener('change', function () {
                     if (!setHostMode(marketingTabMode.checked ? 'tab' : 'popup')) {
                         marketingTabMode.checked = getHostMode() === 'tab';
                     }
                 });
+                }
             }
             let receptionChecking = true;
             let receptionBusy = false;
@@ -2473,7 +2496,10 @@
                 if (marketingBrowserNote) {
                     marketingBrowserNote.hidden = !active;
                     const usingTab = getHostMode() === 'tab';
-                    marketingBrowserNote.querySelector('span').textContent = usingTab
+                    const usingEmbedded = getHostMode() === 'embedded';
+                    marketingBrowserNote.querySelector('span').textContent = usingEmbedded
+                        ? 'Telefonía integrada en el CRM. Puedes cambiar de módulo sin cortar la llamada ni abrir ventanas.'
+                        : usingTab
                         ? 'La conexión WebRTC permanece en una pestaña telefónica. Déjala abierta para seguir recibiendo llamadas y vuelve al CRM para trabajar.'
                         : 'La conexión WebRTC permanece en una ventana pequeña. Puedes minimizarla, pero no cerrarla mientras recibas llamadas.';
                 }
@@ -2483,7 +2509,9 @@
                             ' conectada a WebRTC. Puedes recibir y transferir llamadas mientras permanezca activa.'
                         : assigned
                             ? 'Extensión ' + extension +
-                                ' asignada. Pulsa Activar recepción al comenzar tu jornada.'
+                                (getHostMode() === 'embedded'
+                                    ? ' asignada. La recepción se conecta al iniciar sesión; si el navegador solicita permiso, pulsa Conectar teléfono.'
+                                    : ' asignada. Pulsa Activar recepción al comenzar tu jornada.')
                             : awaiting
                                 ? 'Estamos consultando la extensión telefónica asignada a tu usuario.'
                                 : missing
