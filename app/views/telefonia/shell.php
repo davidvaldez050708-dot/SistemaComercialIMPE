@@ -34,6 +34,9 @@ $nombreShell = $nombreShell !== '' ? $nombreShell : 'Usuario';
     <aside class="impe-phone-status" data-shell-status role="status" aria-live="polite" hidden>
         <span data-shell-status-text></span>
         <button type="button" data-shell-retry hidden>Conectar teléfono</button>
+        <a class="impe-phone-classic-link"
+           href="<?= htmlspecialchars(BASE_URL . 'index.php?controller=home&action=index', ENT_QUOTES, 'UTF-8') ?>"
+           title="Volver al CRM sin navegación persistente">Modo clásico</a>
     </aside>
     <aside class="impe-phone-call" data-shell-call hidden aria-label="Teléfono institucional">
         <div class="impe-phone-call-header">
