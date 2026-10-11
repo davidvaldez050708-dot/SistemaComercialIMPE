@@ -176,6 +176,7 @@ if ($esSeguimientoEstadoFooter) {
     $jsDashboardFooter = array_merge(
         $jsDashboardFooter,
         [
+            'seguimiento_candidatos_paginacion.js',
             'seguimiento_interacciones.js',
             'seguimiento_canales.js',
             'seguimiento_correo_contacto.js',
