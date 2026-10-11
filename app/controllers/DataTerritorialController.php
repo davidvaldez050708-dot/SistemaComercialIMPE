@@ -9,6 +9,7 @@ require_once __DIR__ . '/../services/RezagoEducativoImportService.php';
 require_once __DIR__ . '/../services/InegiGeoService.php';
 require_once __DIR__ . '/../services/InegiPerfilAdultoLaboralService.php';
 require_once __DIR__ . '/../services/InegiPerfilEducativoPrioritarioAutoService.php';
+require_once __DIR__ . '/../services/InegiEducacionObjetivoService.php';
 require_once __DIR__ . '/../services/InegiPerfilEducativoPrioritarioImportService.php';
 require_once __DIR__ . '/../models/PerfilAdultoLaboralModel.php';
 require_once __DIR__ . '/../models/EscolaridadAdultaModel.php';
@@ -200,6 +201,75 @@ class DataTerritorialController
         require_once __DIR__ . '/../views/layout/topbar.php';
         require_once __DIR__ . '/../views/data_territorial/index.php';
         require_once __DIR__ . '/../views/layout/dashboard_footer.php';
+    }
+
+    /**
+     * Sincroniza el contexto educativo general que usa la ficha (ITER / INEGI).
+     * Sólo lo solicita Administración: la navegación del analista sigue siendo
+     * lectura local y no dispara descargas pesadas.
+     */
+    public function actualizarContextoEducativoGeneralOficial()
+    {
+        if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+            $this->responderJson(['ok' => false, 'mensaje' => 'Método no permitido.'], 405);
+        }
+
+        $this->validarPermisoActualizacionOficialJson();
+
+        $estadoIdTexto = trim((string)($_POST['estado_id'] ?? ''));
+        if ($estadoIdTexto === '' || !ctype_digit($estadoIdTexto) || (int)$estadoIdTexto <= 0) {
+            $this->responderJson(['ok' => false, 'mensaje' => 'Estado inválido.'], 422);
+        }
+
+        $estadoId = (int)$estadoIdTexto;
+        $modelo = new DataTerritorialModel();
+        $estado = $modelo->obtenerEstado($estadoId);
+        if (!$estado) {
+            $this->responderJson(['ok' => false, 'mensaje' => 'Estado no encontrado o inactivo.'], 404);
+        }
+
+        $claveEstado = str_pad(
+            preg_replace('/\\D+/', '', (string)($estado['clave_inegi'] ?? '')) ?? '',
+            2,
+            '0',
+            STR_PAD_LEFT
+        );
+        if (!preg_match('/^(0[1-9]|[12][0-9]|3[0-2])$/', $claveEstado)) {
+            $this->responderJson(['ok' => false, 'mensaje' => 'La clave INEGI del territorio no es válida.'], 422);
+        }
+
+        @set_time_limit(240);
+        try {
+            $resultado = (new InegiEducacionObjetivoService())
+                ->obtenerPorEstado($claveEstado, true);
+        } catch (Throwable $error) {
+            error_log('Actualización contexto educativo: ' . $error->getMessage());
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'No fue posible sincronizar el contexto educativo. Revisa los registros del servidor.'
+            ], 500);
+        }
+
+        if (($resultado['ok'] ?? false) !== true) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => (string)($resultado['mensaje'] ?? 'INEGI no proporcionó una fuente compatible. No se alteraron los datos existentes.')
+            ], 502);
+        }
+
+        $yaDisponible = ($resultado['cache']['estado'] ?? '') === 'HIT';
+        $this->responderJson([
+            'ok' => true,
+            'mensaje' => $yaDisponible
+                ? 'El contexto educativo general ya estaba disponible localmente.'
+                : 'El contexto educativo general se sincronizó y guardó correctamente.',
+            'datos' => [
+                'estado_id' => $estadoId,
+                'periodo' => (int)($resultado['periodo'] ?? 2020),
+                'fuente' => (string)($resultado['fuente'] ?? 'INEGI'),
+                'sin_descarga' => $yaDisponible
+            ]
+        ]);
     }
 
     /**
