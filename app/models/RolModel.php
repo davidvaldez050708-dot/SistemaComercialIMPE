@@ -971,6 +971,7 @@ class RolModel
             ],
             'Marketing' => [
                 'telefonia.usar',
+                'telefonia.salientes', // devolver llamadas perdidas, con extensión saliente habilitada
                 'telefonia.recibir',
                 'telefonia.transferir'
             ]
