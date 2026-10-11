@@ -37,6 +37,13 @@ done
 echo '/* ajuste hostinger independiente */' >> "$DEST/public/css/telefonia_host.css"
 echo '/* ajuste hostinger local */' >> "$DEST/public/css/telefonia_recepcion_marketing.css"
 
+# Simular que el servidor ya tiene el shell de la versión anterior;
+# se debe actualizar sin conflicto ni cambiar el diseño original.
+mkdir -p "$DEST/app/views/telefonia"
+git -C "$ROOT" cat-file blob "837dd40a0ff0f6130efa7774fd7802d27a31a34d" \
+    > "$DEST/app/views/telefonia/shell.php"
+echo '<!-- ajuste local Hostinger -->' >> "$DEST/app/views/telefonia/shell.php"
+
 run() {
   IMPE_SHELL_SOURCE_DIR="$ROOT" \
   IMPE_SHELL_PUBLIC_DIR="$DEST" \
@@ -51,6 +58,9 @@ HASH2="$(sha256sum "$DEST/public/css/telefonia_host.css" | cut -d' ' -f1)"
 [[ "$HASH1" = "$HASH2" ]]
 grep -Fq 'ajuste hostinger independiente' "$DEST/public/css/telefonia_host.css"
 grep -Fq 'ajuste hostinger local' "$DEST/public/css/telefonia_recepcion_marketing.css"
+grep -Fq '<!-- ajuste local Hostinger -->' "$DEST/app/views/telefonia/shell.php"
+grep -Fq '<style id="impeShellStyles">' "$DEST/app/views/telefonia/shell.php"
+grep -Fq '<script id="impeShellRuntime">' "$DEST/app/views/telefonia/shell.php"
 [[ "$(grep -Fc '/* WebRTC embebido:' "$DEST/public/css/telefonia_host.css")" -eq 1 ]]
 [[ "$(grep -Fc '/* Configuración opcional de conexión automática' "$DEST/public/css/telefonia_recepcion_marketing.css")" -eq 1 ]]
 [[ "$(find "$TMP/backups" -type f | wc -l)" -eq 19 ]]
