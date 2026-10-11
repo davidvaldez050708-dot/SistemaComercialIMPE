@@ -11,6 +11,10 @@ on:
       - "public/css/educacion_objetivo.css"
       - "public/inegi_educacion_objetivo.php"
       - "tests/territorial_educacion_smoke.php"
+      - "tests/territorial_modales_oficiales_smoke.js"
+      - "public/javascript/data_territorial_modal_oficial.js"
+      - "public/css/responsive_sistema.css"
+      - "app/views/layout/dashboard_footer.php"
       - ".github/workflows/educacion-territorial.yml"
   pull_request:
 
@@ -30,6 +34,11 @@ jobs:
           php -l public/inegi_educacion_objetivo.php
           php -l tests/territorial_educacion_smoke.php
       - name: Comprobar sintaxis JavaScript
-        run: node --check public/javascript/educacion_objetivo.js
+        run: |
+          node --check public/javascript/educacion_objetivo.js
+          node --check public/javascript/data_territorial_modal_oficial.js
+          node --check tests/territorial_modales_oficiales_smoke.js
+          node tests/territorial_modales_oficiales_smoke.js
+          php -l app/views/layout/dashboard_footer.php
       - name: Probar lectura local de cache y presentacion
         run: php tests/territorial_educacion_smoke.php
