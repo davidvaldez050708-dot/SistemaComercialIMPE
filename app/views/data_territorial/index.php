@@ -2260,6 +2260,14 @@ $urlPaginaTerritorio = function ($pagina) use ($buscarTerritorio, $filtroInforma
                                         </span>
                                     </label>
                                     <label class="data-official-option-card">
+                                        <input class="form-check-input" type="checkbox" value="contexto_educativo_general" data-official-option>
+                                        <span>
+                                            <strong>Contexto educativo general</strong>
+                                            <small>INEGI · Censo 2020 · ITER</small>
+                                            <em>Sincroniza secundaria completa, educación posbásica, escolaridad promedio y contexto juvenil. Conserva los datos locales válidos.</em>
+                                        </span>
+                                    </label>
+                                    <label class="data-official-option-card">
                                         <input
                                             class="form-check-input"
                                             type="checkbox"
@@ -2503,6 +2511,14 @@ $urlPaginaTerritorio = function ($pagina) use ($buscarTerritorio, $filtroInforma
                                     </span>
                                 </label>
                                 <label class="data-official-option-card">
+                                    <input class="form-check-input" type="checkbox" value="contexto_educativo_general" data-official-option>
+                                    <span>
+                                        <strong>Contexto educativo general</strong>
+                                        <small>INEGI · Censo 2020 · ITER</small>
+                                        <em>Sincroniza secundaria completa, educación posbásica, escolaridad promedio y contexto juvenil. Conserva los datos locales válidos.</em>
+                                    </span>
+                                </label>
+                                <label class="data-official-option-card">
                                     <input
                                         class="form-check-input"
                                         type="checkbox"
@@ -2652,7 +2668,7 @@ $urlPaginaTerritorio = function ($pagina) use ($buscarTerritorio, $filtroInforma
                                 </div>
                                 <div>
                                     <span>Opciones disponibles</span>
-                                    <strong>5</strong>
+                                    <strong>10</strong>
                                 </div>
                             </div>
 
@@ -3448,6 +3464,12 @@ document.addEventListener('DOMContentLoaded', function () {
             nombre: 'Escolaridad por edades · 15–17, 18+ y 25+',
             action: 'actualizarEscolaridadAdultaOficial',
             mensajeError: 'No fue posible descargar o validar el tabulado educativo oficial de INEGI.',
+            pausaPosterior: 900
+        },
+        contexto_educativo_general: {
+            nombre: 'Contexto educativo general',
+            action: 'actualizarContextoEducativoGeneralOficial',
+            mensajeError: 'No fue posible sincronizar el contexto educativo general de INEGI.',
             pausaPosterior: 900
         },
         perfil_educativo_prioritario: {
