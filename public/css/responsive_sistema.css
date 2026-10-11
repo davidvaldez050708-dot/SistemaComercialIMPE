@@ -1472,3 +1472,182 @@
         padding-left: 16px;
     }
 }
+
+
+/* ======================================================================
+   INFORMACIÓN TERRITORIAL · MODALES DE ACTUALIZACIÓN OFICIAL
+   Reglas intencionalmente acotadas a los dos diálogos: corrigen la
+   regla genérica .admin-content .modal-dialog { max-width: 100vw; }
+   sin cambiar dimensiones de los modales de Seguimiento u otros módulos.
+   ====================================================================== */
+#modalActualizarInformacionEstados .modal-dialog.data-territorial-modal-masiva {
+    box-sizing: border-box;
+    width: min(920px, calc(100vw - 32px));
+    max-width: min(920px, calc(100vw - 32px));
+    margin-right: auto;
+    margin-left: auto;
+}
+#modalActualizarInformacionOficial .modal-dialog.data-territorial-modal-oficial {
+    box-sizing: border-box;
+    width: min(690px, calc(100vw - 32px));
+    max-width: min(690px, calc(100vw - 32px));
+    margin-right: auto;
+    margin-left: auto;
+}
+#modalActualizarInformacionEstados .modal-content.system-form-modal,
+#modalActualizarInformacionOficial .modal-content.system-form-modal {
+    display: flex;
+    flex-direction: column;
+    min-height: min(340px, calc(100dvh - 32px));
+    max-height: calc(100dvh - 32px);
+    overflow: hidden;
+}
+#modalActualizarInformacionEstados .system-form-modal > .modal-header,
+#modalActualizarInformacionEstados .system-form-modal > .modal-footer,
+#modalActualizarInformacionOficial .system-form-modal > .modal-header,
+#modalActualizarInformacionOficial .system-form-modal > .modal-footer {
+    flex: 0 0 auto;
+}
+#modalActualizarInformacionEstados .system-form-modal > .modal-body,
+#modalActualizarInformacionOficial .system-form-modal > .modal-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    scrollbar-width: thin;
+    padding: 12px 18px;
+}
+#modalActualizarInformacionEstados .system-form-modal > .modal-header,
+#modalActualizarInformacionOficial .system-form-modal > .modal-header {
+    padding: 13px 18px;
+}
+#modalActualizarInformacionEstados .system-form-modal > .modal-footer,
+#modalActualizarInformacionOficial .system-form-modal > .modal-footer {
+    padding: 11px 18px;
+}
+#modalActualizarInformacionEstados .data-official-confirm-text,
+#modalActualizarInformacionOficial .data-official-confirm-text {
+    margin-bottom: 9px;
+}
+#modalActualizarInformacionEstados .data-official-option-list,
+#modalActualizarInformacionOficial .data-official-option-list {
+    gap: 8px;
+}
+#modalActualizarInformacionEstados .data-official-option-list.is-official-categorized,
+#modalActualizarInformacionOficial .data-official-option-list.is-official-categorized {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+#modalActualizarInformacionEstados .data-official-option-card,
+#modalActualizarInformacionOficial .data-official-option-card {
+    min-width: 0;
+    padding: 10px 11px;
+    gap: 9px;
+}
+#modalActualizarInformacionEstados .data-official-option-card strong,
+#modalActualizarInformacionOficial .data-official-option-card strong {
+    font-size: 12px;
+    line-height: 1.35;
+}
+#modalActualizarInformacionEstados .data-official-option-card small,
+#modalActualizarInformacionOficial .data-official-option-card small {
+    margin-top: 3px;
+    font-size: 10.5px;
+}
+#modalActualizarInformacionEstados .data-official-option-card em,
+#modalActualizarInformacionOficial .data-official-option-card em {
+    margin-top: 3px;
+    font-size: 10px;
+    line-height: 1.4;
+}
+#modalActualizarInformacionEstados .data-official-option-list [hidden],
+#modalActualizarInformacionOficial .data-official-option-list [hidden] {
+    display: none !important;
+}
+.official-update-categories {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 0 0 10px;
+    padding: 2px 0 0;
+}
+.official-update-category {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 35px;
+    padding: 6px 11px;
+    border: 1px solid #dbe3ee;
+    border-radius: 9px;
+    background: #fff;
+    color: #4a5a70;
+    font-size: 11.5px;
+    font-weight: 800;
+    cursor: pointer;
+}
+.official-update-category:hover,
+.official-update-category:focus-visible {
+    background: #f5f8fd;
+    border-color: #b9cbe2;
+}
+.official-update-category[aria-pressed="true"] {
+    background: #eef3ff;
+    border-color: #b9c8e9;
+    color: #273a8a;
+    box-shadow: inset 0 -2px 0 #0a8f7a;
+}
+.official-update-category-count {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    min-width: 19px;
+    padding: 1px 5px;
+    border-radius: 999px;
+    background: #eef1f6;
+    color: #66748b;
+    font-size: 10px;
+    font-weight: 800;
+}
+.official-update-category[aria-pressed="true"] .official-update-category-count {
+    background: #dce5fc;
+    color: #273a8a;
+}
+.official-update-category-count.has-selected {
+    background: #e0f2ed;
+    color: #097562;
+}
+.official-update-selection-status {
+    margin: 0 0 8px;
+    color: #647186;
+    font-size: 10.5px;
+    font-weight: 650;
+}
+@media (max-width: 767.98px) {
+    #modalActualizarInformacionEstados .modal-dialog.data-territorial-modal-masiva,
+    #modalActualizarInformacionOficial .modal-dialog.data-territorial-modal-oficial {
+        width: calc(100vw - 24px);
+        max-width: calc(100vw - 24px);
+        margin-right: auto;
+        margin-left: auto;
+    }
+    #modalActualizarInformacionEstados .system-form-modal > .modal-body,
+    #modalActualizarInformacionOficial .system-form-modal > .modal-body {
+        padding: 12px;
+    }
+    #modalActualizarInformacionEstados .data-official-option-list.is-official-categorized,
+    #modalActualizarInformacionOficial .data-official-option-list.is-official-categorized {
+        grid-template-columns: minmax(0, 1fr);
+    }
+    .official-update-category {
+        flex: 1 1 auto;
+        justify-content: center;
+        padding: 7px 8px;
+    }
+}
+@media (max-height: 570px) {
+    #modalActualizarInformacionEstados .modal-content.system-form-modal,
+    #modalActualizarInformacionOficial .modal-content.system-form-modal {
+        min-height: 0;
+        max-height: calc(100dvh - 16px);
+    }
+}
