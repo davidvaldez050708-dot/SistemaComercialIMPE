@@ -1,0 +1,57 @@
+/* Host WebRTC persistente: las páginas PHP navegan dentro del marco
+   principal y el SDK permanece montado dentro del mismo documento padre. */
+:root { color-scheme: light; }
+* { box-sizing: border-box; }
+html, body { height: 100%; min-width: 0; margin: 0; overflow: hidden; }
+.impe-phone-shell { position: fixed; inset: 0; background: #eef2f8; }
+#impeCrmFrame { display: block; width: 100%; height: 100%; border: 0; }
+.impe-phone-status {
+  position: fixed; bottom: 14px; right: 18px; z-index: 900;
+  display: flex; align-items: center; gap: 9px; max-width: min(390px, calc(100vw - 30px));
+  padding: 10px 12px; border: 1px solid #dce5f1; border-radius: 10px;
+  box-shadow: 0 5px 20px #0c224021; background: #fff; color: #344d71;
+  font: 600 12px/1.5 system-ui, sans-serif;
+}
+.impe-phone-status[hidden], .impe-phone-restore[hidden] { display: none !important; }
+.impe-phone-status button {
+  border: 0; border-radius: 7px; background: #273b88; color: #fff;
+  padding: 6px 9px; cursor: pointer; font: inherit;
+}
+/* No esconder con display:none el iframe: algunos motores WebRTC dejan de
+   procesar audio cuando se destruye/oculta completamente su contexto. */
+.impe-phone-call {
+  position: fixed; width: 3px; height: 3px; right: 0; bottom: 0; z-index: 1100;
+  overflow: hidden; opacity: 0; pointer-events: none;
+  background: #fff; border: 0;
+}
+.impe-phone-call.is-visible {
+  width: min(420px, calc(100vw - 22px));
+  height: min(580px, calc(100dvh - 24px));
+  right: 12px; bottom: 12px; opacity: 1; pointer-events: auto;
+  border: 1px solid #d9e2ef; border-radius: 12px; overflow: hidden;
+  box-shadow: 0 16px 48px #0a1b3755;
+}
+.impe-phone-call-header {
+  height: 59px; display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; background: #f8faff; border-bottom: 1px solid #dbe4f1;
+  padding: 9px 14px; font: 600 12px/1.4 system-ui, sans-serif;
+}
+.impe-phone-call-header strong { display: block; color: #192c59; font-size: 13px; }
+.impe-phone-call-header small { display: block; margin-top: 3px; color: #64748b; }
+.impe-phone-call-header button {
+  flex: 0 0 30px; height: 30px; border-radius: 8px; border: 1px solid #d7e2f2;
+  background: #fff; color: #203568; cursor: pointer; font-size: 21px;
+}
+.impe-phone-call-host { width: 100%; height: calc(100% - 59px); overflow: hidden; }
+.impe-phone-call iframe { width: 100%; height: 100%; border: 0; display: block; }
+.impe-phone-restore {
+  position: fixed; bottom: 15px; right: 16px; z-index: 1101;
+  background: #233986; color: white; border: 0; border-radius: 99px;
+  padding: 12px 17px; cursor: pointer; font: 700 12px/1.3 system-ui, sans-serif;
+  box-shadow: 0 5px 20px #0b214233;
+}
+@media(max-width: 550px) {
+ .impe-phone-call.is-visible { right: 6px; bottom: 6px;
+    width: calc(100vw - 12px); height: min(560px, calc(100dvh - 12px)); }
+ .impe-phone-status { right: 7px; bottom: 7px; }
+}
