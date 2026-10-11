@@ -388,6 +388,20 @@ class TelefoniaController
             exit;
         }
 
+        // Seguridad UX: no entregar una capa sin estilos ni controles.
+        // Si faltan archivos estáticos del despliegue, volver al CRM
+        // tradicional en lugar de presentar un iframe de 300 x 150 px.
+        foreach ([
+            ROOT_PATH . '/public/css/telefonia_shell.css',
+            ROOT_PATH . '/public/javascript/telefonia_shell.js'
+        ] as $recursoShell) {
+            if (!is_file($recursoShell) || !is_readable($recursoShell)) {
+                error_log('[Telefonia shell] Recurso ausente: ' . basename($recursoShell));
+                header('Location: ' . BASE_URL . 'index.php?controller=home&action=index');
+                exit;
+            }
+        }
+
         header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
         header('Pragma: no-cache');
         header('X-Frame-Options: SAMEORIGIN');
