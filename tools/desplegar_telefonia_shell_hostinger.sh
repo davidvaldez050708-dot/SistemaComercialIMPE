@@ -28,6 +28,20 @@ BASES=(
   "bad0ff9e25ac5cc3d06e9021f6d7393e4700d792"
   "080cab618c94679cbe7da4bc74a169234f364ce0"
 )
+# Punto de partida de la PRIMERA versión del shell ya instalada. Comparar
+# contra BASES (antes del shell) crea conflictos artificiales en Hostinger,
+# aunque producción no tenga ninguna personalización. Elegir la base según
+# el marcador de la instalación, nunca sobrescribir un archivo arbitrario.
+PUBLISHED_BASES=(
+  "1a516b6e85a43c7cae9788a7466f1b30a0069c13"
+  "e9ad0ee9fb32206b4196d3b44fef372482917770"
+  "88e841eef127baf9e902dc6d5b6c3a88ac2d20a7"
+  "4cf410f52d77807e70d2e39c6e0c75eb3b4c0f15"
+  "b5c0696a4ded8124d3014952e656bb49c711a8e4"
+  "3078506f6c25b9f3c6efa828ca475c29c26605bf"
+  "672bb7cac82909944923993477b2769028a481b9"
+  "9230121a062cac5ef2162c65c2a4d84c046d8774"
+)
 MARKERS=(
   "\$destinoInicio = 'index.php?controller=home&action=index';"
   "public function shell()"
@@ -97,8 +111,18 @@ for i in "${!EXISTING[@]}"; do
     cp "$live" "$out"
     continue
   fi
-  git -C "$SRC" cat-file blob "${BASES[$i]}" > "$TMP/base-$i" || {
-    echo "ERROR: falta la versión base de $file." >&2; exit 1;
+  # Detectar si producción ya posee la versión inicial del shell.
+  # Este es el caso de la captura del panel diminuto: TelefoniaController
+  # ya incluye public function shell() pero no la nueva protección CSS/JS.
+  base="${BASES[$i]}"
+  if grep -Fq "${MARKERS[$i]}" "$live"; then
+    base="${PUBLISHED_BASES[$i]}"
+    echo "  $file: actualizando shell existente"
+  else
+    echo "  $file: incorporando shell por primera vez"
+  fi
+  git -C "$SRC" cat-file blob "$base" > "$TMP/base-$i" || {
+    echo "ERROR: falta la versión base de $file; nada publicado." >&2; exit 1;
   }
   git merge-file -p "$live" "$TMP/base-$i" "$src" > "$out" || {
     echo "CONFLICTO: $file tiene cambios incompatibles con Hostinger." >&2
