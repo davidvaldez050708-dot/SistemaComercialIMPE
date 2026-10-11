@@ -63,7 +63,8 @@ grep -Fq '<style id="impeShellStyles">' "$DEST/app/views/telefonia/shell.php"
 grep -Fq '<script id="impeShellRuntime">' "$DEST/app/views/telefonia/shell.php"
 [[ "$(grep -Fc '/* WebRTC embebido:' "$DEST/public/css/telefonia_host.css")" -eq 1 ]]
 [[ "$(grep -Fc '/* Configuración opcional de conexión automática' "$DEST/public/css/telefonia_recepcion_marketing.css")" -eq 1 ]]
-[[ "$(find "$TMP/backups" -type f | wc -l)" -eq 19 ]]
+# El primer respaldo ahora incluye también la versión antigua del shell.php.
+[[ "$(find "$TMP/backups" -type f | wc -l)" -eq 20 ]]
 IMPE_SHELL_PUBLIC_DIR="$DEST" IMPE_SHELL_BACKUP_DIR="$TMP/backups" \
 bash "$ROOT/tools/revertir_telefonia_shell_hostinger.sh" "$FIRST_BACKUP" > /dev/null
 ! grep -Fq 'public function shell()' "$DEST/app/controllers/TelefoniaController.php"
