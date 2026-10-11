@@ -374,3 +374,36 @@
     font-weight: 700;
     white-space: nowrap;
 }
+
+
+/* Recepción · llamada de retorno vinculada a una llamada perdida. */
+.marketing-reception-number .marketing-reception-callback {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 28px;
+    padding: 4px 9px;
+    margin: 5px 0 0;
+    font-size: 10px;
+    font-weight: 750;
+    white-space: nowrap;
+}
+.marketing-reception-number .marketing-reception-callback:disabled {
+    opacity: .55;
+    cursor: not-allowed;
+}
+.marketing-reception-callback-status {
+    margin: 10px 0 8px;
+    padding: 9px 11px;
+    border-radius: 9px;
+    background: #edf5ff;
+    border: 1px solid #cddcf2;
+    color: #2b4978;
+    font-size: 11px;
+    font-weight: 650;
+}
+.marketing-reception-callback-status.is-error {
+    background: #fff8f7;
+    border-color: #f0d7d2;
+    color: #a12c24;
+}
