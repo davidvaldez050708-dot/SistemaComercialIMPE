@@ -8,7 +8,8 @@ DST="$HOME/domains/fundacionrededumex.org/public_html"
 CSS="public/css/responsive_sistema.css"
 JS="public/javascript/data_territorial_modal_oficial.js"
 FOOTER="app/views/layout/dashboard_footer.php"
-BACKUP="$HOME/respaldos-crm/modales-oficiales-$(date +%Y%m%d-%H%M%S)"
+mkdir -p "$HOME/respaldos-crm"
+BACKUP="$(mktemp -d "$HOME/respaldos-crm/modales-oficiales-$(date +%Y%m%d-%H%M%S)-XXXXXX")"
 STAGING="$(mktemp -d)"
 trap 'rm -rf "$STAGING"' EXIT
 
