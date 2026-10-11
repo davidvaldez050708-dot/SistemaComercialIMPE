@@ -57,6 +57,42 @@ for i in "${!FILES[@]}"; do
 
     mkdir -p "$TMP/$(dirname "$file")"
 
+    # Los cambios CSS de Telefonía son secciones completas agregadas al final.
+    # Fusionar con git merge-file causa conflictos artificiales cuando
+    # producción también añadió reglas al final de responsive_sistema.css.
+    # Por eso sólo anexamos el bloque NUEVO y verificamos su integridad.
+    if [[ "$file" == "public/css/telefonia.css" ||
+          "$file" == "public/css/telefonia_recepcion_marketing.css" ||
+          "$file" == "public/css/responsive_sistema.css" ]]; then
+        php -r '
+            $fuente = file_get_contents($argv[1]);
+            $produccion = file_get_contents($argv[2]);
+            $inicio = $argv[4];
+            $pos = strpos($fuente, $inicio);
+            if ($pos === false) {
+                fwrite(STDERR, "No se encontró la sección CSS prevista.\n");
+                exit(2);
+            }
+            $bloque = substr($fuente, $pos);
+            if (strpos($produccion, $inicio) !== false) {
+                if (strpos($produccion, $bloque) === false) {
+                    fwrite(STDERR, "Producción ya contiene una versión CSS diferente.\n");
+                    exit(2);
+                }
+                $nuevo = $produccion;
+            } else {
+                $nuevo = rtrim($produccion) . "\n\n" . $bloque;
+            }
+            if (file_put_contents($argv[3], $nuevo) === false) {
+                exit(2);
+            }
+        ' "$srcfile" "$dstfile" "$TMP/$file" "${MARKERS[$i]}" || {
+            echo "ERROR: no se pudo integrar el CSS de $file." >&2
+            exit 1
+        }
+        continue
+    fi
+
     if grep -Fq "${MARKERS[$i]}" "$dstfile"; then
         # Volver a ejecutar no duplica las secciones ya integradas.
         cp "$dstfile" "$TMP/$file"
