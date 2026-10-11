@@ -33,7 +33,7 @@ body {
  * El SDK de Zadarma debe seguir vivo para WebRTC, pero su marcador nativo
  * nunca debe convertirse en una segunda interfaz del CRM.
  */
-body > *:not(.telephony-host-sentinel):not(script) {
+body > *:not(.telephony-host-sentinel):not(.telephony-host-tab-info):not(script) {
     position: fixed !important;
     left: -10000px !important;
     top: -10000px !important;
@@ -50,4 +50,73 @@ body > *:not(.telephony-host-sentinel):not(script) {
 
 .telephony-host-sentinel {
     z-index: 2147483647;
+}
+
+
+/* Modo opcional de pestaña: no mostrar una pantalla vacía al usuario. */
+body.telephony-host-tab {
+    overflow-y: auto;
+    height: auto;
+    min-height: 100vh;
+    background: #f5f7fa;
+    color: #253449;
+    font-family: Manrope, sans-serif;
+}
+body.telephony-host-tab .telephony-host-sentinel {
+    z-index: 0;
+    background: #f5f7fa;
+}
+.telephony-host-tab-info {
+    position: relative;
+    z-index: 1;
+    box-sizing: border-box;
+    width: min(520px, calc(100% - 32px));
+    margin: clamp(24px, 8vh, 84px) auto;
+    padding: 32px;
+    text-align: center;
+    background: #fff;
+    border: 1px solid #e2e9f2;
+    border-radius: 16px;
+    box-shadow: 0 12px 34px rgba(22, 34, 59, .08);
+}
+.telephony-host-tab-icon {
+    display: inline-grid;
+    place-items: center;
+    width: 54px;
+    height: 54px;
+    border-radius: 14px;
+    background: #edf3fc;
+    color: #2b4089;
+    font-size: 26px;
+}
+.telephony-host-tab-info h1 {
+    margin: 18px 0 6px;
+    font-size: 22px;
+}
+.telephony-host-tab-info > p {
+    color: #64748b;
+    font-size: 13px;
+}
+.telephony-host-tab-status {
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
+    margin-top: 14px;
+    padding: 8px 12px;
+    border-radius: 99px;
+    background: #edf9f3;
+    color: #15684f;
+    font-size: 12px;
+    font-weight: 750;
+}
+.telephony-host-tab-status i {
+    font-size: 8px;
+}
+.telephony-host-tab-note {
+    max-width: 390px;
+    margin: 20px auto 0;
+    line-height: 1.75;
+}
+@media (max-width: 480px) {
+    .telephony-host-tab-info { padding: 22px 16px; }
 }
