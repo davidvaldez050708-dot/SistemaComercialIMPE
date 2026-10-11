@@ -206,6 +206,7 @@ if ($esTerritorialFooter) {
         $jsDashboardFooter,
         [
             'educacion_objetivo.js',
+            'data_territorial_modal_oficial.js',
             'data_territorial_fuentes.js',
             'poblacion_objetivo_educativa.js',
             'territorios_historial.js',
