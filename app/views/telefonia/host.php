@@ -11,6 +11,7 @@ $usuarioHost = trim(
 if ($usuarioHost === '') {
     $usuarioHost = (string)($_SESSION['usuario'] ?? 'Usuario');
 }
+$mostrarPestanaTelefonica = (string)($_GET['display'] ?? '') === 'tab';
 
 ?>
 <!DOCTYPE html>
@@ -37,6 +38,7 @@ if ($usuarioHost === '') {
         href="<?= BASE_URL ?>public/css/telefonia_host.css?v=<?= filemtime(ROOT_PATH . '/public/css/telefonia_host.css') ?>">
 </head>
 <body
+    class="<?= $mostrarPestanaTelefonica ? 'telephony-host-tab' : '' ?>"
     data-telephony-host
     data-user-id="<?= (int)($_SESSION['usuario_id'] ?? 0) ?>"
     data-extension="<?= htmlspecialchars($extensionHost, ENT_QUOTES, 'UTF-8') ?>">
@@ -45,6 +47,26 @@ if ($usuarioHost === '') {
         class="telephony-host-sentinel"
         aria-hidden="true">
     </div>
+    <?php if ($mostrarPestanaTelefonica): ?>
+        <main class="telephony-host-tab-info">
+            <span class="telephony-host-tab-icon" aria-hidden="true">
+                <i class="bi bi-headset"></i>
+            </span>
+            <h1>Teléfono institucional</h1>
+            <p>Extensión <?= htmlspecialchars($extensionHost, ENT_QUOTES, 'UTF-8') ?></p>
+            <div class="telephony-host-tab-status" role="status">
+                <i class="bi bi-circle-fill" aria-hidden="true"></i>
+                La recepción se está conectando.
+            </div>
+            <p class="telephony-host-tab-note">
+                Esta pestaña mantiene la conexión con Zadarma.
+                <strong>No la cierres ni la recargues</strong> mientras estés disponible.
+                Puedes trabajar normalmente en la pestaña del CRM.
+                Si recibes una llamada, vuelve aquí si tu navegador no
+                muestra automáticamente el teléfono.
+            </p>
+        </main>
+    <?php endif; ?>
 
     <script>
         window.IMPE_TELEPHONY_HOST = <?= json_encode([
