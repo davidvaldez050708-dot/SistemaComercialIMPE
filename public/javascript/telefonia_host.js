@@ -10,6 +10,8 @@
         Boolean(config.permiteEntrantes);
     const permiteTransferir =
         Boolean(config.permiteTransferir);
+    const modoPestana = new URLSearchParams(window.location.search)
+        .get('display') === 'tab';
     let nativeUiVisible = false;
 
     if (userId <= 0 || extension === '') {
@@ -17,7 +19,7 @@
     }
 
     const concealOwnWindow = function () {
-        if (nativeUiVisible) {
+        if (modoPestana || nativeUiVisible) {
             return;
         }
 
@@ -319,20 +321,22 @@
                 1280
             );
 
-        try {
-            window.resizeTo(420, 620);
-        } catch (error) {
-            // El navegador puede limitar dimensiones.
-        }
+        if (!modoPestana) {
+            try {
+                window.resizeTo(420, 620);
+            } catch (error) {
+                // El navegador puede limitar dimensiones.
+            }
 
-        try {
-            window.moveTo(
-                screenLeft +
-                    Math.max(20, screenWidth - 450),
-                screenTop + 40
-            );
-        } catch (error) {
-            // El navegador decide la posición final.
+            try {
+                window.moveTo(
+                    screenLeft +
+                        Math.max(20, screenWidth - 450),
+                    screenTop + 40
+                );
+            } catch (error) {
+                // El navegador decide la posición final.
+            }
         }
 
         try {
@@ -894,6 +898,7 @@
 
         answeredAtMs = 0;
         ocultarHostEntrante();
+        marcarPestanaEntrante('');
 
         incomingFinishedTimer =
             window.setTimeout(
@@ -914,6 +919,19 @@
                 },
                 5000
             );
+    };
+
+    const marcarPestanaEntrante = function (numero) {
+        if (!modoPestana) return;
+        document.title = numero
+            ? '☎ Llamada entrante · Ext. ' + extension
+            : 'Teléfono conectado · Ext. ' + extension;
+        const indicador = document.querySelector('.telephony-host-tab-status');
+        if (indicador) {
+            indicador.textContent = numero
+                ? 'Llamada entrante de ' + numero
+                : 'Recepción lista. Mantén abierta esta pestaña.';
+        }
     };
 
     const applyIncomingState = function (call) {
@@ -1031,6 +1049,7 @@
         });
 
         if (nuevaLlamadaEntrante) {
+            marcarPestanaEntrante(String(call.caller_id || ''));
             mostrarHostEntrante();
         }
     };
@@ -1744,7 +1763,14 @@
                     '…'
     });
 
-    void ensureWidget().catch(function (error) {
+    void ensureWidget().then(function () {
+        marcarPestanaEntrante('');
+    }).catch(function (error) {
+        if (modoPestana) {
+            const indicador = document.querySelector('.telephony-host-tab-status');
+            if (indicador) indicador.textContent =
+                error.message || 'No fue posible conectar la recepción.';
+        }
         publish({
             phase: 'error',
             active: false,
