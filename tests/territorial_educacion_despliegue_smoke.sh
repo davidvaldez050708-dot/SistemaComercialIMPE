@@ -24,5 +24,5 @@ HOME="$TMP" bash "$ROOT/tools/desplegar_respuesta_educacion_hostinger.sh"
 grep -Fq 'AJUSTE-LOCAL-SERVIDOR' "$SITE/public/css/educacion_objetivo.css"
 grep -Fq 'AJUSTE-LOCAL-SERVIDOR' "$SITE/public/javascript/educacion_objetivo.js"
 test "$(grep -Fc 'const consultarEducacionLocal =' "$SITE/public/javascript/educacion_objetivo.js")" -eq 1
-test "$(grep -Fc '.data-education-target-error .data-education-retry' "$SITE/public/css/educacion_objetivo.css")" -eq 1
+test "$(grep -Fc 'min-height: 34px;' "$SITE/public/css/educacion_objetivo.css")" -eq 1
 echo 'Despliegue educativo simulado: OK (personalizaciones preservadas)'
