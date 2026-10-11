@@ -35,6 +35,7 @@ function boot(opts = {}) {
     elements['impeCrmFrame'] = element();
     elements['impeCrmFrame'].contentWindow = {location:{href:'https://crm.ejemplo.org/index.php?controller=home&action=index'}};
     const intervals = [];
+    const windowEvents = {};
     const win = {
         IMPE_PHONE_SHELL_CONFIG: {
             userId: 8, extension: '100',
@@ -43,7 +44,7 @@ function boot(opts = {}) {
             autoReception: opts.auto !== false
         },
         location: {origin:'https://crm.ejemplo.org', replace(url) {this.redirect = url;}},
-        addEventListener() {},
+        addEventListener(k,fn) {windowEvents[k] = fn;},
         setInterval(fn) {intervals.push(fn); return intervals.length;}
     };
     const doc = {
@@ -69,7 +70,7 @@ function boot(opts = {}) {
         console
     });
     vm.runInContext(source,ctx);
-    return {window:win,elements,classes,intervals,channels};
+    return {window:win,elements,classes,intervals,channels,windowEvents};
 }
 
 storage.clear();
@@ -104,6 +105,16 @@ first.channels[0].message({type:'STATE',state:{
 }});
 assert.equal(first.elements['[data-shell-call]'].classList.contains('is-visible'),false,
     'outgoing calls retain CRM dialer, no blank SDK overlay');
+first.windowEvents.message({
+    origin:'https://crm.ejemplo.org',
+    source:first.elements['[data-shell-host-region]'].children[0].contentWindow,
+    data:{type:'IMPE_TELEPHONY_NATIVE_CONTROLS',userId:8}
+});
+assert.equal(first.elements['[data-shell-call]'].classList.contains('is-visible'),true,
+    'transfer fallbacks show official Zadarma controls in CRM');
+first.elements['[data-shell-minimize]'].events.click();
+assert.equal(first.elements['[data-shell-call]'].classList.contains('is-visible'),false,
+    'user can minimize provider transfer controls without hanging up');
 
 const second = boot();
 assert.equal(second.elements['[data-shell-host-region]'].children.length,0,
