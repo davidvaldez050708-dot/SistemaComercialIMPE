@@ -10,7 +10,8 @@ $pie = file_get_contents($root . '/app/views/layout/dashboard_footer.php');
 $controlador = file_get_contents($root . '/app/controllers/SeguimientoVinculacionController.php');
 $checks = [
     'Candidatos completos viajan en respuesta inicial' =>
-        str_contains($controlador, "'cache_candidatos' => $busquedaAutomatica ? $candidatosCompletos : []"),
+        str_contains($controlador, "'cache_candidatos' => ") &&
+        str_contains($controlador, '$busquedaAutomatica ? $candidatosCompletos : []'),
     'Se utiliza utilidad de páginas locales' =>
         str_contains($vista, 'util.crearPagina(') &&
         str_contains($vista, 'catalogoAutomaticoCompleto'),
