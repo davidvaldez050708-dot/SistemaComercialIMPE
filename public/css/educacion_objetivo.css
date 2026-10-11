@@ -291,6 +291,22 @@
 .data-education-target-error {
     border-color: #ead9d9;
     background: #fffafa;
+    flex-wrap: wrap;
+}
+
+.data-education-target-error .data-education-retry {
+    margin-left: auto;
+    flex: 0 0 auto;
+    min-height: 34px;
+    padding: 7px 12px;
+    font-size: 11px;
+    white-space: nowrap;
+}
+@media (max-width: 575.98px) {
+    .data-education-target-error .data-education-retry {
+        width: 100%;
+        margin-left: 0;
+    }
 }
 
 @media (max-width: 991.98px) {
