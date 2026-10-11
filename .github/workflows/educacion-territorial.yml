@@ -13,6 +13,7 @@ on:
       - "tests/territorial_educacion_smoke.php"
       - "tests/territorial_modales_oficiales_smoke.js"
       - "tools/desplegar_modales_oficiales_hostinger.sh"
+      - "tests/territorial_modales_despliegue_smoke.sh"
       - "public/javascript/data_territorial_modal_oficial.js"
       - "public/css/responsive_sistema.css"
       - "app/views/layout/dashboard_footer.php"
@@ -42,5 +43,8 @@ jobs:
           node tests/territorial_modales_oficiales_smoke.js
           php -l app/views/layout/dashboard_footer.php
           bash -n tools/desplegar_modales_oficiales_hostinger.sh
+          bash -n tests/territorial_modales_despliegue_smoke.sh
+      - name: Simular despliegue seguro Hostinger
+        run: bash tests/territorial_modales_despliegue_smoke.sh
       - name: Probar lectura local de cache y presentacion
         run: php tests/territorial_educacion_smoke.php
