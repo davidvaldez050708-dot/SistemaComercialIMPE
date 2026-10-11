@@ -33,6 +33,8 @@
     let mountFailed = '';
     let hostStartedAt = 0;
     let owned = false;
+    let autoRetries = 0;
+    let lastRecoveryAttempt = 0;
 
     // El host debe existir aunque los controles estén minimizados.
     // display:none sobre el contenedor apagaba algunos SDK.
@@ -140,9 +142,11 @@
             retry.hidden = false;
         }
 
-        const showCall = ongoing && !minimized;
+        // Las salientes conservan el panel telefónico del CRM; abrir la UI
+        // oficial de Zadarma sólo es necesario para aceptar entrantes.
+        const showCall = incoming && !minimized;
         call.classList.toggle('is-visible', showCall);
-        restore.hidden = !ongoing || showCall;
+        restore.hidden = !incoming || showCall;
         callTitle.textContent = incoming ? 'Llamada entrante' :
             ongoing ? 'Llamada en curso' : 'Teléfono institucional';
         callStatus.textContent = incoming ?
@@ -208,6 +212,21 @@
 
     // Mantener única conexión dentro del mismo perfil del navegador.
     window.setInterval(function () {
+        if (cfg.autoReception && hostFrame &&
+            !freshState(currentState) && !mountFailed &&
+            Date.now() - hostStartedAt > 22000 &&
+            Date.now() - lastRecoveryAttempt > 30000 &&
+            autoRetries < 2) {
+            // El indicador apagado no debe quedar en un estado verde falso.
+            // Volver a montar sólo cuando la conexión NO tiene latidos.
+            autoRetries += 1;
+            lastRecoveryAttempt = Date.now();
+            hostFrame.remove();
+            hostFrame = null;
+            currentState = null;
+            releaseLease();
+            try { ensureHost(); } catch (error) { mountFailed = error.message; }
+        }
         if (owned) {
             const lease = getLease();
             if (lease?.id !== owner) {
