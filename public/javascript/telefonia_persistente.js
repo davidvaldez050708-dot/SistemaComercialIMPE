@@ -2426,6 +2426,27 @@
             const marketingTabMode = marketingReception?.querySelector(
                 '[data-marketing-reception-tab-mode]'
             );
+            const marketingAuto = marketingReception?.querySelector(
+                '[data-marketing-reception-auto]'
+            );
+            if (marketingAuto) {
+                const key = 'impe:telephony:auto-reception:' + userId;
+                const embedded = getHostMode() === 'embedded';
+                marketingAuto.closest('[data-marketing-reception-auto-wrap]')?.toggleAttribute(
+                    'hidden', !embedded
+                );
+                if (embedded) {
+                    try { marketingAuto.checked = localStorage.getItem(key) !== '0'; }
+                    catch (error) { marketingAuto.checked = true; }
+                    marketingAuto.addEventListener('change', function () {
+                        try {
+                            localStorage.setItem(key, marketingAuto.checked ? '1' : '0');
+                        } catch (error) {
+                            marketingAuto.checked = true;
+                        }
+                    });
+                }
+            }
             if (marketingTabMode) {
                 if (getHostMode() === 'embedded') {
                     marketingTabMode.closest('.marketing-reception-tab-preference')?.remove();
