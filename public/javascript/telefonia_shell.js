@@ -212,7 +212,7 @@
 
     // Mantener única conexión dentro del mismo perfil del navegador.
     window.setInterval(function () {
-        if (cfg.autoReception && hostFrame &&
+        if (autoEnabled && hostFrame &&
             !freshState(currentState) && !mountFailed &&
             Date.now() - hostStartedAt > 22000 &&
             Date.now() - lastRecoveryAttempt > 30000 &&
@@ -248,7 +248,15 @@
     });
 
     readState();
-    if (cfg.autoReception === true) {
+    let autoEnabled = cfg.autoReception === true;
+    if (autoEnabled) {
+        try {
+            autoEnabled = localStorage.getItem(
+                'impe:telephony:auto-reception:' + userId
+            ) !== '0';
+        } catch (error) { /* usar valor predeterminado */ }
+    }
+    if (autoEnabled) {
         // La autorización del navegador para micrófono/audio podría requerir
         // un clic. En ese caso se deja visible Conectar teléfono.
         try { ensureHost(); }
