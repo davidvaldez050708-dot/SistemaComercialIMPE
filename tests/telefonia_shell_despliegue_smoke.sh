@@ -54,7 +54,8 @@ grep -Fq 'ajuste hostinger local' "$DEST/public/css/telefonia_recepcion_marketin
 [[ "$(grep -Fc '/* WebRTC embebido:' "$DEST/public/css/telefonia_host.css")" -eq 1 ]]
 [[ "$(grep -Fc '/* Configuración opcional de conexión automática' "$DEST/public/css/telefonia_recepcion_marketing.css")" -eq 1 ]]
 [[ "$(find "$TMP/backups" -type f | wc -l)" -eq 19 ]]
+IMPE_SHELL_PUBLIC_DIR="$DEST" IMPE_SHELL_BACKUP_DIR="$TMP/backups" \
 bash "$ROOT/tools/revertir_telefonia_shell_hostinger.sh" "$FIRST_BACKUP" > /dev/null
 ! grep -Fq 'public function shell()' "$DEST/app/controllers/TelefoniaController.php"
-! grep -Fq '\$destinoInicio = ' "$DEST/app/controllers/LoginController.php"
+! grep -Fq '$destinoInicio = ' "$DEST/app/controllers/LoginController.php"
 echo 'Telefonía shell: OK (dos despliegues, fusión CSS, respaldo y reversión)'
