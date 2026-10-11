@@ -91,6 +91,8 @@ $recepcionMarketingPermitida = marketingTieneRecepcionAsignada();
         </div>
     </div>
 
+    <p class="marketing-reception-callback-status" data-marketing-reception-callback-status
+        role="status" aria-live="polite" hidden></p>
     <div class="table-responsive marketing-reception-table-scroll">
         <table class="table align-middle marketing-reception-table telephony-history-table">
             <thead>
