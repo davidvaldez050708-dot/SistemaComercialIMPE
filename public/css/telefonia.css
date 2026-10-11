@@ -206,7 +206,7 @@
     white-space: nowrap;
 }
 
-.telephony-user span {
+.telephony-user > div:last-child > span {
     display: block;
     max-width: 220px;
     margin-top: 2px;
@@ -1002,4 +1002,101 @@
 /* Confirmaciones de extensión sobre los menús fijos del CRM. */
 .telephony-admin-flash-container {
     z-index: 1090;
+}
+
+/* TELEFONIA_VISUAL_COMPACTA_V2
+   Solución localizada: no heredar estilos de correos para iniciales y
+   no permitir que el responsive general estire los modales telefónicos. */
+.telephony-admin .telephony-table .telephony-user > span.system-avatar.system-avatar-initials {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 36px;
+    min-width: 36px;
+    height: 36px;
+    flex: 0 0 36px;
+    margin: 0 !important;
+    padding: 0;
+    color: var(--color-primary);
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 1 !important;
+    text-align: center;
+    text-overflow: clip;
+    white-space: nowrap;
+}
+
+#modalTelefoniaExtension.modal .modal-dialog.telephony-modal-dialog {
+    width: calc(100% - 32px) !important;
+    max-width: 620px !important;
+    margin: 1.25rem auto !important;
+}
+
+#modalTelefoniaLiberar.modal .modal-dialog.system-confirm-dialog {
+    width: calc(100% - 32px) !important;
+    max-width: 440px !important;
+    margin: 1.25rem auto !important;
+}
+
+#modalTelefoniaExtension.modal .modal-content,
+#modalTelefoniaLiberar.modal .modal-content {
+    width: 100%;
+    max-height: calc(100dvh - 40px);
+    overflow: hidden;
+}
+
+#modalTelefoniaExtension.modal .modal-content > form,
+#modalTelefoniaLiberar.modal .modal-content > form {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+#modalTelefoniaExtension.modal .modal-content > form > .modal-body,
+#modalTelefoniaLiberar.modal .modal-content > form > .modal-body {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+#modalTelefoniaExtension.modal .system-form-modal .modal-header,
+#modalTelefoniaLiberar.modal .system-form-modal .modal-header {
+    padding: 13px 18px;
+}
+
+#modalTelefoniaExtension.modal .system-form-modal .modal-body,
+#modalTelefoniaLiberar.modal .system-form-modal .modal-body {
+    padding: 15px 18px;
+}
+
+#modalTelefoniaExtension.modal .system-form-modal .modal-footer,
+#modalTelefoniaLiberar.modal .system-form-modal .modal-footer {
+    padding: 11px 18px;
+}
+
+#modalTelefoniaExtension.modal .telephony-permissions-box {
+    margin-top: 12px;
+}
+
+#modalTelefoniaExtension.modal .telephony-switch-row {
+    min-height: 46px;
+    padding: 7px 12px;
+}
+
+@media (max-width: 575.98px) {
+    #modalTelefoniaExtension.modal .modal-dialog.telephony-modal-dialog,
+    #modalTelefoniaLiberar.modal .modal-dialog.system-confirm-dialog {
+        width: calc(100% - 20px) !important;
+        max-width: calc(100% - 20px) !important;
+        margin: 10px auto !important;
+    }
+
+    #modalTelefoniaExtension.modal .telephony-form-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    #modalTelefoniaExtension.modal .modal-content,
+    #modalTelefoniaLiberar.modal .modal-content {
+        max-height: calc(100dvh - 20px);
+    }
 }
