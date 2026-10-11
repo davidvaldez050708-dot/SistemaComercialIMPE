@@ -15,6 +15,41 @@
             return;
         }
 
+        // Mismo toast Bootstrap y clases que las operaciones de Seguimiento.
+        // El mensaje se obtiene del flash de sesión, sin HTML interpolado.
+        const flash = root.querySelector('[data-telephony-flash]');
+        if (flash) {
+            let contenedor = document.querySelector('.toast-container');
+            if (!contenedor) {
+                contenedor = document.createElement('div');
+                contenedor.className =
+                    'toast-container position-fixed top-0 end-0 p-3 telephony-admin-flash-container';
+                document.body.appendChild(contenedor);
+            }
+            const esError = flash.dataset.kind === 'error';
+            const aviso = document.createElement('div');
+            aviso.className = 'toast system-toast' +
+                (esError ? ' system-toast-error' : '');
+            aviso.setAttribute('role', esError ? 'alert' : 'status');
+            aviso.setAttribute('aria-live', esError ? 'assertive' : 'polite');
+            aviso.setAttribute('aria-atomic', 'true');
+            aviso.innerHTML =
+                '<div class="toast-body"><i class="bi ' +
+                (esError ? 'bi-exclamation-circle' : 'bi-check2-circle') +
+                '" aria-hidden="true"></i><span></span></div>';
+            aviso.querySelector('span').textContent =
+                String(flash.dataset.message || '');
+            contenedor.appendChild(aviso);
+            aviso.addEventListener('hidden.bs.toast', function () {
+                aviso.remove();
+            }, {once: true});
+            bootstrap.Toast.getOrCreateInstance(aviso, {
+                autohide: true,
+                delay: esError ? 5500 : 3500
+            }).show();
+            flash.remove();
+        }
+
         const configModal =
             bootstrap.Modal.getOrCreateInstance(configModalEl);
         const releaseModal =
