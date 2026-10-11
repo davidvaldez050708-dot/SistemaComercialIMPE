@@ -20,6 +20,7 @@ on:
       - "tests/telefonia_shell_render_smoke.php"
       - "tests/telefonia_shell_runtime_smoke.js"
       - "tests/telefonia_shell_despliegue_smoke.sh"
+      - "tests/telefonia_shell_upgrade_smoke.sh"
       - ".github/workflows/telefonia-shell.yml"
   pull_request:
 jobs:
@@ -53,3 +54,5 @@ jobs:
           bash -n tools/revertir_telefonia_shell_hostinger.sh
           bash -n tests/telefonia_shell_despliegue_smoke.sh
           bash tests/telefonia_shell_despliegue_smoke.sh
+          bash -n tests/telefonia_shell_upgrade_smoke.sh
+          bash tests/telefonia_shell_upgrade_smoke.sh
