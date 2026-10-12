@@ -76,18 +76,47 @@ for p in $FILES; do
     # Un archivo idéntico a cualquiera de las versiones que publicamos
     # está probado por su SHA Git: no contiene cambios locales.
     SHELL_HASH="$(git -C "$SRC" hash-object "$DST/$p")"
-    case "$SHELL_HASH" in
-      6abe2619fa8b5dfde618e09a348e2119e76695f5|\
-      fbe73818568a62e88e17ad672dfc6ebbdb71e0c2|\
-      ec81ef90a752eeb25d2f23a7acba641d1fa49d4c|\
-      ebb326f1960cacd62df22cc323f2c975758d5b57|\
-      c4891465fd7fddf9a97b77dae5a8114699416535|\
-      c122351418386c5878d030d0be3e6f5c13114d5c)
-        echo "Shell telefónico anterior reconocido; actualización segura."
-        cp "$SRC/$p" "$TMP/$p"
-        continue
-        ;;
-    esac
+    # Caso REAL diagnosticado en Hostinger (SHA proporcionado por git):
+    # copia de 8047ff5 sin el ajuste de elevar el aviso de conexión.
+    # Validar su origen reconstruyendo byte por byte esa única diferencia.
+    if [[ "$SHELL_HASH" == "45e80cccb3e104917aee74122b21ebf8a68498cf" ]]; then
+      git -C "$SRC" show "8047ff5d6fab58d77732daaa27ff5fa05f63511b:$p" \
+        > "$TMP/base-hostinger" || {
+          echo "ERROR: falta la revisión 8047ff5 para verificar el shell." >&2; exit 1
+        }
+      LOCAL_RULE="status.classList.toggle('is-raised', !restore.hidden);"
+      if ! grep -Fq "$LOCAL_RULE" "$TMP/base-hostinger" ||
+         ! grep -Fq "$LOCAL_RULE" "$SRC/$p"; then
+        echo "CONFLICTO: falta el ajuste local esperado; no se publicó nada." >&2
+        exit 1
+      fi
+      sed "/status\\.classList\\.toggle('is-raised', !restore\\.hidden);/d" \
+        "$TMP/base-hostinger" > "$TMP/shell-historico-normalizado"
+      if [[ "$(git -C "$SRC" hash-object "$TMP/shell-historico-normalizado")" != "$SHELL_HASH" ]]; then
+        echo "CONFLICTO: el shell publicado difiere del ajuste histórico comprobado." >&2
+        exit 1
+      fi
+      # Restaurar cronómetro y acciones instantáneas de GitHub conservando
+      # la eliminación del aviso solapado que ya tenía Hostinger.
+      sed "/status\\.classList\\.toggle('is-raised', !restore\\.hidden);/d" \
+        "$SRC/$p" > "$TMP/$p"
+      echo "Shell Hostinger reconocido exactamente; se conserva su ajuste del aviso."
+      continue
+    fi
+    # En revisiones futuras, cualquier versión exacta del historial Git
+    # puede actualizarse sin tener que ampliar una lista manual de SHA.
+    SHELL_HISTORICO=0
+    while IFS= read -r revision; do
+      if [[ "$(git -C "$SRC" rev-parse "$revision:$p")" == "$SHELL_HASH" ]]; then
+        SHELL_HISTORICO=1
+        break
+      fi
+    done < <(git -C "$SRC" log --format='%H' -- "$p")
+    if [[ "$SHELL_HISTORICO" == 1 ]]; then
+      echo "Shell de una revisión Git conocida; actualización segura."
+      cp "$SRC/$p" "$TMP/$p"
+      continue
+    fi
     # Si Hostinger personalizó el shell, fusionar con la última versión
     # *realmente publicada* como base común, no con el primer modal.
     git -C "$SRC" show "cf1c1644baa2ed4275759555db3814b96fe06f93:$p" \

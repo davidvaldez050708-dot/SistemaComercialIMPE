@@ -115,6 +115,31 @@ for rev in \
   cmp -s "$SITE/public/javascript/telefonia_shell.js" \
     "$ROOT/public/javascript/telefonia_shell.js"
 done
+# Caso REAL reportado por Hostinger: shell 8047ff5 menos la única
+# línea del aviso elevado. Debe tener exactamente el SHA diagnosticado.
+git -C "$ROOT" show \
+  "8047ff5d6fab58d77732daaa27ff5fa05f63511b:public/javascript/telefonia_shell.js" \
+  > "$SITE/public/javascript/telefonia_shell.js"
+sed -i "/status\\.classList\\.toggle('is-raised', !restore\\.hidden);/d" \
+  "$SITE/public/javascript/telefonia_shell.js"
+[[ "$(git -C "$ROOT" hash-object "$SITE/public/javascript/telefonia_shell.js")" == \
+  "45e80cccb3e104917aee74122b21ebf8a68498cf" ]] || {
+    echo "ERROR: la versión simulada no coincide con el hash real de Hostinger." >&2
+    exit 1
+  }
+OLD_HASH="$(sha256sum "$SITE/public/javascript/telefonia_shell.js")"
+deploy --check
+[[ "$OLD_HASH" == "$(sha256sum "$SITE/public/javascript/telefonia_shell.js")" ]]
+deploy --apply
+grep -Fq 'pendingIncomingAction' "$SITE/public/javascript/telefonia_shell.js"
+grep -Fq "incomingTimer.textContent = ringing ? '00:00'" \
+  "$SITE/public/javascript/telefonia_shell.js"
+if grep -Fq "status.classList.toggle('is-raised', !restore.hidden);" \
+  "$SITE/public/javascript/telefonia_shell.js"; then
+  echo "ERROR: el despliegue no conservó el ajuste local del aviso." >&2
+  exit 1
+fi
+deploy --check
 # Cambio local independiente: preservar el ajuste al actualizar el shell.
 git -C "$ROOT" show "cf1c1644baa2ed4275759555db3814b96fe06f93:public/javascript/telefonia_shell.js" \
   > "$SITE/public/javascript/telefonia_shell.js"
