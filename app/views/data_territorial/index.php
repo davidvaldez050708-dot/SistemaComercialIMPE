@@ -460,8 +460,16 @@ $urlPaginaTerritorio = function ($pagina) use ($buscarTerritorio, $filtroInforma
 
         <section class="dashboard-panel data-empty-state">
             <span><i class="bi bi-map"></i></span>
-            <strong>No tienes territorios asignados actualmente.</strong>
-            <p>No hay información registrada para consultar.</p>
+            <?php if ($hayFiltrosTerritorios): ?>
+                <strong>No se encontraron territorios con esos filtros.</strong>
+                <p>Prueba con otro nombre o limpia los filtros.</p>
+            <?php elseif (!empty($consultaTerritorialGlobal)): ?>
+                <strong>No hay Estados activos disponibles.</strong>
+                <p>Todavía no se han registrado Estados activos para consultar.</p>
+            <?php else: ?>
+                <strong>No tienes territorios asignados actualmente.</strong>
+                <p>Solicita la asignación correspondiente para consultar información.</p>
+            <?php endif; ?>
         </section>
 
     <?php elseif (!$estadoSeleccionado): ?>

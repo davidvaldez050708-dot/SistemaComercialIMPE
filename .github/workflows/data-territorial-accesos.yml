@@ -1,0 +1,28 @@
+name: Información territorial - acceso por rol
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'app/helpers/DataTerritorialAccessPolicy.php'
+      - 'app/models/DataTerritorialModel.php'
+      - 'app/controllers/DataTerritorialController.php'
+      - 'app/controllers/DataTerritorialReporteController.php'
+      - 'app/views/data_territorial/index.php'
+      - 'tests/data_territorial_acceso_roles_smoke.php'
+      - '.github/workflows/data-territorial-accesos.yml'
+  pull_request:
+jobs:
+  validar-acceso-territorial:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+      - name: Validar PHP y alcance territorial por rol
+        run: |
+          php -l app/helpers/DataTerritorialAccessPolicy.php
+          php -l app/models/DataTerritorialModel.php
+          php -l app/controllers/DataTerritorialController.php
+          php -l app/views/data_territorial/index.php
+          php tests/data_territorial_acceso_roles_smoke.php

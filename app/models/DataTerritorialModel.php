@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../../config/db_connection.php';
+require_once __DIR__ . '/../helpers/DataTerritorialAccessPolicy.php';
 
 class DataTerritorialModel
 {
@@ -32,7 +33,12 @@ class DataTerritorialModel
     {
         $buscar = trim((string)$buscar);
 
-        if ((int)$rolId === 1) {
+        if ((int)$usuarioId <= 0) {
+            return [];
+        }
+
+        $alcance = $this->obtenerAlcanceConsultaPorRol($rolId);
+        if ($alcance === 'TODOS') {
             $sql = "SELECT
                         estados.id,
                         estados.nombre,
@@ -86,7 +92,7 @@ class DataTerritorialModel
             return $this->convertirResultadoEnArreglo($stmt->get_result());
         }
 
-        $tipoAsignacion = $this->obtenerTipoAsignacionPorRol($rolId);
+        $tipoAsignacion = $alcance;
 
         if ($tipoAsignacion === '') {
             return [];
@@ -155,11 +161,16 @@ class DataTerritorialModel
 
     public function puedeAccederEstado($usuarioId, $rolId, $estadoId)
     {
-        if ((int)$rolId === 1) {
+        if ((int)$usuarioId <= 0 || (int)$estadoId <= 0) {
+            return false;
+        }
+
+        $alcance = $this->obtenerAlcanceConsultaPorRol($rolId);
+        if ($alcance === 'TODOS') {
             return $this->existeEstadoActivo($estadoId);
         }
 
-        $tipoAsignacion = $this->obtenerTipoAsignacionPorRol($rolId);
+        $tipoAsignacion = $alcance;
 
         if ($tipoAsignacion === '') {
             return false;
@@ -3047,28 +3058,35 @@ class DataTerritorialModel
                 THEN 1 ELSE 0 END";
     }
 
-    private function obtenerTipoAsignacionPorRol($rolId)
+    private function obtenerAlcanceConsultaPorRol($rolId): string
     {
+        $rolId = (int)$rolId;
+        if ($rolId === 1) {
+            return 'TODOS';
+        }
+        if ($rolId <= 0) {
+            return '';
+        }
+
+        // Un rol inexistente o inactivo nunca obtiene acceso global.
         $sql = "SELECT nombre
                 FROM roles
-                WHERE id = ?
+                WHERE id = ? AND estado = 1
                 LIMIT 1";
-
         $stmt = $this->connection->prepare($sql);
         $stmt->bind_param("i", $rolId);
         $stmt->execute();
         $rol = $stmt->get_result()->fetch_assoc();
-        $nombreRol = strtolower(trim($rol['nombre'] ?? ''));
+        $stmt->close();
 
-        if ($nombreRol === 'cuenta clave') {
-            return 'CUENTA_CLAVE';
+        if (!$rol) {
+            return '';
         }
 
-        if ($nombreRol === 'analista de datos') {
-            return 'ANALISTA_DATOS';
-        }
-
-        return '';
+        return DataTerritorialAccessPolicy::resolver(
+            $rolId,
+            (string)($rol['nombre'] ?? '')
+        );
     }
 
     private function cambiarEstadoRegistro($tabla, $id, $estadoId, $estado)

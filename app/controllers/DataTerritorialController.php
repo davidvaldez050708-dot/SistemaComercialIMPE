@@ -37,6 +37,10 @@ class DataTerritorialController
         $modelo = new DataTerritorialModel();
         $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
         $rolId = (int)($_SESSION['rol_id'] ?? 0);
+        $consultaTerritorialGlobal = DataTerritorialAccessPolicy::resolver(
+            $rolId,
+            (string)($_SESSION['rol'] ?? '')
+        ) === 'TODOS';
         $buscarTerritorio = trim($_GET['buscar'] ?? '');
         $filtroInformacion = $this->normalizarFiltroInformacion(
             $_GET['filtro_informacion'] ?? 'todos'
@@ -2960,17 +2964,22 @@ class DataTerritorialController
 
     private function obtenerSubtituloPagina($rolId)
     {
-        $rol = $_SESSION['rol'] ?? '';
+        $rol = (string)($_SESSION['rol'] ?? '');
 
         if ((int)$rolId === 1) {
             return 'Consulta y administra la información de los territorios registrados.';
         }
 
-        if ($rol === 'Analista de Datos') {
+        $alcance = DataTerritorialAccessPolicy::resolver((int)$rolId, $rol);
+        if ($alcance === 'ANALISTA_DATOS') {
             return 'Consulta y actualiza la información de tus territorios asignados.';
         }
 
-        return 'Consulta la información de tus territorios asignados.';
+        if ($alcance === 'CUENTA_CLAVE' || $alcance === 'ASESOR') {
+            return 'Consulta la información de tus territorios asignados.';
+        }
+
+        return 'Consulta la información de los Estados registrados.';
     }
 
     private function normalizarFiltroInformacion($filtro)
