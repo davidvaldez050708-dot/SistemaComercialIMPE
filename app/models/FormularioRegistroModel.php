@@ -73,24 +73,43 @@ class FormularioRegistroModel
 
     public function guardar($datos)
     {
-        $origen = strtoupper(trim((string)($datos['origen'] ?? 'MARKETING')));
-        $origenesPermitidos = [
-            'MARKETING',
-            'PUBLICO',
-            'MARKETING_INSCRIPCION',
-            'PUBLICO_INSCRIPCION'
-        ];
-        $origen = in_array($origen, $origenesPermitidos, true)
-            ? $origen
-            : 'MARKETING';
+        $origenSolicitado = strtoupper(
+            trim((string)($datos['origen'] ?? 'MARKETING'))
+        );
+
+        $esInscripcion = in_array(
+            $origenSolicitado,
+            ['MARKETING_INSCRIPCION', 'PUBLICO_INSCRIPCION'],
+            true
+        );
+
+        $tabla = $esInscripcion
+            ? 'formulario_inscripciones'
+            : 'formulario_registros';
+
+        /*
+         * Al separar físicamente ambos formularios, el campo origen
+         * únicamente indica desde dónde se capturó la información.
+         */
+        if ($esInscripcion) {
+            $origen = $origenSolicitado === 'PUBLICO_INSCRIPCION'
+                ? 'PUBLICO'
+                : 'MARKETING';
+        } else {
+            $origen = $origenSolicitado === 'PUBLICO'
+                ? 'PUBLICO'
+                : 'MARKETING';
+        }
+
         $creadoPor = array_key_exists('creado_por', $datos)
             ? $datos['creado_por']
             : null;
+
         $movilSecundario = trim(
             (string)($datos['movil_secundario'] ?? '')
         );
 
-        $sql = "INSERT INTO formulario_registros (
+        $sql = "INSERT INTO {$tabla} (
                     nombre,
                     apellido,
                     fecha_nacimiento,
@@ -112,7 +131,9 @@ class FormularioRegistroModel
 
         if (!$stmt) {
             throw new RuntimeException(
-                'No fue posible preparar el registro. Verifica que la migración del formulario esté aplicada.'
+                $esInscripcion
+                    ? 'No fue posible preparar la inscripción. Verifica que la migración de separación de formularios esté aplicada.'
+                    : 'No fue posible preparar el registro. Verifica que la migración del formulario esté aplicada.'
             );
         }
 
@@ -135,7 +156,9 @@ class FormularioRegistroModel
 
         if (!$stmt->execute()) {
             throw new RuntimeException(
-                'No fue posible guardar el registro.'
+                $esInscripcion
+                    ? 'No fue posible guardar la inscripción.'
+                    : 'No fue posible guardar el registro.'
             );
         }
 
