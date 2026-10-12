@@ -165,4 +165,56 @@ assert.equal(optedOut.elements['[data-shell-host-region]'].children.length,0,
 optedOut.window.IMPE_TELEPHONY_SHELL.ensureHost();
 assert.equal(optedOut.elements['[data-shell-host-region]'].children.length,1,
     'manual activation still works');
-console.log('Shell WebRTC: OK (autostart, no popup, audio context, controls, lease, opt-out)');
+// Dos entrantes consecutivas: el timbrado nunca hereda el contador previo
+// y los controles responden de inmediato sin mensajes de éxito innecesarios.
+storage.clear();
+const quick = boot();
+const ops = [];
+const frame = quick.elements['[data-shell-host-region]'].children[0];
+frame.contentWindow.IMPE_ZADARMA_INCOMING = {
+    answer() {ops.push('answer');return true;},
+    decline() {ops.push('decline');return true;},
+    hangup() {ops.push('hangup');return true;},
+    error() {return 'Error SDK';}
+};
+const push = (callId,phase,active,duration) => quick.channels[0].message({
+    type:'STATE',
+    state:{userId:8,updatedAt:Date.now(),hostReady:true,active,
+        direction:'incoming',destination:'5512345678',phase,
+        pbxCallId:callId,duration}
+});
+push('call-uno','incoming-ringing',true,24);
+assert.equal(quick.elements['[data-incoming-timer]'].textContent,'00:00',
+    'el timbrado no hereda la duración anterior');
+quick.elements['[data-incoming-answer]'].events.click();
+assert.deepEqual(ops,['answer']);
+assert.equal(quick.elements['[data-incoming-notice]'].hidden,true,
+    'sin mensaje rojo de Contestando tras una acción válida');
+assert.equal(quick.elements['[data-incoming-answer]'].disabled,true,
+    'no se permite enviar un doble clic al SDK');
+push('call-uno','in-progress',true,1);
+assert.equal(quick.elements['[data-incoming-hangup]'].hidden,false);
+assert.equal(quick.elements['[data-incoming-hangup]'].disabled,false);
+quick.elements['[data-incoming-hangup]'].events.click();
+assert.deepEqual(ops,['answer','hangup']);
+assert.equal(quick.elements['[data-incoming-panel]'].hidden,true,
+    'la tarjeta se oculta de inmediato, sin esperar a PBX');
+assert.equal(quick.elements['[data-incoming-notice]'].textContent,'',
+    'no debe aparecer Finalizando llamada');
+push('call-uno','incoming-finished',false,25);
+push('call-dos','incoming-ringing',true,25);
+assert.equal(quick.elements['[data-incoming-panel]'].hidden,false,
+    'la nueva llamada reaparece inmediatamente');
+assert.equal(quick.elements['[data-incoming-timer]'].textContent,'00:00',
+    'la segunda llamada comienza desde cero');
+assert.equal(quick.elements['[data-incoming-answer]'].disabled,false,
+    'los botones están listos para la segunda llamada');
+assert.equal(quick.elements['[data-incoming-notice]'].hidden,true,
+    'sin avisos de la llamada anterior');
+quick.elements['[data-incoming-answer]'].events.click();
+assert.deepEqual(ops,['answer','hangup','answer'],
+    'la segunda entrante acepta inmediatamente sin estados arrastrados');
+push('call-dos','in-progress',true,2);
+assert.equal(quick.elements['[data-incoming-timer]'].textContent,'00:02');
+
+console.log('Shell WebRTC: OK (llamadas consecutivas, contador 00:00, respuesta inmediata, cierre y lease)');
