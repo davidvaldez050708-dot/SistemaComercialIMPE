@@ -141,14 +141,14 @@ for p in $FILES; do
       # Verificar los vínculos imprescindibles antes de autorizarla.
       if ! grep -Fq "const callHelp = document.querySelector('[data-shell-call-help]');" "$TMP/$p" ||
          ! grep -Fq 'providerBridge()?.answer()' "$TMP/$p" ||
-         ! grep -Fq 'const customVisible = incoming' "$TMP/$p" ||
+         ! grep -Fq 'const customVisible = (incoming || shownOutgoing)' "$TMP/$p" ||
          ! grep -Fq 'pendingIncomingAction' "$TMP/$p"; then
         echo "CONFLICTO: el shell local fusiona pero no cumple controles/estados WebRTC." >&2
         echo "Validaciones faltantes en el shell temporal:" >&2
         for marker in \
           "const callHelp = document.querySelector('[data-shell-call-help]');" \
           'providerBridge()?.answer()' \
-          'const customVisible = incoming' \
+          'const customVisible = (incoming || shownOutgoing)' \
           'pendingIncomingAction'; do
           if ! grep -Fq "$marker" "$TMP/$p"; then
             echo "  - FALTA: $marker" >&2
@@ -198,7 +198,7 @@ grep -Fq 'sdk[method].apply(sdk, args || [])' "$TMP/public/javascript/telefonia_
 grep -Fq "answer: () => perform('contestar', 'answer'" "$TMP/public/javascript/telefonia_entrantes_bridge.js"
 grep -Fq "hangup: () => perform('colgar', 'finishCall'" "$TMP/public/javascript/telefonia_entrantes_bridge.js"
 grep -Fq "providerBridge()?.answer()" "$TMP/public/javascript/telefonia_shell.js"
-grep -Fq 'const customVisible = incoming' "$TMP/public/javascript/telefonia_shell.js"
+grep -Fq 'const customVisible = (incoming || shownOutgoing)' "$TMP/public/javascript/telefonia_shell.js"
 php -l "$TMP/app/views/telefonia/shell.php"
 php -l "$TMP/app/views/telefonia/host.php"
 if command -v node >/dev/null 2>&1; then
