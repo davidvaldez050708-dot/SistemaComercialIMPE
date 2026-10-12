@@ -85,8 +85,7 @@
         for (const frame of frames(doc)) {
             const buttons = [];
             const selector = 'button,[role="button"],[onclick],a,' +
-                '[class*="phone-button"],[class*="phoneButton"],' +
-                '[class*="call-button"],[class*="callButton"]';
+                '[class*="btn" i],[class*="button" i],[style*="cursor"]';
             try {
                 for (const node of frame.doc.querySelectorAll(selector)) {
                     if (!clickable(node)) continue;
@@ -137,7 +136,7 @@
                 try {
                     for (const node of frame.doc.querySelectorAll(
                         'button,[role="button"],[onclick],a,' +
-                        '[class*="call-button"],[class*="phone-button"]'
+                        '[class*="btn" i],[class*="button" i],[style*="cursor"]'
                     )) {
                         if (clickable(node) &&
                             detectKind(node,frame.win) === 'decline') {
