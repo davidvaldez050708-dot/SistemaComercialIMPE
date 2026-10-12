@@ -17,10 +17,13 @@ html, body { height: 100%; min-width: 0; margin: 0; overflow: hidden; }
   border: 0; border-radius: 7px; background: #273b88; color: #fff;
   padding: 6px 9px; cursor: pointer; font: inherit;
 }
-/* No esconder con display:none el iframe: algunos motores WebRTC dejan de
-   procesar audio cuando se destruye/oculta completamente su contexto. */
+/* WebRTC necesita un viewport real aun cuando está en segundo plano.
+   Antes se inicializaba el SDK en un iframe 3x3 y sus controles entrantes
+   podían quedar mal dimensionados o en blanco. No usar display:none. */
 .impe-phone-call {
-  position: fixed; width: 3px; height: 3px; right: 0; bottom: 0; z-index: 1100;
+  position: fixed; width: min(420px, calc(100vw - 22px));
+  height: min(580px, calc(100dvh - 24px));
+  right: -10000px; bottom: 12px; z-index: 1100;
   overflow: hidden; opacity: 0; pointer-events: none;
   background: #fff; border: 0;
 }
