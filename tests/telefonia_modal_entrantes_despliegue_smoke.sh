@@ -25,6 +25,12 @@ grep -Fq 'ESTILO-LOCAL-PRESERVAR' "$SITE/public/css/telefonia_shell.css"
 grep -Fq 'data-incoming-answer' "$SITE/app/views/telefonia/shell.php"
 grep -Fq 'IMPE_ZADARMA_NATIVE_BRIDGE_FACTORY' "$SITE/public/javascript/telefonia_host.js"
 test -f "$SITE/public/javascript/telefonia_entrantes_bridge.js"
+[[ "$(stat -c '%a' "$SITE/public/javascript/telefonia_entrantes_bridge.js")" == 644 ]]
+chmod 0600 "$SITE/public/javascript/telefonia_entrantes_bridge.js"
+deploy --check
+[[ "$(stat -c '%a' "$SITE/public/javascript/telefonia_entrantes_bridge.js")" == 600 ]]
+deploy --apply
+[[ "$(stat -c '%a' "$SITE/public/javascript/telefonia_entrantes_bridge.js")" == 644 ]]
 deploy --apply
 [[ "$(find "$TMP/respaldos-crm" -type f | wc -l)" -eq 6 ]]
 git -C "$ROOT" show "00e79124af6b77459e79fd8f47437ac2c2eaf1dc:public/javascript/telefonia_shell.js" \

@@ -91,7 +91,19 @@ for p in $FILES; do
   fi
 done
 if [[ -z "$CHANGED" ]]; then
-  echo "OK: recepción CRM ya actualizada. Sin cambios."
+  # El contenido puede estar actualizado pero modo 600 por umask 077.
+  BRIDGE="$DST/public/javascript/telefonia_entrantes_bridge.js"
+  if [[ -f "$BRIDGE" && "$(stat -c '%a' "$BRIDGE")" != 644 ]]; then
+    if [[ "$MODE" == "--apply" ]]; then
+      chmod 0644 "$BRIDGE"
+      echo "OK: puente ya actualizado y permisos HTTP corregidos (644)."
+    else
+      echo "AVISO: puente WebRTC con permisos que pueden causar HTTP 403."
+      echo "Aplica --apply o utiliza tools/reparar_assets_telefonia_hostinger.sh."
+    fi
+  else
+    echo "OK: recepción CRM ya actualizada. Sin cambios."
+  fi
   exit 0
 fi
 echo "Archivos para publicar:$CHANGED"
@@ -121,6 +133,8 @@ for p in $FILES; do
     exit 1
   }
 done
+# Publicable vía HTTP: umask 077 crea nuevos archivos en modo 600.
+chmod 0644 "$DST/public/javascript/telefonia_entrantes_bridge.js"
 echo "OK: modal entrante publicado; Zadarma y llamadas salientes no modificados."
 echo "Respaldo: $BACKUP"
 echo "Cierra todas las pestañas del CRM y vuelve a iniciar Marketing."
