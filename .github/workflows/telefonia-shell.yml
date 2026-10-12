@@ -15,8 +15,11 @@ on:
       - "public/css/telefonia_host.css"
       - "public/css/telefonia_recepcion_marketing.css"
       - "tools/desplegar_telefonia_shell_hostinger.sh"
+      - "tools/desplegar_telefonia_entrantes_hostinger.sh"
       - "tools/revertir_telefonia_shell_hostinger.sh"
       - "tests/telefonia_shell_smoke.php"
+      - "tests/telefonia_entrantes_interfaz_smoke.php"
+      - "tests/telefonia_entrantes_despliegue_smoke.sh"
       - "tests/telefonia_shell_render_smoke.php"
       - "tests/telefonia_shell_runtime_smoke.js"
       - "tests/telefonia_shell_despliegue_smoke.sh"
@@ -29,7 +32,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 100
+          fetch-depth: 0
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
@@ -43,6 +46,7 @@ jobs:
       - name: Comprobar controles y ciclo de vida del shell
         run: |
           php tests/telefonia_shell_smoke.php
+          php tests/telefonia_entrantes_interfaz_smoke.php
           php tests/telefonia_shell_render_smoke.php
           node --check public/javascript/telefonia_shell.js
           node --check public/javascript/telefonia_persistente.js
@@ -56,3 +60,6 @@ jobs:
           bash tests/telefonia_shell_despliegue_smoke.sh
           bash -n tests/telefonia_shell_upgrade_smoke.sh
           bash tests/telefonia_shell_upgrade_smoke.sh
+          bash -n tools/desplegar_telefonia_entrantes_hostinger.sh
+          bash -n tests/telefonia_entrantes_despliegue_smoke.sh
+          bash tests/telefonia_entrantes_despliegue_smoke.sh
