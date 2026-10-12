@@ -32,6 +32,14 @@ $nombreShell = $nombreShell !== '' ? $nombreShell : 'Usuario';
     echo str_ireplace('</style', '<\\/style', (string)$shellCssContent);
     ?>
     </style>
+    <style id="impeDialerStyles">
+    <?php
+    $dialerCssPath = ROOT_PATH . '/public/css/telefonia_teclado.css';
+    if (is_readable($dialerCssPath)) {
+        echo str_ireplace('</style', '<\\/style', (string)file_get_contents($dialerCssPath));
+    }
+    ?>
+    </style>
 </head>
 <body>
     <noscript>
@@ -75,10 +83,20 @@ $nombreShell = $nombreShell !== '' ? $nombreShell : 'Usuario';
             'userId' => $usuarioShell,
             'extension' => $extensionShell,
             'autoReception' => $marketingShell,
+            'canCallOut' => tienePermiso('telefonia.salientes') &&
+                !empty($asignacionTelefonica['permite_salientes']),
             'hostUrl' => BASE_URL . 'index.php?controller=telefonia&action=host&display=embed',
             'loginUrl' => BASE_URL . 'index.php?controller=login&action=mostrarLogin',
             'homeUrl' => BASE_URL . 'index.php?controller=home&action=index'
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+    </script>
+    <script id="impeDialerRuntime">
+    <?php
+    $dialerJsPath = ROOT_PATH . '/public/javascript/telefonia_teclado.js';
+    if (is_readable($dialerJsPath)) {
+        echo str_ireplace('</script', '<\\/script', (string)file_get_contents($dialerJsPath));
+    }
+    ?>
     </script>
     <!-- El controlador telefónico se incluye desde disco en la respuesta
          autenticada, sin depender de otra petición HTTP para su carga. -->
