@@ -95,7 +95,18 @@ for p in $FILES; do
         echo "ERROR: falta el shell base actualizado en Git." >&2; exit 1
       }
     if git merge-file -p "$DST/$p" "$TMP/base-shell" "$SRC/$p" > "$TMP/$p"; then
-      echo "Shell personalizado fusionado; se conservaron sus diferencias."
+      # Una fusión sintácticamente limpia puede conservar referencias
+      # obsoletas (p. ej. renombrar callHelp sin actualizar su uso).
+      # Verificar los vínculos imprescindibles antes de autorizarla.
+      if ! grep -Fq "const callHelp = document.querySelector('[data-shell-call-help]');" "$TMP/$p" ||
+         ! grep -Fq 'providerBridge()?.answer()' "$TMP/$p" ||
+         ! grep -Fq 'const customVisible = incoming' "$TMP/$p" ||
+         ! grep -Fq 'pendingIncomingAction' "$TMP/$p"; then
+        echo "CONFLICTO: el shell local fusiona pero rompe controles o estados WebRTC." >&2
+        echo "No se publicó nada. Requiere revisar cambios locales." >&2
+        exit 1
+      fi
+      echo "Shell personalizado fusionado y controles verificados."
       continue
     fi
     echo "CONFLICTO: shell telefónico con cambios locales incompatibles." >&2
