@@ -1,0 +1,24 @@
+name: Información territorial - publicación segura
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tools/desplegar_acceso_territorial_hostinger.sh'
+      - 'tests/data_territorial_despliegue_smoke.sh'
+      - '.github/workflows/data-territorial-deploy.yml'
+  pull_request:
+jobs:
+  simulacion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+      - name: Verificar sintaxis y simular Hostinger
+        run: |
+          bash -n tools/desplegar_acceso_territorial_hostinger.sh
+          bash -n tests/data_territorial_despliegue_smoke.sh
+          bash tests/data_territorial_despliegue_smoke.sh
