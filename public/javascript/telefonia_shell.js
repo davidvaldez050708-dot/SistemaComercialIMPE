@@ -124,6 +124,9 @@
         userId: userId,
         ensureHost: ensureHost,
         openDialer: openDialer,
+        isDialerManagingCall: function () {
+            return Boolean(dialer?.isManagingCall());
+        },
         isEmbedded: true
     });
 
