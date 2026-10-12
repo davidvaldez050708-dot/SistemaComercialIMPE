@@ -33,7 +33,10 @@ body {
  * El SDK de Zadarma debe seguir vivo para WebRTC, pero su marcador nativo
  * nunca debe convertirse en una segunda interfaz del CRM.
  */
-body > *:not(.telephony-host-sentinel):not(.telephony-host-tab-info):not(script) {
+/* Al recibir una llamada hay que mostrar el widget auténtico de Zadarma.
+ * La regla 1x1 anterior continuaba activa incluso después de "mostrar"
+ * los controles en JS: provocaba el panel blanco imposible de contestar. */
+body:not(.telephony-host-incoming) > *:not(.telephony-host-sentinel):not(.telephony-host-tab-info):not(script) {
     position: fixed !important;
     left: -10000px !important;
     top: -10000px !important;
@@ -129,4 +132,15 @@ body.telephony-host-embed {
 }
 body.telephony-host-embed .telephony-host-sentinel {
     display: none !important;
+}
+
+/* El propio SDK conserva sus dimensiones, estilos y eventos táctiles al
+ * recibirse una llamada. No imponerle width/height/overflow de 1px. */
+body.telephony-host-incoming { overflow: hidden; }
+body.telephony-host-incoming > *:not(.telephony-host-sentinel):not(script):not(.telephony-host-tab-info) {
+    max-width: none !important;
+    max-height: none !important;
+    overflow: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
 }
