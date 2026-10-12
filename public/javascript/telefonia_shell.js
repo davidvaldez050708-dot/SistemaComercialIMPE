@@ -96,10 +96,34 @@
         return frame.contentWindow;
     };
 
+    // Acciones de las vistas PHP: el marcador pertenece al documento padre y
+    // sobrevive a los cambios de Inicio, Seguimiento, Ventas o Convocatorias.
+    const crmPhone = function () {
+        try { return crm?.contentWindow?.IMPE_TELEPHONY_PERSISTENT || null; }
+        catch (error) { return null; }
+    };
+    const dialer = window.IMPE_TELEPHONY_DIALER?.create({
+        root: document.body,
+        extension: cfg.extension,
+        getApi: crmPhone,
+        getState: function () { return currentState; },
+        hasOutgoingRole: function () { return cfg.canCallOut === true; },
+        showIncoming: function () {
+            minimized = false;
+            render();
+        }
+    }) || null;
+    const openDialer = function (options) {
+        if (!dialer) return false;
+        dialer.open(options || {});
+        return true;
+    };
+
     // Es accesible sólo desde la vista PHP hija del mismo dominio.
     window.IMPE_TELEPHONY_SHELL = Object.freeze({
         userId: userId,
         ensureHost: ensureHost,
+        openDialer: openDialer,
         isEmbedded: true
     });
 
@@ -113,6 +137,7 @@
         if (!freshState(value)) return;
         currentState = value;
         lastHeartbeat = Date.now();
+        dialer?.sync(value);
         render();
     };
 
