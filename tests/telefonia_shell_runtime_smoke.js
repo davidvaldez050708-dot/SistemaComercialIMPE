@@ -29,7 +29,14 @@ function boot(opts = {}) {
         '[data-shell-call]','[data-shell-host-region]','[data-shell-status]',
         '[data-shell-status-text]','[data-shell-retry]','[data-shell-restore]',
         '[data-shell-call-title]','[data-shell-call-status]',
-        '[data-shell-minimize]'
+        '[data-shell-minimize]', '[data-shell-call-help]',
+        '[data-incoming-panel]','[data-incoming-number]',
+        '[data-incoming-state]','[data-incoming-title]',
+        '[data-incoming-eyebrow]','[data-incoming-timer]',
+        '[data-incoming-answer]','[data-incoming-decline]',
+        '[data-incoming-mute]','[data-incoming-hangup]',
+        '[data-incoming-provider]','[data-incoming-notice]',
+        '[data-incoming-minimize]'
     ];
     selectors.forEach(x => elements[x] = element());
     elements['impeCrmFrame'] = element();
@@ -88,17 +95,19 @@ const active = {type:'STATE',state:{
     direction:'incoming',destination:'5512345678',phase:'in-progress'
 }};
 first.channels[0].message(active);
-assert.equal(first.elements['[data-shell-call]'].classList.contains('is-visible'),true,
-    'incoming call reveals controls in CRM');
-assert.match(first.elements['[data-shell-call-status]'].textContent,/5512345678/);
-first.elements['[data-shell-minimize]'].events.click();
 assert.equal(first.elements['[data-shell-call]'].classList.contains('is-visible'),false,
-    'minimizing hides UI but not iframe');
+    'incoming call hides original Zadarma panel');
+assert.equal(first.elements['[data-incoming-panel]'].hidden,false,
+    'incoming call shows CRM modal');
+assert.match(first.elements['[data-shell-call-status]'].textContent,/5512345678/);
+first.elements['[data-incoming-minimize]'].events.click();
+assert.equal(first.elements['[data-incoming-panel]'].hidden,true,
+    'minimizing hides CRM modal but not the phone engine');
 assert.equal(first.elements['[data-shell-restore]'].hidden,false);
 assert.equal(first.elements['[data-shell-host-region]'].children.length,1);
 
 first.elements['[data-shell-restore]'].events.click();
-assert.equal(first.elements['[data-shell-call]'].classList.contains('is-visible'),true);
+assert.equal(first.elements['[data-incoming-panel]'].hidden,false);
 first.channels[0].message({type:'STATE',state:{
     userId:8,updatedAt:Date.now(),hostReady:true,active:true,
     direction:'outgoing',destination:'5512345678',phase:'in-progress'
@@ -111,7 +120,7 @@ first.windowEvents.message({
     data:{type:'IMPE_TELEPHONY_NATIVE_CONTROLS',userId:8}
 });
 assert.equal(first.elements['[data-shell-call]'].classList.contains('is-visible'),true,
-    'transfer fallbacks show official Zadarma controls in CRM');
+    'transfer fallback deliberately shows official Zadarma controls');
 first.elements['[data-shell-minimize]'].events.click();
 assert.equal(first.elements['[data-shell-call]'].classList.contains('is-visible'),false,
     'user can minimize provider transfer controls without hanging up');

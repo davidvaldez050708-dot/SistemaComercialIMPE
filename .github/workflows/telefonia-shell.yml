@@ -11,6 +11,7 @@ on:
       - "public/javascript/telefonia_shell.js"
       - "public/javascript/telefonia_persistente.js"
       - "public/javascript/telefonia_host.js"
+      - "public/javascript/telefonia_entrantes_bridge.js"
       - "public/css/telefonia_shell.css"
       - "public/css/telefonia_host.css"
       - "public/css/telefonia_recepcion_marketing.css"
@@ -25,6 +26,7 @@ on:
       - "tests/telefonia_resolver_conflictos_smoke.sh"
       - "tests/telefonia_shell_render_smoke.php"
       - "tests/telefonia_shell_runtime_smoke.js"
+      - "tests/telefonia_entrantes_bridge_smoke.js"
       - "tests/telefonia_shell_despliegue_smoke.sh"
       - "tests/telefonia_shell_upgrade_smoke.sh"
       - ".github/workflows/telefonia-shell.yml"
@@ -54,7 +56,9 @@ jobs:
           node --check public/javascript/telefonia_shell.js
           node --check public/javascript/telefonia_persistente.js
           node --check public/javascript/telefonia_host.js
+          node --check public/javascript/telefonia_entrantes_bridge.js
           node tests/telefonia_shell_runtime_smoke.js
+          node tests/telefonia_entrantes_bridge_smoke.js
       - name: Despliegue simulado Hostinger
         run: |
           bash -n tools/desplegar_telefonia_shell_hostinger.sh

@@ -556,6 +556,10 @@
             function () {
                 return state.active && state.direction === 'incoming' &&
                     state.phase === 'incoming-ringing' && widgetReady;
+            },
+            function () {
+                return state.active && state.direction === 'incoming' &&
+                    state.phase === 'in-progress' && widgetReady;
             }
         ) || null;
         startIncomingPolling();
@@ -591,6 +595,12 @@
         },
         decline: function () {
             return Boolean(permiteEntrantes && incomingBridge?.decline());
+        },
+        canHangup: function () {
+            return Boolean(permiteEntrantes && incomingBridge?.canHangup());
+        },
+        hangup: function () {
+            return Boolean(permiteEntrantes && incomingBridge?.hangup());
         },
         error: function () {
             return String(incomingBridge?.error() ||

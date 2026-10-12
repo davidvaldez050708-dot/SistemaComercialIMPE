@@ -109,7 +109,7 @@
         return null;
     }
 
-    function create(doc, isRinging) {
+    function create(doc, isRinging, isTalking) {
         const available = () => Boolean(isRinging() && findPair(doc));
         const act = function (kind) {
             state.lastError = '';
@@ -130,10 +130,43 @@
                 return false;
             }
         };
+        const findHangup = function () {
+            if (!isTalking()) return null;
+            const candidates = [];
+            for (const frame of frames(doc)) {
+                try {
+                    for (const node of frame.doc.querySelectorAll(
+                        'button,[role="button"],[onclick],a,' +
+                        '[class*="call-button"],[class*="phone-button"]'
+                    )) {
+                        if (clickable(node) &&
+                            detectKind(node,frame.win) === 'decline') {
+                            candidates.push(node);
+                        }
+                    }
+                } catch (_) {}
+            }
+            return candidates.length === 1 ? candidates[0] : null;
+        };
+        const hangup = function () {
+            state.lastError = '';
+            const button=findHangup();
+            if (!button) {
+                state.lastError='No se identificó un control seguro para colgar.';
+                return false;
+            }
+            try {button.click(); return true;}
+            catch (_) {
+                state.lastError='Zadarma no permitió finalizar desde este control.';
+                return false;
+            }
+        };
         return Object.freeze({
             available,
+            canHangup: () => Boolean(findHangup()),
             answer: () => act('answer'),
             decline: () => act('decline'),
+            hangup,
             error: () => state.lastError
         });
     }

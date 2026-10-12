@@ -31,12 +31,23 @@ $checks = [
         str_contains($phoneJs, 'const incomingInShell =') &&
         !str_contains($phoneJs, 'const incomingInShell = Boolean(state?.active)') &&
         str_contains($phoneJs, "getHostMode() === 'embedded'"),
-    'La tarjeta nativa se muestra si WebRTC está listo' =>
-        str_contains($shellJs, 'const showCall = Boolean(state?.hostReady)') &&
-        str_contains($shellCss, 'right: -10000px; bottom: 12px'),
-    'Texto explica la diferencia entre webhook y timbrado SIP' =>
-        str_contains($shellView, 'data-shell-call-help') &&
-        str_contains($shellJs, 'WebRTC no confirma el timbrado.'),
+    'Se muestra modal CRM, no panel blanco al entrar llamada' =>
+        str_contains($shellJs, 'const customVisible = incoming') &&
+        str_contains($shellJs, "incomingPanel.hidden = !customVisible") &&
+        str_contains($shellView, 'data-incoming-answer') &&
+        str_contains($shellView, 'data-incoming-hangup') &&
+        str_contains($shellCss, '.impe-incoming-panel'),
+    'El motor Zadarma permanece vivo fuera del viewport' =>
+        str_contains($shellCss, 'right: -10000px; bottom: 12px') &&
+        str_contains($shellJs, "call.classList.toggle('is-visible', nativeVisible)"),
+    'Se atiende únicamente mediante control nativo reconocido' =>
+        str_contains($hostJs, 'IMPE_ZADARMA_NATIVE_BRIDGE_FACTORY') &&
+        str_contains($hostView, 'telefonia_entrantes_bridge.js') &&
+        str_contains($shellJs, 'providerBridge()?.answer()') &&
+        str_contains($shellJs, 'providerBridge()?.hangup()'),
+    'Se mantiene vía de respaldo cuando el SDK no es reconocible' =>
+        str_contains($shellView, 'data-incoming-provider') &&
+        str_contains($shellJs, 'forceNativeControls = true;'),
     'No se modifica capacidad de marcar o transferir' =>
         str_contains($hostJs, 'regToCall(') &&
         str_contains($phoneJs, 'transferCall: transferCall') &&

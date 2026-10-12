@@ -234,6 +234,7 @@
             declineButton.disabled = !bridgeReady;
             muteButton.hidden = ringing;
             hangupButton.hidden = ringing;
+            hangupButton.disabled = !providerBridge()?.canHangup();
             muteButton.textContent = state.muted ? 'Activar micrófono' : 'Silenciar';
             notice.hidden = !actionNotice && bridgeReady;
             notice.textContent = actionNotice ||
@@ -320,10 +321,12 @@
     });
     hangupButton?.addEventListener('click', function () {
         if (!freshState(currentState) || currentState.phase !== 'in-progress') return;
-        // Para entrantes, el HANGUP saliente histórico no es compatible.
-        // Ofrecer el control de Zadarma para evitar desconexiones simuladas.
-        actionNotice = 'Utiliza el control rojo de Zadarma para finalizar con seguridad.';
-        forceNativeControls = true;
+        if (!providerBridge()?.hangup()) {
+            actionNotice = providerBridge()?.error() ||
+                'No se identificó un control seguro para finalizar.';
+        } else {
+            actionNotice = 'Finalizando llamada…';
+        }
         render();
     });
     providerButton?.addEventListener('click', function () {
