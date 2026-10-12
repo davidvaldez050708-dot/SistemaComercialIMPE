@@ -123,14 +123,20 @@
         return best;
     }
     function hangingButton(doc) {
-        const items=new Set();
+        const items=[];
         for(const {doc:inner,win} of documents(doc)) {
             for(const item of candidates(inner,win)) {
-                if(item.kind==='decline') items.add(item.node);
+                if(item.kind!=='decline') continue;
+                const cx=item.rect.left+item.rect.width/2;
+                const cy=item.rect.top+item.rect.height/2;
+                // Un icono SVG puede contener paths y spans del mismo botón.
+                // Agrupar por ubicación evita contar varios controles ficticios.
+                if(items.some(x=>Math.abs(x.cx-cx)<12 && Math.abs(x.cy-cy)<12)) continue;
+                items.push({node:item.node,cx,cy});
             }
         }
-        // No pulsar arbitrariamente otro elemento rojo del widget.
-        return items.size===1?[...items][0]:null;
+        // No pulsar arbitrariamente un icono rojo ajeno a la llamada.
+        return items.length===1?items[0].node:null;
     }
     function create(doc,isRinging,isTalking) {
         let lastError='';
@@ -145,8 +151,18 @@
                 lastError='Zadarma todavía no expone ese control en el navegador.';
                 return false;
             }
-            try {node.click();return true;}
-            catch (_) {
+            try {
+                if(typeof node.click==='function') node.click();
+                else if(typeof node.dispatchEvent==='function') {
+                    // Algunos botones Zadarma se dibujan como SVG, sin .click().
+                    const View=doc.defaultView || root;
+                    if(typeof View.MouseEvent!=='function') throw new Error('No MouseEvent');
+                    node.dispatchEvent(new View.MouseEvent('click', {
+                        bubbles:true,cancelable:true,view:View
+                    }));
+                } else throw new Error('Control no interactivo');
+                return true;
+            } catch (_) {
                 lastError='Zadarma no permitió accionar el botón.';
                 return false;
             }
