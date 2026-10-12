@@ -523,7 +523,7 @@ html {
 }
 
 .formulario-publico-thanks-logo {
-    width: min(260px, 70%);
+    width: min(430px, 88%);
     margin: 0 auto 24px;
 }
 
@@ -575,7 +575,7 @@ html {
     }
 
     .formulario-publico-thanks-logo {
-        width: min(230px, 78%);
+        width: min(360px, 92%);
         margin-bottom: 20px;
     }
 
