@@ -12,19 +12,30 @@ const storage = new Map();
 function boot(opts = {}) {
     const elements = {};
     const classes = new Set();
-    const element = () => ({
+    const element = () => {
+        const ownClasses = new Set();
+        return {
         hidden: false, textContent: '', dataset: {}, events: {},
-        children: [], contentWindow: {}, title: '',
+        children: [], contentWindow: {}, title: '', style: {},
         classList: {
-            toggle(k, on) { if (on) classes.add(k); else classes.delete(k); },
-            contains(k) { return classes.has(k); }
+            add(k) {ownClasses.add(k);},
+            remove(k) {ownClasses.delete(k);},
+            toggle(k, on) {
+                if (on) {classes.add(k);ownClasses.add(k);}
+                else {classes.delete(k);ownClasses.delete(k);}
+            },
+            contains(k) { return ownClasses.has(k); }
         },
         addEventListener(k, fn) { this.events[k] = fn; },
         setAttribute(k, value) { this[k] = String(value); },
         removeAttribute(k) { if (k === 'hidden') this.hidden = false; },
         appendChild(node) { this.children.push(node); },
-        remove() { this.removed = true; }
-    });
+        remove() { this.removed = true; },
+        getBoundingClientRect() {
+            return {left:50,top:50,width:380,height:300};
+        },
+        setPointerCapture() {}
+    };};
     const selectors = [
         '[data-shell-call]','[data-shell-host-region]','[data-shell-status]',
         '[data-shell-status-text]','[data-shell-retry]','[data-shell-restore]',
@@ -35,8 +46,10 @@ function boot(opts = {}) {
         '[data-incoming-eyebrow]','[data-incoming-timer]',
         '[data-incoming-answer]','[data-incoming-decline]',
         '[data-incoming-mute]','[data-incoming-hangup]',
-        '[data-incoming-provider]','[data-incoming-notice]',
-        '[data-incoming-minimize]'
+        '[data-incoming-notice]','[data-incoming-minimize]',
+        '[data-incoming-answer-compact]','[data-incoming-decline-compact]',
+        '[data-incoming-mute-compact]','[data-incoming-hangup-compact]',
+        '[data-incoming-drag-handle]','[data-incoming-compact-timer]'
     ];
     selectors.forEach(x => elements[x] = element());
     elements['impeCrmFrame'] = element();
@@ -52,6 +65,7 @@ function boot(opts = {}) {
         },
         location: {origin:'https://crm.ejemplo.org', replace(url) {this.redirect = url;}},
         addEventListener(k,fn) {windowEvents[k] = fn;},
+        innerWidth:1280, innerHeight:780,
         setInterval(fn) {intervals.push(fn); return intervals.length;}
     };
     const doc = {
@@ -101,13 +115,26 @@ assert.equal(first.elements['[data-incoming-panel]'].hidden,false,
     'incoming call shows CRM modal');
 assert.match(first.elements['[data-shell-call-status]'].textContent,/5512345678/);
 first.elements['[data-incoming-minimize]'].events.click();
-assert.equal(first.elements['[data-incoming-panel]'].hidden,true,
-    'minimizing hides CRM modal but not the phone engine');
-assert.equal(first.elements['[data-shell-restore]'].hidden,false);
+assert.equal(first.elements['[data-incoming-panel]'].hidden,false,
+    'minimizing retains CRM modal, in compact mode');
+assert.equal(first.elements['[data-incoming-panel]'].classList.contains('is-compact'),true);
+assert.equal(first.elements['[data-shell-restore]'].hidden,true,
+    'compact mode needs no extra restore button');
 assert.equal(first.elements['[data-shell-host-region]'].children.length,1);
 
-first.elements['[data-shell-restore]'].events.click();
+first.elements['[data-incoming-minimize]'].events.click();
+assert.equal(first.elements['[data-incoming-panel]'].classList.contains('is-compact'),false);
 assert.equal(first.elements['[data-incoming-panel]'].hidden,false);
+const handle=first.elements['[data-incoming-drag-handle]'];
+handle.events.pointerdown({button:0,pointerId:11,clientX:100,clientY:100,
+    target:{closest(){return false;}},preventDefault(){}});
+handle.events.pointermove({pointerId:11,clientX:190,clientY:200,
+    preventDefault(){}});
+handle.events.pointerup({pointerId:11});
+assert.equal(first.elements['[data-incoming-panel]'].style.left,'140px',
+    'dragging moves the modal horizontally');
+assert.equal(first.elements['[data-incoming-panel]'].style.top,'150px',
+    'dragging moves the modal vertically');
 first.channels[0].message({type:'STATE',state:{
     userId:8,updatedAt:Date.now(),hostReady:true,active:true,
     direction:'outgoing',destination:'5512345678',phase:'in-progress'

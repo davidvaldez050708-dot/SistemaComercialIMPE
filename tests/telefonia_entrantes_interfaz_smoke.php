@@ -45,9 +45,21 @@ $checks = [
         str_contains($hostView, 'telefonia_entrantes_bridge.js') &&
         str_contains($shellJs, 'providerBridge()?.answer()') &&
         str_contains($shellJs, 'providerBridge()?.hangup()'),
-    'Se mantiene vía de respaldo cuando el SDK no es reconocible' =>
-        str_contains($shellView, 'data-incoming-provider') &&
-        str_contains($shellJs, 'forceNativeControls = true;'),
+    'Mismo diseño que Seguimiento' =>
+        str_contains($shellView, 'impePersistentPhoneStyles') &&
+        str_contains($shellView, 'persistent-phone-panel impe-incoming-panel') &&
+        str_contains($shellView, 'persistent-phone-header') &&
+        str_contains($shellView, 'persistent-phone-compact-actions'),
+    'Se puede mover y minimizar sin desconectar' =>
+        str_contains($shellJs, "addEventListener('pointerdown'") &&
+        str_contains($shellJs, "addEventListener('pointermove'") &&
+        str_contains($shellJs, "toggleIncomingCompact") &&
+        str_contains($shellJs, "localStorage.setItem(incomingPositionKey") &&
+        str_contains($shellView, 'data-incoming-answer-compact'),
+    'Sin mensaje permanente ni enlace Zadarma' =>
+        !str_contains($shellView, 'data-incoming-provider') &&
+        !str_contains($shellJs, 'El teléfono está conectando sus controles') &&
+        str_contains($shellJs, "notice.hidden = !actionNotice"),
     'No se modifica capacidad de marcar o transferir' =>
         str_contains($hostJs, 'regToCall(') &&
         str_contains($phoneJs, 'transferCall: transferCall') &&

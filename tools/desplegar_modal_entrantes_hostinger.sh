@@ -24,11 +24,23 @@ for p in $FILES; do
   [[ -f "$SRC/$p" ]] || { echo "ERROR: falta $p en Git." >&2; exit 1; }
   mkdir -p "$TMP/$(dirname "$p")"
   if [[ "$p" == "public/javascript/telefonia_entrantes_bridge.js" ]]; then
-    if [[ -f "$DST/$p" ]] && ! cmp -s "$DST/$p" "$SRC/$p"; then
-      echo "CONFLICTO: el puente Zadarma ya existe y difiere en Hostinger." >&2
+    if [[ ! -f "$DST/$p" ]]; then
+      cp "$SRC/$p" "$TMP/$p"
+      continue
+    fi
+    # En producción ya existe una versión anterior del puente.
+    # Fusionar sus posibles personalizaciones, no rechazar por cambiar Git.
+    if cmp -s "$DST/$p" "$SRC/$p"; then
+      cp "$DST/$p" "$TMP/$p"
+      continue
+    fi
+    git -C "$SRC" show "39f306fd998de860a515df9222700669b2d96dab:$p" > "$TMP/base" || {
+      echo "ERROR: falta historial del puente anterior." >&2; exit 1
+    }
+    if ! git merge-file -p "$DST/$p" "$TMP/base" "$SRC/$p" > "$TMP/$p"; then
+      echo "CONFLICTO: puente Zadarma personalizado, no se publicó nada." >&2
       exit 1
     fi
-    cp "$SRC/$p" "$TMP/$p"
     continue
   fi
   [[ -f "$DST/$p" ]] || { echo "ERROR: falta el archivo público $p." >&2; exit 1; }
@@ -46,6 +58,13 @@ for p in $FILES; do
 done
 echo "2/4 Validando PHP, JavaScript y enlace real a Zadarma..."
 grep -Fq 'data-incoming-answer' "$TMP/app/views/telefonia/shell.php"
+grep -Fq 'persistent-phone-panel impe-incoming-panel' "$TMP/app/views/telefonia/shell.php"
+grep -Fq 'impePersistentPhoneStyles' "$TMP/app/views/telefonia/shell.php"
+grep -Fq 'data-incoming-drag-handle' "$TMP/app/views/telefonia/shell.php"
+grep -Fq 'data-incoming-answer-compact' "$TMP/app/views/telefonia/shell.php"
+if grep -Fq 'data-incoming-provider' "$TMP/app/views/telefonia/shell.php"; then
+  echo "ERROR: regresó el enlace innecesario a Zadarma" >&2; exit 1
+fi
 grep -Fq 'telefonia_entrantes_bridge.js' "$TMP/app/views/telefonia/host.php"
 grep -Fq 'IMPE_ZADARMA_INCOMING' "$TMP/public/javascript/telefonia_host.js"
 grep -Fq "providerBridge()?.answer()" "$TMP/public/javascript/telefonia_shell.js"
