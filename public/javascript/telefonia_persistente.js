@@ -1925,12 +1925,23 @@
         // con una acción de contestar inexistente en nuestro cliente PBX.
         // Una llamada entrante, incluso finalizada, pertenece a una sola
         // interfaz: el shell. No crear segundo panel ni resumen huérfano.
-        const incomingInShell =
-            state?.direction === 'incoming' &&
-            getHostMode() === 'embedded';
-        panel.hidden = !show || managedByShell || incomingInShell;
+        const embedded = getHostMode() === 'embedded';
+        const incomingInShell = embedded &&
+            state?.direction === 'incoming';
+        // El teclado institucional y las devoluciones de Marketing
+        // entregan su conversación al mismo modal del shell.
+        // No crear un segundo panel encima. Seguimiento conserva su
+        // tarjeta propia cuando necesita registrar el resultado.
+        const manualOutgoingInShell = embedded &&
+            state?.direction === 'outgoing' &&
+            ['TELEPHONY_MANUAL','MARKETING_CALLBACK','DIALER'].includes(
+                String(state?.context?.type || '').toUpperCase()
+            ) && (Boolean(state?.active) || state?.phase === 'finished');
+        panel.hidden = !show || managedByShell ||
+            incomingInShell || manualOutgoingInShell;
 
-        if (!show || managedByShell || incomingInShell) {
+        if (!show || managedByShell || incomingInShell ||
+            manualOutgoingInShell) {
             return;
         }
 
