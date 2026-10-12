@@ -54,7 +54,9 @@ $urlEnlaceRegistro = trim((string)($urlEnlaceRegistro ?? ''));
             data-formulario-share
             data-generate-link-url="<?= BASE_URL ?>index.php?controller=formulario&action=generarEnlaceRegistro"
             data-current-link="<?= $texto($urlEnlaceRegistro) ?>"
-            data-quickchart-url="https://quickchart.io/qr">
+            data-quickchart-url="https://quickchart.io/qr"
+            data-form-label="Registro"
+            data-qr-color="223A84">
             <div class="formularios-share-copy">
                 <span class="formularios-kicker">COMPARTIR FORMULARIO</span>
                 <h3>Enlace y código QR</h3>
