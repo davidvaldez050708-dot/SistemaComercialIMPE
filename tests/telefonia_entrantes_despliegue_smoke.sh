@@ -56,7 +56,7 @@ git -C "$ROOT" cat-file blob "${BASES[1]}" > "$SITE/${FILES[1]}"
 php -r '
   $f=$argv[1];
   $s=file_get_contents($f);
-  $s=str_replace("let nativeUiVisible = false;", "let nativeUiVisible = \"local custom\";", $s);
+  $s=str_replace("nativeUiVisible = true;", "let nativeUiVisible = \"local custom\";", $s);
   file_put_contents($f,$s);
 ' "$SITE/${FILES[1]}"
 control="$(sha256sum "$SITE/${FILES[0]}" | cut -d' ' -f1)"
