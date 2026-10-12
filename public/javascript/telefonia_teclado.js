@@ -38,7 +38,7 @@
                 '<button type="button" class="impe-dialer-control" data-dialer-close aria-label="Cerrar o minimizar teléfono" title="Cerrar o minimizar"><i class="bi bi-x-lg" aria-hidden="true"></i></button>' +
               '</header>' +
               '<form class="impe-dialer-body" data-dialer-form autocomplete="off">' +
-                '<div class="impe-dialer-state" data-dialer-state role="status" aria-live="polite"><i class="bi bi-check-circle" aria-hidden="true"></i><span data-dialer-state-label>Verificando extensión…</span></div>' +
+                '<div class="impe-dialer-state" data-dialer-state role="status" aria-live="polite" hidden><i class="bi bi-exclamation-circle" aria-hidden="true"></i><span data-dialer-state-label></span></div>' +
                 '<label for="impeDialerNumber">Número de teléfono</label>' +
                 '<div class="impe-dialer-number-row"><input id="impeDialerNumber" type="tel" inputmode="tel" maxlength="25" placeholder="Ej. 55 1234 5678" data-dialer-input></div>' +
                 '<p class="impe-dialer-context" data-dialer-context hidden></p>' +
@@ -98,8 +98,11 @@
             catch (error) { return null; }
         }
         function setMessage(message, isError) {
-            qs('[data-dialer-state-label]').textContent = String(message || '');
-            stateText.classList.toggle('is-error', Boolean(isError));
+            const showError = Boolean(isError && message);
+            qs('[data-dialer-state-label]').textContent = showError
+                ? String(message) : '';
+            stateText.hidden = !showError;
+            stateText.classList.toggle('is-error', showError);
             const visibleCallState = qs('[data-dialer-live-state]');
             if (!live.hidden) {
                 visibleCallState.textContent = String(message || '');
@@ -138,6 +141,16 @@
             if (form.hidden) qs('.impe-dialer-dialog').focus();
             else input.focus();
         }
+        function handoffToCall() {
+            // El marcador sólo introduce números. El panel persistente único
+            // del shell controla la llamada entrante o saliente.
+            visible = false;
+            wrap.classList.remove('is-open');
+            wrap.classList.remove('is-minimized');
+            restore.hidden = true;
+            wrap.hidden = true;
+            previousFocus?.focus?.();
+        }
         function hide() {
             visible = false;
             wrap.classList.remove('is-open');
@@ -159,7 +172,7 @@
                 if (!api?.probe) throw new Error('El teléfono se está preparando. Intenta de nuevo.');
                 const info = await api.probe();
                 capabilities = Boolean(info?.permite_salientes);
-                setMessage(capabilities ? 'Listo para marcar desde tu extensión.' :
+                setMessage(capabilities ? '' :
                     'La extensión no tiene habilitadas las llamadas salientes.', !capabilities);
             } catch (error) {
                 capabilities = false;
@@ -172,6 +185,12 @@
             const current = activeState();
             if (current?.active && current.direction === 'incoming') {
                 opt.showIncoming?.();
+                return;
+            }
+            if (opt.singleCallPanel && current?.active &&
+                current.direction === 'outgoing') {
+                handoffToCall();
+                opt.showOngoing?.();
                 return;
             }
             callState = current?.active ? current : null;
@@ -188,7 +207,7 @@
                     ? data.number.slice(0,25) : '';
                 note.hidden = context.type !== 'MARKETING_CALLBACK';
                 note.textContent = note.hidden ? '' :
-                    'Devolución de llamada perdida. Verifica el número y pulsa Llamar.';
+                    'Comprueba el número y pulsa Llamar.';
             }
             previousFocus = document.activeElement;
             show();
@@ -205,14 +224,19 @@
             busy = true;
             lastPhone = phone;
             submit.disabled = true;
-            setMessage('Solicitando llamada a Zadarma…');
+            setMessage('', false);
             try {
                 await api.startCall({
                     destination: phone,
                     institution: context.type === 'MARKETING_CALLBACK' ? 'Recepción telefónica' : '',
                     context: context
                 });
-                setMessage('Llamada solicitada. Esperando confirmación de Zadarma…');
+                if (opt.singleCallPanel) {
+                    handoffToCall();
+                    opt.onCallRequested?.({ number: phone });
+                } else {
+                    setMessage('Llamada solicitada. Esperando confirmación de Zadarma…');
+                }
             } catch (error) {
                 setMessage(error?.message || 'No se pudo iniciar la llamada.',true);
             } finally {
@@ -229,7 +253,8 @@
             if (next.active && next.direction !== 'incoming' &&
                 (visible || !wrap.hidden)) {
                 callState = next;
-                render();
+                if (opt.singleCallPanel) handoffToCall();
+                else render();
             } else if (callState?.active && !next.active) {
                 callState = next;
                 if (visible) {
@@ -286,6 +311,12 @@
         });
         return {
             open:open, sync:sync, close:hide, element:wrap,
+            reportError:function (message) {
+                // Si Zadarma rechazó la marcación, permitir corregir el número.
+                callState = null;
+                show();
+                setMessage(message || 'No se pudo iniciar la llamada.', true);
+            },
             isManagingCall:function () {
                 return visible || (!restore.hidden && !wrap.hidden);
             }
