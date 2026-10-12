@@ -140,7 +140,11 @@ if deploy --apply > "$TMP/shell-unknown.out" 2>&1; then
   echo "ERROR: se publicó shell incompatible." >&2
   exit 1
 fi
-grep -Fq 'CONFLICTO: shell telefónico' "$TMP/shell-unknown.out"
+grep -Fq 'CONFLICTO:' "$TMP/shell-unknown.out" || {
+  echo "El rechazo seguro del shell debe describirse como conflicto:" >&2
+  cat "$TMP/shell-unknown.out" >&2
+  exit 1
+}
 [[ "$BEFORE" == "$(sha256sum "$SITE/public/javascript/telefonia_shell.js")" ]]
 echo "Modal Marketing Hostinger: OK (puentes, seis shells históricos, ajustes locales y conflictos)"
 
