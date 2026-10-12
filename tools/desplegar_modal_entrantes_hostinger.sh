@@ -84,13 +84,22 @@ for p in $FILES; do
         > "$TMP/base-hostinger" || {
           echo "ERROR: falta la revisión 8047ff5 para verificar el shell." >&2; exit 1
         }
-      LOCAL_RULE="status.classList.toggle('is-raised', !restore.hidden);"
-      if ! grep -Fq "$LOCAL_RULE" "$TMP/base-hostinger" ||
-         ! grep -Fq "$LOCAL_RULE" "$SRC/$p"; then
-        echo "CONFLICTO: falta el ajuste local esperado; no se publicó nada." >&2
-        exit 1
-      fi
-      sed "/status\\.classList\\.toggle('is-raised', !restore\\.hidden);/d" \
+      # El archivo público retiró tres líneas: el aviso de superposición
+      # y sus dos comentarios. Verificar las tres, no sólo la instrucción.
+      for LOCAL_RULE in \
+        'El aviso de conexión y "Mostrar llamada" son ambos flotantes:' \
+        'nunca apilarlos uno encima del otro.' \
+        "status.classList.toggle('is-raised', !restore.hidden);"; do
+        if ! grep -Fq "$LOCAL_RULE" "$TMP/base-hostinger" ||
+           ! grep -Fq "$LOCAL_RULE" "$SRC/$p"; then
+          echo "CONFLICTO: falta un fragmento del ajuste esperado." >&2
+          exit 1
+        fi
+      done
+      sed \
+        -e '/El aviso de conexión y "Mostrar llamada" son ambos flotantes:/d' \
+        -e '/nunca apilarlos uno encima del otro./d' \
+        -e "/status\\.classList\\.toggle('is-raised', !restore\\.hidden);/d" \
         "$TMP/base-hostinger" > "$TMP/shell-historico-normalizado"
       if [[ "$(git -C "$SRC" hash-object "$TMP/shell-historico-normalizado")" != "$SHELL_HASH" ]]; then
         echo "CONFLICTO: el shell publicado difiere del ajuste histórico comprobado." >&2
@@ -98,7 +107,10 @@ for p in $FILES; do
       fi
       # Restaurar cronómetro y acciones instantáneas de GitHub conservando
       # la eliminación del aviso solapado que ya tenía Hostinger.
-      sed "/status\\.classList\\.toggle('is-raised', !restore\\.hidden);/d" \
+      sed \
+        -e '/El aviso de conexión y "Mostrar llamada" son ambos flotantes:/d' \
+        -e '/nunca apilarlos uno encima del otro./d' \
+        -e "/status\\.classList\\.toggle('is-raised', !restore\\.hidden);/d" \
         "$SRC/$p" > "$TMP/$p"
       echo "Shell Hostinger reconocido exactamente; se conserva su ajuste del aviso."
       continue

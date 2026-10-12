@@ -120,7 +120,10 @@ done
 git -C "$ROOT" show \
   "8047ff5d6fab58d77732daaa27ff5fa05f63511b:public/javascript/telefonia_shell.js" \
   > "$SITE/public/javascript/telefonia_shell.js"
-sed -i "/status\\.classList\\.toggle('is-raised', !restore\\.hidden);/d" \
+sed -i \
+  -e '/El aviso de conexión y "Mostrar llamada" son ambos flotantes:/d' \
+  -e '/nunca apilarlos uno encima del otro./d' \
+  -e "/status\\.classList\\.toggle('is-raised', !restore\\.hidden);/d" \
   "$SITE/public/javascript/telefonia_shell.js"
 [[ "$(git -C "$ROOT" hash-object "$SITE/public/javascript/telefonia_shell.js")" == \
   "45e80cccb3e104917aee74122b21ebf8a68498cf" ]] || {
