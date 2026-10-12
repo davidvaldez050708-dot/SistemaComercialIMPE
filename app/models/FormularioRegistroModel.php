@@ -74,7 +74,13 @@ class FormularioRegistroModel
     public function guardar($datos)
     {
         $origen = strtoupper(trim((string)($datos['origen'] ?? 'MARKETING')));
-        $origen = in_array($origen, ['MARKETING', 'PUBLICO'], true)
+        $origenesPermitidos = [
+            'MARKETING',
+            'PUBLICO',
+            'MARKETING_INSCRIPCION',
+            'PUBLICO_INSCRIPCION'
+        ];
+        $origen = in_array($origen, $origenesPermitidos, true)
             ? $origen
             : 'MARKETING';
         $creadoPor = array_key_exists('creado_por', $datos)
