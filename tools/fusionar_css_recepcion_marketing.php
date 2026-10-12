@@ -46,6 +46,14 @@ if ($before === null || $now === null ||
     exit(1);
 }
 if (str_contains($live, $now)) {
+    // Los estilos adicionales para el mismo botón podrían ganar
+    // por cascada. No aprobar automáticamente una coincidencia parcial.
+    $outside = str_replace($now, '', $live);
+    if (substr_count($live, $now) !== 1 ||
+        preg_match('/\\.marketing-reception-(?:call|action-cell|record-check)(?![a-zA-Z0-9_-])/', $outside)) {
+        fwrite(STDERR, "CONFLICTO: existen reglas adicionales del botón Llamar.\n");
+        exit(1);
+    }
     $merged = $live;
     echo "CSS de Llamar ya integrado; se conservan estilos locales.\n";
 } elseif (str_contains($live, $markerNow) ||
