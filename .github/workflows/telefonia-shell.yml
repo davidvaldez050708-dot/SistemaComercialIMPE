@@ -16,6 +16,7 @@ on:
       - "public/css/telefonia_recepcion_marketing.css"
       - "tools/desplegar_telefonia_shell_hostinger.sh"
       - "tools/desplegar_telefonia_entrantes_hostinger.sh"
+      - "tools/normalizar_telefonia_host_css.php"
       - "tools/revertir_telefonia_shell_hostinger.sh"
       - "tests/telefonia_shell_smoke.php"
       - "tests/telefonia_entrantes_interfaz_smoke.php"

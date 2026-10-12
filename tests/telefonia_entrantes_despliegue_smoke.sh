@@ -44,4 +44,63 @@ if deploy > "$TMP/conflict.txt" 2>&1; then
 fi
 grep -Fq 'CONFLICTO' "$TMP/conflict.txt"
 [[ "$OLD" == "$(sha256sum "$LIVE/public/javascript/telefonia_host.js")" ]]
-echo "Telefonía entrante Hostinger: OK (fusión, repetición y aborto seguro)"
+# Escenario REAL informado: Hostinger utiliza el bloque 1x1 incondicional
+# y el centinela con z-index extremo. Debe normalizarse sin perder
+# personalizaciones ajenas a dicho bloque.
+git -C "$ROOT" cat-file blob 361172edf4a61c884cdfa60135152f6b84590759 > "$LIVE/public/css/telefonia_host.css"
+git -C "$ROOT" cat-file blob 1590a267840e6ac5d341254fdb760d4deb04b4b7 > "$LIVE/public/javascript/telefonia_host.js"
+php -r '
+$f = $argv[1]; $css = file_get_contents($f);
+$first = strpos($css, "/*\n * El SDK de Zadarma debe seguir vivo para WebRTC");
+$last = strpos($css, "/* Modo opcional de pestaña:", $first);
+if ($first === false || $last === false) exit(2);
+$legacy = <<<'CSS'
+/*
+ * El SDK de Zadarma debe seguir vivo para WebRTC, pero su marcador nativo
+ * nunca debe convertirse en una segunda interfaz del CRM.
+ */
+body > *:not(.telephony-host-sentinel):not(.telephony-host-tab-info):not(script) {
+    position: fixed !important;
+    left: -10000px !important;
+    top: -10000px !important;
+    right: auto !important;
+    bottom: auto !important;
+    width: 1px !important;
+    height: 1px !important;
+    max-width: 1px !important;
+    max-height: 1px !important;
+    overflow: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
+.telephony-host-sentinel {
+    z-index: 2147483647;
+}
+CSS;
+$css = substr($css, 0, $first) . $legacy . "\n\n" . substr($css, $last);
+$first = strpos($css, "/* El propio SDK conserva sus dimensiones");
+$last = strpos($css, "/* WebRTC embebido:", $first);
+if ($first === false || $last === false) exit(3);
+$css = substr($css, 0, $first) . substr($css, $last);
+$css .= "\n/* CLIENTE-CSS-PERSONALIZADO-DEBE-CONSERVARSE */\n";
+file_put_contents($f, $css);
+' "$LIVE/public/css/telefonia_host.css"
+# El resto ya está publicado: el nuevo ciclo debe actualizar sólo el CSS legado.
+deploy
+grep -Fq 'CLIENTE-CSS-PERSONALIZADO-DEBE-CONSERVARSE' "$LIVE/public/css/telefonia_host.css"
+grep -Fq 'El iframe aislado del shell oculta al proveedor' "$LIVE/public/css/telefonia_host.css"
+grep -Fq 'body.telephony-host-incoming { overflow: hidden; }' "$LIVE/public/css/telefonia_host.css"
+if grep -Fq 'body > *:not(.telephony-host-sentinel)' "$LIVE/public/css/telefonia_host.css"; then
+  echo "ERROR: todavía se fuerza el widget a 1x1." >&2
+  exit 1
+fi
+deploy
+# Rechazar cualquier variante desconocida que pueda tener cambios locales reales.
+sed -i 's/body.telephony-host-incoming { overflow: hidden; }/body.telephony-host-incoming { overflow: visible; }/' "$LIVE/public/css/telefonia_host.css"
+# En este punto no se quiere conjeturar lo que el autor local pretendió.
+# La fusión de tres vías preserva el cambio si no es conflictivo.
+deploy
+grep -Fq 'body.telephony-host-incoming { overflow: visible; }' "$LIVE/public/css/telefonia_host.css"
+echo "Telefonía entrante Hostinger: OK (fusión, repetición, conflicto y CSS legado)"
+

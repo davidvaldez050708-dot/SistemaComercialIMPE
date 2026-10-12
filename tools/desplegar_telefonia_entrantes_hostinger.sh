@@ -29,7 +29,19 @@ for p in $FILES; do
   git -C "$SRC" cat-file blob "$BASE" > "$TEMP/base" || {
     echo "ERROR: falta un objeto Git histórico, actualiza el repositorio" >&2; exit 1;
   }
-  if ! git merge-file -p "$DST/$p" "$TEMP/base" "$SRC/$p" > "$TEMP/$p"; then
+  LIVE="$DST/$p"
+  if [[ "$p" == "public/css/telefonia_host.css" ]]; then
+    # Resolver únicamente el bloque 1x1 antiguo ya identificado en Hostinger.
+    # Se normaliza una COPIA temporal. El CSS público sigue intacto hasta
+    # que todas las fusiones y validaciones de los seis archivos terminen.
+    php "$SRC/tools/normalizar_telefonia_host_css.php" \
+      "$DST/$p" "$SRC/$p" "$TEMP/telefonia_host_normalizado.css" || {
+        echo "CONFLICTO: CSS de producción distinto del patrón reconocido; no se publicó nada." >&2
+        exit 1
+      }
+    LIVE="$TEMP/telefonia_host_normalizado.css"
+  fi
+  if ! git merge-file -p "$LIVE" "$TEMP/base" "$SRC/$p" > "$TEMP/$p"; then
     echo "CONFLICTO: $p contiene cambios incompatibles en producción; no se publicó nada" >&2
     exit 1
   fi
@@ -38,6 +50,10 @@ echo "2/4 Validando antes de tocar producción..."
 grep -Fq 'El SDK conserva sus propios botones' "$TEMP/public/javascript/telefonia_host.js"
 grep -Fq 'hostReady: widgetReady' "$TEMP/public/javascript/telefonia_host.js"
 grep -Fq 'data-shell-call-help' "$TEMP/app/views/telefonia/shell.php"
+if grep -Fq 'body > *:not(.telephony-host-sentinel)' "$TEMP/public/css/telefonia_host.css" ||
+   grep -Fq 'z-index: 2147483647' "$TEMP/public/css/telefonia_host.css"; then
+  echo "ERROR: persisten reglas que ocultan el botón de contestar." >&2; exit 1
+fi
 grep -Fq 'incomingInShell' "$TEMP/public/javascript/telefonia_persistente.js"
 if grep -Fq 'observerNativo' "$TEMP/public/javascript/telefonia_host.js"; then
   echo "ERROR: permanece la manipulación previa del SDK" >&2; exit 1
