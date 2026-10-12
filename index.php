@@ -121,8 +121,11 @@ $rutasPublicas = [
     'formularioPublico' => [
         'registro',
         'gracias',
+        'inscripcion',
+        'graciasInscripcion',
         'municipios',
-        'guardarRegistro'
+        'guardarRegistro',
+        'guardarInscripcion'
     ]
 ];
 
