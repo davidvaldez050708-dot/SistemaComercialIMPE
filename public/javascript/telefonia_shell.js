@@ -328,9 +328,15 @@
         }
         const preview = !state?.active && outgoingAttempt
             ? {active:true,direction:'outgoing',phase:'dialing',
-                destination:outgoingAttempt.number,muted:false,duration:0} : null;
+                destination:outgoingAttempt.number,muted:false,duration:0,
+                context:{type:'TELEPHONY_MANUAL'}} : null;
         const shownCall = state?.active ? state : preview;
-        const shownOutgoing = Boolean(shownCall?.direction === 'outgoing');
+        // El shell absorbe sólo llamadas del teclado institucional.
+        // Seguimiento conserva su propio panel y registro de resultados.
+        const manualOutgoing = ['TELEPHONY_MANUAL','MARKETING_CALLBACK','DIALER']
+            .includes(String(shownCall?.context?.type || '').toUpperCase());
+        const shownOutgoing = Boolean(shownCall?.direction === 'outgoing' &&
+            (manualOutgoing || preview || outgoingAttempt));
         const ongoing = Boolean(state?.active);
         if (!ongoing) {
             forceNativeControls = false;
