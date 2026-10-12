@@ -43,7 +43,7 @@ $tests = [
     'Tab mode does not call popup move or resize' =>
         str_contains($persistent, "window.open('', hostWindowName + '_tab')") &&
         str_contains($persistent, 'if (!modoPestana) {') &&
-        str_contains($hostJs, 'if (modoPestana || nativeUiVisible)'),
+        str_contains($hostJs, 'modoPestana || modoEmbebido || nativeUiVisible'),
     'Incoming calls retain Zadarma native controls' =>
         str_contains($hostJs, 'mostrarHostEntrante();') &&
         str_contains($hostJs, 'marcarPestanaEntrante(String(call.caller_id'),
