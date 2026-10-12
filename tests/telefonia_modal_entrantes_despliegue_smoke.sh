@@ -135,7 +135,7 @@ deploy --check
 [[ "$OLD_HASH" == "$(sha256sum "$SITE/public/javascript/telefonia_shell.js")" ]]
 deploy --apply
 grep -Fq 'pendingIncomingAction' "$SITE/public/javascript/telefonia_shell.js"
-grep -Fq 'updateIncomingTimer(state)' \
+grep -Fq 'updateIncomingTimer(phoneState)' \
   "$SITE/public/javascript/telefonia_shell.js"
 if grep -Fq "status.classList.toggle('is-raised', !restore.hidden);" \
   "$SITE/public/javascript/telefonia_shell.js"; then
