@@ -376,22 +376,38 @@
 }
 
 
-/* Recepción · llamada de retorno vinculada a una llamada perdida. */
-.marketing-reception-number .marketing-reception-callback {
+/* Una acción general por registro, compacta y consistente con el CRM. */
+.marketing-reception-action-cell { white-space: nowrap; }
+.marketing-reception-call {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-height: 28px;
-    padding: 4px 9px;
-    margin: 5px 0 0;
-    font-size: 10px;
+    gap: 7px;
+    min-height: 32px;
+    padding: 6px 12px;
+    border: 1px solid #d4def0;
+    border-radius: 9px;
+    background: #f5f7fe;
+    color: #263e86;
+    font: inherit;
+    font-size: 11px;
     font-weight: 750;
+    line-height: 1.2;
     white-space: nowrap;
+    cursor: pointer;
 }
-.marketing-reception-number .marketing-reception-callback:disabled {
-    opacity: .55;
-    cursor: not-allowed;
+.marketing-reception-call:hover:not(:disabled),
+.marketing-reception-call:focus-visible:not(:disabled) {
+    background: #eaf0ff;
+    border-color: #aebee5;
 }
+.marketing-reception-call:disabled { opacity: .55; cursor: not-allowed; }
+.marketing-reception-record-check:not(.is-available) {
+    background: #f6f8fc;
+    border-color: #dbe4f0;
+    color: #516586;
+}
+
 .marketing-reception-callback-status {
     margin: 10px 0 8px;
     padding: 9px 11px;

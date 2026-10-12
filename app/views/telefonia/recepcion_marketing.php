@@ -115,6 +115,7 @@ $recepcionMarketingPermitida = marketingTieneRecepcionAsignada();
                 <tr>
                     <th>Fecha y hora</th>
                     <th>Número entrante</th>
+                    <th>Llamar</th>
                     <th>Estado</th>
                     <th>Duración</th>
                     <th>Transferida a</th>
@@ -122,7 +123,7 @@ $recepcionMarketingPermitida = marketingTieneRecepcionAsignada();
                 </tr>
             </thead>
             <tbody data-marketing-reception-rows>
-                <tr><td colspan="6" class="marketing-reception-placeholder">
+                <tr><td colspan="7" class="marketing-reception-placeholder">
                     Consultando el historial de llamadas…
                 </td></tr>
             </tbody>

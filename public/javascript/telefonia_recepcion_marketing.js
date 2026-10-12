@@ -13,8 +13,15 @@
         return /^[1-9][0-9]{10,14}$/.test(digitos) ? digitos : '';
     }
 
+    function puedeLlamarAlRegistro(call) {
+        return normalizarNumeroDevolucion(call?.numero || '') !== '';
+    }
+
     if (typeof module !== 'undefined' && module.exports) {
-        module.exports = {normalizarNumeroDevolucion: normalizarNumeroDevolucion};
+        module.exports = {
+            normalizarNumeroDevolucion: normalizarNumeroDevolucion,
+            puedeLlamarAlRegistro: puedeLlamarAlRegistro
+        };
     }
     if (typeof document === 'undefined') return;
 
@@ -92,15 +99,16 @@
             const url = new URL(root.dataset.recordingUrl, window.location.href);
             url.searchParams.set('pbx_call_id', String(call.pbx_call_id || ''));
             const button = node('button',
-                'linkage-call-audio-state is-available linkage-call-recording-toggle');
+                'linkage-call-audio-state linkage-call-recording-toggle marketing-reception-record-check');
             button.type = 'button';
             button.setAttribute('data-sales-recording-toggle', '');
             button.setAttribute('data-recording-url', url.toString());
             button.setAttribute('data-recording-seconds', String(call.segundos || 0));
             button.setAttribute('aria-controls', audioId);
             button.setAttribute('aria-expanded', 'false');
+            button.title = 'Zadarma reportó una grabación; comprobar disponibilidad.';
             button.innerHTML = '<i class="bi bi-record-circle" aria-hidden="true"></i>' +
-                '<span>Grabación</span>' +
+                '<span>Consultar audio</span>' +
                 '<i class="bi bi-chevron-down linkage-call-recording-chevron" aria-hidden="true"></i>';
             td.appendChild(button);
             const detail = node('tr', 'telephony-history-recording-row');
@@ -108,7 +116,7 @@
             detail.hidden = true;
             detail.setAttribute('data-sales-recording-row', '');
             const content = node('td');
-            content.colSpan = 6;
+            content.colSpan = 7;
             const slot = node('div', 'telephony-history-recording-slot');
             slot.setAttribute('data-sales-recording-slot', '');
             content.appendChild(slot);
@@ -125,20 +133,24 @@
             numeroCelda.appendChild(node('span', '',
                 call.numero || 'Número no disponible'));
             const telefonoNormalizado = normalizarNumeroDevolucion(call.numero);
-            if (String(call.estado) === 'Perdida' && telefonoNormalizado) {
-                const devolver = node('button',
-                    'marketing-reception-callback btn btn-system-light',
-                    'Devolver llamada');
-                devolver.type = 'button';
-                devolver.dataset.marketingCallback = telefonoNormalizado;
-                devolver.dataset.marketingCallOrigin = String(call.pbx_call_id || '');
-                devolver.disabled = !puedeDevolver || marcacionEnCurso;
-                devolver.title = !puedeDevolver
-                    ? 'Requiere permiso telefonia.salientes y extensión activa con salientes'
-                    : 'Llamar al número que aparece en esta llamada perdida';
-                devolver.setAttribute('aria-label',
-                    'Devolver llamada al ' + String(call.numero || 'número'));
-                numeroCelda.appendChild(devolver);
+            const accion = addCell(row, '', 'marketing-reception-action-cell');
+            if (puedeLlamarAlRegistro(call)) {
+                const llamar = node('button', 'marketing-reception-call');
+                llamar.type = 'button';
+                llamar.innerHTML =
+                    '<i class="bi bi-telephone-outbound" aria-hidden="true"></i>' +
+                    '<span>Llamar</span>';
+                llamar.dataset.marketingCallback = telefonoNormalizado;
+                llamar.dataset.marketingCallOrigin = String(call.pbx_call_id || '');
+                llamar.disabled = !puedeDevolver || marcacionEnCurso;
+                llamar.title = !puedeDevolver
+                    ? 'Requiere permiso para llamadas salientes y una extensión habilitada'
+                    : 'Llamar a este número';
+                llamar.setAttribute('aria-label',
+                    'Llamar al ' + String(call.numero || 'número'));
+                accion.appendChild(llamar);
+            } else {
+                accion.appendChild(node('span', 'marketing-reception-muted', '—'));
             }
             const statusCell = addCell(row, '');
             const status = String(call.estado || '');
@@ -187,7 +199,7 @@
                         : calls.length === 0
                             ? 'Todavía no hay llamadas entrantes registradas en esta extensión.'
                             : 'No hay llamadas que coincidan con la búsqueda.'),
-                    'marketing-reception-placeholder').colSpan = 6;
+                    'marketing-reception-placeholder').colSpan = 7;
                 rows.push(empty);
             }
             tableBody.replaceChildren(...rows);
@@ -270,7 +282,7 @@
                     tableBody.replaceChildren();
                     const row = node('tr');
                     addCell(row, error.message || 'No fue posible consultar las llamadas.',
-                        'marketing-reception-placeholder').colSpan = 6;
+                        'marketing-reception-placeholder').colSpan = 7;
                     tableBody.appendChild(row);
                     count.textContent = 'No se pudo actualizar el historial.';
                 } else if (manual) {
@@ -294,7 +306,51 @@
             });
         }
 
-        // Devolver llamada únicamente precarga el número en el MISMO
+        // is_recorded sólo garantiza que Zadarma reportó una grabación.
+        // Comprobar el enlace al abrir, sin presentar un reproductor falso.
+        tableBody.addEventListener('click', async function (event) {
+            const button = event.target.closest('[data-sales-recording-toggle]');
+            if (!button || button.dataset.recordingVerified === '1') return;
+            event.preventDefault();
+            event.stopPropagation();
+            if (button.disabled) return;
+            button.disabled = true;
+            const previous = button.innerHTML;
+            button.innerHTML = '<i class="bi bi-hourglass-split" aria-hidden="true"></i>' +
+                '<span>Comprobando…</span>';
+            try {
+                const url = new URL(button.dataset.recordingUrl, window.location.href);
+                url.searchParams.set('verificar', '1');
+                const response = await fetch(url.toString(), {
+                    credentials:'same-origin', cache:'no-store',
+                    headers: {Accept:'application/json'}
+                });
+                const result = await response.json();
+                if (!response.ok || !result.ok) throw new Error('Verificación fallida');
+                if (!result.disponible) {
+                    button.innerHTML = '<i class="bi bi-clock-history" aria-hidden="true"></i>' +
+                        '<span>Aún no disponible</span>';
+                    button.title = 'La centralita reportó el audio, pero Zadarma todavía no ' +
+                        'lo entrega. Puedes volver a comprobar más tarde.';
+                    return;
+                }
+                button.dataset.recordingVerified = '1';
+                button.classList.add('is-available');
+                button.innerHTML = '<i class="bi bi-record-circle" aria-hidden="true"></i>' +
+                    '<span>Grabación</span>' +
+                    '<i class="bi bi-chevron-down linkage-call-recording-chevron" aria-hidden="true"></i>';
+                button.disabled = false;
+                // El reproductor compartido escucha el clic delegado y abre la fila.
+                button.click();
+            } catch (_) {
+                button.innerHTML = previous;
+                button.title = 'No se pudo comprobar el audio; vuelve a intentarlo.';
+            } finally {
+                button.disabled = false;
+            }
+        }, true);
+
+        // Llamar desde cualquier estado precarga el número en el MISMO
         // teléfono flotante. El usuario confirma pulsando Llamar.
         tableBody.addEventListener('click', function (event) {
             const boton = event.target.closest('[data-marketing-callback]');
