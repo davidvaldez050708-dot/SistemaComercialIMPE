@@ -223,6 +223,7 @@ if (
 
 if ($usarTelefoniaPersistente) {
     $cssOpcionalDashboard[] = 'telefonia_persistente.css';
+    $cssOpcionalDashboard[] = 'telefonia_teclado.css';
 }
 if ($esRecepcionMarketingDashboard) {
     $cssOpcionalDashboard[] = 'seguimiento_llamadas_expediente.css';
@@ -259,6 +260,7 @@ $jsOpcionalHead = [
 ];
 
 if ($usarTelefoniaPersistente) {
+    $jsOpcionalHead[] = 'telefonia_teclado.js';
     $jsOpcionalHead[] = 'telefonia_persistente.js';
 }
 
