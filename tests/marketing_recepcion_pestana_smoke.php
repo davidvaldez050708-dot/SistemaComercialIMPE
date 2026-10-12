@@ -9,6 +9,10 @@ $view = $read('app/views/telefonia/recepcion_marketing.php');
 $hostView = $read('app/views/telefonia/host.php');
 $css = $read('public/css/telefonia_recepcion_marketing.css');
 $hostCss = $read('public/css/telefonia_host.css');
+$marketingJs = $read('public/javascript/telefonia_recepcion_marketing.js');
+$recordingService = $read('app/services/ZadarmaRecordingService.php');
+$recordingApi = $read('prueba_telefonia/api/grabacion_recepcion_marketing.php');
+$shellJs = $read('public/javascript/telefonia_shell.js');
 $persistent = $read('public/javascript/telefonia_persistente.js');
 $hostJs = $read('public/javascript/telefonia_host.js');
 
@@ -18,6 +22,27 @@ $block = strpos($marketing, $include);
 $convocations = strpos($marketing, '<section class="dashboard-panel marketing-expiring-panel">');
 
 $tests = [
+    'Botón Llamar general con permisos y columna independiente' =>
+        str_contains($view, '<th>Llamar</th>') &&
+        str_contains($view, 'colspan="7"') &&
+        str_contains($marketingJs, 'puedeLlamarAlRegistro(call)') &&
+        str_contains($marketingJs, 'marketing-reception-action-cell') &&
+        !str_contains($marketingJs, "String(call.estado) === 'Perdida'") &&
+        str_contains($marketingJs, 'telefono.openDialer?.({') &&
+        str_contains($css, '.marketing-reception-call'),
+    'Audio de entrada autorizado, verificado bajo demanda' =>
+        !str_contains($recordingService, "^out_[a-fA-F0-9]{32,64}$") &&
+        str_contains($recordingApi, "($_GET['verificar'] ?? '')") &&
+        str_contains($marketingJs, "url.searchParams.set('verificar', '1')") &&
+        str_contains($marketingJs, 'Consultar audio') &&
+        str_contains($marketingJs, 'Aún no disponible') &&
+        str_contains($marketingJs, "recordingVerified = '1'"),
+    'Silenciar y temporizador comparten experiencia Seguimiento' =>
+        str_contains($shellJs, 'syncIncomingClock(value)') &&
+        str_contains($shellJs, 'updateIncomingTimer(state)') &&
+        str_contains($shellJs, "}, 250);") &&
+        str_contains($shellJs, "muteButton.classList.toggle('is-active'") &&
+        str_contains($shellJs, "const muteIcon = state.muted ? 'bi-mic' : 'bi-mic-mute'"),
     'Only one reception include' => substr_count($marketing, $include) === 1,
     'Reception follows metrics and precedes convocations' =>
         $grid !== false && $block !== false && $convocations !== false &&
