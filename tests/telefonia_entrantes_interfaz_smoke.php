@@ -32,7 +32,7 @@ $checks = [
         !str_contains($phoneJs, 'const incomingInShell = Boolean(state?.active)') &&
         str_contains($phoneJs, "getHostMode() === 'embedded'"),
     'Se muestra modal CRM, no panel blanco al entrar llamada' =>
-        str_contains($shellJs, 'const customVisible = incoming') &&
+        str_contains($shellJs, 'const customVisible = (incoming || shownOutgoing)') &&
         str_contains($shellJs, "incomingPanel.hidden = !customVisible") &&
         str_contains($shellView, 'data-incoming-answer') &&
         str_contains($shellView, 'data-incoming-hangup') &&
@@ -73,7 +73,7 @@ $checks = [
     'Cada timbrado comienza en cero' =>
         str_contains($hostJs, "state.phase === 'incoming-ringing') return 0;") &&
         str_contains($hostJs, 'duration: answered') &&
-        str_contains($shellJs, "call.phase === 'incoming-ringing' ? 0") &&
+        str_contains($shellJs, "call.phase) ? 0") &&
         str_contains($shellJs, 'syncIncomingClock(value)') &&
         str_contains($shellJs, 'updateIncomingTimer(state)') &&
         str_contains($shellJs, 'incomingCallId(value) !== incomingCallId(currentState)'),
@@ -83,6 +83,13 @@ $checks = [
         str_contains($shellJs, "pendingIncomingAction = {") &&
         str_contains($shellJs, "pending !== 'hangup' && pending !== 'decline'") &&
         str_contains($hostJs, 'actualizarEstadoTrasAccion'),
+    'Salida y recepción comparten una sola instancia WebRTC' =>
+        str_contains($phoneJs, "getHostMode() === 'embedded'") &&
+        str_contains($phoneJs, 'shell.ensureHost();') &&
+        str_contains($phoneJs, 'await prepare({ openHost: false });') &&
+        str_contains($shellJs, 'singleCallPanel: true') &&
+        str_contains($shellJs, 'shownOutgoing') &&
+        str_contains($shellJs, 'pendingOutgoingHangup'),
     'No se modifica capacidad de marcar o transferir' =>
         str_contains($hostJs, 'regToCall(') &&
         str_contains($phoneJs, 'transferCall: transferCall') &&

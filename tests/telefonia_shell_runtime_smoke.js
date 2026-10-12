@@ -141,7 +141,14 @@ first.channels[0].message({type:'STATE',state:{
     direction:'outgoing',destination:'5512345678',phase:'in-progress'
 }});
 assert.equal(first.elements['[data-shell-call]'].classList.contains('is-visible'),false,
-    'outgoing calls retain CRM dialer, no blank SDK overlay');
+    'salientes sin segundo widget blanco Zadarma');
+assert.equal(first.elements['[data-incoming-panel]'].hidden,false,
+    'salientes muestran el mismo panel CRM arrastrable');
+assert.equal(first.elements['[data-incoming-eyebrow]'].textContent,'LLAMADA SALIENTE');
+assert.equal(first.elements['[data-incoming-hangup]'].hidden,false,
+    'salientes pueden colgar desde el panel único');
+assert.equal(first.elements['[data-incoming-answer]'].hidden,true,
+    'salientes nunca muestran Contestar');
 first.windowEvents.message({
     origin:'https://crm.ejemplo.org',
     source:first.elements['[data-shell-host-region]'].children[0].contentWindow,
