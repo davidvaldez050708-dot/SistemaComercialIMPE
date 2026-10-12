@@ -1607,8 +1607,9 @@
             'click',
             function () {
                 if (
-                    state?.phase === 'finished' &&
-                    String(state?.context?.type || '').toUpperCase() === 'DIALER'
+                    state?.phase === 'incoming-finished' ||
+                    (state?.phase === 'finished' &&
+                        String(state?.context?.type || '').toUpperCase() === 'DIALER')
                 ) {
                     clearFinished();
                 } else {
@@ -1902,9 +1903,15 @@
         } catch (error) {
             // Modo clásico: el panel original sigue siendo el respaldo.
         }
-        panel.hidden = !show || managedByShell;
+        // Las entrantes se contestan en el widget oficial del shell.
+        // Evitar la segunda tarjeta con "Llamar" desactivado que confundía
+        // con una acción de contestar inexistente en nuestro cliente PBX.
+        const incomingInShell = Boolean(state?.active) &&
+            state?.direction === 'incoming' &&
+            getHostMode() === 'embedded';
+        panel.hidden = !show || managedByShell || incomingInShell;
 
-        if (!show || managedByShell) {
+        if (!show || managedByShell || incomingInShell) {
             return;
         }
 
@@ -2094,15 +2101,15 @@
                 state.active ||
                 (
                     finished
-                        ? !isIndependentDialer
+                        ? !(isIndependentDialer || incoming)
                         : ![
                             'preparing',
                             'prepared',
                             'error'
                         ].includes(phase)
                 );
-            closeButton.title = finished && isIndependentDialer
-                ? 'Cerrar llamada finalizada'
+            closeButton.title = finished
+                ? 'Cerrar resumen de llamada finalizada'
                 : 'Cerrar teléfono';
         }
 
