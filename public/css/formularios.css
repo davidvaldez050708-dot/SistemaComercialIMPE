@@ -1072,3 +1072,115 @@
     }
 }
 
+/* ======================================================================
+   FORMULARIOS · TEMA VERDE DE INSCRIPCIÓN
+   ====================================================================== */
+
+.formularios-inscripcion-theme {
+    --inscripcion-green: #0b8f73;
+    --inscripcion-green-dark: #08745f;
+    --inscripcion-green-soft: #eaf8f4;
+    --inscripcion-green-border: #cfeadf;
+}
+
+.formularios-inscripcion-theme .formularios-kicker,
+.formularios-inscripcion-theme .formularios-option-label {
+    color: var(--inscripcion-green);
+}
+
+.formularios-inscripcion-theme .formularios-detail-icon.is-inscripcion,
+.formularios-inscripcion-theme .formularios-registration-section-title > span {
+    border-color: var(--inscripcion-green-border);
+    background: var(--inscripcion-green-soft);
+    color: var(--inscripcion-green);
+}
+
+.formularios-inscripcion-theme .formularios-registration-badge {
+    border-color: var(--inscripcion-green-border);
+    background: var(--inscripcion-green-soft);
+    color: var(--inscripcion-green-dark);
+}
+
+.formularios-inscripcion-theme .formularios-field .form-control:focus,
+.formularios-inscripcion-theme .formularios-field .form-select:focus {
+    border-color: var(--inscripcion-green);
+    box-shadow: 0 0 0 3px rgba(11, 143, 115, .09);
+}
+
+.formularios-inscripcion-theme .btn-system-save,
+.formularios-inscripcion-theme .formularios-registration-actions .btn-system-save {
+    border-color: var(--inscripcion-green);
+    background: var(--inscripcion-green);
+    color: #fff;
+}
+
+.formularios-inscripcion-theme .btn-system-save:hover,
+.formularios-inscripcion-theme .formularios-registration-actions .btn-system-save:hover {
+    border-color: var(--inscripcion-green-dark);
+    background: var(--inscripcion-green-dark);
+    color: #fff;
+}
+
+.formularios-inscripcion-theme .formularios-share-url > i,
+.formularios-inscripcion-theme .formularios-share-url .btn,
+.formularios-inscripcion-theme .formularios-qr-modal .formularios-kicker {
+    color: var(--inscripcion-green);
+}
+
+.formularios-inscripcion-theme .formularios-share-url .btn:hover {
+    background: var(--inscripcion-green-soft);
+}
+
+#modalFormularioInscripcionQr .modal-dialog.formularios-qr-dialog {
+    width: min(calc(100% - 32px), 420px) !important;
+    max-width: 420px !important;
+    margin: 1.75rem auto !important;
+}
+
+#modalFormularioInscripcionQr .formularios-qr-modal {
+    width: 100%;
+    border-radius: 14px;
+}
+
+#modalFormularioInscripcionQr .formularios-qr-modal .modal-header {
+    padding: 15px 17px 12px;
+}
+
+#modalFormularioInscripcionQr .formularios-qr-modal .modal-title {
+    font-size: 15px;
+}
+
+#modalFormularioInscripcionQr .formularios-qr-modal .modal-body {
+    padding: 17px;
+}
+
+#modalFormularioInscripcionQr .formularios-qr-preview {
+    width: 238px;
+    max-width: 100%;
+    border-radius: 12px;
+}
+
+#modalFormularioInscripcionQr .formularios-qr-modal .modal-body > p {
+    max-width: 310px;
+    margin: 11px auto 0;
+    font-size: 9.5px;
+}
+
+#modalFormularioInscripcionQr .formularios-qr-link {
+    margin-top: 9px;
+    padding: 8px 9px;
+    font-size: 8px;
+}
+
+@media (max-width: 575.98px) {
+    #modalFormularioInscripcionQr .modal-dialog.formularios-qr-dialog {
+        width: min(calc(100% - 20px), 380px) !important;
+        max-width: 380px !important;
+        margin: 1rem auto !important;
+    }
+
+    #modalFormularioInscripcionQr .formularios-qr-preview {
+        width: 215px;
+    }
+}
+
