@@ -120,7 +120,7 @@ if command -v node >/dev/null 2>&1; then
     node --check "$TMP/public/javascript/telefonia_recepcion_marketing.js"
 fi
 grep -Fq 'data-telephony-flash' "$TMP/app/views/telefonia/extensiones.php"
-grep -Fq 'telefono.startCall({' "$TMP/public/javascript/telefonia_recepcion_marketing.js"
+grep -Fq 'telefono.openDialer?.({' "$TMP/public/javascript/telefonia_recepcion_marketing.js"
 grep -Fq 'bootstrap.Toast.getOrCreateInstance' "$TMP/public/javascript/telefonia_admin.js"
 grep -Fq 'telephony-admin-flash-container' "$TMP/public/css/telefonia.css"
 
