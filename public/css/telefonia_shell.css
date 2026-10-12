@@ -23,14 +23,14 @@ html, body { height: 100%; min-width: 0; margin: 0; overflow: hidden; }
    podían quedar mal dimensionados o en blanco. No usar display:none. */
 .impe-phone-call {
   position: fixed; width: min(420px, calc(100vw - 22px));
-  height: min(580px, calc(100dvh - 24px));
+  height: min(450px, calc(100dvh - 24px));
   right: -10000px; bottom: 12px; z-index: 1100;
   overflow: hidden; opacity: 0; pointer-events: none;
   background: #fff; border: 0;
 }
 .impe-phone-call.is-visible {
   width: min(420px, calc(100vw - 22px));
-  height: min(580px, calc(100dvh - 24px));
+  height: min(450px, calc(100dvh - 24px));
   right: 12px; bottom: 12px; opacity: 1; pointer-events: auto;
   border: 1px solid #d9e2ef; border-radius: 12px; overflow: hidden;
   box-shadow: 0 16px 48px #0a1b3755;
@@ -46,7 +46,12 @@ html, body { height: 100%; min-width: 0; margin: 0; overflow: hidden; }
   flex: 0 0 30px; height: 30px; border-radius: 8px; border: 1px solid #d7e2f2;
   background: #fff; color: #203568; cursor: pointer; font-size: 21px;
 }
-.impe-phone-call-host { width: 100%; height: calc(100% - 59px); overflow: hidden; }
+.impe-phone-call-help {
+  height: 78px; margin: 0; padding: 12px 15px;
+  background: #f7f9fd; color: #465b78; border-bottom: 1px solid #e1e8f4;
+  font: 600 12px/1.5 'Manrope', sans-serif;
+}
+.impe-phone-call-host { width: 100%; height: calc(100% - 137px); overflow: hidden; }
 .impe-phone-call iframe { width: 100%; height: 100%; border: 0; display: block; }
 .impe-phone-restore {
   position: fixed; bottom: 15px; right: 16px; z-index: 1101;
@@ -56,7 +61,7 @@ html, body { height: 100%; min-width: 0; margin: 0; overflow: hidden; }
 }
 @media(max-width: 550px) {
  .impe-phone-call.is-visible { right: 6px; bottom: 6px;
-    width: calc(100vw - 12px); height: min(560px, calc(100dvh - 12px)); }
+    width: calc(100vw - 12px); height: min(450px, calc(100dvh - 12px)); }
  .impe-phone-status { right: 7px; bottom: 7px; }
 }
 

@@ -93,223 +93,16 @@
         ? new BroadcastChannel(channelName)
         : null;
 
-    const normalizarTextoNativo = function (valor) {
-        return String(valor || '')
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .toLowerCase();
-    };
-
-    const pareceInterfazNativa = function (elemento) {
-        if (!(elemento instanceof HTMLElement)) {
-            return false;
-        }
-
-        const firma = [
-            elemento.id || '',
-            typeof elemento.className === 'string'
-                ? elemento.className
-                : ''
-        ].join(' ');
-
-        return /(zadarma|zdrm|webphone)/i.test(firma);
-    };
-
-    const localizarRaizNativa = function (origen) {
-        let actual = origen;
-        let candidato = null;
-
-        for (
-            let nivel = 0;
-            actual && nivel < 9;
-            nivel += 1
-        ) {
-            if (
-                !(actual instanceof HTMLElement) ||
-                actual.matches(
-                    '.telephony-host-card, .telephony-host-user'
-                ) ||
-                actual === document.body ||
-                actual === document.documentElement
-            ) {
-                break;
-            }
-
-            if (pareceInterfazNativa(actual)) {
-                candidato = actual;
-            }
-
-            const estilo =
-                getComputedStyle(actual);
-            const rect =
-                actual.getBoundingClientRect();
-
-            if (
-                ['fixed', 'absolute', 'sticky']
-                    .includes(estilo.position) &&
-                rect.width >= 30 &&
-                rect.width <= 760 &&
-                rect.height >= 25 &&
-                rect.height <= 520
-            ) {
-                return actual;
-            }
-
-            actual = actual.parentElement;
-        }
-
-        return candidato;
-    };
-
+    // El SDK conserva sus propios botones, posiciones y estilos.
+    // Alterar nodos internos rompía Contestar y dejaba un panel blanco.
     const ocultarInterfazNativa = function () {
-        if (nativeUiVisible) {
-            return;
+        if (!nativeUiVisible) {
+            document.body.classList.remove('telephony-host-incoming');
         }
-
-        const candidatos = new Set();
-
-        document.querySelectorAll(
-            '[id*="zadarma" i], [class*="zadarma" i], ' +
-            '[id*="zdrm" i], [class*="zdrm" i], ' +
-            '[id*="webphone" i], [class*="webphone" i]'
-        ).forEach(function (elemento) {
-            if (elemento instanceof HTMLElement) {
-                candidatos.add(elemento);
-            }
-        });
-
-        document.querySelectorAll(
-            'input[placeholder]'
-        ).forEach(function (input) {
-            const placeholder =
-                normalizarTextoNativo(
-                    input.getAttribute(
-                        'placeholder'
-                    )
-                );
-
-            if (
-                placeholder.includes(
-                    'introduce el numero'
-                ) ||
-                placeholder.includes(
-                    'introducir el numero'
-                ) ||
-                placeholder.includes(
-                    'numero de telefono'
-                )
-            ) {
-                candidatos.add(input);
-            }
-        });
-
-        candidatos.forEach(function (elemento) {
-            const raiz =
-                localizarRaizNativa(elemento);
-
-            if (
-                !raiz ||
-                raiz.dataset
-                    .impeNativePhoneHidden === '1'
-            ) {
-                return;
-            }
-
-            raiz.dataset
-                .impeNativePhoneHidden = '1';
-            raiz.setAttribute(
-                'aria-hidden',
-                'true'
-            );
-            raiz.style.setProperty(
-                'position',
-                'fixed',
-                'important'
-            );
-            raiz.style.setProperty(
-                'left',
-                '-10000px',
-                'important'
-            );
-            raiz.style.setProperty(
-                'top',
-                '-10000px',
-                'important'
-            );
-            raiz.style.setProperty(
-                'right',
-                'auto',
-                'important'
-            );
-            raiz.style.setProperty(
-                'bottom',
-                'auto',
-                'important'
-            );
-            raiz.style.setProperty(
-                'opacity',
-                '0',
-                'important'
-            );
-            raiz.style.setProperty(
-                'pointer-events',
-                'none',
-                'important'
-            );
-        });
     };
-
     const mostrarInterfazNativa = function () {
         nativeUiVisible = true;
-        // El CSS colapsa el SDK mientras está en reposo, pero debe dejar
-        // libres sus botones y dimensiones al timbrar una llamada real.
         document.body.classList.add('telephony-host-incoming');
-
-        document.querySelectorAll(
-            '[data-impe-native-phone-hidden="1"]'
-        ).forEach(function (raiz) {
-            if (!(raiz instanceof HTMLElement)) {
-                return;
-            }
-
-            raiz.dataset.impeNativePhoneHidden = '0';
-            raiz.removeAttribute('aria-hidden');
-            raiz.style.setProperty(
-                'position',
-                'fixed',
-                'important'
-            );
-            raiz.style.setProperty(
-                'left',
-                'auto',
-                'important'
-            );
-            raiz.style.setProperty(
-                'top',
-                'auto',
-                'important'
-            );
-            raiz.style.setProperty(
-                'right',
-                '10px',
-                'important'
-            );
-            raiz.style.setProperty(
-                'bottom',
-                '10px',
-                'important'
-            );
-            raiz.style.setProperty(
-                'opacity',
-                '1',
-                'important'
-            );
-            raiz.style.setProperty(
-                'pointer-events',
-                'auto',
-                'important'
-            );
-        });
     };
 
     const mostrarHostEntrante = function () {
@@ -372,28 +165,7 @@
         );
     };
 
-    const observerNativo =
-        typeof MutationObserver === 'function'
-            ? new MutationObserver(function () {
-                requestAnimationFrame(function () {
-                    // Zadarma crea controles de llamada de forma diferida;
-                    // si ya está timbrando, jamás volverlos a esconder.
-                    if (nativeUiVisible) {
-                        mostrarInterfazNativa();
-                    } else {
-                        ocultarInterfazNativa();
-                    }
-                });
-            })
-            : null;
-
-    observerNativo?.observe(
-        document.body,
-        {
-            childList: true,
-            subtree: true
-        }
-    );
+    // Ningún MutationObserver recoloca elementos del proveedor.
 
     const titleEl = document.querySelector('[data-host-title]');
     const statusEl = document.querySelector('[data-host-status]');
@@ -557,7 +329,8 @@
             userId: userId,
             extension: extension,
             provider: 'ZADARMA',
-            hostReady: true,
+            // Un webhook PBX por sí solo no confirma WebRTC.
+            hostReady: widgetReady,
             duration: currentDuration(),
             updatedAt: Date.now()
         });
@@ -836,6 +609,7 @@
 
         if (
             state.direction === 'incoming' &&
+            state.active &&
             String(state.pbxCallId || '').trim() !== ''
         ) {
             params.set(
@@ -1580,7 +1354,8 @@
             return;
         }
 
-        // También libera el WebRTC si la PBX notificó el final tarde.
+        // Cerrar un resumen no debe reiniciar ni colgar la conexión SIP.
+        window.clearTimeout(incomingFinishedTimer);
         endOutgoingWebrtc(false);
         state = emptyState();
         state.hostReady = true;
@@ -1737,7 +1512,7 @@
                 Boolean(payload.attended)
             );
         } else if (action === 'SHOW_CONTROLS') {
-            mostrarHostEntrante();
+            if (state.active) mostrarHostEntrante();
         } else if (action === 'CLEAR_FINISHED') {
             clearFinished(String(payload.callToken || ''));
         }

@@ -83,6 +83,9 @@ $nombreShell = $nombreShell !== '' ? $nombreShell : 'Usuario';
             </div>
             <button type="button" data-shell-minimize title="Minimizar controles sin colgar" aria-label="Minimizar controles de llamada">−</button>
         </div>
+        <p class="impe-phone-call-help" data-shell-call-help>
+            Aquí aparecen los controles propios de Zadarma para contestar.
+        </p>
         <div class="impe-phone-call-host" data-shell-host-region></div>
     </aside>
     <button type="button" class="impe-phone-restore" data-shell-restore hidden>

@@ -29,32 +29,10 @@ body {
     pointer-events: none;
 }
 
-/*
- * El SDK de Zadarma debe seguir vivo para WebRTC, pero su marcador nativo
- * nunca debe convertirse en una segunda interfaz del CRM.
- */
-/* Al recibir una llamada hay que mostrar el widget auténtico de Zadarma.
- * La regla 1x1 anterior continuaba activa incluso después de "mostrar"
- * los controles en JS: provocaba el panel blanco imposible de contestar. */
-body:not(.telephony-host-incoming) > *:not(.telephony-host-sentinel):not(.telephony-host-tab-info):not(script) {
-    position: fixed !important;
-    left: -10000px !important;
-    top: -10000px !important;
-    right: auto !important;
-    bottom: auto !important;
-    width: 1px !important;
-    height: 1px !important;
-    max-width: 1px !important;
-    max-height: 1px !important;
-    overflow: hidden !important;
-    opacity: 0 !important;
-    pointer-events: none !important;
-}
-
-.telephony-host-sentinel {
-    z-index: 2147483647;
-}
-
+/* El iframe aislado del shell oculta al proveedor cuando está en reposo.
+   Nunca colapsar las dimensiones ni interceptar el DOM de Zadarma:
+   los controles de contestar dependen del tamaño original del widget. */
+.telephony-host-sentinel { z-index: 0; }
 
 /* Modo opcional de pestaña: no mostrar una pantalla vacía al usuario. */
 body.telephony-host-tab {
@@ -126,16 +104,7 @@ body.telephony-host-tab .telephony-host-sentinel {
 
 
 
-/* El propio SDK conserva sus dimensiones, estilos y eventos táctiles al
- * recibirse una llamada. No imponerle width/height/overflow de 1px. */
 body.telephony-host-incoming { overflow: hidden; }
-body.telephony-host-incoming > *:not(.telephony-host-sentinel):not(script):not(.telephony-host-tab-info) {
-    max-width: none !important;
-    max-height: none !important;
-    overflow: visible !important;
-    opacity: 1 !important;
-    pointer-events: auto !important;
-}
 
 /* WebRTC embebido: el SDK sólo muestra la UI oficial cuando el CRM
    expande su iframe de llamada. El iframe vive dentro del shell principal. */

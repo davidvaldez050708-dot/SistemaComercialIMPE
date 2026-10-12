@@ -18,6 +18,7 @@
     const restore = document.querySelector('[data-shell-restore]');
     const callTitle = document.querySelector('[data-shell-call-title]');
     const callStatus = document.querySelector('[data-shell-call-status]');
+    const callHelp = document.querySelector('[data-shell-call-help]');
     const stateKey = 'impe:telephony:state:' + userId;
     const commandKey = 'impe:telephony:command:' + userId;
     const leaseKey = 'impe:telephony:shell-owner:' + userId;
@@ -148,10 +149,13 @@
         const state = freshState(currentState) ? currentState : null;
         const incoming = Boolean(state?.active && state.direction === 'incoming');
         const ongoing = Boolean(state?.active);
-        if (!ongoing) forceNativeControls = false;
+        if (!ongoing) {
+            forceNativeControls = false;
+            minimized = false;
+        }
         const ready = Boolean(state && state.hostReady &&
             ['ready', 'prepared', 'incoming-ringing', 'in-progress',
-                'dialing', 'ringing', 'finished'].includes(String(state.phase)));
+                'dialing', 'ringing', 'finished', 'incoming-finished'].includes(String(state.phase)));
         const failed = mountFailed || (state?.phase === 'error' ?
             (state.message || 'No fue posible conectar con Zadarma.') : '');
         const otherOwner = !owned && getLease() &&
@@ -174,14 +178,21 @@
 
         // Las salientes conservan el panel telefónico del CRM; abrir la UI
         // oficial de Zadarma sólo es necesario para aceptar entrantes.
-        const showCall = (incoming || (ongoing && forceNativeControls)) && !minimized;
+        const showCall = Boolean(state?.hostReady) &&
+            (incoming || (ongoing && forceNativeControls)) && !minimized;
         call.classList.toggle('is-visible', showCall);
-        restore.hidden = !(incoming || (ongoing && forceNativeControls)) || showCall;
+        restore.hidden = !state?.hostReady ||
+            !(incoming || (ongoing && forceNativeControls)) || showCall;
         callTitle.textContent = incoming ? 'Llamada entrante' :
             ongoing ? 'Llamada en curso' : 'Teléfono institucional';
         callStatus.textContent = incoming ?
             'Desde ' + String(state.destination || 'Número desconocido') :
             'Extensión ' + cfg.extension;
+        if (callHelp) {
+            callHelp.textContent = incoming
+                ? 'Utiliza Contestar en el teléfono Zadarma. Si no aparece, la centralita detectó la llamada, pero WebRTC no confirma el timbrado.'
+                : 'Teléfono de la extensión ' + cfg.extension + '.';
+        }
 
         // Sólo se hace visible la interfaz oficial si la llamada es entrante.
         // Para salientes, el panel del CRM sigue teniendo sus controles.

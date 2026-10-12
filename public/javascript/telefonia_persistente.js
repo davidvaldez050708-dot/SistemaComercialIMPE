@@ -643,7 +643,8 @@
         return [
             'ready',
             'prepared',
-            'finished'
+            'finished',
+            'incoming-finished'
         ].includes(
             String(state?.phase || '')
         );
@@ -1906,7 +1907,9 @@
         // Las entrantes se contestan en el widget oficial del shell.
         // Evitar la segunda tarjeta con "Llamar" desactivado que confundía
         // con una acción de contestar inexistente en nuestro cliente PBX.
-        const incomingInShell = Boolean(state?.active) &&
+        // Una llamada entrante, incluso finalizada, pertenece a una sola
+        // interfaz: el shell. No crear segundo panel ni resumen huérfano.
+        const incomingInShell =
             state?.direction === 'incoming' &&
             getHostMode() === 'embedded';
         panel.hidden = !show || managedByShell || incomingInShell;
