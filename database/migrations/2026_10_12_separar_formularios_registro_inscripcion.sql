@@ -31,6 +31,8 @@ CREATE TABLE IF NOT EXISTS formulario_inscripciones (
   DEFAULT CHARSET=utf8mb4
   COLLATE=utf8mb4_unicode_ci;
 
+START TRANSACTION;
+
 INSERT INTO formulario_inscripciones (
     id,
     nombre,
@@ -99,3 +101,5 @@ WHERE fr.origen IN (
     'MARKETING_INSCRIPCION',
     'PUBLICO_INSCRIPCION'
 );
+
+COMMIT;
