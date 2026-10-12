@@ -130,9 +130,9 @@ git -C "$ROOT" show "cf1c1644baa2ed4275759555db3814b96fe06f93:public/javascript/
   > "$SITE/public/javascript/telefonia_shell.js"
 php -r '
 $p=$argv[1]; $s=file_get_contents($p);
-$needle="    const answerIncoming = function () {";
+$needle="    const callHelp = document.querySelector(";
 if (!str_contains($s,$needle)) exit(2);
-$s=str_replace($needle,"    const answerIncoming = function personalizado() {",$s);
+$s=str_replace($needle,"    const customHelp = document.querySelector(",$s);
 file_put_contents($p,$s);
 ' "$SITE/public/javascript/telefonia_shell.js"
 BEFORE="$(sha256sum "$SITE/public/javascript/telefonia_shell.js")"
