@@ -889,10 +889,26 @@
 
         try {
             /*
-             * prepare() abre la ventana dentro del clic real del usuario.
-             * El primer botón del flujo solo prepara la tarjeta del CRM.
+             * En modo embebido existe UN SOLO SDK de Zadarma en el shell.
+             * Abrir otra ventana aquí se apodera del registro SIP, desconecta
+             * la recepción de Marketing y deja la llamada sin panel.
+             * Conservar la ventana anterior únicamente para modo clásico.
              */
-            await prepare({ openHost: true });
+            if (getHostMode() === 'embedded') {
+                let shell = null;
+                try {
+                    shell = window.parent.IMPE_TELEPHONY_SHELL;
+                } catch (_) { /* no hay comunicación con el shell */ }
+                if (!shell?.isEmbedded || Number(shell.userId) !== userId ||
+                    typeof shell.ensureHost !== 'function') {
+                    throw new Error('No se encontró la conexión WebRTC persistente.');
+                }
+                shell.ensureHost();
+                await prepare({ openHost: false });
+                await waitForHost();
+            } else {
+                await prepare({ openHost: true });
+            }
 
             if (state?.active) {
                 startingCall = false;
