@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Ensayo con archivos históricos, localizaciones distintas y un conflicto real.
 set -euo pipefail
+trap 'echo "ERROR de simulación Hostinger en línea $LINENO" >&2' ERR
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
