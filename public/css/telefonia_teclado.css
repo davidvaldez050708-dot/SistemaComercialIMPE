@@ -1,0 +1,95 @@
+/* Marcador institucional basado en el modal compacto de Seguimiento.
+ * El mismo estilo se usa en la shell y (como respaldo) en el CRM clásico. */
+.impe-dialer { font: 500 12px/1.45 Manrope,system-ui,-apple-system,sans-serif;
+    color:#172033; position:fixed; z-index:1320; inset:0; pointer-events:none; }
+.impe-dialer[hidden] { display:none !important; }
+.impe-dialer.is-open { pointer-events:auto; }
+.impe-dialer-backdrop { display:none; position:absolute;inset:0;
+    background:rgba(14,24,44,.48); }
+.impe-dialer.is-open:not(.is-active-call) .impe-dialer-backdrop { display:block; }
+.impe-dialer-dialog { position:absolute; top:50%; left:50%;
+    width:min(420px,calc(100vw - 24px)); max-height:calc(100dvh - 28px);
+    display:flex; flex-direction:column; overflow:hidden;
+    transform:translate(-50%,-50%); border:1px solid #e0e7f0;
+    border-radius:14px; background:#fff;
+    box-shadow:0 18px 42px rgba(24,39,64,.2); }
+.impe-dialer:not(.is-open) .impe-dialer-dialog { display:none; }
+.impe-dialer.is-active-call .impe-dialer-dialog {
+    top:auto;left:auto;right:14px;bottom:14px;
+    width:min(405px,calc(100vw - 28px));max-height:calc(100dvh - 28px);
+    transform:none; box-shadow:0 18px 48px rgba(22,36,58,.25); }
+.impe-dialer-heading {padding:16px 18px 12px;display:flex;align-items:center;
+    gap:10px;border-bottom:1px solid #e5ebf3; }
+.impe-dialer-symbol {display:grid;place-items:center;width:36px;height:36px;
+    flex:0 0 36px;border-radius:10px;background:#ecf2fc;
+    color:#293d89;font-size:20px;font-weight:800;}
+.impe-dialer-heading-text {min-width:0;flex:1;}
+.impe-dialer-heading-text small {display:block;color:#728197;font-size:9px;
+    letter-spacing:.07em;font-weight:800;}
+.impe-dialer-heading-text h2 {font-size:16px;line-height:1.3;font-weight:800;
+    color:#172033;margin:2px 0;}
+.impe-dialer-heading-text p {margin:0;color:#65758d;font-size:11px;}
+.impe-dialer-control {width:31px;height:31px;flex:0 0 31px;
+    border:1px solid #e0e7f0;background:#fff;border-radius:8px;
+    color:#66768e;cursor:pointer;font-size:21px;line-height:1;}
+.impe-dialer-control:hover {background:#f4f7fb;}
+.impe-dialer-body,.impe-dialer-live {padding:14px 18px;overflow:auto;
+    min-height:0;overscroll-behavior:contain;}
+.impe-dialer-body[hidden],.impe-dialer-live[hidden],
+.impe-dialer-transfer[hidden],.impe-dialer-context[hidden] {display:none !important;}
+.impe-dialer-body>label,.impe-dialer-transfer label {display:block;
+    margin:12px 0 5px;font-size:11px;font-weight:750;color:#53647d;}
+.impe-dialer-state {min-height:30px;display:flex;align-items:center;
+    border-radius:9px;background:#edf8f2;color:#19745d;padding:8px 10px;
+    font-size:11px;line-height:1.45;font-weight:650;}
+.impe-dialer-state.is-error {background:#fff5f4;color:#a33d39;}
+.impe-dialer-number-row {display:flex;gap:6px;}
+.impe-dialer-number-row input,.impe-dialer-transfer input {min-width:0;
+    flex:1;height:42px;border:1px solid #dbe3ee;border-radius:9px;padding:8px 11px;
+    outline:none;font:700 15px/1.2 Manrope,system-ui,sans-serif;color:#172033;
+    background:#fafbfd;font-variant-numeric:tabular-nums;}
+.impe-dialer-number-row input:focus,.impe-dialer-transfer input:focus {
+    border-color:#354b94;box-shadow:0 0 0 3px rgba(39,58,138,.1);}
+.impe-dialer-backspace {width:43px;border:1px solid #dbe3ee;
+    border-radius:9px;background:#f8fafc;color:#526786;font-size:19px;cursor:pointer;}
+.impe-dialer-context {margin:8px 0 0;color:#466087;font-size:10px;}
+.impe-dialer-keys {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:6px;margin:12px 0;}
+.impe-dialer-keys button {min-height:37px;border:1px solid #e1e8f1;
+    border-radius:8px;background:#f8fafc;color:#263655;
+    font:800 15px/1 Manrope,system-ui,sans-serif;cursor:pointer;}
+.impe-dialer-keys button:hover {background:#edf2fa;border-color:#c9d8eb;}
+.impe-dialer-primary {display:block;width:100%;padding:11px 13px;
+    background:#273a8a;border:1px solid #273a8a;color:#fff;
+    font:800 12px Manrope,system-ui,sans-serif;border-radius:9px;cursor:pointer;}
+.impe-dialer-primary:hover:not(:disabled) {background:#1e317b;}
+.impe-dialer-primary:disabled {opacity:.5;cursor:not-allowed;}
+.impe-dialer-help {margin:9px 0 0;text-align:center;font-size:10px;color:#748197;}
+.impe-dialer-live .impe-dialer-label {font-size:9px;font-weight:800;
+    letter-spacing:.08em;color:#667992;margin:0 0 4px;}
+.impe-dialer-live>strong {display:block;color:#172033;font-size:21px;
+    font-variant-numeric:tabular-nums;overflow-wrap:anywhere;margin-bottom:10px;}
+.impe-dialer-actions {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:14px 0;}
+.impe-dialer-actions button,.impe-dialer-transfer-actions button {min-height:38px;
+    border:1px solid #dce4f0;border-radius:8px;background:#f8fafc;color:#263b80;
+    font:800 10px Manrope,system-ui,sans-serif;padding:7px 5px;cursor:pointer;}
+.impe-dialer-actions button.is-danger {color:#b84550;border-color:#ebcdd1;background:#fff8f8;}
+.impe-dialer-actions button:disabled {opacity:.5;cursor:not-allowed;}
+.impe-dialer-transfer {padding:11px;background:#f7f9fd;border:1px solid #e0e8f1;border-radius:9px;}
+.impe-dialer-transfer-actions {display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:10px 0 7px;}
+.impe-dialer-transfer small {font-size:9px;line-height:1.4;color:#718096;}
+.impe-dialer-footer {padding:0 18px 15px;text-align:right;}
+.impe-dialer-footer button {border:0;background:transparent;color:#637699;
+    font:750 10px Manrope,system-ui,sans-serif;cursor:pointer;padding:6px 2px;}
+.impe-dialer-restore {position:fixed;bottom:16px;right:16px;z-index:1321;
+    padding:11px 16px;border:0;border-radius:99px;background:#273a8a;color:#fff;
+    font:800 11px Manrope,system-ui,sans-serif;cursor:pointer;
+    pointer-events:auto;box-shadow:0 9px 25px rgba(24,35,66,.22);}
+.impe-dialer-restore[hidden] {display:none !important;}
+@media(max-width:575px) {
+ .impe-dialer-dialog {width:calc(100vw - 20px);max-height:calc(100dvh - 16px);}
+ .impe-dialer-heading {padding:12px;}
+ .impe-dialer-body,.impe-dialer-live {padding:10px 12px;}
+ .impe-dialer-keys button {min-height:34px;}
+ .impe-dialer.is-active-call .impe-dialer-dialog {right:6px;bottom:6px;width:calc(100vw - 12px);}
+}
