@@ -47,8 +47,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const notaLink = compartir?.querySelector(
         '[data-form-link-note]'
     );
-    const modalQrElement = document.getElementById(
-        'modalFormularioRegistroQr'
+    const modalQrElement = document.querySelector(
+        '[data-form-qr-modal]'
     );
     const imagenQr = modalQrElement?.querySelector(
         '[data-form-qr-image]'
@@ -262,11 +262,15 @@ document.addEventListener('DOMContentLoaded', function () {
             'https://quickchart.io/qr'
         ).trim();
 
+        const colorQr = String(
+            compartir.getAttribute('data-qr-color') || '223A84'
+        ).replace('#', '').trim() || '223A84';
+
         const parametros = new URLSearchParams({
             text: enlacePublico,
             size: '300',
             margin: '2',
-            dark: '223A84',
+            dark: colorQr,
             light: 'ffffff',
             ecLevel: 'M',
             format: 'png'
