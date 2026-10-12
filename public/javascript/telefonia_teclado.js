@@ -180,7 +180,10 @@
                             ? 'MARKETING_CALLBACK' : 'TELEPHONY_MANUAL',
                         llamada_origen: String(data.context.llamada_origen || '').slice(0,120)
                     } : {type:'TELEPHONY_MANUAL'};
-                if (typeof data.number === 'string') input.value = data.number.slice(0,25);
+                // Una llamada manual nueva nunca hereda por accidente el
+                // número usado en una devolución anterior.
+                input.value = typeof data.number === 'string'
+                    ? data.number.slice(0,25) : '';
                 note.hidden = context.type !== 'MARKETING_CALLBACK';
                 note.textContent = note.hidden ? '' :
                     'Devolución de llamada perdida. Verifica el número y pulsa Llamar.';
