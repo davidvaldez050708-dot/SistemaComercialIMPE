@@ -764,7 +764,7 @@
                 'rounded',
                 'es',
                 true,
-                "{right:'-9999px',bottom:'-9999px'}"
+                "{right:'10px',bottom:'10px'}"
             );
             widgetInitialized = true;
             ocultarInterfazNativa();
