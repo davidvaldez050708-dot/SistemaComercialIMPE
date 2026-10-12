@@ -261,6 +261,9 @@
 
     const mostrarInterfazNativa = function () {
         nativeUiVisible = true;
+        // El CSS colapsa el SDK mientras está en reposo, pero debe dejar
+        // libres sus botones y dimensiones al timbrar una llamada real.
+        document.body.classList.add('telephony-host-incoming');
 
         document.querySelectorAll(
             '[data-impe-native-phone-hidden="1"]'
@@ -360,6 +363,7 @@
 
     const ocultarHostEntrante = function () {
         nativeUiVisible = false;
+        document.body.classList.remove('telephony-host-incoming');
         ocultarInterfazNativa();
 
         window.setTimeout(
@@ -371,9 +375,15 @@
     const observerNativo =
         typeof MutationObserver === 'function'
             ? new MutationObserver(function () {
-                requestAnimationFrame(
-                    ocultarInterfazNativa
-                );
+                requestAnimationFrame(function () {
+                    // Zadarma crea controles de llamada de forma diferida;
+                    // si ya está timbrando, jamás volverlos a esconder.
+                    if (nativeUiVisible) {
+                        mostrarInterfazNativa();
+                    } else {
+                        ocultarInterfazNativa();
+                    }
+                });
             })
             : null;
 
