@@ -179,9 +179,100 @@ class FormularioController
         }
     }
 
+    public function generarEnlaceInscripcion()
+    {
+        $this->validarAccesoMarketing();
+
+        if (
+            strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST'
+        ) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'Método no permitido.'
+            ], 405);
+        }
+
+        $url = BASE_URL .
+            'index.php?controller=formularioPublico&action=inscripcion';
+
+        $this->responderJson([
+            'ok' => true,
+            'mensaje' => 'Enlace del formulario de inscripción generado correctamente.',
+            'url' => $url
+        ]);
+    }
+
+    public function guardarInscripcion()
+    {
+        $this->validarAccesoMarketing();
+
+        if (
+            strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST'
+        ) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'Método no permitido.'
+            ], 405);
+        }
+
+        $datos = $this->normalizarRegistro($_POST);
+        $errores = $this->validarRegistro($datos);
+
+        if (!empty($errores)) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => $errores[0],
+                'errores' => $errores
+            ], 422);
+        }
+
+        try {
+            $modelo = new FormularioRegistroModel();
+
+            if (
+                !$modelo->municipioPerteneceAEstado(
+                    (int)$datos['municipio_id'],
+                    (int)$datos['estado_id']
+                )
+            ) {
+                $this->responderJson([
+                    'ok' => false,
+                    'mensaje' =>
+                        'El municipio seleccionado no corresponde al estado elegido.'
+                ], 422);
+            }
+
+            $datos['creado_por'] = (int)($_SESSION['usuario_id'] ?? 0);
+            $datos['origen'] = 'MARKETING_INSCRIPCION';
+            $inscripcionId = $modelo->guardar($datos);
+
+            $this->responderJson([
+                'ok' => true,
+                'mensaje' => 'Inscripción guardada correctamente.',
+                'registro_id' => $inscripcionId
+            ]);
+        } catch (Throwable $error) {
+            error_log(
+                '[formulario_inscripcion_guardar] ' .
+                $error->getMessage()
+            );
+
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' =>
+                    'No fue posible guardar la inscripción. Intenta nuevamente.'
+            ], 500);
+        }
+    }
+
     public function inscripcion()
     {
         $this->validarAccesoMarketing();
+
+        $modelo = new FormularioRegistroModel();
+        $estados = $modelo->obtenerEstadosActivos();
+        $perfilesInteres = $this->perfilesInteres();
+        $urlEnlaceInscripcion = '';
 
         $tituloPagina = 'Formulario de Inscripción';
         $subtituloPagina = 'Gestiona la vista destinada a la inscripción.';
