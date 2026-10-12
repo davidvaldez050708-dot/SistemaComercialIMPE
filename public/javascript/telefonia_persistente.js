@@ -2376,7 +2376,40 @@
         clampPanel
     );
 
+    // Único punto de entrada para abrir el marcador desde Marketing,
+    // Seguimiento u otra vista. En el shell permanece fuera del iframe PHP.
+    let marcadorLocal = null;
+    const openDialer = function (options) {
+        let shell = null;
+        try {
+            shell = window.parent !== window
+                ? window.parent.IMPE_TELEPHONY_SHELL : null;
+        } catch (error) {
+            // En modo clásico utilizamos el mismo diseño en este documento.
+        }
+        if (shell?.isEmbedded && Number(shell.userId) === userId) {
+            return shell.openDialer(options || {});
+        }
+        if (!marcadorLocal) {
+            if (!window.IMPE_TELEPHONY_DIALER?.create) return false;
+            marcadorLocal = window.IMPE_TELEPHONY_DIALER.create({
+                root: document.body,
+                extension: availability?.extension || '',
+                getApi: function () { return window.IMPE_TELEPHONY_PERSISTENT; },
+                getState: getState,
+                hasOutgoingRole: function () { return window.IMPE_CAN_CALL_OUT === true; },
+                showIncoming: function () { showProviderControls(); }
+            });
+            subscribe(function (actual) {
+                marcadorLocal?.sync(actual);
+            });
+        }
+        marcadorLocal.open(options || {});
+        return true;
+    };
+
     window.IMPE_TELEPHONY_PERSISTENT = {
+        openDialer: openDialer,
         probe: probe,
         prepare: prepare,
         stageCall: stageCall,
@@ -2487,7 +2520,7 @@
                                 ? 'Extensión pendiente'
                                 : 'Recepción no disponible';
                 const title = active
-                    ? 'Recepción telefónica activa'
+                    ? 'Abrir teléfono institucional (recepción conectada)'
                     : assigned
                         ? 'Activar recepción telefónica'
                         : missing
@@ -2570,8 +2603,19 @@
                 });
             };
 
-            receptionButton?.addEventListener('click', activarRecepcion);
-            marketingAction?.addEventListener('click', activarRecepcion);
+            const abrirOActivar = function () {
+                if (!availability?.permite_entrantes || receptionBusy) return;
+                if (hostUsable()) {
+                    if (!openDialer({})) {
+                        receptionError = 'No se pudo abrir el teléfono. Recarga la página.';
+                        renderReceptionState();
+                    }
+                } else {
+                    activarRecepcion();
+                }
+            };
+            receptionButton?.addEventListener('click', abrirOActivar);
+            marketingAction?.addEventListener('click', abrirOActivar);
             subscribe(renderReceptionState);
 
             void probe().then(function (info) {
