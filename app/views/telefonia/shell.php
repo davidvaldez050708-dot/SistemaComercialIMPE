@@ -42,6 +42,15 @@ $nombreShell = $nombreShell !== '' ? $nombreShell : 'Usuario';
     echo str_ireplace('</style', '<\\/style', (string)$shellCssContent);
     ?>
     </style>
+    <!-- Usar el mismo CSS del teléfono de Seguimiento (sin duplicar estilos). -->
+    <style id="impePersistentPhoneStyles">
+    <?php
+    $persistentPhoneCss = ROOT_PATH . '/public/css/telefonia_persistente.css';
+    if (is_readable($persistentPhoneCss)) {
+        echo str_ireplace('</style', '<\\/style', (string)file_get_contents($persistentPhoneCss));
+    }
+    ?>
+    </style>
     <style id="impeDialerStyles">
     <?php
     $dialerCssPath = ROOT_PATH . '/public/css/telefonia_teclado.css';
@@ -88,54 +97,63 @@ $nombreShell = $nombreShell !== '' ? $nombreShell : 'Usuario';
         </p>
         <div class="impe-phone-call-host" data-shell-host-region></div>
     </aside>
-    <section class="impe-incoming-panel" data-incoming-panel hidden
+    <section class="persistent-phone-panel impe-incoming-panel" data-incoming-panel hidden
         aria-label="Recepción telefónica">
-        <header class="impe-incoming-heading">
-            <div class="impe-incoming-heading-copy">
-                <small data-incoming-eyebrow>RECEPCIÓN TELEFÓNICA</small>
+        <header class="persistent-phone-header" data-incoming-drag-handle
+            title="Arrastra para mover la llamada">
+            <span class="persistent-phone-live" aria-hidden="true"><i></i></span>
+            <div class="persistent-phone-heading">
+                <span data-incoming-eyebrow>RECEPCIÓN TELEFÓNICA</span>
                 <strong data-incoming-title>Llamada entrante</strong>
             </div>
-            <button type="button" data-incoming-minimize
-                title="Minimizar sin colgar" aria-label="Minimizar llamada">
-                <i class="bi bi-dash-lg" aria-hidden="true"></i> Minimizar
+            <strong class="persistent-phone-header-timer" data-incoming-compact-timer>00:00</strong>
+            <button type="button" class="persistent-phone-toggle" data-incoming-minimize
+                title="Minimizar" aria-label="Minimizar llamada">
+                <i class="bi bi-dash-lg" aria-hidden="true"></i><span>Minimizar</span>
             </button>
         </header>
-        <div class="impe-incoming-body">
-            <div class="impe-incoming-number" data-incoming-number>—</div>
-            <div class="impe-incoming-extension">
+        <div class="persistent-phone-body">
+            <div class="persistent-phone-number" data-incoming-number>—</div>
+            <div class="persistent-phone-origin">
                 <i class="bi bi-headset" aria-hidden="true"></i>
-                Extensión <?= htmlspecialchars($extensionShell, ENT_QUOTES, 'UTF-8') ?>
+                Desde: <strong>Extensión <?= htmlspecialchars($extensionShell, ENT_QUOTES, 'UTF-8') ?> · Telefonía IP</strong>
             </div>
-            <div class="impe-incoming-state" role="status" aria-live="polite">
-                <span data-incoming-state>Esperando llamada…</span>
+            <div class="persistent-phone-state" role="status" aria-live="polite">
+                <span data-incoming-state>Llamada entrante</span>
                 <strong data-incoming-timer>00:00</strong>
             </div>
-            <div class="impe-incoming-actions">
-                <button type="button" class="impe-incoming-answer"
-                    data-incoming-answer disabled>
-                    <i class="bi bi-telephone-inbound" aria-hidden="true"></i>
-                    Contestar
+            <div class="persistent-phone-actions impe-incoming-actions">
+                <button type="button" class="persistent-phone-action is-primary" data-incoming-answer>
+                    <i class="bi bi-telephone-inbound" aria-hidden="true"></i>Contestar
                 </button>
-                <button type="button" class="impe-incoming-decline"
-                    data-incoming-decline disabled>
-                    <i class="bi bi-telephone-x" aria-hidden="true"></i>
-                    Rechazar
+                <button type="button" class="persistent-phone-action is-danger" data-incoming-decline>
+                    <i class="bi bi-telephone-x" aria-hidden="true"></i>Rechazar
                 </button>
-                <button type="button" class="impe-incoming-mute"
-                    data-incoming-mute hidden>
-                    <i class="bi bi-mic-mute" aria-hidden="true"></i>
-                    Silenciar
+                <button type="button" class="persistent-phone-action" data-incoming-mute hidden>
+                    <i class="bi bi-mic-mute" aria-hidden="true"></i>Silenciar
                 </button>
-                <button type="button" class="impe-incoming-hangup"
-                    data-incoming-hangup hidden>
-                    <i class="bi bi-telephone-x" aria-hidden="true"></i>
-                    Colgar
+                <button type="button" class="persistent-phone-action is-danger" data-incoming-hangup hidden>
+                    <i class="bi bi-telephone-x" aria-hidden="true"></i>Colgar
                 </button>
             </div>
-            <p class="impe-incoming-notice" data-incoming-notice hidden></p>
-            <button type="button" class="impe-incoming-provider"
-                data-incoming-provider hidden>
-                Mostrar controles originales de Zadarma
+            <p class="impe-incoming-notice" data-incoming-notice role="status" hidden></p>
+        </div>
+        <div class="persistent-phone-compact-actions">
+            <button type="button" class="persistent-phone-compact-button is-primary"
+                data-incoming-answer-compact title="Contestar" aria-label="Contestar">
+                <i class="bi bi-telephone-inbound" aria-hidden="true"></i>
+            </button>
+            <button type="button" class="persistent-phone-compact-button is-danger"
+                data-incoming-decline-compact title="Rechazar" aria-label="Rechazar">
+                <i class="bi bi-telephone-x" aria-hidden="true"></i>
+            </button>
+            <button type="button" class="persistent-phone-compact-button"
+                data-incoming-mute-compact title="Silenciar" aria-label="Silenciar" hidden>
+                <i class="bi bi-mic-mute" aria-hidden="true"></i>
+            </button>
+            <button type="button" class="persistent-phone-compact-button is-danger"
+                data-incoming-hangup-compact title="Colgar" aria-label="Colgar" hidden>
+                <i class="bi bi-telephone-x" aria-hidden="true"></i>
             </button>
         </div>
     </section>
