@@ -5,8 +5,29 @@ if (PHP_SAPI !== 'cli') {
     exit(1);
 }
 
-$root = dirname(__DIR__);
-require_once $root . '/config/db_connection.php';
+$sourceRoot = dirname(__DIR__);
+
+$runtimeRoot = trim((string)(
+    getenv('IMPE_RUNTIME_ROOT') !== false
+        ? getenv('IMPE_RUNTIME_ROOT')
+        : ''
+));
+
+if ($runtimeRoot === '') {
+    $runtimeRoot = $sourceRoot;
+}
+
+$runtimeRoot = rtrim($runtimeRoot, '/');
+
+if (!is_file($runtimeRoot . '/config/db_connection.php')) {
+    fwrite(
+        STDERR,
+        "ERROR: no se encontró config/db_connection.php en {$runtimeRoot}.\n"
+    );
+    exit(1);
+}
+
+require_once $runtimeRoot . '/config/db_connection.php';
 
 $mode = $argv[1] ?? '--check';
 
@@ -123,7 +144,7 @@ try {
         exit(0);
     }
 
-    $migracion = $root .
+    $migracion = $sourceRoot .
         '/database/migrations/' .
         '2026_10_12_separar_formularios_registro_inscripcion.sql';
 
