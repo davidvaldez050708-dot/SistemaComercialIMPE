@@ -47,20 +47,24 @@ try {
     echo "Tabla de eventos: EXISTE\n";
 
     $ventanaMinutos = 30;
+    // received_at se guarda como DATETIME en la zona America/Mexico_City.
+    // No usar NOW() de MySQL: en algunos hosting la BD funciona en UTC.
+    date_default_timezone_set('America/Mexico_City');
+    $desde = date('Y-m-d H:i:s', time() - 1800);
     $sql = "SELECT evento,
                    CASE WHEN internal = ? THEN 'ESTA_EXTENSION'
                         WHEN internal IS NULL OR internal = '' THEN 'SIN_EXTENSION'
                         ELSE 'OTRA_EXTENSION' END AS destino,
                    COUNT(*) AS cantidad
             FROM telefonia_zadarma_eventos
-            WHERE received_at >= DATE_SUB(NOW(), INTERVAL 30 MINUTE)
+            WHERE received_at >= ?
             GROUP BY evento, destino
             ORDER BY evento, destino";
     $st = $db->prepare($sql);
     if (!$st) {
         throw new RuntimeException('No fue posible preparar el diagnóstico.');
     }
-    $st->bind_param('s', $extension);
+    $st->bind_param('ss', $extension, $desde);
     $st->execute();
     $results = $st->get_result();
     $cuentas = [];
@@ -98,6 +102,7 @@ try {
     echo "\nÚltima notificación guardada: " . ($hora !== '' ? $hora : 'NINGUNA') . "\n";
     echo "Hora actual de MySQL: " .
         (string)$db->query('SELECT NOW() AS ahora')->fetch_assoc()['ahora'] . "\n";
+    echo "Hora actual del diagnóstico (México): " . date('Y-m-d H:i:s') . "\n";
 
     echo "\nINTERPRETACIÓN\n";
     if ($entrantes > 0) {
