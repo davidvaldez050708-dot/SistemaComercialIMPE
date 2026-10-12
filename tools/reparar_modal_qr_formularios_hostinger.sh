@@ -116,7 +116,15 @@ mkdir -p "$BACKUP/$(dirname "$CSS")"
 cp -p "$LIVE_CSS" "$BACKUP/$CSS"
 
 TMP="$(mktemp)"
-trap 'rm -f "$TMP"' EXIT
+BLOCK_TMP="$(mktemp)"
+trap 'rm -f "$TMP" "$BLOCK_TMP"' EXIT
+
+printf '%s\n' "$SOURCE_BLOCK" > "$BLOCK_TMP"
+
+grep -Fq "$TITLE" "$BLOCK_TMP" || {
+    echo "ERROR: el bloque QR no pudo prepararse desde el repositorio fuente." >&2
+    exit 1
+}
 
 php -r '
     $live = file_get_contents($argv[1]);
@@ -158,7 +166,7 @@ php -r '
         fwrite(STDERR, "No fue posible preparar el CSS actualizado.\n");
         exit(2);
     }
-' "$LIVE_CSS" <(printf '%s\n' "$SOURCE_BLOCK") "$TITLE" "$TMP"
+' "$LIVE_CSS" "$BLOCK_TMP" "$TITLE" "$TMP"
 
 grep -Fq "$TITLE" "$TMP" || {
     echo "ERROR: el CSS preparado no contiene el bloque QR compacto." >&2
