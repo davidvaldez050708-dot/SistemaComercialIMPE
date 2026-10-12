@@ -20,6 +20,16 @@ $nombreShell = $nombreShell !== '' ? $nombreShell : 'Usuario';
     <meta name="referrer" content="same-origin">
     <title>Sistema Comercial · Telefonía integrada</title>
     <?php require __DIR__ . '/../layout/favicon.php'; ?>
+    <!-- La capa persistente es otro documento; no hereda las fuentes e
+         iconos cargados por dashboard_head.php en el iframe del CRM. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css"
+        rel="stylesheet">
     <!-- Estilos críticos servidos con el documento PHP. Si Hostinger bloquea
          o cachea el CSS estático, el iframe nunca queda a 300 x 150 px. -->
     <style id="impeShellStyles">
