@@ -76,7 +76,7 @@ $checks = [
         str_contains($shellJs, ".includes(call.phase) ? 0 :") &&
         str_contains($shellJs, "'incoming-ringing'") &&
         str_contains($shellJs, 'syncIncomingClock(value)') &&
-        str_contains($shellJs, 'updateIncomingTimer(state)') &&
+        str_contains($shellJs, 'updateIncomingTimer(phoneState)') &&
         str_contains($shellJs, 'incomingCallId(value) !== incomingCallId(currentState)'),
     'Contestar y colgar son inmediatos, sin avisos de éxito' =>
         !str_contains($shellJs, 'Contestando… espera la confirmación') &&
