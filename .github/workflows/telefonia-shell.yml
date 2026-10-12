@@ -18,6 +18,10 @@ on:
       - "tools/desplegar_telefonia_shell_hostinger.sh"
       - "tools/desplegar_telefonia_entrantes_hostinger.sh"
       - "tools/desplegar_modal_entrantes_hostinger.sh"
+      - "tools/desplegar_salientes_modal_hostinger.sh"
+      - "public/css/telefonia_teclado.css"
+      - "public/javascript/telefonia_teclado.js"
+      - "tests/telefonia_salientes_modal_despliegue_smoke.sh"
       - "tools/diagnosticar_shell_telefonia_hostinger.sh"
       - "tools/reparar_assets_telefonia_hostinger.sh"
       - "tools/normalizar_telefonia_host_css.php"
@@ -86,3 +90,5 @@ jobs:
           bash tests/telefonia_modal_entrantes_despliegue_smoke.sh
           bash -n tools/reparar_assets_telefonia_hostinger.sh
           bash tests/telefonia_assets_permisos_smoke.sh
+          bash -n tools/desplegar_salientes_modal_hostinger.sh
+          bash tests/telefonia_salientes_modal_despliegue_smoke.sh
