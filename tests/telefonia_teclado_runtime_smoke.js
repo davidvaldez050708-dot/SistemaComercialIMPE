@@ -116,5 +116,54 @@ function tick(){return new Promise(resolve=>setImmediate(resolve));}
     assert.equal(restricted.element.querySelector('[data-dialer-call]').disabled,true);
     assert.equal(apiCalls.length,2,'sin permiso no se marca');
     assert.equal(restricted.element.querySelector('[data-dialer-state]').classList.contains('is-error'),true);
-    console.log('Marcador telefónico: OK (validación, confirmación, transferencia, minimizar, permisos)');
+    // Con shell persistente el teclado NO se convierte en otro teléfono.
+    const requested=[];
+    let resolveDial;
+    const shared=factory.create({
+        root,extension:'100',
+        getApi(){return {
+            probe:async()=>({permite_salientes:true}),
+            startCall:()=>new Promise(resolve=>{resolveDial=resolve;})
+        };},
+        getState(){return {active:false};},
+        hasOutgoingRole(){return true;},
+        singleCallPanel:true,
+        onCallRequested(data){requested.push(data.number);}
+    });
+    shared.open({number:'55 1234 5678'});
+    await tick();
+    assert.equal(shared.element.querySelector('[data-dialer-state]').hidden,true,
+        'el aviso verde desaparece cuando la extensión está lista');
+    const sending=shared.element.querySelector('[data-dialer-form]').events.submit(
+        {preventDefault(){}}
+    );
+    assert.equal(shared.element.hidden,true,
+        'el teclado se cierra inmediatamente al pulsar Llamar');
+    assert.deepEqual(requested,['525512345678']);
+    assert.equal(shared.isManagingCall(),false,
+        'el marcador entrega la llamada al único panel persistente');
+    resolveDial();
+    await sending;
+    const rejected=factory.create({
+        root,extension:'100',
+        getApi(){return {
+            probe:async()=>({permite_salientes:true}),
+            startCall:async()=>{throw new Error('Zadarma no disponible');}
+        };},
+        getState(){return {active:false};},
+        hasOutgoingRole(){return true;},
+        singleCallPanel:true,
+        onCallRequested(){},
+        onCallFailed(){}
+    });
+    rejected.open({number:'55 1234 5678'});
+    await tick();
+    await rejected.element.querySelector('[data-dialer-form]').events.submit(
+        {preventDefault(){}}
+    );
+    assert.equal(rejected.element.hidden,false,
+        'si Zadarma rechaza la llamada, se restaura el teclado');
+    assert.equal(rejected.element.querySelector('[data-dialer-state]').hidden,false,
+        'los errores reales sí se muestran');
+    console.log('Marcador telefónico: OK (teclado sin aviso, entrega inmediata, error y permisos)');
 })().catch(e=>{console.error(e);process.exitCode=1;});
