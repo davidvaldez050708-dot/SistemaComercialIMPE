@@ -88,6 +88,57 @@ $nombreShell = $nombreShell !== '' ? $nombreShell : 'Usuario';
         </p>
         <div class="impe-phone-call-host" data-shell-host-region></div>
     </aside>
+    <section class="impe-incoming-panel" data-incoming-panel hidden
+        aria-label="Recepción telefónica">
+        <header class="impe-incoming-heading">
+            <div class="impe-incoming-heading-copy">
+                <small data-incoming-eyebrow>RECEPCIÓN TELEFÓNICA</small>
+                <strong data-incoming-title>Llamada entrante</strong>
+            </div>
+            <button type="button" data-incoming-minimize
+                title="Minimizar sin colgar" aria-label="Minimizar llamada">
+                <i class="bi bi-dash-lg" aria-hidden="true"></i> Minimizar
+            </button>
+        </header>
+        <div class="impe-incoming-body">
+            <div class="impe-incoming-number" data-incoming-number>—</div>
+            <div class="impe-incoming-extension">
+                <i class="bi bi-headset" aria-hidden="true"></i>
+                Extensión <?= htmlspecialchars($extensionShell, ENT_QUOTES, 'UTF-8') ?>
+            </div>
+            <div class="impe-incoming-state" role="status" aria-live="polite">
+                <span data-incoming-state>Esperando llamada…</span>
+                <strong data-incoming-timer>00:00</strong>
+            </div>
+            <div class="impe-incoming-actions">
+                <button type="button" class="impe-incoming-answer"
+                    data-incoming-answer disabled>
+                    <i class="bi bi-telephone-inbound" aria-hidden="true"></i>
+                    Contestar
+                </button>
+                <button type="button" class="impe-incoming-decline"
+                    data-incoming-decline disabled>
+                    <i class="bi bi-telephone-x" aria-hidden="true"></i>
+                    Rechazar
+                </button>
+                <button type="button" class="impe-incoming-mute"
+                    data-incoming-mute hidden>
+                    <i class="bi bi-mic-mute" aria-hidden="true"></i>
+                    Silenciar
+                </button>
+                <button type="button" class="impe-incoming-hangup"
+                    data-incoming-hangup hidden>
+                    <i class="bi bi-telephone-x" aria-hidden="true"></i>
+                    Colgar
+                </button>
+            </div>
+            <p class="impe-incoming-notice" data-incoming-notice hidden></p>
+            <button type="button" class="impe-incoming-provider"
+                data-incoming-provider hidden>
+                Mostrar controles originales de Zadarma
+            </button>
+        </div>
+    </section>
     <button type="button" class="impe-phone-restore" data-shell-restore hidden>
         <span aria-hidden="true">☎</span> Mostrar llamada
     </button>

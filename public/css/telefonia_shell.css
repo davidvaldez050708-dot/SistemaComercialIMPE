@@ -53,6 +53,45 @@ html, body { height: 100%; min-width: 0; margin: 0; overflow: hidden; }
 }
 .impe-phone-call-host { width: 100%; height: calc(100% - 137px); overflow: hidden; }
 .impe-phone-call iframe { width: 100%; height: 100%; border: 0; display: block; }
+.impe-incoming-panel {
+  position: fixed; right: 18px; bottom: 18px; z-index: 1150;
+  width: min(540px, calc(100vw - 24px)); background: #fff;
+  color: #19263e; border: 1px solid #d8e2ee; border-radius: 16px;
+  box-shadow: 0 16px 48px #0a1b3730; overflow: hidden;
+  font: 600 13px/1.5 'Manrope', sans-serif;
+}
+.impe-incoming-panel[hidden] { display: none !important; }
+.impe-incoming-heading { display: flex; gap: 12px; align-items: center;
+  justify-content: space-between; padding: 17px 18px; border-bottom: 1px solid #e5ebf4; }
+.impe-incoming-heading-copy {display: grid; gap: 4px; min-width: 0;}
+.impe-incoming-heading-copy small {color: #6681a2; font-size: 10px; letter-spacing: .055em;}
+.impe-incoming-heading-copy strong {color: #1c2940; font-size: 16px;}
+.impe-incoming-heading button {padding: 8px 11px; border: 1px solid #d6e0ec;
+  border-radius: 9px; background: #f8faff; color: #283e87; font: inherit; cursor: pointer;}
+.impe-incoming-body {padding: 17px 18px 20px; display: grid; gap: 13px;}
+.impe-incoming-number {min-width: 0; overflow-wrap: anywhere; padding: 14px;
+  border-radius: 11px; border: 1px solid #dae3f0; background: #f7f9fc;
+  color: #526784; font-size: 14px;}
+.impe-incoming-extension {color: #587090; display: flex; align-items: center; gap: 8px;}
+.impe-incoming-state {display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; border-radius: 11px; background: #f2f5fa; padding: 14px;
+  color: #586f8e; min-width: 0;}
+.impe-incoming-state strong {font-size: 25px; color: #17243c; font-variant-numeric: tabular-nums;}
+.impe-incoming-actions {display: flex; flex-wrap: wrap; gap: 10px;}
+.impe-incoming-actions button {flex: 1 1 130px; min-height: 43px; padding: 10px 12px;
+  border: 1px solid #d6e0ed; border-radius: 10px; cursor: pointer;
+  font: 750 12px/1.3 'Manrope', sans-serif;}
+.impe-incoming-actions button[hidden], .impe-incoming-notice[hidden],
+.impe-incoming-provider[hidden] {display: none !important;}
+.impe-incoming-actions button:disabled {opacity: .48; cursor: not-allowed;}
+.impe-incoming-answer {background: #0b886e; border-color: #0b886e !important; color: white;}
+.impe-incoming-decline,.impe-incoming-hangup {background: #fff8f7; color: #b82320; border-color: #f1c3c2 !important;}
+.impe-incoming-mute {background: #f7f9fc; color: #263e84;}
+.impe-incoming-notice {margin: 0; color: #60728e; font-size: 12px;}
+.impe-incoming-provider {justify-self: start; padding: 7px 0; color: #304791;
+  border: 0; background: none; font: 700 12px 'Manrope', sans-serif;
+  text-decoration: underline; cursor: pointer;}
+@media(max-width: 550px) { .impe-incoming-panel {right: 8px; bottom: 8px;} }
 .impe-phone-restore {
   position: fixed; bottom: 15px; right: 16px; z-index: 1101;
   background: #233986; color: white; border: 0; border-radius: 99px;

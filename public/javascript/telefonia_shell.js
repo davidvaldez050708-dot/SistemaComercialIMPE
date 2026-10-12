@@ -19,6 +19,18 @@
     const callTitle = document.querySelector('[data-shell-call-title]');
     const callStatus = document.querySelector('[data-shell-call-status]');
     const callHelp = document.querySelector('[data-shell-call-help]');
+    const incomingPanel = document.querySelector('[data-incoming-panel]');
+    const incomingNumber = document.querySelector('[data-incoming-number]');
+    const incomingState = document.querySelector('[data-incoming-state]');
+    const incomingTitle = document.querySelector('[data-incoming-title]');
+    const incomingEyebrow = document.querySelector('[data-incoming-eyebrow]');
+    const incomingTimer = document.querySelector('[data-incoming-timer]');
+    const answerButton = document.querySelector('[data-incoming-answer]');
+    const declineButton = document.querySelector('[data-incoming-decline]');
+    const muteButton = document.querySelector('[data-incoming-mute]');
+    const hangupButton = document.querySelector('[data-incoming-hangup]');
+    const providerButton = document.querySelector('[data-incoming-provider]');
+    const notice = document.querySelector('[data-incoming-notice]');
     const stateKey = 'impe:telephony:state:' + userId;
     const commandKey = 'impe:telephony:command:' + userId;
     const leaseKey = 'impe:telephony:shell-owner:' + userId;
@@ -29,6 +41,7 @@
         ? new BroadcastChannel(channelName) : null;
     let hostFrame = null;
     let minimized = false;
+    let actionNotice = '';
     let forceNativeControls = false;
     let currentState = null;
     let lastHeartbeat = 0;
@@ -145,6 +158,27 @@
         render();
     };
 
+    const providerBridge = function () {
+        if (!hostFrame) return null;
+        try {
+            return hostFrame.contentWindow.IMPE_ZADARMA_INCOMING || null;
+        } catch (_) { return null; }
+    };
+    const sendPhoneCommand = function (action, payload) {
+        const message = {
+            type: 'COMMAND', action: action, payload: payload || {},
+            id: 'incoming-' + Date.now() + '-' + Math.random().toString(36).slice(2)
+        };
+        try { localStorage.setItem(commandKey, JSON.stringify(message)); }
+        catch (_) { /* BroadcastChannel permite operar con el host */ }
+        channel?.postMessage(message);
+    };
+    const formatDuration = function (seconds) {
+        const total=Math.max(0,Number(seconds)||0);
+        return String(Math.floor(total/60)).padStart(2,'0') + ':' +
+            String(Math.floor(total%60)).padStart(2,'0');
+    };
+
     const render = function () {
         const state = freshState(currentState) ? currentState : null;
         const incoming = Boolean(state?.active && state.direction === 'incoming');
@@ -152,6 +186,7 @@
         if (!ongoing) {
             forceNativeControls = false;
             minimized = false;
+            actionNotice = '';
         }
         const ready = Boolean(state && state.hostReady &&
             ['ready', 'prepared', 'incoming-ringing', 'in-progress',
@@ -176,13 +211,35 @@
             retry.hidden = false;
         }
 
-        // Las salientes conservan el panel telefónico del CRM; abrir la UI
-        // oficial de Zadarma sólo es necesario para aceptar entrantes.
-        const showCall = Boolean(state?.hostReady) &&
-            (incoming || (ongoing && forceNativeControls)) && !minimized;
-        call.classList.toggle('is-visible', showCall);
-        restore.hidden = !state?.hostReady ||
-            !(incoming || (ongoing && forceNativeControls)) || showCall;
+        // Una sola tarjeta con el diseño del CRM. El widget se conserva
+        // montado fuera de pantalla: audio/WebRTC no se desmontan.
+        const nativeVisible = Boolean(state?.hostReady) &&
+            ongoing && forceNativeControls && !minimized;
+        const customVisible = incoming && !forceNativeControls && !minimized;
+        call.classList.toggle('is-visible', nativeVisible);
+        if (incomingPanel) incomingPanel.hidden = !customVisible;
+        restore.hidden = !incoming || !minimized;
+        if (incoming && incomingPanel) {
+            const ringing=state.phase === 'incoming-ringing';
+            const bridgeReady=Boolean(providerBridge()?.canAnswer());
+            incomingNumber.textContent = String(state.destination || 'Número desconocido');
+            incomingTitle.textContent = ringing ? 'Llamada entrante' : 'En conversación';
+            incomingEyebrow.textContent = ringing ? 'RECEPCIÓN TELEFÓNICA' : 'LLAMADA EN CURSO';
+            incomingState.textContent = ringing ? 'Llamada entrante a la extensión ' + cfg.extension
+                : 'Conversación en curso';
+            incomingTimer.textContent = formatDuration(state.duration);
+            answerButton.hidden = !ringing;
+            declineButton.hidden = !ringing;
+            answerButton.disabled = !bridgeReady;
+            declineButton.disabled = !bridgeReady;
+            muteButton.hidden = ringing;
+            hangupButton.hidden = ringing;
+            muteButton.textContent = state.muted ? 'Activar micrófono' : 'Silenciar';
+            notice.hidden = !actionNotice && bridgeReady;
+            notice.textContent = actionNotice ||
+                'El teléfono aún no confirma que sus botones puedan utilizarse desde el CRM.';
+            providerButton.hidden = !state.hostReady;
+        }
         callTitle.textContent = incoming ? 'Llamada entrante' :
             ongoing ? 'Llamada en curso' : 'Teléfono institucional';
         callStatus.textContent = incoming ?
@@ -211,6 +268,7 @@
             Number(event.data.userId) !== userId) {
             return;
         }
+        // Sólo mostrar controles oficiales si el usuario lo solicita.
         forceNativeControls = true;
         minimized = false;
         render();
@@ -228,7 +286,52 @@
     });
 
     document.querySelector('[data-shell-minimize]')?.addEventListener('click', function () {
+        forceNativeControls = false;
         minimized = true; render();
+    });
+    document.querySelector('[data-incoming-minimize]')?.addEventListener('click', function () {
+        minimized = true; render();
+    });
+    answerButton?.addEventListener('click', function () {
+        if (!freshState(currentState) || !currentState.active ||
+            currentState.phase !== 'incoming-ringing') return;
+        if (!providerBridge()?.answer()) {
+            actionNotice = providerBridge()?.error() ||
+                'No se identificó un control seguro para contestar.';
+        } else {
+            actionNotice = 'Contestando… espera la confirmación de Zadarma.';
+        }
+        render();
+    });
+    declineButton?.addEventListener('click', function () {
+        if (!freshState(currentState) || !currentState.active ||
+            currentState.phase !== 'incoming-ringing') return;
+        if (!providerBridge()?.decline()) {
+            actionNotice = providerBridge()?.error() ||
+                'No se identificó un control seguro para rechazar.';
+        } else {
+            actionNotice = 'Rechazando llamada…';
+        }
+        render();
+    });
+    muteButton?.addEventListener('click', function () {
+        if (!freshState(currentState) || currentState.phase !== 'in-progress') return;
+        sendPhoneCommand('MUTE', {muted:!Boolean(currentState.muted)});
+    });
+    hangupButton?.addEventListener('click', function () {
+        if (!freshState(currentState) || currentState.phase !== 'in-progress') return;
+        // Para entrantes, el HANGUP saliente histórico no es compatible.
+        // Ofrecer el control de Zadarma para evitar desconexiones simuladas.
+        actionNotice = 'Utiliza el control rojo de Zadarma para finalizar con seguridad.';
+        forceNativeControls = true;
+        render();
+    });
+    providerButton?.addEventListener('click', function () {
+        if (!freshState(currentState) || !currentState.active) return;
+        actionNotice = '';
+        forceNativeControls = true;
+        minimized = false;
+        render();
     });
     restore?.addEventListener('click', function () {
         minimized = false; render();

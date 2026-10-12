@@ -107,15 +107,6 @@
 
     const mostrarHostEntrante = function () {
         mostrarInterfazNativa();
-        if (modoEmbebido && window.parent && window.parent !== window) {
-            // Puede solicitarse también para un control DTMF no expuesto por
-            // el SDK. El shell muestra estos controles sin ventana nueva.
-            window.parent.postMessage({
-                type: 'IMPE_TELEPHONY_NATIVE_CONTROLS',
-                userId: userId
-            }, window.location.origin);
-        }
-
         const screenLeft =
             Number(window.screen?.availLeft || 0);
         const screenTop =
@@ -173,6 +164,7 @@
     const timerEl = document.querySelector('[data-host-timer]');
 
     let widgetReady = false;
+    let incomingBridge = null;
     let widgetInitialized = false;
     let sipLogin = '';
     let webRtcKey = '';
@@ -557,6 +549,15 @@
         }
 
         widgetReady = true;
+        // Sólo se accede al DOM nativo para ejecutar un clic verificado.
+        // No se modifican tamaños, posiciones ni estilos internos del SDK.
+        incomingBridge = window.IMPE_ZADARMA_NATIVE_BRIDGE_FACTORY?.create(
+            document,
+            function () {
+                return state.active && state.direction === 'incoming' &&
+                    state.phase === 'incoming-ringing' && widgetReady;
+            }
+        ) || null;
         startIncomingPolling();
 
         const staged =
@@ -580,6 +581,22 @@
             message: ''
         });
     };
+
+    window.IMPE_ZADARMA_INCOMING = Object.freeze({
+        canAnswer: function () {
+            return Boolean(permiteEntrantes && incomingBridge?.available());
+        },
+        answer: function () {
+            return Boolean(permiteEntrantes && incomingBridge?.answer());
+        },
+        decline: function () {
+            return Boolean(permiteEntrantes && incomingBridge?.decline());
+        },
+        error: function () {
+            return String(incomingBridge?.error() ||
+                'No se detectó el control para contestar.');
+        }
+    });
 
     const stopPolling = function () {
         if (pollInterval) {
@@ -1512,7 +1529,15 @@
                 Boolean(payload.attended)
             );
         } else if (action === 'SHOW_CONTROLS') {
-            if (state.active) mostrarHostEntrante();
+            if (state.active) {
+                mostrarHostEntrante();
+                if (modoEmbebido && window.parent !== window) {
+                    window.parent.postMessage({
+                        type: 'IMPE_TELEPHONY_NATIVE_CONTROLS',
+                        userId: userId
+                    }, window.location.origin);
+                }
+            }
         } else if (action === 'CLEAR_FINISHED') {
             clearFinished(String(payload.callToken || ''));
         }
