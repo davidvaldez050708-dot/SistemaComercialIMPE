@@ -138,7 +138,8 @@ assert.equal(first.elements['[data-incoming-panel]'].style.top,'150px',
     'dragging moves the modal vertically');
 first.channels[0].message({type:'STATE',state:{
     userId:8,updatedAt:Date.now(),hostReady:true,active:true,
-    direction:'outgoing',destination:'5512345678',phase:'in-progress'
+    direction:'outgoing',destination:'5512345678',phase:'in-progress',
+    context:{type:'TELEPHONY_MANUAL'}
 }});
 assert.equal(first.elements['[data-shell-call]'].classList.contains('is-visible'),false,
     'salientes sin segundo widget blanco Zadarma');
@@ -149,6 +150,19 @@ assert.equal(first.elements['[data-incoming-hangup]'].hidden,false,
     'salientes pueden colgar desde el panel único');
 assert.equal(first.elements['[data-incoming-answer]'].hidden,true,
     'salientes nunca muestran Contestar');
+// Una gestión de Seguimiento mantiene su tarjeta de registro propia.
+first.channels[0].message({type:'STATE',state:{
+    userId:8,updatedAt:Date.now(),hostReady:true,active:true,
+    direction:'outgoing',destination:'5512345678',phase:'in-progress',
+    context:{type:'SEGUIMIENTO'}
+}});
+assert.equal(first.elements['[data-incoming-panel]'].hidden,true,
+    'seguimiento no recibe una tarjeta saliente duplicada');
+first.channels[0].message({type:'STATE',state:{
+    userId:8,updatedAt:Date.now(),hostReady:true,active:true,
+    direction:'outgoing',destination:'5512345678',phase:'in-progress',
+    context:{type:'TELEPHONY_MANUAL'}
+}});
 first.windowEvents.message({
     origin:'https://crm.ejemplo.org',
     source:first.elements['[data-shell-host-region]'].children[0].contentWindow,

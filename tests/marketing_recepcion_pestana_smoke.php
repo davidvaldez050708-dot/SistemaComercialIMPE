@@ -39,10 +39,10 @@ $tests = [
         str_contains($marketingJs, "recordingVerified = '1'"),
     'Silenciar y temporizador comparten experiencia Seguimiento' =>
         str_contains($shellJs, 'syncIncomingClock(value)') &&
-        str_contains($shellJs, 'updateIncomingTimer(state)') &&
+        str_contains($shellJs, 'updateIncomingTimer(phoneState)') &&
         str_contains($shellJs, "}, 250);") &&
         str_contains($shellJs, "muteButton.classList.toggle('is-active'") &&
-        str_contains($shellJs, "const muteIcon = state.muted ? 'bi-mic' : 'bi-mic-mute'"),
+        str_contains($shellJs, "const muteIcon = phoneState.muted ? 'bi-mic' : 'bi-mic-mute'"),
     'Only one reception include' => substr_count($marketing, $include) === 1,
     'Reception follows metrics and precedes convocations' =>
         $grid !== false && $block !== false && $convocations !== false &&

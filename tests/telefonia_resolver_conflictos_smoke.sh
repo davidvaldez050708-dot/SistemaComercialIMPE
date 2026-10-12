@@ -29,6 +29,17 @@ foreach ($paths as $path) {
     $merged = $argv[2] . '/' . $hash . '.merged';
     $out = $argv[2] . '/' . $hash . '.out';
     $target = $argv[3] . '/' . $path;
+    // Este resolvedor sólo reconoce el conflicto histórico de 2026-10-12.
+    // El JS actual ya evolucionó: usar el archivo exacto de aquella fecha
+    // para no debilitar ni alterar las reglas de seguridad originales.
+    if ($path === 'public/javascript/telefonia_persistente.js') {
+        $target = $argv[2] . '/telefonia_persistente_historica.js';
+        $cmd = 'git -C ' . escapeshellarg($argv[3]) . ' show ' .
+            escapeshellarg('8fc7f1dad44cefe6c070da89d48beb10ed5bed9f:' . $path) .
+            ' > ' . escapeshellarg($target);
+        exec($cmd, $ignored, $status);
+        if ($status !== 0) { fwrite(STDERR, "Falta el archivo histórico para el ensayo.\n"); exit(2); }
+    }
     file_put_contents($merged, "// CAMBIO-LOCAL-PRESERVADO\n" . $conflicts . "// FIN-LOCAL\n");
     $command = 'php ' . escapeshellarg($argv[1]) . ' ' .
         escapeshellarg($path) . ' ' . escapeshellarg($merged) . ' ' .
