@@ -52,8 +52,16 @@ for p in $FILES; do
     echo "ERROR: falta la base histórica de Git para $p." >&2; exit 1
   }
   if ! git merge-file -p "$DST/$p" "$TMP/base" "$SRC/$p" > "$TMP/$p"; then
-    echo "CONFLICTO: $p tiene personalizaciones incompatibles. No se publicó nada." >&2
-    exit 1
+    # La producción también puede partir del modal anterior ya publicado.
+    # Reintentar la fusión con esa versión exacta, nunca sobrescribir
+    # ciegamente un archivo con cambios locales de Hostinger.
+    git -C "$SRC" show "39f306fd998de860a515df9222700669b2d96dab:$p" > "$TMP/base-reciente" || {
+      echo "ERROR: falta la base Git del modal anterior." >&2; exit 1
+    }
+    if ! git merge-file -p "$DST/$p" "$TMP/base-reciente" "$SRC/$p" > "$TMP/$p"; then
+      echo "CONFLICTO: $p tiene personalizaciones incompatibles. No se publicó nada." >&2
+      exit 1
+    fi
   fi
 done
 echo "2/4 Validando PHP, JavaScript y enlace real a Zadarma..."
