@@ -1,0 +1,32 @@
+name: Diagnostico recepcion Zadarma
+on:
+  push:
+    branches: [main]
+    paths:
+      - "tools/diagnosticar_entrantes_zadarma.php"
+      - ".github/workflows/zadarma-incoming-diagnostics.yml"
+  pull_request:
+jobs:
+  validar-diagnostico:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+      - name: Validar herramienta CLI sin datos privados
+        run: |
+          php -l tools/diagnosticar_entrantes_zadarma.php
+          if php tools/diagnosticar_entrantes_zadarma.php invalid >/tmp/diag-out.txt 2>&1; then
+            echo "ERROR: aceptó una extensión inválida"
+            exit 1
+          fi
+          grep -Fq 'Uso:' /tmp/diag-out.txt
+          grep -Fq "PHP_SAPI !== 'cli'" tools/diagnosticar_entrantes_zadarma.php
+          grep -Fq "WHERE received_at >= ?" tools/diagnosticar_entrantes_zadarma.php
+          grep -Fq "'America/Mexico_City'" tools/diagnosticar_entrantes_zadarma.php
+          if grep -Fq "caller_id," tools/diagnosticar_entrantes_zadarma.php; then
+            echo "ERROR: el diagnóstico no debe seleccionar caller_id"
+            exit 1
+          fi
+          echo "Diagnostico Zadarma: OK (sintaxis, datos mínimos y zona horaria)"
