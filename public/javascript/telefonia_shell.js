@@ -98,6 +98,10 @@
         clampIncoming();
     };
     let forceNativeControls = false;
+    // Marcación iniciada desde el teclado: visualización inmediata mientras
+    // el único host WebRTC confirma el estado real de la saliente.
+    let outgoingAttempt = null;
+    let pendingOutgoingHangup = null;
     let currentState = null;
     let lastHeartbeat = 0;
     let mountFailed = '';
@@ -177,8 +181,18 @@
         getApi: crmPhone,
         getState: function () { return currentState; },
         hasOutgoingRole: function () { return cfg.canCallOut === true; },
+        singleCallPanel: true,
+        onCallRequested: function (call) {
+            outgoingAttempt = {number:String(call?.number || ''),at:Date.now()};
+            incomingCompact = false;
+            render();
+        },
+        showOngoing: function () {
+            incomingCompact = false;
+            render();
+        },
         showIncoming: function () {
-            minimized = false;
+            incomingCompact = false;
             render();
         }
     }) || null;
@@ -207,6 +221,20 @@
 
     const updateState = function (value) {
         if (!freshState(value)) return;
+        if (outgoingAttempt && !value.active && value.phase === 'error') {
+            const reason = String(value.message || 'No se pudo iniciar la llamada.');
+            outgoingAttempt = null;
+            pendingOutgoingHangup = null;
+            dialer?.reportError(reason);
+        }
+        if (pendingOutgoingHangup &&
+            (!value.active || value.direction !== 'outgoing')) {
+            pendingOutgoingHangup = null;
+        }
+        if (outgoingAttempt && !value.active &&
+            ['finished','incoming-finished'].includes(value.phase)) {
+            outgoingAttempt = null;
+        }
         const differentCall = value.direction === 'incoming' &&
             incomingCallId(value) !== incomingCallId(currentState);
         const answered = value.phase === 'in-progress' &&
@@ -243,16 +271,18 @@
         return String(Math.floor(total/60)).padStart(2,'0') + ':' +
             String(total%60).padStart(2,'0');
     };
-    // Reloj visual anclado a la primera confirmación de conversación.
-    // Los eventos PBX posteriores no reinician ni saltan el cronómetro.
+    // Un solo cronómetro fluido para entrantes y salientes del mismo shell.
+    // Los eventos PBX posteriores no reinician ni saltan sus dígitos.
     let incomingClock = null;
     const syncIncomingClock = function (call) {
-        if (!call?.active || call.direction !== 'incoming' ||
+        if (!call?.active ||
+            !['incoming','outgoing'].includes(call.direction) ||
             call.phase !== 'in-progress') {
             incomingClock = null;
             return;
         }
-        const id = incomingCallId(call) || String(call.destination || '');
+        const id = String(call.direction) + ':' +
+            (incomingCallId(call) || String(call.destination || ''));
         if (!incomingClock || incomingClock.id !== id) {
             incomingClock = {
                 id: id, startedAt: Date.now(),
@@ -261,8 +291,10 @@
         }
     };
     const updateIncomingTimer = function (call) {
-        if (!call?.active || call.direction !== 'incoming') return;
-        const seconds = call.phase === 'incoming-ringing' ? 0 :
+        if (!call?.active ||
+            !['incoming','outgoing'].includes(call.direction)) return;
+        const seconds = ['incoming-ringing','dialing','ringing','preparing']
+            .includes(call.phase) ? 0 :
             incomingClock && call.phase === 'in-progress'
                 ? incomingClock.initial + Math.floor(Math.max(
                     0, Date.now() - incomingClock.startedAt) / 1000)
@@ -275,12 +307,25 @@
     };
     // Solo cambian los dígitos, sin volver a dibujar ni mover la ventana.
     window.setInterval(function () {
-        if (freshState(currentState)) updateIncomingTimer(currentState);
+        if (freshState(currentState) && currentState.active) {
+            updateIncomingTimer(currentState);
+        }
     }, 250);
 
     const render = function () {
         const state = freshState(currentState) ? currentState : null;
         const incoming = Boolean(state?.active && state.direction === 'incoming');
+        const outgoing = Boolean(state?.active && state.direction === 'outgoing');
+        if (outgoingAttempt && Date.now() - outgoingAttempt.at > 20000 &&
+            !outgoing) {
+            outgoingAttempt = null;
+            dialer?.reportError('Zadarma no confirmó el inicio de la llamada.');
+        }
+        const preview = !state?.active && outgoingAttempt
+            ? {active:true,direction:'outgoing',phase:'dialing',
+                destination:outgoingAttempt.number,muted:false,duration:0} : null;
+        const shownCall = state?.active ? state : preview;
+        const shownOutgoing = Boolean(shownCall?.direction === 'outgoing');
         const ongoing = Boolean(state?.active);
         if (!ongoing) {
             forceNativeControls = false;
@@ -317,7 +362,12 @@
         const nativeVisible = Boolean(state?.hostReady) && ongoing &&
             state?.direction !== 'incoming' && forceNativeControls && !minimized;
         const pending = pendingFor(state);
-        const customVisible = incoming && !minimized &&
+        if (pendingOutgoingHangup &&
+            Date.now() - pendingOutgoingHangup.at > 4500) {
+            pendingOutgoingHangup = null;
+        }
+        const customVisible = (incoming || shownOutgoing) &&
+            !minimized && !pendingOutgoingHangup &&
             pending !== 'hangup' && pending !== 'decline';
         call.classList.toggle('is-visible', nativeVisible);
         if (incomingPanel) {
@@ -325,17 +375,28 @@
             incomingPanel.classList.toggle('is-compact', incomingCompact);
         }
         restore.hidden = !minimized || !(incoming || (ongoing && forceNativeControls));
-        if (incoming && incomingPanel) {
-            const ringing=state.phase === 'incoming-ringing';
+        if ((incoming || shownOutgoing) && incomingPanel) {
+            const phoneState = shownCall;
+            const ringing = incoming && state.phase === 'incoming-ringing';
+            const dialing = shownOutgoing && phoneState.phase !== 'in-progress';
             // El botón se puede pulsar durante timbrado; el puente comprueba
             // el control del SDK al recibir el clic, sin estado infinito.
-            incomingNumber.textContent = String(state.destination || 'Número desconocido');
-            incomingTitle.textContent = ringing ? 'Llamada entrante' : 'En conversación';
-            incomingEyebrow.textContent = ringing ? 'RECEPCIÓN TELEFÓNICA' : 'LLAMADA EN CURSO';
-            incomingState.textContent = ringing ? 'Llamada entrante a la extensión ' + cfg.extension
-                : 'Conversación en curso';
-            // Cronómetro local continuo; el timbrado siempre es 00:00.
-            updateIncomingTimer(state);
+            incomingNumber.textContent = String(phoneState.destination || 'Número desconocido');
+            incomingTitle.textContent = incoming
+                ? (ringing ? 'Llamada entrante' : 'En conversación')
+                : (dialing ? 'Llamando…' : 'En conversación');
+            incomingEyebrow.textContent = shownOutgoing ? 'LLAMADA SALIENTE' :
+                (ringing ? 'RECEPCIÓN TELEFÓNICA' : 'LLAMADA EN CURSO');
+            incomingState.textContent = shownOutgoing
+                ? (dialing ? 'Marcando desde la extensión ' + cfg.extension
+                    : 'Conversación en curso')
+                : (ringing ? 'Llamada entrante a la extensión ' + cfg.extension
+                    : 'Conversación en curso');
+            // El teclado desaparece; el panel empieza en cero.
+            if (preview) {
+                incomingTimer.textContent = '00:00';
+                incomingCompactTimer.textContent = '00:00';
+            } else updateIncomingTimer(phoneState);
             answerButton.hidden = !ringing;
             declineButton.hidden = !ringing;
             answerButton.disabled = !ringing || Boolean(pending);
@@ -344,20 +405,20 @@
             compactDecline.hidden = !ringing;
             compactAnswer.disabled = !ringing || Boolean(pending);
             compactDecline.disabled = !ringing || Boolean(pending);
-            muteButton.hidden = ringing;
+            muteButton.hidden = ringing || (shownOutgoing && dialing);
             hangupButton.hidden = ringing;
-            compactMute.hidden = ringing;
+            compactMute.hidden = ringing || (shownOutgoing && dialing);
             compactHangup.hidden = ringing;
-            hangupButton.disabled = Boolean(pending);
-            compactHangup.disabled = Boolean(pending);
+            hangupButton.disabled = Boolean(pending) || Boolean(preview);
+            compactHangup.disabled = Boolean(pending) || Boolean(preview);
             // Mismo icono, texto y estado activo del modal de Seguimiento.
-            const muteLabel = state.muted ? 'Activar micrófono' : 'Silenciar';
-            const muteIcon = state.muted ? 'bi-mic' : 'bi-mic-mute';
+            const muteLabel = phoneState.muted ? 'Activar micrófono' : 'Silenciar';
+            const muteIcon = phoneState.muted ? 'bi-mic' : 'bi-mic-mute';
             muteButton.innerHTML = '<i class="bi ' + muteIcon +
                 '" aria-hidden="true"></i><span>' + muteLabel + '</span>';
-            muteButton.classList.toggle('is-active', Boolean(state.muted));
+            muteButton.classList.toggle('is-active', Boolean(phoneState.muted));
             compactMute.innerHTML = '<i class="bi ' + muteIcon + '" aria-hidden="true"></i>';
-            compactMute.classList.toggle('is-active', Boolean(state.muted));
+            compactMute.classList.toggle('is-active', Boolean(phoneState.muted));
             compactMute.title = muteLabel;
             compactMute.setAttribute('aria-label', muteLabel);
             notice.hidden = !actionNotice || incomingCompact;
@@ -496,8 +557,22 @@
     muteButton?.addEventListener('click', toggleIncomingMute);
     compactMute?.addEventListener('click', toggleIncomingMute);
     const hangupIncoming = function () {
-        if (!freshState(currentState) || !currentState.active ||
-            currentState.phase !== 'in-progress' ||
+        if (!freshState(currentState) || !currentState.active) return;
+        if (currentState.direction === 'outgoing') {
+            if (pendingOutgoingHangup) return;
+            const phone = crmPhone();
+            if (!phone?.hangup) {
+                actionNotice = 'No se encontró el control para colgar la llamada.';
+            } else {
+                phone.hangup();
+                actionNotice = '';
+                pendingOutgoingHangup = {at:Date.now()};
+                outgoingAttempt = null;
+            }
+            render();
+            return;
+        }
+        if (currentState.phase !== 'in-progress' ||
             pendingFor(currentState)) return;
         if (!providerBridge()?.hangup()) {
             actionNotice = providerBridge()?.error() ||
