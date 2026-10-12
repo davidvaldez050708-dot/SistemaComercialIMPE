@@ -50,6 +50,10 @@ $checks = [
         str_contains($shellView, 'persistent-phone-panel impe-incoming-panel') &&
         str_contains($shellView, 'persistent-phone-header') &&
         str_contains($shellView, 'persistent-phone-compact-actions'),
+    'Manrope idéntica al CRM en el documento persistente' =>
+        str_contains($shellView, 'family=Manrope') &&
+        str_contains($shellCss, "font-family: 'Manrope', sans-serif;") &&
+        str_contains($shellCss, '.impe-incoming-panel, .impe-incoming-panel button'),
     'Se puede mover y minimizar sin desconectar' =>
         str_contains($shellJs, "addEventListener('pointerdown'") &&
         str_contains($shellJs, "addEventListener('pointermove'") &&
