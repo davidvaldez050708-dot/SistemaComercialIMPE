@@ -1,0 +1,50 @@
+name: Telefonia - Marcador integrado
+on:
+  push:
+    branches: [main]
+    paths:
+      - "public/javascript/telefonia_teclado.js"
+      - "public/javascript/telefonia_persistente.js"
+      - "public/javascript/telefonia_shell.js"
+      - "public/javascript/telefonia_recepcion_marketing.js"
+      - "public/css/telefonia_teclado.css"
+      - "app/views/telefonia/shell.php"
+      - "app/views/layout/dashboard_head.php"
+      - "tools/desplegar_telefonia_marcador_hostinger.sh"
+      - "tests/telefonia_teclado_runtime_smoke.js"
+      - "tests/telefonia_teclado_smoke.php"
+      - "tests/telefonia_teclado_despliegue_smoke.sh"
+      - "tests/telefonia_ux_admin_smoke.php"
+      - ".github/workflows/telefonia-teclado.yml"
+  pull_request:
+jobs:
+  probar-marcador:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 100
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+      - name: Validar PHP y JavaScript
+        run: |
+          php -l app/views/telefonia/shell.php
+          php -l app/views/layout/dashboard_head.php
+          node --check public/javascript/telefonia_teclado.js
+          node --check public/javascript/telefonia_shell.js
+          node --check public/javascript/telefonia_persistente.js
+          node --check public/javascript/telefonia_recepcion_marketing.js
+      - name: Validar marcación y autorización
+        run: |
+          php tests/telefonia_teclado_smoke.php
+          php tests/telefonia_ux_admin_smoke.php
+          php tests/telefonia_shell_render_smoke.php
+          node tests/telefonia_teclado_runtime_smoke.js
+          node tests/telefonia_recepcion_devolucion_smoke.js
+          node tests/telefonia_shell_runtime_smoke.js
+      - name: Simular Hostinger con cambios locales
+        run: |
+          bash -n tools/desplegar_telefonia_marcador_hostinger.sh
+          bash -n tests/telefonia_teclado_despliegue_smoke.sh
+          bash tests/telefonia_teclado_despliegue_smoke.sh
