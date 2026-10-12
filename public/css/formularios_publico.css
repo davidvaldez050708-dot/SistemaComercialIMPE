@@ -590,3 +590,100 @@ html {
     }
 }
 
+/* =========================================================
+   FORMULARIO PÚBLICO DE INSCRIPCIÓN · TEMA VERDE
+   ========================================================= */
+
+.formulario-publico-inscripcion {
+    --inscripcion-green: #0b8f73;
+    --inscripcion-green-dark: #08745f;
+    --inscripcion-green-deep: #075d4e;
+    --inscripcion-green-soft: #eaf8f4;
+    --inscripcion-green-border: #cfeadf;
+}
+
+.formulario-publico-inscripcion .formulario-publico-hero {
+    background:
+        linear-gradient(
+            118deg,
+            #0a8069 0%,
+            #0b9477 48%,
+            #07604f 100%
+        );
+    box-shadow: 0 13px 35px rgba(10, 112, 91, .14);
+}
+
+.formulario-publico-inscripcion .formulario-publico-hero::before {
+    background: linear-gradient(
+        180deg,
+        rgba(71, 211, 174, .58),
+        rgba(32, 158, 127, .16)
+    );
+}
+
+.formulario-publico-inscripcion .formulario-publico-hero::after {
+    background: linear-gradient(
+        180deg,
+        rgba(4, 83, 68, .56),
+        rgba(4, 67, 56, .18)
+    );
+}
+
+.formulario-publico-inscripcion .formulario-publico-section-heading {
+    border-color: var(--inscripcion-green-border);
+    background: linear-gradient(
+        90deg,
+        #eaf8f4 0%,
+        #e3f6f0 58%,
+        #f0faf7 100%
+    );
+}
+
+.formulario-publico-inscripcion .formulario-publico-section-icon {
+    border-color: var(--inscripcion-green-border);
+    background:
+        radial-gradient(
+            circle at 35% 30%,
+            #fff 0%,
+            #eaf8f4 58%,
+            #d8f1e8 100%
+        );
+    color: var(--inscripcion-green);
+    box-shadow: inset 0 0 0 1px #d9f1e9;
+}
+
+.formulario-publico-inscripcion .formulario-publico-section-heading h2 {
+    color: #075d4e;
+}
+
+.formulario-publico-inscripcion .formulario-publico-field input:focus,
+.formulario-publico-inscripcion .formulario-publico-field select:focus {
+    border-color: var(--inscripcion-green);
+    box-shadow: 0 0 0 3px rgba(11, 143, 115, .11);
+}
+
+.formulario-publico-inscripcion .formulario-publico-field input.is-valid,
+.formulario-publico-inscripcion .formulario-publico-field select.is-valid {
+    border-color: var(--inscripcion-green);
+}
+
+.formulario-publico-inscripcion .formulario-publico-submit {
+    background:
+        linear-gradient(
+            118deg,
+            #0a8069 0%,
+            #0b9477 48%,
+            #07604f 100%
+        );
+    box-shadow: 0 9px 20px rgba(10, 112, 91, .18);
+}
+
+.formulario-publico-inscripcion .formulario-publico-submit:hover {
+    box-shadow: 0 12px 23px rgba(10, 112, 91, .24);
+}
+
+.formulario-publico-inscripcion .formulario-publico-thanks-icon {
+    background: #e7f7f1;
+    color: var(--inscripcion-green);
+}
+
