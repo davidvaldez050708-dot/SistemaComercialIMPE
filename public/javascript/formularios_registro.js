@@ -66,6 +66,9 @@ document.addEventListener('DOMContentLoaded', function () {
     let enlacePublico = String(
         compartir?.getAttribute('data-current-link') || ''
     ).trim();
+    const nombreFormulario = String(
+        compartir?.getAttribute('data-form-label') || 'Registro'
+    ).trim();
 
     const mostrarToast = function (mensaje, esError) {
         let contenedor = document.querySelector('.toast-container');
@@ -148,7 +151,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             } catch (error) {
                 notaLink.textContent =
-                    'El enlace apunta al formulario público de Registro.';
+                    'El enlace apunta al formulario público de ' +
+                    nombreFormulario + '.';
             }
         }
     };
