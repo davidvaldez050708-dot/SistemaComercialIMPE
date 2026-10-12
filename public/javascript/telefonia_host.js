@@ -253,6 +253,10 @@
     };
 
     const currentDuration = function () {
+        // El timbrado no es conversación. Algunos eventos de la PBX
+        // reutilizan el duration de la llamada previa durante el ring.
+        if (state.direction === 'incoming' &&
+            state.phase === 'incoming-ringing') return 0;
         let duration = Math.max(0, Number(state.duration || 0));
 
         if (state.active && answeredAtMs > 0) {
@@ -857,12 +861,14 @@
             status: answered
                 ? 'in-progress'
                 : 'incoming-ringing',
-            duration: Math.max(
-                0,
-                Number(call.duration || 0)
-            ),
-            requestedAt:
-                Math.floor(Date.now() / 1000),
+            // Antes de contestar, el reloj siempre comienza en 00:00.
+            // Si ya se contestó, el valor pertenece al PBX call actual.
+            duration: answered
+                ? Math.max(0, Number(call.duration || 0))
+                : 0,
+            requestedAt: nuevaLlamadaEntrante
+                ? Math.floor(Date.now() / 1000)
+                : Number(state.requestedAt || Math.floor(Date.now() / 1000)),
             answeredAtMs: answeredAtMs,
             pbxCallId: pbxCallId,
             callToken: pbxCallId,
