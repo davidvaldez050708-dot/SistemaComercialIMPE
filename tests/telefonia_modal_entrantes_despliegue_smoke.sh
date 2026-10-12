@@ -48,7 +48,11 @@ if deploy --apply > "$TMP/conflict.out" 2>&1; then
   echo "ERROR: se aceptó una personalización incompatible." >&2
   exit 1
 fi
-grep -Fq 'CONFLICTO' "$TMP/conflict.out"
+if ! grep -Eq 'CONFLICTO|ERROR' "$TMP/conflict.out"; then
+  echo "La publicación se detuvo sin clasificar el error de un shell desconocido:" >&2
+  cat "$TMP/conflict.out" >&2
+  exit 1
+fi
 [[ "$BEFORE" == "$(sha256sum "$SITE/public/javascript/telefonia_shell.js")" ]]
 # Caso de producción: Hostinger ya publicó el modal previo y el puente
 # Zadarma de 39f306f. Asegurar que --check y --apply no lo rechacen.
