@@ -73,7 +73,8 @@ $checks = [
     'Cada timbrado comienza en cero' =>
         str_contains($hostJs, "state.phase === 'incoming-ringing') return 0;") &&
         str_contains($hostJs, 'duration: answered') &&
-        str_contains($shellJs, "call.phase) ? 0") &&
+        str_contains($shellJs, ".includes(call.phase) ? 0 :") &&
+        str_contains($shellJs, "'incoming-ringing'") &&
         str_contains($shellJs, 'syncIncomingClock(value)') &&
         str_contains($shellJs, 'updateIncomingTimer(state)') &&
         str_contains($shellJs, 'incomingCallId(value) !== incomingCallId(currentState)'),
