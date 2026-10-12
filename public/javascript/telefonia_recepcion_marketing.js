@@ -294,51 +294,32 @@
             });
         }
 
+        // Devolver llamada únicamente precarga el número en el MISMO
+        // teléfono flotante. El usuario confirma pulsando Llamar.
         tableBody.addEventListener('click', function (event) {
             const boton = event.target.closest('[data-marketing-callback]');
-            if (!boton || boton.disabled || marcacionEnCurso ||
-                !telefono || !puedeDevolver) return;
-
+            if (!boton || boton.disabled || !telefono || !puedeDevolver) return;
             const destino = normalizarNumeroDevolucion(boton.dataset.marketingCallback);
             if (!destino) {
-                explicarDevolucion('El número de la llamada perdida no permite devolución automática.', true);
+                explicarDevolucion('El número no permite devolución automática.', true);
                 return;
             }
-            if (telefono.getState()?.active) {
-                explicarDevolucion(
-                    'Ya tienes una llamada activa. Finalízala antes de devolver otra.',
-                    true
-                );
+            const estado = telefono.getState?.();
+            if (estado?.active) {
+                explicarDevolucion('Finaliza primero la llamada que tienes activa.', true);
                 return;
             }
-
-            marcacionEnCurso = true;
-            explicarDevolucion('Preparando devolución de llamada…', false);
-            renderList();
-            // La apertura del host WebRTC se solicita desde esta acción
-            // del usuario; las transferencias utilizan el panel telefónico
-            // persistente ya existente.
-            void telefono.startCall({
-                destination: destino,
-                institution: 'Recepción telefónica',
+            const abierto = telefono.openDialer?.({
+                number: destino,
                 context: {
                     type: 'MARKETING_CALLBACK',
                     llamada_origen: String(boton.dataset.marketingCallOrigin || '')
                 }
-            }).then(function () {
-                explicarDevolucion(
-                    'Llamada solicitada. Puedes transferirla desde el panel telefónico cuando conteste.',
-                    false
-                );
-            }).catch(function (error) {
-                explicarDevolucion(
-                    error.message || 'No fue posible devolver la llamada.',
-                    true
-                );
-            }).finally(function () {
-                marcacionEnCurso = false;
-                renderList();
             });
+            explicarDevolucion(
+                abierto ? '' : 'No se pudo abrir el marcador. Actualiza la página.',
+                !abierto
+            );
         });
 
         search.addEventListener('input', function () {
