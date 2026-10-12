@@ -3,7 +3,8 @@
 .impe-dialer { font: 500 12px/1.45 Manrope,system-ui,-apple-system,sans-serif;
     color:#172033; position:fixed; z-index:1320; inset:0; pointer-events:none; }
 .impe-dialer[hidden] { display:none !important; }
-.impe-dialer.is-open { pointer-events:auto; }
+/* El panel flotante no debe bloquear clics en el CRM durante la llamada. */
+.impe-dialer-backdrop,.impe-dialer-dialog {pointer-events:auto;}
 .impe-dialer-backdrop { display:none; position:absolute;inset:0;
     background:rgba(14,24,44,.48); }
 .impe-dialer.is-open:not(.is-active-call) .impe-dialer-backdrop { display:block; }
