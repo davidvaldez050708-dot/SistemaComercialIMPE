@@ -9,14 +9,18 @@ $root = dirname(__DIR__);
 require_once $root . '/config/db_connection.php';
 
 $mode = $argv[1] ?? '--check';
+
 if (!in_array($mode, ['--check', '--apply'], true)) {
-    fwrite(STDERR, "Uso php tools/separar_formularios_bd.php --check|apply\n");
+    fwrite(
+        STDERR,
+        "Uso: php tools/separar_formularios_bd.php --check|--apply\n"
+    );
     exit(2);
 }
 
 $db = (new Database())->connect();
 
-function tablaExisteSeparacion(mysqli $db, string $tabla): bool
+function tablaExisteFormularios(mysqli $db, string $tabla): bool
 {
     $stmt = $db->prepare(
         "SELECT COUNT(*) AS total
@@ -24,6 +28,11 @@ function tablaExisteSeparacion(mysqli $db, string $tabla): bool
          WHERE TABLE_SCHEMA = DATABASE()
            AND TABLE_NAME = ?"
     );
+
+    if (!$stmt) {
+        throw new RuntimeException($db->error);
+    }
+
     $stmt->bind_param('s', $tabla);
     $stmt->execute();
     $fila = $stmt->get_result()->fetch_assoc();
@@ -32,9 +41,10 @@ function tablaExisteSeparacion(mysqli $db, string $tabla): bool
     return (int)($fila['total'] ?? 0) > 0;
 }
 
-function contarSeparacion(mysqli $db, string $sql): int
+function contarFormularios(mysqli $db, string $sql): int
 {
     $resultado = $db->query($sql);
+
     if (!$resultado) {
         throw new RuntimeException($db->error);
     }
@@ -45,10 +55,99 @@ function contarSeparacion(mysqli $db, string $sql): int
     return (int)($fila[0] ?? 0);
 }
 
-function drenarMultiQuery(mysqli $db): void
+function mostrarEstadoFormularios(mysqli $db): array
 {
+    if (!tablaExisteFormularios($db, 'formulario_registros')) {
+        throw new RuntimeException(
+            'No existe la tabla formulario_registros.'
+        );
+    }
+
+    $mezcladas = contarFormularios(
+        $db,
+        "SELECT COUNT(*)
+         FROM formulario_registros
+         WHERE origen IN (
+             'MARKETING_INSCRIPCION',
+             'PUBLICO_INSCRIPCION'
+         )"
+    );
+
+    $registros = contarFormularios(
+        $db,
+        "SELECT COUNT(*)
+         FROM formulario_registros
+         WHERE origen NOT IN (
+             'MARKETING_INSCRIPCION',
+             'PUBLICO_INSCRIPCION'
+         )"
+    );
+
+    $tablaInscripciones = tablaExisteFormularios(
+        $db,
+        'formulario_inscripciones'
+    );
+
+    $inscripciones = $tablaInscripciones
+        ? contarFormularios(
+            $db,
+            "SELECT COUNT(*) FROM formulario_inscripciones"
+        )
+        : 0;
+
+    echo "=== SEPARACIÓN DE FORMULARIOS ===\n";
+    echo "Registros: {$registros}\n";
+    echo "Inscripciones aún mezcladas: {$mezcladas}\n";
+    echo "Tabla formulario_inscripciones: " .
+        ($tablaInscripciones ? 'SI' : 'NO') . "\n";
+    echo "Inscripciones separadas: {$inscripciones}\n";
+
+    return [
+        'mezcladas' => $mezcladas,
+        'tabla_inscripciones' => $tablaInscripciones,
+        'inscripciones' => $inscripciones
+    ];
+}
+
+try {
+    $estado = mostrarEstadoFormularios($db);
+
+    if ($mode === '--check') {
+        echo (
+            $estado['tabla_inscripciones'] &&
+            $estado['mezcladas'] === 0
+        )
+            ? "ESTADO: la base ya está separada.\n"
+            : "ESTADO: separación pendiente.\n";
+
+        exit(0);
+    }
+
+    $migracion = $root .
+        '/database/migrations/' .
+        '2026_10_12_separar_formularios_registro_inscripcion.sql';
+
+    if (!is_file($migracion)) {
+        throw new RuntimeException(
+            'No se encontró la migración de separación.'
+        );
+    }
+
+    $sql = file_get_contents($migracion);
+
+    if (!is_string($sql) || trim($sql) === '') {
+        throw new RuntimeException(
+            'La migración de separación está vacía.'
+        );
+    }
+
+    if (!$db->multi_query($sql)) {
+        throw new RuntimeException($db->error);
+    }
+
     do {
         $resultado = $db->store_result();
+
         if ($resultado instanceof mysqli_result) {
             $resultado->free();
         }
@@ -61,183 +160,21 @@ function drenarMultiQuery(mysqli $db): void
             throw new RuntimeException($db->error);
         }
     } while (true);
-}
 
-function exportarTablaSql(mysqli $db, string $tabla, string $ruta): void
-{
-    if (!tablaExisteSeparacion($db, $tabla)) {
-        return;
-    }
+    echo "\n";
+    $final = mostrarEstadoFormularios($db);
 
-    $show = $db->query("SHOW COLLECT TABLE `${tabla}`");
-    if (!$show) {
-        throw new RuntimeException($db->error);
-    }
-
-    $filaCreate = $show->fetch_assoc();
-    $show->free();
-    $valoresCreate = array_values($filaCreate);
-    $create = (string)($valoresCreate[1] ?? '');
-
-    $fh = fopen($ruta, 'wb');
-    if (!$fh) {
-        throw new RuntimeException("No fue posible crear respaldo {$ruta}");
-    }
-
-    fwrite($fh, "-- Respaldo automático {$tabla}\n");
-    fwrite($fh, "DROP TABLE IF EXISTS `${tabla}`;\n");
-    fwrite($fh, $create . ";\l\n");
-
-    $resultado = $db->query("SELECT * FROM `${tabla}` ORDER BY id");
-    if (!$resultado) {
-        fclose($fh);
-        throw new RuntimeException($db->error);
-    }
-
-    while ($fila = $resultado->fetch_assoc()) {
-        $columnas = array_map(
-            static fn($columna) =>
-                '`' . str_replace('`', '``', $columna) . '`',
-            array_keys($fila)
-        );
-
-        $valores = [];
-        foreach ($fila as $valor) {
-            if ($valor === null) {
-                $valores[] = 'NULL';
-            } else {
-                $valores[] =
-                    "'" . $db->real_escape_string((string)$valor) . "'";
-            }
-        }
-
-        fwrite(
-            $fh,
-            "INSERT INTO `${tabla}` (" .
-            implode(', ', $columnas) .
-            ") VALUES (" .
-            implode(', ', $valores) .
-            ");\n"
+    if (
+        !$final['tabla_inscripciones'] ||
+        $final['mezcladas'] !== 0
+    ) {
+        throw new RuntimeException(
+            'La separación no quedó completa.'
         );
     }
 
-    $resultado->free();
-    fclose($fh);
-}
-
-if (!tablaExisteSeparacion($db, 'formulario_registros')) {
-    fwrite(STDERR, "ERROR: no existe formulario_registros.\n");
+    echo "OK: separación aplicada correctamente.\n";
+} catch (Throwable $error) {
+    fwrite(STDERR, "ERROR: " . $error->getMessage() . "\n");
     exit(1);
 }
-
-$registros = contarSeparacion(
-    $db,
-    "SELECT COUNT(*) FROM formulario_registros
-     WHERE origen NOT IN ('MARKETING_INSCRIPCION', 'PUBLICO_INSCRIPCION')"
-);
-$inscripcionesLegacy = contarSeparacion(
-    $db,
-    "SELECT COUNT(*) FROM formulario_registros
-     WHERE origen IN ('MARKETING_INSCRIPCION', 'PUBLICO_INSCRIPCION')"
-);
-$tablaInscripciones = tablaExisteSeparacion(
-    $db,
-    'formulario_inscripciones'
-);
-$inscripciones = $tablaInscripciones
-    ? contarSeparacion($db, "SELECT COUNT(*) FROM formulario_inscripciones")
-    : 0;
-
-echo "=== SEPARACIÓN DE FORMULARIOS ===\n";
-echo "Registros en formulario_registros: {$registros}\n";
-echo "Inscripciones aún mezcladas: {$inscripcionesLegacy}\n";
-echo "Tabla formulario_inscripciones: " .
-    ($tablaInscripciones ? 'SÍ' : 'NO') . "\n";
-echo "Inscripciones separadas: {$inscripciones}\n";
-
-if ($mode === '--check') {
-    if ($tablaInscripciones && $inscripcionesLegacy === 0) {
-        echo "ESTADO: la base ya está separada.\n";
-    } else {
-        echo "ESTADO: separación pendiente.\n";
-    }
-    exit(0);
-}
-
-$migration = $root .
-    '/database/migrations/2026_10_12_separar_formularios_registro_inscripcion.sql';
-
-if (!is_file($migration)) {
-    fwrite(STDERR, "ERROR: no se encontró la migración de separación.\n");
-    exit(1);
-}
-
-$backupRoot = getenv('IMPE_FORMULARIOS_DB_BACKUP_DIR');
-if ($backupRoot === false || trim($backupRoot) === '') {
-    $backupRoot = dirname($root) .
-        '/respaldos-crm/formularios-bd-' . date('Ymd-His');
-}
-
-if (!is_dir($backupRoot) && !mkdir($backupRoot, 0700, true)) {
-    fwrite(
-        STDERR, 
-        "ERROR: no se pudo crear el directorio de respaldo.\n"
-     );
-    exit(1);
-}
-
-exportarTablaSql(
-    $db,
-    'formulario_registros',
-    $backupRoot . '/formulario_registros.sql'
-);
-
-if ($tablaInscripciones) {
-    exportarTablaSql(
-        $db,
-        'formulario_inscripciones',
-        $backupRoot . '/formulario_inscripciones.sql'
-    );
-}
-
-$sql = file_get_contents($migration);
-if (!is_string($sql) || trim($sql) === '') {
-    fwrite(STDERR, "ERROR: la migración está vacía.\n");
-    exit(1);
-}
-
-if (!$db->multi_query($sql)) {
-    fwrite(STDERR, "ERROR aplicando migración: {$db->error}\n");
-    exit(1);
-}
-
-drenarMultiQuery($db);
-
-$legacyRestantes = contarSeparacion(
-    $db,
-    "SELECT COUNT(*) FROM formulario_registros
-     WHERE origen IN ('MARKETING_INSCRIPCION', 'PUBLICO_INSCRIPCION')"
-);
-
-if (!tablaExisteSeparacion($db, 'formulario_inscripciones')) {
-    fwrite(STDERR, "ERROR: no se creó formulario_inscripciones.\n");
-    exit(1);
-}
-
-if ($legacyRestantes !== 0) {
-    fwrite(
-        STDERR, 
-        "ERROR: quedaron {$legacyRestantes} inscripciones " .
-        "en formulario_registros.\n"
-     );
-    exit(1);
-}
-
-$totalFinal = contarSeparacion(
-    $db,
-    "SELECT COUNT(*) FROM formulario_inscripciones"
-);
-
-echo "\nOK: separación aplicada correctamente.\n";
-echo "Inscripciones en formulario_inscripciones: {$totalFinal}\n";
-echo "Respaldo SQL: {$backupRoot}\n";
