@@ -96,11 +96,22 @@ if grep -Fq 'body > *:not(.telephony-host-sentinel)' "$LIVE/public/css/telefonia
   exit 1
 fi
 deploy
-# Rechazar cualquier variante desconocida que pueda tener cambios locales reales.
-sed -i 's/body.telephony-host-incoming { overflow: hidden; }/body.telephony-host-incoming { overflow: visible; }/' "$LIVE/public/css/telefonia_host.css"
-# En este punto no se quiere conjeturar lo que el autor local pretendió.
-# La fusión de tres vías preserva el cambio si no es conflictivo.
-deploy
-grep -Fq 'body.telephony-host-incoming { overflow: visible; }' "$LIVE/public/css/telefonia_host.css"
+# Variante con reglas 1x1 locales distintas: abortar sin tocar producción.
+git -C "$ROOT" cat-file blob 361172edf4a61c884cdfa60135152f6b84590759 > "$LIVE/public/css/telefonia_host.css"
+php -r '
+$f = $argv[1]; $css = file_get_contents($f);
+$css = str_replace("body:not(.telephony-host-incoming) > *",
+                   "body > *", $css);
+file_put_contents($f, $css);
+' "$LIVE/public/css/telefonia_host.css"
+# El CSS desconocido no se normaliza inventando cambios. Debe abortar
+# aunque el resto de archivos ya esté actualizado.
+OLD="$(sha256sum "$LIVE/public/css/telefonia_host.css")"
+if deploy > "$TMP/css-desconocido.out" 2>&1; then
+  echo "ERROR: el despliegue aceptó reglas 1x1 desconocidas" >&2
+  exit 1
+fi
+grep -Fq 'CONFLICTO' "$TMP/css-desconocido.out"
+[[ "$OLD" == "$(sha256sum "$LIVE/public/css/telefonia_host.css")" ]]
 echo "Telefonía entrante Hostinger: OK (fusión, repetición, conflicto y CSS legado)"
 

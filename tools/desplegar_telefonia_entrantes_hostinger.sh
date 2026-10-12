@@ -31,14 +31,17 @@ for p in $FILES; do
   }
   LIVE="$DST/$p"
   if [[ "$p" == "public/css/telefonia_host.css" ]]; then
-    # Resolver únicamente el bloque 1x1 antiguo ya identificado en Hostinger.
-    # Se normaliza una COPIA temporal. El CSS público sigue intacto hasta
-    # que todas las fusiones y validaciones de los seis archivos terminen.
+    # Sólo el bloque incondicional 1x1 identificado en Hostinger se resuelve
+    # puntualmente. No difuminar cambios locales usando un merge conflictivo.
     php "$SRC/tools/normalizar_telefonia_host_css.php" \
       "$DST/$p" "$SRC/$p" "$TEMP/telefonia_host_normalizado.css" || {
         echo "CONFLICTO: CSS de producción distinto del patrón reconocido; no se publicó nada." >&2
         exit 1
       }
+    if grep -Fq 'body > *:not(.telephony-host-sentinel)' "$DST/$p"; then
+      cp "$TEMP/telefonia_host_normalizado.css" "$TEMP/$p"
+      continue
+    fi
     LIVE="$TEMP/telefonia_host_normalizado.css"
   fi
   if ! git merge-file -p "$LIVE" "$TEMP/base" "$SRC/$p" > "$TEMP/$p"; then

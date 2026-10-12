@@ -49,7 +49,14 @@ if ($start === false || $end === false || $end <= $start) {
 $target = rtrim(substr($git, $start, $end - $start));
 $matches = substr_count($live, $legacy);
 if ($matches === 1) {
-    // Sustituir solamente el bloque comprobado. Otros estilos locales quedan intactos.
+    // El patrón conocido jamás debe coexistir con otras reglas globales que
+    // afecten a los controles internos. En tal caso se requiere revisión.
+    if (str_contains($live, 'body:not(.telephony-host-incoming) >') ||
+        str_contains($live, 'body.telephony-host-incoming >')) {
+        fwrite(STDERR, "CONFLICTO: Hay otras reglas que ocultan controles del SDK.\n");
+        exit(2);
+    }
+    // Sólo reemplaza el bloque 1x1 conocido. Las demás reglas locales no se tocan.
     $live = str_replace($legacy, $target, $live);
 } elseif ($matches !== 0 ||
           str_contains($live, 'body > *:not(.telephony-host-sentinel)')) {
