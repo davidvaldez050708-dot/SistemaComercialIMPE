@@ -2,7 +2,17 @@
    principal y el SDK permanece montado dentro del mismo documento padre. */
 :root { color-scheme: light; }
 * { box-sizing: border-box; }
-html, body { height: 100%; min-width: 0; margin: 0; overflow: hidden; }
+/* El shell es un documento independiente del dashboard; debe heredar
+   Manrope como el resto del CRM, en vez del serif predeterminado. */
+html, body {
+  height: 100%; min-width: 0; margin: 0; overflow: hidden;
+  font-family: 'Manrope', sans-serif;
+}
+/* Usar la misma tipografía del modal de Seguimiento también en controles
+   nativos (los button no heredan siempre la fuente del body). */
+.impe-incoming-panel, .impe-incoming-panel button {
+  font-family: 'Manrope', sans-serif;
+}
 .impe-phone-shell { position: fixed; inset: 0; background: #eef2f8; }
 #impeCrmFrame { display: block; width: 100%; height: 100%; border: 0; }
 .impe-phone-status {
