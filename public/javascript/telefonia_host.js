@@ -448,14 +448,22 @@
     };
 
     const setMuted = function (value) {
-        muted = Boolean(value);
-
+        const nextMuted = Boolean(value);
+        if (state.direction === 'incoming') {
+            if (!state.active || state.phase !== 'in-progress' ||
+                !incomingBridge?.mute(nextMuted)) {
+                console.warn('No se pudo cambiar el micrófono de la llamada entrante.');
+                return;
+            }
+        }
+        // Mantener el comportamiento existente de pistas para las salientes
+        // y garantizar el mismo estado visual tras actualizar el micrófono.
+        muted = nextMuted;
         microphoneTracks.forEach(function (track) {
             if (track && track.readyState === 'live') {
                 track.enabled = !muted;
             }
         });
-
         publish({ muted: muted });
     };
 
@@ -838,7 +846,8 @@
                 ? 'in-progress'
                 : 'incoming-ringing',
             active: true,
-            muted: false,
+            // No reiniciar el silencio en cada sondeo del webhook PBX.
+            muted: nuevaLlamadaEntrante ? false : Boolean(state.muted),
             direction: 'incoming',
             destination:
                 String(call.caller_id || ''),

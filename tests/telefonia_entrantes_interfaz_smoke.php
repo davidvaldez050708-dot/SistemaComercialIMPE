@@ -40,11 +40,17 @@ $checks = [
     'El motor Zadarma permanece vivo fuera del viewport' =>
         str_contains($shellCss, 'right: -10000px; bottom: 12px') &&
         str_contains($shellJs, "call.classList.toggle('is-visible', nativeVisible)"),
-    'Se atiende únicamente mediante control nativo reconocido' =>
+    'Acciones entrantes mediante SDK real de Zadarma' =>
         str_contains($hostJs, 'IMPE_ZADARMA_NATIVE_BRIDGE_FACTORY') &&
         str_contains($hostView, 'telefonia_entrantes_bridge.js') &&
         str_contains($shellJs, 'providerBridge()?.answer()') &&
-        str_contains($shellJs, 'providerBridge()?.hangup()'),
+        str_contains($shellJs, 'providerBridge()?.hangup()') &&
+        str_contains($hostJs, 'incomingBridge?.mute(nextMuted)') &&
+        str_contains($hostJs, 'nuevaLlamadaEntrante ? false : Boolean(state.muted)'),
+    'Sin reconocimiento visual por CSS o color de iconos' =>
+        !str_contains($read('public/javascript/telefonia_entrantes_bridge.js'), 'querySelectorAll') &&
+        str_contains($read('public/javascript/telefonia_entrantes_bridge.js'), "'finishCall'") &&
+        str_contains($read('public/javascript/telefonia_entrantes_bridge.js'), "'answer'"),
     'Mismo diseño que Seguimiento' =>
         str_contains($shellView, 'impePersistentPhoneStyles') &&
         str_contains($shellView, 'persistent-phone-panel impe-incoming-panel') &&
