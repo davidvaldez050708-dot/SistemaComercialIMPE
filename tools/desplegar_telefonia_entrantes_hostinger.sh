@@ -44,8 +44,16 @@ for p in $FILES; do
     fi
     LIVE="$TEMP/telefonia_host_normalizado.css"
   fi
-  if ! git merge-file -p "$LIVE" "$TEMP/base" "$SRC/$p" > "$TEMP/$p"; then
-    echo "CONFLICTO: $p contiene cambios incompatibles en producción; no se publicó nada" >&2
+  if git merge-file -p -L HOSTINGER -L BASE -L GITHUB \
+      "$LIVE" "$TEMP/base" "$SRC/$p" > "$TEMP/$p"; then
+    continue
+  fi
+  # Sólo se admiten los cuatro bloques exactos vistos en el diagnóstico.
+  # Desconocidos, repetidos o cambiados bloquean TODO el despliegue.
+  mv "$TEMP/$p" "$TEMP/merged-unresolved"
+  if ! php "$SRC/tools/resolver_conflictos_telefonia.php" \
+      "$p" "$TEMP/merged-unresolved" "$SRC/$p" "$TEMP/$p"; then
+    echo "CONFLICTO: $p tiene cambios diferentes a los aprobados; no se publicó nada." >&2
     exit 1
   fi
 done
@@ -60,6 +68,11 @@ fi
 grep -Fq 'incomingInShell' "$TEMP/public/javascript/telefonia_persistente.js"
 if grep -Fq 'observerNativo' "$TEMP/public/javascript/telefonia_host.js"; then
   echo "ERROR: permanece la manipulación previa del SDK" >&2; exit 1
+fi
+if grep -Fq "raiz.style.setProperty(" "$TEMP/public/javascript/telefonia_host.js" ||
+   grep -Fq "width: 3px; height: 3px" "$TEMP/public/css/telefonia_shell.css" ||
+   grep -Fq "panel.hidden = !show || managedByShell;" "$TEMP/public/javascript/telefonia_persistente.js"; then
+  echo "ERROR: quedan reglas antiguas en los controles entrantes." >&2; exit 1
 fi
 php -l "$TEMP/app/views/telefonia/shell.php"
 if command -v node >/dev/null 2>&1; then
