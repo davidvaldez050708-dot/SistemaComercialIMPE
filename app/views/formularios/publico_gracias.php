@@ -23,8 +23,8 @@
         <section class="formulario-publico-thanks-card">
             <div class="formulario-publico-thanks-logo">
                 <img
-                    src="<?= BASE_URL ?>public/img/brand/porcayo-grupo.png"
-                    alt="Porcayo Learning Group">
+                    src="<?= BASE_URL ?>public/img/brand/logos%20juntos.png"
+                    alt="Fundación Red Educativa México y Universidad MPE">
             </div>
 
             <span class="formulario-publico-thanks-icon" aria-hidden="true">
