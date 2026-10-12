@@ -98,6 +98,11 @@
         function setMessage(message, isError) {
             stateText.textContent = String(message || '');
             stateText.classList.toggle('is-error', Boolean(isError));
+            const visibleCallState = qs('[data-dialer-live-state]');
+            if (!live.hidden) {
+                visibleCallState.textContent = String(message || '');
+                visibleCallState.classList.toggle('is-error', Boolean(isError));
+            }
         }
         function render() {
             const active = Boolean(callState?.active && callState.direction !== 'incoming');
@@ -262,7 +267,11 @@
                 setMessage('Introduce una extensión válida para transferir.',true);return;
             }
             try {
-                await phoneApi()?.transferCall?.(extension,attended);
+                const api = phoneApi();
+                if (!api?.transferCall) {
+                    throw new Error('No está disponible la transferencia telefónica.');
+                }
+                await api.transferCall(extension,attended);
                 transfer.hidden = true;
                 setMessage('Transferencia solicitada.');
             } catch (error) {
@@ -274,7 +283,12 @@
         document.addEventListener('keydown', function (event) {
             if (event.key === 'Escape' && visible && !callState?.active) hide();
         });
-        return {open:open, sync:sync, close:hide, element:wrap};
+        return {
+            open:open, sync:sync, close:hide, element:wrap,
+            isManagingCall:function () {
+                return visible || (!restore.hidden && !wrap.hidden);
+            }
+        };
     }
     global.IMPE_TELEPHONY_DIALER = {create:create, normalize:normalizar};
 })(typeof window !== 'undefined' ? window : globalThis);
