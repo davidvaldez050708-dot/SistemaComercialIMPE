@@ -29,7 +29,12 @@
     const declineButton = document.querySelector('[data-incoming-decline]');
     const muteButton = document.querySelector('[data-incoming-mute]');
     const hangupButton = document.querySelector('[data-incoming-hangup]');
-    const providerButton = document.querySelector('[data-incoming-provider]');
+    const compactAnswer = document.querySelector('[data-incoming-answer-compact]');
+    const compactDecline = document.querySelector('[data-incoming-decline-compact]');
+    const compactMute = document.querySelector('[data-incoming-mute-compact]');
+    const compactHangup = document.querySelector('[data-incoming-hangup-compact]');
+    const incomingHeader = document.querySelector('[data-incoming-drag-handle]');
+    const incomingCompactTimer = document.querySelector('[data-incoming-compact-timer]');
     const notice = document.querySelector('[data-incoming-notice]');
     const stateKey = 'impe:telephony:state:' + userId;
     const commandKey = 'impe:telephony:command:' + userId;
@@ -42,6 +47,40 @@
     let hostFrame = null;
     let minimized = false;
     let actionNotice = '';
+    let incomingCompact = false;
+    let incomingDrag = null;
+    const incomingPositionKey = 'impe:telephony:incoming-position:' + userId;
+    const incomingViewKey = 'impe:telephony:incoming-compact:' + userId;
+    try { incomingCompact = localStorage.getItem(incomingViewKey) === '1'; }
+    catch (_) {}
+    // La posición y minimización se manejan igual que en Seguimiento.
+    try {
+        const saved = JSON.parse(localStorage.getItem(incomingPositionKey) || 'null');
+        if (saved && Number.isFinite(Number(saved.left)) &&
+            Number.isFinite(Number(saved.top))) {
+            incomingPanel.style.left = Number(saved.left) + 'px';
+            incomingPanel.style.top = Number(saved.top) + 'px';
+            incomingPanel.style.right = 'auto';
+            incomingPanel.style.bottom = 'auto';
+        }
+    } catch (_) {}
+    const clampIncoming = function () {
+        if (!incomingPanel || incomingPanel.hidden || !incomingPanel.style.left) return;
+        const rect = incomingPanel.getBoundingClientRect();
+        const maxLeft = Math.max(8, window.innerWidth - rect.width - 8);
+        const maxTop = Math.max(8, window.innerHeight - rect.height - 8);
+        incomingPanel.style.left = Math.max(8,Math.min(maxLeft,
+            Number.parseFloat(incomingPanel.style.left) || 8)) + 'px';
+        incomingPanel.style.top = Math.max(8,Math.min(maxTop,
+            Number.parseFloat(incomingPanel.style.top) || 8)) + 'px';
+    };
+    const toggleIncomingCompact = function () {
+        incomingCompact = !incomingCompact;
+        try { localStorage.setItem(incomingViewKey,incomingCompact?'1':'0'); }
+        catch (_) {}
+        render();
+        clampIncoming();
+    };
     let forceNativeControls = false;
     let currentState = null;
     let lastHeartbeat = 0;
@@ -216,33 +255,45 @@
 
         // Una sola tarjeta con el diseño del CRM. El widget se conserva
         // montado fuera de pantalla: audio/WebRTC no se desmontan.
-        const nativeVisible = Boolean(state?.hostReady) &&
-            ongoing && forceNativeControls && !minimized;
-        const customVisible = incoming && !forceNativeControls && !minimized;
+        // El panel oficial nunca reemplaza el modal de llamadas entrantes.
+        const nativeVisible = Boolean(state?.hostReady) && ongoing &&
+            state?.direction !== 'incoming' && forceNativeControls && !minimized;
+        const customVisible = incoming && !minimized;
         call.classList.toggle('is-visible', nativeVisible);
-        if (incomingPanel) incomingPanel.hidden = !customVisible;
+        if (incomingPanel) {
+            incomingPanel.hidden = !customVisible;
+            incomingPanel.classList.toggle('is-compact', incomingCompact);
+        }
         restore.hidden = !minimized || !(incoming || (ongoing && forceNativeControls));
         if (incoming && incomingPanel) {
             const ringing=state.phase === 'incoming-ringing';
-            const bridgeReady=Boolean(providerBridge()?.canAnswer());
+            // El botón se puede pulsar durante timbrado; el puente comprueba
+            // el control del SDK al recibir el clic, sin estado infinito.
             incomingNumber.textContent = String(state.destination || 'Número desconocido');
             incomingTitle.textContent = ringing ? 'Llamada entrante' : 'En conversación';
             incomingEyebrow.textContent = ringing ? 'RECEPCIÓN TELEFÓNICA' : 'LLAMADA EN CURSO';
             incomingState.textContent = ringing ? 'Llamada entrante a la extensión ' + cfg.extension
                 : 'Conversación en curso';
             incomingTimer.textContent = formatDuration(state.duration);
+            incomingCompactTimer.textContent = incomingTimer.textContent;
             answerButton.hidden = !ringing;
             declineButton.hidden = !ringing;
-            answerButton.disabled = !bridgeReady;
-            declineButton.disabled = !bridgeReady;
+            answerButton.disabled = !ringing;
+            declineButton.disabled = !ringing;
+            compactAnswer.hidden = !ringing;
+            compactDecline.hidden = !ringing;
+            compactAnswer.disabled = !ringing;
+            compactDecline.disabled = !ringing;
             muteButton.hidden = ringing;
             hangupButton.hidden = ringing;
-            hangupButton.disabled = !providerBridge()?.canHangup();
+            compactMute.hidden = ringing;
+            compactHangup.hidden = ringing;
+            hangupButton.disabled = false;
+            compactHangup.disabled = false;
             muteButton.textContent = state.muted ? 'Activar micrófono' : 'Silenciar';
-            notice.hidden = !actionNotice && (!ringing || bridgeReady);
-            notice.textContent = actionNotice ||
-                (ringing ? 'El teléfono está conectando sus controles de recepción.' : '');
-            providerButton.hidden = !state.hostReady;
+            compactMute.title = state.muted ? 'Activar micrófono' : 'Silenciar';
+            notice.hidden = !actionNotice || incomingCompact;
+            notice.textContent = actionNotice;
         }
         callTitle.textContent = incoming ? 'Llamada entrante' :
             ongoing ? 'Llamada en curso' : 'Teléfono institucional';
@@ -292,10 +343,49 @@
     document.querySelector('[data-shell-minimize]')?.addEventListener('click', function () {
         minimized = true; render();
     });
-    document.querySelector('[data-incoming-minimize]')?.addEventListener('click', function () {
-        minimized = true; render();
+    document.querySelector('[data-incoming-minimize]')?.addEventListener('click',
+        toggleIncomingCompact);
+    incomingHeader?.addEventListener('pointerdown', function (event) {
+        if (event.button !== 0 ||
+            event.target?.closest?.('button,a,input,select,textarea')) return;
+        const rect = incomingPanel.getBoundingClientRect();
+        incomingDrag = {
+            id: event.pointerId,
+            offsetX: event.clientX - rect.left,
+            offsetY: event.clientY - rect.top
+        };
+        incomingPanel.style.left = rect.left + 'px';
+        incomingPanel.style.top = rect.top + 'px';
+        incomingPanel.style.right = 'auto';
+        incomingPanel.style.bottom = 'auto';
+        incomingPanel.classList.add('is-dragging');
+        try { incomingHeader.setPointerCapture(event.pointerId); } catch (_) {}
+        event.preventDefault();
     });
-    answerButton?.addEventListener('click', function () {
+    incomingHeader?.addEventListener('pointermove', function (event) {
+        if (!incomingDrag || incomingDrag.id !== event.pointerId) return;
+        const rect = incomingPanel.getBoundingClientRect();
+        incomingPanel.style.left = Math.max(8,Math.min(
+            Math.max(8,window.innerWidth-rect.width-8),
+            event.clientX - incomingDrag.offsetX)) + 'px';
+        incomingPanel.style.top = Math.max(8,Math.min(
+            Math.max(8,window.innerHeight-rect.height-8),
+            event.clientY - incomingDrag.offsetY)) + 'px';
+        event.preventDefault();
+    });
+    const endIncomingDrag = function (event) {
+        if (!incomingDrag || incomingDrag.id !== event.pointerId) return;
+        incomingDrag = null;
+        incomingPanel.classList.remove('is-dragging');
+        try { localStorage.setItem(incomingPositionKey, JSON.stringify({
+            left: Number.parseFloat(incomingPanel.style.left),
+            top: Number.parseFloat(incomingPanel.style.top)
+        })); } catch (_) {}
+    };
+    incomingHeader?.addEventListener('pointerup', endIncomingDrag);
+    incomingHeader?.addEventListener('pointercancel', endIncomingDrag);
+    window.addEventListener('resize', clampIncoming);
+    const answerIncoming = function () {
         if (!freshState(currentState) || !currentState.active ||
             currentState.phase !== 'incoming-ringing') return;
         if (!providerBridge()?.answer()) {
@@ -305,8 +395,10 @@
             actionNotice = 'Contestando… espera la confirmación de Zadarma.';
         }
         render();
-    });
-    declineButton?.addEventListener('click', function () {
+    };
+    answerButton?.addEventListener('click', answerIncoming);
+    compactAnswer?.addEventListener('click', answerIncoming);
+    const declineIncoming = function () {
         if (!freshState(currentState) || !currentState.active ||
             currentState.phase !== 'incoming-ringing') return;
         if (!providerBridge()?.decline()) {
@@ -316,12 +408,16 @@
             actionNotice = 'Rechazando llamada…';
         }
         render();
-    });
-    muteButton?.addEventListener('click', function () {
+    };
+    declineButton?.addEventListener('click', declineIncoming);
+    compactDecline?.addEventListener('click', declineIncoming);
+    const toggleIncomingMute = function () {
         if (!freshState(currentState) || currentState.phase !== 'in-progress') return;
         sendPhoneCommand('MUTE', {muted:!Boolean(currentState.muted)});
-    });
-    hangupButton?.addEventListener('click', function () {
+    };
+    muteButton?.addEventListener('click', toggleIncomingMute);
+    compactMute?.addEventListener('click', toggleIncomingMute);
+    const hangupIncoming = function () {
         if (!freshState(currentState) || currentState.phase !== 'in-progress') return;
         if (!providerBridge()?.hangup()) {
             actionNotice = providerBridge()?.error() ||
@@ -330,14 +426,9 @@
             actionNotice = 'Finalizando llamada…';
         }
         render();
-    });
-    providerButton?.addEventListener('click', function () {
-        if (!freshState(currentState) || !currentState.active) return;
-        actionNotice = '';
-        forceNativeControls = true;
-        minimized = false;
-        render();
-    });
+    };
+    hangupButton?.addEventListener('click', hangupIncoming);
+    compactHangup?.addEventListener('click', hangupIncoming);
     restore?.addEventListener('click', function () {
         minimized = false; render();
     });
