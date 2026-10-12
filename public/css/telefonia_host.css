@@ -125,14 +125,6 @@ body.telephony-host-tab .telephony-host-sentinel {
 }
 
 
-/* WebRTC embebido: el SDK sólo muestra la UI oficial cuando el CRM
-   expande su iframe de llamada. El iframe vive dentro del shell principal. */
-body.telephony-host-embed {
-    background: transparent;
-}
-body.telephony-host-embed .telephony-host-sentinel {
-    display: none !important;
-}
 
 /* El propio SDK conserva sus dimensiones, estilos y eventos táctiles al
  * recibirse una llamada. No imponerle width/height/overflow de 1px. */
@@ -143,4 +135,13 @@ body.telephony-host-incoming > *:not(.telephony-host-sentinel):not(script):not(.
     overflow: visible !important;
     opacity: 1 !important;
     pointer-events: auto !important;
+}
+
+/* WebRTC embebido: el SDK sólo muestra la UI oficial cuando el CRM
+   expande su iframe de llamada. El iframe vive dentro del shell principal. */
+body.telephony-host-embed {
+    background: transparent;
+}
+body.telephony-host-embed .telephony-host-sentinel {
+    display: none !important;
 }
