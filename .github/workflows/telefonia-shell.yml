@@ -17,6 +17,7 @@ on:
       - "public/css/telefonia_recepcion_marketing.css"
       - "tools/desplegar_telefonia_shell_hostinger.sh"
       - "tools/desplegar_telefonia_entrantes_hostinger.sh"
+      - "tools/desplegar_modal_entrantes_hostinger.sh"
       - "tools/normalizar_telefonia_host_css.php"
       - "tools/resolver_conflictos_telefonia.php"
       - "tools/revertir_telefonia_shell_hostinger.sh"
@@ -27,6 +28,7 @@ on:
       - "tests/telefonia_shell_render_smoke.php"
       - "tests/telefonia_shell_runtime_smoke.js"
       - "tests/telefonia_entrantes_bridge_smoke.js"
+      - "tests/telefonia_modal_entrantes_despliegue_smoke.sh"
       - "tests/telefonia_shell_despliegue_smoke.sh"
       - "tests/telefonia_shell_upgrade_smoke.sh"
       - ".github/workflows/telefonia-shell.yml"
@@ -73,3 +75,6 @@ jobs:
           php -l tools/resolver_conflictos_telefonia.php
           bash -n tests/telefonia_resolver_conflictos_smoke.sh
           bash tests/telefonia_resolver_conflictos_smoke.sh
+          bash -n tools/desplegar_modal_entrantes_hostinger.sh
+          bash -n tests/telefonia_modal_entrantes_despliegue_smoke.sh
+          bash tests/telefonia_modal_entrantes_despliegue_smoke.sh
