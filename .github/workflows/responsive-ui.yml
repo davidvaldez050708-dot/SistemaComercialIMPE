@@ -35,7 +35,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 35 # necesita blobs base para simular la fusión de Hostinger
+          fetch-depth: 0 # los blobs base antiguos deben estar disponibles incluso tras muchos commits
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
