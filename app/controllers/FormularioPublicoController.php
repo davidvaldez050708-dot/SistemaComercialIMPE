@@ -30,6 +30,27 @@ class FormularioPublicoController
             '/../views/formularios/publico_gracias.php';
     }
 
+    public function inscripcion()
+    {
+        $modelo = new FormularioRegistroModel();
+        $estados = $modelo->obtenerEstadosActivos();
+        $perfilesInteres = $this->perfilesInteres();
+
+        $inscripcionAction = BASE_URL .
+            'index.php?controller=formularioPublico&action=guardarInscripcion';
+        $municipiosUrl = BASE_URL .
+            'index.php?controller=formularioPublico&action=municipios';
+
+        require_once __DIR__ .
+            '/../views/formularios/publico_inscripcion.php';
+    }
+
+    public function graciasInscripcion()
+    {
+        require_once __DIR__ .
+            '/../views/formularios/publico_gracias_inscripcion.php';
+    }
+
     public function municipios()
     {
         $estadoId = (int)($_GET['estado_id'] ?? 0);
@@ -145,6 +166,78 @@ class FormularioPublicoController
                 'mensaje' => $requiereMigracion
                     ? 'La base de datos necesita la actualización del segundo número de contacto antes de poder guardar registros.'
                     : 'No fue posible enviar el registro. Intenta nuevamente.'
+            ], 500);
+        }
+    }
+
+    public function guardarInscripcion()
+    {
+        if (
+            strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !==
+            'POST'
+        ) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'Método no permitido.'
+            ], 405);
+        }
+
+        $datos = $this->normalizarRegistro($_POST);
+        $errores = $this->validarRegistro($datos);
+
+        if (!empty($errores)) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => $errores[0],
+                'errores' => $errores
+            ], 422);
+        }
+
+        try {
+            $modelo = new FormularioRegistroModel();
+
+            if (
+                !$modelo->municipioPerteneceAEstado(
+                    (int)$datos['municipio_id'],
+                    (int)$datos['estado_id']
+                )
+            ) {
+                $this->responderJson([
+                    'ok' => false,
+                    'mensaje' =>
+                        'El municipio seleccionado no corresponde al estado elegido.'
+                ], 422);
+            }
+
+            $datos['creado_por'] = null;
+            $datos['origen'] = 'PUBLICO_INSCRIPCION';
+            $inscripcionId = $modelo->guardar($datos);
+
+            $this->responderJson([
+                'ok' => true,
+                'mensaje' => 'Tu inscripción fue enviada correctamente.',
+                'registro_id' => $inscripcionId,
+                'redirect_url' => BASE_URL .
+                    'index.php?controller=formularioPublico&action=graciasInscripcion'
+            ]);
+        } catch (Throwable $error) {
+            $mensajeTecnico = (string)$error->getMessage();
+
+            error_log(
+                '[formulario_publico_inscripcion_guardar] ' .
+                $mensajeTecnico
+            );
+
+            $requiereMigracion =
+                stripos($mensajeTecnico, 'migración') !== false ||
+                stripos($mensajeTecnico, 'movil_secundario') !== false ||
+                stripos($mensajeTecnico, 'unknown column') !== false;
+
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => $requiereMigracion
+                    ? 'La base de datos necesita la actualización del segundo número de contacto antes de poder guardar inscripciones.'
+                    : 'No fue posible enviar la inscripción. Intenta nuevamente.'
             ], 500);
         }
     }
