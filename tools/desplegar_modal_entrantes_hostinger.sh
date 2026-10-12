@@ -70,6 +70,38 @@ for p in $FILES; do
     cp "$DST/$p" "$TMP/$p"
     continue
   fi
+  if [[ "$p" == "public/javascript/telefonia_shell.js" ]]; then
+    # La versión de Hostinger que ya permite contestar era más reciente
+    # que ambas bases de fusión históricas usadas por este script.
+    # Un archivo idéntico a cualquiera de las versiones que publicamos
+    # está probado por su SHA Git: no contiene cambios locales.
+    SHELL_HASH="$(git -C "$SRC" hash-object "$DST/$p")"
+    case "$SHELL_HASH" in
+      6abe2619fa8b5dfde618e09a348e2119e76695f5|\
+      fbe73818568a62e88e17ad672dfc6ebbdb71e0c2|\
+      ec81ef90a752eeb25d2f23a7acba641d1fa49d4c|\
+      ebb326f1960cacd62df22cc323f2c975758d5b57|\
+      c4891465fd7fddf9a97b77dae5a8114699416535|\
+      c122351418386c5878d030d0be3e6f5c13114d5c)
+        echo "Shell telefónico anterior reconocido; actualización segura."
+        cp "$SRC/$p" "$TMP/$p"
+        continue
+        ;;
+    esac
+    # Si Hostinger personalizó el shell, fusionar con la última versión
+    # *realmente publicada* como base común, no con el primer modal.
+    git -C "$SRC" show "cf1c1644baa2ed4275759555db3814b96fe06f93:$p" \
+      > "$TMP/base-shell" || {
+        echo "ERROR: falta el shell base actualizado en Git." >&2; exit 1
+      }
+    if git merge-file -p "$DST/$p" "$TMP/base-shell" "$SRC/$p" > "$TMP/$p"; then
+      echo "Shell personalizado fusionado; se conservaron sus diferencias."
+      continue
+    fi
+    echo "CONFLICTO: shell telefónico con cambios locales incompatibles." >&2
+    echo "SHA local $SHELL_HASH. No se publicó nada." >&2
+    exit 1
+  fi
   git -C "$SRC" show "$BASE_REV:$p" > "$TMP/base" || {
     echo "ERROR: falta la base histórica de Git para $p." >&2; exit 1
   }

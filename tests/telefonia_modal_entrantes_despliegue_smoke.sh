@@ -88,5 +88,54 @@ if deploy --apply > "$TMP/bridge-unknown.out" 2>&1; then
 fi
 grep -Fq 'CONFLICTO: puente Zadarma' "$TMP/bridge-unknown.out"
 [[ "$BEFORE" == "$(sha256sum "$SITE/public/javascript/telefonia_entrantes_bridge.js")" ]]
-echo "Modal Marketing Hostinger: OK (cinco puentes históricos, personalizaciones y respaldo)"
+# El despliegue real de Hostinger ya tiene la versión que permitía
+# contestar, anterior al reinicio del reloj (cf1c), no la base 39f3.
+for rev in \
+  cf1c1644baa2ed4275759555db3814b96fe06f93 \
+  8047ff5d6fab58d77732daaa27ff5fa05f63511b \
+  eca48644040c347766a71d802e763d46c6bfc88e \
+  ab0ac522a0d4de87c75c91693b42aed99f129d92 \
+  4d58c860767de76b7883146a545bcbe55989b419 \
+  a63a9ebf2097b2a447335da75f4b81219b8c6c34; do
+  git -C "$ROOT" show "$rev:public/javascript/telefonia_shell.js" \
+    > "$SITE/public/javascript/telefonia_shell.js"
+  # El puente de la prueba anterior era deliberadamente desconocido;
+  # restaurarlo al contenido vigente para aislar el test de shell.
+  cp "$ROOT/public/javascript/telefonia_entrantes_bridge.js" \
+    "$SITE/public/javascript/telefonia_entrantes_bridge.js"
+  BEFORE="$(sha256sum "$SITE/public/javascript/telefonia_shell.js")"
+  deploy --check
+  [[ "$BEFORE" == "$(sha256sum "$SITE/public/javascript/telefonia_shell.js")" ]]
+  deploy --apply
+  cmp -s "$SITE/public/javascript/telefonia_shell.js" \
+    "$ROOT/public/javascript/telefonia_shell.js"
+done
+# Cambio local independiente: preservar el ajuste al actualizar el shell.
+git -C "$ROOT" show "cf1c1644baa2ed4275759555db3814b96fe06f93:public/javascript/telefonia_shell.js" \
+  > "$SITE/public/javascript/telefonia_shell.js"
+printf '\n// AJUSTE-LOCAL-SHELL-PRESERVAR\n' \
+  >> "$SITE/public/javascript/telefonia_shell.js"
+deploy --check
+deploy --apply
+grep -Fq 'AJUSTE-LOCAL-SHELL-PRESERVAR' \
+  "$SITE/public/javascript/telefonia_shell.js"
+# Cambios incompatibles en un bloque tocado por Git deben abortar sin
+# alterar la versión de producción.
+git -C "$ROOT" show "cf1c1644baa2ed4275759555db3814b96fe06f93:public/javascript/telefonia_shell.js" \
+  > "$SITE/public/javascript/telefonia_shell.js"
+php -r '
+$p=$argv[1]; $s=file_get_contents($p);
+$needle="    const answerIncoming = function () {";
+if (!str_contains($s,$needle)) exit(2);
+$s=str_replace($needle,"    const answerIncoming = function personalizado() {",$s);
+file_put_contents($p,$s);
+' "$SITE/public/javascript/telefonia_shell.js"
+BEFORE="$(sha256sum "$SITE/public/javascript/telefonia_shell.js")"
+if deploy --apply > "$TMP/shell-unknown.out" 2>&1; then
+  echo "ERROR: se publicó shell incompatible." >&2
+  exit 1
+fi
+grep -Fq 'CONFLICTO: shell telefónico' "$TMP/shell-unknown.out"
+[[ "$BEFORE" == "$(sha256sum "$SITE/public/javascript/telefonia_shell.js")" ]]
+echo "Modal Marketing Hostinger: OK (puentes, seis shells históricos, ajustes locales y conflictos)"
 
