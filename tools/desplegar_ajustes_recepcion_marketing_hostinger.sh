@@ -30,7 +30,15 @@ for p in "${FILES[@]}"; do
  git -C "$SRC" show "$BASE:$p" > "$TMP/base" || {
    echo "ERROR: falta base Git para $p." >&2; exit 1;
  }
- if cmp -s "$LIVE/$p" "$SRC/$p" || cmp -s "$LIVE/$p" "$TMP/base"; then
+ if [[ "$p" == "public/css/telefonia_recepcion_marketing.css" ]]; then
+   # Sólo cambió el bloque de Llamar. Una fusión textual del CSS entero
+   # entra en conflicto con personalizaciones válidas de Hostinger.
+   php "$SRC/tools/fusionar_css_recepcion_marketing.php" \
+     "$TMP/base" "$SRC/$p" "$LIVE/$p" "$TMP/$p" || {
+       echo "CONFLICTO: no se integró el CSS de recepción; nada publicado." >&2
+       exit 1
+     }
+ elif cmp -s "$LIVE/$p" "$SRC/$p" || cmp -s "$LIVE/$p" "$TMP/base"; then
    cp "$SRC/$p" "$TMP/$p"
  elif [[ "$p" == "public/javascript/telefonia_shell.js" &&
          "$(git -C "$SRC" hash-object "$LIVE/$p")" == "45e80cccb3e104917aee74122b21ebf8a68498cf" ]]; then
