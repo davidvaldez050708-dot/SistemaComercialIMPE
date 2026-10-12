@@ -68,7 +68,7 @@ if [[ "$MODE" == "--check" ]]; then
 
     echo
     echo "=== BASE DE DATOS ==="
-    php "$SRC/$HELPER" --check
+    IMPE_RUNTIME_ROOT="$DST" IMPE_RUNTIME_ROOT="$DST" php "$SRC/$HELPER" --check
     echo
     echo "No se modificó ningún archivo ni dato (--check)."
     exit 0
@@ -86,7 +86,7 @@ fi
 
 echo
 echo "1/2 Separando datos en la base..."
-php "$SRC/$HELPER" --apply
+IMPE_RUNTIME_ROOT="$DST" php "$SRC/$HELPER" --apply
 
 echo
 echo "2/2 Publicando modelo actualizado..."
