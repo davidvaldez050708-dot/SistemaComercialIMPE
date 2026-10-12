@@ -73,7 +73,9 @@ $checks = [
     'Cada timbrado comienza en cero' =>
         str_contains($hostJs, "state.phase === 'incoming-ringing') return 0;") &&
         str_contains($hostJs, 'duration: answered') &&
-        str_contains($shellJs, "incomingTimer.textContent = ringing ? '00:00'") &&
+        str_contains($shellJs, "call.phase === 'incoming-ringing' ? 0") &&
+        str_contains($shellJs, 'syncIncomingClock(value)') &&
+        str_contains($shellJs, 'updateIncomingTimer(state)') &&
         str_contains($shellJs, 'incomingCallId(value) !== incomingCallId(currentState)'),
     'Contestar y colgar son inmediatos, sin avisos de éxito' =>
         !str_contains($shellJs, 'Contestando… espera la confirmación') &&
