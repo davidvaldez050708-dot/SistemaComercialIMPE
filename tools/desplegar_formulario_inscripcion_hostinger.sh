@@ -56,6 +56,7 @@ FILES=(
     "public/javascript/formularios_registro.js"
     "public/css/formularios.css"
     "public/css/formularios_publico.css"
+    "public/img/brand/logos-inscripcion.svg"
 )
 
 echo "Repositorio fuente : $SRC"
