@@ -34,13 +34,35 @@ for p in $FILES; do
       cp "$DST/$p" "$TMP/$p"
       continue
     fi
-    git -C "$SRC" show "39f306fd998de860a515df9222700669b2d96dab:$p" > "$TMP/base" || {
-      echo "ERROR: falta historial del puente anterior." >&2; exit 1
+    # El puente fue publicado en varias revisiones anteriores.
+    # Su antigua base 39f306f producía un falso conflicto si Hostinger
+    # ya tenía 81c9a2d (la última versión visual antes del SDK directo).
+    # Hash Git del contenido garantiza que NO había ediciones locales:
+    # únicamente en ese caso se reemplaza por la versión actual.
+    BRIDGE_HASH="$(git -C "$SRC" hash-object "$DST/$p")"
+    case "$BRIDGE_HASH" in
+      47f6c0a9e2edfcc5feeb7357f85986d1ae70c181|\
+      b7e59bdad920d42d9d0479d2e7ed1f284455d81a|\
+      ef41bba628e89e882b14d624d961430b1f661ad7|\
+      ec8d56171df6d2cfe9bc5785de556d32345102e0|\
+      f15a7772c1251b6e618743706d72bc4f9203f41a)
+        echo "Puente anterior reconocido y sin modificaciones locales; actualización segura."
+        cp "$SRC/$p" "$TMP/$p"
+        continue
+        ;;
+    esac
+    # Si la copia sí fue personalizada, usar la revisión más reciente
+    # como base de una fusión de tres vías. Nada se publica ante conflicto.
+    git -C "$SRC" show "81c9a2dd04b10e71678311e92249a327ed62fd2f:$p" > "$TMP/base" || {
+      echo "ERROR: falta la versión previa del puente en Git." >&2; exit 1
     }
     if ! git merge-file -p "$DST/$p" "$TMP/base" "$SRC/$p" > "$TMP/$p"; then
-      echo "CONFLICTO: puente Zadarma personalizado, no se publicó nada." >&2
+      echo "CONFLICTO: puente Zadarma con ediciones locales desconocidas; no se publicó nada." >&2
+      echo "Hash del archivo público: $BRIDGE_HASH" >&2
+      echo "Es necesario comparar esas diferencias antes de sustituirlo." >&2
       exit 1
     fi
+    echo "Puente personalizado fusionado sin conflicto; verificando resultado."
     continue
   fi
   [[ -f "$DST/$p" ]] || { echo "ERROR: falta el archivo público $p." >&2; exit 1; }
@@ -75,6 +97,12 @@ if grep -Fq 'data-incoming-provider' "$TMP/app/views/telefonia/shell.php"; then
 fi
 grep -Fq 'telefonia_entrantes_bridge.js' "$TMP/app/views/telefonia/host.php"
 grep -Fq 'IMPE_ZADARMA_INCOMING' "$TMP/public/javascript/telefonia_host.js"
+grep -Fq 'sdk[method].apply(sdk, args || [])' "$TMP/public/javascript/telefonia_entrantes_bridge.js" || {
+  echo "ERROR: el puente preparado no utiliza el SDK de Zadarma." >&2
+  exit 1
+}
+grep -Fq "answer: () => perform('contestar', 'answer'" "$TMP/public/javascript/telefonia_entrantes_bridge.js"
+grep -Fq "hangup: () => perform('colgar', 'finishCall'" "$TMP/public/javascript/telefonia_entrantes_bridge.js"
 grep -Fq "providerBridge()?.answer()" "$TMP/public/javascript/telefonia_shell.js"
 grep -Fq 'const customVisible = incoming' "$TMP/public/javascript/telefonia_shell.js"
 php -l "$TMP/app/views/telefonia/shell.php"

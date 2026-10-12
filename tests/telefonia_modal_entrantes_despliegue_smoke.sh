@@ -61,5 +61,32 @@ grep -Fq 'sdk[method].apply(sdk, args || [])' "$SITE/public/javascript/telefonia
 grep -Fq "answer: () => perform('contestar', 'answer'" "$SITE/public/javascript/telefonia_entrantes_bridge.js"
 grep -Fq "hangup: () => perform('colgar', 'finishCall'" "$SITE/public/javascript/telefonia_entrantes_bridge.js"
 deploy --apply
-echo "Modal Marketing Hostinger: OK (dos versiones históricas, respaldo y conflictos)"
+# Reproducir las cinco versiones del puente que pudieron quedar en Hostinger.
+# La publicada al aparecer el error fue una versión posterior a 39f306f.
+for rev in \
+  81c9a2dd04b10e71678311e92249a327ed62fd2f \
+  1e7e44d072c5d896af7ec9985d960443450afbab \
+  39f306fd998de860a515df9222700669b2d96dab \
+  ab0ac522a0d4de87c75c91693b42aed99f129d92 \
+  4d58c860767de76b7883146a545bcbe55989b419; do
+  git -C "$ROOT" show "$rev:public/javascript/telefonia_entrantes_bridge.js" \
+    > "$SITE/public/javascript/telefonia_entrantes_bridge.js"
+  BEFORE="$(sha256sum "$SITE/public/javascript/telefonia_entrantes_bridge.js")"
+  deploy --check
+  [[ "$BEFORE" == "$(sha256sum "$SITE/public/javascript/telefonia_entrantes_bridge.js")" ]]
+  deploy --apply
+  cmp -s "$SITE/public/javascript/telefonia_entrantes_bridge.js" \
+    "$ROOT/public/javascript/telefonia_entrantes_bridge.js"
+done
+# Una personalización REAL desconocida no debe ser reemplazada ni ignorada.
+printf '%s\n' '/* PUENTE PRIVADO MODIFICADO SIN HISTORIAL */' \
+  > "$SITE/public/javascript/telefonia_entrantes_bridge.js"
+BEFORE="$(sha256sum "$SITE/public/javascript/telefonia_entrantes_bridge.js")"
+if deploy --apply > "$TMP/bridge-unknown.out" 2>&1; then
+  echo "ERROR: el publicador sobrescribió un puente personalizado desconocido." >&2
+  exit 1
+fi
+grep -Fq 'CONFLICTO: puente Zadarma' "$TMP/bridge-unknown.out"
+[[ "$BEFORE" == "$(sha256sum "$SITE/public/javascript/telefonia_entrantes_bridge.js")" ]]
+echo "Modal Marketing Hostinger: OK (cinco puentes históricos, personalizaciones y respaldo)"
 
