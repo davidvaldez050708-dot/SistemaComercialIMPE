@@ -38,7 +38,7 @@ MARKERS=(
     'bootstrap.Toast.getOrCreateInstance'
     'normalizarNumeroDevolucion'
     'El selector heredado .telephony-user span'
-    'Recepción · llamada de retorno vinculada'
+    '/* Una acción general por registro'
     'Telefonía · extensiones: limitar específicamente'
 )
 
