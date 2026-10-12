@@ -47,6 +47,22 @@
     let hostFrame = null;
     let minimized = false;
     let actionNotice = '';
+    // El comando se ejecuta sin esperar la siguiente consulta PBX.
+    // Nunca interpretar la invocación SDK como confirmación de conexión.
+    let pendingIncomingAction = null;
+    const incomingCallId = value =>
+        String(value?.pbxCallId || value?.callToken || '').trim();
+    const pendingFor = state => {
+        if (!pendingIncomingAction || !state?.active ||
+            state.direction !== 'incoming' ||
+            pendingIncomingAction.callId !== incomingCallId(state)) return '';
+        // Rehabilitar el modal cuando la PBX no confirmó el comando.
+        if (Date.now() - pendingIncomingAction.at > 4500) {
+            pendingIncomingAction = null;
+            return '';
+        }
+        return pendingIncomingAction.action;
+    };
     let incomingCompact = false;
     let incomingDrag = null;
     const incomingPositionKey = 'impe:telephony:incoming-position:' + userId;
@@ -191,7 +207,13 @@
 
     const updateState = function (value) {
         if (!freshState(value)) return;
-        if (value.phase === 'in-progress' && currentState?.phase === 'incoming-ringing') {
+        const differentCall = value.direction === 'incoming' &&
+            incomingCallId(value) !== incomingCallId(currentState);
+        const answered = value.phase === 'in-progress' &&
+            currentState?.phase === 'incoming-ringing';
+        const ended = !value.active || value.phase === 'incoming-finished';
+        if (differentCall || answered || ended) {
+            pendingIncomingAction = null;
             actionNotice = '';
         }
         currentState = value;
@@ -228,6 +250,7 @@
         if (!ongoing) {
             forceNativeControls = false;
             minimized = false;
+            pendingIncomingAction = null;
             actionNotice = '';
         }
         const ready = Boolean(state && state.hostReady &&
@@ -258,7 +281,9 @@
         // El panel oficial nunca reemplaza el modal de llamadas entrantes.
         const nativeVisible = Boolean(state?.hostReady) && ongoing &&
             state?.direction !== 'incoming' && forceNativeControls && !minimized;
-        const customVisible = incoming && !minimized;
+        const pending = pendingFor(state);
+        const customVisible = incoming && !minimized &&
+            pending !== 'hangup' && pending !== 'decline';
         call.classList.toggle('is-visible', nativeVisible);
         if (incomingPanel) {
             incomingPanel.hidden = !customVisible;
@@ -274,22 +299,24 @@
             incomingEyebrow.textContent = ringing ? 'RECEPCIÓN TELEFÓNICA' : 'LLAMADA EN CURSO';
             incomingState.textContent = ringing ? 'Llamada entrante a la extensión ' + cfg.extension
                 : 'Conversación en curso';
-            incomingTimer.textContent = formatDuration(state.duration);
+            // La PBX puede arrastrar duration de otra llamada durante ring.
+            incomingTimer.textContent = ringing ? '00:00' :
+                formatDuration(state.duration);
             incomingCompactTimer.textContent = incomingTimer.textContent;
             answerButton.hidden = !ringing;
             declineButton.hidden = !ringing;
-            answerButton.disabled = !ringing;
-            declineButton.disabled = !ringing;
+            answerButton.disabled = !ringing || Boolean(pending);
+            declineButton.disabled = !ringing || Boolean(pending);
             compactAnswer.hidden = !ringing;
             compactDecline.hidden = !ringing;
-            compactAnswer.disabled = !ringing;
-            compactDecline.disabled = !ringing;
+            compactAnswer.disabled = !ringing || Boolean(pending);
+            compactDecline.disabled = !ringing || Boolean(pending);
             muteButton.hidden = ringing;
             hangupButton.hidden = ringing;
             compactMute.hidden = ringing;
             compactHangup.hidden = ringing;
-            hangupButton.disabled = false;
-            compactHangup.disabled = false;
+            hangupButton.disabled = Boolean(pending);
+            compactHangup.disabled = Boolean(pending);
             muteButton.textContent = state.muted ? 'Activar micrófono' : 'Silenciar';
             compactMute.title = state.muted ? 'Activar micrófono' : 'Silenciar';
             notice.hidden = !actionNotice || incomingCompact;
@@ -387,12 +414,17 @@
     window.addEventListener('resize', clampIncoming);
     const answerIncoming = function () {
         if (!freshState(currentState) || !currentState.active ||
-            currentState.phase !== 'incoming-ringing') return;
+            currentState.phase !== 'incoming-ringing' ||
+            pendingFor(currentState)) return;
         if (!providerBridge()?.answer()) {
             actionNotice = providerBridge()?.error() ||
-                'No se identificó un control seguro para contestar.';
+                'No se pudo contestar la llamada.';
         } else {
-            actionNotice = 'Contestando… espera la confirmación de Zadarma.';
+            // Sin alertas: sólo bloquear dobles clics mientras confirma PBX.
+            actionNotice = '';
+            pendingIncomingAction = {
+                action:'answer',callId:incomingCallId(currentState),at:Date.now()
+            };
         }
         render();
     };
@@ -400,12 +432,17 @@
     compactAnswer?.addEventListener('click', answerIncoming);
     const declineIncoming = function () {
         if (!freshState(currentState) || !currentState.active ||
-            currentState.phase !== 'incoming-ringing') return;
+            currentState.phase !== 'incoming-ringing' ||
+            pendingFor(currentState)) return;
         if (!providerBridge()?.decline()) {
             actionNotice = providerBridge()?.error() ||
-                'No se identificó un control seguro para rechazar.';
+                'No se pudo rechazar la llamada.';
         } else {
-            actionNotice = 'Rechazando llamada…';
+            // Ocultar inmediatamente; PBX confirmará el fin en segundo plano.
+            actionNotice = '';
+            pendingIncomingAction = {
+                action:'decline',callId:incomingCallId(currentState),at:Date.now()
+            };
         }
         render();
     };
@@ -418,12 +455,19 @@
     muteButton?.addEventListener('click', toggleIncomingMute);
     compactMute?.addEventListener('click', toggleIncomingMute);
     const hangupIncoming = function () {
-        if (!freshState(currentState) || currentState.phase !== 'in-progress') return;
+        if (!freshState(currentState) || !currentState.active ||
+            currentState.phase !== 'in-progress' ||
+            pendingFor(currentState)) return;
         if (!providerBridge()?.hangup()) {
             actionNotice = providerBridge()?.error() ||
-                'No se identificó un control seguro para finalizar.';
+                'No se pudo finalizar la llamada.';
         } else {
-            actionNotice = 'Finalizando llamada…';
+            // SDK recibió finishCall(): el modal se oculta ya,
+            // sin esperar el sondeo. Si PBX no confirma, reaparece.
+            actionNotice = '';
+            pendingIncomingAction = {
+                action:'hangup',callId:incomingCallId(currentState),at:Date.now()
+            };
         }
         render();
     };
