@@ -55,6 +55,7 @@ $urlEnlaceInscripcion = trim((string)($urlEnlaceInscripcion ?? ''));
             data-generate-link-url="<?= BASE_URL ?>index.php?controller=formulario&action=generarEnlaceInscripcion"
             data-current-link="<?= $texto($urlEnlaceInscripcion) ?>"
             data-quickchart-url="https://quickchart.io/qr"
+            data-form-label="Inscripción"
             data-qr-color="0B8F73">
             <div class="formularios-share-copy">
                 <span class="formularios-kicker">COMPARTIR FORMULARIO</span>
