@@ -598,25 +598,43 @@
         });
     };
 
+    // Cuando el usuario actúa, consultar el estado PBX sin esperar el
+    // siguiente ciclo normal (1.8 segundos). No reiniciar el SDK SIP.
+    const actualizarEstadoTrasAccion = function () {
+        [100, 500, 1050].forEach(function (delay) {
+            window.setTimeout(function () {
+                if (state.direction === 'incoming' && state.active) {
+                    void pollIncoming();
+                }
+            }, delay);
+        });
+    };
+
     window.IMPE_ZADARMA_INCOMING = Object.freeze({
         canAnswer: function () {
             return Boolean(permiteEntrantes && incomingBridge?.available());
         },
         answer: function () {
-            return Boolean(permiteEntrantes && incomingBridge?.answer());
+            const sent = Boolean(permiteEntrantes && incomingBridge?.answer());
+            if (sent) actualizarEstadoTrasAccion();
+            return sent;
         },
         decline: function () {
-            return Boolean(permiteEntrantes && incomingBridge?.decline());
+            const sent = Boolean(permiteEntrantes && incomingBridge?.decline());
+            if (sent) actualizarEstadoTrasAccion();
+            return sent;
         },
         canHangup: function () {
             return Boolean(permiteEntrantes && incomingBridge?.canHangup());
         },
         hangup: function () {
-            return Boolean(permiteEntrantes && incomingBridge?.hangup());
+            const sent = Boolean(permiteEntrantes && incomingBridge?.hangup());
+            if (sent) actualizarEstadoTrasAccion();
+            return sent;
         },
         error: function () {
             return String(incomingBridge?.error() ||
-                'No se detectó el control para contestar.');
+                'No fue posible ejecutar el control WebRTC.');
         }
     });
 
