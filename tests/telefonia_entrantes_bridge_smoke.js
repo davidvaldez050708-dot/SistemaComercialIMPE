@@ -44,4 +44,50 @@ const unknown=factory.create({...doc,querySelectorAll() {return [];}},()=>true,(
 assert.equal(unknown.available(),false);
 assert.equal(unknown.answer(),false);
 assert.equal(calls.length,2,'no se pulsa ningún botón equivocado');
-console.log('Puente entrante WebRTC: OK (contestar, colgar, bloqueo y respaldo)');
+// Zadarma puede dibujar los controles como SVG dentro de un DIV interactivo.
+const svgCalls=[];
+function fakeIcon(color,x) {
+    const button={
+        tagName:'DIV',style:{},parentElement:null,
+        hasAttribute(k){return k==='onclick';},
+        getAttribute(){return null;},
+        getBoundingClientRect(){return {left:x,top:35,width:68,height:68};},
+        click(){svgCalls.push(color);}
+    };
+    const path={
+        tagName:'path',parentElement:button,
+        style:{fill:color},
+        hasAttribute(){return false;},
+        getAttribute(k){return k==='fill'?color:null;},
+        getBoundingClientRect(){return {left:x+14,top:49,width:36,height:36};}
+    };
+    const svg={
+        tagName:'svg',parentElement:button,style:{color},
+        hasAttribute(){return false;},
+        getAttribute(){return null;},
+        getBoundingClientRect(){return {left:x+13,top:48,width:38,height:38};}
+    };
+    return {button,svg,path};
+}
+const redSvg=fakeIcon('#c91b24',40);
+const greenSvg=fakeIcon('#32be19',140);
+const svgDoc={
+    defaultView:{getComputedStyle(el) {
+        return {color:el.style?.color||'transparent',fill:el.style?.fill||'none',
+            stroke:'none',backgroundColor:'transparent',cursor:'pointer'};
+    }},
+    querySelectorAll(sel){return sel==='iframe'?[]:[
+        greenSvg.svg,greenSvg.path,redSvg.svg,redSvg.path
+    ];}
+};
+let svgRinging=true,svgTalking=false;
+const svgBridge=factory.create(svgDoc,()=>svgRinging,()=>svgTalking);
+assert.equal(svgBridge.available(),true,'los SVG del proveedor son reconocibles');
+assert.equal(svgBridge.answer(),true);
+assert.deepEqual(svgCalls,['#32be19']);
+svgRinging=false;svgTalking=true;
+assert.equal(svgBridge.canHangup(),true,
+    'un icono SVG con path interno no debe contarse como dos botones');
+assert.equal(svgBridge.hangup(),true);
+assert.deepEqual(svgCalls,['#32be19','#c91b24']);
+console.log('Puente WebRTC: OK (HTML, SVG anidados, colgado y control desconocido)');
