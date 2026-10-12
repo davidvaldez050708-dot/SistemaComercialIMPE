@@ -11,8 +11,14 @@ on:
       - "public/javascript/telefonia_persistente.js"
       - "public/javascript/telefonia_host.js"
       - "tools/desplegar_marketing_recepcion_hostinger.sh"
+      - "tools/desplegar_ajustes_recepcion_marketing_hostinger.sh"
+      - "public/javascript/telefonia_recepcion_marketing.js"
+      - "app/services/ZadarmaRecordingService.php"
+      - "prueba_telefonia/api/grabacion_recepcion_marketing.php"
       - "tests/marketing_recepcion_pestana_smoke.php"
       - "tests/marketing_recepcion_deploy_smoke.sh"
+      - "tests/marketing_recepcion_ajustes_despliegue_smoke.sh"
+      - "tests/marketing_recepcion_historial_smoke.js"
       - ".github/workflows/marketing-recepcion.yml"
   pull_request:
 jobs:
@@ -33,8 +39,14 @@ jobs:
           php tests/marketing_recepcion_pestana_smoke.php
           node --check public/javascript/telefonia_persistente.js
           node --check public/javascript/telefonia_host.js
+          node --check public/javascript/telefonia_recepcion_marketing.js
+          node tests/marketing_recepcion_historial_smoke.js
+          php -l app/services/ZadarmaRecordingService.php
+          php -l prueba_telefonia/api/grabacion_recepcion_marketing.php
       - name: Simular publicación repetida Hostinger
         run: |
           bash -n tools/desplegar_marketing_recepcion_hostinger.sh
           bash -n tests/marketing_recepcion_deploy_smoke.sh
           bash tests/marketing_recepcion_deploy_smoke.sh
+          bash -n tools/desplegar_ajustes_recepcion_marketing_hostinger.sh
+          bash tests/marketing_recepcion_ajustes_despliegue_smoke.sh
