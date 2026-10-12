@@ -40,10 +40,11 @@ $checks = [
     'Marketing obtiene salientes sólo mediante permiso' =>
         str_contains($rol, "'telefonia.salientes', // devolver llamadas perdidas") &&
         str_contains($servicio, "empty(\$usuario['puede_salientes'])"),
-    'Recepción muestra devoluciones autorizadas' =>
+    'Recepción permite Llamar en todos los estados con autorización' =>
         str_contains($jsRecepcion, "window.IMPE_CAN_CALL_OUT === true") &&
         str_contains($jsRecepcion, 'configuracion?.permite_salientes') &&
-        str_contains($jsRecepcion, "String(call.estado) === 'Perdida'"),
+        str_contains($jsRecepcion, 'puedeLlamarAlRegistro(call)') &&
+        !str_contains($jsRecepcion, "String(call.estado) === 'Perdida'"),
     'Devolución usa WebRTC persistente y soporta transferencia' =>
         str_contains($jsRecepcion, 'telefono.openDialer?.({') &&
         str_contains($jsRecepcion, "'MARKETING_CALLBACK'") &&
