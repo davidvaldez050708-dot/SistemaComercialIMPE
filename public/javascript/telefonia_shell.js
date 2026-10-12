@@ -187,6 +187,11 @@
             incomingCompact = false;
             render();
         },
+        onCallFailed: function () {
+            outgoingAttempt = null;
+            pendingOutgoingHangup = null;
+            render();
+        },
         showOngoing: function () {
             incomingCompact = false;
             render();
