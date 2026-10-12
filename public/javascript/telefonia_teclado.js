@@ -225,20 +225,29 @@
             lastPhone = phone;
             submit.disabled = true;
             setMessage('', false);
+            // Cerrar el teclado en el clic, antes de esperar HTTP/PBX.
+            // Es sólo una transición visual: la conexión la confirma Zadarma.
+            if (opt.singleCallPanel) {
+                handoffToCall();
+                opt.onCallRequested?.({number:phone});
+            }
             try {
                 await api.startCall({
                     destination: phone,
                     institution: context.type === 'MARKETING_CALLBACK' ? 'Recepción telefónica' : '',
                     context: context
                 });
-                if (opt.singleCallPanel) {
-                    handoffToCall();
-                    opt.onCallRequested?.({ number: phone });
-                } else {
+                if (!opt.singleCallPanel) {
                     setMessage('Llamada solicitada. Esperando confirmación de Zadarma…');
                 }
             } catch (error) {
-                setMessage(error?.message || 'No se pudo iniciar la llamada.',true);
+                const message = error?.message || 'No se pudo iniciar la llamada.';
+                if (opt.singleCallPanel) {
+                    opt.onCallFailed?.(message);
+                    callState = null;
+                    show();
+                }
+                setMessage(message, true);
             } finally {
                 busy = false;
                 render();
