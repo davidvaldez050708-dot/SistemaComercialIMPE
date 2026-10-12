@@ -188,6 +188,9 @@
         if (hostFrame) {
             hostFrame.dataset.callDirection = incoming ? 'incoming' : 'outgoing';
         }
+        // El aviso de conexión y "Mostrar llamada" son ambos flotantes:
+        // nunca apilarlos uno encima del otro.
+        status.classList.toggle('is-raised', !restore.hidden);
     };
 
     window.addEventListener('message', function (event) {
