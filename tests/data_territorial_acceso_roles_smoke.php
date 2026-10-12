@@ -38,13 +38,13 @@ $view = (string)file_get_contents($root . '/app/views/data_territorial/index.php
 $checks = [
     'Listado y ficha usan la política común' =>
         substr_count($model, '$this->obtenerAlcanceConsultaPorRol($rolId)') === 2 &&
-        substr_count($model, "if ($alcance === 'TODOS')") === 2,
+        substr_count($model, "if (\$alcance === 'TODOS')") === 2,
     'Solo se consultan roles activos' =>
         str_contains($model, 'WHERE id = ? AND estado = 1'),
     'No se permite un identificador de usuario inválido' =>
         str_contains($model, 'if ((int)$usuarioId <= 0)'),
     'La ficha está protegida por permiso de lectura' =>
-        str_contains($controller, "$this->validarPermiso('data_territorial.ver')") &&
+        str_contains($controller, "\$this->validarPermiso('data_territorial.ver')") &&
         str_contains($controller, '$modelo->puedeAccederEstado('),
     'Los reportes siguen verificando permisos y alcance' =>
         str_contains($reportController, "tienePermiso('data_territorial.ver')") &&
