@@ -46,6 +46,7 @@
 .impe-dialer-transfer[hidden],.impe-dialer-context[hidden] {display:none !important;}
 .impe-dialer-body>label,.impe-dialer-transfer label {display:block;
     margin:10px 0 5px;font-size:11px;font-weight:700;color:#53647d;}
+.impe-dialer-state[hidden] {display:none !important;}
 .impe-dialer-state {min-height:30px;display:flex;align-items:center;gap:7px;
     border-radius:9px;background:#f3fbf6;border:1px solid #dcefe4;
     color:#285b3b;padding:6px 10px;
