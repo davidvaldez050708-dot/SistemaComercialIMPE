@@ -54,7 +54,10 @@ class ZadarmaRecordingService
     {
         $pbxCallId = trim($pbxCallId);
 
-        if (!preg_match('/^out_[a-fA-F0-9]{32,64}$/', $pbxCallId)) {
+        // Una grabación PBX puede pertenecer también a una llamada entrante.
+        // La autorización por usuario, extensión y llamada se verifica
+        // previamente en el endpoint antes de invocar este servicio.
+        if (!preg_match('/^[a-zA-Z0-9_-]{6,100}$/', $pbxCallId)) {
             return null;
         }
 

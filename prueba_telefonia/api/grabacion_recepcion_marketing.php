@@ -105,6 +105,18 @@ try {
 
     $service = new ZadarmaRecordingService();
     $recording = $service->obtenerGrabacionParaLlamada($pbxCallId);
+    // El webhook indica una grabación reportada, no necesariamente lista.
+    // La consulta de disponibilidad NO expone la URL ni descarga audio.
+    if ((string)($_GET['verificar'] ?? '') === '1') {
+        header('Content-Type: application/json; charset=utf-8');
+        header('Cache-Control: private, no-store');
+        header('X-Content-Type-Options: nosniff');
+        echo json_encode([
+            'ok' => true,
+            'disponible' => $recording !== null && !empty($recording['link'])
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        exit;
+    }
     if (!$recording || empty($recording['link'])) {
         http_response_code(404);
         exit('La grabación todavía no está disponible en Zadarma.');

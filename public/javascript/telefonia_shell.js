@@ -217,6 +217,7 @@
             actionNotice = '';
         }
         currentState = value;
+        syncIncomingClock(value);
         lastHeartbeat = Date.now();
         dialer?.sync(value);
         render();
@@ -238,10 +239,44 @@
         channel?.postMessage(message);
     };
     const formatDuration = function (seconds) {
-        const total=Math.max(0,Number(seconds)||0);
+        const total = Math.max(0, Math.floor(Number(seconds) || 0));
         return String(Math.floor(total/60)).padStart(2,'0') + ':' +
-            String(Math.floor(total%60)).padStart(2,'0');
+            String(total%60).padStart(2,'0');
     };
+    // Reloj visual anclado a la primera confirmación de conversación.
+    // Los eventos PBX posteriores no reinician ni saltan el cronómetro.
+    let incomingClock = null;
+    const syncIncomingClock = function (call) {
+        if (!call?.active || call.direction !== 'incoming' ||
+            call.phase !== 'in-progress') {
+            incomingClock = null;
+            return;
+        }
+        const id = incomingCallId(call) || String(call.destination || '');
+        if (!incomingClock || incomingClock.id !== id) {
+            incomingClock = {
+                id: id, startedAt: Date.now(),
+                initial: Math.max(0, Math.floor(Number(call.duration) || 0))
+            };
+        }
+    };
+    const updateIncomingTimer = function (call) {
+        if (!call?.active || call.direction !== 'incoming') return;
+        const seconds = call.phase === 'incoming-ringing' ? 0 :
+            incomingClock && call.phase === 'in-progress'
+                ? incomingClock.initial + Math.floor(Math.max(
+                    0, Date.now() - incomingClock.startedAt) / 1000)
+                : Math.max(0, Number(call.duration) || 0);
+        const clockText = formatDuration(seconds);
+        if (incomingTimer.textContent !== clockText)
+            incomingTimer.textContent = clockText;
+        if (incomingCompactTimer.textContent !== clockText)
+            incomingCompactTimer.textContent = clockText;
+    };
+    // Solo cambian los dígitos, sin volver a dibujar ni mover la ventana.
+    window.setInterval(function () {
+        if (freshState(currentState)) updateIncomingTimer(currentState);
+    }, 250);
 
     const render = function () {
         const state = freshState(currentState) ? currentState : null;
@@ -299,10 +334,8 @@
             incomingEyebrow.textContent = ringing ? 'RECEPCIÓN TELEFÓNICA' : 'LLAMADA EN CURSO';
             incomingState.textContent = ringing ? 'Llamada entrante a la extensión ' + cfg.extension
                 : 'Conversación en curso';
-            // La PBX puede arrastrar duration de otra llamada durante ring.
-            incomingTimer.textContent = ringing ? '00:00' :
-                formatDuration(state.duration);
-            incomingCompactTimer.textContent = incomingTimer.textContent;
+            // Cronómetro local continuo; el timbrado siempre es 00:00.
+            updateIncomingTimer(state);
             answerButton.hidden = !ringing;
             declineButton.hidden = !ringing;
             answerButton.disabled = !ringing || Boolean(pending);
@@ -317,8 +350,16 @@
             compactHangup.hidden = ringing;
             hangupButton.disabled = Boolean(pending);
             compactHangup.disabled = Boolean(pending);
-            muteButton.textContent = state.muted ? 'Activar micrófono' : 'Silenciar';
-            compactMute.title = state.muted ? 'Activar micrófono' : 'Silenciar';
+            // Mismo icono, texto y estado activo del modal de Seguimiento.
+            const muteLabel = state.muted ? 'Activar micrófono' : 'Silenciar';
+            const muteIcon = state.muted ? 'bi-mic' : 'bi-mic-mute';
+            muteButton.innerHTML = '<i class="bi ' + muteIcon +
+                '" aria-hidden="true"></i><span>' + muteLabel + '</span>';
+            muteButton.classList.toggle('is-active', Boolean(state.muted));
+            compactMute.innerHTML = '<i class="bi ' + muteIcon + '" aria-hidden="true"></i>';
+            compactMute.classList.toggle('is-active', Boolean(state.muted));
+            compactMute.title = muteLabel;
+            compactMute.setAttribute('aria-label', muteLabel);
             notice.hidden = !actionNotice || incomingCompact;
             notice.textContent = actionNotice;
         }
