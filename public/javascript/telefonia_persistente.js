@@ -1893,9 +1893,18 @@
                 registrationOpenToken === finishedToken()
             );
 
-        panel.hidden = !show;
+        // Evitar dos paneles de la misma conversación cuando el marcador
+        // ya está visible en el shell persistente superior.
+        let managedByShell = false;
+        try {
+            managedByShell = window.parent !== window &&
+                Boolean(window.parent.IMPE_TELEPHONY_SHELL?.isDialerManagingCall?.());
+        } catch (error) {
+            // Modo clásico: el panel original sigue siendo el respaldo.
+        }
+        panel.hidden = !show || managedByShell;
 
-        if (!show) {
+        if (!show || managedByShell) {
             return;
         }
 
