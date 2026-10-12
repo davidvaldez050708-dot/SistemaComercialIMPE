@@ -22,6 +22,7 @@ on:
       - "tests/telefonia_shell_smoke.php"
       - "tests/telefonia_entrantes_interfaz_smoke.php"
       - "tests/telefonia_entrantes_despliegue_smoke.sh"
+      - "tests/telefonia_resolver_conflictos_smoke.sh"
       - "tests/telefonia_shell_render_smoke.php"
       - "tests/telefonia_shell_runtime_smoke.js"
       - "tests/telefonia_shell_despliegue_smoke.sh"
@@ -65,3 +66,6 @@ jobs:
           bash -n tools/desplegar_telefonia_entrantes_hostinger.sh
           bash -n tests/telefonia_entrantes_despliegue_smoke.sh
           bash tests/telefonia_entrantes_despliegue_smoke.sh
+          php -l tools/resolver_conflictos_telefonia.php
+          bash -n tests/telefonia_resolver_conflictos_smoke.sh
+          bash tests/telefonia_resolver_conflictos_smoke.sh
