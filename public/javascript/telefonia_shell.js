@@ -152,6 +152,9 @@
 
     const updateState = function (value) {
         if (!freshState(value)) return;
+        if (value.phase === 'in-progress' && currentState?.phase === 'incoming-ringing') {
+            actionNotice = '';
+        }
         currentState = value;
         lastHeartbeat = Date.now();
         dialer?.sync(value);
@@ -218,7 +221,7 @@
         const customVisible = incoming && !forceNativeControls && !minimized;
         call.classList.toggle('is-visible', nativeVisible);
         if (incomingPanel) incomingPanel.hidden = !customVisible;
-        restore.hidden = !incoming || !minimized;
+        restore.hidden = !minimized || !(incoming || (ongoing && forceNativeControls));
         if (incoming && incomingPanel) {
             const ringing=state.phase === 'incoming-ringing';
             const bridgeReady=Boolean(providerBridge()?.canAnswer());
@@ -236,9 +239,9 @@
             hangupButton.hidden = ringing;
             hangupButton.disabled = !providerBridge()?.canHangup();
             muteButton.textContent = state.muted ? 'Activar micrófono' : 'Silenciar';
-            notice.hidden = !actionNotice && bridgeReady;
+            notice.hidden = !actionNotice && (!ringing || bridgeReady);
             notice.textContent = actionNotice ||
-                'El teléfono aún no confirma que sus botones puedan utilizarse desde el CRM.';
+                (ringing ? 'El teléfono está conectando sus controles de recepción.' : '');
             providerButton.hidden = !state.hostReady;
         }
         callTitle.textContent = incoming ? 'Llamada entrante' :
@@ -287,7 +290,6 @@
     });
 
     document.querySelector('[data-shell-minimize]')?.addEventListener('click', function () {
-        forceNativeControls = false;
         minimized = true; render();
     });
     document.querySelector('[data-incoming-minimize]')?.addEventListener('click', function () {
