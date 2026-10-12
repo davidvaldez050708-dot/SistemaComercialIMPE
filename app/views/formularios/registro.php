@@ -113,7 +113,8 @@ $urlEnlaceRegistro = trim((string)($urlEnlaceRegistro ?? ''));
             id="modalFormularioRegistroQr"
             tabindex="-1"
             aria-labelledby="modalFormularioRegistroQrTitulo"
-            aria-hidden="true">
+            aria-hidden="true"
+            data-form-qr-modal>
             <div class="modal-dialog modal-dialog-centered formularios-qr-dialog">
                 <div class="modal-content formularios-qr-modal">
                     <div class="modal-header">
