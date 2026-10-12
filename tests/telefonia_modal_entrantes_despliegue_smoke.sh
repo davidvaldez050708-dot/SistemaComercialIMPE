@@ -57,7 +57,9 @@ done
 deploy --check
 deploy --apply
 grep -Fq 'persistent-phone-panel impe-incoming-panel' "$SITE/app/views/telefonia/shell.php"
-grep -Fq "function hangingButton(doc)" "$SITE/public/javascript/telefonia_entrantes_bridge.js"
+grep -Fq 'sdk[method].apply(sdk, args || [])' "$SITE/public/javascript/telefonia_entrantes_bridge.js"
+grep -Fq "answer: () => perform('contestar', 'answer'" "$SITE/public/javascript/telefonia_entrantes_bridge.js"
+grep -Fq "hangup: () => perform('colgar', 'finishCall'" "$SITE/public/javascript/telefonia_entrantes_bridge.js"
 deploy --apply
 echo "Modal Marketing Hostinger: OK (dos versiones históricas, respaldo y conflictos)"
 
