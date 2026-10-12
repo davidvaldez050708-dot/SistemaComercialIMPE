@@ -173,6 +173,18 @@ assert.equal(first.elements['[data-shell-call]'].classList.contains('is-visible'
 first.elements['[data-shell-minimize]'].events.click();
 assert.equal(first.elements['[data-shell-call]'].classList.contains('is-visible'),false,
     'user can minimize provider transfer controls without hanging up');
+// Colgar desde el modal saliente NO desmonta el iframe ni abre otro SIP.
+const outgoingActions=[];
+first.elements['impeCrmFrame'].contentWindow.IMPE_TELEPHONY_PERSISTENT = {
+    hangup(){outgoingActions.push('hangup');}
+};
+first.elements['[data-incoming-hangup]'].events.click();
+assert.deepEqual(outgoingActions,['hangup'],
+    'Colgar usa el controlador persistente real del CRM');
+assert.equal(first.elements['[data-incoming-panel]'].hidden,true,
+    'Colgar oculta inmediatamente el modal sin una segunda interfaz');
+assert.equal(first.elements['[data-shell-host-region]'].children.length,1,
+    'tras Colgar el SDK sigue en el mismo iframe para recibir entrantes');
 
 const second = boot();
 assert.equal(second.elements['[data-shell-host-region]'].children.length,0,
