@@ -52,7 +52,7 @@ $tests = [
         str_contains($hostView, 'telephony-host-tab-info') &&
         str_contains($hostView, 'public/javascript/telefonia_host.js'),
     'Host page keeps tab info visible' =>
-        str_contains($hostCss, ':not(.telephony-host-tab-info)') &&
+        !str_contains($hostCss, 'body:not(.telephony-host-incoming) > *') &&
         str_contains($hostCss, '.telephony-host-tab-info {'),
     'Reception warns about closing telephony context' =>
         str_contains($view, 'data-marketing-reception-browser-note') &&

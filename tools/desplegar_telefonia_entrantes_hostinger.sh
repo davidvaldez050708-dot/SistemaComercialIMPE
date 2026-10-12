@@ -1,99 +1,72 @@
 #!/usr/bin/env bash
-# Corrige la IU de llamadas entrantes, sin tocar SQL, Zadarma ni su SDK remoto.
-# Conserva personalizaciones locales cuando Git puede fusionarlas sin conflictos.
-# Ante un conflicto, aborta ANTES de publicar cualquier archivo.
+# Actualización visual de WebRTC entrante; respaldo previo y fusión con cambios locales.
 set -euo pipefail
 umask 077
-SRC="${IMPE_INCOMING_SOURCE_DIR:-$HOME/crm-preparacion}"
-DST="${IMPE_INCOMING_PUBLIC_DIR:-$HOME/domains/fundacionrededumex.org/public_html}"
-RESP="${IMPE_INCOMING_BACKUP_DIR:-$HOME/respaldos-crm}"
-FILES=(
-  "public/css/telefonia_host.css"
-  "public/javascript/telefonia_host.js"
-  "public/css/telefonia_shell.css"
-  "public/javascript/telefonia_shell.js"
-  "public/javascript/telefonia_persistente.js"
-)
-BASES=(
-  "3078506f6c25b9f3c6efa828ca475c29c26605bf"
-  "4cf410f52d77807e70d2e39c6e0c75eb3b4c0f15"
-  "ba77890e228cb52f0af500c12014ffb6673e637a"
-  "590868cb2b14e9879edddecdf42f1f53574c4931"
-  "10883087c37e5e5a9990165e98017c31eae5797e"
-)
+SRC="$HOME/crm-preparacion"
+DST="$HOME/domains/fundacionrededumex.org/public_html"
+RESP="$HOME/respaldos-crm"
+FILES="public/css/telefonia_host.css public/javascript/telefonia_host.js public/css/telefonia_shell.css public/javascript/telefonia_shell.js public/javascript/telefonia_persistente.js app/views/telefonia/shell.php"
 [[ -d "$SRC/.git" && -f "$DST/index.php" ]] || {
-  echo "ERROR: no se localizó el repositorio o la raíz pública del CRM." >&2
-  exit 1
+  echo "ERROR: falta el repositorio o la raíz de producción" >&2; exit 1;
 }
-TMP="$(mktemp -d)"
-trap 'rm -rf "$TMP"' EXIT
-
-echo "1/4 Preparando cambios y comprobando personalizaciones..."
-for i in "${!FILES[@]}"; do
-  file="${FILES[$i]}"
-  src="$SRC/$file"
-  live="$DST/$file"
-  out="$TMP/$file"
-  [[ -f "$src" && -f "$live" ]] || {
-    echo "ERROR: falta $file en Git o producción. No se publicó nada." >&2
-    exit 1
-  }
-  mkdir -p "$(dirname "$out")"
-  if cmp -s "$src" "$live"; then
-    cp "$live" "$out"
-    continue
+TEMP="$(mktemp -d)"
+trap 'rm -rf "$TEMP"' EXIT
+echo "1/4 Preparando fusión de los archivos de teléfono..."
+for p in $FILES; do
+  [[ -f "$SRC/$p" && -f "$DST/$p" ]] || { echo "ERROR: falta $p" >&2; exit 1; }
+  mkdir -p "$TEMP/$(dirname "$p")"
+  if cmp -s "$SRC/$p" "$DST/$p"; then
+    cp "$SRC/$p" "$TEMP/$p"; continue
   fi
-  git -C "$SRC" cat-file blob "${BASES[$i]}" > "$TMP/base-$i" || {
-    echo "ERROR: no existe la base histórica de $file." >&2
-    exit 1
+  case "$p" in
+    public/css/telefonia_host.css) BASE="361172edf4a61c884cdfa60135152f6b84590759";;
+    public/javascript/telefonia_host.js) BASE="1590a267840e6ac5d341254fdb760d4deb04b4b7";;
+    public/css/telefonia_shell.css) BASE="13cdd5876bedf6313168c53c13666fe602ebe89a";;
+    public/javascript/telefonia_shell.js) BASE="2352c5aa9a1e2c2cb9329cfba79a785c83b5792e";;
+    public/javascript/telefonia_persistente.js) BASE="94d7e74fb8a1dca3e5afd45e44db48a46be9dfce";;
+    app/views/telefonia/shell.php) BASE="763470485ce10bd7a74ec2f938eca3bae0877e31";;
+  esac
+  git -C "$SRC" cat-file blob "$BASE" > "$TEMP/base" || {
+    echo "ERROR: falta un objeto Git histórico, actualiza el repositorio" >&2; exit 1;
   }
-  git merge-file -p "$live" "$TMP/base-$i" "$src" > "$out" || {
-    echo "CONFLICTO: $file tiene modificaciones incompatibles en Hostinger." >&2
-    echo "Sin archivos publicados. Revisa el conflicto antes de continuar." >&2
+  if ! git merge-file -p "$DST/$p" "$TEMP/base" "$SRC/$p" > "$TEMP/$p"; then
+    echo "CONFLICTO: $p contiene cambios incompatibles en producción; no se publicó nada" >&2
     exit 1
-  }
+  fi
 done
-
-echo "2/4 Verificando que la instalación incluya todas las correcciones..."
-grep -Fq 'body:not(.telephony-host-incoming)' "$TMP/public/css/telefonia_host.css"
-grep -Fq "classList.add('telephony-host-incoming')" "$TMP/public/javascript/telefonia_host.js"
-grep -Fq "classList.remove('telephony-host-incoming')" "$TMP/public/javascript/telefonia_host.js"
-grep -Fq 'right: -10000px; bottom: 12px' "$TMP/public/css/telefonia_shell.css"
-grep -Fq 'is-raised' "$TMP/public/javascript/telefonia_shell.js"
-grep -Fq 'incomingInShell' "$TMP/public/javascript/telefonia_persistente.js"
-grep -Fq "state?.phase === 'incoming-finished'" "$TMP/public/javascript/telefonia_persistente.js"
+echo "2/4 Validando antes de tocar producción..."
+grep -Fq 'El SDK conserva sus propios botones' "$TEMP/public/javascript/telefonia_host.js"
+grep -Fq 'hostReady: widgetReady' "$TEMP/public/javascript/telefonia_host.js"
+grep -Fq 'data-shell-call-help' "$TEMP/app/views/telefonia/shell.php"
+grep -Fq 'incomingInShell' "$TEMP/public/javascript/telefonia_persistente.js"
+if grep -Fq 'observerNativo' "$TEMP/public/javascript/telefonia_host.js"; then
+  echo "ERROR: permanece la manipulación previa del SDK" >&2; exit 1
+fi
+php -l "$TEMP/app/views/telefonia/shell.php"
 if command -v node >/dev/null 2>&1; then
-  for file in public/javascript/telefonia_host.js \
-              public/javascript/telefonia_shell.js \
-              public/javascript/telefonia_persistente.js; do
-    node --check "$TMP/$file"
+  for p in public/javascript/telefonia_host.js public/javascript/telefonia_shell.js public/javascript/telefonia_persistente.js; do
+    node --check "$TEMP/$p"
   done
 fi
-
-needs_update=0
-for file in "${FILES[@]}"; do
-  if ! cmp -s "$TMP/$file" "$DST/$file"; then
-    needs_update=1
-    break
-  fi
+MODIFIED=0
+for p in $FILES; do
+  if ! cmp -s "$TEMP/$p" "$DST/$p"; then MODIFIED=1; break; fi
 done
-if [[ "$needs_update" == "0" ]]; then
-  echo "OK: llamadas entrantes ya tienen las correcciones. Ningún archivo modificado."
-  exit 0
+if [[ "$MODIFIED" == "0" ]]; then
+  echo "OK: recepción ya publicada, ningún archivo modificado."; exit 0
 fi
-
-echo "3/4 Respaldando los cinco archivos originales..."
+echo "3/4 Respaldando producción..."
 mkdir -p "$RESP"
 BACKUP="$(mktemp -d "$RESP/telefonia-entrantes-$(date +%Y%m%d-%H%M%S)-XXXXXX")"
-for file in "${FILES[@]}"; do
-  mkdir -p "$BACKUP/$(dirname "$file")"
-  cp -p "$DST/$file" "$BACKUP/$file"
+for p in $FILES; do
+  mkdir -p "$BACKUP/$(dirname "$p")"
+  cp -p "$DST/$p" "$BACKUP/$p"
 done
-
-echo "4/4 Publicando corrección de la interfaz entrante..."
-for file in "${FILES[@]}"; do
-  cp "$TMP/$file" "$DST/$file"
+echo "4/4 Publicando exclusivamente los seis archivos WebRTC..."
+for p in $FILES; do cp "$TEMP/$p" "$DST/$p"; done
+for p in $FILES; do
+  cmp -s "$TEMP/$p" "$DST/$p" || { echo "ERROR: $p difiere tras publicación" >&2; exit 1; }
 done
-echo "OK: receptor actualizado. Las llamadas salientes, Zadarma y MySQL no se modificaron."
+echo "OK: recepción WebRTC actualizada. Sin cambios en Zadarma, MySQL ni datos."
 echo "Respaldo: $BACKUP"
-echo "Termina todas las llamadas, cierra sesión en el CRM y vuelve a entrar."
+echo "Cerrar todas las sesiones del CRM y abrir una nueva para comprobar."
