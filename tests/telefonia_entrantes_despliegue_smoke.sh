@@ -54,7 +54,7 @@ $f = $argv[1]; $css = file_get_contents($f);
 $first = strpos($css, "/*\n * El SDK de Zadarma debe seguir vivo para WebRTC");
 $last = strpos($css, "/* Modo opcional de pestaña:", $first);
 if ($first === false || $last === false) exit(2);
-$legacy = <<<'CSS'
+$legacy = <<<CSS
 /*
  * El SDK de Zadarma debe seguir vivo para WebRTC, pero su marcador nativo
  * nunca debe convertirse en una segunda interfaz del CRM.
