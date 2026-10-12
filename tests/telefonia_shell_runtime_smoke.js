@@ -87,7 +87,8 @@ function boot(opts = {}) {
         message(value) {this.events.message?.({data:value});}
     }
     const ctx = vm.createContext({
-        window:win,document:doc,localStorage:ls,BroadcastChannel,URL,Date,Math,JSON,
+        window:win,document:doc,localStorage:ls,BroadcastChannel,URL,
+        Date:opts.dateClass || Date,Math,JSON,
         console
     });
     vm.runInContext(source,ctx);
@@ -168,7 +169,9 @@ assert.equal(optedOut.elements['[data-shell-host-region]'].children.length,1,
 // Dos entrantes consecutivas: el timbrado nunca hereda el contador previo
 // y los controles responden de inmediato sin mensajes de éxito innecesarios.
 storage.clear();
-const quick = boot();
+let mockNow = Date.now();
+class ClockDate extends Date {static now() {return mockNow;}}
+const quick = boot({dateClass:ClockDate});
 const ops = [];
 const frame = quick.elements['[data-shell-host-region]'].children[0];
 frame.contentWindow.IMPE_ZADARMA_INCOMING = {
@@ -179,7 +182,7 @@ frame.contentWindow.IMPE_ZADARMA_INCOMING = {
 };
 const push = (callId,phase,active,duration) => quick.channels[0].message({
     type:'STATE',
-    state:{userId:8,updatedAt:Date.now(),hostReady:true,active,
+    state:{userId:8,updatedAt:mockNow,hostReady:true,active,
         direction:'incoming',destination:'5512345678',phase,
         pbxCallId:callId,duration}
 });
@@ -216,5 +219,20 @@ assert.deepEqual(ops,['answer','hangup','answer'],
     'la segunda entrante acepta inmediatamente sin estados arrastrados');
 push('call-dos','in-progress',true,2);
 assert.equal(quick.elements['[data-incoming-timer]'].textContent,'00:02');
+mockNow += 5000;
+quick.intervals[0](); // El reloj local no espera el polling de la centralita.
+assert.equal(quick.elements['[data-incoming-timer]'].textContent,'00:07',
+    'el reloj transcurre de forma continua sin nuevo evento PBX');
+push('call-dos','in-progress',true,13); // La PBX reporta una duración mayor.
+assert.equal(quick.elements['[data-incoming-timer]'].textContent,'00:07',
+    'un evento atrasado no provoca saltos de varios segundos');
+assert.match(quick.elements['[data-incoming-mute]'].innerHTML,/bi-mic-mute/,
+    'mismo icono de silenciar que Seguimiento');
+assert.match(quick.elements['[data-incoming-mute]'].innerHTML,/<span>Silenciar<\/span>/,
+    'misma estructura de contenido que Seguimiento');
+push('call-dos','in-progress',true,14);
+mockNow += 1000;
+quick.intervals[0]();
+assert.equal(quick.elements['[data-incoming-timer]'].textContent,'00:08');
 
 console.log('Shell WebRTC: OK (llamadas consecutivas, contador 00:00, respuesta inmediata, cierre y lease)');
