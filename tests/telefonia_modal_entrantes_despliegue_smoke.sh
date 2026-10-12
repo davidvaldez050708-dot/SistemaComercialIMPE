@@ -43,4 +43,15 @@ if deploy --apply > "$TMP/conflict.out" 2>&1; then
 fi
 grep -Fq 'CONFLICTO' "$TMP/conflict.out"
 [[ "$BEFORE" == "$(sha256sum "$SITE/public/javascript/telefonia_shell.js")" ]]
-echo "Modal Marketing Hostinger: OK (preflight, respaldo, idempotencia y conflicto)"
+# Caso de producción: Hostinger ya publicó el modal previo y el puente
+# Zadarma de 39f306f. Asegurar que --check y --apply no lo rechacen.
+for p in $FILES public/javascript/telefonia_entrantes_bridge.js; do
+  git -C "$ROOT" show "39f306fd998de860a515df9222700669b2d96dab:$p" > "$SITE/$p"
+done
+deploy --check
+deploy --apply
+grep -Fq 'persistent-phone-panel impe-incoming-panel' "$SITE/app/views/telefonia/shell.php"
+grep -Fq "function hangingButton(doc)" "$SITE/public/javascript/telefonia_entrantes_bridge.js"
+deploy --apply
+echo "Modal Marketing Hostinger: OK (dos versiones históricas, respaldo y conflictos)"
+
