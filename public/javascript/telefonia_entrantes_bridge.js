@@ -1,175 +1,166 @@
-/* Puente de interacción con la interfaz nativa de Zadarma, sin SDK privado.
- * Sólo acepta controles identificables como pareja verde/rojo en timbrado.
- * Las acciones se ejecutan al hacer clic el operador, no durante un sondeo.
+/* Control seguro del widget WebRTC de Zadarma desde el modal del CRM.
+ * Algunos botones del proveedor son DIV/SVG, no botones HTML.
+ * Nunca reubicar ni ocultar elementos internos del SDK: el motor está en
+ * un iframe persistente y sólo se hace clic tras la acción del operador.
  */
 (function (root) {
     'use strict';
-    const state = {lastError: ''};
+    const ANSWER = /\b(?:answer|accept|contestar|atender|responder)\b/i;
+    const DECLINE = /\b(?:decline|reject|rechazar|colgar|hangup|hang-up|end.call)\b/i;
 
     function colorKind(value) {
-        const raw = String(value || '').toLowerCase();
-        const m = raw.match(/rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)/);
-        if (m) {
-            const r=+m[1], g=+m[2], b=+m[3];
-            if (g >= 90 && g > r * 1.25 && g > b * 1.2) return 'answer';
-            if (r >= 110 && r > g * 1.35 && r > b * 1.2) return 'decline';
-        }
-        if (/^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/.test(raw)) {
+        const raw = String(value || '').toLowerCase().trim();
+        const match = raw.match(/^rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)/);
+        let r,g,b;
+        if (match) {r=+match[1];g=+match[2];b=+match[3];}
+        else if (/^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/.test(raw)) {
             let h=raw.slice(1);
-            if (h.length === 3) h=h.split('').map(c => c+c).join('');
-            return colorKind('rgb('+parseInt(h.slice(0,2),16)+','+
-                parseInt(h.slice(2,4),16)+','+parseInt(h.slice(4,6),16)+')');
-        }
+            if (h.length===3) h=h.split('').map(x=>x+x).join('');
+            r=parseInt(h.slice(0,2),16);
+            g=parseInt(h.slice(2,4),16);
+            b=parseInt(h.slice(4,6),16);
+        } else return '';
+        if (g>=90 && g>r*1.35 && g>b*1.18) return 'answer';
+        if (r>=110 && r>g*1.35 && r>b*1.18) return 'decline';
         return '';
     }
 
-    function accessibleLabel(node) {
-        return [
-            node.getAttribute?.('aria-label'), node.getAttribute?.('title'),
-            node.getAttribute?.('data-action'), node.getAttribute?.('data-testid')
-        ].filter(Boolean).join(' ').toLowerCase();
+    function label(node) {
+        return ['aria-label','title','data-action','data-testid']
+            .map(key=>node.getAttribute?.(key)).filter(Boolean).join(' ').toLowerCase();
     }
-
-    function detectKind(node, win) {
-        const label = accessibleLabel(node);
-        if (/\b(answer|accept|contestar|atender|responder)\b/i.test(label)) return 'answer';
-        if (/\b(decline|reject|rechazar|colgar|hangup|hang-up|end.call)\b/i.test(label)) return 'decline';
-        const parts = [node];
-        try {parts.push(...node.querySelectorAll('svg,svg *,i,span,img'));} catch (_) {}
-        const kinds = new Set();
-        for (const el of parts.slice(0, 28)) {
-            const values = [
-                el.getAttribute?.('fill'), el.getAttribute?.('stroke'),
-                el.getAttribute?.('color'), el.style?.color,
-                el.style?.fill, el.style?.backgroundColor,
-                el.getAttribute?.('src'), el.getAttribute?.('class')
-            ];
-            try {
-                const c=win.getComputedStyle?.(el);
-                if (c) values.push(c.color, c.fill, c.stroke, c.backgroundColor);
-            } catch (_) {}
-            for (const v of values) {
-                const val=String(v || '').toLowerCase();
-                if (/phone.*(green|accept)|(?:green|accept).*phone/.test(val)) kinds.add('answer');
-                if (/phone.*(red|reject|decline)|(?:red|reject|decline).*phone/.test(val)) kinds.add('decline');
-                const kind=colorKind(val);
-                if (kind) kinds.add(kind);
-            }
-        }
-        return kinds.size === 1 ? [...kinds][0] : '';
+    function nodeKind(node,win) {
+        const text=label(node);
+        if (ANSWER.test(text)) return 'answer';
+        if (DECLINE.test(text)) return 'decline';
+        const cls=String(node.getAttribute?.('class')||'');
+        if (/green|accept/i.test(cls) && !/red|reject|decline/i.test(cls)) return 'answer';
+        if (/red|reject|decline/i.test(cls) && !/green|accept/i.test(cls)) return 'decline';
+        const vals=[
+            node.getAttribute?.('fill'),node.getAttribute?.('stroke'),
+            node.getAttribute?.('color'),node.style?.color,node.style?.fill,
+            node.style?.stroke,node.style?.backgroundColor
+        ];
+        try {
+            const css=win?.getComputedStyle?.(node);
+            if (css) vals.push(css.color,css.fill,css.stroke,css.backgroundColor);
+        } catch (_) {}
+        const types=new Set(vals.map(colorKind).filter(Boolean));
+        return types.size===1?[...types][0]:'';
     }
-
-    function clickable(node) {
-        if (!node?.getBoundingClientRect || node.disabled ||
-            node.getAttribute?.('aria-disabled') === 'true') return false;
+    function bounds(node) {
+        if (typeof node?.getBoundingClientRect!=='function') return null;
         const r=node.getBoundingClientRect();
-        return r.width >= 22 && r.width <= 115 && r.height >= 22 &&
-            r.height <= 115;
+        if (!r || r.width<12 || r.height<12 ||
+            r.width>125 || r.height>125) return null;
+        return r;
     }
-
-    function frames(doc) {
-        const items = [{doc,win: doc.defaultView}];
+    function documents(doc) {
+        const frames=[{doc,win:doc.defaultView}];
         try {
             for (const frame of doc.querySelectorAll('iframe')) {
                 try {
                     if (frame.contentDocument?.body) {
-                        items.push({doc:frame.contentDocument,win:frame.contentWindow});
+                        frames.push({doc:frame.contentDocument,win:frame.contentWindow});
                     }
-                } catch (_) { /* iframe externo: no acceder */ }
+                } catch (_) {/* no inspeccionar iframe de otro origen */}
             }
         } catch (_) {}
-        return items;
+        return frames;
     }
-
-    function findPair(doc) {
-        for (const frame of frames(doc)) {
-            const buttons = [];
-            const selector = 'button,[role="button"],[onclick],a,' +
-                '[class*="btn" i],[class*="button" i],[style*="cursor"]';
-            try {
-                for (const node of frame.doc.querySelectorAll(selector)) {
-                    if (!clickable(node)) continue;
-                    const kind=detectKind(node, frame.win);
-                    if (kind) buttons.push({node,kind,rect:node.getBoundingClientRect()});
+    function candidates(doc,win) {
+        let nodes=[];
+        try {
+            nodes=Array.from(doc.querySelectorAll(
+                'button,[role="button"],[onclick],a,svg,svg *,i,span,div,img'
+            ));
+        } catch (_) {return [];}
+        const result=[];
+        for (const node of nodes.slice(0,5000)) {
+            if (node.disabled || node.getAttribute?.('aria-disabled')==='true') continue;
+            let rect=bounds(node);
+            if (!rect) continue;
+            const kind=nodeKind(node,win);
+            if (!kind) continue;
+            let target=node;
+            // Pulsar icono hijo también funciona cuando el SDK escucha clicks
+            // delegados. Ante un ancestro explícitamente interactivo, preferirlo.
+            for (let parent=node.parentElement,n=0;parent&&n<5;
+                parent=parent.parentElement,n++) {
+                if (!bounds(parent)) break;
+                const tag=String(parent.tagName||'').toUpperCase();
+                let cursor='';
+                try {cursor=win?.getComputedStyle?.(parent)?.cursor||'';}catch(_){}
+                if(tag==='BUTTON'||tag==='A'||parent.getAttribute?.('role')==='button'||
+                    parent.hasAttribute?.('onclick')||cursor==='pointer') {
+                    target=parent;break;
                 }
-            } catch (_) {}
-            for (const green of buttons.filter(x=>x.kind==='answer')) {
-                for (const red of buttons.filter(x=>x.kind==='decline')) {
-                    const dx=Math.abs((green.rect.left+green.rect.width/2)-
-                        (red.rect.left+red.rect.width/2));
-                    const dy=Math.abs((green.rect.top+green.rect.height/2)-
-                        (red.rect.top+red.rect.height/2));
-                    if (dx >= 15 && dx <= 185 && dy <= 55) {
-                        return {answer: green.node, decline: red.node};
-                    }
+            }
+            rect=bounds(target)||rect;
+            result.push({node:target,kind,rect});
+        }
+        return result;
+    }
+    function pair(doc) {
+        let best=null,smallest=Infinity;
+        for (const {doc:inner,win} of documents(doc)) {
+            const all=candidates(inner,win);
+            const green=all.filter(x=>x.kind==='answer');
+            const red=all.filter(x=>x.kind==='decline');
+            for(const yes of green) for(const no of red) {
+                if(yes.node===no.node) continue;
+                const cy=x=>x.rect.top+x.rect.height/2;
+                const cx=x=>x.rect.left+x.rect.width/2;
+                const dx=Math.abs(cx(yes)-cx(no));
+                const dy=Math.abs(cy(yes)-cy(no));
+                if(dx<16||dx>195||dy>65)continue;
+                if(dx+dy<smallest) {
+                    best={answer:yes.node,decline:no.node};
+                    smallest=dx+dy;
                 }
             }
         }
-        return null;
+        return best;
     }
-
-    function create(doc, isRinging, isTalking) {
-        const available = () => Boolean(isRinging() && findPair(doc));
-        const act = function (kind) {
-            state.lastError = '';
-            if (!isRinging()) {
-                state.lastError='La llamada ya no está timbrando.';
+    function hangingButton(doc) {
+        const items=new Set();
+        for(const {doc:inner,win} of documents(doc)) {
+            for(const item of candidates(inner,win)) {
+                if(item.kind==='decline') items.add(item.node);
+            }
+        }
+        // No pulsar arbitrariamente otro elemento rojo del widget.
+        return items.size===1?[...items][0]:null;
+    }
+    function create(doc,isRinging,isTalking) {
+        let lastError='';
+        function perform(action) {
+            lastError='';
+            if(action==='hangup'?!isTalking():!isRinging()) {
+                lastError='La llamada ya cambió de estado.';
                 return false;
             }
-            const pair=findPair(doc);
-            if (!pair?.[kind]) {
-                state.lastError='No se identificaron controles WebRTC seguros.';
+            const node=action==='hangup'?hangingButton(doc):pair(doc)?.[action];
+            if(!node) {
+                lastError='Zadarma todavía no expone ese control en el navegador.';
                 return false;
             }
-            try {
-                pair[kind].click();
-                return true;
-            } catch (_) {
-                state.lastError='Zadarma no permitió accionar el control.';
-                return false;
-            }
-        };
-        const findHangup = function () {
-            if (!isTalking()) return null;
-            const candidates = [];
-            for (const frame of frames(doc)) {
-                try {
-                    for (const node of frame.doc.querySelectorAll(
-                        'button,[role="button"],[onclick],a,' +
-                        '[class*="btn" i],[class*="button" i],[style*="cursor"]'
-                    )) {
-                        if (clickable(node) &&
-                            detectKind(node,frame.win) === 'decline') {
-                            candidates.push(node);
-                        }
-                    }
-                } catch (_) {}
-            }
-            return candidates.length === 1 ? candidates[0] : null;
-        };
-        const hangup = function () {
-            state.lastError = '';
-            const button=findHangup();
-            if (!button) {
-                state.lastError='No se identificó un control seguro para colgar.';
-                return false;
-            }
-            try {button.click(); return true;}
+            try {node.click();return true;}
             catch (_) {
-                state.lastError='Zadarma no permitió finalizar desde este control.';
+                lastError='Zadarma no permitió accionar el botón.';
                 return false;
             }
-        };
+        }
         return Object.freeze({
-            available,
-            canHangup: () => Boolean(findHangup()),
-            answer: () => act('answer'),
-            decline: () => act('decline'),
-            hangup,
-            error: () => state.lastError
+            available:()=>Boolean(isRinging()&&pair(doc)),
+            canHangup:()=>Boolean(isTalking()&&hangingButton(doc)),
+            answer:()=>perform('answer'),
+            decline:()=>perform('decline'),
+            hangup:()=>perform('hangup'),
+            error:()=>lastError
         });
     }
-    const factory=Object.freeze({create, colorKind});
-    root.IMPE_ZADARMA_NATIVE_BRIDGE_FACTORY=factory;
-    if (typeof module !== 'undefined' && module.exports) module.exports=factory;
-})(typeof window !== 'undefined' ? window : {});
+    const api=Object.freeze({create,colorKind});
+    root.IMPE_ZADARMA_NATIVE_BRIDGE_FACTORY=api;
+    if (typeof module!=='undefined'&&module.exports)module.exports=api;
+})(typeof window!=='undefined'?window:{});
