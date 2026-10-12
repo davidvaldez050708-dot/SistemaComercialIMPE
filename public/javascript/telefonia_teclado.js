@@ -31,25 +31,27 @@
             '<div class="impe-dialer-backdrop" data-dialer-dismiss></div>' +
             '<section class="impe-dialer-dialog" role="dialog" aria-modal="true" aria-labelledby="impeDialerTitle" tabindex="-1">' +
               '<header class="impe-dialer-heading">' +
-                '<span class="impe-dialer-symbol" aria-hidden="true">☎</span>' +
+                '<span class="impe-dialer-symbol" aria-hidden="true"><i class="bi bi-telephone-fill"></i></span>' +
                 '<div class="impe-dialer-heading-text"><small>TELÉFONO INSTITUCIONAL</small>' +
                   '<h2 id="impeDialerTitle">Nueva llamada</h2>' +
                   '<p data-dialer-ext></p></div>' +
-                '<button type="button" class="impe-dialer-control" data-dialer-close aria-label="Cerrar o minimizar teléfono" title="Cerrar o minimizar">×</button>' +
+                '<button type="button" class="impe-dialer-control" data-dialer-close aria-label="Cerrar o minimizar teléfono" title="Cerrar o minimizar"><i class="bi bi-x-lg" aria-hidden="true"></i></button>' +
               '</header>' +
               '<form class="impe-dialer-body" data-dialer-form autocomplete="off">' +
-                '<div class="impe-dialer-state" data-dialer-state role="status" aria-live="polite">Verificando extensión…</div>' +
+                '<div class="impe-dialer-state" data-dialer-state role="status" aria-live="polite"><i class="bi bi-check-circle" aria-hidden="true"></i><span data-dialer-state-label>Verificando extensión…</span></div>' +
                 '<label for="impeDialerNumber">Número de teléfono</label>' +
-                '<div class="impe-dialer-number-row"><input id="impeDialerNumber" type="tel" inputmode="tel" maxlength="25" placeholder="Ej. 55 1234 5678" data-dialer-input>' +
-                  '<button type="button" class="impe-dialer-backspace" data-dialer-backspace aria-label="Borrar último dígito">⌫</button></div>' +
+                '<div class="impe-dialer-number-row"><input id="impeDialerNumber" type="tel" inputmode="tel" maxlength="25" placeholder="Ej. 55 1234 5678" data-dialer-input></div>' +
                 '<p class="impe-dialer-context" data-dialer-context hidden></p>' +
                 '<div class="impe-dialer-keys" role="group" aria-label="Teclado telefónico">' +
                   ['1','2','3','4','5','6','7','8','9','+','0','⌫'].map(function (k) {
                       return '<button type="button" data-dialer-key="' + k +
-                          '" aria-label="' + (k === '⌫' ? 'Borrar dígito' : k) + '">' + k + '</button>';
+                          '" class="' + (k === '⌫' ? 'impe-dialer-key-delete' : '') +
+                          '" aria-label="' + (k === '⌫' ? 'Borrar dígito' : k) + '">' +
+                          (k === '⌫' ? '<i class="bi bi-backspace" aria-hidden="true"></i>' : k) +
+                          '</button>';
                   }).join('') +
                 '</div>' +
-                '<button class="impe-dialer-primary" data-dialer-call type="submit">☎ &nbsp; Llamar</button>' +
+                '<button class="impe-dialer-primary" data-dialer-call type="submit"><i class="bi bi-telephone-outbound" aria-hidden="true"></i><span>Llamar</span></button>' +
                 '<p class="impe-dialer-help">México: 10 dígitos. Internacional: incluye el prefijo.</p>' +
               '</form>' +
               '<section class="impe-dialer-live" data-dialer-live hidden>' +
@@ -57,9 +59,9 @@
                 '<strong data-dialer-live-number>—</strong>' +
                 '<div class="impe-dialer-state" data-dialer-live-state aria-live="polite"></div>' +
                 '<div class="impe-dialer-actions">' +
-                  '<button type="button" data-dialer-mute>Silenciar</button>' +
-                  '<button type="button" data-dialer-transfer>Transferir</button>' +
-                  '<button type="button" class="is-danger" data-dialer-hangup>Colgar</button>' +
+                  '<button type="button" data-dialer-mute><i class="bi bi-mic-mute" aria-hidden="true"></i><span data-dialer-mute-label>Silenciar</span></button>' +
+                  '<button type="button" data-dialer-transfer><i class="bi bi-arrow-left-right" aria-hidden="true"></i>Transferir</button>' +
+                  '<button type="button" class="is-danger" data-dialer-hangup><i class="bi bi-telephone-x" aria-hidden="true"></i>Colgar</button>' +
                 '</div>' +
                 '<div class="impe-dialer-transfer" data-dialer-transfer-panel hidden>' +
                   '<label for="impeDialerTransfer">Extensión de destino</label>' +
@@ -75,7 +77,7 @@
                 '<button type="button" data-dialer-minimize>Minimizar y seguir trabajando</button>' +
               '</footer>' +
             '</section>' +
-            '<button type="button" class="impe-dialer-restore" data-dialer-restore hidden>☎ &nbsp; Mostrar teléfono</button>';
+            '<button type="button" class="impe-dialer-restore" data-dialer-restore hidden><i class="bi bi-telephone-fill" aria-hidden="true"></i> Mostrar teléfono</button>';
         root.appendChild(wrap);
         const qs = function (s) {return wrap.querySelector(s);};
         const input = qs('[data-dialer-input]');
@@ -96,7 +98,7 @@
             catch (error) { return null; }
         }
         function setMessage(message, isError) {
-            stateText.textContent = String(message || '');
+            qs('[data-dialer-state-label]').textContent = String(message || '');
             stateText.classList.toggle('is-error', Boolean(isError));
             const visibleCallState = qs('[data-dialer-live-state]');
             if (!live.hidden) {
@@ -117,7 +119,7 @@
             qs('[data-dialer-live-number]').textContent = String(callState?.destination || lastPhone || '—');
             qs('[data-dialer-live-state]').textContent = String(callState?.message ||
                 (callState?.status === 'in-progress' ? 'En conversación' : 'Preparando llamada…'));
-            qs('[data-dialer-mute]').textContent = callState?.muted ? 'Activar micrófono' : 'Silenciar';
+            qs('[data-dialer-mute-label]').textContent = callState?.muted ? 'Activar micrófono' : 'Silenciar';
             qs('[data-dialer-transfer]').disabled = !callState?.active ||
                 callState?.status !== 'in-progress';
             qs('[data-dialer-mute]').disabled = !callState?.active ||
@@ -237,10 +239,6 @@
             }
         }
         qs('[data-dialer-form]').addEventListener('submit', dial);
-        qs('[data-dialer-backspace]').addEventListener('click', function () {
-            input.value = input.value.slice(0,-1);
-            input.focus();
-        });
         wrap.querySelectorAll('[data-dialer-key]').forEach(function (key) {
             key.addEventListener('click',function () {
                 if (key.dataset.dialerKey === '⌫') input.value = input.value.slice(0,-1);
