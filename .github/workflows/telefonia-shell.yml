@@ -18,6 +18,7 @@ on:
       - "tools/desplegar_telefonia_shell_hostinger.sh"
       - "tools/desplegar_telefonia_entrantes_hostinger.sh"
       - "tools/desplegar_modal_entrantes_hostinger.sh"
+      - "tools/diagnosticar_shell_telefonia_hostinger.sh"
       - "tools/reparar_assets_telefonia_hostinger.sh"
       - "tools/normalizar_telefonia_host_css.php"
       - "tools/resolver_conflictos_telefonia.php"
@@ -30,6 +31,7 @@ on:
       - "tests/telefonia_shell_runtime_smoke.js"
       - "tests/telefonia_entrantes_bridge_smoke.js"
       - "tests/telefonia_modal_entrantes_despliegue_smoke.sh"
+      - "tests/telefonia_diagnostico_shell_smoke.sh"
       - "tests/telefonia_assets_permisos_smoke.sh"
       - "tests/telefonia_shell_despliegue_smoke.sh"
       - "tests/telefonia_shell_upgrade_smoke.sh"
@@ -78,6 +80,8 @@ jobs:
           bash -n tests/telefonia_resolver_conflictos_smoke.sh
           bash tests/telefonia_resolver_conflictos_smoke.sh
           bash -n tools/desplegar_modal_entrantes_hostinger.sh
+          bash -n tools/diagnosticar_shell_telefonia_hostinger.sh
+          bash tests/telefonia_diagnostico_shell_smoke.sh
           bash -n tests/telefonia_modal_entrantes_despliegue_smoke.sh
           bash tests/telefonia_modal_entrantes_despliegue_smoke.sh
           bash -n tools/reparar_assets_telefonia_hostinger.sh

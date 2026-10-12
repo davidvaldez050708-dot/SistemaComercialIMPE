@@ -102,8 +102,18 @@ for p in $FILES; do
          ! grep -Fq 'providerBridge()?.answer()' "$TMP/$p" ||
          ! grep -Fq 'const customVisible = incoming' "$TMP/$p" ||
          ! grep -Fq 'pendingIncomingAction' "$TMP/$p"; then
-        echo "CONFLICTO: el shell local fusiona pero rompe controles o estados WebRTC." >&2
-        echo "No se publicó nada. Requiere revisar cambios locales." >&2
+        echo "CONFLICTO: el shell local fusiona pero no cumple controles/estados WebRTC." >&2
+        echo "Validaciones faltantes en el shell temporal:" >&2
+        for marker in \
+          "const callHelp = document.querySelector('[data-shell-call-help]');" \
+          'providerBridge()?.answer()' \
+          'const customVisible = incoming' \
+          'pendingIncomingAction'; do
+          if ! grep -Fq "$marker" "$TMP/$p"; then
+            echo "  - FALTA: $marker" >&2
+          fi
+        done
+        echo "No se publicó nada. Ejecuta: bash tools/diagnosticar_shell_telefonia_hostinger.sh --check" >&2
         exit 1
       fi
       echo "Shell personalizado fusionado y controles verificados."
