@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Separa los datos de Formulario de Registro y Formulario de Inscripción.
 # --check: sólo inspecciona código y base de datos.
-# --apply: respalda datos, migra inscripciones y publica el modelo actualizado.
+# --apply: migra las inscripciones de forma transaccional y publica el modelo actualizado.
 set -euo pipefail
 umask 077
 
@@ -86,7 +86,6 @@ fi
 
 echo
 echo "1/2 Separando datos en la base..."
-export IMPE_FORMULARIOS_DB_BACKUP_DIR="$BACKUP/database"
 php "$SRC/$HELPER" --apply
 
 echo
@@ -109,4 +108,4 @@ echo
 echo "OK: Registro e Inscripción quedaron separados."
 echo "Formulario de Registro -> formulario_registros"
 echo "Formulario de Inscripción -> formulario_inscripciones"
-echo "Respaldo: $BACKUP"
+echo "Respaldo del código anterior: $BACKUP"
