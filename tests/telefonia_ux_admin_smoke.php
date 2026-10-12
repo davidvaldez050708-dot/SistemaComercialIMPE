@@ -45,7 +45,7 @@ $checks = [
         str_contains($jsRecepcion, 'configuracion?.permite_salientes') &&
         str_contains($jsRecepcion, "String(call.estado) === 'Perdida'"),
     'Devolución usa WebRTC persistente y soporta transferencia' =>
-        str_contains($jsRecepcion, 'telefono.startCall({') &&
+        str_contains($jsRecepcion, 'telefono.openDialer?.({') &&
         str_contains($jsRecepcion, "'MARKETING_CALLBACK'") &&
         str_contains($recepcion, 'data-marketing-reception-callback-status'),
     'Historial telefónico no se elimina' =>
