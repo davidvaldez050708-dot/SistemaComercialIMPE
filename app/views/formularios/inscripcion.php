@@ -256,7 +256,72 @@ $urlEnlaceInscripcion = trim((string)($urlEnlaceInscripcion ?? ''));
                                     <span>Fondo transparente</span>
                                 </label>
 
-                                <div class="formularios-qr-customizer-actions">
+                                
+                                <div class="formularios-qr-image-options" data-qr-image-options>
+                                    <div class="formularios-qr-image-heading">
+                                        <div>
+                                            <strong>Imagen en el QR</strong>
+                                            <small>Agrega una imagen del sistema o una imagen desde una URL pública.</small>
+                                        </div>
+                                        <label class="form-check form-switch formularios-qr-image-switch">
+                                            <input
+                                                class="form-check-input"
+                                                type="checkbox"
+                                                role="switch"
+                                                data-qr-image-enabled>
+                                            <span>Usar imagen</span>
+                                        </label>
+                                    </div>
+
+                                    <div class="formularios-qr-image-config d-none" data-qr-image-config>
+                                        <div class="formularios-qr-image-source">
+                                            <label>
+                                                <input
+                                                    type="radio"
+                                                    name="qr_image_source"
+                                                    value="system"
+                                                    checked
+                                                    data-qr-image-source>
+                                                <span>Imagen del sistema</span>
+                                            </label>
+                                            <label>
+                                                <input
+                                                    type="radio"
+                                                    name="qr_image_source"
+                                                    value="url"
+                                                    data-qr-image-source>
+                                                <span>URL pública</span>
+                                            </label>
+                                        </div>
+
+                                        <div data-qr-system-image-container>
+                                            <label class="formularios-qr-control formularios-qr-control-full">
+                                                <span>Imagen disponible</span>
+                                                <select data-qr-system-image>
+                                                    <option value="<?= $texto(BASE_URL . 'public/img/brand/porcayo-grupo.png') ?>">Logo institucional 1</option>
+                                                    <option value="<?= $texto(BASE_URL . 'public/img/brand/porcayo-grupo2.png') ?>">Logo institucional 2</option>
+                                                    <option value="<?= $texto(BASE_URL . 'public/img/brand/porcayo-grupo8.png') ?>">Logo institucional 3</option>
+                                                </select>
+                                            </label>
+                                        </div>
+
+                                        <div class="d-none" data-qr-public-image-container>
+                                            <label class="formularios-qr-control formularios-qr-control-full">
+                                                <span>URL pública de la imagen</span>
+                                                <input
+                                                    type="url"
+                                                    placeholder="https://sitio.com/imagen.png"
+                                                    autocomplete="off"
+                                                    data-qr-public-image-url>
+                                            </label>
+                                            <small class="formularios-qr-image-note">
+                                                La imagen debe estar disponible públicamente mediante HTTPS.
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+
+<div class="formularios-qr-customizer-actions">
                                     <button
                                         type="button"
                                         class="btn btn-light"
