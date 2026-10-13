@@ -196,6 +196,10 @@ $nombreShell = $nombreShell !== '' ? $nombreShell : 'Usuario';
                     <i class="bi bi-telephone-x" aria-hidden="true"></i>Colgar
                 </button>
                 <?php if ($analistaEntrantesShell): ?>
+                <button type="button" class="persistent-phone-action"
+                    data-incoming-retry-save hidden>
+                    <i class="bi bi-arrow-clockwise" aria-hidden="true"></i> Reintentar registro
+                </button>
                 <button type="button" class="persistent-phone-action is-primary"
                     data-incoming-register-finished hidden>
                     <i class="bi bi-journal-check" aria-hidden="true"></i> Registrar resultado
