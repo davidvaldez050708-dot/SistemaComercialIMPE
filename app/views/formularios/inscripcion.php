@@ -324,6 +324,28 @@ $urlEnlaceInscripcion = trim((string)($urlEnlaceInscripcion ?? ''));
                                                 La imagen debe estar disponible públicamente mediante HTTP o HTTPS.
                                             </small>
                                         </div>
+
+                                        <div class="formularios-qr-image-size">
+                                            <div class="formularios-qr-image-size-header">
+                                                <span>Tamaño de imagen</span>
+                                                <strong data-qr-image-size-value>20%</strong>
+                                            </div>
+                                            <input
+                                                type="range"
+                                                min="10"
+                                                max="30"
+                                                step="1"
+                                                value="20"
+                                                aria-label="Tamaño de la imagen central del QR"
+                                                data-qr-image-size>
+                                            <div class="formularios-qr-image-size-scale">
+                                                <span>Pequeña</span>
+                                                <span>Grande</span>
+                                            </div>
+                                            <small>
+                                                Se recomienda no superar el 30% para conservar una lectura correcta del QR.
+                                            </small>
+                                        </div>
                                     </div>
                                 </div>
 
