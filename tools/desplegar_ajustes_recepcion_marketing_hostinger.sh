@@ -33,8 +33,15 @@ for p in "${FILES[@]}"; do
  if [[ "$p" == "public/css/telefonia_recepcion_marketing.css" ]]; then
    # Sólo cambió el bloque de Llamar. Una fusión textual del CSS entero
    # entra en conflicto con personalizaciones válidas de Hostinger.
+   # Este publicador histórico sólo integra el bloque Llamar.
+   # Los estilos posteriores (Tipo/Salientes) tienen su propio publicador.
+   # Evitar incluir cambios posteriores fuera del bloque permitido.
+   git -C "$SRC" show "2abcfff9e7d789a582713cb4a7f3865e760baa8c:$p" \
+     > "$TMP/css-boton-llamar" || {
+       echo "ERROR: falta versión CSS histórica de Llamar." >&2; exit 1
+     }
    php "$SRC/tools/fusionar_css_recepcion_marketing.php" \
-     "$TMP/base" "$SRC/$p" "$LIVE/$p" "$TMP/$p" || {
+     "$TMP/base" "$TMP/css-boton-llamar" "$LIVE/$p" "$TMP/$p" || {
        echo "CONFLICTO: no se integró el CSS de recepción; nada publicado." >&2
        exit 1
      }
