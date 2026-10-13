@@ -175,6 +175,9 @@ assert.equal(first.elements['[data-shell-call]'].classList.contains('is-visible'
 first.elements['[data-shell-minimize]'].events.click();
 assert.equal(first.elements['[data-shell-call]'].classList.contains('is-visible'),false,
     'user can minimize provider transfer controls without hanging up');
+// Restaurar el panel antes de probar Colgar: la prueba anterior lo
+// había minimizado deliberadamente para comprobar el control nativo.
+first.elements['[data-shell-restore]'].events.click();
 // Colgar desde el modal saliente NO desmonta el iframe ni abre otro SIP.
 const outgoingActions=[];
 first.elements['impeCrmFrame'].contentWindow.IMPE_TELEPHONY_PERSISTENT = {
