@@ -73,6 +73,8 @@ html, body {
 .impe-incoming-panel .persistent-phone-actions [data-incoming-close-finished]:not([hidden]) {
   grid-column: 1 / -1;
   justify-self: end;
+  margin-left: auto;
+  margin-right: 0;
   width: min(100%, 200px);
 }
 .impe-incoming-panel .persistent-phone-actions [hidden],
