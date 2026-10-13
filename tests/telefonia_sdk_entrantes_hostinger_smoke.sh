@@ -28,15 +28,15 @@ grep -Fq 'ya publicado' <<< "$result"
 export IMPE_RING_PUBLIC="$TMP/conflict"
 mkdir -p "$IMPE_RING_PUBLIC"
 git archive "$BASE" | tar -xf - -C "$IMPE_RING_PUBLIC"
-sed -i "s/const permiteEntrantes =/const permiteEntrantesCustom =/" \
-  "$IMPE_RING_PUBLIC/public/javascript/telefonia_host.js"
-cp "$IMPE_RING_PUBLIC/public/javascript/telefonia_host.js" "$TMP/unmodified.js"
+sed -i "s/permite_entrantes/permite_entrantes_CUSTOM/" \
+  "$IMPE_RING_PUBLIC/app/views/telefonia/host.php"
+cp "$IMPE_RING_PUBLIC/app/views/telefonia/host.php" "$TMP/unmodified.php"
 if bash tools/desplegar_timbrado_webRTC_analista_hostinger.sh --apply > "$TMP/err.log" 2>&1; then
   echo 'ERROR: el despliegue ignoró modificaciones incompatibles.' >&2
   exit 1
 fi
 grep -q CONFLICTO "$TMP/err.log"
-cmp -s "$TMP/unmodified.js" "$IMPE_RING_PUBLIC/public/javascript/telefonia_host.js"
+cmp -s "$TMP/unmodified.php" "$IMPE_RING_PUBLIC/app/views/telefonia/host.php"
 [[ ! -e "$IMPE_RING_PUBLIC/public/javascript/telefonia_sdk_entrantes_observador.js" ]]
 
 # Protección de rol y de evidencia verificable.
