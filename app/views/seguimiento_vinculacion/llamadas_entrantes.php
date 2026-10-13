@@ -89,14 +89,14 @@ $duracionEntrante = static function ($segundos) {
                         <?php else: ?>—<?php endif; ?>
                     </td>
                     <td class="text-end">
-                        <?php if (!$vinculada && !$sinIdentificar && $finalizada): ?>
+                        <?php if (!$vinculada && $finalizada && (!$sinIdentificar || !empty($llamada['contestada']))): ?>
                             <button type="button" class="btn btn-system-save linkage-incoming-open"
                                 data-call-id="<?= $esc($pbxId) ?>"
                                 data-phone="<?= $esc($llamada['numero'] ?? '') ?>"
                                 data-answer="<?= !empty($llamada['contestada']) ? '1' : '0' ?>"
                                 data-duration="<?= $esc($duracionEntrante($llamada['duracion'] ?? 0)) ?>">
                                 <i class="bi bi-journal-check"></i>
-                                Registrar resultado
+                                <?= $sinIdentificar ? 'Vincular expediente' : 'Registrar resultado' ?>
                             </button>
                         <?php else: ?>—<?php endif; ?>
                     </td>
