@@ -79,6 +79,27 @@ document.addEventListener('DOMContentLoaded', function () {
     const qrTransparent = modalQrElement?.querySelector(
         '[data-qr-transparent]'
     );
+    const qrImageEnabled = modalQrElement?.querySelector(
+        '[data-qr-image-enabled]'
+    );
+    const qrImageConfig = modalQrElement?.querySelector(
+        '[data-qr-image-config]'
+    );
+    const qrImageSources = modalQrElement?.querySelectorAll(
+        '[data-qr-image-source]'
+    ) || [];
+    const qrSystemImage = modalQrElement?.querySelector(
+        '[data-qr-system-image]'
+    );
+    const qrSystemImageContainer = modalQrElement?.querySelector(
+        '[data-qr-system-image-container]'
+    );
+    const qrPublicImageContainer = modalQrElement?.querySelector(
+        '[data-qr-public-image-container]'
+    );
+    const qrPublicImageUrl = modalQrElement?.querySelector(
+        '[data-qr-public-image-url]'
+    );
     const botonAplicarQr = modalQrElement?.querySelector(
         '[data-apply-form-qr]'
     );
@@ -293,6 +314,42 @@ document.addEventListener('DOMContentLoaded', function () {
             : fallback;
     };
 
+    const obtenerImagenCentralQr = function () {
+        if (!qrImageEnabled?.checked) {
+            return '';
+        }
+
+        const source = Array.from(qrImageSources).find(
+            (radio) => radio.checked
+        )?.value || 'system';
+
+        if (source === 'system') {
+            return String(qrSystemImage?.value || '').trim();
+        }
+
+        const valor = String(qrPublicImageUrl?.value || '').trim();
+
+        if (valor === '') {
+            throw new Error(
+                'Ingresa una URL pública para la imagen del QR.'
+            );
+        }
+
+        try {
+            const url = new URL(valor);
+
+            if (!['http:', 'https:'].includes(url.protocol)) {
+                throw new Error();
+            }
+
+            return url.toString();
+        } catch (error) {
+            throw new Error(
+                'La URL de la imagen no es válida.'
+            );
+        }
+    };
+
     const obtenerConfiguracionQr = function () {
         const dark = normalizarColorQr(
             qrDark?.value,
@@ -339,6 +396,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const config = obtenerConfiguracionQr();
 
+        const imagenCentral = obtenerImagenCentralQr();
+
         const parametros = new URLSearchParams({
             text: enlacePublico,
             size: config.size,
@@ -349,9 +408,14 @@ document.addEventListener('DOMContentLoaded', function () {
             dotStyle: config.dotStyle,
             finderStyle: config.finderStyle,
             finderDotStyle: config.finderDotStyle,
-            ecLevel: config.ecLevel,
+            ecLevel: imagenCentral !== '' ? 'H' : config.ecLevel,
             format: 'png'
         });
+
+        if (imagenCentral !== '') {
+            parametros.set('centerImageUrl', imagenCentral);
+            parametros.set('centerImageSizeRatio', '0.20');
+        }
 
         return quickChartBase + '?' + parametros.toString();
     };
@@ -426,6 +490,26 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (qrTransparent) {
             qrTransparent.checked = false;
+        }
+
+        if (qrImageEnabled) {
+            qrImageEnabled.checked = false;
+        }
+
+        qrImageConfig?.classList.add('d-none');
+        qrSystemImageContainer?.classList.remove('d-none');
+        qrPublicImageContainer?.classList.add('d-none');
+
+        qrImageSources.forEach(function (radio) {
+            radio.checked = radio.value === 'system';
+        });
+
+        if (qrSystemImage) {
+            qrSystemImage.selectedIndex = 0;
+        }
+
+        if (qrPublicImageUrl) {
+            qrPublicImageUrl.value = '';
         }
 
         actualizarPreviewQr();
@@ -579,6 +663,55 @@ document.addEventListener('DOMContentLoaded', function () {
     qrTransparent?.addEventListener('change', function () {
         if (qrLight) {
             qrLight.disabled = qrTransparent.checked;
+        }
+    });
+
+    const actualizarFuenteImagenQr = function () {
+        const source = Array.from(qrImageSources).find(
+            (radio) => radio.checked
+        )?.value || 'system';
+
+        qrSystemImageContainer?.classList.toggle(
+            'd-none',
+            source !== 'system'
+        );
+        qrPublicImageContainer?.classList.toggle(
+            'd-none',
+            source !== 'url'
+        );
+    };
+
+    qrImageEnabled?.addEventListener('change', function () {
+        qrImageConfig?.classList.toggle(
+            'd-none',
+            !qrImageEnabled.checked
+        );
+        actualizarFuenteImagenQr();
+        actualizarPreviewQr();
+    });
+
+    qrImageSources.forEach(function (radio) {
+        radio.addEventListener('change', function () {
+            actualizarFuenteImagenQr();
+
+            if (
+                radio.checked &&
+                (radio.value !== 'url' ||
+                    String(qrPublicImageUrl?.value || '').trim() !== '')
+            ) {
+                actualizarPreviewQr();
+            }
+        });
+    });
+
+    qrSystemImage?.addEventListener(
+        'change',
+        actualizarPreviewQr
+    );
+
+    qrPublicImageUrl?.addEventListener('change', function () {
+        if (qrImageEnabled?.checked) {
+            actualizarPreviewQr();
         }
     });
 
