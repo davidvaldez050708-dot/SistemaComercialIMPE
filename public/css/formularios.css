@@ -1184,3 +1184,254 @@
     }
 }
 
+
+
+/* ======================================================================
+   FORMULARIOS · PERSONALIZADOR QR
+   ====================================================================== */
+
+[data-form-qr-modal] .modal-dialog.formularios-qr-dialog {
+    width: min(calc(100% - 32px), 720px) !important;
+    max-width: 720px !important;
+    margin: 1.5rem auto !important;
+}
+
+[data-form-qr-modal] .formularios-qr-modal .modal-body {
+    max-height: calc(100vh - 150px);
+    padding: 18px !important;
+    overflow-y: auto;
+}
+
+.formularios-qr-workspace {
+    display: grid;
+    grid-template-columns: 230px minmax(0, 1fr);
+    gap: 18px;
+    align-items: start;
+}
+
+.formularios-qr-preview-column {
+    min-width: 0;
+}
+
+[data-form-qr-modal] .formularios-qr-preview {
+    width: 220px !important;
+    max-width: 100%;
+    margin: 0 auto;
+    border-radius: 13px;
+}
+
+.formularios-qr-customizer {
+    min-width: 0;
+    padding: 15px;
+    border: 1px solid #e1e8f0;
+    border-radius: 13px;
+    background: #f9fbfd;
+}
+
+.formularios-qr-customizer-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 13px;
+}
+
+.formularios-qr-customizer-title > span {
+    width: 34px;
+    height: 34px;
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9px;
+    background: #edf3ff;
+    color: #223a84;
+    font-size: 16px;
+}
+
+.formularios-inscripcion-theme
+.formularios-qr-customizer-title > span {
+    background: var(--inscripcion-green-soft);
+    color: var(--inscripcion-green);
+}
+
+.formularios-qr-customizer-title strong,
+.formularios-qr-customizer-title small {
+    display: block;
+}
+
+.formularios-qr-customizer-title strong {
+    color: var(--color-text-primary);
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.formularios-qr-customizer-title small {
+    margin-top: 2px;
+    color: var(--color-text-secondary);
+    font-size: 9px;
+    font-weight: 600;
+    line-height: 1.35;
+}
+
+.formularios-qr-controls {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.formularios-qr-control {
+    min-width: 0;
+}
+
+.formularios-qr-control > span {
+    display: block;
+    margin-bottom: 5px;
+    color: #46556b;
+    font-size: 9px;
+    font-weight: 800;
+}
+
+.formularios-qr-control select,
+.formularios-qr-control input[type="color"] {
+    width: 100%;
+    height: 36px;
+    border: 1px solid #d5dfeb;
+    border-radius: 8px;
+    outline: 0;
+    background: #fff;
+    color: #33445d;
+    font-family: 'Manrope', sans-serif;
+    font-size: 9px;
+    font-weight: 700;
+}
+
+.formularios-qr-control select {
+    padding: 0 9px;
+}
+
+.formularios-qr-control input[type="color"] {
+    padding: 4px;
+    cursor: pointer;
+}
+
+.formularios-qr-control select:focus,
+.formularios-qr-control input[type="color"]:focus {
+    border-color: #6f8fd2;
+    box-shadow: 0 0 0 3px rgba(34, 58, 132, .08);
+}
+
+.formularios-inscripcion-theme
+.formularios-qr-control select:focus,
+.formularios-inscripcion-theme
+.formularios-qr-control input[type="color"]:focus {
+    border-color: var(--inscripcion-green);
+    box-shadow: 0 0 0 3px rgba(11, 143, 115, .08);
+}
+
+.formularios-qr-control input[type="color"]:disabled {
+    cursor: not-allowed;
+    opacity: .45;
+}
+
+.formularios-qr-transparent {
+    margin-top: 11px;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    color: #526078;
+    font-size: 9px;
+    font-weight: 750;
+    cursor: pointer;
+}
+
+.formularios-qr-transparent input {
+    width: 14px;
+    height: 14px;
+    accent-color: #223a84;
+}
+
+.formularios-inscripcion-theme
+.formularios-qr-transparent input {
+    accent-color: var(--inscripcion-green);
+}
+
+.formularios-qr-customizer-actions,
+.formularios-qr-image-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.formularios-qr-customizer-actions {
+    margin-top: 13px;
+}
+
+.formularios-qr-customizer-actions .btn,
+.formularios-qr-image-actions .btn {
+    min-height: 34px;
+    padding: 7px 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border-radius: 8px;
+    font-family: 'Manrope', sans-serif;
+    font-size: 9px;
+    font-weight: 800;
+}
+
+.formularios-qr-help {
+    max-width: 580px !important;
+    margin: 14px auto 0 !important;
+    color: #778397 !important;
+    font-size: 9px !important;
+    line-height: 1.45 !important;
+}
+
+.formularios-qr-image-actions {
+    margin-top: 13px;
+    padding-top: 13px;
+    border-top: 1px solid #e7ecf2;
+}
+
+[data-form-qr-modal] .formularios-qr-link {
+    margin-top: 10px !important;
+    padding: 8px 9px !important;
+    font-size: 7.8px !important;
+}
+
+@media (max-width: 700px) {
+    [data-form-qr-modal] .modal-dialog.formularios-qr-dialog {
+        width: min(calc(100% - 20px), 520px) !important;
+        max-width: 520px !important;
+        margin: .75rem auto !important;
+    }
+
+    .formularios-qr-workspace {
+        grid-template-columns: 1fr;
+    }
+
+    [data-form-qr-modal] .formularios-qr-preview {
+        width: 205px !important;
+    }
+
+    .formularios-qr-controls {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 420px) {
+    .formularios-qr-controls {
+        grid-template-columns: 1fr;
+    }
+
+    .formularios-qr-customizer-actions,
+    .formularios-qr-image-actions {
+        flex-direction: column;
+    }
+
+    .formularios-qr-customizer-actions .btn,
+    .formularios-qr-image-actions .btn {
+        width: 100%;
+    }
+}
