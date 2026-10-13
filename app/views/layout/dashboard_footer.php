@@ -151,6 +151,9 @@ $actionDashboardFooter = strtolower(
 $esSeguimientoEstadoFooter =
     $controllerDashboardFooter === 'seguimientovinculacion' &&
     $actionDashboardFooter === 'estado';
+$esSeguimientoEntrantesAnalistaFooter =
+    $controllerDashboardFooter === 'seguimientovinculacion' &&
+    $actionDashboardFooter === 'llamadasentrantes';
 $esSeguimientoDetalleFooter =
     $controllerDashboardFooter === 'seguimientovinculacion' &&
     $actionDashboardFooter === 'detalle';
@@ -190,6 +193,10 @@ if ($esSeguimientoEstadoFooter) {
             'seguimiento_post_envio.js'
         ]
     );
+}
+
+if ($esSeguimientoEntrantesAnalistaFooter) {
+    $jsDashboardFooter[] = 'seguimiento_entrantes_analista.js';
 }
 
 if ($esSeguimientoDetalleFooter) {
