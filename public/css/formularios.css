@@ -1437,3 +1437,146 @@
         width: 100%;
     }
 }
+
+
+/* ======================================================================
+   FORMULARIOS · IMAGEN CENTRAL QR
+   ====================================================================== */
+
+.formularios-qr-image-options {
+    margin-top: 13px;
+    padding-top: 13px;
+    border-top: 1px solid #e2e8f0;
+}
+
+.formularios-qr-image-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.formularios-qr-image-heading strong,
+.formularios-qr-image-heading small {
+    display: block;
+}
+
+.formularios-qr-image-heading strong {
+    color: #34445c;
+    font-size: 10px;
+    font-weight: 800;
+}
+
+.formularios-qr-image-heading small {
+    margin-top: 2px;
+    color: #7a8799;
+    font-size: 8px;
+    font-weight: 600;
+    line-height: 1.35;
+}
+
+.formularios-qr-image-switch {
+    margin: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    color: #526078;
+    font-size: 8.5px;
+    font-weight: 800;
+}
+
+.formularios-qr-image-switch .form-check-input {
+    margin: 0;
+    cursor: pointer;
+}
+
+.formularios-qr-image-config {
+    margin-top: 11px;
+}
+
+.formularios-qr-image-source {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.formularios-qr-image-source label {
+    margin: 0;
+    padding: 7px 9px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid #d9e2ee;
+    border-radius: 8px;
+    background: #fff;
+    color: #4b5b72;
+    font-size: 8.5px;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.formularios-qr-image-source input {
+    margin: 0;
+    accent-color: #223a84;
+}
+
+.formularios-inscripcion-theme
+.formularios-qr-image-source input {
+    accent-color: var(--inscripcion-green);
+}
+
+.formularios-qr-control-full {
+    display: block;
+    width: 100%;
+}
+
+.formularios-qr-control input[type="url"] {
+    width: 100%;
+    height: 36px;
+    padding: 0 9px;
+    border: 1px solid #d5dfeb;
+    border-radius: 8px;
+    outline: 0;
+    background: #fff;
+    color: #33445d;
+    font-family: 'Manrope', sans-serif;
+    font-size: 9px;
+    font-weight: 700;
+}
+
+.formularios-qr-control input[type="url"]:focus {
+    border-color: #6f8fd2;
+    box-shadow: 0 0 0 3px rgba(34, 58, 132, .08);
+}
+
+.formularios-inscripcion-theme
+.formularios-qr-control input[type="url"]:focus {
+    border-color: var(--inscripcion-green);
+    box-shadow: 0 0 0 3px rgba(11, 143, 115, .08);
+}
+
+.formularios-qr-image-note {
+    display: block;
+    margin-top: 5px;
+    color: #7c899b;
+    font-size: 7.8px;
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+@media (max-width: 420px) {
+    .formularios-qr-image-heading {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .formularios-qr-image-source {
+        flex-direction: column;
+    }
+
+    .formularios-qr-image-source label {
+        width: 100%;
+    }
+}
