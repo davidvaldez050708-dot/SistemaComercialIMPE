@@ -20,6 +20,8 @@ on:
       - "tests/telefonia_analista_entrantes_smoke.php"
       - "tools/desplegar_entrantes_analista_hostinger.sh"
       - "tests/telefonia_analista_hostinger_smoke.sh"
+      - "tests/telefonia_analista_ui_smoke.sh"
+      - "tools/desplegar_ui_entrantes_analista_hostinger.sh"
       - ".github/workflows/telefonia-analista-entrantes.yml"
   pull_request:
     paths:
@@ -29,6 +31,8 @@ on:
       - "tests/telefonia_analista_entrantes_smoke.php"
       - "tools/desplegar_entrantes_analista_hostinger.sh"
       - "tests/telefonia_analista_hostinger_smoke.sh"
+      - "tests/telefonia_analista_ui_smoke.sh"
+      - "tools/desplegar_ui_entrantes_analista_hostinger.sh"
       - ".github/workflows/telefonia-analista-entrantes.yml"
 jobs:
   validar:
@@ -62,3 +66,6 @@ jobs:
           bash -n tools/desplegar_entrantes_analista_hostinger.sh
           bash -n tests/telefonia_analista_hostinger_smoke.sh
           bash tests/telefonia_analista_hostinger_smoke.sh
+          bash -n tools/desplegar_ui_entrantes_analista_hostinger.sh
+          bash -n tests/telefonia_analista_ui_smoke.sh
+          bash tests/telefonia_analista_ui_smoke.sh
