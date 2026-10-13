@@ -37,7 +37,7 @@ $checks = [
         str_contains($servicio, "a.tipo_asignacion = 'ANALISTA_DATOS'") &&
         str_contains($servicio, 'a.fecha_fin'),
     'Llamada no contestada no crea interacción' =>
-        str_contains($servicio, "empty($call['answer_at']) && $decision !== 'sin_identificar'"),
+        str_contains($servicio, 'empty($call[\'answer_at\']) && $decision !== \'sin_identificar\''),
     'Un único resultado por analista y llamada' =>
         str_contains($sql, 'UNIQUE KEY uk_analista_llamada (usuario_id, pbx_call_id)') &&
         str_contains($servicio, 'FOR UPDATE'),
@@ -52,7 +52,7 @@ $checks = [
         str_contains($modelo, 'proveedor_externo,') &&
         str_contains($modelo, 'id_externo,') &&
         str_contains($modelo, 'duracion_segundos,') &&
-        str_contains($servicio, "'id_externo' => $id"),
+        str_contains($servicio, "'id_externo' => " . '$id'),
     'No registrar una verificación efectiva falsa' =>
         str_contains($servicio, "'datos_verificados' => 0") &&
         str_contains($servicio, "'descartar' => 0"),
