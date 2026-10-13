@@ -69,10 +69,10 @@ html, body {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 /* Al finalizar una llamada saliente sólo queda Cerrar:
-   centrarlo en todo el ancho de la cuadrícula, sin alterar otros controles. */
+   alinearlo a la derecha, sin alterar los otros controles. */
 .impe-incoming-panel .persistent-phone-actions [data-incoming-close-finished]:not([hidden]) {
   grid-column: 1 / -1;
-  justify-self: center;
+  justify-self: end;
   width: min(100%, 200px);
 }
 .impe-incoming-panel .persistent-phone-actions [hidden],
