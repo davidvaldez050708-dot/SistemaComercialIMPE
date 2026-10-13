@@ -1399,6 +1399,7 @@ class SeguimientoVinculacionModel
                 $fechaFin
             );
             $stmtInteraccion->execute();
+            $interaccionCreadaId = (int)$this->connection->insert_id;
 
             $nuevoTelefonoContacto = trim((string)($datos['nuevo_telefono_contacto'] ?? ''));
             $nuevoCorreoContacto = trim((string)($datos['nuevo_correo_contacto'] ?? ''));
@@ -1489,7 +1490,7 @@ class SeguimientoVinculacionModel
 
             if (!$transaccionExterna) $this->connection->commit();
 
-            return true;
+            return $transaccionExterna ? $interaccionCreadaId : true;
         } catch (Throwable $error) {
             if (!$transaccionExterna) $this->connection->rollback();
             $this->ultimoErrorInteraccion = $etapaPersistencia;
