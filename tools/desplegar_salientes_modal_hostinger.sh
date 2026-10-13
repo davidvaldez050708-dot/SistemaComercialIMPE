@@ -43,6 +43,16 @@ for p in "${FILES[@]}"; do
     fi
     continue
   fi
+  if [[ "$p" == "public/javascript/telefonia_persistente.js" ]]; then
+    # Sólo injertar dos comportamientos revisados; conservar el JS de
+    # producción byte por byte fuera de esas operaciones.
+    php "$SRC/tools/fusionar_salientes_persistente.php" \
+      "$SRC/$p" "$LIVE/$p" "$TMP/$p" || {
+        echo "CONFLICTO: integración selectiva no autorizada. Sin publicar." >&2
+        exit 1
+      }
+    continue
+  fi
   git -C "$SRC" show "$BASE:$p" > "$TMP/base" || {
     echo "ERROR: falta base histórica para $p." >&2; exit 1
   }

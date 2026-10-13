@@ -38,7 +38,36 @@ grep -Fq 'handoffToCall' "$SITE/public/javascript/telefonia_teclado.js"
 grep -Fq '.impe-dialer-state[hidden] {display:none !important;}' "$SITE/public/css/telefonia_teclado.css"
 [[ "$(find "$TMP/backups" -type f | wc -l)" -eq 4 ]]
 run --apply
-# Conflicto incompatible se debe detener ANTES de tocar producción.
+# Colisión REAL: personalizaciones en las DOS zonas que cambió GitHub.
+# Fusionar el archivo completo produce conflictos, pero el cambio selectivo
+# debe preservar estas líneas distintas y seguir verificando la recepción.
+git -C "$ROOT" show "8fc7f1dad44cefe6c070da89d48beb10ed5bed9f:public/javascript/telefonia_persistente.js" \
+  > "$SITE/public/javascript/telefonia_persistente.js"
+python3 - "$SITE/public/javascript/telefonia_persistente.js" <<'PY'
+from pathlib import Path
+import sys
+p=Path(sys.argv[1]); s=p.read_text()
+s=s.replace(
+'             * prepare() abre la ventana dentro del clic real del usuario.',
+'             * HOSTINGER: mantener funciones de recepción existentes.')
+s=s.replace(
+'        panel.hidden = !show || managedByShell || incomingInShell;',
+'        // PERSONALIZACION-HOSTINGER-PANEL\n'
+'        panel.hidden = !show || managedByShell || incomingInShell;')
+p.write_text(s)
+PY
+PREV="$(sha256sum "$SITE/public/javascript/telefonia_persistente.js")"
+run --check
+[[ "$PREV" == "$(sha256sum "$SITE/public/javascript/telefonia_persistente.js")" ]]
+run --apply
+grep -Fq 'HOSTINGER: mantener funciones de recepción existentes.' \
+ "$SITE/public/javascript/telefonia_persistente.js"
+grep -Fq 'PERSONALIZACION-HOSTINGER-PANEL' \
+ "$SITE/public/javascript/telefonia_persistente.js"
+grep -Fq 'shell.ensureHost();' "$SITE/public/javascript/telefonia_persistente.js"
+grep -Fq 'manualOutgoingInShell' "$SITE/public/javascript/telefonia_persistente.js"
+run --apply
+# Cambios locales incompatibles desconocidos detienen el despliegue completo.
 git -C "$ROOT" show "8fc7f1dad44cefe6c070da89d48beb10ed5bed9f:public/javascript/telefonia_persistente.js" \
   > "$SITE/public/javascript/telefonia_persistente.js"
 sed -i "s/await prepare({ openHost: true });/await prepare({ openHost: false });/" \
@@ -49,4 +78,4 @@ if run --apply > "$TMP/conflict.txt" 2>&1; then
 fi
 grep -Fq 'CONFLICTO:' "$TMP/conflict.txt"
 [[ "$SHA" == "$(sha256sum "$SITE/public/javascript/telefonia_persistente.js")" ]]
-echo "Panel saliente Hostinger: OK (comprobación, respaldo, repetición, conflicto)"
+echo "Panel saliente Hostinger: OK (fusión selectiva, respaldo, repetición, conflicto)"
