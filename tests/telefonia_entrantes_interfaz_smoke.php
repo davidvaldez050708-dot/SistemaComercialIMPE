@@ -32,7 +32,7 @@ $checks = [
         !str_contains($phoneJs, 'const incomingInShell = Boolean(state?.active)') &&
         str_contains($phoneJs, "getHostMode() === 'embedded'"),
     'Se muestra modal CRM, no panel blanco al entrar llamada' =>
-        str_contains($shellJs, 'const customVisible = (incoming || shownOutgoing)') &&
+        str_contains($shellJs, 'const customVisible = (incoming || finishedSdk || shownOutgoing)') &&
         str_contains($shellJs, "incomingPanel.hidden = !customVisible") &&
         str_contains($shellView, 'data-incoming-answer') &&
         str_contains($shellView, 'data-incoming-hangup') &&
@@ -69,7 +69,7 @@ $checks = [
     'Sin mensaje permanente ni enlace Zadarma' =>
         !str_contains($shellView, 'data-incoming-provider') &&
         !str_contains($shellJs, 'El teléfono está conectando sus controles') &&
-        str_contains($shellJs, "notice.hidden = !actionNotice"),
+        str_contains($shellJs, "notice.hidden = !(actionNotice || sdkNotice)"),
     'Cada timbrado comienza en cero' =>
         str_contains($hostJs, "state.phase === 'incoming-ringing') return 0;") &&
         str_contains($hostJs, 'duration: answered') &&
