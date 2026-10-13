@@ -19,7 +19,9 @@ git -C "$ROOT" show cf1c1644baa2ed4275759555db3814b96fe06f93:public/javascript/t
 sed -i 's/pendingIncomingAction/oldPendingAction/g' "$FILE"
 BEFORE="$(sha256sum "$FILE")"
 run --check > "$TMP/viejo.txt"
-grep -Eq 'Estado acciones recientes.*FALTA.*OK.*FALTA' "$TMP/viejo.txt"
+# El detector de fusión puede incorporar correctamente pendingIncomingAction
+# desde GitHub; exigir FALTA en la columna Fusión sería un falso negativo.
+grep -Eq 'Estado acciones recientes.*FALTA.*OK.*(FALTA|OK)' "$TMP/viejo.txt"
 run --diff > "$TMP/diff.txt"
 grep -Fq 'oldPendingAction' "$TMP/diff.txt"
 [[ "$BEFORE" == "$(sha256sum "$FILE")" ]]
