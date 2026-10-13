@@ -12,7 +12,8 @@ SRC="${IMPE_WEBRTC_SOURCE:-$HOME/crm-preparacion}"
 LIVE="${IMPE_WEBRTC_PUBLIC:-$HOME/domains/fundacionrededumex.org/public_html}"
 BACKUPS="${IMPE_WEBRTC_BACKUPS:-$HOME/respaldos-crm}"
 BASE="1d130d13b7c3a12d7affe5d4d5d6a2fcc5a7d7de"
-TARGET="13a8ed2a48a615620cf2480829fb474898bdd4be"
+PREVIOUS="13a8ed2a48a615620cf2480829fb474898bdd4be"
+TARGET="35414e88bf88e2752d5bd821e0242edd9d644e48"
 FILES=(
   app/views/telefonia/shell.php
   app/views/layout/topbar.php
@@ -23,7 +24,7 @@ FILES=(
   echo "ERROR: faltan repositorio de preparación o sitio publicado." >&2
   exit 1
 }
-for commit in "$BASE" "$TARGET"; do
+for commit in "$BASE" "$PREVIOUS" "$TARGET"; do
   git -C "$SRC" cat-file -e "$commit^{commit}" || {
     echo "ERROR: no está el commit $commit. Actualiza crm-preparacion." >&2
     exit 1
@@ -31,11 +32,11 @@ for commit in "$BASE" "$TARGET"; do
 done
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
-git -C "$SRC" diff --binary "$BASE" "$TARGET" -- "${FILES[@]}" >"$TMP/web-analista.patch"
-[[ -s "$TMP/web-analista.patch" ]] || {
-  echo "ERROR: el parche de la prueba no está disponible." >&2
-  exit 1
-}
+# Soporta tanto producción con la versión anterior del visor como
+# instalación inicial. Nunca fuerza un parche sobre cambios desconocidos.
+for version in "$PREVIOUS" "$BASE"; do
+  git -C "$SRC" diff --binary "$version" "$TARGET" -- "${FILES[@]}" >"$TMP/$(basename "$version").patch"
+done
 for f in "${FILES[@]}"; do
   [[ -f "$LIVE/$f" && ! -L "$LIVE/$f" ]] || {
     echo "ERROR: falta $f o es un enlace simbólico." >&2
@@ -47,10 +48,26 @@ for php in app/views/telefonia/shell.php app/views/layout/topbar.php; do
   php -l "$TMP/$(basename "$php")" >/dev/null
 done
 PATCH_NEEDED=1
-if (cd "$LIVE" && git apply --reverse --check "$TMP/web-analista.patch" >/dev/null 2>&1); then
-  PATCH_NEEDED=0
-elif ! (cd "$LIVE" && git apply --check "$TMP/web-analista.patch" >/dev/null 2>&1); then
-  echo "CONFLICTO: alguna vista o JS tiene modificaciones propias en Hostinger." >&2
+PATCH=""
+for version in "$PREVIOUS" "$BASE"; do
+  candidate="$TMP/$(basename "$version").patch"
+  if (cd "$LIVE" && git apply --reverse --check "$candidate" >/dev/null 2>&1); then
+    PATCH_NEEDED=0
+    PATCH="$candidate"
+    break
+  fi
+done
+if [[ "$PATCH_NEEDED" == 1 ]]; then
+  for version in "$PREVIOUS" "$BASE"; do
+    candidate="$TMP/$(basename "$version").patch"
+    if (cd "$LIVE" && git apply --check "$candidate" >/dev/null 2>&1); then
+      PATCH="$candidate"
+      break
+    fi
+  done
+fi
+if [[ -z "$PATCH" ]]; then
+  echo "CONFLICTO: Hostinger no coincide con las versiones verificadas del visor." >&2
   echo "No se modificó nada. Comparte este mensaje antes de publicar." >&2
   exit 1
 fi
@@ -78,10 +95,10 @@ rollback() {
   exit "$code"
 }
 trap rollback EXIT
-(cd "$LIVE" && git apply "$TMP/web-analista.patch")
+(cd "$LIVE" && git apply "$PATCH")
 php -l "$LIVE/app/views/telefonia/shell.php" >/dev/null
 php -l "$LIVE/app/views/layout/topbar.php" >/dev/null
-(cd "$LIVE" && git apply --reverse --check "$TMP/web-analista.patch")
+(cd "$LIVE" && git apply --reverse --check "$PATCH")
 trap - EXIT
 echo "OK: indicador y controles WebRTC del Analista publicados."
 echo "Respaldo: $BACKUP"
