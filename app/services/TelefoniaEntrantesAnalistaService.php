@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/../../config/db_connection.php';
 require_once __DIR__ . '/ZadarmaWebhookEventStoreService.php';
+require_once __DIR__ . '/TelefoniaAnalistaWebrtcService.php';
 require_once __DIR__ . '/../models/SeguimientoVinculacionModel.php';
 
 /**
@@ -170,7 +171,14 @@ class TelefoniaEntrantesAnalistaService
                 'interaccion_id' => (int)($registro['interaccion_id'] ?? 0),
             ];
         }
-        return ['extension' => $extension, 'llamadas' => $llamadas];
+        // Dos fuentes distintas: PBX firmada y observación de WebRTC local.
+        // La segunda siempre se identifica como NO verificada por PBX.
+        $sesiones = (new TelefoniaAnalistaWebrtcService($this->db))->listar($usuarioId);
+        $llamadas = array_merge($llamadas, $sesiones);
+        usort($llamadas, static function ($a, $b) {
+            return strcmp((string)($b['fecha'] ?? ''), (string)($a['fecha'] ?? ''));
+        });
+        return ['extension' => $extension, 'llamadas' => array_slice($llamadas, 0, 100)];
     }
 
     public function estados(int $usuarioId): array
@@ -221,12 +229,36 @@ class TelefoniaEntrantesAnalistaService
      */
     public function registrar(int $usuarioId, array $datos): array
     {
-        $id = trim((string)($datos['pbx_call_id'] ?? ''));
+        $idSdk = trim((string)($datos['sdk_session_id'] ?? ''));
+        $sdk = $idSdk !== '';
+        $id = $sdk ? $idSdk : trim((string)($datos['pbx_call_id'] ?? ''));
         $decision = strtolower(trim((string)($datos['decision'] ?? '')));
         if (!in_array($decision, ['existente', 'nueva', 'sin_identificar'], true)) {
             throw new InvalidArgumentException('Selecciona cómo clasificar la llamada.');
         }
-        $call = $this->inicioVerificado($usuarioId, $id);
+        if ($sdk) {
+            $rowSdk = (new TelefoniaAnalistaWebrtcService($this->db))
+                ->obtenerFinalizada($usuarioId, $id);
+            $call = [
+                'estado' => 'ended',
+                'extension' => (string)$rowSdk['extension'],
+                'caller_id' => (string)$rowSdk['numero_origen'],
+                'answer_at' => (string)($rowSdk['fecha_atendida'] ?? ''),
+                'call_start' => (string)$rowSdk['fecha_inicio'],
+                'end_at' => (string)$rowSdk['fecha_fin'],
+                'duration' => TelefoniaAnalistaWebrtcService::duracion($rowSdk),
+                'fecha_evento' => (string)$rowSdk['fecha_inicio']
+            ];
+            // Un evento del navegador NO demuestra recepción PBX ni datos
+            // verificados: sólo admite asociación comercial confirmada
+            // expresamente por el usuario después de conversar.
+            if ($decision !== 'sin_identificar' &&
+                (int)($datos['confirmacion_manual_sdk'] ?? 0) !== 1) {
+                throw new DomainException('Confirma que hablaste realmente con la persona antes de vincular esta llamada WebRTC.');
+            }
+        } else {
+            $call = $this->inicioVerificado($usuarioId, $id);
+        }
         if (!in_array((string)$call['estado'], ['ended', 'transferred'], true)) {
             throw new DomainException('La llamada debe finalizar antes de registrar el resultado.');
         }
@@ -244,19 +276,25 @@ class TelefoniaEntrantesAnalistaService
         $extension = (string)$call['extension'];
         $this->db->begin_transaction();
         try {
-            $stmt = $this->db->prepare(
-                "INSERT IGNORE INTO telefonia_analista_entrantes
-                  (usuario_id, extension, pbx_call_id)
-                 VALUES (?, ?, ?)"
-            );
-            $stmt->bind_param('iss', $usuarioId, $extension, $id);
-            $stmt->execute();
-            $stmt->close();
+            if (!$sdk) {
+                $stmt = $this->db->prepare(
+                    "INSERT IGNORE INTO telefonia_analista_entrantes
+                      (usuario_id, extension, pbx_call_id)
+                     VALUES (?, ?, ?)"
+                );
+                $stmt->bind_param('iss', $usuarioId, $extension, $id);
+                $stmt->execute();
+                $stmt->close();
+            }
 
+            $tabla = $sdk
+                ? 'telefonia_analista_webrtc_sesiones' : 'telefonia_analista_entrantes';
+            $campoId = $sdk ? 'session_id' : 'pbx_call_id';
+            $campoEstado = $sdk ? 'clasificacion' : 'estado';
             $stmt = $this->db->prepare(
-                "SELECT id, estado, seguimiento_id, interaccion_id
-                 FROM telefonia_analista_entrantes
-                 WHERE usuario_id = ? AND pbx_call_id = ? FOR UPDATE"
+                "SELECT id, {$campoEstado} AS estado, seguimiento_id, interaccion_id
+                 FROM {$tabla}
+                 WHERE usuario_id = ? AND {$campoId} = ? FOR UPDATE"
             );
             $stmt->bind_param('is', $usuarioId, $id);
             $stmt->execute();
@@ -278,8 +316,8 @@ class TelefoniaEntrantesAnalistaService
                 $estadoRegistro = 'SIN_IDENTIFICAR';
                 $notaBreve = mb_substr($observacion, 0, 500, 'UTF-8');
                 $stmt = $this->db->prepare(
-                    "UPDATE telefonia_analista_entrantes
-                     SET estado = ?, observacion = ? WHERE id = ?"
+                    "UPDATE {$tabla}
+                     SET {$campoEstado} = ?, observacion = ? WHERE id = ?"
                 );
                 $registroId = (int)$registro['id'];
                 $stmt->bind_param('ssi', $estadoRegistro, $notaBreve, $registroId);
@@ -415,6 +453,9 @@ class TelefoniaEntrantesAnalistaService
             $evidencias = [];
             foreach ($confirmaciones as $campo => $etiqueta) {
                 if ((int)($datos[$campo] ?? 0) !== 1) continue;
+                if ($sdk) {
+                    throw new DomainException('Las llamadas WebRTC sin evento PBX no acreditan verificaciones efectivas.');
+                }
                 if (!$admiteVerificacion || $segundosConversacion <= 0) {
                     throw new DomainException('La verificación necesita una conversación confirmada y un resultado compatible.');
                 }
@@ -443,6 +484,7 @@ class TelefoniaEntrantesAnalistaService
             }
             $notas = trim(implode("\n", array_filter([
                 'Llamada entrante recibida en la extensión ' . $extension . '.',
+                $sdk ? '[WEBRTC OBSERVADO; SIN EVENTO PBX FIRMADO; RESULTADO DECLARADO POR ANALISTA]' : '',
                 $personaAtendio !== '' ? 'Persona atendida: ' . $personaAtendio : '',
                 $evidencias ? '[VERIFICACION_EFECTIVA]' : '',
                 $evidencias ? 'Verificación obtenida: ' . implode(' · ', $evidencias) : '',
@@ -463,8 +505,8 @@ class TelefoniaEntrantesAnalistaService
                     'datos_verificados' => $evidencias ? 1 : (int)($seguimiento['datos_verificados'] ?? 0),
                     'descartar' => $descartar ? 1 : 0,
                     'motivo_descarte' => $descartar ? $motivoDescarte : '',
-                    'proveedor_externo' => 'ZADARMA',
-                    'id_externo' => $id,
+                    'proveedor_externo' => $sdk ? 'ZADARMA_WEBRTC' : 'ZADARMA',
+                    'id_externo' => $sdk ? 'WEBRTC-' . $id : $id,
                     'duracion_segundos' => $segundosConversacion,
                     'fecha_fin' => $fechaFin
                 ], true
@@ -476,8 +518,8 @@ class TelefoniaEntrantesAnalistaService
             $estadoRegistro = 'VINCULADA';
             $registroId = (int)$registro['id'];
             $stmt = $this->db->prepare(
-                "UPDATE telefonia_analista_entrantes
-                 SET estado = ?, seguimiento_id = ?, interaccion_id = ?
+                "UPDATE {$tabla}
+                 SET {$campoEstado} = ?, seguimiento_id = ?, interaccion_id = ?
                  WHERE id = ?"
             );
             $stmt->bind_param('siii', $estadoRegistro, $seguimientoId, $interaccionId, $registroId);
