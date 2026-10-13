@@ -21,6 +21,10 @@
     const submit = form.querySelector('[data-incoming-submit]');
     const resultInput = form.querySelector('[name="resultado"]');
     const evidence = form.querySelector('[data-incoming-evidence]');
+    const sdkNotice = form.querySelector('[data-incoming-sdk-notice]');
+    const sdkConfirm = form.querySelector('[data-incoming-sdk-confirm]');
+    const sdkCheck = sdkConfirm.querySelector('input[type="checkbox"]');
+    let isSdkCall = false;
     const discard = form.querySelector('[data-incoming-discard]');
     const discardToggle = form.querySelector('[data-incoming-discard-toggle]');
     const discardReason = form.querySelector('[data-incoming-discard-reason]');
@@ -44,7 +48,7 @@
     const renderEvidence = () => {
         const enabled = decision.value !== 'sin_identificar';
         const result = String(resultInput.value || '');
-        const allowEvidence = enabled && [
+        const allowEvidence = !isSdkCall && enabled && [
             'CONTACTO_CORRECTO', 'SOLICITO_INFORMACION',
             'SOLICITO_LLAMAR_DESPUES', 'NO_INTERESADO'
         ].includes(result);
@@ -72,6 +76,9 @@
         form.querySelector('[name="nombre_entidad"]').required = value === 'nueva';
         form.querySelector('[name="estado_id"]').required = value === 'nueva';
         form.querySelector('[name="resultado"]').required = value !== 'sin_identificar';
+        sdkConfirm.hidden = !isSdkCall || value === 'sin_identificar';
+        sdkCheck.required = !sdkConfirm.hidden;
+        if (sdkConfirm.hidden) sdkCheck.checked = false;
         renderEvidence();
         clearError();
     };
@@ -118,7 +125,11 @@
         if (!button) return;
         form.reset();
         clearError();
-        form.querySelector('[data-incoming-pbx]').value = String(button.dataset.callId || '');
+        const id = String(button.dataset.callId || '');
+        isSdkCall = button.dataset.source === 'SDK_WEBRTC';
+        form.querySelector('[data-incoming-pbx]').value = isSdkCall ? '' : id;
+        form.querySelector('[data-incoming-sdk-id]').value = isSdkCall ? id : '';
+        sdkNotice.hidden = !isSdkCall;
         form.querySelector('[data-incoming-number]').textContent =
             String(button.dataset.phone || 'Número privado');
         form.querySelector('[data-incoming-duration]').textContent =
@@ -133,7 +144,9 @@
             if (option.value !== 'sin_identificar') option.disabled = !hasAnswer;
         }
         modalEl.querySelector('[data-incoming-modal-description]').textContent = hasAnswer
-            ? 'Relaciona la conversación con el seguimiento existente o crea uno nuevo.'
+            ? (isSdkCall
+                ? 'Clasificación manual de una sesión observada por WebRTC, sin evento PBX firmado.'
+                : 'Relaciona la conversación con el seguimiento existente o crea uno nuevo.')
             : 'Esta llamada no fue contestada. Puedes clasificarla sin crear expediente.';
         renderDecision();
         modal.show();
