@@ -62,6 +62,10 @@
         ? new BroadcastChannel(channelName) : null;
     let hostFrame = null;
     let minimized = false;
+    // Permite al Analista inspeccionar el widget WebRTC cuando una
+    // llamada interna SIP no genera NOTIFY_INTERNAL en la centralita.
+    // No suplanta el estado PBX ni crea una llamada artificial.
+    let nativeAnalystOpen = false;
     let actionNotice = '';
     // El comando se ejecuta sin esperar la siguiente consulta PBX.
     // Nunca interpretar la invocación SDK como confirmación de conexión.
@@ -232,6 +236,19 @@
     window.IMPE_TELEPHONY_SHELL = Object.freeze({
         userId: userId,
         ensureHost: ensureHost,
+        isPhoneReady: function () {
+            return Boolean(hostFrame && freshState(currentState) &&
+                currentState.hostReady === true);
+        },
+        showProviderControls: function () {
+            if (!cfg.analystIncomingResults || !hostFrame ||
+                !freshState(currentState) || !currentState.hostReady) return false;
+            nativeAnalystOpen = true;
+            forceNativeControls = true;
+            minimized = false;
+            render();
+            return true;
+        },
         openDialer: openDialer,
         isDialerManagingCall: function () {
             return Boolean(dialer?.isManagingCall());
@@ -394,8 +411,10 @@
             analystResultNotice.hidden = !analystPendingCall || ongoing;
         }
         if (!ongoing) {
-            forceNativeControls = false;
-            minimized = false;
+            // No esconder el widget del Analista: las llamadas internas
+            // pueden timbrar sin eventos entrantes PBX.
+            if (!nativeAnalystOpen) forceNativeControls = false;
+            if (!nativeAnalystOpen) minimized = false;
             pendingIncomingAction = null;
             actionNotice = '';
         }
@@ -425,8 +444,12 @@
         // Una sola tarjeta con el diseño del CRM. El widget se conserva
         // montado fuera de pantalla: audio/WebRTC no se desmontan.
         // El panel oficial nunca reemplaza el modal de llamadas entrantes.
-        const nativeVisible = Boolean(state?.hostReady) && ongoing &&
-            state?.direction !== 'incoming' && forceNativeControls && !minimized;
+        const nativeVisible = Boolean(state?.hostReady) &&
+            forceNativeControls && !minimized &&
+            (
+                (cfg.analystIncomingResults && nativeAnalystOpen) ||
+                (ongoing && state?.direction !== 'incoming')
+            );
         const pending = pendingFor(state);
         if (pendingOutgoingHangup &&
             Date.now() - pendingOutgoingHangup.at > 4500) {
@@ -435,6 +458,7 @@
         // No ocultar el modal al colgar una saliente: mostrar
         // «Finalizando» hasta recibir el evento final del SDK/PBX.
         const customVisible = (incoming || shownOutgoing) &&
+            !(cfg.analystIncomingResults && nativeVisible) &&
             !minimized && pending !== 'hangup' && pending !== 'decline';
         call.classList.toggle('is-visible', nativeVisible);
         if (incomingPanel) {
@@ -557,7 +581,11 @@
     });
 
     document.querySelector('[data-shell-minimize]')?.addEventListener('click', function () {
-        minimized = true; render();
+        // Ocultar el widget no desconecta SIP ni finaliza la llamada.
+        nativeAnalystOpen = false;
+        forceNativeControls = false;
+        minimized = true;
+        render();
     });
     document.querySelector('[data-incoming-minimize]')?.addEventListener('click',
         toggleIncomingCompact);
