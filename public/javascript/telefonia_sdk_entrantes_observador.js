@@ -14,6 +14,9 @@
         let ringing = false;
         let missingSamples = 0;
         let stopped = false;
+        let idleSamples = 0;
+        let seenIncoming = false;
+        let idleReported = false;
 
         const read = function () {
             const input = doc.querySelector(
@@ -35,7 +38,10 @@
             if (stopped) return;
             const call = read();
             if (call) {
+                seenIncoming = true;
                 missingSamples = 0;
+                idleSamples = 0;
+                idleReported = false;
                 if (!ringing) {
                     ringing = true;
                     hooks.onRinging(call);
@@ -46,6 +52,26 @@
                 ringing = false;
                 missingSamples = 0;
                 hooks.onStopped();
+            }
+            // La desaparición de «ringing» no significa fin de conversación:
+            // puede desaparecer justo al CONTESTAR. Esperar a que el widget
+            // abandone simultáneamente el campo entrante y el control Colgar.
+            // Un único cambio transitorio de clase no dispara cierre.
+            if (!seenIncoming || idleReported) return;
+            const incomingInput = doc.querySelector(
+                '#zdrm-webphone-phonenumber-input.incoming'
+            );
+            const hangup = doc.querySelector(
+                '.zdrm-webphone-call-btn-up'
+            );
+            if (!incomingInput && !hangup) {
+                idleSamples += 1;
+                if (idleSamples >= 8 && typeof hooks.onIdle === 'function') {
+                    idleReported = true;
+                    hooks.onIdle();
+                }
+            } else {
+                idleSamples = 0;
             }
         };
 
