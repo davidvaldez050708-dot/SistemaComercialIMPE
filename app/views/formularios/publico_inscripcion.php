@@ -349,6 +349,39 @@ $fechaMaximaNacimiento = date('Y-m-d');
                     </div>
                 </section>
 
+                <section class="formulario-publico-section formulario-publico-recomendacion">
+                    <div class="formulario-publico-section-heading">
+                        <span class="formulario-publico-section-icon">
+                            <i class="bi bi-person-heart"></i>
+                        </span>
+                        <h2>¿Conoces a alguien interesado?</h2>
+                    </div>
+
+                    <div class="formulario-publico-grid">
+                        <div class="formulario-publico-field is-full">
+                            <label for="registro_publico_tel_recomendado">
+                                Teléfono de la persona recomendada
+                            </label>
+                            <input
+                                type="tel"
+                                id="registro_publico_tel_recomendado"
+                                name="tel_recomendado"
+                                maxlength="10"
+                                inputmode="numeric"
+                                autocomplete="off"
+                                placeholder="Opcional · 10 dígitos"
+                                data-publico-tel-recomendado>
+                            <small class="formulario-publico-help">
+                                Si conoces a alguien que pudiera estar interesado en nuestros programas,
+                                puedes compartirnos su número de teléfono. Este campo es opcional.
+                            </small>
+                            <div class="invalid-feedback">
+                                Ingresa un número de teléfono válido de 10 dígitos.
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
                 <button
                     type="submit"
                     class="formulario-publico-submit"
