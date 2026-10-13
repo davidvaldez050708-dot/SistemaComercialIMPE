@@ -62,7 +62,8 @@ function boot(opts = {}) {
             userId: 8, extension: '100',
             hostUrl: 'https://crm.ejemplo.org/index.php?controller=telefonia&action=host&display=embed',
             loginUrl: 'https://crm.ejemplo.org/index.php?controller=login&action=mostrarLogin',
-            autoReception: opts.auto !== false
+            autoReception: opts.auto !== false,
+            analystIncomingResults: opts.analyst === true
         },
         location: {origin:'https://crm.ejemplo.org', replace(url) {this.redirect = url;}},
         addEventListener(k,fn) {windowEvents[k] = fn;},
@@ -217,6 +218,35 @@ assert.equal(first.elements['[data-incoming-panel]'].hidden,true,
 assert.equal(first.channels[0].lastCommand.action,'CLEAR_FINISHED',
     'Cerrar también limpia la llamada en el SDK');
 
+// Diego 101: una llamada SIP interna puede timbrar sin NOTIFY_INTERNAL.
+// El auricular debe mostrar WebRTC aun cuando PBX publica phase=ready.
+storage.clear();
+const analyst = boot({analyst:true});
+assert.equal(analyst.window.IMPE_TELEPHONY_SHELL.isPhoneReady(),false,
+    'el auricular no anuncia conexión sin confirmación reciente del host');
+analyst.channels[0].message({type:'STATE',state:{
+    userId:8,updatedAt:Date.now(),hostReady:true,active:false,
+    direction:'',phase:'ready',extension:'101'
+}});
+assert.equal(analyst.window.IMPE_TELEPHONY_SHELL.isPhoneReady(),true,
+    'un estado WebRTC verificado mantiene el auricular verde entre módulos');
+assert.equal(analyst.window.IMPE_TELEPHONY_SHELL.showProviderControls(),true,
+    'un solo clic abre controles nativos sin simular timbrado PBX');
+assert.equal(analyst.elements['[data-shell-call]'].classList.contains('is-visible'),true,
+    'los controles oficiales son visibles aunque no haya evento NOTIFY_INTERNAL');
+assert.equal(analyst.elements['[data-shell-call]'].classList.contains('is-analyst-native'),true);
+assert.match(analyst.elements['[data-shell-call-help]'].textContent,/Controles de Zadarma/);
+assert.equal(analyst.elements['[data-incoming-panel]'].hidden,true,
+    'no se presenta un modal de Contestar ficticio');
+assert.equal(analyst.elements['[data-shell-host-region]'].children.length,1,
+    'el visor reutiliza el mismo motor WebRTC sin duplicar registro SIP');
+analyst.elements['[data-shell-minimize]'].events.click();
+assert.equal(analyst.elements['[data-shell-call]'].classList.contains('is-visible'),false,
+    'se puede cerrar el visor sin colgar ni desconectar el SDK');
+assert.equal(analyst.window.IMPE_TELEPHONY_SHELL.isPhoneReady(),true,
+    'ocultar controles no pone offline la extensión del Analista');
+
+storage.clear();
 const second = boot();
 assert.equal(second.elements['[data-shell-host-region]'].children.length,0,
     'second tab does not register same SIP extension');
