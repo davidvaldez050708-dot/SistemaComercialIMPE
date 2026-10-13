@@ -59,6 +59,38 @@ document.addEventListener('DOMContentLoaded', function () {
     const enlaceQr = modalQrElement?.querySelector(
         '[data-form-qr-link]'
     );
+    const qrDark = modalQrElement?.querySelector('[data-qr-dark]');
+    const qrLight = modalQrElement?.querySelector('[data-qr-light]');
+    const qrFinderColor = modalQrElement?.querySelector(
+        '[data-qr-finder-color]'
+    );
+    const qrDotStyle = modalQrElement?.querySelector(
+        '[data-qr-dot-style]'
+    );
+    const qrFinderStyle = modalQrElement?.querySelector(
+        '[data-qr-finder-style]'
+    );
+    const qrFinderDotStyle = modalQrElement?.querySelector(
+        '[data-qr-finder-dot-style]'
+    );
+    const qrSize = modalQrElement?.querySelector('[data-qr-size]');
+    const qrMargin = modalQrElement?.querySelector('[data-qr-margin]');
+    const qrEcLevel = modalQrElement?.querySelector('[data-qr-ec-level]');
+    const qrTransparent = modalQrElement?.querySelector(
+        '[data-qr-transparent]'
+    );
+    const botonAplicarQr = modalQrElement?.querySelector(
+        '[data-apply-form-qr]'
+    );
+    const botonRestablecerQr = modalQrElement?.querySelector(
+        '[data-reset-form-qr]'
+    );
+    const botonCopiarQr = modalQrElement?.querySelector(
+        '[data-copy-form-qr]'
+    );
+    const botonDescargarQr = modalQrElement?.querySelector(
+        '[data-download-form-qr]'
+    );
 
     let cargandoMunicipios = false;
     let guardando = false;
@@ -69,6 +101,10 @@ document.addEventListener('DOMContentLoaded', function () {
     const nombreFormulario = String(
         compartir?.getAttribute('data-form-label') || 'Registro'
     ).trim();
+    const colorQrInicial = String(
+        compartir?.getAttribute('data-qr-color') || '223A84'
+    ).replace('#', '').trim() || '223A84';
+    let qrUrlActual = '';
 
     const mostrarToast = function (mensaje, esError) {
         let contenedor = document.querySelector('.toast-container');
@@ -247,6 +283,154 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     };
 
+    const normalizarColorQr = function (valor, fallback) {
+        const limpio = String(valor || '')
+            .replace('#', '')
+            .trim();
+
+        return /^[0-9a-fA-F]{6}$/.test(limpio)
+            ? limpio.toLowerCase()
+            : fallback;
+    };
+
+    const obtenerConfiguracionQr = function () {
+        const dark = normalizarColorQr(
+            qrDark?.value,
+            colorQrInicial.toLowerCase()
+        );
+        const light = qrTransparent?.checked
+            ? '0000'
+            : normalizarColorQr(qrLight?.value, 'ffffff');
+        const finderColor = normalizarColorQr(
+            qrFinderColor?.value,
+            dark
+        );
+
+        if (!qrTransparent?.checked && dark === light) {
+            throw new Error(
+                'El color del QR y el fondo deben ser diferentes.'
+            );
+        }
+
+        return {
+            dark: dark,
+            light: light,
+            finderColor: finderColor,
+            dotStyle: String(qrDotStyle?.value || 'square'),
+            finderStyle: String(qrFinderStyle?.value || 'square'),
+            finderDotStyle: String(
+                qrFinderDotStyle?.value || 'square'
+            ),
+            size: String(qrSize?.value || '600'),
+            margin: String(qrMargin?.value || '2'),
+            ecLevel: String(qrEcLevel?.value || 'M')
+        };
+    };
+
+    const construirQrUrl = function () {
+        if (enlacePublico === '' || !compartir) {
+            return '';
+        }
+
+        const quickChartBase = String(
+            compartir.getAttribute('data-quickchart-url') ||
+            'https://quickchart.io/qr'
+        ).trim();
+
+        const config = obtenerConfiguracionQr();
+
+        const parametros = new URLSearchParams({
+            text: enlacePublico,
+            size: config.size,
+            margin: config.margin,
+            dark: config.dark,
+            light: config.light,
+            finderColor: config.finderColor,
+            dotStyle: config.dotStyle,
+            finderStyle: config.finderStyle,
+            finderDotStyle: config.finderDotStyle,
+            ecLevel: config.ecLevel,
+            format: 'png'
+        });
+
+        return quickChartBase + '?' + parametros.toString();
+    };
+
+    const actualizarPreviewQr = function () {
+        if (!imagenQr) {
+            return;
+        }
+
+        try {
+            qrUrlActual = construirQrUrl();
+
+            if (qrUrlActual === '') {
+                return;
+            }
+
+            loaderQr?.classList.remove('d-none');
+            imagenQr.classList.add('is-loading');
+            imagenQr.src = qrUrlActual;
+
+            if (enlaceQr) {
+                enlaceQr.textContent = enlacePublico;
+            }
+        } catch (error) {
+            mostrarToast(
+                error.message ||
+                'No fue posible aplicar la personalización del QR.',
+                true
+            );
+        }
+    };
+
+    const restablecerQr = function () {
+        const colorInicial = '#' + colorQrInicial.toLowerCase();
+
+        if (qrDark) {
+            qrDark.value = colorInicial;
+        }
+
+        if (qrLight) {
+            qrLight.value = '#ffffff';
+            qrLight.disabled = false;
+        }
+
+        if (qrFinderColor) {
+            qrFinderColor.value = colorInicial;
+        }
+
+        if (qrDotStyle) {
+            qrDotStyle.value = 'square';
+        }
+
+        if (qrFinderStyle) {
+            qrFinderStyle.value = 'square';
+        }
+
+        if (qrFinderDotStyle) {
+            qrFinderDotStyle.value = 'square';
+        }
+
+        if (qrSize) {
+            qrSize.value = '600';
+        }
+
+        if (qrMargin) {
+            qrMargin.value = '2';
+        }
+
+        if (qrEcLevel) {
+            qrEcLevel.value = 'M';
+        }
+
+        if (qrTransparent) {
+            qrTransparent.checked = false;
+        }
+
+        actualizarPreviewQr();
+    };
+
     const generarQr = function () {
         if (
             enlacePublico === '' ||
@@ -261,41 +445,106 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        const quickChartBase = String(
-            compartir.getAttribute('data-quickchart-url') ||
-            'https://quickchart.io/qr'
-        ).trim();
-
-        const colorQr = String(
-            compartir.getAttribute('data-qr-color') || '223A84'
-        ).replace('#', '').trim() || '223A84';
-
-        const parametros = new URLSearchParams({
-            text: enlacePublico,
-            size: '300',
-            margin: '2',
-            dark: colorQr,
-            light: 'ffffff',
-            ecLevel: 'M',
-            format: 'png'
-        });
-
-        const qrUrl = quickChartBase + '?' + parametros.toString();
-
-        if (loaderQr) {
-            loaderQr.classList.remove('d-none');
-        }
-
-        imagenQr.classList.add('is-loading');
-        imagenQr.src = qrUrl;
-
-        if (enlaceQr) {
-            enlaceQr.textContent = enlacePublico;
-        }
+        actualizarPreviewQr();
 
         bootstrap.Modal.getOrCreateInstance(
             modalQrElement
         ).show();
+    };
+
+    const obtenerQrBlob = async function () {
+        if (qrUrlActual === '') {
+            actualizarPreviewQr();
+        }
+
+        if (qrUrlActual === '') {
+            throw new Error('No hay un código QR disponible.');
+        }
+
+        const respuesta = await fetch(qrUrlActual, {
+            mode: 'cors',
+            cache: 'no-store'
+        });
+
+        if (!respuesta.ok) {
+            throw new Error(
+                'No fue posible obtener la imagen del código QR.'
+            );
+        }
+
+        return await respuesta.blob();
+    };
+
+    const descargarQr = async function () {
+        try {
+            const blob = await obtenerQrBlob();
+            const objetoUrl = URL.createObjectURL(blob);
+            const enlace = document.createElement('a');
+            const nombre = nombreFormulario
+                .toLowerCase()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/^-|-$/g, '');
+
+            enlace.href = objetoUrl;
+            enlace.download = 'qr-' + (nombre || 'formulario') + '.png';
+            document.body.appendChild(enlace);
+            enlace.click();
+            enlace.remove();
+
+            window.setTimeout(function () {
+                URL.revokeObjectURL(objetoUrl);
+            }, 1000);
+
+            mostrarToast(
+                'Código QR descargado correctamente.',
+                false
+            );
+        } catch (error) {
+            console.error(error);
+            mostrarToast(
+                error.message ||
+                'No fue posible descargar el código QR.',
+                true
+            );
+        }
+    };
+
+    const copiarQr = async function () {
+        try {
+            if (
+                !navigator.clipboard ||
+                typeof window.ClipboardItem === 'undefined'
+            ) {
+                throw new Error(
+                    'Tu navegador no permite copiar imágenes directamente. Puedes descargar el QR.'
+                );
+            }
+
+            const blob = await obtenerQrBlob();
+            const pngBlob = blob.type === 'image/png'
+                ? blob
+                : new Blob([blob], { type: 'image/png' });
+
+            await navigator.clipboard.write([
+                new ClipboardItem({
+                    'image/png': pngBlob
+                })
+            ]);
+
+            mostrarToast(
+                'Código QR copiado como imagen.',
+                false
+            );
+        } catch (error) {
+            console.error(error);
+            mostrarToast(
+                error.message ||
+                'No fue posible copiar el código QR.',
+                true
+            );
+        }
     };
 
     botonGenerarLink?.addEventListener(
@@ -310,6 +559,28 @@ document.addEventListener('DOMContentLoaded', function () {
         'click',
         generarQr
     );
+    botonAplicarQr?.addEventListener(
+        'click',
+        actualizarPreviewQr
+    );
+    botonRestablecerQr?.addEventListener(
+        'click',
+        restablecerQr
+    );
+    botonDescargarQr?.addEventListener(
+        'click',
+        descargarQr
+    );
+    botonCopiarQr?.addEventListener(
+        'click',
+        copiarQr
+    );
+
+    qrTransparent?.addEventListener('change', function () {
+        if (qrLight) {
+            qrLight.disabled = qrTransparent.checked;
+        }
+    });
 
     imagenQr?.addEventListener('load', function () {
         loaderQr?.classList.add('d-none');
