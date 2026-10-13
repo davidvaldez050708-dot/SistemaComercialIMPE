@@ -77,6 +77,7 @@ $totalRecordatoriosSeguimiento = 0;
                     class="topbar-reminder-button telephony-reception-toggle"
                     type="button"
                     data-telephony-reception-toggle
+                    <?php if ($esAnalistaDatos): ?>data-telephony-analyst="1"<?php endif; ?>
                     aria-label="Activar recepción telefónica"
                     title="Activar recepción telefónica">
                     <i class="bi bi-headset"></i>
