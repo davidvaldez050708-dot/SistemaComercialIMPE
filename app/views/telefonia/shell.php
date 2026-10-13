@@ -195,6 +195,12 @@ $nombreShell = $nombreShell !== '' ? $nombreShell : 'Usuario';
                 <button type="button" class="persistent-phone-action is-danger" data-incoming-hangup hidden>
                     <i class="bi bi-telephone-x" aria-hidden="true"></i>Colgar
                 </button>
+                <?php if ($analistaEntrantesShell): ?>
+                <button type="button" class="persistent-phone-action is-primary"
+                    data-incoming-register-finished hidden>
+                    <i class="bi bi-journal-check" aria-hidden="true"></i> Registrar resultado
+                </button>
+                <?php endif; ?>
                 <button type="button" class="persistent-phone-action is-primary"
                     data-incoming-close-finished hidden>
                     <i class="bi bi-check2-circle" aria-hidden="true"></i>Cerrar
