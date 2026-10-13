@@ -92,7 +92,6 @@ check app/services/TelefoniaRecepcionMarketingService.php 'public static functio
 check app/services/TelefoniaRecepcionMarketingService.php "NOTIFY_OUT_START"
 check app/services/TelefoniaRecepcionMarketingService.php "NOTIFY_OUT_END"
 check app/services/TelefoniaRecepcionMarketingService.php "tienePermiso('telefonia.salientes')"
-check app/services/TelefoniaRecepcionMarketingService.php "AND inicial.internal = ?"
 check app/services/TelefoniaRecepcionMarketingService.php 'inicial.internal = ?'
 check app/services/TelefoniaRecepcionMarketingService.php 'inicial.received_at >= ?'
 check app/services/TelefoniaRecepcionMarketingService.php "'tiene_grabacion'"
