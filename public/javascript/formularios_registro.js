@@ -27,6 +27,9 @@ document.addEventListener('DOMContentLoaded', function () {
     const lugarLaboras = form.querySelector(
         '[data-registro-lugar-laboras]'
     );
+    const telRecomendado = form.querySelector(
+        '[data-registro-tel-recomendado]'
+    );
     const botonSubmit = form.querySelector('[data-registro-submit]');
     const compartir = document.querySelector('[data-formulario-share]');
     const botonGenerarLink = compartir?.querySelector(
@@ -1062,6 +1065,26 @@ document.addEventListener('DOMContentLoaded', function () {
         return principalValido && confirmacionValida;
     };
 
+    const validarTelRecomendado = function () {
+        if (!telRecomendado) {
+            return true;
+        }
+
+        const valor = normalizarTelefono(telRecomendado);
+
+        if (valor === '') {
+            telRecomendado.setCustomValidity('');
+            telRecomendado.classList.remove('is-valid', 'is-invalid');
+            return true;
+        }
+
+        return marcarCampo(
+            telRecomendado,
+            /^\d{10}$/.test(valor),
+            'El teléfono recomendado debe contener exactamente 10 dígitos.'
+        );
+    };
+
     const validarCorreos = function () {
         const principal = String(correo?.value || '').trim().toLowerCase();
         const confirmacion = String(
@@ -1115,6 +1138,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 'Selecciona un perfil de interés.'
             ),
             validarMoviles(),
+            validarTelRecomendado(),
             validarCorreos(),
             validarSelect(
                 estado,
@@ -1286,6 +1310,22 @@ document.addEventListener('DOMContentLoaded', function () {
 
         campo?.addEventListener('blur', validarMoviles);
     });
+
+    telRecomendado?.addEventListener('input', function () {
+        normalizarTelefono(telRecomendado);
+
+        if (
+            String(telRecomendado.value || '').length === 10 ||
+            String(telRecomendado.value || '').length === 0
+        ) {
+            validarTelRecomendado();
+        }
+    });
+
+    telRecomendado?.addEventListener(
+        'blur',
+        validarTelRecomendado
+    );
 
     [correo, correoConfirmacion].forEach(function (campo) {
         campo?.addEventListener('blur', validarCorreos);
