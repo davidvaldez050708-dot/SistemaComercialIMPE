@@ -46,7 +46,8 @@ function boot(opts = {}) {
         '[data-incoming-eyebrow]','[data-incoming-timer]',
         '[data-incoming-answer]','[data-incoming-decline]',
         '[data-incoming-mute]','[data-incoming-hangup]',
-        '[data-incoming-notice]','[data-incoming-minimize]',
+        '[data-incoming-notice]','[data-incoming-close-finished]',
+        '[data-incoming-minimize]',
         '[data-incoming-answer-compact]','[data-incoming-decline-compact]',
         '[data-incoming-mute-compact]','[data-incoming-hangup-compact]',
         '[data-incoming-drag-handle]','[data-incoming-compact-timer]'
@@ -83,6 +84,7 @@ function boot(opts = {}) {
     class BroadcastChannel {
         constructor() {channels.push(this);this.events={};}
         addEventListener(k,fn) {this.events[k] = fn;}
+        postMessage(message) {this.lastCommand = message;}
         close() {}
         message(value) {this.events.message?.({data:value});}
     }
@@ -185,12 +187,43 @@ assert.equal(first.elements['[data-incoming-panel]'].hidden,true,
     'Colgar oculta inmediatamente el modal sin una segunda interfaz');
 assert.equal(first.elements['[data-shell-host-region]'].children.length,1,
     'tras Colgar el SDK sigue en el mismo iframe para recibir entrantes');
+// Una saliente terminada muestra un cierre de Marketing, sin solicitar
+// el resultado comercial reservado a Seguimiento.
+first.channels[0].message({type:'STATE',state:{
+    userId:8,updatedAt:Date.now(),hostReady:true,active:false,
+    direction:'outgoing',destination:'5512345678',phase:'finished',
+    context:{type:'TELEPHONY_MANUAL'},callToken:'call-marketing',
+    duration:37,status:'completed'
+}});
+assert.equal(first.elements['[data-incoming-panel]'].hidden,false,
+    'después de colgar se confirma Llamada finalizada');
+assert.equal(first.elements['[data-incoming-title]'].textContent,
+    'Llamada finalizada');
+assert.equal(first.elements['[data-incoming-timer]'].textContent,'00:37');
+assert.equal(first.elements['[data-incoming-hangup]'].hidden,true,
+    'el resumen terminado no conserva botón Colgar activo');
+assert.equal(first.elements['[data-incoming-close-finished]'].hidden,false,
+    'Marketing puede cerrar el resumen sin registrar resultado');
+first.elements['[data-incoming-close-finished]'].events.click();
+assert.equal(first.elements['[data-incoming-panel]'].hidden,true,
+    'Cerrar no deja modal fantasma');
+assert.equal(first.channels[0].lastCommand.action,'CLEAR_FINISHED',
+    'Cerrar también limpia la llamada en el SDK');
 
 const second = boot();
 assert.equal(second.elements['[data-shell-host-region]'].children.length,0,
     'second tab does not register same SIP extension');
 assert.throws(() => second.window.IMPE_TELEPHONY_SHELL.ensureHost());
 
+storage.clear();
+storage.set('impe:telephony:state:8',JSON.stringify({
+    userId:8,updatedAt:Date.now(),hostReady:true,active:false,
+    direction:'outgoing',phase:'finished',context:{type:'MARKETING_CALLBACK'},
+    callToken:'antiguo',duration:185,finalMetadata:{status:'completed'}
+}));
+const restarted = boot();
+assert.equal(restarted.elements['[data-incoming-panel]'].hidden,true,
+    'al volver al navegador no revive una saliente terminada');
 storage.clear();
 storage.set('impe:telephony:auto-reception:8','0');
 const optedOut = boot();
