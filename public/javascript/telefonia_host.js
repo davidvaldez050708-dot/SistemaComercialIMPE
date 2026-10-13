@@ -173,6 +173,7 @@
     let incomingPollInterval = null;
     let incomingPollBusy = false;
     let incomingFinishedTimer = null;
+    let analystSdkObserver = null;
     let hangingUp = false;
     let muted = false;
     let answeredAtMs = 0;
@@ -508,6 +509,58 @@
         webRtcKey = String(data.webrtc_key || '').trim();
     };
 
+    const startAnalystSdkObserver = function () {
+        // Las llamadas internas 100 → 101 pueden timbrar en el SDK sin
+        // NOTIFY_INTERNAL. La DOM observada es evidencia de timbrado local,
+        // pero NUNCA constituye una llamada PBX verificada.
+        if (!config.analystSdkIncoming || !modoEmbebido ||
+            !permiteEntrantes || analystSdkObserver) return;
+
+        analystSdkObserver = window.IMPE_ZADARMA_SDK_RING_OBSERVER?.create(
+            document, {
+                onRinging: function (call) {
+                    if (!widgetReady || state.active) return;
+                    const number = String(call?.caller || '').slice(0, 40);
+                    const token = 'sdk-' + Date.now().toString(36) +
+                        '-' + Math.random().toString(36).slice(2, 9);
+                    answeredAtMs = 0;
+                    muted = false;
+                    publish({
+                        active: true,
+                        phase: 'incoming-ringing',
+                        status: 'incoming-ringing',
+                        direction: 'incoming',
+                        destination: number || 'Número desconocido',
+                        calledDid: '',
+                        muted: false,
+                        duration: 0,
+                        requestedAt: Math.floor(Date.now() / 1000),
+                        pbxCallId: '',
+                        callToken: token,
+                        context: {
+                            type: 'SDK_INCOMING',
+                            verified: false,
+                            callerName: String(call?.callerName || '').slice(0, 100)
+                        },
+                        finalMetadata: null,
+                        message: 'Timbrado detectado en el teléfono WebRTC. Registro PBX pendiente.'
+                    });
+                },
+                onStopped: function () {
+                    if (!state.active || state.direction !== 'incoming' ||
+                        state.context?.type !== 'SDK_INCOMING') return;
+                    // No inferir «contestada», «perdida» ni duración.
+                    // El widget terminó de mostrar timbrado; la PBX no confirmó
+                    // todavía si fue respondida o colgada.
+                    state = emptyState();
+                    state.hostReady = widgetReady;
+                    state.phase = widgetReady ? 'ready' : 'idle';
+                    publish(state);
+                }
+            }
+        ) || null;
+    };
+
     const ensureWidget = async function () {
         if (
             widgetReady &&
@@ -584,6 +637,7 @@
             }
         ) || null;
         startIncomingPolling();
+        startAnalystSdkObserver();
 
         const staged =
             !state.active &&
@@ -624,8 +678,20 @@
             return Boolean(permiteEntrantes && incomingBridge?.available());
         },
         answer: function () {
+            const sdkOnly = config.analystSdkIncoming &&
+                state.context?.type === 'SDK_INCOMING';
             const sent = Boolean(permiteEntrantes && incomingBridge?.answer());
-            if (sent) actualizarEstadoTrasAccion();
+            if (sent) {
+                actualizarEstadoTrasAccion();
+                if (sdkOnly) {
+                    // La invocación no acredita «atendida». Abrir el
+                    // teléfono ORIGINAL después de solicitar Contestar
+                    // permite controlar la conversación si PBX sigue muda.
+                    try {
+                        window.parent.IMPE_TELEPHONY_SHELL?.showProviderControls?.();
+                    } catch (_) { /* Modo clásico u otra versión del shell */ }
+                }
+            }
             return sent;
         },
         decline: function () {
