@@ -518,14 +518,68 @@
             !String(state.pbxCallId || '').trim());
     };
 
-    const clearSdkOnlyIncoming = function () {
+    // Cola secuencial: el FIN nunca se guarda antes de la entrada.
+    let sdkJournalQueue = Promise.resolve();
+    const reportSdkEvent = function (evento, current) {
+        if (!config.analystSdkIncoming ||
+            !config.analystSdkJournalUrl || !config.analystSdkJournalCsrf ||
+            current?.context?.type !== 'SDK_INCOMING') return;
+        const data = new URLSearchParams({
+            csrf_token: String(config.analystSdkJournalCsrf),
+            session_id: String(current.callToken || ''),
+            evento: evento,
+            numero: String(current.destination || '') === 'Número desconocido'
+                ? '' : String(current.destination || ''),
+            caller_name: String(current.context.callerName || '')
+        });
+        sdkJournalQueue = sdkJournalQueue.catch(function () {}).then(async function () {
+            for (let attempt = 0; attempt < 2; attempt++) {
+                try {
+                    const response = await fetch(String(config.analystSdkJournalUrl), {
+                        method: 'POST', credentials: 'same-origin',
+                        cache: 'no-store',
+                        headers: {
+                            Accept: 'application/json',
+                            'X-Requested-With': 'fetch',
+                            'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
+                        },
+                        body: data.toString()
+                    });
+                    const result = await response.json();
+                    if (!response.ok || result.ok !== true) {
+                        throw new Error(result.mensaje || 'Registro WebRTC no disponible.');
+                    }
+                    return;
+                } catch (error) {
+                    if (attempt === 1) console.warn(
+                        '[Analista] No se guardó el evento WebRTC ' + evento + '.', error
+                    );
+                }
+            }
+        });
+    };
+
+    const clearSdkOnlyIncoming = function (reason) {
         if (!state.active || !isSdkOnlyIncoming()) return;
+        const previous = state;
+        const answered = previous.phase === 'in-progress' && answeredAtMs > 0;
+        const elapsed = answered ? currentDuration() : 0;
+        reportSdkEvent(reason === 'declined' ? 'declined' :
+            (answered ? 'ended' : 'missed'), previous);
         answeredAtMs = 0;
         muted = false;
-        state = emptyState();
-        state.hostReady = widgetReady;
-        state.phase = widgetReady ? 'ready' : 'idle';
-        publish(state);
+        publish({
+            phase: 'incoming-finished',
+            active: false,
+            muted: false,
+            direction: 'incoming',
+            status: answered ? 'completed' :
+                (reason === 'declined' ? 'declined' : 'no-answer'),
+            duration: elapsed,
+            answeredAtMs: 0,
+            message: 'Llamada finalizada. Registro WebRTC sin confirmación PBX.',
+            finalMetadata: null
+        });
     };
 
     const startAnalystSdkObserver = function () {
@@ -544,6 +598,14 @@
                         '-' + Math.random().toString(36).slice(2, 9);
                     answeredAtMs = 0;
                     muted = false;
+                    reportSdkEvent('ringing', {
+                        callToken: token,
+                        destination: number,
+                        context: {
+                            type: 'SDK_INCOMING',
+                            callerName: String(call?.callerName || '').slice(0, 100)
+                        }
+                    });
                     publish({
                         active: true,
                         phase: 'incoming-ringing',
@@ -570,14 +632,14 @@
                     // Al atender, el SDK deja de timbrar pero la conversación
                     // CONTINÚA. Sólo limpiar un timbrado que no se contestó.
                     if (state.phase === 'incoming-ringing') {
-                        clearSdkOnlyIncoming();
+                        clearSdkOnlyIncoming('missed');
                     }
                 },
                 onIdle: function () {
                     // El widget volvió al reposo (sin «incoming» ni control
                     // de colgar durante 2 s). Esto cubre cuando la OTRA
                     // extensión termina una conversación sin webhook PBX.
-                    if (isSdkOnlyIncoming()) clearSdkOnlyIncoming();
+                    if (isSdkOnlyIncoming()) clearSdkOnlyIncoming('remote');
                 }
             }
         ) || null;
@@ -712,6 +774,7 @@
                 // el MISMO modal. Este estado visual NO es prueba de un PBX ID
                 // ni autoriza registros/historial de interacción comercial.
                 answeredAtMs = Date.now();
+                reportSdkEvent('answered', state);
                 publish({
                     phase: 'in-progress',
                     status: 'in-progress',
@@ -732,7 +795,7 @@
                 state.phase === 'incoming-ringing';
             const sent = Boolean(permiteEntrantes && incomingBridge?.decline());
             if (sent) {
-                if (sdkOnly) clearSdkOnlyIncoming();
+                if (sdkOnly) clearSdkOnlyIncoming('declined');
                 else actualizarEstadoTrasAccion();
             }
             return sent;
@@ -745,7 +808,7 @@
                 state.phase === 'in-progress';
             const sent = Boolean(permiteEntrantes && incomingBridge?.hangup());
             if (sent) {
-                if (sdkOnly) clearSdkOnlyIncoming();
+                if (sdkOnly) clearSdkOnlyIncoming('local');
                 else actualizarEstadoTrasAccion();
             }
             return sent;
