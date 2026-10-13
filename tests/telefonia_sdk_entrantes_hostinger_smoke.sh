@@ -11,6 +11,17 @@ mkdir -p "$IMPE_RING_PUBLIC"
 git archive "$BASE" | tar -xf - -C "$IMPE_RING_PUBLIC"
 node tests/telefonia_sdk_entrantes_observador_smoke.js
 bash tools/desplegar_timbrado_webRTC_analista_hostinger.sh --check | grep -Fq 'parche compatible'
+
+# Hostinger compartido no trae Node.js: validar que --check funciona
+# con las utilidades estándar sin exigir instalarlo en producción.
+mkdir -p "$TMP/no-node-path"
+for binary in bash git php mktemp rm; do
+  ln -s "$(command -v "$binary")" "$TMP/no-node-path/$binary"
+done
+[[ ! -e "$TMP/no-node-path/node" ]]
+without_node="$(PATH="$TMP/no-node-path" bash tools/desplegar_timbrado_webRTC_analista_hostinger.sh --check)"
+grep -Fq 'Node.js no está disponible' <<< "$without_node"
+grep -Fq 'parche compatible' <<< "$without_node"
 [[ ! -e "$IMPE_RING_PUBLIC/public/javascript/telefonia_sdk_entrantes_observador.js" ]]
 bash tools/desplegar_timbrado_webRTC_analista_hostinger.sh --apply
 for p in app/views/telefonia/host.php public/javascript/telefonia_host.js \
