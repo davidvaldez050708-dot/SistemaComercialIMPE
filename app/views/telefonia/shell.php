@@ -135,6 +135,10 @@ $nombreShell = $nombreShell !== '' ? $nombreShell : 'Usuario';
                 <button type="button" class="persistent-phone-action is-danger" data-incoming-hangup hidden>
                     <i class="bi bi-telephone-x" aria-hidden="true"></i>Colgar
                 </button>
+                <button type="button" class="persistent-phone-action is-primary"
+                    data-incoming-close-finished hidden>
+                    <i class="bi bi-check2-circle" aria-hidden="true"></i>Cerrar
+                </button>
             </div>
             <p class="impe-incoming-notice" data-incoming-notice role="status" hidden></p>
         </div>
