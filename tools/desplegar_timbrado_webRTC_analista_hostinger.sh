@@ -47,8 +47,14 @@ git -C "$SRC" show "$TARGET:$HOST" > "$TMP/host.php"
 git -C "$SRC" show "$TARGET:$ENGINE" > "$TMP/engine.js"
 git -C "$SRC" show "$TARGET:$OBSERVER" > "$TMP/observer.js"
 php -l "$TMP/host.php" >/dev/null
-node --check "$TMP/engine.js"
-node --check "$TMP/observer.js"
+if command -v node >/dev/null 2>&1; then
+  node --check "$TMP/engine.js"
+  node --check "$TMP/observer.js"
+else
+  # El hosting compartido no ofrece Node.js; el contenido se verifica
+  # contra commits inmutables validados por GitHub Actions con Node.
+  echo "AVISO: Node.js no está disponible en SSH; la sintaxis JS se validó en GitHub Actions."
+fi
 DEPLOYED=0
 if (cd "$LIVE" && git apply --reverse --check "$TMP/ring.patch" >/dev/null 2>&1); then
   DEPLOYED=1
