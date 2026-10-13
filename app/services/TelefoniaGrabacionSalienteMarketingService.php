@@ -54,6 +54,7 @@ class TelefoniaGrabacionSalienteMarketingService
     // La revisión de eventos puede probarse sin consultar MySQL ni Zadarma.
     public static function eventosAutorizados(array $eventos, string $extension): bool
     {
+        $iniciada = false;
         $finalizada = false;
         $contestada = false;
         $grabada = false;
@@ -61,6 +62,9 @@ class TelefoniaGrabacionSalienteMarketingService
         foreach ($eventos as $evento) {
             $tipo = strtoupper(trim((string)($evento['event'] ?? '')));
             $interno = trim((string)($evento['internal'] ?? ''));
+            if ($tipo === 'NOTIFY_OUT_START' && $interno === $extension) {
+                $iniciada = true;
+            }
             if ($tipo === 'NOTIFY_OUT_END' &&
                 ($interno === '' || $interno === $extension)) {
                 $finalizada = true;
@@ -85,6 +89,6 @@ class TelefoniaGrabacionSalienteMarketingService
                 $transferida = true;
             }
         }
-        return $finalizada && $contestada && $grabada && !$transferida;
+        return $iniciada && $finalizada && $contestada && $grabada && !$transferida;
     }
 }
