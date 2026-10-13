@@ -71,7 +71,7 @@ $checks = [
         str_contains($jsShell, 'cfg.analystIncomingResults') &&
         str_contains($shell, "data-analyst-register-call"),
     'La recepción de Marketing continúa independiente' =>
-        str_contains($shell, "'autoReception' => $marketingShell || $analistaEntrantesShell") &&
+        str_contains($shell, "'autoReception' => " . '$marketingShell || $analistaEntrantesShell') &&
         str_contains($shell, '$marketingShell'),
 ];
 foreach ($checks as $nombre => $ok) {
