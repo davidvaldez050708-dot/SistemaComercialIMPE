@@ -106,6 +106,32 @@ class TelefoniaAnalistaWebrtcService
         }
         $stmt->execute();
         $stmt->close();
+
+        // Un UPDATE que no encontró la sesión NO significa que se guardó.
+        // Confirmar en BD, también para reintentos idempotentes.
+        $check = $this->db->prepare(
+            "SELECT estado, fecha_atendida, fecha_fin
+             FROM telefonia_analista_webrtc_sesiones
+             WHERE usuario_id = ? AND session_id = ? AND extension = ?
+             LIMIT 1"
+        );
+        $check->bind_param('iss', $usuarioId, $id, $extension);
+        $check->execute();
+        $row = $check->get_result()->fetch_assoc();
+        $check->close();
+        $saved = match ($evento) {
+            'answered' => $row &&
+                !empty($row['fecha_atendida']) &&
+                in_array($row['estado'], ['answered', 'ended'], true),
+            'ended' => $row && $row['estado'] === 'ended' &&
+                !empty($row['fecha_fin']),
+            'declined', 'missed' => $row && $row['estado'] === $evento &&
+                !empty($row['fecha_fin']),
+            default => false
+        };
+        if (!$saved) {
+            throw new RuntimeException('No se confirmó el guardado de la sesión WebRTC.');
+        }
     }
 
     public function obtenerFinalizada(int $usuarioId, string $id): array
