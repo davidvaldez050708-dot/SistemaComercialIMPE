@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Reparar sólo permisos HTTP de tres assets JS/CSS de telefonía.
+# Reparar únicamente permisos HTTP de cuatro assets JS/CSS de telefonía.
 # No modifica directorios, scripts PHP, configuraciones ni secretos.
 set -euo pipefail
 MODE="${1:---check}"
@@ -10,11 +10,12 @@ fi
 PUBLIC="${IMPE_ASSETS_PUBLIC_DIR:-$HOME/domains/fundacionrededumex.org/public_html}"
 [[ -f "$PUBLIC/index.php" ]] || { echo "ERROR: no existe public_html del CRM." >&2; exit 1; }
 FILES=(
+  "public/javascript/telefonia_persistente.js"
   "public/javascript/telefonia_entrantes_bridge.js"
   "public/javascript/telefonia_teclado.js"
   "public/css/telefonia_teclado.css"
 )
-echo "Inspeccionando tres archivos estáticos telefónicos..."
+echo "Inspeccionando cuatro archivos estáticos telefónicos..."
 for p in "${FILES[@]}"; do
   f="$PUBLIC/$p"
   if [[ ! -f "$f" || -L "$f" ]]; then
@@ -25,7 +26,7 @@ for p in "${FILES[@]}"; do
 done
 if [[ "$MODE" == "--check" ]]; then
   echo "Sólo lectura. Los archivos públicos normalmente requieren modo 644."
-  echo "Para reparar exclusivamente estos tres assets, utiliza --apply."
+  echo "Para reparar exclusivamente estos cuatro assets, utiliza --apply."
   exit 0
 fi
 for p in "${FILES[@]}"; do
@@ -35,5 +36,5 @@ for p in "${FILES[@]}"; do
     exit 1
   }
 done
-echo "OK: tres recursos JS/CSS telefónicos con permisos HTTP 644."
+echo "OK: cuatro recursos JS/CSS telefónicos con permisos HTTP 644."
 echo "Si persiste un 403, inspecciona las reglas .htaccess/WAF en hPanel."
