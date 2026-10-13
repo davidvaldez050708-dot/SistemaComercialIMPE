@@ -16,7 +16,7 @@ $recepcionMarketingPermitida = marketingTieneRecepcionAsignada();
             <div>
                 <span class="marketing-reception-eyebrow">TU RECEPCIÓN</span>
                 <h2>Recepción telefónica</h2>
-                <p>Consulta las llamadas entrantes de tu extensión, sin mezclar expedientes ni prospectos.</p>
+                <p>Consulta tus llamadas entrantes y salientes desde esta extensión, sin mezclar expedientes ni prospectos.</p>
             </div>
         </div>
         <div class="marketing-reception-actions">
@@ -58,7 +58,7 @@ $recepcionMarketingPermitida = marketingTieneRecepcionAsignada();
     <div class="marketing-reception-explainer" data-marketing-reception-hint>
         Estamos verificando la extensión telefónica asignada a tu usuario.
     </div>
-    <div class="marketing-reception-metrics" aria-label="Resumen de recepción de los últimos 30 días">
+    <div class="marketing-reception-metrics" aria-label="Resumen telefónico de los últimos 30 días">
         <article class="marketing-reception-metric">
             <span class="marketing-reception-metric-icon"><i class="bi bi-telephone-inbound" aria-hidden="true"></i></span>
             <div><strong data-marketing-reception-total>0</strong><span>Recibidas</span></div>
@@ -72,6 +72,10 @@ $recepcionMarketingPermitida = marketingTieneRecepcionAsignada();
             <div><strong data-marketing-reception-missed>0</strong><span>Perdidas</span></div>
         </article>
         <article class="marketing-reception-metric">
+            <span class="marketing-reception-metric-icon is-outgoing"><i class="bi bi-telephone-outbound" aria-hidden="true"></i></span>
+            <div><strong data-marketing-reception-outgoing>0</strong><span>Salientes</span></div>
+        </article>
+        <article class="marketing-reception-metric">
             <span class="marketing-reception-metric-icon"><i class="bi bi-arrow-left-right" aria-hidden="true"></i></span>
             <div><strong data-marketing-reception-transferred>0</strong><span>Transferidas</span></div>
         </article>
@@ -79,7 +83,7 @@ $recepcionMarketingPermitida = marketingTieneRecepcionAsignada();
 
     <div class="marketing-reception-history-head">
         <div>
-            <h3>Historial de llamadas entrantes</h3>
+            <h3>Historial de llamadas</h3>
             <p>Últimos 30 días, exclusivamente de tu extensión y desde su asignación.</p>
         </div>
         <div class="marketing-reception-filters">
@@ -90,6 +94,12 @@ $recepcionMarketingPermitida = marketingTieneRecepcionAsignada();
                     data-marketing-reception-search autocomplete="off">
             </label>
             <select class="form-select marketing-reception-status-filter"
+                data-marketing-reception-type aria-label="Filtrar por tipo de llamada">
+                <option value="">Entrantes y salientes</option>
+                <option value="Entrante">Entrantes</option>
+                <option value="Saliente">Salientes</option>
+            </select>
+            <select class="form-select marketing-reception-status-filter"
                 data-marketing-reception-filter aria-label="Filtrar llamadas por estado">
                 <option value="">Todos los estados</option>
                 <option value="Atendida">Atendidas</option>
@@ -97,6 +107,12 @@ $recepcionMarketingPermitida = marketingTieneRecepcionAsignada();
                 <option value="Transferida">Transferidas</option>
                 <option value="En curso">En curso</option>
                 <option value="Sonando">Sonando</option>
+                <option value="Completada">Completadas</option>
+                <option value="Sin respuesta">Sin respuesta</option>
+                <option value="Ocupada">Ocupadas</option>
+                <option value="Cancelada">Canceladas</option>
+                <option value="Fallida">Fallidas</option>
+                <option value="Marcando">Marcando</option>
             </select>
             <button type="button" class="btn btn-system-light marketing-reception-refresh"
                 data-marketing-reception-refresh title="Actualizar historial"
@@ -114,7 +130,8 @@ $recepcionMarketingPermitida = marketingTieneRecepcionAsignada();
             <thead>
                 <tr>
                     <th>Fecha y hora</th>
-                    <th>Número entrante</th>
+                    <th>Tipo</th>
+                    <th>Número</th>
                     <th>Llamar</th>
                     <th>Estado</th>
                     <th>Duración</th>
@@ -123,7 +140,7 @@ $recepcionMarketingPermitida = marketingTieneRecepcionAsignada();
                 </tr>
             </thead>
             <tbody data-marketing-reception-rows>
-                <tr><td colspan="7" class="marketing-reception-placeholder">
+                <tr><td colspan="8" class="marketing-reception-placeholder">
                     Consultando el historial de llamadas…
                 </td></tr>
             </tbody>

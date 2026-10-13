@@ -111,7 +111,7 @@
 }
 .marketing-reception-metrics {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 10px;
     margin: 15px 0 19px;
 }
@@ -239,6 +239,28 @@
     color: #496583;
     font-size: 10px;
     font-weight: 750;
+}
+.marketing-reception-direction {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 8px;
+    border-radius: 8px;
+    font-size: 10px;
+    font-weight: 750;
+    white-space: nowrap;
+}
+.marketing-reception-direction.is-incoming {
+    color: #246282;
+    background: #edf5fb;
+}
+.marketing-reception-direction.is-outgoing {
+    color: #374b97;
+    background: #edf0ff;
+}
+.marketing-reception-metric-icon.is-outgoing {
+    color: #374b97;
+    background: #edf0ff;
 }
 .marketing-reception-status.is-answered {
     background: #edf9f3;

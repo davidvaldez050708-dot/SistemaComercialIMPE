@@ -32,6 +32,7 @@
         const tableBody = root.querySelector('[data-marketing-reception-rows]');
         const search = root.querySelector('[data-marketing-reception-search]');
         const filter = root.querySelector('[data-marketing-reception-filter]');
+        const typeFilter = root.querySelector('[data-marketing-reception-type]');
         const count = root.querySelector('[data-marketing-reception-count]');
         const pages = root.querySelector('[data-marketing-reception-pages]');
         const refresh = root.querySelector('[data-marketing-reception-refresh]');
@@ -42,6 +43,7 @@
             total: root.querySelector('[data-marketing-reception-total]'),
             atendidas: root.querySelector('[data-marketing-reception-answered]'),
             perdidas: root.querySelector('[data-marketing-reception-missed]'),
+            salientes: root.querySelector('[data-marketing-reception-outgoing]'),
             transferidas: root.querySelector('[data-marketing-reception-transferred]')
         };
         const telefono = window.IMPE_TELEPHONY_PERSISTENT || null;
@@ -92,7 +94,9 @@
             const td = addCell(row, '');
             if (!call.tiene_grabacion) {
                 td.appendChild(node('span', 'marketing-reception-muted',
-                    call.estado === 'Transferida' ? 'No disponible' : 'Sin grabación'));
+                    call.estado === 'Transferida' ? 'No disponible' :
+                    call.grabacion_salida_pendiente ? 'Audio saliente pendiente' :
+                    'Sin grabación'));
                 return null;
             }
             const audioId = 'marketing-reception-record-' + index;
@@ -116,7 +120,7 @@
             detail.hidden = true;
             detail.setAttribute('data-sales-recording-row', '');
             const content = node('td');
-            content.colSpan = 7;
+            content.colSpan = 8;
             const slot = node('div', 'telephony-history-recording-slot');
             slot.setAttribute('data-sales-recording-slot', '');
             content.appendChild(slot);
@@ -127,6 +131,16 @@
         function drawRow(call, index) {
             const row = node('tr');
             addCell(row, String(call.fecha || '').slice(0, 16).replace('T', ' '));
+            const tipo = String(call.tipo || 'Entrante');
+            const tipoCelda = addCell(row, '', 'marketing-reception-type-cell');
+            const tipoBadge = node('span',
+                'marketing-reception-direction ' +
+                (tipo === 'Saliente' ? 'is-outgoing' : 'is-incoming'));
+            tipoBadge.innerHTML = '<i class="bi ' +
+                (tipo === 'Saliente' ? 'bi-telephone-outbound' : 'bi-telephone-inbound') +
+                '" aria-hidden="true"></i>';
+            tipoBadge.appendChild(node('span', '', tipo));
+            tipoCelda.appendChild(tipoBadge);
             const numeroCelda = addCell(
                 row, '', 'marketing-reception-number'
             );
@@ -158,6 +172,9 @@
             if (status === 'Atendida') badge.classList.add('is-answered');
             if (status === 'Perdida') badge.classList.add('is-missed');
             if (status === 'Transferida') badge.classList.add('is-transferred');
+            if (status === 'Completada') badge.classList.add('is-answered');
+            if (['Sin respuesta','Ocupada','Fallida','Cancelada'].includes(status))
+                badge.classList.add('is-missed');
             statusCell.appendChild(badge);
             addCell(row, formatDuration(call.segundos));
             addCell(row, call.destino_transferencia
@@ -170,13 +187,17 @@
             const query = normalizeNumber(search.value);
             const raw = String(search.value || '').trim().toLocaleLowerCase('es-MX');
             const selected = filter.value;
+            const selectedType = typeFilter?.value || '';
             const filtered = calls.filter(function (call) {
+                if (selectedType && call.tipo !== selectedType) return false;
                 if (selected && call.estado !== selected) return false;
                 if (!raw) return true;
                 const phone = String(call.numero || '');
                 const transfer = String(call.destino_transferencia || '');
+                const direction = String(call.tipo || '');
                 return phone.toLocaleLowerCase('es-MX').includes(raw) ||
                     transfer.includes(raw) ||
+                    direction.toLocaleLowerCase('es-MX').includes(raw) ||
                     (query !== '' &&
                         (normalizeNumber(phone).includes(query) ||
                             normalizeNumber(transfer).includes(query)));
@@ -197,9 +218,9 @@
                     : (!receptionConfigured
                         ? 'Tu usuario aún no tiene una extensión activa de recepción.'
                         : calls.length === 0
-                            ? 'Todavía no hay llamadas entrantes registradas en esta extensión.'
+                            ? 'Todavía no hay llamadas registradas en esta extensión.'
                             : 'No hay llamadas que coincidan con la búsqueda.'),
-                    'marketing-reception-placeholder').colSpan = 7;
+                    'marketing-reception-placeholder').colSpan = 8;
                 rows.push(empty);
             }
             tableBody.replaceChildren(...rows);
@@ -271,6 +292,8 @@
                 metrics.total.textContent = String(data.total || 0);
                 metrics.atendidas.textContent = String(data.atendidas || 0);
                 metrics.perdidas.textContent = String(data.perdidas || 0);
+                if (metrics.salientes) metrics.salientes.textContent =
+                    String(data.salientes || 0);
                 metrics.transferidas.textContent = String(data.transferidas || 0);
                 initialized = true;
                 renderList();
@@ -282,7 +305,7 @@
                     tableBody.replaceChildren();
                     const row = node('tr');
                     addCell(row, error.message || 'No fue posible consultar las llamadas.',
-                        'marketing-reception-placeholder').colSpan = 7;
+                        'marketing-reception-placeholder').colSpan = 8;
                     tableBody.appendChild(row);
                     count.textContent = 'No se pudo actualizar el historial.';
                 } else if (manual) {
@@ -383,6 +406,10 @@
             renderList();
         });
         filter.addEventListener('change', function () {
+            page = 1;
+            renderList();
+        });
+        typeFilter?.addEventListener('change', function () {
             page = 1;
             renderList();
         });
