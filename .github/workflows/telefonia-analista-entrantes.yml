@@ -36,6 +36,9 @@ on:
       - "tests/telefonia_analista_webRTC_controles_smoke.sh"
       - "tools/desplegar_flujo_entrante_webRTC_analista_hostinger.sh"
       - "tests/telefonia_flujo_entrante_webRTC_analista_smoke.sh"
+      - "app/services/TelefoniaAnalistaWebrtcService.php"
+      - "tools/desplegar_historial_entrantes_webRTC_analista_hostinger.sh"
+      - "tests/telefonia_webrtc_historial_analista_smoke.sh"
       - ".github/workflows/telefonia-analista-entrantes.yml"
   pull_request:
     paths:
@@ -56,6 +59,9 @@ on:
       - "tests/telefonia_sdk_entrantes_hostinger_smoke.sh"
       - "tools/desplegar_flujo_entrante_webRTC_analista_hostinger.sh"
       - "tests/telefonia_flujo_entrante_webRTC_analista_smoke.sh"
+      - "app/services/TelefoniaAnalistaWebrtcService.php"
+      - "tools/desplegar_historial_entrantes_webRTC_analista_hostinger.sh"
+      - "tests/telefonia_webrtc_historial_analista_smoke.sh"
       - ".github/workflows/telefonia-analista-entrantes.yml"
 jobs:
   validar:
@@ -110,3 +116,7 @@ jobs:
           bash -n tools/desplegar_flujo_entrante_webRTC_analista_hostinger.sh
           bash -n tests/telefonia_flujo_entrante_webRTC_analista_smoke.sh
           bash tests/telefonia_flujo_entrante_webRTC_analista_smoke.sh
+          php -l app/services/TelefoniaAnalistaWebrtcService.php
+          node --check public/javascript/seguimiento_entrantes_analista.js
+          bash -n tools/desplegar_historial_entrantes_webRTC_analista_hostinger.sh
+          bash tests/telefonia_webrtc_historial_analista_smoke.sh
