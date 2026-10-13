@@ -294,7 +294,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         '<option value="' +
                             Number(item.id || 0) +
                         '">' +
-                            escapar(item.nombre || '') +
+                            escapar(String(item.nombre || '').toLocaleUpperCase('es-MX')) +
                         '</option>'
                     );
                 }).join('');
