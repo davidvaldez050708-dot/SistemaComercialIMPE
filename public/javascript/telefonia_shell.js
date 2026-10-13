@@ -461,6 +461,8 @@
             !(cfg.analystIncomingResults && nativeVisible) &&
             !minimized && pending !== 'hangup' && pending !== 'decline';
         call.classList.toggle('is-visible', nativeVisible);
+        call.classList.toggle('is-analyst-native',
+            Boolean(cfg.analystIncomingResults && nativeVisible));
         if (incomingPanel) {
             incomingPanel.hidden = !customVisible;
             incomingPanel.classList.toggle('is-compact', incomingCompact);
