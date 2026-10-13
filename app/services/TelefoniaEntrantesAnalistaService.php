@@ -370,13 +370,23 @@ class TelefoniaEntrantesAnalistaService
                 ];
             }
 
-            $fechaInicio = trim((string)($call['call_start'] ?? ''));
+            // El tiempo del expediente corresponde a la conversación del
+            // Analista, no al tramo previo atendido por Recepción (Tania).
+            $fechaInicio = trim((string)($call['answer_at'] ?? ''));
+            if (!$fechaInicio || strtotime($fechaInicio) === false) {
+                $fechaInicio = trim((string)($call['call_start'] ?? ''));
+            }
             if (!$fechaInicio || strtotime($fechaInicio) === false) {
                 $fechaInicio = (string)$call['fecha_evento'];
             }
             $fechaFin = trim((string)($call['end_at'] ?? ''));
             if (!$fechaFin || strtotime($fechaFin) === false) {
                 $fechaFin = date('Y-m-d H:i:s');
+            }
+            $segundosConversacion = max(0,
+                (strtotime($fechaFin) ?: 0) - (strtotime($fechaInicio) ?: 0));
+            if ($segundosConversacion === 0) {
+                $segundosConversacion = max(0, (int)($call['duration'] ?? 0));
             }
             $notas = trim(implode("\n", array_filter([
                 'Llamada entrante recibida en la extensión ' . $extension . '.',
@@ -400,7 +410,7 @@ class TelefoniaEntrantesAnalistaService
                     'descartar' => 0,
                     'proveedor_externo' => 'ZADARMA',
                     'id_externo' => $id,
-                    'duracion_segundos' => max(0, (int)($call['duration'] ?? 0)),
+                    'duracion_segundos' => $segundosConversacion,
                     'fecha_fin' => $fechaFin
                 ], true
             );
