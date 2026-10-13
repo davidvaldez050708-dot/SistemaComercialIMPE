@@ -55,6 +55,7 @@ grep -Fq 'if ($analistaHostSdk):' app/views/telefonia/host.php
 grep -Fq 'analystSdkIncoming' app/views/telefonia/host.php
 grep -Fq 'type: '\''SDK_INCOMING'\''' public/javascript/telefonia_host.js
 grep -Fq "pbxCallId: ''" public/javascript/telefonia_host.js
-grep -Fq "state.context?.type !== 'SDK_INCOMING'" public/javascript/telefonia_host.js
+grep -Fq "state.context?.type === 'SDK_INCOMING'" public/javascript/telefonia_host.js
+grep -Fq "const isSdkOnlyIncoming = function () {" public/javascript/telefonia_host.js
 
 echo 'Timbrado SIP Analista: OK (entrada real, sin Marketing, permisos públicos y conflictos)'
