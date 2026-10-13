@@ -67,6 +67,31 @@ grep -Fq 'PERSONALIZACION-HOSTINGER-PANEL' \
 grep -Fq 'shell.ensureHost();' "$SITE/public/javascript/telefonia_persistente.js"
 grep -Fq 'manualOutgoingInShell' "$SITE/public/javascript/telefonia_persistente.js"
 run --apply
+# Variante exacta de Hostinger: panel.hidden comprueba incomingInShell,
+# pero el if solo contempla !show || managedByShell.
+git -C "$ROOT" show "8fc7f1dad44cefe6c070da89d48beb10ed5bed9f:public/javascript/telefonia_persistente.js" \
+  > "$SITE/public/javascript/telefonia_persistente.js"
+python3 - "$SITE/public/javascript/telefonia_persistente.js" <<'PY'
+from pathlib import Path
+import sys
+p = Path(sys.argv[1])
+s = p.read_text()
+needle = "        if (!show || managedByShell || incomingInShell) {"
+assert s.count(needle) == 1
+p.write_text(s.replace(needle, "        if (!show || managedByShell) {"))
+PY
+BEFORE_HOSTINGER="$(sha256sum "$SITE/public/javascript/telefonia_persistente.js")"
+run --check
+[[ "$BEFORE_HOSTINGER" == "$(sha256sum "$SITE/public/javascript/telefonia_persistente.js")" ]]
+run --apply
+grep -Fq '|| manualOutgoingInShell;' "$SITE/public/javascript/telefonia_persistente.js"
+grep -Fq 'if (!show || managedByShell || manualOutgoingInShell)' "$SITE/public/javascript/telefonia_persistente.js"
+if grep -Fq 'if (!show || managedByShell || incomingInShell || manualOutgoingInShell)' \
+ "$SITE/public/javascript/telefonia_persistente.js"; then
+ echo "ERROR: se cambió el retorno histórico de Hostinger." >&2
+ exit 1
+fi
+run --check
 # Cambios locales incompatibles desconocidos detienen el despliegue completo.
 git -C "$ROOT" show "8fc7f1dad44cefe6c070da89d48beb10ed5bed9f:public/javascript/telefonia_persistente.js" \
   > "$SITE/public/javascript/telefonia_persistente.js"

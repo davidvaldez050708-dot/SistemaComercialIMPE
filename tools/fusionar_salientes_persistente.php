@@ -97,10 +97,18 @@ if (str_contains($beforePanel, 'manualOutgoingInShell')) {
         $fail('el criterio de visibilidad del panel es desconocido');
     }
     $follow = substr($tail, strlen($visible[0]));
-    if (preg_match('/^(\s*if\s*\()(.*?)(\)\s*\{\s*return\s*;\s*\})/s', $follow, $early) !== 1 ||
-        !str_contains($early[2], 'managedByShell') ||
-        !str_contains($early[2], 'incomingInShell')) {
+    if (preg_match('/^(\\s*if\\s*\\()(.*?)(\\)\\s*\\{\\s*return\\s*;\\s*\\})/s', $follow, $early) !== 1) {
         $fail('el retorno temprano del panel es desconocido');
+    }
+    // En Hostinger incomingInShell ya oculta el panel; el retorno
+    // histórico sólo contiene !show || managedByShell. Ambas variantes
+    // son válidas. No alterar otras condiciones ni lógica de entrantes.
+    $earlyCondition = preg_replace('/\\s+/', '', $early[2]);
+    if (!in_array($earlyCondition, [
+        '!show||managedByShell',
+        '!show||managedByShell||incomingInShell'
+    ], true)) {
+        $fail('el retorno temprano tiene condiciones locales desconocidas');
     }
     $insertion = <<<'JS'
         // El marcador manual usa la misma tarjeta móvil del shell.
