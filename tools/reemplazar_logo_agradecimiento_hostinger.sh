@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Publica el cambio de logo en las pantallas de agradecimiento.
-# La imagen "logos juntos.png" debe existir previamente en producción.
+# La imagen "logos-juntos.png" debe existir previamente en producción.
 set -euo pipefail
 umask 077
 
@@ -44,7 +44,7 @@ FILES=(
     "public/css/formularios_publico.css"
 )
 
-LOGO="$DST/public/img/brand/logos juntos.png"
+LOGO="$DST/public/img/brand/logos-juntos.png"
 
 echo "Repositorio fuente : $SRC"
 echo "Instalación pública: $DST"
@@ -52,7 +52,7 @@ echo "Logo esperado      : $LOGO"
 echo
 
 if [[ ! -f "$LOGO" ]]; then
-    echo "ERROR: no se encontró la imagen 'logos juntos.png' en:"
+    echo "ERROR: no se encontró la imagen 'logos-juntos.png' en:"
     echo "  $DST/public/img/brand/"
     echo
     echo "Coloca ahí la imagen antes de aplicar el cambio."
@@ -60,7 +60,7 @@ if [[ ! -f "$LOGO" ]]; then
 fi
 
 if [[ "$MODE" == "--check" ]]; then
-    echo "OK: se encontró la imagen logos juntos.png."
+    echo "OK: se encontró la imagen logos-juntos.png."
     echo
 
     for file in "${FILES[@]}"; do
@@ -99,11 +99,11 @@ for file in "${FILES[@]}"; do
     echo "PUBLICADO $file"
 done
 
-grep -Fq "logos%20juntos.png"     "$DST/app/views/formularios/publico_gracias.php"
+grep -Fq "logos-juntos.png"     "$DST/app/views/formularios/publico_gracias.php"
 
-grep -Fq "logos%20juntos.png"     "$DST/app/views/formularios/publico_gracias_inscripcion.php"
+grep -Fq "logos-juntos.png"     "$DST/app/views/formularios/publico_gracias_inscripcion.php"
 
 echo
-echo "OK: el logo anterior fue sustituido por 'logos juntos.png'."
+echo "OK: el logo anterior fue sustituido por 'logos-juntos.png'."
 echo "Respaldo: $BACKUP"
 echo "Recarga el navegador con Ctrl+F5."
