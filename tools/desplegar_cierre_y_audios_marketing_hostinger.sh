@@ -84,6 +84,8 @@ requires "prueba_telefonia/api/grabacion_recepcion_marketing.php" "tienePermiso(
 requires "prueba_telefonia/api/grabacion_recepcion_marketing.php" 'TelefoniaGrabacionSalienteMarketingService::autorizada'
 requires "public/javascript/telefonia_recepcion_marketing.js" "call.tipo === 'Saliente'"
 requires "public/javascript/telefonia_host.js" "manualCall(state)"
+requires "public/javascript/telefonia_host.js" "phase: 'finished'"
+requires "public/javascript/telefonia_host.js" "clearFinished(token);"
 requires "public/javascript/telefonia_persistente.js" "manual && !parsed.active && parsed.phase === 'finished'"
 requires "public/javascript/telefonia_shell.js" 'recentFinishedOutgoing'
 requires "public/javascript/telefonia_shell.js" "'CLEAR_FINISHED'"
