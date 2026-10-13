@@ -64,6 +64,50 @@ $nombreShell = $nombreShell !== '' ? $nombreShell : 'Usuario';
     }
     ?>
     </style>
+    <?php if ($analistaEntrantesShell): ?>
+    <style id="impeAnalystCallResultStyles">
+
+/* Aviso específico del Analista: el audio y las tarjetas telefónicas
+   existentes conservan su disposición y sus controles. */
+.impe-analyst-call-result {
+  position: fixed;
+  right: 17px;
+  bottom: 16px;
+  z-index: 1190;
+  width: min(490px, calc(100vw - 28px));
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 13px 15px;
+  border: 1px solid #dce5f1;
+  border-radius: 13px;
+  background: #fff;
+  box-shadow: 0 14px 42px #0c22402b;
+  font: 600 12px/1.45 'Manrope', sans-serif;
+  color: #536580;
+}
+.impe-analyst-call-result[hidden] {display: none!important;}
+.impe-analyst-call-result > div {display: grid;gap: 3px;flex: 1 1 165px;}
+.impe-analyst-call-result strong {color: #253857;font-size: 13px;}
+.impe-analyst-call-result strong i {color: #238b73;margin-right: 5px;}
+.impe-analyst-call-result button {
+  border: 0;
+  border-radius: 9px;
+  padding: 9px 11px;
+  background: #293e90;
+  color: #fff;
+  cursor: pointer;
+  font: 700 11px 'Manrope', sans-serif;
+}
+.impe-analyst-call-result button.impe-analyst-call-dismiss {
+  background: #f1f5fa;
+  color: #70809a;
+  padding: 8px 10px;
+}
+
+    </style>
+    <?php endif; ?>
 </head>
 <body>
     <noscript>
