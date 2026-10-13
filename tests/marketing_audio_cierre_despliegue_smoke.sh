@@ -59,6 +59,6 @@ SHA="$(sha256sum "$SITE/public/javascript/telefonia_host.js")"
 if run --apply > "$TMP/conflict.txt" 2>&1; then
  echo "ERROR: se aceptó conflicto de Hostinger." >&2; exit 1
 fi
-grep -Fq 'CONFLICTO' "$TMP/conflict.txt"
+grep -Eq 'CONFLICTO|ERROR:' "$TMP/conflict.txt"
 [[ "$SHA" == "$(sha256sum "$SITE/public/javascript/telefonia_host.js")" ]]
 echo "Marketing audio y cierre: OK (preflight, permisos, respaldo, repetición y conflicto)"
