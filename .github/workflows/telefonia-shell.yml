@@ -20,6 +20,8 @@ on:
       - "tools/desplegar_modal_entrantes_hostinger.sh"
       - "tools/desplegar_salientes_modal_hostinger.sh"
       - "tools/desplegar_estado_salientes_hostinger.sh"
+      - "tools/desplegar_cierre_y_audios_marketing_hostinger.sh"
+      - "tests/marketing_audio_cierre_despliegue_smoke.sh"
       - "prueba_telefonia/api/zadarma_estado_llamada.php"
       - "tests/telefonia_estado_salientes_permisos_smoke.php"
       - "tests/telefonia_estado_salientes_despliegue_smoke.sh"
@@ -102,3 +104,5 @@ jobs:
           bash tests/telefonia_salientes_modal_despliegue_smoke.sh
           bash -n tools/desplegar_estado_salientes_hostinger.sh
           bash tests/telefonia_estado_salientes_despliegue_smoke.sh
+          bash -n tools/desplegar_cierre_y_audios_marketing_hostinger.sh
+          bash tests/marketing_audio_cierre_despliegue_smoke.sh
