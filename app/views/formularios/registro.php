@@ -296,7 +296,8 @@ $urlEnlaceRegistro = trim((string)($urlEnlaceRegistro ?? ''));
                                 Descargar PNG
                             </button>
                         </div>
-                    </div>            </div>
+                    </div>
+                </div>
             </div>
         </div>
     <?php endif; ?>
