@@ -37,6 +37,6 @@ $check(!$verify($transferencia), 'transferencia con audio de otra extensión');
 $check(!$verify([$evt('NOTIFY_ANSWER', '101'),
     $evt('NOTIFY_OUT_END', '100', 'busy', true)]),
     'respuesta de otra extensión');
-$check($verify([$evt('NOTIFY_OUT_END', '100', 'answered', true)]),
-    'evento final firmado reportó conversación y grabación');
+$check(!$verify([$evt('NOTIFY_OUT_END', '100', 'answered', true)]),
+    'evento final aislado no autoriza audio sin inicio propio');
 echo "Grabaciones salientes Marketing: OK (8 verificaciones)\n";
