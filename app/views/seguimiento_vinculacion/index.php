@@ -87,6 +87,14 @@ $tarjetasPorPaginaSeguimiento = 12;
     </div>
 <?php endif; ?>
 
+<?php if ($modoSeguimiento === 'analista' && tienePermiso('telefonia.recibir')): ?>
+    <div class="d-flex justify-content-end mb-3">
+        <a class="btn btn-system-light" href="<?= BASE_URL ?>index.php?controller=seguimientoVinculacion&action=llamadasEntrantes">
+            <i class="bi bi-telephone-inbound me-1"></i> Llamadas recibidas
+        </a>
+    </div>
+<?php endif; ?>
+
 <?php if (!empty($territorios)): ?>
     <section class="dashboard-panel data-territorial-selector linkage-selector">
         <div class="data-selector-heading">
