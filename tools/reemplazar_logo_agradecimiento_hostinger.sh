@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Publica el cambio de logo en las pantallas de agradecimiento.
-# La imagen "logos-juntos.png" debe existir previamente en producción.
+# La imagen "logo-duo-color.png" debe existir previamente en el repositorio fuente.
 set -euo pipefail
 umask 077
 
@@ -44,7 +44,7 @@ FILES=(
     "public/css/formularios_publico.css"
 )
 
-LOGO="$DST/public/img/brand/logos-juntos.png"
+LOGO="$DST/public/img/brand/logo-duo-color.png"
 LOGO_SOURCE=""
 
 echo "Repositorio fuente : $SRC"
@@ -55,20 +55,20 @@ echo
 if [[ -f "$LOGO" ]]; then
     LOGO_SOURCE="$LOGO"
 else
-    LOGO_SOURCE="$(find "$DST" "$SRC" -type f -iname 'logos-juntos.png' -print -quit 2>/dev/null || true)"
+    LOGO_SOURCE="$(find "$DST" "$SRC" -type f -iname 'logo-duo-color.png' -print -quit 2>/dev/null || true)"
 
     if [[ -z "$LOGO_SOURCE" ]]; then
-        LOGO_SOURCE="$(find "$HOME" -maxdepth 6 -type f -iname 'logos-juntos.png' -print -quit 2>/dev/null || true)"
+        LOGO_SOURCE="$(find "$HOME" -maxdepth 6 -type f -iname 'logo-duo-color.png' -print -quit 2>/dev/null || true)"
     fi
 
     if [[ -z "$LOGO_SOURCE" ]]; then
-        echo "ERROR: no se encontró la imagen 'logos-juntos.png' dentro de:"
+        echo "ERROR: no se encontró la imagen 'logo-duo-color.png' dentro de:"
         echo "  $DST"
         echo "  $SRC"
         echo "  $HOME (hasta 6 niveles)"
         echo
         echo "Puedes localizarla manualmente con:"
-        echo "  find \"$HOME\" -type f -iname 'logos-juntos.png' 2>/dev/null"
+        echo "  find \"$HOME\" -type f -iname 'logo-duo-color.png' 2>/dev/null"
         exit 1
     fi
 
@@ -77,7 +77,7 @@ fi
 
 if [[ "$MODE" == "--check" ]]; then
     if [[ "$LOGO_SOURCE" == "$LOGO" ]]; then
-        echo "OK: logos-juntos.png ya está en la carpeta correcta."
+        echo "OK: logo-duo-color.png ya está en la carpeta correcta."
     else
         echo "PENDIENTE: la imagen existe, pero está en otra ubicación."
         echo "Con --apply se copiará automáticamente a:"
@@ -113,7 +113,7 @@ if [[ "$LOGO_SOURCE" != "$LOGO" ]]; then
     mkdir -p "$(dirname "$LOGO")"
     cp "$LOGO_SOURCE" "$LOGO"
     chmod 0644 "$LOGO"
-    echo "PUBLICADO public/img/brand/logos-juntos.png"
+    echo "PUBLICADO public/img/brand/logo-duo-color.png"
 fi
 
 for file in "${FILES[@]}"; do
@@ -128,11 +128,11 @@ for file in "${FILES[@]}"; do
     echo "PUBLICADO $file"
 done
 
-grep -Fq "logos-juntos.png"     "$DST/app/views/formularios/publico_gracias.php"
+grep -Fq "logo-duo-color.png"     "$DST/app/views/formularios/publico_gracias.php"
 
-grep -Fq "logos-juntos.png"     "$DST/app/views/formularios/publico_gracias_inscripcion.php"
+grep -Fq "logo-duo-color.png"     "$DST/app/views/formularios/publico_gracias_inscripcion.php"
 
 echo
-echo "OK: el logo anterior fue sustituido por 'logos-juntos.png'."
+echo "OK: el logo anterior fue sustituido por 'logo-duo-color.png'."
 echo "Respaldo: $BACKUP"
 echo "Recarga el navegador con Ctrl+F5."
