@@ -676,7 +676,7 @@ $urlEnlaceRegistro = trim((string)($urlEnlaceRegistro ?? ''));
                             required
                             data-registro-estado
                             data-municipios-url="<?= $texto($municipiosUrl) ?>">
-                            <option value="">SELECCIONA UN ESTADO</option>
+                            <option value="">Selecciona un estado</option>
                             <?php foreach ($estados as $estado): ?>
                                 <option value="<?= (int)($estado['id'] ?? 0) ?>">
                                     <?= $texto(mb_strtoupper((string)($estado['nombre'] ?? ''), 'UTF-8')) ?>
@@ -700,14 +700,14 @@ $urlEnlaceRegistro = trim((string)($urlEnlaceRegistro ?? ''));
                             disabled
                             data-registro-municipio>
                             <option value="">
-                                PRIMERO SELECCIONA UN ESTADO
+                                Primero selecciona un estado
                             </option>
                         </select>
                         <small data-registro-municipio-ayuda>
                             Los municipios se cargarán según el estado seleccionado.
                         </small>
                         <div class="invalid-feedback">
-                            SELECCIONA UN MUNICIPIO.
+                            Selecciona un municipio.
                         </div>
                     </div>
                 </div>
