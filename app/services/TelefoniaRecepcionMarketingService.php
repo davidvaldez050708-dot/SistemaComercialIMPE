@@ -210,6 +210,13 @@ class TelefoniaRecepcionMarketingService
             $esSaliente = $call['tipo'] === 'Saliente';
 
             if ($esSaliente) {
+                if ($tipo === 'NOTIFY_INTERNAL' && $interno !== $extension) {
+                    $transfer = json_decode((string)($row['payload_json'] ?? ''), true);
+                    if (is_array($transfer) &&
+                        trim((string)($transfer['transfer_from'] ?? '')) === $extension) {
+                        $call['saliente_transferida'] = true;
+                    }
+                }
                 if ($tipo === 'NOTIFY_ANSWER' &&
                     ($interno === $extension || $interno === '')) {
                     $call['contestada'] = true;
