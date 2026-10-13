@@ -18,6 +18,8 @@ on:
       - "public/css/telefonia_shell.css"
       - "database/migrations/2026_10_13_telefonia_entrantes_analistas.sql"
       - "tests/telefonia_analista_entrantes_smoke.php"
+      - "tools/desplegar_entrantes_analista_hostinger.sh"
+      - "tests/telefonia_analista_hostinger_smoke.sh"
       - ".github/workflows/telefonia-analista-entrantes.yml"
   pull_request:
     paths:
@@ -25,12 +27,16 @@ on:
       - "public/**"
       - "database/migrations/**"
       - "tests/telefonia_analista_entrantes_smoke.php"
+      - "tools/desplegar_entrantes_analista_hostinger.sh"
+      - "tests/telefonia_analista_hostinger_smoke.sh"
       - ".github/workflows/telefonia-analista-entrantes.yml"
 jobs:
   validar:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
@@ -53,3 +59,6 @@ jobs:
           php tests/telefonia_analista_entrantes_smoke.php
           php tests/telefonia_shell_smoke.php
           php tests/seguimiento_modales_responsive_smoke.php
+          bash -n tools/desplegar_entrantes_analista_hostinger.sh
+          bash -n tests/telefonia_analista_hostinger_smoke.sh
+          bash tests/telefonia_analista_hostinger_smoke.sh
