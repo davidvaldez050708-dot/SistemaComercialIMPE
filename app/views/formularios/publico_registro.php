@@ -316,7 +316,7 @@ $fechaMaximaNacimiento = date('Y-m-d');
                                 required
                                 data-publico-estado
                                 data-municipios-url="<?= $texto($municipiosUrl) ?>">
-                                <option value="">SELECCIONA UN ESTADO</option>
+                                <option value="">Selecciona un estado</option>
                                 <?php foreach ($estados as $estado): ?>
                                     <option value="<?= (int)($estado['id'] ?? 0) ?>">
                                         <?= $texto(mb_strtoupper((string)($estado['nombre'] ?? ''), 'UTF-8')) ?>
@@ -339,11 +339,11 @@ $fechaMaximaNacimiento = date('Y-m-d');
                                 disabled
                                 data-publico-municipio>
                                 <option value="">
-                                    PRIMERO SELECCIONA UN ESTADO
+                                    Primero selecciona un estado
                                 </option>
                             </select>
                             <div class="invalid-feedback">
-                                SELECCIONA UN MUNICIPIO.
+                                Selecciona un municipio.
                             </div>
                         </div>
                     </div>
