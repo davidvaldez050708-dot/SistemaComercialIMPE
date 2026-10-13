@@ -1,0 +1,55 @@
+name: Telefonía - Entrantes Analistas
+on:
+  push:
+    branches: [main]
+    paths:
+      - "app/controllers/SeguimientoVinculacionController.php"
+      - "app/models/SeguimientoVinculacionModel.php"
+      - "app/services/TelefoniaEntrantesAnalistaService.php"
+      - "app/views/seguimiento_vinculacion/llamadas_entrantes.php"
+      - "app/views/seguimiento_vinculacion/index.php"
+      - "app/views/seguimiento_vinculacion/estado.php"
+      - "app/views/telefonia/shell.php"
+      - "app/views/layout/dashboard_head.php"
+      - "app/views/layout/dashboard_footer.php"
+      - "public/javascript/seguimiento_entrantes_analista.js"
+      - "public/javascript/telefonia_shell.js"
+      - "public/css/seguimiento_entrantes_analista.css"
+      - "public/css/telefonia_shell.css"
+      - "database/migrations/2026_10_13_telefonia_entrantes_analistas.sql"
+      - "tests/telefonia_analista_entrantes_smoke.php"
+      - ".github/workflows/telefonia-analista-entrantes.yml"
+  pull_request:
+    paths:
+      - "app/**"
+      - "public/**"
+      - "database/migrations/**"
+      - "tests/telefonia_analista_entrantes_smoke.php"
+      - ".github/workflows/telefonia-analista-entrantes.yml"
+jobs:
+  validar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, mysqli
+      - name: Sintaxis PHP
+        run: |
+          php -l app/controllers/SeguimientoVinculacionController.php
+          php -l app/models/SeguimientoVinculacionModel.php
+          php -l app/services/TelefoniaEntrantesAnalistaService.php
+          php -l app/views/seguimiento_vinculacion/llamadas_entrantes.php
+          php -l app/views/seguimiento_vinculacion/index.php
+          php -l app/views/seguimiento_vinculacion/estado.php
+          php -l app/views/telefonia/shell.php
+          php -l app/views/layout/dashboard_head.php
+          php -l app/views/layout/dashboard_footer.php
+      - name: JS y límites funcionales
+        run: |
+          node --check public/javascript/telefonia_shell.js
+          node --check public/javascript/seguimiento_entrantes_analista.js
+          php tests/telefonia_analista_entrantes_smoke.php
+          php tests/telefonia_shell_smoke.php
+          php tests/seguimiento_modales_responsive_smoke.php
