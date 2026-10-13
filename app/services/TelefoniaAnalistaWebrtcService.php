@@ -91,7 +91,7 @@ class TelefoniaAnalistaWebrtcService
             $sql = "UPDATE telefonia_analista_webrtc_sesiones
                     SET estado = 'ended', fecha_fin = COALESCE(fecha_fin, NOW())
                     WHERE usuario_id = ? AND session_id = ? AND extension = ?
-                      AND estado IN ('ringing','answered')";
+                      AND estado = 'answered'";
         } else {
             $sql = "UPDATE telefonia_analista_webrtc_sesiones
                     SET estado = ?, fecha_fin = COALESCE(fecha_fin, NOW())
