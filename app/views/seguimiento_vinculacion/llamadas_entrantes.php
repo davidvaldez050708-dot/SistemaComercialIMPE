@@ -217,6 +217,26 @@ $duracionEntrante = static function ($segundos) {
                             </div>
                         </div>
                     </div>
+                    <div class="linkage-incoming-evidence mt-3" data-incoming-evidence hidden>
+                        <strong>Datos verificados durante esta llamada</strong>
+                        <p>Solo se contabilizan cuando se registran evidencias y la centralita confirma que hubo conversación real.</p>
+                        <label><input type="checkbox" name="verificacion_telefono_confirmado" value="1">
+                            Confirmé que el teléfono corresponde a la institución</label>
+                        <label><input type="checkbox" name="verificacion_correo_confirmado" value="1">
+                            Confirmé el correo institucional registrado</label>
+                        <label><input type="checkbox" name="verificacion_contacto_confirmado" value="1">
+                            Confirmé a la persona o área de contacto</label>
+                    </div>
+                    <div class="linkage-incoming-discard mt-3" data-incoming-discard hidden>
+                        <label><input type="checkbox" name="descartar" value="1" data-incoming-discard-toggle>
+                            Descartar este seguimiento porque la institución no está interesada</label>
+                        <div data-incoming-discard-reason hidden>
+                            <label class="form-label mt-2" for="incomingDiscardReason">Motivo de descarte</label>
+                            <textarea id="incomingDiscardReason" name="motivo_descarte" rows="2"
+                                maxlength="500" class="form-control"
+                                placeholder="Indica el motivo por el que se descarta"></textarea>
+                        </div>
+                    </div>
                     <div class="mt-3">
                         <label class="form-label" for="incomingNotes">Observaciones</label>
                         <textarea id="incomingNotes" name="observacion" rows="3" maxlength="1000"
