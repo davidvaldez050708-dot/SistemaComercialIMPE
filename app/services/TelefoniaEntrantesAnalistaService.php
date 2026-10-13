@@ -220,6 +220,11 @@ class TelefoniaEntrantesAnalistaService
         if (!in_array((string)$call['estado'], ['ended', 'transferred'], true)) {
             throw new DomainException('La llamada debe finalizar antes de registrar el resultado.');
         }
+        // Una comunicación sin respuesta no debe figurar como contacto efectivo
+        // ni generar un expediente: sólo admite clasificación sin identificar.
+        if (empty($call['answer_at']) && $decision !== 'sin_identificar') {
+            throw new DomainException('La centralita no confirmó una conversación. Clasifica sin identificar o devuelve la llamada.');
+        }
         $observacion = trim((string)($datos['observacion'] ?? ''));
         if (mb_strlen($observacion, 'UTF-8') > 1000) {
             throw new InvalidArgumentException('Las observaciones son demasiado extensas.');
