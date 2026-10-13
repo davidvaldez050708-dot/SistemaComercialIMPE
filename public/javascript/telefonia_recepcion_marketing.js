@@ -102,6 +102,8 @@
             const audioId = 'marketing-reception-record-' + index;
             const url = new URL(root.dataset.recordingUrl, window.location.href);
             url.searchParams.set('pbx_call_id', String(call.pbx_call_id || ''));
+            url.searchParams.set('tipo',
+                call.tipo === 'Saliente' ? 'saliente' : 'entrante');
             const button = node('button',
                 'linkage-call-audio-state linkage-call-recording-toggle marketing-reception-record-check');
             button.type = 'button';
