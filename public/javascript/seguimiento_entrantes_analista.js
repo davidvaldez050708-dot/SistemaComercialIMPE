@@ -19,6 +19,12 @@
     const lookup = form.querySelector('[data-incoming-lookup]');
     const followup = form.querySelector('[data-incoming-followup]');
     const submit = form.querySelector('[data-incoming-submit]');
+    const resultInput = form.querySelector('[name="resultado"]');
+    const evidence = form.querySelector('[data-incoming-evidence]');
+    const discard = form.querySelector('[data-incoming-discard]');
+    const discardToggle = form.querySelector('[data-incoming-discard-toggle]');
+    const discardReason = form.querySelector('[data-incoming-discard-reason]');
+    const discardText = form.querySelector('[name="motivo_descarte"]');
     const searchUrl = page.dataset.searchUrl || '';
     const saveUrl = page.dataset.saveUrl || '';
     let searchTimer = null;
@@ -35,6 +41,27 @@
         errorBox.classList.add('d-none');
     };
 
+    const renderEvidence = () => {
+        const enabled = decision.value !== 'sin_identificar';
+        const result = String(resultInput.value || '');
+        const allowEvidence = enabled && [
+            'CONTACTO_CORRECTO', 'SOLICITO_INFORMACION',
+            'SOLICITO_LLAMAR_DESPUES', 'NO_INTERESADO'
+        ].includes(result);
+        evidence.hidden = !allowEvidence;
+        if (!allowEvidence) {
+            evidence.querySelectorAll('input[type="checkbox"]')
+                .forEach(input => { input.checked = false; });
+        }
+        discard.hidden = !enabled || result !== 'NO_INTERESADO';
+        if (discard.hidden) discardToggle.checked = false;
+        discardReason.hidden = discard.hidden || !discardToggle.checked;
+        discardText.required = !discardReason.hidden;
+        if (discardReason.hidden) discardText.value = '';
+    };
+    resultInput.addEventListener('change', renderEvidence);
+    discardToggle.addEventListener('change', renderEvidence);
+
     const renderDecision = () => {
         const value = decision.value;
         existing.hidden = value !== 'existente';
@@ -45,6 +72,7 @@
         form.querySelector('[name="nombre_entidad"]').required = value === 'nueva';
         form.querySelector('[name="estado_id"]').required = value === 'nueva';
         form.querySelector('[name="resultado"]').required = value !== 'sin_identificar';
+        renderEvidence();
         clearError();
     };
     decision.addEventListener('change', renderDecision);
