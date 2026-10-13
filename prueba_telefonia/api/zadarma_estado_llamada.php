@@ -6,6 +6,10 @@ require_once dirname(__DIR__, 2) .
     '/app/services/TelefoniaExtensionService.php';
 require_once dirname(__DIR__, 2) .
     '/app/services/ZadarmaWebhookEventStoreService.php';
+require_once dirname(__DIR__, 2) .
+    '/app/models/RolModel.php';
+require_once dirname(__DIR__, 2) .
+    '/app/helpers/PermissionHelper.php';
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
@@ -99,22 +103,29 @@ function duracionConversacion(?array $respuesta, ?array $fin): int
 }
 
 $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
-$rol = trim((string)($_SESSION['rol'] ?? ''));
 
 if ($usuarioId <= 0) {
     responderJson(['ok' => false, 'mensaje' => 'Sesión no activa.'], 401);
 }
 
+// El control de seguimiento saliente depende de permisos operativos, no
+// del nombre del rol: Marketing puede llamar desde su propia extensión.
+// Mantener la misma inicialización de permisos que el endpoint WebRTC.
+if (!isset($_SESSION['permisos'])) {
+    $modeloRol = new RolModel();
+    $modeloRol->inicializarPermisosSistema();
+    $_SESSION['permisos'] = $modeloRol->obtenerCodigosPermisosPorRol(
+        (int)($_SESSION['rol_id'] ?? 0)
+    );
+}
+
 if (
-    !in_array(
-        $rol,
-        ['Analista de Datos', 'Asesor de Ventas'],
-        true
-    )
+    !tienePermiso('telefonia.usar') ||
+    !tienePermiso('telefonia.salientes')
 ) {
     responderJson([
         'ok' => false,
-        'mensaje' => 'Tu perfil no tiene acceso al estado telefónico.'
+        'mensaje' => 'Tu perfil no tiene permiso para consultar llamadas salientes.'
     ], 403);
 }
 
@@ -149,6 +160,13 @@ if (!$asignacionTelefonica) {
         'ok' => false,
         'mensaje' => 'Tu usuario no tiene una extensión Zadarma activa asignada.'
     ], 422);
+}
+
+if (empty($asignacionTelefonica['permite_salientes'])) {
+    responderJson([
+        'ok' => false,
+        'mensaje' => 'Tu extensión no tiene habilitadas llamadas salientes.'
+    ], 403);
 }
 
 $extension = trim(
