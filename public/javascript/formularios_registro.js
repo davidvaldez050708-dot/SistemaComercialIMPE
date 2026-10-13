@@ -1160,7 +1160,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         municipio.innerHTML =
             '<option value="">' +
-                escapar(texto || 'SELECCIONA UN MUNICIPIO') +
+                escapar(texto || 'Selecciona un municipio') +
             '</option>';
         municipio.value = '';
         municipio.disabled = true;
@@ -1176,7 +1176,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const estadoId = Number(estado.value || 0);
 
         if (estadoId <= 0) {
-            limpiarMunicipios('PRIMERO SELECCIONA UN ESTADO');
+            limpiarMunicipios('Primero selecciona un estado');
 
             if (ayudaMunicipio) {
                 ayudaMunicipio.textContent =
@@ -1204,7 +1204,7 @@ document.addEventListener('DOMContentLoaded', function () {
             '<option value="">Cargando municipios...</option>';
 
         if (ayudaMunicipio) {
-            ayudaMunicipio.textContent = 'CARGANDO MUNICIPIOS...';
+            ayudaMunicipio.textContent = 'Cargando municipios...';
         }
 
         try {
@@ -1258,7 +1258,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         } catch (error) {
             console.error(error);
-            limpiarMunicipios('NO FUE POSIBLE CARGAR MUNICIPIOS');
+            limpiarMunicipios('No fue posible cargar municipios');
 
             if (ayudaMunicipio) {
                 ayudaMunicipio.textContent =
@@ -1347,7 +1347,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     campo.setCustomValidity('');
                 });
 
-            limpiarMunicipios('PRIMERO SELECCIONA UN ESTADO');
+            limpiarMunicipios('Primero selecciona un estado');
 
             if (ayudaMunicipio) {
                 ayudaMunicipio.textContent =
