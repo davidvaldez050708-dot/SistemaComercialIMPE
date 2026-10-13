@@ -80,7 +80,7 @@ $checks = [
         str_contains($shellJs, 'incomingCallId(value) !== incomingCallId(currentState)'),
     'Contestar y colgar son inmediatos, sin avisos de éxito' =>
         !str_contains($shellJs, 'Contestando… espera la confirmación') &&
-        !str_contains($shellJs, 'Finalizando llamada…') &&
+        str_contains($shellJs, 'const finishing = shownOutgoing') &&
         str_contains($shellJs, "pendingIncomingAction = {") &&
         str_contains($shellJs, "pending !== 'hangup' && pending !== 'decline'") &&
         str_contains($hostJs, 'actualizarEstadoTrasAccion'),
