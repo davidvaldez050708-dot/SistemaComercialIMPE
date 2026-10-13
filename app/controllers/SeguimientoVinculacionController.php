@@ -76,6 +76,35 @@ class SeguimientoVinculacionController
         require_once __DIR__ . '/../views/layout/dashboard_footer.php';
     }
 
+    /**
+     * Bitácora WebRTC del Analista: eventos de su propia sesión autenticada,
+     * claramente diferenciados de los webhooks firmados de Zadarma.
+     */
+    public function eventoEntranteWebrtc()
+    {
+        $this->validarAccesoEntrantesAnalista(true);
+        $this->validarMetodoPostJson();
+        $expected = (string)($_SESSION['csrf_token'] ?? '');
+        $received = (string)($_POST['csrf_token'] ?? '');
+        if ($expected === '' || !hash_equals($expected, $received)) {
+            $this->responderJson(['ok' => false, 'mensaje' => 'Sesión expirada o inválida.'], 403);
+        }
+
+        require_once __DIR__ . '/../services/TelefoniaAnalistaWebrtcService.php';
+        try {
+            (new TelefoniaAnalistaWebrtcService())->registrarEvento(
+                (int)$_SESSION['usuario_id'],
+                $_POST
+            );
+            $this->responderJson(['ok' => true]);
+        } catch (InvalidArgumentException | DomainException $e) {
+            $this->responderJson(['ok' => false, 'mensaje' => $e->getMessage()], 422);
+        } catch (Throwable $e) {
+            error_log('[evento_entrante_webrtc_analista] ' . $e->getMessage());
+            $this->responderJson(['ok' => false, 'mensaje' => 'No fue posible registrar el evento WebRTC.'], 500);
+        }
+    }
+
     public function buscarEntrantesSeguimientos()
     {
         $this->validarAccesoEntrantesAnalista(true);
