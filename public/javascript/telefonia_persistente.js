@@ -2655,20 +2655,39 @@
                 }
             };
 
-            const activarRecepcion = function () {
+            const abrirControlesAnalista = function () {
+                if (receptionButton?.dataset.telephonyAnalyst !== '1') return false;
+                const shell = embeddedPhone();
+                if (!shell?.showProviderControls) {
+                    throw new Error('Abre el CRM con el teléfono integrado para ver los controles de Zadarma.');
+                }
+                if (!shell.showProviderControls()) {
+                    throw new Error('WebRTC aún no tiene los controles preparados. Intenta nuevamente.');
+                }
+                receptionError = '';
+                return true;
+            };
+
+            const activarRecepcion = function (abrirAlConectar = false) {
                 if (!availability?.permite_entrantes || receptionBusy) return;
                 receptionBusy = true;
                 receptionError = '';
                 renderReceptionState();
 
-                // Mantener la apertura del host WebRTC dentro del clic real:
-                // la ventana no puede abrirse tras otra promesa de validación.
+                // El motor SIP se abre dentro del clic original; al confirmar
+                // conexión, ese MISMO clic también abre el visor del Analista.
+                // Marketing conserva su flujo normal de activación.
                 void prepare({openHost: true}).then(function () {
                     sendCommand('PING', {});
+                    if (abrirAlConectar) abrirControlesAnalista();
                     window.setTimeout(renderReceptionState, 300);
                 }).catch(function (error) {
                     console.warn(error);
                     receptionError = String(error?.message || 'No fue posible activar recepción.');
+                    if (receptionButton) {
+                        receptionButton.title = receptionError;
+                        receptionButton.setAttribute('aria-label', receptionError);
+                    }
                 }).finally(function () {
                     receptionBusy = false;
                     renderReceptionState();
@@ -2677,17 +2696,16 @@
 
             const abrirOActivar = function () {
                 if (!availability?.permite_entrantes || receptionBusy) return;
+                const esAnalista = receptionButton?.dataset.telephonyAnalyst === '1';
                 if (hostUsable()) {
-                    // Sólo Analistas: abrir controles originales de Zadarma
-                    // sin crear una segunda sesión SIP y sin depender de
-                    // NOTIFY_INTERNAL (ausente en algunas llamadas internas).
-                    const shell = embeddedPhone();
-                    if (receptionButton?.dataset.telephonyAnalyst === '1' &&
-                        shell?.showProviderControls) {
-                        if (!shell.showProviderControls()) {
-                            receptionError = 'El teléfono WebRTC no está listo. Intenta nuevamente.';
-                            renderReceptionState();
+                    if (esAnalista) {
+                        try {
+                            abrirControlesAnalista();
+                        } catch (error) {
+                            receptionError = String(error?.message || 'No se pudo abrir Zadarma.');
+                            console.warn('[Telefonía Analista]', error);
                         }
+                        renderReceptionState();
                         return;
                     }
                     if (!openDialer({})) {
@@ -2695,7 +2713,7 @@
                         renderReceptionState();
                     }
                 } else {
-                    activarRecepcion();
+                    activarRecepcion(esAnalista);
                 }
             };
             receptionButton?.addEventListener('click', abrirOActivar);
