@@ -48,6 +48,12 @@ class TelefoniaGrabacionSalienteMarketingService
 
         $eventos = (new ZadarmaWebhookEventStoreService())
             ->obtenerPorPbxCallId($pbxCallId);
+        return self::eventosAutorizados($eventos, $extension);
+    }
+
+    // La revisión de eventos puede probarse sin consultar MySQL ni Zadarma.
+    public static function eventosAutorizados(array $eventos, string $extension): bool
+    {
         $finalizada = false;
         $contestada = false;
         $grabada = false;
