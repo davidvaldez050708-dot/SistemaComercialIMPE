@@ -88,11 +88,20 @@ document.addEventListener('DOMContentLoaded', function () {
     const qrImageSources = modalQrElement?.querySelectorAll(
         '[data-qr-image-source]'
     ) || [];
-    const qrSystemImage = modalQrElement?.querySelector(
-        '[data-qr-system-image]'
+    const qrUploadImage = modalQrElement?.querySelector(
+        '[data-qr-upload-image]'
     );
-    const qrSystemImageContainer = modalQrElement?.querySelector(
-        '[data-qr-system-image-container]'
+    const qrUploadImageContainer = modalQrElement?.querySelector(
+        '[data-qr-upload-image-container]'
+    );
+    const qrUploadPreview = modalQrElement?.querySelector(
+        '[data-qr-upload-preview]'
+    );
+    const qrUploadPreviewImage = modalQrElement?.querySelector(
+        '[data-qr-upload-preview-image]'
+    );
+    const qrUploadFileName = modalQrElement?.querySelector(
+        '[data-qr-upload-file-name]'
     );
     const qrPublicImageContainer = modalQrElement?.querySelector(
         '[data-qr-public-image-container]'
@@ -126,6 +135,9 @@ document.addEventListener('DOMContentLoaded', function () {
         compartir?.getAttribute('data-qr-color') || '223A84'
     ).replace('#', '').trim() || '223A84';
     let qrUrlActual = '';
+    let qrObjectUrlActual = '';
+    let qrUploadedImageData = '';
+    let qrRenderToken = 0;
 
     const mostrarToast = function (mensaje, esError) {
         let contenedor = document.querySelector('.toast-container');
@@ -314,17 +326,27 @@ document.addEventListener('DOMContentLoaded', function () {
             : fallback;
     };
 
+    const obtenerFuenteImagenQr = function () {
+        return Array.from(qrImageSources).find(
+            (radio) => radio.checked
+        )?.value || 'upload';
+    };
+
     const obtenerImagenCentralQr = function () {
         if (!qrImageEnabled?.checked) {
             return '';
         }
 
-        const source = Array.from(qrImageSources).find(
-            (radio) => radio.checked
-        )?.value || 'system';
+        const source = obtenerFuenteImagenQr();
 
-        if (source === 'system') {
-            return String(qrSystemImage?.value || '').trim();
+        if (source === 'upload') {
+            if (qrUploadedImageData === '') {
+                throw new Error(
+                    'Selecciona una imagen PNG o JPG desde tu equipo.'
+                );
+            }
+
+            return qrUploadedImageData;
         }
 
         const valor = String(qrPublicImageUrl?.value || '').trim();
@@ -384,21 +406,15 @@ document.addEventListener('DOMContentLoaded', function () {
         };
     };
 
-    const construirQrUrl = function () {
+    const construirParametrosQr = function () {
         if (enlacePublico === '' || !compartir) {
-            return '';
+            return null;
         }
 
-        const quickChartBase = String(
-            compartir.getAttribute('data-quickchart-url') ||
-            'https://quickchart.io/qr'
-        ).trim();
-
         const config = obtenerConfiguracionQr();
-
         const imagenCentral = obtenerImagenCentralQr();
 
-        const parametros = new URLSearchParams({
+        const parametros = {
             text: enlacePublico,
             size: config.size,
             margin: config.margin,
@@ -410,36 +426,94 @@ document.addEventListener('DOMContentLoaded', function () {
             finderDotStyle: config.finderDotStyle,
             ecLevel: imagenCentral !== '' ? 'H' : config.ecLevel,
             format: 'png'
-        });
+        };
 
         if (imagenCentral !== '') {
-            parametros.set('centerImageUrl', imagenCentral);
-            parametros.set('centerImageSizeRatio', '0.20');
+            parametros.centerImageUrl = imagenCentral;
+            parametros.centerImageSizeRatio = 0.20;
         }
 
-        return quickChartBase + '?' + parametros.toString();
+        return parametros;
     };
 
-    const actualizarPreviewQr = function () {
-        if (!imagenQr) {
+    const limpiarQrObjectUrl = function () {
+        if (qrObjectUrlActual !== '') {
+            URL.revokeObjectURL(qrObjectUrlActual);
+            qrObjectUrlActual = '';
+        }
+    };
+
+    const actualizarPreviewQr = async function () {
+        if (!imagenQr || !compartir) {
             return;
         }
 
-        try {
-            qrUrlActual = construirQrUrl();
+        const renderToken = ++qrRenderToken;
 
-            if (qrUrlActual === '') {
+        try {
+            const quickChartBase = String(
+                compartir.getAttribute('data-quickchart-url') ||
+                'https://quickchart.io/qr'
+            ).trim();
+            const parametros = construirParametrosQr();
+
+            if (!parametros) {
                 return;
             }
 
             loaderQr?.classList.remove('d-none');
             imagenQr.classList.add('is-loading');
-            imagenQr.src = qrUrlActual;
+
+            const usaImagenLocal =
+                qrImageEnabled?.checked &&
+                obtenerFuenteImagenQr() === 'upload';
+
+            if (usaImagenLocal) {
+                const respuesta = await fetch(quickChartBase, {
+                    method: 'POST',
+                    mode: 'cors',
+                    cache: 'no-store',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(parametros)
+                });
+
+                if (!respuesta.ok) {
+                    throw new Error(
+                        'No fue posible generar el QR con la imagen seleccionada.'
+                    );
+                }
+
+                const blob = await respuesta.blob();
+
+                if (renderToken !== qrRenderToken) {
+                    return;
+                }
+
+                limpiarQrObjectUrl();
+                qrObjectUrlActual = URL.createObjectURL(blob);
+                qrUrlActual = qrObjectUrlActual;
+                imagenQr.src = qrUrlActual;
+            } else {
+                limpiarQrObjectUrl();
+
+                const query = new URLSearchParams();
+
+                Object.entries(parametros).forEach(function ([clave, valor]) {
+                    query.set(clave, String(valor));
+                });
+
+                qrUrlActual = quickChartBase + '?' + query.toString();
+                imagenQr.src = qrUrlActual;
+            }
 
             if (enlaceQr) {
                 enlaceQr.textContent = enlacePublico;
             }
         } catch (error) {
+            loaderQr?.classList.add('d-none');
+            imagenQr.classList.remove('is-loading');
             mostrarToast(
                 error.message ||
                 'No fue posible aplicar la personalización del QR.',
@@ -497,16 +571,28 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         qrImageConfig?.classList.add('d-none');
-        qrSystemImageContainer?.classList.remove('d-none');
+        qrUploadImageContainer?.classList.remove('d-none');
         qrPublicImageContainer?.classList.add('d-none');
 
         qrImageSources.forEach(function (radio) {
-            radio.checked = radio.value === 'system';
+            radio.checked = radio.value === 'upload';
         });
 
-        if (qrSystemImage) {
-            qrSystemImage.selectedIndex = 0;
+        qrUploadedImageData = '';
+
+        if (qrUploadImage) {
+            qrUploadImage.value = '';
         }
+
+        if (qrUploadPreviewImage) {
+            qrUploadPreviewImage.src = '';
+        }
+
+        if (qrUploadFileName) {
+            qrUploadFileName.textContent = '';
+        }
+
+        qrUploadPreview?.classList.add('d-none');
 
         if (qrPublicImageUrl) {
             qrPublicImageUrl.value = '';
@@ -667,13 +753,11 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     const actualizarFuenteImagenQr = function () {
-        const source = Array.from(qrImageSources).find(
-            (radio) => radio.checked
-        )?.value || 'system';
+        const source = obtenerFuenteImagenQr();
 
-        qrSystemImageContainer?.classList.toggle(
+        qrUploadImageContainer?.classList.toggle(
             'd-none',
-            source !== 'system'
+            source !== 'upload'
         );
         qrPublicImageContainer?.classList.toggle(
             'd-none',
@@ -687,16 +771,35 @@ document.addEventListener('DOMContentLoaded', function () {
             !qrImageEnabled.checked
         );
         actualizarFuenteImagenQr();
-        actualizarPreviewQr();
+
+        if (!qrImageEnabled.checked) {
+            actualizarPreviewQr();
+            return;
+        }
+
+        const source = obtenerFuenteImagenQr();
+
+        if (
+            (source === 'upload' && qrUploadedImageData !== '') ||
+            (source === 'url' &&
+                String(qrPublicImageUrl?.value || '').trim() !== '')
+        ) {
+            actualizarPreviewQr();
+        }
     });
 
     qrImageSources.forEach(function (radio) {
         radio.addEventListener('change', function () {
             actualizarFuenteImagenQr();
 
+            if (!radio.checked || !qrImageEnabled?.checked) {
+                return;
+            }
+
             if (
-                radio.checked &&
-                (radio.value !== 'url' ||
+                (radio.value === 'upload' &&
+                    qrUploadedImageData !== '') ||
+                (radio.value === 'url' &&
                     String(qrPublicImageUrl?.value || '').trim() !== '')
             ) {
                 actualizarPreviewQr();
@@ -704,13 +807,86 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    qrSystemImage?.addEventListener(
-        'change',
-        actualizarPreviewQr
-    );
+    qrUploadImage?.addEventListener('change', function () {
+        const archivo = qrUploadImage.files?.[0] || null;
+
+        if (!archivo) {
+            qrUploadedImageData = '';
+            qrUploadPreview?.classList.add('d-none');
+
+            if (qrUploadPreviewImage) {
+                qrUploadPreviewImage.src = '';
+            }
+
+            if (qrUploadFileName) {
+                qrUploadFileName.textContent = '';
+            }
+
+            return;
+        }
+
+        if (!['image/png', 'image/jpeg'].includes(archivo.type)) {
+            qrUploadImage.value = '';
+            qrUploadedImageData = '';
+            qrUploadPreview?.classList.add('d-none');
+            mostrarToast(
+                'Selecciona una imagen en formato PNG o JPG.',
+                true
+            );
+            return;
+        }
+
+        if (archivo.size > 5 * 1024 * 1024) {
+            qrUploadImage.value = '';
+            qrUploadedImageData = '';
+            qrUploadPreview?.classList.add('d-none');
+            mostrarToast(
+                'La imagen no debe superar 5 MB.',
+                true
+            );
+            return;
+        }
+
+        const lector = new FileReader();
+
+        lector.onload = function () {
+            qrUploadedImageData = String(lector.result || '');
+
+            if (qrUploadPreviewImage) {
+                qrUploadPreviewImage.src = qrUploadedImageData;
+            }
+
+            if (qrUploadFileName) {
+                qrUploadFileName.textContent = archivo.name;
+            }
+
+            qrUploadPreview?.classList.remove('d-none');
+
+            if (
+                qrImageEnabled?.checked &&
+                obtenerFuenteImagenQr() === 'upload'
+            ) {
+                actualizarPreviewQr();
+            }
+        };
+
+        lector.onerror = function () {
+            qrUploadedImageData = '';
+            qrUploadPreview?.classList.add('d-none');
+            mostrarToast(
+                'No fue posible leer la imagen seleccionada.',
+                true
+            );
+        };
+
+        lector.readAsDataURL(archivo);
+    });
 
     qrPublicImageUrl?.addEventListener('change', function () {
-        if (qrImageEnabled?.checked) {
+        if (
+            qrImageEnabled?.checked &&
+            obtenerFuenteImagenQr() === 'url'
+        ) {
             actualizarPreviewQr();
         }
     });
