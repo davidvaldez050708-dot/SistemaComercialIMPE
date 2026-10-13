@@ -19,8 +19,10 @@ for p in app/views/telefonia/host.php public/javascript/telefonia_host.js \
 done
 [[ "$(stat -c %a "$IMPE_RING_PUBLIC/public/javascript/telefonia_host.js")" == 644 ]]
 [[ "$(stat -c %a "$IMPE_RING_PUBLIC/public/javascript/telefonia_sdk_entrantes_observador.js")" == 644 ]]
-bash tools/desplegar_timbrado_webRTC_analista_hostinger.sh --check | grep -Fq 'ya publicado'
-bash tools/desplegar_timbrado_webRTC_analista_hostinger.sh --apply | grep -Fq 'ya publicado'
+result="$(bash tools/desplegar_timbrado_webRTC_analista_hostinger.sh --check)"
+grep -Fq 'ya publicado' <<< "$result"
+result="$(bash tools/desplegar_timbrado_webRTC_analista_hostinger.sh --apply)"
+grep -Fq 'ya publicado' <<< "$result"
 
 # Conflicto simulado: nunca sobreescribir modificaciones del cliente.
 export IMPE_RING_PUBLIC="$TMP/conflict"
