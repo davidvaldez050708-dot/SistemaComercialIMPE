@@ -509,6 +509,25 @@
         webRtcKey = String(data.webrtc_key || '').trim();
     };
 
+    // Únicamente las llamadas detectadas por el SDK SIN identificador PBX
+    // usan esta limpieza local; jamás se crea una llamada de historial falsa.
+    const isSdkOnlyIncoming = function () {
+        return Boolean(config.analystSdkIncoming &&
+            state.direction === 'incoming' &&
+            state.context?.type === 'SDK_INCOMING' &&
+            !String(state.pbxCallId || '').trim());
+    };
+
+    const clearSdkOnlyIncoming = function () {
+        if (!state.active || !isSdkOnlyIncoming()) return;
+        answeredAtMs = 0;
+        muted = false;
+        state = emptyState();
+        state.hostReady = widgetReady;
+        state.phase = widgetReady ? 'ready' : 'idle';
+        publish(state);
+    };
+
     const startAnalystSdkObserver = function () {
         // Las llamadas internas 100 → 101 pueden timbrar en el SDK sin
         // NOTIFY_INTERNAL. La DOM observada es evidencia de timbrado local,
@@ -547,15 +566,18 @@
                     });
                 },
                 onStopped: function () {
-                    if (!state.active || state.direction !== 'incoming' ||
-                        state.context?.type !== 'SDK_INCOMING') return;
-                    // No inferir «contestada», «perdida» ni duración.
-                    // El widget terminó de mostrar timbrado; la PBX no confirmó
-                    // todavía si fue respondida o colgada.
-                    state = emptyState();
-                    state.hostReady = widgetReady;
-                    state.phase = widgetReady ? 'ready' : 'idle';
-                    publish(state);
+                    if (!isSdkOnlyIncoming()) return;
+                    // Al atender, el SDK deja de timbrar pero la conversación
+                    // CONTINÚA. Sólo limpiar un timbrado que no se contestó.
+                    if (state.phase === 'incoming-ringing') {
+                        clearSdkOnlyIncoming();
+                    }
+                },
+                onIdle: function () {
+                    // El widget volvió al reposo (sin «incoming» ni control
+                    // de colgar durante 2 s). Esto cubre cuando la OTRA
+                    // extensión termina una conversación sin webhook PBX.
+                    if (isSdkOnlyIncoming()) clearSdkOnlyIncoming();
                 }
             }
         ) || null;
@@ -678,33 +700,54 @@
             return Boolean(permiteEntrantes && incomingBridge?.available());
         },
         answer: function () {
-            const sdkOnly = config.analystSdkIncoming &&
-                state.context?.type === 'SDK_INCOMING';
+            const sdkOnly = isSdkOnlyIncoming() &&
+                state.phase === 'incoming-ringing';
+            const token = String(state.callToken || '');
             const sent = Boolean(permiteEntrantes && incomingBridge?.answer());
-            if (sent) {
-                actualizarEstadoTrasAccion();
-                if (sdkOnly) {
-                    // La invocación no acredita «atendida». Abrir el
-                    // teléfono ORIGINAL después de solicitar Contestar
-                    // permite controlar la conversación si PBX sigue muda.
-                    try {
-                        window.parent.IMPE_TELEPHONY_SHELL?.showProviderControls?.();
-                    } catch (_) { /* Modo clásico u otra versión del shell */ }
-                }
+            if (!sent) return false;
+
+            if (sdkOnly && state.active &&
+                String(state.callToken || '') === token) {
+                // La aceptación SIP la ejecutó el SDK y la llamada sigue en
+                // el MISMO modal. Este estado visual NO es prueba de un PBX ID
+                // ni autoriza registros/historial de interacción comercial.
+                answeredAtMs = Date.now();
+                publish({
+                    phase: 'in-progress',
+                    status: 'in-progress',
+                    answeredAtMs: answeredAtMs,
+                    duration: 0,
+                    message: '',
+                    context: Object.assign({}, state.context, {
+                        verified: false,
+                        source: 'SDK_WEBRTC'
+                    })
+                });
             }
-            return sent;
+            actualizarEstadoTrasAccion();
+            return true;
         },
         decline: function () {
+            const sdkOnly = isSdkOnlyIncoming() &&
+                state.phase === 'incoming-ringing';
             const sent = Boolean(permiteEntrantes && incomingBridge?.decline());
-            if (sent) actualizarEstadoTrasAccion();
+            if (sent) {
+                if (sdkOnly) clearSdkOnlyIncoming();
+                else actualizarEstadoTrasAccion();
+            }
             return sent;
         },
         canHangup: function () {
             return Boolean(permiteEntrantes && incomingBridge?.canHangup());
         },
         hangup: function () {
+            const sdkOnly = isSdkOnlyIncoming() &&
+                state.phase === 'in-progress';
             const sent = Boolean(permiteEntrantes && incomingBridge?.hangup());
-            if (sent) actualizarEstadoTrasAccion();
+            if (sent) {
+                if (sdkOnly) clearSdkOnlyIncoming();
+                else actualizarEstadoTrasAccion();
+            }
             return sent;
         },
         error: function () {
