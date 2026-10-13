@@ -6,6 +6,12 @@ $llamadas = is_array($bandejaEntrantes['llamadas'] ?? null)
     ? $bandejaEntrantes['llamadas'] : [];
 $seleccionarId = trim((string)($_GET['pbx_call_id'] ?? ''));
 $estadosEntrantes = $estadosEntrantes ?? [];
+$pendientesEntrantes = count(array_filter($llamadas, static function ($fila) {
+    return (string)($fila['clasificacion'] ?? 'PENDIENTE') === 'PENDIENTE';
+}));
+$vinculadasEntrantes = count(array_filter($llamadas, static function ($fila) {
+    return (string)($fila['clasificacion'] ?? '') === 'VINCULADA';
+}));
 $duracionEntrante = static function ($segundos) {
     return sprintf('%02d:%02d', intdiv(max(0, (int)$segundos), 60),
         max(0, (int)$segundos) % 60);
@@ -16,39 +22,60 @@ $duracionEntrante = static function ($segundos) {
     data-auto-call="<?= $esc($seleccionarId) ?>"
     data-search-url="<?= $esc(BASE_URL . 'index.php?controller=seguimientoVinculacion&action=buscarEntrantesSeguimientos') ?>"
     data-save-url="<?= $esc(BASE_URL . 'index.php?controller=seguimientoVinculacion&action=registrarLlamadaEntrante') ?>">
-    <div class="linkage-incoming-heading">
-        <div>
-            <span class="linkage-incoming-eyebrow">VINCULACIÓN · TELEFONÍA</span>
+    <header class="linkage-incoming-heading">
+        <div class="linkage-incoming-heading-copy">
+            <span class="linkage-incoming-eyebrow">
+                <i class="bi bi-telephone-inbound" aria-hidden="true"></i>
+                SEGUIMIENTO · TELEFONÍA
+            </span>
             <h2>Llamadas recibidas</h2>
-            <p>Clasifica las llamadas de tu extensión y registra el resultado en el expediente correspondiente.</p>
+            <p>Consulta tus llamadas entrantes y registra su resultado en el expediente institucional correspondiente.</p>
         </div>
         <div class="linkage-incoming-heading-actions">
             <span class="linkage-incoming-extension">
                 <i class="bi bi-headset" aria-hidden="true"></i>
-                Extensión <?= $esc($bandejaEntrantes['extension'] ?? '—') ?>
+                Extensión <?= $esc($bandejaEntrantes['extension'] ?: 'Sin configurar') ?>
             </span>
-            <a class="btn btn-system-light"
+            <a class="btn btn-system-light linkage-incoming-back"
                 href="<?= $esc(BASE_URL . 'index.php?controller=seguimientoVinculacion&action=index') ?>">
-                <i class="bi bi-arrow-left"></i> Volver a Seguimiento
+                <i class="bi bi-arrow-left" aria-hidden="true"></i>
+                <span>Volver a Seguimiento</span>
             </a>
         </div>
-    </div>
+    </header>
     <?php if ($errorEntrantes !== ''): ?>
-        <div class="alert alert-warning mt-3" role="alert"><?= $esc($errorEntrantes) ?></div>
-    <?php endif; ?>
-    <div class="linkage-incoming-table-wrap">
-        <table class="table align-middle linkage-incoming-table">
-            <thead>
-                <tr>
-                    <th>Fecha</th>
-                    <th>Número entrante</th>
-                    <th>Duración</th>
-                    <th>Estado</th>
-                    <th>Expediente</th>
-                    <th class="text-end">Acción</th>
-                </tr>
-            </thead>
-            <tbody>
+        <div class="linkage-incoming-feedback" role="alert">
+            <span class="linkage-incoming-feedback-icon"><i class="bi bi-exclamation-circle" aria-hidden="true"></i></span>
+            <div>
+                <strong>No es posible consultar tus llamadas</strong>
+                <p><?= $esc($errorEntrantes) ?></p>
+                <small>Si todavía no tienes extensión, solicita al administrador que la configure y habilite las entrantes.</small>
+            </div>
+        </div>
+    <?php else: ?>
+        <?php if ($llamadas): ?>
+            <div class="linkage-incoming-stats" aria-label="Resumen de llamadas recibidas">
+                <div class="linkage-incoming-stat"><span class="stat-icon"><i class="bi bi-telephone-inbound"></i></span><div>
+                    <span>Recibidas</span><strong><?= count($llamadas) ?></strong>
+                </div></div>
+                <div class="linkage-incoming-stat"><span class="stat-icon"><i class="bi bi-clock-history"></i></span><div>
+                    <span>Pendientes</span><strong><?= $pendientesEntrantes ?></strong>
+                </div></div>
+                <div class="linkage-incoming-stat"><span class="stat-icon"><i class="bi bi-folder-check"></i></span><div>
+                    <span>Vinculadas</span><strong><?= $vinculadasEntrantes ?></strong>
+                </div></div>
+            </div>
+            <div class="linkage-incoming-list-head">
+                <div><h3>Historial de llamadas</h3><p>Movimientos recientes de tu extensión telefónica.</p></div>
+                <span class="linkage-incoming-list-total"><?= count($llamadas) ?> registros</span>
+            </div>
+            <div class="linkage-incoming-table-wrap">
+                <table class="table align-middle linkage-incoming-table">
+                    <thead><tr>
+                        <th>Fecha</th><th>Número entrante</th><th>Duración</th>
+                        <th>Estado</th><th>Expediente</th><th class="text-end">Acción</th>
+                    </tr></thead>
+                    <tbody>
                 <?php foreach ($llamadas as $llamada):
                     $pbxId = (string)($llamada['pbx_call_id'] ?? '');
                     $situacion = (string)($llamada['clasificacion'] ?? 'PENDIENTE');
@@ -102,18 +129,21 @@ $duracionEntrante = static function ($segundos) {
                     </td>
                 </tr>
                 <?php endforeach; ?>
-                <?php if (!$llamadas): ?>
-                <tr><td colspan="6" class="linkage-incoming-empty">
-                    <i class="bi bi-telephone"></i>
-                    No se registran llamadas entrantes para tu extensión en los últimos 30 días.
-                </td></tr>
-                <?php endif; ?>
-            </tbody>
-        </table>
-    </div>
+                    </tbody>
+                </table>
+            </div>
+        <?php else: ?>
+            <div class="linkage-incoming-empty-panel">
+                <span class="linkage-incoming-empty-icon"><i class="bi bi-telephone-inbound" aria-hidden="true"></i></span>
+                <h3>Aún no hay llamadas recibidas</h3>
+                <p>Cuando tu extensión reciba una llamada, aparecerá aquí para consultar su estado y registrar el resultado.</p>
+                <span>Se muestran las llamadas de los últimos 30 días.</span>
+            </div>
+        <?php endif; ?>
+    <?php endif; ?>
     <p class="linkage-incoming-footnote">
-        El historial usa eventos confirmados por Zadarma; solo las llamadas clasificadas se vinculan a Seguimiento.
-        No se consideran verificaciones efectivas sin evidencias del proceso institucional.
+        <i class="bi bi-shield-check" aria-hidden="true"></i>
+        El historial utiliza eventos de la centralita; solo las llamadas clasificadas se vinculan a Seguimiento.
     </p>
 </section>
 
