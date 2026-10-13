@@ -1566,6 +1566,83 @@
     line-height: 1.4;
 }
 
+
+
+.formularios-qr-control input[type="file"] {
+    width: 100%;
+    min-height: 38px;
+    padding: 6px 8px;
+    border: 1px solid #d5dfeb;
+    border-radius: 8px;
+    outline: 0;
+    background: #fff;
+    color: #33445d;
+    font-family: 'Manrope', sans-serif;
+    font-size: 8.5px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.formularios-qr-control input[type="file"]::file-selector-button {
+    margin-right: 9px;
+    padding: 6px 9px;
+    border: 0;
+    border-radius: 6px;
+    background: #edf3ff;
+    color: #223a84;
+    font-family: 'Manrope', sans-serif;
+    font-size: 8px;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.formularios-inscripcion-theme
+.formularios-qr-control input[type="file"]::file-selector-button {
+    background: var(--inscripcion-green-soft);
+    color: var(--inscripcion-green);
+}
+
+.formularios-qr-upload-preview {
+    margin-top: 9px;
+    padding: 8px;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    border: 1px solid #dfe7f0;
+    border-radius: 9px;
+    background: #fff;
+}
+
+.formularios-qr-upload-preview img {
+    width: 42px;
+    height: 42px;
+    flex: 0 0 42px;
+    border-radius: 7px;
+    border: 1px solid #e4eaf1;
+    background: #fff;
+    object-fit: contain;
+}
+
+.formularios-qr-upload-preview strong,
+.formularios-qr-upload-preview small {
+    display: block;
+    word-break: break-word;
+}
+
+.formularios-qr-upload-preview strong {
+    color: #3d4d64;
+    font-size: 8.5px;
+    font-weight: 800;
+}
+
+.formularios-qr-upload-preview small {
+    margin-top: 2px;
+    color: #7b8799;
+    font-size: 7.5px;
+    font-weight: 600;
+    line-height: 1.35;
+}
+
 @media (max-width: 420px) {
     .formularios-qr-image-heading {
         align-items: flex-start;
