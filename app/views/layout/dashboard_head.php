@@ -140,7 +140,10 @@ if ($esSeguimientoEstado) {
     );
 }
 
-if ($esSeguimientoEntrantesAnalista) {
+/* Los accesos de Seguimiento y la bandeja comparten estilos encapsulados.
+ * No afecta otros roles ni cambia los componentes generales del CRM. */
+if ($controllerDashboard === 'seguimientovinculacion' &&
+    in_array($actionDashboard, ['index', 'estado', 'llamadasentrantes'], true)) {
     $cssOpcionalDashboard[] = 'seguimiento_entrantes_analista.css';
 }
 
