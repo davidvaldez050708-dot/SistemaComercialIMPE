@@ -104,7 +104,7 @@
         for (const option of Array.from(decision.options)) {
             if (option.value !== 'sin_identificar') option.disabled = !hasAnswer;
         }
-        form.querySelector('[data-incoming-modal-description]').textContent = hasAnswer
+        modalEl.querySelector('[data-incoming-modal-description]').textContent = hasAnswer
             ? 'Relaciona la conversación con el seguimiento existente o crea uno nuevo.'
             : 'Esta llamada no fue contestada. Puedes clasificarla sin crear expediente.';
         renderDecision();
