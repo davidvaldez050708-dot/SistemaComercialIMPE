@@ -196,7 +196,8 @@ class TelefoniaRecepcionMarketingService
                 'destino_transferencia' => '',
                 'disposition' => '',
                 'segundos' => 0,
-                'audio_reportado' => false
+                'audio_reportado' => false,
+                'saliente_transferida' => false
             ];
         }
 
