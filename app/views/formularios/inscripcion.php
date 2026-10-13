@@ -261,7 +261,7 @@ $urlEnlaceInscripcion = trim((string)($urlEnlaceInscripcion ?? ''));
                                     <div class="formularios-qr-image-heading">
                                         <div>
                                             <strong>Imagen en el QR</strong>
-                                            <small>Agrega una imagen del sistema o una imagen desde una URL pública.</small>
+                                            <small>Sube una imagen desde tu equipo o utiliza una URL pública.</small>
                                         </div>
                                         <label class="form-check form-switch formularios-qr-image-switch">
                                             <input
@@ -279,10 +279,10 @@ $urlEnlaceInscripcion = trim((string)($urlEnlaceInscripcion ?? ''));
                                                 <input
                                                     type="radio"
                                                     name="qr_image_source"
-                                                    value="system"
+                                                    value="upload"
                                                     checked
                                                     data-qr-image-source>
-                                                <span>Imagen del sistema</span>
+                                                <span>Subir imagen</span>
                                             </label>
                                             <label>
                                                 <input
@@ -294,15 +294,21 @@ $urlEnlaceInscripcion = trim((string)($urlEnlaceInscripcion ?? ''));
                                             </label>
                                         </div>
 
-                                        <div data-qr-system-image-container>
+                                        <div data-qr-upload-image-container>
                                             <label class="formularios-qr-control formularios-qr-control-full">
-                                                <span>Imagen disponible</span>
-                                                <select data-qr-system-image>
-                                                    <option value="<?= $texto(BASE_URL . 'public/img/brand/porcayo-grupo.png') ?>">Logo institucional 1</option>
-                                                    <option value="<?= $texto(BASE_URL . 'public/img/brand/porcayo-grupo2.png') ?>">Logo institucional 2</option>
-                                                    <option value="<?= $texto(BASE_URL . 'public/img/brand/porcayo-grupo8.png') ?>">Logo institucional 3</option>
-                                                </select>
+                                                <span>Seleccionar imagen</span>
+                                                <input
+                                                    type="file"
+                                                    accept="image/png,image/jpeg"
+                                                    data-qr-upload-image>
                                             </label>
+                                            <div class="formularios-qr-upload-preview d-none" data-qr-upload-preview>
+                                                <img src="" alt="Vista previa de la imagen seleccionada" data-qr-upload-preview-image>
+                                                <div>
+                                                    <strong data-qr-upload-file-name></strong>
+                                                    <small>PNG o JPG. Se utilizará únicamente para generar este QR.</small>
+                                                </div>
+                                            </div>
                                         </div>
 
                                         <div class="d-none" data-qr-public-image-container>
@@ -315,13 +321,13 @@ $urlEnlaceInscripcion = trim((string)($urlEnlaceInscripcion ?? ''));
                                                     data-qr-public-image-url>
                                             </label>
                                             <small class="formularios-qr-image-note">
-                                                La imagen debe estar disponible públicamente mediante HTTPS.
+                                                La imagen debe estar disponible públicamente mediante HTTP o HTTPS.
                                             </small>
                                         </div>
                                     </div>
                                 </div>
 
-<div class="formularios-qr-customizer-actions">
+                                <div class="formularios-qr-customizer-actions">
                                     <button
                                         type="button"
                                         class="btn btn-light"
