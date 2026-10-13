@@ -710,3 +710,24 @@ html {
         max-height: 104px;
     }
 }
+
+
+/* ======================================================================
+   FORMULARIOS PÚBLICOS · TELÉFONO RECOMENDADO
+   ====================================================================== */
+
+.formulario-publico-recomendacion {
+    border-color: #d9ebe6;
+    background: #fbfefd;
+}
+
+.formulario-publico-recomendacion
+.formulario-publico-section-icon {
+    background: #eaf8f4;
+    color: #0b8f73;
+}
+
+.formulario-publico-recomendacion
+.formulario-publico-help {
+    margin-top: 6px;
+}
