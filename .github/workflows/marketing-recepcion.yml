@@ -12,6 +12,8 @@ on:
       - "public/javascript/telefonia_host.js"
       - "tools/desplegar_marketing_recepcion_hostinger.sh"
       - "tools/desplegar_ajustes_recepcion_marketing_hostinger.sh"
+      - "tools/desplegar_historial_unificado_marketing_hostinger.sh"
+      - "tests/marketing_historial_unificado_despliegue_smoke.sh"
       - "tools/fusionar_css_recepcion_marketing.php"
       - "public/javascript/telefonia_recepcion_marketing.js"
       - "app/services/ZadarmaRecordingService.php"
@@ -56,3 +58,5 @@ jobs:
           php -l tools/fusionar_css_recepcion_marketing.php
           bash -n tools/desplegar_ajustes_recepcion_marketing_hostinger.sh
           bash tests/marketing_recepcion_ajustes_despliegue_smoke.sh
+          bash -n tools/desplegar_historial_unificado_marketing_hostinger.sh
+          bash tests/marketing_historial_unificado_despliegue_smoke.sh
