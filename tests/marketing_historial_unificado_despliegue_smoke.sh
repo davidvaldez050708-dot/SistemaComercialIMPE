@@ -39,7 +39,7 @@ run --apply
 git -C "$ROOT" show \
  '2abcfff9e7d789a582713cb4a7f3865e760baa8c:app/views/telefonia/recepcion_marketing.php' \
  > "$SITE/app/views/telefonia/recepcion_marketing.php"
-sed -i 's/<th>Número entrante<\\/th>/<th>Número personal<\\/th>/' \
+sed -i 's|Número entrante|Número personalizado|' \
  "$SITE/app/views/telefonia/recepcion_marketing.php"
 BEFORE="$(sha256sum "$SITE/app/views/telefonia/recepcion_marketing.php")"
 if run --apply > "$TMP/conflict.log" 2>&1; then
