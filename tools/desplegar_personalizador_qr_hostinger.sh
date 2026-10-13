@@ -115,9 +115,12 @@ grep -Fq "finderStyle"     "$DST/public/javascript/formularios_registro.js"
 grep -Fq "FORMULARIOS · PERSONALIZADOR QR"     "$DST/public/css/formularios.css"
 grep -Fq "data-download-form-qr"     "$DST/app/views/formularios/registro.php"
 grep -Fq "data-copy-form-qr"     "$DST/app/views/formularios/registro.php"
+grep -Fq "data-qr-image-size"     "$DST/app/views/formularios/registro.php"
+grep -Fq "data-qr-image-size"     "$DST/app/views/formularios/inscripcion.php"
+grep -Fq "centerImageSizeRatio"     "$DST/public/javascript/formularios_registro.js"
 
 echo
 echo "OK: personalizador QR publicado correctamente."
-echo "Incluye colores, estilos, tamaño, margen, corrección, copiar y descargar PNG."
+echo "Incluye colores, estilos, tamaño, margen, imagen central ajustable, copiar y descargar PNG."
 echo "Respaldo: $BACKUP"
 echo "Recarga el navegador con Ctrl+F5."
