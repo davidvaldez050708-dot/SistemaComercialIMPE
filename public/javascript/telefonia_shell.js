@@ -103,6 +103,11 @@
     // el único host WebRTC confirma el estado real de la saliente.
     let outgoingAttempt = null;
     let pendingOutgoingHangup = null;
+    let recentFinishedOutgoing = null;
+    const isManualOutgoing = value =>
+        ['TELEPHONY_MANUAL','MARKETING_CALLBACK','DIALER'].includes(
+            String(value?.context?.type || '').toUpperCase()
+        );
     let currentState = null;
     let lastHeartbeat = 0;
     let mountFailed = '';
@@ -227,6 +232,19 @@
 
     const updateState = function (value) {
         if (!freshState(value)) return;
+        // El resumen de Marketing sólo nace de una transición REAL de
+        // llamada activa a finalizada en esta sesión, nunca de storage.
+        if (!value.active && value.phase === 'finished' &&
+            currentState?.active && currentState.direction === 'outgoing' &&
+            isManualOutgoing(value)) {
+            recentFinishedOutgoing = {
+                state: value, until: Date.now() + 8000
+            };
+            incomingCompact = false;
+        } else if (value.active || value.phase === 'ready' ||
+            value.phase === 'idle') {
+            recentFinishedOutgoing = null;
+        }
         if (outgoingAttempt && !value.active && value.phase === 'error') {
             const reason = String(value.message || 'No se pudo iniciar la llamada.');
             outgoingAttempt = null;
@@ -331,11 +349,16 @@
             ? {active:true,direction:'outgoing',phase:'dialing',
                 destination:outgoingAttempt.number,muted:false,duration:0,
                 context:{type:'TELEPHONY_MANUAL'}} : null;
-        const shownCall = state?.active ? state : preview;
-        // El shell absorbe sólo llamadas del teclado institucional.
-        // Seguimiento conserva su propio panel y registro de resultados.
-        const manualOutgoing = ['TELEPHONY_MANUAL','MARKETING_CALLBACK','DIALER']
-            .includes(String(shownCall?.context?.type || '').toUpperCase());
+        if (recentFinishedOutgoing &&
+            Date.now() > recentFinishedOutgoing.until) {
+            recentFinishedOutgoing = null;
+        }
+        const finishedPreview = !state?.active && !preview
+            ? recentFinishedOutgoing?.state || null : null;
+        const shownCall = state?.active ? state : (preview || finishedPreview);
+        // Sólo llamadas manuales usan este resumen visual; Seguimiento
+        // mantiene su propia pantalla para registrar el resultado.
+        const manualOutgoing = isManualOutgoing(shownCall);
         const shownOutgoing = Boolean(shownCall?.direction === 'outgoing' &&
             (manualOutgoing || preview || outgoingAttempt));
         const ongoing = Boolean(state?.active);
@@ -390,24 +413,31 @@
         if ((incoming || shownOutgoing) && incomingPanel) {
             const phoneState = shownCall;
             const ringing = incoming && state.phase === 'incoming-ringing';
-            const dialing = shownOutgoing && phoneState.phase !== 'in-progress';
+            const finished = shownOutgoing && !phoneState.active &&
+                phoneState.phase === 'finished';
+            const dialing = shownOutgoing &&
+                !['in-progress','finished'].includes(phoneState.phase);
             // El botón se puede pulsar durante timbrado; el puente comprueba
             // el control del SDK al recibir el clic, sin estado infinito.
             incomingNumber.textContent = String(phoneState.destination || 'Número desconocido');
             incomingTitle.textContent = incoming
                 ? (ringing ? 'Llamada entrante' : 'En conversación')
-                : (dialing ? 'Llamando…' : 'En conversación');
-            incomingEyebrow.textContent = shownOutgoing ? 'LLAMADA SALIENTE' :
-                (ringing ? 'RECEPCIÓN TELEFÓNICA' : 'LLAMADA EN CURSO');
+                : (finished ? 'Llamada finalizada' :
+                    (dialing ? 'Llamando…' : 'En conversación'));
+            incomingEyebrow.textContent = finished ? 'LLAMADA FINALIZADA' :
+                (shownOutgoing ? 'LLAMADA SALIENTE' :
+                (ringing ? 'RECEPCIÓN TELEFÓNICA' : 'LLAMADA EN CURSO'));
             incomingState.textContent = shownOutgoing
-                ? (dialing ? 'Marcando desde la extensión ' + cfg.extension
-                    : 'Conversación en curso')
+                ? (finished ? 'Finalizada · registrada en el historial telefónico'
+                    : (dialing ? 'Marcando desde la extensión ' + cfg.extension
+                        : 'Conversación en curso'))
                 : (ringing ? 'Llamada entrante a la extensión ' + cfg.extension
                     : 'Conversación en curso');
             // El teclado desaparece; el panel empieza en cero.
-            if (preview) {
-                incomingTimer.textContent = '00:00';
-                incomingCompactTimer.textContent = '00:00';
+            if (preview || finished) {
+                const duration = finished ? formatDuration(phoneState.duration) : '00:00';
+                incomingTimer.textContent = duration;
+                incomingCompactTimer.textContent = duration;
             } else updateIncomingTimer(phoneState);
             answerButton.hidden = !ringing;
             declineButton.hidden = !ringing;
@@ -417,10 +447,11 @@
             compactDecline.hidden = !ringing;
             compactAnswer.disabled = !ringing || Boolean(pending);
             compactDecline.disabled = !ringing || Boolean(pending);
-            muteButton.hidden = ringing || (shownOutgoing && dialing);
-            hangupButton.hidden = ringing;
-            compactMute.hidden = ringing || (shownOutgoing && dialing);
-            compactHangup.hidden = ringing;
+            muteButton.hidden = finished || ringing || (shownOutgoing && dialing);
+            hangupButton.hidden = finished || ringing;
+            compactMute.hidden = finished || ringing || (shownOutgoing && dialing);
+            compactHangup.hidden = finished || ringing;
+            if (closeFinished) closeFinished.hidden = !finished;
             hangupButton.disabled = Boolean(pending) || Boolean(preview);
             compactHangup.disabled = Boolean(pending) || Boolean(preview);
             // Mismo icono, texto y estado activo del modal de Seguimiento.
@@ -470,15 +501,20 @@
         render();
     });
 
-    const readState = function () {
-        try { updateState(JSON.parse(localStorage.getItem(stateKey) || 'null')); }
-        catch (e) { /* sin estado anterior */ }
+    const readState = function (onBoot) {
+        try {
+            const saved = JSON.parse(localStorage.getItem(stateKey) || 'null');
+            // El iframe WebRTC debe confirmar de nuevo cualquier llamada.
+            // Una llamada activa o finalizada guardada NO es una llamada viva.
+            if (onBoot && (saved?.active || saved?.phase === 'finished')) return;
+            updateState(saved);
+        } catch (e) { /* sin estado anterior */ }
     };
     channel?.addEventListener('message', function (event) {
         if (event.data?.type === 'STATE') updateState(event.data.state);
     });
     window.addEventListener('storage', function (event) {
-        if (event.key === stateKey && event.newValue) readState();
+        if (event.key === stateKey && event.newValue) readState(false);
     });
 
     document.querySelector('[data-shell-minimize]')?.addEventListener('click', function () {
@@ -568,6 +604,13 @@
     };
     muteButton?.addEventListener('click', toggleIncomingMute);
     compactMute?.addEventListener('click', toggleIncomingMute);
+    closeFinished?.addEventListener('click', function () {
+        if (!recentFinishedOutgoing) return;
+        const callToken = String(recentFinishedOutgoing.state.callToken || '');
+        recentFinishedOutgoing = null;
+        sendPhoneCommand('CLEAR_FINISHED', {callToken});
+        render();
+    });
     const hangupIncoming = function () {
         if (!freshState(currentState) || !currentState.active) return;
         if (currentState.direction === 'outgoing') {
@@ -682,7 +725,7 @@
         channel?.close();
     });
 
-    readState();
+    readState(true);
     let autoEnabled = cfg.autoReception === true;
     if (autoEnabled) {
         try {
