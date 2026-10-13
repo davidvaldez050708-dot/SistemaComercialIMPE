@@ -1724,3 +1724,30 @@
     font-weight: 600;
     line-height: 1.4;
 }
+
+
+/* ======================================================================
+   FORMULARIOS · TELÉFONO RECOMENDADO
+   ====================================================================== */
+
+.formularios-recommendation-section {
+    border-color: #dfe7f3;
+    background: #fbfcff;
+}
+
+.formularios-recommendation-section
+.formularios-registration-section-title > span {
+    background: #edf3ff;
+    color: #223a84;
+}
+
+.formularios-inscripcion-theme
+.formularios-recommendation-section
+.formularios-registration-section-title > span {
+    background: var(--inscripcion-green-soft);
+    color: var(--inscripcion-green);
+}
+
+.formularios-field-full {
+    grid-column: 1 / -1;
+}
