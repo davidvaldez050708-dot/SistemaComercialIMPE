@@ -269,7 +269,8 @@ class TelefoniaRecepcionMarketingService
                 $disposition = $call['disposition'];
                 if (!$call['finalizada']) {
                     $call['estado'] = $call['contestada'] ? 'En curso' : 'Marcando';
-                } elseif ($disposition === 'answered' || $call['contestada']) {
+                } elseif (in_array($disposition, ['answered', 'completed'], true) ||
+                    $call['contestada']) {
                     $call['estado'] = 'Completada';
                 } elseif ($disposition === 'busy') {
                     $call['estado'] = 'Ocupada';
