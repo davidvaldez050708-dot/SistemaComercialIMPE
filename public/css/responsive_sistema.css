@@ -138,9 +138,9 @@
     overflow-wrap: break-word;
 }
 
+/* No limitar los diálogos aquí: cada módulo conserva su tamaño previsto. */
 .admin-content .dropdown-menu,
-.admin-content .offcanvas,
-.admin-content .modal-dialog {
+.admin-content .offcanvas {
     max-width: 100vw;
 }
 
@@ -305,10 +305,11 @@
         scrollbar-width: thin;
     }
 
+    /* Limitar el ancho disponible sin reemplazar el máximo de cada diálogo. */
     .admin-content .modal-dialog:not(.modal-fullscreen-sm-down) {
-        margin-right: 12px;
-        margin-left: 12px;
-        max-width: calc(100vw - 24px);
+        width: calc(100% - 24px);
+        margin-right: auto;
+        margin-left: auto;
     }
 
     .admin-content .offcanvas {
@@ -696,11 +697,6 @@
         max-width: 100%;
     }
 
-    /* Evita modales más anchos que el visor (sin ocultar su contenido). */
-    .admin-content .modal-dialog:not(.modal-fullscreen-sm-down) {
-        width: auto;
-        max-width: calc(100vw - 24px);
-    }
 }
 
 @media (max-width: 380px) {
