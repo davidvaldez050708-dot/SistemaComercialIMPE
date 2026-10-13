@@ -55,7 +55,19 @@ $checks = [
         str_contains($servicio, "'id_externo' => " . '$id'),
     'No registrar una verificación efectiva falsa' =>
         str_contains($servicio, "'datos_verificados' => 0") &&
-        str_contains($servicio, "'descartar' => 0"),
+        str_contains($servicio, 'empty($call[\'answer_at\'])') &&
+        str_contains($servicio, '$segundosConversacion <= 0') &&
+        str_contains($servicio, 'if ($evidencias && $personaAtendio === \'\')'),
+    'Verificaciones: evidencia técnica y de contacto' =>
+        str_contains($servicio, "verificacion_telefono_confirmado") &&
+        str_contains($servicio, "verificacion_correo_confirmado") &&
+        str_contains($servicio, "verificacion_contacto_confirmado") &&
+        str_contains($servicio, "[VERIFICACION_EFECTIVA]") &&
+        str_contains($servicio, "'datos_verificados' => " . '$evidencias ? 1'),
+    'Descarte motivado sujeto a resultado de no interés' =>
+        str_contains($servicio, "Para descartar indica No interesado") &&
+        str_contains($servicio, "'descartar' => " . '$descartar ? 1 : 0') &&
+        str_contains($vista, 'data-incoming-discard-toggle'),
     'Sin identificar no crea un expediente falso' =>
         str_contains($servicio, '$decision === \'sin_identificar\'') &&
         str_contains($servicio, 'SIN_IDENTIFICAR'),
