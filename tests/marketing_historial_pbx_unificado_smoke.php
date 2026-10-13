@@ -62,9 +62,9 @@ $fail($byId['outA']['tipo'] === 'Saliente' &&
     $byId['outA']['estado'] === 'Completada' &&
     $byId['outA']['numero'] === '7777885173' &&
     $byId['outA']['segundos'] === 33, 'saliente contestada');
-$fail($byId['outA']['tiene_grabacion'] === false &&
-    $byId['outA']['grabacion_salida_pendiente'] === true,
-    'audio saliente no expuesto sin autorización');
+$fail($byId['outA']['tiene_grabacion'] === true &&
+    $byId['outA']['grabacion_salida_pendiente'] === false,
+    'audio saliente completado aparece para comprobar disponibilidad');
 $fail($byId['outB']['estado'] === 'Sin respuesta' &&
     $byId['outC']['estado'] === 'Ocupada' &&
     $byId['outD']['estado'] === 'Marcando',
