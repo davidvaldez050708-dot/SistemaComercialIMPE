@@ -278,6 +278,11 @@ class FormularioPublicoController
             '',
             (string)($entrada['movil_secundario'] ?? '')
         );
+        $telRecomendado = preg_replace(
+            '/\D+/',
+            '',
+            (string)($entrada['tel_recomendado'] ?? '')
+        );
 
         return [
             'nombre' => $limpiar($entrada['nombre'] ?? ''),
@@ -289,6 +294,8 @@ class FormularioPublicoController
                 $movilConfirmacion !== null ? $movilConfirmacion : '',
             'movil_secundario' =>
                 $movilSecundario !== null ? $movilSecundario : '',
+            'tel_recomendado' =>
+                $telRecomendado !== null ? $telRecomendado : '',
             'correo' => strtolower(
                 trim((string)($entrada['correo'] ?? ''))
             ),
@@ -378,6 +385,14 @@ class FormularioPublicoController
         ) {
             $errores[] =
                 'El segundo número de contacto debe ser diferente al móvil principal.';
+        }
+
+        if (
+            $datos['tel_recomendado'] !== '' &&
+            !preg_match('/^\d{10}$/', $datos['tel_recomendado'])
+        ) {
+            $errores[] =
+                'El teléfono recomendado debe contener exactamente 10 dígitos.';
         }
 
         if (!filter_var($datos['correo'], FILTER_VALIDATE_EMAIL)) {
