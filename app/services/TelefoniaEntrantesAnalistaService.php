@@ -300,6 +300,14 @@ class TelefoniaEntrantesAnalistaService
             if (!isset($mapa[$resultadoFormulario])) {
                 throw new InvalidArgumentException('Selecciona un resultado válido.');
             }
+            $personaAtendio = trim((string)($datos['persona_atendio'] ?? ''));
+            if (mb_strlen($personaAtendio, 'UTF-8') > 140) {
+                throw new InvalidArgumentException('El nombre de contacto es demasiado largo.');
+            }
+            $proximaAccion = trim((string)($datos['proxima_accion'] ?? ''));
+            if (!in_array($proximaAccion, ['', 'Volver a llamar', 'Enviar WhatsApp', 'Revisar correo', 'Preparar oficio'], true)) {
+                throw new InvalidArgumentException('La próxima acción no es válida.');
+            }
             $proximaAccionAt = trim((string)($datos['proxima_accion_at'] ?? ''));
             if ($resultadoFormulario === 'SOLICITO_LLAMAR_DESPUES' && $proximaAccionAt === '') {
                 throw new InvalidArgumentException('Indica la fecha de la próxima llamada.');
@@ -317,7 +325,7 @@ class TelefoniaEntrantesAnalistaService
                 $seguimientoId = (int)($datos['seguimiento_id'] ?? 0);
                 $stmt = $this->db->prepare(
                     "SELECT id, telefono_fuente, telefono_verificado, correo_fuente,
-                            correo_verificado, datos_verificados, estado_seguimiento
+                            correo_verificado, contacto_nombre, datos_verificados, estado_seguimiento
                      FROM seguimientos_vinculacion
                      WHERE id = ? AND analista_id = ? AND activo = 1 FOR UPDATE"
                 );
@@ -363,7 +371,7 @@ class TelefoniaEntrantesAnalistaService
                     'telefono' => (string)($call['caller_id'] ?? ''),
                     'whatsapp' => '',
                     'correo' => '',
-                    'contacto_nombre' => trim((string)($datos['persona_atendio'] ?? '')),
+                    'contacto_nombre' => $personaAtendio,
                     'contacto_cargo' => '',
                     'datos_verificados' => 0,
                     'estado_seguimiento' => 'NUEVO',
@@ -376,6 +384,7 @@ class TelefoniaEntrantesAnalistaService
                     'telefono_verificado' => '',
                     'correo_fuente' => '',
                     'correo_verificado' => '',
+                    'contacto_nombre' => $personaAtendio,
                     'datos_verificados' => 0
                 ];
             }
@@ -394,13 +403,52 @@ class TelefoniaEntrantesAnalistaService
                 $fechaFin = date('Y-m-d H:i:s');
             }
             $segundosConversacion = self::segundosAtendidos($call);
+            $admiteVerificacion = in_array($resultadoFormulario, [
+                'CONTACTO_CORRECTO', 'SOLICITO_INFORMACION',
+                'SOLICITO_LLAMAR_DESPUES', 'NO_INTERESADO'
+            ], true);
+            $confirmaciones = [
+                'verificacion_telefono_confirmado' => 'Teléfono confirmado',
+                'verificacion_correo_confirmado' => 'Correo confirmado',
+                'verificacion_contacto_confirmado' => 'Contacto institucional confirmado'
+            ];
+            $evidencias = [];
+            foreach ($confirmaciones as $campo => $etiqueta) {
+                if ((int)($datos[$campo] ?? 0) !== 1) continue;
+                if (!$admiteVerificacion || $segundosConversacion <= 0) {
+                    throw new DomainException('La verificación necesita una conversación confirmada y un resultado compatible.');
+                }
+                if ($campo === 'verificacion_telefono_confirmado' &&
+                    trim((string)($seguimiento['telefono_verificado'] ?: ($seguimiento['telefono_fuente'] ?? ''))) === '') {
+                    throw new DomainException('No hay teléfono registrado para verificar.');
+                }
+                if ($campo === 'verificacion_correo_confirmado' &&
+                    trim((string)($seguimiento['correo_verificado'] ?: ($seguimiento['correo_fuente'] ?? ''))) === '') {
+                    throw new DomainException('No hay correo registrado para verificar.');
+                }
+                if ($campo === 'verificacion_contacto_confirmado' &&
+                    trim((string)($seguimiento['contacto_nombre'] ?? '')) === '') {
+                    throw new DomainException('No hay contacto institucional registrado para verificar.');
+                }
+                $evidencias[] = $etiqueta;
+            }
+            if ($evidencias && $personaAtendio === '') {
+                throw new InvalidArgumentException('Indica con quién hablaste para registrar una verificación efectiva.');
+            }
+            $descartar = (int)($datos['descartar'] ?? 0) === 1;
+            $motivoDescarte = trim((string)($datos['motivo_descarte'] ?? ''));
+            if ($descartar && ($resultadoFormulario !== 'NO_INTERESADO' || $motivoDescarte === '' ||
+                mb_strlen($motivoDescarte, 'UTF-8') > 500)) {
+                throw new InvalidArgumentException('Para descartar indica No interesado y un motivo válido.');
+            }
             $notas = trim(implode("\n", array_filter([
                 'Llamada entrante recibida en la extensión ' . $extension . '.',
-                trim((string)($datos['persona_atendio'] ?? '')) !== ''
-                    ? 'Persona atendida: ' . trim((string)$datos['persona_atendio']) : '',
+                $personaAtendio !== '' ? 'Persona atendida: ' . $personaAtendio : '',
+                $evidencias ? '[VERIFICACION_EFECTIVA]' : '',
+                $evidencias ? 'Verificación obtenida: ' . implode(' · ', $evidencias) : '',
+                $resultadoFormulario === 'NO_INTERESADO' ? 'Resultado registrado: No interesado' : '',
                 $observacion,
-                trim((string)($datos['proxima_accion'] ?? '')) !== ''
-                    ? 'Próxima acción: ' . trim((string)$datos['proxima_accion']) : ''
+                $proximaAccion !== '' ? 'Próxima acción: ' . $proximaAccion : ''
             ])));
 
             $interaccionId = $model->registrarInteraccionManual(
@@ -412,8 +460,9 @@ class TelefoniaEntrantesAnalistaService
                     'telefono_destino' => (string)($call['caller_id'] ?? ''),
                     'correo_destino' => (string)($seguimiento['correo_verificado'] ?: ($seguimiento['correo_fuente'] ?? '')),
                     'proxima_accion_at' => $fechaProxima,
-                    'datos_verificados' => (int)($seguimiento['datos_verificados'] ?? 0),
-                    'descartar' => 0,
+                    'datos_verificados' => $evidencias ? 1 : (int)($seguimiento['datos_verificados'] ?? 0),
+                    'descartar' => $descartar ? 1 : 0,
+                    'motivo_descarte' => $descartar ? $motivoDescarte : '',
                     'proveedor_externo' => 'ZADARMA',
                     'id_externo' => $id,
                     'duracion_segundos' => $segundosConversacion,
