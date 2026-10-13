@@ -316,6 +316,11 @@ class FormularioController
             '',
             (string)($entrada['movil_confirmacion'] ?? '')
         );
+        $telRecomendado = preg_replace(
+            '/\D+/',
+            '',
+            (string)($entrada['tel_recomendado'] ?? '')
+        );
 
         return [
             'nombre' => $limpiar($entrada['nombre'] ?? ''),
@@ -325,6 +330,8 @@ class FormularioController
             'movil' => $movil !== null ? $movil : '',
             'movil_confirmacion' =>
                 $movilConfirmacion !== null ? $movilConfirmacion : '',
+            'tel_recomendado' =>
+                $telRecomendado !== null ? $telRecomendado : '',
             'correo' => strtolower(
                 trim((string)($entrada['correo'] ?? ''))
             ),
@@ -397,6 +404,14 @@ class FormularioController
         if ($datos['movil'] !== $datos['movil_confirmacion']) {
             $errores[] =
                 'La confirmación del número móvil no coincide.';
+        }
+
+        if (
+            $datos['tel_recomendado'] !== '' &&
+            !preg_match('/^\d{10}$/', $datos['tel_recomendado'])
+        ) {
+            $errores[] =
+                'El teléfono recomendado debe contener exactamente 10 dígitos.';
         }
 
         if (!filter_var($datos['correo'], FILTER_VALIDATE_EMAIL)) {
