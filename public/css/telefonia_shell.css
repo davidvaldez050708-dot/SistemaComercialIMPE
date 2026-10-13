@@ -68,6 +68,11 @@ html, body {
 .impe-incoming-panel .persistent-phone-actions {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
+/* Colgar ocupa la columna derecha incluso al marcar,
+   cuando Silenciar permanece oculto. En conversación conserva su posición. */
+.impe-incoming-panel .persistent-phone-actions > [data-incoming-hangup]:not([hidden]) {
+  grid-column: 2 / 3;
+}
 /* Al finalizar una llamada saliente sólo queda Cerrar:
    alinearlo a la derecha, sin alterar los otros controles. */
 .impe-incoming-panel .persistent-phone-actions [data-incoming-close-finished]:not([hidden]) {
