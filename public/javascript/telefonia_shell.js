@@ -401,9 +401,10 @@
             Date.now() - pendingOutgoingHangup.at > 4500) {
             pendingOutgoingHangup = null;
         }
+        // No ocultar el modal al colgar una saliente: mostrar
+        // «Finalizando» hasta recibir el evento final del SDK/PBX.
         const customVisible = (incoming || shownOutgoing) &&
-            !minimized && !pendingOutgoingHangup &&
-            pending !== 'hangup' && pending !== 'decline';
+            !minimized && pending !== 'hangup' && pending !== 'decline';
         call.classList.toggle('is-visible', nativeVisible);
         if (incomingPanel) {
             incomingPanel.hidden = !customVisible;
@@ -415,6 +416,9 @@
             const ringing = incoming && state.phase === 'incoming-ringing';
             const finished = shownOutgoing && !phoneState.active &&
                 phoneState.phase === 'finished';
+            const finishing = shownOutgoing && !finished &&
+                (Boolean(pendingOutgoingHangup) ||
+                    phoneState.phase === 'finishing');
             const dialing = shownOutgoing &&
                 !['in-progress','finished'].includes(phoneState.phase);
             // El botón se puede pulsar durante timbrado; el puente comprueba
@@ -423,14 +427,16 @@
             incomingTitle.textContent = incoming
                 ? (ringing ? 'Llamada entrante' : 'En conversación')
                 : (finished ? 'Llamada finalizada' :
-                    (dialing ? 'Llamando…' : 'En conversación'));
+                    (finishing ? 'Finalizando llamada…' :
+                    (dialing ? 'Llamando…' : 'En conversación')));
             incomingEyebrow.textContent = finished ? 'LLAMADA FINALIZADA' :
                 (shownOutgoing ? 'LLAMADA SALIENTE' :
                 (ringing ? 'RECEPCIÓN TELEFÓNICA' : 'LLAMADA EN CURSO'));
             incomingState.textContent = shownOutgoing
                 ? (finished ? 'Finalizada · registrada en el historial telefónico'
-                    : (dialing ? 'Marcando desde la extensión ' + cfg.extension
-                        : 'Conversación en curso'))
+                    : (finishing ? 'Finalizando la conversación…' :
+                    (dialing ? 'Marcando desde la extensión ' + cfg.extension
+                        : 'Conversación en curso')))
                 : (ringing ? 'Llamada entrante a la extensión ' + cfg.extension
                     : 'Conversación en curso');
             // El teclado desaparece; el panel empieza en cero.
@@ -447,10 +453,12 @@
             compactDecline.hidden = !ringing;
             compactAnswer.disabled = !ringing || Boolean(pending);
             compactDecline.disabled = !ringing || Boolean(pending);
-            muteButton.hidden = finished || ringing || (shownOutgoing && dialing);
-            hangupButton.hidden = finished || ringing;
-            compactMute.hidden = finished || ringing || (shownOutgoing && dialing);
-            compactHangup.hidden = finished || ringing;
+            muteButton.hidden = finished || finishing || ringing ||
+                (shownOutgoing && dialing);
+            hangupButton.hidden = finished || finishing || ringing;
+            compactMute.hidden = finished || finishing || ringing ||
+                (shownOutgoing && dialing);
+            compactHangup.hidden = finished || finishing || ringing;
             if (closeFinished) closeFinished.hidden = !finished;
             hangupButton.disabled = Boolean(pending) || Boolean(preview);
             compactHangup.disabled = Boolean(pending) || Boolean(preview);
