@@ -19,6 +19,9 @@ document.addEventListener('DOMContentLoaded', function () {
     const movilSecundario = form.querySelector(
         '[data-publico-movil-secundario]'
     );
+    const telRecomendado = form.querySelector(
+        '[data-publico-tel-recomendado]'
+    );
     const correo = form.querySelector('[data-publico-correo]');
     const correoConfirmacion = form.querySelector(
         '[data-publico-correo-confirmacion]'
@@ -159,6 +162,24 @@ document.addEventListener('DOMContentLoaded', function () {
             secundarioValido;
     };
 
+    const validarTelRecomendado = function () {
+        if (!telRecomendado) {
+            return true;
+        }
+
+        const valor = normalizarTelefono(telRecomendado);
+
+        if (valor === '') {
+            telRecomendado.classList.remove('is-valid', 'is-invalid');
+            return true;
+        }
+
+        return marcar(
+            telRecomendado,
+            /^\d{10}$/.test(valor)
+        );
+    };
+
     const validarCorreos = function () {
         const principal = String(correo?.value || '')
             .trim()
@@ -197,6 +218,7 @@ document.addEventListener('DOMContentLoaded', function () {
             validarNombre(apellido),
             validarFecha(),
             validarMoviles(),
+            validarTelRecomendado(),
             validarCorreos(),
             validarSelect(perfil),
             validarSelect(estado),
@@ -319,6 +341,22 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     );
 
+    telRecomendado?.addEventListener('input', function () {
+        normalizarTelefono(telRecomendado);
+
+        if (
+            String(telRecomendado.value || '').length === 10 ||
+            String(telRecomendado.value || '').length === 0
+        ) {
+            validarTelRecomendado();
+        }
+    });
+
+    telRecomendado?.addEventListener(
+        'blur',
+        validarTelRecomendado
+    );
+
     [correo, correoConfirmacion].forEach(function (campo) {
         campo?.addEventListener('blur', validarCorreos);
         campo?.addEventListener('input', function () {
@@ -377,6 +415,10 @@ document.addEventListener('DOMContentLoaded', function () {
         data.set(
             'movil_secundario',
             normalizarTelefono(movilSecundario)
+        );
+        data.set(
+            'tel_recomendado',
+            normalizarTelefono(telRecomendado)
         );
         data.set(
             'correo',
