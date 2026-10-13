@@ -24,7 +24,7 @@ $convocations = strpos($marketing, '<section class="dashboard-panel marketing-ex
 $tests = [
     'Botón Llamar general con permisos y columna independiente' =>
         str_contains($view, '<th>Llamar</th>') &&
-        str_contains($view, 'colspan="7"') &&
+        str_contains($view, 'colspan="8"') &&
         str_contains($marketingJs, 'puedeLlamarAlRegistro(call)') &&
         str_contains($marketingJs, 'marketing-reception-action-cell') &&
         !str_contains($marketingJs, "String(call.estado) === 'Perdida'") &&

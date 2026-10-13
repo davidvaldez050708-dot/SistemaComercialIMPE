@@ -20,6 +20,8 @@ on:
       - "tests/marketing_recepcion_deploy_smoke.sh"
       - "tests/marketing_recepcion_ajustes_despliegue_smoke.sh"
       - "tests/marketing_recepcion_historial_smoke.js"
+      - "tests/marketing_historial_pbx_unificado_smoke.php"
+      - "app/services/TelefoniaRecepcionMarketingService.php"
       - ".github/workflows/marketing-recepcion.yml"
   pull_request:
 jobs:
@@ -38,6 +40,8 @@ jobs:
           php -l app/views/telefonia/recepcion_marketing.php
           php -l app/views/telefonia/host.php
           php tests/marketing_recepcion_pestana_smoke.php
+          php -l app/services/TelefoniaRecepcionMarketingService.php
+          php tests/marketing_historial_pbx_unificado_smoke.php
           node --check public/javascript/telefonia_persistente.js
           node --check public/javascript/telefonia_host.js
           node --check public/javascript/telefonia_recepcion_marketing.js

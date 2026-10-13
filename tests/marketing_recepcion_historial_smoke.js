@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const {normalizarNumeroDevolucion,puedeLlamarAlRegistro} =
     require('../public/javascript/telefonia_recepcion_marketing.js');
 
-for(const estado of ['Atendida','Perdida','Transferida','En curso','Sonando']) {
+for(const estado of ['Atendida','Perdida','Transferida','En curso','Sonando','Completada','Sin respuesta','Ocupada','Cancelada']) {
     assert.equal(puedeLlamarAlRegistro({estado,numero:'+52 777 788 5173'}),true,
         'llamar debe mostrarse independientemente del estado: '+estado);
 }
