@@ -12,6 +12,7 @@ require_once $root . '/app/models/RolModel.php';
 require_once $root . '/app/services/ZadarmaRecordingService.php';
 require_once $root . '/app/services/ZadarmaWebhookEventStoreService.php';
 require_once $root . '/app/services/TelefoniaRecepcionMarketingService.php';
+require_once $root . '/app/services/TelefoniaGrabacionSalienteMarketingService.php';
 
 if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'GET') {
     http_response_code(405);
@@ -31,6 +32,15 @@ $_SESSION['permisos'] = $modeloRol->obtenerCodigosPermisosPorRol(
 if (!TelefoniaRecepcionMarketingService::tienePermisos()) {
     http_response_code(403);
     exit('No tienes permiso para escuchar grabaciones de recepción.');
+}
+$tipo = strtolower(trim((string)($_GET['tipo'] ?? 'entrante')));
+if (!in_array($tipo, ['entrante','saliente'], true)) {
+    http_response_code(422);
+    exit('Tipo de llamada inválido.');
+}
+if ($tipo === 'saliente' && !tienePermiso('telefonia.salientes')) {
+    http_response_code(403);
+    exit('No tienes permiso para escuchar grabaciones salientes.');
 }
 $pbxCallId = trim((string)($_GET['pbx_call_id'] ?? ''));
 if (!preg_match('/^[a-zA-Z0-9_-]{6,100}$/', $pbxCallId)) {
@@ -54,6 +64,7 @@ try {
     $extension = $asignacion['extension'];
     $db = (new Database())->connect();
 
+    if ($tipo === 'entrante') {
     $consulta = $db->prepare(
         "SELECT 1
          FROM telefonia_zadarma_eventos entrada
@@ -103,6 +114,16 @@ try {
         exit('No hay una grabación de recepción disponible para esta llamada.');
     }
 
+    } else {
+        if (empty($asignacion['permite_salientes']) ||
+            !TelefoniaGrabacionSalienteMarketingService::autorizada(
+                $db, $usuarioId, $extension, $pbxCallId
+            )) {
+            http_response_code(404);
+            exit('No hay una grabación saliente autorizada para esta llamada.');
+        }
+    }
+
     $service = new ZadarmaRecordingService();
     $recording = $service->obtenerGrabacionParaLlamada($pbxCallId);
     // El webhook indica una grabación reportada, no necesariamente lista.
@@ -150,7 +171,7 @@ try {
     header('Accept-Ranges: bytes');
     header(
         'Content-Disposition: ' . $disposition .
-        '; filename="llamada-recepcion-' . $pbxCallId . '.' . $extensionArchivo . '"'
+        '; filename="llamada-' . $tipo . '-' . $pbxCallId . '.' . $extensionArchivo . '"'
     );
     header('Cache-Control: private, no-store');
     header('X-Content-Type-Options: nosniff');
