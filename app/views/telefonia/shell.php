@@ -6,6 +6,11 @@
  */
 $usuarioShell = (int)($_SESSION['usuario_id'] ?? 0);
 $extensionShell = trim((string)($asignacionTelefonica['extension'] ?? ''));
+$analistaEntrantesShell =
+    strcasecmp(trim((string)($_SESSION['rol'] ?? '')), 'Analista de Datos') === 0 &&
+    !empty($asignacionTelefonica['permite_entrantes']) &&
+    tienePermiso('seguimientos_vinculacion.operar_propios') &&
+    tienePermiso('telefonia.recibir');
 $marketingShell = strcasecmp(trim((string)($_SESSION['rol'] ?? '')), 'Marketing') === 0 &&
     !empty($asignacionTelefonica['permite_entrantes']) &&
     tienePermiso('telefonia.recibir');
@@ -164,11 +169,28 @@ $nombreShell = $nombreShell !== '' ? $nombreShell : 'Usuario';
     <button type="button" class="impe-phone-restore" data-shell-restore hidden>
         <span aria-hidden="true">☎</span> Mostrar llamada
     </button>
+    <?php if ($analistaEntrantesShell): ?>
+    <aside class="impe-analyst-call-result" data-analyst-call-result hidden role="status" aria-live="polite">
+        <div>
+            <strong><i class="bi bi-telephone-check"></i> Llamada finalizada</strong>
+            <span>Registra el resultado en Seguimiento.</span>
+        </div>
+        <button type="button" data-analyst-register-call>
+            <i class="bi bi-journal-check"></i> Registrar resultado
+        </button>
+        <button type="button" class="impe-analyst-call-dismiss" data-analyst-dismiss-call
+            aria-label="Ocultar aviso" title="Registrar después">
+            <i class="bi bi-x-lg"></i>
+        </button>
+    </aside>
+    <?php endif; ?>
     <script>
         window.IMPE_PHONE_SHELL_CONFIG = <?= json_encode([
             'userId' => $usuarioShell,
             'extension' => $extensionShell,
             'autoReception' => $marketingShell,
+            'analystIncomingResults' => $analistaEntrantesShell,
+            'incomingResultsUrl' => BASE_URL . 'index.php?controller=seguimientoVinculacion&action=llamadasEntrantes',
             'canCallOut' => tienePermiso('telefonia.salientes') &&
                 !empty($asignacionTelefonica['permite_salientes']),
             'hostUrl' => BASE_URL . 'index.php?controller=telefonia&action=host&display=embed',
