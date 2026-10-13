@@ -135,25 +135,168 @@ $urlEnlaceRegistro = trim((string)($urlEnlaceRegistro ?? ''));
                             aria-label="Cerrar"></button>
                     </div>
                     <div class="modal-body">
-                        <div class="formularios-qr-preview">
-                            <div
-                                class="spinner-border text-primary d-none"
-                                role="status"
-                                data-form-qr-loader>
-                                <span class="visually-hidden">Cargando...</span>
+                        <div class="formularios-qr-workspace">
+                            <div class="formularios-qr-preview-column">
+                                <div class="formularios-qr-preview">
+                                    <div
+                                        class="spinner-border text-primary d-none"
+                                        role="status"
+                                        data-form-qr-loader>
+                                        <span class="visually-hidden">Cargando...</span>
+                                    </div>
+                                    <img
+                                        src=""
+                                        alt="Código QR del formulario de Registro"
+                                        data-form-qr-image>
+                                </div>
+
+                                <div class="formularios-qr-link" data-form-qr-link></div>
                             </div>
-                            <img
-                                src=""
-                                alt="Código QR del formulario de Registro"
-                                data-form-qr-image>
+
+                            <div class="formularios-qr-customizer">
+                                <div class="formularios-qr-customizer-title">
+                                    <span>
+                                        <i class="bi bi-palette"></i>
+                                    </span>
+                                    <div>
+                                        <strong>Personalizar código QR</strong>
+                                        <small>
+                                            Ajusta colores, formas, tamaño y nivel de corrección.
+                                        </small>
+                                    </div>
+                                </div>
+
+                                <div class="formularios-qr-controls">
+                                    <label class="formularios-qr-control">
+                                        <span>Color del QR</span>
+                                        <input
+                                            type="color"
+                                            value="#223a84"
+                                            data-qr-dark>
+                                    </label>
+
+                                    <label class="formularios-qr-control">
+                                        <span>Color de fondo</span>
+                                        <input
+                                            type="color"
+                                            value="#ffffff"
+                                            data-qr-light>
+                                    </label>
+
+                                    <label class="formularios-qr-control">
+                                        <span>Color de esquinas</span>
+                                        <input
+                                            type="color"
+                                            value="#223a84"
+                                            data-qr-finder-color>
+                                    </label>
+
+                                    <label class="formularios-qr-control">
+                                        <span>Estilo de puntos</span>
+                                        <select data-qr-dot-style>
+                                            <option value="square">Cuadrado</option>
+                                            <option value="rounded">Redondeado</option>
+                                            <option value="dot">Circular</option>
+                                        </select>
+                                    </label>
+
+                                    <label class="formularios-qr-control">
+                                        <span>Estilo de esquinas</span>
+                                        <select data-qr-finder-style>
+                                            <option value="square">Cuadrado</option>
+                                            <option value="rounded">Redondeado</option>
+                                            <option value="circle">Circular</option>
+                                        </select>
+                                    </label>
+
+                                    <label class="formularios-qr-control">
+                                        <span>Centro de esquinas</span>
+                                        <select data-qr-finder-dot-style>
+                                            <option value="square">Cuadrado</option>
+                                            <option value="rounded">Redondeado</option>
+                                            <option value="dot">Circular</option>
+                                        </select>
+                                    </label>
+
+                                    <label class="formularios-qr-control">
+                                        <span>Tamaño de imagen</span>
+                                        <select data-qr-size>
+                                            <option value="300">300 px</option>
+                                            <option value="600" selected>600 px</option>
+                                            <option value="1000">1000 px</option>
+                                        </select>
+                                    </label>
+
+                                    <label class="formularios-qr-control">
+                                        <span>Margen</span>
+                                        <select data-qr-margin>
+                                            <option value="0">Sin margen</option>
+                                            <option value="1">1 módulo</option>
+                                            <option value="2" selected>2 módulos</option>
+                                            <option value="3">3 módulos</option>
+                                            <option value="4">4 módulos</option>
+                                        </select>
+                                    </label>
+
+                                    <label class="formularios-qr-control">
+                                        <span>Corrección de error</span>
+                                        <select data-qr-ec-level>
+                                            <option value="L">Baja (L)</option>
+                                            <option value="M" selected>Media (M)</option>
+                                            <option value="Q">Alta (Q)</option>
+                                            <option value="H">Máxima (H)</option>
+                                        </select>
+                                    </label>
+                                </div>
+
+                                <label class="formularios-qr-transparent">
+                                    <input
+                                        type="checkbox"
+                                        data-qr-transparent>
+                                    <span>Fondo transparente</span>
+                                </label>
+
+                                <div class="formularios-qr-customizer-actions">
+                                    <button
+                                        type="button"
+                                        class="btn btn-light"
+                                        data-reset-form-qr>
+                                        <i class="bi bi-arrow-counterclockwise"></i>
+                                        Restablecer
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="btn btn-system-save"
+                                        data-apply-form-qr>
+                                        <i class="bi bi-check2"></i>
+                                        Aplicar diseño
+                                    </button>
+                                </div>
+                            </div>
                         </div>
-                        <p>
-                            Al escanearlo, el usuario abrirá el mismo enlace público
-                            generado por el sistema.
+
+                        <p class="formularios-qr-help">
+                            Después de personalizarlo, verifica que el código siga
+                            escaneándose correctamente antes de compartirlo.
                         </p>
-                        <div class="formularios-qr-link" data-form-qr-link></div>
-                    </div>
-                </div>
+
+                        <div class="formularios-qr-image-actions">
+                            <button
+                                type="button"
+                                class="btn btn-light"
+                                data-copy-form-qr>
+                                <i class="bi bi-copy"></i>
+                                Copiar QR
+                            </button>
+                            <button
+                                type="button"
+                                class="btn btn-system-save"
+                                data-download-form-qr>
+                                <i class="bi bi-download"></i>
+                                Descargar PNG
+                            </button>
+                        </div>
+                    </div>            </div>
             </div>
         </div>
     <?php endif; ?>
