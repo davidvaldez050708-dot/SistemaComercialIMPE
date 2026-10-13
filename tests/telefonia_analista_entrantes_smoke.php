@@ -52,7 +52,9 @@ $checks = [
         str_contains($modelo, 'proveedor_externo,') &&
         str_contains($modelo, 'id_externo,') &&
         str_contains($modelo, 'duracion_segundos,') &&
-        str_contains($servicio, "'id_externo' => " . '$id'),
+        str_contains($servicio, "'id_externo' => " . '$sdk ?') &&
+        str_contains($servicio, "'WEBRTC-' . " . '$id') &&
+        str_contains($servicio, "'proveedor_externo' => " . '$sdk ?'),
     'No registrar una verificación efectiva falsa' =>
         str_contains($servicio, "'datos_verificados' => 0") &&
         str_contains($servicio, 'empty($call[\'answer_at\'])') &&
@@ -82,6 +84,13 @@ $checks = [
         str_contains($shell, '<?php if ($analistaEntrantesShell): ?>') &&
         str_contains($jsShell, 'cfg.analystIncomingResults') &&
         str_contains($shell, "data-analyst-register-call"),
+    'WebRTC observado guardado separado y sujeto a confirmación humana' =>
+        str_contains($servicio, 'TelefoniaAnalistaWebrtcService') &&
+        str_contains($servicio, "confirmacion_manual_sdk") &&
+        str_contains($servicio, "Las llamadas WebRTC sin evento PBX no acreditan verificaciones efectivas.") &&
+        str_contains($vista, 'data-incoming-sdk-id') &&
+        str_contains($vista, 'data-incoming-sdk-confirm') &&
+        str_contains($jsShell, 'finishedSdk'),
     'La recepción de Marketing continúa independiente' =>
         str_contains($shell, "'autoReception' => " . '$marketingShell || $analistaEntrantesShell') &&
         str_contains($shell, '$marketingShell'),
