@@ -36,6 +36,7 @@
     const incomingHeader = document.querySelector('[data-incoming-drag-handle]');
     const incomingCompactTimer = document.querySelector('[data-incoming-compact-timer]');
     const notice = document.querySelector('[data-incoming-notice]');
+    const closeFinished = document.querySelector('[data-incoming-close-finished]');
     const stateKey = 'impe:telephony:state:' + userId;
     const commandKey = 'impe:telephony:command:' + userId;
     const leaseKey = 'impe:telephony:shell-owner:' + userId;
