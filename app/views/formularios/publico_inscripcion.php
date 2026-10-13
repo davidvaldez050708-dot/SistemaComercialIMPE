@@ -55,7 +55,7 @@ $fechaMaximaNacimiento = date('Y-m-d');
 
             <div class="formulario-publico-hero-logo">
                 <img
-                    src="<?= BASE_URL ?>public/img/brand/porcayo-grupo8.png"
+                    src="<?= BASE_URL ?>public/img/brand/Logotipos-blanco.png"
                     alt="Porcayo Learning Group"
                     loading="eager">
             </div>
