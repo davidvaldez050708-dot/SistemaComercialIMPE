@@ -4,7 +4,7 @@ $esc = static function ($v) {
 };
 $llamadas = is_array($bandejaEntrantes['llamadas'] ?? null)
     ? $bandejaEntrantes['llamadas'] : [];
-$seleccionarId = trim((string)($_GET['pbx_call_id'] ?? ''));
+$seleccionarId = trim((string)($_GET['sdk_session_id'] ?? ($_GET['pbx_call_id'] ?? '')));
 $estadosEntrantes = $estadosEntrantes ?? [];
 $pendientesEntrantes = count(array_filter($llamadas, static function ($fila) {
     return (string)($fila['clasificacion'] ?? 'PENDIENTE') === 'PENDIENTE';
@@ -78,6 +78,7 @@ $duracionEntrante = static function ($segundos) {
                     <tbody>
                 <?php foreach ($llamadas as $llamada):
                     $pbxId = (string)($llamada['pbx_call_id'] ?? '');
+                    $esWebrtc = ($llamada['fuente'] ?? '') === 'SDK_WEBRTC';
                     $situacion = (string)($llamada['clasificacion'] ?? 'PENDIENTE');
                     $pbx = (string)($llamada['estado_pbx'] ?? '');
                     $finalizada = in_array($pbx, ['ended', 'transferred'], true);
@@ -90,7 +91,10 @@ $duracionEntrante = static function ($segundos) {
                 <tr data-incoming-row="<?= $esc($pbxId) ?>">
                     <td class="text-nowrap"><?= $esc($llamada['fecha'] ?? '') ?></td>
                     <td><strong><?= $esc($numero) ?></strong>
-                        <small class="d-block text-muted">Entrante · Extensión <?= $esc($bandejaEntrantes['extension'] ?? '') ?></small>
+                        <small class="d-block text-muted">
+                            Entrante · Extensión <?= $esc($bandejaEntrantes['extension'] ?? '') ?>
+                            <?php if ($esWebrtc): ?> · WebRTC observado (sin confirmación PBX)<?php endif; ?>
+                        </small>
                     </td>
                     <td class="text-nowrap"><?= $esc($duracionEntrante($llamada['duracion'] ?? 0)) ?></td>
                     <td>
@@ -119,6 +123,7 @@ $duracionEntrante = static function ($segundos) {
                         <?php if (!$vinculada && $finalizada && (!$sinIdentificar || !empty($llamada['contestada']))): ?>
                             <button type="button" class="btn btn-system-save linkage-incoming-open"
                                 data-call-id="<?= $esc($pbxId) ?>"
+                                data-source="<?= $esWebrtc ? 'SDK_WEBRTC' : 'PBX' ?>"
                                 data-phone="<?= $esc($llamada['numero'] ?? '') ?>"
                                 data-answer="<?= !empty($llamada['contestada']) ? '1' : '0' ?>"
                                 data-duration="<?= $esc($duracionEntrante($llamada['duracion'] ?? 0)) ?>">
@@ -143,7 +148,8 @@ $duracionEntrante = static function ($segundos) {
     <?php endif; ?>
     <p class="linkage-incoming-footnote">
         <i class="bi bi-shield-check" aria-hidden="true"></i>
-        El historial utiliza eventos de la centralita; solo las llamadas clasificadas se vinculan a Seguimiento.
+        El historial distingue eventos firmados de la centralita y sesiones observadas por WebRTC.
+        Estas últimas no acreditan por sí solas una conversación ni verificaciones institucionales.
     </p>
 </section>
 
@@ -164,6 +170,13 @@ $duracionEntrante = static function ($segundos) {
                 <div class="modal-body system-form-modal-body">
                     <input type="hidden" name="csrf_token" value="<?= $esc($_SESSION['csrf_token'] ?? '') ?>">
                     <input type="hidden" name="pbx_call_id" data-incoming-pbx>
+                    <input type="hidden" name="sdk_session_id" data-incoming-sdk-id>
+                    <div class="alert alert-info mt-3 mb-0" data-incoming-sdk-notice hidden>
+                        <strong>Registro WebRTC sin confirmación PBX.</strong>
+                        Esta llamada fue observada por el teléfono del navegador.
+                        Al vincularla confirma que realmente mantuviste la conversación;
+                        no se contabilizará como verificación efectiva.
+                    </div>
                     <div class="linkage-incoming-summary">
                         <span><i class="bi bi-telephone-inbound"></i> <strong data-incoming-number>—</strong></span>
                         <span><i class="bi bi-clock"></i> <strong data-incoming-duration>00:00</strong></span>
@@ -246,6 +259,11 @@ $duracionEntrante = static function ($segundos) {
                                 <input id="incomingNextAt" name="proxima_accion_at" type="datetime-local" class="form-control">
                             </div>
                         </div>
+                    </div>
+                    <div class="mt-3" data-incoming-sdk-confirm hidden>
+                        <label><input type="checkbox" name="confirmacion_manual_sdk" value="1">
+                            Confirmo que atendí esta llamada y conversé con la persona indicada
+                        </label>
                     </div>
                     <div class="linkage-incoming-evidence mt-3" data-incoming-evidence hidden>
                         <strong>Datos verificados durante esta llamada</strong>
