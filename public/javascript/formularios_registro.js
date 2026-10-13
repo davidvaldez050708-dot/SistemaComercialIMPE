@@ -1160,7 +1160,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         municipio.innerHTML =
             '<option value="">' +
-                escapar(texto || 'Selecciona un municipio') +
+                escapar(texto || 'SELECCIONA UN MUNICIPIO') +
             '</option>';
         municipio.value = '';
         municipio.disabled = true;
@@ -1176,7 +1176,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const estadoId = Number(estado.value || 0);
 
         if (estadoId <= 0) {
-            limpiarMunicipios('Primero selecciona un estado');
+            limpiarMunicipios('PRIMERO SELECCIONA UN ESTADO');
 
             if (ayudaMunicipio) {
                 ayudaMunicipio.textContent =
@@ -1204,7 +1204,7 @@ document.addEventListener('DOMContentLoaded', function () {
             '<option value="">Cargando municipios...</option>';
 
         if (ayudaMunicipio) {
-            ayudaMunicipio.textContent = 'Cargando municipios...';
+            ayudaMunicipio.textContent = 'CARGANDO MUNICIPIOS...';
         }
 
         try {
@@ -1241,7 +1241,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         '<option value="' +
                             Number(item.id || 0) +
                         '">' +
-                            escapar(item.nombre || '') +
+                            escapar(String(item.nombre || '').toLocaleUpperCase('es-MX')) +
                         '</option>'
                     );
                 }).join('');
@@ -1258,7 +1258,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         } catch (error) {
             console.error(error);
-            limpiarMunicipios('No fue posible cargar municipios');
+            limpiarMunicipios('NO FUE POSIBLE CARGAR MUNICIPIOS');
 
             if (ayudaMunicipio) {
                 ayudaMunicipio.textContent =
@@ -1347,7 +1347,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     campo.setCustomValidity('');
                 });
 
-            limpiarMunicipios('Primero selecciona un estado');
+            limpiarMunicipios('PRIMERO SELECCIONA UN ESTADO');
 
             if (ayudaMunicipio) {
                 ayudaMunicipio.textContent =
