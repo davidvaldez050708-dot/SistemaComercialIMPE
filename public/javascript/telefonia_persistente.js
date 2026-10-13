@@ -135,6 +135,14 @@
             const parsed = raw ? JSON.parse(raw) : null;
 
             if (parsed && Number(parsed.userId || 0) === userId) {
+                // Las llamadas manuales no requieren registrar resultado.
+                // Nunca reconstruir un resumen saliente antiguo al entrar
+                // al CRM; el motor PBX volverá a publicar el estado real.
+                const manual = ['TELEPHONY_MANUAL','MARKETING_CALLBACK','DIALER']
+                    .includes(String(parsed.context?.type || '').toUpperCase());
+                if (manual && !parsed.active && parsed.phase === 'finished') {
+                    return emptyState();
+                }
                 return Object.assign(emptyState(), parsed);
             }
         } catch (error) {
