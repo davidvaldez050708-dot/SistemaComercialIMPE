@@ -7,10 +7,10 @@ class SeguimientoVinculacionModel
     private $ultimoErrorInteraccion = '';
     private $connection;
 
-    public function __construct()
+    public function __construct($connection = null)
     {
-        $database = new Database();
-        $this->connection = $database->connect();
+        // Permite registrar llamadas y seguimientos nuevos en una sola transacción.
+        $this->connection = $connection ?: (new Database())->connect();
     }
 
     public function obtenerSeguimientoIdsConActividadPeriodo(
@@ -854,9 +854,9 @@ class SeguimientoVinculacionModel
         return $stmt->get_result()->fetch_assoc() ?: null;
     }
 
-    public function crearSeguimientoManual($datos)
+    public function crearSeguimientoManual($datos, $transaccionExterna = false)
     {
-        $this->connection->begin_transaction();
+        if (!$transaccionExterna) $this->connection->begin_transaction();
 
         try {
             $sqlSeguimiento = "INSERT INTO seguimientos_vinculacion (
@@ -920,11 +920,11 @@ class SeguimientoVinculacionModel
                 throw new RuntimeException('No fue posible crear el seguimiento manual.');
             }
 
-            $this->connection->commit();
+            if (!$transaccionExterna) $this->connection->commit();
 
             return $seguimientoId;
         } catch (Throwable $error) {
-            $this->connection->rollback();
+            if (!$transaccionExterna) $this->connection->rollback();
             throw $error;
         }
     }
@@ -1308,7 +1308,7 @@ class SeguimientoVinculacionModel
         return $stmt->execute();
     }
 
-    public function registrarInteraccionManual($seguimientoId, $usuarioId, $datos)
+    public function registrarInteraccionManual($seguimientoId, $usuarioId, $datos, $transaccionExterna = false)
     {
         $this->ultimoErrorInteraccion = '';
         $etapaPersistencia = 'guardar la interacción';
@@ -1355,7 +1355,7 @@ class SeguimientoVinculacionModel
             }
         }
 
-        $this->connection->begin_transaction();
+        if (!$transaccionExterna) $this->connection->begin_transaction();
 
         try {
             $etapaPersistencia = 'guardar la interacción';
@@ -1367,14 +1367,24 @@ class SeguimientoVinculacionModel
                     correo_destino,
                     fecha_inicio,
                     resultado,
-                    notas
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+                    notas,
+                    proveedor_externo,
+                    id_externo,
+                    duracion_segundos,
+                    fecha_fin
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
             $stmtInteraccion = $this->connection->prepare($sqlInteraccion);
             $seguimientoId = (int)$seguimientoId;
             $usuarioId = (int)$usuarioId;
+            // Datos técnicos comprobados por el servidor, no por el navegador.
+            $proveedorExterno = $this->valorONulo($datos['proveedor_externo'] ?? '');
+            $idExterno = $this->valorONulo($datos['id_externo'] ?? '');
+            $duracionSegundos = isset($datos['duracion_segundos'])
+                ? max(0, (int)$datos['duracion_segundos']) : null;
+            $fechaFin = $this->valorONulo($datos['fecha_fin'] ?? '');
             $stmtInteraccion->bind_param(
-                'iissssss',
+                'iissssssssis',
                 $seguimientoId,
                 $usuarioId,
                 $canal,
@@ -1382,7 +1392,11 @@ class SeguimientoVinculacionModel
                 $correoDestino,
                 $fechaInicio,
                 $resultado,
-                $notas
+                $notas,
+                $proveedorExterno,
+                $idExterno,
+                $duracionSegundos,
+                $fechaFin
             );
             $stmtInteraccion->execute();
 
@@ -1473,11 +1487,11 @@ class SeguimientoVinculacionModel
             $this->vincularParametros($stmtSeguimiento, $tiposSeguimiento, $parametrosSeguimiento);
             $stmtSeguimiento->execute();
 
-            $this->connection->commit();
+            if (!$transaccionExterna) $this->connection->commit();
 
             return true;
         } catch (Throwable $error) {
-            $this->connection->rollback();
+            if (!$transaccionExterna) $this->connection->rollback();
             $this->ultimoErrorInteraccion = $etapaPersistencia;
             error_log(
                 'Error registrarInteraccionManual (' .
