@@ -13,6 +13,9 @@ if ($usuarioHost === '') {
 }
 $mostrarPestanaTelefonica = (string)($_GET['display'] ?? '') === 'tab';
 $motorTelefonicoEmbebido = (string)($_GET['display'] ?? '') === 'embed';
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
 $analistaHostSdk = $motorTelefonicoEmbebido &&
     strcasecmp(trim((string)($_SESSION['rol'] ?? '')), 'Analista de Datos') === 0 &&
     !empty($asignacionTelefonica['permite_entrantes']) &&
@@ -86,6 +89,10 @@ $analistaHostSdk = $motorTelefonicoEmbebido &&
             // Sólo para el Analista con sesión autorizada y motor embebido.
             // Marketing continúa usando exclusivamente eventos PBX.
             'analystSdkIncoming' => $analistaHostSdk,
+            'analystSdkJournalUrl' => $analistaHostSdk
+                ? BASE_URL . 'index.php?controller=seguimientoVinculacion&action=eventoEntranteWebrtc'
+                : '',
+            'analystSdkJournalCsrf' => $analistaHostSdk ? (string)$_SESSION['csrf_token'] : '',
             'permiteTransferir' =>
                 !empty($asignacionTelefonica['permite_transferir']) &&
                 tienePermiso('telefonia.transferir')
