@@ -713,6 +713,43 @@ $urlEnlaceRegistro = trim((string)($urlEnlaceRegistro ?? ''));
                 </div>
             </section>
 
+            <section class="formularios-registration-section formularios-recommendation-section">
+                <div class="formularios-registration-section-title">
+                    <span><i class="bi bi-person-heart"></i></span>
+                    <div>
+                        <h4>¿Conoces a alguien interesado?</h4>
+                        <p>
+                            Si conoces a alguien que pudiera estar interesado en nuestros programas,
+                            puedes compartirnos su número de teléfono.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="formularios-registration-grid">
+                    <div class="formularios-field formularios-field-full">
+                        <label for="form_registro_tel_recomendado">
+                            Teléfono de la persona recomendada
+                        </label>
+                        <input
+                            type="tel"
+                            class="form-control"
+                            id="form_registro_tel_recomendado"
+                            name="tel_recomendado"
+                            maxlength="10"
+                            inputmode="numeric"
+                            autocomplete="off"
+                            placeholder="Ej. 7771234567"
+                            data-registro-tel-recomendado>
+                        <small>
+                            Este campo es opcional. Si agregas un número, debe contener 10 dígitos.
+                        </small>
+                        <div class="invalid-feedback">
+                            Ingresa un número de teléfono válido de 10 dígitos.
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             <div class="formularios-registration-actions">
                 <button
                     type="reset"
