@@ -290,17 +290,22 @@ class TelefoniaRecepcionMarketingService
                 $call['estado'] = 'Sonando';
             }
 
-            // Seguridad: el endpoint actual de audio autoriza SOLO
-            // entrantes atendidas y no transferidas. No anunciar
-            // grabaciones salientes hasta tener su autorización propia.
-            $call['tiene_grabacion'] = $call['tipo'] === 'Entrante' &&
+            // Una grabación saliente completada se ofrece para consulta
+            // bajo demanda. El endpoint vuelve a comprobar la propiedad.
+            $salienteReproducible = $call['tipo'] === 'Saliente' &&
+                $call['finalizada'] && $call['estado'] === 'Completada' &&
+                !$call['saliente_transferida'] && $call['audio_reportado'];
+            $call['tiene_grabacion'] = $salienteReproducible ||
+                ($call['tipo'] === 'Entrante' &&
                 !$call['transferida'] && $call['contestada'] &&
-                $call['finalizada'] && $call['audio_reportado'];
+                $call['finalizada'] && $call['audio_reportado']);
             $call['fue_contestada'] = $call['contestada'];
             $call['grabacion_salida_pendiente'] =
-                $call['tipo'] === 'Saliente' && $call['audio_reportado'];
+                $call['tipo'] === 'Saliente' && $call['audio_reportado'] &&
+                !$salienteReproducible;
             unset($call['audio_reportado'], $call['contestada'],
-                $call['finalizada'], $call['transferida'], $call['disposition']);
+                $call['finalizada'], $call['transferida'], $call['disposition'],
+                $call['saliente_transferida']);
             $resultado[] = $call;
         }
         return $resultado;
