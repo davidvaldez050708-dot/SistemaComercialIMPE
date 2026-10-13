@@ -37,6 +37,21 @@
     const incomingCompactTimer = document.querySelector('[data-incoming-compact-timer]');
     const notice = document.querySelector('[data-incoming-notice]');
     const closeFinished = document.querySelector('[data-incoming-close-finished]');
+    const analystResultNotice = document.querySelector('[data-analyst-call-result]');
+    const analystResultButton = document.querySelector('[data-analyst-register-call]');
+    const analystResultDismiss = document.querySelector('[data-analyst-dismiss-call]');
+    const analystResultKey = 'impe:analyst-incoming-pending:' + userId;
+    let analystPendingCall = null;
+    if (cfg.analystIncomingResults) {
+        try {
+            analystPendingCall = JSON.parse(sessionStorage.getItem(analystResultKey) || 'null');
+            if (!analystPendingCall || typeof analystPendingCall.id !== 'string' ||
+                !analystPendingCall.id || Date.now() - Number(analystPendingCall.at || 0) > 86400000) {
+                analystPendingCall = null;
+                sessionStorage.removeItem(analystResultKey);
+            }
+        } catch (_) { analystPendingCall = null; }
+    }
     const stateKey = 'impe:telephony:state:' + userId;
     const commandKey = 'impe:telephony:command:' + userId;
     const leaseKey = 'impe:telephony:shell-owner:' + userId;
@@ -232,6 +247,19 @@
 
     const updateState = function (value) {
         if (!freshState(value)) return;
+        // Sólo el Analista genera un aviso al finalizar una entrante REAL.
+        // La llamada permanece en el historial aun si oculta este aviso.
+        if (cfg.analystIncomingResults &&
+            currentState?.active && currentState.direction === 'incoming' &&
+            !value.active && value.direction === 'incoming' &&
+            value.phase === 'incoming-finished') {
+            const id = incomingCallId(value) || incomingCallId(currentState);
+            if (id && /^[a-zA-Z0-9_-]{3,100}$/.test(id)) {
+                analystPendingCall = {id, at: Date.now()};
+                try { sessionStorage.setItem(analystResultKey, JSON.stringify(analystPendingCall)); }
+                catch (_) { /* El historial del servidor es el respaldo. */ }
+            }
+        }
         // El resumen de Marketing sólo nace de una transición REAL de
         // llamada activa a finalizada en esta sesión, nunca de storage.
         if (!value.active && value.phase === 'finished' &&
@@ -362,6 +390,9 @@
         const shownOutgoing = Boolean(shownCall?.direction === 'outgoing' &&
             (manualOutgoing || preview || outgoingAttempt));
         const ongoing = Boolean(state?.active);
+        if (analystResultNotice) {
+            analystResultNotice.hidden = !analystPendingCall || ongoing;
+        }
         if (!ongoing) {
             forceNativeControls = false;
             minimized = false;
@@ -667,6 +698,21 @@
         }
         try { ensureHost(); } catch (e) { render(); }
     });
+
+    const dismissAnalystResult = function () {
+        analystPendingCall = null;
+        try { sessionStorage.removeItem(analystResultKey); } catch (_) {}
+        render();
+    };
+    analystResultButton?.addEventListener('click', function () {
+        if (!analystPendingCall || !cfg.incomingResultsUrl || !crm) return;
+        const url = new URL(String(cfg.incomingResultsUrl), window.location.href);
+        if (url.origin !== window.location.origin) return;
+        url.searchParams.set('pbx_call_id', analystPendingCall.id);
+        crm.src = url.toString();
+        dismissAnalystResult();
+    });
+    analystResultDismiss?.addEventListener('click', dismissAnalystResult);
 
     // Si una petición expira, el login no debe quedar atrapado dentro del
     // iframe: salir del shell desmonta también el contexto WebRTC.
