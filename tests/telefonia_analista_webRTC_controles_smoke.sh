@@ -54,7 +54,9 @@ done
 bash tools/desplegar_controles_webRTC_analista_hostinger.sh --check
 
 # Conflicto posterior: rechazo sin sobrescribir personalizaciones.
-sed -i 's/Abrir controles de Zadarma/Controles personalizados/' \
+# Alterar un bloque realmente incluido en el parche incremental:
+# personalizaciones ajenas al parche pueden permanecer intactas.
+sed -i 's/if (abrirAlConectar) abrirControlesAnalista();/if (abrirAlConectar) abrirOtroVisor();/' \
     "$TMP/site/public/javascript/telefonia_persistente.js"
 if bash tools/desplegar_controles_webRTC_analista_hostinger.sh --check >"$TMP/error.log" 2>&1; then
   echo "ERROR: despliegue ignoró cambios no compatibles." >&2
