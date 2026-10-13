@@ -34,8 +34,8 @@
             <h1>¡Muchas gracias por completar tu inscripción!</h1>
 
             <p>
-                Hemos recibido correctamente tu información de inscripción.
-                Muy pronto nos pondremos en contacto contigo.
+                Un asesor se pondrá en contacto contigo en breve
+                para dar seguimiento y continuar con tu proceso.
             </p>
         </section>
     </main>
