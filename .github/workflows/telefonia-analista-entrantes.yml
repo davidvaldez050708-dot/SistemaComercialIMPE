@@ -34,6 +34,8 @@ on:
       - "tools/restaurar_recepcion_webRTC_hostinger.sh"
       - "tests/telefonia_recuperacion_recepcion_smoke.sh"
       - "tests/telefonia_analista_webRTC_controles_smoke.sh"
+      - "tools/desplegar_flujo_entrante_webRTC_analista_hostinger.sh"
+      - "tests/telefonia_flujo_entrante_webRTC_analista_smoke.sh"
       - ".github/workflows/telefonia-analista-entrantes.yml"
   pull_request:
     paths:
@@ -52,6 +54,8 @@ on:
       - "tools/desplegar_timbrado_webRTC_analista_hostinger.sh"
       - "tests/telefonia_sdk_entrantes_observador_smoke.js"
       - "tests/telefonia_sdk_entrantes_hostinger_smoke.sh"
+      - "tools/desplegar_flujo_entrante_webRTC_analista_hostinger.sh"
+      - "tests/telefonia_flujo_entrante_webRTC_analista_smoke.sh"
       - ".github/workflows/telefonia-analista-entrantes.yml"
 jobs:
   validar:
@@ -103,3 +107,6 @@ jobs:
           bash -n tools/desplegar_timbrado_webRTC_analista_hostinger.sh
           bash -n tests/telefonia_sdk_entrantes_hostinger_smoke.sh
           bash tests/telefonia_sdk_entrantes_hostinger_smoke.sh
+          bash -n tools/desplegar_flujo_entrante_webRTC_analista_hostinger.sh
+          bash -n tests/telefonia_flujo_entrante_webRTC_analista_smoke.sh
+          bash tests/telefonia_flujo_entrante_webRTC_analista_smoke.sh
