@@ -188,7 +188,7 @@ $nombreShell = $nombreShell !== '' ? $nombreShell : 'Usuario';
         window.IMPE_PHONE_SHELL_CONFIG = <?= json_encode([
             'userId' => $usuarioShell,
             'extension' => $extensionShell,
-            'autoReception' => $marketingShell,
+            'autoReception' => $marketingShell || $analistaEntrantesShell,
             'analystIncomingResults' => $analistaEntrantesShell,
             'incomingResultsUrl' => BASE_URL . 'index.php?controller=seguimientoVinculacion&action=llamadasEntrantes',
             'canCallOut' => tienePermiso('telefonia.salientes') &&
