@@ -45,6 +45,98 @@ class SeguimientoVinculacionController
         require_once __DIR__ . '/../views/layout/dashboard_footer.php';
     }
 
+    /**
+     * Bandeja de llamadas entrantes del Analista, sin alterar Seguimiento,
+     * Recepción de Marketing ni el registro de llamadas salientes.
+     */
+    public function llamadasEntrantes()
+    {
+        $this->validarAccesoEntrantesAnalista(false);
+        require_once __DIR__ . '/../services/TelefoniaEntrantesAnalistaService.php';
+        $bandejaEntrantes = ['extension' => '', 'llamadas' => []];
+        $estadosEntrantes = [];
+        $errorEntrantes = '';
+        try {
+            $servicio = new TelefoniaEntrantesAnalistaService();
+            $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
+            $bandejaEntrantes = $servicio->listar($usuarioId);
+            $estadosEntrantes = $servicio->estados($usuarioId);
+        } catch (Throwable $e) {
+            error_log('[llamadas_entrantes_analista] ' . $e->getMessage());
+            $errorEntrantes = 'No fue posible consultar las llamadas. Comprueba que tu extensión está activa.';
+        }
+
+        $tituloPagina = 'Llamadas recibidas · Seguimiento';
+        $subtituloPagina = 'Historial y resultados de llamadas institucionales';
+        $opcionActiva = 'seguimiento_vinculacion';
+        require_once __DIR__ . '/../views/layout/dashboard_head.php';
+        require_once __DIR__ . '/../views/layout/sidebar.php';
+        require_once __DIR__ . '/../views/layout/topbar.php';
+        require_once __DIR__ . '/../views/seguimiento_vinculacion/llamadas_entrantes.php';
+        require_once __DIR__ . '/../views/layout/dashboard_footer.php';
+    }
+
+    public function buscarEntrantesSeguimientos()
+    {
+        $this->validarAccesoEntrantesAnalista(true);
+        require_once __DIR__ . '/../services/TelefoniaEntrantesAnalistaService.php';
+        try {
+            $busqueda = trim((string)($_GET['q'] ?? ''));
+            $resultados = (new TelefoniaEntrantesAnalistaService())
+                ->buscarSeguimientos((int)$_SESSION['usuario_id'], $busqueda);
+            $this->responderJson(['ok' => true, 'resultados' => $resultados]);
+        } catch (Throwable $e) {
+            error_log('[buscar_entrantes_analista] ' . $e->getMessage());
+            $this->responderJson(['ok' => false, 'mensaje' => 'No fue posible buscar los expedientes.'], 500);
+        }
+    }
+
+    public function registrarLlamadaEntrante()
+    {
+        $this->validarAccesoEntrantesAnalista(true);
+        $this->validarMetodoPostJson();
+        $esperado = (string)($_SESSION['csrf_token'] ?? '');
+        $recibido = (string)($_POST['csrf_token'] ?? '');
+        if ($esperado === '' || !hash_equals($esperado, $recibido)) {
+            $this->responderJson(['ok' => false, 'mensaje' => 'La sesión expiró. Actualiza el CRM.'], 403);
+        }
+
+        require_once __DIR__ . '/../services/TelefoniaEntrantesAnalistaService.php';
+        try {
+            $resultado = (new TelefoniaEntrantesAnalistaService())
+                ->registrar((int)$_SESSION['usuario_id'], $_POST);
+            $this->responderJson([
+                'ok' => true,
+                'mensaje' => $resultado['estado'] === 'SIN_IDENTIFICAR'
+                    ? 'Llamada clasificada en el historial telefónico.'
+                    : 'Llamada vinculada al expediente de Seguimiento.',
+                'resultado' => $resultado
+            ]);
+        } catch (InvalidArgumentException | DomainException $e) {
+            $this->responderJson(['ok' => false, 'mensaje' => $e->getMessage()], 422);
+        } catch (Throwable $e) {
+            error_log('[registrar_entrante_analista] ' . $e->getMessage());
+            $this->responderJson(['ok' => false, 'mensaje' => 'No fue posible guardar. No se alteró el expediente; vuelve a intentarlo.'], 500);
+        }
+    }
+
+    private function validarAccesoEntrantesAnalista(bool $json): void
+    {
+        $permitido = (int)($_SESSION['usuario_id'] ?? 0) > 0 &&
+            strcasecmp(trim((string)($_SESSION['rol'] ?? '')), 'Analista de Datos') === 0 &&
+            tienePermiso('seguimientos_vinculacion.operar_propios') &&
+            tienePermiso('telefonia.usar') &&
+            tienePermiso('telefonia.recibir');
+        if (!$permitido) {
+            if ($json) {
+                $this->responderJson(['ok' => false, 'mensaje' => 'Sin permiso para las llamadas recibidas.'], 403);
+            }
+            http_response_code(403);
+            echo 'No tienes acceso a esta sección.';
+            exit;
+        }
+    }
+
     public function estado()
     {
         $this->validarPermiso('seguimientos_vinculacion.ver');
