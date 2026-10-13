@@ -2,7 +2,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 BEFORE="9c6af2f292f2bde1a01b0aeb0cb88106327518c0"
-AFTER="1e8062d208b956de9ca033c7f9ea54c09aaec7f0"
+AFTER="f2e803029fdefb0bd272db059bed469f134c93a2"
 DEPLOY="tools/desplegar_historial_entrantes_webRTC_analista_hostinger.sh"
 files=(
   app/controllers/SeguimientoVinculacionController.php
@@ -28,6 +28,7 @@ bash -n "$DEPLOY"
 # Servidor: sesiones por usuario/extensión, CSRF, no fingir PBX ni verificación.
 grep -Fq "UNIQUE KEY uk_analista_webrtc_sesion (usuario_id, session_id)" app/services/TelefoniaAnalistaWebrtcService.php
 grep -Fq "fecha_atendida = COALESCE(fecha_atendida, NOW())" app/services/TelefoniaAnalistaWebrtcService.php
+grep -Fq 'No se confirmó el guardado de la sesión WebRTC.' app/services/TelefoniaAnalistaWebrtcService.php
 grep -Fq "AND estado = 'ringing'" app/services/TelefoniaAnalistaWebrtcService.php
 grep -Fq "eventoEntranteWebrtc" app/controllers/SeguimientoVinculacionController.php
 grep -Fq 'hash_equals($expected, $received)' app/controllers/SeguimientoVinculacionController.php
