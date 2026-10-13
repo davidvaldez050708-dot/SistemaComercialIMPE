@@ -1190,7 +1190,8 @@
    FORMULARIOS · PERSONALIZADOR QR
    ====================================================================== */
 
-[data-form-qr-modal] .modal-dialog.formularios-qr-dialog {
+#modalFormularioRegistroQr .modal-dialog.formularios-qr-dialog,
+#modalFormularioInscripcionQr .modal-dialog.formularios-qr-dialog {
     width: min(calc(100% - 32px), 720px) !important;
     max-width: 720px !important;
     margin: 1.5rem auto !important;
@@ -1401,7 +1402,8 @@
 }
 
 @media (max-width: 700px) {
-    [data-form-qr-modal] .modal-dialog.formularios-qr-dialog {
+    #modalFormularioRegistroQr .modal-dialog.formularios-qr-dialog,
+    #modalFormularioInscripcionQr .modal-dialog.formularios-qr-dialog {
         width: min(calc(100% - 20px), 520px) !important;
         max-width: 520px !important;
         margin: .75rem auto !important;
