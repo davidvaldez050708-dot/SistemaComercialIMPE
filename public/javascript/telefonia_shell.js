@@ -538,9 +538,12 @@
             'Desde ' + String(state.destination || 'Número desconocido') :
             'Extensión ' + cfg.extension;
         if (callHelp) {
-            callHelp.textContent = incoming
-                ? 'Utiliza Contestar en el teléfono Zadarma. Si no aparece, la centralita detectó la llamada, pero WebRTC no confirma el timbrado.'
-                : 'Teléfono de la extensión ' + cfg.extension + '.';
+            callHelp.textContent = cfg.analystIncomingResults && nativeAnalystOpen
+                ? 'Controles de Zadarma · Extensión ' + cfg.extension +
+                    '. Si recibes una llamada interna, contéstala desde el widget inferior. Puedes ocultar este panel sin desconectar la recepción.'
+                : incoming
+                    ? 'Utiliza Contestar en el teléfono Zadarma. Si no aparece, la centralita detectó la llamada, pero WebRTC no confirma el timbrado.'
+                    : 'Teléfono de la extensión ' + cfg.extension + '.';
         }
 
         // Sólo se hace visible la interfaz oficial si la llamada es entrante.
