@@ -246,7 +246,6 @@ assert.equal(analyst.elements['[data-shell-call]'].classList.contains('is-visibl
 assert.equal(analyst.window.IMPE_TELEPHONY_SHELL.isPhoneReady(),true,
     'ocultar controles no pone offline la extensión del Analista');
 
-storage.clear();
 const second = boot();
 assert.equal(second.elements['[data-shell-host-region]'].children.length,0,
     'second tab does not register same SIP extension');
