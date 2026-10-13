@@ -98,6 +98,16 @@ class TelefoniaEntrantesAnalistaService
         return $llamada;
     }
 
+    private static function segundosAtendidos(array $call): int
+    {
+        $inicio = strtotime((string)($call['answer_at'] ?? ''));
+        $fin = strtotime((string)($call['end_at'] ?? ''));
+        if ($inicio !== false && $fin !== false && $fin > $inicio) {
+            return max(0, $fin - $inicio);
+        }
+        return max(0, (int)($call['duration'] ?? 0));
+    }
+
     public function listar(int $usuarioId): array
     {
         $asignacion = $this->extensionActual($usuarioId);
@@ -152,7 +162,7 @@ class TelefoniaEntrantesAnalistaService
                 'pbx_call_id' => $id,
                 'numero' => (string)($call['caller_id'] ?? ''),
                 'fecha' => $fechas[$id],
-                'duracion' => max(0, (int)($call['duration'] ?? 0)),
+                'duracion' => self::segundosAtendidos($call),
                 'estado_pbx' => (string)($call['estado'] ?? 'ringing'),
                 'contestada' => !empty($call['answer_at']),
                 'clasificacion' => (string)($registro['estado'] ?? 'PENDIENTE'),
@@ -383,11 +393,7 @@ class TelefoniaEntrantesAnalistaService
             if (!$fechaFin || strtotime($fechaFin) === false) {
                 $fechaFin = date('Y-m-d H:i:s');
             }
-            $segundosConversacion = max(0,
-                (strtotime($fechaFin) ?: 0) - (strtotime($fechaInicio) ?: 0));
-            if ($segundosConversacion === 0) {
-                $segundosConversacion = max(0, (int)($call['duration'] ?? 0));
-            }
+            $segundosConversacion = self::segundosAtendidos($call);
             $notas = trim(implode("\n", array_filter([
                 'Llamada entrante recibida en la extensión ' . $extension . '.',
                 trim((string)($datos['persona_atendio'] ?? '')) !== ''
