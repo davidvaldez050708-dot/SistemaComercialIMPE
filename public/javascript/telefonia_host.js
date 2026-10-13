@@ -225,6 +225,15 @@
     };
 
     let state = readState();
+    const manualCall = call =>
+        ['TELEPHONY_MANUAL', 'MARKETING_CALLBACK', 'DIALER'].includes(
+            String(call?.context?.type || '').toUpperCase()
+        );
+    // Marketing no tiene resultado comercial pendiente tras Colgar.
+    // No restaurar una llamada manual finalizada de una sesión anterior.
+    if (!state.active && state.phase === 'finished' && manualCall(state)) {
+        state = emptyState();
+    }
 
     /*
      * Si esta página se cargó de nuevo, el PeerConnection anterior ya no existe.
@@ -1155,6 +1164,18 @@
             finalMetadata: finalMetadata,
             message: ''
         });
+        if (manualCall(state)) {
+            const token = String(state.callToken || '');
+            // Resumen temporal de Marketing: conservar 8 segundos para que
+            // pueda comprobar la duración, luego limpiar estado persistido.
+            // Seguimiento y Vinculación NO se limpian automáticamente.
+            setTimeout(function () {
+                if (!state.active && state.phase === 'finished' &&
+                    String(state.callToken || '') === token) {
+                    clearFinished(token);
+                }
+            }, 8000);
+        }
     };
 
     const applyCallState = function (call) {
