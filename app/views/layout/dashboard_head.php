@@ -37,6 +37,9 @@ $esHomeDashboard = $controllerDashboard === 'home';
 $esSeguimientoEstado =
     $controllerDashboard === 'seguimientovinculacion' &&
     $actionDashboard === 'estado';
+$esSeguimientoEntrantesAnalista =
+    $controllerDashboard === 'seguimientovinculacion' &&
+    $actionDashboard === 'llamadasentrantes';
 $esSeguimientoDetalle =
     $controllerDashboard === 'seguimientovinculacion' &&
     $actionDashboard === 'detalle';
@@ -135,6 +138,10 @@ if ($esSeguimientoEstado) {
             'seguimiento_estado_compacto.css'
         ]
     );
+}
+
+if ($esSeguimientoEntrantesAnalista) {
+    $cssOpcionalDashboard[] = 'seguimiento_entrantes_analista.css';
 }
 
 if ($esSeguimientoDetalle) {
