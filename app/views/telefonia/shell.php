@@ -66,6 +66,14 @@ $nombreShell = $nombreShell !== '' ? $nombreShell : 'Usuario';
     </style>
     <?php if ($analistaEntrantesShell): ?>
     <style id="impeAnalystCallResultStyles">
+/* Visor de emergencia para timbrados SIP internos sin NOTIFY_INTERNAL.
+   Sólo el Analista lo abre al pulsar el auricular; no altera Marketing. */
+.impe-phone-call.is-analyst-native .impe-phone-call-help {display:none;}
+.impe-phone-call.is-analyst-native .impe-phone-call-host {height:calc(100% - 59px);}
+.impe-phone-call.is-analyst-native.is-visible {height:min(560px,calc(100dvh - 24px));}
+@media (max-width:575.98px) {
+  .impe-phone-call.is-analyst-native.is-visible {height:min(560px,calc(100dvh - 12px));}
+}
 
 /* Aviso específico del Analista: el audio y las tarjetas telefónicas
    existentes conservan su disposición y sus controles. */
