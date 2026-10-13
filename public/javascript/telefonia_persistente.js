@@ -2590,7 +2590,9 @@
                                 ? 'Extensión pendiente'
                                 : 'Recepción no disponible';
                 const title = active
-                    ? 'Abrir teléfono institucional (recepción conectada)'
+                    ? (receptionButton?.dataset.telephonyAnalyst === '1'
+                        ? 'Abrir controles de Zadarma · Extensión ' + extension
+                        : 'Abrir teléfono institucional (recepción conectada)')
                     : assigned
                         ? 'Activar recepción telefónica'
                         : missing
