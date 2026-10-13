@@ -109,6 +109,12 @@ document.addEventListener('DOMContentLoaded', function () {
     const qrPublicImageUrl = modalQrElement?.querySelector(
         '[data-qr-public-image-url]'
     );
+    const qrImageSize = modalQrElement?.querySelector(
+        '[data-qr-image-size]'
+    );
+    const qrImageSizeValue = modalQrElement?.querySelector(
+        '[data-qr-image-size-value]'
+    );
     const botonAplicarQr = modalQrElement?.querySelector(
         '[data-apply-form-qr]'
     );
@@ -429,8 +435,14 @@ document.addEventListener('DOMContentLoaded', function () {
         };
 
         if (imagenCentral !== '') {
+            const porcentajeImagen = Math.min(
+                30,
+                Math.max(10, Number(qrImageSize?.value || 20))
+            );
+
             parametros.centerImageUrl = imagenCentral;
-            parametros.centerImageSizeRatio = 0.20;
+            parametros.centerImageSizeRatio =
+                Number((porcentajeImagen / 100).toFixed(2));
         }
 
         return parametros;
@@ -596,6 +608,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (qrPublicImageUrl) {
             qrPublicImageUrl.value = '';
+        }
+
+        if (qrImageSize) {
+            qrImageSize.value = '20';
+        }
+
+        if (qrImageSizeValue) {
+            qrImageSizeValue.textContent = '20%';
         }
 
         actualizarPreviewQr();
@@ -887,6 +907,31 @@ document.addEventListener('DOMContentLoaded', function () {
             qrImageEnabled?.checked &&
             obtenerFuenteImagenQr() === 'url'
         ) {
+            actualizarPreviewQr();
+        }
+    });
+
+    qrImageSize?.addEventListener('input', function () {
+        const valor = Math.min(
+            30,
+            Math.max(10, Number(qrImageSize.value || 20))
+        );
+
+        if (qrImageSizeValue) {
+            qrImageSizeValue.textContent = valor + '%';
+        }
+
+        if (!qrImageEnabled?.checked) {
+            return;
+        }
+
+        const source = obtenerFuenteImagenQr();
+        const hayImagen =
+            (source === 'upload' && qrUploadedImageData !== '') ||
+            (source === 'url' &&
+                String(qrPublicImageUrl?.value || '').trim() !== '');
+
+        if (hayImagen) {
             actualizarPreviewQr();
         }
     });
