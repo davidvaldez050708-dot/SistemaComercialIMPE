@@ -25,6 +25,8 @@ on:
       - "tests/telefonia_analista_ui_smoke.sh"
       - "tools/desplegar_ui_entrantes_analista_hostinger.sh"
       - "tools/desplegar_controles_webRTC_analista_hostinger.sh"
+      - "tools/restaurar_recepcion_webRTC_hostinger.sh"
+      - "tests/telefonia_recuperacion_recepcion_smoke.sh"
       - "tests/telefonia_analista_webRTC_controles_smoke.sh"
       - ".github/workflows/telefonia-analista-entrantes.yml"
   pull_request:
@@ -38,6 +40,8 @@ on:
       - "tests/telefonia_analista_ui_smoke.sh"
       - "tools/desplegar_ui_entrantes_analista_hostinger.sh"
       - "tools/desplegar_controles_webRTC_analista_hostinger.sh"
+      - "tools/restaurar_recepcion_webRTC_hostinger.sh"
+      - "tests/telefonia_recuperacion_recepcion_smoke.sh"
       - "tests/telefonia_analista_webRTC_controles_smoke.sh"
       - ".github/workflows/telefonia-analista-entrantes.yml"
 jobs:
@@ -80,3 +84,6 @@ jobs:
           bash -n tools/desplegar_controles_webRTC_analista_hostinger.sh
           bash -n tests/telefonia_analista_webRTC_controles_smoke.sh
           bash tests/telefonia_analista_webRTC_controles_smoke.sh
+          bash -n tools/restaurar_recepcion_webRTC_hostinger.sh
+          bash -n tests/telefonia_recuperacion_recepcion_smoke.sh
+          bash tests/telefonia_recuperacion_recepcion_smoke.sh
