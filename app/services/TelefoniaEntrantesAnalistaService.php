@@ -252,8 +252,16 @@ class TelefoniaEntrantesAnalistaService
             $stmt->execute();
             $registro = $stmt->get_result()->fetch_assoc();
             $stmt->close();
-            if (!$registro || $registro['estado'] !== 'PENDIENTE') {
-                throw new DomainException('La llamada ya fue clasificada. Actualiza el historial.');
+            // Una llamada sin identificar puede vincularse más tarde si el
+            // analista reconoce a la institución. Una ya vinculada jamás
+            // genera una segunda interacción con el mismo PBX call ID.
+            if (!$registro || !in_array((string)$registro['estado'],
+                ['PENDIENTE', 'SIN_IDENTIFICAR'], true)) {
+                throw new DomainException('La llamada ya está vinculada. Actualiza el historial.');
+            }
+            if ($registro['estado'] === 'SIN_IDENTIFICAR' && $decision === 'sin_identificar') {
+                $this->db->commit();
+                return ['estado' => 'SIN_IDENTIFICAR', 'seguimiento_id' => 0];
             }
 
             if ($decision === 'sin_identificar') {
