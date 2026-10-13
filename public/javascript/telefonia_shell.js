@@ -38,6 +38,7 @@
     const notice = document.querySelector('[data-incoming-notice]');
     const closeFinished = document.querySelector('[data-incoming-close-finished]');
     const registerFinished = document.querySelector('[data-incoming-register-finished]');
+    const retrySdkSave = document.querySelector('[data-incoming-retry-save]');
     const analystResultNotice = document.querySelector('[data-analyst-call-result]');
     const analystResultButton = document.querySelector('[data-analyst-register-call]');
     const analystResultDismiss = document.querySelector('[data-analyst-dismiss-call]');
@@ -270,7 +271,8 @@
         if (cfg.analystIncomingResults &&
             currentState?.active && currentState.direction === 'incoming' &&
             !value.active && value.direction === 'incoming' &&
-            value.phase === 'incoming-finished') {
+            value.phase === 'incoming-finished' &&
+            value.context?.type !== 'SDK_INCOMING') {
             const id = incomingCallId(value) || incomingCallId(currentState);
             if (id && /^[a-zA-Z0-9_-]{3,100}$/.test(id) &&
                 (value.context?.type !== 'SDK_INCOMING' ||
@@ -281,6 +283,21 @@
                 };
                 try { sessionStorage.setItem(analystResultKey, JSON.stringify(analystPendingCall)); }
                 catch (_) { /* El historial del servidor es el respaldo. */ }
+            }
+        }
+        // Sólo ofrecer Registrar resultado de WebRTC cuando el servidor
+        // confirmó el FIN; la invocación al SDK no es prueba PBX.
+        if (cfg.analystIncomingResults &&
+            value.phase === 'incoming-finished' &&
+            value.context?.type === 'SDK_INCOMING' &&
+            value.journalStatus === 'saved' &&
+            value.status === 'completed' &&
+            currentState?.journalStatus !== 'saved') {
+            const id = incomingCallId(value);
+            if (/^sdk-[a-z0-9-]{12,94}$/.test(id)) {
+                analystPendingCall = {id, source:'SDK_WEBRTC', at:Date.now()};
+                try { sessionStorage.setItem(analystResultKey, JSON.stringify(analystPendingCall)); }
+                catch (_) {}
             }
         }
         // El resumen de Marketing sólo nace de una transición REAL de
@@ -501,8 +518,12 @@
                 (shownOutgoing ? 'LLAMADA SALIENTE' :
                 (ringing ? 'RECEPCIÓN TELEFÓNICA' : 'LLAMADA EN CURSO'));
             incomingState.textContent = finishedSdk
-                ? (phoneState.status === 'completed'
-                    ? 'Finalizada · sesión WebRTC registrada sin confirmación PBX'
+                ? (phoneState.journalStatus === 'error'
+                    ? 'Finalizada · no fue posible guardar en Llamadas recibidas'
+                    : phoneState.journalStatus === 'pending'
+                    ? 'Finalizada · guardando en Llamadas recibidas…'
+                    : phoneState.status === 'completed'
+                    ? 'Finalizada · registro WebRTC sin confirmación PBX'
                     : 'Finalizada · llamada sin respuesta')
                 : shownOutgoing
                 ? (finished ? 'Finalizada · registrada en el historial telefónico'
@@ -534,7 +555,10 @@
             compactHangup.hidden = finished || finishedSdk || finishing || ringing;
             if (closeFinished) closeFinished.hidden = !(finished || finishedSdk);
             if (registerFinished) registerFinished.hidden =
-                !finishedSdk || phoneState.status !== 'completed';
+                !finishedSdk || phoneState.status !== 'completed' ||
+                phoneState.journalStatus !== 'saved';
+            if (retrySdkSave) retrySdkSave.hidden =
+                !finishedSdk || phoneState.journalStatus !== 'error';
             hangupButton.disabled = Boolean(pending) || Boolean(preview);
             compactHangup.disabled = Boolean(pending) || Boolean(preview);
             // Mismo icono, texto y estado activo del modal de Seguimiento.
@@ -547,8 +571,12 @@
             compactMute.classList.toggle('is-active', Boolean(phoneState.muted));
             compactMute.title = muteLabel;
             compactMute.setAttribute('aria-label', muteLabel);
-            notice.hidden = !actionNotice || incomingCompact;
-            notice.textContent = actionNotice;
+            const sdkNotice = finishedSdk &&
+                phoneState.journalStatus === 'error'
+                ? 'No se guardó en Llamadas recibidas. Utiliza Reintentar registro.'
+                : '';
+            notice.hidden = !(actionNotice || sdkNotice) || incomingCompact;
+            notice.textContent = actionNotice || sdkNotice;
         }
         callTitle.textContent = finishedSdk ? 'Llamada finalizada' :
             incoming ? 'Llamada entrante' :
@@ -769,11 +797,15 @@
         crm.src = url.toString();
         dismissAnalystResult();
     };
+    retrySdkSave?.addEventListener('click', function () {
+        providerBridge()?.retryJournal?.();
+    });
     registerFinished?.addEventListener('click', function () {
         const state = currentState;
         if (state?.phase !== 'incoming-finished' ||
             state.context?.type !== 'SDK_INCOMING' ||
-            state.status !== 'completed') return;
+            state.status !== 'completed' ||
+            state.journalStatus !== 'saved') return;
         goToIncomingResult(String(state.callToken || ''), 'SDK_WEBRTC');
         sendPhoneCommand('CLEAR_FINISHED', {callToken:String(state.callToken || '')});
     });
