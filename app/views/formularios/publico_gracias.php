@@ -23,7 +23,7 @@
         <section class="formulario-publico-thanks-card">
             <div class="formulario-publico-thanks-logo">
                 <img
-                    src="<?= BASE_URL ?>public/img/brand/logos-juntos.png"
+                    src="<?= BASE_URL ?>public/img/brand/logo-duo-color.png"
                     alt="Fundación Red Educativa México y Universidad MPE">
             </div>
 
