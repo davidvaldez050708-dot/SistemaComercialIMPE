@@ -1,0 +1,129 @@
+/* Bandeja entrante exclusiva de Analistas. Conserva los tokens y botones del CRM. */
+.linkage-incoming-page {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 25px 26px;
+}
+.linkage-incoming-heading,
+.linkage-incoming-heading-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+.linkage-incoming-heading h2 {
+    font-size: 21px;
+    font-weight: 800;
+    line-height: 1.25;
+    margin: 5px 0 6px;
+    color: #1e293b;
+}
+.linkage-incoming-heading p,
+.linkage-incoming-footnote {
+    color: #66758d;
+    font-size: 13px;
+    margin: 0;
+}
+.linkage-incoming-eyebrow {
+    color: #667ba7;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .09em;
+}
+.linkage-incoming-extension {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    border: 1px solid #dbe4f0;
+    border-radius: 10px;
+    background: #f5f8fd;
+    padding: 10px 12px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #425577;
+}
+.linkage-incoming-table-wrap {
+    overflow-x: auto;
+    margin-top: 24px;
+    border: 1px solid #e3eaf4;
+    border-radius: 14px;
+}
+.linkage-incoming-table {
+    margin: 0;
+    min-width: 720px;
+    font-size: 12px;
+}
+.linkage-incoming-table thead th {
+    background: #f5f8fd;
+    color: #687891;
+    font-size: 11px;
+    font-weight: 800;
+    padding: 14px 12px;
+    border-bottom-color: #e2eaf5;
+}
+.linkage-incoming-table tbody td {
+    padding: 13px 12px;
+    vertical-align: middle;
+    border-color: #eef2f7;
+}
+.linkage-incoming-tag {
+    background: #eef2f7;
+    color: #52627a;
+    display: inline-flex;
+    align-items: center;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 5px 9px;
+    white-space: nowrap;
+}
+.linkage-incoming-tag.is-success {background: #dff5ed;color: #166c55;}
+.linkage-incoming-tag.is-pending {background: #fff2d6;color: #8b601a;}
+.linkage-incoming-expediente {
+    color: #273e8a;
+    font-weight: 700;
+    text-decoration: none;
+}
+.linkage-incoming-expediente:hover {text-decoration: underline;}
+.linkage-incoming-footnote {margin-top: 15px;}
+.linkage-incoming-empty {
+    padding: 36px 15px !important;
+    text-align: center;
+    color: #718098;
+}
+.linkage-incoming-empty i {display: block;font-size: 24px;margin-bottom: 10px;}
+#modalLlamadaEntranteAnalista .linkage-incoming-modal-dialog {
+    width: calc(100% - 28px);
+    max-width: 720px;
+    margin-left: auto;
+    margin-right: auto;
+}
+#modalLlamadaEntranteAnalista .modal-content {border-radius: 16px;}
+#modalLlamadaEntranteAnalista .modal-body {padding: 22px 24px;overflow-y: auto;}
+#modalLlamadaEntranteAnalista .modal-footer {padding: 15px 24px;}
+#modalLlamadaEntranteAnalista .form-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: #344258;
+}
+.linkage-incoming-summary {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 12px 15px;
+    border: 1px solid #dce6f3;
+    background: #f5f8fd;
+    color: #425674;
+    border-radius: 11px;
+    margin-bottom: 18px;
+    font-size: 12px;
+}
+.linkage-incoming-summary i {margin-right: 6px;}
+@media(max-width: 767.98px) {
+    .linkage-incoming-page {padding: 16px;}
+    .linkage-incoming-heading-actions {width: 100%;}
+    #modalLlamadaEntranteAnalista .modal-body {padding: 18px 16px;}
+    #modalLlamadaEntranteAnalista .modal-footer {padding: 14px 16px;}
+}
