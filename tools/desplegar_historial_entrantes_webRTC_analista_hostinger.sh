@@ -14,7 +14,7 @@ SOURCE="${IMPE_HISTORY_SOURCE:-$HOME/crm-preparacion}"
 LIVE="${IMPE_HISTORY_PUBLIC:-$HOME/domains/fundacionrededumex.org/public_html}"
 BACKUPS="${IMPE_HISTORY_BACKUPS:-$HOME/respaldos-crm}"
 BEFORE="9c6af2f292f2bde1a01b0aeb0cb88106327518c0"
-AFTER="443894b677bb547addf09a4d3140994d2a638f6f"
+AFTER="1e8062d208b956de9ca033c7f9ea54c09aaec7f0"
 
 FILES=(
   'app/controllers/SeguimientoVinculacionController.php'
