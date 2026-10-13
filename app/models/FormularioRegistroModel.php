@@ -109,12 +109,17 @@ class FormularioRegistroModel
             (string)($datos['movil_secundario'] ?? '')
         );
 
+        $telRecomendado = trim(
+            (string)($datos['tel_recomendado'] ?? '')
+        );
+
         $sql = "INSERT INTO {$tabla} (
                     nombre,
                     apellido,
                     fecha_nacimiento,
                     movil,
                     movil_secundario,
+                    tel_recomendado,
                     correo,
                     perfil_interes,
                     lugar_laboras,
@@ -125,7 +130,7 @@ class FormularioRegistroModel
                     origen,
                     created_at,
                     updated_at
-                ) VALUES (?, ?, ?, ?, NULLIF(?, ''), ?, ?, ?, NULLIF(?, ''), ?, ?, ?, ?, NOW(), NOW())";
+                ) VALUES (?, ?, ?, ?, NULLIF(?, ''), NULLIF(?, ''), ?, ?, ?, NULLIF(?, ''), ?, ?, ?, ?, NOW(), NOW())";
 
         $stmt = $this->connection->prepare($sql);
 
@@ -138,12 +143,13 @@ class FormularioRegistroModel
         }
 
         $stmt->bind_param(
-            'sssssssssiiis',
+            'ssssssssssiiis',
             $datos['nombre'],
             $datos['apellido'],
             $datos['fecha_nacimiento'],
             $datos['movil'],
             $movilSecundario,
+            $telRecomendado,
             $datos['correo'],
             $datos['perfil_interes'],
             $datos['lugar_laboras'],
