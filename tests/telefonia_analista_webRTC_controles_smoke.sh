@@ -2,7 +2,8 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 BASE="1d130d13b7c3a12d7affe5d4d5d6a2fcc5a7d7de"
-TARGET="13a8ed2a48a615620cf2480829fb474898bdd4be"
+PREVIOUS="13a8ed2a48a615620cf2480829fb474898bdd4be"
+TARGET="35414e88bf88e2752d5bd821e0242edd9d644e48"
 php -l app/views/layout/topbar.php >/dev/null
 php -l app/views/telefonia/shell.php >/dev/null
 node --check public/javascript/telefonia_shell.js
@@ -16,6 +17,8 @@ grep -Fq "cfg.analystIncomingResults && nativeAnalystOpen" public/javascript/tel
 grep -Fq "isPhoneReady: function ()" public/javascript/telefonia_shell.js
 grep -Fq "shell.isPhoneReady() === true" public/javascript/telefonia_persistente.js
 grep -Fq "No suplanta el estado PBX" public/javascript/telefonia_shell.js
+grep -Fq "if (abrirAlConectar) abrirControlesAnalista();" public/javascript/telefonia_persistente.js
+grep -Fq "activarRecepcion(esAnalista);" public/javascript/telefonia_persistente.js
 grep -Fq ".impe-phone-call.is-analyst-native .impe-phone-call-host" app/views/telefonia/shell.php
 
 TMP="$(mktemp -d)"
@@ -30,6 +33,19 @@ export IMPE_WEBRTC_BACKUPS="$TMP/backups"
 cp "$TMP/site/public/javascript/telefonia_shell.js" "$TMP/original.js"
 bash tools/desplegar_controles_webRTC_analista_hostinger.sh --check
 cmp -s "$TMP/original.js" "$TMP/site/public/javascript/telefonia_shell.js"
+bash tools/desplegar_controles_webRTC_analista_hostinger.sh --apply
+for f in app/views/layout/topbar.php app/views/telefonia/shell.php \
+    public/javascript/telefonia_shell.js public/javascript/telefonia_persistente.js; do
+  git show "$TARGET:$f" | cmp -s - "$TMP/site/$f"
+done
+bash tools/desplegar_controles_webRTC_analista_hostinger.sh --check
+
+# Simular al usuario que ya publicó la versión anterior del auricular.
+for f in app/views/layout/topbar.php app/views/telefonia/shell.php \
+    public/javascript/telefonia_shell.js public/javascript/telefonia_persistente.js; do
+  git show "$PREVIOUS:$f" > "$TMP/site/$f"
+done
+bash tools/desplegar_controles_webRTC_analista_hostinger.sh --check
 bash tools/desplegar_controles_webRTC_analista_hostinger.sh --apply
 for f in app/views/layout/topbar.php app/views/telefonia/shell.php \
     public/javascript/telefonia_shell.js public/javascript/telefonia_persistente.js; do
