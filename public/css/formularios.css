@@ -1657,3 +1657,70 @@
         width: 100%;
     }
 }
+
+
+.formularios-qr-image-size {
+    margin-top: 12px;
+    padding-top: 11px;
+    border-top: 1px solid #e3e9f1;
+}
+
+.formularios-qr-image-size-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 7px;
+}
+
+.formularios-qr-image-size-header span {
+    color: #46556b;
+    font-size: 9px;
+    font-weight: 800;
+}
+
+.formularios-qr-image-size-header strong {
+    min-width: 38px;
+    padding: 3px 7px;
+    border-radius: 999px;
+    background: #edf3ff;
+    color: #223a84;
+    text-align: center;
+    font-size: 8px;
+    font-weight: 800;
+}
+
+.formularios-inscripcion-theme
+.formularios-qr-image-size-header strong {
+    background: var(--inscripcion-green-soft);
+    color: var(--inscripcion-green);
+}
+
+.formularios-qr-image-size input[type="range"] {
+    width: 100%;
+    accent-color: #223a84;
+    cursor: pointer;
+}
+
+.formularios-inscripcion-theme
+.formularios-qr-image-size input[type="range"] {
+    accent-color: var(--inscripcion-green);
+}
+
+.formularios-qr-image-size-scale {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 2px;
+    color: #8a95a6;
+    font-size: 7.5px;
+    font-weight: 700;
+}
+
+.formularios-qr-image-size > small {
+    display: block;
+    margin-top: 5px;
+    color: #7c899b;
+    font-size: 7.6px;
+    font-weight: 600;
+    line-height: 1.4;
+}
