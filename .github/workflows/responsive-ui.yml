@@ -6,6 +6,9 @@ on:
       - "app/views/**"
       - "public/css/**"
       - "tests/responsive_smoke.php"
+      - "tools/ajustar_anchos_modales.php"
+      - "tools/desplegar_anchos_modales_hostinger.sh"
+      - "tests/anchos_modales_despliegue_smoke.sh"
       - "tests/responsive_overflow_smoke.php"
       - "tests/analista_modulos_responsive_smoke.php"
       - "tests/seguimiento_candidatos_paginacion_smoke.js"
@@ -20,6 +23,9 @@ on:
       - "app/views/**"
       - "public/css/**"
       - "tests/responsive_smoke.php"
+      - "tools/ajustar_anchos_modales.php"
+      - "tools/desplegar_anchos_modales_hostinger.sh"
+      - "tests/anchos_modales_despliegue_smoke.sh"
       - "tests/responsive_overflow_smoke.php"
       - "tests/analista_modulos_responsive_smoke.php"
       - "tests/seguimiento_candidatos_paginacion_smoke.js"
@@ -46,6 +52,9 @@ jobs:
       - name: Verificar reglas responsive compartidas
         run: |
           php tests/responsive_smoke.php
+          php -l tools/ajustar_anchos_modales.php
+          bash -n tools/desplegar_anchos_modales_hostinger.sh
+          bash tests/anchos_modales_despliegue_smoke.sh
           php tests/responsive_overflow_smoke.php
           php tests/analista_inicio_responsive_smoke.php
           php tests/analista_modulos_responsive_smoke.php
