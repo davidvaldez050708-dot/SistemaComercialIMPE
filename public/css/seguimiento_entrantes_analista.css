@@ -121,6 +121,49 @@
     font-size: 12px;
 }
 .linkage-incoming-summary i {margin-right: 6px;}
+
+/* Evidencias y descarte siguen el lenguaje visual de los formularios de Seguimiento. */
+#modalLlamadaEntranteAnalista .linkage-incoming-evidence,
+#modalLlamadaEntranteAnalista .linkage-incoming-discard {
+    border: 1px solid #dde6f3;
+    border-radius: 11px;
+    background: #f7f9fd;
+    padding: 14px 16px;
+    color: #435572;
+    font-size: 12px;
+}
+#modalLlamadaEntranteAnalista .linkage-incoming-evidence[hidden],
+#modalLlamadaEntranteAnalista .linkage-incoming-discard[hidden],
+#modalLlamadaEntranteAnalista [data-incoming-discard-reason][hidden] {
+    display: none !important;
+}
+#modalLlamadaEntranteAnalista .linkage-incoming-evidence > strong {
+    display: block;
+    font-weight: 800;
+    color: #243557;
+    margin-bottom: 5px;
+}
+#modalLlamadaEntranteAnalista .linkage-incoming-evidence > p {
+    margin: 0 0 10px;
+    font-size: 11px;
+    line-height: 1.5;
+    color: #64748b;
+}
+#modalLlamadaEntranteAnalista .linkage-incoming-evidence > label,
+#modalLlamadaEntranteAnalista .linkage-incoming-discard > label {
+    display: flex;
+    gap: 9px;
+    align-items: flex-start;
+    cursor: pointer;
+    line-height: 1.55;
+    margin: 8px 0 0;
+}
+#modalLlamadaEntranteAnalista input[type="checkbox"] {
+    flex: none;
+    margin-top: 3px;
+    accent-color: #293e90;
+}
+
 @media(max-width: 767.98px) {
     .linkage-incoming-page {padding: 16px;}
     .linkage-incoming-heading-actions {width: 100%;}
