@@ -183,8 +183,12 @@ first.elements['impeCrmFrame'].contentWindow.IMPE_TELEPHONY_PERSISTENT = {
 first.elements['[data-incoming-hangup]'].events.click();
 assert.deepEqual(outgoingActions,['hangup'],
     'Colgar usa el controlador persistente real del CRM');
-assert.equal(first.elements['[data-incoming-panel]'].hidden,true,
-    'Colgar oculta inmediatamente el modal sin una segunda interfaz');
+assert.equal(first.elements['[data-incoming-panel]'].hidden,false,
+    'al colgar el panel sigue visible durante la confirmación');
+assert.equal(first.elements['[data-incoming-title]'].textContent,
+    'Finalizando llamada…');
+assert.equal(first.elements['[data-incoming-hangup]'].hidden,true,
+    'sin controles activos mientras se finaliza la llamada');
 assert.equal(first.elements['[data-shell-host-region]'].children.length,1,
     'tras Colgar el SDK sigue en el mismo iframe para recibir entrantes');
 // Una saliente terminada muestra un cierre de Marketing, sin solicitar
