@@ -45,22 +45,44 @@ FILES=(
 )
 
 LOGO="$DST/public/img/brand/logos-juntos.png"
+LOGO_SOURCE=""
 
 echo "Repositorio fuente : $SRC"
 echo "Instalación pública: $DST"
 echo "Logo esperado      : $LOGO"
 echo
 
-if [[ ! -f "$LOGO" ]]; then
-    echo "ERROR: no se encontró la imagen 'logos-juntos.png' en:"
-    echo "  $DST/public/img/brand/"
-    echo
-    echo "Coloca ahí la imagen antes de aplicar el cambio."
-    exit 1
+if [[ -f "$LOGO" ]]; then
+    LOGO_SOURCE="$LOGO"
+else
+    LOGO_SOURCE="$(find "$DST" "$SRC" -type f -iname 'logos-juntos.png' -print -quit 2>/dev/null || true)"
+
+    if [[ -z "$LOGO_SOURCE" ]]; then
+        LOGO_SOURCE="$(find "$HOME" -maxdepth 6 -type f -iname 'logos-juntos.png' -print -quit 2>/dev/null || true)"
+    fi
+
+    if [[ -z "$LOGO_SOURCE" ]]; then
+        echo "ERROR: no se encontró la imagen 'logos-juntos.png' dentro de:"
+        echo "  $DST"
+        echo "  $SRC"
+        echo "  $HOME (hasta 6 niveles)"
+        echo
+        echo "Puedes localizarla manualmente con:"
+        echo "  find \"$HOME\" -type f -iname 'logos-juntos.png' 2>/dev/null"
+        exit 1
+    fi
+
+    echo "ENCONTRADA EN      : $LOGO_SOURCE"
 fi
 
 if [[ "$MODE" == "--check" ]]; then
-    echo "OK: se encontró la imagen logos-juntos.png."
+    if [[ "$LOGO_SOURCE" == "$LOGO" ]]; then
+        echo "OK: logos-juntos.png ya está en la carpeta correcta."
+    else
+        echo "PENDIENTE: la imagen existe, pero está en otra ubicación."
+        echo "Con --apply se copiará automáticamente a:"
+        echo "  $LOGO"
+    fi
     echo
 
     for file in "${FILES[@]}"; do
@@ -86,6 +108,13 @@ fi
 BACKUP_ROOT="${IMPE_LOGO_BACKUP_DIR:-$HOME/respaldos-crm}"
 mkdir -p "$BACKUP_ROOT"
 BACKUP="$(mktemp -d "$BACKUP_ROOT/logo-agradecimiento-$(date +%Y%m%d-%H%M%S)-XXXXXX")"
+
+if [[ "$LOGO_SOURCE" != "$LOGO" ]]; then
+    mkdir -p "$(dirname "$LOGO")"
+    cp "$LOGO_SOURCE" "$LOGO"
+    chmod 0644 "$LOGO"
+    echo "PUBLICADO public/img/brand/logos-juntos.png"
+fi
 
 for file in "${FILES[@]}"; do
     if [[ -f "$DST/$file" ]]; then
