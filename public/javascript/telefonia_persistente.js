@@ -635,7 +635,23 @@
         return popup;
     };
 
+    const embeddedPhone = function () {
+        try {
+            const shell = window.parent !== window
+                ? window.parent.IMPE_TELEPHONY_SHELL : null;
+            return shell?.isEmbedded && Number(shell.userId) === userId
+                ? shell : null;
+        } catch (_) {
+            return null;
+        }
+    };
     const hostUsable = function () {
+        // El marco principal conserva WebRTC entre vistas. Consultarlo
+        // evita apagar falsamente el indicador al cambiar de módulo.
+        const shell = embeddedPhone();
+        if (shell && typeof shell.isPhoneReady === 'function') {
+            return shell.isPhoneReady() === true;
+        }
         const recent =
             state?.hostReady &&
             Date.now() - hostSeenAt < 3500;
@@ -2660,6 +2676,18 @@
             const abrirOActivar = function () {
                 if (!availability?.permite_entrantes || receptionBusy) return;
                 if (hostUsable()) {
+                    // Sólo Analistas: abrir controles originales de Zadarma
+                    // sin crear una segunda sesión SIP y sin depender de
+                    // NOTIFY_INTERNAL (ausente en algunas llamadas internas).
+                    const shell = embeddedPhone();
+                    if (receptionButton?.dataset.telephonyAnalyst === '1' &&
+                        shell?.showProviderControls) {
+                        if (!shell.showProviderControls()) {
+                            receptionError = 'El teléfono WebRTC no está listo. Intenta nuevamente.';
+                            renderReceptionState();
+                        }
+                        return;
+                    }
                     if (!openDialer({})) {
                         receptionError = 'No se pudo abrir el teléfono. Recarga la página.';
                         renderReceptionState();
