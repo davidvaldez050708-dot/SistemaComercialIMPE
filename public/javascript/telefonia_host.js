@@ -337,7 +337,10 @@
             provider: 'ZADARMA',
             // Un webhook PBX por sí solo no confirma WebRTC.
             hostReady: widgetReady,
-            duration: currentDuration(),
+            duration: patch?.phase === 'incoming-finished' &&
+                state.context?.type === 'SDK_INCOMING'
+                ? Math.max(0, Number(patch.duration || 0))
+                : currentDuration(),
             updatedAt: Date.now()
         });
 
@@ -549,11 +552,23 @@
                     if (!response.ok || result.ok !== true) {
                         throw new Error(result.mensaje || 'Registro WebRTC no disponible.');
                     }
+                    if (['ended','declined','missed'].includes(evento) &&
+                        state.callToken === current.callToken &&
+                        state.phase === 'incoming-finished') {
+                        publish({journalStatus:'saved'});
+                    }
                     return;
                 } catch (error) {
-                    if (attempt === 1) console.warn(
-                        '[Analista] No se guardó el evento WebRTC ' + evento + '.', error
-                    );
+                    if (attempt === 1) {
+                        console.warn(
+                            '[Analista] No se guardó el evento WebRTC ' + evento + '.', error
+                        );
+                        if (['ended','declined','missed'].includes(evento) &&
+                            state.callToken === current.callToken &&
+                            state.phase === 'incoming-finished') {
+                            publish({journalStatus:'error'});
+                        }
+                    }
                 }
             }
         });
@@ -577,6 +592,7 @@
                 (reason === 'declined' ? 'declined' : 'no-answer'),
             duration: elapsed,
             answeredAtMs: 0,
+            journalStatus: 'pending',
             message: 'Llamada finalizada. Registro WebRTC sin confirmación PBX.',
             finalMetadata: null
         });
@@ -758,6 +774,17 @@
     };
 
     window.IMPE_ZADARMA_INCOMING = Object.freeze({
+        retryJournal: function () {
+            if (state.phase !== 'incoming-finished' ||
+                state.context?.type !== 'SDK_INCOMING') return false;
+            const call = state;
+            publish({journalStatus:'pending'});
+            reportSdkEvent('ringing', call);
+            if (call.status === 'completed') reportSdkEvent('answered', call);
+            reportSdkEvent(call.status === 'completed' ? 'ended' :
+                (call.status === 'declined' ? 'declined' : 'missed'), call);
+            return true;
+        },
         canAnswer: function () {
             return Boolean(permiteEntrantes && incomingBridge?.available());
         },
