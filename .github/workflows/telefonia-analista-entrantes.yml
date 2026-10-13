@@ -16,6 +16,12 @@ on:
       - "app/views/layout/topbar.php"
       - "public/javascript/telefonia_persistente.js"
       - "public/javascript/telefonia_shell.js"
+      - "app/views/telefonia/host.php"
+      - "public/javascript/telefonia_host.js"
+      - "public/javascript/telefonia_sdk_entrantes_observador.js"
+      - "tools/desplegar_timbrado_webRTC_analista_hostinger.sh"
+      - "tests/telefonia_sdk_entrantes_observador_smoke.js"
+      - "tests/telefonia_sdk_entrantes_hostinger_smoke.sh"
       - "public/css/seguimiento_entrantes_analista.css"
       - "public/css/telefonia_shell.css"
       - "database/migrations/2026_10_13_telefonia_entrantes_analistas.sql"
@@ -43,6 +49,9 @@ on:
       - "tools/restaurar_recepcion_webRTC_hostinger.sh"
       - "tests/telefonia_recuperacion_recepcion_smoke.sh"
       - "tests/telefonia_analista_webRTC_controles_smoke.sh"
+      - "tools/desplegar_timbrado_webRTC_analista_hostinger.sh"
+      - "tests/telefonia_sdk_entrantes_observador_smoke.js"
+      - "tests/telefonia_sdk_entrantes_hostinger_smoke.sh"
       - ".github/workflows/telefonia-analista-entrantes.yml"
 jobs:
   validar:
@@ -87,3 +96,10 @@ jobs:
           bash -n tools/restaurar_recepcion_webRTC_hostinger.sh
           bash -n tests/telefonia_recuperacion_recepcion_smoke.sh
           bash tests/telefonia_recuperacion_recepcion_smoke.sh
+          php -l app/views/telefonia/host.php
+          node --check public/javascript/telefonia_host.js
+          node --check public/javascript/telefonia_sdk_entrantes_observador.js
+          node tests/telefonia_sdk_entrantes_observador_smoke.js
+          bash -n tools/desplegar_timbrado_webRTC_analista_hostinger.sh
+          bash -n tests/telefonia_sdk_entrantes_hostinger_smoke.sh
+          bash tests/telefonia_sdk_entrantes_hostinger_smoke.sh
