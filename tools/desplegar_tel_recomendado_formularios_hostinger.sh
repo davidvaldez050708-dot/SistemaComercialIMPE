@@ -47,8 +47,12 @@ fi
 FILES=(
     "app/views/formularios/registro.php"
     "app/views/formularios/inscripcion.php"
+    "app/views/formularios/publico_registro.php"
+    "app/views/formularios/publico_inscripcion.php"
     "public/javascript/formularios_registro.js"
+    "public/javascript/formularios_registro_publico.js"
     "public/css/formularios.css"
+    "public/css/formularios_publico.css"
     "app/controllers/FormularioController.php"
     "app/controllers/FormularioPublicoController.php"
     "app/models/FormularioRegistroModel.php"
@@ -113,13 +117,16 @@ done
 
 grep -Fq "data-registro-tel-recomendado" "$DST/app/views/formularios/registro.php"
 grep -Fq "data-registro-tel-recomendado" "$DST/app/views/formularios/inscripcion.php"
+grep -Fq "data-publico-tel-recomendado" "$DST/app/views/formularios/publico_registro.php"
+grep -Fq "data-publico-tel-recomendado" "$DST/app/views/formularios/publico_inscripcion.php"
 grep -Fq "validarTelRecomendado" "$DST/public/javascript/formularios_registro.js"
+grep -Fq "validarTelRecomendado" "$DST/public/javascript/formularios_registro_publico.js"
 grep -Fq "tel_recomendado" "$DST/app/controllers/FormularioController.php"
 grep -Fq "tel_recomendado" "$DST/app/controllers/FormularioPublicoController.php"
 grep -Fq "tel_recomendado" "$DST/app/models/FormularioRegistroModel.php"
 
 echo
 echo "OK: teléfono recomendado publicado correctamente."
-echo "Campo opcional activo en Registro e Inscripción."
+echo "Campo opcional activo en Registro e Inscripción, tanto internos como públicos."
 echo "Respaldo: $BACKUP"
 echo "Recarga el navegador con Ctrl+F5."
