@@ -78,6 +78,13 @@ $motorTelefonicoEmbebido = (string)($_GET['display'] ?? '') === 'embed';
             'entradaUrl' => BASE_URL . 'prueba_telefonia/api/zadarma_entrada_activa.php',
             'permiteSalientes' => !empty($asignacionTelefonica['permite_salientes']),
             'permiteEntrantes' => !empty($asignacionTelefonica['permite_entrantes']),
+            // Sólo para el Analista con sesión autorizada y motor embebido.
+            // Marketing continúa usando exclusivamente eventos PBX.
+            'analystSdkIncoming' => $motorTelefonicoEmbebido &&
+                strcasecmp(trim((string)($_SESSION['rol'] ?? '')), 'Analista de Datos') === 0 &&
+                !empty($asignacionTelefonica['permite_entrantes']) &&
+                tienePermiso('telefonia.recibir') &&
+                tienePermiso('seguimientos_vinculacion.operar_propios'),
             'permiteTransferir' =>
                 !empty($asignacionTelefonica['permite_transferir']) &&
                 tienePermiso('telefonia.transferir')
@@ -85,6 +92,9 @@ $motorTelefonicoEmbebido = (string)($_GET['display'] ?? '') === 'embed';
     </script>
     <script
         src="<?= BASE_URL ?>public/javascript/telefonia_entrantes_bridge.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/telefonia_entrantes_bridge.js') ?>">
+    </script>
+    <script
+        src="<?= BASE_URL ?>public/javascript/telefonia_sdk_entrantes_observador.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/telefonia_sdk_entrantes_observador.js') ?>">
     </script>
     <script
         src="<?= BASE_URL ?>public/javascript/telefonia_host.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/telefonia_host.js') ?>">
