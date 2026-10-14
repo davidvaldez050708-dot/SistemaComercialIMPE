@@ -161,7 +161,7 @@ $urlEnlaceInscripcion = trim((string)($urlEnlaceInscripcion ?? ''));
                                     <div>
                                         <strong>Personalizar código QR</strong>
                                         <small>
-                                            Ajusta colores, formas, tamaño y nivel de corrección.
+                                            Los cambios se reflejan automáticamente en la vista previa.
                                         </small>
                                     </div>
                                 </div>
