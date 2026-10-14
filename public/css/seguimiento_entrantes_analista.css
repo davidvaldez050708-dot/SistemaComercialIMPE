@@ -845,3 +845,99 @@ a.btn.linkage-incoming-back {
         gap: 7px;
     }
 }
+
+
+/* Paginación del historial: misma escala sobria del expediente. */
+.linkage-incoming-page .linkage-incoming-pagination {
+    min-width: 0;
+    margin-top: 13px;
+    padding: 12px 2px 2px;
+    border-top: 1px solid #e5eaf1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px 14px;
+}
+.linkage-incoming-page .linkage-incoming-pagination-range {
+    font-size: 10.5px;
+    font-weight: 700;
+    color: var(--color-text-secondary, #718096);
+    font-variant-numeric: tabular-nums;
+}
+.linkage-incoming-page .linkage-incoming-pagination-pages {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+.linkage-incoming-page .linkage-incoming-pagination-number,
+.linkage-incoming-page .linkage-incoming-pagination-arrow,
+.linkage-incoming-page .linkage-incoming-pagination-gap {
+    min-width: 30px;
+    min-height: 30px;
+    padding: 5px 8px;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    gap: 5px;
+    border: 1px solid #dfe6ef;
+    border-radius: 8px;
+    background: #fff;
+    color: var(--color-primary, #344c90);
+    font-size: 10.5px;
+    font-weight: 800;
+    line-height: 1.25;
+    text-decoration: none;
+    font-variant-numeric: tabular-nums;
+}
+.linkage-incoming-page .linkage-incoming-pagination-arrow {
+    padding-inline: 10px;
+}
+.linkage-incoming-page a.linkage-incoming-pagination-number:hover,
+.linkage-incoming-page a.linkage-incoming-pagination-arrow:hover {
+    border-color: #c1cfe3;
+    background: #f2f6fc;
+    color: var(--color-primary, #344c90);
+}
+.linkage-incoming-page .linkage-incoming-pagination-number.is-current {
+    color: #fff;
+    background: var(--color-primary, #344c90);
+    border-color: var(--color-primary, #344c90);
+}
+.linkage-incoming-page .linkage-incoming-pagination-arrow.is-disabled {
+    color: #a3adbc;
+    background: #f8fafc;
+    cursor: default;
+}
+.linkage-incoming-page .linkage-incoming-pagination-gap {
+    min-width: 18px;
+    padding-inline: 2px;
+    border-color: transparent;
+    background: transparent;
+    color: #8a97a9;
+}
+.linkage-incoming-page a.linkage-incoming-pagination-number:focus-visible,
+.linkage-incoming-page a.linkage-incoming-pagination-arrow:focus-visible {
+    outline: 2px solid var(--color-primary, #344c90);
+    outline-offset: 2px;
+}
+@media (max-width: 650px) {
+    .linkage-incoming-page .linkage-incoming-pagination {
+        align-items: stretch;
+    }
+    .linkage-incoming-page .linkage-incoming-pagination-range {
+        width: 100%;
+        text-align: center;
+    }
+    .linkage-incoming-page .linkage-incoming-pagination-pages {
+        justify-content: center;
+        width: 100%;
+    }
+    .linkage-incoming-page .linkage-incoming-pagination-number,
+    .linkage-incoming-page .linkage-incoming-pagination-arrow {
+        min-height: 32px;
+    }
+}
