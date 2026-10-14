@@ -29,8 +29,12 @@
         '.impe-incoming-panel[data-analyst-webrtc-finished="1"] ' +
           '[data-incoming-close-finished] {',
         '  grid-column:auto!important;justify-self:stretch!important;',
-        '  margin:0!important;width:100%!important;',
+        '  margin:0!important;width:100%!important;order:2;',
         '}',
+        '.impe-incoming-panel[data-analyst-webrtc-finished="1"] ' +
+          '[data-incoming-register-finished],',
+        '.impe-incoming-panel[data-analyst-webrtc-finished="1"] ' +
+          '[data-incoming-retry-save] {order:1;}',
         '.impe-incoming-panel[data-analyst-webrtc-finished="1"] ' +
           '.persistent-phone-compact-actions,',
         '.impe-incoming-panel[data-analyst-webrtc-finished="1"] ' +
