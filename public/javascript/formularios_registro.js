@@ -118,9 +118,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const qrImageSizeValue = modalQrElement?.querySelector(
         '[data-qr-image-size-value]'
     );
-    const botonAplicarQr = modalQrElement?.querySelector(
-        '[data-apply-form-qr]'
-    );
     const botonRestablecerQr = modalQrElement?.querySelector(
         '[data-reset-form-qr]'
     );
@@ -647,7 +644,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const obtenerQrBlob = async function () {
         if (qrUrlActual === '') {
-            actualizarPreviewQr();
+            programarActualizacionQr(80);
         }
 
         if (qrUrlActual === '') {
@@ -752,10 +749,6 @@ document.addEventListener('DOMContentLoaded', function () {
         'click',
         generarQr
     );
-    botonAplicarQr?.addEventListener(
-        'click',
-        actualizarPreviewQr
-    );
     botonRestablecerQr?.addEventListener(
         'click',
         restablecerQr
@@ -769,10 +762,62 @@ document.addEventListener('DOMContentLoaded', function () {
         copiarQr
     );
 
+    let temporizadorActualizacionQr = null;
+
+    const programarActualizacionQr = function (espera = 120) {
+        if (!modalQrElement || !imagenQr) {
+            return;
+        }
+
+        window.clearTimeout(temporizadorActualizacionQr);
+        temporizadorActualizacionQr = window.setTimeout(
+            actualizarPreviewQr,
+            espera
+        );
+    };
+
+    [
+        qrDotStyle,
+        qrFinderStyle,
+        qrFinderDotStyle,
+        qrSize,
+        qrMargin,
+        qrEcLevel
+    ].forEach(function (control) {
+        control?.addEventListener(
+            'change',
+            function () {
+                programarActualizacionQr(0);
+            }
+        );
+    });
+
+    [
+        qrDark,
+        qrLight,
+        qrFinderColor
+    ].forEach(function (control) {
+        control?.addEventListener(
+            'input',
+            function () {
+                programarActualizacionQr(100);
+            }
+        );
+
+        control?.addEventListener(
+            'change',
+            function () {
+                programarActualizacionQr(0);
+            }
+        );
+    });
+
     qrTransparent?.addEventListener('change', function () {
         if (qrLight) {
             qrLight.disabled = qrTransparent.checked;
         }
+
+        programarActualizacionQr(0);
     });
 
     const actualizarFuenteImagenQr = function () {
@@ -905,12 +950,27 @@ document.addEventListener('DOMContentLoaded', function () {
         lector.readAsDataURL(archivo);
     });
 
+    qrPublicImageUrl?.addEventListener('input', function () {
+        if (
+            !qrImageEnabled?.checked ||
+            obtenerFuenteImagenQr() !== 'url'
+        ) {
+            return;
+        }
+
+        const valor = String(qrPublicImageUrl.value || '').trim();
+
+        if (/^https?:\/\//i.test(valor)) {
+            programarActualizacionQr(350);
+        }
+    });
+
     qrPublicImageUrl?.addEventListener('change', function () {
         if (
             qrImageEnabled?.checked &&
             obtenerFuenteImagenQr() === 'url'
         ) {
-            actualizarPreviewQr();
+            programarActualizacionQr(0);
         }
     });
 
