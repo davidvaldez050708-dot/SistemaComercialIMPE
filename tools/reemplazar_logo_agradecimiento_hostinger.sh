@@ -42,65 +42,42 @@ FILES=(
     "app/views/formularios/publico_gracias.php"
     "app/views/formularios/publico_gracias_inscripcion.php"
     "public/css/formularios_publico.css"
+    "public/img/brand/logo-duo-color.png"
+    "public/img/brand/Logo-SEP-Negro.png"
 )
-
-LOGO="$DST/public/img/brand/logo-duo-color.png"
-LOGO_SOURCE=""
 
 echo "Repositorio fuente : $SRC"
 echo "Instalación pública: $DST"
-echo "Logo esperado      : $LOGO"
 echo
 
-if [[ -f "$LOGO" ]]; then
-    LOGO_SOURCE="$LOGO"
-else
-    LOGO_SOURCE="$(find "$DST" "$SRC" -type f -iname 'logo-duo-color.png' -print -quit 2>/dev/null || true)"
-
-    if [[ -z "$LOGO_SOURCE" ]]; then
-        LOGO_SOURCE="$(find "$HOME" -maxdepth 6 -type f -iname 'logo-duo-color.png' -print -quit 2>/dev/null || true)"
-    fi
-
-    if [[ -z "$LOGO_SOURCE" ]]; then
-        echo "ERROR: no se encontró la imagen 'logo-duo-color.png' dentro de:"
-        echo "  $DST"
-        echo "  $SRC"
-        echo "  $HOME (hasta 6 niveles)"
-        echo
-        echo "Puedes localizarla manualmente con:"
-        echo "  find \"$HOME\" -type f -iname 'logo-duo-color.png' 2>/dev/null"
+for file in "${FILES[@]}"; do
+    if [[ ! -f "$SRC/$file" ]]; then
+        echo "ERROR: falta en fuente $file" >&2
         exit 1
     fi
-
-    echo "ENCONTRADA EN      : $LOGO_SOURCE"
-fi
+done
 
 if [[ "$MODE" == "--check" ]]; then
-    if [[ "$LOGO_SOURCE" == "$LOGO" ]]; then
-        echo "OK: logo-duo-color.png ya está en la carpeta correcta."
-    else
-        echo "PENDIENTE: la imagen existe, pero está en otra ubicación."
-        echo "Con --apply se copiará automáticamente a:"
-        echo "  $LOGO"
-    fi
-    echo
+    changes=0
 
     for file in "${FILES[@]}"; do
-        if [[ ! -f "$SRC/$file" ]]; then
-            echo "FALTA EN FUENTE: $file"
-            exit 1
-        fi
-
         if [[ ! -f "$DST/$file" ]]; then
             echo "NUEVO     $file"
+            changes=$((changes + 1))
         elif cmp -s "$SRC/$file" "$DST/$file"; then
             echo "OK        $file"
         else
             echo "CAMBIA    $file"
+            changes=$((changes + 1))
         fi
     done
 
     echo
+    if [[ "$changes" -eq 0 ]]; then
+        echo "OK: producción ya tiene ambos logos de agradecimiento actualizados."
+    else
+        echo "PENDIENTE: $changes archivo(s) requieren publicación."
+    fi
     echo "No se modificó ningún archivo (--check)."
     exit 0
 fi
@@ -108,13 +85,6 @@ fi
 BACKUP_ROOT="${IMPE_LOGO_BACKUP_DIR:-$HOME/respaldos-crm}"
 mkdir -p "$BACKUP_ROOT"
 BACKUP="$(mktemp -d "$BACKUP_ROOT/logo-agradecimiento-$(date +%Y%m%d-%H%M%S)-XXXXXX")"
-
-if [[ "$LOGO_SOURCE" != "$LOGO" ]]; then
-    mkdir -p "$(dirname "$LOGO")"
-    cp "$LOGO_SOURCE" "$LOGO"
-    chmod 0644 "$LOGO"
-    echo "PUBLICADO public/img/brand/logo-duo-color.png"
-fi
 
 for file in "${FILES[@]}"; do
     if [[ -f "$DST/$file" ]]; then
@@ -130,9 +100,13 @@ done
 
 grep -Fq "logo-duo-color.png"     "$DST/app/views/formularios/publico_gracias.php"
 
-grep -Fq "logo-duo-color.png"     "$DST/app/views/formularios/publico_gracias_inscripcion.php"
+grep -Fq "logo-duo-color.png" "$DST/app/views/formularios/publico_gracias_inscripcion.php"
+grep -Fq "Logo-SEP-Negro.png" "$DST/app/views/formularios/publico_gracias.php"
+grep -Fq "Logo-SEP-Negro.png" "$DST/app/views/formularios/publico_gracias_inscripcion.php"
+test -s "$DST/public/img/brand/logo-duo-color.png"
+test -s "$DST/public/img/brand/Logo-SEP-Negro.png"
 
 echo
-echo "OK: el logo anterior fue sustituido por 'logo-duo-color.png'."
+echo "OK: logos Fundación/IMPE y SEP publicados correctamente."
 echo "Respaldo: $BACKUP"
 echo "Recarga el navegador con Ctrl+F5."
