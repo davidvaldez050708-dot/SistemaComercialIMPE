@@ -325,23 +325,28 @@
                 seccionGrabaciones.remove();
             }
 
-            fetch(
-                'prueba_telefonia/api/llamadas_seguimiento.php?seguimiento_id=' +
-                    encodeURIComponent(seguimientoId),
-                {
-                    headers: { 'X-Requested-With': 'fetch' },
-                    credentials: 'same-origin',
-                    cache: 'no-store'
-                }
-            )
-                .then(function (response) {
+            // La pestaña Llamadas ya consulta estos datos. Reutilizar el
+            // resultado evita abrir otra conexión MySQL para los audios.
+            const historial = window.IMPE_HISTORIAL_LLAMADAS_EXPEDIENTE;
+            const solicitud = historial && historial.seguimientoId === seguimientoId
+                ? historial.promise
+                : fetch(
+                    'prueba_telefonia/api/llamadas_seguimiento.php?seguimiento_id=' +
+                        encodeURIComponent(seguimientoId),
+                    {
+                        headers: { 'X-Requested-With': 'fetch' },
+                        credentials: 'same-origin',
+                        cache: 'no-store'
+                    }
+                ).then(function (response) {
                     return response.json().then(function (data) {
                         if (!response.ok || !data.ok) {
                             throw new Error(data.mensaje || 'No fue posible cargar las grabaciones.');
                         }
                         return data;
                     });
-                })
+                });
+            solicitud
                 .then(function (data) {
                     const llamadas = Array.isArray(data.llamadas) ? data.llamadas : [];
                     const tarjetasActuales = Array.from(
