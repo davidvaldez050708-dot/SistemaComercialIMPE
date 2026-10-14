@@ -1,0 +1,422 @@
+.crear-convocatoria-module {
+    display: grid;
+    gap: 18px;
+}
+
+.crear-convocatoria-heading,
+.crear-convocatoria-toolbar-panel,
+.crear-convocatoria-list-panel {
+    padding: 22px;
+}
+
+.crear-convocatoria-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+}
+
+.crear-convocatoria-heading-copy {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.crear-convocatoria-heading-copy h2,
+.crear-convocatoria-toolbar-heading h2 {
+    margin: 0 0 4px;
+}
+
+.crear-convocatoria-heading-copy p,
+.crear-convocatoria-toolbar-heading p {
+    margin: 0;
+    color: var(--color-text-secondary);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.crear-convocatoria-heading-icon,
+.crear-convocatoria-notification-icon,
+.crear-convocatoria-modal-state-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    border-radius: 14px;
+    color: var(--color-primary);
+    background: rgba(0, 153, 133, .09);
+}
+
+.crear-convocatoria-heading-icon {
+    width: 46px;
+    height: 46px;
+    font-size: 20px;
+}
+
+.crear-convocatoria-summary {
+    min-width: 138px;
+    padding: 12px 16px;
+    display: grid;
+    text-align: right;
+    border: 1px solid var(--color-border);
+    border-radius: 14px;
+    background: #fbfcfe;
+}
+
+.crear-convocatoria-summary strong {
+    color: var(--color-text-primary);
+    font-size: 22px;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.crear-convocatoria-summary span {
+    margin-top: 5px;
+    color: var(--color-text-secondary);
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.crear-convocatoria-toolbar-panel {
+    display: grid;
+    gap: 16px;
+}
+
+.crear-convocatoria-toolbar {
+    display: grid;
+    grid-template-columns: minmax(280px, 1fr) minmax(190px, 260px);
+    gap: 14px;
+    align-items: end;
+}
+
+.crear-convocatoria-results {
+    display: flex;
+    justify-content: flex-end;
+    color: var(--color-text-secondary);
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.crear-convocatoria-list-panel {
+    padding: 10px;
+}
+
+.crear-convocatoria-list {
+    display: grid;
+}
+
+.crear-convocatoria-notification {
+    width: 100%;
+    padding: 16px 14px;
+    display: grid;
+    grid-template-columns: 46px minmax(0, 1fr) auto;
+    gap: 14px;
+    align-items: center;
+    border: 0;
+    border-bottom: 1px solid var(--color-border);
+    background: transparent;
+    text-align: left;
+    transition: background .18s ease, transform .18s ease;
+}
+
+.crear-convocatoria-notification:first-child {
+    border-radius: 12px 12px 0 0;
+}
+
+.crear-convocatoria-notification:last-child {
+    border-bottom: 0;
+    border-radius: 0 0 12px 12px;
+}
+
+.crear-convocatoria-notification:hover {
+    background: #f7fbfd;
+}
+
+.crear-convocatoria-notification:focus-visible {
+    outline: 2px solid rgba(0, 153, 133, .35);
+    outline-offset: -2px;
+}
+
+.crear-convocatoria-notification-icon {
+    width: 42px;
+    height: 42px;
+    font-size: 18px;
+}
+
+.crear-convocatoria-notification-content {
+    min-width: 0;
+    display: grid;
+    gap: 5px;
+}
+
+.crear-convocatoria-notification-title {
+    overflow: hidden;
+    color: var(--color-text-primary);
+    font-size: 13px;
+    font-weight: 800;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.crear-convocatoria-notification-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    color: var(--color-text-secondary);
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.crear-convocatoria-notification-meta span,
+.crear-convocatoria-notification-file {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.crear-convocatoria-notification-file {
+    overflow: hidden;
+    color: var(--color-text-secondary);
+    font-size: 10px;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.crear-convocatoria-notification-status {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--color-text-secondary);
+}
+
+.crear-convocatoria-state-badge {
+    padding: 6px 9px;
+    border-radius: 999px;
+    color: #0a8069;
+    background: #eaf8f4;
+    font-size: 9px;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.crear-convocatoria-empty,
+.crear-convocatoria-empty-filter {
+    padding: 34px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    color: var(--color-text-secondary);
+    text-align: center;
+}
+
+.crear-convocatoria-empty > span,
+.crear-convocatoria-empty-filter > i {
+    font-size: 28px;
+    color: var(--color-primary);
+}
+
+.crear-convocatoria-empty h3,
+.crear-convocatoria-empty-filter strong {
+    margin: 0;
+    color: var(--color-text-primary);
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.crear-convocatoria-empty p,
+.crear-convocatoria-empty-filter span {
+    margin: 3px 0 0;
+    font-size: 11px;
+}
+
+.crear-convocatoria-empty-filter {
+    min-height: 180px;
+    flex-direction: column;
+}
+
+.crear-convocatoria-modal {
+    overflow: hidden;
+    border: 0;
+    border-radius: 18px;
+}
+
+.crear-convocatoria-modal .modal-header {
+    padding: 20px 22px 16px;
+    align-items: flex-start;
+}
+
+.crear-convocatoria-modal-kicker {
+    display: block;
+    margin-bottom: 4px;
+    color: var(--color-primary);
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: .08em;
+}
+
+.crear-convocatoria-modal .modal-title {
+    color: var(--color-text-primary);
+    font-size: 18px;
+    font-weight: 800;
+}
+
+.crear-convocatoria-modal .modal-body {
+    padding: 20px 22px;
+}
+
+.crear-convocatoria-modal-state {
+    margin-bottom: 18px;
+    padding: 13px 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border: 1px solid #d9eee9;
+    border-radius: 14px;
+    background: #f4fbf9;
+}
+
+.crear-convocatoria-modal-state-icon {
+    width: 38px;
+    height: 38px;
+}
+
+.crear-convocatoria-modal-state small,
+.crear-convocatoria-modal-state strong {
+    display: block;
+}
+
+.crear-convocatoria-modal-state small,
+.crear-convocatoria-modal-grid span,
+.crear-convocatoria-modal-notes > span {
+    color: var(--color-text-secondary);
+    font-size: 9px;
+    font-weight: 700;
+}
+
+.crear-convocatoria-modal-state strong {
+    margin-top: 2px;
+    color: var(--color-text-primary);
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.crear-convocatoria-modal-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.crear-convocatoria-modal-grid > div {
+    min-width: 0;
+    padding: 12px 13px;
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    background: #fff;
+}
+
+.crear-convocatoria-modal-grid span,
+.crear-convocatoria-modal-grid strong {
+    display: block;
+}
+
+.crear-convocatoria-modal-grid strong {
+    margin-top: 5px;
+    overflow-wrap: anywhere;
+    color: var(--color-text-primary);
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.crear-convocatoria-modal-notes {
+    margin-top: 14px;
+    padding: 13px 14px;
+    border-radius: 12px;
+    background: #f7f9fc;
+}
+
+.crear-convocatoria-modal-notes p {
+    margin: 5px 0 0;
+    color: var(--color-text-primary);
+    font-size: 11px;
+    line-height: 1.55;
+    white-space: pre-line;
+}
+
+.crear-convocatoria-modal-help {
+    margin-top: 14px;
+    display: flex;
+    gap: 8px;
+    color: var(--color-text-secondary);
+    font-size: 10px;
+    font-weight: 600;
+}
+
+.crear-convocatoria-modal-help i {
+    color: var(--color-primary);
+}
+
+.crear-convocatoria-modal .modal-footer {
+    padding: 14px 22px 20px;
+    gap: 10px;
+    border-top: 1px solid var(--color-border);
+}
+
+@media (max-width: 767.98px) {
+    .crear-convocatoria-heading {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .crear-convocatoria-summary {
+        width: 100%;
+        text-align: left;
+    }
+
+    .crear-convocatoria-toolbar {
+        grid-template-columns: 1fr;
+    }
+
+    .crear-convocatoria-notification {
+        grid-template-columns: 42px minmax(0, 1fr);
+    }
+
+    .crear-convocatoria-notification-status {
+        grid-column: 2;
+        justify-content: space-between;
+    }
+
+    .crear-convocatoria-modal-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .crear-convocatoria-heading,
+    .crear-convocatoria-toolbar-panel {
+        padding: 18px 16px;
+    }
+
+    .crear-convocatoria-list-panel {
+        padding: 6px;
+    }
+
+    .crear-convocatoria-notification {
+        padding: 14px 10px;
+        gap: 10px;
+    }
+
+    .crear-convocatoria-state-badge {
+        max-width: 145px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .crear-convocatoria-modal .modal-header,
+    .crear-convocatoria-modal .modal-body,
+    .crear-convocatoria-modal .modal-footer {
+        padding-left: 16px;
+        padding-right: 16px;
+    }
+}
