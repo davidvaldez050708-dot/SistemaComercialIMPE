@@ -107,3 +107,77 @@ html, body {
   color: #52698c; font: 600 11px 'Manrope', sans-serif;
   text-decoration: underline; white-space: nowrap;
 }
+
+
+/* Navegación entre documentos PHP del iframe: ocultar exclusivamente el
+   flash blanco del navegador mientras la ruta autenticada termina de cargar.
+   Las capas de WebRTC/llamadas (z-index >= 900) quedan siempre por encima. */
+.impe-shell-navigation-mask {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: #f3f6fb;
+  color: #33466d;
+  font-family: 'Manrope', sans-serif;
+}
+.impe-shell-navigation-mask[hidden] { display: none !important; }
+.impe-shell-navigation-progress {
+  display: flex;
+  gap: 11px;
+  align-items: center;
+  justify-content: center;
+  max-width: min(95vw, 540px);
+  padding: 16px 18px;
+  border: 1px solid #dfe6f1;
+  border-radius: 12px;
+  box-shadow: 0 7px 25px rgb(24 39 75 / 5%);
+  background: #fff;
+  font: 700 12px/1.5 'Manrope', sans-serif;
+}
+.impe-shell-navigation-spinner {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  border: 2px solid #d5deec;
+  border-top-color: #2e468b;
+  border-radius: 50%;
+  animation: impe-shell-navigation-spin .85s linear infinite;
+}
+.impe-shell-navigation-progress button {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 10px;
+  border: 1px solid #cdd8e8;
+  border-radius: 8px;
+  background: #f5f8fd;
+  color: #29447d;
+  font: 800 11px 'Manrope', sans-serif;
+  cursor: pointer;
+}
+.impe-shell-navigation-progress button[hidden] { display: none !important; }
+.impe-shell-navigation-mask.is-error .impe-shell-navigation-progress {
+  border-color: #eadbcd;
+}
+.impe-shell-navigation-mask.is-error .impe-shell-navigation-spinner {
+  animation: none;
+  border-color: #e9bdb0;
+  border-top-color: #b45c43;
+}
+@keyframes impe-shell-navigation-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .impe-shell-navigation-spinner { animation: none; }
+}
+@media (max-width: 620px) {
+  .impe-shell-navigation-progress {
+    width: 100%;
+    flex-wrap: wrap;
+    font-size: 11px;
+    text-align: center;
+  }
+}
