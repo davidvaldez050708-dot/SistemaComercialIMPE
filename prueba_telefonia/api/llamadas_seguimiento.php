@@ -81,6 +81,7 @@ $marcadorVerificacion = '[VERIFICACION_EFECTIVA]';
 $marcadorVerificacionPendiente = '[VERIFICACION_PENDIENTE_TELEFONIA]';
 $marcadorPrueba = '[REGISTRO_LLAMADA_PRUEBA]';
 $marcadorManual = '[REGISTRO_LLAMADA_MANUAL]';
+$marcadorWebrtcSinPbx = '[WEBRTC OBSERVADO; SIN EVENTO PBX FIRMADO; RESULTADO DECLARADO POR ANALISTA]';
 
 // Zadarma entrega NOTIFY_RECORD cuando el audio ya está listo.
 // Los eventos persistidos son la fuente primaria. El log se conserva únicamente
@@ -170,27 +171,13 @@ function descomponerNotasLlamada(string $notas, string $contactoReferencia = '')
     $detalle = [];
     $prefijo = '/^(?:Persona\s+atendi[oó]|Atendi[oó]|Contacto)\s*:\s*(.*)$/iu';
 
-    if (!empty($lineas) && preg_match($prefijo, $lineas[0], $coincidencia)) {
-        $valor = trim((string)($coincidencia[1] ?? ''));
-        $contactoReferencia = trim($contactoReferencia);
-
-        if (
-            $contactoReferencia !== '' &&
-            stripos($valor, $contactoReferencia) === 0
-        ) {
-            $contacto = $contactoReferencia;
-            $resto = trim(substr($valor, strlen($contactoReferencia)));
-            if ($resto !== '') {
-                $detalle[] = $resto;
-            }
-        } else {
-            $contacto = $valor;
-        }
-
-        array_shift($lineas);
-    }
-
+    // Las llamadas recibidas comienzan con "Llamada entrante recibida...".
+    // Buscar el nombre en CUALQUIER línea y no duplicarlo en el detalle.
     foreach ($lineas as $linea) {
+        if ($contacto === '' && preg_match($prefijo, $linea, $coincidencia)) {
+            $contacto = trim((string)($coincidencia[1] ?? ''));
+            continue;
+        }
         $detalle[] = $linea;
     }
 
@@ -251,6 +238,8 @@ foreach ($modelo->obtenerInteraccionesSeguimiento($seguimientoId) as $interaccio
 
     $resultado = strtoupper(trim((string)($interaccion['resultado'] ?? '')));
     $notas = trim((string)($interaccion['notas'] ?? ''));
+    $webrtcSinPbx = $proveedor === 'ZADARMA_WEBRTC' ||
+        strpos($notas, $marcadorWebrtcSinPbx) !== false;
     $verificacionMarcada = strpos($notas, $marcadorVerificacion) !== false;
     $verificacionPendienteMarcada =
         strpos($notas, $marcadorVerificacionPendiente) !== false;
@@ -301,6 +290,7 @@ foreach ($modelo->obtenerInteraccionesSeguimiento($seguimientoId) as $interaccio
             $marcadorVerificacionPendiente,
             $marcadorPrueba,
             $marcadorManual,
+            $marcadorWebrtcSinPbx,
         ],
         '',
         $notas
@@ -369,6 +359,12 @@ foreach ($modelo->obtenerInteraccionesSeguimiento($seguimientoId) as $interaccio
         $zadarmaGrabada &&
         !$grabacionZadarma;
 
+    // La sesión observada WebRTC puede tener audio en Zadarma, pero sin
+    // pbx_call_id validado NO existe una asociación segura con ese audio.
+    // No confundir "archivo no vinculado" con "no se grabó".
+    $grabacionSinVincular = !$excluirGrabacion && $webrtcSinPbx &&
+        !$puedeTenerGrabacion;
+
     $nombreUsuario = trim(
         (string)($interaccion['nombre'] ?? '') . ' ' .
         (string)($interaccion['apellidos'] ?? '')
@@ -397,6 +393,7 @@ foreach ($modelo->obtenerInteraccionesSeguimiento($seguimientoId) as $interaccio
         'excluir_grabacion' => $excluirGrabacion,
         'tiene_grabacion' => (bool)$puedeTenerGrabacion,
         'grabacion_procesando' => (bool)$grabacionProcesando,
+        'grabacion_sin_vincular' => (bool)$grabacionSinVincular,
         'grabacion_url' => $puedeTenerGrabacion
             ? 'prueba_telefonia/api/grabacion_interaccion.php?interaccion_id=' . $interaccionId
             : null
