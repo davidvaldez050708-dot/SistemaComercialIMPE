@@ -47,7 +47,9 @@ if ($seguimientoId <= 0 || $usuarioId <= 0) {
 }
 
 $etapaHistorial = 'conectar_mysql';
-$conexionHistorial = (new Database())->connect();
+// La consulta telefónica es de sólo lectura: reutilizar conexiones PHP-FPM
+// evita crear una nueva sesión MySQL en cada apertura del expediente.
+$conexionHistorial = (new Database())->connect(true);
 $modelo = new SeguimientoVinculacionModel($conexionHistorial);
 $rolId = (int)($_SESSION['rol_id'] ?? 0);
 $rolNombre = trim((string)($_SESSION['rol'] ?? ''));
@@ -419,16 +421,32 @@ echo json_encode([
     $codigoSql = (int)$causa->getCode();
     $estadoSql = $causa instanceof mysqli_sql_exception
         ? $causa->getSqlState() : '-';
+    // Evitar escribir credenciales o mensajes completos del driver en logs.
+    $mensajeDriver = strtolower($causa->getMessage());
+    if (str_contains($mensajeDriver, 'operation not permitted')) {
+        $tipoConexion = 'operacion_no_permitida';
+    } elseif (str_contains($mensajeDriver, 'no such file or directory')) {
+        $tipoConexion = 'socket_no_disponible';
+    } elseif (str_contains($mensajeDriver, 'connection refused')) {
+        $tipoConexion = 'conexion_rechazada';
+    } elseif (str_contains($mensajeDriver, 'too many connections')) {
+        $tipoConexion = 'demasiadas_conexiones';
+    } elseif (str_contains($mensajeDriver, 'timed out')) {
+        $tipoConexion = 'tiempo_agotado';
+    } else {
+        $tipoConexion = 'otro';
+    }
     // El error_log de PHP-FPM puede estar fuera del acceso SSH en Hostinger.
     // Conservar una bitácora mínima PRIVADA, fuera de public_html, para
     // correlacionar la referencia mostrada al analista sin exponer el error.
     $diagnostico = sprintf(
-        "[%s] [llamadas_seguimiento:%s] etapa=%s sql_code=%d sqlstate=%s %s en %s:%d - %s\n",
+        "[%s] [llamadas_seguimiento:%s] etapa=%s sql_code=%d sqlstate=%s conexion=%s %s en %s:%d - %s\n",
         date('Y-m-d H:i:s'),
         $referencia,
         $etapaHistorial,
         $codigoSql,
         $estadoSql,
+        $tipoConexion,
         get_class($error),
         basename($error->getFile()),
         $error->getLine(),
