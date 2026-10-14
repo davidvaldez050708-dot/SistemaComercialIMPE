@@ -558,7 +558,7 @@ html {
 
     .formulario-publico-hero-logo {
         width: min(46%, 170px);
-        min-height: 72px;
+        min-height: 64px;
     }
 
     .formulario-publico-hero-logo img {
@@ -1294,41 +1294,41 @@ html {
    AGRADECIMIENTO · ALINEACIÓN FINAL DE LOGOS
    ====================================================================== */
 .formulario-publico-thanks-logos {
-    width: min(590px, 88%);
+    width: min(520px, 84%);
     margin: 0 auto 12px;
     display: grid;
-    grid-template-columns: 260px 260px;
+    grid-template-columns: 225px 225px;
     align-items: center;
     justify-content: center;
-    column-gap: 22px;
+    column-gap: 20px;
 }
 
 .formulario-publico-thanks-logo,
 .formulario-publico-thanks-logo-sep {
-    min-height: 110px;
+    min-height: 96px;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
 .formulario-publico-thanks-logo {
-    width: 260px;
-    max-width: 260px;
+    width: 225px;
+    max-width: 225px;
     margin: 0;
 }
 
 .formulario-publico-thanks-logo img {
-    width: 100%;
-    max-width: 340px;
-    max-height: 138px;
+    width: auto;
+    max-width: 220px;
+    max-height: 90px;
     object-fit: contain;
 }
 
 .formulario-publico-thanks-logo-sep {
     position: relative;
-    width: 260px;
-    max-width: 260px;
-    padding-left: 18px;
+    width: 225px;
+    max-width: 225px;
+    padding-left: 16px;
     border-left: 0;
 }
 
@@ -1338,15 +1338,15 @@ html {
     left: 0;
     top: 50%;
     width: 1px;
-    height: 70px;
+    height: 62px;
     background: #d7dee8;
     transform: translateY(-50%);
 }
 
 .formulario-publico-thanks-logo-sep img {
-    width: 100%;
-    max-width: 235px;
-    max-height: 112px;
+    width: auto;
+    max-width: 205px;
+    max-height: 94px;
     object-fit: contain;
 }
 
@@ -1364,7 +1364,7 @@ html {
 
 @media (max-width: 600px) {
     .formulario-publico-thanks-logos {
-        width: min(350px, 92%);
+        width: min(320px, 90%);
         grid-template-columns: 1fr 1fr;
         column-gap: 8px;
         margin-bottom: 10px;
@@ -1377,28 +1377,30 @@ html {
     }
 
     .formulario-publico-thanks-logo {
-        max-width: 210px;
+        max-width: 150px;
     }
 
     .formulario-publico-thanks-logo img {
-        max-width: 210px;
-        max-height: 98px;
+        width: auto;
+        max-width: 145px;
+        max-height: 66px;
     }
 
     .formulario-publico-thanks-logo-sep {
         position: relative;
-        max-width: 165px;
-        padding-left: 9px;
+        max-width: 150px;
+        padding-left: 8px;
         border-left: 0;
     }
 
     .formulario-publico-thanks-logo-sep::before {
-        height: 52px;
+        height: 46px;
     }
 
     .formulario-publico-thanks-logo-sep img {
-        max-width: 165px;
-        max-height: 84px;
+        width: auto;
+        max-width: 140px;
+        max-height: 68px;
     }
 
     .formulario-publico-thanks-icon {
