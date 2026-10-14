@@ -837,11 +837,25 @@
 
     // Mantener única conexión dentro del mismo perfil del navegador.
     window.setInterval(function () {
+        // Si el Analista abrió una pestaña mientras otra todavía retenía
+        // el lease, volver a intentar después de que expire; no esperar
+        // a que pulse el auricular. Jamás asumir en verde una conexión falsa.
+        if (autoEnabled && !hostFrame && !owned &&
+            Date.now() - lastRecoveryAttempt > 12000) {
+            const lease = getLease();
+            const ocupado = lease && lease.id !== owner &&
+                Date.now() - Number(lease.time || 0) < 9000;
+            if (!ocupado) {
+                lastRecoveryAttempt = Date.now();
+                try { ensureHost(); }
+                catch (error) { mountFailed = String(error?.message || error); }
+            }
+        }
         if (autoEnabled && hostFrame &&
             !freshState(currentState) && !mountFailed &&
             Date.now() - hostStartedAt > 22000 &&
             Date.now() - lastRecoveryAttempt > 30000 &&
-            autoRetries < 2) {
+            autoRetries < 3) {
             // El indicador apagado no debe quedar en un estado verde falso.
             // Volver a montar sólo cuando la conexión NO tiene latidos.
             autoRetries += 1;
@@ -882,7 +896,10 @@
 
     readState(true);
     let autoEnabled = cfg.autoReception === true;
-    if (autoEnabled) {
+    // El Analista con extensión entrante activa debe intentar iniciar WebRTC
+    // en cada login. Una preferencia vieja de Marketing / navegador no puede
+    // desactivar silenciosamente su recepción.
+    if (autoEnabled && !cfg.analystIncomingResults) {
         try {
             autoEnabled = localStorage.getItem(
                 'impe:telephony:auto-reception:' + userId
