@@ -8,6 +8,7 @@ SHELL="public/javascript/telefonia_shell.js"
 SERVICE="app/services/TelefoniaAnalistaWebrtcService.php"
 
 bash -n "$DEPLOY"
+php -l tools/resolver_conflicto_shell_analista.php >/dev/null
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 export IMPE_HISTORY_SOURCE="$PWD" IMPE_HISTORY_BACKUPS="$tmp/backups"
@@ -50,6 +51,42 @@ grep -Fq "todo ya está publicado" <<< "$repeated" || {
   # La personalización local no debe impedir un segundo preflight.
   grep -Fq "SIN modificar producción" <<< "$repeated"
 }
+
+# Caso REAL: producción quitó el filtro nativeVisible para que el modal
+# no se ocultara. Conservar esa decisión y agregar sólo finishedSdk.
+export IMPE_HISTORY_PUBLIC="$tmp/live-known-conflict"
+mkdir -p "$IMPE_HISTORY_PUBLIC"
+git archive "$BASE" | tar -xf - -C "$IMPE_HISTORY_PUBLIC"
+python3 - "$IMPE_HISTORY_PUBLIC/$SHELL" <<'PY'
+import sys
+p = sys.argv[1]
+with open(p) as f: code = f.read()
+needle = ("        const customVisible = (incoming || shownOutgoing) &&\n"
+          "            !(cfg.analystIncomingResults && nativeVisible) &&\n")
+assert code.count(needle) == 1
+code = code.replace(needle,
+                    "        const customVisible = (incoming || shownOutgoing) &&\n")
+with open(p, 'w') as f: f.write(code)
+PY
+cp -p "$IMPE_HISTORY_PUBLIC/$SHELL" "$tmp/known-original.js"
+knowncheck="$(bash "$DEPLOY" --check)"
+grep -Fq "CONFLICTO CONOCIDO RESUELTO: $SHELL" <<< "$knowncheck"
+grep -Fq "SIN modificar producción" <<< "$knowncheck"
+cmp -s "$tmp/known-original.js" "$IMPE_HISTORY_PUBLIC/$SHELL"
+[[ ! -e "$IMPE_HISTORY_PUBLIC/$SERVICE" ]]
+bash "$DEPLOY" --apply
+grep -Fq 'const customVisible = (incoming || finishedSdk || shownOutgoing) &&' "$IMPE_HISTORY_PUBLIC/$SHELL"
+# La línea ELIMINADA EN PRODUCCIÓN NO DEBE VOLVER.
+if grep -Fq '!(cfg.analystIncomingResults && nativeVisible) &&' "$IMPE_HISTORY_PUBLIC/$SHELL"; then
+  echo 'FALLO: el merge reintrodujo el filtro que ocultaba el modal' >&2
+  exit 1
+fi
+grep -Fq 'const finishedSdk = Boolean(' "$IMPE_HISTORY_PUBLIC/$SHELL"
+git show "$TARGET:$SERVICE" | cmp -s - "$IMPE_HISTORY_PUBLIC/$SERVICE"
+[[ "$(stat -c %a "$IMPE_HISTORY_PUBLIC/$SHELL")" == "644" ]]
+knownagain="$(bash "$DEPLOY" --check)"
+grep -Fq "SIN modificar producción" <<< "$knownagain" ||
+  grep -Fq 'todo ya está publicado' <<< "$knownagain"
 
 # Cambios incompatibles EN LA MISMA línea: rechazar sin tocar ningún archivo.
 export IMPE_HISTORY_PUBLIC="$tmp/live-conflict"
