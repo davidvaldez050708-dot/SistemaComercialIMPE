@@ -83,7 +83,12 @@ for i in "${!FILES[@]}"; do
     echo "ERROR: parche no encontrado para $file" >&2
     exit 1
   }
-  if (cd "$TMP/stage" && git apply --reverse --check "$patch" >/dev/null 2>&1); then
+  if [[ "$file" == "app/views/telefonia/shell.php" ]] &&
+       cmp -s "$TMP/stage/$file" "$SOURCE/$file"; then
+    # El shell reconciliado contiene también el diario WebRTC que no existía
+    # en el commit original del parche. Su igualdad exacta es idempotente.
+    echo "YA ACTUALIZADO: $file (historial + navegación)"
+  elif (cd "$TMP/stage" && git apply --reverse --check "$patch" >/dev/null 2>&1); then
     echo "YA ACTUALIZADO: $file"
   elif (cd "$TMP/stage" && git apply --check "$patch" >/dev/null 2>&1); then
     (cd "$TMP/stage" && git apply "$patch")
