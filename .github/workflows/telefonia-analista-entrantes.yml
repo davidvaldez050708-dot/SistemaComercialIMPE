@@ -49,6 +49,8 @@ on:
       - "tools/desplegar_historial_pasivo_analista_hostinger.sh"
       - "tests/telefonia_analista_historial_pasivo_smoke.js"
       - "tests/telefonia_analista_historial_pasivo_deploy_smoke.sh"
+      - "tools/desplegar_modal_unificado_analista_hostinger.sh"
+      - "tests/telefonia_modal_unificado_analista_hostinger_smoke.sh"
       - ".github/workflows/telefonia-analista-entrantes.yml"
   pull_request:
     paths:
@@ -82,6 +84,8 @@ on:
       - "tools/desplegar_historial_pasivo_analista_hostinger.sh"
       - "tests/telefonia_analista_historial_pasivo_smoke.js"
       - "tests/telefonia_analista_historial_pasivo_deploy_smoke.sh"
+      - "tools/desplegar_modal_unificado_analista_hostinger.sh"
+      - "tests/telefonia_modal_unificado_analista_hostinger_smoke.sh"
       - ".github/workflows/telefonia-analista-entrantes.yml"
 jobs:
   validar:
@@ -150,3 +154,5 @@ jobs:
           node tests/telefonia_analista_historial_pasivo_smoke.js
           bash -n tools/desplegar_historial_pasivo_analista_hostinger.sh
           bash tests/telefonia_analista_historial_pasivo_deploy_smoke.sh
+          bash -n tools/desplegar_modal_unificado_analista_hostinger.sh
+          bash tests/telefonia_modal_unificado_analista_hostinger_smoke.sh
