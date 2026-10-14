@@ -7,6 +7,22 @@
  */
 declare(strict_types=1);
 
+// Detecta idempotentemente la versión ya publicada por ESTE reconciliador.
+// Sólo acepta igualdad exacta con el objetivo menos una línea (la condición
+// de visibilidad que producción había quitado intencionadamente).
+if (PHP_SAPI === 'cli' && count($argv) === 4 &&
+    $argv[1] === '--is-reconciled') {
+    $published = @file_get_contents($argv[2]);
+    $target = @file_get_contents($argv[3]);
+    $guard = "            !(cfg.analystIncomingResults && nativeVisible) &&\n";
+    if ($published === false || $target === false ||
+        substr_count($target, $guard) !== 1 ||
+        $published !== str_replace($guard, '', $target)) {
+        exit(1);
+    }
+    exit(0);
+}
+
 if (PHP_SAPI !== 'cli' || count($argv) !== 3) {
     fwrite(STDERR, "Uso: php resolver_conflicto_shell_analista.php merge.txt staged.js\n");
     exit(2);
