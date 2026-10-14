@@ -65,13 +65,22 @@ for file in "${FILES[@]}"; do
     (cd "$TMP/stage" && git apply "$TMP/one.patch")
     echo "PARCHE COMPATIBLE: $file"
   elif [[ "$file" == "$SHELL" ]]; then
-    if ! git merge-file -p "$LIVE/$file" "$TMP/base/$file" "$TMP/target/$file" \
-      >"$TMP/stage/$file"; then
+    # Nombres estables de marca: el reconciliador rechaza cualquier diferencia
+    # que no sea exactamente el bloque diagnosticado en Hostinger.
+    if git merge-file --diff3 -p \
+      -L PRODUCCION -L BASE -L OBJETIVO \
+      "$LIVE/$file" "$TMP/base/$file" "$TMP/target/$file" \
+      >"$TMP/merge_shell.txt"; then
+      cp "$TMP/merge_shell.txt" "$TMP/stage/$file"
+      echo "FUSIÓN CONSERVADORA: $file (mantiene cambios de producción)"
+    elif php "$SOURCE/tools/resolver_conflicto_shell_analista.php" \
+      "$TMP/merge_shell.txt" "$TMP/stage/$file"; then
+      echo "CONFLICTO CONOCIDO RESUELTO: $file (se conserva el modal visible)"
+    else
       echo "CONFLICTO REAL: $file. Requiere revisión manual de las diferencias." >&2
       echo "Producción no se modificó." >&2
       exit 1
     fi
-    echo "FUSIÓN CONSERVADORA: $file (mantiene cambios de producción)"
   else
     echo "CONFLICTO REAL: $file. Producción no se modificó." >&2; exit 1
   fi
