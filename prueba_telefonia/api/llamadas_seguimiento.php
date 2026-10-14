@@ -15,6 +15,7 @@ require_once $root . '/app/models/RolModel.php';
 require_once $root . '/app/models/SeguimientoVinculacionModel.php';
 require_once $root . '/app/services/ZadarmaCallLookupService.php';
 require_once $root . '/app/services/ZadarmaWebhookEventStoreService.php';
+require_once $root . '/app/helpers/TelefoniaFechaHoraHelper.php';
 
 if (!isset($_SESSION['usuario_id'])) {
     http_response_code(401);
@@ -203,6 +204,9 @@ foreach ($modelo->obtenerInteraccionesSeguimiento($seguimientoId) as $interaccio
     if (strtoupper((string)($interaccion['canal'] ?? '')) !== 'LLAMADA_IP') {
         continue;
     }
+    // El historial WebRTC guarda fecha UTC. Convertir SOLO en la respuesta,
+    // preservando BD y dejando intactas llamadas Zadarma y manuales.
+    $interaccion = TelefoniaFechaHoraHelper::normalizarInteraccion($interaccion);
 
     $interaccionId = (int)($interaccion['id'] ?? 0);
     $proveedor = strtoupper(trim((string)($interaccion['proveedor_externo'] ?? '')));
