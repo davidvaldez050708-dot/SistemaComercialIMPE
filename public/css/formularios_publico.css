@@ -1325,10 +1325,22 @@ html {
 }
 
 .formulario-publico-thanks-logo-sep {
+    position: relative;
     width: 340px;
     max-width: 340px;
     padding-left: 26px;
-    border-left: 1px solid #d7dee8;
+    border-left: 0;
+}
+
+.formulario-publico-thanks-logo-sep::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: 1px;
+    height: 92px;
+    background: #d7dee8;
+    transform: translateY(-50%);
 }
 
 .formulario-publico-thanks-logo-sep img {
@@ -1339,15 +1351,15 @@ html {
 }
 
 .formulario-publico-thanks-icon {
-    margin: 0 auto 14px;
+    margin: -10px auto 12px;
 }
 
 .formulario-publico-thanks-card h1 {
-    margin: 0 0 10px;
+    margin: -2px 0 8px;
 }
 
 .formulario-publico-thanks-card p {
-    margin: 0 auto;
+    margin: -1px auto 0;
 }
 
 @media (max-width: 600px) {
@@ -1374,8 +1386,14 @@ html {
     }
 
     .formulario-publico-thanks-logo-sep {
+        position: relative;
         max-width: 220px;
         padding-left: 12px;
+        border-left: 0;
+    }
+
+    .formulario-publico-thanks-logo-sep::before {
+        height: 68px;
     }
 
     .formulario-publico-thanks-logo-sep img {
@@ -1384,10 +1402,14 @@ html {
     }
 
     .formulario-publico-thanks-icon {
-        margin: 0 auto 12px;
+        margin: -6px auto 10px;
     }
 
     .formulario-publico-thanks-card h1 {
-        margin-bottom: 8px;
+        margin: -1px 0 7px;
+    }
+
+    .formulario-publico-thanks-card p {
+        margin-top: -1px;
     }
 }
