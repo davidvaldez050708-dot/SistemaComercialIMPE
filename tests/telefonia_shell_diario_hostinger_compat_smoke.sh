@@ -88,7 +88,9 @@ export IMPE_SHELL_ESTABLE_SOURCE="$ROOT"
 export IMPE_SHELL_ESTABLE_PUBLIC="$LIVE"
 export IMPE_SHELL_ESTABLE_BACKUPS="$TEMP/backups"
 
-bash "$DEPLOY" --check | tee "$TEMP/check" | grep -Fq "PRODUCCIÓN INTACTA"
+echo "SHA de fixture: $SHA"
+echo "SHA desde repositorio: $(git -C "$ROOT" hash-object "$LIVE/$SHELL_PHP")"
+bash -x "$DEPLOY" --check | tee "$TEMP/check" | grep -Fq "PRODUCCIÓN INTACTA"
 grep -Fq "shell Hostinger conocido; diario WebRTC conservado" "$TEMP/check"
 [[ ! -e "$LIVE/$NEW" ]]
 [[ "$(git hash-object "$LIVE/$SHELL_PHP")" == "$SHA" ]]
