@@ -6,6 +6,7 @@ header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 // Nunca entregar una respuesta vacía por excepciones operativas de Hostinger.
 // Las causas técnicas se registran sólo en el log del servidor.
 ob_start();
+$etapaHistorial = 'inicializar';
 try {
 
 $root = dirname(__DIR__, 2);
@@ -21,6 +22,7 @@ if (!isset($_SESSION['usuario_id'])) {
     exit;
 }
 
+$etapaHistorial = 'recuperar_permisos';
 if (!isset($_SESSION['permisos'])) {
     $modeloRol = new RolModel();
     $modeloRol->inicializarPermisosSistema();
@@ -44,13 +46,16 @@ if ($seguimientoId <= 0 || $usuarioId <= 0) {
     exit;
 }
 
-$modelo = new SeguimientoVinculacionModel();
+$etapaHistorial = 'conectar_mysql';
+$conexionHistorial = (new Database())->connect();
+$modelo = new SeguimientoVinculacionModel($conexionHistorial);
 $rolId = (int)($_SESSION['rol_id'] ?? 0);
 $rolNombre = trim((string)($_SESSION['rol'] ?? ''));
 $esConsultaGlobal =
     $rolId === 1 ||
     strcasecmp($rolNombre, 'Marketing') === 0;
 
+$etapaHistorial = 'consultar_expediente';
 if ($esConsultaGlobal) {
     $seguimiento = $modelo->obtenerSeguimientoAdministrador($seguimientoId);
 } elseif (tienePermiso('seguimientos_vinculacion.supervisar')) {
@@ -113,7 +118,7 @@ function acumularEventoZadarma(array &$estadoZadarma, array $fila): void
 }
 
 try {
-    $zadarmaEventStore = new ZadarmaWebhookEventStoreService();
+    $zadarmaEventStore = new ZadarmaWebhookEventStoreService($conexionHistorial);
 } catch (Throwable $errorStore) {
     $zadarmaEventStore = null;
     error_log('[llamadas_seguimiento_zadarma_store] ' . $errorStore->getMessage());
@@ -193,6 +198,7 @@ function descomponerNotasLlamada(string $notas, string $contactoReferencia = '')
     ];
 }
 
+$etapaHistorial = 'consultar_interacciones';
 foreach ($modelo->obtenerInteraccionesSeguimiento($seguimientoId) as $interaccion) {
     if (strtoupper((string)($interaccion['canal'] ?? '')) !== 'LLAMADA_IP') {
         continue;
@@ -395,6 +401,7 @@ foreach ($modelo->obtenerInteraccionesSeguimiento($seguimientoId) as $interaccio
     ];
 }
 
+$etapaHistorial = 'generar_respuesta';
 echo json_encode([
     'ok' => true,
     'seguimiento_id' => $seguimientoId,
@@ -404,13 +411,24 @@ echo json_encode([
 
 } catch (Throwable $error) {
     $referencia = bin2hex(random_bytes(4));
+    // Conservar el código y SQLSTATE de la causa interna, no credenciales.
+    $causa = $error;
+    for ($profundidad = 0; $profundidad < 5 && $causa->getPrevious(); $profundidad++) {
+        $causa = $causa->getPrevious();
+    }
+    $codigoSql = (int)$causa->getCode();
+    $estadoSql = $causa instanceof mysqli_sql_exception
+        ? $causa->getSqlState() : '-';
     // El error_log de PHP-FPM puede estar fuera del acceso SSH en Hostinger.
     // Conservar una bitácora mínima PRIVADA, fuera de public_html, para
     // correlacionar la referencia mostrada al analista sin exponer el error.
     $diagnostico = sprintf(
-        "[%s] [llamadas_seguimiento:%s] %s en %s:%d - %s\n",
+        "[%s] [llamadas_seguimiento:%s] etapa=%s sql_code=%d sqlstate=%s %s en %s:%d - %s\n",
         date('Y-m-d H:i:s'),
         $referencia,
+        $etapaHistorial,
+        $codigoSql,
+        $estadoSql,
         get_class($error),
         basename($error->getFile()),
         $error->getLine(),
