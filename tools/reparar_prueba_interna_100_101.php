@@ -26,6 +26,7 @@ if (!in_array($modo, ['--check', '--apply'], true) || !$root ||
 require_once $root . '/config/db_connection.php';
 require_once $root . '/config/private_config.php';
 require_once $root . '/app/services/TelefoniaInternaGrabacionService.php';
+require_once __DIR__ . '/../app/helpers/ZadarmaPbxIdentifierHelper.php';
 
 function validarSesion(array $s): void
 {
@@ -91,9 +92,9 @@ function seleccionarGrabacion(string $root, DateTimeImmutable $hora, array $sdk,
     $start = $hora->modify('-20 minutes')->format('Y-m-d H:i:s');
     $end = $hora->setTimezone(new DateTimeZone('UTC'))
         ->modify('+20 minutes')->format('Y-m-d H:i:s');
-    $response = json_decode((string)$api->call('/v1/statistics/pbx/', [
+    $response = ZadarmaPbxIdentifierHelper::decodificarEstadisticas((string)$api->call('/v1/statistics/pbx/', [
         'start'=>$start, 'end'=>$end, 'version'=>2, 'limit'=>1000
-    ], 'get'), true);
+    ], 'get'));
     if (!is_array($response) || ($response['status'] ?? '') !== 'success') {
         throw new RuntimeException('Zadarma no entregó estadísticas válidas.');
     }
@@ -132,9 +133,9 @@ function seleccionarGrabacion(string $root, DateTimeImmutable $hora, array $sdk,
         }
         $delta = $deltas ? min($deltas) : null;
         $pbx = trim((string)($row['pbx_call_id'] ?? ''));
-        $callId = trim((string)($row['call_id'] ?? ''));
-        $idsValidos = (bool)preg_match('/^[a-zA-Z0-9_-]{6,100}$/D', $pbx) &&
-            (bool)preg_match('/^[a-zA-Z0-9_-]{6,100}$/D', $callId);
+        $callId = ZadarmaPbxIdentifierHelper::callIdDeFila($row);
+        $idsValidos = ZadarmaPbxIdentifierHelper::pbxValido($pbx) &&
+            $callId !== '';
         $grabada = filter_var($row['is_recorded'] ?? false, FILTER_VALIDATE_BOOLEAN);
         $duracion = (int)($row['seconds'] ?? -100);
         $duracionValida = abs($duracion - 11) <= 2;
