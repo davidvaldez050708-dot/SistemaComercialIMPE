@@ -320,11 +320,6 @@
 
             inicializado = true;
 
-            const seccionGrabaciones = pane.querySelector('.linkage-call-recordings-section');
-            if (seccionGrabaciones) {
-                seccionGrabaciones.remove();
-            }
-
             // La pestaña Llamadas ya consulta estos datos. Reutilizar el
             // resultado evita abrir otra conexión MySQL para los audios.
             const historial = window.IMPE_HISTORIAL_LLAMADAS_EXPEDIENTE;
