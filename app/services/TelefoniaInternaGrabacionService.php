@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../helpers/ZadarmaPbxIdentifierHelper.php';
 /**
  * Relación uno-a-uno entre sesión WebRTC interna y grabación PBX real.
  * El SDK conserva su identificador original. Nunca se asocia audio por hora
@@ -161,11 +162,11 @@ final class TelefoniaInternaGrabacionService
         // comparar siempre cada candidata como instante real.
         $from = $start->setTimezone($mexico)->modify('-5 minutes')->format('Y-m-d H:i:s');
         $to = $start->modify('+5 minutes')->format('Y-m-d H:i:s');
-        $response = json_decode((string)$api->call(
+        $response = ZadarmaPbxIdentifierHelper::decodificarEstadisticas((string)$api->call(
             '/v1/statistics/pbx/',
             ['start' => $from, 'end' => $to, 'version' => 2, 'limit' => 1000],
             'get'
-        ), true);
+        ));
         if (!is_array($response) || ($response['status'] ?? '') !== 'success') {
             throw new RuntimeException('No fue posible consultar la estadística de Zadarma.');
         }
@@ -184,9 +185,9 @@ final class TelefoniaInternaGrabacionService
                 continue;
             }
             $pbx = trim((string)($row['pbx_call_id'] ?? ''));
-            $recordId = trim((string)($row['call_id'] ?? ''));
-            if (!preg_match('/^[a-zA-Z0-9_-]{6,100}$/D', $pbx) ||
-                !preg_match('/^[a-zA-Z0-9_-]{6,100}$/D', $recordId)) continue;
+            $recordId = ZadarmaPbxIdentifierHelper::callIdDeFila($row);
+            if (!ZadarmaPbxIdentifierHelper::pbxValido($pbx) ||
+                $recordId === '') continue;
 
             $time = trim((string)($row['callstart'] ?? ''));
             $delta = null;
@@ -248,10 +249,10 @@ final class TelefoniaInternaGrabacionService
         int $usuarioId, string $sessionId, string $pbxCallId,
         string $callId, string $origen, string $destino
     ): void {
-        foreach ([$sessionId, $pbxCallId, $callId] as $id) {
-            if (!preg_match('/^[a-zA-Z0-9_-]{6,100}$/D', $id)) {
-                throw new DomainException('El identificador de grabación no es válido.');
-            }
+        if (!preg_match('/^sdk-[a-z0-9-]{12,94}$/D', $sessionId) ||
+            !ZadarmaPbxIdentifierHelper::pbxValido($pbxCallId) ||
+            !ZadarmaPbxIdentifierHelper::callIdValido($callId)) {
+            throw new DomainException('El identificador de grabación no es válido.');
         }
         if (!preg_match('/^sdk-[a-z0-9-]{12,94}$/D', $sessionId) ||
             !preg_match('/^\d{3,6}$/D', $origen) ||
