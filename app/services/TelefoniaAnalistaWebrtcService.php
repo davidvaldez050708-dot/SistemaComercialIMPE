@@ -55,6 +55,31 @@ class TelefoniaAnalistaWebrtcService
         return $extension;
     }
 
+    /**
+     * Sólo se considera interna cuando el origen coincide exactamente con
+     * otra extensión ZADARMA activa de la centralita. La numeración la
+     * valida el servidor, no la clasificación sugerida por el navegador.
+     */
+    public function esNumeroInterno(string $numero, string $extension): bool
+    {
+        $numero = trim($numero);
+        if (!preg_match('/^[0-9]{3,6}$/D', $numero) ||
+            !preg_match('/^[0-9]{3,6}$/D', $extension) ||
+            $numero === $extension) {
+            return false;
+        }
+        $stmt = $this->db->prepare(
+            "SELECT 1 FROM telefonia_extensiones
+             WHERE extension = ? AND proveedor = 'ZADARMA' AND activo = 1
+             LIMIT 1"
+        );
+        $stmt->bind_param('s', $numero);
+        $stmt->execute();
+        $existe = (bool)$stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        return $existe;
+    }
+
     public function registrarEvento(int $usuarioId, array $datos): void
     {
         $id = trim((string)($datos['session_id'] ?? ''));
@@ -111,7 +136,7 @@ class TelefoniaAnalistaWebrtcService
         // Un UPDATE que no encontró la sesión NO significa que se guardó.
         // Confirmar en BD, también para reintentos idempotentes.
         $check = $this->db->prepare(
-            "SELECT estado, fecha_atendida, fecha_fin
+            "SELECT estado, fecha_atendida, fecha_fin, numero_origen, clasificacion
              FROM telefonia_analista_webrtc_sesiones
              WHERE usuario_id = ? AND session_id = ? AND extension = ?
              LIMIT 1"
@@ -132,6 +157,22 @@ class TelefoniaAnalistaWebrtcService
         };
         if (!$saved) {
             throw new RuntimeException('No se confirmó el guardado de la sesión WebRTC.');
+        }
+
+        // Registro automático: una llamada 100 -> 101 no debe quedar
+        // pendiente para asociarla a un expediente o contarla como contacto.
+        if ($evento === 'ended' && $row['clasificacion'] === 'PENDIENTE' &&
+            $this->esNumeroInterno((string)($row['numero_origen'] ?? ''), $extension)) {
+            $stmt = $this->db->prepare(
+                "UPDATE telefonia_analista_webrtc_sesiones
+                 SET clasificacion = 'INTERNA'
+                 WHERE usuario_id = ? AND session_id = ? AND extension = ?
+                   AND estado = 'ended' AND clasificacion = 'PENDIENTE'
+                   AND seguimiento_id IS NULL AND interaccion_id IS NULL"
+            );
+            $stmt->bind_param('iss', $usuarioId, $id, $extension);
+            $stmt->execute();
+            $stmt->close();
         }
     }
 
@@ -177,7 +218,9 @@ class TelefoniaAnalistaWebrtcService
         $stmt->execute();
         $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
-        return array_map(static function (array $row): array {
+        return array_map(function (array $row) use ($extension): array {
+            $interna = ($row['clasificacion'] ?? '') === 'INTERNA' ||
+                $this->esNumeroInterno((string)($row['numero_origen'] ?? ''), $extension);
             return [
                 'pbx_call_id' => (string)$row['session_id'],
                 'numero' => (string)$row['numero_origen'],
@@ -189,6 +232,7 @@ class TelefoniaAnalistaWebrtcService
                 'seguimiento_id' => (int)($row['seguimiento_id'] ?? 0),
                 'interaccion_id' => (int)($row['interaccion_id'] ?? 0),
                 'fuente' => 'SDK_WEBRTC',
+                'tipo_llamada' => $interna ? 'INTERNA' : 'ENTRANTE',
                 'estado_webrtc' => (string)$row['estado']
             ];
         }, $rows);
