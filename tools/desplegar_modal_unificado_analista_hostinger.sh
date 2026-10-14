@@ -12,7 +12,7 @@ SOURCE="${IMPE_UNIFIED_SOURCE:-$HOME/crm-preparacion}"
 LIVE="${IMPE_UNIFIED_PUBLIC:-$HOME/domains/fundacionrededumex.org/public_html}"
 BACKUPS="${IMPE_UNIFIED_BACKUPS:-$HOME/respaldos-crm}"
 BEFORE="9767043f693f4c1e292d28c7d88064ccb40d8dcc"
-AFTER="96d10f054a7fe580a16fb3a3a4f004ce10e6a23a"
+AFTER="785ef3ae9c4cd1341aa41699b40799beee5d73d6"
 FILES=(
   public/javascript/telefonia_analista_historial_pasivo.js
   app/views/seguimiento_vinculacion/llamadas_entrantes.php
