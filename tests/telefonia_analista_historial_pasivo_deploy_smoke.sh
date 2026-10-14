@@ -30,9 +30,9 @@ assert s.count(needle)==1
 s=s.replace(needle,'/* filtro nativo eliminado en producción para conservar recepción */ true &&')
 with open(p,'w') as f:f.write(s)
 PY
-for file in public/javascript/telefonia_shell.js \\
-  public/javascript/telefonia_host.js \\
-  public/javascript/telefonia_sdk_entrantes_observador.js \\
+for file in public/javascript/telefonia_shell.js \
+  public/javascript/telefonia_host.js \
+  public/javascript/telefonia_sdk_entrantes_observador.js \
   app/views/telefonia/host.php; do
   mkdir -p "$tmp/protected/$(dirname "$file")"
   cp -p "$IMPE_PASSIVE_PUBLIC/$file" "$tmp/protected/$file"
@@ -48,9 +48,9 @@ grep -Fq 'IMPE_ANALYST_WEBRTC_PASSIVE_JOURNAL' "$IMPE_PASSIVE_PUBLIC/app/views/t
 grep -Fq 'window.IMPE_ANALYST_WEBRTC_JOURNAL' "$IMPE_PASSIVE_PUBLIC/app/views/telefonia/shell.php"
 php -l "$IMPE_PASSIVE_PUBLIC/app/views/telefonia/shell.php" >/dev/null
 [[ "$(stat -c %a "$IMPE_PASSIVE_PUBLIC/$SIDE")" == "644" ]]
-for file in public/javascript/telefonia_shell.js \\
-  public/javascript/telefonia_host.js \\
-  public/javascript/telefonia_sdk_entrantes_observador.js \\
+for file in public/javascript/telefonia_shell.js \
+  public/javascript/telefonia_host.js \
+  public/javascript/telefonia_sdk_entrantes_observador.js \
   app/views/telefonia/host.php; do
   cmp -s "$tmp/protected/$file" "$IMPE_PASSIVE_PUBLIC/$file"
 done
