@@ -13,41 +13,61 @@
 
     const stateKey = 'impe:telephony:state:' + userId;
     const crm = root.document.getElementById('impeCrmFrame');
-    const overlay = root.document.createElement('section');
-    overlay.className = 'persistent-phone-panel impe-incoming-panel';
-    overlay.setAttribute('role', 'status');
-    overlay.setAttribute('aria-label', 'Resultado de llamada entrante');
-    overlay.setAttribute('data-analyst-webrtc-finished', '1');
-    overlay.style.cssText = [
-        'position:fixed', 'right:18px', 'bottom:18px',
-        'width:min(420px,calc(100vw - 28px))', 'max-height:90dvh',
-        'overflow-y:auto', 'z-index:1300', 'display:none'
-    ].join(';');
-    overlay.innerHTML =
-        '<header class="persistent-phone-header">' +
-          '<div><span>RECEPCIÓN TELEFÓNICA</span>' +
-            '<strong>Llamada finalizada</strong></div></header>' +
-        '<div class="persistent-phone-number" data-webrtc-number>—</div>' +
-        '<div class="persistent-phone-body">' +
-          '<div class="persistent-phone-status">' +
-            '<span data-webrtc-state>Llamada finalizada</span>' +
-            '<strong data-webrtc-duration>00:00</strong>' +
-          '</div>' +
-          '<p class="impe-incoming-notice" data-webrtc-notice></p>' +
-          '<div class="persistent-phone-actions">' +
-            '<button type="button" class="persistent-phone-action is-primary" ' +
-                'data-webrtc-result>Registrar resultado</button>' +
-            '<button type="button" class="persistent-phone-action" ' +
-                'data-webrtc-retry>Reintentar registro</button>' +
-            '<button type="button" class="persistent-phone-action" ' +
-                'data-webrtc-close>Cerrar</button>' +
-          '</div>' +
-        '</div>';
-    root.document.body.appendChild(overlay);
+    // MISMO modal usado por el shell para recibir y contestar llamadas.
+    // Nunca crear una segunda tarjeta ni mover el SDK/iframe de Zadarma.
+    const panel = root.document.querySelector('[data-incoming-panel]');
+    const actions = panel?.querySelector('.persistent-phone-actions');
+    if (!panel || !actions) {
+        root.console.warn('[Llamadas recibidas] No se encontró el modal telefónico.');
+        return;
+    }
 
-    const el = selector => overlay.querySelector(selector);
-    const resultBtn = el('[data-webrtc-result]');
-    const retryBtn = el('[data-webrtc-retry]');
+    const el = selector => panel.querySelector(selector);
+    const addAction = function (selector, label, icon, primary) {
+        const present = el(selector);
+        if (present) return present;
+        const button = root.document.createElement('button');
+        button.type = 'button';
+        button.className = 'persistent-phone-action' + (primary ? ' is-primary' : '');
+        button.setAttribute(selector.slice(1, -1), '');
+        button.hidden = true;
+        // Los textos e iconos son literales del CRM, nunca datos del llamante.
+        button.innerHTML = '<i class="bi bi-' + icon +
+            '" aria-hidden="true"></i><span>' + label + '</span>';
+        actions.appendChild(button);
+        return button;
+    };
+    // En algunos respaldos el modal sólo tiene «Cerrar»: añadir las dos
+    // acciones con las mismas clases de la UI, sin alterar la recepción.
+    const resultBtn = addAction('[data-incoming-register-finished]',
+        'Registrar resultado', 'journal-check', true);
+    const retryBtn = addAction('[data-incoming-retry-save]',
+        'Reintentar registro', 'arrow-clockwise', false);
+    const closeBtn = el('[data-incoming-close-finished]');
+    const status = el('[data-incoming-state]');
+    const title = el('[data-incoming-title]');
+    const eyebrow = el('[data-incoming-eyebrow]');
+    const number = el('[data-incoming-number]');
+    const clock = el('[data-incoming-timer]');
+    const compactClock = el('[data-incoming-compact-timer]');
+    const notice = el('[data-incoming-notice]');
+    const compactActions = el('.persistent-phone-compact-actions');
+    if (!closeBtn || !status || !title || !number || !clock || !notice) {
+        root.console.warn('[Llamadas recibidas] Modal telefónico incompleto.');
+        return;
+    }
+
+    // El shell sigue montado y dibuja cada tres segundos. Al terminar una
+    // llamada interna vuelve a marcar hidden=true. Únicamente en estado
+    // «finalizada» restauramos la visibilidad del MISMO modal.
+    const keepFinishedVisible = function () {
+        if (!finished) return;
+        if (panel.hidden) panel.hidden = false;
+    };
+    if (typeof root.MutationObserver === 'function') {
+        const observer = new root.MutationObserver(keepFinishedVisible);
+        observer.observe(panel, {attributes: true, attributeFilter: ['hidden']});
+    }
     const format = sec => {
         const n = Math.max(0, Math.floor(Number(sec) || 0));
         return String(Math.floor(n / 60)).padStart(2, '0') + ':' +
@@ -98,20 +118,50 @@
         return chain;
     };
     const draw = function () {
-        overlay.style.display = finished ? 'block' : 'none';
-        if (!finished) return;
-        el('[data-webrtc-number]').textContent = finished.number || 'Número desconocido';
-        el('[data-webrtc-duration]').textContent = format(finished.duration);
-        el('[data-webrtc-state]').textContent = finished.answered
-            ? 'Llamada atendida · sesión WebRTC' : 'Llamada no contestada · sesión WebRTC';
-        el('[data-webrtc-notice]').textContent =
-            finished.saved === true
-                ? 'Guardada en Llamadas recibidas (sin confirmación PBX).'
-                : finished.saved === false
-                ? 'No se pudo guardar la llamada. Reintenta el registro.'
-                : 'Guardando en Llamadas recibidas…';
+        if (!finished) {
+            panel.removeAttribute('data-analyst-webrtc-finished');
+            // Desde aquí ya no controlamos el modal: el shell continúa con
+            // la siguiente llamada y recupera sus propios controles.
+            resultBtn.hidden = true;
+            retryBtn.hidden = true;
+            return;
+        }
+        panel.setAttribute('data-analyst-webrtc-finished', '1');
+        panel.classList.remove('is-compact');
+        keepFinishedVisible();
+        if (compactActions) compactActions.hidden = true;
+        for (const selector of [
+            '[data-incoming-answer]', '[data-incoming-decline]',
+            '[data-incoming-mute]', '[data-incoming-hangup]',
+            '[data-incoming-answer-compact]', '[data-incoming-decline-compact]',
+            '[data-incoming-mute-compact]', '[data-incoming-hangup-compact]'
+        ]) {
+            const button = el(selector);
+            if (button) button.hidden = true;
+        }
+        title.textContent = 'Llamada finalizada';
+        if (eyebrow) eyebrow.textContent = 'RECEPCIÓN TELEFÓNICA';
+        number.textContent = finished.number || 'Número desconocido';
+        const duration = format(finished.duration);
+        clock.textContent = duration;
+        if (compactClock) compactClock.textContent = duration;
+        status.textContent = finished.answered
+            ? 'Llamada atendida · sesión WebRTC'
+            : 'Llamada no contestada · sesión WebRTC';
+        notice.hidden = false;
+        notice.textContent = finished.saved === true
+            ? 'Guardada en Llamadas recibidas · sin confirmación PBX.'
+            : finished.saved === false
+            ? 'No se pudo guardar. Utiliza Reintentar registro.'
+            : 'Guardando en Llamadas recibidas…';
+        notice.style.color = finished.saved === true ? '#16735a'
+            : finished.saved === false ? '#b42318' : '#667791';
         resultBtn.hidden = !finished.answered || finished.saved !== true;
         retryBtn.hidden = finished.saved !== false;
+        closeBtn.hidden = false;
+        // Un único botón Cerrar cuando no hubo respuesta; dos cuando sí.
+        closeBtn.classList.toggle('is-primary', !finished.answered);
+        keepFinishedVisible();
     };
     const saveFinished = function (call) {
         if (!finished || finished.id !== call.id) return;
@@ -158,6 +208,9 @@
                 };
                 finished = null;
                 draw();
+                if (compactActions) compactActions.hidden = false;
+                notice.hidden = true;
+                closeBtn.hidden = true;
                 void postEvent('ringing', active);
             }
             if (state.phase === 'in-progress' && !active.answeredAt) {
@@ -183,9 +236,11 @@
     root.setInterval(consume, 500);
     consume();
 
-    el('[data-webrtc-close]').addEventListener('click', () => {
+    closeBtn.addEventListener('click', () => {
+        if (!finished) return;
         finished = null;
         draw();
+        panel.hidden = true;
     });
     retryBtn.addEventListener('click', () => {
         if (finished?.saved === false) saveFinished(finished);
@@ -199,6 +254,7 @@
         crm.src = url.toString();
         finished = null;
         draw();
+        panel.hidden = true;
     });
 
     root.IMPE_ANALYST_WEBRTC_JOURNAL_DEBUG = Object.freeze({
