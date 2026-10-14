@@ -920,10 +920,6 @@ $urlCambiarOpcionMes = $tipoConvocatoria === 'sindicatos'
                     name="subtipo"
                     value="<?= $texto($subtipoConvocatoria) ?>">
 
-                <span aria-hidden="true">
-                    <i class="bi bi-calendar3"></i>
-                </span>
-
                 <select
                     name="anio"
                     aria-label="Seleccionar año"
