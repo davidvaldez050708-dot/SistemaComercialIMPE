@@ -36,8 +36,8 @@ html {
 
 .formulario-publico-hero {
     position: relative;
-    min-height: 160px;
-    padding: 30px 64px;
+    min-height: 190px;
+    padding: 32px 58px;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -88,15 +88,18 @@ html {
 .formulario-publico-hero-copy {
     position: relative;
     z-index: 2;
+    flex: 1 1 auto;
+    min-width: 0;
 }
 
 .formulario-publico-hero h1 {
     margin: 0 0 7px;
     color: #fff;
-    font-size: clamp(28px, 4vw, 46px);
+    font-size: clamp(32px, 3.7vw, 46px);
     font-weight: 800;
     line-height: 1.08;
     letter-spacing: -.7px;
+    white-space: nowrap;
 }
 
 .formulario-publico-hero p {
@@ -141,13 +144,13 @@ html {
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    gap: 14px;
+    gap: 18px;
 }
 
 .formulario-publico-hero-logo {
     flex: 0 0 auto;
-    width: 205px;
-    min-height: 102px;
+    width: 225px;
+    min-height: 110px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -156,8 +159,8 @@ html {
 .formulario-publico-hero-logo img {
     display: block;
     width: 100%;
-    max-width: 205px;
-    max-height: 122px;
+    max-width: 225px;
+    max-height: 132px;
     object-fit: contain;
     object-position: center;
     filter: drop-shadow(0 4px 10px rgba(0, 0, 0, .08));
@@ -165,9 +168,9 @@ html {
 
 .formulario-publico-hero-logo-sep {
     flex: 0 0 auto;
-    width: 185px;
-    min-height: 102px;
-    padding-left: 16px;
+    width: 205px;
+    min-height: 110px;
+    padding-left: 18px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -177,8 +180,8 @@ html {
 .formulario-publico-hero-logo-sep img {
     display: block;
     width: 100%;
-    max-width: 185px;
-    max-height: 118px;
+    max-width: 205px;
+    max-height: 132px;
     object-fit: contain;
     object-position: center;
     filter: drop-shadow(0 4px 10px rgba(0, 0, 0, .08));
@@ -449,6 +452,41 @@ html {
     line-height: 1.6;
 }
 
+@media (max-width: 1050px) and (min-width: 761px) {
+    .formulario-publico-hero {
+        padding: 30px 38px;
+        gap: 18px;
+    }
+
+    .formulario-publico-hero h1 {
+        font-size: clamp(30px, 3.5vw, 40px);
+    }
+
+    .formulario-publico-hero .formulario-publico-hero-slogan {
+        max-width: 500px;
+        font-size: 14px;
+    }
+
+    .formulario-publico-hero-logo {
+        width: 185px;
+    }
+
+    .formulario-publico-hero-logo img {
+        max-width: 185px;
+        max-height: 112px;
+    }
+
+    .formulario-publico-hero-logo-sep {
+        width: 165px;
+        padding-left: 12px;
+    }
+
+    .formulario-publico-hero-logo-sep img {
+        max-width: 165px;
+        max-height: 110px;
+    }
+}
+
 @media (max-width: 760px) {
     .formulario-publico-shell {
         width: min(100% - 20px, 980px);
@@ -459,6 +497,10 @@ html {
         min-height: 138px;
         padding: 24px 26px;
         border-radius: 14px;
+    }
+
+    .formulario-publico-hero h1 {
+        white-space: normal;
     }
 
     .formulario-publico-hero::before {
