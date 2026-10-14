@@ -9,6 +9,7 @@ CONTROLADOR="app/controllers/SeguimientoVinculacionController.php"
 REC="app/services/ZadarmaRecordingService.php"
 VISTA="app/views/seguimiento_vinculacion/llamadas_entrantes.php"
 JS="public/javascript/telefonia_analista_historial_pasivo.js"
+UI_JS="public/javascript/seguimiento_entrantes_analista.js"
 CSS="public/css/seguimiento_entrantes_analista.css"
 SERVICIO="app/services/TelefoniaInternaGrabacionService.php"
 ENDPOINT="prueba_telefonia/api/grabacion_interna_analista.php"
@@ -18,6 +19,7 @@ for file in "$SDK" "$ENTRANTES" "$CONTROLADOR" "$REC" "$VISTA" "$SERVICIO" "$END
   php -l "$file" >/dev/null
 done
 node --check "$JS"
+node --check "$UI_JS"
 bash -n tools/desplegar_llamadas_internas_analista_hostinger.sh
 
 grep -Fq "esNumeroInterno" "$SDK"
@@ -32,6 +34,11 @@ grep -Fq "fecha_inicio BETWEEN ? AND ?" "$REPARACION"
 grep -Fq -- "--confirmar-prueba-interna" "$REPARACION"
 grep -Fq "original_json LONGTEXT" "$REPARACION"
 grep -Fq "affected_rows !== 1" "$REPARACION"
+grep -Fq "sincronizar(" "$SERVICIO"
+grep -Fq "sincronizarGrabacionInterna" "$CONTROLADOR"
+grep -Fq "data-incoming-sync-audio" "$VISTA"
+grep -Fq "data-audio-sync-url" "$VISTA"
+grep -Fq "audioSyncUrl" "$UI_JS"
 grep -Fq "isInternal" "$JS"
 grep -Fq "resultBtn.hidden = Boolean(finished.isInternal)" "$JS"
 
@@ -40,7 +47,7 @@ trap 'rm -rf "$TMP"' EXIT
 SITE="$TMP/site"
 mkdir -p "$SITE" "$TMP/backups"
 
-FILES=("$SDK" "$ENTRANTES" "$CONTROLADOR" "$REC" "$VISTA" "$JS" "$CSS")
+FILES=("$SDK" "$ENTRANTES" "$CONTROLADOR" "$REC" "$VISTA" "$JS" "$CSS" "$UI_JS")
 BASES=(
   ee4cc0b3ce23b22e961e7baa82f8ce68315fcef0
   ce7d291e95cc14e13bca40e40d488d98ed2dc6ed
@@ -49,8 +56,9 @@ BASES=(
   a1c80214ad954540940cba6a3704fc1cfae17d58
   69d55b1920884814e30a0ae34ecd90243ae99581
   4e41519df08c9265b042fdc39b239bb482391ebe
+  6faf88e90813775cec3ae024e1e6dc585f2fc233
 )
-TARGET=f6bd88a357366cb1c4bd263560ce644486b0f1a8
+TARGET=053ee9459df1e234683b730e37f5fcf3cc9292f8
 for i in "${!FILES[@]}"; do
   file="${FILES[$i]}"
   mkdir -p "$SITE/$(dirname "$file")"
