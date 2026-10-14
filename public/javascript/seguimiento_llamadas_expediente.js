@@ -504,7 +504,11 @@
 
                     if (llamada.contacto_efectivo === true) {
                         resultados.appendChild(
-                            crearBadgeResultado('Contacto efectivo', 'is-contact')
+                            crearBadgeResultado(
+                                llamada.grabacion_sin_vincular === true
+                                    ? 'Contacto reportado' : 'Contacto efectivo',
+                                'is-contact'
+                            )
                         );
                     } else if (
                         ['NO_CONTESTO', 'SIN_RESPUESTA'].includes(
@@ -564,18 +568,24 @@
                     derecha.appendChild(duracion);
 
                     const estadoAudio = document.createElement('span');
+                    const grabacionSinVincular = llamada.grabacion_sin_vincular === true;
                     estadoAudio.className = llamada.tiene_grabacion
                         ? 'linkage-call-audio-state is-available'
-                        : (llamada.grabacion_procesando
+                        : ((llamada.grabacion_procesando || grabacionSinVincular)
                             ? 'linkage-call-audio-state is-processing'
                             : 'linkage-call-audio-state');
                     estadoAudio.innerHTML = llamada.tiene_grabacion
                         ? '<i class="bi bi-record-circle"></i><span>Grabación disponible</span>'
-                        : (llamada.grabacion_procesando
-                            ? '<i class="bi bi-hourglass-split"></i><span>Procesando grabación</span>'
-                            : (llamada.excluir_grabacion
-                                ? '<i class="bi bi-mic-mute"></i><span>Solo historial</span>'
-                                : '<i class="bi bi-mic-mute"></i><span>Sin grabación</span>'));
+                        : (grabacionSinVincular
+                            ? '<i class="bi bi-link-45deg"></i><span>Grabación no vinculada</span>'
+                            : (llamada.grabacion_procesando
+                                ? '<i class="bi bi-hourglass-split"></i><span>Procesando grabación</span>'
+                                : (llamada.excluir_grabacion
+                                    ? '<i class="bi bi-mic-mute"></i><span>Solo historial</span>'
+                                    : '<i class="bi bi-mic-mute"></i><span>Sin grabación</span>')));
+                    if (grabacionSinVincular) {
+                        estadoAudio.title = 'No se confirmó un archivo de audio asociado a esta llamada en la centralita.';
+                    }
                     derecha.appendChild(estadoAudio);
 
                     const usuario = String(llamada.usuario || '').trim();
