@@ -3,6 +3,11 @@ session_start();
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 
+// Nunca entregar una respuesta vacía por excepciones operativas de Hostinger.
+// Las causas técnicas se registran sólo en el log del servidor.
+ob_start();
+try {
+
 $root = dirname(__DIR__, 2);
 require_once $root . '/app/helpers/PermissionHelper.php';
 require_once $root . '/app/models/RolModel.php';
@@ -396,3 +401,17 @@ echo json_encode([
     'total' => count($llamadas),
     'llamadas' => $llamadas
 ], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+
+} catch (Throwable $error) {
+    $referencia = bin2hex(random_bytes(4));
+    error_log('[llamadas_seguimiento:' . $referencia . '] ' . $error->getMessage());
+    if (ob_get_level() > 0) {
+        ob_clean();
+    }
+    http_response_code(500);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode([
+        'ok' => false,
+        'mensaje' => 'No fue posible consultar el historial de llamadas. Referencia: ' . $referencia,
+    ], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+}
