@@ -39,6 +39,7 @@ if [[ -z "$DST" || ! -f "$DST/index.php" ]]; then
 fi
 
 FILES=(
+    "index.php"
     "app/models/CrearConvocatoriaModel.php"
     "app/controllers/CrearConvocatoriaController.php"
     "app/views/convocatorias/crear_desde_convenio.php"
@@ -107,6 +108,7 @@ for file in "${FILES[@]}"; do
     echo "PUBLICADO $file"
 done
 
+grep -Fq "case 'crearConvocatoria':" "$DST/index.php"
 grep -Fq "Crear convocatoria" "$DST/app/views/layout/sidebar.php"
 grep -Fq "crearConvocatoria" "$DST/app/views/layout/sidebar.php"
 grep -Fq "convenio_recibido_at" "$DST/app/models/CrearConvocatoriaModel.php"
