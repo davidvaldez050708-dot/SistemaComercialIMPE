@@ -92,11 +92,15 @@ class SeguimientoVinculacionController
 
         require_once __DIR__ . '/../services/TelefoniaAnalistaWebrtcService.php';
         try {
-            (new TelefoniaAnalistaWebrtcService())->registrarEvento(
-                (int)$_SESSION['usuario_id'],
-                $_POST
-            );
-            $this->responderJson(['ok' => true]);
+            $servicioWebrtc = new TelefoniaAnalistaWebrtcService();
+            $servicioWebrtc->registrarEvento((int)$_SESSION['usuario_id'], $_POST);
+            // El navegador recibe sólo el estado calculado por el servidor.
+            $interna = (string)($_POST['evento'] ?? '') === 'ended' &&
+                $servicioWebrtc->esSesionInterna(
+                    (int)$_SESSION['usuario_id'],
+                    trim((string)($_POST['session_id'] ?? ''))
+                );
+            $this->responderJson(['ok' => true, 'interna' => (bool)$interna]);
         } catch (InvalidArgumentException | DomainException $e) {
             $this->responderJson(['ok' => false, 'mensaje' => $e->getMessage()], 422);
         } catch (Throwable $e) {
