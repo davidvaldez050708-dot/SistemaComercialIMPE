@@ -22,6 +22,26 @@
         return;
     }
 
+    // Ajustes exclusivos del estado final; colores, proporciones y controles
+    // normales siguen siendo los del CSS original del teléfono.
+    const finishedCss = root.document.createElement('style');
+    finishedCss.textContent = [
+        '.impe-incoming-panel[data-analyst-webrtc-finished="1"] ' +
+          '[data-incoming-close-finished] {',
+        '  grid-column:auto!important;justify-self:stretch!important;',
+        '  margin:0!important;width:100%!important;',
+        '}',
+        '.impe-incoming-panel[data-analyst-webrtc-finished="1"] ' +
+          '.persistent-phone-compact-actions,',
+        '.impe-incoming-panel[data-analyst-webrtc-finished="1"] ' +
+          '[data-incoming-minimize] {display:none!important;}',
+        '.impe-incoming-panel[data-analyst-webrtc-finished="1"] ' +
+          '.persistent-phone-live i {background:#8492a8;box-shadow:none;}',
+        '.impe-incoming-panel[data-analyst-webrtc-finished="1"] ' +
+          '[data-incoming-notice] {line-height:1.5;font-weight:700;}'
+    ].join('\\n');
+    root.document.head.appendChild(finishedCss);
+
     const el = selector => panel.querySelector(selector);
     const addAction = function (selector, label, icon, primary) {
         const present = el(selector);
@@ -146,8 +166,7 @@
         clock.textContent = duration;
         if (compactClock) compactClock.textContent = duration;
         status.textContent = finished.answered
-            ? 'Llamada atendida · sesión WebRTC'
-            : 'Llamada no contestada · sesión WebRTC';
+            ? 'Llamada atendida' : 'Llamada sin respuesta';
         notice.hidden = false;
         notice.textContent = finished.saved === true
             ? 'Guardada en Llamadas recibidas · sin confirmación PBX.'
@@ -161,6 +180,7 @@
         closeBtn.hidden = false;
         // Un único botón Cerrar cuando no hubo respuesta; dos cuando sí.
         closeBtn.classList.toggle('is-primary', !finished.answered);
+        closeBtn.classList.toggle('is-secondary', finished.answered);
         keepFinishedVisible();
     };
     const saveFinished = function (call) {
