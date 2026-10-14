@@ -268,6 +268,22 @@ assert.equal(optedOut.elements['[data-shell-host-region]'].children.length,0,
 optedOut.window.IMPE_TELEPHONY_SHELL.ensureHost();
 assert.equal(optedOut.elements['[data-shell-host-region]'].children.length,1,
     'manual activation still works');
+storage.clear();
+storage.set('impe:telephony:auto-reception:8','0');
+const analystForced = boot({analyst:true});
+assert.equal(analystForced.elements['[data-shell-host-region]'].children.length,1,
+    'Analista auto conecta WebRTC en login aunque pref anterior diga 0');
+// No se roba el SIP de otra pestaña. Se espera hasta liberar el lease.
+storage.clear();
+storage.set('impe:telephony:shell-owner:8',
+    JSON.stringify({id:'otra-pestana',time:Date.now()}));
+const delayedAnalyst = boot({analyst:true});
+assert.equal(delayedAnalyst.elements['[data-shell-host-region]'].children.length,0,
+    'No se debe duplicar una extensión retenida por otro shell');
+storage.delete('impe:telephony:shell-owner:8');
+delayedAnalyst.intervals[delayedAnalyst.intervals.length - 1]();
+assert.equal(delayedAnalyst.elements['[data-shell-host-region]'].children.length,1,
+    'El Analista vuelve a conectar automáticamente tras liberar el lease');
 // Dos entrantes consecutivas: el timbrado nunca hereda el contador previo
 // y los controles responden de inmediato sin mensajes de éxito innecesarios.
 storage.clear();
