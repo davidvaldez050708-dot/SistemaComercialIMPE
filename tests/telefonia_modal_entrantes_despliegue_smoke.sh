@@ -13,13 +13,25 @@ touch "$SITE/index.php"
 # requiere el despliegue selectivo propio, no este instalador legado.
 git clone -q --no-hardlinks "$ROOT" "$TMP/crm-preparacion"
 git -C "$TMP/crm-preparacion" checkout -q --detach 6bd2b5478447
+# El instalador antiguo validaba la cadena sin finishedSdk, pero el
+# historial de octubre ya incluye el estado de llamada terminada.
+# Admitirlo EXCLUSIVAMENTE en esta copia temporal del ensayo histórico.
+python3 - "$TMP/crm-preparacion/tools/desplegar_modal_entrantes_hostinger.sh" <<'PY'
+import pathlib,sys
+p=pathlib.Path(sys.argv[1])
+s=p.read_text()
+old='const customVisible = (incoming || shownOutgoing)'
+new='const customVisible = (incoming || finishedSdk || shownOutgoing)'
+assert old in s
+p.write_text(s.replace(old,new))
+PY
 FILES="public/javascript/telefonia_host.js public/javascript/telefonia_shell.js public/css/telefonia_shell.css app/views/telefonia/host.php app/views/telefonia/shell.php"
 for p in $FILES; do
   git -C "$ROOT" show "00e79124af6b77459e79fd8f47437ac2c2eaf1dc:$p" > "$SITE/$p"
 done
 echo '/* ESTILO-LOCAL-PRESERVAR */' >> "$SITE/public/css/telefonia_shell.css"
 echo '// NOTA-LOCAL-PRESERVAR' >> "$SITE/public/javascript/telefonia_host.js"
-deploy() { HOME="$TMP" bash -x "$TMP/crm-preparacion/tools/desplegar_modal_entrantes_hostinger.sh" "$1"; }
+deploy() { HOME="$TMP" bash "$TMP/crm-preparacion/tools/desplegar_modal_entrantes_hostinger.sh" "$1"; }
 BEFORE="$(sha256sum "$SITE/public/javascript/telefonia_host.js")"
 deploy --check
 [[ "$BEFORE" == "$(sha256sum "$SITE/public/javascript/telefonia_host.js")" ]]
