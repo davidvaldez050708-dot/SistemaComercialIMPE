@@ -8,14 +8,18 @@ trap 'rm -rf "$TMP"' EXIT
 SITE="$TMP/domains/fundacionrededumex.org/public_html"
 mkdir -p "$SITE/public/javascript" "$SITE/public/css" "$SITE/app/views/telefonia"
 touch "$SITE/index.php"
-ln -s "$ROOT" "$TMP/crm-preparacion"
+# Las fusiones históricas de Marketing se ensayan contra el publicador
+# vigente al documentarlas. El shell actual incorpora otra navegación y
+# requiere el despliegue selectivo propio, no este instalador legado.
+git clone -q --no-hardlinks "$ROOT" "$TMP/crm-preparacion"
+git -C "$TMP/crm-preparacion" checkout -q --detach 6bd2b5478447
 FILES="public/javascript/telefonia_host.js public/javascript/telefonia_shell.js public/css/telefonia_shell.css app/views/telefonia/host.php app/views/telefonia/shell.php"
 for p in $FILES; do
   git -C "$ROOT" show "00e79124af6b77459e79fd8f47437ac2c2eaf1dc:$p" > "$SITE/$p"
 done
 echo '/* ESTILO-LOCAL-PRESERVAR */' >> "$SITE/public/css/telefonia_shell.css"
 echo '// NOTA-LOCAL-PRESERVAR' >> "$SITE/public/javascript/telefonia_host.js"
-deploy() { HOME="$TMP" bash "$ROOT/tools/desplegar_modal_entrantes_hostinger.sh" "$1"; }
+deploy() { HOME="$TMP" bash "$TMP/crm-preparacion/tools/desplegar_modal_entrantes_hostinger.sh" "$1"; }
 BEFORE="$(sha256sum "$SITE/public/javascript/telefonia_host.js")"
 deploy --check
 [[ "$BEFORE" == "$(sha256sum "$SITE/public/javascript/telefonia_host.js")" ]]
@@ -81,7 +85,7 @@ for rev in \
   [[ "$BEFORE" == "$(sha256sum "$SITE/public/javascript/telefonia_entrantes_bridge.js")" ]]
   deploy --apply
   cmp -s "$SITE/public/javascript/telefonia_entrantes_bridge.js" \
-    "$ROOT/public/javascript/telefonia_entrantes_bridge.js"
+    "$TMP/crm-preparacion/public/javascript/telefonia_entrantes_bridge.js"
 done
 # Una personalización REAL desconocida no debe ser reemplazada ni ignorada.
 printf '%s\n' '/* PUENTE PRIVADO MODIFICADO SIN HISTORIAL */' \
@@ -106,14 +110,14 @@ for rev in \
     > "$SITE/public/javascript/telefonia_shell.js"
   # El puente de la prueba anterior era deliberadamente desconocido;
   # restaurarlo al contenido vigente para aislar el test de shell.
-  cp "$ROOT/public/javascript/telefonia_entrantes_bridge.js" \
+  cp "$TMP/crm-preparacion/public/javascript/telefonia_entrantes_bridge.js" \
     "$SITE/public/javascript/telefonia_entrantes_bridge.js"
   BEFORE="$(sha256sum "$SITE/public/javascript/telefonia_shell.js")"
   deploy --check
   [[ "$BEFORE" == "$(sha256sum "$SITE/public/javascript/telefonia_shell.js")" ]]
   deploy --apply
   cmp -s "$SITE/public/javascript/telefonia_shell.js" \
-    "$ROOT/public/javascript/telefonia_shell.js"
+    "$TMP/crm-preparacion/public/javascript/telefonia_shell.js"
 done
 # Caso REAL reportado por Hostinger: shell 8047ff5 menos la única
 # línea del aviso elevado. Debe tener exactamente el SHA diagnosticado.
