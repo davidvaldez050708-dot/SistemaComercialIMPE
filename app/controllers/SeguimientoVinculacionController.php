@@ -1629,6 +1629,12 @@ class SeguimientoVinculacionController
         }
 
         $interacciones = $modelo->obtenerInteraccionesSeguimiento($seguimientoId);
+        require_once __DIR__ . '/../helpers/TelefoniaFechaHoraHelper.php';
+        // Fechas SDK almacenadas en UTC; las otras interacciones ya son locales.
+        $interacciones = array_map(
+            [TelefoniaFechaHoraHelper::class, 'normalizarInteraccion'],
+            $interacciones
+        );
         $presentadorActividad = new SeguimientoActividadPresentacionService();
         $interaccionesPresentadas = array_map(
             function ($interaccion) use ($presentadorActividad) {
