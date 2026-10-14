@@ -357,13 +357,6 @@ $urlEnlaceRegistro = trim((string)($urlEnlaceRegistro ?? ''));
                                         <i class="bi bi-arrow-counterclockwise"></i>
                                         Restablecer
                                     </button>
-                                    <button
-                                        type="button"
-                                        class="btn btn-system-save"
-                                        data-apply-form-qr>
-                                        <i class="bi bi-check2"></i>
-                                        Aplicar diseño
-                                    </button>
                                 </div>
                             </div>
                         </div>
