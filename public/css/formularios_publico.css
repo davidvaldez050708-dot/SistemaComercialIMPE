@@ -928,28 +928,6 @@ html {
 
 
 
-.formulario-publico-inscripcion .formulario-publico-thanks-logo {
-    width: min(430px, 92%);
-    margin-bottom: 24px;
-}
-
-.formulario-publico-inscripcion .formulario-publico-thanks-logo img {
-    width: 100%;
-    max-height: 122px;
-    object-fit: contain;
-}
-
-@media (max-width: 600px) {
-    .formulario-publico-inscripcion .formulario-publico-thanks-logo {
-        width: min(360px, 94%);
-        margin-bottom: 20px;
-    }
-
-    .formulario-publico-inscripcion .formulario-publico-thanks-logo img {
-        max-height: 104px;
-    }
-}
-
 
 /* ======================================================================
    FORMULARIOS PÚBLICOS · TELÉFONO RECOMENDADO
@@ -1308,5 +1286,108 @@ html {
     .formulario-publico-section-heading {
         min-width: 0 !important;
         max-width: 100% !important;
+    }
+}
+
+
+/* ======================================================================
+   AGRADECIMIENTO · ALINEACIÓN FINAL DE LOGOS
+   ====================================================================== */
+.formulario-publico-thanks-logos {
+    width: min(760px, 96%);
+    margin: 0 auto 10px;
+    display: grid;
+    grid-template-columns: 340px 340px;
+    align-items: center;
+    justify-content: center;
+    column-gap: 36px;
+}
+
+.formulario-publico-thanks-logo,
+.formulario-publico-thanks-logo-sep {
+    min-height: 150px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.formulario-publico-thanks-logo {
+    width: 340px;
+    max-width: 340px;
+    margin: 0;
+}
+
+.formulario-publico-thanks-logo img {
+    width: 100%;
+    max-width: 340px;
+    max-height: 138px;
+    object-fit: contain;
+}
+
+.formulario-publico-thanks-logo-sep {
+    width: 340px;
+    max-width: 340px;
+    padding-left: 26px;
+    border-left: 1px solid #d7dee8;
+}
+
+.formulario-publico-thanks-logo-sep img {
+    width: 100%;
+    max-width: 320px;
+    max-height: 165px;
+    object-fit: contain;
+}
+
+.formulario-publico-thanks-icon {
+    margin: 0 auto 14px;
+}
+
+.formulario-publico-thanks-card h1 {
+    margin: 0 0 10px;
+}
+
+.formulario-publico-thanks-card p {
+    margin: 0 auto;
+}
+
+@media (max-width: 600px) {
+    .formulario-publico-thanks-logos {
+        width: min(430px, 98%);
+        grid-template-columns: 1fr 1fr;
+        column-gap: 14px;
+        margin-bottom: 8px;
+    }
+
+    .formulario-publico-thanks-logo,
+    .formulario-publico-thanks-logo-sep {
+        width: 100%;
+        min-height: 96px;
+    }
+
+    .formulario-publico-thanks-logo {
+        max-width: 210px;
+    }
+
+    .formulario-publico-thanks-logo img {
+        max-width: 210px;
+        max-height: 98px;
+    }
+
+    .formulario-publico-thanks-logo-sep {
+        max-width: 220px;
+        padding-left: 12px;
+    }
+
+    .formulario-publico-thanks-logo-sep img {
+        max-width: 220px;
+        max-height: 118px;
+    }
+
+    .formulario-publico-thanks-icon {
+        margin: 0 auto 12px;
+    }
+
+    .formulario-publico-thanks-card h1 {
+        margin-bottom: 8px;
     }
 }
