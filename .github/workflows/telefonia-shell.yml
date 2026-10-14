@@ -13,6 +13,7 @@ on:
       - "tools/desplegar_estabilidad_shell_analista_hostinger.sh"
       - "tests/telefonia_shell_navegacion_smoke.js"
       - "tests/telefonia_shell_estabilidad_hostinger_smoke.sh"
+      - "tests/telefonia_shell_diario_hostinger_compat_smoke.sh"
       - "public/javascript/telefonia_persistente.js"
       - "public/javascript/telefonia_host.js"
       - "public/javascript/telefonia_entrantes_bridge.js"
@@ -94,6 +95,8 @@ jobs:
           bash tests/telefonia_shell_upgrade_smoke.sh
           bash -n tools/desplegar_estabilidad_shell_analista_hostinger.sh
           bash tests/telefonia_shell_estabilidad_hostinger_smoke.sh
+          bash -n tests/telefonia_shell_diario_hostinger_compat_smoke.sh
+          bash tests/telefonia_shell_diario_hostinger_compat_smoke.sh
           bash -n tools/desplegar_telefonia_entrantes_hostinger.sh
           bash -n tests/telefonia_entrantes_despliegue_smoke.sh
           bash tests/telefonia_entrantes_despliegue_smoke.sh
