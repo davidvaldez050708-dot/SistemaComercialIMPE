@@ -404,6 +404,24 @@ echo json_encode([
 
 } catch (Throwable $error) {
     $referencia = bin2hex(random_bytes(4));
+    // El error_log de PHP-FPM puede estar fuera del acceso SSH en Hostinger.
+    // Conservar una bitácora mínima PRIVADA, fuera de public_html, para
+    // correlacionar la referencia mostrada al analista sin exponer el error.
+    $diagnostico = sprintf(
+        "[%s] [llamadas_seguimiento:%s] %s en %s:%d - %s\n",
+        date('Y-m-d H:i:s'),
+        $referencia,
+        get_class($error),
+        basename($error->getFile()),
+        $error->getLine(),
+        mb_substr(str_replace(["\r", "\n"], ' ', $error->getMessage()), 0, 700)
+    );
+    $archivoPrivado = dirname($root) . '/crm-diagnosticos/llamadas_seguimiento.log';
+    if (is_dir(dirname($archivoPrivado)) && !is_link(dirname($archivoPrivado))) {
+        if (@file_put_contents($archivoPrivado, $diagnostico, FILE_APPEND | LOCK_EX) !== false) {
+            @chmod($archivoPrivado, 0600);
+        }
+    }
     error_log('[llamadas_seguimiento:' . $referencia . '] ' . $error->getMessage());
     if (ob_get_level() > 0) {
         ob_clean();
