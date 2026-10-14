@@ -29,6 +29,7 @@ on:
       - "tools/diagnosticar_grabacion_webrtc_analista.php"
       - "tools/desplegar_hora_mexico_webrtc_hostinger.sh"
       - "tests/seguimiento_fecha_webrtc_hostinger_smoke.sh"
+      - "tools/diagnosticar_pbx_grabacion_extensiones.php"
       - ".github/workflows/seguimiento-historial-llamadas.yml"
   pull_request:
     paths:
@@ -57,6 +58,7 @@ on:
       - "tools/diagnosticar_grabacion_webrtc_analista.php"
       - "tools/desplegar_hora_mexico_webrtc_hostinger.sh"
       - "tests/seguimiento_fecha_webrtc_hostinger_smoke.sh"
+      - "tools/diagnosticar_pbx_grabacion_extensiones.php"
       - ".github/workflows/seguimiento-historial-llamadas.yml"
 
 jobs:
@@ -94,6 +96,7 @@ jobs:
           php -l app/services/TelefoniaAnalistaWebrtcService.php
           php -l app/controllers/SeguimientoVinculacionController.php
           php -l tools/diagnosticar_grabacion_webrtc_analista.php
+          php -l tools/diagnosticar_pbx_grabacion_extensiones.php
           bash -n tools/desplegar_hora_mexico_webrtc_hostinger.sh
           bash -n tests/seguimiento_fecha_webrtc_hostinger_smoke.sh
       - name: Simular parche selectivo de Hostinger
