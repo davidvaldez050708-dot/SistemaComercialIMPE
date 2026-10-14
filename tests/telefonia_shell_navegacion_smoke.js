@@ -83,7 +83,7 @@ assert.equal(first.crm.src,home,'Login nueva debe iniciar en Home');
 assert.equal(first.mask.hidden,false,'Mostrar carga mientras se construye el CRM');
 first.navigate(home);
 assert.equal(first.mask.hidden,true,'No dejar capa de carga tras respuesta CRM válida');
-assert.equal(first.innerEvents.click instanceof Function,true,'Observar navegación de módulos');
+assert.equal(typeof first.innerEvents.click,'function','Observar navegación de módulos');
 
 first.innerEvents.click({
     button:0,target:{closest(){return {href:seguimiento,target:'',download:false};}},
