@@ -173,9 +173,20 @@ function descomponerNotasLlamada(string $notas, string $contactoReferencia = '')
 
     // Las llamadas recibidas comienzan con "Llamada entrante recibida...".
     // Buscar el nombre en CUALQUIER línea y no duplicarlo en el detalle.
+    $contactoReferencia = trim($contactoReferencia);
     foreach ($lineas as $linea) {
         if ($contacto === '' && preg_match($prefijo, $linea, $coincidencia)) {
-            $contacto = trim((string)($coincidencia[1] ?? ''));
+            $valor = trim((string)($coincidencia[1] ?? ''));
+            if ($contactoReferencia !== '' &&
+                stripos($valor, $contactoReferencia) === 0) {
+                $contacto = $contactoReferencia;
+                $resto = trim(substr($valor, strlen($contactoReferencia)));
+                if ($resto !== '') {
+                    $detalle[] = $resto;
+                }
+            } else {
+                $contacto = $valor;
+            }
             continue;
         }
         $detalle[] = $linea;
