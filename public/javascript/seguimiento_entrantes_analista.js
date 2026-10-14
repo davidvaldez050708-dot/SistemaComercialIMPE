@@ -152,6 +152,178 @@
         modal.show();
     };
 
+    // Reproductor de tarjetas: mismos controles y clases visuales del
+    // expediente, sin audio nativo desproporcionado dentro del listado.
+    const formatAudioTime = seconds => {
+        if (!Number.isFinite(seconds) || seconds < 0) return '0:00';
+        const total = Math.floor(seconds);
+        const minutes = Math.floor(total / 60);
+        return minutes + ':' + String(total % 60).padStart(2, '0');
+    };
+
+    const wirePlayer = panel => {
+        if (panel.dataset.incomingPlayerReady === '1') return;
+        const custom = panel.querySelector('[data-incoming-player]');
+        const audio = custom?.querySelector('audio');
+        const play = custom?.querySelector('[data-incoming-play]');
+        const iconPlay = play?.querySelector('i');
+        const elapsed = custom?.querySelector('[data-incoming-time]');
+        const duration = custom?.querySelector('[data-incoming-total]');
+        const progress = custom?.querySelector('[data-incoming-progress]');
+        const volume = custom?.querySelector('[data-incoming-volume]');
+        const iconVolume = volume?.querySelector('i');
+        const error = panel.querySelector('[data-incoming-player-error]');
+        if (!audio || !play || !elapsed || !duration || !progress || !volume) return;
+        panel.dataset.incomingPlayerReady = '1';
+
+        const updatePlay = () => {
+            const playing = !audio.paused && !audio.ended;
+            play.setAttribute('aria-label', playing ? 'Pausar grabación' : 'Reproducir grabación');
+            play.setAttribute('aria-pressed', String(playing));
+            if (iconPlay) iconPlay.className = 'bi ' + (playing ? 'bi-pause-fill' : 'bi-play-fill');
+            custom.classList.toggle('is-loading', audio.readyState < 3 && !audio.paused);
+        };
+        const updateTime = () => {
+            const durationSeconds = Number.isFinite(audio.duration) ? audio.duration : 0;
+            elapsed.textContent = formatAudioTime(audio.currentTime);
+            if (durationSeconds > 0) duration.textContent = formatAudioTime(durationSeconds);
+            const position = durationSeconds > 0 ? Math.min(100, 100 * audio.currentTime / durationSeconds) : 0;
+            progress.value = String(position);
+            progress.style.setProperty('--player-progress', position + '%');
+            progress.setAttribute('aria-valuetext', elapsed.textContent + ' de ' + duration.textContent);
+        };
+        const errorMessage = message => {
+            error.hidden = false;
+            error.textContent = message;
+            custom.classList.remove('is-loading');
+        };
+        audio.addEventListener('loadedmetadata', updateTime);
+        audio.addEventListener('durationchange', updateTime);
+        audio.addEventListener('timeupdate', updateTime);
+        audio.addEventListener('play', updatePlay);
+        audio.addEventListener('pause', updatePlay);
+        audio.addEventListener('ended', updatePlay);
+        audio.addEventListener('playing', () => {
+            error.hidden = true;
+            error.textContent = '';
+            custom.classList.remove('is-loading');
+            updatePlay();
+        });
+        audio.addEventListener('waiting', () => custom.classList.add('is-loading'));
+        audio.addEventListener('error', () => {
+            errorMessage('No se pudo cargar el audio. Comprueba tu sesión o intenta nuevamente.');
+            updatePlay();
+        });
+        play.addEventListener('click', async () => {
+            if (!audio.paused && !audio.ended) {
+                audio.pause();
+                return;
+            }
+            // Una sola grabación audible a la vez.
+            page.querySelectorAll('[data-incoming-player] audio').forEach(other => {
+                if (other !== audio && !other.paused) other.pause();
+            });
+            error.hidden = true;
+            error.textContent = '';
+            custom.classList.add('is-loading');
+            try {
+                await audio.play();
+            } catch (_) {
+                errorMessage('No fue posible reproducir la grabación. Puedes volver a intentarlo.');
+                updatePlay();
+            }
+        });
+        progress.addEventListener('input', () => {
+            if (Number.isFinite(audio.duration) && audio.duration > 0) {
+                audio.currentTime = Number(progress.value) * audio.duration / 100;
+            }
+            updateTime();
+        });
+        volume.addEventListener('click', () => {
+            audio.muted = !audio.muted;
+            volume.setAttribute('aria-pressed', String(audio.muted));
+            volume.setAttribute('aria-label', audio.muted ? 'Activar sonido' : 'Silenciar grabación');
+            if (iconVolume) iconVolume.className = 'bi ' +
+                (audio.muted ? 'bi-volume-mute' : 'bi-volume-up');
+        });
+        updateTime();
+        updatePlay();
+    };
+
+    page.addEventListener('click', event => {
+        const button = event.target.closest('[data-incoming-audio-toggle]');
+        if (!button || !page.contains(button)) return;
+        const panelId = button.getAttribute('aria-controls');
+        const panel = panelId ? document.getElementById(panelId) : null;
+        if (!panel || !page.contains(panel)) return;
+        const wasClosed = panel.hidden;
+        page.querySelectorAll('[data-incoming-audio-panel]').forEach(otherPanel => {
+            if (otherPanel === panel) return;
+            otherPanel.hidden = true;
+            const otherButton = page.querySelector('[aria-controls="' + otherPanel.id + '"]');
+            if (otherButton) {
+                otherButton.setAttribute('aria-expanded', 'false');
+                otherButton.classList.remove('is-open');
+            }
+            const otherAudio = otherPanel.querySelector('audio');
+            if (otherAudio && !otherAudio.paused) otherAudio.pause();
+        });
+        panel.hidden = !wasClosed;
+        button.setAttribute('aria-expanded', String(wasClosed));
+        button.classList.toggle('is-open', wasClosed);
+        if (wasClosed) {
+            wirePlayer(panel);
+        } else {
+            const audio = panel.querySelector('audio');
+            if (audio && !audio.paused) audio.pause();
+        }
+    });
+
+    page.addEventListener('click', async event => {
+        const button = event.target.closest('[data-incoming-sync-audio]');
+        if (!button || !page.contains(button) || button.disabled) return;
+        const sessionId = String(button.dataset.incomingSyncAudio || '').trim();
+        const status = button.parentElement?.querySelector('[role="status"]');
+        if (!/^sdk-[a-z0-9-]{12,94}$/.test(sessionId)) return;
+        const endpoint = String(page.dataset.audioSyncUrl || '');
+        if (!endpoint) return;
+        const original = button.innerHTML;
+        button.disabled = true;
+        button.textContent = 'Buscando grabación…';
+        if (status) status.textContent = '';
+        try {
+            const body = new URLSearchParams({
+                csrf_token: String(form.querySelector('[name="csrf_token"]')?.value || ''),
+                session_id: sessionId
+            });
+            const res = await fetch(endpoint, {
+                method: 'POST',
+                credentials: 'same-origin',
+                cache: 'no-store',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'fetch',
+                    'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
+                },
+                body: body.toString()
+            });
+            const data = await res.json();
+            if (!res.ok || data.ok !== true) {
+                throw new Error(data.mensaje || 'No se encontró un audio verificable.');
+            }
+            if (status) status.textContent = 'Grabación lista. Actualizando historial…';
+            window.location.reload();
+        } catch (error) {
+            if (status) {
+                status.textContent = error.message ||
+                    'No fue posible recuperar la grabación. Inténtalo después.';
+            }
+        } finally {
+            button.disabled = false;
+            button.innerHTML = original;
+        }
+    });
+
     page.addEventListener('click', event => {
         const button = event.target.closest('[data-call-id]');
         if (button && page.contains(button)) openRegistration(button);

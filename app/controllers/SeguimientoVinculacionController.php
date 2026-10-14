@@ -92,11 +92,15 @@ class SeguimientoVinculacionController
 
         require_once __DIR__ . '/../services/TelefoniaAnalistaWebrtcService.php';
         try {
-            (new TelefoniaAnalistaWebrtcService())->registrarEvento(
-                (int)$_SESSION['usuario_id'],
-                $_POST
-            );
-            $this->responderJson(['ok' => true]);
+            $servicioWebrtc = new TelefoniaAnalistaWebrtcService();
+            $servicioWebrtc->registrarEvento((int)$_SESSION['usuario_id'], $_POST);
+            // El navegador recibe sólo el estado calculado por el servidor.
+            $interna = (string)($_POST['evento'] ?? '') === 'ended' &&
+                $servicioWebrtc->esSesionInterna(
+                    (int)$_SESSION['usuario_id'],
+                    trim((string)($_POST['session_id'] ?? ''))
+                );
+            $this->responderJson(['ok' => true, 'interna' => (bool)$interna]);
         } catch (InvalidArgumentException | DomainException $e) {
             $this->responderJson(['ok' => false, 'mensaje' => $e->getMessage()], 422);
         } catch (Throwable $e) {
@@ -117,6 +121,41 @@ class SeguimientoVinculacionController
         } catch (Throwable $e) {
             error_log('[buscar_entrantes_analista] ' . $e->getMessage());
             $this->responderJson(['ok' => false, 'mensaje' => 'No fue posible buscar los expedientes.'], 500);
+        }
+    }
+
+    /**
+     * El Analista solicita enlazar el audio de su propia llamada interna.
+     * El servidor consulta Zadarma y sólo guarda una coincidencia única.
+     */
+    public function sincronizarGrabacionInterna()
+    {
+        $this->validarAccesoEntrantesAnalista(true);
+        $this->validarMetodoPostJson();
+        $expected = (string)($_SESSION['csrf_token'] ?? '');
+        $received = (string)($_POST['csrf_token'] ?? '');
+        if ($expected === '' || !hash_equals($expected, $received)) {
+            $this->responderJson(['ok' => false, 'mensaje' => 'La sesión expiró. Actualiza el CRM.'], 403);
+        }
+        require_once __DIR__ . '/../services/TelefoniaInternaGrabacionService.php';
+        try {
+            $db = (new Database())->connect();
+            $ok = (new TelefoniaInternaGrabacionService($db))->sincronizar(
+                (int)($_SESSION['usuario_id'] ?? 0),
+                trim((string)($_POST['session_id'] ?? ''))
+            );
+            $this->responderJson([
+                'ok' => (bool)$ok,
+                'mensaje' => 'Grabación vinculada. Ya puedes reproducirla en el historial.'
+            ]);
+        } catch (DomainException | InvalidArgumentException $e) {
+            $this->responderJson(['ok' => false, 'mensaje' => $e->getMessage()], 422);
+        } catch (Throwable $e) {
+            error_log('[sincronizar_grabacion_interna] ' . get_class($e) . ': ' . $e->getCode());
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'No fue posible consultar la grabación de Zadarma. Inténtalo más tarde.'
+            ], 503);
         }
     }
 
@@ -1629,6 +1668,12 @@ class SeguimientoVinculacionController
         }
 
         $interacciones = $modelo->obtenerInteraccionesSeguimiento($seguimientoId);
+        require_once __DIR__ . '/../helpers/TelefoniaFechaHoraHelper.php';
+        // Fechas SDK almacenadas en UTC; las otras interacciones ya son locales.
+        $interacciones = array_map(
+            [TelefoniaFechaHoraHelper::class, 'normalizarInteraccion'],
+            $interacciones
+        );
         $presentadorActividad = new SeguimientoActividadPresentacionService();
         $interaccionesPresentadas = array_map(
             function ($interaccion) use ($presentadorActividad) {

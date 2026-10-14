@@ -148,7 +148,8 @@
                         body: data.toString()
                     });
                     const result = await response.json();
-                    if (response.ok && result.ok === true) return true;
+                    if (response.ok && result.ok === true)
+                        return result.interna === true ? 'INTERNA' : true;
                     throw new Error('El servidor no confirmó el registro.');
                 } catch (error) {
                     if (n === 1) {
@@ -194,14 +195,17 @@
         status.textContent = finished.answered
             ? 'Llamada atendida' : 'Llamada sin respuesta';
         notice.hidden = false;
-        notice.textContent = finished.saved === true
+        notice.textContent = finished.isInternal
+            ? 'Llamada interna guardada en historial · sin contacto institucional.'
+            : finished.saved === true
             ? 'Guardada en Llamadas recibidas · sin confirmación PBX.'
             : finished.saved === false
             ? 'No se pudo guardar. Utiliza Reintentar registro.'
             : 'Guardando en Llamadas recibidas…';
         notice.style.color = finished.saved === true ? '#16735a'
             : finished.saved === false ? '#b42318' : '#667791';
-        resultBtn.hidden = !finished.answered || finished.saved !== true;
+        resultBtn.hidden = Boolean(finished.isInternal) ||
+            !finished.answered || finished.saved !== true;
         retryBtn.hidden = finished.saved !== false;
         closeBtn.hidden = false;
         // Un único botón Cerrar cuando no hubo respuesta; dos cuando sí.
@@ -218,7 +222,8 @@
         if (call.answered) void postEvent('answered', call);
         postEvent(call.answered ? 'ended' : 'missed', call).then(saved => {
             if (finished?.id !== call.id) return;
-            finished.saved = saved;
+            finished.isInternal = saved === 'INTERNA';
+            finished.saved = saved === true || saved === 'INTERNA';
             draw();
         });
     };
@@ -231,7 +236,7 @@
             duration: call.answeredAt
                 ? Math.max(0, Math.round((Date.now() - call.answeredAt) / 1000))
                 : 0,
-            answered: Boolean(call.answeredAt), saved: null
+            answered: Boolean(call.answeredAt), saved: null, isInternal: false
         };
         draw();
         saveFinished(finished);

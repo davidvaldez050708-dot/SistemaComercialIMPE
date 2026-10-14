@@ -56,6 +56,24 @@ on:
       - "tools/desplegar_modal_resultado_analista_hostinger.sh"
       - "tests/telefonia_resultado_analista_modal_smoke.php"
       - "tests/telefonia_resultado_analista_hostinger_smoke.sh"
+      - "app/services/TelefoniaInternaGrabacionService.php"
+      - "app/services/ZadarmaRecordingService.php"
+      - "prueba_telefonia/api/grabacion_interna_analista.php"
+      - "tools/reparar_prueba_interna_100_101.php"
+      - "tools/desplegar_llamadas_internas_analista_hostinger.sh"
+      - "tests/telefonia_internas_analista_smoke.sh"
+      - "tools/desplegar_diseno_llamadas_recibidas_expediente_hostinger.sh"
+      - "tests/telefonia_entrantes_visual_smoke.php"
+      - "tests/telefonia_entrantes_diseno_hostinger_smoke.sh"
+      - "tools/desplegar_paginacion_llamadas_recibidas_hostinger.sh"
+      - "tests/telefonia_entrantes_paginacion_smoke.php"
+      - "tests/telefonia_entrantes_paginacion_hostinger_smoke.sh"
+      - "app/views/layout/dashboard_head.php"
+      - "app/helpers/ZadarmaPbxIdentifierHelper.php"
+      - "tools/desplegar_call_id_decimal_zadarma_hostinger.sh"
+      - "tests/zadarma_call_id_decimal_smoke.php"
+      - "tests/zadarma_call_id_decimal_hostinger_smoke.sh"
+      - "tests/reparador_interna_bootstrap_hostinger_smoke.sh"
       - ".github/workflows/telefonia-analista-entrantes.yml"
   pull_request:
     paths:
@@ -96,6 +114,24 @@ on:
       - "tools/desplegar_modal_resultado_analista_hostinger.sh"
       - "tests/telefonia_resultado_analista_modal_smoke.php"
       - "tests/telefonia_resultado_analista_hostinger_smoke.sh"
+      - "app/services/TelefoniaInternaGrabacionService.php"
+      - "app/services/ZadarmaRecordingService.php"
+      - "prueba_telefonia/api/grabacion_interna_analista.php"
+      - "tools/reparar_prueba_interna_100_101.php"
+      - "tools/desplegar_llamadas_internas_analista_hostinger.sh"
+      - "tests/telefonia_internas_analista_smoke.sh"
+      - "tools/desplegar_diseno_llamadas_recibidas_expediente_hostinger.sh"
+      - "tests/telefonia_entrantes_visual_smoke.php"
+      - "tests/telefonia_entrantes_diseno_hostinger_smoke.sh"
+      - "tools/desplegar_paginacion_llamadas_recibidas_hostinger.sh"
+      - "tests/telefonia_entrantes_paginacion_smoke.php"
+      - "tests/telefonia_entrantes_paginacion_hostinger_smoke.sh"
+      - "app/views/layout/dashboard_head.php"
+      - "app/helpers/ZadarmaPbxIdentifierHelper.php"
+      - "tools/desplegar_call_id_decimal_zadarma_hostinger.sh"
+      - "tests/zadarma_call_id_decimal_smoke.php"
+      - "tests/zadarma_call_id_decimal_hostinger_smoke.sh"
+      - "tests/reparador_interna_bootstrap_hostinger_smoke.sh"
       - ".github/workflows/telefonia-analista-entrantes.yml"
 jobs:
   validar:
@@ -171,3 +207,8 @@ jobs:
           php tests/telefonia_resultado_analista_modal_smoke.php
           bash -n tools/desplegar_modal_resultado_analista_hostinger.sh
           bash tests/telefonia_resultado_analista_hostinger_smoke.sh
+          bash tests/telefonia_internas_analista_smoke.sh
+          bash tests/telefonia_entrantes_diseno_hostinger_smoke.sh
+          bash tests/telefonia_entrantes_paginacion_hostinger_smoke.sh
+          bash tests/zadarma_call_id_decimal_hostinger_smoke.sh
+          bash tests/reparador_interna_bootstrap_hostinger_smoke.sh

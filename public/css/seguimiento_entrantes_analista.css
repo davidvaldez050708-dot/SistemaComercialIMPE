@@ -455,7 +455,7 @@ a.btn.linkage-incoming-back {
     .dashboard-panel.linkage-incoming-page {padding:17px 15px;}
     .linkage-incoming-heading-actions {width:100%;justify-content:flex-start;margin-left:0;}
     .linkage-incoming-stats {grid-template-columns:repeat(2,minmax(0,1fr));}
-    .linkage-incoming-stat:last-child {grid-column:1 / -1;}
+    .linkage-incoming-stat:last-child {grid-column:auto;}
     .linkage-incoming-empty-panel {padding:34px 16px;}
     #modalLlamadaEntranteAnalista .modal-body {padding:18px 16px;}
     #modalLlamadaEntranteAnalista .modal-footer {padding:14px 16px;}
@@ -608,5 +608,336 @@ a.btn.linkage-incoming-back {
     }
     .linkage-incoming-page .linkage-incoming-table tbody tr:hover td {
         background: transparent;
+    }
+}
+
+/* Grabación de llamada entre extensiones, sin cambiar el modal institucional. */
+.linkage-incoming-internal-audio {
+    display: inline-block;
+    width: min(100%, 260px);
+    text-align: left;
+}
+.linkage-incoming-internal-audio summary {
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: .45rem;
+    color: #234c82;
+    font-size: 12px;
+    font-weight: 750;
+    padding: .45rem .65rem;
+    border: 1px solid #ccdbee;
+    border-radius: 8px;
+    background: #f6f9fd;
+}
+.linkage-incoming-internal-audio[open] summary {margin-bottom: .5rem;}
+.linkage-incoming-internal-audio audio {display:block; width:100%; max-width:260px; height:38px;}
+.linkage-incoming-internal-audio a {
+    display: inline-block;
+    padding-top: .35rem;
+    font-size: 11px;
+    font-weight: 650;
+    color: #234c82;
+    text-decoration: underline;
+}
+@media (max-width:720px) {
+    .linkage-incoming-internal-audio { width:100%; }
+    .linkage-incoming-internal-audio audio {max-width:100%;}
+}
+
+/* Búsqueda voluntaria de grabación verificada de llamada interna. */
+.linkage-incoming-page .linkage-incoming-sync-audio {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .45rem;
+    padding: .48rem .7rem;
+    white-space: normal;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.25;
+    max-width: 100%;
+}
+.linkage-incoming-page .linkage-incoming-sync-audio:disabled {
+    cursor: progress;
+    opacity: .7;
+}
+.linkage-incoming-page .linkage-incoming-sync-message {
+    display: block;
+    font-size: 11px;
+    max-width: 260px;
+    color: #6e4c20;
+    padding-top: .45rem;
+    white-space: normal;
+}
+
+/* --------------------------------------------------------------------
+ * Bandeja de Analista · reutiliza el historial/reproductor de expediente.
+ * El resto del CSS (modal, botón en Seguimiento, formularios) no cambia.
+ * -------------------------------------------------------------------- */
+.dashboard-panel.linkage-incoming-page {
+    width: min(100%, 1180px);
+    max-width: 1180px;
+    padding: 18px 20px;
+}
+.linkage-incoming-page .linkage-incoming-heading {
+    padding-bottom: 15px;
+    gap: 10px 20px;
+}
+.linkage-incoming-page .linkage-incoming-heading h2 {
+    font-size: 20px;
+    margin: 5px 0 3px;
+}
+.linkage-incoming-page .linkage-incoming-heading p {
+    font-size: 11.5px;
+    line-height: 1.5;
+}
+.linkage-incoming-page .linkage-incoming-extension,
+.linkage-incoming-page .linkage-incoming-back {
+    min-height: 34px;
+    padding: 6px 11px;
+    font-size: 11px;
+}
+.linkage-incoming-page .linkage-call-summary.linkage-incoming-stats {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+    margin: 14px 0 16px;
+}
+.linkage-incoming-page .linkage-call-summary.linkage-incoming-stats > div {
+    min-height: 55px;
+    padding: 9px 12px;
+    background: #fbfcfe;
+}
+.linkage-incoming-page .linkage-call-summary.linkage-incoming-stats span {
+    font-size: 10px;
+}
+.linkage-incoming-page .linkage-call-summary.linkage-incoming-stats strong {
+    font-size: 17px;
+}
+.linkage-incoming-page .linkage-incoming-history-section {
+    padding-top: 12px;
+}
+.linkage-incoming-page .linkage-call-section-heading.linkage-incoming-list-head {
+    margin: 0 0 9px;
+}
+.linkage-incoming-page .linkage-incoming-history {
+    gap: 8px;
+}
+.linkage-incoming-page .linkage-incoming-card {
+    padding: 11px 12px;
+    background: #fbfcfe;
+    transition: border-color .15s ease, background-color .15s ease;
+}
+.linkage-incoming-page .linkage-incoming-card:hover {
+    border-color: #cfdbea;
+    background: #fff;
+}
+.linkage-incoming-page .linkage-incoming-card .linkage-call-history-date {
+    display: inline-flex;
+    gap: 5px;
+    align-items: center;
+    font-variant-numeric: tabular-nums;
+}
+.linkage-incoming-page .linkage-incoming-card .linkage-call-detail {
+    padding: 2px 0 0;
+}
+.linkage-incoming-page .linkage-incoming-card .linkage-call-detail-row {
+    grid-template-columns: 61px minmax(0, 1fr);
+}
+.linkage-incoming-page .linkage-incoming-card .linkage-call-recording-top strong {
+    font-size: 11.8px;
+}
+.linkage-incoming-page .linkage-incoming-card .linkage-call-recording-top > div:first-child > span {
+    font-size: 10.5px;
+}
+.linkage-incoming-page .linkage-incoming-card .linkage-call-history-meta {
+    min-width: 0;
+}
+.linkage-incoming-page .linkage-incoming-card .linkage-call-recording-toggle {
+    font-family: inherit;
+}
+.linkage-incoming-page .linkage-incoming-card-actions {
+    min-width: 0;
+    padding-top: 9px;
+    border-top: 1px solid #edf1f5;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.linkage-incoming-page .linkage-incoming-card-actions .btn {
+    min-height: 32px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 10.5px;
+    font-weight: 800;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    justify-content: center;
+    white-space: normal;
+}
+.linkage-incoming-page .linkage-incoming-card-actions .linkage-incoming-sync-message {
+    max-width: min(100%, 520px);
+    padding: 0;
+    font-size: 10.5px;
+}
+.linkage-incoming-page .linkage-incoming-audio-panel {
+    margin-top: 4px;
+    padding-top: 10px;
+}
+.linkage-incoming-page .linkage-incoming-audio-panel .linkage-call-custom-player {
+    width: min(640px, 100%);
+}
+.linkage-incoming-page .linkage-call-player-menu {
+    z-index: 2;
+}
+.linkage-incoming-page .linkage-incoming-player-error {
+    margin: 7px 0 0;
+    color: #a23c3c;
+    font-size: 10.5px;
+    font-weight: 650;
+}
+.linkage-incoming-page .linkage-incoming-player-error[hidden] {
+    display: none !important;
+}
+@media (max-width: 767.98px) {
+    .dashboard-panel.linkage-incoming-page {
+        padding: 16px 14px;
+    }
+    .linkage-incoming-page .linkage-call-summary.linkage-incoming-stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .linkage-incoming-page .linkage-call-summary.linkage-incoming-stats > div {
+        min-height: 48px;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+    }
+    .linkage-incoming-page .linkage-incoming-history {
+        gap: 8px;
+    }
+    .linkage-incoming-page .linkage-incoming-heading-actions {
+        width: auto;
+        margin-left: 0;
+    }
+}
+@media (max-width: 479.98px) {
+    .linkage-incoming-page .linkage-call-summary.linkage-incoming-stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .linkage-incoming-page .linkage-call-summary.linkage-incoming-stats > div {
+        min-height: 52px;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 3px;
+        padding: 8px 10px;
+    }
+    .linkage-incoming-page .linkage-incoming-heading-actions {
+        width: 100%;
+    }
+    .linkage-incoming-page .linkage-incoming-card .linkage-call-detail-row {
+        grid-template-columns: 1fr;
+        gap: 1px;
+    }
+    .linkage-incoming-page .linkage-call-custom-player {
+        gap: 5px;
+    }
+    .linkage-incoming-page .linkage-incoming-card .linkage-call-history-footer {
+        gap: 7px;
+    }
+}
+
+
+/* Paginación del historial: misma escala sobria del expediente. */
+.linkage-incoming-page .linkage-incoming-pagination {
+    min-width: 0;
+    margin-top: 13px;
+    padding: 12px 2px 2px;
+    border-top: 1px solid #e5eaf1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px 14px;
+}
+.linkage-incoming-page .linkage-incoming-pagination-range {
+    font-size: 10.5px;
+    font-weight: 700;
+    color: var(--color-text-secondary, #718096);
+    font-variant-numeric: tabular-nums;
+}
+.linkage-incoming-page .linkage-incoming-pagination-pages {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+.linkage-incoming-page .linkage-incoming-pagination-number,
+.linkage-incoming-page .linkage-incoming-pagination-arrow,
+.linkage-incoming-page .linkage-incoming-pagination-gap {
+    min-width: 30px;
+    min-height: 30px;
+    padding: 5px 8px;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    gap: 5px;
+    border: 1px solid #dfe6ef;
+    border-radius: 8px;
+    background: #fff;
+    color: var(--color-primary, #344c90);
+    font-size: 10.5px;
+    font-weight: 800;
+    line-height: 1.25;
+    text-decoration: none;
+    font-variant-numeric: tabular-nums;
+}
+.linkage-incoming-page .linkage-incoming-pagination-arrow {
+    padding-inline: 10px;
+}
+.linkage-incoming-page a.linkage-incoming-pagination-number:hover,
+.linkage-incoming-page a.linkage-incoming-pagination-arrow:hover {
+    border-color: #c1cfe3;
+    background: #f2f6fc;
+    color: var(--color-primary, #344c90);
+}
+.linkage-incoming-page .linkage-incoming-pagination-number.is-current {
+    color: #fff;
+    background: var(--color-primary, #344c90);
+    border-color: var(--color-primary, #344c90);
+}
+.linkage-incoming-page .linkage-incoming-pagination-arrow.is-disabled {
+    color: #a3adbc;
+    background: #f8fafc;
+    cursor: default;
+}
+.linkage-incoming-page .linkage-incoming-pagination-gap {
+    min-width: 18px;
+    padding-inline: 2px;
+    border-color: transparent;
+    background: transparent;
+    color: #8a97a9;
+}
+.linkage-incoming-page a.linkage-incoming-pagination-number:focus-visible,
+.linkage-incoming-page a.linkage-incoming-pagination-arrow:focus-visible {
+    outline: 2px solid var(--color-primary, #344c90);
+    outline-offset: 2px;
+}
+@media (max-width: 650px) {
+    .linkage-incoming-page .linkage-incoming-pagination {
+        align-items: stretch;
+    }
+    .linkage-incoming-page .linkage-incoming-pagination-range {
+        width: 100%;
+        text-align: center;
+    }
+    .linkage-incoming-page .linkage-incoming-pagination-pages {
+        justify-content: center;
+        width: 100%;
+    }
+    .linkage-incoming-page .linkage-incoming-pagination-number,
+    .linkage-incoming-page .linkage-incoming-pagination-arrow {
+        min-height: 32px;
     }
 }

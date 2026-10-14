@@ -3,6 +3,7 @@
 require_once __DIR__ . '/../../config/db_connection.php';
 require_once __DIR__ . '/ZadarmaWebhookEventStoreService.php';
 require_once __DIR__ . '/TelefoniaAnalistaWebrtcService.php';
+require_once __DIR__ . '/TelefoniaInternaGrabacionService.php';
 require_once __DIR__ . '/../models/SeguimientoVinculacionModel.php';
 
 /**
@@ -155,6 +156,7 @@ class TelefoniaEntrantesAnalistaService
         $stmt->close();
 
         $llamadas = [];
+        $clasificadorInterno = new TelefoniaAnalistaWebrtcService($this->db);
         foreach ($ids as $id) {
             $call = $this->eventos->obtenerEstadoEntrantePorPbxCallId($extension, $id);
             if (!$call) continue;
@@ -162,6 +164,10 @@ class TelefoniaEntrantesAnalistaService
             $llamadas[] = [
                 'pbx_call_id' => $id,
                 'numero' => (string)($call['caller_id'] ?? ''),
+                'fuente' => 'PBX',
+                'tipo_llamada' => $clasificadorInterno->esNumeroInterno(
+                    (string)($call['caller_id'] ?? ''), $extension
+                ) ? 'INTERNA' : 'ENTRANTE',
                 'fecha' => $fechas[$id],
                 'duracion' => self::segundosAtendidos($call),
                 'estado_pbx' => (string)($call['estado'] ?? 'ringing'),
@@ -173,7 +179,26 @@ class TelefoniaEntrantesAnalistaService
         }
         // Dos fuentes distintas: PBX firmada y observación de WebRTC local.
         // La segunda siempre se identifica como NO verificada por PBX.
-        $sesiones = (new TelefoniaAnalistaWebrtcService($this->db))->listar($usuarioId);
+        $sesiones = $clasificadorInterno->listar($usuarioId);
+        // El audio se ofrece sólo desde el historial técnico de la extensión.
+        // Una sesión interna aún asociada erróneamente a un expediente no
+        // dispone del reproductor hasta completar su desvinculación segura.
+        try {
+            $grabacionesInternas = new TelefoniaInternaGrabacionService($this->db);
+            $grabacionesInternas->asegurarEstructura();
+            $conAudio = $grabacionesInternas->porUsuario($usuarioId);
+        } catch (Throwable $e) {
+            error_log('[telefonia_grabaciones_internas] ' . $e->getMessage());
+            $conAudio = [];
+        }
+        foreach ($sesiones as &$filaSdk) {
+            $filaSdk['grabacion_disponible'] =
+                ($filaSdk['tipo_llamada'] ?? '') === 'INTERNA' &&
+                ($filaSdk['clasificacion'] ?? '') === 'INTERNA' &&
+                empty($filaSdk['seguimiento_id']) && empty($filaSdk['interaccion_id']) &&
+                isset($conAudio[(string)$filaSdk['pbx_call_id']]);
+        }
+        unset($filaSdk);
         $llamadas = array_merge($llamadas, $sesiones);
         usort($llamadas, static function ($a, $b) {
             return strcmp((string)($b['fecha'] ?? ''), (string)($a['fecha'] ?? ''));
@@ -239,6 +264,13 @@ class TelefoniaEntrantesAnalistaService
         if ($sdk) {
             $rowSdk = (new TelefoniaAnalistaWebrtcService($this->db))
                 ->obtenerFinalizada($usuarioId, $id);
+            if ((new TelefoniaAnalistaWebrtcService($this->db))->esNumeroInterno(
+                (string)$rowSdk['numero_origen'], (string)$rowSdk['extension']
+            )) {
+                throw new DomainException(
+                    'Esta comunicación es interna entre extensiones. Se conserva en el historial y no debe vincularse a una institución.'
+                );
+            }
             $call = [
                 'estado' => 'ended',
                 'extension' => (string)$rowSdk['extension'],
@@ -258,6 +290,10 @@ class TelefoniaEntrantesAnalistaService
             }
         } else {
             $call = $this->inicioVerificado($usuarioId, $id);
+        }
+        if (!$sdk && (new TelefoniaAnalistaWebrtcService($this->db))
+            ->esNumeroInterno((string)($call['caller_id'] ?? ''), (string)$call['extension'])) {
+            throw new DomainException('Las llamadas internas entre extensiones no se vinculan a expedientes institucionales.');
         }
         if (!in_array((string)$call['estado'], ['ended', 'transferred'], true)) {
             throw new DomainException('La llamada debe finalizar antes de registrar el resultado.');

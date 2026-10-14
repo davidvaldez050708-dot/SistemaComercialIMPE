@@ -298,6 +298,17 @@ switch ($controller) {
         break;
 
 
+    case 'crearConvocatoria':
+
+        require_once __DIR__ .
+            '/app/controllers/CrearConvocatoriaController.php';
+
+        $controllerInstance =
+            new CrearConvocatoriaController();
+
+        break;
+
+
     case 'usuario':
 
         require_once __DIR__ .

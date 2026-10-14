@@ -26,8 +26,10 @@ export IMPE_GRABACIONES_BACKUPS="$TEMP/backups"
 bash tools/desplegar_grabaciones_sin_parpadeo_hostinger.sh --check | grep -q 'PRODUCCIÓN INTACTA'
 git show "4a4f9857d5bcec2e73e34f93e50aa97ba96afdc1:$MAIN" | cmp - "$SITE/$MAIN"
 bash tools/desplegar_grabaciones_sin_parpadeo_hostinger.sh --apply | grep -q 'grabaciones sin parpadeo'
-cmp -s "$MAIN" "$SITE/$MAIN"
-cmp -s "$PLAYER" "$SITE/$PLAYER"
+# Esta prueba valida SOLO el parche de parpadeo, no cambios posteriores
+# del mismo archivo (por ejemplo, el estado de grabación WebRTC).
+git show "ad2703830405c3fe32ecbe0b104a7539c3d92c5c:$MAIN" | cmp - "$SITE/$MAIN"
+git show "825fc857910f907d99af8fcb0ae89d9e8e5cea72:$PLAYER" | cmp - "$SITE/$PLAYER"
 bash tools/desplegar_grabaciones_sin_parpadeo_hostinger.sh --check | grep -q 'ya fue eliminado'
 [[ -n "$(find "$TEMP/backups" -type f)" ]]
 echo 'Grabaciones sin parpadeo: OK (sin doble bloque, reproductor, validación, respaldo)'
