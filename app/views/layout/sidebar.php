@@ -74,6 +74,8 @@ $claseWhatsapp = $opcionActiva === 'whatsapp' ? 'active' : '';
 $claseReportes = $opcionActiva === 'reportes' ? 'active' : '';
 $claseDesempeno = $opcionActiva === 'desempeno' ? 'active' : '';
 $claseConvocatorias = $opcionActiva === 'convocatorias' ? 'active' : '';
+$claseCrearConvocatoria =
+    $opcionActiva === 'crear_convocatoria' ? 'active' : '';
 $claseConvocatoriasReportes =
     $opcionActiva === 'convocatorias_reportes' ? 'active' : '';
 $claseCorreosMarketing =
@@ -201,6 +203,15 @@ $claseFormularios =
                     <i class="bi bi-megaphone"></i>
                     <?= htmlspecialchars($etiquetaMenuConvocatorias) ?>
                 </a>
+
+                <?php if ($esRolMarketingSidebar): ?>
+                    <a
+                        href="<?= BASE_URL ?>index.php?controller=crearConvocatoria&action=index"
+                        class="sidebar-link <?= $claseCrearConvocatoria ?>">
+                        <i class="bi bi-plus-square"></i>
+                        Crear convocatoria
+                    </a>
+                <?php endif; ?>
 
                 <?php if ($esRolMarketingSidebar): ?>
                     <a
