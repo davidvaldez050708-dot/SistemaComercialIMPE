@@ -644,3 +644,29 @@ a.btn.linkage-incoming-back {
     .linkage-incoming-internal-audio { width:100%; }
     .linkage-incoming-internal-audio audio {max-width:100%;}
 }
+
+/* Búsqueda voluntaria de grabación verificada de llamada interna. */
+.linkage-incoming-page .linkage-incoming-sync-audio {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .45rem;
+    padding: .48rem .7rem;
+    white-space: normal;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.25;
+    max-width: 100%;
+}
+.linkage-incoming-page .linkage-incoming-sync-audio:disabled {
+    cursor: progress;
+    opacity: .7;
+}
+.linkage-incoming-page .linkage-incoming-sync-message {
+    display: block;
+    font-size: 11px;
+    max-width: 260px;
+    color: #6e4c20;
+    padding-top: .45rem;
+    white-space: normal;
+}
