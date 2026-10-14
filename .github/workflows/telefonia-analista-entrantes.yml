@@ -39,6 +39,7 @@ on:
       - "app/services/TelefoniaAnalistaWebrtcService.php"
       - "tools/desplegar_historial_entrantes_webRTC_analista_hostinger.sh"
       - "tests/telefonia_webrtc_historial_analista_smoke.sh"
+      - "tools/resolver_conflicto_shell_analista.php"
       - "tools/desplegar_historial_webrtc_reconciliado_hostinger.sh"
       - "tests/telefonia_historial_webrtc_reconciliado_smoke.sh"
       - ".github/workflows/telefonia-analista-entrantes.yml"
@@ -64,6 +65,7 @@ on:
       - "app/services/TelefoniaAnalistaWebrtcService.php"
       - "tools/desplegar_historial_entrantes_webRTC_analista_hostinger.sh"
       - "tests/telefonia_webrtc_historial_analista_smoke.sh"
+      - "tools/resolver_conflicto_shell_analista.php"
       - "tools/desplegar_historial_webrtc_reconciliado_hostinger.sh"
       - "tests/telefonia_historial_webrtc_reconciliado_smoke.sh"
       - ".github/workflows/telefonia-analista-entrantes.yml"
@@ -124,5 +126,6 @@ jobs:
           node --check public/javascript/seguimiento_entrantes_analista.js
           bash -n tools/desplegar_historial_entrantes_webRTC_analista_hostinger.sh
           bash tests/telefonia_webrtc_historial_analista_smoke.sh
+          php -l tools/resolver_conflicto_shell_analista.php
           bash -n tools/desplegar_historial_webrtc_reconciliado_hostinger.sh
           bash tests/telefonia_historial_webrtc_reconciliado_smoke.sh
