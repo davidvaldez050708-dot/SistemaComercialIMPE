@@ -900,3 +900,166 @@ html {
 .formulario-publico-recomendacion {
     background: #fbfefd;
 }
+
+
+/* ======================================================================
+   RESPONSIVE FINAL · FORMULARIOS PÚBLICOS
+   Fuerza una composición móvil limpia en Registro e Inscripción.
+   ====================================================================== */
+
+@media (max-width: 760px) {
+    .formulario-publico-shell {
+        width: calc(100% - 16px) !important;
+        margin: 8px auto 24px !important;
+    }
+
+    .formulario-publico-hero {
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr) !important;
+        grid-template-rows: auto auto !important;
+        align-items: start !important;
+        justify-items: stretch !important;
+        min-height: 0 !important;
+        padding: 24px 20px 20px !important;
+        gap: 20px !important;
+        border-radius: 14px !important;
+    }
+
+    .formulario-publico-hero-copy {
+        grid-column: 1 !important;
+        grid-row: 1 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        flex: none !important;
+    }
+
+    .formulario-publico-hero h1 {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 0 9px !important;
+        white-space: normal !important;
+        overflow-wrap: normal !important;
+        word-break: normal !important;
+        font-size: clamp(25px, 7.3vw, 31px) !important;
+        line-height: 1.12 !important;
+        letter-spacing: -.45px !important;
+    }
+
+    .formulario-publico-hero .formulario-publico-hero-slogan {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin-top: 5px !important;
+        white-space: normal !important;
+        overflow-wrap: normal !important;
+        word-break: normal !important;
+        font-size: clamp(12px, 3.5vw, 14px) !important;
+        line-height: 1.5 !important;
+    }
+
+    .formulario-publico-hero .formulario-publico-hero-required {
+        width: 100% !important;
+        margin-top: 8px !important;
+        white-space: normal !important;
+        font-size: clamp(10px, 3vw, 11px) !important;
+        line-height: 1.4 !important;
+    }
+
+    .formulario-publico-hero-logos {
+        grid-column: 1 !important;
+        grid-row: 2 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+        align-items: center !important;
+        justify-items: center !important;
+        gap: 10px !important;
+        flex: none !important;
+    }
+
+    .formulario-publico-hero-logo,
+    .formulario-publico-hero-logo-sep {
+        width: 100% !important;
+        max-width: 170px !important;
+        min-width: 0 !important;
+        min-height: 70px !important;
+        margin: 0 !important;
+    }
+
+    .formulario-publico-hero-logo-sep {
+        padding-left: 10px !important;
+        border-left: 1px solid rgba(255, 255, 255, .58) !important;
+    }
+
+    .formulario-publico-hero-logo img,
+    .formulario-publico-hero-logo-sep img {
+        width: 100% !important;
+        max-width: 160px !important;
+        max-height: 82px !important;
+        object-fit: contain !important;
+    }
+
+    .formulario-publico-hero::before {
+        top: auto !important;
+        bottom: -115px !important;
+        right: 66px !important;
+        width: 230px !important;
+        height: 250px !important;
+    }
+
+    .formulario-publico-hero::after {
+        top: auto !important;
+        bottom: -120px !important;
+        right: -95px !important;
+        width: 230px !important;
+        height: 250px !important;
+    }
+}
+
+@media (max-width: 430px) {
+    .formulario-publico-shell {
+        width: calc(100% - 10px) !important;
+        margin-top: 5px !important;
+    }
+
+    .formulario-publico-hero {
+        padding: 22px 17px 18px !important;
+        gap: 18px !important;
+        border-radius: 12px !important;
+    }
+
+    .formulario-publico-hero h1 {
+        font-size: clamp(24px, 7.4vw, 28px) !important;
+        line-height: 1.1 !important;
+    }
+
+    .formulario-publico-hero .formulario-publico-hero-slogan {
+        font-size: 12px !important;
+        line-height: 1.48 !important;
+    }
+
+    .formulario-publico-hero .formulario-publico-hero-required {
+        font-size: 10px !important;
+    }
+
+    .formulario-publico-hero-logos {
+        gap: 8px !important;
+    }
+
+    .formulario-publico-hero-logo,
+    .formulario-publico-hero-logo-sep {
+        max-width: 155px !important;
+        min-height: 64px !important;
+    }
+
+    .formulario-publico-hero-logo img,
+    .formulario-publico-hero-logo-sep img {
+        max-width: 148px !important;
+        max-height: 74px !important;
+    }
+
+    .formulario-publico-card {
+        padding: 22px 16px 18px !important;
+    }
+}
