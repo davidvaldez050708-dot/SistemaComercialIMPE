@@ -29,7 +29,7 @@
                 </div>
                 <div class="formulario-publico-thanks-logo-sep">
                     <img
-                        src="<?= BASE_URL ?>public/img/brand/Logo-SEP-Negro.png"
+                        src="<?= BASE_URL ?>public/img/brand/Logotipo-SEP-oro.png"
                         alt="Secretaría de Educación Pública">
                 </div>
             </div>
