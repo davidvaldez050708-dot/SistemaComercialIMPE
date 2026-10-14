@@ -19,6 +19,7 @@ FILES=(
   "app/views/seguimiento_vinculacion/llamadas_entrantes.php"
   "public/javascript/telefonia_analista_historial_pasivo.js"
   "public/css/seguimiento_entrantes_analista.css"
+  "public/javascript/seguimiento_entrantes_analista.js"
 )
 BASES=(
   "ee4cc0b3ce23b22e961e7baa82f8ce68315fcef0"
@@ -28,8 +29,9 @@ BASES=(
   "a1c80214ad954540940cba6a3704fc1cfae17d58"
   "69d55b1920884814e30a0ae34ecd90243ae99581"
   "4e41519df08c9265b042fdc39b239bb482391ebe"
+  "6faf88e90813775cec3ae024e1e6dc585f2fc233"
 )
-TARGET="f6bd88a357366cb1c4bd263560ce644486b0f1a8"
+TARGET="053ee9459df1e234683b730e37f5fcf3cc9292f8"
 NEWFILES=(
   "app/services/TelefoniaInternaGrabacionService.php"
   "prueba_telefonia/api/grabacion_interna_analista.php"
@@ -95,6 +97,7 @@ for file in "${FILES[@]}" "${NEWFILES[@]}"; do
 done
 if command -v node >/dev/null 2>&1; then
   node --check "$TMP/stage/public/javascript/telefonia_analista_historial_pasivo.js"
+  node --check "$TMP/stage/public/javascript/seguimiento_entrantes_analista.js"
 fi
 grep -Fq "'tipo_llamada' =>" "$TMP/stage/app/services/TelefoniaAnalistaWebrtcService.php"
 grep -Fq "esNumeroInterno(" "$TMP/stage/app/services/TelefoniaEntrantesAnalistaService.php"
