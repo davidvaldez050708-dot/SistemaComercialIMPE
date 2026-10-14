@@ -67,7 +67,7 @@ $duracionEntrante = static function ($segundos) {
             </div>
             <div class="linkage-incoming-list-head">
                 <div><h3>Historial de llamadas</h3><p>Movimientos recientes de tu extensión telefónica.</p></div>
-                <span class="linkage-incoming-list-total"><?= count($llamadas) ?> registros</span>
+                <span class="linkage-incoming-list-total"><?= count($llamadas) ?> <?= count($llamadas) === 1 ? 'registro' : 'registros' ?></span>
             </div>
             <div class="linkage-incoming-table-wrap">
                 <table class="table align-middle linkage-incoming-table">
@@ -89,15 +89,22 @@ $duracionEntrante = static function ($segundos) {
                     $numero = $numero !== '' ? $numero : 'Número privado';
                 ?>
                 <tr data-incoming-row="<?= $esc($pbxId) ?>">
-                    <td class="text-nowrap"><?= $esc($llamada['fecha'] ?? '') ?></td>
-                    <td><strong><?= $esc($numero) ?></strong>
+                    <td data-label="Fecha" class="text-nowrap"><?= $esc($llamada['fecha'] ?? '') ?></td>
+                    <td data-label="Número entrante" class="linkage-incoming-caller">
+                        <strong><?= $esc($numero) ?></strong>
                         <small class="d-block text-muted">
-                            Entrante · Extensión <?= $esc($bandejaEntrantes['extension'] ?? '') ?>
-                            <?php if ($esWebrtc): ?> · WebRTC observado (sin confirmación PBX)<?php endif; ?>
+                            <span>Entrante · Extensión <?= $esc($bandejaEntrantes['extension'] ?? '') ?></span>
+                            <?php if ($esWebrtc): ?>
+                                <span class="linkage-incoming-source">
+                                    <i class="bi bi-headset" aria-hidden="true"></i>
+                                    WebRTC observado
+                                </span>
+                                <span class="linkage-incoming-source-note">Sin confirmación PBX</span>
+                            <?php endif; ?>
                         </small>
                     </td>
-                    <td class="text-nowrap"><?= $esc($duracionEntrante($llamada['duracion'] ?? 0)) ?></td>
-                    <td>
+                    <td data-label="Duración" class="text-nowrap linkage-incoming-duration"><?= $esc($duracionEntrante($llamada['duracion'] ?? 0)) ?></td>
+                    <td data-label="Estado">
                         <?php if ($vinculada): ?>
                             <span class="linkage-incoming-tag is-success">Registrada</span>
                         <?php elseif ($sinIdentificar): ?>
@@ -110,7 +117,7 @@ $duracionEntrante = static function ($segundos) {
                             <span class="linkage-incoming-tag is-pending">Pendiente de resultado</span>
                         <?php endif; ?>
                     </td>
-                    <td>
+                    <td data-label="Expediente">
                         <?php if ($seguimientoId > 0): ?>
                             <a href="<?= $esc(BASE_URL . 'index.php?controller=seguimientoVinculacion&action=detalle&id=' . $seguimientoId) ?>"
                                 class="linkage-incoming-expediente">
@@ -119,7 +126,7 @@ $duracionEntrante = static function ($segundos) {
                             </a>
                         <?php else: ?>—<?php endif; ?>
                     </td>
-                    <td class="text-end">
+                    <td class="text-end linkage-incoming-action-cell" data-label="Acción">
                         <?php if (!$vinculada && $finalizada && (!$sinIdentificar || !empty($llamada['contestada']))): ?>
                             <button type="button" class="btn btn-system-save linkage-incoming-open"
                                 data-call-id="<?= $esc($pbxId) ?>"
