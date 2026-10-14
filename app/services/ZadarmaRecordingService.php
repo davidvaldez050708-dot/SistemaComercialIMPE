@@ -90,6 +90,25 @@ class ZadarmaRecordingService
         ];
     }
 
+    /**
+     * Las llamadas internas pueden generar varios segmentos por pbx_call_id.
+     * Sólo se reproduce el segmento exacto, corroborado y guardado por CLI.
+     */
+    public function obtenerGrabacionPorCallId(string $callId): ?array
+    {
+        $callId = trim($callId);
+        if (!preg_match('/^[a-zA-Z0-9_-]{6,100}$/D', $callId)) {
+            return null;
+        }
+        $record = $this->api->getPbxRecord($callId, null, 300);
+        $link = trim((string)($record->link ?? ''));
+        if (!filter_var($link, FILTER_VALIDATE_URL) ||
+            !str_starts_with(strtolower($link), 'https://')) {
+            return null;
+        }
+        return ['call_id_with_rec' => $callId, 'link' => $link];
+    }
+
     public function descargarGrabacion(string $link, string $rangeHeader = ''): array
     {
         $link = trim($link);
