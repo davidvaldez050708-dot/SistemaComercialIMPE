@@ -1,0 +1,37 @@
+name: Seguimiento - Historial de llamadas
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "prueba_telefonia/api/llamadas_seguimiento.php"
+      - "public/javascript/seguimiento_llamadas_expediente.js"
+      - "tools/desplegar_historial_llamadas_expediente_hostinger.sh"
+      - "tests/seguimiento_historial_llamadas_hostinger_smoke.sh"
+      - ".github/workflows/seguimiento-historial-llamadas.yml"
+  pull_request:
+    paths:
+      - "prueba_telefonia/api/llamadas_seguimiento.php"
+      - "public/javascript/seguimiento_llamadas_expediente.js"
+      - "tools/desplegar_historial_llamadas_expediente_hostinger.sh"
+      - "tests/seguimiento_historial_llamadas_hostinger_smoke.sh"
+      - ".github/workflows/seguimiento-historial-llamadas.yml"
+
+jobs:
+  validar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+      - name: Validar sintaxis y lectura del historial
+        run: |
+          php -l prueba_telefonia/api/llamadas_seguimiento.php
+          node --check public/javascript/seguimiento_llamadas_expediente.js
+          bash -n tools/desplegar_historial_llamadas_expediente_hostinger.sh
+          bash -n tests/seguimiento_historial_llamadas_hostinger_smoke.sh
+      - name: Simular parche selectivo de Hostinger
+        run: bash tests/seguimiento_historial_llamadas_hostinger_smoke.sh
