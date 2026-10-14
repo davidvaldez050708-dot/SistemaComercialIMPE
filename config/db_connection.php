@@ -6,11 +6,18 @@ class Database
 {
     private $connection;
 
-    public function connect(bool $persistente = false)
+    /**
+     * Hostinger limita la creación de nuevas conexiones MySQL por segundo.
+     * Por defecto utilizar una conexión persistente reutilizable por PHP-FPM,
+     * también para los endpoints AJAX y servicios que usan Database.
+     * Los consumidores que requieran una sesión independiente pueden
+     * solicitar explícitamente connect(false).
+     */
+    public function connect(bool $persistente = true)
     {
         try {
-            // Sólo los consumidores que lo soliciten reutilizan la conexión
-            // de su trabajador PHP. Los demás conservan el modo habitual.
+            // Reducir las conexiones nuevas en toda la aplicación, no solamente
+            // en Llamadas. No se cambian host, usuario, contraseña ni BD.
             $host = (string)DB_HOST;
             if ($persistente && !str_starts_with($host, 'p:')) {
                 $host = 'p:' . $host;
