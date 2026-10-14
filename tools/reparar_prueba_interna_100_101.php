@@ -44,7 +44,9 @@ if ($modo === '--check') {
 require_once $root . '/config/db_connection.php';
 require_once $root . '/config/private_config.php';
 require_once $root . '/app/services/TelefoniaInternaGrabacionService.php';
-require_once __DIR__ . '/../app/helpers/ZadarmaPbxIdentifierHelper.php';
+// Utilizar el MISMO archivo del sitio publicado que incluye el servicio.
+// Cargar otra copia desde crm-preparacion redefine la clase y causa PHP 255.
+require_once $root . '/app/helpers/ZadarmaPbxIdentifierHelper.php';
 
 function validarSesion(array $s): void
 {
