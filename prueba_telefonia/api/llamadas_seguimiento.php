@@ -414,7 +414,7 @@ echo json_encode([
         get_class($error),
         basename($error->getFile()),
         $error->getLine(),
-        mb_substr(str_replace(["\r", "\n"], ' ', $error->getMessage()), 0, 700)
+        substr(str_replace(["\r", "\n"], ' ', $error->getMessage()), 0, 700)
     );
     $archivoPrivado = dirname($root) . '/crm-diagnosticos/llamadas_seguimiento.log';
     if (is_dir(dirname($archivoPrivado)) && !is_link(dirname($archivoPrivado))) {
