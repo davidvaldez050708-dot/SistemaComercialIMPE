@@ -127,7 +127,7 @@ html {
 .formulario-publico-hero .formulario-publico-hero-required {
     margin-top: 7px;
     color: rgba(255, 255, 255, .78);
-    font-size: clamp(10px, 1.15vw, 13px);
+    font-size: clamp(9px, .8vw, 11px);
     font-weight: 500;
     line-height: 1.35;
     letter-spacing: .1px;
@@ -511,6 +511,10 @@ html {
 
     .formulario-publico-hero .formulario-publico-hero-slogan {
         font-size: 10px;
+    }
+
+    .formulario-publico-hero .formulario-publico-hero-required {
+        font-size: 9px;
     }
 
     .formulario-publico-hero::before {
