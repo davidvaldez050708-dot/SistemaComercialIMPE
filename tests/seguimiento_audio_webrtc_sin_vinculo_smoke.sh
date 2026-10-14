@@ -15,7 +15,7 @@ grep -Fq "'ZADARMA_WEBRTC'" "$API"
 grep -Fq "Grabación no vinculada" "$JS"
 grep -Fq "Contacto reportado" "$JS"
 grep -Fq "convertirBoton(tarjeta, llamada)" public/javascript/seguimiento_llamadas_desplegable.js
-! grep -Fq "'grabacion_url' => $grabacionSinVincular" "$API"
+grep -Fq "'grabacion_url' => \$puedeTenerGrabacion" "$API"
 
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
