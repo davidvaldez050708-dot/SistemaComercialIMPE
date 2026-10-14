@@ -47,7 +47,7 @@ emergency = """/* Visor de emergencia para timbrados SIP internos sin NOTIFY_INT
 
 """
 assert s.count(emergency)==1
-s=s.replace(emergency,"",1)
+s=s.replace(emergency,"\n",1)
 
 buttons = """                <?php if ($analistaEntrantesShell): ?>
                 <button type="button" class="persistent-phone-action"
