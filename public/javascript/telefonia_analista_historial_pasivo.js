@@ -26,15 +26,37 @@
     // normales siguen siendo los del CSS original del teléfono.
     const finishedCss = root.document.createElement('style');
     finishedCss.textContent = [
+        // El shell original hace que «Cerrar» ocupe toda una fila de
+        // su grid. Cambiar SÓLO las acciones del estado final a flex
+        // evita filas vacías y da a los dos botones idénticas dimensiones.
         '.impe-incoming-panel[data-analyst-webrtc-finished="1"] ' +
-          '[data-incoming-close-finished] {',
-        '  grid-column:auto!important;justify-self:stretch!important;',
-        '  margin:0!important;width:100%!important;order:2;',
+          '.persistent-phone-actions {',
+        '  display:flex!important;flex-direction:row;',
+        '  align-items:stretch;flex-wrap:nowrap;gap:10px;',
         '}',
         '.impe-incoming-panel[data-analyst-webrtc-finished="1"] ' +
-          '[data-incoming-register-finished],',
+          '.persistent-phone-actions > [data-incoming-register-finished],',
         '.impe-incoming-panel[data-analyst-webrtc-finished="1"] ' +
-          '[data-incoming-retry-save] {order:1;}',
+          '.persistent-phone-actions > [data-incoming-retry-save],',
+        '.impe-incoming-panel[data-analyst-webrtc-finished="1"] ' +
+          '.persistent-phone-actions > [data-incoming-close-finished] {',
+        '  flex:1 1 0!important;min-width:0;min-height:48px;',
+        '  width:auto!important;margin:0!important;',
+        '  grid-column:auto!important;justify-self:stretch!important;',
+        '  order:0!important;box-sizing:border-box;',
+        '}',
+        '@media (max-width:420px) {',
+        '  .impe-incoming-panel[data-analyst-webrtc-finished="1"] ' +
+          '.persistent-phone-actions {flex-direction:column;}',
+        '  .impe-incoming-panel[data-analyst-webrtc-finished="1"] ' +
+          '.persistent-phone-actions > [data-incoming-register-finished],',
+        '  .impe-incoming-panel[data-analyst-webrtc-finished="1"] ' +
+          '.persistent-phone-actions > [data-incoming-retry-save],',
+        '  .impe-incoming-panel[data-analyst-webrtc-finished="1"] ' +
+          '.persistent-phone-actions > [data-incoming-close-finished] {',
+        '    flex:0 0 auto!important;width:100%!important;',
+        '  }',
+        '}',
         '.impe-incoming-panel[data-analyst-webrtc-finished="1"] ' +
           '.persistent-phone-compact-actions,',
         '.impe-incoming-panel[data-analyst-webrtc-finished="1"] ' +
