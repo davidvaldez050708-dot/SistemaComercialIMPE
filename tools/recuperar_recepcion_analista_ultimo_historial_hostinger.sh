@@ -21,12 +21,14 @@ PREFIX="entrantes-webrtc-reconciliado-"
 }
 
 # Elegir el último respaldo que el despliegue de reconciliación haya creado.
-# No usar nombres aportados desde HTTP, rutas arbitrarias ni glob recursivo.
-mapfile -t CANDIDATES < <(
-  find "$BACKUPS" -mindepth 1 -maxdepth 1 -type d \
-    -name "${PREFIX}*" -printf '%T@ %p\n' |
-    sort -nr | cut -d' ' -f2-
-)
+# Hostinger (jaula SSH) puede carecer de /dev/fd: NO usar process substitution.
+# Escribir la lista en un archivo temporal y leerla con redirección normal.
+TMP="$(mktemp -d)"
+trap 'rm -rf "$TMP"' EXIT
+find "$BACKUPS" -mindepth 1 -maxdepth 1 -type d \
+  -name "${PREFIX}*" -printf '%T@ %p\n' |
+  sort -nr | cut -d' ' -f2- > "$TMP/resguardos.txt"
+mapfile -t CANDIDATES < "$TMP/resguardos.txt"
 if [[ "${#CANDIDATES[@]}" -eq 0 ]]; then
   echo "ERROR: no existe respaldo reconciliado. No se modificó nada." >&2
   exit 1
