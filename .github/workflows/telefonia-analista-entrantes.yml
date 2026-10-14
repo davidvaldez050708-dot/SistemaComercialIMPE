@@ -44,6 +44,11 @@ on:
       - "tests/telefonia_historial_webrtc_reconciliado_smoke.sh"
       - "tools/recuperar_recepcion_analista_ultimo_historial_hostinger.sh"
       - "tests/telefonia_analista_recuperar_ultima_publicacion_smoke.sh"
+      - "public/javascript/telefonia_analista_historial_pasivo.js"
+      - "tools/injectar_historial_pasivo_analista.php"
+      - "tools/desplegar_historial_pasivo_analista_hostinger.sh"
+      - "tests/telefonia_analista_historial_pasivo_smoke.js"
+      - "tests/telefonia_analista_historial_pasivo_deploy_smoke.sh"
       - ".github/workflows/telefonia-analista-entrantes.yml"
   pull_request:
     paths:
@@ -72,6 +77,11 @@ on:
       - "tests/telefonia_historial_webrtc_reconciliado_smoke.sh"
       - "tools/recuperar_recepcion_analista_ultimo_historial_hostinger.sh"
       - "tests/telefonia_analista_recuperar_ultima_publicacion_smoke.sh"
+      - "public/javascript/telefonia_analista_historial_pasivo.js"
+      - "tools/injectar_historial_pasivo_analista.php"
+      - "tools/desplegar_historial_pasivo_analista_hostinger.sh"
+      - "tests/telefonia_analista_historial_pasivo_smoke.js"
+      - "tests/telefonia_analista_historial_pasivo_deploy_smoke.sh"
       - ".github/workflows/telefonia-analista-entrantes.yml"
 jobs:
   validar:
@@ -135,3 +145,8 @@ jobs:
           bash tests/telefonia_historial_webrtc_reconciliado_smoke.sh
           bash -n tools/recuperar_recepcion_analista_ultimo_historial_hostinger.sh
           bash tests/telefonia_analista_recuperar_ultima_publicacion_smoke.sh
+          php -l tools/injectar_historial_pasivo_analista.php
+          node --check public/javascript/telefonia_analista_historial_pasivo.js
+          node tests/telefonia_analista_historial_pasivo_smoke.js
+          bash -n tools/desplegar_historial_pasivo_analista_hostinger.sh
+          bash tests/telefonia_analista_historial_pasivo_deploy_smoke.sh
