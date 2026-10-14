@@ -6,6 +6,53 @@ $llamadas = is_array($bandejaEntrantes['llamadas'] ?? null)
     ? $bandejaEntrantes['llamadas'] : [];
 $seleccionarId = trim((string)($_GET['sdk_session_id'] ?? ($_GET['pbx_call_id'] ?? '')));
 $estadosEntrantes = $estadosEntrantes ?? [];
+$seleccionarId = trim((string)($_GET['sdk_session_id'] ?? ($_GET['pbx_call_id'] ?? '')));
+$estadosEntrantes = $estadosEntrantes ?? [];
+
+// Paginación en el servidor: no renderizar 100+ tarjetas ni reproductores.
+// Mantener los contadores globales sobre el historial completo.
+$llamadasPorPagina = 10;
+$totalLlamadasEntrantes = count($llamadas);
+$totalPaginasEntrantes = max(1, (int)ceil($totalLlamadasEntrantes / $llamadasPorPagina));
+$paginaPedida = $_GET['pagina'] ?? 1;
+$paginaEntrantes = filter_var($paginaPedida, FILTER_VALIDATE_INT, [
+    'options' => ['min_range' => 1]
+]);
+$paginaEntrantes = $paginaEntrantes === false
+    ? 1
+    : min($paginaEntrantes, $totalPaginasEntrantes);
+
+// Los botones/notificaciones que apuntan a una llamada específica deben
+// encontrarla aunque no esté dentro de las primeras diez.
+if ($seleccionarId !== '') {
+    foreach ($llamadas as $posicion => $llamadaCandidata) {
+        if ((string)($llamadaCandidata['pbx_call_id'] ?? '') === $seleccionarId) {
+            $paginaEntrantes = intdiv((int)$posicion, $llamadasPorPagina) + 1;
+            break;
+        }
+    }
+}
+$indiceInicialEntrantes = ($paginaEntrantes - 1) * $llamadasPorPagina;
+$llamadasPaginaEntrantes = array_slice($llamadas, $indiceInicialEntrantes, $llamadasPorPagina);
+$primeraEntrante = $totalLlamadasEntrantes > 0 ? $indiceInicialEntrantes + 1 : 0;
+$ultimaEntrante = min($totalLlamadasEntrantes, $indiceInicialEntrantes + count($llamadasPaginaEntrantes));
+$urlPaginaEntrantes = static function (int $numero): string {
+    return BASE_URL . 'index.php?controller=seguimientoVinculacion&action=llamadasEntrantes'
+        . '&pagina=' . $numero . '#incomingHistoryTitle';
+};
+$paginasVisiblesEntrantes = [];
+if ($totalPaginasEntrantes > 1) {
+    // Primera, última y dos adyacentes a la actual; insertar separadores.
+    foreach ([1, $paginaEntrantes - 2, $paginaEntrantes - 1,
+              $paginaEntrantes, $paginaEntrantes + 1, $paginaEntrantes + 2,
+              $totalPaginasEntrantes] as $numero) {
+        if ($numero >= 1 && $numero <= $totalPaginasEntrantes) {
+            $paginasVisiblesEntrantes[$numero] = $numero;
+        }
+    }
+    ksort($paginasVisiblesEntrantes, SORT_NUMERIC);
+}
+
 $pendientesEntrantes = count(array_filter($llamadas, static function ($fila) {
     return (string)($fila['clasificacion'] ?? 'PENDIENTE') === 'PENDIENTE'
         && (string)($fila['tipo_llamada'] ?? 'ENTRANTE') !== 'INTERNA';
@@ -72,10 +119,10 @@ $duracionEntrante = static function ($segundos) {
                         <strong id="incomingHistoryTitle">Historial de llamadas</strong>
                         <p>Registro cronológico de tu extensión. Las llamadas internas no cuentan como contactos institucionales.</p>
                     </div>
-                    <span class="linkage-call-recordings-count" aria-label="<?= count($llamadas) ?> registros"><?= count($llamadas) ?></span>
+                    <span class="linkage-call-recordings-count" aria-label="<?= $totalLlamadasEntrantes ?> registros"><?= $totalLlamadasEntrantes ?></span>
                 </div>
                 <div class="linkage-call-history-list linkage-incoming-history" role="list">
-                <?php foreach ($llamadas as $indice => $llamada):
+                <?php foreach ($llamadasPaginaEntrantes as $indice => $llamada):
                     $pbxId = (string)($llamada['pbx_call_id'] ?? '');
                     $esWebrtc = ($llamada['fuente'] ?? '') === 'SDK_WEBRTC';
                     $esInterna = ($llamada['tipo_llamada'] ?? '') === 'INTERNA';
@@ -254,6 +301,61 @@ $duracionEntrante = static function ($segundos) {
                     </article>
                 <?php endforeach; ?>
                 </div>
+                <?php if ($totalPaginasEntrantes > 1): ?>
+                    <nav class="linkage-incoming-pagination" aria-label="Páginas del historial de llamadas">
+                        <span class="linkage-incoming-pagination-range" aria-live="polite">
+                            Mostrando <?= $primeraEntrante ?>–<?= $ultimaEntrante ?>
+                            de <?= $totalLlamadasEntrantes ?> llamadas
+                        </span>
+                        <div class="linkage-incoming-pagination-pages">
+                            <?php if ($paginaEntrantes > 1): ?>
+                                <a class="linkage-incoming-pagination-arrow"
+                                    href="<?= $esc($urlPaginaEntrantes($paginaEntrantes - 1)) ?>"
+                                    rel="prev" aria-label="Página anterior">
+                                    <i class="bi bi-chevron-left" aria-hidden="true"></i>
+                                    <span>Anterior</span>
+                                </a>
+                            <?php else: ?>
+                                <span class="linkage-incoming-pagination-arrow is-disabled" aria-disabled="true">
+                                    <i class="bi bi-chevron-left" aria-hidden="true"></i>
+                                    <span>Anterior</span>
+                                </span>
+                            <?php endif; ?>
+                            <?php $paginaAnteriorVisible = 0; ?>
+                            <?php foreach ($paginasVisiblesEntrantes as $numeroPagina): ?>
+                                <?php if ($paginaAnteriorVisible > 0 && $numeroPagina - $paginaAnteriorVisible > 1): ?>
+                                    <span class="linkage-incoming-pagination-gap" aria-hidden="true">…</span>
+                                <?php endif; ?>
+                                <?php if ($numeroPagina === $paginaEntrantes): ?>
+                                    <span class="linkage-incoming-pagination-number is-current"
+                                        aria-label="Página <?= $numeroPagina ?>" aria-current="page">
+                                        <?= $numeroPagina ?>
+                                    </span>
+                                <?php else: ?>
+                                    <a class="linkage-incoming-pagination-number"
+                                        href="<?= $esc($urlPaginaEntrantes($numeroPagina)) ?>"
+                                        aria-label="Ir a la página <?= $numeroPagina ?>">
+                                        <?= $numeroPagina ?>
+                                    </a>
+                                <?php endif; ?>
+                                <?php $paginaAnteriorVisible = $numeroPagina; ?>
+                            <?php endforeach; ?>
+                            <?php if ($paginaEntrantes < $totalPaginasEntrantes): ?>
+                                <a class="linkage-incoming-pagination-arrow"
+                                    href="<?= $esc($urlPaginaEntrantes($paginaEntrantes + 1)) ?>"
+                                    rel="next" aria-label="Página siguiente">
+                                    <span>Siguiente</span>
+                                    <i class="bi bi-chevron-right" aria-hidden="true"></i>
+                                </a>
+                            <?php else: ?>
+                                <span class="linkage-incoming-pagination-arrow is-disabled" aria-disabled="true">
+                                    <span>Siguiente</span>
+                                    <i class="bi bi-chevron-right" aria-hidden="true"></i>
+                                </span>
+                            <?php endif; ?>
+                        </div>
+                    </nav>
+                <?php endif; ?>
             </section>
         <?php else: ?>
             <div class="linkage-incoming-empty-panel">
