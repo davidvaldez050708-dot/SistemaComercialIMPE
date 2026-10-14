@@ -152,6 +152,51 @@
         modal.show();
     };
 
+    page.addEventListener('click', async event => {
+        const button = event.target.closest('[data-incoming-sync-audio]');
+        if (!button || !page.contains(button) || button.disabled) return;
+        const sessionId = String(button.dataset.incomingSyncAudio || '').trim();
+        const status = button.parentElement?.querySelector('[role="status"]');
+        if (!/^sdk-[a-z0-9-]{12,94}$/.test(sessionId)) return;
+        const endpoint = String(page.dataset.audioSyncUrl || '');
+        if (!endpoint) return;
+        const original = button.innerHTML;
+        button.disabled = true;
+        button.textContent = 'Buscando grabación…';
+        if (status) status.textContent = '';
+        try {
+            const body = new URLSearchParams({
+                csrf_token: String(form.querySelector('[name="csrf_token"]')?.value || ''),
+                session_id: sessionId
+            });
+            const res = await fetch(endpoint, {
+                method: 'POST',
+                credentials: 'same-origin',
+                cache: 'no-store',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'fetch',
+                    'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
+                },
+                body: body.toString()
+            });
+            const data = await res.json();
+            if (!res.ok || data.ok !== true) {
+                throw new Error(data.mensaje || 'No se encontró un audio verificable.');
+            }
+            if (status) status.textContent = 'Grabación lista. Actualizando historial…';
+            window.location.reload();
+        } catch (error) {
+            if (status) {
+                status.textContent = error.message ||
+                    'No fue posible recuperar la grabación. Inténtalo después.';
+            }
+        } finally {
+            button.disabled = false;
+            button.innerHTML = original;
+        }
+    });
+
     page.addEventListener('click', event => {
         const button = event.target.closest('[data-call-id]');
         if (button && page.contains(button)) openRegistration(button);
