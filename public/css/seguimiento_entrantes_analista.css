@@ -455,7 +455,7 @@ a.btn.linkage-incoming-back {
     .dashboard-panel.linkage-incoming-page {padding:17px 15px;}
     .linkage-incoming-heading-actions {width:100%;justify-content:flex-start;margin-left:0;}
     .linkage-incoming-stats {grid-template-columns:repeat(2,minmax(0,1fr));}
-    .linkage-incoming-stat:last-child {grid-column:1 / -1;}
+    .linkage-incoming-stat:last-child {grid-column:auto;}
     .linkage-incoming-empty-panel {padding:34px 16px;}
     #modalLlamadaEntranteAnalista .modal-body {padding:18px 16px;}
     #modalLlamadaEntranteAnalista .modal-footer {padding:14px 16px;}
@@ -609,4 +609,38 @@ a.btn.linkage-incoming-back {
     .linkage-incoming-page .linkage-incoming-table tbody tr:hover td {
         background: transparent;
     }
+}
+
+/* Grabación de llamada entre extensiones, sin cambiar el modal institucional. */
+.linkage-incoming-internal-audio {
+    display: inline-block;
+    width: min(100%, 260px);
+    text-align: left;
+}
+.linkage-incoming-internal-audio summary {
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: .45rem;
+    color: #234c82;
+    font-size: 12px;
+    font-weight: 750;
+    padding: .45rem .65rem;
+    border: 1px solid #ccdbee;
+    border-radius: 8px;
+    background: #f6f9fd;
+}
+.linkage-incoming-internal-audio[open] summary {margin-bottom: .5rem;}
+.linkage-incoming-internal-audio audio {display:block; width:100%; max-width:260px; height:38px;}
+.linkage-incoming-internal-audio a {
+    display: inline-block;
+    padding-top: .35rem;
+    font-size: 11px;
+    font-weight: 650;
+    color: #234c82;
+    text-decoration: underline;
+}
+@media (max-width:720px) {
+    .linkage-incoming-internal-audio { width:100%; }
+    .linkage-incoming-internal-audio audio {max-width:100%;}
 }
