@@ -63,6 +63,12 @@ for file in "${FILES[@]}"; do
   git -C "$SOURCE" diff --binary "$BASE" "$TARGET" -- "$file" > "$patch"
   [[ -s "$patch" ]] || { echo "ERROR: parche vacío: $file" >&2; exit 1; }
   if (cd "$TMP/stage" && git apply --reverse --check "$patch" >/dev/null 2>&1); then
+    # Un parche ya presente no autoriza sobrescribir ni aceptar cambios
+    # locales adicionales que la herramienta no conoce.
+    if ! git -C "$SOURCE" show "$TARGET:$file" | cmp -s - "$TMP/stage/$file"; then
+      echo "CONFLICTO: $file contiene cambios ajenos al parche. Sitio intacto." >&2
+      exit 1
+    fi
     echo "YA ACTUALIZADO: $file"
   elif (cd "$TMP/stage" && git apply --check "$patch" >/dev/null 2>&1); then
     (cd "$TMP/stage" && git apply "$patch")
