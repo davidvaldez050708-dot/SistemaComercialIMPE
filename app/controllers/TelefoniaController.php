@@ -393,7 +393,8 @@ class TelefoniaController
         // tradicional en lugar de presentar un iframe de 300 x 150 px.
         foreach ([
             ROOT_PATH . '/public/css/telefonia_shell.css',
-            ROOT_PATH . '/public/javascript/telefonia_shell.js'
+            ROOT_PATH . '/public/javascript/telefonia_shell.js',
+            ROOT_PATH . '/public/javascript/telefonia_shell_navegacion.js'
         ] as $recursoShell) {
             if (!is_file($recursoShell) || !is_readable($recursoShell)) {
                 error_log('[Telefonia shell] Recurso ausente: ' . basename($recursoShell));
