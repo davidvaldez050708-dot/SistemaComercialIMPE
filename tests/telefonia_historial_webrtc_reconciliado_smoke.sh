@@ -27,7 +27,10 @@ with open(p,'w') as f:f.write(s)
 PY
 cp -p "$IMPE_HISTORY_PUBLIC/$SHELL" "$tmp/shell-original"
 
-check="$(bash "$DEPLOY" --check)"
+if ! check="$(bash "$DEPLOY" --check 2>&1)"; then
+  printf 'Preflight fallido:\n%s\n' "$check" >&2
+  exit 1
+fi
 grep -Fq "FUSIÓN CONSERVADORA: $SHELL" <<< "$check"
 grep -Fq "SIN modificar producción" <<< "$check"
 cmp -s "$tmp/shell-original" "$IMPE_HISTORY_PUBLIC/$SHELL"
