@@ -27,7 +27,8 @@ bash -n "$DEPLOY"
 
 # Servidor: sesiones por usuario/extensión, CSRF, no fingir PBX ni verificación.
 grep -Fq "UNIQUE KEY uk_analista_webrtc_sesion (usuario_id, session_id)" app/services/TelefoniaAnalistaWebrtcService.php
-grep -Fq "fecha_atendida = COALESCE(fecha_atendida, NOW())" app/services/TelefoniaAnalistaWebrtcService.php
+# Desde octubre, los timestamps del SDK se guardan explícitamente en UTC.
+grep -Fq "fecha_atendida = COALESCE(fecha_atendida, UTC_TIMESTAMP())" app/services/TelefoniaAnalistaWebrtcService.php
 grep -Fq 'No se confirmó el guardado de la sesión WebRTC.' app/services/TelefoniaAnalistaWebrtcService.php
 grep -Fq "AND estado = 'ringing'" app/services/TelefoniaAnalistaWebrtcService.php
 grep -Fq "AND estado = 'answered'" app/services/TelefoniaAnalistaWebrtcService.php
