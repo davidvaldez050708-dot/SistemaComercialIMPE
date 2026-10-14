@@ -10,6 +10,15 @@ on:
       - "tests/seguimiento_historial_llamadas_hostinger_smoke.sh"
       - "tools/desplegar_diagnostico_historial_llamadas_hostinger.sh"
       - "tests/seguimiento_historial_diagnostico_hostinger_smoke.sh"
+      - "app/services/ZadarmaWebhookEventStoreService.php"
+      - "public/javascript/seguimiento_llamadas_desplegable.js"
+      - "tools/desplegar_conexion_historial_llamadas_hostinger.sh"
+      - "tests/seguimiento_conexion_historial_hostinger_smoke.sh"
+      - "config/db_connection.php"
+      - "tools/desplegar_mysql_persistente_historial_hostinger.sh"
+      - "tests/seguimiento_mysql_persistente_hostinger_smoke.sh"
+      - "tools/desplegar_grabaciones_sin_parpadeo_hostinger.sh"
+      - "tests/seguimiento_grabaciones_sin_parpadeo_smoke.sh"
       - ".github/workflows/seguimiento-historial-llamadas.yml"
   pull_request:
     paths:
@@ -19,6 +28,15 @@ on:
       - "tests/seguimiento_historial_llamadas_hostinger_smoke.sh"
       - "tools/desplegar_diagnostico_historial_llamadas_hostinger.sh"
       - "tests/seguimiento_historial_diagnostico_hostinger_smoke.sh"
+      - "app/services/ZadarmaWebhookEventStoreService.php"
+      - "public/javascript/seguimiento_llamadas_desplegable.js"
+      - "tools/desplegar_conexion_historial_llamadas_hostinger.sh"
+      - "tests/seguimiento_conexion_historial_hostinger_smoke.sh"
+      - "config/db_connection.php"
+      - "tools/desplegar_mysql_persistente_historial_hostinger.sh"
+      - "tests/seguimiento_mysql_persistente_hostinger_smoke.sh"
+      - "tools/desplegar_grabaciones_sin_parpadeo_hostinger.sh"
+      - "tests/seguimiento_grabaciones_sin_parpadeo_smoke.sh"
       - ".github/workflows/seguimiento-historial-llamadas.yml"
 
 jobs:
@@ -39,7 +57,22 @@ jobs:
           bash -n tests/seguimiento_historial_llamadas_hostinger_smoke.sh
           bash -n tools/desplegar_diagnostico_historial_llamadas_hostinger.sh
           bash -n tests/seguimiento_historial_diagnostico_hostinger_smoke.sh
+          php -l app/services/ZadarmaWebhookEventStoreService.php
+          node --check public/javascript/seguimiento_llamadas_desplegable.js
+          bash -n tools/desplegar_conexion_historial_llamadas_hostinger.sh
+          bash -n tests/seguimiento_conexion_historial_hostinger_smoke.sh
+          php -l config/db_connection.php
+          bash -n tools/desplegar_mysql_persistente_historial_hostinger.sh
+          bash -n tests/seguimiento_mysql_persistente_hostinger_smoke.sh
+          bash -n tools/desplegar_grabaciones_sin_parpadeo_hostinger.sh
+          bash -n tests/seguimiento_grabaciones_sin_parpadeo_smoke.sh
       - name: Simular parche selectivo de Hostinger
         run: bash tests/seguimiento_historial_llamadas_hostinger_smoke.sh
       - name: Simular bitácora privada de errores PHP en Hostinger
         run: bash tests/seguimiento_historial_diagnostico_hostinger_smoke.sh
+      - name: Simular historial con una conexión y consulta compartida
+        run: bash tests/seguimiento_conexion_historial_hostinger_smoke.sh
+      - name: Simular conexión persistente solo para historial
+        run: bash tests/seguimiento_mysql_persistente_hostinger_smoke.sh
+      - name: No renderizar sección duplicada de grabaciones
+        run: bash tests/seguimiento_grabaciones_sin_parpadeo_smoke.sh

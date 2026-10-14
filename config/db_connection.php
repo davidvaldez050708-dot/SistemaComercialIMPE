@@ -6,11 +6,17 @@ class Database
 {
     private $connection;
 
-    public function connect()
+    public function connect(bool $persistente = false)
     {
         try {
+            // Sólo los consumidores que lo soliciten reutilizan la conexión
+            // de su trabajador PHP. Los demás conservan el modo habitual.
+            $host = (string)DB_HOST;
+            if ($persistente && !str_starts_with($host, 'p:')) {
+                $host = 'p:' . $host;
+            }
             $this->connection = new mysqli(
-                DB_HOST,
+                $host,
                 DB_USER,
                 DB_PASSWORD,
                 DB_NAME

@@ -21,10 +21,17 @@
 <body class="formulario-publico-body formulario-publico-thanks-body">
     <main class="formulario-publico-thanks">
         <section class="formulario-publico-thanks-card">
-            <div class="formulario-publico-thanks-logo">
-                <img
-                    src="<?= BASE_URL ?>public/img/brand/logo-duo-color.png"
-                    alt="Fundación Red Educativa México y Universidad MPE">
+            <div class="formulario-publico-thanks-logos">
+                <div class="formulario-publico-thanks-logo">
+                    <img
+                        src="<?= BASE_URL ?>public/img/brand/logo-duo-color.png"
+                        alt="Fundación Red Educativa México y Universidad MPE">
+                </div>
+                <div class="formulario-publico-thanks-logo-sep">
+                    <img
+                        src="<?= BASE_URL ?>public/img/brand/Logo-SEP-Negro.png"
+                        alt="Secretaría de Educación Pública">
+                </div>
             </div>
 
             <span class="formulario-publico-thanks-icon" aria-hidden="true">
