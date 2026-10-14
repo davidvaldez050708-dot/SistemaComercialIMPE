@@ -176,6 +176,26 @@ class TelefoniaAnalistaWebrtcService
         }
     }
 
+    public function esSesionInterna(int $usuarioId, string $sessionId): bool
+    {
+        if (!self::validarSesion($sessionId)) {
+            return false;
+        }
+        $stmt = $this->db->prepare(
+            "SELECT numero_origen, extension
+               FROM telefonia_analista_webrtc_sesiones
+              WHERE usuario_id = ? AND session_id = ? AND estado = 'ended'
+              LIMIT 1"
+        );
+        $stmt->bind_param('is', $usuarioId, $sessionId);
+        $stmt->execute();
+        $fila = $stmt->get_result()->fetch_assoc() ?: null;
+        $stmt->close();
+        return $fila && $this->esNumeroInterno(
+            (string)$fila['numero_origen'], (string)$fila['extension']
+        );
+    }
+
     public function obtenerFinalizada(int $usuarioId, string $id): array
     {
         if (!self::validarSesion($id)) {
