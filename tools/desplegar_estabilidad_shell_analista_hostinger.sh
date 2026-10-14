@@ -150,6 +150,19 @@ for i in "${!FILES[@]}"; do
       echo "ERROR: bloque CSS de navegación vacío." >&2
       exit 1
     }
+    cssNewSize="$(wc -c < "$cssNew" | tr -d ' ')"
+    cssLiveSize="$(wc -c < "$TMP/stage/$file" | tr -d ' ')"
+    if [[ "$cssLiveSize" -ge "$cssNewSize" ]] &&
+       tail -c "$cssNewSize" "$TMP/stage/$file" | cmp -s - "$cssNew"; then
+      cssPrior="$TMP/css_antes_de_navegacion.css"
+      head -c "$((cssLiveSize - cssNewSize))" "$TMP/stage/$file" > "$cssPrior"
+      if grep -Eq 'impe-shell-navigation-(mask|progress|spinner|spin)' "$cssPrior"; then
+        echo "CONFLICTO: estilos de navegación duplicados antes del bloque oficial." >&2
+        exit 1
+      fi
+      echo "YA ACTUALIZADO: $file (CSS personalizado conservado)"
+      continue
+    fi
     for selector in '.impe-phone-shell' '#impeCrmFrame' '.impe-phone-call' \
                     '.impe-incoming-panel' '.impe-phone-classic-link'; do
       grep -Fq "$selector" "$TMP/stage/$file" || {
