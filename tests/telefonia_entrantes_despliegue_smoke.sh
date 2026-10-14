@@ -7,7 +7,11 @@ trap 'rm -rf "$TMP"' EXIT
 LIVE="$TMP/domains/fundacionrededumex.org/public_html"
 mkdir -p "$LIVE/app/views/telefonia" "$LIVE/public/css" "$LIVE/public/javascript"
 touch "$LIVE/index.php"
-ln -s "$ROOT" "$TMP/crm-preparacion"
+# Esta prueba cubre el despliegue legacy del 12/oct; usar su versión
+# histórica como ORIGEN. El shell actual ya tiene nuevos cambios de
+# navegación/recepción y no debe forzarse por el instalador antiguo.
+git -C "$ROOT" worktree add --detach "$TMP/historico" 6bd2b5478447 >/dev/null
+ln -s "$TMP/historico" "$TMP/crm-preparacion"
 git -C "$ROOT" cat-file blob 361172edf4a61c884cdfa60135152f6b84590759 > "$LIVE/public/css/telefonia_host.css"
 git -C "$ROOT" cat-file blob 1590a267840e6ac5d341254fdb760d4deb04b4b7 > "$LIVE/public/javascript/telefonia_host.js"
 git -C "$ROOT" cat-file blob 13cdd5876bedf6313168c53c13666fe602ebe89a > "$LIVE/public/css/telefonia_shell.css"
@@ -17,7 +21,7 @@ git -C "$ROOT" cat-file blob 763470485ce10bd7a74ec2f938eca3bae0877e31 > "$LIVE/a
 echo '// NOTA-LOCAL-EN-HOSTINGER' >> "$LIVE/public/javascript/telefonia_shell.js"
 echo '/* TEMA-LOCAL */' >> "$LIVE/public/css/telefonia_shell.css"
 echo '<!-- NOTA-LOCAL -->' >> "$LIVE/app/views/telefonia/shell.php"
-deploy() { HOME="$TMP" bash "$ROOT/tools/desplegar_telefonia_entrantes_hostinger.sh"; }
+deploy() { HOME="$TMP" bash "$TMP/historico/tools/desplegar_telefonia_entrantes_hostinger.sh"; }
 deploy
 grep -Fq 'El SDK conserva sus propios botones' "$LIVE/public/javascript/telefonia_host.js"
 grep -Fq 'NOTA-LOCAL-EN-HOSTINGER' "$LIVE/public/javascript/telefonia_shell.js"
