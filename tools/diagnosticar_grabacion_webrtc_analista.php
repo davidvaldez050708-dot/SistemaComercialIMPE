@@ -16,33 +16,33 @@ $extension = (string)($argv[2] ?? '');
 $horaLocal = (string)($argv[3] ?? '');
 if ($root === false ||
     !is_file($root . '/config/db_connection.php') ||
-    !preg_match('/^\\d{3,6}$/D', $extension) ||
-    !preg_match('/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}$/D', $horaLocal) ||
+    !preg_match('/^\d{3,6}$/D', $extension) ||
+    !preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/D', $horaLocal) ||
     count($argv) !== 4) {
-    fwrite(STDERR, "Uso: php tools/diagnosticar_grabacion_webrtc_analista.php /ruta/public_html EXTENSION YYYY-MM-DDTHH:MM\\n");
+    fwrite(STDERR, "Uso: php tools/diagnosticar_grabacion_webrtc_analista.php /ruta/public_html EXTENSION YYYY-MM-DDTHH:MM\n");
     exit(2);
 }
 require_once $root . '/config/db_connection.php';
 date_default_timezone_set('America/Mexico_City');
 $local = DateTimeImmutable::createFromFormat(
-    '!Y-m-d\\TH:i',
+    '!Y-m-d\TH:i',
     $horaLocal,
     new DateTimeZone('America/Mexico_City')
 );
-if (!$local || $local->format('Y-m-d\\TH:i') !== $horaLocal) {
-    fwrite(STDERR, "Fecha no válida.\\n");
+if (!$local || $local->format('Y-m-d\TH:i') !== $horaLocal) {
+    fwrite(STDERR, "Fecha no válida.\n");
     exit(2);
 }
 $utc = $local->setTimezone(new DateTimeZone('UTC'));
-echo "Hora solicitada México: " . $local->format('Y-m-d H:i') . "\\n";
-echo "Hora equivalente UTC: " . $utc->format('Y-m-d H:i') . "\\n";
+echo "Hora solicitada México: " . $local->format('Y-m-d H:i') . "\n";
+echo "Hora equivalente UTC: " . $utc->format('Y-m-d H:i') . "\n";
 try {
     $db = (new Database())->connect();
     $tz = $db->query("SELECT NOW() AS reloj_mysql, UTC_TIMESTAMP() AS reloj_utc")->fetch_assoc();
     $relojMysql = strtotime((string)$tz['reloj_mysql']);
     $relojUtc = strtotime((string)$tz['reloj_utc']);
     $diferencia = (int)round(($relojMysql - $relojUtc) / 3600);
-    echo "Diferencia reloj MySQL-UTC (aprox. horas): $diferencia\\n";
+    echo "Diferencia reloj MySQL-UTC (aprox. horas): $diferencia\n";
 
     $localFrom = $local->modify('-15 minutes')->format('Y-m-d H:i:s');
     $localTo = $local->modify('+15 minutes')->format('Y-m-d H:i:s');
@@ -62,13 +62,13 @@ try {
         $stmt->execute();
         $cantidad = $stmt->get_result()->fetch_assoc();
         $stmt->close();
-        echo "Sesiones SDK cercanas (sin identificadores): " . (int)($cantidad['cantidad'] ?? 0) . "\\n";
+        echo "Sesiones SDK cercanas (sin identificadores): " . (int)($cantidad['cantidad'] ?? 0) . "\n";
     } else {
-        echo "Tabla SDK: no disponible\\n";
+        echo "Tabla SDK: no disponible\n";
     }
     $tabla = $db->query("SHOW TABLES LIKE 'telefonia_zadarma_eventos'");
     if (!$tabla || $tabla->num_rows === 0) {
-        echo "Tabla de eventos PBX: no disponible\\n";
+        echo "Tabla de eventos PBX: no disponible\n";
         exit(0);
     }
     // Primero localizar PBX IDs dirigidos a la extensión, sin mostrarlos.
@@ -85,9 +85,9 @@ try {
     $stmt->execute();
     $ids = array_column($stmt->get_result()->fetch_all(MYSQLI_ASSOC), 'pbx_call_id');
     $stmt->close();
-    echo "Llamadas PBX notificadas hacia extensión $extension en ventana: " . count($ids) . "\\n";
+    echo "Llamadas PBX notificadas hacia extensión $extension en ventana: " . count($ids) . "\n";
     if (!$ids) {
-        echo "Sin eventos PBX para esa extensión y franja: revisar webhook y datos de Zadarma.\\n";
+        echo "Sin eventos PBX para esa extensión y franja: revisar webhook y datos de Zadarma.\n";
         exit(0);
     }
     $pbxConRecord = 0;
@@ -106,14 +106,14 @@ try {
         if ((int)($fila['record_notificado'] ?? 0) > 0) $pbxConRecord++;
         if ((int)($fila['id_audio_presente'] ?? 0) > 0) $pbxConIdAudio++;
     }
-    echo "Candidatas con NOTIFY_RECORD: $pbxConRecord\\n";
-    echo "Candidatas con identificador de grabación: $pbxConIdAudio\\n";
+    echo "Candidatas con NOTIFY_RECORD: $pbxConRecord\n";
+    echo "Candidatas con identificador de grabación: $pbxConIdAudio\n";
     if (count($ids) !== 1) {
-        echo "No es seguro asociar automáticamente una grabación: cero o varias candidatas.\\n";
+        echo "No es seguro asociar automáticamente una grabación: cero o varias candidatas.\n";
     } else {
-        echo "Sólo una candidata PBX en la ventana; antes de vincular confirmar origen y duración.\\n";
+        echo "Sólo una candidata PBX en la ventana; antes de vincular confirmar origen y duración.\n";
     }
 } catch (Throwable $e) {
-    fwrite(STDERR, "No se pudo completar el diagnóstico: " . get_class($e) . " (código " . (int)$e->getCode() . ").\\n");
+    fwrite(STDERR, "No se pudo completar el diagnóstico: " . get_class($e) . " (código " . (int)$e->getCode() . ").\n");
     exit(1);
 }
