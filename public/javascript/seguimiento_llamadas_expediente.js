@@ -704,13 +704,29 @@
                             cache: 'no-store'
                         }
                     )
-                        .then(function (response) {
-                            return response.json().then(function (data) {
-                                if (!response.ok || !data.ok) {
-                                    throw new Error(data.mensaje || 'No fue posible cargar las llamadas.');
-                                }
-                                return data;
-                            });
+                        .then(async function (response) {
+                            // PHP puede devolver un cuerpo vacío o HTML cuando el hosting falla.
+                            // Evitar mostrar "Unexpected end of JSON input" al analista.
+                            const cuerpo = await response.text();
+                            let data = null;
+                            try {
+                                data = cuerpo.trim() ? JSON.parse(cuerpo) : null;
+                            } catch (_) {
+                                // Error no JSON: nunca mostrar la respuesta HTML al usuario.
+                            }
+                            if (!data || typeof data !== 'object') {
+                                const estado = response.status;
+                                const mensaje = estado === 401 || estado === 403
+                                    ? 'La sesión expiró o no tienes acceso. Actualiza el CRM.'
+                                    : 'El servidor no devolvió el historial de llamadas (HTTP ' +
+                                        estado + '). Verifica el registro de errores de Hostinger.';
+                                throw new Error(mensaje);
+                            }
+                            if (!response.ok || !data.ok) {
+                                throw new Error(data.mensaje ||
+                                    'No fue posible cargar las llamadas (HTTP ' + response.status + ').');
+                            }
+                            return data;
                         })
                         .then(function (data) {
                             const llamadas = Array.isArray(data.llamadas) ? data.llamadas : [];
