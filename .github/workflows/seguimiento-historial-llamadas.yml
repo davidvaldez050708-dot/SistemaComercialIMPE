@@ -19,6 +19,8 @@ on:
       - "tests/seguimiento_mysql_persistente_hostinger_smoke.sh"
       - "tools/desplegar_grabaciones_sin_parpadeo_hostinger.sh"
       - "tests/seguimiento_grabaciones_sin_parpadeo_smoke.sh"
+      - "tools/desplegar_mysql_persistente_global_hostinger.sh"
+      - "tests/mysql_persistente_global_hostinger_smoke.sh"
       - ".github/workflows/seguimiento-historial-llamadas.yml"
   pull_request:
     paths:
@@ -37,6 +39,8 @@ on:
       - "tests/seguimiento_mysql_persistente_hostinger_smoke.sh"
       - "tools/desplegar_grabaciones_sin_parpadeo_hostinger.sh"
       - "tests/seguimiento_grabaciones_sin_parpadeo_smoke.sh"
+      - "tools/desplegar_mysql_persistente_global_hostinger.sh"
+      - "tests/mysql_persistente_global_hostinger_smoke.sh"
       - ".github/workflows/seguimiento-historial-llamadas.yml"
 
 jobs:
@@ -66,6 +70,8 @@ jobs:
           bash -n tests/seguimiento_mysql_persistente_hostinger_smoke.sh
           bash -n tools/desplegar_grabaciones_sin_parpadeo_hostinger.sh
           bash -n tests/seguimiento_grabaciones_sin_parpadeo_smoke.sh
+          bash -n tools/desplegar_mysql_persistente_global_hostinger.sh
+          bash -n tests/mysql_persistente_global_hostinger_smoke.sh
       - name: Simular parche selectivo de Hostinger
         run: bash tests/seguimiento_historial_llamadas_hostinger_smoke.sh
       - name: Simular bitácora privada de errores PHP en Hostinger
@@ -76,3 +82,5 @@ jobs:
         run: bash tests/seguimiento_mysql_persistente_hostinger_smoke.sh
       - name: No renderizar sección duplicada de grabaciones
         run: bash tests/seguimiento_grabaciones_sin_parpadeo_smoke.sh
+      - name: Validar persistencia MySQL global en simulación Hostinger
+        run: bash tests/mysql_persistente_global_hostinger_smoke.sh
