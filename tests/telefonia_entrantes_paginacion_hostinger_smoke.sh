@@ -44,8 +44,9 @@ python3 - "$CONFLICT/$VIEW" <<'PY'
 import pathlib,sys
 p=pathlib.Path(sys.argv[1])
 source=p.read_text()
-assert '$llamadas = is_array(' in source
-p.write_text(source.replace('$llamadas = is_array(', '$llamadas = /* custom */ is_array(', 1))
+anchor='$estadosEntrantes = $estadosEntrantes ?? [];'
+assert anchor in source
+p.write_text(source.replace(anchor, '$estadosEntrantes = /* modificación incompatible */ $estadosEntrantes ?? [];', 1))
 PY
 cp "$CONFLICT/$VIEW" "$TEMP/antes"
 export IMPE_PAGINACION_PUBLIC="$CONFLICT"
