@@ -23,6 +23,12 @@ on:
       - "tests/mysql_persistente_global_hostinger_smoke.sh"
       - "tools/desplegar_leyenda_webrtc_y_audio_hostinger.sh"
       - "tests/seguimiento_audio_webrtc_sin_vinculo_smoke.sh"
+      - "app/helpers/TelefoniaFechaHoraHelper.php"
+      - "app/services/TelefoniaAnalistaWebrtcService.php"
+      - "app/controllers/SeguimientoVinculacionController.php"
+      - "tools/diagnosticar_grabacion_webrtc_analista.php"
+      - "tools/desplegar_hora_mexico_webrtc_hostinger.sh"
+      - "tests/seguimiento_fecha_webrtc_hostinger_smoke.sh"
       - ".github/workflows/seguimiento-historial-llamadas.yml"
   pull_request:
     paths:
@@ -45,6 +51,12 @@ on:
       - "tests/mysql_persistente_global_hostinger_smoke.sh"
       - "tools/desplegar_leyenda_webrtc_y_audio_hostinger.sh"
       - "tests/seguimiento_audio_webrtc_sin_vinculo_smoke.sh"
+      - "app/helpers/TelefoniaFechaHoraHelper.php"
+      - "app/services/TelefoniaAnalistaWebrtcService.php"
+      - "app/controllers/SeguimientoVinculacionController.php"
+      - "tools/diagnosticar_grabacion_webrtc_analista.php"
+      - "tools/desplegar_hora_mexico_webrtc_hostinger.sh"
+      - "tests/seguimiento_fecha_webrtc_hostinger_smoke.sh"
       - ".github/workflows/seguimiento-historial-llamadas.yml"
 
 jobs:
@@ -78,6 +90,12 @@ jobs:
           bash -n tests/mysql_persistente_global_hostinger_smoke.sh
           bash -n tools/desplegar_leyenda_webrtc_y_audio_hostinger.sh
           bash -n tests/seguimiento_audio_webrtc_sin_vinculo_smoke.sh
+          php -l app/helpers/TelefoniaFechaHoraHelper.php
+          php -l app/services/TelefoniaAnalistaWebrtcService.php
+          php -l app/controllers/SeguimientoVinculacionController.php
+          php -l tools/diagnosticar_grabacion_webrtc_analista.php
+          bash -n tools/desplegar_hora_mexico_webrtc_hostinger.sh
+          bash -n tests/seguimiento_fecha_webrtc_hostinger_smoke.sh
       - name: Simular parche selectivo de Hostinger
         run: bash tests/seguimiento_historial_llamadas_hostinger_smoke.sh
       - name: Simular bitácora privada de errores PHP en Hostinger
@@ -92,3 +110,5 @@ jobs:
         run: bash tests/mysql_persistente_global_hostinger_smoke.sh
       - name: Comprobar que WebRTC no muestre marcador y audio falso
         run: bash tests/seguimiento_audio_webrtc_sin_vinculo_smoke.sh
+      - name: Convertir hora UTC WebRTC a México y validar despliegue
+        run: bash tests/seguimiento_fecha_webrtc_hostinger_smoke.sh
