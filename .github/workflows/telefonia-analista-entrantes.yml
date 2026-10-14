@@ -65,6 +65,9 @@ on:
       - "tools/desplegar_diseno_llamadas_recibidas_expediente_hostinger.sh"
       - "tests/telefonia_entrantes_visual_smoke.php"
       - "tests/telefonia_entrantes_diseno_hostinger_smoke.sh"
+      - "tools/desplegar_paginacion_llamadas_recibidas_hostinger.sh"
+      - "tests/telefonia_entrantes_paginacion_smoke.php"
+      - "tests/telefonia_entrantes_paginacion_hostinger_smoke.sh"
       - "app/views/layout/dashboard_head.php"
       - "app/helpers/ZadarmaPbxIdentifierHelper.php"
       - "tools/desplegar_call_id_decimal_zadarma_hostinger.sh"
@@ -120,6 +123,9 @@ on:
       - "tools/desplegar_diseno_llamadas_recibidas_expediente_hostinger.sh"
       - "tests/telefonia_entrantes_visual_smoke.php"
       - "tests/telefonia_entrantes_diseno_hostinger_smoke.sh"
+      - "tools/desplegar_paginacion_llamadas_recibidas_hostinger.sh"
+      - "tests/telefonia_entrantes_paginacion_smoke.php"
+      - "tests/telefonia_entrantes_paginacion_hostinger_smoke.sh"
       - "app/views/layout/dashboard_head.php"
       - "app/helpers/ZadarmaPbxIdentifierHelper.php"
       - "tools/desplegar_call_id_decimal_zadarma_hostinger.sh"
@@ -203,5 +209,6 @@ jobs:
           bash tests/telefonia_resultado_analista_hostinger_smoke.sh
           bash tests/telefonia_internas_analista_smoke.sh
           bash tests/telefonia_entrantes_diseno_hostinger_smoke.sh
+          bash tests/telefonia_entrantes_paginacion_hostinger_smoke.sh
           bash tests/zadarma_call_id_decimal_hostinger_smoke.sh
           bash tests/reparador_interna_bootstrap_hostinger_smoke.sh
