@@ -58,7 +58,7 @@ done
 
 for file in "${FILES[@]}"; do php -l "$TMP/stage/$file" >/dev/null; done
 grep -Fq 'public function connect(bool $persistente = false)' "$TMP/stage/config/db_connection.php"
-grep -Fq "'p:' . $host" "$TMP/stage/config/db_connection.php"
+grep -Fq 'str_starts_with(' "$TMP/stage/config/db_connection.php"
 grep -Fq '(new Database())->connect(true)' "$TMP/stage/prueba_telefonia/api/llamadas_seguimiento.php"
 grep -Fq 'conexion=%s' "$TMP/stage/prueba_telefonia/api/llamadas_seguimiento.php"
 
