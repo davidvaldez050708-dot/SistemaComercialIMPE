@@ -55,6 +55,12 @@ for file in "${FILES[@]}"; do
   if cmp -s "$LIVE/$file" "$TMP/target/$file"; then
     echo "YA ACTUALIZADO: $file"; continue
   fi
+  if [[ "$file" == "$SHELL" ]] &&
+    php "$SOURCE/tools/resolver_conflicto_shell_analista.php" \
+      --is-reconciled "$LIVE/$file" "$TMP/target/$file"; then
+    echo "YA RECONCILIADO: $file (sin reponer filtro de visibilidad)"
+    continue
+  fi
   cp -p "$LIVE/$file" "$TMP/stage/$file"
   git -C "$SOURCE" show "$BASE:$file" >"$TMP/base/$file"
   git -C "$SOURCE" diff --binary "$BASE" "$TARGET" -- "$file" >"$TMP/one.patch"
