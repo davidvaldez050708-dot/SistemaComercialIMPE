@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/ZadarmaWebhookEventStoreService.php';
+require_once __DIR__ . '/../helpers/ZadarmaPbxIdentifierHelper.php';
 
 class ZadarmaRecordingService
 {
@@ -97,7 +98,7 @@ class ZadarmaRecordingService
     public function obtenerGrabacionPorCallId(string $callId): ?array
     {
         $callId = trim($callId);
-        if (!preg_match('/^[a-zA-Z0-9_-]{6,100}$/D', $callId)) {
+        if (!ZadarmaPbxIdentifierHelper::callIdValido($callId)) {
             return null;
         }
         $record = $this->api->getPbxRecord($callId, null, 300);
