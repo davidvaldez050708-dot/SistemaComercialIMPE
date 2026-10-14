@@ -694,17 +694,17 @@ html {
 }
 
 .formulario-publico-thanks-logos {
-    width: min(560px, 94%);
+    width: min(620px, 96%);
     margin: 0 auto 24px;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 22px;
+    gap: 26px;
 }
 
 .formulario-publico-thanks-logo {
-    flex: 0 1 320px;
-    max-width: 320px;
+    flex: 0 1 315px;
+    max-width: 315px;
     margin: 0;
     display: flex;
     align-items: center;
@@ -714,14 +714,14 @@ html {
 .formulario-publico-thanks-logo img {
     display: block;
     width: 100%;
-    max-height: 130px;
+    max-height: 128px;
     object-fit: contain;
 }
 
 .formulario-publico-thanks-logo-sep {
-    flex: 0 1 220px;
-    max-width: 220px;
-    padding-left: 22px;
+    flex: 0 1 260px;
+    max-width: 260px;
+    padding-left: 24px;
     border-left: 1px solid #d7dee8;
     display: flex;
     align-items: center;
@@ -731,8 +731,8 @@ html {
 .formulario-publico-thanks-logo-sep img {
     display: block;
     width: 100%;
-    max-width: 220px;
-    max-height: 135px;
+    max-width: 260px;
+    max-height: 150px;
     object-fit: contain;
 }
 
@@ -777,27 +777,27 @@ html {
     }
 
     .formulario-publico-thanks-logos {
-        width: min(380px, 96%);
+        width: min(410px, 98%);
         margin-bottom: 20px;
-        gap: 12px;
+        gap: 14px;
         align-items: center;
         justify-content: center;
     }
 
     .formulario-publico-thanks-logo {
-        max-width: 220px;
+        max-width: 205px;
         display: flex;
         align-items: center;
         justify-content: center;
     }
 
     .formulario-publico-thanks-logo img {
-        max-height: 98px;
+        max-height: 94px;
     }
 
     .formulario-publico-thanks-logo-sep {
-        flex-basis: 145px;
-        max-width: 145px;
+        flex-basis: 175px;
+        max-width: 175px;
         padding-left: 12px;
         display: flex;
         align-items: center;
@@ -805,8 +805,8 @@ html {
     }
 
     .formulario-publico-thanks-logo-sep img {
-        max-width: 145px;
-        max-height: 92px;
+        max-width: 175px;
+        max-height: 105px;
     }
 
     .formulario-publico-thanks-icon {
