@@ -107,10 +107,16 @@ for token in \
 done
 bash "$DEPLOY" --check | grep -Fq "ya publicada"
 [[ -n "$(find "$TEMP/backups" -type f)" ]]
-cmp -s "$TEMP/backups/$SHELL_PHP" <(git show "${BASES[0]}:$SHELL_PHP") && {
-  echo "ERROR: respaldo debería conservar la variante real del usuario." >&2; exit 1;
+BACKUP_SHELL="$(find "$TEMP/backups" -type f -path "*/$SHELL_PHP" -print -quit)"
+[[ -n "$BACKUP_SHELL" && -f "$BACKUP_SHELL" ]] || {
+  echo "ERROR: el script no respaldó el shell anterior." >&2
+  exit 1
 }
-[[ "$(git hash-object "$TEMP/backups/$SHELL_PHP")" == "$SHA" ]]
+cmp -s "$BACKUP_SHELL" <(git show "${BASES[0]}:$SHELL_PHP") && {
+  echo "ERROR: respaldo debería conservar la variante real del usuario." >&2
+  exit 1
+}
+[[ "$(git hash-object "$BACKUP_SHELL")" == "$SHA" ]]
 
 # Nunca aceptar otra variante sin comprobarla primero con el usuario.
 echo "Compatibilidad diario WebRTC Hostinger: OK (SHA conocido, intacto en check, audio, botones, navegación, respaldo e idempotencia)."
