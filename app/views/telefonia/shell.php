@@ -133,9 +133,20 @@ $nombreShell = $nombreShell !== '' ? $nombreShell : 'Usuario';
         <iframe
             id="impeCrmFrame"
             title="Sistema Comercial"
-            src="<?= htmlspecialchars(BASE_URL . 'index.php?controller=home&action=index', ENT_QUOTES, 'UTF-8') ?>"
+            src="about:blank"
             allow="microphone; autoplay"
             loading="eager"></iframe>
+        <div class="impe-shell-navigation-mask" data-shell-navigation-mask
+            role="status" aria-live="polite">
+            <div class="impe-shell-navigation-progress">
+                <span class="impe-shell-navigation-spinner" aria-hidden="true"></span>
+                <strong data-shell-navigation-message>Abriendo sistema comercial…</strong>
+                <button type="button" data-shell-navigation-retry hidden>
+                    <i class="bi bi-arrow-clockwise" aria-hidden="true"></i>
+                    Reintentar este módulo
+                </button>
+            </div>
+        </div>
     </main>
     <aside class="impe-phone-status" data-shell-status role="status" aria-live="polite" hidden>
         <span data-shell-status-text></span>
@@ -280,6 +291,15 @@ $nombreShell = $nombreShell !== '' ? $nombreShell : 'Usuario';
         ? file_get_contents($shellJsPath)
         : '';
     echo str_ireplace('</script', '<\\/script', (string)$shellJsContent);
+    ?>
+    </script>
+    <script id="impeShellNavigation">
+    <?php
+    $navigationJsPath = ROOT_PATH . '/public/javascript/telefonia_shell_navegacion.js';
+    $navigationJs = is_readable($navigationJsPath)
+        ? file_get_contents($navigationJsPath)
+        : '';
+    echo str_ireplace('</script', '<\\/script', (string)$navigationJs);
     ?>
     </script>
 </body>
