@@ -173,20 +173,24 @@ $duracionEntrante = static function ($segundos) {
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
-            <form data-incoming-form>
-                <div class="modal-body system-form-modal-body">
+            <form data-incoming-form class="linkage-incoming-form">
+                <div class="modal-body system-form-modal-body" data-incoming-scroll-region tabindex="0" aria-label="Formulario de resultado de llamada">
                     <input type="hidden" name="csrf_token" value="<?= $esc($_SESSION['csrf_token'] ?? '') ?>">
                     <input type="hidden" name="pbx_call_id" data-incoming-pbx>
                     <input type="hidden" name="sdk_session_id" data-incoming-sdk-id>
-                    <div class="alert alert-info mt-3 mb-0" data-incoming-sdk-notice hidden>
-                        <strong>Registro WebRTC sin confirmación PBX.</strong>
-                        Esta llamada fue observada por el teléfono del navegador.
-                        Al vincularla confirma que realmente mantuviste la conversación;
-                        no se contabilizará como verificación efectiva.
-                    </div>
                     <div class="linkage-incoming-summary">
-                        <span><i class="bi bi-telephone-inbound"></i> <strong data-incoming-number>—</strong></span>
-                        <span><i class="bi bi-clock"></i> <strong data-incoming-duration>00:00</strong></span>
+                        <span><i class="bi bi-telephone-inbound" aria-hidden="true"></i> <strong data-incoming-number>—</strong></span>
+                        <span><i class="bi bi-clock" aria-hidden="true"></i> <strong data-incoming-duration>00:00</strong></span>
+                    </div>
+                    <div class="linkage-incoming-sdk-notice" data-incoming-sdk-notice role="note" hidden>
+                        <span class="linkage-incoming-sdk-notice-icon" aria-hidden="true">
+                            <i class="bi bi-info-circle"></i>
+                        </span>
+                        <div>
+                            <strong>Registro de llamada WebRTC</strong>
+                            <p>Observada desde el navegador, sin confirmación de la centralita.
+                                Al vincularla confirma que hubo conversación. No genera verificaciones efectivas.</p>
+                        </div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">¿A qué institución corresponde?</label>
@@ -299,7 +303,7 @@ $duracionEntrante = static function ($segundos) {
                     </div>
                     <div class="alert alert-danger mt-3 mb-0 d-none" data-incoming-error role="alert"></div>
                 </div>
-                <div class="modal-footer system-form-modal-footer">
+                <div class="modal-footer system-form-modal-footer linkage-incoming-form-footer">
                     <button type="button" class="btn btn-system-cancel" data-bs-dismiss="modal">Cancelar</button>
                     <button type="submit" class="btn btn-system-save" data-incoming-submit>
                         <i class="bi bi-check2-circle"></i> Guardar resultado
