@@ -25,7 +25,7 @@ bash -n tools/desplegar_llamadas_internas_analista_hostinger.sh
 grep -Fq "esNumeroInterno" "$SDK"
 grep -Fq "clasificacion = 'INTERNA'" "$SDK"
 grep -Fq "esNumeroInterno(" "$ENTRANTES"
-grep -Fq "Grabación pendiente de vinculación" "$VISTA"
+grep -Fq "Grabación no vinculada" "$VISTA"
 grep -Fq "grabacion_interna_analista.php" "$VISTA"
 grep -Fq "No tienes acceso a las grabaciones" "$ENDPOINT"
 grep -Fq "s.clasificacion = 'INTERNA'" "$SERVICIO"
