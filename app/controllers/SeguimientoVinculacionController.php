@@ -124,6 +124,41 @@ class SeguimientoVinculacionController
         }
     }
 
+    /**
+     * El Analista solicita enlazar el audio de su propia llamada interna.
+     * El servidor consulta Zadarma y sólo guarda una coincidencia única.
+     */
+    public function sincronizarGrabacionInterna()
+    {
+        $this->validarAccesoEntrantesAnalista(true);
+        $this->validarMetodoPostJson();
+        $expected = (string)($_SESSION['csrf_token'] ?? '');
+        $received = (string)($_POST['csrf_token'] ?? '');
+        if ($expected === '' || !hash_equals($expected, $received)) {
+            $this->responderJson(['ok' => false, 'mensaje' => 'La sesión expiró. Actualiza el CRM.'], 403);
+        }
+        require_once __DIR__ . '/../services/TelefoniaInternaGrabacionService.php';
+        try {
+            $db = (new Database())->connect();
+            $ok = (new TelefoniaInternaGrabacionService($db))->sincronizar(
+                (int)($_SESSION['usuario_id'] ?? 0),
+                trim((string)($_POST['session_id'] ?? ''))
+            );
+            $this->responderJson([
+                'ok' => (bool)$ok,
+                'mensaje' => 'Grabación vinculada. Ya puedes reproducirla en el historial.'
+            ]);
+        } catch (DomainException | InvalidArgumentException $e) {
+            $this->responderJson(['ok' => false, 'mensaje' => $e->getMessage()], 422);
+        } catch (Throwable $e) {
+            error_log('[sincronizar_grabacion_interna] ' . get_class($e) . ': ' . $e->getCode());
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'No fue posible consultar la grabación de Zadarma. Inténtalo más tarde.'
+            ], 503);
+        }
+    }
+
     public function registrarLlamadaEntrante()
     {
         $this->validarAccesoEntrantesAnalista(true);
