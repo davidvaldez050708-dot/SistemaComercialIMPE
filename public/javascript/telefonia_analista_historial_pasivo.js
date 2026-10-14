@@ -39,7 +39,7 @@
           '.persistent-phone-live i {background:#8492a8;box-shadow:none;}',
         '.impe-incoming-panel[data-analyst-webrtc-finished="1"] ' +
           '[data-incoming-notice] {line-height:1.5;font-weight:700;}'
-    ].join('\\n');
+    ].join('\n');
     root.document.head.appendChild(finishedCss);
 
     const el = selector => panel.querySelector(selector);
