@@ -144,6 +144,12 @@ if ($esSeguimientoEstado) {
  * No afecta otros roles ni cambia los componentes generales del CRM. */
 if ($controllerDashboard === 'seguimientovinculacion' &&
     in_array($actionDashboard, ['index', 'estado', 'llamadasentrantes'], true)) {
+    if ($actionDashboard === 'llamadasentrantes') {
+        // Reutilizar exactamente los componentes de historial y el
+        // reproductor del expediente; sólo la bandeja del Analista.
+        $cssOpcionalDashboard[] = 'seguimiento_llamadas_expediente.css';
+        $cssOpcionalDashboard[] = 'seguimiento_llamadas_player.css';
+    }
     $cssOpcionalDashboard[] = 'seguimiento_entrantes_analista.css';
 }
 
