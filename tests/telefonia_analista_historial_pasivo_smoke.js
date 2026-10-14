@@ -102,7 +102,7 @@ function publish(change) {
 const drain=async()=>{for(let n=0;n<12;n++) await new Promise(r=>setImmediate(r));};
 publish({direction:'outgoing',context:{type:'DIALER'}});
 assert.equal(root.IMPE_ANALYST_WEBRTC_JOURNAL_DEBUG.isObserving(),false);
-assert.equal(element.style.display,'none');
+assert.match(element.style.cssText,/display:none/);
 
 publish({active:true,phase:'incoming-ringing'});
 assert.equal(root.IMPE_ANALYST_WEBRTC_JOURNAL_DEBUG.isObserving(),true);
