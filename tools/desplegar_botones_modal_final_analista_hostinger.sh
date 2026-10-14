@@ -28,6 +28,7 @@ TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 mkdir -p "$TMP/public/javascript"
 cp -p "$LIVE/$FILE" "$TMP/$FILE"
+LIVE_SHA="$(sha256sum "$LIVE/$FILE" | cut -d' ' -f1)"
 git -C "$SOURCE" diff --binary "$BASE" "$TARGET" -- "$FILE" > "$TMP/patch"
 [[ -s "$TMP/patch" ]] || {
   echo "ERROR: no se encontró un cambio de distribución de botones." >&2
@@ -36,23 +37,29 @@ git -C "$SOURCE" diff --binary "$BASE" "$TARGET" -- "$FILE" > "$TMP/patch"
 # El parche sólo debe contener el CSS del mismo componente.
 git -C "$SOURCE" show "$BASE:$FILE" > "$TMP/old.js"
 git -C "$SOURCE" show "$TARGET:$FILE" > "$TMP/new.js"
-python3 - "$TMP/old.js" "$TMP/new.js" <<'PY'
-import sys
-a=open(sys.argv[1]).read()
-b=open(sys.argv[2]).read()
-start="    finishedCss.textContent = ["
-end="    root.document.head.appendChild(finishedCss);"
-assert a.count(start)==1 and a.count(end)==1
-assert b.count(start)==1 and b.count(end)==1
-def without_css(t):
-    prefix,rest=t.split(start,1)
-    _css,suffix=rest.split(end,1)
-    return prefix+start+"/* CSS DEL MODAL */"+end+suffix
-assert without_css(a)==without_css(b), \
-    "ERROR: parche contiene algo distinto a los estilos del modal"
-assert "display:flex!important;flex-direction:row;" in b
-assert "data-analyst-webrtc-finished" in b
-PY
+php -r '
+$old = file_get_contents($argv[1]);
+$new = file_get_contents($argv[2]);
+$start = "    finishedCss.textContent = [";
+$end = "    root.document.head.appendChild(finishedCss);";
+foreach ([$old, $new] as $code) {
+    if (substr_count($code, $start) !== 1 || substr_count($code, $end) !== 1) {
+        fwrite(STDERR, "ERROR: estilos de modal no reconocidos.\n");
+        exit(1);
+    }
+}
+$withoutCss = static function ($code) use ($start, $end) {
+    [$before, $after] = explode($start, $code, 2);
+    [, $suffix] = explode($end, $after, 2);
+    return $before . $start . "/* CSS */" . $end . $suffix;
+};
+if ($withoutCss($old) !== $withoutCss($new) ||
+    !str_contains($new, "display:flex!important;flex-direction:row;") ||
+    !str_contains($new, "data-analyst-webrtc-finished")) {
+    fwrite(STDERR, "ERROR: el parche modifica algo distinto al estilo del modal.\n");
+    exit(1);
+}
+' "$TMP/old.js" "$TMP/new.js"
 
 if (cd "$TMP" && git apply --reverse --check "$TMP/patch" >/dev/null 2>&1); then
   echo "OK: botones del modal final ya alineados. No se requiere publicar."
@@ -73,14 +80,10 @@ if [[ "$MODE" == "--check" ]]; then
   exit 0
 fi
 CURRENT_SHA="$(sha256sum "$LIVE/$FILE" | cut -d' ' -f1)"
-[[ "$CURRENT_SHA" == "$(sha256sum "$TMP/old.js" | cut -d' ' -f1)" ]] || {
-  # El parche puede ser aplicable sobre modificaciones independientes; sólo
-  # permitirlas mediante el paso previo, no imponer base idéntica.
-  if ! git -C "$SOURCE" show "$BASE:$FILE" | cmp -s - "$LIVE/$FILE"; then
-    echo "CONFLICTO: el archivo tiene cambios de producción no versionados." >&2
-    echo "No se modificó nada. Comparte esta salida." >&2
-    exit 1
-  fi
+[[ "$CURRENT_SHA" == "$LIVE_SHA" ]] || {
+  echo "CONFLICTO: el archivo cambió durante el preflight." >&2
+  echo "No se modificó nada. Comparte esta salida." >&2
+  exit 1
 }
 mkdir -p "$BACKUPS"
 BACKUP="$BACKUPS/botones-modal-analista-$(date +%Y%m%d-%H%M%S)-$$.js"
