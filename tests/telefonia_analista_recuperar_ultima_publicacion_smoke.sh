@@ -16,6 +16,12 @@ FILES=(
   public/javascript/seguimiento_entrantes_analista.js
 )
 bash -n "$SCRIPT"
+# En SSH restringido de Hostinger no existe /dev/fd para substitución de proceso.
+if grep -Fq '< <(' "$SCRIPT"; then
+  echo 'ERROR: el script volvió a depender de /dev/fd' >&2
+  exit 1
+fi
+grep -Fq 'mapfile -t CANDIDATES < "$TMP/resguardos.txt"' "$SCRIPT"
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 export IMPE_RECOVERY_SOURCE="$PWD"
