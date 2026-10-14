@@ -150,8 +150,8 @@ html {
 
 .formulario-publico-hero-logo {
     flex: 0 0 auto;
-    width: 170px;
-    min-height: 94px;
+    width: 188px;
+    min-height: 100px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -160,8 +160,8 @@ html {
 .formulario-publico-hero-logo img {
     display: block;
     width: 100%;
-    max-width: 170px;
-    max-height: 106px;
+    max-width: 188px;
+    max-height: 116px;
     object-fit: contain;
     object-position: center;
     filter: drop-shadow(0 4px 10px rgba(0, 0, 0, .08));
@@ -169,9 +169,9 @@ html {
 
 .formulario-publico-hero-logo-sep {
     flex: 0 0 auto;
-    width: 178px;
-    min-height: 96px;
-    padding-left: 13px;
+    width: 196px;
+    min-height: 102px;
+    padding-left: 14px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -181,8 +181,8 @@ html {
 .formulario-publico-hero-logo-sep img {
     display: block;
     width: 100%;
-    max-width: 178px;
-    max-height: 112px;
+    max-width: 196px;
+    max-height: 120px;
     object-fit: contain;
     object-position: center;
     filter: drop-shadow(0 4px 10px rgba(0, 0, 0, .08));
@@ -473,22 +473,22 @@ html {
     }
 
     .formulario-publico-hero-logo {
-        width: 150px;
+        width: 166px;
     }
 
     .formulario-publico-hero-logo img {
-        max-width: 150px;
-        max-height: 96px;
+        max-width: 166px;
+        max-height: 104px;
     }
 
     .formulario-publico-hero-logo-sep {
-        width: 154px;
-        padding-left: 10px;
+        width: 170px;
+        padding-left: 11px;
     }
 
     .formulario-publico-hero-logo-sep img {
-        max-width: 154px;
-        max-height: 100px;
+        max-width: 170px;
+        max-height: 108px;
     }
 }
 
@@ -530,24 +530,24 @@ html {
     }
 
     .formulario-publico-hero-logo {
-        width: 108px;
-        min-height: 66px;
+        width: 118px;
+        min-height: 70px;
     }
 
     .formulario-publico-hero-logo img {
-        max-width: 108px;
-        max-height: 76px;
+        max-width: 118px;
+        max-height: 82px;
     }
 
     .formulario-publico-hero-logo-sep {
-        width: 98px;
-        min-height: 64px;
-        padding-left: 7px;
+        width: 110px;
+        min-height: 68px;
+        padding-left: 8px;
     }
 
     .formulario-publico-hero-logo-sep img {
-        max-width: 98px;
-        max-height: 72px;
+        max-width: 110px;
+        max-height: 80px;
     }
 
     .formulario-publico-card {
