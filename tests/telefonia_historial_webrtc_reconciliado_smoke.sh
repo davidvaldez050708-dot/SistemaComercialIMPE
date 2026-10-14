@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -euxo pipefail
 cd "$(dirname "$0")/.."
 DEPLOY="tools/desplegar_historial_webrtc_reconciliado_hostinger.sh"
 BASE="9c6af2f292f2bde1a01b0aeb0cb88106327518c0"
