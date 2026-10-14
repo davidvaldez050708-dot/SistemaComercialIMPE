@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../../config/db_connection.php';
+require_once __DIR__ . '/../helpers/TelefoniaFechaHoraHelper.php';
 require_once __DIR__ . '/TelefoniaExtensionService.php';
 
 /**
@@ -73,8 +74,8 @@ class TelefoniaAnalistaWebrtcService
             // Nunca modificar una sesión que ya existe (evita duplicados).
             $stmt = $this->db->prepare(
                 "INSERT IGNORE INTO telefonia_analista_webrtc_sesiones
-                  (usuario_id, extension, session_id, numero_origen, caller_name)
-                 VALUES (?, ?, ?, ?, ?)"
+                  (usuario_id, extension, session_id, numero_origen, caller_name, fecha_inicio)
+                 VALUES (?, ?, ?, ?, ?, UTC_TIMESTAMP())"
             );
             $stmt->bind_param('issss', $usuarioId, $extension, $id, $numero, $nombre);
             $stmt->execute();
@@ -84,17 +85,17 @@ class TelefoniaAnalistaWebrtcService
         // Avance monotónico del estado: un cierre nunca reabre una sesión.
         if ($evento === 'answered') {
             $sql = "UPDATE telefonia_analista_webrtc_sesiones
-                    SET estado = 'answered', fecha_atendida = COALESCE(fecha_atendida, NOW())
+                    SET estado = 'answered', fecha_atendida = COALESCE(fecha_atendida, UTC_TIMESTAMP())
                     WHERE usuario_id = ? AND session_id = ? AND extension = ?
                       AND estado = 'ringing'";
         } elseif ($evento === 'ended') {
             $sql = "UPDATE telefonia_analista_webrtc_sesiones
-                    SET estado = 'ended', fecha_fin = COALESCE(fecha_fin, NOW())
+                    SET estado = 'ended', fecha_fin = COALESCE(fecha_fin, UTC_TIMESTAMP())
                     WHERE usuario_id = ? AND session_id = ? AND extension = ?
                       AND estado = 'answered'";
         } else {
             $sql = "UPDATE telefonia_analista_webrtc_sesiones
-                    SET estado = ?, fecha_fin = COALESCE(fecha_fin, NOW())
+                    SET estado = ?, fecha_fin = COALESCE(fecha_fin, UTC_TIMESTAMP())
                     WHERE usuario_id = ? AND session_id = ? AND extension = ?
                       AND estado = 'ringing'";
         }
@@ -180,7 +181,7 @@ class TelefoniaAnalistaWebrtcService
             return [
                 'pbx_call_id' => (string)$row['session_id'],
                 'numero' => (string)$row['numero_origen'],
-                'fecha' => (string)$row['fecha_inicio'],
+                'fecha' => TelefoniaFechaHoraHelper::aMexico((string)$row['fecha_inicio']),
                 'duracion' => self::duracion($row),
                 'estado_pbx' => $row['fecha_fin'] !== null ? 'ended' : 'ringing',
                 'contestada' => $row['fecha_atendida'] !== null,
