@@ -239,6 +239,168 @@ a.btn.linkage-incoming-back {
     line-height: 1.6;
 }
 .linkage-incoming-footnote i {font-size:14px;color:#6380a5;}
+/* La estructura <form> se encuentra entre .modal-content y .modal-body:
+ * Bootstrap únicamente limita .modal-content. Sin hacer flex el formulario,
+ * su contenido empuja el pie fuera del viewport y oculta Guardar resultado.
+ * Aislar los cambios al modal del Analista evita afectar otros formularios. */
+#modalLlamadaEntranteAnalista .linkage-incoming-modal-dialog {
+    max-height: calc(100dvh - 24px);
+    margin-top: 12px;
+    margin-bottom: 12px;
+}
+#modalLlamadaEntranteAnalista .modal-content {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    max-height: min(780px, calc(100dvh - 24px));
+    overflow: hidden;
+}
+#modalLlamadaEntranteAnalista .modal-header {
+    flex: 0 0 auto;
+    gap: 14px;
+}
+#modalLlamadaEntranteAnalista .linkage-incoming-form {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+    max-height: 100%;
+    overflow: hidden;
+}
+#modalLlamadaEntranteAnalista .linkage-incoming-form > .modal-body {
+    display: block;
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: max(100px, calc(100dvh - 220px));
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-gutter: stable;
+}
+#modalLlamadaEntranteAnalista .linkage-incoming-form-footer {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 0;
+    border-top: 1px solid #e5eaf3;
+    background: #fff;
+    box-shadow: 0 -6px 16px rgba(26, 44, 78, .025);
+}
+#modalLlamadaEntranteAnalista .linkage-incoming-form-footer .btn {
+    min-height: 42px;
+    margin: 0;
+    padding: 9px 16px;
+    border-radius: 9px;
+    font-size: 12px;
+    font-weight: 800;
+}
+#modalLlamadaEntranteAnalista .linkage-incoming-form-footer [data-incoming-submit] {
+    min-width: 165px;
+}
+#modalLlamadaEntranteAnalista .linkage-incoming-sdk-notice {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin: -3px 0 18px;
+    padding: 11px 13px;
+    border: 1px solid #dce6f4;
+    border-radius: 10px;
+    background: #f5f8fd;
+    color: #526581;
+    line-height: 1.55;
+}
+#modalLlamadaEntranteAnalista .linkage-incoming-sdk-notice[hidden],
+#modalLlamadaEntranteAnalista [data-incoming-sdk-confirm][hidden],
+#modalLlamadaEntranteAnalista [data-incoming-existing][hidden],
+#modalLlamadaEntranteAnalista [data-incoming-new][hidden],
+#modalLlamadaEntranteAnalista [data-incoming-results][hidden] {
+    display: none !important;
+}
+#modalLlamadaEntranteAnalista .linkage-incoming-sdk-notice-icon {
+    display: inline-flex;
+    flex: 0 0 30px;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 9px;
+    background: #e9effa;
+    color: #3d5792;
+    font-size: 15px;
+}
+#modalLlamadaEntranteAnalista .linkage-incoming-sdk-notice strong {
+    display: block;
+    margin-bottom: 3px;
+    color: #283d63;
+    font-size: 11.5px;
+    font-weight: 800;
+}
+#modalLlamadaEntranteAnalista .linkage-incoming-sdk-notice p {
+    margin: 0;
+    font-size: 11px;
+    font-weight: 500;
+}
+#modalLlamadaEntranteAnalista [data-incoming-sdk-confirm] {
+    margin: 16px 0 0;
+    padding: 12px 14px;
+    border: 1px solid #dce6f3;
+    border-radius: 10px;
+    background: #f9fbfe;
+    color: #405775;
+    font-size: 11.5px;
+    line-height: 1.55;
+}
+#modalLlamadaEntranteAnalista [data-incoming-sdk-confirm] label {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    margin: 0;
+    cursor: pointer;
+}
+#modalLlamadaEntranteAnalista [data-incoming-sdk-confirm] input {
+    margin-top: 3px;
+}
+@media (max-width: 575.98px) {
+    #modalLlamadaEntranteAnalista .linkage-incoming-modal-dialog {
+        width: calc(100% - 16px);
+        max-height: calc(100dvh - 16px);
+        margin: 8px auto;
+    }
+    #modalLlamadaEntranteAnalista .modal-content {
+        max-height: calc(100dvh - 16px);
+    }
+    #modalLlamadaEntranteAnalista .linkage-incoming-form > .modal-body {
+        max-height: max(100px, calc(100dvh - 205px));
+        scrollbar-gutter: auto;
+    }
+    #modalLlamadaEntranteAnalista .linkage-incoming-form-footer {
+        padding: 12px 14px;
+        flex-wrap: nowrap;
+    }
+    #modalLlamadaEntranteAnalista .linkage-incoming-form-footer .btn {
+        flex: 1 1 0;
+        min-width: 0;
+        padding: 9px;
+    }
+    #modalLlamadaEntranteAnalista .linkage-incoming-form-footer [data-incoming-submit] {
+        min-width: 0;
+    }
+}
+@media (max-height: 540px) {
+    #modalLlamadaEntranteAnalista .linkage-incoming-form > .modal-body {
+        max-height: max(85px, calc(100dvh - 190px));
+    }
+    #modalLlamadaEntranteAnalista .modal-header {
+        padding-top: 12px;
+        padding-bottom: 12px;
+    }
+}
+
 /* El modal sigue la misma escala de formularios del dashboard. */
 #modalLlamadaEntranteAnalista .linkage-incoming-modal-dialog {
     width: calc(100% - 28px);
