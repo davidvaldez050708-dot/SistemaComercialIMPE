@@ -56,6 +56,12 @@ on:
       - "tools/desplegar_modal_resultado_analista_hostinger.sh"
       - "tests/telefonia_resultado_analista_modal_smoke.php"
       - "tests/telefonia_resultado_analista_hostinger_smoke.sh"
+      - "app/services/TelefoniaInternaGrabacionService.php"
+      - "app/services/ZadarmaRecordingService.php"
+      - "prueba_telefonia/api/grabacion_interna_analista.php"
+      - "tools/reparar_prueba_interna_100_101.php"
+      - "tools/desplegar_llamadas_internas_analista_hostinger.sh"
+      - "tests/telefonia_internas_analista_smoke.sh"
       - ".github/workflows/telefonia-analista-entrantes.yml"
   pull_request:
     paths:
@@ -96,6 +102,12 @@ on:
       - "tools/desplegar_modal_resultado_analista_hostinger.sh"
       - "tests/telefonia_resultado_analista_modal_smoke.php"
       - "tests/telefonia_resultado_analista_hostinger_smoke.sh"
+      - "app/services/TelefoniaInternaGrabacionService.php"
+      - "app/services/ZadarmaRecordingService.php"
+      - "prueba_telefonia/api/grabacion_interna_analista.php"
+      - "tools/reparar_prueba_interna_100_101.php"
+      - "tools/desplegar_llamadas_internas_analista_hostinger.sh"
+      - "tests/telefonia_internas_analista_smoke.sh"
       - ".github/workflows/telefonia-analista-entrantes.yml"
 jobs:
   validar:
@@ -171,3 +183,4 @@ jobs:
           php tests/telefonia_resultado_analista_modal_smoke.php
           bash -n tools/desplegar_modal_resultado_analista_hostinger.sh
           bash tests/telefonia_resultado_analista_hostinger_smoke.sh
+          bash tests/telefonia_internas_analista_smoke.sh
