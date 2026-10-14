@@ -304,3 +304,147 @@ a.btn.linkage-incoming-back {
     .linkage-incoming-heading-actions .linkage-incoming-back {flex: 1 1 auto;}
     .linkage-incoming-entry {width:100%;max-width:100%;}
 }
+
+/* Ajustes de consistencia: sólo la bandeja del Analista.
+ * Comparte escala, tonos y botones con Seguimiento y el CRM. */
+.linkage-incoming-page .linkage-incoming-stat {
+    gap: 14px;
+    transition: border-color .16s ease, background-color .16s ease;
+}
+.linkage-incoming-page .linkage-incoming-stat:hover {
+    border-color: #d7e2f2;
+    background: #fbfcff;
+}
+.linkage-incoming-page .linkage-incoming-table tbody tr {
+    transition: background-color .16s ease;
+}
+.linkage-incoming-page .linkage-incoming-table tbody tr:hover td {
+    background: #f8faff;
+}
+.linkage-incoming-page .linkage-incoming-caller {
+    min-width: 225px;
+    line-height: 1.5;
+}
+.linkage-incoming-page .linkage-incoming-caller > strong {
+    display: block;
+    font-size: 12.5px;
+    color: #25385e;
+    overflow-wrap: anywhere;
+}
+.linkage-incoming-page .linkage-incoming-caller > small {
+    display: flex !important;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 7px;
+    margin-top: 4px;
+    line-height: 1.55;
+}
+.linkage-incoming-page .linkage-incoming-source {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 7px;
+    border: 1px solid #dce7f5;
+    border-radius: 6px;
+    background: #f0f5fc;
+    color: #425d91;
+    font-size: 10px;
+    font-weight: 800;
+}
+.linkage-incoming-page .linkage-incoming-source-note {
+    color: #78869a;
+    font-size: 10px;
+}
+.linkage-incoming-page .linkage-incoming-duration {
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    color: #344769;
+}
+.linkage-incoming-page .linkage-incoming-action-cell .btn {
+    min-height: 40px;
+    border-radius: 9px;
+    padding: 9px 14px;
+    font-size: 11.5px;
+    font-weight: 800;
+}
+.linkage-incoming-page .linkage-incoming-table tbody td {
+    border-top-color: #eef2f8;
+}
+.linkage-incoming-page .linkage-incoming-tag.is-pending {
+    border: 1px solid #f3e2bc;
+    background: #fff4df;
+    color: #8b5c0c;
+}
+.linkage-incoming-page .linkage-incoming-tag.is-success {
+    border: 1px solid #d0ecdf;
+}
+@media (max-width: 720px) {
+    .linkage-incoming-page .linkage-incoming-table-wrap {
+        overflow-x: visible;
+        border: 0;
+        border-radius: 0;
+    }
+    .linkage-incoming-page .linkage-incoming-table {
+        min-width: 0;
+        width: 100%;
+        display: block;
+        border: 0;
+    }
+    .linkage-incoming-page .linkage-incoming-table thead {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+    }
+    .linkage-incoming-page .linkage-incoming-table tbody {
+        display: grid;
+        gap: 12px;
+    }
+    .linkage-incoming-page .linkage-incoming-table tbody tr {
+        display: grid;
+        gap: 10px;
+        border: 1px solid #e2eaf5;
+        border-radius: 12px;
+        padding: 14px 15px;
+        background: #fff;
+        min-width: 0;
+    }
+    .linkage-incoming-page .linkage-incoming-table tbody td {
+        display: block;
+        width: 100%;
+        min-width: 0;
+        padding: 0;
+        border: 0;
+        font-size: 12px;
+        white-space: normal !important;
+    }
+    .linkage-incoming-page .linkage-incoming-table tbody td::before {
+        content: attr(data-label);
+        display: block;
+        margin: 0 0 3px;
+        color: #8390a4;
+        font-size: 10px;
+        font-weight: 800;
+        line-height: 1.4;
+        text-transform: uppercase;
+        letter-spacing: .035em;
+    }
+    .linkage-incoming-page .linkage-incoming-table tbody td.linkage-incoming-caller {
+        min-width: 0;
+        padding-bottom: 7px;
+        border-bottom: 1px solid #edf1f7;
+    }
+    .linkage-incoming-page .linkage-incoming-table tbody td.linkage-incoming-action-cell {
+        text-align: left !important;
+        padding-top: 10px;
+        border-top: 1px solid #edf1f7;
+    }
+    .linkage-incoming-page .linkage-incoming-action-cell .linkage-incoming-open {
+        width: 100%;
+    }
+    .linkage-incoming-page .linkage-incoming-table tbody tr:hover td {
+        background: transparent;
+    }
+}
