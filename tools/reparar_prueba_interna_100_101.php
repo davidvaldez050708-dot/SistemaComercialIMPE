@@ -76,7 +76,7 @@ function referencias(mysqli $db, int $interaccion): void
         if ($n > 0) throw new DomainException('La interacción tiene dependencias: requiere revisión manual.');
     }
 }
-function seleccionarGrabacion(string $root, DateTimeImmutable $hora, array $sdk): array
+function seleccionarGrabacion(string $root, DateTimeImmutable $hora, array $sdk, bool $diagnostico = false): array
 {
     $privada = impeRutaConfigPrivada('zadarma_config.php');
     if (!$privada || !is_file($privada) || !is_file($root . '/vendor/autoload.php')) {
@@ -103,17 +103,24 @@ function seleccionarGrabacion(string $root, DateTimeImmutable $hora, array $sdk)
         (string)$sdk['fecha_inicio'], new DateTimeZone('UTC'));
     if (!$sdkDate) throw new DomainException('Fecha WebRTC inválida.');
     $candidatas = [];
+    $razones = [
+        'direccion' => 0, 'duracion' => 0, 'grabada' => 0,
+        'identificador' => 0, 'hora' => 0
+    ];
+    $cercanas = [];
+    if ($diagnostico) {
+        echo "INSPECCIÓN DE CORRELACIÓN (sin identificadores privados):\n";
+        echo "Inicio SDK UTC: " . $sdkDate->format('Y-m-d H:i:s')
+           . " | registros Zadarma: " . count($stats) . "\n";
+    }
     foreach ($stats as $row) {
         if (!is_array($row)) continue;
         $sip = preg_replace('/\D+/', '', (string)($row['sip'] ?? '')) ?: '';
         $dest = preg_replace('/\D+/', '', (string)($row['destination'] ?? '')) ?: '';
-        if ($sip !== '100' || $dest !== '101' ||
-            abs((int)($row['seconds'] ?? -100) - 11) > 2 ||
-            !filter_var($row['is_recorded'] ?? false, FILTER_VALIDATE_BOOLEAN)) continue;
-        $pbx = trim((string)($row['pbx_call_id'] ?? ''));
-        $callId = trim((string)($row['call_id'] ?? ''));
-        if (!preg_match('/^[a-zA-Z0-9_-]{6,100}$/D', $pbx) ||
-            !preg_match('/^[a-zA-Z0-9_-]{6,100}$/D', $callId)) continue;
+        if ($sip !== '100' || $dest !== '101') {
+            $razones['direccion']++;
+            continue;
+        }
         $t = trim((string)($row['callstart'] ?? ''));
         $deltas = [];
         foreach (['UTC','America/Mexico_City'] as $tz) {
@@ -123,8 +130,36 @@ function seleccionarGrabacion(string $root, DateTimeImmutable $hora, array $sdk)
                 $deltas[] = abs($fecha->getTimestamp() - $sdkDate->getTimestamp());
             }
         }
-        if (!$deltas || min($deltas) > 90) continue;
+        $delta = $deltas ? min($deltas) : null;
+        $pbx = trim((string)($row['pbx_call_id'] ?? ''));
+        $callId = trim((string)($row['call_id'] ?? ''));
+        $idsValidos = (bool)preg_match('/^[a-zA-Z0-9_-]{6,100}$/D', $pbx) &&
+            (bool)preg_match('/^[a-zA-Z0-9_-]{6,100}$/D', $callId);
+        $grabada = filter_var($row['is_recorded'] ?? false, FILTER_VALIDATE_BOOLEAN);
+        $duracion = (int)($row['seconds'] ?? -100);
+        $duracionValida = abs($duracion - 11) <= 2;
+        if ($diagnostico) {
+            // Hora y duración no son credenciales. Nunca imprimir pbx_call_id
+            // ni call_id; sólo confirmar si pasan la validación actual.
+            $cercanas[] = '  PBX 100→101: hora_API=' . $t
+                . ' duracion=' . $duracion . 's'
+                . ' diferencia_inicio_SDK=' . ($delta === null ? 'desconocida' : $delta . 's')
+                . ' grabada=' . ($grabada ? 'SI' : 'NO')
+                . ' formato_ids=' . ($idsValidos ? 'VALIDO' : 'RECHAZADO');
+        }
+        if (!$duracionValida) { $razones['duracion']++; continue; }
+        if (!$grabada) { $razones['grabada']++; continue; }
+        if (!$idsValidos) { $razones['identificador']++; continue; }
+        if ($delta === null || $delta > 90) { $razones['hora']++; continue; }
         $candidatas[] = ['pbx'=>$pbx,'audio'=>$callId];
+    }
+    if ($diagnostico) {
+        foreach (array_slice($cercanas, 0, 10) as $linea) echo $linea . "\n";
+        echo "Rechazos: direccion={$razones['direccion']} "
+            . "duracion={$razones['duracion']} grabada={$razones['grabada']} "
+            . "formato_id={$razones['identificador']} "
+            . "desfase_SDK={$razones['hora']}\n";
+        echo "Candidatas que superan todos los filtros: " . count($candidatas) . "\n";
     }
     if (count($candidatas) !== 1) {
         throw new DomainException('No hay una grabación PBX inequívoca (' . count($candidatas) . ' candidatas).');
@@ -170,7 +205,7 @@ try {
     $sdk = $sesiones[0];
     validarSesion($sdk);
     referencias($db, (int)$sdk['interaccion_id']);
-    $audio = seleccionarGrabacion($root, $hora, $sdk);
+    $audio = seleccionarGrabacion($root, $hora, $sdk, $modo === '--check');
     echo "OK: prueba 100 → 101 del 14/10 a las 10:49 verificada.\n";
     echo "Una interacción asociada al expediente indicado. Una grabación PBX real verificada.\n";
     echo "Sin dependencias FK; no se detectaron otras sesiones coincidentes.\n";
