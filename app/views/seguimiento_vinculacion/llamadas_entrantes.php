@@ -60,32 +60,22 @@ $duracionEntrante = static function ($segundos) {
         </div>
     <?php else: ?>
         <?php if ($llamadas): ?>
-            <div class="linkage-incoming-stats" aria-label="Resumen de llamadas recibidas">
-                <div class="linkage-incoming-stat"><span class="stat-icon"><i class="bi bi-telephone-inbound"></i></span><div>
-                    <span>Recibidas</span><strong><?= count($llamadas) ?></strong>
-                </div></div>
-                <div class="linkage-incoming-stat"><span class="stat-icon"><i class="bi bi-clock-history"></i></span><div>
-                    <span>Pendientes</span><strong><?= $pendientesEntrantes ?></strong>
-                </div></div>
-                <div class="linkage-incoming-stat"><span class="stat-icon"><i class="bi bi-folder-check"></i></span><div>
-                    <span>Vinculadas</span><strong><?= $vinculadasEntrantes ?></strong>
-                </div></div>
-                <div class="linkage-incoming-stat"><span class="stat-icon"><i class="bi bi-arrow-left-right"></i></span><div>
-                    <span>Internas</span><strong><?= $internasEntrantes ?></strong>
-                </div></div>
+            <div class="linkage-call-summary linkage-incoming-stats" aria-label="Resumen de llamadas recibidas">
+                <div><span>Recibidas</span><strong><?= count($llamadas) ?></strong></div>
+                <div><span>Pendientes</span><strong><?= $pendientesEntrantes ?></strong></div>
+                <div><span>Vinculadas</span><strong><?= $vinculadasEntrantes ?></strong></div>
+                <div><span>Internas</span><strong><?= $internasEntrantes ?></strong></div>
             </div>
-            <div class="linkage-incoming-list-head">
-                <div><h3>Historial de llamadas</h3><p>Movimientos recientes de tu extensión telefónica.</p></div>
-                <span class="linkage-incoming-list-total"><?= count($llamadas) ?> <?= count($llamadas) === 1 ? 'registro' : 'registros' ?></span>
-            </div>
-            <div class="linkage-incoming-table-wrap">
-                <table class="table align-middle linkage-incoming-table">
-                    <thead><tr>
-                        <th>Fecha</th><th>Tipo de llamada</th><th>Duración</th>
-                        <th>Estado</th><th>Expediente</th><th class="text-end">Acción</th>
-                    </tr></thead>
-                    <tbody>
-                <?php foreach ($llamadas as $llamada):
+            <section class="linkage-call-section linkage-incoming-history-section" aria-labelledby="incomingHistoryTitle">
+                <div class="linkage-call-section-heading linkage-incoming-list-head">
+                    <div>
+                        <strong id="incomingHistoryTitle">Historial de llamadas</strong>
+                        <p>Registro cronológico de tu extensión. Las llamadas internas no cuentan como contactos institucionales.</p>
+                    </div>
+                    <span class="linkage-call-recordings-count" aria-label="<?= count($llamadas) ?> registros"><?= count($llamadas) ?></span>
+                </div>
+                <div class="linkage-call-history-list linkage-incoming-history" role="list">
+                <?php foreach ($llamadas as $indice => $llamada):
                     $pbxId = (string)($llamada['pbx_call_id'] ?? '');
                     $esWebrtc = ($llamada['fuente'] ?? '') === 'SDK_WEBRTC';
                     $esInterna = ($llamada['tipo_llamada'] ?? '') === 'INTERNA';
@@ -95,92 +85,176 @@ $duracionEntrante = static function ($segundos) {
                     $vinculada = $situacion === 'VINCULADA';
                     $sinIdentificar = $situacion === 'SIN_IDENTIFICAR';
                     $seguimientoId = (int)($llamada['seguimiento_id'] ?? 0);
-                    $grabacionInterna = $esInterna && !empty($llamada['grabacion_disponible']);
+                    $grabacionInterna = $esInterna && $esWebrtc && !empty($llamada['grabacion_disponible']);
                     $audioInternoUrl = $grabacionInterna
                         ? BASE_URL . 'prueba_telefonia/api/grabacion_interna_analista.php?session_id=' . rawurlencode($pbxId)
                         : '';
                     $numero = trim((string)($llamada['numero'] ?? ''));
                     $numero = $numero !== '' ? $numero : 'Número privado';
+                    $fechaBruta = trim((string)($llamada['fecha'] ?? ''));
+                    $fechaObj = DateTimeImmutable::createFromFormat('!Y-m-d H:i:s', $fechaBruta);
+                    $fechaVisual = $fechaObj && $fechaObj->format('Y-m-d H:i:s') === $fechaBruta
+                        ? $fechaObj->format('d/m/Y · H:i')
+                        : $fechaBruta;
+                    $duracionSegundos = max(0, (int)($llamada['duracion'] ?? 0));
+                    $controlAudioId = 'incoming-audio-' . (int)$indice;
                 ?>
-                <tr data-incoming-row="<?= $esc($pbxId) ?>">
-                    <td data-label="Fecha" class="text-nowrap"><?= $esc($llamada['fecha'] ?? '') ?></td>
-                    <td data-label="Tipo de llamada" class="linkage-incoming-caller">
-                        <strong><?= $esc($numero) ?></strong>
-                        <small class="d-block text-muted">
-                            <?php if ($esInterna): ?>
-                                <span>Interna · Ext. <?= $esc($numero) ?> → <?= $esc($bandejaEntrantes['extension'] ?? '') ?></span>
-                            <?php else: ?>
-                                <span>Entrante · Extensión <?= $esc($bandejaEntrantes['extension'] ?? '') ?></span>
-                            <?php endif; ?>
-                            <?php if ($esWebrtc): ?>
-                                <span class="linkage-incoming-source">
-                                    <i class="bi bi-headset" aria-hidden="true"></i>
-                                    WebRTC observado
+                    <article class="linkage-call-history-card linkage-incoming-card"
+                        role="listitem" data-incoming-row="<?= $esc($pbxId) ?>">
+                        <span class="linkage-call-recording-card-icon" aria-hidden="true">
+                            <i class="bi <?= $esInterna ? 'bi-arrow-left-right' : 'bi-telephone-inbound' ?>"></i>
+                        </span>
+                        <div class="linkage-call-recording-body">
+                            <div class="linkage-call-recording-top">
+                                <div class="linkage-call-history-identity">
+                                    <strong><?= $esInterna ? 'Llamada interna' : 'Llamada entrante' ?></strong>
+                                    <span>
+                                        <?= $esInterna
+                                            ? 'Ext. ' . $esc($numero) . ' → ' . $esc($bandejaEntrantes['extension'] ?? '')
+                                            : 'Origen: ' . $esc($numero) ?>
+                                    </span>
+                                </div>
+                                <span class="linkage-call-history-date">
+                                    <i class="bi bi-calendar3" aria-hidden="true"></i>
+                                    <?= $esc($fechaVisual) ?>
                                 </span>
-                                <span class="linkage-incoming-source-note">Sin confirmación PBX</span>
+                            </div>
+
+                            <div class="linkage-call-detail linkage-incoming-card-detail">
+                                <?php if ($esWebrtc): ?>
+                                    <div class="linkage-call-detail-row">
+                                        <span class="linkage-call-detail-label">Registro</span>
+                                        <span class="linkage-call-detail-value">
+                                            <?= $grabacionInterna
+                                                ? 'Sesión WebRTC · audio verificado en Zadarma'
+                                                : 'Sesión WebRTC observada · sin evento PBX firmado' ?>
+                                        </span>
+                                    </div>
+                                <?php endif; ?>
+                                <?php if ($seguimientoId > 0): ?>
+                                    <div class="linkage-call-detail-row">
+                                        <span class="linkage-call-detail-label">Expediente</span>
+                                        <span class="linkage-call-detail-value">
+                                            <a href="<?= $esc(BASE_URL . 'index.php?controller=seguimientoVinculacion&action=detalle&id=' . $seguimientoId) ?>"
+                                                class="linkage-incoming-expediente">
+                                                <i class="bi bi-folder2-open" aria-hidden="true"></i> Ver expediente
+                                            </a>
+                                        </span>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+
+                            <div class="linkage-call-history-footer">
+                                <div class="linkage-call-result-group">
+                                    <?php if ($esInterna && $vinculada): ?>
+                                        <span class="linkage-call-result-badge is-no-contact">Interna · revisar vínculo de prueba</span>
+                                    <?php elseif ($esInterna): ?>
+                                        <span class="linkage-call-result-badge is-verification-test">Interna · no contabiliza</span>
+                                    <?php elseif ($vinculada): ?>
+                                        <span class="linkage-call-result-badge is-contact">Registrada</span>
+                                    <?php elseif ($sinIdentificar): ?>
+                                        <span class="linkage-call-result-badge">Sin identificar</span>
+                                    <?php elseif (!$finalizada): ?>
+                                        <span class="linkage-call-result-badge">En proceso</span>
+                                    <?php elseif (empty($llamada['contestada'])): ?>
+                                        <span class="linkage-call-result-badge is-no-contact">Sin respuesta</span>
+                                    <?php else: ?>
+                                        <span class="linkage-call-result-badge is-no-contact">Pendiente de resultado</span>
+                                    <?php endif; ?>
+                                </div>
+                                <div class="linkage-call-history-meta">
+                                    <span class="linkage-call-recording-duration">
+                                        <i class="bi bi-clock" aria-hidden="true"></i>
+                                        <?= $esc($duracionEntrante($duracionSegundos)) ?>
+                                    </span>
+                                    <?php if ($grabacionInterna): ?>
+                                        <button type="button"
+                                            class="linkage-call-audio-state is-available linkage-call-recording-toggle"
+                                            data-incoming-audio-toggle
+                                            aria-controls="<?= $esc($controlAudioId) ?>"
+                                            aria-expanded="false">
+                                            <i class="bi bi-record-circle" aria-hidden="true"></i>
+                                            <span>Grabación disponible</span>
+                                            <i class="bi bi-chevron-down linkage-call-recording-chevron" aria-hidden="true"></i>
+                                        </button>
+                                    <?php elseif ($esInterna): ?>
+                                        <span class="linkage-call-audio-state is-processing">
+                                            <i class="bi bi-link-45deg" aria-hidden="true"></i>
+                                            <span>Grabación no vinculada</span>
+                                        </span>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+
+                            <?php if ($grabacionInterna): ?>
+                                <div class="linkage-call-inline-player linkage-incoming-audio-panel"
+                                    id="<?= $esc($controlAudioId) ?>" data-incoming-audio-panel hidden>
+                                    <div class="linkage-call-inline-player-heading">
+                                        <span><i class="bi bi-soundwave" aria-hidden="true"></i> Grabación de llamada</span>
+                                        <small>Audio privado de la extensión <?= $esc($bandejaEntrantes['extension'] ?? '') ?></small>
+                                    </div>
+                                    <div class="linkage-call-custom-player" data-incoming-player>
+                                        <audio class="linkage-call-player-audio-source" preload="none"
+                                            src="<?= $esc($audioInternoUrl) ?>"></audio>
+                                        <button type="button" class="linkage-call-player-button linkage-call-player-play"
+                                            data-incoming-play aria-label="Reproducir grabación" aria-pressed="false">
+                                            <i class="bi bi-play-fill" aria-hidden="true"></i>
+                                        </button>
+                                        <span class="linkage-call-player-time" data-incoming-time>0:00</span>
+                                        <input type="range" min="0" max="100" step="0.1" value="0"
+                                            class="linkage-call-player-progress" data-incoming-progress
+                                            aria-label="Posición del audio" aria-valuetext="0:00" />
+                                        <span class="linkage-call-player-time" data-incoming-total>
+                                            <?= $esc($duracionEntrante($duracionSegundos)) ?>
+                                        </span>
+                                        <button type="button" class="linkage-call-player-button linkage-call-player-volume"
+                                            data-incoming-volume aria-label="Silenciar grabación" aria-pressed="false">
+                                            <i class="bi bi-volume-up" aria-hidden="true"></i>
+                                        </button>
+                                        <details class="linkage-call-player-menu">
+                                            <summary class="linkage-call-player-button linkage-call-player-more"
+                                                aria-label="Opciones de grabación" title="Opciones">
+                                                <i class="bi bi-three-dots-vertical" aria-hidden="true"></i>
+                                            </summary>
+                                            <div class="linkage-call-player-menu-content">
+                                                <a class="linkage-call-player-download"
+                                                    href="<?= $esc($audioInternoUrl . '&download=1') ?>">
+                                                    <i class="bi bi-download" aria-hidden="true"></i>
+                                                    Descargar audio
+                                                </a>
+                                            </div>
+                                        </details>
+                                    </div>
+                                    <p class="linkage-incoming-player-error" data-incoming-player-error
+                                        role="status" aria-live="polite" hidden></p>
+                                </div>
+                            <?php elseif ($esInterna && $esWebrtc && $situacion === 'INTERNA' && $finalizada): ?>
+                                <div class="linkage-incoming-card-actions">
+                                    <button type="button" class="btn btn-system-light linkage-incoming-sync-audio"
+                                        data-incoming-sync-audio="<?= $esc($pbxId) ?>">
+                                        <i class="bi bi-cloud-arrow-down" aria-hidden="true"></i>
+                                        Buscar grabación
+                                    </button>
+                                    <small class="linkage-incoming-sync-message" role="status" aria-live="polite"></small>
+                                </div>
+                            <?php elseif (!$esInterna && !$vinculada && $finalizada && (!$sinIdentificar || !empty($llamada['contestada']))): ?>
+                                <div class="linkage-incoming-card-actions">
+                                    <button type="button" class="btn btn-system-save linkage-incoming-open"
+                                        data-call-id="<?= $esc($pbxId) ?>"
+                                        data-source="<?= $esWebrtc ? 'SDK_WEBRTC' : 'PBX' ?>"
+                                        data-phone="<?= $esc($llamada['numero'] ?? '') ?>"
+                                        data-answer="<?= !empty($llamada['contestada']) ? '1' : '0' ?>"
+                                        data-duration="<?= $esc($duracionEntrante($duracionSegundos)) ?>">
+                                        <i class="bi bi-journal-check" aria-hidden="true"></i>
+                                        <?= $sinIdentificar ? 'Vincular expediente' : 'Registrar resultado' ?>
+                                    </button>
+                                </div>
                             <?php endif; ?>
-                        </small>
-                    </td>
-                    <td data-label="Duración" class="text-nowrap linkage-incoming-duration"><?= $esc($duracionEntrante($llamada['duracion'] ?? 0)) ?></td>
-                    <td data-label="Estado">
-                        <?php if ($esInterna && $vinculada): ?>
-                            <span class="linkage-incoming-tag is-pending">Interna · revisar vínculo de prueba</span>
-                        <?php elseif ($esInterna): ?>
-                            <span class="linkage-incoming-tag">Interna · no contabiliza</span>
-                        <?php elseif ($vinculada): ?>
-                            <span class="linkage-incoming-tag is-success">Registrada</span>
-                        <?php elseif ($sinIdentificar): ?>
-                            <span class="linkage-incoming-tag">Sin identificar</span>
-                        <?php elseif (!$finalizada): ?>
-                            <span class="linkage-incoming-tag">En proceso</span>
-                        <?php elseif (empty($llamada['contestada'])): ?>
-                            <span class="linkage-incoming-tag">Sin respuesta</span>
-                        <?php else: ?>
-                            <span class="linkage-incoming-tag is-pending">Pendiente de resultado</span>
-                        <?php endif; ?>
-                    </td>
-                    <td data-label="Expediente">
-                        <?php if ($seguimientoId > 0): ?>
-                            <a href="<?= $esc(BASE_URL . 'index.php?controller=seguimientoVinculacion&action=detalle&id=' . $seguimientoId) ?>"
-                                class="linkage-incoming-expediente">
-                                <i class="bi bi-folder2-open"></i>
-                                Ver expediente
-                            </a>
-                        <?php else: ?>—<?php endif; ?>
-                    </td>
-                    <td class="text-end linkage-incoming-action-cell" data-label="Acción">
-                        <?php if ($grabacionInterna): ?>
-                            <details class="linkage-incoming-internal-audio">
-                                <summary><i class="bi bi-play-circle" aria-hidden="true"></i> Escuchar grabación</summary>
-                                <audio controls preload="none" src="<?= $esc($audioInternoUrl) ?>" aria-label="Grabación de llamada interna"></audio>
-                                <a href="<?= $esc($audioInternoUrl . '&download=1') ?>">Descargar audio</a>
-                            </details>
-                        <?php elseif ($esInterna && $esWebrtc && $situacion === 'INTERNA' && $finalizada): ?>
-                            <button type="button" class="btn btn-system-light linkage-incoming-sync-audio"
-                                data-incoming-sync-audio="<?= $esc($pbxId) ?>">
-                                <i class="bi bi-cloud-arrow-down" aria-hidden="true"></i>
-                                Buscar grabación
-                            </button>
-                            <small class="linkage-incoming-sync-message" role="status" aria-live="polite"></small>
-                        <?php elseif ($esInterna && !$vinculada): ?>
-                            <small class="text-muted">Grabación pendiente de vinculación</small>
-                        <?php elseif (!$vinculada && $finalizada && (!$sinIdentificar || !empty($llamada['contestada']))): ?>
-                            <button type="button" class="btn btn-system-save linkage-incoming-open"
-                                data-call-id="<?= $esc($pbxId) ?>"
-                                data-source="<?= $esWebrtc ? 'SDK_WEBRTC' : 'PBX' ?>"
-                                data-phone="<?= $esc($llamada['numero'] ?? '') ?>"
-                                data-answer="<?= !empty($llamada['contestada']) ? '1' : '0' ?>"
-                                data-duration="<?= $esc($duracionEntrante($llamada['duracion'] ?? 0)) ?>">
-                                <i class="bi bi-journal-check"></i>
-                                <?= $sinIdentificar ? 'Vincular expediente' : 'Registrar resultado' ?>
-                            </button>
-                        <?php else: ?>—<?php endif; ?>
-                    </td>
-                </tr>
+                        </div>
+                    </article>
                 <?php endforeach; ?>
-                    </tbody>
-                </table>
-            </div>
+                </div>
+            </section>
         <?php else: ?>
             <div class="linkage-incoming-empty-panel">
                 <span class="linkage-incoming-empty-icon"><i class="bi bi-telephone-inbound" aria-hidden="true"></i></span>
