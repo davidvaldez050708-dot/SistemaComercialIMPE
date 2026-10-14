@@ -118,9 +118,22 @@ grep -Fq "data-copy-form-qr"     "$DST/app/views/formularios/registro.php"
 grep -Fq "data-qr-image-size"     "$DST/app/views/formularios/registro.php"
 grep -Fq "data-qr-image-size"     "$DST/app/views/formularios/inscripcion.php"
 grep -Fq "centerImageSizeRatio"     "$DST/public/javascript/formularios_registro.js"
+grep -Fq "programarActualizacionQr" "$DST/public/javascript/formularios_registro.js"
+
+if grep -Fq "Aplicar diseño" "$DST/app/views/formularios/registro.php" || \
+   grep -Fq "Aplicar diseño" "$DST/app/views/formularios/inscripcion.php"; then
+    echo "ERROR: producción todavía contiene el botón Aplicar diseño." >&2
+    exit 1
+fi
+
+if grep -Fq "data-apply-form-qr" "$DST/app/views/formularios/registro.php" || \
+   grep -Fq "data-apply-form-qr" "$DST/app/views/formularios/inscripcion.php"; then
+    echo "ERROR: producción todavía contiene data-apply-form-qr." >&2
+    exit 1
+fi
 
 echo
 echo "OK: personalizador QR publicado correctamente."
-echo "Incluye colores, estilos, tamaño, margen, imagen central ajustable, copiar y descargar PNG."
+echo "Incluye actualización automática, colores, estilos, tamaño, margen, imagen central ajustable, copiar y descargar PNG."
 echo "Respaldo: $BACKUP"
 echo "Recarga el navegador con Ctrl+F5."
