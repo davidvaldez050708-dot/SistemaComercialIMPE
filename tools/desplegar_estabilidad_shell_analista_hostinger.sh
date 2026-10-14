@@ -89,6 +89,38 @@ for i in "${!FILES[@]}"; do
     (cd "$TMP/stage" && git apply "$patch")
     CHANGED+=("$file")
     echo "PARCHE COMPATIBLE: $file"
+  elif [[ "$file" == "app/views/telefonia/shell.php" ]] &&
+       [[ "$(git -C "$SOURCE" hash-object "$LIVE/$file")" == "a039e4d61e4493a03fc739940a8b8e4f824e56e1" ]]; then
+    # Única variante de Hostinger identificada por el usuario. La diferencia
+    # comprobada incluye el diario pasivo WebRTC, cuyo bloque se incorporó
+    # en la fuente reconciliada. NO realizar este reemplazo para hashes
+    # desconocidos o personalizaciones posteriores.
+    for required in 'IMPE_ANALYST_WEBRTC_PASSIVE_JOURNAL' \
+                    'telefonia_analista_historial_pasivo.js' \
+                    'data-incoming-answer-compact' \
+                    'impePersistentPhoneStyles' \
+                    'IMPE_PHONE_SHELL_CONFIG'; do
+      grep -Fq "$required" "$LIVE/$file" || {
+        echo "CONFLICTO: falta control histórico $required en shell publicado." >&2
+        exit 1
+      }
+    done
+    for required in 'IMPE_ANALYST_WEBRTC_PASSIVE_JOURNAL' \
+                    'telefonia_analista_historial_pasivo.js' \
+                    'data-incoming-register-finished' \
+                    'data-incoming-retry-save' \
+                    'data-shell-navigation-mask' \
+                    'impeShellNavigation' \
+                    'impePersistentPhoneStyles' \
+                    'IMPE_PHONE_SHELL_CONFIG'; do
+      grep -Fq "$required" "$SOURCE/$file" || {
+        echo "ERROR: falta control $required en el shell reconciliado." >&2
+        exit 1
+      }
+    done
+    cp -p "$SOURCE/$file" "$TMP/stage/$file"
+    CHANGED+=("$file")
+    echo "PARCHE COMPATIBLE: shell Hostinger conocido; diario WebRTC conservado."
   else
     echo "CONFLICTO: $file tiene cambios incompatibles. PRODUCCIÓN INTACTA." >&2
     exit 1
@@ -103,6 +135,10 @@ if command -v node >/dev/null 2>&1; then
 fi
 grep -Fq 'data-shell-navigation-mask' "$TMP/stage/app/views/telefonia/shell.php"
 grep -Fq 'impeShellNavigation' "$TMP/stage/app/views/telefonia/shell.php"
+grep -Fq 'IMPE_ANALYST_WEBRTC_PASSIVE_JOURNAL' "$TMP/stage/app/views/telefonia/shell.php"
+grep -Fq 'telefonia_analista_historial_pasivo.js' "$TMP/stage/app/views/telefonia/shell.php"
+grep -Fq 'data-incoming-register-finished' "$TMP/stage/app/views/telefonia/shell.php"
+grep -Fq 'data-incoming-retry-save' "$TMP/stage/app/views/telefonia/shell.php"
 grep -Fq "!cfg.analystIncomingResults" "$TMP/stage/public/javascript/telefonia_shell.js"
 grep -Fq "telefonia_shell_navegacion.js" "$TMP/stage/app/controllers/TelefoniaController.php"
 grep -Fq '.impe-shell-navigation-mask' "$TMP/stage/public/css/telefonia_shell.css"
