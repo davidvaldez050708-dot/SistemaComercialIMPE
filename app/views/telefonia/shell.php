@@ -293,6 +293,18 @@ $nombreShell = $nombreShell !== '' ? $nombreShell : 'Usuario';
     echo str_ireplace('</script', '<\\/script', (string)$shellJsContent);
     ?>
     </script>
+    <!-- IMPE_ANALYST_WEBRTC_PASSIVE_JOURNAL -->
+    <?php if ($analistaEntrantesShell): ?>
+    <?php if (empty($_SESSION['csrf_token'])) { $_SESSION['csrf_token'] = bin2hex(random_bytes(32)); } ?>
+    <script>
+        window.IMPE_ANALYST_WEBRTC_JOURNAL = <?= json_encode([
+            'enabled' => true,
+            'endpoint' => BASE_URL . 'index.php?controller=seguimientoVinculacion&action=eventoEntranteWebrtc',
+            'csrf' => (string)$_SESSION['csrf_token']
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+    </script>
+    <script src="<?= BASE_URL ?>public/javascript/telefonia_analista_historial_pasivo.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/telefonia_analista_historial_pasivo.js') ?>"></script>
+    <?php endif; ?>
     <script id="impeShellNavigation">
     <?php
     $navigationJsPath = ROOT_PATH . '/public/javascript/telefonia_shell_navegacion.js';
