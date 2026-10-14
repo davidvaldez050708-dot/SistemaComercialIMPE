@@ -30,6 +30,7 @@ on:
       - "tools/desplegar_hora_mexico_webrtc_hostinger.sh"
       - "tests/seguimiento_fecha_webrtc_hostinger_smoke.sh"
       - "tools/diagnosticar_pbx_grabacion_extensiones.php"
+      - "tools/identificar_grabacion_100_101.php"
       - ".github/workflows/seguimiento-historial-llamadas.yml"
   pull_request:
     paths:
@@ -59,6 +60,7 @@ on:
       - "tools/desplegar_hora_mexico_webrtc_hostinger.sh"
       - "tests/seguimiento_fecha_webrtc_hostinger_smoke.sh"
       - "tools/diagnosticar_pbx_grabacion_extensiones.php"
+      - "tools/identificar_grabacion_100_101.php"
       - ".github/workflows/seguimiento-historial-llamadas.yml"
 
 jobs:
@@ -97,6 +99,7 @@ jobs:
           php -l app/controllers/SeguimientoVinculacionController.php
           php -l tools/diagnosticar_grabacion_webrtc_analista.php
           php -l tools/diagnosticar_pbx_grabacion_extensiones.php
+          php -l tools/identificar_grabacion_100_101.php
           bash -n tools/desplegar_hora_mexico_webrtc_hostinger.sh
           bash -n tests/seguimiento_fecha_webrtc_hostinger_smoke.sh
       - name: Simular parche selectivo de Hostinger
@@ -115,3 +118,5 @@ jobs:
         run: bash tests/seguimiento_audio_webrtc_sin_vinculo_smoke.sh
       - name: Convertir hora UTC WebRTC a México y validar despliegue
         run: bash tests/seguimiento_fecha_webrtc_hostinger_smoke.sh
+      - name: Probar selección sin identificadores ni escrituras
+        run: php tools/identificar_grabacion_100_101.php --self-test
