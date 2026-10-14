@@ -126,6 +126,49 @@ for i in "${!FILES[@]}"; do
     cp -p "$SOURCE/$file" "$TMP/stage/$file"
     CHANGED+=("$file")
     echo "PARCHE COMPATIBLE: shell Hostinger conocido; diario WebRTC conservado."
+  elif [[ "$file" == "public/css/telefonia_shell.css" ]]; then
+    # El único cambio de este commit CSS es un BLOQUE AÑADIDO al final.
+    # Una hoja Hostinger puede tener personalizaciones en sus estilos de
+    # teléfono; conservarlas, incorporando sólo las nuevas clases de
+    # navegación. Verificar que el sufijo sea exactamente el oficial.
+    cssBase="$TMP/shell_css_base.css"
+    cssTarget="$TMP/shell_css_target.css"
+    cssNew="$TMP/shell_css_navigation_only.css"
+    git -C "$SOURCE" show "${BEFORE[$i]}:$file" > "$cssBase"
+    git -C "$SOURCE" show "${AFTER[$i]}:$file" > "$cssTarget"
+    cssBaseSize="$(wc -c < "$cssBase" | tr -d ' ')"
+    [[ "$cssBaseSize" =~ ^[0-9]+$ && "$cssBaseSize" -gt 500 ]] || {
+      echo "ERROR: base CSS inválida, producción intacta." >&2
+      exit 1
+    }
+    head -c "$cssBaseSize" "$cssTarget" | cmp -s - "$cssBase" || {
+      echo "CONFLICTO: parche CSS contiene cambios no aditivos; producción intacta." >&2
+      exit 1
+    }
+    tail -c "+$((cssBaseSize + 1))" "$cssTarget" > "$cssNew"
+    [[ -s "$cssNew" ]] || {
+      echo "ERROR: bloque CSS de navegación vacío." >&2
+      exit 1
+    }
+    for selector in '.impe-phone-shell' '#impeCrmFrame' '.impe-phone-call' \
+                    '.impe-incoming-panel' '.impe-phone-classic-link'; do
+      grep -Fq "$selector" "$TMP/stage/$file" || {
+        echo "CONFLICTO: CSS publicado carece de $selector; producción intacta." >&2
+        exit 1
+      }
+    done
+    for selector in '.impe-shell-navigation-mask' '.impe-shell-navigation-progress' \
+                    '.impe-shell-navigation-spinner' 'impe-shell-navigation-spin'; do
+      if grep -Fq "$selector" "$TMP/stage/$file"; then
+        echo "CONFLICTO: existe CSS de navegación no homologado ($selector)." >&2
+        exit 1
+      fi
+    done
+    # Asegurar fin de línea entre estilos heredados y el bloque nuevo.
+    printf '\n' >> "$TMP/stage/$file"
+    cat "$cssNew" >> "$TMP/stage/$file"
+    CHANGED+=("$file")
+    echo "PARCHE COMPATIBLE: CSS personalizado conservado; añadidos sólo estilos de navegación."
   else
     echo "CONFLICTO: $file tiene cambios incompatibles. PRODUCCIÓN INTACTA." >&2
     exit 1
