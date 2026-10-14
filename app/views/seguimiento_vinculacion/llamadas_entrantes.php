@@ -7,10 +7,14 @@ $llamadas = is_array($bandejaEntrantes['llamadas'] ?? null)
 $seleccionarId = trim((string)($_GET['sdk_session_id'] ?? ($_GET['pbx_call_id'] ?? '')));
 $estadosEntrantes = $estadosEntrantes ?? [];
 $pendientesEntrantes = count(array_filter($llamadas, static function ($fila) {
-    return (string)($fila['clasificacion'] ?? 'PENDIENTE') === 'PENDIENTE';
+    return (string)($fila['clasificacion'] ?? 'PENDIENTE') === 'PENDIENTE'
+        && (string)($fila['tipo_llamada'] ?? 'ENTRANTE') !== 'INTERNA';
 }));
 $vinculadasEntrantes = count(array_filter($llamadas, static function ($fila) {
     return (string)($fila['clasificacion'] ?? '') === 'VINCULADA';
+}));
+$internasEntrantes = count(array_filter($llamadas, static function ($fila) {
+    return (string)($fila['tipo_llamada'] ?? 'ENTRANTE') === 'INTERNA';
 }));
 $duracionEntrante = static function ($segundos) {
     return sprintf('%02d:%02d', intdiv(max(0, (int)$segundos), 60),
@@ -64,6 +68,9 @@ $duracionEntrante = static function ($segundos) {
                 <div class="linkage-incoming-stat"><span class="stat-icon"><i class="bi bi-folder-check"></i></span><div>
                     <span>Vinculadas</span><strong><?= $vinculadasEntrantes ?></strong>
                 </div></div>
+                <div class="linkage-incoming-stat"><span class="stat-icon"><i class="bi bi-arrow-left-right"></i></span><div>
+                    <span>Internas</span><strong><?= $internasEntrantes ?></strong>
+                </div></div>
             </div>
             <div class="linkage-incoming-list-head">
                 <div><h3>Historial de llamadas</h3><p>Movimientos recientes de tu extensión telefónica.</p></div>
@@ -72,28 +79,37 @@ $duracionEntrante = static function ($segundos) {
             <div class="linkage-incoming-table-wrap">
                 <table class="table align-middle linkage-incoming-table">
                     <thead><tr>
-                        <th>Fecha</th><th>Número entrante</th><th>Duración</th>
+                        <th>Fecha</th><th>Tipo de llamada</th><th>Duración</th>
                         <th>Estado</th><th>Expediente</th><th class="text-end">Acción</th>
                     </tr></thead>
                     <tbody>
                 <?php foreach ($llamadas as $llamada):
                     $pbxId = (string)($llamada['pbx_call_id'] ?? '');
                     $esWebrtc = ($llamada['fuente'] ?? '') === 'SDK_WEBRTC';
+                    $esInterna = ($llamada['tipo_llamada'] ?? '') === 'INTERNA';
                     $situacion = (string)($llamada['clasificacion'] ?? 'PENDIENTE');
                     $pbx = (string)($llamada['estado_pbx'] ?? '');
                     $finalizada = in_array($pbx, ['ended', 'transferred'], true);
                     $vinculada = $situacion === 'VINCULADA';
                     $sinIdentificar = $situacion === 'SIN_IDENTIFICAR';
                     $seguimientoId = (int)($llamada['seguimiento_id'] ?? 0);
+                    $grabacionInterna = $esInterna && !empty($llamada['grabacion_disponible']);
+                    $audioInternoUrl = $grabacionInterna
+                        ? BASE_URL . 'prueba_telefonia/api/grabacion_interna_analista.php?session_id=' . rawurlencode($pbxId)
+                        : '';
                     $numero = trim((string)($llamada['numero'] ?? ''));
                     $numero = $numero !== '' ? $numero : 'Número privado';
                 ?>
                 <tr data-incoming-row="<?= $esc($pbxId) ?>">
                     <td data-label="Fecha" class="text-nowrap"><?= $esc($llamada['fecha'] ?? '') ?></td>
-                    <td data-label="Número entrante" class="linkage-incoming-caller">
+                    <td data-label="Tipo de llamada" class="linkage-incoming-caller">
                         <strong><?= $esc($numero) ?></strong>
                         <small class="d-block text-muted">
-                            <span>Entrante · Extensión <?= $esc($bandejaEntrantes['extension'] ?? '') ?></span>
+                            <?php if ($esInterna): ?>
+                                <span>Interna · Ext. <?= $esc($numero) ?> → <?= $esc($bandejaEntrantes['extension'] ?? '') ?></span>
+                            <?php else: ?>
+                                <span>Entrante · Extensión <?= $esc($bandejaEntrantes['extension'] ?? '') ?></span>
+                            <?php endif; ?>
                             <?php if ($esWebrtc): ?>
                                 <span class="linkage-incoming-source">
                                     <i class="bi bi-headset" aria-hidden="true"></i>
@@ -105,7 +121,11 @@ $duracionEntrante = static function ($segundos) {
                     </td>
                     <td data-label="Duración" class="text-nowrap linkage-incoming-duration"><?= $esc($duracionEntrante($llamada['duracion'] ?? 0)) ?></td>
                     <td data-label="Estado">
-                        <?php if ($vinculada): ?>
+                        <?php if ($esInterna && $vinculada): ?>
+                            <span class="linkage-incoming-tag is-pending">Interna · revisar vínculo de prueba</span>
+                        <?php elseif ($esInterna): ?>
+                            <span class="linkage-incoming-tag">Interna · no contabiliza</span>
+                        <?php elseif ($vinculada): ?>
                             <span class="linkage-incoming-tag is-success">Registrada</span>
                         <?php elseif ($sinIdentificar): ?>
                             <span class="linkage-incoming-tag">Sin identificar</span>
@@ -127,7 +147,15 @@ $duracionEntrante = static function ($segundos) {
                         <?php else: ?>—<?php endif; ?>
                     </td>
                     <td class="text-end linkage-incoming-action-cell" data-label="Acción">
-                        <?php if (!$vinculada && $finalizada && (!$sinIdentificar || !empty($llamada['contestada']))): ?>
+                        <?php if ($grabacionInterna): ?>
+                            <details class="linkage-incoming-internal-audio">
+                                <summary><i class="bi bi-play-circle" aria-hidden="true"></i> Escuchar grabación</summary>
+                                <audio controls preload="none" src="<?= $esc($audioInternoUrl) ?>" aria-label="Grabación de llamada interna"></audio>
+                                <a href="<?= $esc($audioInternoUrl . '&download=1') ?>">Descargar audio</a>
+                            </details>
+                        <?php elseif ($esInterna && !$vinculada): ?>
+                            <small class="text-muted">Grabación pendiente de vinculación</small>
+                        <?php elseif (!$vinculada && $finalizada && (!$sinIdentificar || !empty($llamada['contestada']))): ?>
                             <button type="button" class="btn btn-system-save linkage-incoming-open"
                                 data-call-id="<?= $esc($pbxId) ?>"
                                 data-source="<?= $esWebrtc ? 'SDK_WEBRTC' : 'PBX' ?>"
@@ -156,7 +184,7 @@ $duracionEntrante = static function ($segundos) {
     <p class="linkage-incoming-footnote">
         <i class="bi bi-shield-check" aria-hidden="true"></i>
         El historial distingue eventos firmados de la centralita y sesiones observadas por WebRTC.
-        Estas últimas no acreditan por sí solas una conversación ni verificaciones institucionales.
+        Las llamadas internas entre extensiones activas se conservan en el historial telefónico, sin crear contactos institucionales ni verificaciones efectivas.
     </p>
 </section>
 
