@@ -23,6 +23,24 @@ if (!in_array($modo, ['--check', '--apply'], true) || !$root ||
         . "  o: php tools/reparar_prueba_interna_100_101.php --apply RUTA_PUBLICA --confirmar-prueba-interna\n");
     exit(2);
 }
+// La previsualización debe informar cada etapa, incluso si PHP interrumpe
+// la ejecución antes de llegar al resultado del diagnóstico.
+$etapaDiagnostico = 'inicio';
+$diagnosticoFinalizado = false;
+if ($modo === '--check') {
+    fwrite(STDERR, "[CHECK] Iniciando comprobación de la llamada interna; sin escrituras.\n");
+    register_shutdown_function(static function () use (&$etapaDiagnostico, &$diagnosticoFinalizado): void {
+        if ($diagnosticoFinalizado) {
+            return;
+        }
+        $last = error_get_last();
+        $fatal = is_array($last) &&
+            in_array((int)($last['type'] ?? 0),
+                [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR], true);
+        fwrite(STDERR, "[CHECK] La ejecución terminó antes de obtener un resultado. Etapa: "
+            . $etapaDiagnostico . ($fatal ? "; fallo fatal PHP" : "; causa no informada") . ".\n");
+    });
+}
 require_once $root . '/config/db_connection.php';
 require_once $root . '/config/private_config.php';
 require_once $root . '/app/services/TelefoniaInternaGrabacionService.php';
@@ -165,6 +183,9 @@ function seleccionarGrabacion(string $root, DateTimeImmutable $hora, array $sdk,
     if (count($candidatas) !== 1) {
         throw new DomainException('No hay una grabación PBX inequívoca (' . count($candidatas) . ' candidatas).');
     }
+    if ($diagnostico) {
+        fwrite(STDERR, "[CHECK] Coincidencia única encontrada. Validando enlace temporal de Zadarma.\n");
+    }
     $record = $api->getPbxRecord($candidatas[0]['audio'], null, 300);
     $link = trim((string)($record->link ?? ''));
     if (!str_starts_with(strtolower($link), 'https://') ||
@@ -175,6 +196,7 @@ function seleccionarGrabacion(string $root, DateTimeImmutable $hora, array $sdk,
 }
 
 try {
+    $etapaDiagnostico = 'conexión MySQL';
     $db = (new Database())->connect();
     $hora = new DateTimeImmutable('2026-10-14 10:49:00', new DateTimeZone('America/Mexico_City'));
     $desde = $hora->setTimezone(new DateTimeZone('UTC'))->modify('-2 minutes')->format('Y-m-d H:i:s');
@@ -203,15 +225,18 @@ try {
     if (count($sesiones) !== 1) {
         throw new DomainException('Se encontraron ' . count($sesiones) . ' sesiones; ninguna operación fue autorizada.');
     }
+    $etapaDiagnostico = 'validación de sesión y expediente';
     $sdk = $sesiones[0];
     validarSesion($sdk);
     referencias($db, (int)$sdk['interaccion_id']);
+    $etapaDiagnostico = 'estadísticas y enlace de audio Zadarma';
     $audio = seleccionarGrabacion($root, $hora, $sdk, $modo === '--check');
     echo "OK: prueba 100 → 101 del 14/10 a las 10:49 verificada.\n";
     echo "Una interacción asociada al expediente indicado. Una grabación PBX real verificada.\n";
     echo "Sin dependencias FK; no se detectaron otras sesiones coincidentes.\n";
     if ($modo === '--check') {
         echo "PREVISUALIZACIÓN: BD intacta. Para aplicar: --apply RUTA_PUBLICA --confirmar-prueba-interna\n";
+        $diagnosticoFinalizado = true;
         exit(0);
     }
     $links = new TelefoniaInternaGrabacionService($db);
@@ -331,6 +356,8 @@ try {
         throw $e;
     }
 } catch (Throwable $e) {
-    fwrite(STDERR, "DETENIDO: " . $e->getMessage() . "\n");
+    $diagnosticoFinalizado = true;
+    fwrite(STDERR, "DETENIDO: etapa=" . $etapaDiagnostico . "; " .
+        get_class($e) . "; " . $e->getMessage() . "\n");
     exit(1);
 }
