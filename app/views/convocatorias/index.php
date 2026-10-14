@@ -901,40 +901,7 @@ $urlCambiarOpcionMes = $tipoConvocatoria === 'sindicatos'
                 </div>
             </div>
 
-            <form
-                method="GET"
-                action="<?= BASE_URL ?>index.php"
-                class="convocatoria-month-year-form">
-                <input type="hidden" name="controller" value="convocatoria">
-                <input type="hidden" name="action" value="index">
-                <input
-                    type="hidden"
-                    name="territorio_id"
-                    value="<?= (int)$territorioSeleccionado['id'] ?>">
-                <input
-                    type="hidden"
-                    name="tipo"
-                    value="<?= $texto($tipoConvocatoria) ?>">
-                <input
-                    type="hidden"
-                    name="subtipo"
-                    value="<?= $texto($subtipoConvocatoria) ?>">
 
-                <select
-                    name="anio"
-                    aria-label="Seleccionar año"
-                    onchange="this.form.submit()">
-                    <?php foreach ($aniosConvocatorias as $anioDisponible): ?>
-                        <option
-                            value="<?= (int)$anioDisponible ?>"
-                            <?= (int)$anioDisponible === $anioSeleccionado ? 'selected' : '' ?>>
-                            <?= (int)$anioDisponible ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-
-                <i class="bi bi-chevron-down" aria-hidden="true"></i>
-            </form>
         </div>
 
         <?php
