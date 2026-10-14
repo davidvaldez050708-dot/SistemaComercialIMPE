@@ -11,7 +11,8 @@ $pendientesEntrantes = count(array_filter($llamadas, static function ($fila) {
         && (string)($fila['tipo_llamada'] ?? 'ENTRANTE') !== 'INTERNA';
 }));
 $vinculadasEntrantes = count(array_filter($llamadas, static function ($fila) {
-    return (string)($fila['clasificacion'] ?? '') === 'VINCULADA';
+    return (string)($fila['clasificacion'] ?? '') === 'VINCULADA'
+        && (string)($fila['tipo_llamada'] ?? 'ENTRANTE') !== 'INTERNA';
 }));
 $internasEntrantes = count(array_filter($llamadas, static function ($fila) {
     return (string)($fila['tipo_llamada'] ?? 'ENTRANTE') === 'INTERNA';
@@ -25,7 +26,8 @@ $duracionEntrante = static function ($segundos) {
     data-linkage-incoming
     data-auto-call="<?= $esc($seleccionarId) ?>"
     data-search-url="<?= $esc(BASE_URL . 'index.php?controller=seguimientoVinculacion&action=buscarEntrantesSeguimientos') ?>"
-    data-save-url="<?= $esc(BASE_URL . 'index.php?controller=seguimientoVinculacion&action=registrarLlamadaEntrante') ?>">
+    data-save-url="<?= $esc(BASE_URL . 'index.php?controller=seguimientoVinculacion&action=registrarLlamadaEntrante') ?>"
+    data-audio-sync-url="<?= $esc(BASE_URL . 'index.php?controller=seguimientoVinculacion&action=sincronizarGrabacionInterna') ?>">
     <header class="linkage-incoming-heading">
         <div class="linkage-incoming-heading-copy">
             <span class="linkage-incoming-eyebrow">
@@ -153,6 +155,13 @@ $duracionEntrante = static function ($segundos) {
                                 <audio controls preload="none" src="<?= $esc($audioInternoUrl) ?>" aria-label="Grabación de llamada interna"></audio>
                                 <a href="<?= $esc($audioInternoUrl . '&download=1') ?>">Descargar audio</a>
                             </details>
+                        <?php elseif ($esInterna && $esWebrtc && $situacion === 'INTERNA' && $finalizada): ?>
+                            <button type="button" class="btn btn-system-light linkage-incoming-sync-audio"
+                                data-incoming-sync-audio="<?= $esc($pbxId) ?>">
+                                <i class="bi bi-cloud-arrow-down" aria-hidden="true"></i>
+                                Buscar grabación
+                            </button>
+                            <small class="linkage-incoming-sync-message" role="status" aria-live="polite"></small>
                         <?php elseif ($esInterna && !$vinculada): ?>
                             <small class="text-muted">Grabación pendiente de vinculación</small>
                         <?php elseif (!$vinculada && $finalizada && (!$sinIdentificar || !empty($llamada['contestada']))): ?>
