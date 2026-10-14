@@ -301,18 +301,6 @@
                                 '</div>' +
                             '</div>' +
                         '</div>' +
-                        '<div class="linkage-call-section linkage-call-recordings-section">' +
-                            '<div class="linkage-call-section-heading">' +
-                                '<div><strong>Grabaciones</strong><p>Solo conversaciones válidas; buzón de voz y mensajes de operadora quedan fuera.</p></div>' +
-                                '<span class="linkage-call-recordings-count" data-recording-count>—</span>' +
-                            '</div>' +
-                            '<div class="linkage-call-audio-list" data-call-audio-list>' +
-                                '<div class="linkage-call-recordings-loading">' +
-                                    '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span>' +
-                                    '<span>Preparando grabaciones…</span>' +
-                                '</div>' +
-                            '</div>' +
-                        '</div>' +
                     '</section>';
 
                 if (paneInteracciones) {
@@ -405,9 +393,7 @@
                 });
 
                 const historyList = pane.querySelector('[data-call-history-list]');
-                const audioList = pane.querySelector('[data-call-audio-list]');
                 const countCalls = pane.querySelector('[data-call-count]');
-                const countRecordings = pane.querySelector('[data-recording-count]');
                 const summaryTotal = pane.querySelector('[data-call-summary-total]');
                 const summaryContacted = pane.querySelector('[data-call-summary-contacted]');
                 const summaryRecordings = pane.querySelector('[data-call-summary-recordings]');
@@ -608,89 +594,6 @@
                     return tarjeta;
                 };
 
-                const crearTarjetaAudio = function (llamada) {
-                    const tarjeta = document.createElement('article');
-                    tarjeta.className = 'linkage-call-audio-card';
-
-                    const cabecera = document.createElement('div');
-                    cabecera.className = 'linkage-call-audio-card-heading';
-
-                    const identidad = document.createElement('div');
-                    identidad.innerHTML =
-                        '<span class="linkage-call-recordings-icon"><i class="bi bi-play-circle"></i></span>' +
-                        '<div class="linkage-call-audio-identity"><strong>Llamada grabada</strong><span></span></div>';
-
-                    identidad.querySelector('.linkage-call-audio-identity > span').textContent =
-                        fechaLegible(llamada.fecha_inicio);
-
-                    const estado = document.createElement('div');
-                    estado.className = 'linkage-call-audio-card-meta';
-                    estado.appendChild(
-                        crearBadgeResultado(
-                            etiquetaResultado(llamada.resultado_telefonico || llamada.resultado),
-                            'is-result'
-                        )
-                    );
-
-                    const duracion = document.createElement('span');
-                    duracion.className = 'linkage-call-recording-duration';
-                    duracion.innerHTML = '<i class="bi bi-clock"></i><span></span>';
-                    duracion.querySelector('span').textContent =
-                        duracionLegible(llamada.duracion_segundos);
-                    estado.appendChild(duracion);
-
-                    cabecera.appendChild(identidad);
-                    cabecera.appendChild(estado);
-                    tarjeta.appendChild(cabecera);
-
-                    const detalle = document.createElement('div');
-                    detalle.className = 'linkage-call-detail is-audio';
-
-                    const filaContacto = crearFilaDatoLlamada('Contacto', llamada.contacto);
-                    if (filaContacto) {
-                        detalle.appendChild(filaContacto);
-                    }
-
-                    const detalleTexto = String(llamada.detalle || '').trim();
-                    const filaDetalle = crearFilaDatoLlamada('Detalle', detalleTexto);
-                    if (filaDetalle) {
-                        detalle.appendChild(filaDetalle);
-                    }
-
-                    if (detalle.children.length > 0) {
-                        tarjeta.appendChild(detalle);
-                    }
-
-                    const audioWrap = document.createElement('div');
-                    audioWrap.className = 'linkage-call-recording-audio';
-                    const etiqueta = document.createElement('span');
-                    etiqueta.className = 'linkage-call-recording-audio-label';
-                    etiqueta.innerHTML = '<i class="bi bi-record-circle"></i><span>Grabación</span>';
-                    const audio = document.createElement('audio');
-                    audio.controls = true;
-                    audio.preload = 'none';
-                    audio.controlsList = 'nodownload';
-                    audio.src = String(llamada.grabacion_url || '');
-                    audio.setAttribute(
-                        'aria-label',
-                        'Grabación de llamada del ' + fechaLegible(llamada.fecha_inicio)
-                    );
-                    const error = document.createElement('span');
-                    error.className = 'linkage-call-recording-unavailable d-none';
-                    error.innerHTML =
-                        '<i class="bi bi-exclamation-circle"></i><span>Grabación no disponible.</span>';
-                    audio.addEventListener('error', function () {
-                        audio.classList.add('d-none');
-                        error.classList.remove('d-none');
-                    });
-
-                    audioWrap.appendChild(etiqueta);
-                    audioWrap.appendChild(audio);
-                    audioWrap.appendChild(error);
-                    tarjeta.appendChild(audioWrap);
-                    return tarjeta;
-                };
-
                 let reintentosGrabacion = 0;
                 let temporizadorGrabacion = null;
 
@@ -754,13 +657,11 @@
                             }).length;
 
                             countCalls.textContent = String(llamadas.length);
-                            countRecordings.textContent = String(grabaciones.length);
                             summaryTotal.textContent = String(llamadas.length);
                             summaryContacted.textContent = String(contactadas);
                             summaryRecordings.textContent = String(grabaciones.length);
 
                             historyList.innerHTML = '';
-                            audioList.innerHTML = '';
 
                             if (llamadas.length === 0) {
                                 historyList.appendChild(crearEstadoVacio(
@@ -770,21 +671,6 @@
                             } else {
                                 llamadas.forEach(function (llamada) {
                                     historyList.appendChild(crearTarjetaHistorial(llamada));
-                                });
-                            }
-
-                            if (grabaciones.length === 0) {
-                                audioList.appendChild(crearEstadoVacio(
-                                    hayGrabacionesProcesando
-                                        ? 'Zadarma todavía está procesando la grabación de la llamada.'
-                                        : 'No hay conversaciones grabadas disponibles.',
-                                    hayGrabacionesProcesando
-                                        ? 'bi-hourglass-split'
-                                        : 'bi-mic-mute'
-                                ));
-                            } else {
-                                grabaciones.forEach(function (llamada) {
-                                    audioList.appendChild(crearTarjetaAudio(llamada));
                                 });
                             }
 
@@ -798,20 +684,15 @@
                         })
                         .catch(function (error) {
                             countCalls.textContent = '—';
-                            countRecordings.textContent = '—';
                             summaryTotal.textContent = '—';
                             summaryContacted.textContent = '—';
                             summaryRecordings.textContent = '—';
                             historyList.innerHTML = '';
-                            audioList.innerHTML = '';
                             historyList.appendChild(crearEstadoVacio(
                                 error.message || 'No fue posible cargar las llamadas.',
                                 'bi-exclamation-circle'
                             ));
-                            audioList.appendChild(crearEstadoVacio(
-                                'Las grabaciones no pudieron consultarse.',
-                                'bi-exclamation-circle'
-                            ));
+
                         });
                 };
 
