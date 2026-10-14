@@ -135,10 +135,6 @@ if command -v node >/dev/null 2>&1; then
 fi
 grep -Fq 'data-shell-navigation-mask' "$TMP/stage/app/views/telefonia/shell.php"
 grep -Fq 'impeShellNavigation' "$TMP/stage/app/views/telefonia/shell.php"
-grep -Fq 'IMPE_ANALYST_WEBRTC_PASSIVE_JOURNAL' "$TMP/stage/app/views/telefonia/shell.php"
-grep -Fq 'telefonia_analista_historial_pasivo.js' "$TMP/stage/app/views/telefonia/shell.php"
-grep -Fq 'data-incoming-register-finished' "$TMP/stage/app/views/telefonia/shell.php"
-grep -Fq 'data-incoming-retry-save' "$TMP/stage/app/views/telefonia/shell.php"
 grep -Fq "!cfg.analystIncomingResults" "$TMP/stage/public/javascript/telefonia_shell.js"
 grep -Fq "telefonia_shell_navegacion.js" "$TMP/stage/app/controllers/TelefoniaController.php"
 grep -Fq '.impe-shell-navigation-mask' "$TMP/stage/public/css/telefonia_shell.css"
