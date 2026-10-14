@@ -97,6 +97,9 @@
     };
     const loaded = function () {
         const loc = getFrameLocation();
+        // about:blank es el documento transitorio inicial del iframe y
+        // no indica un fallo de PHP; esperar la ruta autenticada real.
+        if (loc?.protocol === 'about:') return;
         if (!loc || loc.origin !== home.origin) {
             markFailure();
             return;
@@ -153,6 +156,19 @@
                 if (!url || url.href.split('#')[0] === loc.href.split('#')[0]) return;
                 startNavigation(url.href);
                 ensureWatchdog();
+                // Un módulo puede cancelar el clic para abrir un modal o
+                // realizar AJAX. Si se canceló, no mantener la capa encima
+                // de la vista (el beforeunload real cubrirá navegación).
+                window.setTimeout(function () {
+                    if (event.defaultPrevented && !failed &&
+                        pendingUrl === url.href) {
+                        if (watchdog !== null) {
+                            window.clearTimeout(watchdog);
+                            watchdog = null;
+                        }
+                        setMask(false, '', false);
+                    }
+                }, 0);
             }, true);
         } catch (_) { /* el navegador puede limitar el acceso al frame */ }
     };
