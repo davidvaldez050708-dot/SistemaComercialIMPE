@@ -30,8 +30,10 @@ export IMPE_AUDIO_UI_BACKUPS="$TMP/backups"
 bash tools/desplegar_leyenda_webrtc_y_audio_hostinger.sh --check | grep -q 'PRODUCCIÓN INTACTA'
 git show "c8166bf7c5136622b3ec7ca34a415c2bfb97237d:$API" | cmp - "$SITE/$API"
 bash tools/desplegar_leyenda_webrtc_y_audio_hostinger.sh --apply | grep -q 'grabaciones corregida'
-cmp -s "$SITE/$API" "$API"
-cmp -s "$SITE/$JS" "$JS"
+# Verificar sólo la versión final del parche de audio WebRTC;
+# el endpoint puede contener cambios posteriores de zona horaria.
+git show "33732f671453c63b1104d4aaba7a427fcab140c2:$API" | cmp - "$SITE/$API"
+git show "42acda3358033cc16abd7b8816d7879a467b72f5:$JS" | cmp - "$SITE/$JS"
 bash tools/desplegar_leyenda_webrtc_y_audio_hostinger.sh --check | grep -q 'ya corregida'
 [[ -n "$(find "$TMP/backups" -type f)" ]]
 echo "Audio WebRTC en expediente: OK (leyenda privada, audio pendiente, despliegue y respaldo)"
