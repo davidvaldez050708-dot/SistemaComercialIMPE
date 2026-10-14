@@ -53,11 +53,19 @@ $fechaMaximaNacimiento = date('Y-m-d');
                 </p>
             </div>
 
-            <div class="formulario-publico-hero-logo">
-                <img
-                    src="<?= BASE_URL ?>public/img/brand/Logotipos-blanco.png"
-                    alt="Porcayo Learning Group"
-                    loading="eager">
+            <div class="formulario-publico-hero-logos">
+                <div class="formulario-publico-hero-logo formulario-publico-hero-logo-principal">
+                    <img
+                        src="<?= BASE_URL ?>public/img/brand/Logotipos-blanco.png"
+                        alt="Fundación Red Educativa México y Universidad MPE"
+                        loading="eager">
+                </div>
+                <div class="formulario-publico-hero-logo-sep">
+                    <img
+                        src="<?= BASE_URL ?>public/img/brand/Logo-Sep-Blanco.png"
+                        alt="Secretaría de Educación Pública"
+                        loading="eager">
+                </div>
             </div>
         </section>
 
