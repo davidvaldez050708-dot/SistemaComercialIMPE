@@ -670,3 +670,178 @@ a.btn.linkage-incoming-back {
     padding-top: .45rem;
     white-space: normal;
 }
+
+/* --------------------------------------------------------------------
+ * Bandeja de Analista · reutiliza el historial/reproductor de expediente.
+ * El resto del CSS (modal, botón en Seguimiento, formularios) no cambia.
+ * -------------------------------------------------------------------- */
+.dashboard-panel.linkage-incoming-page {
+    width: min(100%, 1180px);
+    max-width: 1180px;
+    padding: 18px 20px;
+}
+.linkage-incoming-page .linkage-incoming-heading {
+    padding-bottom: 15px;
+    gap: 10px 20px;
+}
+.linkage-incoming-page .linkage-incoming-heading h2 {
+    font-size: 20px;
+    margin: 5px 0 3px;
+}
+.linkage-incoming-page .linkage-incoming-heading p {
+    font-size: 11.5px;
+    line-height: 1.5;
+}
+.linkage-incoming-page .linkage-incoming-extension,
+.linkage-incoming-page .linkage-incoming-back {
+    min-height: 34px;
+    padding: 6px 11px;
+    font-size: 11px;
+}
+.linkage-incoming-page .linkage-call-summary.linkage-incoming-stats {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+    margin: 14px 0 16px;
+}
+.linkage-incoming-page .linkage-call-summary.linkage-incoming-stats > div {
+    min-height: 55px;
+    padding: 9px 12px;
+    background: #fbfcfe;
+}
+.linkage-incoming-page .linkage-call-summary.linkage-incoming-stats span {
+    font-size: 10px;
+}
+.linkage-incoming-page .linkage-call-summary.linkage-incoming-stats strong {
+    font-size: 17px;
+}
+.linkage-incoming-page .linkage-incoming-history-section {
+    padding-top: 12px;
+}
+.linkage-incoming-page .linkage-call-section-heading.linkage-incoming-list-head {
+    margin: 0 0 9px;
+}
+.linkage-incoming-page .linkage-incoming-history {
+    gap: 8px;
+}
+.linkage-incoming-page .linkage-incoming-card {
+    padding: 11px 12px;
+    background: #fbfcfe;
+    transition: border-color .15s ease, background-color .15s ease;
+}
+.linkage-incoming-page .linkage-incoming-card:hover {
+    border-color: #cfdbea;
+    background: #fff;
+}
+.linkage-incoming-page .linkage-incoming-card .linkage-call-history-date {
+    display: inline-flex;
+    gap: 5px;
+    align-items: center;
+    font-variant-numeric: tabular-nums;
+}
+.linkage-incoming-page .linkage-incoming-card .linkage-call-detail {
+    padding: 2px 0 0;
+}
+.linkage-incoming-page .linkage-incoming-card .linkage-call-detail-row {
+    grid-template-columns: 61px minmax(0, 1fr);
+}
+.linkage-incoming-page .linkage-incoming-card .linkage-call-recording-top strong {
+    font-size: 11.8px;
+}
+.linkage-incoming-page .linkage-incoming-card .linkage-call-recording-top > div:first-child > span {
+    font-size: 10.5px;
+}
+.linkage-incoming-page .linkage-incoming-card .linkage-call-history-meta {
+    min-width: 0;
+}
+.linkage-incoming-page .linkage-incoming-card .linkage-call-recording-toggle {
+    font-family: inherit;
+}
+.linkage-incoming-page .linkage-incoming-card-actions {
+    min-width: 0;
+    padding-top: 9px;
+    border-top: 1px solid #edf1f5;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.linkage-incoming-page .linkage-incoming-card-actions .btn {
+    min-height: 32px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 10.5px;
+    font-weight: 800;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    justify-content: center;
+    white-space: normal;
+}
+.linkage-incoming-page .linkage-incoming-card-actions .linkage-incoming-sync-message {
+    max-width: min(100%, 520px);
+    padding: 0;
+    font-size: 10.5px;
+}
+.linkage-incoming-page .linkage-incoming-audio-panel {
+    margin-top: 4px;
+    padding-top: 10px;
+}
+.linkage-incoming-page .linkage-incoming-audio-panel .linkage-call-custom-player {
+    width: min(640px, 100%);
+}
+.linkage-incoming-page .linkage-call-player-menu {
+    z-index: 2;
+}
+.linkage-incoming-page .linkage-incoming-player-error {
+    margin: 7px 0 0;
+    color: #a23c3c;
+    font-size: 10.5px;
+    font-weight: 650;
+}
+.linkage-incoming-page .linkage-incoming-player-error[hidden] {
+    display: none !important;
+}
+@media (max-width: 767.98px) {
+    .dashboard-panel.linkage-incoming-page {
+        padding: 16px 14px;
+    }
+    .linkage-incoming-page .linkage-call-summary.linkage-incoming-stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .linkage-incoming-page .linkage-call-summary.linkage-incoming-stats > div {
+        min-height: 48px;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+    }
+    .linkage-incoming-page .linkage-incoming-history {
+        gap: 8px;
+    }
+    .linkage-incoming-page .linkage-incoming-heading-actions {
+        width: auto;
+        margin-left: 0;
+    }
+}
+@media (max-width: 479.98px) {
+    .linkage-incoming-page .linkage-call-summary.linkage-incoming-stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .linkage-incoming-page .linkage-call-summary.linkage-incoming-stats > div {
+        min-height: 52px;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 3px;
+        padding: 8px 10px;
+    }
+    .linkage-incoming-page .linkage-incoming-heading-actions {
+        width: 100%;
+    }
+    .linkage-incoming-page .linkage-incoming-card .linkage-call-detail-row {
+        grid-template-columns: 1fr;
+        gap: 1px;
+    }
+    .linkage-incoming-page .linkage-call-custom-player {
+        gap: 5px;
+    }
+    .linkage-incoming-page .linkage-incoming-card .linkage-call-history-footer {
+        gap: 7px;
+    }
+}
