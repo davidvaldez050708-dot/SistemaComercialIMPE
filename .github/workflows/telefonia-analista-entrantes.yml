@@ -66,6 +66,7 @@ on:
       - "tools/desplegar_call_id_decimal_zadarma_hostinger.sh"
       - "tests/zadarma_call_id_decimal_smoke.php"
       - "tests/zadarma_call_id_decimal_hostinger_smoke.sh"
+      - "tests/reparador_interna_bootstrap_hostinger_smoke.sh"
       - ".github/workflows/telefonia-analista-entrantes.yml"
   pull_request:
     paths:
@@ -116,6 +117,7 @@ on:
       - "tools/desplegar_call_id_decimal_zadarma_hostinger.sh"
       - "tests/zadarma_call_id_decimal_smoke.php"
       - "tests/zadarma_call_id_decimal_hostinger_smoke.sh"
+      - "tests/reparador_interna_bootstrap_hostinger_smoke.sh"
       - ".github/workflows/telefonia-analista-entrantes.yml"
 jobs:
   validar:
@@ -193,3 +195,4 @@ jobs:
           bash tests/telefonia_resultado_analista_hostinger_smoke.sh
           bash tests/telefonia_internas_analista_smoke.sh
           bash tests/zadarma_call_id_decimal_hostinger_smoke.sh
+          bash tests/reparador_interna_bootstrap_hostinger_smoke.sh
