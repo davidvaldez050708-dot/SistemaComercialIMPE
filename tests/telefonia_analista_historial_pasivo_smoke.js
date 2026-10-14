@@ -152,6 +152,14 @@ assert.equal(createdButtons,2,'Agregar las acciones al modal existente');
 assert.equal(typeof interval,'function');
 assert.equal(typeof attributeMutation,'function');
 assert.equal(cssNode.textContent.includes('data-incoming-close-finished'),true);
+assert.match(cssNode.textContent, /display:flex!important;flex-direction:row;/,
+    'Las acciones finales deben ocupar una misma fila');
+assert.match(cssNode.textContent, /flex:1 1 0!important;min-width:0;min-height:48px;/,
+    'Registrar y Cerrar deben tener tamaños proporcionados');
+assert.match(cssNode.textContent, /@media \(max-width:420px\)/,
+    'En celulares pequeños los botones se apilan con el mismo ancho');
+assert.match(cssNode.textContent, /data-analyst-webrtc-finished="1"/,
+    'La corrección CSS debe estar aislada al final de la llamada');
 assert.equal(panel.hidden,true);
 assert.equal(controls.get('[data-incoming-register-finished]').hidden,true);
 const status=sel=>controls.get(sel);
