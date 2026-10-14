@@ -519,6 +519,15 @@ $claseFormularios =
 
                     <?php if ($esRolMarketingSidebar): ?>
                         <a
+                            href="<?= BASE_URL ?>index.php?controller=crearConvocatoria&action=index"
+                            class="sidebar-link <?= $claseCrearConvocatoria ?>">
+                            <i class="bi bi-plus-square"></i>
+                            Crear convocatoria
+                        </a>
+                    <?php endif; ?>
+
+                    <?php if ($esRolMarketingSidebar): ?>
+                        <a
                             href="<?= BASE_URL ?>index.php?controller=formulario&action=index"
                             class="sidebar-link <?= $claseFormularios ?>">
                             <i class="bi bi-ui-checks-grid"></i>
