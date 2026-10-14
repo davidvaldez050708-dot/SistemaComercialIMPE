@@ -695,7 +695,12 @@
                 let temporizadorGrabacion = null;
 
                 const cargar = function () {
-                    fetch(
+                    // La vista y el reproductor comparten esta única consulta:
+                    // evita dos conexiones MySQL simultáneas al mismo expediente.
+                    const anterior = window.IMPE_HISTORIAL_LLAMADAS_EXPEDIENTE;
+                    const compartida = reintentosGrabacion === 0 &&
+                        anterior && anterior.seguimientoId === seguimientoId;
+                    const solicitud = compartida ? anterior.promise : fetch(
                         'prueba_telefonia/api/llamadas_seguimiento.php?seguimiento_id=' +
                             encodeURIComponent(seguimientoId),
                         {
@@ -727,7 +732,14 @@
                                     'No fue posible cargar las llamadas (HTTP ' + response.status + ').');
                             }
                             return data;
-                        })
+                        });
+                    if (!compartida) {
+                        window.IMPE_HISTORIAL_LLAMADAS_EXPEDIENTE = {
+                            seguimientoId: seguimientoId,
+                            promise: solicitud
+                        };
+                    }
+                    solicitud
                         .then(function (data) {
                             const llamadas = Array.isArray(data.llamadas) ? data.llamadas : [];
                             const grabaciones = llamadas.filter(function (llamada) {
