@@ -19,7 +19,7 @@ for p in $FILES; do
 done
 echo '/* ESTILO-LOCAL-PRESERVAR */' >> "$SITE/public/css/telefonia_shell.css"
 echo '// NOTA-LOCAL-PRESERVAR' >> "$SITE/public/javascript/telefonia_host.js"
-deploy() { HOME="$TMP" bash "$TMP/crm-preparacion/tools/desplegar_modal_entrantes_hostinger.sh" "$1"; }
+deploy() { HOME="$TMP" bash -x "$TMP/crm-preparacion/tools/desplegar_modal_entrantes_hostinger.sh" "$1"; }
 BEFORE="$(sha256sum "$SITE/public/javascript/telefonia_host.js")"
 deploy --check
 [[ "$BEFORE" == "$(sha256sum "$SITE/public/javascript/telefonia_host.js")" ]]
