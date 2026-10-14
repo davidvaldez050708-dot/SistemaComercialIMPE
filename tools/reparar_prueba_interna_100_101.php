@@ -220,8 +220,25 @@ try {
             throw new DomainException('La interacción fue modificada.');
         }
         referencias($db, $iid);
-        $snapshot = json_encode(['sesion'=>$current,'interaccion'=>$interaction],
-            JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
+        $q = $db->prepare(
+            "SELECT ultima_interaccion_at, proxima_accion_at,
+                    estado_seguimiento, datos_verificados
+             FROM seguimientos_vinculacion WHERE id = ? FOR UPDATE"
+        );
+        $q->bind_param('i', $seg);
+        $q->execute();
+        $expedienteActual = $q->get_result()->fetch_assoc();
+        $q->close();
+        if (!$expedienteActual ||
+            (string)$expedienteActual['estado_seguimiento'] !== 'CONTACTANDO' ||
+            (int)$expedienteActual['datos_verificados'] !== 0) {
+            throw new DomainException('El expediente cambió durante la revisión.');
+        }
+        $snapshot = json_encode([
+            'sesion'=>$current,
+            'interaccion'=>$interaction,
+            'expediente_campos_previos'=>$expedienteActual
+        ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
         $q = $db->prepare(
             "INSERT INTO telefonia_pruebas_internas_auditoria
             (usuario_id, session_id, interaccion_original_id,
@@ -251,6 +268,24 @@ try {
         $q->execute();
         if ($q->affected_rows !== 1) throw new DomainException('La interacción ya no coincide.');
         $q->close();
+        // La interacción de prueba alteró también ultima_interaccion_at.
+        // Si todavía es el último registro, recalcular la fecha a partir de
+        // las interacciones restantes. Nunca tocar otra fecha más reciente.
+        if ((string)($expedienteActual['ultima_interaccion_at'] ?? '') ===
+            (string)$interaction['fecha_inicio']) {
+            $q = $db->prepare(
+                "UPDATE seguimientos_vinculacion
+                 SET ultima_interaccion_at = (
+                     SELECT MAX(fecha_inicio) FROM interacciones_vinculacion
+                     WHERE seguimiento_id = ?
+                 )
+                 WHERE id = ? AND ultima_interaccion_at = ?"
+            );
+            $fechaAnterior = (string)$interaction['fecha_inicio'];
+            $q->bind_param('iis', $seg, $seg, $fechaAnterior);
+            $q->execute();
+            $q->close();
+        }
         $links->registrar($uid, $sessionId, $audio['pbx'], $audio['audio'], '100', '101');
         $db->commit();
         echo "OK: prueba interna separada del expediente, respaldo de auditoría creado y audio vinculado.\n";
