@@ -9,6 +9,10 @@ on:
       - "app/views/telefonia/host.php"
       - "app/views/telefonia/recepcion_marketing.php"
       - "public/javascript/telefonia_shell.js"
+      - "public/javascript/telefonia_shell_navegacion.js"
+      - "tools/desplegar_estabilidad_shell_analista_hostinger.sh"
+      - "tests/telefonia_shell_navegacion_smoke.js"
+      - "tests/telefonia_shell_estabilidad_hostinger_smoke.sh"
       - "public/javascript/telefonia_persistente.js"
       - "public/javascript/telefonia_host.js"
       - "public/javascript/telefonia_entrantes_bridge.js"
@@ -73,6 +77,8 @@ jobs:
           php tests/telefonia_entrantes_interfaz_smoke.php
           php tests/telefonia_shell_render_smoke.php
           node --check public/javascript/telefonia_shell.js
+          node --check public/javascript/telefonia_shell_navegacion.js
+          node tests/telefonia_shell_navegacion_smoke.js
           node --check public/javascript/telefonia_persistente.js
           node --check public/javascript/telefonia_host.js
           node --check public/javascript/telefonia_entrantes_bridge.js
@@ -86,6 +92,8 @@ jobs:
           bash tests/telefonia_shell_despliegue_smoke.sh
           bash -n tests/telefonia_shell_upgrade_smoke.sh
           bash tests/telefonia_shell_upgrade_smoke.sh
+          bash -n tools/desplegar_estabilidad_shell_analista_hostinger.sh
+          bash tests/telefonia_shell_estabilidad_hostinger_smoke.sh
           bash -n tools/desplegar_telefonia_entrantes_hostinger.sh
           bash -n tests/telefonia_entrantes_despliegue_smoke.sh
           bash tests/telefonia_entrantes_despliegue_smoke.sh
