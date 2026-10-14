@@ -65,9 +65,9 @@ python3 - "$IMPE_PASSIVE_PUBLIC/app/services/TelefoniaEntrantesAnalistaService.p
 import sys
 p=sys.argv[1]
 with open(p) as f:s=f.read()
-needle='return [\\'extension\\' => $extension, \\'llamadas\\' => $llamadas];'
+needle="return ['extension' => $extension, 'llamadas' => $llamadas];"
 assert s.count(needle)==1
-s=s.replace(needle,'return [\\'extension\\' => $extension, \\'llamadas\\' => array_values($llamadas)];')
+s=s.replace(needle,"return ['extension' => $extension, 'llamadas' => array_values($llamadas)];")
 with open(p,'w') as f:f.write(s)
 PY
 cp -p "$IMPE_PASSIVE_PUBLIC/app/services/TelefoniaEntrantesAnalistaService.php" "$tmp/conflict-original"
