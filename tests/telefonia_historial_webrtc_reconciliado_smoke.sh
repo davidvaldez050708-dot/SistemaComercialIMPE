@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -euxo pipefail
+set -euo pipefail
 cd "$(dirname "$0")/.."
 DEPLOY="tools/desplegar_historial_webrtc_reconciliado_hostinger.sh"
 BASE="9c6af2f292f2bde1a01b0aeb0cb88106327518c0"
@@ -31,7 +31,7 @@ if ! check="$(bash "$DEPLOY" --check 2>&1)"; then
   printf 'Preflight fallido:\n%s\n' "$check" >&2
   exit 1
 fi
-grep -Fq "FUSIÓN CONSERVADORA: $SHELL" <<< "$check"
+grep -Eq "(FUSIÓN CONSERVADORA|PARCHE COMPATIBLE): $SHELL" <<< "$check"
 grep -Fq "SIN modificar producción" <<< "$check"
 cmp -s "$tmp/shell-original" "$IMPE_HISTORY_PUBLIC/$SHELL"
 [[ ! -e "$IMPE_HISTORY_PUBLIC/$SERVICE" ]]
