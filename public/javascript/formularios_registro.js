@@ -644,7 +644,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const obtenerQrBlob = async function () {
         if (qrUrlActual === '') {
-            programarActualizacionQr(80);
+            await actualizarPreviewQr();
         }
 
         if (qrUrlActual === '') {
@@ -995,7 +995,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 String(qrPublicImageUrl?.value || '').trim() !== '');
 
         if (hayImagen) {
-            actualizarPreviewQr();
+            programarActualizacionQr(80);
         }
     });
 
