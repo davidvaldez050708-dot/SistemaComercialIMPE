@@ -6,10 +6,11 @@ class ZadarmaWebhookEventStoreService
 {
     private $connection;
 
-    public function __construct()
+    public function __construct(?mysqli $connection = null)
     {
-        $database = new Database();
-        $this->connection = $database->connect();
+        // Permite reutilizar la conexión del expediente en consultas del
+        // historial; el resto de los consumidores sigue funcionando igual.
+        $this->connection = $connection ?? (new Database())->connect();
         $this->asegurarEstructura();
     }
 
