@@ -83,6 +83,8 @@ $esCorreosMarketingDashboard =
     $controllerDashboard === 'correomarketing';
 $esFormulariosDashboard =
     $controllerDashboard === 'formulario';
+$esCrearConvocatoriaDashboard =
+    $controllerDashboard === 'crearconvocatoria';
 $esDesempenoDashboard =
     $controllerDashboard === 'desempeno';
 $esTelefoniaDashboard =
@@ -215,6 +217,10 @@ if ($esFormulariosDashboard) {
     $cssOpcionalDashboard[] = 'formularios.css';
 }
 
+if ($esCrearConvocatoriaDashboard) {
+    $cssOpcionalDashboard[] = 'crear_convocatoria.css';
+}
+
 if ($esDesempenoDashboard) {
     $cssOpcionalDashboard[] = 'desempeno.css';
 }
@@ -307,6 +313,10 @@ if ($esCorreosMarketingDashboard) {
 
 if ($esFormulariosDashboard) {
     $jsOpcionalHead[] = 'formularios_registro.js';
+}
+
+if ($esCrearConvocatoriaDashboard) {
+    $jsOpcionalHead[] = 'crear_convocatoria.js';
 }
 
 if ($esDesempenoDashboard) {
