@@ -25,6 +25,9 @@ on:
       - "app/views/layout/dashboard_head.php"
       - "public/javascript/telefonia_persistente.js"
       - "public/javascript/telefonia_host.js"
+      - "public/javascript/telefonia_sdk_entrantes_observador.js"
+      - "tools/desplegar_respuesta_transferida_hostinger.sh"
+      - "tests/telefonia_respuesta_transferida_hostinger_smoke.sh"
       - "public/javascript/telefonia_analista_historial_pasivo.js"
       - "public/javascript/seguimiento_entrantes_analista.js"
       - "tools/desplegar_resultado_transferida_analista_hostinger.sh"
@@ -77,6 +80,17 @@ on:
       - ".github/workflows/telefonia-shell.yml"
   pull_request:
 jobs:
+  responder-transferencia-sip:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Espera de respuesta SIP y Hostinger reversible
+        run: |
+          node tests/telefonia_sdk_entrantes_observador_smoke.js
+          node tests/telefonia_entrantes_bridge_smoke.js
+          bash tests/telefonia_respuesta_transferida_hostinger_smoke.sh
   resultado-analista-transferida:
     runs-on: ubuntu-latest
     steps:
