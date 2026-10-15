@@ -108,10 +108,18 @@ document.addEventListener('DOMContentLoaded', function () {
                 data.analista,
                 'No especificado'
             );
+            const contacto = [
+                data.contacto,
+                data.cargo_contacto,
+                data.correo_contacto
+            ].filter(function (value) {
+                return String(value || '').trim() !== '';
+            }).join(' · ');
+
             setText(
-                '[data-convenio-modal-file]',
-                data.archivo,
-                'Sin nombre de archivo'
+                '[data-convenio-modal-contact]',
+                contacto,
+                'No especificado'
             );
             setText(
                 '[data-convenio-modal-notes]',
