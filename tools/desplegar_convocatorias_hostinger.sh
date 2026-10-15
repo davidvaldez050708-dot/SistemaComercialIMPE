@@ -39,6 +39,7 @@ if [[ -z "$DST" || ! -f "$DST/index.php" ]]; then
 fi
 
 FILES=(
+    "app/controllers/ConvocatoriaController.php"
     "app/views/convocatorias/index.php"
 )
 
@@ -54,6 +55,7 @@ for file in "${FILES[@]}"; do
 done
 
 if command -v php >/dev/null 2>&1; then
+    php -l "$SRC/app/controllers/ConvocatoriaController.php" >/dev/null
     php -l "$SRC/app/views/convocatorias/index.php" >/dev/null
 fi
 
@@ -100,12 +102,21 @@ for file in "${FILES[@]}"; do
     echo "PUBLICADO $file"
 done
 
-if grep -Fq "convocatoria-month-year-form" "$DST/app/views/convocatorias/index.php"; then
-    echo "ERROR: el selector de año todavía aparece en producción." >&2
+if grep -Fq "convocatoria-month-page" "$DST/app/views/convocatorias/index.php"; then
+    echo "ERROR: la vista mensual todavía aparece en producción." >&2
     exit 1
 fi
 
+if grep -Fq "convocatoria-titulacion-cards" "$DST/app/views/convocatorias/index.php"; then
+    echo "ERROR: la vista intermedia de opciones todavía aparece en producción." >&2
+    exit 1
+fi
+
+grep -Fq 'name="clasificacion"' "$DST/app/views/convocatorias/index.php"
+grep -Fq "Todas las convocatorias" "$DST/app/views/convocatorias/index.php"
+grep -Fq "Tipo de convocatoria" "$DST/app/views/convocatorias/index.php"
+
 echo
-echo "OK: vista de Convocatorias publicada correctamente."
+echo "OK: flujo simplificado de Convocatorias publicado correctamente."
 echo "Respaldo: $BACKUP"
 echo "Recarga el navegador con Ctrl+F5."
