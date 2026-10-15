@@ -72,7 +72,14 @@ for i in "${!FILES[@]}"; do
   mkdir -p "$UNKNOWN/$(dirname "$file")"
   git show "${BASE[$i]}:$file" > "$UNKNOWN/$file"
 done
-printf '\n// CODIGO-DISTINTO-EN-PRODUCCION\n' >> "$UNKNOWN/${FILES[0]}"
+python3 - "$UNKNOWN/${FILES[0]}" <<'PY'
+import pathlib,sys
+p=pathlib.Path(sys.argv[1])
+s=p.read_text()
+original="setMask(true, 'Cargando módulo…', false);"
+assert s.count(original)==1
+p.write_text(s.replace(original,"setMask(true, 'CODIGO-DISTINTO-EN-PRODUCCION', false);"))
+PY
 cp "$UNKNOWN/${FILES[0]}" "$TMP/nav-before"
 export IMPE_NAV_NATIVA_PUBLIC="$UNKNOWN"
 if bash "$SCRIPT" --apply > "$TMP/error" 2>&1; then
