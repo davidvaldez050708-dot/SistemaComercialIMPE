@@ -625,13 +625,18 @@ class TelefoniaController
                 try {
                     require_once __DIR__ . '/../services/TelefoniaTransferenciaContextoService.php';
                     $origen = $this->service->resolverParaUsuario((int)$_SESSION['usuario_id']);
-                    (new TelefoniaTransferenciaContextoService())->registrar(
+                    $contextoGuardado = (new TelefoniaTransferenciaContextoService())->registrar(
                         (int)$_SESSION['usuario_id'], (string)($_SESSION['rol'] ?? ''),
                         (string)($origen['extension'] ?? ''),
                         (int)$destino['usuario_id'], (string)$destino['extension'],
                         (int)$destino['estado_id'], (int)$data['seguimiento_id'],
                         (string)($data['pbx_call_id'] ?? '')
                     );
+                    if (!$contextoGuardado) {
+                        // No mostrar errores de metadatos al teléfono. Dejar
+                        // evidencia técnica sin revelar datos del expediente.
+                        error_log('[telefonia_contexto_transferencia] Validación de traspaso no confirmada.');
+                    }
                 } catch (Throwable $error) {
                     // La PBX puede transferir aunque fallen datos opcionales.
                     error_log('[telefonia_contexto_no_disponible] ' . get_class($error));
