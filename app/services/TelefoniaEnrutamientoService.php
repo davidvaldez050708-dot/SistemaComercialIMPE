@@ -188,6 +188,72 @@ final class TelefoniaEnrutamientoService
         return $matches;
     }
 
+    /**
+     * Sugerencias basadas en identificador telefónico real de una entrante.
+     * Sólo Recepción; nunca tomar la coincidencia como prueba de identidad.
+     * Si varias instituciones comparten número, se regresan todas para
+     * seleccionar manualmente. El usuario confirma antes de transferir.
+     */
+    public function identificarOrigen(
+        int $actorId, string $rol, string $telefono
+    ): array {
+        if (self::categoriaRol($rol) !== 'RECEPCION') return [];
+        $digitos = preg_replace('/\\D+/', '', $telefono) ?: '';
+        if (strlen($digitos) < 10 || strlen($digitos) > 14) return [];
+        $numero10 = substr($digitos, -10);
+        if (!preg_match('/^[0-9]{10}$/', $numero10)) return [];
+
+        $destinos = $this->destinos($actorId, $rol, 0, 'INSTITUCION');
+        $responsables = [];
+        foreach ($destinos as $destino) {
+            $responsables[(int)$destino['estado_id'] . ':' .
+                (int)$destino['usuario_id']] = $destino;
+        }
+        if (!$responsables) return [];
+
+        // Comparación de los últimos 10 dígitos, sin prefijos +52/521,
+        // espacios, guiones, paréntesis ni puntos. No requiere funciones
+        // específicas de MySQL 8 ni cambiar el esquema de producción.
+        $campos = [];
+        foreach (['telefono_fuente', 'telefono_verificado'] as $columna) {
+            $expresion = "COALESCE(s.$columna, '')";
+            foreach ([' ', '-', '(', ')', '+', '.'] as $simbolo) {
+                $expresion = "REPLACE($expresion, '$simbolo', '')";
+            }
+            $campos[] = "RIGHT($expresion, 10) = ?";
+        }
+        $sql = "SELECT s.id, s.nombre_entidad, s.analista_id, s.estado_id,
+                       s.telefono_fuente, s.telefono_verificado
+                FROM seguimientos_vinculacion s
+                WHERE s.activo = 1
+                  AND s.estado_seguimiento <> 'DESCARTADO'
+                  AND (" . implode(' OR ', $campos) . ")
+                ORDER BY s.id DESC LIMIT 60";
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) throw new RuntimeException('No se pudo identificar el origen.');
+        $stmt->bind_param('ss', $numero10, $numero10);
+        $stmt->execute();
+        $registros = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        $encontrados = [];
+        foreach ($registros as $registro) {
+            $key = (int)$registro['estado_id'] . ':' .
+                (int)$registro['analista_id'];
+            if (!isset($responsables[$key])) continue;
+            $responsable = $responsables[$key];
+            $encontrados[] = [
+                'seguimiento_id' => (int)$registro['id'],
+                'nombre' => (string)$registro['nombre_entidad'],
+                'estado_id' => (int)$registro['estado_id'],
+                'estado_nombre' => (string)$responsable['estado_nombre'],
+                'responsable_id' => (int)$responsable['usuario_id'],
+                'responsable' => (string)$responsable['nombre'],
+                'extension' => (string)$responsable['extension']
+            ];
+        }
+        return $encontrados;
+    }
+
     public function validarDestino(
         int $actorId, string $rol, string $extension,
         int $estadoId = 0, string $tipo = '', int $responsableId = 0
