@@ -42,6 +42,8 @@ FILES=(
     "app/controllers/ConvocatoriaController.php"
     "app/models/ConvocatoriaModel.php"
     "app/views/convocatorias/index.php"
+    "app/views/formularios/registro.php"
+    "app/views/formularios/inscripcion.php"
     "public/css/convocatorias.css"
 )
 
@@ -126,6 +128,22 @@ grep -Fq "Tipo de convocatoria" "$DST/app/views/convocatorias/index.php"
 grep -Fq "convocatoria-month-groups" "$DST/app/views/convocatorias/index.php"
 grep -Fq "data-convocatoria-clasificacion" "$DST/app/views/convocatorias/index.php"
 grep -Fq "convocatoria-month-group-header" "$DST/public/css/convocatorias.css"
+grep -Fq "data-convocatoria-form-share" "$DST/app/views/convocatorias/index.php"
+grep -Fq "data-convocatoria-form-type" "$DST/app/views/convocatorias/index.php"
+
+if grep -Fq "Seleccionar otros estados" "$DST/app/views/convocatorias/index.php"; then
+    echo "AVISO: el texto puede seguir existiendo en Editar convocatoria; la opción fue retirada de Nueva convocatoria."
+fi
+
+if grep -Fq "data-formulario-share" "$DST/app/views/formularios/registro.php"; then
+    echo "ERROR: Registro todavía contiene generación de link/QR." >&2
+    exit 1
+fi
+
+if grep -Fq "data-formulario-share" "$DST/app/views/formularios/inscripcion.php"; then
+    echo "ERROR: Inscripción todavía contiene generación de link/QR." >&2
+    exit 1
+fi
 
 if grep -Fq "convocatoria-list-table" "$DST/app/views/convocatorias/index.php"; then
     echo "ERROR: producción todavía contiene la tabla plana anterior." >&2
@@ -133,6 +151,6 @@ if grep -Fq "convocatoria-list-table" "$DST/app/views/convocatorias/index.php"; 
 fi
 
 echo
-echo "OK: filtros corregidos y convocatorias agrupadas por mes publicadas correctamente."
+echo "OK: Nueva convocatoria genera link/QR y Formularios ya no muestra esa opción."
 echo "Respaldo: $BACKUP"
 echo "Recarga el navegador con Ctrl+F5."
