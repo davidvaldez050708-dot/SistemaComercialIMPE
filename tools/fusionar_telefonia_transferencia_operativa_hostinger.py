@@ -86,12 +86,17 @@ $puedeRecibirShell = !empty($asignacionTelefonica['permite_entrantes']) &&
                 (ongoing && state?.direction !== 'incoming')""")
         native_new = norm("""(cfg.analystIncomingResults && nativeAnalystOpen) ||
                 ongoing""")
-        visibility = choose(s, [
-            norm("""!(cfg.analystIncomingResults && nativeVisible) &&
-            !minimized"""),
-            norm("""!minimized && pending !== 'decline'"""),
-            norm("""!minimized && pending !== 'hangup' && pending !== 'decline'"""),
-        ], 'visibilidad existente')
+        # La variante con guarda también contiene el fragmento de la
+        # variante sin guarda. Elegir por precedencia, no por subcadena.
+        guarded = norm("""!(cfg.analystIncomingResults && nativeVisible) &&
+            !minimized""")
+        if s.count(guarded) == 1:
+            visibility = guarded
+        else:
+            visibility = choose(s, [
+                norm("""!minimized && pending !== 'decline'"""),
+                norm("""!minimized && pending !== 'hangup' && pending !== 'decline'"""),
+            ], 'visibilidad existente')
         if visibility.startswith('!('):
             visibility_new = norm("""!nativeVisible &&
             !minimized""")
