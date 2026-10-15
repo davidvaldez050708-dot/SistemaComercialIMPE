@@ -16,6 +16,13 @@ $marketingShell = strcasecmp(trim((string)($_SESSION['rol'] ?? '')), 'Marketing'
     tienePermiso('telefonia.recibir');
 $nombreShell = trim((string)(($_SESSION['nombre'] ?? '') . ' ' . ($_SESSION['apellidos'] ?? '')));
 $nombreShell = $nombreShell !== '' ? $nombreShell : 'Usuario';
+$rolTelefonoShell = mb_strtoupper(trim((string)($_SESSION['rol'] ?? '')), 'UTF-8');
+$esAsesorShell = in_array($rolTelefonoShell, ['ASESOR','ASESOR DE VENTAS'], true);
+$puedeTransferirShell = !empty($asignacionTelefonica['permite_transferir']) &&
+    tienePermiso('telefonia.transferir') &&
+    ($marketingShell || $analistaEntrantesShell || $esAsesorShell);
+$puedeCapturarShell = $analistaEntrantesShell || $esAsesorShell;
+if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 ?>
 <!doctype html>
 <html lang="es" data-impe-telephony-shell="1">
@@ -203,6 +210,18 @@ $nombreShell = $nombreShell !== '' ? $nombreShell : 'Usuario';
                 <button type="button" class="persistent-phone-action" data-incoming-mute hidden>
                     <i class="bi bi-mic-mute" aria-hidden="true"></i>Silenciar
                 </button>
+                <?php if ($puedeTransferirShell): ?>
+                <button type="button" class="persistent-phone-action" data-shell-transfer-toggle hidden
+                    aria-controls="impeTransferPanel" aria-expanded="false">
+                    <i class="bi bi-arrow-left-right" aria-hidden="true"></i> Transferir
+                </button>
+                <?php endif; ?>
+                <?php if ($puedeCapturarShell): ?>
+                <button type="button" class="persistent-phone-action" data-shell-capture-toggle hidden
+                    aria-controls="impeCapturePanel" aria-expanded="false">
+                    <i class="bi bi-clipboard-check" aria-hidden="true"></i> Datos de llamada
+                </button>
+                <?php endif; ?>
                 <button type="button" class="persistent-phone-action is-danger" data-incoming-hangup hidden>
                     <i class="bi bi-telephone-x" aria-hidden="true"></i>Colgar
                 </button>
@@ -221,6 +240,84 @@ $nombreShell = $nombreShell !== '' ? $nombreShell : 'Usuario';
                     <i class="bi bi-check2-circle" aria-hidden="true"></i>Cerrar
                 </button>
             </div>
+            <?php if ($puedeTransferirShell): ?>
+            <div class="impe-routing-panel" id="impeTransferPanel" data-shell-transfer-panel hidden>
+                <div class="impe-routing-heading">
+                    <strong>Transferir llamada</strong>
+                    <span>Selecciona al responsable autorizado</span>
+                </div>
+                <div class="impe-routing-field" data-routing-type-wrap>
+                    <label for="impeRoutingType">Tipo de atención</label>
+                    <select id="impeRoutingType" data-routing-type>
+                        <option value="INSTITUCION">Institución · Vinculación</option>
+                        <option value="PROSPECTO">Prospecto · Ventas</option>
+                    </select>
+                </div>
+                <div class="impe-routing-field" data-routing-state-wrap>
+                    <label for="impeRoutingState">Estado</label>
+                    <select id="impeRoutingState" data-routing-state>
+                        <option value="">Todos los estados</option>
+                    </select>
+                </div>
+                <div class="impe-routing-field" data-routing-search-wrap>
+                    <label for="impeRoutingSearch">Nombre de institución o responsable</label>
+                    <input type="search" id="impeRoutingSearch" data-routing-search
+                        maxlength="80" autocomplete="off" placeholder="Buscar en seguimiento">
+                </div>
+                <div class="impe-routing-matches" data-routing-matches hidden>
+                    <span>Expedientes encontrados</span>
+                    <div data-routing-matches-list></div>
+                </div>
+                <div class="impe-routing-field">
+                    <label for="impeRoutingDestination">Persona a la que se transferirá</label>
+                    <select id="impeRoutingDestination" data-routing-destination>
+                        <option value="">Seleccionar responsable</option>
+                    </select>
+                </div>
+                <div class="impe-routing-actions">
+                    <button type="button" data-routing-attended class="is-primary">Consultar primero</button>
+                    <button type="button" data-routing-direct>Transferir directamente</button>
+                </div>
+                <p data-routing-feedback role="status" aria-live="polite">
+                    El destinatario debe tener una extensión activa. No se transfiere automáticamente.
+                </p>
+            </div>
+            <?php endif; ?>
+            <?php if ($puedeCapturarShell): ?>
+            <div class="impe-routing-panel impe-call-capture" id="impeCapturePanel"
+                data-shell-capture-panel hidden>
+                <div class="impe-routing-heading">
+                    <strong>Datos durante la llamada</strong>
+                    <span>Guarda un borrador. No crea expedientes hasta registrar el resultado.</span>
+                </div>
+                <form data-routing-capture-form autocomplete="off">
+                    <div class="impe-routing-field">
+                        <label for="impeCaptureName">Institución o prospecto</label>
+                        <input id="impeCaptureName" maxlength="180" name="nombre" type="text">
+                    </div>
+                    <div class="impe-routing-two">
+                        <div class="impe-routing-field">
+                            <label for="impeCapturePerson">Persona que atiende</label>
+                            <input id="impeCapturePerson" maxlength="140" name="persona" type="text">
+                        </div>
+                        <div class="impe-routing-field">
+                            <label for="impeCapturePhone">Teléfono</label>
+                            <input id="impeCapturePhone" maxlength="40" name="telefono" type="tel">
+                        </div>
+                    </div>
+                    <div class="impe-routing-field">
+                        <label for="impeCaptureEmail">Correo electrónico</label>
+                        <input id="impeCaptureEmail" maxlength="160" name="correo" type="email">
+                    </div>
+                    <div class="impe-routing-field">
+                        <label for="impeCaptureNotes">Notas de atención</label>
+                        <textarea id="impeCaptureNotes" maxlength="1000" rows="2" name="notas"></textarea>
+                    </div>
+                    <button type="submit" class="impe-routing-save">Guardar borrador</button>
+                    <p data-routing-capture-message role="status" aria-live="polite"></p>
+                </form>
+            </div>
+            <?php endif; ?>
             <p class="impe-incoming-notice" data-incoming-notice role="status" hidden></p>
         </div>
         <div class="persistent-phone-compact-actions">
@@ -271,6 +368,11 @@ $nombreShell = $nombreShell !== '' ? $nombreShell : 'Usuario';
                 !empty($asignacionTelefonica['permite_salientes']),
             'hostUrl' => BASE_URL . 'index.php?controller=telefonia&action=host&display=embed',
             'loginUrl' => BASE_URL . 'index.php?controller=login&action=mostrarLogin',
+            'canTransfer' => $puedeTransferirShell,
+            'canCapture' => $puedeCapturarShell,
+            'routingListUrl' => BASE_URL . 'index.php?controller=telefonia&action=destinosTransferencia',
+            'routingAuthorizeUrl' => BASE_URL . 'index.php?controller=telefonia&action=autorizarTransferencia',
+            'routingCsrf' => (string)$_SESSION['csrf_token'],
             'homeUrl' => BASE_URL . 'index.php?controller=home&action=index'
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
     </script>
@@ -304,6 +406,22 @@ $nombreShell = $nombreShell !== '' ? $nombreShell : 'Usuario';
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
     </script>
     <script src="<?= BASE_URL ?>public/javascript/telefonia_analista_historial_pasivo.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/telefonia_analista_historial_pasivo.js') ?>"></script>
+    <?php endif; ?>
+    <?php if ($puedeTransferirShell || $puedeCapturarShell): ?>
+    <style id="impeRoutingStyles">
+    <?php
+    $routingCss = ROOT_PATH . '/public/css/telefonia_enrutamiento.css';
+    if (is_readable($routingCss)) echo (string)file_get_contents($routingCss);
+    ?>
+    </style>
+    <script id="impeRoutingRuntime">
+    <?php
+    $routingJs = ROOT_PATH . '/public/javascript/telefonia_enrutamiento.js';
+    if (is_readable($routingJs)) {
+        echo str_ireplace('</script', '<\/script', (string)file_get_contents($routingJs));
+    }
+    ?>
+    </script>
     <?php endif; ?>
     <script id="impeShellNavigation">
     <?php
