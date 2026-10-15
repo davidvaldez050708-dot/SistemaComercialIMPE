@@ -39,6 +39,10 @@
     const closeFinished = document.querySelector('[data-incoming-close-finished]');
     const registerFinished = document.querySelector('[data-incoming-register-finished]');
     const retrySdkSave = document.querySelector('[data-incoming-retry-save]');
+    const transferToggle = document.querySelector('[data-shell-transfer-toggle]');
+    const transferPane = document.querySelector('[data-shell-transfer-panel]');
+    const captureToggle = document.querySelector('[data-shell-capture-toggle]');
+    const capturePane = document.querySelector('[data-shell-capture-panel]');
     const analystResultNotice = document.querySelector('[data-analyst-call-result]');
     const analystResultButton = document.querySelector('[data-analyst-register-call]');
     const analystResultDismiss = document.querySelector('[data-analyst-dismiss-call]');
@@ -238,6 +242,22 @@
     window.IMPE_TELEPHONY_SHELL = Object.freeze({
         userId: userId,
         ensureHost: ensureHost,
+        getActiveCall: function () {
+            if (!freshState(currentState) || !currentState.active ||
+                currentState.phase !== 'in-progress') return null;
+            return {
+                id:incomingCallId(currentState),
+                direction:String(currentState.direction || ''),
+                phone:String(currentState.destination || ''),
+                extension:String(cfg.extension || '')
+            };
+        },
+        requestAuthorizedTransfer: function (token) {
+            if (!cfg.canTransfer || !this.getActiveCall() ||
+                !/^[a-f0-9]{48}$/.test(String(token || ''))) return false;
+            sendPhoneCommand('TRANSFER', {transferToken: String(token)});
+            return true;
+        },
         isPhoneReady: function () {
             return Boolean(hostFrame && freshState(currentState) &&
                 currentState.hostReady === true);
@@ -494,6 +514,19 @@
         if (incomingPanel) {
             incomingPanel.hidden = !customVisible;
             incomingPanel.classList.toggle('is-compact', incomingCompact);
+        }
+        const workingCall = Boolean(ongoing && state.phase === 'in-progress');
+        if (transferToggle) {
+            transferToggle.hidden = !workingCall || !cfg.canTransfer;
+            transferToggle.disabled = !workingCall;
+        }
+        if (captureToggle) {
+            captureToggle.hidden = !workingCall || !cfg.canCapture;
+            captureToggle.disabled = !workingCall;
+        }
+        if (!workingCall) {
+            if (transferPane) transferPane.hidden = true;
+            if (capturePane) capturePane.hidden = true;
         }
         restore.hidden = !minimized || !(incoming || (ongoing && forceNativeControls));
         if ((incoming || finishedSdk || shownOutgoing) && incomingPanel) {
