@@ -130,9 +130,12 @@ grep -Fq "data-convocatoria-clasificacion" "$DST/app/views/convocatorias/index.p
 grep -Fq "convocatoria-month-group-header" "$DST/public/css/convocatorias.css"
 grep -Fq "Personalizador completo de QR" "$DST/public/css/convocatorias.css"
 grep -Fq "Corrección estructural del scroll interno" "$DST/public/css/convocatorias.css"
+grep -Fq "Modal Nueva convocatoria más compacto" "$DST/public/css/convocatorias.css"
 grep -Fq "data-convocatoria-form-share" "$DST/app/views/convocatorias/index.php"
 grep -Fq "modal-dialog-scrollable" "$DST/app/views/convocatorias/index.php"
 grep -Fq "convocatoria-create-form" "$DST/app/views/convocatorias/index.php"
+grep -Fq "data-convocatoria-availability-dropdown" "$DST/app/views/convocatorias/index.php"
+grep -Fq "CSS Convocatorias con cache busting" "$DST/app/views/convocatorias/index.php"
 grep -Fq "data-convocatoria-form-type" "$DST/app/views/convocatorias/index.php"
 grep -Fq "data-convocatoria-qr-modal" "$DST/app/views/convocatorias/index.php"
 grep -Fq "data-convocatoria-copy-qr" "$DST/app/views/convocatorias/index.php"
@@ -159,6 +162,6 @@ if grep -Fq "convocatoria-list-table" "$DST/app/views/convocatorias/index.php"; 
 fi
 
 echo
-echo "OK: Nueva convocatoria tiene scroll interno y mantiene el personalizador de QR."
+echo "OK: producción tiene modal compacto, Disponibilidad personalizada y CSS sin caché obsoleta."
 echo "Respaldo: $BACKUP"
 echo "Recarga el navegador con Ctrl+F5."
