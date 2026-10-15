@@ -82,6 +82,8 @@ $analistaHostSdk = $motorTelefonicoEmbebido &&
             'userId' => (int)($_SESSION['usuario_id'] ?? 0),
             'extension' => $extensionHost,
             'webrtcUrl' => BASE_URL . 'prueba_telefonia/api/zadarma_webrtc.php',
+            'validarTransferenciaUrl' => BASE_URL . 'index.php?controller=telefonia&action=validarOrdenTransferencia',
+            'transferenciaCsrf' => (string)$_SESSION['csrf_token'],
             'estadoUrl' => BASE_URL . 'prueba_telefonia/api/zadarma_estado_llamada.php',
             'entradaUrl' => BASE_URL . 'prueba_telefonia/api/zadarma_entrada_activa.php',
             'permiteSalientes' => !empty($asignacionTelefonica['permite_salientes']),
