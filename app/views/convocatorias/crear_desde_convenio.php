@@ -379,6 +379,7 @@ $fecha = static function ($valor) {
                     href="#"
                     class="btn btn-system-save crear-convocatoria-modal-create"
                     data-convenio-create-link>
+                    <i class="bi bi-megaphone"></i>
                     Crear convocatoria
                 </a>
             </div>
