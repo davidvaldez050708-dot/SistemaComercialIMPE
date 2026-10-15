@@ -50,7 +50,9 @@ function boot(opts = {}) {
         '[data-incoming-minimize]',
         '[data-incoming-answer-compact]','[data-incoming-decline-compact]',
         '[data-incoming-mute-compact]','[data-incoming-hangup-compact]',
-        '[data-incoming-drag-handle]','[data-incoming-compact-timer]'
+        '[data-incoming-drag-handle]','[data-incoming-compact-timer]',
+        '[data-shell-transfer-toggle]','[data-shell-transfer-panel]',
+        '[data-shell-capture-toggle]','[data-shell-capture-panel]'
     ];
     selectors.forEach(x => elements[x] = element());
     elements['impeCrmFrame'] = element();
@@ -63,7 +65,8 @@ function boot(opts = {}) {
             hostUrl: 'https://crm.ejemplo.org/index.php?controller=telefonia&action=host&display=embed',
             loginUrl: 'https://crm.ejemplo.org/index.php?controller=login&action=mostrarLogin',
             autoReception: opts.auto !== false,
-            analystIncomingResults: opts.analyst === true
+            analystIncomingResults: opts.analyst === true,
+            canTransfer: opts.transfer === true
         },
         location: {origin:'https://crm.ejemplo.org', replace(url) {this.redirect = url;}},
         addEventListener(k,fn) {windowEvents[k] = fn;},
@@ -289,7 +292,7 @@ assert.equal(delayedAnalyst.elements['[data-shell-host-region]'].children.length
 storage.clear();
 let mockNow = Date.now();
 class ClockDate extends Date {static now() {return mockNow;}}
-const quick = boot({dateClass:ClockDate});
+const quick = boot({dateClass:ClockDate,transfer:true});
 const ops = [];
 const frame = quick.elements['[data-shell-host-region]'].children[0];
 frame.contentWindow.IMPE_ZADARMA_INCOMING = {
@@ -316,13 +319,47 @@ assert.equal(quick.elements['[data-incoming-answer]'].disabled,true,
 push('call-uno','in-progress',true,1);
 assert.equal(quick.elements['[data-incoming-hangup]'].hidden,false);
 assert.equal(quick.elements['[data-incoming-hangup]'].disabled,false);
+const sidecar = quick.elements['[data-shell-transfer-panel]'];
+const transfer = quick.elements['[data-shell-transfer-toggle]'];
+const capture = quick.elements['[data-shell-capture-panel]'];
+const captureToggle = quick.elements['[data-shell-capture-toggle]'];
+sidecar.hidden = false;
+transfer.setAttribute('aria-expanded','true');
+capture.hidden = false;
+captureToggle.setAttribute('aria-expanded','true');
 quick.elements['[data-incoming-hangup]'].events.click();
 assert.deepEqual(ops,['answer','hangup']);
-assert.equal(quick.elements['[data-incoming-panel]'].hidden,true,
-    'la tarjeta se oculta de inmediato, sin esperar a PBX');
-assert.equal(quick.elements['[data-incoming-notice]'].textContent,'',
-    'no debe aparecer Finalizando llamada');
+assert.equal(sidecar.hidden,true,
+    'Transferir se cierra al hacer clic en Colgar, no 1.5 s después');
+assert.equal(transfer['aria-expanded'],'false',
+    'el botón Transferir no conserva estado expandido');
+assert.equal(capture.hidden,true,
+    'el panel lateral de captura tampoco queda huérfano');
+assert.equal(captureToggle['aria-expanded'],'false');
+assert.equal(quick.elements['[data-incoming-panel]'].hidden,false,
+    'la tarjeta permanece visible mientras PBX confirma el final');
+assert.equal(quick.elements['[data-incoming-title]'].textContent,
+    'Finalizando llamada…');
+assert.equal(quick.elements['[data-incoming-hangup]'].hidden,true,
+    'la llamada en cierre no admite otro clic Colgar');
+assert.equal(quick.elements['[data-incoming-notice]'].hidden,true,
+    'sin toast erróneo ni confirmación PBX anticipada');
 push('call-uno','incoming-finished',false,25);
+assert.equal(quick.elements['[data-incoming-panel]'].hidden,false,
+    'Marketing ve la finalización confirmada en el mismo modal');
+assert.equal(quick.elements['[data-incoming-title]'].textContent,'Llamada finalizada');
+assert.equal(quick.elements['[data-incoming-timer]'].textContent,'00:25');
+assert.equal(quick.elements['[data-incoming-close-finished]'].hidden,false,
+    'la entrante tiene botón Cerrar, sin registrar resultado comercial');
+assert.equal(quick.elements['[data-incoming-hangup]'].hidden,true);
+push('','ready',false,0);
+assert.equal(quick.elements['[data-incoming-panel]'].hidden,false,
+    'el host puede limpiarse sin borrar el resumen pendiente de Cerrar');
+quick.elements['[data-incoming-close-finished]'].events.click();
+assert.equal(quick.elements['[data-incoming-panel]'].hidden,true,
+    'Cerrar descarta el resumen sin desconectar la extensión');
+assert.deepEqual(ops,['answer','hangup'],
+    'Cerrar no envía un segundo colgado al WebRTC');
 push('call-dos','incoming-ringing',true,25);
 assert.equal(quick.elements['[data-incoming-panel]'].hidden,false,
     'la nueva llamada reaparece inmediatamente');
@@ -352,5 +389,21 @@ push('call-dos','in-progress',true,14);
 mockNow += 1000;
 quick.intervals[0]();
 assert.equal(quick.elements['[data-incoming-timer]'].textContent,'00:08');
+// Colgado remoto: la misma confirmación se muestra sin pulsar Colgar.
+push('call-dos','incoming-finished',false,16);
+assert.equal(quick.elements['[data-incoming-panel]'].hidden,false);
+assert.equal(quick.elements['[data-incoming-title]'].textContent,'Llamada finalizada');
+assert.equal(quick.elements['[data-incoming-close-finished]'].hidden,false);
+quick.elements['[data-incoming-close-finished]'].events.click();
+assert.equal(quick.elements['[data-incoming-panel]'].hidden,true);
+// Un estado final viejo nunca reabre la tarjeta tras recargar la página.
+storage.clear();
+const noGhost = boot();
+noGhost.channels[0].message({type:'STATE',state:{
+    userId:8,updatedAt:Date.now(),hostReady:true,active:false,
+    direction:'incoming',phase:'incoming-finished',pbxCallId:'anterior'
+}});
+assert.equal(noGhost.elements['[data-incoming-panel]'].hidden,true,
+    'sin resumen entrante reabierto después de regresar al sistema');
 
-console.log('Shell WebRTC: OK (llamadas consecutivas, contador 00:00, respuesta inmediata, cierre y lease)');
+console.log('Shell WebRTC: OK (paneles laterales inmediatos, finalización entrante, cierre manual, llamadas consecutivas y lease)');
