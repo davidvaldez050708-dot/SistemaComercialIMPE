@@ -71,8 +71,8 @@ $fail($byId['outB']['estado'] === 'Sin respuesta' &&
     'salientes no respondidas y marcando');
 $fail($byId['inC']['estado'] === 'Transferida' &&
     $byId['inC']['destino_transferencia'] === '101' &&
-    $byId['inC']['tiene_grabacion'] === false,
-    'transferencias solo confirmadas sin audio ajeno');
+    $byId['inC']['tiene_grabacion'] === true,
+    'transferencias atendidas con audio reportado consultables mediante endpoint privado');
 $incomingOnly = TelefoniaRecepcionMarketingService::agruparEventos($rows,'100',false);
 $fail(count($incomingOnly) === 3, 'sin permiso saliente se muestran solo entrantes');
 echo 'Marketing · Historial PBX unificado: OK (8 comprobaciones)\n';
