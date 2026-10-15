@@ -65,9 +65,9 @@ from pathlib import Path
 import sys
 p=Path(sys.argv[1])
 css=p.read_text()
-old=".impe-routing-field textarea {"
-assert old in css
-p.write_text(css.replace(old,".impe-routing-field textarea, select {",1))
+old="  outline: none;\n}"
+assert css.count(old)==1
+p.write_text(css.replace(old,"  outline: 1px solid #ff0000;\n}",1))
 PY
 cp "$CONFLICT/$CSS" "$TEMP/unchanged.css"
 export IMPE_SELECT_PUBLIC="$CONFLICT"
