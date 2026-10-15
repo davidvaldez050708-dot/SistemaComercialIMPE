@@ -522,11 +522,23 @@
 
 /* Botón Crear convocatoria del modal */
 .crear-convocatoria-modal-create {
-    min-width: 190px;
+    width: auto;
+    min-width: 0;
+    min-height: 44px;
+    padding: 0 20px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    gap: 8px;
     text-align: center;
+    white-space: nowrap;
+}
+
+.crear-convocatoria-modal-create i {
+    margin: 0;
+    flex: 0 0 auto;
+    font-size: 14px;
+    line-height: 1;
 }
 
 
