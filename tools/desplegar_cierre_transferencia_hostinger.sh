@@ -44,9 +44,28 @@ elif (cd "$TEMP/stage" && git apply --check "$TEMP/patch" >/dev/null 2>&1); then
   echo "PARCHE COMPATIBLE: $FILE"
   CHANGE=1
 else
-  # Hostinger puede conservar lógica WebRTC y registro propia. No reemplazar
-  # el shell ni eliminar esas personalizaciones: fusionar exclusivamente los
-  # fragmentos del cierre, sobre la copia temporal y con comprobación reversible.
+  # Variante histórica publicada y diagnosticada el 15/oct/2026: 845 líneas,
+  # sin finishedSdk. Nunca sustituirla por el shell moderno completo.
+  # La huella se requiere para instalar; una instalación previa se reconoce
+  # por sus marcadores, pero NO se admite una tercera variante desconocida.
+  if ! grep -Fq 'const finishedSdk = Boolean(' "$TEMP/stage/$FILE"; then
+    LEGACY_HASH="6e82bc9a7dc9c6adc814373eebfe6af1091522ed50e2b40a036510aa086bca8c"
+    FUSION="$SOURCE/tools/fusionar_cierre_transferencia_legacy_hostinger.py"
+    [[ -f "$FUSION" && ! -L "$FUSION" ]] || {
+      echo "ERROR: falta fusionador histórico. Ejecuta git pull." >&2
+      exit 1
+    }
+    if [[ "$BEFORE" != "$LEGACY_HASH" ]] &&
+       ! grep -Fq 'let recentFinishedIncoming = null;' "$TEMP/stage/$FILE"; then
+      echo "CONFLICTO: cambió la huella del shell histórico; vuelve a diagnosticar. PRODUCCIÓN INTACTA." >&2
+      exit 1
+    fi
+    python3 "$FUSION" "$TEMP/stage/$FILE"
+    if [[ "$(sha256sum "$TEMP/stage/$FILE" | cut -d ' ' -f1)" != "$BEFORE" ]]; then
+      CHANGE=1
+    fi
+  else
+  # Shell moderno: fusión selectiva ya existente.
   FUSION="$SOURCE/tools/fusionar_cierre_transferencia_hostinger.py"
   [[ -f "$FUSION" && ! -L "$FUSION" ]] || {
     echo "ERROR: falta fusionador de cierre. Actualiza crm-preparacion." >&2
@@ -57,6 +76,7 @@ else
   python3 "$FUSION" "$TEMP/stage/$FILE" "$TEMP/base_shell.js" "$TEMP/target_shell.js"
   if [[ "$(sha256sum "$TEMP/stage/$FILE" | cut -d ' ' -f1)" != "$BEFORE" ]]; then
     CHANGE=1
+  fi
   fi
 fi
 if command -v node >/dev/null 2>&1; then
