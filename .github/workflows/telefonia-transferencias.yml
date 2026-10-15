@@ -68,5 +68,5 @@ jobs:
       - name: Despliegue Hostinger en entorno temporal
         run: |
           bash -n tools/desplegar_transferencias_seguras_hostinger.sh
-          python3 -c "import ast, pathlib; ast.parse(pathlib.Path('tools/fusionar_shell_transferencias_hostinger.py').read_text())"
+          python3 -c "import ast, pathlib; p=pathlib.Path('tools/fusionar_shell_transferencias_hostinger.py'); s=p.read_text(); assert 'from __future__ import annotations' not in s; ast.parse(s, feature_version=(3, 6))"
           bash tests/telefonia_transferencias_hostinger_smoke.sh
