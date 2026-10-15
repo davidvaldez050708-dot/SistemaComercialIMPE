@@ -474,6 +474,7 @@ $jsOpcionalHead = array_values(array_unique($jsOpcionalHead));
          cuando admite transiciones entre páginas del mismo origen.
          No genera pantallas de carga ni modifica el router del CRM. -->
     <style id="impeDashboardNativeNavigation">
+        html { background-color: #f3f6fb; }
         @view-transition { navigation: auto; }
         ::view-transition-old(root),
         ::view-transition-new(root) { animation-duration: 110ms; }
