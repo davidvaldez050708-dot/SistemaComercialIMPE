@@ -1475,7 +1475,7 @@ html {
             rgba(11, 148, 119, .82) 48%,
             rgba(7, 96, 79, .90) 100%
         ),
-        url('../img/brand/red-graduacion.jpeg') center center / cover no-repeat;
+        url('../img/brand/red-graduacion.jpeg') center 78% / cover no-repeat;
 }
 
 /* La fotografía sustituye los óvalos decorativos anteriores. */
