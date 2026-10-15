@@ -35,8 +35,7 @@ foreach ([
  'service'=>[
   "a.tipo_asignacion = 'CUENTA_CLAVE'",
   'origen.cuenta_clave_asignacion_id = a.id',
-  "'cuenta_clave_asignacion_id'",
-  "origen.tipo_asignacion = '$clase'",
+  "origen.tipo_asignacion = '\$clase'",
   'a.usuario_id <> ?',
   "te.permite_entrantes = 1",
   "s.estado_seguimiento <> 'DESCARTADO'",
@@ -77,7 +76,7 @@ foreach ([
   'if (confirmDirect !== key)',
   "sessionStorage.setItem(keyFor(current.id)",
   "item.estado_id",
-  'Selecciona primero',
+  'Confirma primero el estado',
   "selected.usuario_id"
  ],
  'sales'=>[
