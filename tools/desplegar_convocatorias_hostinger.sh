@@ -124,9 +124,15 @@ grep -Fq 'name="clasificacion"' "$DST/app/views/convocatorias/index.php"
 grep -Fq "Todas las convocatorias" "$DST/app/views/convocatorias/index.php"
 grep -Fq "Tipo de convocatoria" "$DST/app/views/convocatorias/index.php"
 grep -Fq "convocatoria-month-groups" "$DST/app/views/convocatorias/index.php"
+grep -Fq "data-convocatoria-clasificacion" "$DST/app/views/convocatorias/index.php"
 grep -Fq "convocatoria-month-group-header" "$DST/public/css/convocatorias.css"
 
+if grep -Fq "convocatoria-list-table" "$DST/app/views/convocatorias/index.php"; then
+    echo "ERROR: producción todavía contiene la tabla plana anterior." >&2
+    exit 1
+fi
+
 echo
-echo "OK: selección Titulación/Bachillerato conservada y convocatorias agrupadas por mes publicadas correctamente."
+echo "OK: filtros corregidos y convocatorias agrupadas por mes publicadas correctamente."
 echo "Respaldo: $BACKUP"
 echo "Recarga el navegador con Ctrl+F5."
