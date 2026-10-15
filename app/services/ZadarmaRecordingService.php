@@ -51,6 +51,48 @@ class ZadarmaRecordingService
         }
     }
 
+    /**
+     * Todos los segmentos del mismo PBX, ordenados según los eventos recibidos.
+     * No selecciona el primer audio arbitrariamente cuando hay transferencia.
+     * La autorización del usuario se realiza en el endpoint consumidor.
+     */
+    public function obtenerSegmentosParaLlamada(string $pbxCallId): array
+    {
+        if (!preg_match('/^[a-zA-Z0-9_-]{6,100}$/D', $pbxCallId)) {
+            return [];
+        }
+        if ($this->eventStore === null) {
+            return [];
+        }
+        $db = (new Database())->connect();
+        $stmt = $db->prepare(
+            "SELECT DISTINCT call_id_with_rec FROM telefonia_zadarma_eventos
+             WHERE pbx_call_id = ? AND evento = 'NOTIFY_RECORD'
+               AND TRIM(COALESCE(call_id_with_rec, '')) <> ''
+             ORDER BY call_id_with_rec"
+        );
+        $stmt->bind_param('s', $pbxCallId);
+        $stmt->execute();
+        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        if (count($rows) > 8) {
+            return [];
+        }
+        $result = [];
+        foreach ($rows as $row) {
+            $callId = trim((string)$row['call_id_with_rec']);
+            if (!ZadarmaPbxIdentifierHelper::callIdValido($callId)) {
+                return [];
+            }
+            $audio = $this->obtenerGrabacionPorCallId($callId);
+            if (!$audio) {
+                return [];
+            }
+            $result[] = $audio;
+        }
+        return $result;
+    }
+
     public function obtenerGrabacionParaLlamada(string $pbxCallId): ?array
     {
         $pbxCallId = trim($pbxCallId);
