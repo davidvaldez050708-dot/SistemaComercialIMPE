@@ -1094,6 +1094,14 @@
         if (!availability?.permite_transferir) {
             throw new Error('Tu usuario no está autorizado para transferir.');
         }
+        if (!chosen) {
+            const directory = await loadTransferDestinations();
+            const matches = directory.filter(item => String(item.extension) === ext);
+            if (matches.length !== 1) {
+                throw new Error('Selecciona un destino único y autorizado en el directorio.');
+            }
+            chosen = matches[0];
+        }
         const allowed = (transferDestinations || []).some(item =>
             String(item.extension) === ext &&
             Number(item.usuario_id) === Number(chosen?.usuario_id) &&
