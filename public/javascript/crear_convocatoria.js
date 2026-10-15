@@ -18,6 +18,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const stateOptions = Array.from(
         module.querySelectorAll('[data-state-value]')
     );
+    const clearFilters = module.querySelector('[data-convenio-clear-filters]');
     const results = module.querySelector('[data-convenio-results]');
     const emptyFilter = module.querySelector('[data-convenio-empty-filter]');
     const modalElement = document.getElementById(
@@ -30,6 +31,16 @@ document.addEventListener('DOMContentLoaded', function () {
             .replace(/[\u0300-\u036f]/g, '')
             .toLowerCase()
             .trim();
+    };
+
+    const updateClearFilters = function () {
+        const hasSearch = String(search?.value || '').trim() !== '';
+        const hasState = String(stateFilter?.value || '') !== '';
+
+        clearFilters?.classList.toggle(
+            'd-none',
+            !(hasSearch || hasState)
+        );
     };
 
     const applyFilters = function () {
@@ -62,6 +73,35 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     search?.addEventListener('input', applyFilters);
+
+    clearFilters?.addEventListener('click', function () {
+        if (search) {
+            search.value = '';
+        }
+
+        if (stateFilter) {
+            stateFilter.value = '';
+        }
+
+        if (stateLabel) {
+            stateLabel.textContent = 'Todos los estados';
+        }
+
+        stateOptions.forEach(function (item) {
+            const selected =
+                String(item.dataset.stateValue || '') === '';
+
+            item.classList.toggle('is-selected', selected);
+            item.setAttribute(
+                'aria-selected',
+                selected ? 'true' : 'false'
+            );
+        });
+
+        closeStateDropdown();
+        applyFilters();
+        search?.focus();
+    });
 
     const closeStateDropdown = function () {
         if (!stateDropdown || !stateTrigger) {
