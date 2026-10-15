@@ -24,6 +24,10 @@ function element() {
 async function scenario(conversation) {
     let now=1000000, stored='', captures=[], dockDismissed=0;
     const sessionStore = new Map();
+    const staleKey = 'impe:analyst-incoming-pending:8';
+    sessionStore.set(staleKey, JSON.stringify({
+        id:'sdk-anterior-abc123456789', source:'SDK_WEBRTC',at:900000
+    }));
     const journal = [];
     const els=new Map();
     const el=k=>{if(!els.has(k)) els.set(k,element());return els.get(k)};
@@ -64,7 +68,8 @@ async function scenario(conversation) {
         localStorage:{getItem(){return stored}},
         sessionStorage:{
             getItem(key){return sessionStore.get(key) || null},
-            setItem(key,value){sessionStore.set(key,value)}
+            setItem(key,value){sessionStore.set(key,value)},
+            removeItem(key){sessionStore.delete(key)}
         },
         fetch:async(uri,init)=>{
             if(init?.body) journal.push(String(init.body));
@@ -81,10 +86,14 @@ async function scenario(conversation) {
     vm.runInNewContext(source,{window:root,document:doc, Date:DateStub,
         URL, URLSearchParams,console, setInterval:root.setInterval});
     assert.ok(injectedStyles.join('\\n').includes(
-        'body.impe-sdk-result-in-modal [data-analyst-call-result]'),
-        'el CSS debe ocultar el toast legado incluso si shell lo reabre');
+        'body [data-analyst-call-result] {'),
+        'el aviso inferior debe estar oculto incluso sin llamada activa');
+    assert.equal(sessionStore.has(staleKey),false,
+        'el pendiente visual antiguo debe descartarse al iniciar sesión');
+    assert.equal(dockDismissed,1,
+        'el shell debe abandonar el estado visual recuperado al iniciar sesión');
     assert.equal(bodyClasses.has('impe-sdk-result-in-modal'),false,
-        'sin una llamada SDK, mantener disponible el flujo PBX legado');
+        'la sesión se inicia sin llamada SDK');
     const id='sdk-abcd1234-abcd5678';
     const base={userId:8,active:true,direction:'incoming',callToken:id,
         destination:'+527771234567',context:{type:'SDK_INCOMING'},duration:0};
@@ -136,7 +145,7 @@ async function scenario(conversation) {
             data:{type:'IMPE_ANALYST_RESULT_SAVED',callId:id}});
         assert.equal(root.IMPE_ANALYST_WEBRTC_JOURNAL_DEBUG.hasFinalized(),false);
         assert.equal(captures.at(-1)?.action,'CLEAR_FINISHED');
-        assert.equal(dockDismissed,1,'quitar aviso inferior tras guardar');
+        assert.equal(dockDismissed,2,'no revivir aviso antiguo tras guardar');
         assert.equal(bodyClasses.has('impe-sdk-result-in-modal'),false,
             'al completar debe liberarse estado sólo para llamadas siguientes');
     } else {

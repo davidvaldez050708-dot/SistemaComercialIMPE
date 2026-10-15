@@ -65,11 +65,11 @@
           '.persistent-phone-live i {background:#8492a8;box-shadow:none;}',
         '.impe-incoming-panel[data-analyst-webrtc-finished="1"] ' +
           '[data-incoming-notice] {line-height:1.5;font-weight:700;}',
-        // El aviso inferior del shell pertenece al flujo PBX histórico.
-        // Una llamada SDK ya usa el modal principal para registrar y nunca
-        // debe mostrar dos acciones simultáneas, incluso si el shell
-        // anterior vuelve a quitar el atributo hidden durante su render.
-        'body.impe-sdk-result-in-modal [data-analyst-call-result] {',
+        // El analista registra desde el MISMO modal o recupera
+        // pendientes desde Llamadas recibidas. El aviso legado inferior
+        // no debe reaparecer al iniciar sesión ni por renders del shell.
+        // Esta hoja sólo se inyecta para el perfil de Analista habilitado.
+        'body [data-analyst-call-result] {',
         '  display:none!important;',
         '}',
         '.impe-incoming-transfer-context {',
@@ -81,6 +81,18 @@
         '.impe-incoming-transfer-context small {display:block;color:#586b8e;margin-top:3px;}'
     ].join('\n');
     root.document.head.appendChild(finishedCss);
+
+    // El shell anterior persistía un aviso de esquina en sessionStorage
+    // durante 24 horas. Descartarlo del estado VISUAL al abrir sesión,
+    // incluso si no hay llamada activa. Los pendientes reales permanecen
+    // en MySQL y siguen disponibles en Seguimiento > Llamadas recibidas.
+    try {
+        const legacyKey = 'impe:analyst-incoming-pending:' + userId;
+        if (root.sessionStorage?.getItem(legacyKey)) {
+            root.document.querySelector('[data-analyst-dismiss-call]')?.click();
+            root.sessionStorage.removeItem(legacyKey);
+        }
+    } catch (_) { /* El navegador puede restringir sessionStorage. */ }
 
     const el = selector => panel.querySelector(selector);
     const addAction = function (selector, label, icon, primary) {
