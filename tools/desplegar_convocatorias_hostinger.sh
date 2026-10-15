@@ -40,6 +40,7 @@ fi
 
 FILES=(
     "app/controllers/ConvocatoriaController.php"
+    "app/models/ConvocatoriaModel.php"
     "app/views/convocatorias/index.php"
 )
 
@@ -56,6 +57,7 @@ done
 
 if command -v php >/dev/null 2>&1; then
     php -l "$SRC/app/controllers/ConvocatoriaController.php" >/dev/null
+    php -l "$SRC/app/models/ConvocatoriaModel.php" >/dev/null
     php -l "$SRC/app/views/convocatorias/index.php" >/dev/null
 fi
 
@@ -107,8 +109,10 @@ if grep -Fq "convocatoria-month-page" "$DST/app/views/convocatorias/index.php"; 
     exit 1
 fi
 
+grep -Fq "convocatoria-overview-types" "$DST/app/views/convocatorias/index.php"
+
 if grep -Fq "convocatoria-titulacion-cards" "$DST/app/views/convocatorias/index.php"; then
-    echo "ERROR: la vista intermedia de opciones todavía aparece en producción." >&2
+    echo "ERROR: la vista intermedia de subtipos todavía aparece en producción." >&2
     exit 1
 fi
 
@@ -117,6 +121,6 @@ grep -Fq "Todas las convocatorias" "$DST/app/views/convocatorias/index.php"
 grep -Fq "Tipo de convocatoria" "$DST/app/views/convocatorias/index.php"
 
 echo
-echo "OK: flujo simplificado de Convocatorias publicado correctamente."
+echo "OK: selección Titulación/Bachillerato conservada y flujo simplificado publicado correctamente."
 echo "Respaldo: $BACKUP"
 echo "Recarga el navegador con Ctrl+F5."
