@@ -30,8 +30,13 @@ async function scenario(conversation) {
     panel.querySelector=(s)=>s==='.persistent-phone-actions'?actions:el(s);
     const listeners={};
     const intervals=[];
+    const bodyClasses = new Set();
+    const injectedStyles=[];
     const doc={
-        body:{}, head:{appendChild(){}},
+        body:{classList:{
+            toggle(name,on) { if (on) bodyClasses.add(name); else bodyClasses.delete(name); },
+            contains(name) { return bodyClasses.has(name); }
+        }}, head:{appendChild(node){injectedStyles.push(node.textContent)}},
         createElement(){return element()},
         querySelector(s){
             if (s==='[data-incoming-panel]') return panel;
@@ -66,10 +71,17 @@ async function scenario(conversation) {
     };
     vm.runInNewContext(source,{window:root,document:doc, Date:DateStub,
         URL, URLSearchParams,console, setInterval:root.setInterval});
+    assert.ok(injectedStyles.join('\\n').includes(
+        'body.impe-sdk-result-in-modal [data-analyst-call-result]'),
+        'el CSS debe ocultar el toast legado incluso si shell lo reabre');
+    assert.equal(bodyClasses.has('impe-sdk-result-in-modal'),false,
+        'sin una llamada SDK, mantener disponible el flujo PBX legado');
     const id='sdk-abcd1234-abcd5678';
     const base={userId:8,active:true,direction:'incoming',callToken:id,
         destination:'+527771234567',context:{type:'SDK_INCOMING'},duration:0};
     send({...base,phase:'incoming-ringing',status:'incoming-ringing',updatedAt:now});
+    assert.equal(bodyClasses.has('impe-sdk-result-in-modal'),true,
+        'al recibir SDK debe desactivarse el toast externo');
     if(conversation){
         now += 1500;
         send({...base,phase:'in-progress',status:'in-progress',
@@ -90,6 +102,8 @@ async function scenario(conversation) {
     const register=el('[data-incoming-register-finished]');
     const counter=el('[data-incoming-timer]');
     if(conversation){
+        assert.equal(bodyClasses.has('impe-sdk-result-in-modal'),true,
+            'mientras hay resultado por registrar no debe haber toast');
         assert.equal(close.hidden,true,'impedir Cerrar en llamada atendida');
         assert.equal(register.hidden,false,'registrar en modal principal');
         assert.equal(counter.textContent,'00:46','mantener duración');
@@ -98,6 +112,8 @@ async function scenario(conversation) {
         register.click();
         assert.ok(crm.src.includes('sdk_session_id='+id));
         assert.equal(panel.hidden,true,'no tapar el formulario de resultado');
+        assert.equal(bodyClasses.has('impe-sdk-result-in-modal'),true,
+            'mientras el formulario está abierto no mostrar CTA inferior');
         assert.equal(root.IMPE_ANALYST_WEBRTC_JOURNAL_DEBUG.hasFinalized(),true);
         for(const fn of listeners.message||[])fn({
             origin:'https://example.test',source:frm,
@@ -105,6 +121,8 @@ async function scenario(conversation) {
         assert.equal(root.IMPE_ANALYST_WEBRTC_JOURNAL_DEBUG.hasFinalized(),false);
         assert.equal(captures.at(-1)?.action,'CLEAR_FINISHED');
         assert.equal(dockDismissed,1,'quitar aviso inferior tras guardar');
+        assert.equal(bodyClasses.has('impe-sdk-result-in-modal'),false,
+            'al completar debe liberarse estado sólo para llamadas siguientes');
     } else {
         assert.equal(counter.textContent,'00:00');
         assert.equal(close.hidden,false,'perdida puede cerrarse');
