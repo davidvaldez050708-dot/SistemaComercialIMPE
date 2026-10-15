@@ -4372,3 +4372,174 @@
         line-height: 1.4;
     }
 }
+
+
+/* Convocatorias agrupadas por mes · patrón visual de Seguimientos */
+.convocatoria-month-groups {
+    padding: 16px 18px 20px;
+    display: grid;
+    gap: 14px;
+    background: #f7f9fc;
+    border-top: 1px solid #e9edf3;
+    transition: opacity .18s ease;
+}
+
+.convocatoria-month-group {
+    overflow: hidden;
+    border: 1px solid #dfe5ee;
+    border-radius: 14px;
+    background: #ffffff;
+    box-shadow: 0 2px 8px rgba(34, 58, 132, .025);
+}
+
+.convocatoria-month-group-header {
+    min-height: 50px;
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    border-bottom: 1px solid #e6ebf2;
+    background: #fbfcfe;
+}
+
+.convocatoria-month-group-title {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--color-text-primary);
+}
+
+.convocatoria-month-group-title strong {
+    overflow: hidden;
+    font-size: 12.5px;
+    font-weight: 800;
+    line-height: 1.3;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.convocatoria-month-group-icon {
+    width: 24px;
+    height: 24px;
+    flex: 0 0 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #223a84;
+    font-size: 16px;
+}
+
+.convocatoria-month-group-count {
+    min-height: 26px;
+    padding: 4px 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #d7e1f2;
+    border-radius: 999px;
+    background: #f1f6ff;
+    color: #17357f;
+    font-size: 9.5px;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.convocatoria-month-table {
+    margin: 0;
+}
+
+.convocatoria-month-table thead th {
+    padding-top: 10px;
+    padding-bottom: 10px;
+    background: #f5f7fa;
+    color: #66758d;
+    font-size: 9px;
+    font-weight: 800;
+    border-bottom: 1px solid #e3e8ef;
+}
+
+.convocatoria-month-table tbody td {
+    padding-top: 12px;
+    padding-bottom: 12px;
+    vertical-align: middle;
+    border-bottom-color: #edf0f4;
+}
+
+.convocatoria-month-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.convocatoria-month-row-title {
+    color: var(--color-text-primary);
+    font-size: 10.5px;
+    font-weight: 800;
+}
+
+.convocatoria-month-empty-state {
+    min-height: 150px;
+    padding: 30px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    border: 1px dashed #d8e0eb;
+    border-radius: 14px;
+    background: #ffffff;
+    color: var(--color-text-secondary);
+    text-align: center;
+}
+
+.convocatoria-month-empty-state i {
+    color: #8fa0bb;
+    font-size: 28px;
+}
+
+.convocatoria-month-empty-state strong {
+    max-width: 520px;
+    color: #5b687d;
+    font-size: 11px;
+    font-weight: 800;
+}
+
+@media (max-width: 767.98px) {
+    .convocatoria-month-groups {
+        padding: 12px;
+        gap: 12px;
+    }
+
+    .convocatoria-month-group-header {
+        padding: 10px 12px;
+    }
+
+    .convocatoria-month-group-title strong {
+        font-size: 11.5px;
+    }
+
+    .convocatoria-month-group-count {
+        padding: 4px 8px;
+        font-size: 9px;
+    }
+
+    .convocatoria-month-table {
+        min-width: 820px;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .convocatoria-month-groups {
+        padding: 10px 8px 14px;
+    }
+
+    .convocatoria-month-group-header {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 7px;
+    }
+
+    .convocatoria-month-group-count {
+        align-self: flex-start;
+    }
+}
