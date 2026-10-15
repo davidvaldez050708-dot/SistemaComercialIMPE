@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/../helpers/PermissionHelper.php';
 require_once __DIR__ . '/../services/CorreoMarketingService.php';
+require_once __DIR__ . '/../models/ConvocatoriaModel.php';
 
 class CorreoMarketingController
 {
@@ -18,6 +19,21 @@ class CorreoMarketingController
 
         $resumenCorreos = $service->resumen($usuarioId);
         $correos = $service->listar($usuarioId);
+
+        $convocatoriasMarketing = [];
+        try {
+            $convocatoriaModel = new ConvocatoriaModel();
+            $convocatoriasMarketing = $convocatoriaModel->obtenerListado(
+                '',
+                0,
+                '1'
+            );
+        } catch (Throwable $error) {
+            error_log(
+                'Correos Marketing - listado de convocatorias: ' .
+                $error->getMessage()
+            );
+        }
 
         require_once __DIR__ . '/../views/layout/dashboard_head.php';
         require_once __DIR__ . '/../views/layout/sidebar.php';
