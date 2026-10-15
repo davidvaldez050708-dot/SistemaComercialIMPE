@@ -498,9 +498,13 @@ class TelefoniaController
         if (!tienePermiso('telefonia.transferir')) {
             $this->responderJson(['ok'=>false, 'mensaje'=>'Transferencia no autorizada.'], 403);
         }
-        if (!TelefoniaContactosService::validarToken(
-            (string)($_POST['csrf_token'] ?? '')
-        )) {
+        // El shell, el host WebRTC y el teléfono clásico comparten
+        // $_SESSION['csrf_token']. La agenda personal utiliza OTRO token
+        // (telefonia_contactos_csrf), que no debe validar transferencias.
+        $csrfSesion = (string)($_SESSION['csrf_token'] ?? '');
+        $csrfRecibido = (string)($_POST['csrf_token'] ?? '');
+        if ($csrfSesion === '' || $csrfRecibido === '' ||
+            !hash_equals($csrfSesion, $csrfRecibido)) {
             $this->responderJson(['ok'=>false, 'mensaje'=>'Sesión caducada. Recarga el CRM.'], 403);
         }
     }
