@@ -13,11 +13,11 @@ class CrearConvocatoriaModel
     }
 
     /**
-     * Bandeja de Marketing.
+     * Fuente de verdad para Marketing:
+     * cualquier seguimiento que actualmente exista en aliados_asignaciones.
      *
-     * En el sistema un seguimiento adquiere la condición de Aliado cuando su
-     * convenio queda formalizado. Marketing consulta directamente esa fuente
-     * de verdad, sin duplicar los convenios en otra tabla.
+     * Esto permite incluir aliados creados por formalización y también
+     * registros históricos/migrados que ya forman parte del módulo Aliados.
      */
     public function listarConveniosAliados()
     {
@@ -40,30 +40,45 @@ class CrearConvocatoriaModel
                         NULLIF(TRIM(seguimientos.correo_fuente), '')
                     ) AS correo_contacto,
                     post.convenio_fecha,
+                    post.convenio_referencia,
                     post.convenio_notas,
-                    post.convenio_formalizado_at,
+                    COALESCE(
+                        post.convenio_formalizado_at,
+                        aliado.asignado_at
+                    ) AS convenio_formalizado_at,
                     post.convenio_formalizado_por,
+                    aliado.origen_asignacion,
+                    aliado.asignado_at AS aliado_asignado_at,
                     usuarios.nombre AS analista_nombre,
                     usuarios.apellidos AS analista_apellidos
-                FROM seguimientos_vinculacion seguimientos
-                INNER JOIN seguimientos_vinculacion_post_envio post
-                    ON post.seguimiento_id = seguimientos.id
+                FROM aliados_asignaciones aliado
+                INNER JOIN seguimientos_vinculacion seguimientos
+                    ON seguimientos.id = aliado.seguimiento_id
                 INNER JOIN estados
                     ON estados.id = seguimientos.estado_id
                 LEFT JOIN municipios
                     ON municipios.id = seguimientos.municipio_id
+                LEFT JOIN seguimientos_vinculacion_post_envio post
+                    ON post.seguimiento_id = seguimientos.id
                 LEFT JOIN usuarios
                     ON usuarios.id = seguimientos.analista_id
-                WHERE post.convenio_formalizado_at IS NOT NULL
+                WHERE aliado.activo = 1
                   AND seguimientos.activo = 1
                 ORDER BY
-                    post.convenio_formalizado_at DESC,
+                    COALESCE(
+                        post.convenio_formalizado_at,
+                        aliado.asignado_at
+                    ) DESC,
                     seguimientos.id DESC
                 LIMIT 500";
 
         $resultado = $this->connection->query($sql);
 
         if (!$resultado) {
+            error_log(
+                'CrearConvocatoriaModel::listarConveniosAliados: ' .
+                $this->connection->error
+            );
             return [];
         }
 
@@ -76,7 +91,6 @@ class CrearConvocatoriaModel
         return $convenios;
     }
 
-    // Conserva compatibilidad con el controlador existente.
     public function listarConveniosRecibidos()
     {
         return $this->listarConveniosAliados();
@@ -84,19 +98,18 @@ class CrearConvocatoriaModel
 
     public function estructuraDisponible()
     {
-        $tablaPost = $this->connection->query(
-            "SHOW TABLES LIKE 'seguimientos_vinculacion_post_envio'"
+        $tablaAliados = $this->connection->query(
+            "SHOW TABLES LIKE 'aliados_asignaciones'"
         );
 
-        if (!$tablaPost || $tablaPost->num_rows === 0) {
+        if (!$tablaAliados || $tablaAliados->num_rows === 0) {
             return false;
         }
 
-        $columna = $this->connection->query(
-            "SHOW COLUMNS FROM seguimientos_vinculacion_post_envio
-             LIKE 'convenio_formalizado_at'"
+        $tablaSeguimientos = $this->connection->query(
+            "SHOW TABLES LIKE 'seguimientos_vinculacion'"
         );
 
-        return $columna && $columna->num_rows > 0;
+        return $tablaSeguimientos && $tablaSeguimientos->num_rows > 0;
     }
 }
