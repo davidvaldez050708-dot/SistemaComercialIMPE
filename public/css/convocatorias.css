@@ -5262,3 +5262,31 @@
 }
 
 
+
+
+/* Modal Nueva convocatoria más compacto */
+#modalCrearConvocatoria .system-form-dialog {
+    max-width: 500px;
+}
+
+#modalCrearConvocatoria .modal-header {
+    padding: 16px 18px;
+}
+
+#modalCrearConvocatoria .convocatoria-create-form > .modal-body {
+    padding: 16px 18px;
+}
+
+#modalCrearConvocatoria .convocatoria-create-form > .modal-footer {
+    padding: 14px 18px;
+}
+
+#modalCrearConvocatoria .system-form-grid {
+    gap: 14px 12px;
+}
+
+@media (max-width: 575.98px) {
+    #modalCrearConvocatoria .system-form-dialog {
+        max-width: calc(100% - 16px);
+    }
+}
