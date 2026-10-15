@@ -134,6 +134,8 @@ grep -Fq "Modal Nueva convocatoria más compacto" "$DST/public/css/convocatorias
 grep -Fq "data-convocatoria-form-share" "$DST/app/views/convocatorias/index.php"
 grep -Fq "convocatoria_ref" "$DST/app/views/convocatorias/index.php"
 grep -Fq "data-aliado-id" "$DST/app/views/convocatorias/index.php"
+grep -Fq "data-convenio-nombre" "$DST/app/views/convocatorias/index.php"
+grep -Fq "origen', 'convenio_aliado" "$DST/app/views/convocatorias/index.php"
 grep -Fq "data-estado-id" "$DST/app/views/convocatorias/index.php"
 grep -Fq "modal-dialog-scrollable" "$DST/app/views/convocatorias/index.php"
 grep -Fq "convocatoria-create-form" "$DST/app/views/convocatorias/index.php"
@@ -165,6 +167,6 @@ if grep -Fq "convocatoria-list-table" "$DST/app/views/convocatorias/index.php"; 
 fi
 
 echo
-echo "OK: producción genera enlaces únicos por formulario, aliado, estado y convocatoria."
+echo "OK: producción genera enlaces únicos e identificables por convenio, aliado, estado y convocatoria."
 echo "Respaldo: $BACKUP"
 echo "Recarga el navegador con Ctrl+F5."
