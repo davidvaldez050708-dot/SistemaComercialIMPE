@@ -362,7 +362,7 @@ $fechaMaximaNacimiento = date('Y-m-d');
                         <span class="formulario-publico-section-icon">
                             <i class="bi bi-person-heart"></i>
                         </span>
-                        <h2>¿Conoces a alguien interesado?</h2>
+                        <h2>¿Conoces a alguien que pueda estar interesado en alguno de nuestros programas?</h2>
                     </div>
 
                     <div class="formulario-publico-grid">
