@@ -468,7 +468,17 @@
                 estado_id:String(categoria === 'RECEPCION' ? selected.estado_id : 0),
                 tipo:categoria === 'RECEPCION' ? tipo.value : '',
                 responsable_id:String(selected.usuario_id),
-                modo:mode
+                modo:mode,
+                // Nunca tomar una sugerencia automática como identidad:
+                // se transmite sólo la institución confirmada por Tania.
+                seguimiento_id:String(
+                    confirmedRecognition &&
+                    confirmedRecord?.callId === identity &&
+                    confirmedRecord?.usuarioId === Number(selected.usuario_id) &&
+                    confirmedRecord?.estadoId === Number(selected.estado_id)
+                        ? confirmedRecord.seguimientoId : 0
+                ),
+                pbx_call_id:identity
             });
             const data = await fetch(cfg.routingAuthorizeUrl, {
                 method:'POST', credentials:'same-origin', cache:'no-store',
