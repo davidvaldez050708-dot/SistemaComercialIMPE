@@ -135,8 +135,7 @@ $puedeRecibirShell = !empty($asignacionTelefonica['permite_entrantes']) &&
         flag_old = '    let forceNativeControls = false;'
         flag_new = flag_old + norm("""
     let nativeTransferOpen = false;""")
-        reset_old = norm("""        if (!ongoing) {
-            forceNativeControls = false;""")
+        reset_old = '        if (!ongoing) {'
         reset_new = reset_old + norm("""
             nativeTransferOpen = false;""")
 
