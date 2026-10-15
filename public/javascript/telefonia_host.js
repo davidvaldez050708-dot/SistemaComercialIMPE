@@ -1643,7 +1643,7 @@
         publish(state);
     };
 
-    const sendTransferDtmf = function (
+    const sendTransferDtmf = async function (
         targetExtension,
         attended
     ) {
@@ -1684,10 +1684,11 @@
                     'function'
                 ) {
                     try {
-                        const result =
-                            target[method](code);
-
-                        if (result === false) {
+                        // Si el proveedor devuelve una Promise, esperar su
+                        // rechazo antes de informar que recibió la orden.
+                        const result = await target[method](code);
+                        if (result === false ||
+                            (typeof result === 'string' && result.trim() !== '')) {
                             continue;
                         }
 
@@ -1766,12 +1767,13 @@
                 publish({message:'La llamada cambió. No se intentó transferir.'});
                 return;
             }
-            const submitted = sendTransferDtmf(
+            const submitted = await sendTransferDtmf(
                 String(data.extension || ''), data.modo === 'CONSULTADA'
             );
-            // Una invocación DTMF nunca es confirmación PBX.
+            // Una invocación DTMF nunca confirma que el destinatario
+            // recibió ni respondió. Sólo los webhooks PBX pueden hacerlo.
             if (submitted) publish({
-                message:'Tonos enviados a Zadarma; espera confirmación de la transferencia.'
+                message:'Solicitud DTMF enviada al WebRTC. Espera la confirmación de Zadarma; si no suena el destino, utiliza el teclado oficial.'
             });
         } catch (error) {
             publish({message:error?.message || 'No se pudo solicitar la transferencia.'});
