@@ -15,28 +15,7 @@ class CrearConvocatoriaController
             ? $modelo->listarConveniosRecibidos()
             : [];
 
-        $estados = [];
-        foreach ($convenios as $convenio) {
-            $estadoId = (int)($convenio['estado_id'] ?? 0);
-            if ($estadoId <= 0) {
-                continue;
-            }
-
-            $estados[$estadoId] = [
-                'id' => $estadoId,
-                'nombre' => (string)($convenio['estado_nombre'] ?? '')
-            ];
-        }
-
-        uasort(
-            $estados,
-            static function ($a, $b) {
-                return strcasecmp(
-                    (string)($a['nombre'] ?? ''),
-                    (string)($b['nombre'] ?? '')
-                );
-            }
-        );
+        $estados = $modelo->listarEstados();
 
         $tituloPagina = 'Crear convocatoria';
         $subtituloPagina =
