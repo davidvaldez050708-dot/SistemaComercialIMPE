@@ -382,6 +382,18 @@
                     'impe:crm:call-draft:' + userId + ':' + id);
             } catch (_) {}
             modal.hide();
+            // Unicamente después del OK de MySQL avisamos al shell que
+            // puede retirar la obligación visual de registrar resultado.
+            const confirmedId = String(
+                form.querySelector('[data-incoming-sdk-id]')?.value ||
+                form.querySelector('[data-incoming-pbx]')?.value || ''
+            );
+            if (confirmedId && window.parent !== window) {
+                window.parent.postMessage({
+                    type:'IMPE_ANALYST_RESULT_SAVED',
+                    callId:confirmedId
+                }, window.location.origin);
+            }
             // La clasificación técnica y el expediente ya están confirmados
             // por el servidor; reconstruir las filas de la fuente de verdad.
             window.location.assign(
