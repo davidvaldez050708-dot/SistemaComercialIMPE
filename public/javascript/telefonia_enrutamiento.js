@@ -18,6 +18,21 @@
     const coincidencias = $('[data-routing-matches]');
     const lista = $('[data-routing-matches-list]');
     const feedback = $('[data-routing-feedback]');
+    // El widget oficial permite completar transferencias aun cuando su
+    // versión no exponga métodos DTMF públicos. No crea un segundo SDK.
+    const phoneControls = document.createElement('button');
+    phoneControls.type = 'button';
+    phoneControls.className = 'impe-routing-save';
+    phoneControls.textContent = 'Abrir teclado Zadarma';
+    phoneControls.hidden = true;
+    phoneControls.setAttribute('aria-label',
+        'Abrir los controles oficiales de Zadarma para transferir');
+    feedback?.insertAdjacentElement('afterend', phoneControls);
+    phoneControls.addEventListener('click', () => {
+        if (!api.showProviderControls?.()) {
+            setFeedback('El teléfono WebRTC no está listo. Verifica la conexión.', true);
+        }
+    });
     const identityBox = $('[data-routing-identification]');
     const lookupToggle = $('[data-routing-search-toggle]');
     const lookupWrap = $('[data-routing-search-wrap]');
@@ -70,6 +85,44 @@
     let confirmedRecord = null;
     let phoneCheckedForCall = '';
     let currentCallId = '';
+    let transferRequestCallId = '';
+    let transferDestinationExtension = '';
+    let transferBusy = false;
+    const listener = typeof BroadcastChannel === 'function'
+        ? new BroadcastChannel('impe-telephony-' + Number(cfg.userId))
+        : null;
+    const onPhoneState = value => {
+        if (!transferRequestCallId || !value ||
+            String(value.userId || '') !== String(cfg.userId)) return;
+        const current = call();
+        const stillSame = current?.id === transferRequestCallId;
+        if (!stillSame && value.active) return;
+        if (!value.active && value.phase === 'incoming-finished') {
+            if (value.status === 'transferred') {
+                setFeedback('Zadarma confirmó la transferencia de la llamada.');
+            }
+            transferRequestCallId = '';
+            transferDestinationExtension = '';
+            phoneControls.hidden = true;
+            return;
+        }
+        if (stillSame && String(value.message || '').includes('Marca ')) {
+            const code = String(value.message || '');
+            if (code.includes(transferDestinationExtension)) {
+                setFeedback(code + ' Usa el teclado oficial durante la llamada.');
+                phoneControls.hidden = false;
+                positionSidecar(panel);
+            }
+        }
+    };
+    listener?.addEventListener('message', event => {
+        if (event.data?.type === 'STATE') onPhoneState(event.data.state);
+    });
+    window.addEventListener('storage', event => {
+        if (event.key !== 'impe:telephony:state:' + Number(cfg.userId) ||
+            !event.newValue) return;
+        try { onPhoneState(JSON.parse(event.newValue)); } catch (_) {}
+    });
     const endpoint = (key, params) => {
         const url = new URL(String(cfg[key] || ''), window.location.href);
         Object.entries(params || {}).forEach(([name, val]) =>
@@ -387,6 +440,7 @@
     });
     const submitTransfer = async mode => {
         const active = call();
+        if (transferBusy) return;
         if (!active || !selected) {
             setFeedback('Selecciona un responsable con extensión autorizada.', true);
             return;
@@ -414,6 +468,7 @@
             }
         }
         const buttons = panel.querySelectorAll('[data-routing-attended], [data-routing-direct]');
+        transferBusy = true;
         buttons.forEach(btn => { btn.disabled = true; });
         try {
             const body = new URLSearchParams({
@@ -435,11 +490,23 @@
                 !api.requestAuthorizedTransfer(data.token)) {
                 throw new Error('La llamada cambió; no se solicitó ninguna transferencia.');
             }
-            setFeedback('Solicitud enviada al teléfono. Espera la confirmación de Zadarma; no cuelgues todavía.');
+            transferRequestCallId = identity;
+            transferDestinationExtension = String(selected.extension);
+            phoneControls.hidden = false;
+            setFeedback(mode === 'CONSULTADA'
+                ? 'Consulta solicitada a ext. ' + selected.extension +
+                    '. Espera a hablar con el responsable antes de finalizar tu participación.' +
+                    ' Si no se conecta, abre el teclado Zadarma y marca *' +
+                    selected.extension + '#.'
+                : 'Transferencia directa solicitada a ext. ' + selected.extension +
+                    '. La centralita debe confirmar el cambio. Si no se conecta,' +
+                    ' abre el teclado Zadarma y marca #' + selected.extension + '#.');
             confirmDirect = '';
+            positionSidecar(panel);
         } catch (err) {
             setFeedback(err?.message || 'No se pudo autorizar la transferencia.', true);
         } finally {
+            transferBusy = false;
             buttons.forEach(btn => { btn.disabled = false; });
         }
     };
