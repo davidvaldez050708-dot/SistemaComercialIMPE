@@ -368,30 +368,9 @@
             if (!info.ok || !info.disponible || !(info.segmentos > 0)) {
                 throw new Error('Zadarma todavía no entrega todos los segmentos.');
             }
-            host.replaceChildren();
-            const audios = [];
-            for (let i=0; i<info.segmentos; i++) {
-                const wrap = document.createElement('div');
-                wrap.className = 'linkage-incoming-pbx-segment';
-                const title = document.createElement('small');
-                title.textContent = 'Segmento '+(i+1)+' de '+info.segmentos;
-                const audio = document.createElement('audio');
-                audio.controls = true;
-                audio.preload = 'none';
-                audio.style.maxWidth = '100%';
-                const media = new URL(url);
-                media.searchParams.delete('verificar');
-                media.searchParams.set('segmento', String(i));
-                audio.src = media.toString();
-                wrap.append(title, audio);
-                host.appendChild(wrap);
-                audios.push(audio);
-                audio.addEventListener('play', () => audios.forEach(a => {
-                    if (a!==audio && !a.paused) a.pause();
-                }));
-                audio.addEventListener('ended', () => {
-                    if (audios[i+1]) audios[i+1].play().catch(()=>{});
-                });
+            if (!window.IMPE_TELEPHONY_SEGMENTS?.create(
+                host, url.toString(), info.segmentos)) {
+                throw new Error('No fue posible preparar el reproductor.');
             }
             error.hidden = true;
             panel.hidden = false;

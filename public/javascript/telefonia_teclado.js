@@ -183,7 +183,8 @@
         function open(params) {
             const data = params || {};
             const current = activeState();
-            if (current?.active && current.direction === 'incoming') {
+            if (current?.active && current.direction === 'incoming' &&
+                ['incoming-ringing', 'in-progress'].includes(String(current.phase || ''))) {
                 opt.showIncoming?.();
                 return;
             }
@@ -256,7 +257,11 @@
         function sync(next) {
             if (!next || typeof next !== 'object') return;
             if (next.direction === 'incoming') {
-                if (visible) hide();
+                // Una finalización antigua/latido de WebRTC no debe cerrar
+                // el marcador manual que Marketing acaba de abrir.
+                if (next.active &&
+                    ['incoming-ringing', 'in-progress'].includes(String(next.phase || '')) &&
+                    visible) hide();
                 return;
             }
             if (next.active && next.direction !== 'incoming' &&
