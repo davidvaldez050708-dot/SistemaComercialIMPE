@@ -1116,11 +1116,57 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
                         </div>
 
                         <div>
-                            <label class="form-label login-label" for="crear_convocatoria_estado">Disponibilidad</label>
-                            <select class="form-select system-form-control" id="crear_convocatoria_estado" name="estado">
-                                <option value="1">Activa</option>
-                                <option value="0">Inactiva</option>
-                            </select>
+                            <label class="form-label login-label" for="crear_convocatoria_estado_boton">
+                                Disponibilidad
+                            </label>
+
+                            <div
+                                class="convocatoria-availability-dropdown"
+                                data-convocatoria-availability-dropdown>
+                                <input
+                                    type="hidden"
+                                    id="crear_convocatoria_estado"
+                                    name="estado"
+                                    value="<?= $texto($datosCrear['estado'] ?? '1') ?>"
+                                    data-convocatoria-availability-value>
+
+                                <button
+                                    type="button"
+                                    class="convocatoria-availability-trigger"
+                                    id="crear_convocatoria_estado_boton"
+                                    aria-haspopup="listbox"
+                                    aria-expanded="false"
+                                    data-convocatoria-availability-trigger>
+                                    <span data-convocatoria-availability-label>
+                                        <?= (string)($datosCrear['estado'] ?? '1') === '0' ? 'Inactiva' : 'Activa' ?>
+                                    </span>
+                                    <i class="bi bi-chevron-down" aria-hidden="true"></i>
+                                </button>
+
+                                <div
+                                    class="convocatoria-availability-menu"
+                                    role="listbox"
+                                    aria-label="Seleccionar disponibilidad"
+                                    data-convocatoria-availability-menu>
+                                    <button
+                                        type="button"
+                                        class="convocatoria-availability-option <?= (string)($datosCrear['estado'] ?? '1') !== '0' ? 'is-selected' : '' ?>"
+                                        role="option"
+                                        aria-selected="<?= (string)($datosCrear['estado'] ?? '1') !== '0' ? 'true' : 'false' ?>"
+                                        data-convocatoria-availability-option="1">
+                                        Activa
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        class="convocatoria-availability-option <?= (string)($datosCrear['estado'] ?? '1') === '0' ? 'is-selected' : '' ?>"
+                                        role="option"
+                                        aria-selected="<?= (string)($datosCrear['estado'] ?? '1') === '0' ? 'true' : 'false' ?>"
+                                        data-convocatoria-availability-option="0">
+                                        Inactiva
+                                    </button>
+                                </div>
+                            </div>
                         </div>
 
                         <div>
@@ -1761,6 +1807,82 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    const availabilityDropdown = document.querySelector(
+        '[data-convocatoria-availability-dropdown]'
+    );
+    const availabilityValue = availabilityDropdown?.querySelector(
+        '[data-convocatoria-availability-value]'
+    );
+    const availabilityTrigger = availabilityDropdown?.querySelector(
+        '[data-convocatoria-availability-trigger]'
+    );
+    const availabilityLabel = availabilityDropdown?.querySelector(
+        '[data-convocatoria-availability-label]'
+    );
+    const availabilityOptions = Array.from(
+        availabilityDropdown?.querySelectorAll(
+            '[data-convocatoria-availability-option]'
+        ) || []
+    );
+
+    const closeAvailabilityDropdown = function () {
+        availabilityDropdown?.classList.remove('is-open');
+        availabilityTrigger?.setAttribute('aria-expanded', 'false');
+    };
+
+    availabilityTrigger?.addEventListener('click', function () {
+        const opening = !availabilityDropdown?.classList.contains('is-open');
+
+        if (opening) {
+            availabilityDropdown?.classList.add('is-open');
+            availabilityTrigger.setAttribute('aria-expanded', 'true');
+        } else {
+            closeAvailabilityDropdown();
+        }
+    });
+
+    availabilityOptions.forEach(function (option) {
+        option.addEventListener('click', function () {
+            const value = String(
+                option.dataset.convocatoriaAvailabilityOption || '1'
+            );
+
+            if (availabilityValue) {
+                availabilityValue.value = value;
+            }
+
+            if (availabilityLabel) {
+                availabilityLabel.textContent = option.textContent.trim();
+            }
+
+            availabilityOptions.forEach(function (item) {
+                const selected = item === option;
+                item.classList.toggle('is-selected', selected);
+                item.setAttribute(
+                    'aria-selected',
+                    selected ? 'true' : 'false'
+                );
+            });
+
+            closeAvailabilityDropdown();
+        });
+    });
+
+    document.addEventListener('click', function (event) {
+        if (
+            availabilityDropdown &&
+            !availabilityDropdown.contains(event.target)
+        ) {
+            closeAvailabilityDropdown();
+        }
+    });
+
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') {
+            closeAvailabilityDropdown();
+        }
+    });
+
     const share = document.querySelector('[data-convocatoria-form-share]');
 
     if (share) {
