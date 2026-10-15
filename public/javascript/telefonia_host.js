@@ -1730,6 +1730,54 @@
         return false;
     };
 
+    // La orden del CRM es solo una solicitud. El motor SIP vuelve a
+    // consultar al servidor antes de emitir DTMF, consumiendo un token
+    // de un solo uso y verificando el destino autorizado por territorio.
+    const ejecutarTransferenciaAutorizada = async function (payload) {
+        if (!permiteTransferir || !state.active ||
+            state.phase !== 'in-progress') return;
+        const token = String(payload?.transferToken || '');
+        if (!/^[a-f0-9]{48}$/.test(token) || !config.validarTransferenciaUrl) {
+            publish({message:'Selecciona el destino autorizado desde Transferir.'});
+            return;
+        }
+        const originalCall = String(state.callToken || state.pbxCallId || '');
+        try {
+            const body = new URLSearchParams({
+                csrf_token:String(config.transferenciaCsrf || ''),
+                token:token
+            });
+            const response = await fetch(config.validarTransferenciaUrl, {
+                method:'POST', credentials:'same-origin', cache:'no-store',
+                headers:{
+                    'Accept':'application/json',
+                    'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'
+                },
+                body:body.toString()
+            });
+            const data = await response.json();
+            if (!response.ok || !data.ok) {
+                throw new Error(data.mensaje || 'No se autorizó la transferencia.');
+            }
+            // No ejecutar un comando antiguo si mientras tanto terminó
+            // la conversación y comenzó otra.
+            if (!state.active || state.phase !== 'in-progress' ||
+                String(state.callToken || state.pbxCallId || '') !== originalCall) {
+                publish({message:'La llamada cambió. No se intentó transferir.'});
+                return;
+            }
+            const submitted = sendTransferDtmf(
+                String(data.extension || ''), data.modo === 'CONSULTADA'
+            );
+            // Una invocación DTMF nunca es confirmación PBX.
+            if (submitted) publish({
+                message:'Tonos enviados a Zadarma; espera confirmación de la transferencia.'
+            });
+        } catch (error) {
+            publish({message:error?.message || 'No se pudo solicitar la transferencia.'});
+        }
+    };
+
     const processCommand = function (message) {
         if (!message || message.type !== 'COMMAND') {
             return;
@@ -1787,10 +1835,7 @@
             action === 'TRANSFER' &&
             state.active
         ) {
-            sendTransferDtmf(
-                payload.extension,
-                Boolean(payload.attended)
-            );
+            void ejecutarTransferenciaAutorizada(payload);
         } else if (action === 'SHOW_CONTROLS') {
             if (state.active) {
                 mostrarHostEntrante();
