@@ -213,6 +213,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
 
                 params.set('desde_convenio', '1');
+                params.set('abrir_nueva_convocatoria', '1');
 
                 if (seguimientoId > 0) {
                     params.set('seguimiento_id', String(seguimientoId));
