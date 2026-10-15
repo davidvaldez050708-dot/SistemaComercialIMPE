@@ -149,6 +149,30 @@
                 : 'Relaciona la conversación con el seguimiento existente o crea uno nuevo.')
             : 'Esta llamada no fue contestada. Puedes clasificarla sin crear expediente.';
         renderDecision();
+        // Si Recepción identificó el expediente, precargarlo por ID exacto
+        // de esta sesión. El servidor volverá a validar la pertenencia al
+        // Analista al guardar; nunca se asume que teléfono = identidad.
+        if (isSdkCall && id) {
+            try {
+                const userId = Number(window.IMPE_CURRENT_USER_ID || 0);
+                const key = 'impe:crm:transfer-context:' + userId + ':' + id;
+                const context = JSON.parse(sessionStorage.getItem(key) || 'null');
+                if (context && context.call_id === id &&
+                    Number(context.seguimiento_id) > 0 &&
+                    Date.now() - Number(context.saved_at || 0) < 180000) {
+                    decision.value = 'existente';
+                    lookup.value = String(context.institucion || '');
+                    followup.replaceChildren(new Option(
+                        String(context.institucion || 'Institución') +
+                        ' · ' + String(context.estado || ''),
+                        String(context.seguimiento_id)
+                    ));
+                    renderDecision();
+                    modalEl.querySelector('[data-incoming-modal-description]').textContent =
+                        'Expediente identificado por Recepción. Confirma la identidad y registra el resultado.';
+                }
+            } catch (_) {}
+        }
         // El borrador capturado DURANTE esta misma llamada desde el shell
         // se importa únicamente por ID exacto y usuario actual. Nunca se
         // asigna automáticamente al expediente de otra llamada.
@@ -394,12 +418,13 @@
                     callId:confirmedId
                 }, window.location.origin);
             }
-            // La clasificación técnica y el expediente ya están confirmados
-            // por el servidor; reconstruir las filas de la fuente de verdad.
-            window.location.assign(
-                new URL('index.php?controller=seguimientoVinculacion&action=llamadasEntrantes',
-                    window.location.href).toString()
-            );
+            // Sólo el servidor decide a qué expediente pertenece.
+            // Para existente o nueva, abrirlo inmediatamente tras guardar.
+            const linked = Number(data.resultado?.seguimiento_id || 0);
+            const target = linked > 0
+                ? 'index.php?controller=seguimientoVinculacion&action=detalle&id=' + linked
+                : 'index.php?controller=seguimientoVinculacion&action=llamadasEntrantes';
+            window.location.assign(new URL(target, window.location.href).toString());
         } catch (error) {
             showError(error.message || 'No fue posible guardar. Intenta nuevamente.');
         } finally {
