@@ -168,6 +168,12 @@ def run(path):
         }
         if (!recentFinishedOutgoing) return;""")
 
+    # Verificar TODAS las zonas antes de empezar: un Hostinger personalizado
+    # debe informar de todos los cambios incompatibles en una sola revisión.
+    missing = ['%s (%d)' % (name,source.count(old))
+               for name,old,new in rules if source.count(old) != 1]
+    if missing:
+        fail('anclas incompatibles: ' + ', '.join(missing))
     result = source
     undo = []
     for name, old, new in rules:
