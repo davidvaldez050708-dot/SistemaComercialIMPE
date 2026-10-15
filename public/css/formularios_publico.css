@@ -1460,9 +1460,9 @@ html {
     background:
         linear-gradient(
             118deg,
-            rgba(6, 75, 135, .88) 0%,
-            rgba(7, 86, 146, .82) 48%,
-            rgba(7, 57, 108, .90) 100%
+            rgba(6, 75, 135, .72) 0%,
+            rgba(7, 86, 146, .66) 48%,
+            rgba(7, 57, 108, .76) 100%
         ),
         url('../img/brand/red-graduacion.jpeg') center 78% / cover no-repeat;
 }
@@ -1500,9 +1500,9 @@ html {
     background:
         linear-gradient(
             118deg,
-            rgba(6, 75, 135, .88) 0%,
-            rgba(7, 86, 146, .82) 48%,
-            rgba(7, 57, 108, .90) 100%
+            rgba(6, 75, 135, .72) 0%,
+            rgba(7, 86, 146, .66) 48%,
+            rgba(7, 57, 108, .76) 100%
         ),
         url('../img/brand/red-graduacion.jpeg') center 78% / cover no-repeat;
     box-shadow: 0 13px 35px rgba(20, 72, 126, .12);
