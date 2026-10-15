@@ -132,6 +132,9 @@ grep -Fq "Personalizador completo de QR" "$DST/public/css/convocatorias.css"
 grep -Fq "Corrección estructural del scroll interno" "$DST/public/css/convocatorias.css"
 grep -Fq "Modal Nueva convocatoria más compacto" "$DST/public/css/convocatorias.css"
 grep -Fq "data-convocatoria-form-share" "$DST/app/views/convocatorias/index.php"
+grep -Fq "convocatoria_ref" "$DST/app/views/convocatorias/index.php"
+grep -Fq "data-aliado-id" "$DST/app/views/convocatorias/index.php"
+grep -Fq "data-estado-id" "$DST/app/views/convocatorias/index.php"
 grep -Fq "modal-dialog-scrollable" "$DST/app/views/convocatorias/index.php"
 grep -Fq "convocatoria-create-form" "$DST/app/views/convocatorias/index.php"
 grep -Fq "data-convocatoria-availability-dropdown" "$DST/app/views/convocatorias/index.php"
@@ -162,6 +165,6 @@ if grep -Fq "convocatoria-list-table" "$DST/app/views/convocatorias/index.php"; 
 fi
 
 echo
-echo "OK: producción tiene modal compacto, Disponibilidad personalizada y CSS sin caché obsoleta."
+echo "OK: producción genera enlaces únicos por formulario, aliado, estado y convocatoria."
 echo "Respaldo: $BACKUP"
 echo "Recarga el navegador con Ctrl+F5."
