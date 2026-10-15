@@ -59,48 +59,89 @@ $puedeRecibirShell = !empty($asignacionTelefonica['permite_entrantes']) &&
             'alwaysReceive' => $puedeRecibirShell && !$marketingShell,"""))
         ]
     elif kind == 'shell':
-        if 'if (autoEnabled && !cfg.alwaysReceive && !cfg.analystIncomingResults)' in s and (
-            "!nativeVisible &&" in s) and "sendPhoneCommand('SHOW_CONTROLS');" in s:
+        # No reescribir bloques WebRTC personalizados de Hostinger. Las
+        # versiones históricas difieren en la condición para abrir controles
+        # y en cómo calculan nativeVisible; insertar sólo una mejora acotada.
+        show_marker = 'SOPORTE_RECEPTOR_TRANSFER_20261015'
+        native_marker = 'VISIBILIDAD_RECEPTOR_TRANSFER_20261015'
+        preference_marker = 'if (autoEnabled && !cfg.alwaysReceive && !cfg.analystIncomingResults)'
+        marks = (show_marker in s, native_marker in s, preference_marker in s)
+        if all(marks) and '!nativeVisible &&' in s:
             print('YA ACTUALIZADO: controles del shell y recepción de extensiones')
             return
-        show_old = norm("""showProviderControls: function () {
-            if (!cfg.analystIncomingResults || !hostFrame ||
-                !freshState(currentState) || !currentState.hostReady) return false;
-            nativeAnalystOpen = true;
-            forceNativeControls = true;
-            minimized = false;
-            render();
-            return true;
-        },""")
-        show_new = norm("""showProviderControls: function () {
-            if (!hostFrame || !freshState(currentState) ||
-                !currentState.hostReady || !currentState.active) return false;
-            nativeAnalystOpen = true;
-            forceNativeControls = true;
-            minimized = false;
-            sendPhoneCommand('SHOW_CONTROLS');
-            render();
-            return true;
-        },""")
-        native_old = norm("""(cfg.analystIncomingResults && nativeAnalystOpen) ||
-                (ongoing && state?.direction !== 'incoming')""")
-        native_new = norm("""(cfg.analystIncomingResults && nativeAnalystOpen) ||
-                ongoing""")
-        # La variante con guarda también contiene el fragmento de la
-        # variante sin guarda. Elegir por precedencia, no por subcadena.
+        if any(marks):
+            fail('actualización parcial detectada: revisar antes de aplicar')
+
+        # Autorizar únicamente un método ya existente con el mismo nombre y
+        # estructura; conservar su cuerpo original por compatibilidad SDK.
+        show_start = 'showProviderControls: function () {'
+        show_end = norm("""
+        },
+        openDialer:""")
+        if s.count(show_start) != 1:
+            fail('abrir WebRTC: método no único')
+        begin = s.find(show_start)
+        end = s.find(show_end, begin)
+        if end < 0 or end - begin > 1600:
+            fail('abrir WebRTC: bloque inesperado')
+        show_body = s[begin:end]
+        for required in ('forceNativeControls = true;', 'minimized = false;',
+                         'render()', 'return true', 'hostFrame',
+                         'freshState(currentState)'):
+            if required not in show_body:
+                fail('abrir WebRTC: falta comprobación ' + required)
+        show_new = show_start + norm("""
+            // SOPORTE_RECEPTOR_TRANSFER_20261015
+            // Extensión activa y host autorizado: permitir abrir el widget
+            // oficial sin borrar el flujo antiguo de Analista.
+            if (hostFrame && freshState(currentState) &&
+                currentState.hostReady && currentState.active) {
+                nativeAnalystOpen = true;
+                forceNativeControls = true;
+                minimized = false;
+                sendPhoneCommand('SHOW_CONTROLS');
+                render();
+                return true;
+            }""")
+        # Se actualiza exclusivamente el encabezado; no se toca su contenido.
+        show_old = show_start
+
+        # Ampliar la visibilidad para entrantes solicitadas por el usuario
+        # sin cambiar las otras condiciones nativas del archivo personalizado.
+        import re
+        vmatch = re.search(
+            r'(?P<prefix>\bconst nativeVisible\s*=\s*)'
+            r'(?P<expr>[\s\S]{50,900}?)'
+            r'(?P<suffix>;\s*\n\s*const pending = pendingFor\(state\);)',
+            s
+        )
+        if not vmatch or s.count('const nativeVisible') != 1:
+            fail('visibilidad del widget: fórmula desconocida')
+        current_expr = vmatch.group('expr').strip()
+        for required in ('state?.hostReady', 'forceNativeControls',
+                         'minimized', 'ongoing'):
+            if required not in current_expr:
+                fail('visibilidad del widget: falta ' + required)
+        old_visibility = vmatch.group('prefix') + vmatch.group('expr') + ';'
+        new_visibility = (
+            vmatch.group('prefix') + '(' + current_expr + ')' +
+            norm("""
+            || (Boolean(state?.hostReady) && forceNativeControls &&
+                !minimized && ongoing && state?.direction === 'incoming')""") +
+            '; // VISIBILIDAD_RECEPTOR_TRANSFER_20261015'
+        )
+
         guarded = norm("""!(cfg.analystIncomingResults && nativeVisible) &&
             !minimized""")
         if s.count(guarded) == 1:
             visibility = guarded
+            visibility_new = norm("""!nativeVisible &&
+            !minimized""")
         else:
             visibility = choose(s, [
                 norm("""!minimized && pending !== 'decline'"""),
                 norm("""!minimized && pending !== 'hangup' && pending !== 'decline'"""),
             ], 'visibilidad existente')
-        if visibility.startswith('!('):
-            visibility_new = norm("""!nativeVisible &&
-            !minimized""")
-        else:
             visibility_new = '!nativeVisible && ' + visibility
         pref = choose(s, [
             'if (autoEnabled && !cfg.analystIncomingResults) {',
@@ -110,12 +151,12 @@ $puedeRecibirShell = !empty($asignacionTelefonica['permite_entrantes']) &&
         ], 'preferencia de recepción')
         if pref.startswith('if (autoEnabled) {'):
             pref_new = pref.replace('if (autoEnabled) {',
-                                    'if (autoEnabled && !cfg.alwaysReceive && !cfg.analystIncomingResults) {',1)
+                                    preference_marker + ' {', 1)
         else:
-            pref_new = 'if (autoEnabled && !cfg.alwaysReceive && !cfg.analystIncomingResults) {'
+            pref_new = preference_marker + ' {'
         rules = [
             ('abrir WebRTC', show_old, show_new),
-            ('visibilidad del widget', native_old, native_new),
+            ('visibilidad del widget', old_visibility, new_visibility),
             ('ocultar modal durante teclado', visibility, visibility_new),
             ('autoconectar receptor', pref, pref_new),
         ]
