@@ -1,0 +1,26 @@
+name: Audio PBX verificado en expediente
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'app/services/TelefoniaGrabacionExpedienteTransferidaService.php'
+      - 'prueba_telefonia/api/llamadas_seguimiento.php'
+      - 'public/javascript/seguimiento_llamadas_expediente.js'
+      - 'public/css/seguimiento_llamadas_expediente.css'
+      - 'tests/audio_expediente_transferencia_unica_smoke.php'
+      - '.github/workflows/audio-expediente-transferencia.yml'
+jobs:
+  validar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: none
+      - name: Sintaxis y reglas de vinculación
+        run: |
+          php -l app/services/TelefoniaGrabacionExpedienteTransferidaService.php
+          php -l prueba_telefonia/api/llamadas_seguimiento.php
+          node --check public/javascript/seguimiento_llamadas_expediente.js
+          php tests/audio_expediente_transferencia_unica_smoke.php
