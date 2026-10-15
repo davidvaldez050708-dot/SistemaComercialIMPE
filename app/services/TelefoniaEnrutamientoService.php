@@ -188,6 +188,13 @@ final class TelefoniaEnrutamientoService
         return $matches;
     }
 
+    public static function numeroNacional(string $telefono): string
+    {
+        $digitos = preg_replace('/\\D+/', '', $telefono) ?: '';
+        if (strlen($digitos) < 10 || strlen($digitos) > 14) return '';
+        return substr($digitos, -10);
+    }
+
     /**
      * Sugerencias basadas en identificador telefónico real de una entrante.
      * Sólo Recepción; nunca tomar la coincidencia como prueba de identidad.
@@ -198,10 +205,8 @@ final class TelefoniaEnrutamientoService
         int $actorId, string $rol, string $telefono
     ): array {
         if (self::categoriaRol($rol) !== 'RECEPCION') return [];
-        $digitos = preg_replace('/\\D+/', '', $telefono) ?: '';
-        if (strlen($digitos) < 10 || strlen($digitos) > 14) return [];
-        $numero10 = substr($digitos, -10);
-        if (!preg_match('/^[0-9]{10}$/', $numero10)) return [];
+        $numero10 = self::numeroNacional($telefono);
+        if ($numero10 === '') return [];
 
         $destinos = $this->destinos($actorId, $rol, 0, 'INSTITUCION');
         $responsables = [];
@@ -235,6 +240,8 @@ final class TelefoniaEnrutamientoService
         $stmt->execute();
         $registros = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
+        // Una consulta truncada jamás puede considerarse una coincidencia única.
+        if (count($registros) >= 60) return [];
         $encontrados = [];
         foreach ($registros as $registro) {
             $key = (int)$registro['estado_id'] . ':' .
