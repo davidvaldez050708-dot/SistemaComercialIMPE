@@ -25,6 +25,10 @@ on:
       - "app/views/layout/dashboard_head.php"
       - "public/javascript/telefonia_persistente.js"
       - "public/javascript/telefonia_host.js"
+      - "public/javascript/telefonia_enrutamiento.js"
+      - "tools/desplegar_transferencia_operativa_hostinger.sh"
+      - "tools/fusionar_telefonia_transferencia_operativa_hostinger.py"
+      - "tests/telefonia_transferencia_operativa_hostinger_smoke.sh"
       - "public/javascript/telefonia_entrantes_bridge.js"
       - "public/css/telefonia_shell.css"
       - "public/css/telefonia_host.css"
@@ -63,6 +67,15 @@ on:
       - ".github/workflows/telefonia-shell.yml"
   pull_request:
 jobs:
+  transferencia-operativa-hostinger:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Recepción multirrol, transferencia PBX y publicación reversible
+        run: |
+          bash tests/telefonia_transferencia_operativa_hostinger_smoke.sh
   cierre-legacy-hostinger:
     runs-on: ubuntu-latest
     steps:
