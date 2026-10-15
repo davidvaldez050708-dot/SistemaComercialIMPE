@@ -468,12 +468,17 @@ class TelefoniaController
             $destinos = $servicio->destinos($usuarioId, $rol, $estadoId, $tipo, $buscar);
             $instituciones = $categoria === 'RECEPCION' && $tipo === 'INSTITUCION'
                 ? $servicio->instituciones($usuarioId, $rol, $estadoId, $buscar) : [];
+            $telefonoOrigen = trim((string)($_GET['telefono_origen'] ?? ''));
+            $identificacion = $categoria === 'RECEPCION' && $tipo === 'INSTITUCION'
+                && $telefonoOrigen !== ''
+                ? $servicio->identificarOrigen($usuarioId, $rol, $telefonoOrigen) : [];
             $this->responderJson([
                 'ok'=>true,
                 'categoria'=>$categoria,
                 'destinos'=>$destinos,
                 'estados'=>$categoria === 'RECEPCION' ? $servicio->estados() : [],
-                'instituciones'=>$instituciones
+                'instituciones'=>$instituciones,
+                'identificacion'=>$identificacion
             ]);
         } catch (InvalidArgumentException $e) {
             $this->responderJson(['ok'=>false, 'mensaje'=>$e->getMessage()], 422);
