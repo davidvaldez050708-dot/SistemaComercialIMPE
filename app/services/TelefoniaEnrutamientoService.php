@@ -152,38 +152,55 @@ final class TelefoniaEnrutamientoService
     }
 
     /** Nunca regresar institución ajena al filtro / responsable válido. */
+    /**
+     * Búsqueda por nombre opcionalmente sin estado: Recepción puede
+     * identificar la institución antes de saber el territorio. Cada
+     * expediente se revela sólo si su analista/territorio está vigente
+     * y tiene extensión habilitada. Nunca devolver teléfonos personales.
+     */
     public function instituciones(int $actorId, string $rol, int $estadoId, string $busqueda): array
     {
-        if (self::categoriaRol($rol) !== 'RECEPCION' || $estadoId <= 0 ||
+        if (self::categoriaRol($rol) !== 'RECEPCION' || $estadoId < 0 ||
             mb_strlen(trim($busqueda), 'UTF-8') < 2) return [];
         $destinos = $this->destinos($actorId, $rol, $estadoId, 'INSTITUCION');
         $permitidos = [];
-        foreach ($destinos as $d) $permitidos[(int)$d['usuario_id']] = $d;
+        foreach ($destinos as $d) {
+            $permitidos[(int)$d['estado_id'] . ':' . (int)$d['usuario_id']] = $d;
+        }
         if (!$permitidos) return [];
         $q = '%' . mb_substr(trim($busqueda), 0, 80, 'UTF-8') . '%';
-        $sql = "SELECT s.id, s.nombre_entidad, s.analista_id,
-                       s.estado_id, s.telefono_fuente
+        $filtroEstado = $estadoId > 0 ? 's.estado_id = ? AND ' : '';
+        $sql = "SELECT s.id, s.nombre_entidad, s.analista_id, s.estado_id
                 FROM seguimientos_vinculacion s
-                WHERE s.estado_id = ? AND s.activo = 1
+                WHERE $filtroEstado s.activo = 1
                   AND s.estado_seguimiento <> 'DESCARTADO'
                   AND s.nombre_entidad LIKE ?
-                ORDER BY s.id DESC LIMIT 25";
+                ORDER BY s.id DESC LIMIT 100";
         $stmt = $this->db->prepare($sql);
-        $stmt->bind_param('is', $estadoId, $q);
+        if (!$stmt) throw new RuntimeException('No se pudo buscar el expediente.');
+        if ($estadoId > 0) {
+            $stmt->bind_param('is', $estadoId, $q);
+        } else {
+            $stmt->bind_param('s', $q);
+        }
         $stmt->execute();
         $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
         $matches = [];
         foreach ($rows as $row) {
-            $owner = (int)$row['analista_id'];
-            if (!isset($permitidos[$owner])) continue;
+            $key = (int)$row['estado_id'] . ':' . (int)$row['analista_id'];
+            if (!isset($permitidos[$key])) continue;
+            $responsable = $permitidos[$key];
             $matches[] = [
                 'seguimiento_id' => (int)$row['id'],
                 'nombre' => (string)$row['nombre_entidad'],
-                'responsable_id' => $owner,
-                'responsable' => $permitidos[$owner]['nombre'],
-                'extension' => $permitidos[$owner]['extension']
+                'estado_id' => (int)$row['estado_id'],
+                'estado_nombre' => (string)$responsable['estado_nombre'],
+                'responsable_id' => (int)$responsable['usuario_id'],
+                'responsable' => (string)$responsable['nombre'],
+                'extension' => (string)$responsable['extension']
             ];
+            if (count($matches) >= 20) break;
         }
         return $matches;
     }
