@@ -513,6 +513,13 @@ $jsOpcionalHead = array_values(array_unique($jsOpcionalHead));
         window.IMPE_CAN_OPERATE_LINKAGE = <?= tienePermiso('seguimientos_vinculacion.operar_propios') ? 'true' : 'false' ?>;
         window.IMPE_CAN_SUPERVISE_LINKAGE = <?= tienePermiso('seguimientos_vinculacion.supervisar') ? 'true' : 'false' ?>;
         window.IMPE_CAN_USE_TELEPHONY = <?= tienePermiso('telefonia.usar') ? 'true' : 'false' ?>;
+        <?php if ($usarTelefoniaPersistente): ?>
+        <?php if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_bytes(32)); ?>
+        window.IMPE_TELEPHONY_TRANSFER_CSRF = <?= json_encode(
+            (string)$_SESSION['csrf_token'],
+            JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT
+        ) ?>;
+        <?php endif; ?>
         window.IMPE_CAN_CALL_OUT = <?= tienePermiso('telefonia.salientes') ? 'true' : 'false' ?>;
         window.IMPE_CAN_RECEIVE_TELEPHONY = <?= tienePermiso('telefonia.recibir') ? 'true' : 'false' ?>;
         window.IMPE_CAN_TRANSFER_TELEPHONY = <?= tienePermiso('telefonia.transferir') ? 'true' : 'false' ?>;
