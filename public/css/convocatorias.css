@@ -4689,3 +4689,87 @@
         flex: 1 1 160px;
     }
 }
+
+
+/* Selector de formulario con diseño del filtro de estados */
+.convocatoria-form-type-dropdown {
+    position: relative;
+    width: 100%;
+    z-index: 40;
+}
+
+.convocatoria-form-type-trigger {
+    width: 100%;
+    min-height: 46px;
+    padding: 0 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    background: #ffffff;
+    color: var(--color-text-primary);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+}
+
+.convocatoria-form-type-trigger i {
+    flex: 0 0 auto;
+    transition: transform .18s ease;
+}
+
+.convocatoria-form-type-dropdown.is-open
+.convocatoria-form-type-trigger i {
+    transform: rotate(180deg);
+}
+
+.convocatoria-form-type-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    display: none;
+    overflow: hidden;
+    padding: 6px;
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    background: #ffffff;
+    box-shadow: 0 14px 32px rgba(20, 35, 70, .14);
+    z-index: 120;
+}
+
+.convocatoria-form-type-dropdown.is-open
+.convocatoria-form-type-menu {
+    display: block;
+}
+
+.convocatoria-form-type-option {
+    width: 100%;
+    padding: 10px 12px;
+    display: block;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--color-text-primary);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+}
+
+.convocatoria-form-type-option:hover,
+.convocatoria-form-type-option:focus-visible {
+    background: #f4f7fb;
+    outline: none;
+}
+
+.convocatoria-form-type-option.is-selected {
+    background: #edf3ff;
+    color: #17357f;
+    font-weight: 700;
+}
