@@ -938,133 +938,10 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
         </div>
     </form>
 
-    <div class="convocatoria-list-table">
-        <div class="table-responsive">
-            <table class="table users-table align-middle mb-0">
-                <thead>
-                    <tr>
-                        <th>Imagen</th>
-                        <th>Título</th>
-                        <th>Periodo</th>
-                        <th>Estados</th>
-                        <th>Enlace</th>
-                        <th>Estatus</th>
-                        <th class="text-end">Acciones</th>
-                    </tr>
-                </thead>
-
-                <tbody data-convocatorias-listado>
-                    <?php if (!empty($convocatoriasActivasIniciales)): ?>
-                        <?php foreach ($convocatoriasActivasIniciales as $convocatoria): ?>
-                            <tr>
-                                <td>
-                                    <?php if (!empty($convocatoria['imagen'])): ?>
-                                        <button
-                                            type="button"
-                                            class="convocatoria-thumb-button"
-                                            data-convocatoria-image="<?= BASE_URL . $texto($convocatoria['imagen']) ?>"
-                                            data-convocatoria-image-title="<?= $texto($convocatoria['titulo']) ?>"
-                                            aria-label="Ver imagen de <?= $texto($convocatoria['titulo']) ?>">
-                                            <img
-                                                src="<?= BASE_URL . $texto($convocatoria['imagen']) ?>"
-                                                alt="<?= $texto($convocatoria['titulo']) ?>"
-                                                class="convocatoria-thumb">
-                                        </button>
-                                    <?php else: ?>
-                                        —
-                                    <?php endif; ?>
-                                </td>
-
-                                <td><?= $texto($convocatoria['titulo']) ?></td>
-
-                                <td>
-                                    <?= $texto($periodoLegible(
-                                        $convocatoria['fecha_inicio'] ?? '',
-                                        $convocatoria['fecha_termino'] ?? ''
-                                    )) ?>
-                                </td>
-
-                                <td><?= $texto($convocatoria['estados'] ?: 'Sin estados') ?></td>
-
-                                <td>
-                                    <?php if (!empty($convocatoria['enlace_registro'])): ?>
-                                        <button
-                                            type="button"
-                                            class="convocatoria-external-link"
-                                            data-copy-convocatoria-link="<?= $texto($convocatoria['enlace_registro']) ?>">
-                                            <i class="bi bi-copy"></i>
-                                            <span>Copiar enlace</span>
-                                        </button>
-                                    <?php else: ?>
-                                        <span class="convocatoria-link-empty">—</span>
-                                    <?php endif; ?>
-                                </td>
-
-                                <td>
-                                    <span class="status-pill status-pill-active">
-                                        Activa
-                                    </span>
-                                </td>
-
-                                <td class="text-end">
-                                    <div class="table-actions">
-                                        <button
-                                            type="button"
-                                            class="table-action-button btn-ver-convocatoria"
-                                            data-id="<?= (int)$convocatoria['id'] ?>"
-                                            aria-label="Ver convocatoria">
-                                            <i class="bi bi-eye"></i>
-                                        </button>
-
-                                        <?php if ($puedeEditar): ?>
-                                            <button
-                                                type="button"
-                                                class="table-action-button btn-editar-convocatoria"
-                                                data-id="<?= (int)$convocatoria['id'] ?>"
-                                                aria-label="Editar convocatoria">
-                                                <i class="bi bi-pencil"></i>
-                                            </button>
-                                        <?php endif; ?>
-
-                                        <?php if ($puedeDescargar): ?>
-                                            <a
-                                                class="table-action-button"
-                                                href="<?= BASE_URL ?>index.php?controller=convocatoria&action=descargarImagen&id=<?= (int)$convocatoria['id'] ?>"
-                                                data-download-convocatoria
-                                                aria-label="Descargar imagen">
-                                                <i class="bi bi-download"></i>
-                                            </a>
-                                        <?php endif; ?>
-
-                                        <?php if ($puedeCambiarEstado): ?>
-                                            <button
-                                                type="button"
-                                                class="table-action-button table-action-warning"
-                                                data-bs-toggle="modal"
-                                                data-bs-target="#modalEstadoConvocatoria"
-                                                data-id="<?= (int)$convocatoria['id'] ?>"
-                                                data-titulo="<?= $texto($convocatoria['titulo']) ?>"
-                                                data-estado-nuevo="0"
-                                                aria-label="Desactivar convocatoria">
-                                                <i class="bi bi-toggle-on"></i>
-                                            </button>
-                                        <?php endif; ?>
-                                    </div>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    <?php else: ?>
-                        <tr>
-                            <td colspan="7">
-                                <div class="empty-table-message">
-                                    No hay convocatorias activas con los filtros seleccionados.
-                                </div>
-                            </td>
-                        </tr>
-                    <?php endif; ?>
-                </tbody>
-            </table>
-        </div>
+    <div
+        class="convocatoria-month-groups"
+        data-convocatorias-listado
+        aria-live="polite">
     </div>
 </section>
 
@@ -2022,6 +1899,137 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     };
 
+    const obtenerMesConvocatoria = function (convocatoria) {
+        const fechaInicio = String(convocatoria.fecha_inicio || '').trim();
+
+        if (fechaInicio === '') {
+            return {
+                key: 'sin-fecha',
+                orden: 0,
+                titulo: 'Sin fecha definida',
+                icono: 'bi-calendar-x'
+            };
+        }
+
+        const partes = fechaInicio.split('-');
+        const anio = Number(partes[0] || 0);
+        const mes = Number(partes[1] || 0);
+
+        const nombresMeses = [
+            '',
+            'Enero',
+            'Febrero',
+            'Marzo',
+            'Abril',
+            'Mayo',
+            'Junio',
+            'Julio',
+            'Agosto',
+            'Septiembre',
+            'Octubre',
+            'Noviembre',
+            'Diciembre'
+        ];
+
+        if (anio <= 0 || mes < 1 || mes > 12) {
+            return {
+                key: 'sin-fecha',
+                orden: 0,
+                titulo: 'Sin fecha definida',
+                icono: 'bi-calendar-x'
+            };
+        }
+
+        return {
+            key: String(anio) + '-' + String(mes).padStart(2, '0'),
+            orden: (anio * 100) + mes,
+            titulo: nombresMeses[mes] + ' ' + anio,
+            icono: 'bi-calendar3'
+        };
+    };
+
+    const construirFilaConvocatoria = function (convocatoria) {
+        const estadoActivo = Number(convocatoria.estado) === 1;
+        const imagenUrl = convocatoria.imagen
+            ? <?= json_encode(BASE_URL) ?> +
+                String(convocatoria.imagen).replace(/^\/+/, '')
+            : '';
+
+        const imagen = imagenUrl
+            ? '<button type="button" class="convocatoria-thumb-button" ' +
+                'data-convocatoria-image="' + escapeHtml(imagenUrl) + '" ' +
+                'data-convocatoria-image-title="' + escapeHtml(convocatoria.titulo || '') + '" ' +
+                'aria-label="Ver imagen de ' + escapeHtml(convocatoria.titulo || '') + '">' +
+                '<img src="' + escapeHtml(imagenUrl) +
+                '" alt="' + escapeHtml(convocatoria.titulo || '') +
+                '" class="convocatoria-thumb"></button>'
+            : '—';
+
+        const acciones = [
+            '<button type="button" class="table-action-button btn-ver-convocatoria" ' +
+                'data-id="' + Number(convocatoria.id) + '" aria-label="Ver convocatoria">' +
+                '<i class="bi bi-eye"></i></button>'
+        ];
+
+        <?php if ($puedeEditar): ?>
+        acciones.push(
+            '<button type="button" class="table-action-button btn-editar-convocatoria" ' +
+            'data-id="' + Number(convocatoria.id) + '" aria-label="Editar convocatoria">' +
+            '<i class="bi bi-pencil"></i></button>'
+        );
+        <?php endif; ?>
+
+        <?php if ($puedeDescargar): ?>
+        acciones.push(
+            '<a class="table-action-button" href="' +
+            <?= json_encode(BASE_URL . 'index.php?controller=convocatoria&action=descargarImagen&id=') ?> +
+            Number(convocatoria.id) +
+            '" data-download-convocatoria aria-label="Descargar imagen">' +
+            '<i class="bi bi-download"></i></a>'
+        );
+        <?php endif; ?>
+
+        <?php if ($puedeCambiarEstado): ?>
+        acciones.push(
+            '<button type="button" class="table-action-button ' +
+            (estadoActivo ? 'table-action-warning' : 'table-action-success') +
+            '" data-bs-toggle="modal" data-bs-target="#modalEstadoConvocatoria" ' +
+            'data-id="' + Number(convocatoria.id) + '" ' +
+            'data-titulo="' + escapeHtml(convocatoria.titulo || '') + '" ' +
+            'data-estado-nuevo="' + (estadoActivo ? '0' : '1') + '" ' +
+            'aria-label="' + (estadoActivo ? 'Desactivar convocatoria' : 'Activar convocatoria') + '">' +
+            '<i class="bi ' + (estadoActivo ? 'bi-toggle-on' : 'bi-toggle-off') + '"></i></button>'
+        );
+        <?php endif; ?>
+
+        return '<tr>' +
+            '<td>' + imagen + '</td>' +
+            '<td><strong class="convocatoria-month-row-title">' +
+                escapeHtml(convocatoria.titulo || '') +
+            '</strong></td>' +
+            '<td>' + escapeHtml(formatearPeriodo(
+                convocatoria.fecha_inicio,
+                convocatoria.fecha_termino
+            )) + '</td>' +
+            '<td>' + escapeHtml(convocatoria.estados || 'Sin estados') + '</td>' +
+            '<td>' +
+                (convocatoria.enlace_registro
+                    ? '<button type="button" class="convocatoria-external-link" ' +
+                        'data-copy-convocatoria-link="' +
+                        escapeHtml(convocatoria.enlace_registro) + '">' +
+                        '<i class="bi bi-copy"></i><span>Copiar enlace</span></button>'
+                    : '<span class="convocatoria-link-empty">—</span>') +
+            '</td>' +
+            '<td><span class="status-pill ' +
+                (estadoActivo ? 'status-pill-active' : 'status-pill-inactive') + '">' +
+                (estadoActivo ? 'Activa' : 'Inactiva') +
+            '</span></td>' +
+            '<td class="text-end"><div class="table-actions">' +
+                acciones.join('') +
+            '</div></td>' +
+        '</tr>';
+    };
+
     const renderConvocatorias = function (convocatorias, actualizarBase = true) {
         if (!listadoConvocatorias) {
             return;
@@ -2050,89 +2058,78 @@ document.addEventListener('DOMContentLoaded', function () {
                 : 'No hay convocatorias en el historial con los filtros seleccionados.';
 
             listadoConvocatorias.innerHTML =
-                '<tr><td colspan="7"><div class="empty-table-message">' +
-                mensajeVacio +
-                '</div></td></tr>';
+                '<div class="convocatoria-month-empty-state">' +
+                    '<i class="bi bi-calendar2-x"></i>' +
+                    '<strong>' + mensajeVacio + '</strong>' +
+                '</div>';
             return;
         }
 
-        listadoConvocatorias.innerHTML = convocatoriasVista.map(function (convocatoria) {
-            const estadoActivo = Number(convocatoria.estado) === 1;
-            const imagenUrl = convocatoria.imagen
-                ? <?= json_encode(BASE_URL) ?> +
-                    String(convocatoria.imagen).replace(/^\/+/, '')
-                : '';
-            const imagen = imagenUrl
-                ? '<button type="button" class="convocatoria-thumb-button" ' +
-                    'data-convocatoria-image="' + escapeHtml(imagenUrl) + '" ' +
-                    'data-convocatoria-image-title="' + escapeHtml(convocatoria.titulo || '') + '" ' +
-                    'aria-label="Ver imagen de ' + escapeHtml(convocatoria.titulo || '') + '">' +
-                    '<img src="' + escapeHtml(imagenUrl) +
-                    '" alt="' + escapeHtml(convocatoria.titulo || '') +
-                    '" class="convocatoria-thumb"></button>'
-                : '—';
+        const grupos = new Map();
 
-            const acciones = [
-                '<button type="button" class="table-action-button btn-ver-convocatoria" ' +
-                    'data-id="' + Number(convocatoria.id) + '" aria-label="Ver convocatoria">' +
-                    '<i class="bi bi-eye"></i></button>'
-            ];
+        convocatoriasVista.forEach(function (convocatoria) {
+            const mes = obtenerMesConvocatoria(convocatoria);
 
-            <?php if ($puedeEditar): ?>
-            acciones.push(
-                '<button type="button" class="table-action-button btn-editar-convocatoria" ' +
-                'data-id="' + Number(convocatoria.id) + '" aria-label="Editar convocatoria">' +
-                '<i class="bi bi-pencil"></i></button>'
-            );
-            <?php endif; ?>
+            if (!grupos.has(mes.key)) {
+                grupos.set(mes.key, {
+                    key: mes.key,
+                    orden: mes.orden,
+                    titulo: mes.titulo,
+                    icono: mes.icono,
+                    convocatorias: []
+                });
+            }
 
-            <?php if ($puedeDescargar): ?>
-            acciones.push(
-                '<a class="table-action-button" href="' +
-                <?= json_encode(BASE_URL . 'index.php?controller=convocatoria&action=descargarImagen&id=') ?> +
-                Number(convocatoria.id) +
-                '" data-download-convocatoria aria-label="Descargar imagen">' +
-                '<i class="bi bi-download"></i></a>'
-            );
-            <?php endif; ?>
+            grupos.get(mes.key).convocatorias.push(convocatoria);
+        });
 
-            <?php if ($puedeCambiarEstado): ?>
-            acciones.push(
-                '<button type="button" class="table-action-button ' +
-                (estadoActivo ? 'table-action-warning' : 'table-action-success') +
-                '" data-bs-toggle="modal" data-bs-target="#modalEstadoConvocatoria" ' +
-                'data-id="' + Number(convocatoria.id) + '" ' +
-                'data-titulo="' + escapeHtml(convocatoria.titulo || '') + '" ' +
-                'data-estado-nuevo="' + (estadoActivo ? '0' : '1') + '" ' +
-                'aria-label="' + (estadoActivo ? 'Desactivar convocatoria' : 'Activar convocatoria') + '">' +
-                '<i class="bi ' + (estadoActivo ? 'bi-toggle-on' : 'bi-toggle-off') + '"></i></button>'
-            );
-            <?php endif; ?>
+        const gruposOrdenados = Array.from(grupos.values()).sort(function (a, b) {
+            if (a.key === 'sin-fecha') {
+                return 1;
+            }
 
-            return '<tr>' +
-                '<td>' + imagen + '</td>' +
-                '<td>' + escapeHtml(convocatoria.titulo || '') + '</td>' +
-                '<td>' + escapeHtml(formatearPeriodo(
-                    convocatoria.fecha_inicio,
-                    convocatoria.fecha_termino
-                )) + '</td>' +
-                '<td>' + escapeHtml(convocatoria.estados || 'Sin estados') + '</td>' +
-                '<td>' +
-                    (convocatoria.enlace_registro
-                        ? '<button type="button" class="convocatoria-external-link" ' +
-                            'data-copy-convocatoria-link="' +
-                            escapeHtml(convocatoria.enlace_registro) + '">' +
-                            '<i class="bi bi-copy"></i><span>Copiar enlace</span></button>'
-                        : '<span class="convocatoria-link-empty">—</span>') +
-                '</td>' +
-                '<td><span class="status-pill ' +
-                    (estadoActivo ? 'status-pill-active' : 'status-pill-inactive') + '">' +
-                    (estadoActivo ? 'Activa' : 'Inactiva') +
-                '</span></td>' +
-                '<td class="text-end"><div class="table-actions">' +
-                    acciones.join('') +
-                '</div></td>' +
-            '</tr>';
+            if (b.key === 'sin-fecha') {
+                return -1;
+            }
+
+            return b.orden - a.orden;
+        });
+
+        listadoConvocatorias.innerHTML = gruposOrdenados.map(function (grupo) {
+            const cantidad = grupo.convocatorias.length;
+            const etiquetaCantidad = cantidad === 1
+                ? '1 convocatoria'
+                : cantidad + ' convocatorias';
+
+            return '<section class="convocatoria-month-group">' +
+                '<div class="convocatoria-month-group-header">' +
+                    '<div class="convocatoria-month-group-title">' +
+                        '<span class="convocatoria-month-group-icon">' +
+                            '<i class="bi ' + escapeHtml(grupo.icono) + '"></i>' +
+                        '</span>' +
+                        '<strong>' + escapeHtml(grupo.titulo) + '</strong>' +
+                    '</div>' +
+                    '<span class="convocatoria-month-group-count">' +
+                        escapeHtml(etiquetaCantidad) +
+                    '</span>' +
+                '</div>' +
+                '<div class="table-responsive">' +
+                    '<table class="table users-table align-middle mb-0 convocatoria-month-table">' +
+                        '<thead><tr>' +
+                            '<th>Imagen</th>' +
+                            '<th>Título</th>' +
+                            '<th>Periodo</th>' +
+                            '<th>Estados</th>' +
+                            '<th>Enlace</th>' +
+                            '<th>Estatus</th>' +
+                            '<th class="text-end">Acciones</th>' +
+                        '</tr></thead>' +
+                        '<tbody>' +
+                            grupo.convocatorias.map(construirFilaConvocatoria).join('') +
+                        '</tbody>' +
+                    '</table>' +
+                '</div>' +
+            '</section>';
         }).join('');
 
         vincularAccionesConvocatorias();
@@ -2216,9 +2213,9 @@ document.addEventListener('DOMContentLoaded', function () {
         } catch (error) {
             if (error.name !== 'AbortError') {
                 listadoConvocatorias.innerHTML =
-                    '<tr><td colspan="7"><div class="alert alert-danger mb-0">' +
+                    '<div class="alert alert-danger mb-0">' +
                     escapeHtml(error.message) +
-                    '</div></td></tr>';
+                    '</div>';
             }
         } finally {
             if (secuenciaActual === secuenciaFiltro) {
