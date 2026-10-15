@@ -23,6 +23,8 @@ function element() {
 }
 async function scenario(conversation) {
     let now=1000000, stored='', captures=[], dockDismissed=0;
+    const sessionStore = new Map();
+    const journal = [];
     const els=new Map();
     const el=k=>{if(!els.has(k)) els.set(k,element());return els.get(k)};
     const panel=element();
@@ -60,7 +62,14 @@ async function scenario(conversation) {
         },
         location:{origin:'https://example.test',href:'https://example.test/index.php'},
         localStorage:{getItem(){return stored}},
-        fetch:async()=>({ok:true,json:async()=>({ok:true,interna:false})}),
+        sessionStorage:{
+            getItem(key){return sessionStore.get(key) || null},
+            setItem(key,value){sessionStore.set(key,value)}
+        },
+        fetch:async(uri,init)=>{
+            if(init?.body) journal.push(String(init.body));
+            return {ok:true,json:async()=>({ok:true,interna:false})};
+        },
         setInterval(fn){intervals.push(fn)},
         addEventListener(name,fn){(listeners[name]||=[]).push(fn)},
         MutationObserver:class {observe(){}}
@@ -107,6 +116,13 @@ async function scenario(conversation) {
         assert.equal(close.hidden,true,'impedir Cerrar en llamada atendida');
         assert.equal(register.hidden,false,'registrar en modal principal');
         assert.equal(counter.textContent,'00:46','mantener duración');
+        const summary = JSON.parse(sessionStore.get(
+            'impe:crm:call-summary:8:' + id
+        ) || 'null');
+        assert.equal(summary?.duration,46,'duración observada disponible en formulario');
+        assert.ok(journal.some(body => body.includes('evento=ended') &&
+            body.includes('duracion_observada_segundos=46')),
+            'el servidor debe poder reconciliar los 46 segundos observados');
         close.click();
         assert.equal(close.hidden,true,'clic de cierre sin registrar no puede descartarla');
         register.click();
