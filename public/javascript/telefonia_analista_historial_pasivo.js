@@ -364,6 +364,9 @@
             !finished || String(event.data.callId || '') !== finished.id) return;
         const completed = finished.id;
         finished = null;
+        // El aviso inferior usa el estado privado del shell. Liberarlo por
+        // su propio control después del OK del backend, sin duplicados.
+        root.document.querySelector('[data-analyst-dismiss-call]')?.click();
         draw();
         panel.hidden = true;
         // Sólo tras el OK del servidor se despeja la llamada terminada
