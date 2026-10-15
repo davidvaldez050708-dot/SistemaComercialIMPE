@@ -50,7 +50,7 @@ def find_answer_branch(body: str) -> tuple[str, str, str]:
         r'\n[ \t]*\}[ \t]*\r?\n[ \t]*actualizarEstadoTrasAccion\(\);',
         body[prefix.start():]
     )
-    require(end is not None, 'Contestar: falta confirmación del estado')
+    require(end is not None, 'Contestar: falta confirmación del estado; cola=' + repr(body[prefix.start():][-200:]))
     end_index = prefix.start() + end.start()
     closing = re.match(r'\n\s*\}', body[end_index:])
     require(closing is not None, 'Contestar: bloque SDK abierto')
