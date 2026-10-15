@@ -112,4 +112,21 @@ foreach ([
 }
 testAssert(!str_contains($files['host'], 'sendTransferDtmf(\n                payload.extension'),
     'Nunca emitir DTMF desde dato sin revalidar.');
+
+// Transferir no usa el token particular de la agenda personal.
+$controller = $files['controller'];
+$inicioTransferencia = strpos($controller, 'private function validarTransferenciaPost(): void');
+$inicioAutorizacion = strpos($controller, 'public function autorizarTransferencia()', $inicioTransferencia ?: 0);
+testAssert($inicioTransferencia !== false && $inicioAutorizacion !== false,
+    'No se encuentra el validador del endpoint de transferencias.');
+$validador = substr($controller, $inicioTransferencia, $inicioAutorizacion - $inicioTransferencia);
+testAssert(str_contains($validador, "(string)(\$_SESSION['csrf_token'] ?? '')"),
+    'Transferir debe usar el token de sesión que entrega shell y host.');
+testAssert(str_contains($validador, 'hash_equals($csrfSesion, $csrfRecibido)'),
+    'Mantener comparación constante de CSRF.');
+testAssert(!str_contains($validador, 'TelefoniaContactosService::validarToken'),
+    'No se puede verificar transferencia con el token diferente de contactos.');
+testAssert(str_contains($files['shell'], "'routingCsrf' => (string)\$_SESSION['csrf_token']"),
+    'El panel debe enviar el token de sesión compartido.');
+
 echo "Transferencias: OK (roles, territorios, consentimiento, CSRF, token único, PBX y formulario).\n";
