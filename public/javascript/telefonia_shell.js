@@ -129,6 +129,9 @@
     let outgoingAttempt = null;
     let pendingOutgoingHangup = null;
     let recentFinishedOutgoing = null;
+    // Resumen de entrantes de Recepción/Ventas: sólo una finalización real
+    // observada en esta pestaña, nunca un estado antiguo de localStorage.
+    let recentFinishedIncoming = null;
     const isManualOutgoing = value =>
         ['TELEPHONY_MANUAL','MARKETING_CALLBACK','DIALER'].includes(
             String(value?.context?.type || '').toUpperCase()
@@ -320,6 +323,19 @@
                 catch (_) {}
             }
         }
+        // La PBX confirma el final de una entrante: conservar el resumen
+        // de Recepción/Ventas hasta pulsar Cerrar, incluso si el host vuelve
+        // automáticamente a ready. No interferir con el registro del Analista.
+        if (!cfg.analystIncomingResults &&
+            currentState?.active && currentState.direction === 'incoming' &&
+            !value.active && value.direction === 'incoming' &&
+            value.phase === 'incoming-finished') {
+            recentFinishedIncoming = {state:value, id:incomingCallId(value)};
+            incomingCompact = false;
+        } else if (value.active) {
+            // Una nueva conversación nunca hereda el resumen anterior.
+            recentFinishedIncoming = null;
+        }
         // El resumen de Marketing sólo nace de una transición REAL de
         // llamada activa a finalizada en esta sesión, nunca de storage.
         if (!value.active && value.phase === 'finished' &&
@@ -447,8 +463,11 @@
         }
         const finishedPreview = !state?.active && !preview
             ? recentFinishedOutgoing?.state || null : null;
+        const incomingFinishedPreview = !state?.active
+            ? recentFinishedIncoming?.state || null : null;
         const shownCall = state?.active ? state :
-            (finishedSdk ? state : (preview || finishedPreview));
+            (finishedSdk ? state : (incomingFinishedPreview || preview || finishedPreview));
+        const finishedIncoming = Boolean(incomingFinishedPreview);
         // Sólo llamadas manuales usan este resumen visual; Seguimiento
         // mantiene su propia pantalla para registrar el resultado.
         const manualOutgoing = isManualOutgoing(shownCall);
@@ -503,11 +522,12 @@
             Date.now() - pendingOutgoingHangup.at > 4500) {
             pendingOutgoingHangup = null;
         }
-        // No ocultar el modal al colgar una saliente: mostrar
-        // «Finalizando» hasta recibir el evento final del SDK/PBX.
-        const customVisible = (incoming || finishedSdk || shownOutgoing) &&
+        // Mantener el modal visible al colgar mientras llega la confirmación
+        // de PBX. El panel lateral sí desaparece inmediatamente.
+        const finishingIncoming = incoming && pending === 'hangup';
+        const customVisible = (incoming || finishedSdk || finishedIncoming || shownOutgoing) &&
             !(cfg.analystIncomingResults && nativeVisible) &&
-            !minimized && pending !== 'hangup' && pending !== 'decline';
+            !minimized && pending !== 'decline';
         call.classList.toggle('is-visible', nativeVisible);
         call.classList.toggle('is-analyst-native',
             Boolean(cfg.analystIncomingResults && nativeVisible));
@@ -515,7 +535,8 @@
             incomingPanel.hidden = !customVisible;
             incomingPanel.classList.toggle('is-compact', incomingCompact);
         }
-        const workingCall = Boolean(ongoing && state.phase === 'in-progress');
+        const workingCall = Boolean(ongoing && state.phase === 'in-progress' &&
+            !finishingIncoming && !pendingOutgoingHangup);
         if (transferToggle) {
             transferToggle.hidden = !workingCall || !cfg.canTransfer;
             transferToggle.disabled = !workingCall;
@@ -527,9 +548,11 @@
         if (!workingCall) {
             if (transferPane) transferPane.hidden = true;
             if (capturePane) capturePane.hidden = true;
+            transferToggle?.setAttribute('aria-expanded', 'false');
+            captureToggle?.setAttribute('aria-expanded', 'false');
         }
         restore.hidden = !minimized || !(incoming || (ongoing && forceNativeControls));
-        if ((incoming || finishedSdk || shownOutgoing) && incomingPanel) {
+        if ((incoming || finishedSdk || finishedIncoming || shownOutgoing) && incomingPanel) {
             const phoneState = shownCall;
             const ringing = incoming && state.phase === 'incoming-ringing';
             const finished = shownOutgoing && !phoneState.active &&
@@ -542,12 +565,15 @@
             // El botón se puede pulsar durante timbrado; el puente comprueba
             // el control del SDK al recibir el clic, sin estado infinito.
             incomingNumber.textContent = String(phoneState.destination || 'Número desconocido');
-            incomingTitle.textContent = finishedSdk ? 'Llamada finalizada' : incoming
-                ? (ringing ? 'Llamada entrante' : 'En conversación')
+            incomingTitle.textContent = (finishedSdk || finishedIncoming)
+                ? 'Llamada finalizada' : incoming
+                ? (finishingIncoming ? 'Finalizando llamada…' :
+                    (ringing ? 'Llamada entrante' : 'En conversación'))
                 : (finished ? 'Llamada finalizada' :
                     (finishing ? 'Finalizando llamada…' :
                     (dialing ? 'Llamando…' : 'En conversación')));
-            incomingEyebrow.textContent = (finished || finishedSdk) ? 'LLAMADA FINALIZADA' :
+            incomingEyebrow.textContent = (finished || finishedSdk || finishedIncoming)
+                ? 'LLAMADA FINALIZADA' :
                 (shownOutgoing ? 'LLAMADA SALIENTE' :
                 (ringing ? 'RECEPCIÓN TELEFÓNICA' : 'LLAMADA EN CURSO'));
             incomingState.textContent = finishedSdk
@@ -558,16 +584,21 @@
                     : phoneState.status === 'completed'
                     ? 'Finalizada · registro WebRTC sin confirmación PBX'
                     : 'Finalizada · llamada sin respuesta')
+                : finishedIncoming
+                ? (phoneState.status === 'transferred'
+                    ? 'Finalizada · transferencia confirmada por la centralita'
+                    : 'Finalizada · llamada concluida')
                 : shownOutgoing
                 ? (finished ? 'Finalizada · registrada en el historial telefónico'
                     : (finishing ? 'Finalizando la conversación…' :
                     (dialing ? 'Marcando desde la extensión ' + cfg.extension
                         : 'Conversación en curso')))
-                : (ringing ? 'Llamada entrante a la extensión ' + cfg.extension
-                    : 'Conversación en curso');
+                : (finishingIncoming ? 'Esperando confirmación de la centralita…' :
+                    (ringing ? 'Llamada entrante a la extensión ' + cfg.extension
+                    : 'Conversación en curso'));
             // El teclado desaparece; el panel empieza en cero.
-            if (preview || finished || finishedSdk) {
-                const duration = (finished || finishedSdk)
+            if (preview || finished || finishedSdk || finishedIncoming) {
+                const duration = (finished || finishedSdk || finishedIncoming)
                     ? formatDuration(phoneState.duration) : '00:00';
                 incomingTimer.textContent = duration;
                 incomingCompactTimer.textContent = duration;
@@ -580,13 +611,18 @@
             compactDecline.hidden = !ringing;
             compactAnswer.disabled = !ringing || Boolean(pending);
             compactDecline.disabled = !ringing || Boolean(pending);
-            muteButton.hidden = finished || finishedSdk || finishing || ringing ||
+            muteButton.hidden = finished || finishedSdk || finishedIncoming ||
+                finishing || finishingIncoming || ringing ||
                 (shownOutgoing && dialing);
-            hangupButton.hidden = finished || finishedSdk || finishing || ringing;
-            compactMute.hidden = finished || finishedSdk || finishing || ringing ||
+            hangupButton.hidden = finished || finishedSdk || finishedIncoming ||
+                finishing || finishingIncoming || ringing;
+            compactMute.hidden = finished || finishedSdk || finishedIncoming ||
+                finishing || finishingIncoming || ringing ||
                 (shownOutgoing && dialing);
-            compactHangup.hidden = finished || finishedSdk || finishing || ringing;
-            if (closeFinished) closeFinished.hidden = !(finished || finishedSdk);
+            compactHangup.hidden = finished || finishedSdk || finishedIncoming ||
+                finishing || finishingIncoming || ringing;
+            if (closeFinished) closeFinished.hidden =
+                !(finished || finishedSdk || finishedIncoming);
             if (registerFinished) registerFinished.hidden =
                 !finishedSdk || phoneState.status !== 'completed' ||
                 phoneState.journalStatus !== 'saved';
@@ -611,7 +647,7 @@
             notice.hidden = !(actionNotice || sdkNotice) || incomingCompact;
             notice.textContent = actionNotice || sdkNotice;
         }
-        callTitle.textContent = finishedSdk ? 'Llamada finalizada' :
+        callTitle.textContent = (finishedSdk || finishedIncoming) ? 'Llamada finalizada' :
             incoming ? 'Llamada entrante' :
             ongoing ? 'Llamada en curso' : 'Teléfono institucional';
         callStatus.textContent = incoming ?
@@ -760,6 +796,13 @@
         if (currentState?.phase === 'incoming-finished' &&
             currentState.context?.type === 'SDK_INCOMING') {
             sendPhoneCommand('CLEAR_FINISHED', {callToken:String(currentState.callToken || '')});
+            return;
+        }
+        if (recentFinishedIncoming) {
+            // El estado real del teléfono lo limpia el host; Cerrar sólo
+            // descarta la vista local, sin tocar la sesión SIP activa.
+            recentFinishedIncoming = null;
+            render();
             return;
         }
         if (!recentFinishedOutgoing) return;
