@@ -36,6 +36,35 @@ python3 tools/fusionar_telefonia_transferencia_operativa_hostinger.py "$TMP/sin-
   grep -Fq 'FUSIÓN COMPATIBLE'
 node --check "$TMP/sin-guarda.js"
 
+# Hostinger puede tener lógica propia en las dos anclas antiguas; se debe
+# fusionar sin borrar ni normalizar esas personalizaciones.
+git show "$BASE:public/javascript/telefonia_shell.js" > "$TMP/hostinger-custom.js"
+python3 - "$TMP/hostinger-custom.js" <<'PY'
+import pathlib,sys
+p=pathlib.Path(sys.argv[1])
+s=p.read_text()
+old="if (!cfg.analystIncomingResults || !hostFrame ||"
+new="if (!cfg.analystIncomingResults || !hostFrame ||\n                !cfg.canTransfer ||"
+assert s.count(old)==1
+s=s.replace(old,new,1)
+old2="(ongoing && state?.direction !== 'incoming')"
+new2="(ongoing && state?.direction !== 'incoming' && Boolean(state?.active))"
+assert s.count(old2)==1
+s=s.replace(old2,new2,1)
+p.write_text(s)
+PY
+python3 tools/fusionar_telefonia_transferencia_operativa_hostinger.py "$TMP/hostinger-custom.js" shell |
+  grep -Fq 'FUSIÓN COMPATIBLE'
+node --check "$TMP/hostinger-custom.js"
+grep -Fq '!cfg.canTransfer ||' "$TMP/hostinger-custom.js"
+grep -Fq "(ongoing && state?.direction !== 'incoming' && Boolean(state?.active))" "$TMP/hostinger-custom.js"
+grep -Fq 'VISIBILIDAD_RECEPTOR_TRANSFER_20261015' "$TMP/hostinger-custom.js"
+grep -Fq 'SOPORTE_RECEPTOR_TRANSFER_20261015' "$TMP/hostinger-custom.js"
+cp "$TMP/hostinger-custom.js" "$TMP/custom-updated.js"
+python3 tools/fusionar_telefonia_transferencia_operativa_hostinger.py "$TMP/hostinger-custom.js" shell |
+  grep -Fq 'YA ACTUALIZADO'
+cmp -s "$TMP/hostinger-custom.js" "$TMP/custom-updated.js"
+
 # Ensayar check, publicación, idempotencia y respaldo sin producción real.
 bash -n tools/desplegar_transferencia_operativa_hostinger.sh
 python3 -m py_compile tools/fusionar_telefonia_transferencia_operativa_hostinger.py
@@ -59,7 +88,7 @@ for file in app/views/telefonia/shell.php public/javascript/telefonia_shell.js \
             public/javascript/telefonia_enrutamiento.js public/javascript/telefonia_host.js; do
     git show "$BASE:$file" > "$IMPE_OPERATIVE_PUBLIC/$file"
 done
-sed -i "s/if (!cfg.analystIncomingResults || !hostFrame ||/if (true || !hostFrame ||/" "$IMPE_OPERATIVE_PUBLIC/public/javascript/telefonia_shell.js"
+sed -i "s/forceNativeControls = true;/forceNativeControls = false;/" "$IMPE_OPERATIVE_PUBLIC/public/javascript/telefonia_shell.js"
 sha="$(sha256sum "$IMPE_OPERATIVE_PUBLIC/public/javascript/telefonia_shell.js" | cut -d' ' -f1)"
 if bash tools/desplegar_transferencia_operativa_hostinger.sh --apply > "$TMP/conflict.log" 2>&1; then
     echo "ERROR: publicación aceptó personalización incompatible" >&2; exit 1
