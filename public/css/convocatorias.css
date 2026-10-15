@@ -4560,3 +4560,132 @@
         align-self: flex-start;
     }
 }
+
+
+/* Formulario público dentro de Nueva convocatoria */
+.convocatoria-public-form-share {
+    padding: 16px;
+    border: 1px solid #dfe6f1;
+    border-radius: 14px;
+    background: #f8fafc;
+}
+
+.convocatoria-public-form-heading {
+    margin-bottom: 14px;
+}
+
+.convocatoria-public-form-heading > div {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.convocatoria-public-form-kicker {
+    color: #008f78;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: .04em;
+}
+
+.convocatoria-public-form-heading strong {
+    color: var(--color-text-primary);
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.convocatoria-public-form-heading small {
+    color: var(--color-text-secondary);
+    font-size: 10px;
+    font-weight: 600;
+}
+
+.convocatoria-public-form-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px;
+    align-items: end;
+}
+
+.convocatoria-public-form-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.convocatoria-public-form-actions .btn {
+    min-height: 40px;
+    white-space: nowrap;
+}
+
+.convocatoria-public-form-result {
+    margin-top: 12px;
+}
+
+.convocatoria-public-form-url {
+    min-height: 42px;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    padding: 0 10px;
+    border: 1px solid #dfe6f1;
+    border-radius: 10px;
+    background: #fff;
+}
+
+.convocatoria-public-form-url > i {
+    color: var(--color-primary);
+}
+
+.convocatoria-public-form-url input {
+    min-width: 0;
+    width: 100%;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: var(--color-text-secondary);
+    font: inherit;
+    font-size: 10px;
+}
+
+.convocatoria-public-form-url .btn {
+    padding: 4px 7px;
+    border: 0;
+    color: var(--color-primary);
+}
+
+.convocatoria-public-form-qr {
+    margin-top: 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.convocatoria-public-form-qr img {
+    width: 112px;
+    height: 112px;
+    object-fit: contain;
+    border: 1px solid #e2e7ef;
+    border-radius: 10px;
+    background: #fff;
+}
+
+.convocatoria-public-form-qr small {
+    color: var(--color-text-secondary);
+    font-size: 10px;
+    font-weight: 600;
+}
+
+@media (max-width: 767.98px) {
+    .convocatoria-public-form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .convocatoria-public-form-actions {
+        flex-wrap: wrap;
+    }
+
+    .convocatoria-public-form-actions .btn {
+        flex: 1 1 160px;
+    }
+}
