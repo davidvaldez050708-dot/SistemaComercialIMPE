@@ -110,6 +110,9 @@ if grep -Fq "convocatoria-month-page" "$DST/app/views/convocatorias/index.php"; 
 fi
 
 grep -Fq "convocatoria-overview-types" "$DST/app/views/convocatorias/index.php"
+grep -Fq "Administra las convocatorias de tu territorio" "$DST/app/views/convocatorias/index.php"
+grep -Fq ">Titulación<" "$DST/app/views/convocatorias/index.php"
+grep -Fq ">Bachillerato<" "$DST/app/views/convocatorias/index.php"
 
 if grep -Fq "convocatoria-titulacion-cards" "$DST/app/views/convocatorias/index.php"; then
     echo "ERROR: la vista intermedia de subtipos todavía aparece en producción." >&2
