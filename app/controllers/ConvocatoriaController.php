@@ -266,6 +266,15 @@ class ConvocatoriaController
         $datosFormulario = $_SESSION['datos_convocatoria'] ?? [];
         $modalAbierto = $_SESSION['modal_convocatoria'] ?? '';
 
+        if (
+            $modalAbierto === '' &&
+            !empty($desdeConvenio) &&
+            (int)($_GET['abrir_nueva_convocatoria'] ?? 0) === 1 &&
+            $territorioSeleccionado
+        ) {
+            $modalAbierto = 'crear';
+        }
+
         if ($mensajeError === '' && !empty($erroresFormulario)) {
             $mensajeError =
                 'Completa los campos obligatorios y revisa los datos antes de guardar la convocatoria.';
