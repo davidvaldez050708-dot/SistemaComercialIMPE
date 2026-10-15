@@ -66,6 +66,19 @@ if command -v php >/dev/null 2>&1; then
     php -l "$SRC/app/views/convocatorias/crear_desde_convenio.php" >/dev/null
 fi
 
+# Evita falsos positivos si el repositorio local de Hostinger está atrasado.
+if ! grep -Fq "aliados_asignaciones" "$SRC/app/models/CrearConvocatoriaModel.php"; then
+    echo "ERROR: el repositorio fuente todavía tiene la versión anterior del modelo." >&2
+    echo "Ejecuta: git fetch origin && git reset --hard origin/main" >&2
+    exit 1
+fi
+
+if ! grep -Fq "Convenios de aliados" "$SRC/app/views/convocatorias/crear_desde_convenio.php"; then
+    echo "ERROR: el repositorio fuente todavía tiene la vista anterior de Crear convocatoria." >&2
+    echo "Ejecuta: git fetch origin && git reset --hard origin/main" >&2
+    exit 1
+fi
+
 if [[ "$MODE" == "--check" ]]; then
     changes=0
 
