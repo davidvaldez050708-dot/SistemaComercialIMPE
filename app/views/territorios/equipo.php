@@ -10,6 +10,7 @@ $usuariosAnalistas = $usuariosAnalistas ?? [];
 $asesoresTerritorio = $asesoresTerritorio ?? [];
 $usuariosAsesores = $usuariosAsesores ?? [];
 $fechaHoy = date('Y-m-d');
+if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 $tieneCuentasClave = !empty($equipoTerritorial);
 
 $texto = function ($valor) {
@@ -480,6 +481,55 @@ $fecha = function ($valorFecha) use ($texto) {
                                 Eliminar asignación
                             </button>
                         </div>
+                        <?php if ($tieneCuentasClave): ?>
+                        <button type="button" class="btn btn-territory-expand"
+                            data-team-toggle
+                            data-target="formAsesorCuenta<?= (int)$asesor['id'] ?>"
+                            aria-controls="formAsesorCuenta<?= (int)$asesor['id'] ?>"
+                            aria-expanded="false">
+                            <i class="bi bi-people me-2" aria-hidden="true"></i>
+                            <?= !empty($asesor['cuenta_clave_asignacion_id'])
+                                ? 'Cambiar Cuenta Clave del Asesor'
+                                : 'Vincular Cuenta Clave al Asesor' ?>
+                        </button>
+                        <div class="territory-expandable-form"
+                            id="formAsesorCuenta<?= (int)$asesor['id'] ?>" hidden>
+                            <form class="territory-inline-form" data-team-form
+                                method="POST"
+                                action="<?= BASE_URL ?>index.php?controller=territorio&action=vincularAsesorCuentaClave">
+                                <input type="hidden" name="csrf_token"
+                                    value="<?= $texto($_SESSION['csrf_token']) ?>">
+                                <input type="hidden" name="asignacion_asesor_id"
+                                    value="<?= (int)$asesor['id'] ?>">
+                                <div>
+                                    <label class="form-label"
+                                        for="asesorCuentaClave<?= (int)$asesor['id'] ?>">
+                                        Cuenta Clave correspondiente
+                                    </label>
+                                    <select class="form-select"
+                                        id="asesorCuentaClave<?= (int)$asesor['id'] ?>"
+                                        name="cuenta_clave_asignacion_id" required>
+                                        <option value="">Selecciona Cuenta Clave</option>
+                                        <?php foreach ($equipoTerritorial as $cuentaAsignacion): ?>
+                                        <option value="<?= (int)$cuentaAsignacion['id'] ?>"
+                                            <?= (int)($asesor['cuenta_clave_asignacion_id'] ?? 0) ===
+                                                (int)$cuentaAsignacion['id'] ? 'selected' : '' ?>>
+                                            <?= $nombreUsuario($cuentaAsignacion) ?>
+                                        </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                                <div class="territory-inline-actions">
+                                    <button type="button" class="btn btn-system-cancel" data-team-cancel>
+                                        Cancelar
+                                    </button>
+                                    <button type="submit" class="btn btn-territory-analyst">
+                                        Guardar Cuenta Clave
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                        <?php endif; ?>
                     <?php endforeach; ?>
 
                 <?php else: ?>
