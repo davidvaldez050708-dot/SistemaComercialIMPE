@@ -1585,6 +1585,49 @@ document.addEventListener('DOMContentLoaded', function () {
             result?.classList.remove('d-none');
         });
 
+        const mostrarToastCopia = function () {
+            let container = document.querySelector(
+                '[data-convocatoria-copy-toast-container]'
+            );
+
+            if (!container) {
+                container = document.createElement('div');
+                container.className =
+                    'toast-container position-fixed top-0 end-0 p-3';
+                container.setAttribute(
+                    'data-convocatoria-copy-toast-container',
+                    ''
+                );
+                container.style.zIndex = '1100';
+                document.body.appendChild(container);
+            }
+
+            const toast = document.createElement('div');
+            toast.className = 'toast system-toast';
+            toast.setAttribute('role', 'status');
+            toast.setAttribute('aria-live', 'polite');
+            toast.setAttribute('aria-atomic', 'true');
+
+            toast.innerHTML =
+                '<div class="toast-body">' +
+                    '<i class="bi bi-check2-circle"></i>' +
+                    '<span>Enlace copiado correctamente.</span>' +
+                '</div>';
+
+            container.appendChild(toast);
+
+            toast.addEventListener('hidden.bs.toast', function () {
+                toast.remove();
+            });
+
+            if (window.bootstrap) {
+                bootstrap.Toast.getOrCreateInstance(toast, {
+                    autohide: true,
+                    delay: 2600
+                }).show();
+            }
+        };
+
         copyButton?.addEventListener('click', async function () {
             const url = String(inputUrl?.value || '').trim();
 
@@ -1594,10 +1637,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
             try {
                 await navigator.clipboard.writeText(url);
+                mostrarToastCopia();
             } catch (error) {
                 inputUrl?.focus();
                 inputUrl?.select();
                 document.execCommand('copy');
+                mostrarToastCopia();
             }
         });
     }
