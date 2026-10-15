@@ -419,7 +419,7 @@
     // automáticamente un expediente por llenar esta ficha.
     const captureForm = $('[data-routing-capture-form]');
     const captureMsg = $('[data-routing-capture-message]');
-    const keyFor = id => 'impe:crm:call-draft:'+Number(cfg.userId)+':'+id;
+    const draftKeyFor = id => 'impe:crm:call-draft:'+Number(cfg.userId)+':'+id;
     let draftCallId = '';
     const updateDraftContext = () => {
         const id = call()?.id || '';
@@ -427,7 +427,7 @@
             draftCallId = id;
             captureForm.reset();
             try {
-                const saved = JSON.parse(sessionStorage.getItem(keyFor(id)) || 'null');
+                const saved = JSON.parse(sessionStorage.getItem(draftKeyFor(id)) || 'null');
                 if (saved && Date.now() - Number(saved.saved_at || 0) < 86400000) {
                     ['nombre','persona','telefono','correo','notas'].forEach(name => {
                         if (captureForm.elements.namedItem(name))
@@ -451,7 +451,7 @@
         ['nombre','persona','telefono','correo','notas'].forEach(name =>
             values[name] = String(captureForm.elements.namedItem(name)?.value || '').trim());
         try {
-            sessionStorage.setItem(keyFor(current.id), JSON.stringify(values));
+            sessionStorage.setItem(draftKeyFor(current.id), JSON.stringify(values));
             if (captureMsg) captureMsg.textContent =
                 'Borrador guardado para esta llamada. Confirma el resultado al finalizar.';
         } catch (_) {
