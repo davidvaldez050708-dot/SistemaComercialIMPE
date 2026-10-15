@@ -942,6 +942,36 @@
                 '</section>';
         };
 
+        // La ruta no debe desaparecer cuando falla la consulta operativa.
+        // Se conserva la etapa ya autorizada y renderizada por PHP; sin inventar
+        // pasos o progreso mientras el servicio no responde.
+        const rutaProvisional = function (mensaje) {
+            if (!seccionResumen || seccionResumen.querySelector('[data-expediente-route-card]')) {
+                return;
+            }
+            const etapa = Array.from(seccionResumen.querySelectorAll('.detail-row'))
+                .find(item => normalizar(item.querySelector('span')?.textContent) === 'etapa actual')
+                ?.querySelector('strong')?.textContent?.trim() || 'Seguimiento en curso';
+            const tarjeta = document.createElement('div');
+            tarjeta.className = 'linkage-expediente-route-card';
+            tarjeta.setAttribute('data-expediente-route-card', '');
+            const heading = document.createElement('div');
+            heading.className = 'linkage-expediente-route-heading';
+            const bloque = document.createElement('div');
+            const label = document.createElement('span');
+            label.className = 'linkage-expediente-eyebrow';
+            label.textContent = 'Ruta de vinculación';
+            const title = document.createElement('strong');
+            title.textContent = etapa;
+            bloque.append(label, title);
+            heading.appendChild(bloque);
+            const description = document.createElement('p');
+            description.className = 'linkage-expediente-route-description';
+            description.textContent = mensaje;
+            tarjeta.append(heading, description);
+            seccionResumen.appendChild(tarjeta);
+        };
+
         const cargarDatos = async function () {
             try {
                 const respuesta = await fetch(urlDatos, {
@@ -955,11 +985,13 @@
                 }
 
                 renderizarResumen(datos);
+                if (!datos.flujo) rutaProvisional('La etapa está disponible; no se recibió el avance detallado.');
                 renderizarAgenda(datos);
                 renderizarReunion(datos);
                 renderizarConvenio(datos);
             } catch (error) {
                 console.error(error);
+                rutaProvisional('La etapa está disponible. No fue posible actualizar el progreso en este momento.');
                 renderizarVacio(
                     'agenda',
                     'bi-exclamation-circle',
