@@ -1,0 +1,28 @@
+name: Despliegue marcador y reproductor Hostinger
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tools/desplegar_marcador_audio_unificado_hostinger.py'
+      - 'tests/marcador_audio_unificado_despliegue_smoke.py'
+      - '.github/workflows/despliegue-marcador-audio-hostinger.yml'
+jobs:
+  simulacion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: none
+      - name: Sintaxis y simulación conservadora de despliegue
+        run: |
+          python3 -m py_compile tools/desplegar_marcador_audio_unificado_hostinger.py
+          python3 tests/marcador_audio_unificado_despliegue_smoke.py
+          php -l app/views/layout/dashboard_footer.php
+          node --check public/javascript/telefonia_teclado.js
+          node --check public/javascript/telefonia_segmentos_player.js
+          node --check public/javascript/telefonia_recepcion_marketing.js
+          node --check public/javascript/seguimiento_entrantes_analista.js
