@@ -896,7 +896,7 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
                 class="form-select system-form-control"
                 id="filtro_convocatoria_clasificacion"
                 name="clasificacion"
-                onchange="this.form.submit()">
+                data-convocatoria-clasificacion>
                 <option value="">Todas las convocatorias</option>
                 <?php foreach ($clasificacionesDisponibles as $clasificacion): ?>
                     <option
@@ -931,7 +931,7 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
         <div class="convocatoria-filter-actions">
             <a
                 class="filter-clear-link <?= ($buscar === '' && $fechaFiltro === '' && $categoriaFiltro === '' && $clasificacionFiltroActual === '') ? 'd-none' : '' ?>"
-                href="<?= BASE_URL ?>index.php?controller=convocatoria&action=index&territorio_id=<?= (int)$territorioSeleccionado['id'] ?>"
+                href="<?= BASE_URL ?>index.php?controller=convocatoria&action=index&territorio_id=<?= (int)$territorioSeleccionado['id'] ?>&tipo=<?= $texto($tipoConvocatoria) ?>"
                 data-convocatoria-clear-filters>
                 Limpiar filtros
             </a>
@@ -1817,6 +1817,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const filtroBuscar = document.getElementById('filtro_convocatoria_buscar');
     const filtroFecha = document.getElementById('filtro_convocatoria_fecha');
     const filtroCategoria = document.getElementById('filtro_convocatoria_categoria');
+    const filtroClasificacion = document.querySelector('[data-convocatoria-clasificacion]');
     const limpiarFiltros = document.querySelector('[data-convocatoria-clear-filters]');
     const listadoConvocatorias = document.querySelector('[data-convocatorias-listado]');
     const tabsConvocatorias = Array.from(
@@ -1847,7 +1848,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const hayFiltros =
             String(filtroBuscar?.value || '').trim() !== '' ||
             String(filtroFecha?.value || '') !== '' ||
-            String(filtroCategoria?.value || '') !== '';
+            String(filtroCategoria?.value || '') !== '' ||
+            String(filtroClasificacion?.value || '') !== '';
 
         limpiarFiltros?.classList.toggle('d-none', !hayFiltros);
     };
@@ -2180,7 +2182,8 @@ document.addEventListener('DOMContentLoaded', function () {
             buscar: String(filtroBuscar?.value || '').trim(),
             territorio_id: <?= json_encode((string)(int)$territorioSeleccionado['id']) ?>,
             tipo: <?= json_encode($tipoConvocatoria) ?>,
-            subtipo: <?= json_encode($subtipoConvocatoria) ?>,
+            subtipo: '',
+            clasificacion: String(filtroClasificacion?.value || ''),
             fecha: String(filtroFecha?.value || ''),
             categoria: String(filtroCategoria?.value || ''),
             anio: <?= json_encode((string)(int)$anioSeleccionado) ?>,
@@ -2258,6 +2261,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
     filtroBuscar?.addEventListener('input', programarBusqueda);
 
+    filtroClasificacion?.addEventListener('change', function () {
+        window.clearTimeout(temporizadorFiltro);
+        actualizarVisibilidadLimpiar();
+        cargarListadoFiltrado();
+    });
+
     filtroFecha?.addEventListener('change', function () {
         window.clearTimeout(temporizadorFiltro);
         actualizarVisibilidadLimpiar();
@@ -2284,6 +2293,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (filtroCategoria) {
             filtroCategoria.value = '';
+        }
+
+        if (filtroClasificacion) {
+            filtroClasificacion.value = '';
         }
 
         actualizarVisibilidadLimpiar();
