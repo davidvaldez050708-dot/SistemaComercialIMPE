@@ -1,6 +1,34 @@
 <?php
 
-require_once __DIR__ . '/../config/db_connection.php';
+$home = rtrim((string)(getenv('HOME') ?: ''), '/');
+$candidatosConexion = array_filter([
+    getenv('IMPE_DB_CONNECTION_FILE') ?: null,
+    $home !== ''
+        ? $home . '/domains/fundacionrededumex.org/public_html/config/db_connection.php'
+        : null,
+    $home !== ''
+        ? $home . '/public_html/config/db_connection.php'
+        : null,
+    __DIR__ . '/../config/db_connection.php'
+]);
+
+$archivoConexion = null;
+
+foreach ($candidatosConexion as $candidato) {
+    if (is_file($candidato)) {
+        $archivoConexion = $candidato;
+        break;
+    }
+}
+
+if ($archivoConexion === null) {
+    fwrite(STDERR, "ERROR: no se encontró config/db_connection.php.\n");
+    exit(1);
+}
+
+echo "Configuración utilizada: " . $archivoConexion . "\n";
+
+require_once $archivoConexion;
 
 $database = new Database();
 $connection = $database->connect();
