@@ -172,6 +172,11 @@ $hayEstadosAdicionalesCrear = count(
 $fechasOpcionalesConvocatoria =
     $subtipoConvocatoria === 'inscripciones-abiertas';
 ?>
+<!-- CSS Convocatorias con cache busting -->
+<link
+    rel="stylesheet"
+    href="<?= BASE_URL ?>public/css/convocatorias.css?v=<?= urlencode((string)@filemtime(__DIR__ . '/../../../public/css/convocatorias.css')) ?>">
+
 
 <?php if ($mensajeExito !== ''): ?>
     <div class="toast-container position-fixed top-0 end-0 p-3">
