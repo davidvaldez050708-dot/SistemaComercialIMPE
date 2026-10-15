@@ -11,7 +11,7 @@ SOURCE="${IMPE_RESULTADO_SOURCE:-$HOME/crm-preparacion}"
 LIVE="${IMPE_RESULTADO_PUBLIC:-$HOME/domains/fundacionrededumex.org/public_html}"
 BACKUPS="${IMPE_RESULTADO_BACKUPS:-$HOME/respaldos-crm}"
 BASE="bcaa4551db0bf0981900e6d6774398593f3e1331"
-TARGET="bb7de0d8b141edf9e48e9b212c7cc42174d654ca"
+TARGET="cd3ea18d39c987b697ab08841ed362cf5cb6b2f6"
 FILES=("public/javascript/telefonia_analista_historial_pasivo.js"
        "public/javascript/seguimiento_entrantes_analista.js")
 [[ -d "$SOURCE/.git" && -f "$LIVE/index.php" && ! -L "$LIVE" ]] || {
