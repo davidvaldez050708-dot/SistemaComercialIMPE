@@ -123,9 +123,7 @@ def merge(current: str, before: str, after: str) -> Tuple[str, List[str]]:
         # una alteración arbitraria del bloque ni una instrucción adicional.
         # El nuevo onConnected informa el evento 'answered' sólo cuando el
         # observador SDK ha visto la conexión, evitando un falso contestado.
-        missing_report = "                reportSdkEvent('answered', state);\\n"
-        # Usar un LF real; la variante tolerada no implica cambiar el resto.
-        missing_report = missing_report.replace('\\\\n', '\\n')
+        missing_report = "                reportSdkEvent('answered', state);" + chr(10)
         require(old_branch.count(missing_report) == 1,
                 'Referencia de Contestar: evento answered no único')
         legacy_without_report = old_branch.replace(missing_report, '', 1)
