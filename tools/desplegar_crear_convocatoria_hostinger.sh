@@ -80,6 +80,11 @@ if ! grep -Fq "Convenios de aliados" "$SRC/app/views/convocatorias/crear_desde_c
 fi
 
 if [[ "$MODE" == "--check" ]]; then
+    if grep -Pzo '<select[\s\S]*?id="crear_convocatoria_estado"[\s\S]*?</select>' "$SRC/app/views/convocatorias/crear_desde_convenio.php" >/dev/null 2>&1; then
+        echo "ERROR: SELECT NATIVO DETECTADO en la fuente. El filtro aún no usa el desplegable personalizado." >&2
+        exit 1
+    fi
+
     changes=0
 
     for file in "${FILES[@]}"; do
@@ -136,6 +141,6 @@ grep -Fq "Filtro de estados alineado" "$DST/public/css/crear_convocatoria.css"
 grep -Fq "Desplegable de estados siempre hacia abajo" "$DST/public/css/crear_convocatoria.css"
 
 echo
-echo "OK: bandeja Marketing actualizada con catálogo completo de estados y tipografía del sistema."
+echo "OK: filtro de Estado publicado con desplegable personalizado hacia abajo."
 echo "Respaldo: $BACKUP"
 echo "Recarga el navegador con Ctrl+F5."
