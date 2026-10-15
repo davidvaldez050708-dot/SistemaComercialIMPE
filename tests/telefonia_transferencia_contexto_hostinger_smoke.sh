@@ -27,7 +27,7 @@ php -r '
 $s=file_get_contents("app/services/TelefoniaTransferenciaContextoService.php");
 foreach(["pbx_call_id = ? AND internal = ?","AND analista_id = ? AND estado_id = ?",
   "c.destino_usuario_id = ? AND c.destino_extension = ?",
-  "count($rows) !== 1"] as $guard){
+  "count(" . chr(36) . "rows) !== 1"] as $guard){
     if(strpos($s,$guard)===false)exit(1);
 }
 echo "Contexto institucional: controles presentes.\n";
