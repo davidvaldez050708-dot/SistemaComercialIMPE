@@ -154,7 +154,7 @@
             String(button.dataset.phone || 'Número privado');
         let durationSeconds = 0;
         const listedDuration = String(button.dataset.duration || '00:00');
-        const parts = /^(\\d{1,3}):(\\d{2})$/.exec(listedDuration);
+        const parts = /^(\d{1,3}):(\d{2})$/.exec(listedDuration);
         if (parts) durationSeconds = Number(parts[1]) * 60 + Number(parts[2]);
         // Un evento UTC recibido tarde puede registrar 00:01 aunque el
         // cronómetro de la sesión haya observado 00:19. Mostrar el tiempo
