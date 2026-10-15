@@ -1063,6 +1063,126 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
                             </small>
                         </div>
 
+<div class="system-form-full convocatoria-public-form-share"
+                            data-convocatoria-form-share
+                            data-registro-url="<?= BASE_URL ?>index.php?controller=formularioPublico&action=registro"
+                            data-inscripcion-url="<?= BASE_URL ?>index.php?controller=formularioPublico&action=inscripcion"
+                            data-quickchart-url="https://quickchart.io/qr">
+
+                            <div class="convocatoria-public-form-heading">
+                                <div>
+                                    <span class="convocatoria-public-form-kicker">FORMULARIO PÚBLICO</span>
+                                    <strong>Enlace y código QR</strong>
+                                    <small>
+                                        Selecciona el formulario que se utilizará para esta convocatoria.
+                                    </small>
+                                </div>
+                            </div>
+
+                            <div class="convocatoria-public-form-grid">
+                                <div>
+                                    <label
+                                        class="form-label login-label"
+                                        for="crear_convocatoria_formulario_publico">
+                                        Formulario
+                                    </label>
+                                    <div
+                                        class="convocatoria-form-type-dropdown"
+                                        data-convocatoria-form-type-dropdown>
+                                        <input
+                                            type="hidden"
+                                            id="crear_convocatoria_formulario_publico"
+                                            value=""
+                                            data-convocatoria-form-type>
+
+                                        <button
+                                            type="button"
+                                            class="convocatoria-form-type-trigger"
+                                            aria-haspopup="listbox"
+                                            aria-expanded="false"
+                                            data-convocatoria-form-type-trigger>
+                                            <span data-convocatoria-form-type-label>
+                                                Selecciona una opción
+                                            </span>
+                                            <i class="bi bi-chevron-down" aria-hidden="true"></i>
+                                        </button>
+
+                                        <div
+                                            class="convocatoria-form-type-menu"
+                                            role="listbox"
+                                            aria-label="Seleccionar formulario"
+                                            data-convocatoria-form-type-menu>
+                                            <button
+                                                type="button"
+                                                class="convocatoria-form-type-option is-selected"
+                                                role="option"
+                                                aria-selected="true"
+                                                data-convocatoria-form-type-value="">
+                                                Selecciona una opción
+                                            </button>
+                                            <button
+                                                type="button"
+                                                class="convocatoria-form-type-option"
+                                                role="option"
+                                                aria-selected="false"
+                                                data-convocatoria-form-type-value="registro">
+                                                Registro
+                                            </button>
+                                            <button
+                                                type="button"
+                                                class="convocatoria-form-type-option"
+                                                role="option"
+                                                aria-selected="false"
+                                                data-convocatoria-form-type-value="inscripcion">
+                                                Inscripción
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="convocatoria-public-form-actions">
+                                    <button
+                                        type="button"
+                                        class="btn btn-system-save"
+                                        data-convocatoria-generate-link
+                                        disabled>
+                                        <i class="bi bi-link-45deg"></i>
+                                        Generar link
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        class="btn btn-system-save"
+                                        data-convocatoria-generate-qr
+                                        disabled>
+                                        <i class="bi bi-qr-code"></i>
+                                        Generar QR
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div
+                                class="convocatoria-public-form-result d-none"
+                                data-convocatoria-form-result>
+                                <div class="convocatoria-public-form-url">
+                                    <i class="bi bi-link-45deg"></i>
+                                    <input
+                                        type="text"
+                                        readonly
+                                        data-convocatoria-form-url>
+                                    <button
+                                        type="button"
+                                        class="btn"
+                                        title="Copiar enlace"
+                                        aria-label="Copiar enlace"
+                                        data-convocatoria-copy-link>
+                                        <i class="bi bi-copy"></i>
+                                    </button>
+                                </div>
+
+                            </div>
+                        </div>
+
                         <div class="system-form-full">
                             <label class="form-label login-label" for="crear_convocatoria_titulo">Título</label>
                             <input
@@ -1190,125 +1310,7 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
                             name="estados[]"
                             value="<?= $territorioActualId ?>">
 
-                        <div class="system-form-full convocatoria-public-form-share"
-                            data-convocatoria-form-share
-                            data-registro-url="<?= BASE_URL ?>index.php?controller=formularioPublico&action=registro"
-                            data-inscripcion-url="<?= BASE_URL ?>index.php?controller=formularioPublico&action=inscripcion"
-                            data-quickchart-url="https://quickchart.io/qr">
-
-                            <div class="convocatoria-public-form-heading">
-                                <div>
-                                    <span class="convocatoria-public-form-kicker">FORMULARIO PÚBLICO</span>
-                                    <strong>Enlace y código QR</strong>
-                                    <small>
-                                        Selecciona el formulario que se utilizará para esta convocatoria.
-                                    </small>
-                                </div>
-                            </div>
-
-                            <div class="convocatoria-public-form-grid">
-                                <div>
-                                    <label
-                                        class="form-label login-label"
-                                        for="crear_convocatoria_formulario_publico">
-                                        Formulario
-                                    </label>
-                                    <div
-                                        class="convocatoria-form-type-dropdown"
-                                        data-convocatoria-form-type-dropdown>
-                                        <input
-                                            type="hidden"
-                                            id="crear_convocatoria_formulario_publico"
-                                            value=""
-                                            data-convocatoria-form-type>
-
-                                        <button
-                                            type="button"
-                                            class="convocatoria-form-type-trigger"
-                                            aria-haspopup="listbox"
-                                            aria-expanded="false"
-                                            data-convocatoria-form-type-trigger>
-                                            <span data-convocatoria-form-type-label>
-                                                Selecciona una opción
-                                            </span>
-                                            <i class="bi bi-chevron-down" aria-hidden="true"></i>
-                                        </button>
-
-                                        <div
-                                            class="convocatoria-form-type-menu"
-                                            role="listbox"
-                                            aria-label="Seleccionar formulario"
-                                            data-convocatoria-form-type-menu>
-                                            <button
-                                                type="button"
-                                                class="convocatoria-form-type-option is-selected"
-                                                role="option"
-                                                aria-selected="true"
-                                                data-convocatoria-form-type-value="">
-                                                Selecciona una opción
-                                            </button>
-                                            <button
-                                                type="button"
-                                                class="convocatoria-form-type-option"
-                                                role="option"
-                                                aria-selected="false"
-                                                data-convocatoria-form-type-value="registro">
-                                                Registro
-                                            </button>
-                                            <button
-                                                type="button"
-                                                class="convocatoria-form-type-option"
-                                                role="option"
-                                                aria-selected="false"
-                                                data-convocatoria-form-type-value="inscripcion">
-                                                Inscripción
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="convocatoria-public-form-actions">
-                                    <button
-                                        type="button"
-                                        class="btn btn-system-save"
-                                        data-convocatoria-generate-link
-                                        disabled>
-                                        <i class="bi bi-link-45deg"></i>
-                                        Generar link
-                                    </button>
-
-                                    <button
-                                        type="button"
-                                        class="btn btn-system-save"
-                                        data-convocatoria-generate-qr
-                                        disabled>
-                                        <i class="bi bi-qr-code"></i>
-                                        Generar QR
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div
-                                class="convocatoria-public-form-result d-none"
-                                data-convocatoria-form-result>
-                                <div class="convocatoria-public-form-url">
-                                    <i class="bi bi-link-45deg"></i>
-                                    <input
-                                        type="text"
-                                        readonly
-                                        data-convocatoria-form-url>
-                                    <button
-                                        type="button"
-                                        class="btn"
-                                        title="Copiar enlace"
-                                        aria-label="Copiar enlace"
-                                        data-convocatoria-copy-link>
-                                        <i class="bi bi-copy"></i>
-                                    </button>
-                                </div>
-
-                            </div>
-                        </div>
+                        
                     </div>
                 </div>
 
