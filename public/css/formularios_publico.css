@@ -1485,3 +1485,85 @@ html {
 .formulario-publico-inscripcion .formulario-publico-hero::after {
     display: none;
 }
+
+
+/* Inscripción alineada visualmente con Registro */
+.formulario-publico-inscripcion {
+    --inscripcion-green: #075692;
+    --inscripcion-green-dark: #064b87;
+    --inscripcion-green-deep: #07396c;
+    --inscripcion-green-soft: #eef6ff;
+    --inscripcion-green-border: #dceafb;
+}
+
+.formulario-publico-inscripcion .formulario-publico-hero {
+    background:
+        linear-gradient(
+            118deg,
+            rgba(6, 75, 135, .88) 0%,
+            rgba(7, 86, 146, .82) 48%,
+            rgba(7, 57, 108, .90) 100%
+        ),
+        url('../img/brand/red-graduacion.jpeg') center 78% / cover no-repeat;
+    box-shadow: 0 13px 35px rgba(20, 72, 126, .12);
+}
+
+.formulario-publico-inscripcion .formulario-publico-section-heading {
+    border-color: #dceafb;
+    background: linear-gradient(
+        90deg,
+        #eef6ff 0%,
+        #e9f4ff 58%,
+        #f3f8fe 100%
+    );
+}
+
+.formulario-publico-inscripcion .formulario-publico-section-icon {
+    border-color: #dceafb;
+    background:
+        radial-gradient(
+            circle at 35% 30%,
+            #fff 0%,
+            #edf6ff 58%,
+            #dceeff 100%
+        );
+    color: #0670e8;
+    box-shadow: inset 0 0 0 1px #e0efff;
+}
+
+.formulario-publico-inscripcion .formulario-publico-section-heading h2,
+.formulario-publico-inscripcion
+.formulario-publico-recomendacion
+.formulario-publico-recomendacion-heading h2 {
+    color: #0b2856;
+}
+
+.formulario-publico-inscripcion .formulario-publico-field input:focus,
+.formulario-publico-inscripcion .formulario-publico-field select:focus {
+    border-color: #2981e6;
+    box-shadow: 0 0 0 3px rgba(41, 129, 230, .11);
+}
+
+.formulario-publico-inscripcion .formulario-publico-field input.is-valid,
+.formulario-publico-inscripcion .formulario-publico-field select.is-valid {
+    border-color: #5ba38d;
+}
+
+.formulario-publico-inscripcion .formulario-publico-submit {
+    background:
+        linear-gradient(
+            118deg,
+            #064b87 0%,
+            #075692 48%,
+            #07396c 100%
+        );
+    box-shadow: 0 9px 20px rgba(20, 72, 126, .17);
+}
+
+.formulario-publico-inscripcion .formulario-publico-submit:hover {
+    box-shadow: 0 12px 23px rgba(20, 72, 126, .22);
+}
+
+.formulario-publico-inscripcion .formulario-publico-recomendacion {
+    background: #fbfcff;
+}
