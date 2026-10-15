@@ -11,6 +11,7 @@ No altera funciones personalizadas ajenas a responder llamadas SDK.
 import pathlib
 import re
 import sys
+from typing import List, Tuple
 
 
 class Conflicto(Exception):
@@ -39,7 +40,7 @@ def strip_comments_and_whitespace(chunk: str) -> str:
     return chunk
 
 
-def find_answer_branch(body: str) -> tuple[str, str, str]:
+def find_answer_branch(body: str) -> Tuple[str, str, str]:
     prefix = re.search(
         r'if\s*\(\s*sdkOnly\s*&&\s*state\.active\s*&&'
         r'\s*String\(state\.callToken\s*\|\|\s*[\'"]{2}\)\s*===\s*token\s*\)\s*\{',
@@ -79,7 +80,7 @@ def section_callback(source: str) -> str:
     return source[start:finish]
 
 
-def merge(current: str, before: str, after: str) -> tuple[str, list[str]]:
+def merge(current: str, before: str, after: str) -> Tuple[str, List[str]]:
     operations = []
     obs_before = section_callback(before)
     obs_after = section_callback(after)
