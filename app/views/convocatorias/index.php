@@ -2045,6 +2045,42 @@ document.addEventListener('DOMContentLoaded', function () {
             return url.toString();
         };
 
+        const canGeneratePublicLink = function () {
+            const type = String(select?.value || '').trim();
+            const classification = String(
+                document.querySelector(
+                    '[data-convocatoria-context-classification]'
+                )?.value || ''
+            ).trim();
+            const title = String(
+                document.querySelector(
+                    '[data-convocatoria-context-title]'
+                )?.value || ''
+            ).trim();
+            const aliadoId = String(
+                share.dataset.aliadoId || ''
+            ).trim();
+            const estadoId = String(
+                share.dataset.estadoId || ''
+            ).trim();
+
+            return (
+                (type === 'registro' || type === 'inscripcion') &&
+                classification !== '' &&
+                title !== '' &&
+                aliadoId !== '' &&
+                aliadoId !== '0' &&
+                estadoId !== '' &&
+                estadoId !== '0'
+            );
+        };
+
+        const updatePublicLinkAvailability = function () {
+            if (buttonLink) {
+                buttonLink.disabled = !canGeneratePublicLink();
+            }
+        };
+
         const resetShare = function () {
             result?.classList.add('d-none');
             if (inputUrl) {
@@ -2097,13 +2133,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 closeFormTypeDropdown();
 
-                const hasType = getSelectedUrl() !== '';
-
-                if (buttonLink) {
-                    buttonLink.disabled = !hasType;
-                }
-
                 resetShare();
+                updatePublicLinkAvailability();
             });
         });
 
@@ -2136,6 +2167,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (!result?.classList.contains('d-none')) {
                     resetShare();
                 }
+
+                updatePublicLinkAvailability();
             };
 
             field?.addEventListener('input', invalidateGeneratedLink);
@@ -2143,6 +2176,10 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         buttonLink?.addEventListener('click', function () {
+            if (!canGeneratePublicLink()) {
+                return;
+            }
+
             const url = getSelectedUrl();
 
             if (url === '') {
