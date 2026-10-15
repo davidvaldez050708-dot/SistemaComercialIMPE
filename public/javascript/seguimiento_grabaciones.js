@@ -211,23 +211,9 @@
             lista.appendChild(vacio);
         };
 
-        fetch(
-            'prueba_telefonia/api/llamadas_seguimiento.php?seguimiento_id=' +
-                encodeURIComponent(seguimientoId),
-            {
-                headers: { 'X-Requested-With': 'fetch' },
-                credentials: 'same-origin',
-                cache: 'no-store'
-            }
-        )
-            .then(function (response) {
-                return response.json().then(function (data) {
-                    if (!response.ok || !data.ok) {
-                        throw new Error(data.mensaje || 'No fue posible cargar las llamadas.');
-                    }
-                    return data;
-                });
-            })
+        (window.IMPE_CONSULTAR_LLAMADAS_EXPEDIENTE
+            ? window.IMPE_CONSULTAR_LLAMADAS_EXPEDIENTE(seguimientoId)
+            : Promise.reject(new Error('No se pudo inicializar el historial.')))
             .then(function (data) {
                 const llamadas = Array.isArray(data.llamadas) ? data.llamadas : [];
                 contador.textContent = String(llamadas.length);
