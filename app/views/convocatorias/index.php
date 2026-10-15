@@ -2151,14 +2151,6 @@ document.addEventListener('DOMContentLoaded', function () {
             url.searchParams.set('formulario', type);
             url.searchParams.set('origen', 'convenio_aliado');
 
-            if (convenioNombre !== '') {
-                url.searchParams.set('convenio', convenioNombre);
-            }
-
-            if (convenioNombre !== '') {
-                url.searchParams.set('aliado', convenioNombre);
-            }
-
             if (estadoId !== '' && estadoId !== '0') {
                 url.searchParams.set('estado_id', estadoId);
             }
