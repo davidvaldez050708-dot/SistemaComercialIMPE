@@ -65,6 +65,13 @@
           '.persistent-phone-live i {background:#8492a8;box-shadow:none;}',
         '.impe-incoming-panel[data-analyst-webrtc-finished="1"] ' +
           '[data-incoming-notice] {line-height:1.5;font-weight:700;}',
+        // El aviso inferior del shell pertenece al flujo PBX histórico.
+        // Una llamada SDK ya usa el modal principal para registrar y nunca
+        // debe mostrar dos acciones simultáneas, incluso si el shell
+        // anterior vuelve a quitar el atributo hidden durante su render.
+        'body.impe-sdk-result-in-modal [data-analyst-call-result] {',
+        '  display:none!important;',
+        '}',
         '.impe-incoming-transfer-context {',
         '  padding:12px 14px; border:1px solid #d9e4f6;',
         '  border-radius:12px;background:#f3f6fd;margin:8px 0;',
@@ -215,6 +222,13 @@
         return chain;
     };
     const draw = function () {
+        // El observador es dueño del registro de una entrante SDK. Mantener
+        // el CTA inferior del shell oculto durante timbrado/conversación,
+        // al terminar y mientras el formulario de resultado está abierto.
+        // No modificar el CTA legado de una llamada PBX no observada.
+        root.document.body?.classList?.toggle(
+            'impe-sdk-result-in-modal', Boolean(active || finished)
+        );
         if (!finished) {
             panel.removeAttribute('data-analyst-webrtc-finished');
             // Desde aquí ya no controlamos el modal: el shell continúa con
