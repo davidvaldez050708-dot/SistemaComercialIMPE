@@ -85,8 +85,9 @@ $puedeRecibirShell = !empty($asignacionTelefonica['permite_entrantes']) &&
         if end < 0 or end - begin > 1600:
             fail('abrir WebRTC: bloque inesperado')
         show_body = s[begin:end]
-        for required in ('forceNativeControls', 'render()', 'return true',
-                         'hostFrame', 'freshState(currentState)'):
+        for required in ('forceNativeControls = true;', 'minimized = false;',
+                         'render()', 'return true', 'hostFrame',
+                         'freshState(currentState)'):
             if required not in show_body:
                 fail('abrir WebRTC: falta comprobación ' + required)
         show_new = show_start + norm("""
