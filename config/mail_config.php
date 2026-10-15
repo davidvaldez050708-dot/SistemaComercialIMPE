@@ -9,13 +9,13 @@ if ($rutaLocal !== null) {
 }
 
 $valores = [
-    'MAIL_HOST' => '',
+    'MAIL_HOST' => 'smtp.hostinger.com',
     'MAIL_PORT' => 587,
     'MAIL_USERNAME' => '',
     'MAIL_PASSWORD' => '',
     'MAIL_ENCRYPTION' => 'tls',
     'MAIL_FROM_ADDRESS' => '',
-    'MAIL_FROM_NAME' => 'Sistema institucional',
+    'MAIL_FROM_NAME' => 'Fundación Red Educativa México',
 ];
 
 foreach ($valores as $nombre => $predeterminado) {
