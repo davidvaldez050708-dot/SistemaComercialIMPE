@@ -2346,8 +2346,21 @@ document.addEventListener('DOMContentLoaded', function () {
             .replaceAll("'", '&#039;');
     }
 
-    <?php if ($modalAbierto === 'crear'): ?>
-        new bootstrap.Modal(document.getElementById('modalCrearConvocatoria')).show();
+    <?php
+    $abrirNuevaConvocatoria =
+        $modalAbierto === 'crear' ||
+        (
+            !empty($desdeConvenio) &&
+            (int)($_GET['abrir_nueva_convocatoria'] ?? 0) === 1
+        );
+    ?>
+
+    <?php if ($abrirNuevaConvocatoria): ?>
+        const modalCrearAutomatico = document.getElementById('modalCrearConvocatoria');
+
+        if (modalCrearAutomatico && window.bootstrap) {
+            bootstrap.Modal.getOrCreateInstance(modalCrearAutomatico).show();
+        }
     <?php endif; ?>
 });
 </script>
