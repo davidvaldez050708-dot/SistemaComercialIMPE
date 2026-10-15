@@ -298,7 +298,7 @@ class TelefoniaRecepcionMarketingService
                 !$call['saliente_transferida'] && $call['audio_reportado'];
             $call['tiene_grabacion'] = $salienteReproducible ||
                 ($call['tipo'] === 'Entrante' &&
-                !$call['transferida'] && $call['contestada'] &&
+                $call['contestada'] &&
                 $call['finalizada'] && $call['audio_reportado']);
             $call['fue_contestada'] = $call['contestada'];
             $call['grabacion_salida_pendiente'] =
