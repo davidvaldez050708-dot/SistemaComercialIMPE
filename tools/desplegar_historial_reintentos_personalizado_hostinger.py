@@ -43,7 +43,10 @@ def inspeccion():
         print("CONFLICTO: JS incompatible con UTF-8.", file=sys.stderr)
         return False
     for item in MARCAS:
-        if content.count(item) != 1:
+        if content.count(item) < 1 or (
+            item == "IMPE_CONSULTAR_LLAMADAS_EXPEDIENTE(seguimientoId)"
+            and content.count(item) != 1
+        ):
             print("CONFLICTO: archivo personalizado no tiene marcador único: " + item, file=sys.stderr)
             print("No se modifica ningún archivo.", file=sys.stderr)
             return False
