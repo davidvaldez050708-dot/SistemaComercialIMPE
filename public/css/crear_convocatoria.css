@@ -420,3 +420,16 @@
         padding-right: 16px;
     }
 }
+
+
+/* Filtro de estados alineado a la tipografía del sistema */
+.crear-convocatoria-toolbar select,
+.crear-convocatoria-toolbar select option {
+    font-family: inherit !important;
+}
+
+.crear-convocatoria-toolbar .form-select {
+    color: var(--color-text-primary);
+    font-size: 12px;
+    font-weight: 600;
+}
