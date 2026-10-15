@@ -505,7 +505,7 @@
                     if (llamada.contacto_efectivo === true) {
                         resultados.appendChild(
                             crearBadgeResultado(
-                                llamada.grabacion_sin_vincular === true
+                                String(llamada.proveedor || '').toUpperCase() === 'ZADARMA_WEBRTC'
                                     ? 'Contacto reportado' : 'Contacto efectivo',
                                 'is-contact'
                             )
