@@ -5,7 +5,7 @@ cd "$(dirname "$0")/.."
 ROOT="$PWD"
 SCRIPT="tools/desplegar_recepcion_rapida_hostinger.sh"
 BASE="aa37af6778127dd0d33047d2d9282a853febb1f9"
-TARGET="aa14190eeba2ac65bd170060f6ed4a512868f580"
+TARGET="b6d6a9797ec85ab8e3e614e92ecc37ff61f6016e"
 FILES=(
   app/services/TelefoniaEnrutamientoService.php
   app/controllers/TelefoniaController.php
