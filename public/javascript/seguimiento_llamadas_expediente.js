@@ -571,6 +571,7 @@
                         String(llamada.grabacion_transferida_pbx || '')
                     ) ? String(llamada.grabacion_transferida_pbx) : '';
                     const grabacionSinVincular = llamada.grabacion_sin_vincular === true;
+                    let panelAudio = null;
                     if (pbxVerificado) {
                         const button = document.createElement('button');
                         button.type = 'button';
@@ -628,7 +629,7 @@
                                 button.setAttribute('aria-expanded', 'true');
                             }
                         });
-                        cuerpo.appendChild(panel);
+                        panelAudio = panel;
                     } else {
                         const estadoAudio = document.createElement('span');
                         estadoAudio.className = llamada.tiene_grabacion
@@ -661,6 +662,7 @@
 
                     pie.appendChild(derecha);
                     cuerpo.appendChild(pie);
+                    if (panelAudio) cuerpo.appendChild(panelAudio);
 
                     tarjeta.appendChild(icono);
                     tarjeta.appendChild(cuerpo);
