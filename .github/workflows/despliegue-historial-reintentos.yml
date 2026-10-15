@@ -1,0 +1,27 @@
+name: Despliegue del historial con reintentos
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tools/desplegar_historial_reintentos_hostinger.py'
+      - 'tests/historial_reintentos_deploy_smoke.py'
+      - '.github/workflows/despliegue-historial-reintentos.yml'
+jobs:
+  simulacion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: none
+      - name: Simular despliegue y validar sintaxis
+        run: |
+          python3 -m py_compile tools/desplegar_historial_reintentos_hostinger.py
+          python3 tests/historial_reintentos_deploy_smoke.py
+          node --check public/javascript/seguimiento_historial_consulta.js
+          node --check public/javascript/seguimiento_llamadas_expediente.js
+          node --check public/javascript/seguimiento_grabaciones.js
+          php -l app/views/layout/dashboard_footer.php
