@@ -1043,6 +1043,7 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
                                 class="form-select system-form-control"
                                 id="crear_convocatoria_clasificacion"
                                 name="clasificacion"
+                                data-convocatoria-context-classification
                                 required>
                                 <option value="">Selecciona una opción</option>
                                 <?php
@@ -1067,6 +1068,9 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
                             data-convocatoria-form-share
                             data-registro-url="<?= BASE_URL ?>index.php?controller=formularioPublico&action=registro"
                             data-inscripcion-url="<?= BASE_URL ?>index.php?controller=formularioPublico&action=inscripcion"
+                            data-aliado-id="<?= (int)($seguimientoOrigenId ?? 0) ?>"
+                            data-estado-id="<?= (int)($territorioSeleccionado['id'] ?? 0) ?>"
+                            data-estado-nombre="<?= $texto($territorioSeleccionado['nombre'] ?? '') ?>"
                             data-quickchart-url="https://quickchart.io/qr">
 
                             <div class="convocatoria-public-form-heading">
@@ -1208,6 +1212,7 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
                                 class="form-control system-form-control"
                                 id="crear_convocatoria_titulo"
                                 name="titulo"
+                                data-convocatoria-context-title
                                 value="<?= $texto($datosCrear['titulo'] ?? '') ?>"
                                 required>
                         </div>
@@ -1946,18 +1951,98 @@ document.addEventListener('DOMContentLoaded', function () {
         let qrRenderToken = 0;
         let qrTimer = null;
 
+        let convocatoriaPublicRef = '';
+
+        const buildPublicReference = function () {
+            if (convocatoriaPublicRef !== '') {
+                return convocatoriaPublicRef;
+            }
+
+            if (
+                window.crypto &&
+                typeof window.crypto.randomUUID === 'function'
+            ) {
+                convocatoriaPublicRef = window.crypto.randomUUID();
+                return convocatoriaPublicRef;
+            }
+
+            convocatoriaPublicRef =
+                'conv-' +
+                Date.now().toString(36) +
+                '-' +
+                Math.random().toString(36).slice(2, 10);
+
+            return convocatoriaPublicRef;
+        };
+
         const getSelectedUrl = function () {
             const type = String(select?.value || '');
+            let baseUrl = '';
 
             if (type === 'registro') {
-                return String(share.dataset.registroUrl || '');
+                baseUrl = String(share.dataset.registroUrl || '');
+            } else if (type === 'inscripcion') {
+                baseUrl = String(share.dataset.inscripcionUrl || '');
             }
 
-            if (type === 'inscripcion') {
-                return String(share.dataset.inscripcionUrl || '');
+            if (baseUrl === '') {
+                return '';
             }
 
-            return '';
+            const classification = String(
+                document.querySelector(
+                    '[data-convocatoria-context-classification]'
+                )?.value || ''
+            ).trim();
+
+            const title = String(
+                document.querySelector(
+                    '[data-convocatoria-context-title]'
+                )?.value || ''
+            ).trim();
+
+            const aliadoId = String(
+                share.dataset.aliadoId || ''
+            ).trim();
+
+            const estadoId = String(
+                share.dataset.estadoId || ''
+            ).trim();
+
+            const estadoNombre = String(
+                share.dataset.estadoNombre || ''
+            ).trim();
+
+            const url = new URL(baseUrl, window.location.origin);
+
+            url.searchParams.set('formulario', type);
+
+            if (aliadoId !== '' && aliadoId !== '0') {
+                url.searchParams.set('aliado_id', aliadoId);
+            }
+
+            if (estadoId !== '' && estadoId !== '0') {
+                url.searchParams.set('estado_id', estadoId);
+            }
+
+            if (estadoNombre !== '') {
+                url.searchParams.set('estado', estadoNombre);
+            }
+
+            if (classification !== '') {
+                url.searchParams.set('convocatoria', classification);
+            }
+
+            if (title !== '') {
+                url.searchParams.set('titulo', title);
+            }
+
+            url.searchParams.set(
+                'convocatoria_ref',
+                buildPublicReference()
+            );
+
+            return url.toString();
         };
 
         const resetShare = function () {
@@ -2035,6 +2120,26 @@ document.addEventListener('DOMContentLoaded', function () {
             if (event.key === 'Escape') {
                 closeFormTypeDropdown();
             }
+        });
+
+        const contextFields = [
+            document.querySelector(
+                '[data-convocatoria-context-classification]'
+            ),
+            document.querySelector(
+                '[data-convocatoria-context-title]'
+            )
+        ];
+
+        contextFields.forEach(function (field) {
+            const invalidateGeneratedLink = function () {
+                if (!result?.classList.contains('d-none')) {
+                    resetShare();
+                }
+            };
+
+            field?.addEventListener('input', invalidateGeneratedLink);
+            field?.addEventListener('change', invalidateGeneratedLink);
         });
 
         buttonLink?.addEventListener('click', function () {
