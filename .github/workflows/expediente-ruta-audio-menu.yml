@@ -1,0 +1,25 @@
+name: Expediente ruta y menú de audios
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'public/javascript/telefonia_segmentos_player.js'
+      - 'prueba_telefonia/api/grabacion_transferida_pbx.php'
+      - 'public/javascript/seguimiento_expediente.js'
+      - 'tests/expediente_ruta_audio_menu_smoke.js'
+      - '.github/workflows/expediente-ruta-audio-menu.yml'
+jobs:
+  validar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: none
+      - name: Verificar sintaxis y regresiones
+        run: |
+          php -l prueba_telefonia/api/grabacion_transferida_pbx.php
+          node --check public/javascript/telefonia_segmentos_player.js
+          node --check public/javascript/seguimiento_expediente.js
+          node tests/expediente_ruta_audio_menu_smoke.js

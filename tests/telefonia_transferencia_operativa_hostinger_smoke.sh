@@ -65,6 +65,47 @@ python3 tools/fusionar_telefonia_transferencia_operativa_hostinger.py "$TMP/host
   grep -Fq 'YA ACTUALIZADO'
 cmp -s "$TMP/hostinger-custom.js" "$TMP/custom-updated.js"
 
+# Reproducción de los dos fragmentos aportados por el usuario: la versión
+# de Hostinger NO incluye showProviderControls y no tiene guarda nativa en
+# customVisible. El código del modal finalizado debe conservarse intacto.
+git show "$BASE:public/javascript/telefonia_shell.js" > "$TMP/hostinger-sin-metodo.js"
+python3 - "$TMP/hostinger-sin-metodo.js" <<'PY'
+import pathlib, re, sys
+p=pathlib.Path(sys.argv[1])
+s=p.read_text()
+start=s.index('        showProviderControls: function () {')
+end=s.index('        openDialer:', start)
+assert s[start:end].rstrip().endswith('},')
+s=s[:start]+s[end:]
+pattern=(r'const nativeVisible = [\s\S]{10,700}?;'
+         r'(?=\s*\n\s*const pending = pendingFor\(state\);)')
+replace="""const nativeVisible = Boolean(state?.hostReady) && ongoing &&
+            state?.direction !== 'incoming' && forceNativeControls && !minimized;"""
+s,count=re.subn(pattern,replace,s,count=1)
+assert count==1
+guard="""            !(cfg.analystIncomingResults && nativeVisible) &&
+            !minimized"""
+assert s.count(guard)==1
+s=s.replace(guard,"            !minimized",1)
+assert s.count("showProviderControls: function () {")==0
+assert s.count("const customVisible")==1
+p.write_text(s)
+PY
+before="$(sha256sum "$TMP/hostinger-sin-metodo.js" | cut -d' ' -f1)"
+python3 tools/fusionar_telefonia_transferencia_operativa_hostinger.py \
+ "$TMP/hostinger-sin-metodo.js" shell | grep -Fq 'FUSIÓN COMPATIBLE'
+node --check "$TMP/hostinger-sin-metodo.js"
+grep -Fq 'showProviderControls: function () {' "$TMP/hostinger-sin-metodo.js"
+grep -Fq 'nativeTransferOpen = true;' "$TMP/hostinger-sin-metodo.js"
+grep -Fq 'nativeTransferOpen = false;' "$TMP/hostinger-sin-metodo.js"
+grep -Fq '!nativeVisible && !minimized' "$TMP/hostinger-sin-metodo.js"
+grep -Fq "finishedIncoming" "$TMP/hostinger-sin-metodo.js"
+cp "$TMP/hostinger-sin-metodo.js" "$TMP/hostinger-actualizado.js"
+python3 tools/fusionar_telefonia_transferencia_operativa_hostinger.py \
+ "$TMP/hostinger-sin-metodo.js" shell | grep -Fq 'YA ACTUALIZADO'
+cmp -s "$TMP/hostinger-sin-metodo.js" "$TMP/hostinger-actualizado.js"
+test "$before" != "$(sha256sum "$TMP/hostinger-sin-metodo.js" | cut -d' ' -f1)"
+
 # Ensayar check, publicación, idempotencia y respaldo sin producción real.
 bash -n tools/desplegar_transferencia_operativa_hostinger.sh
 python3 -m py_compile tools/fusionar_telefonia_transferencia_operativa_hostinger.py

@@ -489,6 +489,35 @@ class TelefoniaController
         }
     }
 
+    /**
+     * Sólo el destinatario con una extensión vigente puede consultar un
+     * traspaso de institución. No revela datos de otras carteras.
+     */
+    public function contextoTransferencia()
+    {
+        $this->validarUsuarioTelefoniaJson();
+        if (!tienePermiso('telefonia.recibir')) {
+            $this->responderJson(['ok'=>false,'mensaje'=>'Sin acceso.'], 403);
+        }
+        try {
+            require_once __DIR__ . '/../services/TelefoniaTransferenciaContextoService.php';
+            $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
+            $asignacion = $this->service->resolverParaUsuario($usuarioId);
+            if (!$asignacion || empty($asignacion['permite_entrantes'])) {
+                $this->responderJson(['ok'=>false,'mensaje'=>'Sin extensión receptora.'],403);
+            }
+            $telefono = trim((string)($_GET['numero'] ?? ''));
+            $contexto = (new TelefoniaTransferenciaContextoService())
+                ->obtenerParaDestinatario($usuarioId,
+                    (string)$asignacion['extension'], $telefono);
+            $this->responderJson(['ok'=>true,'contexto'=>$contexto]);
+        } catch (Throwable $error) {
+            error_log('[telefono_contexto_transferencia] ' . get_class($error));
+            // Los errores del contexto nunca interrumpen la llamada WebRTC.
+            $this->responderJson(['ok'=>true,'contexto'=>null]);
+        }
+    }
+
     private function validarTransferenciaPost(): void
     {
         $this->validarUsuarioTelefoniaJson();
@@ -526,6 +555,8 @@ class TelefoniaController
             $tipo = strtoupper(trim((string)($_POST['tipo'] ?? '')));
             $responsableId = (int)($_POST['responsable_id'] ?? 0);
             $modo = (string)($_POST['modo'] ?? 'CONSULTADA');
+            $seguimientoId = (int)($_POST['seguimiento_id'] ?? 0);
+            $pbxCallId = trim((string)($_POST['pbx_call_id'] ?? ''));
             if (!in_array($modo, ['DIRECTA','CONSULTADA'], true)) {
                 throw new InvalidArgumentException('Modo de transferencia no válido.');
             }
@@ -540,6 +571,10 @@ class TelefoniaController
                 'tipo'=>$tipo,
                 'responsable_id'=>$responsableId,
                 'modo'=>$modo,
+                // Se trata de una pista registrada por Tania; el servidor
+                // vuelve a verificar PBX y propiedad antes de compartirla.
+                'seguimiento_id'=>$seguimientoId,
+                'pbx_call_id'=>$pbxCallId,
                 'token_hash'=>hash('sha256', $token),
                 'expires'=>time()+20
             ];
@@ -580,11 +615,33 @@ class TelefoniaController
         }
         try {
             require_once __DIR__ . '/../services/TelefoniaEnrutamientoService.php';
-            (new TelefoniaEnrutamientoService())->validarDestino(
+            $destino = (new TelefoniaEnrutamientoService())->validarDestino(
                 (int)$_SESSION['usuario_id'], (string)($_SESSION['rol'] ?? ''),
                 (string)$data['extension'], (int)$data['estado_id'],
                 (string)$data['tipo'], (int)$data['responsable_id']
             );
+            if (($data['tipo'] ?? '') === 'INSTITUCION' &&
+                (int)($data['seguimiento_id'] ?? 0) > 0) {
+                try {
+                    require_once __DIR__ . '/../services/TelefoniaTransferenciaContextoService.php';
+                    $origen = $this->service->resolverParaUsuario((int)$_SESSION['usuario_id']);
+                    $contextoGuardado = (new TelefoniaTransferenciaContextoService())->registrar(
+                        (int)$_SESSION['usuario_id'], (string)($_SESSION['rol'] ?? ''),
+                        (string)($origen['extension'] ?? ''),
+                        (int)$destino['usuario_id'], (string)$destino['extension'],
+                        (int)$destino['estado_id'], (int)$data['seguimiento_id'],
+                        (string)($data['pbx_call_id'] ?? '')
+                    );
+                    if (!$contextoGuardado) {
+                        // No mostrar errores de metadatos al teléfono. Dejar
+                        // evidencia técnica sin revelar datos del expediente.
+                        error_log('[telefonia_contexto_transferencia] Validación de traspaso no confirmada.');
+                    }
+                } catch (Throwable $error) {
+                    // La PBX puede transferir aunque fallen datos opcionales.
+                    error_log('[telefonia_contexto_no_disponible] ' . get_class($error));
+                }
+            }
             $this->responderJson([
                 'ok'=>true,
                 'extension'=>(string)$data['extension'],

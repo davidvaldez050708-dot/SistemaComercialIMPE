@@ -1,0 +1,25 @@
+name: Despliegue seguro historial MySQL 2002
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tools/desplegar_historial_mysql_2002_hostinger.py'
+      - 'tests/historial_mysql_2002_deploy_smoke.py'
+      - '.github/workflows/despliegue-historial-mysql-2002.yml'
+jobs:
+  validar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: none
+      - name: Sintaxis, pruebas y despliegue simulado
+        run: |
+          python3 -m py_compile tools/desplegar_historial_mysql_2002_hostinger.py
+          python3 tests/historial_mysql_2002_deploy_smoke.py
+          php -l prueba_telefonia/api/llamadas_seguimiento.php
+          php tests/historial_mysql_2002_fallback_smoke.php

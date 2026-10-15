@@ -101,6 +101,25 @@ class ConvocatoriaController
         $estados = $this->obtenerEstadosDisponibles($modelo->obtenerEstados());
 
         $territorioId = (int)($_GET['territorio_id'] ?? 0);
+        $estadoNombreSolicitado = trim((string)($_GET['estado_nombre'] ?? ''));
+        $desdeConvenio = (int)($_GET['desde_convenio'] ?? 0) === 1;
+        $seguimientoOrigenId = (int)($_GET['seguimiento_id'] ?? 0);
+        $convenioNombreOrigen = trim((string)($_GET['convenio_nombre'] ?? ''));
+
+        if ($estadoNombreSolicitado !== '') {
+            foreach ($estados as $estadoDisponible) {
+                if (
+                    strcasecmp(
+                        trim((string)($estadoDisponible['nombre'] ?? '')),
+                        $estadoNombreSolicitado
+                    ) === 0
+                ) {
+                    $territorioId = (int)($estadoDisponible['id'] ?? 0);
+                    break;
+                }
+            }
+        }
+
         $territorioSeleccionado = $this->obtenerTerritorioSeleccionado(
             $estados,
             $territorioId
@@ -247,6 +266,15 @@ class ConvocatoriaController
         $erroresFormulario = $_SESSION['errores_convocatoria'] ?? [];
         $datosFormulario = $_SESSION['datos_convocatoria'] ?? [];
         $modalAbierto = $_SESSION['modal_convocatoria'] ?? '';
+
+        if (
+            $modalAbierto === '' &&
+            !empty($desdeConvenio) &&
+            (int)($_GET['abrir_nueva_convocatoria'] ?? 0) === 1 &&
+            $territorioSeleccionado
+        ) {
+            $modalAbierto = 'crear';
+        }
 
         if ($mensajeError === '' && !empty($erroresFormulario)) {
             $mensajeError =

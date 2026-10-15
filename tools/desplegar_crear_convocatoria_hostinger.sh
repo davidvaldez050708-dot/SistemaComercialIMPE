@@ -42,6 +42,8 @@ FILES=(
     "index.php"
     "app/models/CrearConvocatoriaModel.php"
     "app/controllers/CrearConvocatoriaController.php"
+    "app/controllers/ConvocatoriaController.php"
+    "app/views/convocatorias/index.php"
     "app/views/convocatorias/crear_desde_convenio.php"
     "app/views/layout/sidebar.php"
     "app/views/layout/dashboard_head.php"
@@ -80,6 +82,11 @@ if ! grep -Fq "Convenios de aliados" "$SRC/app/views/convocatorias/crear_desde_c
 fi
 
 if [[ "$MODE" == "--check" ]]; then
+    if grep -Pzo '<select[\s\S]*?id="crear_convocatoria_estado"[\s\S]*?</select>' "$SRC/app/views/convocatorias/crear_desde_convenio.php" >/dev/null 2>&1; then
+        echo "ERROR: SELECT NATIVO DETECTADO en la fuente. El filtro aún no usa el desplegable personalizado." >&2
+        exit 1
+    fi
+
     changes=0
 
     for file in "${FILES[@]}"; do
@@ -130,10 +137,18 @@ grep -Fq "convenio_formalizado_at" "$DST/app/models/CrearConvocatoriaModel.php"
 grep -Fq "data-convenio-create-link" "$DST/app/views/convocatorias/crear_desde_convenio.php"
 grep -Fq "CONVENIO · ALIADO" "$DST/app/views/convocatorias/crear_desde_convenio.php"
 grep -Fq "data-convenio-modal-contact" "$DST/app/views/convocatorias/crear_desde_convenio.php"
+grep -Fq "data-state-dropdown" "$DST/app/views/convocatorias/crear_desde_convenio.php"
 grep -Fq "territorio_id" "$DST/public/javascript/crear_convocatoria.js"
+grep -Fq "estado_nombre" "$DST/public/javascript/crear_convocatoria.js"
+grep -Fq "abrir_nueva_convocatoria" "$DST/public/javascript/crear_convocatoria.js"
+grep -Fq "abrir_nueva_convocatoria" "$DST/app/views/convocatorias/index.php"
+grep -Fq "desde_convenio" "$DST/app/controllers/ConvocatoriaController.php"
+grep -Fq "\$modalAbierto = 'crear';" "$DST/app/controllers/ConvocatoriaController.php"
+grep -Fq "crear-convocatoria-modal-create" "$DST/public/css/crear_convocatoria.css"
 grep -Fq "Filtro de estados alineado" "$DST/public/css/crear_convocatoria.css"
+grep -Fq "Desplegable de estados siempre hacia abajo" "$DST/public/css/crear_convocatoria.css"
 
 echo
-echo "OK: bandeja Marketing actualizada con catálogo completo de estados y tipografía del sistema."
+echo "OK: el flujo Convenios fuerza la apertura automática del modal Nueva convocatoria."
 echo "Respaldo: $BACKUP"
 echo "Recarga el navegador con Ctrl+F5."

@@ -22,6 +22,22 @@
     const resultInput = form.querySelector('[name="resultado"]');
     const evidence = form.querySelector('[data-incoming-evidence]');
     const sdkNotice = form.querySelector('[data-incoming-sdk-notice]');
+    const institutionConfirmed = form.querySelector('[data-incoming-confirmed]');
+    const confirmedInstitutionName = form.querySelector('[data-incoming-confirmed-name]');
+    const manualInstitutionSearch = form.querySelector('[data-incoming-existing-search]');
+    const userId = Number(page.dataset.currentUser ||
+        window.IMPE_CURRENT_USER_ID || 0);
+    const resetConfirmed = () => {
+        if (institutionConfirmed) institutionConfirmed.hidden = true;
+        if (manualInstitutionSearch) manualInstitutionSearch.hidden = false;
+    };
+    form.querySelector('[data-incoming-change-expediente]')?.addEventListener(
+        'click', () => {
+            resetConfirmed();
+            lookup.focus();
+            lookup.select();
+        }
+    );
     const sdkConfirm = form.querySelector('[data-incoming-sdk-confirm]');
     const sdkCheck = sdkConfirm.querySelector('input[type="checkbox"]');
     let isSdkCall = false;
@@ -82,7 +98,10 @@
         renderEvidence();
         clearError();
     };
-    decision.addEventListener('change', renderDecision);
+    decision.addEventListener('change', () => {
+        resetConfirmed();
+        renderDecision();
+    });
 
     const searchFollowups = async (query, seq) => {
         if (query.trim().length < 2) {
@@ -125,6 +144,7 @@
         if (!button) return;
         form.reset();
         clearError();
+        resetConfirmed();
         const id = String(button.dataset.callId || '');
         isSdkCall = button.dataset.source === 'SDK_WEBRTC';
         form.querySelector('[data-incoming-pbx]').value = isSdkCall ? '' : id;
@@ -132,8 +152,27 @@
         sdkNotice.hidden = !isSdkCall;
         form.querySelector('[data-incoming-number]').textContent =
             String(button.dataset.phone || 'Número privado');
-        form.querySelector('[data-incoming-duration]').textContent =
-            String(button.dataset.duration || '00:00');
+        let durationSeconds = 0;
+        const listedDuration = String(button.dataset.duration || '00:00');
+        const parts = /^(\d{1,3}):(\d{2})$/.exec(listedDuration);
+        if (parts) durationSeconds = Number(parts[1]) * 60 + Number(parts[2]);
+        // Un evento UTC recibido tarde puede registrar 00:01 aunque el
+        // cronómetro de la sesión haya observado 00:19. Mostrar el tiempo
+        // de esta llamada exacta, no arrastrar el de otra sesión.
+        if (isSdkCall && userId > 0 && id) {
+            try {
+                const key = 'impe:crm:call-summary:' + userId + ':' + id;
+                const summary = JSON.parse(sessionStorage.getItem(key) || 'null');
+                if (summary?.call_id === id &&
+                    Date.now() - Number(summary.saved_at || 0) < 86400000) {
+                    durationSeconds = Math.max(durationSeconds,
+                        Math.floor(Number(summary.duration || 0)));
+                }
+            } catch (_) {}
+        }
+        const mm = String(Math.floor(durationSeconds / 60)).padStart(2,'0');
+        const ss = String(durationSeconds % 60).padStart(2,'0');
+        form.querySelector('[data-incoming-duration]').textContent = mm + ':' + ss;
         followup.replaceChildren(new Option('Busca un expediente', ''));
         lookup.value = '';
         ++searchSequence;
@@ -144,16 +183,43 @@
             if (option.value !== 'sin_identificar') option.disabled = !hasAnswer;
         }
         modalEl.querySelector('[data-incoming-modal-description]').textContent = hasAnswer
-            ? (isSdkCall
-                ? 'Clasificación manual de una sesión observada por WebRTC, sin evento PBX firmado.'
-                : 'Relaciona la conversación con el seguimiento existente o crea uno nuevo.')
-            : 'Esta llamada no fue contestada. Puedes clasificarla sin crear expediente.';
+            ? 'Vincula la conversación a un expediente y registra su resultado.'
+            : 'Llamada sin respuesta: registra su clasificación en el historial.';
         renderDecision();
+        // Si Recepción identificó el expediente, precargarlo por ID exacto
+        // de esta sesión. El servidor volverá a validar la pertenencia al
+        // Analista al guardar; nunca se asume que teléfono = identidad.
+        if (isSdkCall && id) {
+            try {
+                const key = 'impe:crm:transfer-context:' + userId + ':' + id;
+                const context = JSON.parse(sessionStorage.getItem(key) || 'null');
+                if (context && context.call_id === id &&
+                    Number(context.seguimiento_id) > 0 &&
+                    Date.now() - Number(context.saved_at || 0) < 180000) {
+                    decision.value = 'existente';
+                    lookup.value = String(context.institucion || '');
+                    followup.replaceChildren(new Option(
+                        String(context.institucion || 'Institución') +
+                        ' · ' + String(context.estado || ''),
+                        String(context.seguimiento_id)
+                    ));
+                    renderDecision();
+                    if (institutionConfirmed) institutionConfirmed.hidden = false;
+                    if (confirmedInstitutionName) {
+                        confirmedInstitutionName.textContent =
+                            String(context.institucion || 'Institución') + ' · ' +
+                            String(context.estado || '');
+                    }
+                    if (manualInstitutionSearch) manualInstitutionSearch.hidden = true;
+                    modalEl.querySelector('[data-incoming-modal-description]').textContent =
+                        'Expediente identificado por Recepción. Captura el resultado de la conversación.';
+                }
+            } catch (_) {}
+        }
         // El borrador capturado DURANTE esta misma llamada desde el shell
         // se importa únicamente por ID exacto y usuario actual. Nunca se
         // asigna automáticamente al expediente de otra llamada.
         try {
-            const userId = Number(window.IMPE_CURRENT_USER_ID || 0);
             if (userId > 0 && id) {
                 const key = 'impe:crm:call-draft:' + userId + ':' + id;
                 const draft = JSON.parse(sessionStorage.getItem(key) || 'null');
@@ -275,6 +341,50 @@
         updatePlay();
     };
 
+    // Audio PBX confirmado de entrantes; no vincular por aproximación la sesión SDK.
+    page.addEventListener('click', async event => {
+        const button = event.target.closest('[data-incoming-pbx-toggle]');
+        if (!button) return;
+        event.preventDefault();
+        const panel = document.getElementById(button.getAttribute('aria-controls'));
+        if (!panel) return;
+        if (!panel.hidden) {
+            panel.querySelectorAll('audio').forEach(a => a.pause());
+            panel.hidden = true;
+            button.setAttribute('aria-expanded', 'false');
+            return;
+        }
+        const error = panel.querySelector('[data-incoming-pbx-error]');
+        const host = panel.querySelector('[data-incoming-pbx-audios]');
+        const pbx = button.dataset.pbxId || '';
+        const url = new URL('prueba_telefonia/api/grabacion_transferida_pbx.php', document.baseURI);
+        url.searchParams.set('pbx_call_id', pbx);
+        url.searchParams.set('verificar', '1');
+        button.disabled = true;
+        try {
+            const response = await fetch(url.toString(), {credentials:'same-origin', cache:'no-store'});
+            if (!response.ok) throw new Error('No se pudo verificar la llamada.');
+            const info = await response.json();
+            if (!info.ok || !info.disponible || !(info.segmentos > 0)) {
+                throw new Error('Zadarma todavía no entrega todos los segmentos.');
+            }
+            if (!window.IMPE_TELEPHONY_SEGMENTS?.create(
+                host, url.toString(), info.segmentos)) {
+                throw new Error('No fue posible preparar el reproductor.');
+            }
+            error.hidden = true;
+            panel.hidden = false;
+            button.setAttribute('aria-expanded', 'true');
+        } catch (e) {
+            error.textContent = e.message || 'Grabación no disponible.';
+            error.hidden = false;
+            panel.hidden = false;
+            button.setAttribute('aria-expanded','true');
+        } finally {
+            button.disabled = false;
+        }
+    });
+
     page.addEventListener('click', event => {
         const button = event.target.closest('[data-incoming-audio-toggle]');
         if (!button || !page.contains(button)) return;
@@ -377,17 +487,35 @@
                 const id = String(
                     form.querySelector('[data-incoming-sdk-id]')?.value ||
                     form.querySelector('[data-incoming-pbx]')?.value || '');
-                const userId = Number(window.IMPE_CURRENT_USER_ID || 0);
-                if (id && userId) sessionStorage.removeItem(
-                    'impe:crm:call-draft:' + userId + ':' + id);
+                if (id && userId) {
+                    sessionStorage.removeItem(
+                        'impe:crm:call-draft:' + userId + ':' + id);
+                    sessionStorage.removeItem(
+                        'impe:crm:call-summary:' + userId + ':' + id);
+                    sessionStorage.removeItem(
+                        'impe:crm:transfer-context:' + userId + ':' + id);
+                }
             } catch (_) {}
             modal.hide();
-            // La clasificación técnica y el expediente ya están confirmados
-            // por el servidor; reconstruir las filas de la fuente de verdad.
-            window.location.assign(
-                new URL('index.php?controller=seguimientoVinculacion&action=llamadasEntrantes',
-                    window.location.href).toString()
+            // Unicamente después del OK de MySQL avisamos al shell que
+            // puede retirar la obligación visual de registrar resultado.
+            const confirmedId = String(
+                form.querySelector('[data-incoming-sdk-id]')?.value ||
+                form.querySelector('[data-incoming-pbx]')?.value || ''
             );
+            if (confirmedId && window.parent !== window) {
+                window.parent.postMessage({
+                    type:'IMPE_ANALYST_RESULT_SAVED',
+                    callId:confirmedId
+                }, window.location.origin);
+            }
+            // Sólo el servidor decide a qué expediente pertenece.
+            // Para existente o nueva, abrirlo inmediatamente tras guardar.
+            const linked = Number(data.resultado?.seguimiento_id || 0);
+            const target = linked > 0
+                ? 'index.php?controller=seguimientoVinculacion&action=detalle&id=' + linked
+                : 'index.php?controller=seguimientoVinculacion&action=llamadasEntrantes';
+            window.location.assign(new URL(target, window.location.href).toString());
         } catch (error) {
             showError(error.message || 'No fue posible guardar. Intenta nuevamente.');
         } finally {

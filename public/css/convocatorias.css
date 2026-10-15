@@ -3870,8 +3870,25 @@
 
 .convocatoria-list-workspace-filters {
     padding: 6px 18px 14px;
-    grid-template-columns: minmax(300px, 1.7fr) minmax(180px, .7fr) auto;
+    grid-template-columns:
+        minmax(220px, .9fr)
+        minmax(190px, .65fr)
+        minmax(190px, .55fr)
+        auto;
+    align-items: end;
     border-bottom: 1px solid #e9edf3;
+}
+
+.convocatoria-list-workspace-filters .convocatoria-filter-search {
+    max-width: 620px;
+}
+
+.convocatoria-list-workspace-filters .convocatoria-filter-actions {
+    display: flex;
+    align-items: center;
+    min-height: 40px;
+    padding-bottom: 2px;
+    white-space: nowrap;
 }
 
 .convocatoria-list-workspace-filters .login-label {
@@ -4541,5 +4558,949 @@
 
     .convocatoria-month-group-count {
         align-self: flex-start;
+    }
+}
+
+
+/* Formulario público dentro de Nueva convocatoria */
+.convocatoria-public-form-share {
+    padding: 16px;
+    border: 1px solid #dfe6f1;
+    border-radius: 14px;
+    background: #f8fafc;
+}
+
+.convocatoria-public-form-heading {
+    margin-bottom: 14px;
+}
+
+.convocatoria-public-form-heading > div {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.convocatoria-public-form-kicker {
+    color: #008f78;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: .04em;
+}
+
+.convocatoria-public-form-heading strong {
+    color: var(--color-text-primary);
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.convocatoria-public-form-heading small {
+    color: var(--color-text-secondary);
+    font-size: 10px;
+    font-weight: 600;
+}
+
+.convocatoria-public-form-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px;
+    align-items: end;
+}
+
+.convocatoria-public-form-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.convocatoria-public-form-actions .btn {
+    min-height: 40px;
+    white-space: nowrap;
+}
+
+.convocatoria-public-form-result {
+    margin-top: 12px;
+}
+
+.convocatoria-public-form-url {
+    min-height: 42px;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    padding: 0 10px;
+    border: 1px solid #dfe6f1;
+    border-radius: 10px;
+    background: #fff;
+}
+
+.convocatoria-public-form-url > i {
+    color: var(--color-primary);
+}
+
+.convocatoria-public-form-url input {
+    min-width: 0;
+    width: 100%;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: var(--color-text-secondary);
+    font: inherit;
+    font-size: 10px;
+}
+
+.convocatoria-public-form-url .btn {
+    padding: 4px 7px;
+    border: 0;
+    color: var(--color-primary);
+}
+
+.convocatoria-public-form-qr {
+    margin-top: 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.convocatoria-public-form-qr img {
+    width: 112px;
+    height: 112px;
+    object-fit: contain;
+    border: 1px solid #e2e7ef;
+    border-radius: 10px;
+    background: #fff;
+}
+
+.convocatoria-public-form-qr small {
+    color: var(--color-text-secondary);
+    font-size: 10px;
+    font-weight: 600;
+}
+
+@media (max-width: 767.98px) {
+    .convocatoria-public-form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .convocatoria-public-form-actions {
+        flex-wrap: wrap;
+    }
+
+    .convocatoria-public-form-actions .btn {
+        flex: 1 1 160px;
+    }
+}
+
+
+/* Selector de formulario con diseño del filtro de estados */
+.convocatoria-form-type-dropdown {
+    position: relative;
+    width: 100%;
+    z-index: 40;
+}
+
+.convocatoria-form-type-trigger {
+    width: 100%;
+    min-height: 46px;
+    padding: 0 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    background: #ffffff;
+    color: var(--color-text-primary);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+}
+
+.convocatoria-form-type-trigger i {
+    flex: 0 0 auto;
+    transition: transform .18s ease;
+}
+
+.convocatoria-form-type-dropdown.is-open
+.convocatoria-form-type-trigger i {
+    transform: rotate(180deg);
+}
+
+.convocatoria-form-type-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    display: none;
+    overflow: hidden;
+    padding: 6px;
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    background: #ffffff;
+    box-shadow: 0 14px 32px rgba(20, 35, 70, .14);
+    z-index: 120;
+}
+
+.convocatoria-form-type-dropdown.is-open
+.convocatoria-form-type-menu {
+    display: block;
+}
+
+.convocatoria-form-type-option {
+    width: 100%;
+    padding: 10px 12px;
+    display: block;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--color-text-primary);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+}
+
+.convocatoria-form-type-option:hover,
+.convocatoria-form-type-option:focus-visible {
+    background: #f4f7fb;
+    outline: none;
+}
+
+.convocatoria-form-type-option.is-selected {
+    background: #edf3ff;
+    color: #17357f;
+    font-weight: 700;
+}
+
+
+/* Personalizador completo de QR en Nueva convocatoria */
+.convocatoria-qr-dialog {
+    width: min(calc(100% - 32px), 980px);
+    max-width: 980px;
+}
+
+.convocatoria-qr-modal .modal-body {
+    padding: 18px 20px 20px;
+}
+
+.convocatoria-qr-workspace {
+    display: grid;
+    grid-template-columns: minmax(260px, .8fr) minmax(0, 1.45fr);
+    gap: 18px;
+    align-items: start;
+}
+
+.convocatoria-qr-preview-column {
+    position: sticky;
+    top: 12px;
+}
+
+.convocatoria-qr-preview {
+    position: relative;
+    width: min(100%, 320px);
+    aspect-ratio: 1;
+    margin: 0 auto;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    border: 1px solid #dfe6f1;
+    border-radius: 16px;
+    background: #fff;
+}
+
+.convocatoria-qr-preview img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: contain;
+}
+
+.convocatoria-qr-preview img.is-loading {
+    opacity: .35;
+}
+
+.convocatoria-qr-preview .spinner-border {
+    position: absolute;
+    z-index: 2;
+}
+
+.convocatoria-qr-link {
+    margin-top: 10px;
+    padding: 8px 10px;
+    overflow-wrap: anywhere;
+    border-radius: 10px;
+    background: #f5f7fb;
+    color: var(--color-text-secondary);
+    font-size: 8.5px;
+    font-weight: 600;
+    text-align: center;
+}
+
+.convocatoria-qr-output-actions {
+    margin-top: 12px;
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.convocatoria-qr-output-actions .btn {
+    min-height: 38px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-size: 10px;
+    font-weight: 800;
+}
+
+.convocatoria-qr-customizer {
+    padding: 16px;
+    border: 1px solid #dfe6f1;
+    border-radius: 14px;
+    background: #f8fafc;
+}
+
+.convocatoria-qr-controls {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.convocatoria-qr-control {
+    display: grid;
+    gap: 6px;
+}
+
+.convocatoria-qr-control > span {
+    color: #46556b;
+    font-size: 9px;
+    font-weight: 800;
+}
+
+.convocatoria-qr-control select,
+.convocatoria-qr-control input[type="color"],
+.convocatoria-qr-control input[type="url"],
+.convocatoria-qr-control input[type="file"] {
+    width: 100%;
+    min-height: 38px;
+    border: 1px solid #d5dfeb;
+    border-radius: 9px;
+    background: #fff;
+    color: #33445d;
+    font: inherit;
+    font-size: 9px;
+    font-weight: 700;
+}
+
+.convocatoria-qr-control select,
+.convocatoria-qr-control input[type="url"] {
+    padding: 0 10px;
+}
+
+.convocatoria-qr-control input[type="color"] {
+    padding: 4px;
+    cursor: pointer;
+}
+
+.convocatoria-qr-control input[type="file"] {
+    padding: 6px 8px;
+}
+
+.convocatoria-qr-control input[type="file"]::file-selector-button {
+    margin-right: 8px;
+    padding: 6px 9px;
+    border: 0;
+    border-radius: 6px;
+    background: #edf3ff;
+    color: #223a84;
+    font: inherit;
+    font-size: 8px;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.convocatoria-qr-control select:focus,
+.convocatoria-qr-control input:focus {
+    outline: none;
+    border-color: #6f8fd2;
+    box-shadow: 0 0 0 3px rgba(34, 58, 132, .08);
+}
+
+.convocatoria-qr-control-full {
+    width: 100%;
+}
+
+.convocatoria-qr-transparent {
+    margin-top: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    color: #526078;
+    font-size: 9px;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.convocatoria-qr-transparent input {
+    width: 14px;
+    height: 14px;
+    accent-color: #223a84;
+}
+
+.convocatoria-qr-image-options {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid #e2e8f0;
+}
+
+.convocatoria-qr-image-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+}
+
+.convocatoria-qr-image-heading strong,
+.convocatoria-qr-image-heading small {
+    display: block;
+}
+
+.convocatoria-qr-image-heading strong {
+    color: #34445c;
+    font-size: 10px;
+    font-weight: 800;
+}
+
+.convocatoria-qr-image-heading small {
+    margin-top: 2px;
+    color: #7a8799;
+    font-size: 8px;
+    font-weight: 600;
+    line-height: 1.35;
+}
+
+.convocatoria-qr-image-switch {
+    margin: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    color: #526078;
+    font-size: 8.5px;
+    font-weight: 800;
+}
+
+.convocatoria-qr-image-config {
+    margin-top: 12px;
+}
+
+.convocatoria-qr-image-source {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.convocatoria-qr-image-source label {
+    margin: 0;
+    padding: 7px 9px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid #d9e2ee;
+    border-radius: 8px;
+    background: #fff;
+    color: #4b5b72;
+    font-size: 8.5px;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.convocatoria-qr-image-source input {
+    margin: 0;
+    accent-color: #223a84;
+}
+
+.convocatoria-qr-upload-preview {
+    margin-top: 9px;
+    padding: 8px;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    border: 1px solid #dfe7f0;
+    border-radius: 9px;
+    background: #fff;
+}
+
+.convocatoria-qr-upload-preview img {
+    width: 42px;
+    height: 42px;
+    flex: 0 0 42px;
+    border: 1px solid #e4eaf1;
+    border-radius: 7px;
+    background: #fff;
+    object-fit: contain;
+}
+
+.convocatoria-qr-upload-preview strong,
+.convocatoria-qr-upload-preview small {
+    display: block;
+}
+
+.convocatoria-qr-upload-preview strong {
+    color: #3d4d64;
+    font-size: 8.5px;
+    font-weight: 800;
+}
+
+.convocatoria-qr-upload-preview small {
+    margin-top: 2px;
+    color: #7b8799;
+    font-size: 7.5px;
+    font-weight: 600;
+}
+
+.convocatoria-qr-image-size {
+    margin-top: 12px;
+    padding-top: 11px;
+    border-top: 1px solid #e3e9f1;
+}
+
+.convocatoria-qr-image-size > div {
+    margin-bottom: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.convocatoria-qr-image-size span {
+    color: #46556b;
+    font-size: 9px;
+    font-weight: 800;
+}
+
+.convocatoria-qr-image-size strong {
+    padding: 3px 7px;
+    border-radius: 999px;
+    background: #edf3ff;
+    color: #223a84;
+    font-size: 8px;
+    font-weight: 800;
+}
+
+.convocatoria-qr-image-size input[type="range"] {
+    width: 100%;
+    accent-color: #223a84;
+    cursor: pointer;
+}
+
+.convocatoria-qr-customizer-actions {
+    margin-top: 14px;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.convocatoria-qr-customizer-actions .btn {
+    min-height: 36px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 9px;
+    font-weight: 800;
+}
+
+.convocatoria-qr-help {
+    margin: 14px 0 0;
+    color: #778397;
+    font-size: 8.5px;
+    font-weight: 600;
+    text-align: center;
+}
+
+@media (max-width: 800px) {
+    .convocatoria-qr-workspace {
+        grid-template-columns: 1fr;
+    }
+
+    .convocatoria-qr-preview-column {
+        position: static;
+    }
+
+    .convocatoria-qr-controls {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 520px) {
+    .convocatoria-qr-dialog {
+        width: calc(100% - 16px);
+        margin: .5rem auto;
+    }
+
+    .convocatoria-qr-modal .modal-body {
+        padding: 14px;
+    }
+
+    .convocatoria-qr-controls {
+        grid-template-columns: 1fr;
+    }
+
+    .convocatoria-qr-image-heading {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .convocatoria-qr-output-actions .btn {
+        flex: 1 1 140px;
+    }
+}
+
+
+/* Scroll interno del modal Nueva convocatoria */
+#modalCrearConvocatoria .modal-dialog {
+    max-height: calc(100vh - 32px);
+    margin-top: 16px;
+    margin-bottom: 16px;
+}
+
+#modalCrearConvocatoria .modal-content {
+    max-height: calc(100vh - 32px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+#modalCrearConvocatoria .modal-header,
+#modalCrearConvocatoria .modal-footer {
+    flex: 0 0 auto;
+    background: #ffffff;
+    z-index: 2;
+}
+
+#modalCrearConvocatoria .modal-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+}
+
+#modalCrearConvocatoria .modal-body::-webkit-scrollbar {
+    width: 9px;
+}
+
+#modalCrearConvocatoria .modal-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+#modalCrearConvocatoria .modal-body::-webkit-scrollbar-thumb {
+    border: 2px solid transparent;
+    border-radius: 999px;
+    background: rgba(72, 84, 105, .38);
+    background-clip: padding-box;
+}
+
+#modalCrearConvocatoria .modal-body::-webkit-scrollbar-thumb:hover {
+    background: rgba(72, 84, 105, .55);
+    background-clip: padding-box;
+}
+
+@media (max-width: 575.98px) {
+    #modalCrearConvocatoria .modal-dialog {
+        max-height: calc(100vh - 16px);
+        margin-top: 8px;
+        margin-bottom: 8px;
+    }
+
+    #modalCrearConvocatoria .modal-content {
+        max-height: calc(100vh - 16px);
+    }
+}
+
+
+/* Corrección estructural del scroll interno de Nueva convocatoria */
+#modalCrearConvocatoria .modal-dialog-scrollable {
+    height: calc(100% - 32px);
+}
+
+#modalCrearConvocatoria .modal-dialog-scrollable .modal-content {
+    max-height: 100%;
+    overflow: hidden;
+}
+
+#modalCrearConvocatoria .convocatoria-create-form {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+#modalCrearConvocatoria .convocatoria-create-form > .modal-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto !important;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+}
+
+#modalCrearConvocatoria .convocatoria-create-form > .modal-footer {
+    flex: 0 0 auto;
+    position: relative;
+    z-index: 2;
+    background: #ffffff;
+}
+
+@media (max-width: 575.98px) {
+    #modalCrearConvocatoria .modal-dialog-scrollable {
+        height: calc(100% - 16px);
+    }
+}
+
+
+
+
+/* Modal Nueva convocatoria más compacto */
+#modalCrearConvocatoria .system-form-dialog {
+    max-width: 500px;
+}
+
+#modalCrearConvocatoria .modal-header {
+    padding: 16px 18px;
+}
+
+#modalCrearConvocatoria .convocatoria-create-form > .modal-body {
+    padding: 16px 18px;
+}
+
+#modalCrearConvocatoria .convocatoria-create-form > .modal-footer {
+    padding: 14px 18px;
+}
+
+#modalCrearConvocatoria .system-form-grid {
+    gap: 14px 12px;
+}
+
+@media (max-width: 575.98px) {
+    #modalCrearConvocatoria .system-form-dialog {
+        max-width: calc(100% - 16px);
+    }
+}
+
+
+/* Ajuste tipográfico del selector Formulario */
+.convocatoria-public-form-share .convocatoria-form-type-trigger {
+    font-size: 8.5px;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.convocatoria-public-form-share .convocatoria-form-type-trigger span {
+    white-space: nowrap;
+}
+
+
+/* Reducir texto de placeholder en selector Formulario */
+.convocatoria-public-form-share
+.convocatoria-form-type-option[data-convocatoria-form-type-value=""] {
+    font-size: 8.5px;
+    line-height: 1.15;
+}
+
+
+/* Tipo de convocatoria: mismo estilo y sin superposición */
+#modalCrearConvocatoria [data-convocatoria-classification-dropdown] {
+    position: relative;
+    width: 100%;
+    z-index: auto;
+}
+
+#modalCrearConvocatoria [data-convocatoria-classification-trigger] {
+    width: 100%;
+    min-height: 46px;
+    padding: 0 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    background: #ffffff;
+    color: var(--color-text-primary);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+}
+
+#modalCrearConvocatoria [data-convocatoria-classification-trigger] i {
+    flex: 0 0 auto;
+    transition: transform .18s ease;
+}
+
+#modalCrearConvocatoria
+[data-convocatoria-classification-dropdown].is-open
+[data-convocatoria-classification-trigger] i {
+    transform: rotate(180deg);
+}
+
+#modalCrearConvocatoria [data-convocatoria-classification-menu] {
+    position: static;
+    display: none;
+    width: 100%;
+    max-height: 250px;
+    margin-top: 6px;
+    padding: 6px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    background: #ffffff;
+    box-shadow: 0 10px 24px rgba(20, 35, 70, .10);
+}
+
+#modalCrearConvocatoria
+[data-convocatoria-classification-dropdown].is-open
+[data-convocatoria-classification-menu] {
+    display: block;
+}
+
+#modalCrearConvocatoria [data-convocatoria-classification-option] {
+    width: 100%;
+    padding: 10px 12px;
+    display: block;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--color-text-primary);
+    font: inherit;
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.25;
+    text-align: left;
+    cursor: pointer;
+}
+
+#modalCrearConvocatoria
+[data-convocatoria-classification-option]:hover,
+#modalCrearConvocatoria
+[data-convocatoria-classification-option]:focus-visible {
+    background: #f4f7fb;
+    outline: none;
+}
+
+#modalCrearConvocatoria
+[data-convocatoria-classification-option].is-selected {
+    background: #edf3ff;
+    color: #17357f;
+    font-weight: 700;
+}
+
+#modalCrearConvocatoria [data-convocatoria-classification-menu]::-webkit-scrollbar {
+    width: 8px;
+}
+
+#modalCrearConvocatoria [data-convocatoria-classification-menu]::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+#modalCrearConvocatoria [data-convocatoria-classification-menu]::-webkit-scrollbar-thumb {
+    border: 2px solid transparent;
+    border-radius: 999px;
+    background: rgba(72, 84, 105, .38);
+    background-clip: padding-box;
+}
+
+#modalCrearConvocatoria .convocatoria-public-form-share {
+    position: relative;
+    z-index: 1;
+}
+
+
+/* Modal QR compacto con scroll interno */
+#modalConvocatoriaQr .convocatoria-qr-dialog {
+    width: min(calc(100% - 32px), 820px);
+    max-width: 820px;
+    margin: 16px auto;
+}
+
+#modalConvocatoriaQr .modal-content {
+    max-height: calc(100vh - 32px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+#modalConvocatoriaQr .modal-header {
+    flex: 0 0 auto;
+    padding: 14px 18px;
+}
+
+#modalConvocatoriaQr .modal-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: 16px 18px 18px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+}
+
+#modalConvocatoriaQr .convocatoria-qr-workspace {
+    grid-template-columns: minmax(220px, .72fr) minmax(0, 1.28fr);
+    gap: 14px;
+}
+
+#modalConvocatoriaQr .convocatoria-qr-preview {
+    width: min(100%, 260px);
+}
+
+#modalConvocatoriaQr .convocatoria-qr-customizer {
+    padding: 14px;
+}
+
+#modalConvocatoriaQr .convocatoria-qr-controls {
+    gap: 10px;
+}
+
+#modalConvocatoriaQr .convocatoria-qr-control select,
+#modalConvocatoriaQr .convocatoria-qr-control input[type="color"],
+#modalConvocatoriaQr .convocatoria-qr-control input[type="url"],
+#modalConvocatoriaQr .convocatoria-qr-control input[type="file"] {
+    min-height: 36px;
+}
+
+#modalConvocatoriaQr .convocatoria-qr-output-actions {
+    margin-top: 10px;
+}
+
+#modalConvocatoriaQr .convocatoria-qr-output-actions .btn {
+    min-height: 36px;
+}
+
+@media (max-width: 767.98px) {
+    #modalConvocatoriaQr .convocatoria-qr-dialog {
+        width: min(calc(100% - 16px), 680px);
+        margin: 8px auto;
+    }
+
+    #modalConvocatoriaQr .modal-content {
+        max-height: calc(100vh - 16px);
+    }
+
+    #modalConvocatoriaQr .convocatoria-qr-workspace {
+        grid-template-columns: 1fr;
+    }
+
+    #modalConvocatoriaQr .convocatoria-qr-preview-column {
+        position: static;
+    }
+
+    #modalConvocatoriaQr .convocatoria-qr-preview {
+        width: min(100%, 230px);
     }
 }

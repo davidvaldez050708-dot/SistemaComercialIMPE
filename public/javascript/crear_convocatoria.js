@@ -11,6 +11,14 @@ document.addEventListener('DOMContentLoaded', function () {
     );
     const search = module.querySelector('[data-convenio-search]');
     const stateFilter = module.querySelector('[data-convenio-state-filter]');
+    const stateDropdown = module.querySelector('[data-state-dropdown]');
+    const stateTrigger = module.querySelector('[data-state-trigger]');
+    const stateMenu = module.querySelector('[data-state-menu]');
+    const stateLabel = module.querySelector('[data-state-label]');
+    const stateOptions = Array.from(
+        module.querySelectorAll('[data-state-value]')
+    );
+    const clearFilters = module.querySelector('[data-convenio-clear-filters]');
     const results = module.querySelector('[data-convenio-results]');
     const emptyFilter = module.querySelector('[data-convenio-empty-filter]');
     const modalElement = document.getElementById(
@@ -23,6 +31,16 @@ document.addEventListener('DOMContentLoaded', function () {
             .replace(/[\u0300-\u036f]/g, '')
             .toLowerCase()
             .trim();
+    };
+
+    const updateClearFilters = function () {
+        const hasSearch = String(search?.value || '').trim() !== '';
+        const hasState = String(stateFilter?.value || '') !== '';
+
+        clearFilters?.classList.toggle(
+            'd-none',
+            !(hasSearch || hasState)
+        );
     };
 
     const applyFilters = function () {
@@ -52,10 +70,103 @@ document.addEventListener('DOMContentLoaded', function () {
         if (emptyFilter) {
             emptyFilter.classList.toggle('d-none', visible > 0);
         }
+
+        updateClearFilters();
     };
 
+    updateClearFilters();
+
     search?.addEventListener('input', applyFilters);
-    stateFilter?.addEventListener('change', applyFilters);
+
+    clearFilters?.addEventListener('click', function () {
+        if (search) {
+            search.value = '';
+        }
+
+        if (stateFilter) {
+            stateFilter.value = '';
+        }
+
+        if (stateLabel) {
+            stateLabel.textContent = 'Todos los estados';
+        }
+
+        stateOptions.forEach(function (item) {
+            const selected =
+                String(item.dataset.stateValue || '') === '';
+
+            item.classList.toggle('is-selected', selected);
+            item.setAttribute(
+                'aria-selected',
+                selected ? 'true' : 'false'
+            );
+        });
+
+        closeStateDropdown();
+        applyFilters();
+        search?.focus();
+    });
+
+    const closeStateDropdown = function () {
+        if (!stateDropdown || !stateTrigger) {
+            return;
+        }
+
+        stateDropdown.classList.remove('is-open');
+        stateTrigger.setAttribute('aria-expanded', 'false');
+    };
+
+    stateTrigger?.addEventListener('click', function () {
+        const opening = !stateDropdown?.classList.contains('is-open');
+
+        if (opening) {
+            stateDropdown?.classList.add('is-open');
+            stateTrigger.setAttribute('aria-expanded', 'true');
+        } else {
+            closeStateDropdown();
+        }
+    });
+
+    stateOptions.forEach(function (option) {
+        option.addEventListener('click', function () {
+            const value = String(option.dataset.stateValue || '');
+
+            if (stateFilter) {
+                stateFilter.value = value;
+            }
+
+            if (stateLabel) {
+                stateLabel.textContent = option.textContent.trim();
+            }
+
+            stateOptions.forEach(function (item) {
+                const selected = item === option;
+                item.classList.toggle('is-selected', selected);
+                item.setAttribute(
+                    'aria-selected',
+                    selected ? 'true' : 'false'
+                );
+            });
+
+            closeStateDropdown();
+            applyFilters();
+        });
+    });
+
+    document.addEventListener('click', function (event) {
+        if (
+            stateDropdown &&
+            !stateDropdown.contains(event.target)
+        ) {
+            closeStateDropdown();
+        }
+    });
+
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') {
+            closeStateDropdown();
+        }
+    });
 
     if (!modalElement || !window.bootstrap) {
         return;
@@ -133,9 +244,31 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (createLink) {
                 const stateId = Number(data.estado_id || 0);
-                createLink.href = stateId > 0
-                    ? baseUrl + '&territorio_id=' + encodeURIComponent(stateId)
-                    : baseUrl;
+                const stateName = String(data.estado || '').trim();
+                const seguimientoId = Number(data.seguimiento_id || 0);
+                const convenioNombre = String(data.institucion || '').trim();
+                const params = new URLSearchParams();
+
+                if (stateId > 0) {
+                    params.set('territorio_id', String(stateId));
+                }
+
+                if (stateName !== '') {
+                    params.set('estado_nombre', stateName);
+                }
+
+                params.set('desde_convenio', '1');
+                params.set('abrir_nueva_convocatoria', '1');
+
+                if (convenioNombre !== '') {
+                    params.set('convenio_nombre', convenioNombre);
+                }
+
+                if (seguimientoId > 0) {
+                    params.set('seguimiento_id', String(seguimientoId));
+                }
+
+                createLink.href = baseUrl + '&' + params.toString();
             }
 
             modal.show();

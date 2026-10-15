@@ -643,6 +643,24 @@
                         message: 'Timbrado detectado en el teléfono WebRTC. Registro PBX pendiente.'
                     });
                 },
+                onConnected: function () {
+                    // Evidencia visual de llamada SIP conectada observada en
+                    // el widget, SIN fingir un evento PBX firmado.
+                    if (!isSdkOnlyIncoming() || !state.active ||
+                        !['incoming-ringing','answering'].includes(state.phase)) return;
+                    answeredAtMs = Date.now();
+                    reportSdkEvent('answered', state);
+                    publish({
+                        phase:'in-progress',
+                        status:'in-progress',
+                        answeredAtMs:answeredAtMs,
+                        duration:0,
+                        message:'',
+                        context:Object.assign({},state.context,{
+                            verified:false,source:'SDK_WEBRTC'
+                        })
+                    });
+                },
                 onStopped: function () {
                     if (!isSdkOnlyIncoming()) return;
                     // Al atender, el SDK deja de timbrar pero la conversación
@@ -680,6 +698,12 @@
             await fetchWebRtcSession();
         }
 
+        // Registrar la conexión del SDK ANTES de que cree su WebRTC.
+        // No mostrar ni sustituir el widget ni modificar métodos SIP.
+        const dtmfBridge = window.IMPE_ZADARMA_WEBRTC_DTMF;
+        if (dtmfBridge && !dtmfBridge.install()) {
+            console.warn('DTMF: no se pudo preparar el navegador.');
+        }
         await loadScript(sdkLibUrl, 'lib');
         await loadScript(sdkFnUrl, 'fn');
 
@@ -797,21 +821,15 @@
 
             if (sdkOnly && state.active &&
                 String(state.callToken || '') === token) {
-                // La aceptación SIP la ejecutó el SDK y la llamada sigue en
-                // el MISMO modal. Este estado visual NO es prueba de un PBX ID
-                // ni autoriza registros/historial de interacción comercial.
-                answeredAtMs = Date.now();
-                reportSdkEvent('answered', state);
+                analystSdkObserver?.markAnswerRequested?.();
+                // Bloquear un segundo clic hasta tener una señal observada del
+                // SDK. Pulsar otra vez durante el establecimiento SIP podía
+                // cancelar la llamada mientras 'Contestar' reaparecía.
                 publish({
-                    phase: 'in-progress',
-                    status: 'in-progress',
-                    answeredAtMs: answeredAtMs,
-                    duration: 0,
-                    message: '',
-                    context: Object.assign({}, state.context, {
-                        verified: false,
-                        source: 'SDK_WEBRTC'
-                    })
+                    phase:'answering',
+                    status:'answering',
+                    duration:0,
+                    message:'Conectando llamada… Espera la confirmación del teléfono.'
                 });
             }
             actualizarEstadoTrasAccion();
@@ -1643,92 +1661,34 @@
         publish(state);
     };
 
-    const sendTransferDtmf = async function (
-        targetExtension,
-        attended
-    ) {
-        const ext =
-            String(targetExtension || '')
-                .replace(/\D+/g, '');
-
-        if (
-            !permiteTransferir ||
-            ext.length < 3 ||
-            ext.length > 6 ||
-            !state.active
-        ) {
+    const sendTransferDtmf = async function (targetExtension, attended) {
+        const ext = String(targetExtension || '');
+        if (!permiteTransferir || !/^[0-9]{3,6}$/.test(ext) ||
+            !state.active || state.phase !== 'in-progress') {
+            publish({message:'No existe una llamada activa autorizada para transferir.'});
             return false;
         }
 
-        const code =
-            attended
-                ? '*' + ext + '#'
-                : '#' + ext + '#';
-
-        const candidates = [
-            window.zdrmWebPhone,
-            window.zdrmWebrtcPhoneInterface
-        ].filter(Boolean);
-        const methods = [
-            'sendDtmf',
-            'sendDTMF',
-            'regToDtmf',
-            'regToDTMF',
-            'dtmf'
-        ];
-
-        for (const target of candidates) {
-            for (const method of methods) {
-                if (
-                    typeof target?.[method] ===
-                    'function'
-                ) {
-                    try {
-                        // Si el proveedor devuelve una Promise, esperar su
-                        // rechazo antes de informar que recibió la orden.
-                        const result = await target[method](code);
-                        if (result === false ||
-                            (typeof result === 'string' && result.trim() !== '')) {
-                            continue;
-                        }
-
-                        publish({
-                            message:
-                                attended
-                                    ? 'Consultando extensión ' +
-                                        ext +
-                                        '…'
-                                    : 'Transfiriendo a extensión ' +
-                                        ext +
-                                        '…'
-                        });
-                        return true;
-                    } catch (error) {
-                        console.debug(
-                            'El control WebRTC no aceptó DTMF mediante ' +
-                                method +
-                                '.',
-                            error
-                        );
-                    }
-                }
-            }
+        const tones = (attended ? '*' : '#') + ext + '#';
+        const dtmf = window.IMPE_ZADARMA_WEBRTC_DTMF;
+        if (!dtmf || !dtmf.send(tones)) {
+            publish({
+                message:'No se pudo enviar la transferencia a ext. ' + ext +
+                    ': ' + (dtmf?.error() || 'DTMF WebRTC no disponible.') +
+                    ' La llamada permanece activa.'
+            });
+            return false;
         }
-
-        /*
-         * El widget oficial siempre soporta la combinación DTMF de la PBX.
-         * Si su versión no expone un método JS documentado, mostramos el
-         * control oficial y el código exacto que debe marcarse.
-         */
-        mostrarHostEntrante();
+        // El navegador aceptó la cola de tonos, pero sólo un evento
+        // NOTIFY_INTERNAL transfer_from confirma el traspaso real en PBX.
         publish({
-            message:
-                'Marca ' +
-                code +
-                ' en el teclado de Zadarma para completar la transferencia.'
+            message:attended
+                ? 'Consulta enviada por WebRTC a ext. ' + ext +
+                    '. Espera la respuesta antes de colgar.'
+                : 'Tonos de transferencia directa enviados por WebRTC a ext. ' +
+                    ext + '. Esperando confirmación de la centralita.'
         });
-
-        return false;
+        return true;
     };
 
     // La orden del CRM es solo una solicitud. El motor SIP vuelve a
@@ -1772,9 +1732,11 @@
             );
             // Una invocación DTMF nunca confirma que el destinatario
             // recibió ni respondió. Sólo los webhooks PBX pueden hacerlo.
-            if (submitted) publish({
-                message:'Solicitud DTMF enviada al WebRTC. Espera la confirmación de Zadarma; si no suena el destino, utiliza el teclado oficial.'
-            });
+            if (!submitted) {
+                // sendTransferDtmf ya publicó la causa real; no abrir el
+                // widget ni aparentar que la extensión destino está sonando.
+                return;
+            }
         } catch (error) {
             publish({message:error?.message || 'No se pudo solicitar la transferencia.'});
         }

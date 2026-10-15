@@ -71,6 +71,7 @@ $duracionEntrante = static function ($segundos) {
 ?>
 <section class="dashboard-panel linkage-incoming-page"
     data-linkage-incoming
+    data-current-user="<?= (int)($_SESSION['usuario_id'] ?? 0) ?>"
     data-auto-call="<?= $esc($seleccionarId) ?>"
     data-search-url="<?= $esc(BASE_URL . 'index.php?controller=seguimientoVinculacion&action=buscarEntrantesSeguimientos') ?>"
     data-save-url="<?= $esc(BASE_URL . 'index.php?controller=seguimientoVinculacion&action=registrarLlamadaEntrante') ?>"
@@ -133,6 +134,7 @@ $duracionEntrante = static function ($segundos) {
                     $sinIdentificar = $situacion === 'SIN_IDENTIFICAR';
                     $seguimientoId = (int)($llamada['seguimiento_id'] ?? 0);
                     $grabacionInterna = $esInterna && $esWebrtc && !empty($llamada['grabacion_disponible']);
+                    $audioPbx = !$esWebrtc && !$esInterna && !empty($llamada['grabacion_pbx_reportada']);
                     $audioInternoUrl = $grabacionInterna
                         ? BASE_URL . 'prueba_telefonia/api/grabacion_interna_analista.php?session_id=' . rawurlencode($pbxId)
                         : '';
@@ -195,6 +197,15 @@ $duracionEntrante = static function ($segundos) {
                                 <div class="linkage-call-result-group">
                                     <?php if ($esInterna && $vinculada): ?>
                                         <span class="linkage-call-result-badge is-no-contact">Interna · revisar vínculo de prueba</span>
+                                    <?php elseif ($audioPbx): ?>
+                                        <button type="button" class="linkage-call-audio-state is-available linkage-call-recording-toggle"
+                                            data-incoming-pbx-toggle
+                                            data-pbx-id="<?= $esc($pbxId) ?>"
+                                            aria-controls="<?= $esc($controlAudioId) ?>" aria-expanded="false">
+                                            <i class="bi bi-record-circle" aria-hidden="true"></i>
+                                            <span>Consultar grabación</span>
+                                            <i class="bi bi-chevron-down linkage-call-recording-chevron" aria-hidden="true"></i>
+                                        </button>
                                     <?php elseif ($esInterna): ?>
                                         <span class="linkage-call-result-badge is-verification-test">Interna · no contabiliza</span>
                                     <?php elseif ($vinculada): ?>
@@ -274,6 +285,16 @@ $duracionEntrante = static function ($segundos) {
                                     </div>
                                     <p class="linkage-incoming-player-error" data-incoming-player-error
                                         role="status" aria-live="polite" hidden></p>
+                                </div>
+                            <?php elseif ($audioPbx): ?>
+                                <div class="linkage-call-inline-player linkage-incoming-audio-panel"
+                                    id="<?= $esc($controlAudioId) ?>" data-incoming-pbx-panel hidden>
+                                    <div class="linkage-call-inline-player-heading">
+                                        <span><i class="bi bi-soundwave" aria-hidden="true"></i> Grabación PBX verificada</span>
+                                        <small>Los segmentos de la conversación se reproducen en orden.</small>
+                                    </div>
+                                    <div data-incoming-pbx-audios></div>
+                                    <p class="linkage-incoming-player-error" data-incoming-pbx-error role="status" aria-live="polite" hidden></p>
                                 </div>
                             <?php elseif ($esInterna && $esWebrtc && $situacion === 'INTERNA' && $finalizada): ?>
                                 <div class="linkage-incoming-card-actions">
@@ -395,16 +416,9 @@ $duracionEntrante = static function ($segundos) {
                         <span><i class="bi bi-telephone-inbound" aria-hidden="true"></i> <strong data-incoming-number>—</strong></span>
                         <span><i class="bi bi-clock" aria-hidden="true"></i> <strong data-incoming-duration>00:00</strong></span>
                     </div>
-                    <div class="linkage-incoming-sdk-notice" data-incoming-sdk-notice role="note" hidden>
-                        <span class="linkage-incoming-sdk-notice-icon" aria-hidden="true">
-                            <i class="bi bi-info-circle"></i>
-                        </span>
-                        <div>
-                            <strong>Registro de llamada WebRTC</strong>
-                            <p>Observada desde el navegador, sin confirmación de la centralita.
-                                Al vincularla confirma que hubo conversación. No genera verificaciones efectivas.</p>
-                        </div>
-                    </div>
+                    <!-- La indicación técnica WebRTC queda en el historial.
+                         La confirmación manual y su protección permanecen abajo. -->
+                    <div data-incoming-sdk-notice hidden></div>
                     <div class="mb-3">
                         <label class="form-label">¿A qué institución corresponde?</label>
                         <select name="decision" class="form-select" data-incoming-decision required>
@@ -414,13 +428,26 @@ $duracionEntrante = static function ($segundos) {
                         </select>
                     </div>
                     <div data-incoming-existing>
-                        <label class="form-label" for="incomingLookup">Buscar expediente por institución o teléfono</label>
-                        <input id="incomingLookup" class="form-control" type="search" data-incoming-lookup
-                            placeholder="Escribe al menos dos caracteres" autocomplete="off">
-                        <select class="form-select mt-2" name="seguimiento_id" data-incoming-followup>
-                            <option value="">Selecciona un expediente</option>
-                        </select>
-                        <small class="text-muted">Solo aparecen seguimientos que te pertenecen.</small>
+                        <div class="linkage-incoming-confirmed" data-incoming-confirmed hidden>
+                            <span class="linkage-incoming-confirmed-icon" aria-hidden="true">
+                                <i class="bi bi-building-check"></i>
+                            </span>
+                            <div class="linkage-incoming-confirmed-copy">
+                                <span>Institución identificada por Recepción</span>
+                                <strong data-incoming-confirmed-name></strong>
+                                <small>Expediente asignado a tu cartera. Confirma la identidad durante la conversación.</small>
+                            </div>
+                            <button type="button" class="btn linkage-incoming-change-record"
+                                data-incoming-change-expediente>Cambiar</button>
+                        </div>
+                        <div data-incoming-existing-search>
+                            <label class="form-label" for="incomingLookup">Buscar expediente</label>
+                            <input id="incomingLookup" class="form-control" type="search" data-incoming-lookup
+                                placeholder="Nombre de la institución o teléfono" autocomplete="off">
+                            <select class="form-select mt-2" name="seguimiento_id" data-incoming-followup>
+                                <option value="">Selecciona un expediente</option>
+                            </select>
+                        </div>
                     </div>
                     <div data-incoming-new hidden>
                         <div class="row g-3">

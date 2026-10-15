@@ -99,6 +99,31 @@
                     'Sin grabación'));
                 return null;
             }
+            if (call.estado === 'Transferida') {
+                const audioId = 'marketing-transfer-record-' + index;
+                const endpoint = new URL('prueba_telefonia/api/grabacion_transferida_pbx.php',
+                    document.baseURI);
+                endpoint.searchParams.set('pbx_call_id', String(call.pbx_call_id || ''));
+                const button = node('button',
+                    'linkage-call-audio-state linkage-call-recording-toggle');
+                button.type = 'button';
+                button.dataset.marketingPbxAudio = endpoint.toString();
+                button.setAttribute('aria-controls', audioId);
+                button.setAttribute('aria-expanded','false');
+                button.innerHTML = '<i class="bi bi-record-circle" aria-hidden="true"></i>' +
+                    '<span>Consultar grabación</span>';
+                td.appendChild(button);
+                const detail = node('tr','telephony-history-recording-row');
+                detail.id = audioId;
+                detail.hidden = true;
+                const content = node('td');
+                content.colSpan = 8;
+                const slot = node('div','telephony-history-recording-slot');
+                slot.dataset.marketingPbxAudios = '';
+                content.appendChild(slot);
+                detail.appendChild(content);
+                return detail;
+            }
             const audioId = 'marketing-reception-record-' + index;
             const url = new URL(root.dataset.recordingUrl, window.location.href);
             url.searchParams.set('pbx_call_id', String(call.pbx_call_id || ''));
@@ -330,6 +355,45 @@
                 puedeDevolver = false;
             });
         }
+
+        // Transferencias: solo audios PBX validados por el servidor y la extensión.
+        tableBody.addEventListener('click', async function (event) {
+            const button = event.target.closest('[data-marketing-pbx-audio]');
+            if (!button) return;
+            event.preventDefault();
+            event.stopPropagation();
+            const detail = document.getElementById(button.getAttribute('aria-controls'));
+            if (!detail) return;
+            if (!detail.hidden) {
+                detail.querySelectorAll('audio').forEach(a => a.pause());
+                detail.hidden = true;
+                button.setAttribute('aria-expanded','false');
+                return;
+            }
+            const slot = detail.querySelector('[data-marketing-pbx-audios]');
+            const endpoint = new URL(button.dataset.marketingPbxAudio);
+            endpoint.searchParams.set('verificar','1');
+            button.disabled = true;
+            try {
+                const response = await fetch(endpoint.toString(),{
+                    credentials:'same-origin',cache:'no-store'});
+                if (!response.ok) throw new Error('No se pudo verificar la grabación.');
+                const info = await response.json();
+                if (!info.ok || !info.disponible || !(info.segmentos > 0))
+                    throw new Error('Zadarma todavía no tiene todos los segmentos.');
+                if (!window.IMPE_TELEPHONY_SEGMENTS?.create(
+                    slot, endpoint.toString(), info.segmentos)) {
+                    throw new Error('No fue posible preparar el reproductor.');
+                }
+            } catch (error) {
+                slot.replaceChildren(node('p','linkage-incoming-player-error',
+                    error.message || 'Grabación no disponible.'));
+            } finally {
+                detail.hidden = false;
+                button.disabled = false;
+                button.setAttribute('aria-expanded','true');
+            }
+        });
 
         // is_recorded sólo garantiza que Zadarma reportó una grabación.
         // Comprobar el enlace al abrir, sin presentar un reproductor falso.

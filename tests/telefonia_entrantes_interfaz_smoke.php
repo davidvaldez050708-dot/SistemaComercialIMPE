@@ -32,7 +32,7 @@ $checks = [
         !str_contains($phoneJs, 'const incomingInShell = Boolean(state?.active)') &&
         str_contains($phoneJs, "getHostMode() === 'embedded'"),
     'Se muestra modal CRM, no panel blanco al entrar llamada' =>
-        str_contains($shellJs, 'const customVisible = (incoming || finishedSdk || shownOutgoing)') &&
+        str_contains($shellJs, 'const customVisible = (incoming || finishedSdk || finishedIncoming || shownOutgoing)') &&
         str_contains($shellJs, "incomingPanel.hidden = !customVisible") &&
         str_contains($shellView, 'data-incoming-answer') &&
         str_contains($shellView, 'data-incoming-hangup') &&
@@ -78,11 +78,11 @@ $checks = [
         str_contains($shellJs, 'syncIncomingClock(value)') &&
         str_contains($shellJs, 'updateIncomingTimer(phoneState)') &&
         str_contains($shellJs, 'incomingCallId(value) !== incomingCallId(currentState)'),
-    'Contestar y colgar son inmediatos, sin avisos de éxito' =>
+    'Contestar requiere confirmación y colgar conserva el resumen PBX' =>
         !str_contains($shellJs, 'Contestando… espera la confirmación') &&
         str_contains($shellJs, 'const finishing = shownOutgoing') &&
         str_contains($shellJs, "pendingIncomingAction = {") &&
-        str_contains($shellJs, "pending !== 'hangup' && pending !== 'decline'") &&
+        str_contains($shellJs, "const finishingIncoming = incoming && pending === 'hangup'") &&
         str_contains($hostJs, 'actualizarEstadoTrasAccion'),
     'Salida y recepción comparten una sola instancia WebRTC' =>
         str_contains($phoneJs, "getHostMode() === 'embedded'") &&

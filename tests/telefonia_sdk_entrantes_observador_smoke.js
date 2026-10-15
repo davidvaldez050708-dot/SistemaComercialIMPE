@@ -79,4 +79,33 @@ assert.equal(events[3][1].caller,'101');
 watch.stop();
 assert.equal(observer.attached,false);
 assert.equal(interval,null);
-console.log('Observador SDK Analista: OK (timbrado real, filtro entrante, cierre y reentrada)');
+// Al recibir una transferencia, el primer clic Contestar retira 'incoming'
+// antes de que el SDK enseñe Colgar: jamás declarar no contestada.
+value.ringing = false;
+value.inputIncoming = false;
+value.hangupActive = false;
+const transferred = [];
+const second = factory.create(doc,{
+    onRinging(){transferred.push('ring')},
+    onStopped(){transferred.push('missed')},
+    onConnected(){transferred.push('connected')},
+    onIdle(){transferred.push('idle')}
+});
+value.inputIncoming = true;
+value.ringing = true;
+interval();
+assert.deepEqual(transferred,['ring']);
+assert.equal(second.markAnswerRequested(),true);
+value.inputIncoming = false;
+value.ringing = false;
+value.hangupActive = false;
+for (let i=0;i<9;i++) interval();
+assert.deepEqual(transferred,['ring'],'negociación SIP no es llamada perdida');
+value.hangupActive = true;
+for (let i=0;i<4;i++) interval();
+assert.deepEqual(transferred,['ring','connected'],
+    'un solo evento de conversación observada tras aparecer Colgar');
+for (let i=0;i<5;i++) interval();
+assert.equal(transferred.filter(v=>v==='connected').length,1);
+second.stop();
+console.log('Observador SDK Analista: OK (timbrado, aceptación asíncrona, sin falso perdido)');

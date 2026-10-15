@@ -42,7 +42,10 @@ FILES=(
     "app/controllers/ConvocatoriaController.php"
     "app/models/ConvocatoriaModel.php"
     "app/views/convocatorias/index.php"
+    "app/views/formularios/registro.php"
+    "app/views/formularios/inscripcion.php"
     "public/css/convocatorias.css"
+    "public/javascript/crear_convocatoria.js"
 )
 
 echo "Repositorio fuente : $SRC"
@@ -126,6 +129,40 @@ grep -Fq "Tipo de convocatoria" "$DST/app/views/convocatorias/index.php"
 grep -Fq "convocatoria-month-groups" "$DST/app/views/convocatorias/index.php"
 grep -Fq "data-convocatoria-clasificacion" "$DST/app/views/convocatorias/index.php"
 grep -Fq "convocatoria-month-group-header" "$DST/public/css/convocatorias.css"
+grep -Fq "Personalizador completo de QR" "$DST/public/css/convocatorias.css"
+grep -Fq "Corrección estructural del scroll interno" "$DST/public/css/convocatorias.css"
+grep -Fq "Modal Nueva convocatoria más compacto" "$DST/public/css/convocatorias.css"
+grep -Fq "data-convocatoria-form-share" "$DST/app/views/convocatorias/index.php"
+grep -Fq "convocatoria_ref" "$DST/app/views/convocatorias/index.php"
+grep -Fq "data-aliado-id" "$DST/app/views/convocatorias/index.php"
+grep -Fq "data-convenio-nombre" "$DST/app/views/convocatorias/index.php"
+grep -Fq "origen', 'convenio_aliado" "$DST/app/views/convocatorias/index.php"
+grep -Fq "data-estado-id" "$DST/app/views/convocatorias/index.php"
+grep -Fq "modal-dialog-scrollable" "$DST/app/views/convocatorias/index.php"
+grep -Fq "convocatoria-create-form" "$DST/app/views/convocatorias/index.php"
+grep -Fq "data-convocatoria-availability-dropdown" "$DST/app/views/convocatorias/index.php"
+grep -Fq "CSS Convocatorias con cache busting" "$DST/app/views/convocatorias/index.php"
+grep -Fq "data-convocatoria-form-type" "$DST/app/views/convocatorias/index.php"
+grep -Fq "data-convocatoria-qr-modal" "$DST/app/views/convocatorias/index.php"
+grep -Fq "data-convocatoria-copy-qr" "$DST/app/views/convocatorias/index.php"
+grep -Fq "data-convocatoria-download-qr" "$DST/app/views/convocatorias/index.php"
+grep -Fq "data-convocatoria-qr-image-enabled" "$DST/app/views/convocatorias/index.php"
+grep -Fq "convenio_nombre" "$DST/public/javascript/crear_convocatoria.js"
+grep -Fq "params.set('convenio_nombre'" "$DST/public/javascript/crear_convocatoria.js"
+
+if grep -Fq "Seleccionar otros estados" "$DST/app/views/convocatorias/index.php"; then
+    echo "AVISO: el texto puede seguir existiendo en Editar convocatoria; la opción fue retirada de Nueva convocatoria."
+fi
+
+if grep -Fq "data-formulario-share" "$DST/app/views/formularios/registro.php"; then
+    echo "ERROR: Registro todavía contiene generación de link/QR." >&2
+    exit 1
+fi
+
+if grep -Fq "data-formulario-share" "$DST/app/views/formularios/inscripcion.php"; then
+    echo "ERROR: Inscripción todavía contiene generación de link/QR." >&2
+    exit 1
+fi
 
 if grep -Fq "convocatoria-list-table" "$DST/app/views/convocatorias/index.php"; then
     echo "ERROR: producción todavía contiene la tabla plana anterior." >&2
@@ -133,6 +170,6 @@ if grep -Fq "convocatoria-list-table" "$DST/app/views/convocatorias/index.php"; 
 fi
 
 echo
-echo "OK: filtros corregidos y convocatorias agrupadas por mes publicadas correctamente."
+echo "OK: producción genera enlaces únicos e identificables por convenio, aliado, estado y convocatoria."
 echo "Respaldo: $BACKUP"
 echo "Recarga el navegador con Ctrl+F5."
