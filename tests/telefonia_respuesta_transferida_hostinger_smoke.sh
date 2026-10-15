@@ -56,6 +56,54 @@ grep -Fq "markAnswerRequested" "$IMPE_ANSWER_PUBLIC/public/javascript/telefonia_
 bash tools/desplegar_respuesta_transferida_hostinger.sh --check |
  grep -Fq 'ya actualizada'
 
+# Variante EXACTA compartida por el usuario: al pulsar Contestar,
+# Hostinger publicaba 'in-progress' antes de confirmar el SDK, SIN la
+# instrucción reportSdkEvent('answered', state); de GitHub.
+export IMPE_ANSWER_PUBLIC="$TMP/hostinger-real"
+mkdir -p "$IMPE_ANSWER_PUBLIC/public/javascript"
+touch "$IMPE_ANSWER_PUBLIC/index.php"
+for f in public/javascript/telefonia_host.js public/javascript/telefonia_sdk_entrantes_observador.js; do
+  git show "$BASE:$f" > "$IMPE_ANSWER_PUBLIC/$f"
+done
+python3 - "$IMPE_ANSWER_PUBLIC/public/javascript/telefonia_host.js" <<'PY'
+import pathlib, sys
+p=pathlib.Path(sys.argv[1])
+s=p.read_text(encoding='utf-8')
+start=s.index('window.IMPE_ZADARMA_INCOMING = Object.freeze({')
+a=s.index('        answer: function () {',start)
+b=s.index('        decline: function () {',a)
+part=s[a:b]
+old="                reportSdkEvent('answered', state);\n"
+assert part.count(old)==1
+part=part.replace(old,'',1)
+assert "answeredAtMs = Date.now();" in part
+assert "phase: 'in-progress'," in part
+assert "reportSdkEvent('answered', state);" not in part
+p.write_text(s[:a]+part+s[b:], encoding='utf-8')
+PY
+real_checksum="$(sha256sum "$IMPE_ANSWER_PUBLIC/public/javascript/telefonia_host.js" | cut -d' ' -f1)"
+bash tools/desplegar_respuesta_transferida_hostinger.sh --check |
+ grep -Fq 'OK: recepción transferida compatible. PRODUCCIÓN INTACTA.'
+[[ "$(sha256sum "$IMPE_ANSWER_PUBLIC/public/javascript/telefonia_host.js" | cut -d' ' -f1)" == "$real_checksum" ]]
+bash tools/desplegar_respuesta_transferida_hostinger.sh --apply |
+ grep -Fq 'OK: aceptación de transferencia publicada.'
+python3 - "$IMPE_ANSWER_PUBLIC/public/javascript/telefonia_host.js" <<'PY'
+import pathlib,sys
+s=pathlib.Path(sys.argv[1]).read_text(encoding='utf-8')
+start=s.index('window.IMPE_ZADARMA_INCOMING = Object.freeze({')
+a=s.index('        answer: function () {',start)
+b=s.index('        decline: function () {',a)
+answer=s[a:b]
+assert "markAnswerRequested" in answer
+assert "phase:'answering'" in answer
+assert "reportSdkEvent('answered', state);" not in answer, (
+    "el evento debe emitirse solamente al observar conexión")
+assert "onConnected: function ()" in s
+assert "reportSdkEvent('answered', state);" in s
+PY
+bash tools/desplegar_respuesta_transferida_hostinger.sh --check |
+ grep -Fq 'ya actualizada'
+
 # Una lógica nueva no prevista en la rama de Contestar se rechaza: no
 # publicar una reversión que elimine personalizaciones funcionales.
 export IMPE_ANSWER_PUBLIC="$TMP/unsafe"
