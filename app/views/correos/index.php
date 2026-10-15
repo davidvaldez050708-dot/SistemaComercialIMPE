@@ -12,6 +12,10 @@ $correos = is_array($correos ?? null)
     ? $correos
     : [];
 
+$convocatoriasMarketing = is_array($convocatoriasMarketing ?? null)
+    ? $convocatoriasMarketing
+    : [];
+
 $texto = static fn($valor) => htmlspecialchars(
     (string)$valor,
     ENT_QUOTES | ENT_SUBSTITUTE,
@@ -306,6 +310,46 @@ $texto = static fn($valor) => htmlspecialchars(
                         <strong data-marketing-mail-recipient>
                             Escribe un correo electrónico
                         </strong>
+                    </div>
+
+                    <div class="mb-3">
+                        <label
+                            class="form-label"
+                            for="correo_marketing_convocatoria">
+                            Convocatoria
+                            <span class="text-muted">(opcional)</span>
+                        </label>
+
+                        <select
+                            class="form-select system-form-control"
+                            id="correo_marketing_convocatoria"
+                            name="convocatoria_id"
+                            data-marketing-mail-convocatoria>
+                            <option value="">Selecciona una convocatoria</option>
+                            <?php foreach ($convocatoriasMarketing as $convocatoriaMarketing): ?>
+                                <?php
+                                $convocatoriaId = (int)($convocatoriaMarketing['id'] ?? 0);
+                                $convocatoriaTitulo = trim(
+                                    (string)($convocatoriaMarketing['titulo'] ?? '')
+                                );
+                                $convocatoriaEstados = trim(
+                                    (string)($convocatoriaMarketing['estados'] ?? '')
+                                );
+                                ?>
+                                <?php if ($convocatoriaId > 0 && $convocatoriaTitulo !== ''): ?>
+                                    <option
+                                        value="<?= $convocatoriaId ?>"
+                                        data-convocatoria-titulo="<?= $texto($convocatoriaTitulo) ?>">
+                                        <?= $texto(
+                                            $convocatoriaTitulo .
+                                            ($convocatoriaEstados !== ''
+                                                ? ' · ' . $convocatoriaEstados
+                                                : '')
+                                        ) ?>
+                                    </option>
+                                <?php endif; ?>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
 
                     <div class="mb-3">
