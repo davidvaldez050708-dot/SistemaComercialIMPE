@@ -24,6 +24,8 @@ on:
       - "tools/desplegar_transferencias_seguras_hostinger.sh"
       - "tools/fusionar_shell_transferencias_hostinger.py"
       - "tools/desplegar_recepcion_rapida_hostinger.sh"
+      - "tools/desplegar_estilos_select_transferencia_hostinger.sh"
+      - "tests/telefonia_select_transferencia_hostinger_smoke.sh"
       - "tests/telefonia_recepcion_rapida_smoke.php"
       - "tests/telefonia_recepcion_rapida_hostinger_smoke.sh"
       - "tests/telefonia_recepcion_rapida_runtime_smoke.js"
@@ -78,3 +80,4 @@ jobs:
           bash tests/telefonia_transferencias_hostinger_smoke.sh
           bash -n tools/desplegar_recepcion_rapida_hostinger.sh
           bash tests/telefonia_recepcion_rapida_hostinger_smoke.sh
+          bash tests/telefonia_select_transferencia_hostinger_smoke.sh
