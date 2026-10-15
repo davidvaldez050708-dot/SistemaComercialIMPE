@@ -36,6 +36,33 @@ python3 tools/fusionar_cierre_transferencia_legacy_hostinger.py "$TMP/custom.js"
   grep -Fq 'FUSIÓN LEGACY COMPATIBLE'
 grep -Fq 'NOTA PRIVADA WEBRTC HISTORICA' "$TMP/custom.js"
 
+# Variante publicada real (845 líneas): no incluye nativeVisible en la
+# condición customVisible. Conservarla sin forzar lógica WebRTC ajena.
+cp "$TMP/transferencias.js" "$TMP/no-native-guard.js"
+python3 - "$TMP/no-native-guard.js" <<'PY'
+import pathlib,sys
+p=pathlib.Path(sys.argv[1])
+s=p.read_text()
+old="""        const customVisible = (incoming || shownOutgoing) &&
+            !(cfg.analystIncomingResults && nativeVisible) &&
+            !minimized && pending !== 'hangup' && pending !== 'decline';"""
+new="""        const customVisible = (incoming || shownOutgoing) &&
+            !minimized && pending !== 'hangup' && pending !== 'decline';"""
+assert s.count(old)==1
+p.write_text(s.replace(old,new,1))
+PY
+cp "$TMP/no-native-guard.js" "$TMP/legacy-actual-before.js"
+python3 tools/fusionar_cierre_transferencia_legacy_hostinger.py "$TMP/no-native-guard.js" |
+  grep -Fq 'FUSIÓN LEGACY COMPATIBLE'
+node --check "$TMP/no-native-guard.js"
+grep -Fq "const finishingIncoming = incoming && pending === 'hangup';" "$TMP/no-native-guard.js"
+grep -Fq "transferToggle?.setAttribute('aria-expanded', 'false');" "$TMP/no-native-guard.js"
+! grep -Fq "!(cfg.analystIncomingResults && nativeVisible) &&" "$TMP/no-native-guard.js"
+cp "$TMP/no-native-guard.js" "$TMP/legacy-actual-after.js"
+python3 tools/fusionar_cierre_transferencia_legacy_hostinger.py "$TMP/no-native-guard.js" |
+  grep -Fq 'YA ACTUALIZADO'
+cmp -s "$TMP/no-native-guard.js" "$TMP/legacy-actual-after.js"
+
 # Si el bloque crítico se modificó, debe fallar y NO escribir el archivo.
 cp "$TMP/transferencias.js" "$TMP/conflict.js"
 python3 - "$TMP/conflict.js" <<'PY'

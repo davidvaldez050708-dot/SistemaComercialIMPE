@@ -72,14 +72,28 @@ def run(path):
         const shownCall = state?.active ? state :
             (incomingFinishedPreview || preview || finishedPreview);
         const finishedIncoming = Boolean(incomingFinishedPreview);""")
-    add('visibilidad',
-        """        const customVisible = (incoming || shownOutgoing) &&
+    # En el shell personalizado confirmado por SHA-256 no existe la guarda
+    # de panel nativo del Analista en customVisible. Preservar exactamente
+    # esa decisión histórica; NO introducir la guarda de otra versión.
+    visibility_variants = (
+        ("""        const customVisible = (incoming || shownOutgoing) &&
             !(cfg.analystIncomingResults && nativeVisible) &&
             !minimized && pending !== 'hangup' && pending !== 'decline';""",
-        """        const finishingIncoming = incoming && pending === 'hangup';
+         """        const finishingIncoming = incoming && pending === 'hangup';
         const customVisible = (incoming || finishedIncoming || shownOutgoing) &&
             !(cfg.analystIncomingResults && nativeVisible) &&
-            !minimized && pending !== 'decline';""")
+            !minimized && pending !== 'decline';"""),
+        ("""        const customVisible = (incoming || shownOutgoing) &&
+            !minimized && pending !== 'hangup' && pending !== 'decline';""",
+         """        const finishingIncoming = incoming && pending === 'hangup';
+        const customVisible = (incoming || finishedIncoming || shownOutgoing) &&
+            !minimized && pending !== 'decline';"""),
+    )
+    matches = [(old, new) for old, new in visibility_variants
+               if source.count(nl(old)) == 1]
+    if len(matches) != 1:
+        fail('visibilidad: variante no reconocida (%d)' % len(matches))
+    add('visibilidad', matches[0][0], matches[0][1])
     add('bloquear transferencia al colgar',
         "        const workingCall = Boolean(ongoing && state.phase === 'in-progress');",
         """        const workingCall = Boolean(ongoing && state.phase === 'in-progress' &&
