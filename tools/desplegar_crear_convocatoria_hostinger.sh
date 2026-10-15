@@ -42,6 +42,8 @@ FILES=(
     "index.php"
     "app/models/CrearConvocatoriaModel.php"
     "app/controllers/CrearConvocatoriaController.php"
+    "app/controllers/ConvocatoriaController.php"
+    "app/views/convocatorias/index.php"
     "app/views/convocatorias/crear_desde_convenio.php"
     "app/views/layout/sidebar.php"
     "app/views/layout/dashboard_head.php"
@@ -137,10 +139,13 @@ grep -Fq "CONVENIO · ALIADO" "$DST/app/views/convocatorias/crear_desde_convenio
 grep -Fq "data-convenio-modal-contact" "$DST/app/views/convocatorias/crear_desde_convenio.php"
 grep -Fq "data-state-dropdown" "$DST/app/views/convocatorias/crear_desde_convenio.php"
 grep -Fq "territorio_id" "$DST/public/javascript/crear_convocatoria.js"
+grep -Fq "estado_nombre" "$DST/public/javascript/crear_convocatoria.js"
+grep -Fq "desde_convenio" "$DST/app/controllers/ConvocatoriaController.php"
+grep -Fq "crear-convocatoria-modal-create" "$DST/public/css/crear_convocatoria.css"
 grep -Fq "Filtro de estados alineado" "$DST/public/css/crear_convocatoria.css"
 grep -Fq "Desplegable de estados siempre hacia abajo" "$DST/public/css/crear_convocatoria.css"
 
 echo
-echo "OK: filtro de Estado publicado con desplegable personalizado hacia abajo."
+echo "OK: Crear convocatoria redirige al estado exacto y abre Gestión directamente."
 echo "Respaldo: $BACKUP"
 echo "Recarga el navegador con Ctrl+F5."
