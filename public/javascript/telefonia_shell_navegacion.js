@@ -14,9 +14,7 @@
     if (!uid || !crm || !mask || !config.homeUrl) return;
 
     const home = new URL(String(config.homeUrl), window.location.href);
-    const shell = new URL(window.location.href);
     const key = 'impe:crm:shell:last-route:' + uid;
-    const loginUrl = new URL(String(config.loginUrl || config.homeUrl), window.location.href);
     const isReload = (function () {
         try {
             return window.performance?.getEntriesByType('navigation')[0]?.type === 'reload';
@@ -27,9 +25,9 @@
     let currentUrl = home.href;
     let pendingUrl = home.href;
     let navigationToken = 0;
-    let loadingSince = Date.now();
     let loadedOnce = false;
     let failed = false;
+    let navigating = false;
     let watchdog = null;
 
     const safeUrl = function (input) {
@@ -49,20 +47,31 @@
         }
     };
 
-    const setMask = function (visible, text, error) {
+    const setRecovery = function (visible, text) {
+        // Jamás mostrar un cargador en los cambios normales de módulo.
+        // Esta capa se reserva EXCLUSIVAMENTE para una respuesta PHP
+        // incompleta o una navegación realmente detenida.
         mask.hidden = !visible;
-        mask.classList.toggle('is-error', Boolean(error));
-        if (message) message.textContent = text || 'Abriendo módulo…';
-        if (retry) retry.hidden = !error;
+        mask.classList.toggle('is-error', visible);
+        if (message) message.textContent = text || '';
+        if (retry) retry.hidden = !visible;
     };
     const startNavigation = function (target) {
         const targetUrl = safeUrl(target);
-        if (!targetUrl) return;
+        if (!targetUrl) return false;
         pendingUrl = targetUrl.href;
         navigationToken++;
-        loadingSince = Date.now();
         failed = false;
-        setMask(true, 'Cargando módulo…', false);
+        navigating = true;
+        return true;
+    };
+    const resetNavigation = function () {
+        navigating = false;
+        if (watchdog !== null) {
+            window.clearTimeout(watchdog);
+            watchdog = null;
+        }
+        setRecovery(false, '');
     };
     const getFrameLocation = function () {
         try {
@@ -83,15 +92,15 @@
         failed = true;
         // Nunca redirigir a Inicio después de un fallo. Queda disponible
         // reintentar la misma URL, o volver manualmente por el CRM.
-        setMask(true,
-            'Esta página no terminó de cargar. Puedes intentar abrir de nuevo el mismo módulo.',
-            true);
+        navigating = false;
+        setRecovery(true,
+            'No se pudo abrir esta página. Puedes reintentar el mismo módulo.');
     };
     const ensureWatchdog = function () {
         if (watchdog !== null) window.clearTimeout(watchdog);
         const token = navigationToken;
         watchdog = window.setTimeout(function () {
-            if (token !== navigationToken || mask.hidden) return;
+            if (token !== navigationToken || !navigating) return;
             markFailure();
         }, 20000);
     };
@@ -110,6 +119,7 @@
         // El shell.js original gestiona la salida a Login. Esta capa nunca
         // almacena la página de login como ubicación del Analista.
         if (controller === 'login' && action === 'mostrarlogin') {
+            resetNavigation();
             try { sessionStorage.removeItem(key); } catch (_) {}
             return;
         }
@@ -133,16 +143,16 @@
         pendingUrl = currentUrl;
         failed = false;
         loadedOnce = true;
-        if (watchdog !== null) {
-            window.clearTimeout(watchdog);
-            watchdog = null;
-        }
-        setMask(false, '', false);
+        resetNavigation();
         try {
             const doc = crm.contentDocument;
             // Captura antes del desmontaje de un documento PHP.
             doc.defaultView?.addEventListener('beforeunload', function () {
-                startNavigation(getFrameLocation()?.href || currentUrl);
+                // El navegador navega de forma nativa. Sólo observar
+                // y preparar recuperación ante una carga fallida.
+                // Conservar la URL objetivo detectada en el clic: el
+                // documento saliente todavía informa su URL anterior.
+                if (!navigating) startNavigation(currentUrl);
                 ensureWatchdog();
             });
             doc.addEventListener('click', function (event) {
@@ -156,17 +166,13 @@
                 if (!url || url.href.split('#')[0] === loc.href.split('#')[0]) return;
                 startNavigation(url.href);
                 ensureWatchdog();
-                // Un módulo puede cancelar el clic para abrir un modal o
-                // realizar AJAX. Si se canceló, no mantener la capa encima
-                // de la vista (el beforeunload real cubrirá navegación).
+                // Algunos módulos cancelan el enlace para mostrar
+                // un modal/AJAX. No dejar un temporizador activo entonces.
+                const token = navigationToken;
                 window.setTimeout(function () {
-                    if (event.defaultPrevented && !failed &&
-                        pendingUrl === url.href) {
-                        if (watchdog !== null) {
-                            window.clearTimeout(watchdog);
-                            watchdog = null;
-                        }
-                        setMask(false, '', false);
+                    if (event.defaultPrevented && token === navigationToken) {
+                        pendingUrl = currentUrl;
+                        resetNavigation();
                     }
                 }, 0);
             }, true);
@@ -178,6 +184,7 @@
     retry?.addEventListener('click', function () {
         const url = safeUrl(pendingUrl) || safeUrl(currentUrl) || home;
         startNavigation(url.href);
+        setRecovery(false, '');
         ensureWatchdog();
         crm.src = url.href;
     });
@@ -195,6 +202,7 @@
     }
     // Solo una carga inicial. El iframe se entrega sin src en PHP para
     // evitar un Home provisional cuando el navegador recarga Seguimiento.
+    setRecovery(false, '');
     startNavigation(initial.href);
     ensureWatchdog();
     crm.src = initial.href;
