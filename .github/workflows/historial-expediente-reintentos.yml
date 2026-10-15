@@ -1,0 +1,27 @@
+name: Reintentos de historial expediente
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'public/javascript/seguimiento_historial_consulta.js'
+      - 'public/javascript/seguimiento_llamadas_expediente.js'
+      - 'public/javascript/seguimiento_grabaciones.js'
+      - 'app/views/layout/dashboard_footer.php'
+      - 'tests/historial_consulta_reintentos_smoke.js'
+      - '.github/workflows/historial-expediente-reintentos.yml'
+jobs:
+  comprobar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: none
+      - name: Lint y regresiones
+        run: |
+          node --check public/javascript/seguimiento_historial_consulta.js
+          node --check public/javascript/seguimiento_llamadas_expediente.js
+          node --check public/javascript/seguimiento_grabaciones.js
+          php -l app/views/layout/dashboard_footer.php
+          node tests/historial_consulta_reintentos_smoke.js
