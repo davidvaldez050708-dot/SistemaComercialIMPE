@@ -48,7 +48,10 @@ for f in "${FILES[@]}"; do
  mkdir -p "$IMPE_FLOW_PUBLIC/$(dirname "$f")"
  git show "$BASE:$f" > "$IMPE_FLOW_PUBLIC/$f"
 done
-sed -i 's/const openRegistration = button => {/const openRegistration = async button => {/' "$IMPE_FLOW_PUBLIC/public/javascript/seguimiento_entrantes_analista.js"
+# Alterar una línea que el parche reemplaza, no una función ajena.
+# Un cambio en el contexto de usuario sí debe rechazar el despliegue.
+sed -i 's/const userId = Number(window.IMPE_CURRENT_USER_ID || 0);/const userId = Number(window.IMPE_CURRENT_USER_ID || 777);/' "$IMPE_FLOW_PUBLIC/public/javascript/seguimiento_entrantes_analista.js"
+grep -Fq 'IMPE_CURRENT_USER_ID || 777' "$IMPE_FLOW_PUBLIC/public/javascript/seguimiento_entrantes_analista.js"
 checksum="$(sha256sum "$IMPE_FLOW_PUBLIC/public/javascript/seguimiento_entrantes_analista.js" | cut -d' ' -f1)"
 if bash tools/desplegar_contexto_duracion_formulario_hostinger.sh --apply > "$TMP/error.log" 2>&1; then
  echo 'ERROR: parche alteró una personalización incompatible' >&2; exit 1
