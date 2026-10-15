@@ -1000,7 +1000,7 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
     aria-labelledby="modalCrearConvocatoriaTitulo"
     aria-hidden="true">
 
-    <div class="modal-dialog modal-dialog-centered modal-lg system-form-dialog">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg system-form-dialog">
         <div class="modal-content system-form-modal">
             <div class="modal-header system-form-modal-header">
                 <div>
@@ -1011,6 +1011,7 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
             </div>
 
             <form
+                class="convocatoria-create-form"
                 action="<?= BASE_URL ?>index.php?controller=convocatoria&action=guardar"
                 method="POST"
                 enctype="multipart/form-data"
