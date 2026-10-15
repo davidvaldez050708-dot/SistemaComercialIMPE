@@ -28,16 +28,25 @@ for f in "${FILES[@]}"; do
   HASHES["$f"]="$(sha256sum "$LIVE/$f" | cut -d' ' -f1)"
   mkdir -p "$TMP/stage/$(dirname "$f")"
   cp -p "$LIVE/$f" "$TMP/stage/$f"
-  p="$TMP/$(basename "$f").patch"
-  git -C "$SOURCE" diff --binary "$BASE" "$TARGET" -- "$f" > "$p"
-  [[ -s "$p" ]] || { echo "ERROR: parche vacío $f"; exit 1; }
-  if (cd "$TMP/stage" && git apply --reverse --check "$p" >/dev/null 2>&1); then
-    echo "YA ACTUALIZADO: $f"
-  elif (cd "$TMP/stage" && git apply --check "$p" >/dev/null 2>&1); then
-    (cd "$TMP/stage" && git apply "$p")
-    echo "PARCHE COMPATIBLE: $f"
+  if [[ "$f" == "public/javascript/telefonia_host.js" ]]; then
+    # El host de producción difiere de GitHub en varias partes. Fusionar
+    # únicamente dos fragmentos verificados (onConnected y answer).
+    git -C "$SOURCE" show "$BASE:$f" > "$TMP/host-base.js"
+    git -C "$SOURCE" show "$TARGET:$f" > "$TMP/host-target.js"
+    python3 "$SOURCE/tools/fusionar_respuesta_transferida_hostinger.py" \
+      "$TMP/stage/$f" "$TMP/host-base.js" "$TMP/host-target.js"
   else
-    echo "CONFLICTO: $f personalizado. PRODUCCIÓN INTACTA."; exit 1
+    p="$TMP/$(basename "$f").patch"
+    git -C "$SOURCE" diff --binary "$BASE" "$TARGET" -- "$f" > "$p"
+    [[ -s "$p" ]] || { echo "ERROR: parche vacío $f"; exit 1; }
+    if (cd "$TMP/stage" && git apply --reverse --check "$p" >/dev/null 2>&1); then
+      echo "YA ACTUALIZADO: $f"
+    elif (cd "$TMP/stage" && git apply --check "$p" >/dev/null 2>&1); then
+      (cd "$TMP/stage" && git apply "$p")
+      echo "PARCHE COMPATIBLE: $f"
+    else
+      echo "CONFLICTO: $f personalizado. PRODUCCIÓN INTACTA."; exit 1
+    fi
   fi
   cmp -s "$LIVE/$f" "$TMP/stage/$f" || CHANGED+=("$f")
   if command -v node >/dev/null 2>&1; then node --check "$TMP/stage/$f"; fi
