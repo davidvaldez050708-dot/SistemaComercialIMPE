@@ -200,9 +200,25 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (createLink) {
                 const stateId = Number(data.estado_id || 0);
-                createLink.href = stateId > 0
-                    ? baseUrl + '&territorio_id=' + encodeURIComponent(stateId)
-                    : baseUrl;
+                const stateName = String(data.estado || '').trim();
+                const seguimientoId = Number(data.seguimiento_id || 0);
+                const params = new URLSearchParams();
+
+                if (stateId > 0) {
+                    params.set('territorio_id', String(stateId));
+                }
+
+                if (stateName !== '') {
+                    params.set('estado_nombre', stateName);
+                }
+
+                params.set('desde_convenio', '1');
+
+                if (seguimientoId > 0) {
+                    params.set('seguimiento_id', String(seguimientoId));
+                }
+
+                createLink.href = baseUrl + '&' + params.toString();
             }
 
             modal.show();
