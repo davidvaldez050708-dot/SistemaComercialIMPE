@@ -567,26 +567,89 @@
                         duracionLegible(llamada.duracion_segundos);
                     derecha.appendChild(duracion);
 
-                    const estadoAudio = document.createElement('span');
+                    const pbxVerificado = /^[A-Za-z0-9_-]{6,100}$/.test(
+                        String(llamada.grabacion_transferida_pbx || '')
+                    ) ? String(llamada.grabacion_transferida_pbx) : '';
                     const grabacionSinVincular = llamada.grabacion_sin_vincular === true;
-                    estadoAudio.className = llamada.tiene_grabacion
-                        ? 'linkage-call-audio-state is-available'
-                        : ((llamada.grabacion_procesando || grabacionSinVincular)
-                            ? 'linkage-call-audio-state is-processing'
-                            : 'linkage-call-audio-state');
-                    estadoAudio.innerHTML = llamada.tiene_grabacion
-                        ? '<i class="bi bi-record-circle"></i><span>Grabación disponible</span>'
-                        : (grabacionSinVincular
-                            ? '<i class="bi bi-link-45deg"></i><span>Grabación no vinculada</span>'
-                            : (llamada.grabacion_procesando
-                                ? '<i class="bi bi-hourglass-split"></i><span>Procesando grabación</span>'
-                                : (llamada.excluir_grabacion
-                                    ? '<i class="bi bi-mic-mute"></i><span>Solo historial</span>'
-                                    : '<i class="bi bi-mic-mute"></i><span>Sin grabación</span>')));
-                    if (grabacionSinVincular) {
-                        estadoAudio.title = 'No se confirmó un archivo de audio asociado a esta llamada en la centralita.';
+                    if (pbxVerificado) {
+                        const button = document.createElement('button');
+                        button.type = 'button';
+                        button.className = 'linkage-call-audio-state is-available linkage-call-recording-toggle';
+                        button.innerHTML = '<i class="bi bi-record-circle" aria-hidden="true"></i>' +
+                            '<span>Consultar grabación</span>' +
+                            '<i class="bi bi-chevron-down linkage-call-recording-chevron" aria-hidden="true"></i>';
+                        button.setAttribute('aria-expanded', 'false');
+                        derecha.appendChild(button);
+                        const panel = document.createElement('div');
+                        panel.className = 'linkage-call-inline-player linkage-incoming-audio-panel';
+                        panel.hidden = true;
+                        const host = document.createElement('div');
+                        const errorBox = document.createElement('p');
+                        errorBox.className = 'linkage-incoming-player-error';
+                        errorBox.hidden = true;
+                        errorBox.setAttribute('role', 'status');
+                        panel.append(host, errorBox);
+                        button.addEventListener('click', async () => {
+                            if (!panel.hidden) {
+                                panel.querySelectorAll('audio').forEach(a => a.pause());
+                                panel.hidden = true;
+                                button.setAttribute('aria-expanded', 'false');
+                                return;
+                            }
+                            button.disabled = true;
+                            errorBox.hidden = true;
+                            try {
+                                const url = new URL(
+                                    'prueba_telefonia/api/grabacion_transferida_pbx.php',
+                                    document.baseURI
+                                );
+                                url.searchParams.set('pbx_call_id', pbxVerificado);
+                                url.searchParams.set('verificar', '1');
+                                const response = await fetch(url.toString(), {
+                                    credentials: 'same-origin', cache: 'no-store'
+                                });
+                                if (!response.ok) throw new Error(
+                                    'No fue posible comprobar los permisos de esta grabación.'
+                                );
+                                const info = await response.json();
+                                if (!info.ok || !info.disponible ||
+                                    !Number.isInteger(info.segmentos) || info.segmentos < 1 ||
+                                    !window.IMPE_TELEPHONY_SEGMENTS?.create(
+                                        host, url.toString(), info.segmentos
+                                    )) {
+                                    throw new Error('La grabación todavía no está disponible en Zadarma.');
+                                }
+                            } catch (error) {
+                                errorBox.textContent = error.message || 'Audio no disponible.';
+                                errorBox.hidden = false;
+                            } finally {
+                                panel.hidden = false;
+                                button.disabled = false;
+                                button.setAttribute('aria-expanded', 'true');
+                            }
+                        });
+                        cuerpo.appendChild(panel);
+                    } else {
+                        const estadoAudio = document.createElement('span');
+                        estadoAudio.className = llamada.tiene_grabacion
+                            ? 'linkage-call-audio-state is-available'
+                            : ((llamada.grabacion_procesando || grabacionSinVincular)
+                                ? 'linkage-call-audio-state is-processing'
+                                : 'linkage-call-audio-state');
+                        estadoAudio.innerHTML = llamada.tiene_grabacion
+                            ? '<i class="bi bi-record-circle"></i><span>Grabación disponible</span>'
+                            : (grabacionSinVincular
+                                ? '<i class="bi bi-link-45deg"></i><span>Grabación no vinculada</span>'
+                                : (llamada.grabacion_procesando
+                                    ? '<i class="bi bi-hourglass-split"></i><span>Procesando grabación</span>'
+                                    : (llamada.excluir_grabacion
+                                        ? '<i class="bi bi-mic-mute"></i><span>Solo historial</span>'
+                                        : '<i class="bi bi-mic-mute"></i><span>Sin grabación</span>')));
+                        if (grabacionSinVincular) {
+                            estadoAudio.title = 'No se confirmó un archivo de audio asociado a esta llamada en la centralita.';
+                        }
+                        derecha.appendChild(estadoAudio);
                     }
-                    derecha.appendChild(estadoAudio);
 
                     const usuario = String(llamada.usuario || '').trim();
                     if (usuario) {
@@ -615,7 +678,8 @@
                         .then(function (data) {
                             const llamadas = Array.isArray(data.llamadas) ? data.llamadas : [];
                             const grabaciones = llamadas.filter(function (llamada) {
-                                return Boolean(llamada.tiene_grabacion && llamada.grabacion_url);
+                                return Boolean((llamada.tiene_grabacion && llamada.grabacion_url) ||
+                                    llamada.grabacion_transferida_pbx);
                             });
                             const hayGrabacionesProcesando = llamadas.some(function (llamada) {
                                 return Boolean(llamada.grabacion_procesando);
