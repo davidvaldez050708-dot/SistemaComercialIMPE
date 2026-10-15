@@ -2155,8 +2155,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 url.searchParams.set('convenio', convenioNombre);
             }
 
-            if (aliadoId !== '' && aliadoId !== '0') {
-                url.searchParams.set('aliado_id', aliadoId);
+            if (convenioNombre !== '') {
+                url.searchParams.set('aliado', convenioNombre);
             }
 
             if (estadoId !== '' && estadoId !== '0') {
