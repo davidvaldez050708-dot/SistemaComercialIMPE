@@ -246,6 +246,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const stateId = Number(data.estado_id || 0);
                 const stateName = String(data.estado || '').trim();
                 const seguimientoId = Number(data.seguimiento_id || 0);
+                const convenioNombre = String(data.institucion || '').trim();
                 const params = new URLSearchParams();
 
                 if (stateId > 0) {
@@ -258,6 +259,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 params.set('desde_convenio', '1');
                 params.set('abrir_nueva_convocatoria', '1');
+
+                if (convenioNombre !== '') {
+                    params.set('convenio_nombre', convenioNombre);
+                }
 
                 if (seguimientoId > 0) {
                     params.set('seguimiento_id', String(seguimientoId));
