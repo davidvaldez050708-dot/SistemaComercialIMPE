@@ -140,12 +140,14 @@ grep -Fq "data-convenio-modal-contact" "$DST/app/views/convocatorias/crear_desde
 grep -Fq "data-state-dropdown" "$DST/app/views/convocatorias/crear_desde_convenio.php"
 grep -Fq "territorio_id" "$DST/public/javascript/crear_convocatoria.js"
 grep -Fq "estado_nombre" "$DST/public/javascript/crear_convocatoria.js"
+grep -Fq "abrir_nueva_convocatoria" "$DST/public/javascript/crear_convocatoria.js"
+grep -Fq "abrir_nueva_convocatoria" "$DST/app/views/convocatorias/index.php"
 grep -Fq "desde_convenio" "$DST/app/controllers/ConvocatoriaController.php"
 grep -Fq "crear-convocatoria-modal-create" "$DST/public/css/crear_convocatoria.css"
 grep -Fq "Filtro de estados alineado" "$DST/public/css/crear_convocatoria.css"
 grep -Fq "Desplegable de estados siempre hacia abajo" "$DST/public/css/crear_convocatoria.css"
 
 echo
-echo "OK: Crear convocatoria redirige al estado exacto y abre Gestión directamente."
+echo "OK: Crear convocatoria redirige al estado exacto y abre automáticamente el modal Nueva convocatoria."
 echo "Respaldo: $BACKUP"
 echo "Recarga el navegador con Ctrl+F5."
