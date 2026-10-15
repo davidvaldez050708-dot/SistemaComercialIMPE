@@ -3870,8 +3870,21 @@
 
 .convocatoria-list-workspace-filters {
     padding: 6px 18px 14px;
-    grid-template-columns: minmax(300px, 1.7fr) minmax(180px, .7fr) auto;
+    grid-template-columns:
+        minmax(260px, 1.25fr)
+        minmax(190px, .65fr)
+        minmax(190px, .55fr)
+        auto;
+    align-items: end;
     border-bottom: 1px solid #e9edf3;
+}
+
+.convocatoria-list-workspace-filters .convocatoria-filter-actions {
+    display: flex;
+    align-items: center;
+    min-height: 40px;
+    padding-bottom: 2px;
+    white-space: nowrap;
 }
 
 .convocatoria-list-workspace-filters .login-label {
