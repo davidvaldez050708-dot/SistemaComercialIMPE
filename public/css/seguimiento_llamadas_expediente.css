@@ -591,3 +591,99 @@
     background: #f7f8fa;
     color: #697386;
 }
+
+/* Audio de una transferencia PBX verificada, sin afectar otros expedientes. */
+.linkage-call-history-card button.linkage-call-recording-toggle {
+    font: inherit;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    border: 1px solid #bce6d9;
+    border-radius: 999px;
+    padding: 6px 10px;
+    background: #eefaf6;
+    color: #08715d;
+}
+.linkage-call-history-card button.linkage-call-recording-toggle:disabled {
+    opacity: .6;
+    cursor: progress;
+}
+.linkage-call-history-card .linkage-call-inline-player {
+    margin-top: 10px;
+    padding: 12px 0 4px;
+    border-top: 1px solid #e6eaf0;
+}
+.linkage-call-history-card .linkage-call-custom-player {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: min(760px, 100%);
+    min-width: 0;
+    border: 1px solid #dbe4f0;
+    border-radius: 15px;
+    background: #f8fafc;
+    padding: 8px 10px;
+}
+.linkage-call-history-card .linkage-call-player-audio-source { display: none; }
+.linkage-call-history-card .linkage-call-player-button {
+    border: 1px solid #dde5f0;
+    border-radius: 11px;
+    background: #fff;
+    color: #456187;
+    min-width: 35px;
+    min-height: 35px;
+    display: inline-grid;
+    place-items: center;
+    cursor: pointer;
+}
+.linkage-call-history-card .linkage-call-player-play {
+    flex: 0 0 42px;
+    height: 42px;
+    border: 0;
+    border-radius: 50%;
+    background: #293d92;
+    color: #fff;
+    font-size: 18px;
+}
+.linkage-call-history-card .linkage-call-player-time {
+    color: #506481;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+.linkage-call-history-card .linkage-call-player-progress {
+    flex: 1;
+    min-width: 45px;
+    height: 5px;
+    accent-color: #293d92;
+    cursor: pointer;
+}
+.linkage-call-history-card .linkage-call-player-menu {
+    position: relative;
+}
+.linkage-call-history-card .linkage-call-player-more {
+    list-style: none;
+}
+.linkage-call-history-card .linkage-call-player-more::-webkit-details-marker { display: none; }
+.linkage-call-history-card .linkage-call-player-menu-content {
+    position: absolute;
+    z-index: 10;
+    right: 0;
+    bottom: calc(100% + 4px);
+    white-space: nowrap;
+    background: #fff;
+    padding: 8px 12px;
+    border: 1px solid #dbe4f0;
+    border-radius: 10px;
+    box-shadow: 0 8px 20px rgba(35,55,85,.12);
+}
+.linkage-call-history-card .linkage-incoming-player-error {
+    color: #a23c3c;
+    font-size: 11px;
+}
+@media(max-width: 580px) {
+    .linkage-call-history-card .linkage-call-custom-player { gap: 5px; padding: 6px; }
+    .linkage-call-history-card .linkage-call-player-button { min-width: 30px; min-height: 30px; }
+    .linkage-call-history-card .linkage-call-player-play { flex-basis: 35px; height: 35px; }
+}
