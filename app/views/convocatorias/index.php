@@ -2067,7 +2067,6 @@ document.addEventListener('DOMContentLoaded', function () {
             return (
                 (type === 'registro' || type === 'inscripcion') &&
                 classification !== '' &&
-                title !== '' &&
                 aliadoId !== '' &&
                 aliadoId !== '0' &&
                 estadoId !== '' &&
@@ -2156,9 +2155,6 @@ document.addEventListener('DOMContentLoaded', function () {
         const contextFields = [
             document.querySelector(
                 '[data-convocatoria-context-classification]'
-            ),
-            document.querySelector(
-                '[data-convocatoria-context-title]'
             )
         ];
 
