@@ -149,6 +149,31 @@
                 : 'Relaciona la conversación con el seguimiento existente o crea uno nuevo.')
             : 'Esta llamada no fue contestada. Puedes clasificarla sin crear expediente.';
         renderDecision();
+        // El borrador capturado DURANTE esta misma llamada desde el shell
+        // se importa únicamente por ID exacto y usuario actual. Nunca se
+        // asigna automáticamente al expediente de otra llamada.
+        try {
+            const userId = Number(window.IMPE_CURRENT_USER_ID || 0);
+            if (userId > 0 && id) {
+                const key = 'impe:crm:call-draft:' + userId + ':' + id;
+                const draft = JSON.parse(sessionStorage.getItem(key) || 'null');
+                if (draft && draft.call_id === id &&
+                    Date.now() - Number(draft.saved_at || 0) < 86400000) {
+                    const names = {
+                        nombre:'nombre_entidad',
+                        persona:'persona_atendio',
+                        telefono:'telefono_capturado',
+                        correo:'correo_capturado',
+                        notas:'observacion'
+                    };
+                    Object.entries(names).forEach(([from, to]) => {
+                        const input = form.elements.namedItem(to);
+                        if (input && !input.value) input.value =
+                            String(draft[from] || '');
+                    });
+                }
+            }
+        } catch (_) { /* La ficha sigue siendo editable sin borrador. */ }
         modal.show();
     };
 
@@ -348,6 +373,14 @@
             if (!res.ok || !data.ok) {
                 throw new Error(data.mensaje || 'No fue posible registrar la llamada.');
             }
+            try {
+                const id = String(
+                    form.querySelector('[data-incoming-sdk-id]')?.value ||
+                    form.querySelector('[data-incoming-pbx]')?.value || '');
+                const userId = Number(window.IMPE_CURRENT_USER_ID || 0);
+                if (id && userId) sessionStorage.removeItem(
+                    'impe:crm:call-draft:' + userId + ':' + id);
+            } catch (_) {}
             modal.hide();
             // La clasificación técnica y el expediente ya están confirmados
             // por el servidor; reconstruir las filas de la fuente de verdad.
