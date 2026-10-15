@@ -143,11 +143,12 @@ grep -Fq "estado_nombre" "$DST/public/javascript/crear_convocatoria.js"
 grep -Fq "abrir_nueva_convocatoria" "$DST/public/javascript/crear_convocatoria.js"
 grep -Fq "abrir_nueva_convocatoria" "$DST/app/views/convocatorias/index.php"
 grep -Fq "desde_convenio" "$DST/app/controllers/ConvocatoriaController.php"
+grep -Fq "\$modalAbierto = 'crear';" "$DST/app/controllers/ConvocatoriaController.php"
 grep -Fq "crear-convocatoria-modal-create" "$DST/public/css/crear_convocatoria.css"
 grep -Fq "Filtro de estados alineado" "$DST/public/css/crear_convocatoria.css"
 grep -Fq "Desplegable de estados siempre hacia abajo" "$DST/public/css/crear_convocatoria.css"
 
 echo
-echo "OK: Crear convocatoria redirige al estado exacto y abre automáticamente el modal Nueva convocatoria."
+echo "OK: el flujo Convenios fuerza la apertura automática del modal Nueva convocatoria."
 echo "Respaldo: $BACKUP"
 echo "Recarga el navegador con Ctrl+F5."
