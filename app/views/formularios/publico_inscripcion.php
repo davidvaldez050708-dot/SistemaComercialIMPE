@@ -358,20 +358,16 @@ $fechaMaximaNacimiento = date('Y-m-d');
                 </section>
 
                 <section class="formulario-publico-section formulario-publico-recomendacion">
-                    <div class="formulario-publico-section-heading">
-                        <span class="formulario-publico-section-icon">
-                            <i class="bi bi-person-heart"></i>
-                        </span>
-                        <h2>¿Conoces a alguien que pueda estar interesado en alguno de nuestros programas?</h2>
+                    <div class="formulario-publico-recomendacion-heading">
+                        <h2>¿Conoces a alguien interesado?</h2>
+                        <p>
+                            Si conoces a alguien que pudiera estar interesado en nuestros programas,
+                            puedes compartirnos su número de teléfono.
+                        </p>
                     </div>
 
                     <div class="formulario-publico-grid">
                         <div class="formulario-publico-field is-full">
-                            <small class="formulario-publico-help formulario-publico-help-recomendacion">
-                                Si conoces a alguien que pudiera estar interesado en nuestros programas,
-                                puedes compartirnos su número de teléfono.
-                            </small>
-
                             <label for="registro_publico_tel_recomendado">
                                 Teléfono de la persona recomendada
                             </label>
