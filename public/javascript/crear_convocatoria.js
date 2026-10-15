@@ -11,6 +11,13 @@ document.addEventListener('DOMContentLoaded', function () {
     );
     const search = module.querySelector('[data-convenio-search]');
     const stateFilter = module.querySelector('[data-convenio-state-filter]');
+    const stateDropdown = module.querySelector('[data-state-dropdown]');
+    const stateTrigger = module.querySelector('[data-state-trigger]');
+    const stateMenu = module.querySelector('[data-state-menu]');
+    const stateLabel = module.querySelector('[data-state-label]');
+    const stateOptions = Array.from(
+        module.querySelectorAll('[data-state-value]')
+    );
     const results = module.querySelector('[data-convenio-results]');
     const emptyFilter = module.querySelector('[data-convenio-empty-filter]');
     const modalElement = document.getElementById(
@@ -55,7 +62,67 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     search?.addEventListener('input', applyFilters);
-    stateFilter?.addEventListener('change', applyFilters);
+
+    const closeStateDropdown = function () {
+        if (!stateDropdown || !stateTrigger) {
+            return;
+        }
+
+        stateDropdown.classList.remove('is-open');
+        stateTrigger.setAttribute('aria-expanded', 'false');
+    };
+
+    stateTrigger?.addEventListener('click', function () {
+        const opening = !stateDropdown?.classList.contains('is-open');
+
+        if (opening) {
+            stateDropdown?.classList.add('is-open');
+            stateTrigger.setAttribute('aria-expanded', 'true');
+        } else {
+            closeStateDropdown();
+        }
+    });
+
+    stateOptions.forEach(function (option) {
+        option.addEventListener('click', function () {
+            const value = String(option.dataset.stateValue || '');
+
+            if (stateFilter) {
+                stateFilter.value = value;
+            }
+
+            if (stateLabel) {
+                stateLabel.textContent = option.textContent.trim();
+            }
+
+            stateOptions.forEach(function (item) {
+                const selected = item === option;
+                item.classList.toggle('is-selected', selected);
+                item.setAttribute(
+                    'aria-selected',
+                    selected ? 'true' : 'false'
+                );
+            });
+
+            closeStateDropdown();
+            applyFilters();
+        });
+    });
+
+    document.addEventListener('click', function (event) {
+        if (
+            stateDropdown &&
+            !stateDropdown.contains(event.target)
+        ) {
+            closeStateDropdown();
+        }
+    });
+
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') {
+            closeStateDropdown();
+        }
+    });
 
     if (!modalElement || !window.bootstrap) {
         return;
