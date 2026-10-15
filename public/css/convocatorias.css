@@ -5158,3 +5158,65 @@
         flex: 1 1 140px;
     }
 }
+
+
+/* Scroll interno del modal Nueva convocatoria */
+#modalCrearConvocatoria .modal-dialog {
+    max-height: calc(100vh - 32px);
+    margin-top: 16px;
+    margin-bottom: 16px;
+}
+
+#modalCrearConvocatoria .modal-content {
+    max-height: calc(100vh - 32px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+#modalCrearConvocatoria .modal-header,
+#modalCrearConvocatoria .modal-footer {
+    flex: 0 0 auto;
+    background: #ffffff;
+    z-index: 2;
+}
+
+#modalCrearConvocatoria .modal-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+}
+
+#modalCrearConvocatoria .modal-body::-webkit-scrollbar {
+    width: 9px;
+}
+
+#modalCrearConvocatoria .modal-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+#modalCrearConvocatoria .modal-body::-webkit-scrollbar-thumb {
+    border: 2px solid transparent;
+    border-radius: 999px;
+    background: rgba(72, 84, 105, .38);
+    background-clip: padding-box;
+}
+
+#modalCrearConvocatoria .modal-body::-webkit-scrollbar-thumb:hover {
+    background: rgba(72, 84, 105, .55);
+    background-clip: padding-box;
+}
+
+@media (max-width: 575.98px) {
+    #modalCrearConvocatoria .modal-dialog {
+        max-height: calc(100vh - 16px);
+        margin-top: 8px;
+        margin-bottom: 8px;
+    }
+
+    #modalCrearConvocatoria .modal-content {
+        max-height: calc(100vh - 16px);
+    }
+}
