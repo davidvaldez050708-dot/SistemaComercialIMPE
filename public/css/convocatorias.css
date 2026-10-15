@@ -5310,3 +5310,113 @@
     font-size: 8.5px;
     line-height: 1.15;
 }
+
+
+/* Tipo de convocatoria: mismo estilo y sin superposición */
+#modalCrearConvocatoria [data-convocatoria-classification-dropdown] {
+    position: relative;
+    width: 100%;
+    z-index: auto;
+}
+
+#modalCrearConvocatoria [data-convocatoria-classification-trigger] {
+    width: 100%;
+    min-height: 46px;
+    padding: 0 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    background: #ffffff;
+    color: var(--color-text-primary);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+}
+
+#modalCrearConvocatoria [data-convocatoria-classification-trigger] i {
+    flex: 0 0 auto;
+    transition: transform .18s ease;
+}
+
+#modalCrearConvocatoria
+[data-convocatoria-classification-dropdown].is-open
+[data-convocatoria-classification-trigger] i {
+    transform: rotate(180deg);
+}
+
+#modalCrearConvocatoria [data-convocatoria-classification-menu] {
+    position: static;
+    display: none;
+    width: 100%;
+    max-height: 250px;
+    margin-top: 6px;
+    padding: 6px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    background: #ffffff;
+    box-shadow: 0 10px 24px rgba(20, 35, 70, .10);
+}
+
+#modalCrearConvocatoria
+[data-convocatoria-classification-dropdown].is-open
+[data-convocatoria-classification-menu] {
+    display: block;
+}
+
+#modalCrearConvocatoria [data-convocatoria-classification-option] {
+    width: 100%;
+    padding: 10px 12px;
+    display: block;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--color-text-primary);
+    font: inherit;
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.25;
+    text-align: left;
+    cursor: pointer;
+}
+
+#modalCrearConvocatoria
+[data-convocatoria-classification-option]:hover,
+#modalCrearConvocatoria
+[data-convocatoria-classification-option]:focus-visible {
+    background: #f4f7fb;
+    outline: none;
+}
+
+#modalCrearConvocatoria
+[data-convocatoria-classification-option].is-selected {
+    background: #edf3ff;
+    color: #17357f;
+    font-weight: 700;
+}
+
+#modalCrearConvocatoria [data-convocatoria-classification-menu]::-webkit-scrollbar {
+    width: 8px;
+}
+
+#modalCrearConvocatoria [data-convocatoria-classification-menu]::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+#modalCrearConvocatoria [data-convocatoria-classification-menu]::-webkit-scrollbar-thumb {
+    border: 2px solid transparent;
+    border-radius: 999px;
+    background: rgba(72, 84, 105, .38);
+    background-clip: padding-box;
+}
+
+#modalCrearConvocatoria .convocatoria-public-form-share {
+    position: relative;
+    z-index: 1;
+}
