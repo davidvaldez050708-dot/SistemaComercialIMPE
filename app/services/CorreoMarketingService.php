@@ -589,7 +589,8 @@ class CorreoMarketingService
                     $destinatarioNombre,
                     $asunto,
                     $cuerpo,
-                    $nombresAdjuntos
+                    $nombresAdjuntos,
+                    $tipo
                 );
             }
 
@@ -728,7 +729,8 @@ class CorreoMarketingService
                         $destinatarioNombre,
                         $asunto,
                         $cuerpo,
-                        $nombresAdjuntos
+                        $nombresAdjuntos,
+                        $tipo
                     );
                     $registroId = $correoId;
                 } else {
@@ -738,7 +740,8 @@ class CorreoMarketingService
                         $destinatarioNombre,
                         $asunto,
                         $cuerpo,
-                        $nombresAdjuntos
+                        $nombresAdjuntos,
+                        $tipo
                     );
                 }
             }
@@ -1186,8 +1189,12 @@ class CorreoMarketingService
         $destinatarioNombre,
         $asunto,
         $cuerpo,
-        $nombresAdjuntos
+        $nombresAdjuntos,
+        $tipo = 'GENERAL'
     ) {
+        $tipo = strtoupper(trim((string)$tipo)) === 'CONVOCATORIA'
+            ? 'CONVOCATORIA'
+            : 'GENERAL';
         $adjuntosCount = count($nombresAdjuntos);
         $adjuntosNombres = json_encode(
             array_values($nombresAdjuntos),
@@ -1200,6 +1207,7 @@ class CorreoMarketingService
                     destinatario_nombre = NULLIF(?, ''),
                     asunto = ?,
                     cuerpo = ?,
+                    tipo = ?,
                     estado = ?,
                     adjuntos_count = ?,
                     adjuntos_nombres = ?,
@@ -1279,8 +1287,12 @@ class CorreoMarketingService
         $destinatarioNombre,
         $asunto,
         $cuerpo,
-        $nombresAdjuntos
+        $nombresAdjuntos,
+        $tipo = 'GENERAL'
     ) {
+        $tipo = strtoupper(trim((string)$tipo)) === 'CONVOCATORIA'
+            ? 'CONVOCATORIA'
+            : 'GENERAL';
         $adjuntosCount = count($nombresAdjuntos);
         $adjuntosNombres = json_encode(
             array_values($nombresAdjuntos),
@@ -1325,8 +1337,12 @@ class CorreoMarketingService
         $destinatarioNombre,
         $asunto,
         $cuerpo,
-        $nombresAdjuntos
+        $nombresAdjuntos,
+        $tipo = 'GENERAL'
     ) {
+        $tipo = strtoupper(trim((string)$tipo)) === 'CONVOCATORIA'
+            ? 'CONVOCATORIA'
+            : 'GENERAL';
         $adjuntosCount = count($nombresAdjuntos);
         $adjuntosNombres = json_encode(
             array_values($nombresAdjuntos),
