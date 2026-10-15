@@ -643,6 +643,24 @@
                         message: 'Timbrado detectado en el teléfono WebRTC. Registro PBX pendiente.'
                     });
                 },
+                onConnected: function () {
+                    // Evidencia visual de llamada SIP conectada observada en
+                    // el widget, SIN fingir un evento PBX firmado.
+                    if (!isSdkOnlyIncoming() || !state.active ||
+                        !['incoming-ringing','answering'].includes(state.phase)) return;
+                    answeredAtMs = Date.now();
+                    reportSdkEvent('answered', state);
+                    publish({
+                        phase:'in-progress',
+                        status:'in-progress',
+                        answeredAtMs:answeredAtMs,
+                        duration:0,
+                        message:'',
+                        context:Object.assign({},state.context,{
+                            verified:false,source:'SDK_WEBRTC'
+                        })
+                    });
+                },
                 onStopped: function () {
                     if (!isSdkOnlyIncoming()) return;
                     // Al atender, el SDK deja de timbrar pero la conversación
@@ -803,21 +821,15 @@
 
             if (sdkOnly && state.active &&
                 String(state.callToken || '') === token) {
-                // La aceptación SIP la ejecutó el SDK y la llamada sigue en
-                // el MISMO modal. Este estado visual NO es prueba de un PBX ID
-                // ni autoriza registros/historial de interacción comercial.
-                answeredAtMs = Date.now();
-                reportSdkEvent('answered', state);
+                analystSdkObserver?.markAnswerRequested?.();
+                // Bloquear un segundo clic hasta tener una señal observada del
+                // SDK. Pulsar otra vez durante el establecimiento SIP podía
+                // cancelar la llamada mientras 'Contestar' reaparecía.
                 publish({
-                    phase: 'in-progress',
-                    status: 'in-progress',
-                    answeredAtMs: answeredAtMs,
-                    duration: 0,
-                    message: '',
-                    context: Object.assign({}, state.context, {
-                        verified: false,
-                        source: 'SDK_WEBRTC'
-                    })
+                    phase:'answering',
+                    status:'answering',
+                    duration:0,
+                    message:'Conectando llamada… Espera la confirmación del teléfono.'
                 });
             }
             actualizarEstadoTrasAccion();
