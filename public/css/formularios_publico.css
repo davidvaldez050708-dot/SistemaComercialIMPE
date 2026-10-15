@@ -1453,3 +1453,35 @@ html {
         font-size: 16px;
     }
 }
+
+
+/* Hero público con fotografía red-graduacion */
+.formulario-publico-hero {
+    background:
+        linear-gradient(
+            118deg,
+            rgba(6, 75, 135, .88) 0%,
+            rgba(7, 86, 146, .82) 48%,
+            rgba(7, 57, 108, .90) 100%
+        ),
+        url('../img/brand/red-graduacion.jpeg') center center / cover no-repeat;
+}
+
+.formulario-publico-inscripcion .formulario-publico-hero {
+    background:
+        linear-gradient(
+            118deg,
+            rgba(10, 128, 105, .88) 0%,
+            rgba(11, 148, 119, .82) 48%,
+            rgba(7, 96, 79, .90) 100%
+        ),
+        url('../img/brand/red-graduacion.jpeg') center center / cover no-repeat;
+}
+
+/* La fotografía sustituye los óvalos decorativos anteriores. */
+.formulario-publico-hero::before,
+.formulario-publico-hero::after,
+.formulario-publico-inscripcion .formulario-publico-hero::before,
+.formulario-publico-inscripcion .formulario-publico-hero::after {
+    display: none;
+}
