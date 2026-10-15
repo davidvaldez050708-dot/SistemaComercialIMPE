@@ -26,6 +26,7 @@ on:
       - "tools/desplegar_recepcion_rapida_hostinger.sh"
       - "tests/telefonia_recepcion_rapida_smoke.php"
       - "tests/telefonia_recepcion_rapida_hostinger_smoke.sh"
+      - "tests/telefonia_recepcion_rapida_runtime_smoke.js"
       - ".github/workflows/telefonia-transferencias.yml"
   pull_request:
     paths:
@@ -66,6 +67,7 @@ jobs:
           node --check public/javascript/seguimiento_entrantes_analista.js
           php tests/telefonia_transferencias_seguras_smoke.php
           php tests/telefonia_recepcion_rapida_smoke.php
+          node tests/telefonia_recepcion_rapida_runtime_smoke.js
           node tests/telefonia_shell_runtime_smoke.js
           node tests/telefonia_shell_navegacion_smoke.js
           php tests/telefonia_entrantes_visual_smoke.php
