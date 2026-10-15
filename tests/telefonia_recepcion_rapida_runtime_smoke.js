@@ -46,7 +46,7 @@ class Fake {
     }
 }
 
-function boot(identified) {
+function boot(identified, byName = []) {
     const els = {};
     const selectors = [
         '[data-shell-transfer-toggle]','[data-shell-transfer-panel]',
@@ -110,13 +110,15 @@ function boot(identified) {
         if (opts?.method === 'POST') return {ok:true, json:async () => ({
             ok:true,token:'a'.repeat(48)})};
         const q=new URL(String(url)).searchParams;
+        const all = q.get('tipo') === 'PROSPECTO' ? [] : data.destinations;
         const people = q.get('estado_id')
-            ? data.destinations.filter(d=>String(d.estado_id)===q.get('estado_id'))
-            : data.destinations;
+            ? all.filter(d=>String(d.estado_id)===q.get('estado_id'))
+            : all;
         return {ok:true,json:async()=>({
             ok:true,destinos:people,estados:data.estados,
             identificacion:q.get('telefono_origen') ? identified : [],
-            instituciones:[]
+            instituciones:q.get('buscar') ? byName.filter(rec =>
+                !q.get('estado_id') || String(rec.estado_id)===q.get('estado_id')) : []
         })};
     }
     vm.runInNewContext(
@@ -194,5 +196,63 @@ async function flush(){ await new Promise(resolve=>setImmediate(resolve)); }
     await flush();
     assert.equal(newInstitution.els['[data-routing-destination]'].value,'7:101:11',
         'Institución nueva: con el estado, seleccionar al único Analista');
-    console.log('UI transferencias rápida: OK (sin modal gigante, número único/compartido, estado nuevo, confirmación y solicitud).');
+    // Cambiar a ventas y regresar no debe borrar una coincidencia
+    // ya detectada por caller ID, ni exigir buscarla por nombre de nuevo.
+    const toggled=boot(original);
+    const t=toggled.els;
+    t['[data-shell-transfer-toggle]'].dispatch('click');
+    await flush();
+    t['[data-routing-identification]'].children.find(x=>x.tag==='button').dispatch('click');
+    t['[data-routing-type]'].value='PROSPECTO';
+    t['[data-routing-type]'].dispatch('change');
+    toggled.timers.pop()();
+    await flush();
+    assert.equal(t['[data-routing-identification]'].hidden,true,
+        'No mostrar coincidencia institucional mientras se buscan prospectos');
+    t['[data-routing-type]'].value='INSTITUCION';
+    t['[data-routing-type]'].dispatch('change');
+    toggled.timers.pop()();
+    await flush();
+    assert.equal(t['[data-routing-identification]'].hidden,false,
+        'Al regresar a Institución se repite la identificación por número');
+    assert.equal(t['[data-routing-state]'].value,'11',
+        'Se restaura el estado de esa misma institución');
+    assert.equal(t['[data-routing-destination]'].value,'7:101:11',
+        'Se restaura el responsable anteriormente confirmado');
+    assert.ok(t['[data-routing-identification]'].textContent ||
+        t['[data-routing-identification]'].children.some(c =>
+            String(c.textContent).includes('Institución confirmada')),
+        'Se conserva la confirmación únicamente dentro de la misma llamada');
+    const phoneQueries = toggled.requests.filter(x =>
+        x.url.includes('telefono_origen=%2B52'));
+    assert.equal(phoneQueries.length,2,
+        'El número debe consultarse otra vez después de alternar categorías');
+    t['[data-routing-attended]'].dispatch('click');
+    await flush();
+    assert.equal(toggled.transfers.length,1,
+        'La confirmación vigente permite consultar sin buscar otra vez');
+
+    // La búsqueda manual debe funcionar SIN seleccionar primero el estado.
+    const nameSearch=boot([], [{
+        seguimiento_id:111,nombre:'AFIPSA',responsable_id:7,
+        estado_id:11,estado_nombre:'Guanajuato',
+        extension:'101',responsable:'Analista G'
+    }]);
+    const n=nameSearch.els;
+    n['[data-shell-transfer-toggle]'].dispatch('click');
+    await flush();
+    assert.equal(n['[data-routing-state]'].value,'');
+    n['[data-routing-search]'].value='AFIPSA';
+    n['[data-routing-search]'].dispatch('input');
+    nameSearch.timers.pop()();
+    await flush();
+    const matches=n['[data-routing-matches-list]'].children;
+    assert.equal(matches.length,1,'Se encuentran expedientes antes de elegir estado');
+    matches[0].dispatch('click');
+    assert.equal(n['[data-routing-state]'].value,'11',
+        'Seleccionar coincidencia también asigna su territorio');
+    assert.equal(n['[data-routing-destination]'].value,'7:101:11',
+        'Seleccionar coincidencia también asigna responsable');
+
+    console.log('UI transferencias rápida: OK (modal compacto, reidentificación tras categoría, búsqueda sin estado, CSRF y confirmación).');
 })().catch(e=>{console.error(e);process.exit(1);});
