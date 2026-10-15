@@ -22,6 +22,7 @@ on:
       - "tests/telefonia_transferencias_seguras_smoke.php"
       - "tests/telefonia_transferencias_hostinger_smoke.sh"
       - "tools/desplegar_transferencias_seguras_hostinger.sh"
+      - "tools/fusionar_shell_transferencias_hostinger.py"
       - ".github/workflows/telefonia-transferencias.yml"
   pull_request:
     paths:
@@ -67,4 +68,5 @@ jobs:
       - name: Despliegue Hostinger en entorno temporal
         run: |
           bash -n tools/desplegar_transferencias_seguras_hostinger.sh
+          python3 -c "import ast, pathlib; ast.parse(pathlib.Path('tools/fusionar_shell_transferencias_hostinger.py').read_text())"
           bash tests/telefonia_transferencias_hostinger_smoke.sh
