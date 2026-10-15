@@ -435,6 +435,20 @@ class TelefoniaEntrantesAnalistaService
                 if ($duplicado) {
                     throw new DomainException('Esta institución ya tiene expediente. Selecciona Seguimiento existente.');
                 }
+                $telefonoCapturado = trim((string)($datos['telefono_capturado'] ?? ''));
+                $correoCapturado = trim((string)($datos['correo_capturado'] ?? ''));
+                if (mb_strlen($telefonoCapturado, 'UTF-8') > 40 ||
+                    ($telefonoCapturado !== '' &&
+                      !preg_match('/^[+0-9()\- .]{7,40}$/', $telefonoCapturado))) {
+                    throw new InvalidArgumentException('El teléfono capturado no es válido.');
+                }
+                if (mb_strlen($correoCapturado, 'UTF-8') > 160 ||
+                    ($correoCapturado !== '' &&
+                     !filter_var($correoCapturado, FILTER_VALIDATE_EMAIL))) {
+                    throw new InvalidArgumentException('El correo capturado no es válido.');
+                }
+                $telefonoInstitucional = $telefonoCapturado !== ''
+                    ? $telefonoCapturado : (string)($call['caller_id'] ?? '');
                 $seguimientoId = $model->crearSeguimientoManual([
                     'estado_id' => $estadoId,
                     'municipio_id' => 0,
@@ -442,9 +456,9 @@ class TelefoniaEntrantesAnalistaService
                     'clave_origen' => 'MANUAL:' . bin2hex(random_bytes(16)),
                     'tipo_entidad' => $tipo,
                     'nombre' => $nombre,
-                    'telefono' => (string)($call['caller_id'] ?? ''),
+                    'telefono' => $telefonoInstitucional,
                     'whatsapp' => '',
-                    'correo' => '',
+                    'correo' => $correoCapturado,
                     'contacto_nombre' => $personaAtendio,
                     'contacto_cargo' => '',
                     'datos_verificados' => 0,
@@ -454,9 +468,9 @@ class TelefoniaEntrantesAnalistaService
                     'proxima_accion_at' => null
                 ], true);
                 $seguimiento = [
-                    'telefono_fuente' => (string)($call['caller_id'] ?? ''),
+                    'telefono_fuente' => $telefonoInstitucional,
                     'telefono_verificado' => '',
-                    'correo_fuente' => '',
+                    'correo_fuente' => $correoCapturado,
                     'correo_verificado' => '',
                     'contacto_nombre' => $personaAtendio,
                     'datos_verificados' => 0
