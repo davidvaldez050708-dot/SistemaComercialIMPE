@@ -5302,3 +5302,11 @@
 .convocatoria-public-form-share .convocatoria-form-type-trigger span {
     white-space: nowrap;
 }
+
+
+/* Reducir texto de placeholder en selector Formulario */
+.convocatoria-public-form-share
+.convocatoria-form-type-option[data-convocatoria-form-type-value=""] {
+    font-size: 8.5px;
+    line-height: 1.15;
+}
