@@ -1,0 +1,22 @@
+name: Historial personalizado Hostinger
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tools/desplegar_historial_reintentos_personalizado_hostinger.py'
+      - 'tests/historial_reintentos_personalizado_smoke.py'
+      - '.github/workflows/historial-personalizado-hostinger.yml'
+jobs:
+  prueba:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Comprobación de actualización selectiva
+        run: |
+          python3 -m py_compile tools/desplegar_historial_reintentos_personalizado_hostinger.py
+          python3 tests/historial_reintentos_personalizado_smoke.py
+          node --check public/javascript/seguimiento_historial_consulta.js
+          node --check public/javascript/seguimiento_llamadas_expediente.js
+          node --check public/javascript/seguimiento_grabaciones.js
