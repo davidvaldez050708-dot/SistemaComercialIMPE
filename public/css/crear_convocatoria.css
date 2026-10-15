@@ -528,3 +528,29 @@
     justify-content: center;
     text-align: center;
 }
+
+
+/* Acción limpiar filtros de Convenios */
+.crear-convocatoria-filter-actions {
+    grid-column: 1 / -1;
+    min-height: 22px;
+    display: flex;
+    align-items: center;
+}
+
+.crear-convocatoria-clear-filters {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--color-primary);
+    font: inherit;
+    font-size: 11px;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.crear-convocatoria-clear-filters:hover,
+.crear-convocatoria-clear-filters:focus-visible {
+    text-decoration: underline;
+    outline: none;
+}
