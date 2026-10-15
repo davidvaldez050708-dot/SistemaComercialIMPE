@@ -24,9 +24,9 @@ $assert($start !== false && $body !== false && $footer !== false &&
     $start < $body && $body < $footer && $footer < $save && $save < $end,
     'Guardar debe permanecer en el footer del formulario desplazable.');
 $assert(str_contains($view, 'data-incoming-sdk-notice') &&
-    str_contains($view, 'linkage-incoming-sdk-notice-icon') &&
+    !str_contains($view, 'Registro de llamada WebRTC') &&
     !str_contains($view, 'class="alert alert-info mt-3 mb-0"'),
-    'El aviso WebRTC debe usar estilo CRM, no el bloque azul genérico.');
+    'No debe reaparecer el aviso WebRTC grande en el modal.');
 $assert(str_contains($view, 'data-incoming-sdk-confirm') &&
     str_contains($view, 'name="confirmacion_manual_sdk"') &&
     str_contains($view, 'data-incoming-pbx') &&
@@ -58,8 +58,10 @@ $assert(str_contains($footerCss, 'flex: 0 0 auto;') &&
 $assert(str_contains($contentCss, 'overflow: hidden;') &&
     str_contains($contentCss, 'max-height:'),
     'El modal debe respetar la altura de la ventana.');
-$assert(str_contains($noticeCss, 'background: #f5f8fd;') &&
-    str_contains($css, '.linkage-incoming-sdk-notice[hidden]') &&
+$assert(str_contains($css, '[data-incoming-sdk-notice]') &&
+    str_contains($view, 'data-incoming-confirmed-name') &&
+    str_contains($view, 'data-incoming-change-expediente') &&
+    str_contains($view, 'data-current-user') &&
     str_contains($css, '@media (max-width: 575.98px)'),
-    'El aviso y la adaptación móvil deben conservar el diseño CRM.');
-echo "Formulario Entrantes Analista: OK (Guardar visible, scroll interno, aviso uniforme, WebRTC aislado)\n";
+    'La precarga institucional y la adaptación móvil deben conservar el diseño CRM.');
+echo "Formulario Entrantes Analista: OK (Guardar, scroll, identificación de Recepción y UI compacta)\n";

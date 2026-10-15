@@ -31,6 +31,11 @@ on:
       - "public/javascript/telefonia_analista_historial_pasivo.js"
       - "public/javascript/seguimiento_entrantes_analista.js"
       - "tools/desplegar_contexto_transferencia_hostinger.sh"
+      - "tools/desplegar_contexto_duracion_formulario_hostinger.sh"
+      - "tests/telefonia_contexto_duracion_formulario_hostinger_smoke.sh"
+      - "app/services/TelefoniaAnalistaWebrtcService.php"
+      - "app/views/seguimiento_vinculacion/llamadas_entrantes.php"
+      - "public/css/seguimiento_entrantes_analista.css"
       - "tests/telefonia_transferencia_contexto_hostinger_smoke.sh"
       - "public/javascript/telefonia_sdk_entrantes_observador.js"
       - "tools/desplegar_respuesta_transferida_hostinger.sh"
@@ -90,6 +95,18 @@ on:
       - ".github/workflows/telefonia-shell.yml"
   pull_request:
 jobs:
+  contexto-duracion-formulario:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+      - name: Probar identidad, duración y formulario, sin afectar teléfono
+        run: |
+          bash tests/telefonia_contexto_duracion_formulario_hostinger_smoke.sh
   unico-resultado-analista-hostinger:
     runs-on: ubuntu-latest
     steps:
