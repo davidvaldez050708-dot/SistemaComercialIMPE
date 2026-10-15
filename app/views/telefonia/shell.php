@@ -136,11 +136,11 @@ $nombreShell = $nombreShell !== '' ? $nombreShell : 'Usuario';
             src="about:blank"
             allow="microphone; autoplay"
             loading="eager"></iframe>
-        <div class="impe-shell-navigation-mask" data-shell-navigation-mask
-            role="status" aria-live="polite">
+        <div class="impe-shell-navigation-mask" data-shell-navigation-mask hidden
+            role="alert" aria-live="assertive">
             <div class="impe-shell-navigation-progress">
                 <span class="impe-shell-navigation-spinner" aria-hidden="true"></span>
-                <strong data-shell-navigation-message>Abriendo sistema comercial…</strong>
+                <strong data-shell-navigation-message>No se pudo abrir esta página.</strong>
                 <button type="button" data-shell-navigation-retry hidden>
                     <i class="bi bi-arrow-clockwise" aria-hidden="true"></i>
                     Reintentar este módulo
