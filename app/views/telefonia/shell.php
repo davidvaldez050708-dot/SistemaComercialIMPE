@@ -241,11 +241,18 @@ if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_byt
                 </button>
             </div>
             <?php if ($puedeTransferirShell): ?>
-            <div class="impe-routing-panel" id="impeTransferPanel" data-shell-transfer-panel hidden>
+            <div class="impe-routing-panel impe-routing-sidecar" id="impeTransferPanel"
+                data-shell-transfer-panel hidden role="region" aria-label="Transferir llamada">
                 <div class="impe-routing-heading">
-                    <strong>Transferir llamada</strong>
-                    <span>Selecciona al responsable autorizado</span>
+                    <strong><i class="bi bi-arrow-left-right" aria-hidden="true"></i> Transferir llamada</strong>
+                    <button type="button" class="impe-routing-close" data-routing-close
+                        aria-label="Cerrar opciones de transferencia">
+                        <i class="bi bi-x-lg" aria-hidden="true"></i>
+                    </button>
+                    <span>Identifica el origen y confirma al responsable.</span>
                 </div>
+                <div class="impe-routing-identification" data-routing-identification
+                    role="status" aria-live="polite" hidden></div>
                 <div class="impe-routing-field" data-routing-type-wrap>
                     <label for="impeRoutingType">Tipo de atención</label>
                     <select id="impeRoutingType" data-routing-type>
@@ -256,20 +263,25 @@ if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_byt
                 <div class="impe-routing-field" data-routing-state-wrap>
                     <label for="impeRoutingState">Estado</label>
                     <select id="impeRoutingState" data-routing-state>
-                        <option value="">Todos los estados</option>
+                        <option value="">Seleccionar estado para llamada nueva</option>
                     </select>
                 </div>
-                <div class="impe-routing-field" data-routing-search-wrap>
-                    <label for="impeRoutingSearch">Nombre de institución o responsable</label>
+                <button type="button" class="impe-routing-lookup-toggle"
+                    data-routing-search-toggle aria-expanded="false">
+                    <i class="bi bi-search" aria-hidden="true"></i>
+                    Buscar institución por nombre (opcional)
+                </button>
+                <div class="impe-routing-field" data-routing-search-wrap hidden>
+                    <label for="impeRoutingSearch">Nombre de la institución</label>
                     <input type="search" id="impeRoutingSearch" data-routing-search
-                        maxlength="80" autocomplete="off" placeholder="Buscar en seguimiento">
+                        maxlength="80" autocomplete="off" placeholder="Escribe el nombre si el teléfono no coincide">
                 </div>
                 <div class="impe-routing-matches" data-routing-matches hidden>
                     <span>Expedientes encontrados</span>
                     <div data-routing-matches-list></div>
                 </div>
                 <div class="impe-routing-field">
-                    <label for="impeRoutingDestination">Persona a la que se transferirá</label>
+                    <label for="impeRoutingDestination">Responsable de la atención</label>
                     <select id="impeRoutingDestination" data-routing-destination>
                         <option value="">Seleccionar responsable</option>
                     </select>
