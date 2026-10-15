@@ -570,8 +570,7 @@ $descripcionTiposTerritorio = $esChihuahua
                                     $urlReciente = BASE_URL .
                                         'index.php?controller=convocatoria&action=index&territorio_id=' .
                                         (int)$territorioSeleccionado['id'] .
-                                        '&tipo=' . rawurlencode($tipoReciente) .
-                                       ;
+                                        '&tipo=' . rawurlencode($tipoReciente);
                                     ?>
                                     <tr
                                         data-convocatoria-overview-row
