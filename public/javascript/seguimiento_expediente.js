@@ -974,14 +974,32 @@
 
         const cargarDatos = async function () {
             try {
-                const respuesta = await fetch(urlDatos, {
-                    headers: { 'X-Requested-With': 'fetch' },
-                    cache: 'no-store'
-                });
-                const datos = await respuesta.json();
-
-                if (!respuesta.ok || !datos.ok) {
-                    throw new Error(datos.mensaje || 'No fue posible cargar el expediente operativo.');
+                // Hostinger puede fallar transitoriamente al abrir una conexión
+                // MySQL. Reintentar una vez sólo ante errores de servidor o red,
+                // nunca ante permisos, sesión caducada ni respuestas sin flujo.
+                const consultar = async function () {
+                    const respuesta = await fetch(urlDatos, {
+                        headers: { 'X-Requested-With': 'fetch' },
+                        credentials: 'same-origin',
+                        cache: 'no-store'
+                    });
+                    let datos = null;
+                    try { datos = await respuesta.json(); } catch (_) {}
+                    if (!respuesta.ok || !datos?.ok) {
+                        const error = new Error(datos?.mensaje ||
+                            'No fue posible cargar el expediente operativo.');
+                        error.reintentable = respuesta.status >= 500;
+                        throw error;
+                    }
+                    return datos;
+                };
+                let datos;
+                try {
+                    datos = await consultar();
+                } catch (primero) {
+                    if (primero.reintentable === false) throw primero;
+                    await new Promise(resolve => window.setTimeout(resolve, 900));
+                    datos = await consultar();
                 }
 
                 renderizarResumen(datos);
