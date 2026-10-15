@@ -128,8 +128,13 @@ grep -Fq "Tipo de convocatoria" "$DST/app/views/convocatorias/index.php"
 grep -Fq "convocatoria-month-groups" "$DST/app/views/convocatorias/index.php"
 grep -Fq "data-convocatoria-clasificacion" "$DST/app/views/convocatorias/index.php"
 grep -Fq "convocatoria-month-group-header" "$DST/public/css/convocatorias.css"
+grep -Fq "Personalizador completo de QR" "$DST/public/css/convocatorias.css"
 grep -Fq "data-convocatoria-form-share" "$DST/app/views/convocatorias/index.php"
 grep -Fq "data-convocatoria-form-type" "$DST/app/views/convocatorias/index.php"
+grep -Fq "data-convocatoria-qr-modal" "$DST/app/views/convocatorias/index.php"
+grep -Fq "data-convocatoria-copy-qr" "$DST/app/views/convocatorias/index.php"
+grep -Fq "data-convocatoria-download-qr" "$DST/app/views/convocatorias/index.php"
+grep -Fq "data-convocatoria-qr-image-enabled" "$DST/app/views/convocatorias/index.php"
 
 if grep -Fq "Seleccionar otros estados" "$DST/app/views/convocatorias/index.php"; then
     echo "AVISO: el texto puede seguir existiendo en Editar convocatoria; la opción fue retirada de Nueva convocatoria."
@@ -151,6 +156,6 @@ if grep -Fq "convocatoria-list-table" "$DST/app/views/convocatorias/index.php"; 
 fi
 
 echo
-echo "OK: Nueva convocatoria genera link/QR y Formularios ya no muestra esa opción."
+echo "OK: Nueva convocatoria incluye personalización completa, copia y descarga del QR."
 echo "Respaldo: $BACKUP"
 echo "Recarga el navegador con Ctrl+F5."
