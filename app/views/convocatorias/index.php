@@ -1148,8 +1148,7 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
                                     <button
                                         type="button"
                                         class="btn btn-system-save"
-                                        data-convocatoria-generate-link
-                                        disabled>
+                                        data-convocatoria-generate-link>
                                         <i class="bi bi-link-45deg"></i>
                                         Generar link
                                     </button>
@@ -2067,8 +2066,6 @@ document.addEventListener('DOMContentLoaded', function () {
             return (
                 (type === 'registro' || type === 'inscripcion') &&
                 classification !== '' &&
-                aliadoId !== '' &&
-                aliadoId !== '0' &&
                 estadoId !== '' &&
                 estadoId !== '0'
             );
@@ -2076,7 +2073,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const updatePublicLinkAvailability = function () {
             if (buttonLink) {
-                buttonLink.disabled = !canGeneratePublicLink();
+                buttonLink.disabled = false;
+                buttonLink.setAttribute(
+                    'aria-disabled',
+                    canGeneratePublicLink() ? 'false' : 'true'
+                );
             }
         };
 
@@ -2173,6 +2174,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
         buttonLink?.addEventListener('click', function () {
             if (!canGeneratePublicLink()) {
+                showQrToast(
+                    'Selecciona el formulario y el tipo de convocatoria antes de generar el enlace.',
+                    true
+                );
                 return;
             }
 
