@@ -140,6 +140,15 @@ $fecha = static function ($valor) {
                     </div>
                 </div>
             </div>
+
+            <div class="crear-convocatoria-filter-actions">
+                <button
+                    type="button"
+                    class="crear-convocatoria-clear-filters d-none"
+                    data-convenio-clear-filters>
+                    Limpiar filtros
+                </button>
+            </div>
         </div>
     </section>
 
