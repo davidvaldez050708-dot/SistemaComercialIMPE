@@ -5220,3 +5220,43 @@
         max-height: calc(100vh - 16px);
     }
 }
+
+
+/* Corrección estructural del scroll interno de Nueva convocatoria */
+#modalCrearConvocatoria .modal-dialog-scrollable {
+    height: calc(100% - 32px);
+}
+
+#modalCrearConvocatoria .modal-dialog-scrollable .modal-content {
+    max-height: 100%;
+    overflow: hidden;
+}
+
+#modalCrearConvocatoria .convocatoria-create-form {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+#modalCrearConvocatoria .convocatoria-create-form > .modal-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto !important;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+}
+
+#modalCrearConvocatoria .convocatoria-create-form > .modal-footer {
+    flex: 0 0 auto;
+    position: relative;
+    z-index: 2;
+    background: #ffffff;
+}
+
+@media (max-width: 575.98px) {
+    #modalCrearConvocatoria .modal-dialog-scrollable {
+        height: calc(100% - 16px);
+    }
+}
