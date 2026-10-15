@@ -45,6 +45,7 @@ FILES=(
     "app/views/formularios/registro.php"
     "app/views/formularios/inscripcion.php"
     "public/css/convocatorias.css"
+    "public/javascript/crear_convocatoria.js"
 )
 
 echo "Repositorio fuente : $SRC"
@@ -146,6 +147,8 @@ grep -Fq "data-convocatoria-qr-modal" "$DST/app/views/convocatorias/index.php"
 grep -Fq "data-convocatoria-copy-qr" "$DST/app/views/convocatorias/index.php"
 grep -Fq "data-convocatoria-download-qr" "$DST/app/views/convocatorias/index.php"
 grep -Fq "data-convocatoria-qr-image-enabled" "$DST/app/views/convocatorias/index.php"
+grep -Fq "convenio_nombre" "$DST/public/javascript/crear_convocatoria.js"
+grep -Fq "params.set('convenio_nombre'" "$DST/public/javascript/crear_convocatoria.js"
 
 if grep -Fq "Seleccionar otros estados" "$DST/app/views/convocatorias/index.php"; then
     echo "AVISO: el texto puede seguir existiendo en Editar convocatoria; la opción fue retirada de Nueva convocatoria."
