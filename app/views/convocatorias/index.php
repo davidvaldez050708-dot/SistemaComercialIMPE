@@ -1077,6 +1077,7 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
                                 class="form-control system-form-control"
                                 id="crear_convocatoria_enlace_registro"
                                 name="enlace_registro"
+                                data-convocatoria-link-input
                                 maxlength="1000"
                                 placeholder="https://..."
                                 value="<?= $texto($datosCrear['enlace_registro'] ?? '') ?>">
@@ -1132,72 +1133,97 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
                                 required>
                         </div>
 
-                        <div class="system-form-full">
-                            <label class="form-label login-label">Estados adicionales</label>
+                        <input
+                            type="hidden"
+                            name="estados[]"
+                            value="<?= $territorioActualId ?>">
 
-                            <input
-                                type="hidden"
-                                name="estados[]"
-                                value="<?= $territorioActualId ?>">
+                        <div class="system-form-full convocatoria-public-form-share"
+                            data-convocatoria-form-share
+                            data-registro-url="<?= BASE_URL ?>index.php?controller=formularioPublico&action=registro"
+                            data-inscripcion-url="<?= BASE_URL ?>index.php?controller=formularioPublico&action=inscripcion"
+                            data-quickchart-url="https://quickchart.io/qr">
 
-                            <button
-                                type="button"
-                                class="convocatoria-state-toggle"
-                                data-bs-toggle="collapse"
-                                data-bs-target="#crearEstadosAdicionales"
-                                aria-expanded="<?= $hayEstadosAdicionalesCrear ? 'true' : 'false' ?>"
-                                aria-controls="crearEstadosAdicionales">
-                                <span>
-                                    <i class="bi bi-geo-alt"></i>
-                                    Seleccionar otros estados
-                                </span>
-                                <i class="bi bi-chevron-down"></i>
-                            </button>
-
-                            <small class="form-text convocatoria-state-help">
-                                Solo utiliza esta opción si deseas publicar también en otros estados.
-                                Si no necesitas agregar más, puedes omitirla.
-                            </small>
-
-                            <div
-                                class="collapse<?= $hayEstadosAdicionalesCrear ? ' show' : '' ?> convocatoria-state-extra-panel"
-                                id="crearEstadosAdicionales">
-                                <div class="convocatoria-state-picker" data-state-picker>
-                                    <input
-                                        type="search"
-                                        class="form-control system-form-control convocatoria-state-search"
-                                        placeholder="Buscar estado..."
-                                        data-state-search>
-
-                                    <div class="convocatoria-state-list">
-                                        <label class="convocatoria-state-option convocatoria-state-option-all">
-                                            <input
-                                                type="checkbox"
-                                                class="form-check-input"
-                                                data-state-select-all>
-                                            <span>Seleccionar todos</span>
-                                        </label>
-
-                                        <?php foreach ($estados as $estado): ?>
-                                            <?php $estadoIdActual = (int)$estado['id']; ?>
-                                            <?php if ($estadoIdActual === $territorioActualId) { continue; } ?>
-                                            <label
-                                                class="convocatoria-state-option"
-                                                data-state-option
-                                                data-state-name="<?= $texto(mb_strtolower((string)$estado['nombre'], 'UTF-8')) ?>">
-                                                <input
-                                                    type="checkbox"
-                                                    class="form-check-input"
-                                                    name="estados[]"
-                                                    value="<?= $estadoIdActual ?>"
-                                                    <?= in_array($estadoIdActual, $estadosCrearSeleccionados, true) ? 'checked' : '' ?>>
-                                                <span><?= $texto($estado['nombre']) ?></span>
-                                            </label>
-                                        <?php endforeach; ?>
-                                    </div>
+                            <div class="convocatoria-public-form-heading">
+                                <div>
+                                    <span class="convocatoria-public-form-kicker">FORMULARIO PÚBLICO</span>
+                                    <strong>Enlace y código QR</strong>
+                                    <small>
+                                        Selecciona el formulario que se utilizará para esta convocatoria.
+                                    </small>
                                 </div>
                             </div>
-                        </div>
+
+                            <div class="convocatoria-public-form-grid">
+                                <div>
+                                    <label
+                                        class="form-label login-label"
+                                        for="crear_convocatoria_formulario_publico">
+                                        Formulario
+                                    </label>
+                                    <select
+                                        class="form-select system-form-control"
+                                        id="crear_convocatoria_formulario_publico"
+                                        data-convocatoria-form-type>
+                                        <option value="">Selecciona una opción</option>
+                                        <option value="registro">Registro</option>
+                                        <option value="inscripcion">Inscripción</option>
+                                    </select>
+                                </div>
+
+                                <div class="convocatoria-public-form-actions">
+                                    <button
+                                        type="button"
+                                        class="btn btn-system-save"
+                                        data-convocatoria-generate-link
+                                        disabled>
+                                        <i class="bi bi-link-45deg"></i>
+                                        Generar link
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        class="btn btn-system-save"
+                                        data-convocatoria-generate-qr
+                                        disabled>
+                                        <i class="bi bi-qr-code"></i>
+                                        Generar QR
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div
+                                class="convocatoria-public-form-result d-none"
+                                data-convocatoria-form-result>
+                                <div class="convocatoria-public-form-url">
+                                    <i class="bi bi-link-45deg"></i>
+                                    <input
+                                        type="text"
+                                        readonly
+                                        data-convocatoria-form-url>
+                                    <button
+                                        type="button"
+                                        class="btn"
+                                        title="Copiar enlace"
+                                        aria-label="Copiar enlace"
+                                        data-convocatoria-copy-link>
+                                        <i class="bi bi-copy"></i>
+                                    </button>
+                                </div>
+
+                                <div
+                                    class="convocatoria-public-form-qr d-none"
+                                    data-convocatoria-qr-result>
+                                    <img
+                                        src=""
+                                        alt="Código QR del formulario público"
+                                        data-convocatoria-qr-image>
+                                    <small>
+                                        Escanea este código para abrir el formulario seleccionado.
+                                    </small>
+                                </div>
+                            </div>
+                        </div>                        </div>
                     </div>
                 </div>
 
