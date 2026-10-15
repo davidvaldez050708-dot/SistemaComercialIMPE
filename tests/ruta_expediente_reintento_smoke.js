@@ -1,0 +1,10 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const s = fs.readFileSync('public/javascript/seguimiento_expediente.js', 'utf8');
+assert(s.includes('const consultar = async function ()'), 'Consulta central');
+assert(s.includes('respuesta.status >= 500'), 'Reintento sólo ante servidor');
+assert(s.includes('if (primero.reintentable === false) throw primero'), 'Sin reintento ante permisos');
+assert(s.includes('window.setTimeout(resolve, 900)'), 'Retardo acotado');
+assert(s.includes('datos = await consultar();'), 'Una sola repetición');
+assert(s.includes('rutaProvisional('), 'Preservar información visible al fallar');
+console.log('Ruta expediente: OK (6 controles).');
