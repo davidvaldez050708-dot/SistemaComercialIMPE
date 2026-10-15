@@ -1,0 +1,32 @@
+name: Validar despliegue grabaciones Hostinger
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tools/desplegar_grabaciones_transferidas_hostinger.py'
+      - 'tests/grabaciones_transferidas_despliegue_smoke.py'
+      - '.github/workflows/despliegue-grabaciones-hostinger.yml'
+  workflow_dispatch:
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: none
+      - name: Compilar instalador y simular producción
+        run: |
+          python3 -m py_compile tools/desplegar_grabaciones_transferidas_hostinger.py
+          python3 tests/grabaciones_transferidas_despliegue_smoke.py
+      - name: Comprobar endpoint y reproductores
+        run: |
+          php -l prueba_telefonia/api/grabacion_transferida_pbx.php
+          php -l app/services/TelefoniaRecepcionMarketingService.php
+          php -l app/services/TelefoniaEntrantesAnalistaService.php
+          php -l app/views/seguimiento_vinculacion/llamadas_entrantes.php
+          node --check public/javascript/telefonia_recepcion_marketing.js
+          node --check public/javascript/seguimiento_entrantes_analista.js
