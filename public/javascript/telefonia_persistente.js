@@ -1086,36 +1086,44 @@
             return transferDestinationsPromise;
         };
 
-    const transferCall = function (
-        extension,
-        attended
-    ) {
-        const ext =
-            String(extension || '').replace(/\D+/g, '');
-
-        if (
-            !state?.active ||
-            ext.length < 3 ||
-            ext.length > 6
-        ) {
-            throw new Error(
-                'Indica una extensión válida para transferir la llamada.'
-            );
+    const transferCall = async function (extension, attended, chosen) {
+        const ext = String(extension || '').replace(/\D+/g,'');
+        if (!state?.active || !/^[0-9]{3,6}$/.test(ext)) {
+            throw new Error('Necesitas una llamada activa y un destino válido.');
         }
-
         if (!availability?.permite_transferir) {
-            throw new Error(
-                'Tu perfil no tiene permiso para transferir llamadas.'
-            );
+            throw new Error('Tu usuario no está autorizado para transferir.');
         }
-
-        sendCommand(
-            'TRANSFER',
-            {
-                extension: ext,
-                attended: Boolean(attended)
-            }
+        const allowed = (transferDestinations || []).some(item =>
+            String(item.extension) === ext &&
+            Number(item.usuario_id) === Number(chosen?.usuario_id) &&
+            Number(item.estado_id) === Number(chosen?.estado_id));
+        if (!allowed) throw new Error('Selecciona una persona autorizada del directorio.');
+        const callToken = String(state.callToken || state.pbxCallId || '');
+        const body = new URLSearchParams({
+            csrf_token:String(window.IMPE_TELEPHONY_TRANSFER_CSRF || ''),
+            extension:ext, estado_id:String(chosen.estado_id || 0),
+            responsable_id:String(chosen.usuario_id || 0),
+            tipo:'', modo:attended ? 'CONSULTADA' : 'DIRECTA'
+        });
+        const response = await fetch(
+            new URL('index.php?controller=telefonia&action=autorizarTransferencia',
+                window.location.href).toString(),
+            {method:'POST',credentials:'same-origin',cache:'no-store',
+             headers:{Accept:'application/json',
+                'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},
+             body:body.toString()}
         );
+        const data = await response.json();
+        if (!response.ok || !data.ok) {
+            throw new Error(data.mensaje || 'Transferencia no autorizada.');
+        }
+        if (!state?.active ||
+            String(state.callToken || state.pbxCallId || '') !== callToken) {
+            throw new Error('La llamada cambió antes de transferir.');
+        }
+        sendCommand('TRANSFER', {transferToken:String(data.token || '')});
+        // La orden no es una confirmación PBX.
     };
 
     const showProviderControls = function () {
@@ -1746,6 +1754,8 @@
                                 'option'
                             );
                         option.value = extension;
+                        option.dataset.usuarioId = String(destination.usuario_id || '');
+                        option.dataset.estadoId = String(destination.estado_id || 0);
                         option.textContent =
                             (
                                 String(
@@ -1766,7 +1776,8 @@
                                             destination.rol
                                         ).trim()
                                     : ''
-                            );
+                            ) + (destination.estado_nombre
+                                ? ' · '+String(destination.estado_nombre) : '');
 
                         transferSelect.appendChild(
                             option
@@ -1855,30 +1866,28 @@
             showProviderControls
         );
 
-        const executeTransfer =
-            function (attended) {
-                try {
-                    transferCall(
-                        transferInput?.value || '',
-                        attended
-                    );
-
-                    if (transferPanel) {
-                        transferPanel.hidden = true;
-                    }
-                } catch (error) {
-                    const help =
-                        panel.querySelector(
-                            '[data-phone-transfer-help]'
-                        );
-
-                    if (help) {
-                        help.textContent =
-                            error.message ||
-                            'No fue posible preparar la transferencia.';
-                    }
-                }
+        const executeTransfer = async function (attended) {
+            const help = panel.querySelector('[data-phone-transfer-help]');
+            const selectedOption = transferSelect?.selectedOptions?.[0];
+            const ext = String(transferInput?.value || '').replace(/\D+/g,'');
+            const chosen = {
+                usuario_id:Number(selectedOption?.dataset?.usuarioId || 0),
+                estado_id:Number(selectedOption?.dataset?.estadoId || 0)
             };
+            try {
+                if (!chosen.usuario_id || transferSelect?.value !== ext) {
+                    throw new Error('Selecciona una persona del directorio. No se permiten extensiones libres.');
+                }
+                if (help) help.textContent = 'Validando el destino…';
+                await transferCall(ext, attended, chosen);
+                if (transferPanel) transferPanel.hidden = true;
+                if (help) help.textContent =
+                    'Orden solicitada. Espera confirmación telefónica de Zadarma.';
+            } catch (error) {
+                if (help) help.textContent = error?.message ||
+                    'No fue posible preparar la transferencia.';
+            }
+        };
 
         panel.querySelector(
             '[data-phone-transfer-directa]'
