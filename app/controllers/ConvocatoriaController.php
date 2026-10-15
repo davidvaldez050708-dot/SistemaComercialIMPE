@@ -26,6 +26,16 @@ class ConvocatoriaController
             : '';
         $tipoConvocatoria = strtolower(trim((string)($_GET['tipo'] ?? '')));
         $subtipoConvocatoria = strtolower(trim((string)($_GET['subtipo'] ?? '')));
+        $clasificacionFiltro = strtolower(trim((string)($_GET['clasificacion'] ?? '')));
+
+        if (
+            $clasificacionFiltro !== '' &&
+            strpos($clasificacionFiltro, '|') !== false
+        ) {
+            [$tipoConvocatoria, $subtipoConvocatoria] =
+                array_pad(explode('|', $clasificacionFiltro, 2), 2, '');
+        }
+
         $anioFiltro = (int)($_GET['anio'] ?? 0);
         $mesFiltro = (int)($_GET['mes'] ?? 0);
         $anioFiltro = $anioFiltro >= 2000 && $anioFiltro <= 2100 ? $anioFiltro : 0;
@@ -35,13 +45,17 @@ class ConvocatoriaController
             ? $this->esTerritorioChihuahua($modelo, $estadoFiltro)
             : false;
 
-        $convocatorias = (
-            $territorioPermitido &&
+        $clasificacionValida =
+            ($tipoConvocatoria === '' && $subtipoConvocatoria === '') ||
             $this->esClasificacionValida(
                 $tipoConvocatoria,
                 $subtipoConvocatoria,
                 $esChihuahua
-            )
+            );
+
+        $convocatorias = (
+            $territorioPermitido &&
+            $clasificacionValida
         )
             ? $modelo->obtenerListado(
                 $buscar,
@@ -84,6 +98,17 @@ class ConvocatoriaController
             strcasecmp(trim((string)($territorioSeleccionado['nombre'] ?? '')), 'Chihuahua') === 0;
 
         $tipoConvocatoriaSolicitado = strtolower(trim((string)($_GET['tipo'] ?? '')));
+        $subtipoConvocatoriaSolicitado = strtolower(trim((string)($_GET['subtipo'] ?? '')));
+        $clasificacionFiltro = strtolower(trim((string)($_GET['clasificacion'] ?? '')));
+
+        if (
+            $clasificacionFiltro !== '' &&
+            strpos($clasificacionFiltro, '|') !== false
+        ) {
+            [$tipoConvocatoriaSolicitado, $subtipoConvocatoriaSolicitado] =
+                array_pad(explode('|', $clasificacionFiltro, 2), 2, '');
+        }
+
         $tiposPermitidos = ['titulacion', 'bachillerato'];
 
         if ($esChihuahua) {
@@ -112,8 +137,6 @@ class ConvocatoriaController
                 'sindicatos'
             ]
         ];
-        $subtipoConvocatoriaSolicitado = strtolower(trim((string)($_GET['subtipo'] ?? '')));
-
         if ($tipoConvocatoria === 'sindicatos' && $esChihuahua && $subtipoConvocatoriaSolicitado === '') {
             $subtipoConvocatoriaSolicitado = 'sindicatos';
         }
@@ -169,86 +192,20 @@ class ConvocatoriaController
         $resumenMensualConvocatorias = [];
         $mesesVisiblesConvocatorias = [];
         $mostrarSelectorMes = false;
+        $anioSeleccionado = 0;
+        $mesSeleccionado = 0;
 
-        if (
-            $territorioSeleccionado &&
-            $tipoConvocatoria !== '' &&
-            $subtipoConvocatoria !== ''
-        ) {
-            $aniosConvocatorias = $modelo->obtenerAniosDisponiblesPorClasificacion(
-                $estadoFiltro,
+        $clasificacionValida =
+            ($tipoConvocatoria === '' && $subtipoConvocatoria === '') ||
+            $this->esClasificacionValida(
                 $tipoConvocatoria,
-                $subtipoConvocatoria
+                $subtipoConvocatoria,
+                $esChihuahua
             );
-
-            if (!in_array($anioCicloActual, $aniosConvocatorias, true)) {
-                $aniosConvocatorias[] = $anioCicloActual;
-            }
-
-            rsort($aniosConvocatorias, SORT_NUMERIC);
-
-            if (!in_array($anioSeleccionado, $aniosConvocatorias, true)) {
-                $anioSeleccionado = $anioCicloActual;
-            }
-
-            $mostrarSelectorMes =
-                $mesSeleccionado === 0 &&
-                $buscar === '';
-
-            if ($mostrarSelectorMes) {
-                /*
-                 * Ventana móvil de 4 meses.
-                 * De septiembre a noviembre se conserva Septiembre-Diciembre.
-                 * En diciembre avanza a Octubre-Enero y a partir de ahí
-                 * continúa desplazándose un mes conforme termina cada periodo.
-                 */
-                $mesesDesdeSeptiembre = $mesActualCalendario >= 9
-                    ? $mesActualCalendario - 9
-                    : $mesActualCalendario + 3;
-                $desplazamientoVentana = max(0, $mesesDesdeSeptiembre - 2);
-
-                $inicioVentana = (new DateTimeImmutable(
-                    sprintf('%04d-09-01', $anioSeleccionado)
-                ))->modify('+' . $desplazamientoVentana . ' months');
-
-                $resumenesPorAnio = [];
-
-                for ($indiceMes = 0; $indiceMes < 4; $indiceMes++) {
-                    $fechaVentana = $inicioVentana->modify(
-                        '+' . $indiceMes . ' months'
-                    );
-                    $anioVentana = (int)$fechaVentana->format('Y');
-                    $mesVentana = (int)$fechaVentana->format('n');
-
-                    if (!isset($resumenesPorAnio[$anioVentana])) {
-                        $resumenesPorAnio[$anioVentana] =
-                            $modelo->obtenerResumenMensual(
-                                $estadoFiltro,
-                                $tipoConvocatoria,
-                                $subtipoConvocatoria,
-                                $anioVentana
-                            );
-                    }
-
-                    $mesesVisiblesConvocatorias[] = [
-                        'anio' => $anioVentana,
-                        'mes' => $mesVentana,
-                        'datos' => $resumenesPorAnio[$anioVentana][$mesVentana] ?? [
-                            'total' => 0,
-                            'convocatorias' => []
-                        ]
-                    ];
-                }
-
-                $resumenMensualConvocatorias = $resumenesPorAnio;
-            }
-        }
 
         $convocatorias = (
             $territorioSeleccionado &&
-            $tipoConvocatoria !== '' &&
-            $subtipoConvocatoria !== '' &&
-            (!$mostrarSelectorMes)
+            $clasificacionValida
         )
             ? $modelo->obtenerListado(
                 $buscar,
@@ -257,8 +214,8 @@ class ConvocatoriaController
                 $categoriaFiltro,
                 $tipoConvocatoria,
                 $subtipoConvocatoria,
-                $mesSeleccionado > 0 ? $anioSeleccionado : 0,
-                $mesSeleccionado,
+                0,
+                0,
                 $fechaFiltro
             )
             : [];
@@ -368,6 +325,16 @@ class ConvocatoriaController
         $territorioId = (int)($_POST['territorio_id'] ?? 0);
         $tipoConvocatoria = strtolower(trim((string)($_POST['tipo'] ?? '')));
         $subtipoConvocatoria = strtolower(trim((string)($_POST['subtipo'] ?? '')));
+        $clasificacion = strtolower(trim((string)($_POST['clasificacion'] ?? '')));
+
+        if (
+            $clasificacion !== '' &&
+            strpos($clasificacion, '|') !== false
+        ) {
+            [$tipoConvocatoria, $subtipoConvocatoria] =
+                array_pad(explode('|', $clasificacion, 2), 2, '');
+        }
+
         $esChihuahua = $this->esTerritorioChihuahua($modelo, $territorioId);
         $datos = $this->limpiarDatos($_POST);
         $estadosIds = $this->limpiarEstados($_POST['estados'] ?? []);
@@ -439,6 +406,15 @@ class ConvocatoriaController
         if (!$convocatoriaOriginal) {
             $_SESSION['error_convocatoria'] = 'La convocatoria seleccionada no existe.';
             $this->redirigir();
+        }
+
+        if ($tipoConvocatoria === '' || $subtipoConvocatoria === '') {
+            $tipoConvocatoria = strtolower(
+                trim((string)($convocatoriaOriginal['tipo_convocatoria'] ?? ''))
+            );
+            $subtipoConvocatoria = strtolower(
+                trim((string)($convocatoriaOriginal['subtipo_convocatoria'] ?? ''))
+            );
         }
 
         if (
@@ -1193,6 +1169,10 @@ class ConvocatoriaController
             $retornoContexto['categoria'] ??
             ($_POST['categoria'] ?? ($_GET['categoria'] ?? ''))
         ));
+        $clasificacionContexto = trim((string)(
+            $retornoContexto['clasificacion'] ??
+            ($_POST['clasificacion_filtro'] ?? ($_GET['clasificacion'] ?? ''))
+        ));
 
         if ($anioContexto >= 2000 && $anioContexto <= 2100) {
             $url .= '&anio=' . $anioContexto;
@@ -1216,6 +1196,10 @@ class ConvocatoriaController
 
         if ($categoriaContexto !== '') {
             $url .= '&categoria=' . rawurlencode($categoriaContexto);
+        }
+
+        if ($clasificacionContexto !== '') {
+            $url .= '&clasificacion=' . rawurlencode($clasificacionContexto);
         }
 
         header('Location: ' . $url);
