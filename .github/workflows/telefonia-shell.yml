@@ -45,6 +45,8 @@ on:
       - "public/javascript/seguimiento_entrantes_analista.js"
       - "tools/desplegar_resultado_transferida_analista_hostinger.sh"
       - "tools/desplegar_resultado_unico_analista_hostinger.sh"
+      - "tools/desplegar_sin_toast_analista_hostinger.py"
+      - "tests/telefonia_sin_toast_analista_hostinger_smoke.sh"
       - "tests/telefonia_resultado_unico_analista_hostinger_smoke.sh"
       - "tests/telefonia_analista_resultado_transferido_smoke.js"
       - "tests/telefonia_analista_resultado_transferido_hostinger_smoke.sh"
@@ -95,6 +97,19 @@ on:
       - ".github/workflows/telefonia-shell.yml"
   pull_request:
 jobs:
+  analista-sin-toast-persistido:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.8'
+      - name: Sin toast antiguo al login ni sustitución del shell WebRTC
+        run: |
+          python3 -m py_compile tools/desplegar_sin_toast_analista_hostinger.py
+          bash tests/telefonia_sin_toast_analista_hostinger_smoke.sh
   contexto-duracion-formulario:
     runs-on: ubuntu-latest
     steps:
