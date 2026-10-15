@@ -518,3 +518,13 @@
     color: #17357f;
     font-weight: 700;
 }
+
+
+/* Botón Crear convocatoria del modal */
+.crear-convocatoria-modal-create {
+    min-width: 190px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
