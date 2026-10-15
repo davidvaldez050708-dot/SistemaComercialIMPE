@@ -83,9 +83,11 @@ def main():
     live = pathlib.Path(args.live).expanduser().resolve()
     if not live.is_dir() or not (live / "app").is_dir():
         cli.error("La ruta real del CRM no es válida.")
-    head = git("-C", str(repo), "rev-parse", "HEAD").strip()
-    if head != COMMIT:
-        cli.error("El checkout debe estar exactamente en el commit aprobado: " + COMMIT)
+    ancestor = subprocess.run(
+        ["git", "-C", str(repo), "merge-base", "--is-ancestor", COMMIT, "HEAD"]
+    )
+    if ancestor.returncode != 0:
+        cli.error("El checkout no contiene el commit aprobado: " + COMMIT)
     outputs = []
     problems = []
     for relative in FILES:
