@@ -195,12 +195,16 @@ class ConvocatoriaModel
             $parametros[] = $categoria;
         }
 
-        if ($tipoConvocatoria !== '' && $subtipoConvocatoria !== '') {
-            $sql .= " AND convocatorias.tipo_convocatoria = ?
-                      AND convocatorias.subtipo_convocatoria = ?";
-            $tipos .= 'ss';
+        if ($tipoConvocatoria !== '') {
+            $sql .= " AND convocatorias.tipo_convocatoria = ?";
+            $tipos .= 's';
             $parametros[] = $tipoConvocatoria;
-            $parametros[] = $subtipoConvocatoria;
+
+            if ($subtipoConvocatoria !== '') {
+                $sql .= " AND convocatorias.subtipo_convocatoria = ?";
+                $tipos .= 's';
+                $parametros[] = $subtipoConvocatoria;
+            }
         }
 
         if ((int)$anio > 0) {
