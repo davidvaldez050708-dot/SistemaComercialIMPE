@@ -100,25 +100,45 @@ def run(staged, base, target):
         if previous:
             if appearances(merged, previous) == 1:
                 merged = merged.replace(previous, following, 1)
-                undo.append((following, previous, step))
+                # Si la línea nueva existe varias veces, guardar para
+                # rollback una referencia única a sus líneas vecinas.
+                replacement_key = following
+                restoration = previous
+                if appearances(merged, replacement_key) != 1:
+                    right = unique_anchor(merged, base_lines[i2:], True)
+                    if right and appearances(merged, following + right) == 1:
+                        replacement_key = following + right
+                        restoration = previous + right
+                    else:
+                        left = unique_anchor(merged, base_lines[:i1], False)
+                        if left and appearances(merged, left + following) == 1:
+                            replacement_key = left + following
+                            restoration = left + previous
+                        else:
+                            fail('resultado ambiguo, bloque %d' % step)
+                undo.append((replacement_key, restoration, step))
                 applied += 1
             elif appearances(merged, previous) == 0 and appearances(merged, following) == 1:
                 continue
             else:
                 fail('líneas de cierre modificadas, bloque %d (línea %d)' % (step, i1 + 1))
         else:
-            if appearances(merged, following) == 1:
-                continue
-            if appearances(merged, following) != 0:
-                fail('inserción duplicada, bloque %d' % step)
+            # Una misma línea añadida puede aparecer en más de un lugar;
+            # comprobar la posición junto a su ancla, no sólo su presencia.
             right = unique_anchor(merged, base_lines[i1:], True)
             if right:
+                if appearances(merged, following + right) == 1:
+                    continue
+                if appearances(merged, right) != 1:
+                    fail('ancla derecha ambigua, bloque %d' % step)
                 merged = merged.replace(right, following + right, 1)
                 undo.append((following + right, right, step))
             else:
                 left = unique_anchor(merged, base_lines[:i1], False)
                 if not left:
                     fail('punto de inserción no reconocido, bloque %d' % step)
+                if appearances(merged, left + following) == 1:
+                    continue
                 merged = merged.replace(left, left + following, 1)
                 undo.append((left + following, left, step))
             applied += 1
