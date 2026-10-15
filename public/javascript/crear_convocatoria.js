@@ -70,7 +70,11 @@ document.addEventListener('DOMContentLoaded', function () {
         if (emptyFilter) {
             emptyFilter.classList.toggle('d-none', visible > 0);
         }
+
+        updateClearFilters();
     };
+
+    updateClearFilters();
 
     search?.addEventListener('input', applyFilters);
 
