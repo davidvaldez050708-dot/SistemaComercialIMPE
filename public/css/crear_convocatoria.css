@@ -433,3 +433,88 @@
     font-size: 12px;
     font-weight: 600;
 }
+
+
+/* Desplegable de estados siempre hacia abajo */
+.crear-convocatoria-state-dropdown {
+    position: relative;
+    width: 100%;
+    z-index: 30;
+}
+
+.crear-convocatoria-state-trigger {
+    width: 100%;
+    min-height: 46px;
+    padding: 0 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    background: #ffffff;
+    color: var(--color-text-primary);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+}
+
+.crear-convocatoria-state-trigger i {
+    flex: 0 0 auto;
+    transition: transform .18s ease;
+}
+
+.crear-convocatoria-state-dropdown.is-open
+.crear-convocatoria-state-trigger i {
+    transform: rotate(180deg);
+}
+
+.crear-convocatoria-state-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    max-height: 280px;
+    display: none;
+    overflow-y: auto;
+    padding: 6px;
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    background: #ffffff;
+    box-shadow: 0 14px 32px rgba(20, 35, 70, .14);
+    z-index: 100;
+}
+
+.crear-convocatoria-state-dropdown.is-open
+.crear-convocatoria-state-menu {
+    display: block;
+}
+
+.crear-convocatoria-state-option {
+    width: 100%;
+    padding: 9px 10px;
+    display: block;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--color-text-primary);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+}
+
+.crear-convocatoria-state-option:hover,
+.crear-convocatoria-state-option:focus-visible {
+    background: #f4f7fb;
+    outline: none;
+}
+
+.crear-convocatoria-state-option.is-selected {
+    background: #edf3ff;
+    color: #17357f;
+    font-weight: 700;
+}
