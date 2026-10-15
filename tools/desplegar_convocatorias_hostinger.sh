@@ -42,6 +42,7 @@ FILES=(
     "app/controllers/ConvocatoriaController.php"
     "app/models/ConvocatoriaModel.php"
     "app/views/convocatorias/index.php"
+    "public/css/convocatorias.css"
 )
 
 echo "Repositorio fuente : $SRC"
@@ -122,8 +123,10 @@ fi
 grep -Fq 'name="clasificacion"' "$DST/app/views/convocatorias/index.php"
 grep -Fq "Todas las convocatorias" "$DST/app/views/convocatorias/index.php"
 grep -Fq "Tipo de convocatoria" "$DST/app/views/convocatorias/index.php"
+grep -Fq "convocatoria-month-groups" "$DST/app/views/convocatorias/index.php"
+grep -Fq "convocatoria-month-group-header" "$DST/public/css/convocatorias.css"
 
 echo
-echo "OK: selección Titulación/Bachillerato conservada y flujo simplificado publicado correctamente."
+echo "OK: selección Titulación/Bachillerato conservada y convocatorias agrupadas por mes publicadas correctamente."
 echo "Respaldo: $BACKUP"
 echo "Recarga el navegador con Ctrl+F5."
