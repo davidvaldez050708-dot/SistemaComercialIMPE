@@ -1116,6 +1116,7 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
                             data-registro-url="<?= BASE_URL ?>index.php?controller=formularioPublico&action=registro"
                             data-inscripcion-url="<?= BASE_URL ?>index.php?controller=formularioPublico&action=inscripcion"
                             data-aliado-id="<?= (int)($seguimientoOrigenId ?? 0) ?>"
+                            data-convenio-nombre="<?= $texto($convenioNombreOrigen ?? '') ?>"
                             data-estado-id="<?= (int)($territorioSeleccionado['id'] ?? 0) ?>"
                             data-estado-nombre="<?= $texto($territorioSeleccionado['nombre'] ?? '') ?>"
                             data-quickchart-url="https://quickchart.io/qr">
@@ -2141,9 +2142,18 @@ document.addEventListener('DOMContentLoaded', function () {
                 share.dataset.estadoNombre || ''
             ).trim();
 
+            const convenioNombre = String(
+                share.dataset.convenioNombre || ''
+            ).trim();
+
             const url = new URL(baseUrl, window.location.origin);
 
             url.searchParams.set('formulario', type);
+            url.searchParams.set('origen', 'convenio_aliado');
+
+            if (convenioNombre !== '') {
+                url.searchParams.set('convenio', convenioNombre);
+            }
 
             if (aliadoId !== '' && aliadoId !== '0') {
                 url.searchParams.set('aliado_id', aliadoId);
