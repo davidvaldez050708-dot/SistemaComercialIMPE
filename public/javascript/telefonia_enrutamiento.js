@@ -162,12 +162,26 @@
         recognized = Array.isArray(records) ? records : [];
         confirmedRecognition = false;
         const heading = document.createElement('strong');
+        if (recognized.length && categoria === 'RECEPCION') {
+            if (lookupWrap) lookupWrap.hidden = true;
+            if (lookupToggle) {
+                lookupToggle.hidden = false;
+                lookupToggle.setAttribute('aria-expanded', 'false');
+            }
+        }
         if (!recognized.length) {
             heading.textContent = 'Número sin expediente identificado';
             identityBox.appendChild(heading);
             const hint = document.createElement('small');
-            hint.textContent = 'Pregunta el estado y selecciona al responsable. La búsqueda por nombre es opcional.';
+            hint.textContent = 'Institución no identificada por teléfono. Pregunta su nombre y estado.';
             identityBox.appendChild(hint);
+            // Si es una llamada institucional nueva, mostrar el campo
+            // directamente sin exigir que Tania abra otra sección.
+            if (lookupWrap) lookupWrap.hidden = false;
+            if (lookupToggle) {
+                lookupToggle.hidden = true;
+                lookupToggle.setAttribute('aria-expanded', 'true');
+            }
             return;
         }
         heading.textContent = recognized.length === 1
@@ -323,6 +337,11 @@
     tipo?.addEventListener('change', () => {
         if (estado) estado.value='';
         if (buscar) buscar.value='';
+        if (lookupWrap) lookupWrap.hidden = true;
+        if (lookupToggle) {
+            lookupToggle.hidden = false;
+            lookupToggle.setAttribute('aria-expanded', 'false');
+        }
         recognized = [];
         confirmedRecognition = false;
         phoneCheckedForCall = currentCallId; // Tipo comercial no reidentifica institución.
