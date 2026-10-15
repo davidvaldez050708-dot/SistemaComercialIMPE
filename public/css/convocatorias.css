@@ -5260,3 +5260,86 @@
         height: calc(100% - 16px);
     }
 }
+
+
+/* Disponibilidad con diseño de desplegables del sistema */
+.convocatoria-availability-dropdown {
+    position: relative;
+    width: 100%;
+    z-index: 35;
+}
+
+.convocatoria-availability-trigger {
+    width: 100%;
+    min-height: 46px;
+    padding: 0 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    background: #ffffff;
+    color: var(--color-text-primary);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+}
+
+.convocatoria-availability-trigger i {
+    flex: 0 0 auto;
+    transition: transform .18s ease;
+}
+
+.convocatoria-availability-dropdown.is-open
+.convocatoria-availability-trigger i {
+    transform: rotate(180deg);
+}
+
+.convocatoria-availability-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    display: none;
+    padding: 6px;
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    background: #ffffff;
+    box-shadow: 0 14px 32px rgba(20, 35, 70, .14);
+    z-index: 140;
+}
+
+.convocatoria-availability-dropdown.is-open
+.convocatoria-availability-menu {
+    display: block;
+}
+
+.convocatoria-availability-option {
+    width: 100%;
+    padding: 10px 12px;
+    display: block;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--color-text-primary);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+}
+
+.convocatoria-availability-option:hover,
+.convocatoria-availability-option:focus-visible {
+    background: #f4f7fb;
+    outline: none;
+}
+
+.convocatoria-availability-option.is-selected {
+    background: #edf3ff;
+    color: #17357f;
+    font-weight: 700;
+}
