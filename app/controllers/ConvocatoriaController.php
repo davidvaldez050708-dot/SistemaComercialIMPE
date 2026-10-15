@@ -47,6 +47,17 @@ class ConvocatoriaController
 
         $clasificacionValida =
             ($tipoConvocatoria === '' && $subtipoConvocatoria === '') ||
+            (
+                $tipoConvocatoria !== '' &&
+                $subtipoConvocatoria === '' &&
+                in_array(
+                    $tipoConvocatoria,
+                    $esChihuahua
+                        ? ['titulacion', 'bachillerato', 'sindicatos']
+                        : ['titulacion', 'bachillerato'],
+                    true
+                )
+            ) ||
             $this->esClasificacionValida(
                 $tipoConvocatoria,
                 $subtipoConvocatoria,
