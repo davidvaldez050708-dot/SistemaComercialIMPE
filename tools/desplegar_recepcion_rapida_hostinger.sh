@@ -63,7 +63,7 @@ if command -v node >/dev/null 2>&1; then
 fi
 grep -Fq 'function identificarOrigen(' "$TMP/stage/app/services/TelefoniaEnrutamientoService.php"
 grep -Fq 'telefono_verificado' "$TMP/stage/app/services/TelefoniaEnrutamientoService.php"
-grep -Fq "identificarOrigen(\\$usuarioId, \\$rol, \\$telefonoOrigen)" \
+grep -Fq 'identificarOrigen($usuarioId, $rol, $telefonoOrigen)' \
   "$TMP/stage/app/controllers/TelefoniaController.php"
 grep -Fq 'data-routing-identification' "$TMP/stage/app/views/telefonia/shell.php"
 grep -Fq 'data-incoming-register-finished' "$TMP/stage/app/views/telefonia/shell.php"
