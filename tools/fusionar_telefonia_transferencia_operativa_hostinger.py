@@ -192,8 +192,13 @@ $puedeRecibirShell = !empty($asignacionTelefonica['permite_entrantes']) &&
         )
         if not pref_match:
             fail('autoconectar receptor: preferencia desconocida')
-        pref_old = pref_match.group(0)
-        pref_new = preference_marker + ' {'
+        # 'if (autoEnabled) {' se repite también al iniciar WebRTC.
+        # Anclarlo al acceso a localStorage para no sustituir el segundo.
+        pref_tail = pref_section[pref_match.end():]
+        storage_start = pref_tail.index('localStorage.getItem') + len('localStorage.getItem')
+        pref_suffix = pref_tail[:storage_start]
+        pref_old = pref_match.group(0) + pref_suffix
+        pref_new = preference_marker + ' {' + pref_suffix
 
         rules = [
             ('indicador transferencias', flag_old, flag_new),
