@@ -323,6 +323,17 @@
         if (e.key === stateKey) consume();
     });
     root.setInterval(consume, 500);
+    // El shell histórico puede redibujar el botón Cerrar al refrescar la
+    // llamada finalizada; aplicar sólo el estado de acciones pendiente,
+    // conservando sus estilos, posición y comportamiento WebRTC.
+    root.setInterval(() => {
+        if (!finished || finished.registrationOpen) return;
+        const requireResult = finished.answered && !finished.isInternal;
+        const shouldRegister = requireResult && finished.saved === true;
+        if (closeBtn.hidden !== requireResult ||
+            resultBtn.hidden === shouldRegister ||
+            (shouldRegister && panel.hidden)) draw();
+    }, 600);
     consume();
 
     closeBtn.addEventListener('click', () => {
@@ -351,9 +362,22 @@
             event.source !== crm?.contentWindow ||
             event.data?.type !== 'IMPE_ANALYST_RESULT_SAVED' ||
             !finished || String(event.data.callId || '') !== finished.id) return;
+        const completed = finished.id;
         finished = null;
         draw();
         panel.hidden = true;
+        // Sólo tras el OK del servidor se despeja la llamada terminada
+        // del motor WebRTC; así no reaparece Cerrar en el shell.
+        try {
+            const channel = new root.BroadcastChannel('impe-telephony-' + userId);
+            channel.postMessage({
+                type:'COMMAND',
+                id:'result-saved-' + completed + '-' + Date.now(),
+                action:'CLEAR_FINISHED',
+                payload:{callToken:completed}
+            });
+            channel.close();
+        } catch (_) {}
     });
     crm?.addEventListener('load', () => {
         if (!finished?.registrationOpen) return;
