@@ -101,6 +101,24 @@ class ConvocatoriaController
         $estados = $this->obtenerEstadosDisponibles($modelo->obtenerEstados());
 
         $territorioId = (int)($_GET['territorio_id'] ?? 0);
+        $estadoNombreSolicitado = trim((string)($_GET['estado_nombre'] ?? ''));
+        $desdeConvenio = (int)($_GET['desde_convenio'] ?? 0) === 1;
+        $seguimientoOrigenId = (int)($_GET['seguimiento_id'] ?? 0);
+
+        if ($estadoNombreSolicitado !== '') {
+            foreach ($estados as $estadoDisponible) {
+                if (
+                    strcasecmp(
+                        trim((string)($estadoDisponible['nombre'] ?? '')),
+                        $estadoNombreSolicitado
+                    ) === 0
+                ) {
+                    $territorioId = (int)($estadoDisponible['id'] ?? 0);
+                    break;
+                }
+            }
+        }
+
         $territorioSeleccionado = $this->obtenerTerritorioSeleccionado(
             $estados,
             $territorioId
