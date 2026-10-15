@@ -30,7 +30,27 @@ TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 mkdir -p "$TMP/stage"
 declare -a CHANGED=()
+declare -a CONFLICTS=()
 declare -A HASHES=()
+# Un cambio opcional del controlador sólo agrega una línea de diagnóstico.
+# En Hostinger el controlador es personalizado: si el flujo de contexto ya
+# está íntegro, conservarlo sin forzar un hunk de PHP ajeno a la llamada.
+controller_contexto_compatible() {
+ local p="$1"
+ local required
+ for required in \
+   'public function contextoTransferencia()' \
+   '->obtenerParaDestinatario(' \
+   'public function autorizarTransferencia()' \
+   "'seguimiento_id'=>\$seguimientoId" \
+   "'pbx_call_id'=>\$pbxCallId" \
+   'public function validarOrdenTransferencia()' \
+   '(new TelefoniaTransferenciaContextoService())->registrar(' \
+   "'destino'=>"; do
+   grep -Fq -- "$required" "$p" || return 1
+ done
+ return 0
+}
 for f in "${FILES[@]}"; do
  [[ -f "$LIVE/$f" && ! -L "$LIVE/$f" ]] || {
    echo "CONFLICTO: $f no es archivo regular. PRODUCCIÓN INTACTA." >&2; exit 1;
@@ -48,12 +68,28 @@ for f in "${FILES[@]}"; do
  elif (cd "$TMP/stage" && git apply --check "$p" >/dev/null 2>&1); then
    (cd "$TMP/stage" && git apply "$p")
    echo "PARCHE COMPATIBLE: $f"
+ elif [[ "$f" == "app/controllers/TelefoniaController.php" ]] &&
+      controller_contexto_compatible "$TMP/stage/$f"; then
+   # El PR sólo cambia un log de fallo opcional; no reemplazar el PHP
+   # personalizado si ya conserva consulta, autorización y traspaso.
+   echo "CONSERVADO: $f (contexto funcional; sólo se omite log opcional)"
  else
-   echo "CONFLICTO: $f tiene personalizaciones incompatibles. PRODUCCIÓN INTACTA." >&2
-   exit 1
+   CONFLICTS+=("$f")
+   echo "CONFLICTO: $f requiere adaptación; no se aplicarán cambios." >&2
  fi
  if ! cmp -s "$LIVE/$f" "$TMP/stage/$f"; then CHANGED+=("$f"); fi
 done
+if (( ${#CONFLICTS[@]} )); then
+ echo "CONFLICTO: ${#CONFLICTS[@]} archivos incompatibles. PRODUCCIÓN INTACTA." >&2
+ echo "Si faltan los métodos de contexto en TelefoniaController.php, necesitan fusionarse antes de publicar." >&2
+ exit 1
+fi
+# No continuar si el controlador desplegado omitía el traspaso. Pasar el
+# parche de logging o conservar una variante realmente funcional.
+if ! controller_contexto_compatible "$TMP/stage/app/controllers/TelefoniaController.php"; then
+ echo "CONFLICTO: faltan funciones de contexto institucional en TelefoniaController.php. PRODUCCIÓN INTACTA." >&2
+ exit 1
+fi
 for f in "${FILES[@]}"; do
  case "$f" in
   *.php) php -l "$TMP/stage/$f" >/dev/null ;;

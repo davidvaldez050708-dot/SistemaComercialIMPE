@@ -41,6 +41,51 @@ for f in "${FILES[@]}"; do cmp -s "$f" "$IMPE_FLOW_PUBLIC/$f"; done
 [[ "$(sha256sum "$IMPE_FLOW_PUBLIC/public/javascript/telefonia_shell.js" | cut -d' ' -f1)" == "$shell" ]]
 test -n "$(find "$TMP/backups" -type f)"
 bash tools/desplegar_contexto_duracion_formulario_hostinger.sh --check | grep -Fq 'ya publicados'
+# Hostinger: PHP con comentario propio en el mismo hunk donde GitHub
+# sólo agrega un log opcional. Se CONSERVA sin sobrescribir la función.
+export IMPE_FLOW_PUBLIC="$TMP/controller-custom"
+mkdir -p "$IMPE_FLOW_PUBLIC"
+touch "$IMPE_FLOW_PUBLIC/index.php"
+for f in "${FILES[@]}"; do
+ mkdir -p "$IMPE_FLOW_PUBLIC/$(dirname "$f")"
+ git show "$BASE:$f" > "$IMPE_FLOW_PUBLIC/$f"
+done
+python3 - "$IMPE_FLOW_PUBLIC/app/controllers/TelefoniaController.php" <<'PY'
+import pathlib,sys
+p=pathlib.Path(sys.argv[1])
+s=p.read_text()
+old='                    (new TelefoniaTransferenciaContextoService())->registrar('
+assert s.count(old)==1
+s=s.replace(old,'                    // HOSTINGER_AUTORIZACION_PERSONALIZADA\n'+old)
+p.write_text(s)
+PY
+controllerhash="$(sha256sum "$IMPE_FLOW_PUBLIC/app/controllers/TelefoniaController.php" | cut -d' ' -f1)"
+customCheck="$(bash tools/desplegar_contexto_duracion_formulario_hostinger.sh --check)"
+grep -Fq 'CONSERVADO: app/controllers/TelefoniaController.php' <<< "$customCheck"
+grep -Fq 'OK: flujo de recepción y resultado compatible. PRODUCCIÓN INTACTA.' <<< "$customCheck"
+[[ "$(sha256sum "$IMPE_FLOW_PUBLIC/app/controllers/TelefoniaController.php" | cut -d' ' -f1)" == "$controllerhash" ]]
+bash tools/desplegar_contexto_duracion_formulario_hostinger.sh --apply |
+ grep -Fq 'OK: contexto, duración y formulario publicados.'
+[[ "$(sha256sum "$IMPE_FLOW_PUBLIC/app/controllers/TelefoniaController.php" | cut -d' ' -f1)" == "$controllerhash" ]]
+grep -Fq 'HOSTINGER_AUTORIZACION_PERSONALIZADA' "$IMPE_FLOW_PUBLIC/app/controllers/TelefoniaController.php"
+grep -Fq 'data-incoming-confirmed-name' "$IMPE_FLOW_PUBLIC/app/views/seguimiento_vinculacion/llamadas_entrantes.php"
+
+# Si el controlador no implementa el traspaso, no fingir compatibilidad.
+export IMPE_FLOW_PUBLIC="$TMP/controller-incompleto"
+mkdir -p "$IMPE_FLOW_PUBLIC"
+touch "$IMPE_FLOW_PUBLIC/index.php"
+for f in "${FILES[@]}"; do
+ mkdir -p "$IMPE_FLOW_PUBLIC/$(dirname "$f")"
+ git show "$BASE:$f" > "$IMPE_FLOW_PUBLIC/$f"
+done
+sed -i 's/public function contextoTransferencia()/public function contextoTransferenciaIncompleta()/' "$IMPE_FLOW_PUBLIC/app/controllers/TelefoniaController.php"
+incompleteHash="$(sha256sum "$IMPE_FLOW_PUBLIC/app/controllers/TelefoniaController.php" | cut -d' ' -f1)"
+if bash tools/desplegar_contexto_duracion_formulario_hostinger.sh --apply > "$TMP/incomplete.log" 2>&1; then
+ echo 'ERROR: controlador sin consulta de Recepción fue aceptado' >&2; exit 1
+fi
+grep -Fq 'faltan funciones de contexto institucional' "$TMP/incomplete.log"
+[[ "$(sha256sum "$IMPE_FLOW_PUBLIC/app/controllers/TelefoniaController.php" | cut -d' ' -f1)" == "$incompleteHash" ]]
+
 export IMPE_FLOW_PUBLIC="$TMP/conflict"
 mkdir -p "$IMPE_FLOW_PUBLIC"
 touch "$IMPE_FLOW_PUBLIC/index.php"
