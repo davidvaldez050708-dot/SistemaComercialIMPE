@@ -37,7 +37,7 @@ async function scenario(conversation) {
         getElementById(s){return s==='impeCrmFrame'?crm:null}
     };
     const frm={location:{href:'https://example.test/index.php'}};
-    const crm={src:'',contentWindow:frm};
+    const crm={src:'',contentWindow:frm,addEventListener(){}};
     class DateStub extends Date { static now(){return now} }
     class Channel {constructor(name){this.name=name}postMessage(payload){captures.push(payload)}close(){}}
     const root={
