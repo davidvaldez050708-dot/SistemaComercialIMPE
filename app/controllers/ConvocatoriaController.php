@@ -104,6 +104,7 @@ class ConvocatoriaController
         $estadoNombreSolicitado = trim((string)($_GET['estado_nombre'] ?? ''));
         $desdeConvenio = (int)($_GET['desde_convenio'] ?? 0) === 1;
         $seguimientoOrigenId = (int)($_GET['seguimiento_id'] ?? 0);
+        $convenioNombreOrigen = trim((string)($_GET['convenio_nombre'] ?? ''));
 
         if ($estadoNombreSolicitado !== '') {
             foreach ($estados as $estadoDisponible) {
