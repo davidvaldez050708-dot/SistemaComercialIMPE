@@ -149,6 +149,7 @@ rollback() {
 }
 trap rollback EXIT
 for file in "${CREATED[@]}"; do
+  mkdir -p "$LIVE/$(dirname "$file")"
   cp -p "$TMP/stage/$file" "$LIVE/$file"
   chmod 0644 "$LIVE/$file"
   cmp -s "$TMP/stage/$file" "$LIVE/$file"
