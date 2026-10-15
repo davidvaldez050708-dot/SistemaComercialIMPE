@@ -1,0 +1,22 @@
+name: Historial MySQL 2002 Hostinger
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'prueba_telefonia/api/llamadas_seguimiento.php'
+      - 'tests/historial_mysql_2002_fallback_smoke.php'
+      - '.github/workflows/historial-mysql-2002.yml'
+jobs:
+  validar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: none
+      - name: Sintaxis y guardas de regresión
+        run: |
+          php -l prueba_telefonia/api/llamadas_seguimiento.php
+          php -l tests/historial_mysql_2002_fallback_smoke.php
+          php tests/historial_mysql_2002_fallback_smoke.php

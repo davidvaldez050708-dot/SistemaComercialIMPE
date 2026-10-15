@@ -50,7 +50,26 @@ if ($seguimientoId <= 0 || $usuarioId <= 0) {
 $etapaHistorial = 'conectar_mysql';
 // La consulta telefónica es de sólo lectura: reutilizar conexiones PHP-FPM
 // evita crear una nueva sesión MySQL en cada apertura del expediente.
-$conexionHistorial = (new Database())->connect(true);
+// En algunos procesos PHP-FPM de Hostinger el pool persistente MySQL
+// devuelve HY000/2002 (Operation not permitted). Reintentar una sola vez
+// con conexión no persistente sólo en este endpoint; no alterar el acceso
+// a MySQL del resto del CRM ni encadenar reintentos ilimitados.
+try {
+    $conexionHistorial = (new Database())->connect(true);
+} catch (Throwable $errorConexionPersistente) {
+    $causaConexion = $errorConexionPersistente;
+    for ($nivel = 0; $nivel < 5 && $causaConexion->getPrevious(); $nivel++) {
+        $causaConexion = $causaConexion->getPrevious();
+    }
+    $error2002 = (int)$causaConexion->getCode() === 2002
+        && stripos($causaConexion->getMessage(), 'operation not permitted') !== false;
+    if (!$error2002) {
+        throw $errorConexionPersistente;
+    }
+    $etapaHistorial = 'conectar_mysql_sin_persistencia';
+    error_log('[llamadas_seguimiento_mysql] Pool persistente rechazado; se intenta conexion normal una sola vez.');
+    $conexionHistorial = (new Database())->connect(false);
+}
 $modelo = new SeguimientoVinculacionModel($conexionHistorial);
 $rolId = (int)($_SESSION['rol_id'] ?? 0);
 $rolNombre = trim((string)($_SESSION['rol'] ?? ''));
