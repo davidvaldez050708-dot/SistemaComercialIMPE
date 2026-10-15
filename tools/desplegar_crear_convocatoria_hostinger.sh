@@ -130,8 +130,10 @@ grep -Fq "convenio_formalizado_at" "$DST/app/models/CrearConvocatoriaModel.php"
 grep -Fq "data-convenio-create-link" "$DST/app/views/convocatorias/crear_desde_convenio.php"
 grep -Fq "CONVENIO · ALIADO" "$DST/app/views/convocatorias/crear_desde_convenio.php"
 grep -Fq "data-convenio-modal-contact" "$DST/app/views/convocatorias/crear_desde_convenio.php"
+grep -Fq "data-state-dropdown" "$DST/app/views/convocatorias/crear_desde_convenio.php"
 grep -Fq "territorio_id" "$DST/public/javascript/crear_convocatoria.js"
 grep -Fq "Filtro de estados alineado" "$DST/public/css/crear_convocatoria.css"
+grep -Fq "Desplegable de estados siempre hacia abajo" "$DST/public/css/crear_convocatoria.css"
 
 echo
 echo "OK: bandeja Marketing actualizada con catálogo completo de estados y tipografía del sistema."
