@@ -52,13 +52,17 @@ final class TelefoniaTransferenciaContextoService
             !preg_match('/^[A-Za-z0-9_-]{6,100}$/D', $pbxCallId)) {
             return false;
         }
-        // El PBX ID debe pertenecer a la extensión de Tania y haber sido
-        // CONTESTADO de verdad según los webhooks del proveedor.
+        // Sólo la Recepción autenticada y autorizada puede transmitir el
+        // expediente, en el momento de ejecutar la orden PBX validada.
+        // Confirmar que ese PBX ID realmente llegó a su extensión, pero NO
+        // exigir NOTIFY_ANSWER: la notificación puede llegar después de
+        // autorizar la transferencia. Aquí sólo se transmite identidad
+        // declarada por Tania; no se acredita llamada efectiva ni audio.
         $stmt = $this->db->prepare(
             "SELECT caller_id FROM telefonia_zadarma_eventos
                WHERE pbx_call_id = ? AND internal = ?
                  AND evento = 'NOTIFY_INTERNAL'
-                 AND received_at >= DATE_SUB(NOW(),INTERVAL 15 MINUTE)
+                 AND received_at >= DATE_SUB(NOW(),INTERVAL 5 MINUTE)
                ORDER BY id DESC LIMIT 1"
         );
         $stmt->bind_param('ss', $pbxCallId, $origenExtension);
@@ -66,11 +70,9 @@ final class TelefoniaTransferenciaContextoService
         $started = $stmt->get_result()->fetch_assoc();
         $stmt->close();
         if (!$started) return false;
-        $estadoPBX = (new ZadarmaWebhookEventStoreService())
-            ->obtenerEstadoEntrantePorPbxCallId($origenExtension, $pbxCallId);
-        if (!$estadoPBX || !in_array($estadoPBX['estado'] ?? '',
-            ['answered', 'transferred'], true) ||
-            empty($estadoPBX['answer_at'])) return false;
+        // No confundir identificación validada por un humano con un
+        // evento ANSWER firmado. La recepción puede haber hablado y
+        // confirmado AFIPSA antes de recibir esa notificación del proveedor.
 
         $telefono10 = TelefoniaEnrutamientoService::numeroNacional(
             (string)($started['caller_id'] ?? '')
@@ -145,7 +147,7 @@ final class TelefoniaTransferenciaContextoService
             'institucion' => (string)$row['institucion'],
             'estado' => (string)$row['estado'],
             'confirmado_por' => trim((string)$row['origen_nombre']),
-            'etiqueta' => 'Identificación transmitida por Recepción; confirma la identidad al conversar.'
+            'etiqueta' => 'Institución confirmada por Recepción; verifica los datos durante la conversación.'
         ];
     }
 }
