@@ -736,6 +736,64 @@ class TerritorioModel
         }
     }
 
+    /**
+     * Relaciona un Asesor con SU Cuenta Clave vigente en el mismo estado.
+     * No deducir supervisores por el nombre del territorio.
+     */
+    public function reasociarAsesorCuentaClave(
+        int $asesorAsignacionId, int $cuentaClaveAsignacionId,
+        ?int $usuarioAccionId = null
+    ): bool {
+        if (!$this->asegurarBitacoraTerritorial()) return false;
+        $asesor = $this->buscarAsignacionPorId($asesorAsignacionId);
+        $cuenta = $this->buscarAsignacionPorId($cuentaClaveAsignacionId);
+        if (!$asesor || !$cuenta ||
+            $asesor['tipo_asignacion'] !== 'ASESOR' ||
+            $cuenta['tipo_asignacion'] !== 'CUENTA_CLAVE' ||
+            !$this->asignacionEstaVigenteHoy($asesor) ||
+            !$this->asignacionEstaVigenteHoy($cuenta) ||
+            (int)$asesor['estado_id'] !== (int)$cuenta['estado_id'] ||
+            (int)($asesor['cuenta_clave_asignacion_id'] ?? 0) === $cuentaClaveAsignacionId) {
+            return false;
+        }
+        $anterior = !empty($asesor['cuenta_clave_asignacion_id'])
+            ? (int)$asesor['cuenta_clave_asignacion_id'] : null;
+        $this->connection->begin_transaction();
+        try {
+            $sql = "UPDATE asignaciones_territorio asesor
+                    JOIN asignaciones_territorio cuenta
+                      ON cuenta.id = ? AND cuenta.tipo_asignacion = 'CUENTA_CLAVE'
+                      AND cuenta.estado_id = asesor.estado_id
+                      AND " . $this->condicionAsignacionVigente('cuenta') . "
+                    SET asesor.cuenta_clave_asignacion_id = cuenta.id,
+                        asesor.updated_at = NOW()
+                    WHERE asesor.id = ? AND asesor.tipo_asignacion = 'ASESOR'
+                      AND " . $this->condicionAsignacionVigente('asesor');
+            $stmt = $this->connection->prepare($sql);
+            if (!$stmt) throw new RuntimeException('No se pudo preparar la vinculación.');
+            $stmt->bind_param('ii', $cuentaClaveAsignacionId, $asesorAsignacionId);
+            $stmt->execute();
+            $cambiado = $stmt->affected_rows > 0;
+            $stmt->close();
+            if ($cambiado) {
+                $this->registrarMovimientoTerritorial(
+                    (int)$asesor['estado_id'], $asesorAsignacionId,
+                    (int)$asesor['usuario_id'], 'ASESOR',
+                    $anterior === null ? 'VINCULACION_CUENTA_CLAVE' : 'CAMBIO_CUENTA_CLAVE',
+                    $anterior, $cuentaClaveAsignacionId,
+                    date('Y-m-d'), $usuarioAccionId,
+                    'Asesor vinculado a su Cuenta Clave para escalamiento telefónico.'
+                );
+            }
+            $this->connection->commit();
+            return $cambiado;
+        } catch (Throwable $e) {
+            $this->connection->rollback();
+            error_log('[asesor_cuenta_clave] ' . $e->getMessage());
+            return false;
+        }
+    }
+
     public function reasociarAnalistaCuentaClave(
         $analistaAsignacionId,
         $cuentaClaveAsignacionId,
