@@ -209,7 +209,7 @@ $claseFormularios =
                         href="<?= BASE_URL ?>index.php?controller=crearConvocatoria&action=index"
                         class="sidebar-link <?= $claseCrearConvocatoria ?>">
                         <i class="bi bi-plus-square"></i>
-                        Crear convocatoria
+                        Convenios
                     </a>
                 <?php endif; ?>
 
