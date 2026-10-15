@@ -1,0 +1,15 @@
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const a=fs.readFileSync('public/javascript/seguimiento_historial_consulta.js','utf8');
+const b=fs.readFileSync('public/javascript/seguimiento_llamadas_expediente.js','utf8');
+const c=fs.readFileSync('public/javascript/seguimiento_grabaciones.js','utf8');
+const d=fs.readFileSync('app/views/layout/dashboard_footer.php','utf8');
+assert(a.includes('attempt < 3'), 'Reintentos acotados');
+assert(a.includes('response.status >= 500'), 'Sólo HTTP 5xx');
+assert(a.includes('response.status === 401 || response.status === 403'), 'No reintentar sesiones');
+assert(a.includes('global.IMPE_HISTORIAL_LLAMADAS_EXPEDIENTE = null'), 'No cachear fallo');
+assert(a.includes('previous.seguimientoId === id && previous.promise'), 'Deduplicar llamadas');
+assert(b.includes('IMPE_CONSULTAR_LLAMADAS_EXPEDIENTE'), 'Historial usa consulta');
+assert(c.includes('IMPE_CONSULTAR_LLAMADAS_EXPEDIENTE'), 'Grabaciones usan misma consulta');
+assert(d.includes("'seguimiento_historial_consulta.js'"), 'Incluir módulo antes de vistas');
+console.log('Historial del expediente: OK (8 verificaciones).');
