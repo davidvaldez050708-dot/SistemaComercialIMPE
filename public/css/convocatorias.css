@@ -5290,3 +5290,15 @@
         max-width: calc(100% - 16px);
     }
 }
+
+
+/* Ajuste tipográfico del selector Formulario */
+.convocatoria-public-form-share .convocatoria-form-type-trigger {
+    font-size: 10px;
+    line-height: 1.1;
+    white-space: nowrap;
+}
+
+.convocatoria-public-form-share .convocatoria-form-type-trigger span {
+    white-space: nowrap;
+}
