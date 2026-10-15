@@ -1184,17 +1184,6 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
                         </div>
 
                         <div class="system-form-full">
-                            <label class="form-label login-label" for="crear_convocatoria_titulo">Título</label>
-                            <input
-                                type="text"
-                                class="form-control system-form-control"
-                                id="crear_convocatoria_titulo"
-                                name="titulo"
-                                value="<?= $texto($datosCrear['titulo'] ?? '') ?>"
-                                required>
-                        </div>
-
-                        <div class="system-form-full">
                             <label class="form-label login-label" for="crear_convocatoria_enlace_registro">
                                 Enlace de registro
                             </label>
@@ -1211,6 +1200,19 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
                                 Opcional. Cuenta Clave podrá copiar este enlace al preparar la convocatoria para WhatsApp.
                             </small>
                         </div>
+
+<div class="system-form-full">
+                            <label class="form-label login-label" for="crear_convocatoria_titulo">Título</label>
+                            <input
+                                type="text"
+                                class="form-control system-form-control"
+                                id="crear_convocatoria_titulo"
+                                name="titulo"
+                                value="<?= $texto($datosCrear['titulo'] ?? '') ?>"
+                                required>
+                        </div>
+
+                        
 
                         <div>
                             <label class="form-label login-label" for="crear_convocatoria_fecha_inicio">Fecha de inicio</label>
