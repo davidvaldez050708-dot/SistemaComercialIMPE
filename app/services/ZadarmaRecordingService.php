@@ -66,10 +66,10 @@ class ZadarmaRecordingService
         }
         $db = (new Database())->connect();
         $stmt = $db->prepare(
-            "SELECT DISTINCT call_id_with_rec FROM telefonia_zadarma_eventos
+            "SELECT call_id_with_rec FROM telefonia_zadarma_eventos
              WHERE pbx_call_id = ? AND evento = 'NOTIFY_RECORD'
                AND TRIM(COALESCE(call_id_with_rec, '')) <> ''
-             ORDER BY call_id_with_rec"
+             ORDER BY id ASC LIMIT 9"
         );
         $stmt->bind_param('s', $pbxCallId);
         $stmt->execute();
@@ -79,11 +79,16 @@ class ZadarmaRecordingService
             return [];
         }
         $result = [];
+        $seen = [];
         foreach ($rows as $row) {
             $callId = trim((string)$row['call_id_with_rec']);
             if (!ZadarmaPbxIdentifierHelper::callIdValido($callId)) {
                 return [];
             }
+            if (isset($seen[$callId])) {
+                continue;
+            }
+            $seen[$callId] = true;
             $audio = $this->obtenerGrabacionPorCallId($callId);
             if (!$audio) {
                 return [];
