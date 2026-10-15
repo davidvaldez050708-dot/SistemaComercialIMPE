@@ -1,0 +1,27 @@
+name: Despliegue audio PBX al expediente
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tools/desplegar_audio_pbx_expediente_hostinger.py'
+      - 'tests/audio_pbx_expediente_deploy_smoke.py'
+      - '.github/workflows/despliegue-audio-pbx-expediente.yml'
+jobs:
+  simular:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: none
+      - name: Despliegue simulado y sintaxis
+        run: |
+          python3 -m py_compile tools/desplegar_audio_pbx_expediente_hostinger.py
+          python3 tests/audio_pbx_expediente_deploy_smoke.py
+          php -l app/services/TelefoniaGrabacionExpedienteTransferidaService.php
+          php -l prueba_telefonia/api/llamadas_seguimiento.php
+          node --check public/javascript/seguimiento_llamadas_expediente.js
+          php tests/audio_expediente_transferencia_unica_smoke.php
