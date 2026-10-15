@@ -67,6 +67,7 @@
     let confirmDirect = '';
     let recognized = [];
     let confirmedRecognition = false;
+    let confirmedRecord = null;
     let phoneCheckedForCall = '';
     let currentCallId = '';
     const endpoint = (key, params) => {
@@ -141,6 +142,8 @@
         if (estado) estado.value = String(dest.estado_id);
         renderRecipients(keyFor(dest));
         confirmedRecognition = true;
+        confirmedRecord = {callId: currentCallId, seguimientoId: Number(record.seguimiento_id || 0),
+            usuarioId: Number(dest.usuario_id), estadoId: Number(dest.estado_id)};
         confirmDirect = '';
         if (identityBox) {
             identityBox.replaceChildren();
@@ -203,9 +206,19 @@
             action.addEventListener('click', () => chooseInstitution(record));
             identityBox.appendChild(action);
         }
-        if (recognized.length === 1) {
-            // Sugerir en automático sin asumir que un teléfono compartido
-            // verifica la identidad. La confirmación requiere un clic.
+        // La confirmación ya realizada se conserva durante ESTA llamada
+        // cuando Tania explora Prospecto y vuelve a Institución; únicamente
+        // se recupera si el servidor sigue devolviendo ese mismo expediente
+        // y un destino autorizado. No se extiende a llamadas posteriores.
+        const sameConfirmed = confirmedRecord?.callId === currentCallId &&
+            recognized.find(record =>
+                Number(record.seguimiento_id) === confirmedRecord.seguimientoId &&
+                Number(record.responsable_id) === confirmedRecord.usuarioId &&
+                Number(record.estado_id) === confirmedRecord.estadoId);
+        if (sameConfirmed) {
+            chooseInstitution(sameConfirmed);
+        } else if (recognized.length === 1) {
+            // Sugerencia automática sin asumir identidad ni transferir.
             const record = recognized[0];
             if (estado) estado.value = String(record.estado_id);
             const item = targetEntries.find(x =>
@@ -225,7 +238,7 @@
             button.textContent = record.nombre + ' · ' + record.responsable +
                 ' · Ext. ' + record.extension;
             button.addEventListener('click', () => {
-                chooseInstitution({...record, estado_id:Number(estado?.value || 0)});
+                chooseInstitution(record);
             });
             lista.appendChild(button);
         });
@@ -240,6 +253,7 @@
             phoneCheckedForCall = '';
             recognized = [];
             confirmedRecognition = false;
+            confirmedRecord = null;
             if (identityBox) identityBox.hidden = true;
         }
         const type = categoria === 'RECEPCION' ? tipo.value : '';
@@ -258,7 +272,7 @@
                     buscar:directoryQuery,
                     telefono_origen:checkPhone ? phone : ''
                 }), {credentials:'same-origin',cache:'no-store'}).then(readJson),
-                type === 'INSTITUCION' && stateId && text.length >= 2
+                type === 'INSTITUCION' && text.length >= 2
                     ? fetch(endpoint('routingListUrl', {
                         tipo:type, estado_id:stateId, buscar:text
                     }), {credentials:'same-origin',cache:'no-store'}).then(readJson)
@@ -304,6 +318,9 @@
     };
     const reload = () => {
         confirmDirect = '';
+        // Invalidar inmediatamente consultas iniciadas antes de un cambio
+        // de categoría o estado, no sólo cuando termina el debounce.
+        searchSequence++;
         window.clearTimeout(timer);
         timer = window.setTimeout(load, 240);
     };
@@ -344,13 +361,16 @@
         }
         recognized = [];
         confirmedRecognition = false;
-        phoneCheckedForCall = currentCallId; // Tipo comercial no reidentifica institución.
+        // Volver a Institución debe reidentificar el número de ESTA llamada,
+        // no heredar la marca "ya consultado" de Prospecto.
+        phoneCheckedForCall = '';
         if (identityBox) identityBox.hidden = true;
         reload();
     });
     estado?.addEventListener('change', () => {
         recognized = [];
         confirmedRecognition = false;
+        confirmedRecord = null;
         if (identityBox) identityBox.hidden = true;
         renderRecipients();
         reload();
@@ -361,6 +381,7 @@
         // Una selección manual reemplaza la sugerencia sin identificar.
         recognized = [];
         confirmedRecognition = false;
+        confirmedRecord = null;
         if (identityBox) identityBox.hidden = true;
         confirmDirect = '';
     });
