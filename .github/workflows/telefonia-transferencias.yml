@@ -23,6 +23,9 @@ on:
       - "tests/telefonia_transferencias_hostinger_smoke.sh"
       - "tools/desplegar_transferencias_seguras_hostinger.sh"
       - "tools/fusionar_shell_transferencias_hostinger.py"
+      - "tools/desplegar_recepcion_rapida_hostinger.sh"
+      - "tests/telefonia_recepcion_rapida_smoke.php"
+      - "tests/telefonia_recepcion_rapida_hostinger_smoke.sh"
       - ".github/workflows/telefonia-transferencias.yml"
   pull_request:
     paths:
@@ -62,6 +65,7 @@ jobs:
           node --check public/javascript/telefonia_persistente.js
           node --check public/javascript/seguimiento_entrantes_analista.js
           php tests/telefonia_transferencias_seguras_smoke.php
+          php tests/telefonia_recepcion_rapida_smoke.php
           node tests/telefonia_shell_runtime_smoke.js
           node tests/telefonia_shell_navegacion_smoke.js
           php tests/telefonia_entrantes_visual_smoke.php
@@ -70,3 +74,5 @@ jobs:
           bash -n tools/desplegar_transferencias_seguras_hostinger.sh
           python3 -c "import ast, pathlib; p=pathlib.Path('tools/fusionar_shell_transferencias_hostinger.py'); s=p.read_text(); assert 'from __future__ import annotations' not in s; ast.parse(s, feature_version=(3, 6))"
           bash tests/telefonia_transferencias_hostinger_smoke.sh
+          bash -n tools/desplegar_recepcion_rapida_hostinger.sh
+          bash tests/telefonia_recepcion_rapida_hostinger_smoke.sh
