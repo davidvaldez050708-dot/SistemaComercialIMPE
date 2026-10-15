@@ -17,6 +17,9 @@
         let idleSamples = 0;
         let seenIncoming = false;
         let idleReported = false;
+        let acceptanceRequestedUntil = 0;
+        let connectedSamples = 0;
+        let connectedReported = false;
 
         const read = function () {
             const input = doc.querySelector(
@@ -44,6 +47,9 @@
                 idleReported = false;
                 if (!ringing) {
                     ringing = true;
+                    connectedSamples = 0;
+                    connectedReported = false;
+                    acceptanceRequestedUntil = 0;
                     hooks.onRinging(call);
                 }
                 return;
@@ -51,7 +57,10 @@
             if (ringing && ++missingSamples >= 2) {
                 ringing = false;
                 missingSamples = 0;
-                hooks.onStopped();
+                // Al pulsar Contestar, el SDK retira inmediatamente la
+                // clase .incoming: NO equivale a llamada perdida.
+                if (Date.now() >= acceptanceRequestedUntil &&
+                    !connectedReported) hooks.onStopped();
             }
             // La desaparición de «ringing» no significa fin de conversación:
             // puede desaparecer justo al CONTESTAR. Esperar a que el widget
@@ -64,8 +73,22 @@
             const hangup = doc.querySelector(
                 '.zdrm-webphone-call-btn-up'
             );
+            if (!incomingInput && hangup) {
+                connectedSamples++;
+                idleSamples = 0;
+                if (connectedSamples >= 2 && !connectedReported &&
+                    typeof hooks.onConnected === 'function') {
+                    connectedReported = true;
+                    acceptanceRequestedUntil = 0;
+                    hooks.onConnected();
+                }
+            } else {
+                connectedSamples = 0;
+            }
             if (!incomingInput && !hangup) {
                 idleSamples += 1;
+                // El SDK puede ocultar ambos controles mientras negocia SIP.
+                if (Date.now() < acceptanceRequestedUntil) return;
                 if (idleSamples >= 8 && typeof hooks.onIdle === 'function') {
                     idleReported = true;
                     hooks.onIdle();
@@ -93,7 +116,16 @@
                 observer.disconnect();
                 win.clearInterval(interval);
             },
-            isRinging: function () { return ringing; }
+            isRinging: function () { return ringing; },
+            markAnswerRequested: function () {
+                if (!seenIncoming) return false;
+                acceptanceRequestedUntil = Date.now() + 12000;
+                idleSamples = 0;
+                return true;
+            },
+            isConnecting: function () {
+                return Date.now() < acceptanceRequestedUntil;
+            }
         });
     };
 
