@@ -233,12 +233,10 @@ analyst.channels[0].message({type:'STATE',state:{
 }});
 assert.equal(analyst.window.IMPE_TELEPHONY_SHELL.isPhoneReady(),true,
     'un estado WebRTC verificado mantiene el auricular verde entre módulos');
-assert.equal(analyst.window.IMPE_TELEPHONY_SHELL.showProviderControls(),true,
-    'un solo clic abre controles nativos sin simular timbrado PBX');
-assert.equal(analyst.elements['[data-shell-call]'].classList.contains('is-visible'),true,
-    'los controles oficiales son visibles aunque no haya evento NOTIFY_INTERNAL');
-assert.equal(analyst.elements['[data-shell-call]'].classList.contains('is-analyst-native'),true);
-assert.match(analyst.elements['[data-shell-call-help]'].textContent,/Controles de Zadarma/);
+assert.equal(analyst.window.IMPE_TELEPHONY_SHELL.showProviderControls(),false,
+    'sin una llamada activa nunca se abre el widget de Zadarma por error');
+assert.equal(analyst.elements['[data-shell-call]'].classList.contains('is-visible'),false,
+    'sin llamada activa el visor oficial permanece oculto');
 assert.equal(analyst.elements['[data-incoming-panel]'].hidden,true,
     'no se presenta un modal de Contestar ficticio');
 assert.equal(analyst.elements['[data-shell-host-region]'].children.length,1,

@@ -64,7 +64,14 @@
         '.impe-incoming-panel[data-analyst-webrtc-finished="1"] ' +
           '.persistent-phone-live i {background:#8492a8;box-shadow:none;}',
         '.impe-incoming-panel[data-analyst-webrtc-finished="1"] ' +
-          '[data-incoming-notice] {line-height:1.5;font-weight:700;}'
+          '[data-incoming-notice] {line-height:1.5;font-weight:700;}',
+        '.impe-incoming-transfer-context {',
+        '  padding:12px 14px; border:1px solid #d9e4f6;',
+        '  border-radius:12px;background:#f3f6fd;margin:8px 0;',
+        '  font-size:13px;line-height:1.45;color:#30456c;',
+        '}',
+        '.impe-incoming-transfer-context strong {display:block;color:#20356b;font-size:14px;}',
+        '.impe-incoming-transfer-context small {display:block;color:#586b8e;margin-top:3px;}'
     ].join('\n');
     root.document.head.appendChild(finishedCss);
 
@@ -98,6 +105,10 @@
     const compactClock = el('[data-incoming-compact-timer]');
     const notice = el('[data-incoming-notice]');
     const compactActions = el('.persistent-phone-compact-actions');
+    const transferContext = root.document.createElement('div');
+    transferContext.className = 'impe-incoming-transfer-context';
+    transferContext.hidden = true;
+    number?.parentElement?.insertAdjacentElement?.('afterend',transferContext);
     if (!closeBtn || !status || !title || !number || !clock || !notice) {
         root.console.warn('[Llamadas recibidas] Modal telefónico incompleto.');
         return;
@@ -125,6 +136,45 @@
     let finished = null;
     let lastSignature = '';
     let chain = Promise.resolve();
+    const contextKey = id => 'impe:crm:transfer-context:' + userId + ':' + id;
+    const fetchReceptionContext = async (id, phone) => {
+        if (!id || !phone || !root.fetch) return;
+        try {
+            const url = new URL('index.php?controller=telefonia&action=contextoTransferencia',
+                root.location.href);
+            url.searchParams.set('numero',phone);
+            const response = await root.fetch(url.toString(), {
+                credentials:'same-origin',cache:'no-store',
+                headers:{Accept:'application/json'}
+            });
+            const data = await response.json();
+            if (!response.ok || !data.ok || !data.contexto ||
+                active?.id !== id) return;
+            const found = data.contexto;
+            if (!Number.isInteger(Number(found.seguimiento_id)) ||
+                Number(found.seguimiento_id) <= 0) return;
+            transferContext.replaceChildren?.();
+            const heading = root.document.createElement('strong');
+            heading.textContent = String(found.institucion || '') + ' · ' +
+                String(found.estado || '');
+            const detail = root.document.createElement('small');
+            detail.textContent = 'Identificada por ' +
+                String(found.confirmado_por || 'Recepción') +
+                '. Confirma con la persona que llama.';
+            transferContext.appendChild(heading);
+            transferContext.appendChild(detail);
+            transferContext.hidden = false;
+            try {
+                root.sessionStorage?.setItem(contextKey(id),JSON.stringify({
+                    call_id:id,seguimiento_id:Number(found.seguimiento_id),
+                    institucion:String(found.institucion || ''),
+                    estado:String(found.estado || ''),saved_at:Date.now()
+                }));
+            } catch (_) {}
+        } catch (_) {
+            // Un servicio de contexto no puede interrumpir el audio WebRTC.
+        }
+    };
     const postEvent = function (event, call) {
         const data = new URLSearchParams({
             csrf_token: String(cfg.csrf),
@@ -285,6 +335,9 @@
                     sawConversation: false
                 };
                 finished = null;
+                transferContext.hidden = true;
+                transferContext.replaceChildren?.();
+                void fetchReceptionContext(id, active.number);
                 draw();
                 if (compactActions) compactActions.hidden = false;
                 notice.hidden = true;
