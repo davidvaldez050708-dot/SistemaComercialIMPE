@@ -60,7 +60,7 @@ JS="$TEMP/stage/public/javascript/telefonia_enrutamiento.js"
 php -l "$PHP" >/dev/null
 php -l "$SERVICE" >/dev/null
 if command -v node >/dev/null 2>&1; then node --check "$JS" >/dev/null; fi
-for check in 'hash_equals($csrfSesion, $csrfRecibido)' "$_SESSION['csrf_token']"; do
+for check in 'hash_equals($csrfSesion, $csrfRecibido)' 'csrfSesion = (string)'; do
   grep -Fq "$check" "$PHP" || {
     echo "ERROR: falta validación CSRF de transferencia. PRODUCCIÓN INTACTA." >&2; exit 1;
   }
