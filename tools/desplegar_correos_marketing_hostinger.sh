@@ -41,6 +41,7 @@ fi
 FILES=(
     "app/controllers/CorreoMarketingController.php"
     "app/services/CorreoMarketingService.php"
+    "config/mail_config.php"
     "app/views/correos/index.php"
     "public/javascript/correos_marketing.js"
     "public/css/correos_marketing.css"
@@ -60,6 +61,7 @@ done
 if command -v php >/dev/null 2>&1; then
     php -l "$SRC/app/controllers/CorreoMarketingController.php" >/dev/null
     php -l "$SRC/app/services/CorreoMarketingService.php" >/dev/null
+    php -l "$SRC/config/mail_config.php" >/dev/null
     php -l "$SRC/app/views/correos/index.php" >/dev/null
 fi
 
@@ -109,6 +111,7 @@ done
 grep -Fq "data-marketing-mail-convocatoria" "$DST/app/views/correos/index.php"
 grep -Fq "ConvocatoriaModel" "$DST/app/controllers/CorreoMarketingController.php"
 grep -Fq "CONVOCATORIA" "$DST/app/services/CorreoMarketingService.php"
+grep -Fq "smtp.hostinger.com" "$DST/config/mail_config.php"
 grep -Fq "Modal de correo compacto + selector de convocatoria" "$DST/public/css/correos_marketing.css"
 
 echo
