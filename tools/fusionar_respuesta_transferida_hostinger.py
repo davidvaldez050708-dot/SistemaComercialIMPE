@@ -117,8 +117,25 @@ def merge(current: str, before: str, after: str) -> Tuple[str, List[str]]:
                 "'answering'" in live_branch,
                 'Contestar actualizado de forma parcial')
     else:
-        require(strip_comments_and_whitespace(live_branch) ==
-                strip_comments_and_whitespace(old_branch),
+        # Variante real de Hostinger (oct 2026): al hacer clic en Contestar
+        # publicó 'in-progress' inmediatamente, pero NO tenía reportSdkEvent
+        # antes de esa publicación. Admitir exactamente esa omisión, nunca
+        # una alteración arbitraria del bloque ni una instrucción adicional.
+        # El nuevo onConnected informa el evento 'answered' sólo cuando el
+        # observador SDK ha visto la conexión, evitando un falso contestado.
+        missing_report = "                reportSdkEvent('answered', state);\\n"
+        # Usar un LF real; la variante tolerada no implica cambiar el resto.
+        missing_report = missing_report.replace('\\\\n', '\\n')
+        require(old_branch.count(missing_report) == 1,
+                'Referencia de Contestar: evento answered no único')
+        legacy_without_report = old_branch.replace(missing_report, '', 1)
+        allowed_legacy = (
+            strip_comments_and_whitespace(live_branch) ==
+            strip_comments_and_whitespace(old_branch) or
+            strip_comments_and_whitespace(live_branch) ==
+            strip_comments_and_whitespace(legacy_without_report)
+        )
+        require(allowed_legacy,
                 'Contestar: la guarda del SDK tiene lógica adicional; no se eliminará')
         patched = left + new_branch + right
         require(live_body in current, 'Contestar: no se reconoce el bloque actual')
