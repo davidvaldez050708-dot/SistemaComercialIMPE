@@ -608,50 +608,9 @@
                 let temporizadorGrabacion = null;
 
                 const cargar = function () {
-                    // La vista y el reproductor comparten esta única consulta:
-                    // evita dos conexiones MySQL simultáneas al mismo expediente.
-                    const anterior = window.IMPE_HISTORIAL_LLAMADAS_EXPEDIENTE;
-                    const compartida = reintentosGrabacion === 0 &&
-                        anterior && anterior.seguimientoId === seguimientoId;
-                    const solicitud = compartida ? anterior.promise : fetch(
-                        'prueba_telefonia/api/llamadas_seguimiento.php?seguimiento_id=' +
-                            encodeURIComponent(seguimientoId),
-                        {
-                            headers: { 'X-Requested-With': 'fetch' },
-                            credentials: 'same-origin',
-                            cache: 'no-store'
-                        }
-                    )
-                        .then(async function (response) {
-                            // PHP puede devolver un cuerpo vacío o HTML cuando el hosting falla.
-                            // Evitar mostrar "Unexpected end of JSON input" al analista.
-                            const cuerpo = await response.text();
-                            let data = null;
-                            try {
-                                data = cuerpo.trim() ? JSON.parse(cuerpo) : null;
-                            } catch (_) {
-                                // Error no JSON: nunca mostrar la respuesta HTML al usuario.
-                            }
-                            if (!data || typeof data !== 'object') {
-                                const estado = response.status;
-                                const mensaje = estado === 401 || estado === 403
-                                    ? 'La sesión expiró o no tienes acceso. Actualiza el CRM.'
-                                    : 'El servidor no devolvió el historial de llamadas (HTTP ' +
-                                        estado + '). Verifica el registro de errores de Hostinger.';
-                                throw new Error(mensaje);
-                            }
-                            if (!response.ok || !data.ok) {
-                                throw new Error(data.mensaje ||
-                                    'No fue posible cargar las llamadas (HTTP ' + response.status + ').');
-                            }
-                            return data;
-                        });
-                    if (!compartida) {
-                        window.IMPE_HISTORIAL_LLAMADAS_EXPEDIENTE = {
-                            seguimientoId: seguimientoId,
-                            promise: solicitud
-                        };
-                    }
+                    const solicitud = window.IMPE_CONSULTAR_LLAMADAS_EXPEDIENTE
+                        ? window.IMPE_CONSULTAR_LLAMADAS_EXPEDIENTE(seguimientoId)
+                        : Promise.reject(new Error('No se pudo inicializar el historial.'));
                     solicitud
                         .then(function (data) {
                             const llamadas = Array.isArray(data.llamadas) ? data.llamadas : [];
