@@ -85,8 +85,8 @@
 .crear-convocatoria-toolbar {
     display: grid;
     grid-template-columns:
-        minmax(280px, 1fr)
-        minmax(190px, 260px)
+        minmax(320px, 680px)
+        minmax(220px, 320px)
         auto;
     gap: 14px;
     align-items: end;
