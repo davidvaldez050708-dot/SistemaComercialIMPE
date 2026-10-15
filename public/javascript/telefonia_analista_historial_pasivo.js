@@ -108,7 +108,7 @@
     const transferContext = root.document.createElement('div');
     transferContext.className = 'impe-incoming-transfer-context';
     transferContext.hidden = true;
-    number.parentElement?.insertAdjacentElement?.('afterend',transferContext);
+    number?.parentElement?.insertAdjacentElement?.('afterend',transferContext);
     if (!closeBtn || !status || !title || !number || !clock || !notice) {
         root.console.warn('[Llamadas recibidas] Modal telefónico incompleto.');
         return;
@@ -153,7 +153,7 @@
             const found = data.contexto;
             if (!Number.isInteger(Number(found.seguimiento_id)) ||
                 Number(found.seguimiento_id) <= 0) return;
-            transferContext.replaceChildren();
+            transferContext.replaceChildren?.();
             const heading = root.document.createElement('strong');
             heading.textContent = String(found.institucion || '') + ' · ' +
                 String(found.estado || '');
@@ -336,7 +336,7 @@
                 };
                 finished = null;
                 transferContext.hidden = true;
-                transferContext.replaceChildren();
+                transferContext.replaceChildren?.();
                 void fetchReceptionContext(id, active.number);
                 draw();
                 if (compactActions) compactActions.hidden = false;
