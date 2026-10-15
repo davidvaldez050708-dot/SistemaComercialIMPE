@@ -299,6 +299,18 @@
     });
     $('[data-routing-close]')?.addEventListener('click', () =>
         closeSection(panel, toggle));
+    phonePanel?.addEventListener('click', event => {
+        if (event.target.closest('[data-incoming-minimize]')) {
+            closeSection(panel, toggle);
+            closeSection(capturePanel, captureToggle);
+        }
+    });
+    window.addEventListener('keydown', event => {
+        if (event.key === 'Escape') {
+            closeSection(panel, toggle);
+            closeSection(capturePanel, captureToggle);
+        }
+    });
     captureToggle?.addEventListener('click', () =>
         openSection(capturePanel, captureToggle, panel, toggle));
     lookupToggle?.addEventListener('click', () => {
@@ -400,6 +412,7 @@
         $('[data-routing-type-wrap]')?.setAttribute('hidden', '');
         $('[data-routing-state-wrap]')?.setAttribute('hidden', '');
         $('[data-routing-search-wrap]')?.setAttribute('hidden', '');
+        if (lookupToggle) lookupToggle.hidden = true;
     }
 
     // Nota temporal por llamada. Nunca se considera verificada ni se crea
