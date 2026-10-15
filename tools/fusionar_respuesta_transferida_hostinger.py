@@ -47,7 +47,7 @@ def find_answer_branch(body: str) -> tuple[str, str, str]:
     )
     require(prefix is not None, 'Contestar: guarda SDK personalizada incompatible')
     end = re.search(
-        r'\n\s*\}\s*\n\s*actualizarEstadoTrasAccion\(\);',
+        r'\n[ \\t]*\}[ \\t]*\r?\n[ \\t]*actualizarEstadoTrasAccion\(\);',
         body[prefix.start():]
     )
     require(end is not None, 'Contestar: falta confirmación del estado')
