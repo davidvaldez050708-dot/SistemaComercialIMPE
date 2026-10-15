@@ -439,6 +439,18 @@ $duracionEntrante = static function ($segundos) {
                                     <option value="OTRO">Otro</option>
                                 </select>
                             </div>
+                            <div class="col-12 col-md-6">
+                                <label class="form-label" for="incomingPhoneCaptured">Teléfono de contacto</label>
+                                <input id="incomingPhoneCaptured" name="telefono_capturado" type="tel"
+                                    maxlength="40" class="form-control" autocomplete="off"
+                                    placeholder="Número proporcionado en la llamada">
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label class="form-label" for="incomingEmailCaptured">Correo institucional</label>
+                                <input id="incomingEmailCaptured" name="correo_capturado" type="email"
+                                    maxlength="160" class="form-control" autocomplete="off"
+                                    placeholder="contacto@institucion.mx">
+                            </div>
                             <div class="col-12">
                                 <label class="form-label" for="incomingState">Territorio asignado</label>
                                 <select id="incomingState" name="estado_id" class="form-select">
