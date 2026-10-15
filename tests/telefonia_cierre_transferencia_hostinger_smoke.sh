@@ -36,6 +36,33 @@ bash "$SCRIPT" --apply | grep -Fq 'publicados'
 grep -Fq 'HOSTINGER-LOCAL: PRESERVAR' "$IMPE_CLOSE_PUBLIC/$FILE"
 grep -Fq 'recentFinishedIncoming' "$IMPE_CLOSE_PUBLIC/$FILE"
 
+# Una variante realmente personalizada, dentro del contexto git apply pero
+# FUERA de los fragmentos modificados, debe usar fusión reversible y preservar
+# intacta la personalización de Hostinger.
+export IMPE_CLOSE_PUBLIC="$TMP/hostinger-personalizado"
+make_site "$IMPE_CLOSE_PUBLIC"
+python3 - "$IMPE_CLOSE_PUBLIC/$FILE" <<'PY'
+import pathlib,sys
+p=pathlib.Path(sys.argv[1])
+s=p.read_text()
+a='    let pendingOutgoingHangup = null;\n'
+b='        const pending = pendingFor(state);\n'
+assert s.count(a)==1 and s.count(b)==1
+s=s.replace(a,a+'    /* HOSTINGER-WEBRTC-EXTRA: PRESERVAR */\n',1)
+s=s.replace(b,'        /* HOSTINGER-REGISTRO-EXTRA: PRESERVAR */\n'+b,1)
+p.write_text(s)
+PY
+cp "$IMPE_CLOSE_PUBLIC/$FILE" "$TMP/hostinger-original.js"
+bash "$SCRIPT" --check | grep -Fq 'PRODUCCIÓN INTACTA'
+cmp -s "$IMPE_CLOSE_PUBLIC/$FILE" "$TMP/hostinger-original.js"
+bash "$SCRIPT" --apply | grep -Fq 'publicados'
+grep -Fq 'HOSTINGER-WEBRTC-EXTRA: PRESERVAR' "$IMPE_CLOSE_PUBLIC/$FILE"
+grep -Fq 'HOSTINGER-REGISTRO-EXTRA: PRESERVAR' "$IMPE_CLOSE_PUBLIC/$FILE"
+grep -Fq 'recentFinishedIncoming' "$IMPE_CLOSE_PUBLIC/$FILE"
+bash "$SCRIPT" --check | grep -Fq 'ya publicado'
+bash "$SCRIPT" --apply | grep -Fq 'ya publicado'
+grep -Fq 'HOSTINGER-WEBRTC-EXTRA: PRESERVAR' "$IMPE_CLOSE_PUBLIC/$FILE"
+
 # Si cambia código de cierre que el parche necesita, rechazar sin escrituras.
 export IMPE_CLOSE_PUBLIC="$TMP/conflict"
 make_site "$IMPE_CLOSE_PUBLIC"
