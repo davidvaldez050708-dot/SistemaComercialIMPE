@@ -84,7 +84,10 @@
 
 .crear-convocatoria-toolbar {
     display: grid;
-    grid-template-columns: minmax(280px, 1fr) minmax(190px, 260px);
+    grid-template-columns:
+        minmax(280px, 1fr)
+        minmax(190px, 260px)
+        auto;
     gap: 14px;
     align-items: end;
 }
@@ -378,6 +381,11 @@
         grid-template-columns: 1fr;
     }
 
+    .crear-convocatoria-filter-actions {
+        min-height: 0;
+        align-items: flex-start;
+    }
+
     .crear-convocatoria-notification {
         grid-template-columns: 42px minmax(0, 1fr);
     }
@@ -544,10 +552,12 @@
 
 /* Acción limpiar filtros de Convenios */
 .crear-convocatoria-filter-actions {
-    grid-column: 1 / -1;
-    min-height: 22px;
+    grid-column: auto;
+    min-height: 46px;
     display: flex;
     align-items: center;
+    justify-content: flex-start;
+    white-space: nowrap;
 }
 
 .crear-convocatoria-clear-filters {
