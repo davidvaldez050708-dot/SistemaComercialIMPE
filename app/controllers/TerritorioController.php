@@ -253,6 +253,37 @@ class TerritorioController
         $this->redirigirATerritorios();
     }
 
+    public function vincularAsesorCuentaClave()
+    {
+        $this->validarPermiso('territorios.asignar');
+        $this->validarMetodoPost();
+        $token = (string)($_POST['csrf_token'] ?? '');
+        if (!$token || empty($_SESSION['csrf_token']) ||
+            !hash_equals((string)$_SESSION['csrf_token'], $token)) {
+            if ($this->esSolicitudFetch()) {
+                $this->responderJson(['ok'=>false,
+                    'mensaje'=>'Sesión caducada. Recarga Territorios.'], 403);
+            }
+            $_SESSION['error_territorio'] = 'Sesión caducada. Recarga Territorios.';
+            $this->redirigirATerritorios();
+        }
+        $asignacion = (int)($_POST['asignacion_asesor_id'] ?? 0);
+        $cuenta = (int)($_POST['cuenta_clave_asignacion_id'] ?? 0);
+        $correcto = $asignacion > 0 && $cuenta > 0 &&
+            (new TerritorioModel())->reasociarAsesorCuentaClave(
+                $asignacion, $cuenta, (int)($_SESSION['usuario_id'] ?? 0)
+            );
+        $mensaje = $correcto
+            ? 'Asesor vinculado a su Cuenta Clave.'
+            : 'No se pudo vincular: verifica el estado, las asignaciones y que no sea la misma Cuenta Clave.';
+        if ($this->esSolicitudFetch()) {
+            $this->responderJson(['ok'=>(bool)$correcto,'mensaje'=>$mensaje],
+                $correcto ? 200 : 422);
+        }
+        $_SESSION[$correcto ? 'mensaje_territorio' : 'error_territorio'] = $mensaje;
+        $this->redirigirATerritorios();
+    }
+
     public function finalizarAsignacion()
     {
         $this->validarPermiso('territorios.asignar');
