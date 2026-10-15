@@ -44,8 +44,20 @@ elif (cd "$TEMP/stage" && git apply --check "$TEMP/patch" >/dev/null 2>&1); then
   echo "PARCHE COMPATIBLE: $FILE"
   CHANGE=1
 else
-  echo "CONFLICTO: shell personalizado incompatible. PRODUCCIÓN INTACTA." >&2
-  exit 1
+  # Hostinger puede conservar lógica WebRTC y registro propia. No reemplazar
+  # el shell ni eliminar esas personalizaciones: fusionar exclusivamente los
+  # fragmentos del cierre, sobre la copia temporal y con comprobación reversible.
+  FUSION="$SOURCE/tools/fusionar_cierre_transferencia_hostinger.py"
+  [[ -f "$FUSION" && ! -L "$FUSION" ]] || {
+    echo "ERROR: falta fusionador de cierre. Actualiza crm-preparacion." >&2
+    exit 1
+  }
+  git -C "$SOURCE" show "$BASE:$FILE" > "$TEMP/base_shell.js"
+  git -C "$SOURCE" show "$TARGET:$FILE" > "$TEMP/target_shell.js"
+  python3 "$FUSION" "$TEMP/stage/$FILE" "$TEMP/base_shell.js" "$TEMP/target_shell.js"
+  if [[ "$(sha256sum "$TEMP/stage/$FILE" | cut -d ' ' -f1)" != "$BEFORE" ]]; then
+    CHANGE=1
+  fi
 fi
 if command -v node >/dev/null 2>&1; then
   node --check "$TEMP/stage/$FILE"
