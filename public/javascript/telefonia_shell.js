@@ -266,11 +266,14 @@
                 currentState.hostReady === true);
         },
         showProviderControls: function () {
-            if (!cfg.analystIncomingResults || !hostFrame ||
-                !freshState(currentState) || !currentState.hostReady) return false;
+            // La combinación PBX #ext# debe poder marcarse desde el widget
+            // oficial también en Recepción, Ventas y Cuenta Clave.
+            if (!hostFrame || !freshState(currentState) ||
+                !currentState.hostReady || !currentState.active) return false;
             nativeAnalystOpen = true;
             forceNativeControls = true;
             minimized = false;
+            sendPhoneCommand('SHOW_CONTROLS');
             render();
             return true;
         },
@@ -515,7 +518,7 @@
             forceNativeControls && !minimized &&
             (
                 (cfg.analystIncomingResults && nativeAnalystOpen) ||
-                (ongoing && state?.direction !== 'incoming')
+                ongoing
             );
         const pending = pendingFor(state);
         if (pendingOutgoingHangup &&
@@ -526,7 +529,7 @@
         // de PBX. El panel lateral sí desaparece inmediatamente.
         const finishingIncoming = incoming && pending === 'hangup';
         const customVisible = (incoming || finishedSdk || finishedIncoming || shownOutgoing) &&
-            !(cfg.analystIncomingResults && nativeVisible) &&
+            !nativeVisible &&
             !minimized && pending !== 'decline';
         call.classList.toggle('is-visible', nativeVisible);
         call.classList.toggle('is-analyst-native',
@@ -975,7 +978,7 @@
     // El Analista con extensión entrante activa debe intentar iniciar WebRTC
     // en cada login. Una preferencia vieja de Marketing / navegador no puede
     // desactivar silenciosamente su recepción.
-    if (autoEnabled && !cfg.analystIncomingResults) {
+    if (autoEnabled && !cfg.alwaysReceive && !cfg.analystIncomingResults) {
         try {
             autoEnabled = localStorage.getItem(
                 'impe:telephony:auto-reception:' + userId
