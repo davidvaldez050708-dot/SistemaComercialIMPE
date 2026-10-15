@@ -96,6 +96,30 @@ class CrearConvocatoriaModel
         return $this->listarConveniosAliados();
     }
 
+    public function listarEstados()
+    {
+        $resultado = $this->connection->query(
+            "SELECT id, nombre
+             FROM estados
+             ORDER BY nombre ASC"
+        );
+
+        if (!$resultado) {
+            return [];
+        }
+
+        $estados = [];
+
+        while ($fila = $resultado->fetch_assoc()) {
+            $estados[] = [
+                'id' => (int)($fila['id'] ?? 0),
+                'nombre' => (string)($fila['nombre'] ?? '')
+            ];
+        }
+
+        return $estados;
+    }
+
     public function estructuraDisponible()
     {
         $tablaAliados = $this->connection->query(
