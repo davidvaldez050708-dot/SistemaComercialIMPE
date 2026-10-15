@@ -58,5 +58,27 @@ if len(indexes)==1:
             print('%d: %s' % (i+1,','.join(names)))
 else:
     print('No se encontró una cabecera única de render.')
+# Fragmentos muy delimitados para distinguir la variante sin publicar el
+# archivo completo. Se redactan literales, correos, números largos y URLs.
+print('--- Fragmentos estructurales (literales ocultos) ---')
+for label,pattern,before,after in [
+    ('transición estado',r'^\s*const updateState\s*=\s*function',0,16),
+    ('estado modal',r'incomingTitle\.textContent\s*=',2,12),
+    ('visibilidad',r'const customVisible\s*=',5,17),
+    ('colgado',r'^\s*const hangupIncoming\s*=\s*function',0,33),
+]:
+    matches=[i for i,line in enumerate(lines) if re.search(pattern,line)]
+    print('[%s]' % label)
+    if len(matches)!=1:
+        print('  ESTRUCTURA NO ÚNICA')
+        continue
+    pos=matches[0]
+    for i in range(max(0,pos-before),min(len(lines),pos+after)):
+        line=lines[i]
+        line=re.sub(r"(['\"]).*?\1",'<texto>',line)
+        line=re.sub(r'https?://\S+','<url>',line)
+        line=re.sub(r'[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+','<correo>',line)
+        line=re.sub(r'\b\d{7,}\b','<numero>',line)
+        print('%d: %s' % (i+1,line[:165]))
 print('=== FIN. Ningún archivo modificado ===')
 PY
