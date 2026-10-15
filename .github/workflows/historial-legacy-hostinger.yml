@@ -1,0 +1,21 @@
+name: Historial legacy con personalizaciones Hostinger
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tools/desplegar_historial_consulta_legacy_hostinger.py'
+      - 'tests/historial_consulta_legacy_deploy_smoke.py'
+      - '.github/workflows/historial-legacy-hostinger.yml'
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Sintaxis y despliegue simulado
+        run: |
+          python3 -m py_compile tools/desplegar_historial_consulta_legacy_hostinger.py
+          python3 tests/historial_consulta_legacy_deploy_smoke.py
+          node --check public/javascript/seguimiento_historial_consulta.js
+          node --check public/javascript/seguimiento_llamadas_expediente.js
