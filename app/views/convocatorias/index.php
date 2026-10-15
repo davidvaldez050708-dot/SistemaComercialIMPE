@@ -1121,8 +1121,8 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
                             </label>
 
                             <div
-                                class="convocatoria-availability-dropdown"
-                                data-convocatoria-availability-dropdown>
+                                class="convocatoria-form-type-dropdown"
+                                data-convocatoria-form-type-dropdown>
                                 <input
                                     type="hidden"
                                     id="crear_convocatoria_estado"
@@ -1132,11 +1132,11 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
 
                                 <button
                                     type="button"
-                                    class="convocatoria-availability-trigger"
+                                    class="convocatoria-form-type-trigger"
                                     id="crear_convocatoria_estado_boton"
                                     aria-haspopup="listbox"
                                     aria-expanded="false"
-                                    data-convocatoria-availability-trigger>
+                                    data-convocatoria-form-type-trigger>
                                     <span data-convocatoria-availability-label>
                                         <?= (string)($datosCrear['estado'] ?? '1') === '0' ? 'Inactiva' : 'Activa' ?>
                                     </span>
@@ -1144,25 +1144,25 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
                                 </button>
 
                                 <div
-                                    class="convocatoria-availability-menu"
+                                    class="convocatoria-form-type-menu"
                                     role="listbox"
                                     aria-label="Seleccionar disponibilidad"
-                                    data-convocatoria-availability-menu>
+                                    data-convocatoria-form-type-menu>
                                     <button
                                         type="button"
-                                        class="convocatoria-availability-option <?= (string)($datosCrear['estado'] ?? '1') !== '0' ? 'is-selected' : '' ?>"
+                                        class="convocatoria-form-type-option <?= (string)($datosCrear['estado'] ?? '1') !== '0' ? 'is-selected' : '' ?>"
                                         role="option"
                                         aria-selected="<?= (string)($datosCrear['estado'] ?? '1') !== '0' ? 'true' : 'false' ?>"
-                                        data-convocatoria-availability-option="1">
+                                        data-convocatoria-form-type-option="1">
                                         Activa
                                     </button>
 
                                     <button
                                         type="button"
-                                        class="convocatoria-availability-option <?= (string)($datosCrear['estado'] ?? '1') === '0' ? 'is-selected' : '' ?>"
+                                        class="convocatoria-form-type-option <?= (string)($datosCrear['estado'] ?? '1') === '0' ? 'is-selected' : '' ?>"
                                         role="option"
                                         aria-selected="<?= (string)($datosCrear['estado'] ?? '1') === '0' ? 'true' : 'false' ?>"
-                                        data-convocatoria-availability-option="0">
+                                        data-convocatoria-form-type-option="0">
                                         Inactiva
                                     </button>
                                 </div>
@@ -1808,20 +1808,20 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const availabilityDropdown = document.querySelector(
-        '[data-convocatoria-availability-dropdown]'
+        '[data-convocatoria-form-type-dropdown]'
     );
     const availabilityValue = availabilityDropdown?.querySelector(
         '[data-convocatoria-availability-value]'
     );
     const availabilityTrigger = availabilityDropdown?.querySelector(
-        '[data-convocatoria-availability-trigger]'
+        '[data-convocatoria-form-type-trigger]'
     );
     const availabilityLabel = availabilityDropdown?.querySelector(
         '[data-convocatoria-availability-label]'
     );
     const availabilityOptions = Array.from(
         availabilityDropdown?.querySelectorAll(
-            '[data-convocatoria-availability-option]'
+            '[data-convocatoria-form-type-option]'
         ) || []
     );
 
