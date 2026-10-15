@@ -111,6 +111,15 @@ try {
         (str_contains($type,'ogg')?'audio/ogg':
         (str_contains($type,'mp4')?'audio/mp4':'audio/mpeg'));
     header('Content-Type: '.$mime);
+    if ((string)($_GET['download'] ?? '') === '1') {
+        $extension = $mime === 'audio/wav' ? 'wav'
+            : ($mime === 'audio/ogg' ? 'ogg'
+            : ($mime === 'audio/mp4' ? 'm4a' : 'mp3'));
+        header('Content-Disposition: attachment; filename="llamada-transferida-parte-'
+            . ($index + 1) . '.' . $extension . '"');
+    } else {
+        header('Content-Disposition: inline');
+    }
     header('Accept-Ranges: bytes');
     if ($range!=='' && (int)($audio['status']??200)===206 &&
         preg_match('~^bytes \\d+-\\d+/\\d+$~',
