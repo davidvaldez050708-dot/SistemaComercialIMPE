@@ -13,7 +13,7 @@ function boot(type = 'navigate') {
     const listeners = {};
     const timeouts = new Map();
     const mask = {
-        hidden: false,
+        hidden: true,
         classes: new Set(),
         classList: {
             toggle(name, add) {
@@ -80,7 +80,7 @@ function boot(type = 'navigate') {
 data.clear();
 const first = boot();
 assert.equal(first.crm.src,home,'Login nueva debe iniciar en Home');
-assert.equal(first.mask.hidden,false,'Mostrar carga mientras se construye el CRM');
+assert.equal(first.mask.hidden,true,'No mostrar pantalla de carga al entrar al CRM');
 first.navigate(home);
 assert.equal(first.mask.hidden,true,'No dejar capa de carga tras respuesta CRM válida');
 assert.equal(typeof first.innerEvents.click,'function','Observar navegación de módulos');
@@ -90,36 +90,50 @@ first.innerEvents.click({
     defaultPrevented:false,
     metaKey:false,ctrlKey:false,altKey:false,shiftKey:false
 });
-assert.equal(first.mask.hidden,false,'La ruta debe cubrir flash blanco desde el clic');
+assert.equal(first.mask.hidden,true,'No cubrir la vista al cambiar de módulo');
 first.navigate(seguimiento);
 assert.equal(first.mask.hidden,true,'Debe regresar la interfaz al cargar Seguimiento');
 assert.equal(data.get('impe:crm:shell:last-route:11'),seguimiento);
 
-const reloaded = boot('reload');
-assert.equal(reloaded.crm.src,seguimiento,
-    'F5/reload del shell conserva Seguimiento y no inicia Home');
-reloaded.navigate(seguimiento);
-assert.equal(reloaded.mask.hidden,true);
-
-reloaded.innerEvents.click({
+// El iframe conserva navegación nativa: ni clics ni beforeunload ni
+// recarga muestran una capa de "Cargando módulo".
+first.innerEvents.click({
     button:0,target:{closest(){return {href:expediente,target:'',download:false};}},
     defaultPrevented:false,metaKey:false,ctrlKey:false,altKey:false,shiftKey:false
 });
-reloaded.crm.contentWindow.location.href=expediente;
+assert.equal(first.mask.hidden,true,'Sin cargador en navegación posterior');
+first.doc.defaultView.beforeunload();
+assert.equal(first.mask.hidden,true,'Sin cargador al desmontar documento PHP');
+first.navigate(expediente);
+assert.equal(first.mask.hidden,true,'Sin cargador después de cambiar expediente');
+assert.equal(data.get('impe:crm:shell:last-route:11'),expediente);
+
+const reloaded = boot('reload');
+assert.equal(reloaded.crm.src,expediente,
+    'F5/reload del shell conserva exactamente el último expediente abierto');
+reloaded.navigate(expediente);
+assert.equal(reloaded.mask.hidden,true);
+
+reloaded.innerEvents.click({
+    button:0,target:{closest(){return {href:seguimiento,target:'',download:false};}},
+    defaultPrevented:false,metaKey:false,ctrlKey:false,altKey:false,shiftKey:false
+});
+assert.equal(reloaded.mask.hidden,true,'Sin cargador incluso si después falla');
+reloaded.crm.contentWindow.location.href=seguimiento;
 reloaded.doc.hasShell=false;
 reloaded.crm.events.load();
 assert.equal(reloaded.mask.hidden,false,'Página PHP fallida no muestra blanco');
 assert.equal(reloaded.mask.els['[data-shell-navigation-retry]'].hidden,false,
     'Debe poder reintentar la misma ruta');
-assert.equal(reloaded.crm.src,seguimiento,'No redirigir automáticamente a Inicio');
-assert.equal(data.get('impe:crm:shell:last-route:11'),seguimiento,
+assert.equal(reloaded.crm.src,expediente,'No redirigir automáticamente a Inicio');
+assert.equal(data.get('impe:crm:shell:last-route:11'),expediente,
     'La página fallida no corrompe la última ruta válida');
 reloaded.doc.hasShell=true;
 reloaded.retry();
-assert.equal(reloaded.crm.src,expediente,'Reintentar recupera la vista, no Home');
-reloaded.navigate(expediente);
+assert.equal(reloaded.crm.src,seguimiento,'Reintentar recupera el módulo que falló, no Home');
+reloaded.navigate(seguimiento);
 assert.equal(reloaded.mask.hidden,true);
-assert.equal(data.get('impe:crm:shell:last-route:11'),expediente);
+assert.equal(data.get('impe:crm:shell:last-route:11'),seguimiento);
 
 const freshLogin = boot('navigate');
 assert.equal(freshLogin.crm.src,home,'Un nuevo login no hereda expedientes anteriores');
@@ -132,4 +146,38 @@ unsafe.navigate(login);
 assert.equal(data.get('impe:crm:shell:last-route:11'),undefined,
     'La salida a login limpia la navegación almacenada');
 
-console.log('Shell navegación: OK (login, F5, módulos, error/recuperación, URL segura).');
+// Si una página tarda demasiado, sí debe mostrarse recuperación,
+// pero sin bloquear rutinariamente cada navegación.
+const timeoutCase = boot();
+timeoutCase.navigate(home);
+timeoutCase.innerEvents.click({
+    button:0,target:{closest(){return {href:seguimiento,target:'',download:false};}},
+    defaultPrevented:false,metaKey:false,ctrlKey:false,altKey:false,shiftKey:false
+});
+assert.equal(timeoutCase.mask.hidden,true);
+const watchdog = [...timeoutCase.timeouts.values()].find(entry=>entry.ms===20000);
+assert.ok(watchdog,'Debe existir supervisión de fallo de navegación');
+watchdog.fn();
+assert.equal(timeoutCase.mask.hidden,false,'Sólo ante fallo aparece recuperación');
+assert.equal(timeoutCase.mask.els['[data-shell-navigation-retry]'].hidden,false);
+timeoutCase.retry();
+assert.equal(timeoutCase.crm.src,seguimiento);
+assert.equal(timeoutCase.mask.hidden,true,'El reintento no muestra cargador');
+
+// Navegación cancelada para abrir modal no puede disparar alerta de timeout.
+const cancelled = boot();
+cancelled.navigate(home);
+const cancelledEvent = {
+    button:0,target:{closest(){return {href:seguimiento,target:'',download:false};}},
+    defaultPrevented:false,metaKey:false,ctrlKey:false,altKey:false,shiftKey:false
+};
+cancelled.innerEvents.click(cancelledEvent);
+cancelledEvent.defaultPrevented = true;
+const cancelTimer = [...cancelled.timeouts.values()].find(entry=>entry.ms===0);
+assert.ok(cancelTimer);
+cancelTimer.fn();
+const obsoleteWatchdog = [...cancelled.timeouts.values()].find(entry=>entry.ms===20000);
+assert.equal(obsoleteWatchdog,undefined,'Un clic AJAX cancelado no deja temporizador activo');
+assert.equal(cancelled.mask.hidden,true,'Clic de modal no debe mostrar pantalla de carga');
+
+console.log('Shell navegación: OK (sin cargadores, F5, módulos, AJAX, error/reintento, URL segura).');
