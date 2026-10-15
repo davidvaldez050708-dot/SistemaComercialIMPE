@@ -170,6 +170,7 @@ $esTerritorialFooter = in_array(
 
 $jsDashboardFooter = [
     'telefonia_segmentos_player.js',
+    'seguimiento_historial_consulta.js',
     'cambiar_password.js',
     'mi_perfil.js',
     'sidebar_scroll_state.js',
