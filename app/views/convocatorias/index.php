@@ -48,6 +48,69 @@ $nombresMesesConvocatoria = [
 $esChihuahua = $territorioSeleccionado &&
     strcasecmp(trim((string)($territorioSeleccionado['nombre'] ?? '')), 'Chihuahua') === 0;
 
+$clasificacionesConvocatoria = [
+    [
+        'valor' => 'titulacion|ejecutivas',
+        'tipo' => 'titulacion',
+        'subtipo' => 'ejecutivas',
+        'etiqueta' => 'Titulación · Ejecutivas'
+    ],
+    [
+        'valor' => 'titulacion|experiencia-laboral',
+        'tipo' => 'titulacion',
+        'subtipo' => 'experiencia-laboral',
+        'etiqueta' => 'Titulación · Experiencia laboral'
+    ],
+    [
+        'valor' => 'titulacion|inscripciones-abiertas',
+        'tipo' => 'titulacion',
+        'subtipo' => 'inscripciones-abiertas',
+        'etiqueta' => 'Titulación · Inscripciones abiertas'
+    ],
+    [
+        'valor' => 'bachillerato|bachillerato-2-anos',
+        'tipo' => 'bachillerato',
+        'subtipo' => 'bachillerato-2-anos',
+        'etiqueta' => 'Bachillerato · 2 años'
+    ],
+    [
+        'valor' => 'bachillerato|bachillerato-286',
+        'tipo' => 'bachillerato',
+        'subtipo' => 'bachillerato-286',
+        'etiqueta' => 'Bachillerato · Acuerdo 286'
+    ],
+    [
+        'valor' => 'bachillerato|ingles',
+        'tipo' => 'bachillerato',
+        'subtipo' => 'ingles',
+        'etiqueta' => 'Bachillerato · Inglés'
+    ],
+    [
+        'valor' => 'bachillerato|inscripciones-abiertas',
+        'tipo' => 'bachillerato',
+        'subtipo' => 'inscripciones-abiertas',
+        'etiqueta' => 'Bachillerato · Inscripciones abiertas'
+    ]
+];
+
+if ($esChihuahua) {
+    $clasificacionesConvocatoria[] = [
+        'valor' => 'sindicatos|sindicatos',
+        'tipo' => 'sindicatos',
+        'subtipo' => 'sindicatos',
+        'etiqueta' => 'Sindicatos'
+    ];
+}
+
+$clasificacionFiltroActual = strtolower(trim((string)($_GET['clasificacion'] ?? '')));
+if (
+    $clasificacionFiltroActual === '' &&
+    $tipoConvocatoria !== '' &&
+    $subtipoConvocatoria !== ''
+) {
+    $clasificacionFiltroActual = $tipoConvocatoria . '|' . $subtipoConvocatoria;
+}
+
 $puedeCrear = tienePermiso('convocatorias.crear');
 $puedeEditar = tienePermiso('convocatorias.editar');
 $puedeDescargar = tienePermiso('convocatorias.descargar');
@@ -320,730 +383,29 @@ document.addEventListener('DOMContentLoaded', function () {
 <?php return; ?>
 <?php endif; ?>
 
-<?php if ($tipoConvocatoria === ''): ?>
-<?php
-$nombreTerritorioActual = trim((string)($territorioSeleccionado['nombre'] ?? ''));
-$slugTerritorioActual = strtolower($nombreTerritorioActual);
-$slugTerritorioActual = iconv('UTF-8', 'ASCII//TRANSLIT', $slugTerritorioActual);
-$slugTerritorioActual = preg_replace('/[^a-z0-9]+/', '-', (string)$slugTerritorioActual);
-$slugTerritorioActual = trim((string)$slugTerritorioActual, '-');
 
-if ($nombreTerritorioActual === 'Ciudad de México') {
-    $slugTerritorioActual = 'ciudad-de-mexico';
-} elseif ($nombreTerritorioActual === 'Estado de México') {
-    $slugTerritorioActual = 'estado-de-mexico';
-} elseif ($nombreTerritorioActual === 'Michoacán') {
-    $slugTerritorioActual = 'michoacán';
-} elseif ($nombreTerritorioActual === 'Nuevo León') {
-    $slugTerritorioActual = 'nuevo-leon';
-} elseif ($nombreTerritorioActual === 'Querétaro') {
-    $slugTerritorioActual = 'queretaro';
-} elseif ($nombreTerritorioActual === 'San Luis Potosí') {
-    $slugTerritorioActual = 'san-luis-potosi';
-} elseif ($nombreTerritorioActual === 'Yucatán') {
-    $slugTerritorioActual = 'yucatan';
-}
 
-$imagenTerritorioActual = BASE_URL . 'public/img/estados/' . $slugTerritorioActual . '.png';
-$descripcionTiposTerritorio = $esChihuahua
-    ? 'Consulta las convocatorias de titulación, bachillerato y sindicatos, revisa su vigencia y mantén actualizadas las publicaciones en ' . $nombreTerritorioActual . '.'
-    : 'Consulta las convocatorias de titulación y bachillerato, revisa su vigencia y mantén actualizadas las publicaciones en ' . $nombreTerritorioActual . '.';
-?>
 
-<div class="convocatoria-overview-page">
-    <div class="convocatoria-overview-locationbar">
-        <div class="convocatoria-overview-location">
-            <i class="bi bi-geo-alt-fill"></i>
-            <strong><?= $texto($nombreTerritorioActual) ?></strong>
-        </div>
 
-        <a
-            class="convocatoria-overview-change"
-            href="<?= BASE_URL ?>index.php?controller=convocatoria&action=index">
-            <i class="bi bi-arrow-repeat"></i>
-            Cambiar territorio
-        </a>
-    </div>
 
-    <section class="dashboard-panel convocatoria-overview-hero">
-        <span class="convocatoria-overview-kicker">CONVOCATORIAS</span>
-        <h2>Administra las convocatorias de tu territorio</h2>
-        <p><?= $texto($descripcionTiposTerritorio) ?></p>
-    </section>
-
-    <div class="convocatoria-overview-layout">
-        <main class="convocatoria-overview-main">
-            <section class="convocatoria-overview-types<?= $esChihuahua ? ' is-chihuahua' : '' ?>">
-                <a
-                    class="dashboard-panel convocatoria-overview-type-card"
-                    href="<?= BASE_URL ?>index.php?controller=convocatoria&action=index&territorio_id=<?= (int)$territorioSeleccionado['id'] ?>&tipo=titulacion">
-                    <span class="convocatoria-overview-type-icon">
-                        <i class="bi bi-mortarboard"></i>
-                    </span>
-                    <span class="convocatoria-overview-type-copy">
-                        <strong>Titulación</strong>
-                        <small>Consulta las convocatorias correspondientes a titulación.</small>
-                    </span>
-                    <span class="convocatoria-overview-type-arrow">
-                        <i class="bi bi-arrow-right"></i>
-                    </span>
-                </a>
-
-                <a
-                    class="dashboard-panel convocatoria-overview-type-card"
-                    href="<?= BASE_URL ?>index.php?controller=convocatoria&action=index&territorio_id=<?= (int)$territorioSeleccionado['id'] ?>&tipo=bachillerato">
-                    <span class="convocatoria-overview-type-icon">
-                        <i class="bi bi-book"></i>
-                    </span>
-                    <span class="convocatoria-overview-type-copy">
-                        <strong>Bachillerato</strong>
-                        <small>Consulta las convocatorias correspondientes a bachillerato.</small>
-                    </span>
-                    <span class="convocatoria-overview-type-arrow">
-                        <i class="bi bi-arrow-right"></i>
-                    </span>
-                </a>
-
-                <?php if ($esChihuahua): ?>
-                    <a
-                        class="dashboard-panel convocatoria-overview-type-card"
-                        href="<?= BASE_URL ?>index.php?controller=convocatoria&action=index&territorio_id=<?= (int)$territorioSeleccionado['id'] ?>&tipo=sindicatos&subtipo=sindicatos">
-                        <span class="convocatoria-overview-type-icon">
-                            <i class="bi bi-people"></i>
-                        </span>
-                        <span class="convocatoria-overview-type-copy">
-                            <strong>Sindicatos</strong>
-                            <small>Consulta las convocatorias correspondientes a sindicatos.</small>
-                        </span>
-                        <span class="convocatoria-overview-type-arrow">
-                            <i class="bi bi-arrow-right"></i>
-                        </span>
-                    </a>
-                <?php endif; ?>
-            </section>
-
-            <section
-                class="dashboard-panel convocatoria-overview-recent"
-                id="convocatorias-recientes">
-                <div class="convocatoria-overview-recent-heading">
-                    <div class="convocatoria-overview-recent-title">
-                        <span><i class="bi bi-file-earmark-text"></i></span>
-                        <div>
-                            <h3>Convocatorias recientes</h3>
-                            <p>Consulta rápidamente el estado de las publicaciones de este territorio.</p>
-                        </div>
-                    </div>
-
-                    <?php if (count($convocatoriasRecientes) > 4): ?>
-                        <button
-                            type="button"
-                            class="convocatoria-overview-link"
-                            data-convocatoria-overview-all
-                            aria-expanded="false">
-                            Ver todas
-                            <i class="bi bi-arrow-right"></i>
-                        </button>
-                    <?php endif; ?>
-                </div>
-
-                <?php if (!empty($convocatoriasRecientes)): ?>
-                    <div class="convocatoria-overview-table-wrap">
-                        <table class="convocatoria-overview-table">
-                            <thead>
-                                <tr>
-                                    <th>Nombre de la convocatoria</th>
-                                    <th>Tipo</th>
-                                    <th>Fecha de publicación</th>
-                                    <th>Vigencia</th>
-                                    <th>Estado</th>
-                                    <th class="text-center">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($convocatoriasRecientes as $indiceReciente => $convocatoriaReciente): ?>
-                                    <?php
-                                    $tipoReciente = (string)($convocatoriaReciente['tipo_convocatoria'] ?? '');
-                                    $subtipoReciente = (string)($convocatoriaReciente['subtipo_convocatoria'] ?? '');
-                                    $estadoProceso = (string)($convocatoriaReciente['estado_proceso'] ?? 'inactiva');
-
-                                    if ($tipoReciente === 'titulacion') {
-                                        $tipoEtiqueta = 'Titulación';
-                                        $tipoIcono = 'bi-mortarboard';
-                                    } elseif ($tipoReciente === 'bachillerato') {
-                                        $tipoEtiqueta = 'Bachillerato';
-                                        $tipoIcono = 'bi-book';
-                                    } else {
-                                        $tipoEtiqueta = 'Sindicatos';
-                                        $tipoIcono = 'bi-people';
-                                    }
-
-                                    $estadoEtiquetas = [
-                                        'activa' => 'Activa',
-                                        'proxima' => 'Próxima a vencer',
-                                        'finalizada' => 'Finalizada',
-                                        'inactiva' => 'Inactiva'
-                                    ];
-
-                                    $fechaInicioReciente = trim(
-                                        (string)($convocatoriaReciente['fecha_inicio'] ?? '')
-                                    );
-                                    $timestampInicioReciente = $fechaInicioReciente !== ''
-                                        ? strtotime($fechaInicioReciente)
-                                        : false;
-                                    $anioReciente = $timestampInicioReciente !== false
-                                        ? (int)date('Y', $timestampInicioReciente)
-                                        : (int)date('Y');
-                                    $mesReciente = $timestampInicioReciente !== false
-                                        ? (int)date('n', $timestampInicioReciente)
-                                        : (int)date('n');
-
-                                    $urlReciente = BASE_URL .
-                                        'index.php?controller=convocatoria&action=index&territorio_id=' .
-                                        (int)$territorioSeleccionado['id'] .
-                                        '&tipo=' . rawurlencode($tipoReciente) .
-                                        '&subtipo=' . rawurlencode($subtipoReciente) .
-                                        '&anio=' . $anioReciente .
-                                        '&mes=' . $mesReciente;
-                                    ?>
-                                    <tr
-                                        data-convocatoria-overview-row
-                                        data-process-status="<?= $texto($estadoProceso) ?>"
-                                        class="<?= $indiceReciente >= 4 ? 'd-none' : '' ?>"
-                                        <?= $indiceReciente >= 4 ? 'data-convocatoria-overview-extra' : '' ?>>
-                                        <td>
-                                            <a
-                                                class="convocatoria-overview-name"
-                                                href="<?= $texto($urlReciente) ?>">
-                                                <span class="convocatoria-overview-row-icon">
-                                                    <i class="bi <?= $texto($tipoIcono) ?>"></i>
-                                                </span>
-                                                <strong><?= $texto($convocatoriaReciente['titulo'] ?? '') ?></strong>
-                                            </a>
-                                        </td>
-                                        <td><?= $texto($tipoEtiqueta) ?></td>
-                                        <td><?= $texto($fechaLegible($convocatoriaReciente['fecha_inicio'] ?? '')) ?></td>
-                                        <td>
-                                            <?= $texto($fechaLegible($convocatoriaReciente['fecha_inicio'] ?? '')) ?>
-                                            -
-                                            <?= $texto($fechaLegible($convocatoriaReciente['fecha_termino'] ?? '')) ?>
-                                        </td>
-                                        <td>
-                                            <span class="convocatoria-process-badge convocatoria-process-<?= $texto($estadoProceso) ?>">
-                                                <?= $texto($estadoEtiquetas[$estadoProceso] ?? 'Inactiva') ?>
-                                            </span>
-                                        </td>
-                                        <td class="text-center">
-                                            <a
-                                                class="convocatoria-overview-row-action"
-                                                href="<?= $texto($urlReciente) ?>"
-                                                aria-label="Abrir <?= $texto($convocatoriaReciente['titulo'] ?? '') ?>">
-                                                <i class="bi bi-three-dots-vertical"></i>
-                                            </a>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                <?php else: ?>
-                    <div class="convocatoria-recent-empty">
-                        <i class="bi bi-inbox"></i>
-                        <span>No hay convocatorias recientes para mostrar.</span>
-                    </div>
-                <?php endif; ?>
-            </section>
-        </main>
-
-        <aside class="convocatoria-overview-aside">
-            <section class="dashboard-panel convocatoria-overview-territory-card">
-                <div class="convocatoria-overview-territory-copy">
-                    <span class="convocatoria-overview-aside-icon">
-                        <i class="bi bi-geo-alt-fill"></i>
-                    </span>
-                    <div>
-                        <small>Territorio actual</small>
-                        <strong><?= $texto($nombreTerritorioActual) ?></strong>
-                        <a
-                            href="<?= BASE_URL ?>index.php?controller=convocatoria&action=index">
-                            <i class="bi bi-arrow-repeat"></i>
-                            Cambiar territorio
-                        </a>
-                    </div>
-                </div>
-
-                <img
-                    src="<?= $texto($imagenTerritorioActual) ?>"
-                    alt="Mapa de <?= $texto($nombreTerritorioActual) ?>"
-                    class="convocatoria-overview-territory-map">
-            </section>
-
-            <section class="dashboard-panel convocatoria-overview-help">
-                <div class="convocatoria-overview-help-heading">
-                    <span class="convocatoria-overview-aside-icon">
-                        <i class="bi bi-clipboard2"></i>
-                    </span>
-                    <div>
-                        <h3>¿Qué puedes hacer aquí?</h3>
-                        <p>Consulta las convocatorias vigentes, revisa próximas publicaciones y da seguimiento a su vigencia en tu territorio.</p>
-                    </div>
-                </div>
-
-                <div class="convocatoria-overview-help-links">
-                    <a href="<?= BASE_URL ?>index.php?controller=convocatoria&action=index&territorio_id=<?= (int)$territorioSeleccionado['id'] ?>&tipo=titulacion">
-                        <span><i class="bi bi-mortarboard"></i></span>
-                        <strong>Ver convocatorias de titulación</strong>
-                        <i class="bi bi-chevron-right"></i>
-                    </a>
-
-                    <a href="<?= BASE_URL ?>index.php?controller=convocatoria&action=index&territorio_id=<?= (int)$territorioSeleccionado['id'] ?>&tipo=bachillerato">
-                        <span><i class="bi bi-book"></i></span>
-                        <strong>Ver convocatorias de bachillerato</strong>
-                        <i class="bi bi-chevron-right"></i>
-                    </a>
-
-                    <button
-                        type="button"
-                        data-convocatoria-overview-filter="proxima">
-                        <span><i class="bi bi-clock"></i></span>
-                        <strong>Revisar próximas a vencer</strong>
-                        <i class="bi bi-chevron-right"></i>
-                    </button>
-
-                    <button
-                        type="button"
-                        data-convocatoria-overview-filter="finalizada">
-                        <span><i class="bi bi-file-earmark-text"></i></span>
-                        <strong>Consultar convocatorias finalizadas</strong>
-                        <i class="bi bi-chevron-right"></i>
-                    </button>
-
-                    <?php if ($esChihuahua): ?>
-                        <a href="<?= BASE_URL ?>index.php?controller=convocatoria&action=index&territorio_id=<?= (int)$territorioSeleccionado['id'] ?>&tipo=sindicatos&subtipo=sindicatos">
-                            <span><i class="bi bi-people"></i></span>
-                            <strong>Ver convocatorias de sindicatos</strong>
-                            <i class="bi bi-chevron-right"></i>
-                        </a>
-                    <?php endif; ?>
-                </div>
-            </section>
-        </aside>
-    </div>
-</div>
-
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    const filas = Array.from(document.querySelectorAll('[data-convocatoria-overview-row]'));
-    const extras = Array.from(document.querySelectorAll('[data-convocatoria-overview-extra]'));
-    const botonTodas = document.querySelector('[data-convocatoria-overview-all]');
-    const filtrosRapidos = Array.from(document.querySelectorAll('[data-convocatoria-overview-filter]'));
-    const panelRecientes = document.getElementById('convocatorias-recientes');
-
-    const mostrarTodas = function () {
-        filas.forEach(function (fila) {
-            fila.classList.remove('d-none');
-        });
-
-        if (botonTodas) {
-            botonTodas.setAttribute('aria-expanded', 'true');
-            botonTodas.innerHTML = 'Ver menos <i class="bi bi-arrow-up"></i>';
-        }
-    };
-
-    botonTodas?.addEventListener('click', function () {
-        const expandido = botonTodas.getAttribute('aria-expanded') === 'true';
-
-        if (expandido) {
-            extras.forEach(function (fila) {
-                fila.classList.add('d-none');
-            });
-            botonTodas.setAttribute('aria-expanded', 'false');
-            botonTodas.innerHTML = 'Ver todas <i class="bi bi-arrow-right"></i>';
-            return;
-        }
-
-        mostrarTodas();
-    });
-
-    filtrosRapidos.forEach(function (boton) {
-        boton.addEventListener('click', function () {
-            const estado = boton.dataset.convocatoriaOverviewFilter || '';
-
-            filas.forEach(function (fila) {
-                fila.classList.toggle(
-                    'd-none',
-                    fila.dataset.processStatus !== estado
-                );
-            });
-
-            if (botonTodas) {
-                botonTodas.setAttribute('aria-expanded', 'true');
-                botonTodas.innerHTML = 'Ver todas <i class="bi bi-arrow-right"></i>';
-            }
-
-            panelRecientes?.scrollIntoView({
-                behavior: 'smooth',
-                block: 'start'
-            });
-        });
-    });
-});
-</script>
-
-<?php return; ?>
-<?php endif; ?>
-
-<?php
-if ($tipoConvocatoria === 'titulacion') {
-    $etiquetaTipoConvocatoria = 'Titulación';
-    $opcionesSubtipo = [
-        [
-            'slug' => 'ejecutivas',
-            'titulo' => 'Ejecutivas',
-            'descripcion' => 'Consulta las convocatorias correspondientes a ejecutivas.',
-            'icono' => 'bi-briefcase'
-        ],
-        [
-            'slug' => 'experiencia-laboral',
-            'titulo' => 'Titulación por experiencia laboral',
-            'descripcion' => 'Consulta las convocatorias de titulación por experiencia laboral.',
-            'icono' => 'bi-person-workspace'
-        ],
-        [
-            'slug' => 'inscripciones-abiertas',
-            'titulo' => 'Inscripciones Abiertas',
-            'descripcion' => 'Consulta las convocatorias con inscripciones abiertas.',
-            'icono' => 'bi-door-open'
-        ]
-    ];
-} elseif ($tipoConvocatoria === 'bachillerato') {
-    $etiquetaTipoConvocatoria = 'Bachillerato';
-    $opcionesSubtipo = [
-        [
-            'slug' => 'bachillerato-2-anos',
-            'titulo' => 'Bachillerato en 2 años',
-            'descripcion' => 'Consulta las convocatorias correspondientes a Bachillerato en 2 años.',
-            'icono' => 'bi-calendar2-check'
-        ],
-        [
-            'slug' => 'bachillerato-286',
-            'titulo' => 'Bachillerato 286',
-            'descripcion' => 'Consulta las convocatorias correspondientes a Bachillerato 286.',
-            'icono' => 'bi-journal-text'
-        ],
-        [
-            'slug' => 'ingles',
-            'titulo' => 'Inglés',
-            'descripcion' => 'Consulta las convocatorias correspondientes a Inglés.',
-            'icono' => 'bi-translate'
-        ],
-        [
-            'slug' => 'inscripciones-abiertas',
-            'titulo' => 'Inscripciones Abiertas',
-            'descripcion' => 'Consulta las convocatorias con inscripciones abiertas.',
-            'icono' => 'bi-door-open'
-        ]
-    ];
-} else {
-    $etiquetaTipoConvocatoria = 'Sindicatos';
-    $opcionesSubtipo = [];
-}
-
-$etiquetasSubtipo = [];
-foreach ($opcionesSubtipo as $opcionSubtipo) {
-    $etiquetasSubtipo[$opcionSubtipo['slug']] = $opcionSubtipo['titulo'];
-}
-
-if ($tipoConvocatoria === 'sindicatos') {
-    $etiquetasSubtipo['sindicatos'] = 'Sindicatos';
-}
-?>
-
-<?php if ($subtipoConvocatoria === ''): ?>
-<div class="convocatoria-territory-context">
-    <a
-        class="data-back-link"
-        href="<?= BASE_URL ?>index.php?controller=convocatoria&action=index&territorio_id=<?= (int)$territorioSeleccionado['id'] ?>">
-        <i class="bi bi-arrow-left"></i>
-        Cambiar tipo
-    </a>
-    <span><?= $texto($territorioSeleccionado['nombre'] ?? '') ?> · <?= $texto($etiquetaTipoConvocatoria) ?></span>
-</div>
-
-<?php if ($tipoConvocatoria === 'titulacion' || $tipoConvocatoria === 'bachillerato'): ?>
-    <section class="dashboard-panel convocatoria-titulacion-hero">
-        <div class="convocatoria-titulacion-hero-copy">
-            <span><?= $tipoConvocatoria === 'bachillerato' ? 'BACHILLERATO' : 'TITULACIÓN' ?></span>
-            <h2>Consulta las convocatorias disponibles</h2>
-            <p>
-                Selecciona la opción que deseas consultar para el territorio de
-                <?= $texto($territorioSeleccionado['nombre'] ?? '') ?>.
-            </p>
-        </div>
-
-        <div class="convocatoria-titulacion-hero-icon" aria-hidden="true">
-            <i class="bi <?= $tipoConvocatoria === 'bachillerato' ? 'bi-journal-bookmark' : 'bi-file-earmark-text' ?>"></i>
-        </div>
-    </section>
-
-    <section class="convocatoria-titulacion-cards">
-        <?php foreach ($opcionesSubtipo as $opcionSubtipo): ?>
-            <article class="dashboard-panel convocatoria-titulacion-card">
-                <div class="convocatoria-titulacion-card-icon">
-                    <i class="bi <?= $texto($opcionSubtipo['icono']) ?>"></i>
-                </div>
-
-                <div class="convocatoria-titulacion-card-copy">
-                    <h3><?= $texto($opcionSubtipo['titulo']) ?></h3>
-                    <p><?= $texto($opcionSubtipo['descripcion']) ?></p>
-
-                    <ul class="convocatoria-titulacion-benefits">
-                        <li>
-                            <i class="bi bi-check-circle"></i>
-                            <span>Revisa requisitos</span>
-                        </li>
-                        <li>
-                            <i class="bi bi-check-circle"></i>
-                            <span>Consulta vigencia</span>
-                        </li>
-                        <li>
-                            <i class="bi bi-check-circle"></i>
-                            <span>Descarga información</span>
-                        </li>
-                    </ul>
-                </div>
-
-                <a
-                    class="btn btn-system-light convocatoria-titulacion-card-button"
-                    href="<?= BASE_URL ?>index.php?controller=convocatoria&action=index&territorio_id=<?= (int)$territorioSeleccionado['id'] ?>&tipo=<?= $texto($tipoConvocatoria) ?>&subtipo=<?= $texto($opcionSubtipo['slug']) ?>">
-                    Ver convocatorias
-                    <i class="bi bi-arrow-right"></i>
-                </a>
-            </article>
-        <?php endforeach; ?>
-    </section>
-<?php else: ?>
-    <section class="dashboard-panel convocatoria-type-heading">
-        <h2 class="panel-title mb-1">
-            Opciones de <?= $texto($etiquetaTipoConvocatoria) ?>
-        </h2>
-        <p class="panel-subtitle mb-0">Selecciona la opción que deseas consultar para este territorio.</p>
-    </section>
-
-    <section class="convocatoria-type-cards convocatoria-subtype-cards">
-        <?php foreach ($opcionesSubtipo as $opcionSubtipo): ?>
-            <article class="dashboard-panel convocatoria-type-card">
-                <div class="convocatoria-type-card-icon">
-                    <i class="bi <?= $texto($opcionSubtipo['icono']) ?>"></i>
-                </div>
-                <div>
-                    <h3><?= $texto($opcionSubtipo['titulo']) ?></h3>
-                    <p><?= $texto($opcionSubtipo['descripcion']) ?></p>
-                </div>
-                <a
-                    class="btn btn-system-light"
-                    href="<?= BASE_URL ?>index.php?controller=convocatoria&action=index&territorio_id=<?= (int)$territorioSeleccionado['id'] ?>&tipo=<?= $texto($tipoConvocatoria) ?>&subtipo=<?= $texto($opcionSubtipo['slug']) ?>">
-                    Ver
-                    <i class="bi bi-arrow-right"></i>
-                </a>
-            </article>
-        <?php endforeach; ?>
-    </section>
-<?php endif; ?>
-
-<?php return; ?>
-<?php endif; ?>
-
-<?php if ($mostrarSelectorMes): ?>
-<?php
-$estadoMesLabels = [
-    'activa' => 'Activa',
-    'proxima' => 'Próxima',
-    'finalizada' => 'Finalizada',
-    'inactiva' => 'Inactiva'
-];
-
-$urlCambiarOpcionMes = $tipoConvocatoria === 'sindicatos'
-    ? BASE_URL . 'index.php?controller=convocatoria&action=index&territorio_id=' .
-        (int)$territorioSeleccionado['id']
-    : BASE_URL . 'index.php?controller=convocatoria&action=index&territorio_id=' .
-        (int)$territorioSeleccionado['id'] .
-        '&tipo=' . rawurlencode($tipoConvocatoria);
-?>
-
-<div class="convocatoria-month-page">
-    <div class="convocatoria-territory-context convocatoria-month-context">
-        <a
-            class="data-back-link"
-            href="<?= $texto($urlCambiarOpcionMes) ?>">
-            <i class="bi bi-arrow-left"></i>
-            <?= $tipoConvocatoria === 'sindicatos' ? 'Cambiar tipo' : 'Cambiar opción' ?>
-        </a>
-
-        <span>
-            <?= $texto($territorioSeleccionado['nombre'] ?? '') ?>
-            · <?= $texto($etiquetaTipoConvocatoria) ?>
-            <?php if ($tipoConvocatoria !== 'sindicatos'): ?>
-                · <?= $texto($etiquetasSubtipo[$subtipoConvocatoria] ?? '') ?>
-            <?php endif; ?>
-        </span>
-    </div>
-
-    <section class="dashboard-panel convocatoria-month-shell">
-        <div class="convocatoria-month-heading">
-            <div class="convocatoria-month-heading-main">
-                <span class="convocatoria-month-heading-icon" aria-hidden="true">
-                    <i class="bi bi-calendar3"></i>
-                </span>
-
-                <div class="convocatoria-month-heading-copy">
-                    <h2>Convocatorias por mes</h2>
-                    <p>Selecciona un mes para consultar las convocatorias disponibles.</p>
-                </div>
-            </div>
-
-
-        </div>
-
-        <?php
-        $mesActualSistema = (int)date('n');
-        $anioActualSistema = (int)date('Y');
-        ?>
-
-        <div class="convocatoria-month-grid">
-            <?php foreach ($mesesVisiblesConvocatorias as $mesVisible): ?>
-                <?php
-                $numeroMes = (int)($mesVisible['mes'] ?? 0);
-                $anioMes = (int)($mesVisible['anio'] ?? $anioSeleccionado);
-                $nombreMes = $nombresMesesConvocatoria[$numeroMes] ?? '';
-                $diasDelMes = (int)(
-                    new DateTimeImmutable(
-                        sprintf('%04d-%02d-01', $anioMes, $numeroMes)
-                    )
-                )->format('t');
-                $esMesActual = (
-                    $numeroMes === $mesActualSistema &&
-                    $anioMes === $anioActualSistema
-                );
-                $datosMes = is_array($mesVisible['datos'] ?? null)
-                    ? $mesVisible['datos']
-                    : ['total' => 0, 'convocatorias' => []];
-
-                $totalMes = (int)($datosMes['total'] ?? 0);
-                $muestrasMes = is_array($datosMes['convocatorias'] ?? null)
-                    ? $datosMes['convocatorias']
-                    : [];
-
-                $urlMes = BASE_URL .
-                    'index.php?controller=convocatoria&action=index&territorio_id=' .
-                    (int)$territorioSeleccionado['id'] .
-                    '&tipo=' . rawurlencode($tipoConvocatoria) .
-                    '&subtipo=' . rawurlencode($subtipoConvocatoria) .
-                    '&anio=' . $anioMes .
-                    '&mes=' . $numeroMes;
-                ?>
-
-                <article
-                    class="dashboard-panel convocatoria-month-card<?= $esMesActual ? ' is-current-month' : '' ?>"
-                    <?= $esMesActual ? 'aria-current="date"' : '' ?>>
-                    <?php if ($esMesActual): ?>
-                        <span class="convocatoria-month-current-badge">
-                            Mes actual
-                        </span>
-                    <?php endif; ?>
-
-                    <i
-                        class="bi bi-calendar3 convocatoria-month-watermark"
-                        aria-hidden="true"></i>
-
-                    <div class="convocatoria-month-card-header">
-                        <span class="convocatoria-month-icon" aria-hidden="true">
-                            <span class="convocatoria-calendar-glyph">
-                                <span class="convocatoria-calendar-glyph-rings"></span>
-                                <span class="convocatoria-calendar-glyph-day">
-                                    <?= $diasDelMes ?>
-                                </span>
-                            </span>
-                        </span>
-
-                        <div class="convocatoria-month-card-title">
-                            <strong>
-                                <?= $texto($nombreMes) ?>
-                                <?php if ($anioMes !== $anioSeleccionado): ?>
-                                    <?= (int)$anioMes ?>
-                                <?php endif; ?>
-                            </strong>
-                            <small>Consulta las convocatorias de <?= $texto(mb_strtolower($nombreMes, 'UTF-8')) ?>.</small>
-                        </div>
-
-                        <span class="convocatoria-month-count"><?= $totalMes ?></span>
-                    </div>
-
-                    <div class="convocatoria-month-preview">
-                        <?php if (!empty($muestrasMes)): ?>
-                            <?php foreach ($muestrasMes as $muestraMes): ?>
-                                <?php
-                                $estadoMes = (string)($muestraMes['estado_proceso'] ?? 'inactiva');
-                                ?>
-                                <div class="convocatoria-month-preview-row">
-                                    <span class="convocatoria-month-dot is-<?= $texto($estadoMes) ?>"></span>
-                                    <span class="convocatoria-month-preview-name">
-                                        <?= $texto($muestraMes['titulo'] ?? '') ?>
-                                    </span>
-                                    <span class="convocatoria-month-status is-<?= $texto($estadoMes) ?>">
-                                        <?= $texto($estadoMesLabels[$estadoMes] ?? 'Inactiva') ?>
-                                    </span>
-                                </div>
-                            <?php endforeach; ?>
-
-                            <?php if ($totalMes > count($muestrasMes)): ?>
-                                <small class="convocatoria-month-more">
-                                    +<?= $totalMes - count($muestrasMes) ?> más
-                                </small>
-                            <?php endif; ?>
-                        <?php else: ?>
-                            <div class="convocatoria-month-empty">
-                                <span class="convocatoria-month-dot is-empty"></span>
-                                <span>Sin convocatorias registradas</span>
-                            </div>
-                        <?php endif; ?>
-                    </div>
-
-                    <a
-                        class="btn btn-system-light convocatoria-month-button"
-                        href="<?= $texto($urlMes) ?>">
-                        Ver convocatorias
-                        <i class="bi bi-arrow-right"></i>
-                    </a>
-                </article>
-            <?php endforeach; ?>
-        </div>
-    </section>
-</div>
-
-<?php return; ?>
-<?php endif; ?>
 
 <div class="convocatoria-territory-context">
     <a
         class="data-back-link"
-        href="<?= BASE_URL .
-            'index.php?controller=convocatoria&action=index&territorio_id=' .
-            (int)$territorioSeleccionado['id'] .
-            '&tipo=' . rawurlencode($tipoConvocatoria) .
-            '&subtipo=' . rawurlencode($subtipoConvocatoria) .
-            '&anio=' . (int)$anioSeleccionado ?>">
+        href="<?= BASE_URL ?>index.php?controller=convocatoria&action=index">
         <i class="bi bi-arrow-left"></i>
-        Cambiar mes
+        Cambiar territorio
     </a>
+
     <span>
         <?= $texto($territorioSeleccionado['nombre'] ?? '') ?>
-        · <?= $texto($etiquetaTipoConvocatoria) ?>
-        <?php if ($tipoConvocatoria !== 'sindicatos'): ?>
-            · <?= $texto($etiquetasSubtipo[$subtipoConvocatoria] ?? '') ?>
-        <?php endif; ?>
-        <?php if ($mesSeleccionado >= 1 && $mesSeleccionado <= 12): ?>
-            · <?= $texto($nombresMesesConvocatoria[$mesSeleccionado] ?? '') ?>
-            <?= (int)$anioSeleccionado ?>
+        <?php if ($clasificacionFiltroActual !== ''): ?>
+            · <?= $texto(
+                array_values(array_filter(
+                    $clasificacionesConvocatoria,
+                    static fn($item) => $item['valor'] === $clasificacionFiltroActual
+                ))[0]['etiqueta'] ?? ''
+            ) ?>
         <?php endif; ?>
     </span>
 </div>
@@ -1124,10 +486,6 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
         <input type="hidden" name="controller" value="convocatoria">
         <input type="hidden" name="action" value="index">
         <input type="hidden" name="territorio_id" value="<?= (int)$territorioSeleccionado['id'] ?>">
-        <input type="hidden" name="tipo" value="<?= $texto($tipoConvocatoria) ?>">
-        <input type="hidden" name="subtipo" value="<?= $texto($subtipoConvocatoria) ?>">
-        <input type="hidden" name="anio" value="<?= (int)$anioSeleccionado ?>">
-        <input type="hidden" name="mes" value="<?= (int)$mesSeleccionado ?>">
         <input
             type="hidden"
             name="vista"
@@ -1149,6 +507,24 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
         </div>
 
         <div class="convocatoria-filter-field">
+            <label class="form-label login-label" for="filtro_convocatoria_clasificacion">Convocatoria</label>
+            <select
+                class="form-select system-form-control"
+                id="filtro_convocatoria_clasificacion"
+                name="clasificacion"
+                onchange="this.form.submit()">
+                <option value="">Todas las convocatorias</option>
+                <?php foreach ($clasificacionesConvocatoria as $clasificacion): ?>
+                    <option
+                        value="<?= $texto($clasificacion['valor']) ?>"
+                        <?= $clasificacionFiltroActual === $clasificacion['valor'] ? 'selected' : '' ?>>
+                        <?= $texto($clasificacion['etiqueta']) ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+
+        <div class="convocatoria-filter-field">
             <label class="form-label login-label" for="filtro_convocatoria_fecha">Fecha</label>
             <div class="input-group">
                 <span class="input-group-text"><i class="bi bi-calendar3"></i></span>
@@ -1158,13 +534,7 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
                     id="filtro_convocatoria_fecha"
                     name="fecha"
                     value="<?= $texto($fechaFiltro) ?>"
-                    <?php if ($mesSeleccionado >= 1 && $mesSeleccionado <= 12): ?>
-                        min="<?= sprintf('%04d-%02d-01', $anioSeleccionado, $mesSeleccionado) ?>"
-                        max="<?= date(
-                            'Y-m-t',
-                            strtotime(sprintf('%04d-%02d-01', $anioSeleccionado, $mesSeleccionado))
-                        ) ?>"
-                    <?php endif; ?>>
+>
             </div>
         </div>
 
@@ -1176,8 +546,8 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
 
         <div class="convocatoria-filter-actions">
             <a
-                class="filter-clear-link <?= ($buscar === '' && $fechaFiltro === '' && $categoriaFiltro === '') ? 'd-none' : '' ?>"
-                href="<?= BASE_URL ?>index.php?controller=convocatoria&action=index&territorio_id=<?= (int)$territorioSeleccionado['id'] ?>&tipo=<?= $texto($tipoConvocatoria) ?>&subtipo=<?= $texto($subtipoConvocatoria) ?>&anio=<?= (int)$anioSeleccionado ?>&mes=<?= (int)$mesSeleccionado ?>"
+                class="filter-clear-link <?= ($buscar === '' && $fechaFiltro === '' && $categoriaFiltro === '' && $clasificacionFiltroActual === '') ? 'd-none' : '' ?>"
+                href="<?= BASE_URL ?>index.php?controller=convocatoria&action=index&territorio_id=<?= (int)$territorioSeleccionado['id'] ?>"
                 data-convocatoria-clear-filters>
                 Limpiar filtros
             </a>
@@ -1385,10 +755,6 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
                 enctype="multipart/form-data"
                 novalidate>
                 <input type="hidden" name="territorio_id" value="<?= (int)$territorioSeleccionado['id'] ?>">
-                <input type="hidden" name="tipo" value="<?= $texto($tipoConvocatoria) ?>">
-                <input type="hidden" name="subtipo" value="<?= $texto($subtipoConvocatoria) ?>">
-                <input type="hidden" name="anio" value="<?= (int)$anioSeleccionado ?>">
-                <input type="hidden" name="mes" value="<?= (int)$mesSeleccionado ?>">
                 <input
                     type="hidden"
                     name="retorno_query"
@@ -1401,6 +767,34 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
 
                 <div class="modal-body">
                     <div class="system-form-grid">
+                        <div class="system-form-full">
+                            <label class="form-label login-label" for="crear_convocatoria_clasificacion">
+                                Tipo de convocatoria
+                            </label>
+                            <select
+                                class="form-select system-form-control"
+                                id="crear_convocatoria_clasificacion"
+                                name="clasificacion"
+                                required>
+                                <option value="">Selecciona una opción</option>
+                                <?php
+                                $clasificacionCrear = strtolower(trim(
+                                    (string)(($datosCrear['tipo'] ?? '') . '|' . ($datosCrear['subtipo'] ?? ''))
+                                ));
+                                ?>
+                                <?php foreach ($clasificacionesConvocatoria as $clasificacion): ?>
+                                    <option
+                                        value="<?= $texto($clasificacion['valor']) ?>"
+                                        <?= $clasificacionCrear === $clasificacion['valor'] ? 'selected' : '' ?>>
+                                        <?= $texto($clasificacion['etiqueta']) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <small class="form-text">
+                                Selecciona la opción a la que pertenece esta convocatoria.
+                            </small>
+                        </div>
+
                         <div class="system-form-full">
                             <label class="form-label login-label" for="crear_convocatoria_titulo">Título</label>
                             <input
@@ -1437,7 +831,7 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
                                 id="crear_convocatoria_fecha_inicio"
                                 name="fecha_inicio"
                                 value="<?= $texto($datosCrear['fecha_inicio'] ?? '') ?>"
-                                <?= $fechasOpcionalesConvocatoria ? '' : 'required' ?>>
+                                >
                         </div>
 
                         <div>
@@ -1451,15 +845,11 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
                                 <?= $fechasOpcionalesConvocatoria ? '' : 'required' ?>>
                         </div>
 
-                        <?php if ($fechasOpcionalesConvocatoria): ?>
-                            <div class="system-form-full">
-                                <small class="form-text">
-                                    En Inscripciones Abiertas las fechas son opcionales.
-                                    Puedes indicar solo la fecha de inicio y dejar la fecha de término vacía,
-                                    o registrar la convocatoria sin fechas.
-                                </small>
-                            </div>
-                        <?php endif; ?>
+                        <div class="system-form-full">
+                            <small class="form-text">
+                                Define la vigencia de la convocatoria. En Inscripciones Abiertas las fechas pueden ser opcionales.
+                            </small>
+                        </div>
 
                         <div>
                             <label class="form-label login-label" for="crear_convocatoria_estado">Disponibilidad</label>
