@@ -444,37 +444,146 @@ class TelefoniaController
         require_once __DIR__ . '/../views/telefonia/host.php';
     }
 
+    /**
+     * Directorio de canalización: Recepción ve territorios y responsables;
+     * Analistas y Asesores sólo ven su Cuenta Clave explícitamente asignado.
+     */
     public function destinosTransferencia()
     {
         $this->validarUsuarioTelefoniaJson();
-
         if (!tienePermiso('telefonia.transferir')) {
-            $this->responderJson([
-                'ok' => false,
-                'mensaje' => 'Tu perfil no tiene permiso para transferir llamadas.'
-            ], 403);
+            $this->responderJson(['ok'=>false,
+                'mensaje'=>'No tienes permiso para transferir llamadas.'], 403);
         }
-
         try {
-            $destinos =
-                $this->service->listarDestinosTransferencia(
-                    (int)($_SESSION['usuario_id'] ?? 0)
-                );
-
+            require_once __DIR__ . '/../services/TelefoniaEnrutamientoService.php';
+            $servicio = new TelefoniaEnrutamientoService();
+            $usuarioId = (int)$_SESSION['usuario_id'];
+            $rol = (string)($_SESSION['rol'] ?? '');
+            $estadoId = filter_var($_GET['estado_id'] ?? 0, FILTER_VALIDATE_INT);
+            if ($estadoId === false || $estadoId < 0) $estadoId = 0;
+            $tipo = strtoupper(trim((string)($_GET['tipo'] ?? '')));
+            $buscar = mb_substr(trim((string)($_GET['buscar'] ?? '')), 0, 80, 'UTF-8');
+            $categoria = TelefoniaEnrutamientoService::categoriaRol($rol);
+            $destinos = $servicio->destinos($usuarioId, $rol, $estadoId, $tipo, $buscar);
+            $instituciones = $categoria === 'RECEPCION' && $tipo === 'INSTITUCION'
+                ? $servicio->instituciones($usuarioId, $rol, $estadoId, $buscar) : [];
             $this->responderJson([
-                'ok' => true,
-                'destinos' => $destinos
+                'ok'=>true,
+                'categoria'=>$categoria,
+                'destinos'=>$destinos,
+                'estados'=>$categoria === 'RECEPCION' ? $servicio->estados() : [],
+                'instituciones'=>$instituciones
+            ]);
+        } catch (InvalidArgumentException $e) {
+            $this->responderJson(['ok'=>false, 'mensaje'=>$e->getMessage()], 422);
+        } catch (Throwable $e) {
+            error_log('[telefonia_enrutamiento] '.$e->getMessage());
+            $this->responderJson(['ok'=>false,
+                'mensaje'=>'No se pudo consultar el directorio de transferencia.'], 500);
+        }
+    }
+
+    private function validarTransferenciaPost(): void
+    {
+        $this->validarUsuarioTelefoniaJson();
+        if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? '')) !== 'POST') {
+            $this->responderJson(['ok'=>false, 'mensaje'=>'Método no permitido.'], 405);
+        }
+        if (!tienePermiso('telefonia.transferir')) {
+            $this->responderJson(['ok'=>false, 'mensaje'=>'Transferencia no autorizada.'], 403);
+        }
+        if (!TelefoniaContactosService::validarToken(
+            (string)($_POST['csrf_token'] ?? '')
+        )) {
+            $this->responderJson(['ok'=>false, 'mensaje'=>'Sesión caducada. Recarga el CRM.'], 403);
+        }
+    }
+
+    /**
+     * Autorizar destino antes de generar una orden al WebRTC. No marca éxito
+     * de PBX ni registra llamadas efectivas. La orden expira en 20 segundos.
+     */
+    public function autorizarTransferencia()
+    {
+        $this->validarTransferenciaPost();
+        try {
+            require_once __DIR__ . '/../services/TelefoniaEnrutamientoService.php';
+            $servicio = new TelefoniaEnrutamientoService();
+            $usuarioId = (int)$_SESSION['usuario_id'];
+            $rol = (string)($_SESSION['rol'] ?? '');
+            $extension = trim((string)($_POST['extension'] ?? ''));
+            $estadoId = (int)($_POST['estado_id'] ?? 0);
+            $tipo = strtoupper(trim((string)($_POST['tipo'] ?? '')));
+            $responsableId = (int)($_POST['responsable_id'] ?? 0);
+            $modo = (string)($_POST['modo'] ?? 'CONSULTADA');
+            if (!in_array($modo, ['DIRECTA','CONSULTADA'], true)) {
+                throw new InvalidArgumentException('Modo de transferencia no válido.');
+            }
+            $destino = $servicio->validarDestino(
+                $usuarioId, $rol, $extension, $estadoId, $tipo, $responsableId
+            );
+            $token = bin2hex(random_bytes(24));
+            $_SESSION['telefonia_transferencia_autorizada'] = [
+                'usuario_id'=>$usuarioId,
+                'extension'=>$extension,
+                'estado_id'=>$estadoId,
+                'tipo'=>$tipo,
+                'responsable_id'=>$responsableId,
+                'modo'=>$modo,
+                'token_hash'=>hash('sha256', $token),
+                'expires'=>time()+20
+            ];
+            $this->responderJson([
+                'ok'=>true, 'token'=>$token,
+                'destino'=>[
+                    'nombre'=>$destino['nombre'],
+                    'extension'=>$destino['extension'],
+                    'estado_nombre'=>$destino['estado_nombre']
+                ],
+                'mensaje'=>'Destino autorizado. Aún no se ha transferido la llamada.'
+            ]);
+        } catch (InvalidArgumentException | DomainException $e) {
+            $this->responderJson(['ok'=>false, 'mensaje'=>$e->getMessage()], 422);
+        } catch (Throwable $e) {
+            error_log('[telefonia_transferir_autorizar] '.$e->getMessage());
+            $this->responderJson(['ok'=>false,'mensaje'=>'No fue posible autorizar el destino.'], 500);
+        }
+    }
+
+    /**
+     * El HOST WebRTC valida y consume la autorización de un solo uso
+     * inmediatamente antes de intentar DTMF. Esto no equivale a confirmar
+     * que Zadarma haya completado la transferencia.
+     */
+    public function validarOrdenTransferencia()
+    {
+        $this->validarTransferenciaPost();
+        $data = $_SESSION['telefonia_transferencia_autorizada'] ?? null;
+        unset($_SESSION['telefonia_transferencia_autorizada']);
+        $token = trim((string)($_POST['token'] ?? ''));
+        if (!is_array($data) || strlen($token) !== 48 ||
+            time() > (int)($data['expires'] ?? 0) ||
+            (int)($data['usuario_id'] ?? 0) !== (int)$_SESSION['usuario_id'] ||
+            !hash_equals((string)($data['token_hash'] ?? ''), hash('sha256', $token))) {
+            $this->responderJson(['ok'=>false,
+                'mensaje'=>'La autorización de transferencia caducó o ya se utilizó.'], 403);
+        }
+        try {
+            require_once __DIR__ . '/../services/TelefoniaEnrutamientoService.php';
+            (new TelefoniaEnrutamientoService())->validarDestino(
+                (int)$_SESSION['usuario_id'], (string)($_SESSION['rol'] ?? ''),
+                (string)$data['extension'], (int)$data['estado_id'],
+                (string)$data['tipo'], (int)$data['responsable_id']
+            );
+            $this->responderJson([
+                'ok'=>true,
+                'extension'=>(string)$data['extension'],
+                'modo'=>(string)$data['modo']
             ]);
         } catch (Throwable $e) {
-            error_log(
-                'No fue posible consultar destinos de transferencia: ' .
-                $e->getMessage()
-            );
-
-            $this->responderJson([
-                'ok' => false,
-                'mensaje' => 'No fue posible consultar las extensiones disponibles.'
-            ], 500);
+            $this->responderJson(['ok'=>false,
+                'mensaje'=>'El destino ya no está autorizado.'], 403);
         }
     }
 
