@@ -19,6 +19,7 @@
             ?.querySelector('.system-form-modal-subtitle');
         const destinatario = modalElement.querySelector('[data-marketing-mail-to]');
         const destinatarioResumen = modalElement.querySelector('[data-marketing-mail-recipient]');
+        const convocatoria = modalElement.querySelector('[data-marketing-mail-convocatoria]');
         const asunto = modalElement.querySelector('[data-marketing-mail-subject]');
         const cuerpo = modalElement.querySelector('[data-marketing-mail-body]');
         const archivos = modalElement.querySelector('[data-marketing-mail-files]');
