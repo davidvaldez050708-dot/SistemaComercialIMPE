@@ -134,6 +134,7 @@ $duracionEntrante = static function ($segundos) {
                     $sinIdentificar = $situacion === 'SIN_IDENTIFICAR';
                     $seguimientoId = (int)($llamada['seguimiento_id'] ?? 0);
                     $grabacionInterna = $esInterna && $esWebrtc && !empty($llamada['grabacion_disponible']);
+                    $audioPbx = !$esWebrtc && !$esInterna && !empty($llamada['grabacion_pbx_reportada']);
                     $audioInternoUrl = $grabacionInterna
                         ? BASE_URL . 'prueba_telefonia/api/grabacion_interna_analista.php?session_id=' . rawurlencode($pbxId)
                         : '';
@@ -196,6 +197,15 @@ $duracionEntrante = static function ($segundos) {
                                 <div class="linkage-call-result-group">
                                     <?php if ($esInterna && $vinculada): ?>
                                         <span class="linkage-call-result-badge is-no-contact">Interna · revisar vínculo de prueba</span>
+                                    <?php elseif ($audioPbx): ?>
+                                        <button type="button" class="linkage-call-audio-state is-available linkage-call-recording-toggle"
+                                            data-incoming-pbx-toggle
+                                            data-pbx-id="<?= $esc($pbxId) ?>"
+                                            aria-controls="<?= $esc($controlAudioId) ?>" aria-expanded="false">
+                                            <i class="bi bi-record-circle" aria-hidden="true"></i>
+                                            <span>Consultar grabación</span>
+                                            <i class="bi bi-chevron-down linkage-call-recording-chevron" aria-hidden="true"></i>
+                                        </button>
                                     <?php elseif ($esInterna): ?>
                                         <span class="linkage-call-result-badge is-verification-test">Interna · no contabiliza</span>
                                     <?php elseif ($vinculada): ?>
@@ -275,6 +285,16 @@ $duracionEntrante = static function ($segundos) {
                                     </div>
                                     <p class="linkage-incoming-player-error" data-incoming-player-error
                                         role="status" aria-live="polite" hidden></p>
+                                </div>
+                            <?php elseif ($audioPbx): ?>
+                                <div class="linkage-call-inline-player linkage-incoming-audio-panel"
+                                    id="<?= $esc($controlAudioId) ?>" data-incoming-pbx-panel hidden>
+                                    <div class="linkage-call-inline-player-heading">
+                                        <span><i class="bi bi-soundwave" aria-hidden="true"></i> Grabación PBX verificada</span>
+                                        <small>Los segmentos de la conversación se reproducen en orden.</small>
+                                    </div>
+                                    <div data-incoming-pbx-audios></div>
+                                    <p class="linkage-incoming-player-error" data-incoming-pbx-error role="status" aria-live="polite" hidden></p>
                                 </div>
                             <?php elseif ($esInterna && $esWebrtc && $situacion === 'INTERNA' && $finalizada): ?>
                                 <div class="linkage-incoming-card-actions">

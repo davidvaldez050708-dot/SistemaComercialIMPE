@@ -1,0 +1,29 @@
+name: Comprobar grabaciones transferidas
+on:
+  push:
+    branches: [fix/audio-transferido-pbx-main-20261015]
+  pull_request:
+    branches: [main]
+jobs:
+  validar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: none
+      - name: Sintaxis PHP de los archivos modificados
+        run: |
+          php -l prueba_telefonia/api/grabacion_transferida_pbx.php
+          php -l app/services/TelefoniaRecepcionMarketingService.php
+          php -l app/services/TelefoniaEntrantesAnalistaService.php
+          php -l app/views/seguimiento_vinculacion/llamadas_entrantes.php
+      - name: Sintaxis JavaScript
+        run: |
+          node --check public/javascript/telefonia_recepcion_marketing.js
+          node --check public/javascript/seguimiento_entrantes_analista.js
+      - name: No modificar WebRTC ni shell en esta entrega
+        run: |
+          test -f public/javascript/telefonia_host.js
+          test -f public/javascript/telefonia_shell.js

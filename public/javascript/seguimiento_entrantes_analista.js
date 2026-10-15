@@ -341,6 +341,71 @@
         updatePlay();
     };
 
+    // Audio PBX confirmado de entrantes; no vincular por aproximación la sesión SDK.
+    page.addEventListener('click', async event => {
+        const button = event.target.closest('[data-incoming-pbx-toggle]');
+        if (!button) return;
+        event.preventDefault();
+        const panel = document.getElementById(button.getAttribute('aria-controls'));
+        if (!panel) return;
+        if (!panel.hidden) {
+            panel.querySelectorAll('audio').forEach(a => a.pause());
+            panel.hidden = true;
+            button.setAttribute('aria-expanded', 'false');
+            return;
+        }
+        const error = panel.querySelector('[data-incoming-pbx-error]');
+        const host = panel.querySelector('[data-incoming-pbx-audios]');
+        const pbx = button.dataset.pbxId || '';
+        const url = new URL('prueba_telefonia/api/grabacion_transferida_pbx.php', document.baseURI);
+        url.searchParams.set('pbx_call_id', pbx);
+        url.searchParams.set('verificar', '1');
+        button.disabled = true;
+        try {
+            const response = await fetch(url.toString(), {credentials:'same-origin', cache:'no-store'});
+            if (!response.ok) throw new Error('No se pudo verificar la llamada.');
+            const info = await response.json();
+            if (!info.ok || !info.disponible || !(info.segmentos > 0)) {
+                throw new Error('Zadarma todavía no entrega todos los segmentos.');
+            }
+            host.replaceChildren();
+            const audios = [];
+            for (let i=0; i<info.segmentos; i++) {
+                const wrap = document.createElement('div');
+                wrap.className = 'linkage-incoming-pbx-segment';
+                const title = document.createElement('small');
+                title.textContent = 'Segmento '+(i+1)+' de '+info.segmentos;
+                const audio = document.createElement('audio');
+                audio.controls = true;
+                audio.preload = 'none';
+                audio.style.maxWidth = '100%';
+                const media = new URL(url);
+                media.searchParams.delete('verificar');
+                media.searchParams.set('segmento', String(i));
+                audio.src = media.toString();
+                wrap.append(title, audio);
+                host.appendChild(wrap);
+                audios.push(audio);
+                audio.addEventListener('play', () => audios.forEach(a => {
+                    if (a!==audio && !a.paused) a.pause();
+                }));
+                audio.addEventListener('ended', () => {
+                    if (audios[i+1]) audios[i+1].play().catch(()=>{});
+                });
+            }
+            error.hidden = true;
+            panel.hidden = false;
+            button.setAttribute('aria-expanded', 'true');
+        } catch (e) {
+            error.textContent = e.message || 'Grabación no disponible.';
+            error.hidden = false;
+            panel.hidden = false;
+            button.setAttribute('aria-expanded','true');
+        } finally {
+            button.disabled = false;
+        }
+    });
+
     page.addEventListener('click', event => {
         const button = event.target.closest('[data-incoming-audio-toggle]');
         if (!button || !page.contains(button)) return;

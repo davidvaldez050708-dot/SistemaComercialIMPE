@@ -175,6 +175,8 @@ class TelefoniaEntrantesAnalistaService
                 'clasificacion' => (string)($registro['estado'] ?? 'PENDIENTE'),
                 'seguimiento_id' => (int)($registro['seguimiento_id'] ?? 0),
                 'interaccion_id' => (int)($registro['interaccion_id'] ?? 0),
+                'grabacion_pbx_reportada' => (string)($call['estado'] ?? '') === 'ended' &&
+                    $this->eventos->buscarCallIdGrabacion($id) !== '',
             ];
         }
         // Dos fuentes distintas: PBX firmada y observación de WebRTC local.
