@@ -51,9 +51,9 @@ python3 - "$CUSTOM/app/views/telefonia/shell.php" <<'PY'
 import pathlib,sys
 p=pathlib.Path(sys.argv[1])
 s=p.read_text()
-needle="    <section class=\\"persistent-phone-panel"
+needle='    <section class="persistent-phone-panel'
 assert needle in s
-s=s.replace(needle, "    <!-- AJUSTE-HISTORICO-HOSTINGER -->\\n"+needle,1)
+s=s.replace(needle, "    <!-- AJUSTE-HISTORICO-HOSTINGER -->\n"+needle,1)
 p.write_text(s)
 PY
 export IMPE_RECEPTION_PUBLIC="$CUSTOM"
