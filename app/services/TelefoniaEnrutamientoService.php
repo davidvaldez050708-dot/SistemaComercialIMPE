@@ -90,6 +90,13 @@ final class TelefoniaEnrutamientoService
                 JOIN estados e ON e.id = a.estado_id AND e.estado = 1
                 WHERE " . self::asignacionVigente('a') . "
                   AND $tipoFiltro AND a.usuario_id <> ?
+                  AND (
+                    (a.tipo_asignacion = 'ANALISTA_DATOS' AND LOWER(TRIM(r.nombre)) = 'analista de datos')
+                    OR (a.tipo_asignacion = 'ASESOR'
+                        AND LOWER(TRIM(r.nombre)) IN ('asesor', 'asesor de ventas'))
+                    OR (a.tipo_asignacion = 'CUENTA_CLAVE'
+                        AND LOWER(TRIM(r.nombre)) IN ('cuenta clave', 'cuenta clave de territorio'))
+                  )
                   AND EXISTS (
                     SELECT 1 FROM rol_permisos rp
                     JOIN permisos p ON p.id = rp.permiso_id
@@ -187,6 +194,9 @@ final class TelefoniaEnrutamientoService
     ): array {
         if (!preg_match('/^[0-9]{3,6}$/', $extension)) {
             throw new DomainException('Selecciona una extensión válida del directorio.');
+        }
+        if (self::categoriaRol($rol) === 'RECEPCION' && $estadoId <= 0) {
+            throw new DomainException('Selecciona primero el estado confirmado por el solicitante.');
         }
         foreach ($this->destinos($actorId, $rol, $estadoId, $tipo) as $destino) {
             if ($destino['extension'] === $extension &&
