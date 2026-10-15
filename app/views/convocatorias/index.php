@@ -1161,14 +1161,58 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
                                         for="crear_convocatoria_formulario_publico">
                                         Formulario
                                     </label>
-                                    <select
-                                        class="form-select system-form-control"
-                                        id="crear_convocatoria_formulario_publico"
-                                        data-convocatoria-form-type>
-                                        <option value="">Selecciona una opción</option>
-                                        <option value="registro">Registro</option>
-                                        <option value="inscripcion">Inscripción</option>
-                                    </select>
+                                    <div
+                                        class="convocatoria-form-type-dropdown"
+                                        data-convocatoria-form-type-dropdown>
+                                        <input
+                                            type="hidden"
+                                            id="crear_convocatoria_formulario_publico"
+                                            value=""
+                                            data-convocatoria-form-type>
+
+                                        <button
+                                            type="button"
+                                            class="convocatoria-form-type-trigger"
+                                            aria-haspopup="listbox"
+                                            aria-expanded="false"
+                                            data-convocatoria-form-type-trigger>
+                                            <span data-convocatoria-form-type-label>
+                                                Selecciona una opción
+                                            </span>
+                                            <i class="bi bi-chevron-down" aria-hidden="true"></i>
+                                        </button>
+
+                                        <div
+                                            class="convocatoria-form-type-menu"
+                                            role="listbox"
+                                            aria-label="Seleccionar formulario"
+                                            data-convocatoria-form-type-menu>
+                                            <button
+                                                type="button"
+                                                class="convocatoria-form-type-option is-selected"
+                                                role="option"
+                                                aria-selected="true"
+                                                data-convocatoria-form-type-value="">
+                                                Selecciona una opción
+                                            </button>
+                                            <button
+                                                type="button"
+                                                class="convocatoria-form-type-option"
+                                                role="option"
+                                                aria-selected="false"
+                                                data-convocatoria-form-type-value="registro">
+                                                Registro
+                                            </button>
+                                            <button
+                                                type="button"
+                                                class="convocatoria-form-type-option"
+                                                role="option"
+                                                aria-selected="false"
+                                                data-convocatoria-form-type-value="inscripcion">
+                                                Inscripción
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <div class="convocatoria-public-form-actions">
@@ -1486,6 +1530,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (share) {
         const select = share.querySelector('[data-convocatoria-form-type]');
+        const formTypeDropdown = share.querySelector('[data-convocatoria-form-type-dropdown]');
+        const formTypeTrigger = share.querySelector('[data-convocatoria-form-type-trigger]');
+        const formTypeLabel = share.querySelector('[data-convocatoria-form-type-label]');
+        const formTypeOptions = Array.from(
+            share.querySelectorAll('[data-convocatoria-form-type-value]')
+        );
         const buttonLink = share.querySelector('[data-convocatoria-generate-link]');
         const buttonQr = share.querySelector('[data-convocatoria-generate-qr]');
         const result = share.querySelector('[data-convocatoria-form-result]');
@@ -1526,14 +1576,70 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         };
 
-        select?.addEventListener('change', function () {
-            const hasType = getSelectedUrl() !== '';
+        const closeFormTypeDropdown = function () {
+            formTypeDropdown?.classList.remove('is-open');
+            formTypeTrigger?.setAttribute('aria-expanded', 'false');
+        };
 
-            if (buttonLink) {
-                buttonLink.disabled = !hasType;
+        formTypeTrigger?.addEventListener('click', function () {
+            const opening = !formTypeDropdown?.classList.contains('is-open');
+
+            if (opening) {
+                formTypeDropdown?.classList.add('is-open');
+                formTypeTrigger?.setAttribute('aria-expanded', 'true');
+            } else {
+                closeFormTypeDropdown();
             }
+        });
 
-            resetShare();
+        formTypeOptions.forEach(function (option) {
+            option.addEventListener('click', function () {
+                const value = String(
+                    option.dataset.convocatoriaFormTypeValue || ''
+                );
+
+                if (select) {
+                    select.value = value;
+                }
+
+                if (formTypeLabel) {
+                    formTypeLabel.textContent = option.textContent.trim();
+                }
+
+                formTypeOptions.forEach(function (item) {
+                    const selected = item === option;
+                    item.classList.toggle('is-selected', selected);
+                    item.setAttribute(
+                        'aria-selected',
+                        selected ? 'true' : 'false'
+                    );
+                });
+
+                closeFormTypeDropdown();
+
+                const hasType = getSelectedUrl() !== '';
+
+                if (buttonLink) {
+                    buttonLink.disabled = !hasType;
+                }
+
+                resetShare();
+            });
+        });
+
+        document.addEventListener('click', function (event) {
+            if (
+                formTypeDropdown &&
+                !formTypeDropdown.contains(event.target)
+            ) {
+                closeFormTypeDropdown();
+            }
+        });
+
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') {
+                closeFormTypeDropdown();
+            }
         });
 
         buttonLink?.addEventListener('click', function () {
