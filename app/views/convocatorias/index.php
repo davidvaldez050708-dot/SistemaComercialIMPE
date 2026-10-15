@@ -1223,7 +1223,7 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
                                     </small>
                                 </div>
                             </div>
-                        </div>                        </div>
+                        </div>
                     </div>
                 </div>
 
@@ -1482,6 +1482,126 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    const share = document.querySelector('[data-convocatoria-form-share]');
+
+    if (share) {
+        const select = share.querySelector('[data-convocatoria-form-type]');
+        const buttonLink = share.querySelector('[data-convocatoria-generate-link]');
+        const buttonQr = share.querySelector('[data-convocatoria-generate-qr]');
+        const result = share.querySelector('[data-convocatoria-form-result]');
+        const inputUrl = share.querySelector('[data-convocatoria-form-url]');
+        const copyButton = share.querySelector('[data-convocatoria-copy-link]');
+        const qrResult = share.querySelector('[data-convocatoria-qr-result]');
+        const qrImage = share.querySelector('[data-convocatoria-qr-image]');
+        const convocatoriaLinkInput = document.querySelector('[data-convocatoria-link-input]');
+
+        const getSelectedUrl = function () {
+            const type = String(select?.value || '');
+
+            if (type === 'registro') {
+                return String(share.dataset.registroUrl || '');
+            }
+
+            if (type === 'inscripcion') {
+                return String(share.dataset.inscripcionUrl || '');
+            }
+
+            return '';
+        };
+
+        const resetShare = function () {
+            result?.classList.add('d-none');
+            qrResult?.classList.add('d-none');
+
+            if (inputUrl) {
+                inputUrl.value = '';
+            }
+
+            if (qrImage) {
+                qrImage.src = '';
+            }
+
+            if (buttonQr) {
+                buttonQr.disabled = true;
+            }
+        };
+
+        select?.addEventListener('change', function () {
+            const hasType = getSelectedUrl() !== '';
+
+            if (buttonLink) {
+                buttonLink.disabled = !hasType;
+            }
+
+            resetShare();
+        });
+
+        buttonLink?.addEventListener('click', function () {
+            const url = getSelectedUrl();
+
+            if (url === '') {
+                return;
+            }
+
+            if (inputUrl) {
+                inputUrl.value = url;
+            }
+
+            if (convocatoriaLinkInput) {
+                convocatoriaLinkInput.value = url;
+                convocatoriaLinkInput.dispatchEvent(
+                    new Event('input', { bubbles: true })
+                );
+            }
+
+            result?.classList.remove('d-none');
+
+            if (buttonQr) {
+                buttonQr.disabled = false;
+            }
+        });
+
+        buttonQr?.addEventListener('click', function () {
+            const url = String(inputUrl?.value || getSelectedUrl()).trim();
+
+            if (url === '') {
+                return;
+            }
+
+            const quickchartBase = String(
+                share.dataset.quickchartUrl || 'https://quickchart.io/qr'
+            );
+
+            const qrUrl =
+                quickchartBase +
+                '?text=' + encodeURIComponent(url) +
+                '&size=360&margin=2&ecLevel=M';
+
+            if (qrImage) {
+                qrImage.src = qrUrl;
+            }
+
+            qrResult?.classList.remove('d-none');
+            result?.classList.remove('d-none');
+        });
+
+        copyButton?.addEventListener('click', async function () {
+            const url = String(inputUrl?.value || '').trim();
+
+            if (url === '') {
+                return;
+            }
+
+            try {
+                await navigator.clipboard.writeText(url);
+            } catch (error) {
+                inputUrl?.focus();
+                inputUrl?.select();
+                document.execCommand('copy');
+            }
+        });
+    }
+
     const modalImagenElemento = document.getElementById('modalImagenConvocatoria');
     const modalImagen = modalImagenElemento ? new bootstrap.Modal(modalImagenElemento) : null;
     const imagenPreview = modalImagenElemento?.querySelector('[data-convocatoria-image-preview]');
