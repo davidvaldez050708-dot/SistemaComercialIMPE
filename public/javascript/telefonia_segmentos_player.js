@@ -56,7 +56,26 @@
             mute.className = 'linkage-call-player-button linkage-call-player-volume';
             mute.setAttribute('aria-label', 'Silenciar grabación');
             mute.innerHTML = '<i class="bi bi-volume-up" aria-hidden="true"></i>';
-            controls.append(audio, play, elapsed, progress, duration, mute);
+            // Misma acción de tres puntos utilizada por los reproductores
+            // del expediente; el enlace pasa por el endpoint autenticado.
+            const menu = document.createElement('details');
+            menu.className = 'linkage-call-player-menu';
+            const summary = document.createElement('summary');
+            summary.className = 'linkage-call-player-button linkage-call-player-more';
+            summary.setAttribute('aria-label', 'Opciones de grabación');
+            summary.title = 'Opciones';
+            summary.innerHTML = '<i class="bi bi-three-dots-vertical" aria-hidden="true"></i>';
+            const menuContent = document.createElement('div');
+            menuContent.className = 'linkage-call-player-menu-content';
+            const download = document.createElement('a');
+            download.className = 'linkage-call-player-download';
+            const downloadUrl = new URL(url);
+            downloadUrl.searchParams.set('download', '1');
+            download.href = downloadUrl.toString();
+            download.innerHTML = '<i class="bi bi-download" aria-hidden="true"></i> Descargar audio';
+            menuContent.appendChild(download);
+            menu.append(summary, menuContent);
+            controls.append(audio, play, elapsed, progress, duration, mute, menu);
             const error = document.createElement('p');
             error.className = 'linkage-incoming-player-error';
             error.hidden = true;
