@@ -15,6 +15,7 @@ require_once $root . '/app/models/RolModel.php';
 require_once $root . '/app/models/SeguimientoVinculacionModel.php';
 require_once $root . '/app/services/ZadarmaCallLookupService.php';
 require_once $root . '/app/services/ZadarmaWebhookEventStoreService.php';
+require_once $root . '/app/services/TelefoniaGrabacionExpedienteTransferidaService.php';
 require_once $root . '/app/helpers/TelefoniaFechaHoraHelper.php';
 
 if (!isset($_SESSION['usuario_id'])) {
@@ -219,6 +220,7 @@ function descomponerNotasLlamada(string $notas, string $contactoReferencia = '')
 }
 
 $etapaHistorial = 'consultar_interacciones';
+$asociadorTransferencia = new TelefoniaGrabacionExpedienteTransferidaService($conexionHistorial);
 foreach ($modelo->obtenerInteraccionesSeguimiento($seguimientoId) as $interaccion) {
     if (strtoupper((string)($interaccion['canal'] ?? '')) !== 'LLAMADA_IP') {
         continue;
@@ -396,8 +398,24 @@ foreach ($modelo->obtenerInteraccionesSeguimiento($seguimientoId) as $interaccio
     // La sesión observada WebRTC puede tener audio en Zadarma, pero sin
     // pbx_call_id validado NO existe una asociación segura con ese audio.
     // No confundir "archivo no vinculado" con "no se grabó".
+    // Solo ofrecer audio al propietario de la extensión si una transferencia
+    // firmada y la sesión WebRTC coinciden sin ambigüedad. No reescribir el
+    // proveedor ni el identificador original de la interacción.
+    $grabacionPbxId = null;
+    if (!$excluirGrabacion && $webrtcSinPbx && $interaccionId > 0) {
+        try {
+            $grabacionPbxId = $asociadorTransferencia->buscar(
+                $usuarioId, $seguimientoId, $interaccionId
+            );
+        } catch (Throwable $errorAsociacion) {
+            // Una tabla ausente o MySQL temporalmente limitado no debe hacer
+            // fallar el historial general ni exponer audio sin verificación.
+            error_log('[llamadas_seguimiento_asociacion_pbx] '
+                . get_class($errorAsociacion));
+        }
+    }
     $grabacionSinVincular = !$excluirGrabacion && $webrtcSinPbx &&
-        !$puedeTenerGrabacion;
+        !$puedeTenerGrabacion && $grabacionPbxId === null;
 
     $nombreUsuario = trim(
         (string)($interaccion['nombre'] ?? '') . ' ' .
@@ -428,6 +446,7 @@ foreach ($modelo->obtenerInteraccionesSeguimiento($seguimientoId) as $interaccio
         'tiene_grabacion' => (bool)$puedeTenerGrabacion,
         'grabacion_procesando' => (bool)$grabacionProcesando,
         'grabacion_sin_vincular' => (bool)$grabacionSinVincular,
+        'grabacion_transferida_pbx' => $grabacionPbxId,
         'grabacion_url' => $puedeTenerGrabacion
             ? 'prueba_telefonia/api/grabacion_interaccion.php?interaccion_id=' . $interaccionId
             : null
