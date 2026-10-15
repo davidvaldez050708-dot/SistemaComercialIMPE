@@ -466,7 +466,23 @@ $jsOpcionalHead = array_values(array_unique($jsOpcionalHead));
 
     <link
         rel="stylesheet"
-        href="<?= BASE_URL ?>public/css/dashboard.css?v=<?= time() ?>">
+        href="<?= BASE_URL ?>public/css/dashboard.css?v=<?= filemtime(ROOT_PATH . '/public/css/dashboard.css') ?>">
+
+    <?php if ($usarTelefoniaPersistente): ?>
+    <!-- Navegaciones PHP normales en usuarios con teléfono. El navegador
+         conserva la imagen anterior durante un cambio de documento
+         cuando admite transiciones entre páginas del mismo origen.
+         No genera pantallas de carga ni modifica el router del CRM. -->
+    <style id="impeDashboardNativeNavigation">
+        @view-transition { navigation: auto; }
+        ::view-transition-old(root),
+        ::view-transition-new(root) { animation-duration: 110ms; }
+        @media (prefers-reduced-motion: reduce) {
+            ::view-transition-old(root),
+            ::view-transition-new(root) { animation-duration: 0ms; }
+        }
+    </style>
+    <?php endif; ?>
 
     <link
         rel="stylesheet"
