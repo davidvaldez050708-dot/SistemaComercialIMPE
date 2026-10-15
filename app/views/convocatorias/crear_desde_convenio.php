@@ -52,7 +52,7 @@ $fecha = static function ($valor) {
             <div>
                 <h2 class="panel-title">Crear convocatoria</h2>
                 <p>
-                    Revisa los convenios recibidos y genera una convocatoria
+                    Revisa los convenios aliados y genera una convocatoria
                     para el territorio correspondiente.
                 </p>
             </div>
@@ -60,16 +60,16 @@ $fecha = static function ($valor) {
 
         <div class="crear-convocatoria-summary">
             <strong><?= count($convenios) ?></strong>
-            <span><?= count($convenios) === 1 ? 'convenio recibido' : 'convenios recibidos' ?></span>
+            <span><?= count($convenios) === 1 ? 'convenio aliado' : 'convenios aliados' ?></span>
         </div>
     </section>
 
     <section class="dashboard-panel crear-convocatoria-toolbar-panel">
         <div class="crear-convocatoria-toolbar-heading">
             <div>
-                <h2 class="panel-title">Convenios recibidos</h2>
+                <h2 class="panel-title">Convenios de aliados</h2>
                 <p>
-                    Selecciona una notificación para consultar la información
+                    Selecciona una notificación para consultar los datos del aliado
                     antes de crear la convocatoria.
                 </p>
             </div>
@@ -84,7 +84,7 @@ $fecha = static function ($valor) {
                         type="search"
                         class="form-control"
                         id="crear_convocatoria_buscar"
-                        placeholder="Buscar por institución, estado o archivo..."
+                        placeholder="Buscar por institución, estado o analista..."
                         autocomplete="off"
                         data-convenio-search>
                 </div>
@@ -113,8 +113,8 @@ $fecha = static function ($valor) {
             <div>
                 <h3>Falta habilitar la recepción de convenios</h3>
                 <p>
-                    Aplica la migración de recepción de convenio requisitado
-                    para mostrar las notificaciones en este módulo.
+                    La estructura de convenios formalizados no está disponible.
+                    Verifica las migraciones del flujo de Vinculación/Aliados.
                 </p>
             </div>
         </section>
@@ -122,9 +122,9 @@ $fecha = static function ($valor) {
         <section class="dashboard-panel crear-convocatoria-empty">
             <span><i class="bi bi-inbox"></i></span>
             <div>
-                <h3>Aún no hay convenios recibidos</h3>
+                <h3>Aún no hay convenios aliados</h3>
                 <p>
-                    Cuando Vinculación registre un convenio recibido,
+                    Cuando Vinculación registre un convenio aliado,
                     aparecerá automáticamente en esta bandeja.
                 </p>
             </div>
@@ -148,10 +148,13 @@ $fecha = static function ($valor) {
                         'municipio' => (string)($convenio['municipio_nombre'] ?? ''),
                         'institucion' => (string)($convenio['nombre_entidad'] ?? ''),
                         'tipo_entidad' => (string)($convenio['tipo_entidad'] ?? ''),
-                        'fecha_recibido' => $fechaHora($convenio['convenio_recibido_at'] ?? ''),
-                        'fecha_documento' => $fecha($convenio['convenio_recibido_fecha'] ?? ''),
-                        'archivo' => (string)($convenio['convenio_recibido_nombre_original'] ?? ''),
-                        'notas' => (string)($convenio['convenio_recibido_notas'] ?? ''),
+                        'fecha_recibido' => $fechaHora($convenio['convenio_formalizado_at'] ?? ''),
+                        'fecha_documento' => $fecha($convenio['convenio_fecha'] ?? ''),
+                        'archivo' => '',
+                        'notas' => (string)($convenio['convenio_notas'] ?? ''),
+                        'contacto' => (string)($convenio['contacto_nombre'] ?? ''),
+                        'cargo_contacto' => (string)($convenio['contacto_cargo'] ?? ''),
+                        'correo_contacto' => (string)($convenio['correo_contacto'] ?? ''),
                         'analista' => trim(
                             (string)($convenio['analista_nombre'] ?? '') . ' ' .
                             (string)($convenio['analista_apellidos'] ?? '')
@@ -165,8 +168,9 @@ $fecha = static function ($valor) {
                                 $payload['institucion'],
                                 $payload['estado'],
                                 $payload['municipio'],
-                                $payload['archivo'],
-                                $payload['analista']
+                                $payload['analista'],
+                                $payload['contacto'],
+                                $payload['correo_contacto']
                             ]
                         ),
                         'UTF-8'
@@ -185,7 +189,7 @@ $fecha = static function ($valor) {
                             JSON_INVALID_UTF8_SUBSTITUTE
                         )) ?>'>
                         <span class="crear-convocatoria-notification-icon">
-                            <i class="bi bi-file-earmark-check"></i>
+                            <i class="bi bi-building-check"></i>
                         </span>
 
                         <span class="crear-convocatoria-notification-content">
@@ -200,17 +204,15 @@ $fecha = static function ($valor) {
                                 </span>
 
                                 <span>
-                                    <i class="bi bi-clock"></i>
-                                    <?= $texto($payload['fecha_recibido']) ?>
+                                    <i class="bi bi-check2-circle"></i>
+                                    Formalizado <?= $texto($payload['fecha_recibido']) ?>
                                 </span>
                             </span>
 
-                            <?php if ($payload['archivo'] !== ''): ?>
-                                <span class="crear-convocatoria-notification-file">
-                                    <i class="bi bi-paperclip"></i>
-                                    <?= $texto($payload['archivo']) ?>
-                                </span>
-                            <?php endif; ?>
+                            <span class="crear-convocatoria-notification-file">
+                                <i class="bi bi-person-badge"></i>
+                                Analista: <?= $texto($payload['analista'] !== '' ? $payload['analista'] : 'Sin asignar') ?>
+                            </span>
                         </span>
 
                         <span class="crear-convocatoria-notification-status">
@@ -245,7 +247,7 @@ $fecha = static function ($valor) {
             <div class="modal-header">
                 <div>
                     <span class="crear-convocatoria-modal-kicker">
-                        CONVENIO RECIBIDO
+                        CONVENIO · ALIADO
                     </span>
                     <h2
                         class="modal-title"
@@ -286,7 +288,7 @@ $fecha = static function ($valor) {
                     </div>
 
                     <div>
-                        <span>Fecha de recepción</span>
+                        <span>Fecha de formalización</span>
                         <strong data-convenio-modal-received>—</strong>
                     </div>
 
@@ -301,13 +303,13 @@ $fecha = static function ($valor) {
                     </div>
 
                     <div>
-                        <span>Archivo recibido</span>
-                        <strong data-convenio-modal-file>—</strong>
+                        <span>Contacto del aliado</span>
+                        <strong data-convenio-modal-contact>—</strong>
                     </div>
                 </div>
 
                 <div class="crear-convocatoria-modal-notes">
-                    <span>Notas del convenio</span>
+                    <span>Notas del convenio / formalización</span>
                     <p data-convenio-modal-notes>Sin notas registradas.</p>
                 </div>
 
@@ -315,7 +317,7 @@ $fecha = static function ($valor) {
                     <i class="bi bi-info-circle"></i>
                     <span>
                         La convocatoria se abrirá directamente en el estado
-                        del convenio seleccionado.
+                        correspondiente al aliado seleccionado.
                     </span>
                 </div>
             </div>
