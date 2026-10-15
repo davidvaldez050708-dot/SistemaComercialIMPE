@@ -10,6 +10,7 @@ on:
       - "app/views/telefonia/recepcion_marketing.php"
       - "public/javascript/telefonia_shell.js"
       - "tools/desplegar_cierre_transferencia_hostinger.sh"
+      - "tools/fusionar_cierre_transferencia_hostinger.py"
       - "tests/telefonia_cierre_transferencia_hostinger_smoke.sh"
       - "public/javascript/telefonia_shell_navegacion.js"
       - "tools/desplegar_estabilidad_shell_analista_hostinger.sh"
@@ -93,6 +94,7 @@ jobs:
           node tests/telefonia_entrantes_bridge_smoke.js
       - name: Despliegue simulado Hostinger
         run: |
+          python3 -m py_compile tools/fusionar_cierre_transferencia_hostinger.py
           bash -n tools/desplegar_cierre_transferencia_hostinger.sh
           bash tests/telefonia_cierre_transferencia_hostinger_smoke.sh
           bash -n tools/desplegar_telefonia_shell_hostinger.sh
