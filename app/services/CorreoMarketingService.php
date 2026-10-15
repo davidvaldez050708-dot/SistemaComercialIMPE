@@ -465,6 +465,9 @@ class CorreoMarketingService
         );
         $asunto = trim((string)($datos['asunto'] ?? ''));
         $cuerpo = trim((string)($datos['cuerpo'] ?? ''));
+        $tipo = (int)($datos['convocatoria_id'] ?? 0) > 0
+            ? 'CONVOCATORIA'
+            : 'GENERAL';
 
         if ($usuarioId <= 0) {
             return $this->error('La sesión no está activa.', 401);
@@ -575,7 +578,8 @@ class CorreoMarketingService
                     $destinatarioNombre,
                     $asunto,
                     $cuerpo,
-                    $nombresAdjuntos
+                    $nombresAdjuntos,
+                    $tipo
                 );
                 $registroId = $correoId;
             } else {
@@ -634,6 +638,9 @@ class CorreoMarketingService
         $destinatarioNombre = trim((string)($datos['destinatario_nombre'] ?? ''));
         $asunto = trim((string)($datos['asunto'] ?? ''));
         $cuerpo = trim((string)($datos['cuerpo'] ?? ''));
+        $tipo = (int)($datos['convocatoria_id'] ?? 0) > 0
+            ? 'CONVOCATORIA'
+            : 'GENERAL';
 
         if ($usuarioId <= 0) {
             return $this->error('La sesión no está activa.', 401);
@@ -1126,8 +1133,12 @@ class CorreoMarketingService
         $destinatarioNombre,
         $asunto,
         $cuerpo,
-        $nombresAdjuntos
+        $nombresAdjuntos,
+        $tipo = 'GENERAL'
     ) {
+        $tipo = strtoupper(trim((string)$tipo)) === 'CONVOCATORIA'
+            ? 'CONVOCATORIA'
+            : 'GENERAL';
         $adjuntosCount = count($nombresAdjuntos);
         $adjuntosNombres = json_encode(
             array_values($nombresAdjuntos),
@@ -1140,6 +1151,7 @@ class CorreoMarketingService
                     destinatario_nombre = NULLIF(?, ''),
                     asunto = ?,
                     cuerpo = ?,
+                    tipo = ?,
                     estado = ?,
                     adjuntos_count = ?,
                     adjuntos_nombres = ?,
@@ -1152,11 +1164,12 @@ class CorreoMarketingService
                   AND estado = 'BORRADOR'";
         $stmt = $this->connection->prepare($sql);
         $stmt->bind_param(
-            'sssssisii',
+            'ssssssisii',
             $destinatario,
             $destinatarioNombre,
             $asunto,
             $cuerpo,
+            $tipo,
             $estado,
             $adjuntosCount,
             $adjuntosNombres,
@@ -1199,11 +1212,12 @@ class CorreoMarketingService
                   AND estado = 'BORRADOR'";
         $stmt = $this->connection->prepare($sql);
         $stmt->bind_param(
-            'sssssisii',
+            'ssssssisii',
             $destinatario,
             $destinatarioNombre,
             $asunto,
             $cuerpo,
+            $tipo,
             $estado,
             $adjuntosCount,
             $adjuntosNombres,
@@ -1273,7 +1287,6 @@ class CorreoMarketingService
             JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
         );
 
-        $tipo = 'GENERAL';
         $estado = 'BORRADOR';
 
         $sql = "INSERT INTO correos_marketing (
@@ -1320,7 +1333,6 @@ class CorreoMarketingService
             JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
         );
 
-        $tipo = 'GENERAL';
         $estado = 'PENDIENTE';
 
         $sql = "INSERT INTO correos_marketing (
