@@ -63,6 +63,17 @@ on:
       - ".github/workflows/telefonia-shell.yml"
   pull_request:
 jobs:
+  cierre-legacy-hostinger:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Comprobar sintaxis y fusión del shell histórico
+        run: |
+          python3 -m py_compile tools/fusionar_cierre_transferencia_legacy_hostinger.py
+          bash -n tools/desplegar_cierre_transferencia_hostinger.sh
+          bash tests/telefonia_cierre_transferencia_legacy_hostinger_smoke.sh
   telefonia-persistente:
     runs-on: ubuntu-latest
     steps:
