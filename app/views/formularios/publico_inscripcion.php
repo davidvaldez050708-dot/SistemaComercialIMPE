@@ -367,6 +367,11 @@ $fechaMaximaNacimiento = date('Y-m-d');
 
                     <div class="formulario-publico-grid">
                         <div class="formulario-publico-field is-full">
+                            <small class="formulario-publico-help formulario-publico-help-recomendacion">
+                                Si conoces a alguien que pudiera estar interesado en nuestros programas,
+                                puedes compartirnos su número de teléfono.
+                            </small>
+
                             <label for="registro_publico_tel_recomendado">
                                 Teléfono de la persona recomendada
                             </label>
@@ -380,8 +385,7 @@ $fechaMaximaNacimiento = date('Y-m-d');
                                 placeholder="Opcional · 10 dígitos"
                                 data-publico-tel-recomendado>
                             <small class="formulario-publico-help">
-                                Si conoces a alguien que pudiera estar interesado en nuestros programas,
-                                puedes compartirnos su número de teléfono. Este campo es opcional.
+                                Este campo es opcional.
                             </small>
                             <div class="invalid-feedback">
                                 Ingresa un número de teléfono válido de 10 dígitos.
