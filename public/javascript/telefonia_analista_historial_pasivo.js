@@ -144,8 +144,19 @@
     let lastSignature = '';
     let chain = Promise.resolve();
     const contextKey = id => 'impe:crm:transfer-context:' + userId + ':' + id;
-    const fetchReceptionContext = async (id, phone) => {
-        if (!id || !phone || !root.fetch) return;
+    const fetchReceptionContext = async (id, phone, attempt = 0) => {
+        if (!id || !phone || !root.fetch || active?.id !== id) return;
+        // Al empezar el timbrado el traspaso de Tania puede estar aún
+        // validándose. Un GET único llegaba demasiado pronto y dejaba el
+        // expediente ausente durante toda la llamada. Consultar por poco
+        // tiempo, exclusivamente mientras exista esta misma sesión SDK.
+        const retry = () => {
+            if (attempt < 8 && active?.id === id) {
+                root.setTimeout?.(() => {
+                    void fetchReceptionContext(id, phone, attempt + 1);
+                }, 800);
+            }
+        };
         try {
             const url = new URL('index.php?controller=telefonia&action=contextoTransferencia',
                 root.location.href);
@@ -155,8 +166,11 @@
                 headers:{Accept:'application/json'}
             });
             const data = await response.json();
-            if (!response.ok || !data.ok || !data.contexto ||
-                active?.id !== id) return;
+            if (active?.id !== id) return;
+            if (!response.ok || !data.ok || !data.contexto) {
+                retry();
+                return;
+            }
             const found = data.contexto;
             if (!Number.isInteger(Number(found.seguimiento_id)) ||
                 Number(found.seguimiento_id) <= 0) return;
@@ -180,6 +194,7 @@
             } catch (_) {}
         } catch (_) {
             // Un servicio de contexto no puede interrumpir el audio WebRTC.
+            retry();
         }
     };
     const postEvent = function (event, call) {
@@ -188,7 +203,12 @@
             session_id: String(call.id),
             evento: event,
             numero: String(call.number || ''),
-            caller_name: String(call.name || '')
+            caller_name: String(call.name || ''),
+            // No se presenta como duración PBX certificada. El servidor
+            // sólo admitirá un valor compatible con sus marcas de tiempo.
+            duracion_observada_segundos: event === 'ended'
+                ? String(Math.max(0, Math.floor(Number(call.duration || 0))))
+                : '0'
         });
         chain = chain.catch(() => false).then(async () => {
             for (let n = 0; n < 2; n++) {
@@ -320,6 +340,19 @@
             Number(lastState?.duration || 0),
             answeredAt ? Math.floor((Date.now() - answeredAt) / 1000) : 0
         );
+        // Conservar la duración vista en el teléfono únicamente para
+        // esta sesión. La bitácora del servidor sigue diferenciándola de
+        // un evento PBX firmado y puede reconciliarla con sus marcas UTC.
+        if (confirmedLocally && observed > 0) {
+            try {
+                root.sessionStorage?.setItem(
+                    'impe:crm:call-summary:' + userId + ':' + call.id,
+                    JSON.stringify({
+                        call_id:call.id, duration:observed, saved_at:Date.now()
+                    })
+                );
+            } catch (_) {}
+        }
         finished = {
             ...call,
             answeredAt,
