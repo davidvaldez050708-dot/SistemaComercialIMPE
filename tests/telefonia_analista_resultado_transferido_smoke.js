@@ -22,7 +22,7 @@ function element() {
     };
 }
 async function scenario(conversation) {
-    let now=1000000, stored='', captures=[];
+    let now=1000000, stored='', captures=[], dockDismissed=0;
     const els=new Map();
     const el=k=>{if(!els.has(k)) els.set(k,element());return els.get(k)};
     const panel=element();
@@ -33,9 +33,15 @@ async function scenario(conversation) {
     const doc={
         body:{}, head:{appendChild(){}},
         createElement(){return element()},
-        querySelector(s){return s==='[data-incoming-panel]'?panel:null},
+        querySelector(s){
+            if (s==='[data-incoming-panel]') return panel;
+            if (s==='[data-analyst-dismiss-call]') return dock;
+            return null;
+        },
         getElementById(s){return s==='impeCrmFrame'?crm:null}
     };
+    const dock=element();
+    dock.addEventListener('click',()=>dockDismissed++);
     const frm={location:{href:'https://example.test/index.php'}};
     const crm={src:'',contentWindow:frm,addEventListener(){}};
     class DateStub extends Date { static now(){return now} }
@@ -98,6 +104,7 @@ async function scenario(conversation) {
             data:{type:'IMPE_ANALYST_RESULT_SAVED',callId:id}});
         assert.equal(root.IMPE_ANALYST_WEBRTC_JOURNAL_DEBUG.hasFinalized(),false);
         assert.equal(captures.at(-1)?.action,'CLEAR_FINISHED');
+        assert.equal(dockDismissed,1,'quitar aviso inferior tras guardar');
     } else {
         assert.equal(counter.textContent,'00:00');
         assert.equal(close.hidden,false,'perdida puede cerrarse');
