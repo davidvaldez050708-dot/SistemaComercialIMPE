@@ -1,0 +1,26 @@
+name: Comprobar despliegue ruta y audio
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tools/desplegar_ruta_menu_audio_hostinger.py'
+      - 'tests/ruta_menu_audio_deploy_smoke.py'
+      - '.github/workflows/despliegue-ruta-audio-hostinger.yml'
+jobs:
+  validar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: none
+      - name: Sintaxis y simulación sin producción
+        run: |
+          python3 -m py_compile tools/desplegar_ruta_menu_audio_hostinger.py
+          python3 tests/ruta_menu_audio_deploy_smoke.py
+          node --check public/javascript/telefonia_segmentos_player.js
+          node --check public/javascript/seguimiento_expediente.js
+          php -l prueba_telefonia/api/grabacion_transferida_pbx.php
