@@ -7,8 +7,6 @@ las personalizaciones de llamadas recibidas, WebRTC e historial de Hostinger.
 Uso: python3 fusionar_shell_transferencias_hostinger.py <copia-staged-live> <fuente-github>
 Sin modificaciones directas en producción; sólo se toca la copia temporal.
 """
-from __future__ import annotations
-
 import pathlib
 import sys
 
