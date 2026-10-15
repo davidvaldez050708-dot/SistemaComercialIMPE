@@ -1255,17 +1255,6 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
                                     </button>
                                 </div>
 
-                                <div
-                                    class="convocatoria-public-form-qr d-none"
-                                    data-convocatoria-qr-result>
-                                    <img
-                                        src=""
-                                        alt="Código QR del formulario público"
-                                        data-convocatoria-qr-image>
-                                    <small>
-                                        Escanea este código para abrir el formulario seleccionado.
-                                    </small>
-                                </div>
                             </div>
                         </div>
                     </div>
@@ -1279,6 +1268,251 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+<div
+    class="modal fade"
+    id="modalConvocatoriaQr"
+    tabindex="-1"
+    aria-labelledby="modalConvocatoriaQrTitulo"
+    aria-hidden="true"
+    data-convocatoria-qr-modal>
+    <div class="modal-dialog modal-dialog-centered modal-xl convocatoria-qr-dialog">
+        <div class="modal-content system-form-modal convocatoria-qr-modal">
+            <div class="modal-header system-form-modal-header">
+                <div>
+                    <span class="convocatoria-public-form-kicker">CÓDIGO QR</span>
+                    <h5 class="system-form-modal-title" id="modalConvocatoriaQrTitulo">
+                        Personalizar código QR
+                    </h5>
+                    <p class="system-form-modal-subtitle">
+                        Los cambios se reflejan automáticamente en la vista previa.
+                    </p>
+                </div>
+                <button
+                    type="button"
+                    class="btn-close"
+                    data-bs-dismiss="modal"
+                    aria-label="Cerrar"></button>
+            </div>
+
+            <div class="modal-body">
+                <div class="convocatoria-qr-workspace">
+                    <div class="convocatoria-qr-preview-column">
+                        <div class="convocatoria-qr-preview">
+                            <div
+                                class="spinner-border text-primary d-none"
+                                role="status"
+                                data-convocatoria-qr-loader>
+                                <span class="visually-hidden">Cargando...</span>
+                            </div>
+                            <img
+                                src=""
+                                alt="Código QR del formulario seleccionado"
+                                data-convocatoria-qr-preview>
+                        </div>
+
+                        <div class="convocatoria-qr-link" data-convocatoria-qr-link></div>
+
+                        <div class="convocatoria-qr-output-actions">
+                            <button
+                                type="button"
+                                class="btn btn-system-cancel"
+                                data-convocatoria-copy-qr>
+                                <i class="bi bi-copy"></i>
+                                Copiar QR
+                            </button>
+                            <button
+                                type="button"
+                                class="btn btn-system-save"
+                                data-convocatoria-download-qr>
+                                <i class="bi bi-download"></i>
+                                Descargar PNG
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="convocatoria-qr-customizer">
+                        <div class="convocatoria-qr-controls">
+                            <label class="convocatoria-qr-control">
+                                <span>Color del QR</span>
+                                <input type="color" value="#223a84" data-convocatoria-qr-dark>
+                            </label>
+
+                            <label class="convocatoria-qr-control">
+                                <span>Color de fondo</span>
+                                <input type="color" value="#ffffff" data-convocatoria-qr-light>
+                            </label>
+
+                            <label class="convocatoria-qr-control">
+                                <span>Color de esquinas</span>
+                                <input type="color" value="#223a84" data-convocatoria-qr-finder-color>
+                            </label>
+
+                            <label class="convocatoria-qr-control">
+                                <span>Estilo de puntos</span>
+                                <select data-convocatoria-qr-dot-style>
+                                    <option value="square">Cuadrado</option>
+                                    <option value="dots">Circular</option>
+                                    <option value="rounded">Redondeado</option>
+                                    <option value="extra-rounded">Muy redondeado</option>
+                                    <option value="classy">Clásico</option>
+                                    <option value="classy-rounded">Clásico redondeado</option>
+                                </select>
+                            </label>
+
+                            <label class="convocatoria-qr-control">
+                                <span>Estilo de esquinas</span>
+                                <select data-convocatoria-qr-finder-style>
+                                    <option value="square">Cuadrado</option>
+                                    <option value="dot">Circular</option>
+                                    <option value="extra-rounded">Redondeado</option>
+                                </select>
+                            </label>
+
+                            <label class="convocatoria-qr-control">
+                                <span>Centro de esquinas</span>
+                                <select data-convocatoria-qr-finder-dot-style>
+                                    <option value="square">Cuadrado</option>
+                                    <option value="dot">Circular</option>
+                                </select>
+                            </label>
+
+                            <label class="convocatoria-qr-control">
+                                <span>Tamaño de imagen</span>
+                                <select data-convocatoria-qr-size>
+                                    <option value="400">400 px</option>
+                                    <option value="600" selected>600 px</option>
+                                    <option value="800">800 px</option>
+                                    <option value="1000">1000 px</option>
+                                </select>
+                            </label>
+
+                            <label class="convocatoria-qr-control">
+                                <span>Margen</span>
+                                <select data-convocatoria-qr-margin>
+                                    <option value="0">Sin margen</option>
+                                    <option value="1">1 módulo</option>
+                                    <option value="2" selected>2 módulos</option>
+                                    <option value="4">4 módulos</option>
+                                </select>
+                            </label>
+
+                            <label class="convocatoria-qr-control">
+                                <span>Corrección de error</span>
+                                <select data-convocatoria-qr-ec-level>
+                                    <option value="L">Baja (L)</option>
+                                    <option value="M" selected>Media (M)</option>
+                                    <option value="Q">Alta (Q)</option>
+                                    <option value="H">Máxima (H)</option>
+                                </select>
+                            </label>
+                        </div>
+
+                        <label class="convocatoria-qr-transparent">
+                            <input type="checkbox" data-convocatoria-qr-transparent>
+                            <span>Fondo transparente</span>
+                        </label>
+
+                        <div class="convocatoria-qr-image-options">
+                            <div class="convocatoria-qr-image-heading">
+                                <div>
+                                    <strong>Imagen en el QR</strong>
+                                    <small>
+                                        Agrega un logotipo o imagen al centro del código QR.
+                                    </small>
+                                </div>
+                                <label class="convocatoria-qr-image-switch">
+                                    <input
+                                        type="checkbox"
+                                        class="form-check-input"
+                                        data-convocatoria-qr-image-enabled>
+                                    <span>Usar imagen</span>
+                                </label>
+                            </div>
+
+                            <div class="convocatoria-qr-image-config d-none" data-convocatoria-qr-image-config>
+                                <div class="convocatoria-qr-image-source">
+                                    <label>
+                                        <input
+                                            type="radio"
+                                            name="convocatoria_qr_image_source"
+                                            value="upload"
+                                            checked
+                                            data-convocatoria-qr-image-source>
+                                        Desde mi equipo
+                                    </label>
+                                    <label>
+                                        <input
+                                            type="radio"
+                                            name="convocatoria_qr_image_source"
+                                            value="url"
+                                            data-convocatoria-qr-image-source>
+                                        URL pública
+                                    </label>
+                                </div>
+
+                                <div data-convocatoria-qr-upload-container>
+                                    <label class="convocatoria-qr-control convocatoria-qr-control-full">
+                                        <span>Seleccionar imagen</span>
+                                        <input
+                                            type="file"
+                                            accept="image/png,image/jpeg,image/webp"
+                                            data-convocatoria-qr-upload>
+                                    </label>
+                                    <div class="convocatoria-qr-upload-preview d-none" data-convocatoria-qr-upload-preview>
+                                        <img src="" alt="Vista previa de imagen" data-convocatoria-qr-upload-preview-image>
+                                        <div>
+                                            <strong data-convocatoria-qr-upload-name></strong>
+                                            <small>Imagen seleccionada para el centro del QR.</small>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="d-none" data-convocatoria-qr-url-container>
+                                    <label class="convocatoria-qr-control convocatoria-qr-control-full">
+                                        <span>URL pública de la imagen</span>
+                                        <input
+                                            type="url"
+                                            placeholder="https://..."
+                                            data-convocatoria-qr-image-url>
+                                    </label>
+                                </div>
+
+                                <div class="convocatoria-qr-image-size">
+                                    <div>
+                                        <span>Tamaño de la imagen central</span>
+                                        <strong data-convocatoria-qr-image-size-value>20%</strong>
+                                    </div>
+                                    <input
+                                        type="range"
+                                        min="10"
+                                        max="30"
+                                        step="1"
+                                        value="20"
+                                        data-convocatoria-qr-image-size>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="convocatoria-qr-customizer-actions">
+                            <button
+                                type="button"
+                                class="btn btn-system-cancel"
+                                data-convocatoria-reset-qr>
+                                <i class="bi bi-arrow-counterclockwise"></i>
+                                Restablecer
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <p class="convocatoria-qr-help">
+                    Verifica que el código continúe escaneándose correctamente antes de compartirlo.
+                </p>
+            </div>
         </div>
     </div>
 </div>
