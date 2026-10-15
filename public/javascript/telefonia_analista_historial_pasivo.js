@@ -107,7 +107,7 @@
     // llamada interna vuelve a marcar hidden=true. Únicamente en estado
     // «finalizada» restauramos la visibilidad del MISMO modal.
     const keepFinishedVisible = function () {
-        if (!finished) return;
+        if (!finished || finished.registrationOpen) return;
         if (panel.hidden) panel.hidden = false;
     };
     if (typeof root.MutationObserver === 'function') {
@@ -175,6 +175,12 @@
         }
         panel.setAttribute('data-analyst-webrtc-finished', '1');
         panel.classList.remove('is-compact');
+        // Registrar resultado usa el formulario existente en el CRM.
+        // Mientras esté abierto no duplicar un modal que lo tape.
+        if (finished.registrationOpen) {
+            panel.hidden = true;
+            return;
+        }
         keepFinishedVisible();
         if (compactActions) compactActions.hidden = true;
         for (const selector of [
@@ -193,7 +199,8 @@
         clock.textContent = duration;
         if (compactClock) compactClock.textContent = duration;
         status.textContent = finished.answered
-            ? 'Llamada atendida' : 'Llamada sin respuesta';
+            ? 'Llamada atendida · tiempo observado por WebRTC'
+            : 'Llamada sin respuesta';
         notice.hidden = false;
         notice.textContent = finished.isInternal
             ? 'Llamada interna guardada en historial · sin contacto institucional.'
@@ -207,10 +214,11 @@
         resultBtn.hidden = Boolean(finished.isInternal) ||
             !finished.answered || finished.saved !== true;
         retryBtn.hidden = finished.saved !== false;
-        closeBtn.hidden = false;
-        // Un único botón Cerrar cuando no hubo respuesta; dos cuando sí.
-        closeBtn.classList.toggle('is-primary', !finished.answered);
-        closeBtn.classList.toggle('is-secondary', finished.answered);
+        // Una llamada contestada requiere registrar su resultado. Las
+        // perdidas e internas sí pueden cerrarse sin expediente.
+        closeBtn.hidden = finished.answered && !finished.isInternal;
+        closeBtn.classList.toggle('is-primary', !finished.answered || finished.isInternal);
+        closeBtn.classList.toggle('is-secondary', false);
         keepFinishedVisible();
     };
     const saveFinished = function (call) {
@@ -227,16 +235,33 @@
             draw();
         });
     };
-    const end = function () {
+    const end = function (lastState) {
         if (!active) return;
         const call = active;
         active = null;
+        // La transición 'incoming-finished' del motor puede llegar antes
+        // de que este observador vea un 'in-progress' de localStorage.
+        // Conservar el inicio y tiempo de la conversación que publicó el
+        // host y no sustituirlo con 00:00 al cerrar la sesión.
+        const rawAnswer = Number(lastState?.answeredAtMs || 0);
+        const answerFromHost = rawAnswer > 0 &&
+            rawAnswer <= Date.now() && Date.now() - rawAnswer < 86400000
+            ? rawAnswer : 0;
+        const answeredAt = call.answeredAt || answerFromHost;
+        const confirmedLocally = Boolean(answeredAt ||
+            call.sawConversation || lastState?.status === 'completed');
+        const observed = Math.max(
+            0,
+            Number(call.lastDuration || 0),
+            Number(lastState?.duration || 0),
+            answeredAt ? Math.floor((Date.now() - answeredAt) / 1000) : 0
+        );
         finished = {
             ...call,
-            duration: call.answeredAt
-                ? Math.max(0, Math.round((Date.now() - call.answeredAt) / 1000))
-                : 0,
-            answered: Boolean(call.answeredAt), saved: null, isInternal: false
+            answeredAt,
+            duration: confirmedLocally ? observed : 0,
+            answered: confirmedLocally, saved: null, isInternal: false,
+            registrationOpen: false
         };
         draw();
         saveFinished(finished);
@@ -255,7 +280,9 @@
                 active = {
                     id, number: String(state.destination || '').replace(/[^0-9+*#]/g, '').slice(0, 40),
                     name: String(state.context?.callerName || '').slice(0, 100),
-                    answeredAt: 0
+                    answeredAt: 0,
+                    lastDuration: 0,
+                    sawConversation: false
                 };
                 finished = null;
                 draw();
@@ -264,13 +291,24 @@
                 closeBtn.hidden = true;
                 void postEvent('ringing', active);
             }
-            if (state.phase === 'in-progress' && !active.answeredAt) {
-                active.answeredAt = Date.now();
-                void postEvent('answered', active);
+            if (state.phase === 'in-progress' || state.status === 'in-progress') {
+                active.sawConversation = true;
+                const hostAt = Number(state.answeredAtMs || 0);
+                if (!active.answeredAt) {
+                    active.answeredAt = hostAt > 0 && hostAt <= Date.now() &&
+                        Date.now() - hostAt < 86400000 ? hostAt : Date.now();
+                    void postEvent('answered', active);
+                }
+                active.lastDuration = Math.max(
+                    active.lastDuration,
+                    Number(state.duration || 0),
+                    Math.floor((Date.now() - active.answeredAt) / 1000)
+                );
             }
         } else if (active && (!state.active ||
             state.phase === 'ready' || state.phase === 'incoming-finished')) {
-            end();
+            // El motor sí publicó un estado final; aprovechar su duración.
+            end(state);
         }
     };
     const consume = function () {
@@ -288,7 +326,7 @@
     consume();
 
     closeBtn.addEventListener('click', () => {
-        if (!finished) return;
+        if (!finished || (finished.answered && !finished.isInternal)) return;
         finished = null;
         draw();
         panel.hidden = true;
@@ -302,10 +340,35 @@
         const url = new URL(String(shell.incomingResultsUrl), root.location.href);
         if (url.origin !== root.location.origin) return;
         url.searchParams.set('sdk_session_id', finished.id);
+        finished.registrationOpen = true;
+        draw();
         crm.src = url.toString();
+    });
+    // Sólo el formulario del CRM (mismo origen e iframe) confirma que el
+    // servidor guardó el resultado; navegar no equivale a registrarlo.
+    root.addEventListener('message', event => {
+        if (event.origin !== root.location.origin ||
+            event.source !== crm?.contentWindow ||
+            event.data?.type !== 'IMPE_ANALYST_RESULT_SAVED' ||
+            !finished || String(event.data.callId || '') !== finished.id) return;
         finished = null;
         draw();
         panel.hidden = true;
+    });
+    crm?.addEventListener('load', () => {
+        if (!finished?.registrationOpen) return;
+        try {
+            const url = new URL(crm.contentWindow.location.href);
+            if (url.origin !== root.location.origin) return;
+            const selected = url.searchParams.get('sdk_session_id');
+            if (url.searchParams.get('action') !== 'llamadasEntrantes' ||
+                selected !== finished.id) {
+                // Se abandonó el formulario sin registrarlo: recuperar
+                // el botón Registrar resultado y mantener el pendiente.
+                finished.registrationOpen = false;
+                draw();
+            }
+        } catch (_) {}
     });
 
     root.IMPE_ANALYST_WEBRTC_JOURNAL_DEBUG = Object.freeze({
