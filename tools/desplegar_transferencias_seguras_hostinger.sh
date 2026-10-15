@@ -67,6 +67,21 @@ for i in "${!OLD[@]}"; do
     (cd "$TMP/stage" && git apply "$patch")
     CHANGED+=("$file")
     echo "PARCHE COMPATIBLE: $file"
+  elif [[ "$file" == "public/javascript/telefonia_shell.js" ]]; then
+    # La copia publicada del Analista tiene ajustes WebRTC/registro que
+    # no coinciden con GitHub. Nunca reemplazar el teléfono completo:
+    # trasplantar sólo los tres bloques de transferencias, con guardas.
+    FUSION="$SOURCE/tools/fusionar_shell_transferencias_hostinger.py"
+    [[ -f "$FUSION" && ! -L "$FUSION" ]] || {
+      echo "ERROR: falta fusionador selectivo de telefonía." >&2
+      exit 1
+    }
+    git -C "$SOURCE" show "$TARGET:$file" > "$TMP/donor_shell.js"
+    originalHash="$(sha256sum "$TMP/stage/$file" | cut -d' ' -f1)"
+    python3 "$FUSION" "$TMP/stage/$file" "$TMP/donor_shell.js"
+    if [[ "$(sha256sum "$TMP/stage/$file" | cut -d' ' -f1)" != "$originalHash" ]]; then
+      CHANGED+=("$file")
+    fi
   else
     echo "CONFLICTO: $file tiene cambios fuera del parche. PRODUCCIÓN INTACTA." >&2
     exit 1
@@ -105,6 +120,9 @@ grep -Fq "cuenta_clave_asignacion_id = a.id" \
   "$TMP/stage/app/services/TelefoniaEnrutamientoService.php"
 grep -Fq "validarTransferenciaUrl" "$TMP/stage/app/views/telefonia/host.php"
 grep -Fq "ejecutarTransferenciaAutorizada" "$TMP/stage/public/javascript/telefonia_host.js"
+grep -Fq "getActiveCall: function ()" "$TMP/stage/public/javascript/telefonia_shell.js"
+grep -Fq "requestAuthorizedTransfer: function (token)" "$TMP/stage/public/javascript/telefonia_shell.js"
+grep -Fq "const workingCall = Boolean(ongoing" "$TMP/stage/public/javascript/telefonia_shell.js"
 grep -Fq "data-shell-transfer-panel" "$TMP/stage/app/views/telefonia/shell.php"
 grep -Fq "IMPE_ANALYST_WEBRTC_PASSIVE_JOURNAL" "$TMP/stage/app/views/telefonia/shell.php"
 grep -Fq "data-incoming-register-finished" "$TMP/stage/app/views/telefonia/shell.php"
