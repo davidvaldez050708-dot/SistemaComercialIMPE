@@ -81,6 +81,16 @@ def run(staged, base, target):
     if len(changes) < 8 or len(changes) > 50:
         fail('revisión base no corresponde al parche esperado')
 
+    if all(has):
+        # En un shell ya actualizado pero personalizado, comprobar TODOS
+        # los fragmentos nuevos antes de tratarlo como instalado. Así
+        # evitamos ejecutar dos veces reemplazos con anclas históricas.
+        if all(''.join(target_lines[j1:j2]) in live
+               for _, _, j1, j2 in changes):
+            print('YA ACTUALIZADO: cierre de llamada presente en shell personalizado.')
+            return
+        fail('cierre parcialmente modificado después de publicarlo')
+
     merged = live
     undo = []
     applied = 0
