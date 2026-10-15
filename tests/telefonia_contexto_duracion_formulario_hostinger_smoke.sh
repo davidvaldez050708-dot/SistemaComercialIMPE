@@ -36,7 +36,13 @@ bash -n tools/desplegar_contexto_duracion_formulario_hostinger.sh
 bash tools/desplegar_contexto_duracion_formulario_hostinger.sh --check | grep -Fq 'PRODUCCIÓN INTACTA'
 for f in "${FILES[@]}"; do git show "$BASE:$f" | cmp -s - "$IMPE_FLOW_PUBLIC/$f"; done
 bash tools/desplegar_contexto_duracion_formulario_hostinger.sh --apply | grep -Fq 'publicados. Respaldo:'
-for f in "${FILES[@]}"; do cmp -s "$f" "$IMPE_FLOW_PUBLIC/$f"; done
+# Este instalador histórico publica el snapshot TARGET fijo; la versión
+# actual del observador puede contener mejoras posteriores (p. ej. quitar
+# el toast). Comparar con TARGET, no contra HEAD del repositorio.
+TARGET="4575ca9159664625c36f78f34eb089a74a3b9853"
+for f in "${FILES[@]}"; do
+ git show "$TARGET:$f" | cmp -s - "$IMPE_FLOW_PUBLIC/$f"
+done
 [[ "$(sha256sum "$IMPE_FLOW_PUBLIC/public/javascript/telefonia_host.js" | cut -d' ' -f1)" == "$sip" ]]
 [[ "$(sha256sum "$IMPE_FLOW_PUBLIC/public/javascript/telefonia_shell.js" | cut -d' ' -f1)" == "$shell" ]]
 test -n "$(find "$TMP/backups" -type f)"
