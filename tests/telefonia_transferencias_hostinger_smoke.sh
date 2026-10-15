@@ -53,6 +53,77 @@ done
 bash "$SCRIPT" --check | grep -Fq 'ya publicados'
 bash "$SCRIPT" --apply | grep -Fq 'ya publicados'
 
+# La variante publicada del Analista puede tener lógica WebRTC histórica
+# distinta. Se debe fusionar únicamente el código de transferencia.
+PERSONAL="$TMP/hostinger-analista"
+mkdir -p "$PERSONAL"
+touch "$PERSONAL/index.php"
+for f in "${OLD[@]}"; do
+  mkdir -p "$PERSONAL/$(dirname "$f")"
+  git show "$BASE:$f" > "$PERSONAL/$f"
+done
+python3 - "$PERSONAL/public/javascript/telefonia_shell.js" <<'PY'
+import pathlib,sys
+p=pathlib.Path(sys.argv[1])
+s=p.read_text()
+for fragment in (
+    "    const registerFinished = document.querySelector('[data-incoming-register-finished]');\n",
+    "    const retrySdkSave = document.querySelector('[data-incoming-retry-save]');\n",
+):
+    assert s.count(fragment)==1
+    s=s.replace(fragment, '', 1)
+needle="    const analystResultNotice = document.querySelector('[data-analyst-call-result]');"
+assert s.count(needle)==1
+s=s.replace(needle, "    // PERSONALIZACION-HOSTINGER-WEBRTC-CONVERSACION\n"+needle,1)
+p.write_text(s)
+PY
+cp "$PERSONAL/public/javascript/telefonia_shell.js" "$TMP/js-pre-transferencia"
+export IMPE_TRANSFER_PUBLIC="$PERSONAL"
+bash "$SCRIPT" --check > "$TMP/check-personal"
+grep -Fq 'FUSIÓN COMPATIBLE: telefonia_shell.js' "$TMP/check-personal"
+grep -Fq 'PRODUCCIÓN INTACTA' "$TMP/check-personal"
+cmp -s "$TMP/js-pre-transferencia" "$PERSONAL/public/javascript/telefonia_shell.js"
+bash "$SCRIPT" --apply | grep -Fq 'transferencia contextual y captura publicadas'
+node --check "$PERSONAL/public/javascript/telefonia_shell.js"
+grep -Fq 'PERSONALIZACION-HOSTINGER-WEBRTC-CONVERSACION' "$PERSONAL/public/javascript/telefonia_shell.js"
+grep -Fq 'getActiveCall: function ()' "$PERSONAL/public/javascript/telefonia_shell.js"
+grep -Fq 'requestAuthorizedTransfer: function (token)' "$PERSONAL/public/javascript/telefonia_shell.js"
+grep -Fq 'const workingCall = Boolean(ongoing' "$PERSONAL/public/javascript/telefonia_shell.js"
+! grep -Fq 'const registerFinished = document.querySelector' "$PERSONAL/public/javascript/telefonia_shell.js"
+! grep -Fq 'const retrySdkSave = document.querySelector' "$PERSONAL/public/javascript/telefonia_shell.js"
+cp "$PERSONAL/public/javascript/telefonia_shell.js" "$TMP/js-fusionado"
+bash "$SCRIPT" --check | grep -Fq 'ya publicados'
+bash "$SCRIPT" --apply | grep -Fq 'ya publicados'
+cmp -s "$PERSONAL/public/javascript/telefonia_shell.js" "$TMP/js-fusionado"
+
+# Un estado intermedio de transferencia no debe pasar el preflight.
+PARTIAL="$TMP/hostinger-incompleto"
+mkdir -p "$PARTIAL"
+touch "$PARTIAL/index.php"
+for f in "${OLD[@]}"; do
+  mkdir -p "$PARTIAL/$(dirname "$f")"
+  git show "$BASE:$f" > "$PARTIAL/$f"
+done
+python3 - "$PARTIAL/public/javascript/telefonia_shell.js" <<'PY'
+import pathlib,sys
+p=pathlib.Path(sys.argv[1])
+s=p.read_text()
+anchor="    const analystResultNotice = document.querySelector('[data-analyst-call-result]');"
+assert s.count(anchor)==1
+s=s.replace(anchor,
+  "    const transferToggle = document.querySelector('[data-shell-transfer-toggle]');\n"+anchor,1)
+p.write_text(s)
+PY
+cp "$PARTIAL/public/javascript/telefonia_shell.js" "$TMP/js-partial-before"
+export IMPE_TRANSFER_PUBLIC="$PARTIAL"
+if bash "$SCRIPT" --apply > "$TMP/partial-error" 2>&1; then
+  echo "ERROR: autorizó una implementación parcial de transferencia." >&2
+  exit 1
+fi
+grep -Fq 'CONFLICTO:' "$TMP/partial-error"
+cmp -s "$TMP/js-partial-before" "$PARTIAL/public/javascript/telefonia_shell.js"
+for f in "${NEW[@]}"; do [[ ! -e "$PARTIAL/$f" ]]; done
+
 # Archivos desconocidos no se sobrescriben. Un conflicto detiene TODO.
 CONFLICT="$TMP/conflict"
 mkdir -p "$CONFLICT"
