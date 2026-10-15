@@ -1036,29 +1036,76 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
                 <div class="modal-body">
                     <div class="system-form-grid">
                         <div class="system-form-full">
-                            <label class="form-label login-label" for="crear_convocatoria_clasificacion">
+                            <?php
+                            $clasificacionCrear = strtolower(trim(
+                                (string)(($datosCrear['tipo'] ?? '') . '|' . ($datosCrear['subtipo'] ?? ''))
+                            ));
+                            $clasificacionCrearLabel = 'Selecciona una opción';
+
+                            foreach ($clasificacionesDisponibles as $clasificacion) {
+                                if ($clasificacionCrear === $clasificacion['valor']) {
+                                    $clasificacionCrearLabel = (string)$clasificacion['etiqueta'];
+                                    break;
+                                }
+                            }
+                            ?>
+
+                            <label class="form-label login-label" for="crear_convocatoria_clasificacion_boton">
                                 Tipo de convocatoria
                             </label>
-                            <select
-                                class="form-select system-form-control"
-                                id="crear_convocatoria_clasificacion"
-                                name="clasificacion"
-                                data-convocatoria-context-classification
-                                required>
-                                <option value="">Selecciona una opción</option>
-                                <?php
-                                $clasificacionCrear = strtolower(trim(
-                                    (string)(($datosCrear['tipo'] ?? '') . '|' . ($datosCrear['subtipo'] ?? ''))
-                                ));
-                                ?>
-                                <?php foreach ($clasificacionesDisponibles as $clasificacion): ?>
-                                    <option
-                                        value="<?= $texto($clasificacion['valor']) ?>"
-                                        <?= $clasificacionCrear === $clasificacion['valor'] ? 'selected' : '' ?>>
-                                        <?= $texto($clasificacion['etiqueta']) ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
+
+                            <div
+                                class="convocatoria-form-type-dropdown"
+                                data-convocatoria-classification-dropdown>
+                                <input
+                                    type="hidden"
+                                    id="crear_convocatoria_clasificacion"
+                                    name="clasificacion"
+                                    value="<?= $texto($clasificacionCrear) ?>"
+                                    data-convocatoria-context-classification
+                                    data-convocatoria-classification-value
+                                    required>
+
+                                <button
+                                    type="button"
+                                    class="convocatoria-form-type-trigger"
+                                    id="crear_convocatoria_clasificacion_boton"
+                                    aria-haspopup="listbox"
+                                    aria-expanded="false"
+                                    data-convocatoria-classification-trigger>
+                                    <span data-convocatoria-classification-label>
+                                        <?= $texto($clasificacionCrearLabel) ?>
+                                    </span>
+                                    <i class="bi bi-chevron-down" aria-hidden="true"></i>
+                                </button>
+
+                                <div
+                                    class="convocatoria-form-type-menu"
+                                    role="listbox"
+                                    aria-label="Seleccionar tipo de convocatoria"
+                                    data-convocatoria-classification-menu>
+                                    <button
+                                        type="button"
+                                        class="convocatoria-form-type-option <?= $clasificacionCrear === '' ? 'is-selected' : '' ?>"
+                                        role="option"
+                                        aria-selected="<?= $clasificacionCrear === '' ? 'true' : 'false' ?>"
+                                        data-convocatoria-classification-option="">
+                                        Selecciona una opción
+                                    </button>
+
+                                    <?php foreach ($clasificacionesDisponibles as $clasificacion): ?>
+                                        <button
+                                            type="button"
+                                            class="convocatoria-form-type-option <?= $clasificacionCrear === $clasificacion['valor'] ? 'is-selected' : '' ?>"
+                                            role="option"
+                                            aria-selected="<?= $clasificacionCrear === $clasificacion['valor'] ? 'true' : 'false' ?>"
+                                            data-convocatoria-classification-option="<?= $texto($clasificacion['valor']) ?>">
+                                            <?= $texto($clasificacion['etiqueta']) ?>
+                                        </button>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+
                             <small class="form-text">
                                 Selecciona la opción a la que pertenece esta convocatoria.
                             </small>
@@ -1820,6 +1867,88 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    const classificationDropdown = document.querySelector(
+        '[data-convocatoria-classification-dropdown]'
+    );
+    const classificationValue = classificationDropdown?.querySelector(
+        '[data-convocatoria-classification-value]'
+    );
+    const classificationTrigger = classificationDropdown?.querySelector(
+        '[data-convocatoria-classification-trigger]'
+    );
+    const classificationLabel = classificationDropdown?.querySelector(
+        '[data-convocatoria-classification-label]'
+    );
+    const classificationOptions = Array.from(
+        classificationDropdown?.querySelectorAll(
+            '[data-convocatoria-classification-option]'
+        ) || []
+    );
+
+    const closeClassificationDropdown = function () {
+        classificationDropdown?.classList.remove('is-open');
+        classificationTrigger?.setAttribute('aria-expanded', 'false');
+    };
+
+    classificationTrigger?.addEventListener('click', function () {
+        const opening = !classificationDropdown?.classList.contains('is-open');
+
+        if (opening) {
+            classificationDropdown?.classList.add('is-open');
+            classificationTrigger.setAttribute('aria-expanded', 'true');
+        } else {
+            closeClassificationDropdown();
+        }
+    });
+
+    classificationOptions.forEach(function (option) {
+        option.addEventListener('click', function () {
+            const value = String(
+                option.dataset.convocatoriaClassificationOption || ''
+            );
+
+            if (classificationValue) {
+                classificationValue.value = value;
+                classificationValue.dispatchEvent(
+                    new Event('change', { bubbles: true })
+                );
+                classificationValue.dispatchEvent(
+                    new Event('input', { bubbles: true })
+                );
+            }
+
+            if (classificationLabel) {
+                classificationLabel.textContent = option.textContent.trim();
+            }
+
+            classificationOptions.forEach(function (item) {
+                const selected = item === option;
+                item.classList.toggle('is-selected', selected);
+                item.setAttribute(
+                    'aria-selected',
+                    selected ? 'true' : 'false'
+                );
+            });
+
+            closeClassificationDropdown();
+        });
+    });
+
+    document.addEventListener('click', function (event) {
+        if (
+            classificationDropdown &&
+            !classificationDropdown.contains(event.target)
+        ) {
+            closeClassificationDropdown();
+        }
+    });
+
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') {
+            closeClassificationDropdown();
+        }
+    });
+
     const availabilityDropdown = document.querySelector(
         '[data-convocatoria-availability-dropdown]'
     );
