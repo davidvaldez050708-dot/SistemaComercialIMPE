@@ -47,7 +47,7 @@ def main():
     print("Archivo presente: sí; sin escritura ni cambios")
     print("Código aprobado ya instalado:", "sí" if actual == nuevo else "no")
     print("Coincidencia aproximada con base:",
-          f"{difflib.SequenceMatcher(None, original, actual, autojunk=False).ratio():.1%}")
+          f"{difflib.SequenceMatcher(None, original.splitlines(), actual.splitlines()).ratio():.1%}")
     for key, marker in MARKERS.items():
         print(f"  {key}: {actual.count(marker)}")
     # Reportar la forma del conflicto, nunca texto de archivos ni IDs PBX.
