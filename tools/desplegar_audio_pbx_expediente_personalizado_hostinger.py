@@ -63,8 +63,11 @@ def parche_semantico(actual, original, nuevo):
     # No realizar coincidencias difusas; exige las secciones originales
     # identificadas por el diagnóstico de producción.
     if AUDIO_NEW in actual:
-        if actual.count(AUDIO_NEW) != 1:
-            raise ValueError("Reproductor PBX duplicado")
+        if (actual.count(AUDIO_NEW) != 1 or
+            actual.count(PANEL_NEW) != 1 or
+            actual.count(CONTADOR_NEW) != 1 or
+            actual.count(ETIQUETA_NEW) != 1):
+            raise ValueError("Instalación PBX parcial o reproductor duplicado")
         return actual, "ya actualizado (JS)"
     old = segmento(original, AUDIO_OLD, FIN_BLOQUE)
     new = segmento(nuevo, AUDIO_NEW, FIN_BLOQUE)
