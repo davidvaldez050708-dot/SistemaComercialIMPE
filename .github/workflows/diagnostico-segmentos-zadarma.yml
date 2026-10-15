@@ -1,0 +1,23 @@
+name: Diagnostico privado segmentos Zadarma
+on:
+  pull_request:
+    paths:
+      - 'tools/diagnosticar_segmentos_transferencia.php'
+      - '.github/workflows/diagnostico-segmentos-zadarma.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'tools/diagnosticar_segmentos_transferencia.php'
+      - '.github/workflows/diagnostico-segmentos-zadarma.yml'
+jobs:
+  sintaxis:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+      - run: php -l tools/diagnosticar_segmentos_transferencia.php
+      - name: Proteger secretos y persistencia
+        run: |
+          ! grep -Eq '(INSERT INTO|UPDATE telefonia_|DELETE FROM|file_put_contents|download|descargarGrabacion)' tools/diagnosticar_segmentos_transferencia.php
