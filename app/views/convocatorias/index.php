@@ -2346,16 +2346,7 @@ document.addEventListener('DOMContentLoaded', function () {
             .replaceAll("'", '&#039;');
     }
 
-    <?php
-    $abrirNuevaConvocatoria =
-        $modalAbierto === 'crear' ||
-        (
-            !empty($desdeConvenio) &&
-            (int)($_GET['abrir_nueva_convocatoria'] ?? 0) === 1
-        );
-    ?>
-
-    <?php if ($abrirNuevaConvocatoria): ?>
+    <?php if ($modalAbierto === 'crear'): ?>
         const modalCrearAutomatico = document.getElementById('modalCrearConvocatoria');
 
         if (modalCrearAutomatico && window.bootstrap) {
