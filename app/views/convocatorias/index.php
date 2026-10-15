@@ -390,7 +390,7 @@ document.addEventListener('DOMContentLoaded', function () {
 <?php return; ?>
 <?php endif; ?>
 
-<?php if ($tipoConvocatoria === ''): ?>
+<?php if ($tipoConvocatoria === '' && empty($desdeConvenio)): ?>
 <?php
 $nombreTerritorioActual = trim((string)($territorioSeleccionado['nombre'] ?? ''));
 $slugTerritorioActual = strtolower($nombreTerritorioActual);
