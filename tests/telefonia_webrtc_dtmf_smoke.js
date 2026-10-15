@@ -57,7 +57,7 @@ assert.ok(viewPhp.indexOf('telefonia_webrtc_dtmf.js') <
 assert.ok(host.includes("dtmfBridge.install()"));
 assert.ok(host.indexOf("dtmfBridge.install()") < host.indexOf("await loadScript(sdkLibUrl"));
 assert.ok(host.includes("dtmf.send(tones)"));
-assert.ok(!host.includes('mostrarHostEntrante();\\n        publish({\\n            message:\\n                \\'Marca '));
+assert.ok(!host.slice(host.indexOf('const sendTransferDtmf'), host.indexOf('const ejecutarTransferenciaAutorizada')).includes('mostrarHostEntrante('));
 assert.ok(!routing.includes('Abrir teclado Zadarma'));
 assert.ok(!routing.includes('showProviderControls?.()'));
 assert.ok(routing.includes('transferSubmittedAt'));
