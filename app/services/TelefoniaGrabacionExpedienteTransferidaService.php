@@ -80,18 +80,86 @@ class TelefoniaGrabacionExpedienteTransferidaService
         // Vincular únicamente transferencias asociadas por Recepción al MISMO
         // expediente y a la MISMA extensión del analista, nunca estadísticas
         // buscadas por un teléfono aislado.
-        $stmt = $this->db->prepare(
-            "SELECT pbx_call_id, created_at
-               FROM telefonia_transferencia_contextos
-              WHERE destino_usuario_id = ? AND destino_extension = ?
-                AND seguimiento_id = ? AND telefono10 = ?
-                AND created_at >= DATE_SUB(NOW(), INTERVAL 60 DAY)
-              ORDER BY created_at DESC LIMIT 120"
+        $tablaContextos = $this->db->query(
+            "SHOW TABLES LIKE 'telefonia_transferencia_contextos'"
         );
-        $stmt->bind_param('isis', $usuarioId, $extension, $seguimientoId, $numero10);
-        $stmt->execute();
-        $transferencias = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-        $stmt->close();
+        $tieneTablaContextos = $tablaContextos && $tablaContextos->num_rows > 0;
+        $transferencias = [];
+        if ($tieneTablaContextos) {
+            $stmt = $this->db->prepare(
+                "SELECT pbx_call_id, created_at
+                   FROM telefonia_transferencia_contextos
+                  WHERE destino_usuario_id = ? AND destino_extension = ?
+                    AND seguimiento_id = ? AND telefono10 = ?
+                    AND created_at >= DATE_SUB(NOW(), INTERVAL 60 DAY)
+                  ORDER BY created_at DESC LIMIT 120"
+            );
+            $stmt->bind_param('isis', $usuarioId, $extension, $seguimientoId, $numero10);
+            $stmt->execute();
+            $transferencias = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+            $stmt->close();
+        }
+
+        // En una transferencia hecha desde el teléfono de Recepción (100),
+        // Zadarma puede confirmar ambos tramos sin que el contexto opcional
+        // del modal llegue a persistirse. Sólo en ese caso buscar grupos PBX
+        // firmados en un intervalo acotado; nunca inferir audio por duración.
+        if (count($transferencias) === 0) {
+            $stmt = $this->db->prepare(
+                "SELECT pbx_call_id, caller_id, received_at
+                   FROM telefonia_zadarma_eventos
+                  WHERE evento = 'NOTIFY_INTERNAL' AND internal = '100'
+                    AND received_at >= DATE_SUB(NOW(), INTERVAL 2 DAY)
+                  ORDER BY id DESC LIMIT 150"
+            );
+            $stmt->execute();
+            $iniciosRecepcion = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+            $stmt->close();
+            // Evitar declarar unicidad si la ventana se truncó por LIMIT.
+            if (count($iniciosRecepcion) >= 150) return null;
+            $vistos = [];
+            foreach ($iniciosRecepcion as $inicioRecepcion) {
+                $pbx = trim((string)($inicioRecepcion['pbx_call_id'] ?? ''));
+                if (!preg_match('/^[A-Za-z0-9_-]{6,100}$/D', $pbx) ||
+                    isset($vistos[$pbx]) ||
+                    self::numero10((string)($inicioRecepcion['caller_id'] ?? '')) !== $numero10) {
+                    continue;
+                }
+                $vistos[$pbx] = true;
+                // El inicio con Tania precede a la sesión observada por Diego.
+                $delta = self::distanciaSegundos(
+                    $inicioUtc, (string)($inicioRecepcion['received_at'] ?? '')
+                );
+                if ($delta === null || $delta > 180) continue;
+
+                // Si ya hay un contexto institucional para el PBX, debe
+                // corresponder exactamente a este expediente/analista.
+                // Nunca utilizar la búsqueda alternativa para eludirlo.
+                if ($tieneTablaContextos) {
+                    $ctx = $this->db->prepare(
+                        "SELECT destino_usuario_id, destino_extension, seguimiento_id
+                           FROM telefonia_transferencia_contextos
+                          WHERE pbx_call_id = ? LIMIT 2"
+                    );
+                    $ctx->bind_param('s', $pbx);
+                    $ctx->execute();
+                    $contextosPbx = $ctx->get_result()->fetch_all(MYSQLI_ASSOC);
+                    $ctx->close();
+                    if (count($contextosPbx) > 1) return null;
+                } else {
+                    $contextosPbx = [];
+                }
+                if ($contextosPbx) {
+                    $registrado = $contextosPbx[0];
+                    if ((int)$registrado['destino_usuario_id'] !== $usuarioId ||
+                        (string)$registrado['destino_extension'] !== $extension ||
+                        (int)$registrado['seguimiento_id'] !== $seguimientoId) {
+                        continue;
+                    }
+                }
+                $transferencias[] = ['pbx_call_id' => $pbx];
+            }
+        }
 
         $candidatas = [];
         foreach ($transferencias as $contexto) {

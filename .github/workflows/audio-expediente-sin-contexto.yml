@@ -1,0 +1,23 @@
+name: Vínculo de audio PBX sin contexto
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'app/services/TelefoniaGrabacionExpedienteTransferidaService.php'
+      - 'tests/audio_expediente_sin_contexto_smoke.php'
+      - '.github/workflows/audio-expediente-sin-contexto.yml'
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: none
+      - name: Sintaxis y comprobaciones de asociación
+        run: |
+          php -l app/services/TelefoniaGrabacionExpedienteTransferidaService.php
+          php -l tests/audio_expediente_sin_contexto_smoke.php
+          php tests/audio_expediente_sin_contexto_smoke.php
+          php tests/audio_expediente_transferencia_unica_smoke.php
