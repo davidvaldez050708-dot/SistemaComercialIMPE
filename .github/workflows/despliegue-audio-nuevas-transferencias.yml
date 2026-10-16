@@ -1,0 +1,25 @@
+name: Despliegue audio próximas transferencias
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tools/desplegar_audio_nuevas_transferencias_hostinger.py'
+      - 'tests/audio_nuevas_transferencias_deploy_smoke.py'
+      - '.github/workflows/despliegue-audio-nuevas-transferencias.yml'
+jobs:
+  comprobar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: none
+      - name: Simular instalación y validar PHP
+        run: |
+          python3 -m py_compile tools/desplegar_audio_nuevas_transferencias_hostinger.py
+          python3 tests/audio_nuevas_transferencias_deploy_smoke.py
+          php -l app/services/TelefoniaGrabacionExpedienteTransferidaService.php
+          php tests/audio_expediente_sin_contexto_smoke.php
