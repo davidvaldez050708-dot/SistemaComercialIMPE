@@ -1,7 +1,6 @@
 <?php
 
 require_once __DIR__ . '/FirmaCorreoService.php';
-require_once __DIR__ . '/CuentaCorreoUsuarioService.php';
 
 class CorreoSalidaInstitucionalService
 {
