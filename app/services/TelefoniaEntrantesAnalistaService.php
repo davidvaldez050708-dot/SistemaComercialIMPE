@@ -130,7 +130,7 @@ class TelefoniaEntrantesAnalistaService
                 ($sesion['estado_pbx'] ?? '') !== 'ended') {
                 continue;
             }
-            $numero = preg_replace('/\\D+/', '', (string)($sesion['numero'] ?? '')) ?: '';
+            $numero = preg_replace('/\D+/', '', (string)($sesion['numero'] ?? '')) ?: '';
             $fecha = strtotime((string)($sesion['fecha'] ?? ''));
             if (strlen($numero) < 10 || $fecha === false) continue;
             $candidate = [];
@@ -138,7 +138,7 @@ class TelefoniaEntrantesAnalistaService
                 if (($call['fuente'] ?? '') !== 'PBX' ||
                     ($call['tipo_llamada'] ?? '') !== 'ENTRANTE' ||
                     ($call['estado_pbx'] ?? '') !== 'ended') continue;
-                $caller = preg_replace('/\\D+/', '', (string)($call['numero'] ?? '')) ?: '';
+                $caller = preg_replace('/\D+/', '', (string)($call['numero'] ?? '')) ?: '';
                 $at = strtotime((string)($call['fecha'] ?? ''));
                 if (strlen($caller) < 10 || $at === false ||
                     substr($caller, -10) !== substr($numero, -10) ||
