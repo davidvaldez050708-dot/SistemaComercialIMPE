@@ -453,6 +453,17 @@ foreach ($modelo->obtenerInteraccionesSeguimiento($seguimientoId) as $interaccio
     ];
 }
 
+// Ordenar DESPUÉS de normalizar las fechas de WebRTC a hora local.
+// Desempatar por ID sin alterar datos, relaciones ni enlaces de grabación.
+usort($llamadas, static function (array $a, array $b): int {
+    $fechaA = (string)($a['fecha_inicio'] ?? '');
+    $fechaB = (string)($b['fecha_inicio'] ?? '');
+    $comparacion = strcmp($fechaB, $fechaA);
+    return $comparacion !== 0
+        ? $comparacion
+        : ((int)($b['id'] ?? 0) <=> (int)($a['id'] ?? 0));
+});
+
 $etapaHistorial = 'generar_respuesta';
 echo json_encode([
     'ok' => true,
