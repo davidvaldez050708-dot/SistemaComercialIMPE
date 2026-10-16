@@ -160,19 +160,6 @@ if (!preg_match('/^\d{3,6}$/', $extension)) {
     ], 422);
 }
 
-// Antes de consultar estadísticas externas, aprovechar los eventos firmados
-// recibidos en el servidor. No resolver por hora si existen dos candidatas.
-if ($pbxCallId === '' && $destino !== '' && $desdeUnix > 0) {
-    try {
-        $pbxCallId = (string)(
-            (new ZadarmaWebhookEventStoreService())
-                ->buscarPbxSalienteUnico($extension, $destino, $desdeUnix) ?? ''
-        );
-    } catch (Throwable $errorLookup) {
-        error_log('[zadarma_vincular_eventos_unicos] ' . $errorLookup->getMessage());
-    }
-}
-
 $inicio = null;
 $respuesta = null;
 $fin = null;
@@ -347,24 +334,6 @@ try {
             'ok' => false,
             'mensaje' => 'La interacción telefónica indicada no pertenece a este seguimiento.'
         ], 404);
-    }
-
-    // Nunca reutilizar la misma llamada PBX en otra interacción.
-    $sqlPbxOcupada = "SELECT id FROM interacciones_vinculacion
-        WHERE proveedor_externo = 'ZADARMA'
-          AND id_externo = ?
-          AND id <> ?
-        LIMIT 1";
-    $stmtPbxOcupada = $connection->prepare($sqlPbxOcupada);
-    $stmtPbxOcupada->bind_param('si', $pbxCallId, $interaccionId);
-    $stmtPbxOcupada->execute();
-    $pbxOcupada = (bool)$stmtPbxOcupada->get_result()->fetch_assoc();
-    $stmtPbxOcupada->close();
-    if ($pbxOcupada) {
-        responderJson([
-            'ok' => false,
-            'mensaje' => 'Esta llamada ya está vinculada con otra interacción.'
-        ], 409);
     }
 
     $idExternoActual = trim((string)($interaccion['id_externo'] ?? ''));
