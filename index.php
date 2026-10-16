@@ -230,6 +230,7 @@ $controladoresProtegidosCsrf = [
     'oficioVinculacion',
     'oficioCorreo',
     'convocatoria',
+    'crearConvocatoria',
     'convocatoriaNotificacion',
     'formulario',
     'aliado',
