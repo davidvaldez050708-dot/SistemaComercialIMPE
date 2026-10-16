@@ -39,18 +39,24 @@ if [[ -z "$DST" || ! -f "$DST/index.php" ]]; then
 fi
 
 FILES=(
+    "index.php"
     "app/controllers/CorreoMarketingController.php"
-    "app/controllers/CuentaCorreoUsuarioController.php"
     "app/services/CorreoMarketingService.php"
     "app/services/CorreoSalidaInstitucionalService.php"
-    "app/services/CuentaCorreoUsuarioService.php"
     "config/mail_config.php"
     "app/views/correos/index.php"
     "app/views/layout/my_profile_modal.php"
     "app/views/layout/dashboard_footer.php"
     "public/javascript/correos_marketing.js"
-    "public/javascript/cuenta_correo_perfil.js"
+    "public/javascript/mi_perfil.js"
     "public/css/correos_marketing.css"
+)
+
+REMOVE_FILES=(
+    "app/controllers/CuentaCorreoUsuarioController.php"
+    "app/services/CuentaCorreoUsuarioService.php"
+    "public/javascript/cuenta_correo_perfil.js"
+    "database/migrations/2026_10_16_cuentas_correo_usuario.sql"
 )
 
 echo "Repositorio fuente : $SRC"
@@ -65,13 +71,13 @@ for file in "${FILES[@]}"; do
 done
 
 if command -v php >/dev/null 2>&1; then
+    php -l "$SRC/index.php" >/dev/null
     php -l "$SRC/app/controllers/CorreoMarketingController.php" >/dev/null
-    php -l "$SRC/app/controllers/CuentaCorreoUsuarioController.php" >/dev/null
     php -l "$SRC/app/services/CorreoMarketingService.php" >/dev/null
-    php -l "$SRC/app/services/CuentaCorreoUsuarioService.php" >/dev/null
     php -l "$SRC/app/services/CorreoSalidaInstitucionalService.php" >/dev/null
     php -l "$SRC/config/mail_config.php" >/dev/null
     php -l "$SRC/app/views/correos/index.php" >/dev/null
+    php -l "$SRC/app/views/layout/my_profile_modal.php" >/dev/null
 fi
 
 if [[ "$MODE" == "--check" ]]; then
@@ -89,37 +95,26 @@ if [[ "$MODE" == "--check" ]]; then
         fi
     done
 
+    for file in "${REMOVE_FILES[@]}"; do
+        if [[ -f "$DST/$file" ]]; then
+            echo "ELIMINAR  $file"
+            changes=$((changes + 1))
+        else
+            echo "OK        $file (ausente)"
+        fi
+    done
+
     echo
 
     if [[ "$changes" -eq 0 ]]; then
         echo "OK: Correos de Marketing ya está actualizado en producción."
     else
-        echo "PENDIENTE: $changes archivo(s) requieren publicación."
+        echo "PENDIENTE: $changes cambio(s) requieren publicación."
     fi
 
     echo "No se modificó ningún archivo (--check)."
     exit 0
 fi
-
-PRIVATE_DIR="$(dirname "$DST")/impe-private"
-mkdir -p "$PRIVATE_DIR"
-PRIVATE_MAIL_ACCOUNT="$PRIVATE_DIR/mail_account.local.php"
-
-if [[ ! -f "$PRIVATE_MAIL_ACCOUNT" ]]; then
-    MAIL_KEY="$(php -r 'echo bin2hex(random_bytes(32));')"
-    {
-        echo "<?php"
-        echo "return ["
-        echo "    'encryption_key' => '${MAIL_KEY}',"
-        echo "];"
-    } > "$PRIVATE_MAIL_ACCOUNT"
-    chmod 0600 "$PRIVATE_MAIL_ACCOUNT"
-    echo "CREADO    configuración privada para credenciales de correo"
-else
-    echo "OK        configuración privada de credenciales de correo"
-fi
-
-php "$SRC/tools/migrar_cuentas_correo_usuario.php" --public-dir="$DST"
 
 BACKUP_ROOT="${IMPE_CORREOS_MARKETING_BACKUP_DIR:-$HOME/respaldos-crm}"
 mkdir -p "$BACKUP_ROOT"
@@ -137,18 +132,38 @@ for file in "${FILES[@]}"; do
     echo "PUBLICADO $file"
 done
 
+for file in "${REMOVE_FILES[@]}"; do
+    if [[ -f "$DST/$file" ]]; then
+        mkdir -p "$BACKUP/$(dirname "$file")"
+        cp -p "$DST/$file" "$BACKUP/$file"
+        rm -f "$DST/$file"
+        echo "ELIMINADO $file"
+    fi
+done
+
+if grep -Fq "Cuenta de correo para envíos" "$DST/app/views/layout/my_profile_modal.php"; then
+    echo "ERROR: el bloque SMTP por usuario sigue presente en Mi perfil." >&2
+    exit 1
+fi
+
+if grep -Fq "CuentaCorreoUsuario" "$DST/index.php"; then
+    echo "ERROR: index.php conserva rutas SMTP por usuario." >&2
+    exit 1
+fi
+
+if grep -Fq "cuenta_correo_perfil.js" "$DST/app/views/layout/dashboard_footer.php"; then
+    echo "ERROR: dashboard_footer.php sigue cargando el JS SMTP por usuario." >&2
+    exit 1
+fi
+
 grep -Fq "data-marketing-mail-convocatoria" "$DST/app/views/correos/index.php"
-grep -Fq "data-mail-account-provider" "$DST/app/views/layout/my_profile_modal.php"
-grep -Fq "cuenta_correo_perfil.js" "$DST/app/views/layout/dashboard_footer.php"
 grep -Fq "ConvocatoriaModel" "$DST/app/controllers/CorreoMarketingController.php"
 grep -Fq "CONVOCATORIA" "$DST/app/services/CorreoMarketingService.php"
-grep -Fq "fallback_smtp" "$DST/app/services/CorreoSalidaInstitucionalService.php"
-grep -Fq "HOSTINGER_MAIL_FROM_ADDRESS" "$DST/app/services/CorreoSalidaInstitucionalService.php"
 grep -Fq "data-marketing-file-remove" "$DST/public/javascript/correos_marketing.js"
-grep -Fq "smtp.hostinger.com" "$DST/config/mail_config.php"
 grep -Fq "Modal de correo compacto + selector de convocatoria" "$DST/public/css/correos_marketing.css"
 
 echo
 echo "OK: Correos de Marketing actualizado correctamente."
+echo "La configuración SMTP por usuario fue retirada de producción."
 echo "Respaldo: $BACKUP"
 echo "Recarga el navegador con Ctrl+F5."
