@@ -896,21 +896,75 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
         </div>
 
         <div class="convocatoria-filter-field">
-            <label class="form-label login-label" for="filtro_convocatoria_clasificacion">Convocatoria</label>
-            <select
-                class="form-select system-form-control"
-                id="filtro_convocatoria_clasificacion"
-                name="clasificacion"
-                data-convocatoria-clasificacion>
-                <option value="">Todas las convocatorias</option>
-                <?php foreach ($clasificacionesDisponibles as $clasificacion): ?>
-                    <option
-                        value="<?= $texto($clasificacion['valor']) ?>"
-                        <?= $clasificacionFiltroActual === $clasificacion['valor'] ? 'selected' : '' ?>>
-                        <?= $texto($clasificacion['etiqueta']) ?>
-                    </option>
-                <?php endforeach; ?>
-            </select>
+            <label
+                class="form-label login-label"
+                for="filtro_convocatoria_clasificacion_boton">
+                Convocatoria
+            </label>
+
+            <?php
+            $clasificacionFiltroEtiqueta = 'Todas las convocatorias';
+
+            foreach ($clasificacionesDisponibles as $clasificacion) {
+                if ($clasificacionFiltroActual === $clasificacion['valor']) {
+                    $clasificacionFiltroEtiqueta =
+                        (string)$clasificacion['etiqueta'];
+                    break;
+                }
+            }
+            ?>
+
+            <div
+                class="convocatoria-filter-dropdown"
+                data-convocatoria-filter-dropdown>
+
+                <input
+                    type="hidden"
+                    id="filtro_convocatoria_clasificacion"
+                    name="clasificacion"
+                    value="<?= $texto($clasificacionFiltroActual) ?>"
+                    data-convocatoria-clasificacion>
+
+                <button
+                    type="button"
+                    class="convocatoria-filter-dropdown-trigger"
+                    id="filtro_convocatoria_clasificacion_boton"
+                    aria-haspopup="listbox"
+                    aria-expanded="false"
+                    data-convocatoria-filter-trigger>
+                    <span data-convocatoria-filter-label>
+                        <?= $texto($clasificacionFiltroEtiqueta) ?>
+                    </span>
+                    <i class="bi bi-chevron-down" aria-hidden="true"></i>
+                </button>
+
+                <div
+                    class="convocatoria-filter-dropdown-menu"
+                    role="listbox"
+                    aria-label="Seleccionar convocatoria"
+                    data-convocatoria-filter-menu>
+
+                    <button
+                        type="button"
+                        class="convocatoria-filter-dropdown-option <?= $clasificacionFiltroActual === '' ? 'is-selected' : '' ?>"
+                        role="option"
+                        aria-selected="<?= $clasificacionFiltroActual === '' ? 'true' : 'false' ?>"
+                        data-convocatoria-filter-value="">
+                        Todas las convocatorias
+                    </button>
+
+                    <?php foreach ($clasificacionesDisponibles as $clasificacion): ?>
+                        <button
+                            type="button"
+                            class="convocatoria-filter-dropdown-option <?= $clasificacionFiltroActual === $clasificacion['valor'] ? 'is-selected' : '' ?>"
+                            role="option"
+                            aria-selected="<?= $clasificacionFiltroActual === $clasificacion['valor'] ? 'true' : 'false' ?>"
+                            data-convocatoria-filter-value="<?= $texto($clasificacion['valor']) ?>">
+                            <?= $texto($clasificacion['etiqueta']) ?>
+                        </button>
+                    <?php endforeach; ?>
+                </div>
+            </div>
         </div>
 
         <div class="convocatoria-filter-field">
@@ -3190,6 +3244,18 @@ document.addEventListener('DOMContentLoaded', function () {
     const filtroFecha = document.getElementById('filtro_convocatoria_fecha');
     const filtroCategoria = document.getElementById('filtro_convocatoria_categoria');
     const filtroClasificacion = document.querySelector('[data-convocatoria-clasificacion]');
+    const filtroClasificacionDropdown = document.querySelector(
+        '[data-convocatoria-filter-dropdown]'
+    );
+    const filtroClasificacionTrigger = document.querySelector(
+        '[data-convocatoria-filter-trigger]'
+    );
+    const filtroClasificacionLabel = document.querySelector(
+        '[data-convocatoria-filter-label]'
+    );
+    const filtroClasificacionOpciones = Array.from(
+        document.querySelectorAll('[data-convocatoria-filter-value]')
+    );
     const limpiarFiltros = document.querySelector('[data-convocatoria-clear-filters]');
     const listadoConvocatorias = document.querySelector('[data-convocatorias-listado]');
     const tabsConvocatorias = Array.from(
@@ -3633,6 +3699,68 @@ document.addEventListener('DOMContentLoaded', function () {
 
     filtroBuscar?.addEventListener('input', programarBusqueda);
 
+    const cerrarFiltroClasificacion = function () {
+        filtroClasificacionDropdown?.classList.remove('is-open');
+        filtroClasificacionTrigger?.setAttribute('aria-expanded', 'false');
+    };
+
+    filtroClasificacionTrigger?.addEventListener('click', function () {
+        const abrir = !filtroClasificacionDropdown?.classList.contains('is-open');
+
+        if (abrir) {
+            filtroClasificacionDropdown?.classList.add('is-open');
+            filtroClasificacionTrigger.setAttribute('aria-expanded', 'true');
+        } else {
+            cerrarFiltroClasificacion();
+        }
+    });
+
+    filtroClasificacionOpciones.forEach(function (opcion) {
+        opcion.addEventListener('click', function () {
+            const valor = String(
+                opcion.dataset.convocatoriaFilterValue || ''
+            );
+
+            if (filtroClasificacion) {
+                filtroClasificacion.value = valor;
+            }
+
+            if (filtroClasificacionLabel) {
+                filtroClasificacionLabel.textContent =
+                    opcion.textContent.trim();
+            }
+
+            filtroClasificacionOpciones.forEach(function (item) {
+                const seleccionada = item === opcion;
+                item.classList.toggle('is-selected', seleccionada);
+                item.setAttribute(
+                    'aria-selected',
+                    seleccionada ? 'true' : 'false'
+                );
+            });
+
+            cerrarFiltroClasificacion();
+            window.clearTimeout(temporizadorFiltro);
+            actualizarVisibilidadLimpiar();
+            cargarListadoFiltrado();
+        });
+    });
+
+    document.addEventListener('click', function (event) {
+        if (
+            filtroClasificacionDropdown &&
+            !filtroClasificacionDropdown.contains(event.target)
+        ) {
+            cerrarFiltroClasificacion();
+        }
+    });
+
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') {
+            cerrarFiltroClasificacion();
+        }
+    });
+
     filtroClasificacion?.addEventListener('change', function () {
         window.clearTimeout(temporizadorFiltro);
         actualizarVisibilidadLimpiar();
@@ -3670,6 +3798,21 @@ document.addEventListener('DOMContentLoaded', function () {
         if (filtroClasificacion) {
             filtroClasificacion.value = '';
         }
+
+        if (filtroClasificacionLabel) {
+            filtroClasificacionLabel.textContent =
+                'Todas las convocatorias';
+        }
+
+        filtroClasificacionOpciones.forEach(function (item) {
+            const seleccionada =
+                String(item.dataset.convocatoriaFilterValue || '') === '';
+            item.classList.toggle('is-selected', seleccionada);
+            item.setAttribute(
+                'aria-selected',
+                seleccionada ? 'true' : 'false'
+            );
+        });
 
         actualizarVisibilidadLimpiar();
         cargarListadoFiltrado();
