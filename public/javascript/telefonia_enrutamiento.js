@@ -467,6 +467,24 @@
                 return;
             }
         }
+        // Se comparte la referencia de ESTA llamada únicamente cuando
+        // Recepción ha confirmado un expediente permitido al destinatario.
+        // Hostinger mantiene además los nombres referencia_llamada y
+        // numero_origen para la versión personalizada del controlador.
+        // La versión de GitHub recibe pbx_call_id; ambas son compatibles.
+        const seguimientoConfirmado = (
+            categoria === 'RECEPCION' &&
+            tipo?.value === 'INSTITUCION' &&
+            confirmedRecognition &&
+            confirmedRecord?.callId === identity &&
+            confirmedRecord?.usuarioId === Number(selected.usuario_id) &&
+            confirmedRecord?.estadoId === Number(selected.estado_id)
+        ) ? confirmedRecord.seguimientoId : 0;
+        const referenciaInstitucional = seguimientoConfirmado > 0 &&
+            active.direction === 'incoming' && /^in_[a-z0-9_-]{6,95}$/i.test(identity)
+                ? identity : '';
+        const numeroOrigen = referenciaInstitucional
+            ? String(active.phone || '').trim() : '';
         const buttons = panel.querySelectorAll('[data-routing-attended], [data-routing-direct]');
         transferBusy = true;
         buttons.forEach(btn => { btn.disabled = true; });
@@ -480,14 +498,10 @@
                 modo:mode,
                 // Nunca tomar una sugerencia automática como identidad:
                 // se transmite sólo la institución confirmada por Tania.
-                seguimiento_id:String(
-                    confirmedRecognition &&
-                    confirmedRecord?.callId === identity &&
-                    confirmedRecord?.usuarioId === Number(selected.usuario_id) &&
-                    confirmedRecord?.estadoId === Number(selected.estado_id)
-                        ? confirmedRecord.seguimientoId : 0
-                ),
-                pbx_call_id:identity
+                seguimiento_id:String(seguimientoConfirmado),
+                pbx_call_id:identity,
+                referencia_llamada:referenciaInstitucional,
+                numero_origen:numeroOrigen
             });
             const data = await fetch(cfg.routingAuthorizeUrl, {
                 method:'POST', credentials:'same-origin', cache:'no-store',
