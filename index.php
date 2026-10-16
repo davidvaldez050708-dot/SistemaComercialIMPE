@@ -275,106 +275,6 @@ if (
 
 
 
-/*
- * RUTAS SMTP DE USUARIO - DESPACHO DIRECTO
- *
- * Estas rutas se resuelven antes del switch principal para no depender de
- * que CorreoMarketingController tenga métodos nuevos en instalaciones con
- * OPcache o despliegues parciales. Mantiene compatibilidad con las URLs
- * usadas por Mi perfil y el módulo de Correos.
- */
-if (
-    $controller === 'correoMarketing' &&
-    in_array(
-        $action,
-        [
-            'cuentaCorreoDiagnostico',
-            'cuentaCorreoEstado',
-            'cuentaCorreoGuardar',
-            'cuentaCorreoProbar',
-            'cuentaCorreoEliminar'
-        ],
-        true
-    )
-) {
-    require_once __DIR__ . '/app/services/CuentaCorreoUsuarioService.php';
-
-    if (!isset($_SESSION['usuario_id'])) {
-        http_response_code(401);
-        header('Content-Type: application/json; charset=utf-8');
-        echo json_encode([
-            'ok' => false,
-            'mensaje' => 'La sesión no está activa.'
-        ], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
-        exit;
-    }
-
-    $usuarioIdSmtp = (int)$_SESSION['usuario_id'];
-    $servicioCuentaSmtp = new CuentaCorreoUsuarioService();
-
-    $responderSmtp = static function (array $datos, int $codigo = 200) {
-        http_response_code($codigo);
-        header('Content-Type: application/json; charset=utf-8');
-        echo json_encode(
-            $datos,
-            JSON_UNESCAPED_UNICODE |
-            JSON_UNESCAPED_SLASHES |
-            JSON_INVALID_UTF8_SUBSTITUTE
-        );
-        exit;
-    };
-
-    if ($action === 'cuentaCorreoDiagnostico') {
-        $responderSmtp(
-            $servicioCuentaSmtp->diagnostico($usuarioIdSmtp)
-        );
-    }
-
-    if ($action === 'cuentaCorreoEstado') {
-        $cuentaSmtp = $servicioCuentaSmtp->obtener(
-            $usuarioIdSmtp,
-            false
-        );
-
-        $responderSmtp([
-            'ok' => true,
-            'configurada' => is_array($cuentaSmtp),
-            'cuenta' => $cuentaSmtp
-        ]);
-    }
-
-    if (
-        strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST'
-    ) {
-        $responderSmtp([
-            'ok' => false,
-            'mensaje' => 'Método no permitido.'
-        ], 405);
-    }
-
-    if ($action === 'cuentaCorreoGuardar') {
-        $resultadoSmtp = $servicioCuentaSmtp->guardar(
-            $usuarioIdSmtp,
-            $_POST
-        );
-    } elseif ($action === 'cuentaCorreoProbar') {
-        $resultadoSmtp = $servicioCuentaSmtp->probar(
-            $usuarioIdSmtp,
-            $_POST
-        );
-    } else {
-        $resultadoSmtp = $servicioCuentaSmtp->eliminar(
-            $usuarioIdSmtp
-        );
-    }
-
-    $codigoSmtp = (int)($resultadoSmtp['codigo_http'] ?? 200);
-    unset($resultadoSmtp['codigo_http']);
-
-    $responderSmtp($resultadoSmtp, $codigoSmtp);
-}
-
-
 switch ($controller) {
 
     case 'login':
@@ -428,17 +328,6 @@ switch ($controller) {
 
         $controllerInstance =
             new FirmaCorreoController();
-
-        break;
-
-
-    case 'cuentaCorreoUsuario':
-
-        require_once __DIR__ .
-            '/app/controllers/CuentaCorreoUsuarioController.php';
-
-        $controllerInstance =
-            new CuentaCorreoUsuarioController();
 
         break;
 
