@@ -5619,3 +5619,20 @@
     background: #223A84 !important;
     color: #ffffff !important;
 }
+
+
+/* Selección azul también en Tipo de convocatoria */
+#modalCrearConvocatoria
+[data-convocatoria-classification-option].is-selected {
+    background: #223A84 !important;
+    color: #ffffff !important;
+    font-weight: 700;
+}
+
+#modalCrearConvocatoria
+[data-convocatoria-classification-option].is-selected:hover,
+#modalCrearConvocatoria
+[data-convocatoria-classification-option].is-selected:focus-visible {
+    background: #223A84 !important;
+    color: #ffffff !important;
+}
