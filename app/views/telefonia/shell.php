@@ -18,8 +18,6 @@ $nombreShell = trim((string)(($_SESSION['nombre'] ?? '') . ' ' . ($_SESSION['ape
 $nombreShell = $nombreShell !== '' ? $nombreShell : 'Usuario';
 $rolTelefonoShell = mb_strtoupper(trim((string)($_SESSION['rol'] ?? '')), 'UTF-8');
 $esAsesorShell = in_array($rolTelefonoShell, ['ASESOR','ASESOR DE VENTAS'], true);
-// Toda extensión habilitada para entrantes debe poder atender la llamada
-// transferida, no sólo la extensión 100 o el rol Analista.
 $puedeRecibirShell = !empty($asignacionTelefonica['permite_entrantes']) &&
     tienePermiso('telefonia.recibir') && tienePermiso('telefonia.usar');
 $puedeTransferirShell = !empty($asignacionTelefonica['permite_transferir']) &&

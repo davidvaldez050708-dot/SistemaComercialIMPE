@@ -65,26 +65,24 @@ function duracionConversacion(?array $respuesta, ?array $fin): int
     }
 
     $duracionProveedor = max(0, (int)($fin['duration'] ?? 0));
-    if ($duracionProveedor > 0) {
-        return $duracionProveedor;
-    }
-
+    // Un duration=1 puede representar una marca provisional. Contrastar
+    // con los tiempos de respuesta y fin de ESTA MISMA llamada.
     if (!$respuesta) {
-        return 0;
+        return $duracionProveedor;
     }
 
     $inicio = strtotime((string)($respuesta['received_at'] ?? ''));
     $finTimestamp = strtotime((string)($fin['received_at'] ?? ''));
 
-    if (
-        $inicio === false ||
-        $finTimestamp === false ||
-        $finTimestamp <= $inicio
-    ) {
-        return 0;
+    if ($inicio === false || $finTimestamp === false ||
+        $finTimestamp <= $inicio) {
+        return $duracionProveedor;
     }
-
-    return max(1, $finTimestamp - $inicio);
+    $intervalo = $finTimestamp - $inicio;
+    // Rechazar desfases de reloj: no convertir 6 horas de zona horaria
+    // en una conversación; conservar en ese caso dato del proveedor.
+    if ($intervalo > 7200) return $duracionProveedor;
+    return max($duracionProveedor, $intervalo);
 }
 
 $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
@@ -214,7 +212,9 @@ if ($pbxCallId !== '') {
 
 $estadistica = null;
 if (
-    (!$inicio || !$fin || $pbxCallId === '') &&
+    (!$inicio || !$fin || $pbxCallId === '' ||
+     ($fin && (int)($fin['duration'] ?? 0) <= 1) ||
+     ($fin && !$grabacion && empty($fin['is_recorded']))) &&
     $permitirLookupEstadisticas
 ) {
     try {
@@ -231,6 +231,16 @@ if (
         }
 
         if ($estadistica) {
+            // La búsqueda no puede sustituir silenciosamente el PBX ID.
+            $idEstadistica = trim((string)($estadistica['pbx_call_id'] ?? ''));
+            $extEstadistica = trim((string)($estadistica['sip'] ?? ''));
+            if ($idEstadistica === '' ||
+                ($pbxCallId !== '' && !hash_equals($pbxCallId, $idEstadistica)) ||
+                ($extEstadistica !== '' && ltrim($extEstadistica, '0') !== ltrim($extension, '0'))) {
+                $estadistica = null;
+            }
+        }
+        if ($estadistica) {
             $pbxCallId = trim((string)($estadistica['pbx_call_id'] ?? $pbxCallId));
             $callStart = trim((string)($estadistica['callstart'] ?? ''));
             $segundos = max(0, (int)($estadistica['seconds'] ?? 0));
@@ -246,6 +256,20 @@ if (
                 ];
             }
 
+            if ($fin) {
+                // Sólo mejorar el dato con estadística de la MISMA llamada.
+                $segundosConfirmados = max(0, (int)($estadistica['seconds'] ?? 0));
+                if ($segundosConfirmados > (int)($fin['duration'] ?? 0)) {
+                    $fin['duration'] = (string)$segundosConfirmados;
+                }
+                if (!empty($estadistica['is_recorded'])) {
+                    $fin['is_recorded'] = '1';
+                }
+                if (empty($fin['call_id_with_rec']) &&
+                    !empty($estadistica['call_id'])) {
+                    $fin['call_id_with_rec'] = (string)$estadistica['call_id'];
+                }
+            }
             if (!$fin) {
                 $fin = [
                     'event' => 'STATISTICS_OUT_END',
@@ -368,7 +392,8 @@ try {
      */
     $duracionProveedor = max(
         duracionConversacion($respuesta, $fin),
-        max(0, (int)($fin['duration'] ?? 0))
+        max(0, (int)($fin['duration'] ?? 0)),
+        max(0, (int)($estadistica['seconds'] ?? 0))
     );
     $duracion = $huboRespuesta
         ? $duracionProveedor

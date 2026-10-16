@@ -1,6 +1,32 @@
 (function () {
     'use strict';
 
+    // Asegura que la paginación del expediente cargue sus estilos incluso
+    // si la plantilla del detalle omite la hoja correspondiente.
+    (function cargarEstilosPaginacion() {
+        const script = document.currentScript;
+        const urlScript = script && script.src ? script.src : '';
+        if (!urlScript) return;
+        let cssUrl;
+        try {
+            cssUrl = new URL(urlScript, document.baseURI);
+            if (!/\/javascript\/seguimiento_llamadas_expediente\.js$/.test(cssUrl.pathname)) return;
+            cssUrl.pathname = cssUrl.pathname.replace(
+                '/javascript/seguimiento_llamadas_expediente.js',
+                '/css/seguimiento_llamadas_expediente.css'
+            );
+            cssUrl.search = '?v=20261016-paginacion-estilos-v2';
+        } catch (error) { return; }
+        const existente = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
+            .some(function (link) { return link.href === cssUrl.href; });
+        if (existente) return;
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = cssUrl.href;
+        link.dataset.seguimientoPaginationCss = '1';
+        document.head.appendChild(link);
+    })();
+
     document.addEventListener('DOMContentLoaded', function () {
         const MARCADORES = {
             BUZON_VOZ: '[BUZON_VOZ]',
@@ -144,7 +170,7 @@
                     return;
                 }
 
-                const resumen = formulario.querySelector('[data-telephony-call-summary] .alert');
+                const resumen = formulario.querySelector('[data-telephony-call-summary] .impe-call-linked-note__body');
                 if (!resumen) {
                     return;
                 }
@@ -154,9 +180,8 @@
                     : 'Fuera del área / fuera de servicio';
 
                 resumen.innerHTML =
-                    '<i class="bi bi-telephone-check me-1"></i>' +
-                    '<strong>Llamada real vinculada.</strong> ' +
-                    etiqueta + ' · el intento quedará en el historial y la grabación no se conservará.';
+                    '<strong>Llamada registrada</strong>' +
+                    '<span>' + etiqueta + ' · intento sin conversación grabable.</span>';
             };
 
             canal.addEventListener('change', actualizarOpciones);
@@ -300,6 +325,7 @@
                                     '<span>Cargando llamadas…</span>' +
                                 '</div>' +
                             '</div>' +
+                            '<nav class="linkage-call-pagination" data-call-pagination aria-label="Páginas del historial de llamadas" hidden></nav>' +
                         '</div>' +
                     '</section>';
 
@@ -393,6 +419,83 @@
                 });
 
                 const historyList = pane.querySelector('[data-call-history-list]');
+                const pagination = pane.querySelector('[data-call-pagination]');
+                const pageSize = 8;
+                let currentPage = 1;
+                let allCalls = [];
+
+                const renderHistory = function () {
+                    const totalPages = Math.max(1, Math.ceil(allCalls.length / pageSize));
+                    currentPage = Math.min(Math.max(1, currentPage), totalPages);
+                    historyList.replaceChildren();
+                    pagination.replaceChildren();
+                    if (allCalls.length === 0) {
+                        historyList.appendChild(crearEstadoVacio(
+                            'Todavía no hay llamadas registradas en este seguimiento.',
+                            'bi-telephone-x'
+                        ));
+                        pagination.hidden = true;
+                        return;
+                    }
+                    allCalls.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+                        .forEach(function (call) {
+                            historyList.appendChild(crearTarjetaHistorial(call));
+                        });
+                    pagination.hidden = totalPages <= 1;
+                    if (totalPages <= 1) return;
+
+                    const info = document.createElement('span');
+                    info.className = 'linkage-call-pagination-info';
+                    info.textContent = 'Mostrando ' +
+                        ((currentPage - 1) * pageSize + 1) + '–' +
+                        Math.min(currentPage * pageSize, allCalls.length) +
+                        ' de ' + allCalls.length + ' llamadas';
+                    pagination.appendChild(info);
+                    const actions = document.createElement('div');
+                    actions.className = 'linkage-call-pagination-actions';
+                    pagination.appendChild(actions);
+                    const makeButton = function (label, page, isCurrent, disabled, icon) {
+                        const button = document.createElement('button');
+                        button.type = 'button';
+                        button.className = 'linkage-call-page-button' +
+                            (isCurrent ? ' is-active' : '');
+                        button.disabled = disabled;
+                        button.textContent = label;
+                        button.setAttribute('aria-label', icon ? label + ' página' : 'Página ' + label);
+                        if (isCurrent) button.setAttribute('aria-current', 'page');
+                        button.addEventListener('click', function () {
+                            if (page === currentPage || disabled) return;
+                            // Evitar que un audio de una página anterior siga sonando.
+                            historyList.querySelectorAll('audio').forEach(function (audio) {
+                                audio.pause();
+                            });
+                            currentPage = page;
+                            renderHistory();
+                            // Mantener el encabezado de la sección visible al paginar.
+                            pane.querySelector('.linkage-call-section-heading')?.scrollIntoView({
+                                behavior: 'auto', block: 'nearest'
+                            });
+                        });
+                        actions.appendChild(button);
+                    };
+                    makeButton('Anterior', currentPage - 1, false, currentPage === 1, true);
+                    const pages = new Set([1, totalPages]);
+                    for (let p = Math.max(1, currentPage - 2); p <= Math.min(totalPages, currentPage + 2); p++) pages.add(p);
+                    let previous = 0;
+                    Array.from(pages).sort(function (a,b) { return a-b; }).forEach(function (page) {
+                        if (previous && page - previous > 1) {
+                            const dots = document.createElement('span');
+                            dots.className = 'linkage-call-page-dots';
+                            dots.textContent = '…';
+                            dots.setAttribute('aria-hidden', 'true');
+                            actions.appendChild(dots);
+                        }
+                        makeButton(String(page), page, page === currentPage, false, false);
+                        previous = page;
+                    });
+                    makeButton('Siguiente', currentPage + 1, false, currentPage === totalPages, true);
+                };
+
                 const countCalls = pane.querySelector('[data-call-count]');
                 const summaryTotal = pane.querySelector('[data-call-summary-total]');
                 const summaryContacted = pane.querySelector('[data-call-summary-contacted]');
@@ -688,8 +791,16 @@
                                 return Boolean(llamada.grabacion_procesando);
                             });
                             const contactadas = llamadas.filter(function (llamada) {
-                                return ['CONTACTADO', 'SOLICITO_LLAMAR_DESPUES', 'MENSAJE_ENVIADO']
-                                    .includes(String(llamada.resultado || '').toUpperCase());
+                                const resultado = String(llamada.resultado || '').toUpperCase();
+                                if (['CONTACTADO', 'SOLICITO_LLAMAR_DESPUES', 'MENSAJE_ENVIADO',
+                                    'SOLICITO_INFORMACION', 'CONTACTO_CORRECTO', 'CONTACTO_REFERIDO']
+                                    .includes(resultado)) return true;
+                                // Una grabación PBX transferida verifica que existió
+                                // conversación, pero no sustituye la clasificación manual.
+                                return Boolean(llamada.grabacion_transferida_pbx) &&
+                                    Number(llamada.duracion_segundos || 0) > 0 &&
+                                    !['SIN_RESPUESTA', 'NO_CONTESTO', 'BUZON_VOZ', 'OCUPADO',
+                                        'FUERA_SERVICIO', 'NUMERO_INCORRECTO'].includes(resultado);
                             }).length;
 
                             countCalls.textContent = String(llamadas.length);
@@ -697,18 +808,8 @@
                             summaryContacted.textContent = String(contactadas);
                             summaryRecordings.textContent = String(grabaciones.length);
 
-                            historyList.innerHTML = '';
-
-                            if (llamadas.length === 0) {
-                                historyList.appendChild(crearEstadoVacio(
-                                    'Todavía no hay llamadas registradas en este seguimiento.',
-                                    'bi-telephone-x'
-                                ));
-                            } else {
-                                llamadas.forEach(function (llamada) {
-                                    historyList.appendChild(crearTarjetaHistorial(llamada));
-                                });
-                            }
+                            allCalls = llamadas;
+                            renderHistory();
 
                             document.dispatchEvent(new CustomEvent(
                                 'impe:expediente-llamadas-actualizadas',
@@ -729,6 +830,8 @@
                             summaryContacted.textContent = '—';
                             summaryRecordings.textContent = '—';
                             historyList.innerHTML = '';
+                            pagination.hidden = true;
+                            pagination.replaceChildren();
                             historyList.appendChild(crearEstadoVacio(
                                 error.message || 'No fue posible cargar las llamadas.',
                                 'bi-exclamation-circle'

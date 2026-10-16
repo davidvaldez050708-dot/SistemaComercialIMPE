@@ -19,6 +19,24 @@
             return;
         }
 
+
+        // Diseño encapsulado: no modifica los selectores ni otros avisos.
+        if (!document.getElementById('impe-call-linked-note-style')) {
+            const css = document.createElement('style');
+            css.id = 'impe-call-linked-note-style';
+            css.textContent = `
+              .impe-call-linked-note {display:flex;align-items:flex-start;gap:12px;padding:15px 16px;
+                border:1px solid #d9e4f3;border-radius:13px;background:#f5f8fd;color:#21355a;
+                font:inherit;line-height:1.45;box-shadow:0 1px 2px rgba(26,54,93,.025)}
+              .impe-call-linked-note__icon {display:grid;place-items:center;flex:0 0 35px;
+                height:35px;border-radius:10px;background:#e7f4ee;color:#16815a;font-size:17px}
+              .impe-call-linked-note__body {display:flex;flex-direction:column;gap:3px;min-width:0}
+              .impe-call-linked-note__body strong {font-size:13px;font-weight:750;color:#223b70}
+              .impe-call-linked-note__body span {font-size:13px;color:#536687;overflow-wrap:anywhere}
+            `;
+            document.head.appendChild(css);
+        }
+
         const vincularUrl =
             'prueba_telefonia/api/vincular_interaccion_zadarma.php';
         const usuarioId =
@@ -418,7 +436,9 @@
                 estadoActual?.finalMetadata
             ) {
                 mostrarToast(
-                    'Primero registra el resultado de la llamada anterior.',
+                    pendingInteractionId > 0
+                        ? 'Resultado guardado. Espera a que termine la vinculación con Zadarma.'
+                        : 'Primero registra el resultado de la llamada anterior.',
                     true
                 );
                 phone.openContext(true);
@@ -576,16 +596,17 @@
                 aviso.dataset
                     .callRecordingState =
                     recordingState;
+                // Mensaje visual consistente con las tarjetas del CRM.
+                // El estado de grabación es informativo hasta confirmación del proveedor.
                 aviso.innerHTML =
-                    '<div class="alert alert-light border mb-1 py-2 px-3 small">' +
-                        '<i class="bi bi-telephone-fill me-1"></i>' +
-                        '<strong>Llamada real vinculada.</strong> ' +
-                        label +
-                        ' · ' +
-                        formatDuration(
-                            metadata.duration
-                        ) +
-                        recordingText +
+                    '<div class="impe-call-linked-note" role="status">' +
+                        '<span class="impe-call-linked-note__icon" aria-hidden="true">' +
+                            '<span aria-hidden="true">☎</span></span>' +
+                        '<div class="impe-call-linked-note__body">' +
+                            '<strong>Llamada registrada</strong>' +
+                            '<span>' + label + ' · ' + formatDuration(metadata.duration) +
+                                recordingText + '</span>' +
+                        '</div>' +
                     '</div>';
             };
 
@@ -981,6 +1002,11 @@
                     pendingInteractionFeedback =
                         null;
                     phone.clearFinished(token);
+                    // El resultado técnico fue vinculado: despejar sólo el
+                    // resumen de ESTA llamada, sin modificar los selectores.
+                    const form = offcanvas.querySelector('[data-work-interaction-form]');
+                    const notice = form?.querySelector('[data-telephony-call-summary]');
+                    if (notice) notice.remove();
                     mostrarToast(
                         finalMessage,
                         false

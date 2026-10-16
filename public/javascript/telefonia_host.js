@@ -147,7 +147,6 @@
 
     const ocultarHostEntrante = function () {
         nativeUiVisible = false;
-        document.body.classList.remove('telephony-host-incoming');
         ocultarInterfazNativa();
 
         window.setTimeout(
@@ -225,31 +224,41 @@
         return emptyState();
     };
 
-    let state = readState();
+    // Nunca rehidratar una llamada como activa al abrir una pestaña nueva.
+    // La nueva conexión SIP debe publicar evidencia fresca del SDK/PBX.
+    const previousState = readState();
+    let state = emptyState();
+    const retiredKey = 'impe:telephony:retired-call-ids:' + userId;
+    const retiredIds = new Map();
+    try {
+        const rows = JSON.parse(window.localStorage.getItem(retiredKey) || '[]');
+        for (const row of Array.isArray(rows) ? rows : []) {
+            if (Array.isArray(row) && Date.now() - Number(row[1]) < 30*60*1000)
+                retiredIds.set(String(row[0]), Number(row[1]));
+        }
+    } catch (_) {}
+    const retirePbxCall = id => {
+        const token = String(id || '').trim();
+        if (!/^[A-Za-z0-9_-]{3,100}$/.test(token)) return;
+        retiredIds.set(token, Date.now());
+        try {
+            window.localStorage.setItem(retiredKey, JSON.stringify(
+                Array.from(retiredIds).filter(row => Date.now()-row[1] < 30*60*1000)
+                    .slice(-20)));
+        } catch (_) {}
+    };
+    if (previousState.active ||
+        ['finished','incoming-finished'].includes(previousState.phase)) {
+        retirePbxCall(previousState.pbxCallId);
+    }
     const manualCall = call =>
         ['TELEPHONY_MANUAL', 'MARKETING_CALLBACK', 'DIALER'].includes(
             String(call?.context?.type || '').toUpperCase()
         );
-    // Marketing no tiene resultado comercial pendiente tras Colgar.
-    // No restaurar una llamada manual finalizada de una sesión anterior.
-    if (!state.active && state.phase === 'finished' && manualCall(state)) {
-        state = emptyState();
-    }
-
-    /*
-     * Si esta página se cargó de nuevo, el PeerConnection anterior ya no existe.
-     * Se elimina cualquier bandera activa antigua para evitar una llamada fantasma.
-     */
-    if (state.active) {
-        state = Object.assign(emptyState(), {
-            phase: 'interrupted',
-            status: 'interrupted',
-            destination: state.destination || '',
-            institution: state.institution || '',
-            context: state.context || null,
-            message:
-                'La ventana telefónica se reinició. Verifica la llamada antes de volver a marcar.'
-        });
+    // En un reinicio jamás conservar número, duración, comandos ni bandera
+    // activa de la conexión WebRTC anterior. No reabrir "volver a llamar".
+    if (previousState?.active) {
+        state.message = 'Teléfono reconectándose. La llamada anterior no se restauró.';
     }
 
     const formatDuration = function (seconds) {
@@ -337,10 +346,7 @@
             provider: 'ZADARMA',
             // Un webhook PBX por sí solo no confirma WebRTC.
             hostReady: widgetReady,
-            duration: patch?.phase === 'incoming-finished' &&
-                state.context?.type === 'SDK_INCOMING'
-                ? Math.max(0, Number(patch.duration || 0))
-                : currentDuration(),
+            duration: currentDuration(),
             updatedAt: Date.now()
         });
 
@@ -521,81 +527,14 @@
             !String(state.pbxCallId || '').trim());
     };
 
-    // Cola secuencial: el FIN nunca se guarda antes de la entrada.
-    let sdkJournalQueue = Promise.resolve();
-    const reportSdkEvent = function (evento, current) {
-        if (!config.analystSdkIncoming ||
-            !config.analystSdkJournalUrl || !config.analystSdkJournalCsrf ||
-            current?.context?.type !== 'SDK_INCOMING') return;
-        const data = new URLSearchParams({
-            csrf_token: String(config.analystSdkJournalCsrf),
-            session_id: String(current.callToken || ''),
-            evento: evento,
-            numero: String(current.destination || '') === 'Número desconocido'
-                ? '' : String(current.destination || ''),
-            caller_name: String(current.context.callerName || '')
-        });
-        sdkJournalQueue = sdkJournalQueue.catch(function () {}).then(async function () {
-            for (let attempt = 0; attempt < 2; attempt++) {
-                try {
-                    const response = await fetch(String(config.analystSdkJournalUrl), {
-                        method: 'POST', credentials: 'same-origin',
-                        cache: 'no-store',
-                        headers: {
-                            Accept: 'application/json',
-                            'X-Requested-With': 'fetch',
-                            'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
-                        },
-                        body: data.toString()
-                    });
-                    const result = await response.json();
-                    if (!response.ok || result.ok !== true) {
-                        throw new Error(result.mensaje || 'Registro WebRTC no disponible.');
-                    }
-                    if (['ended','declined','missed'].includes(evento) &&
-                        state.callToken === current.callToken &&
-                        state.phase === 'incoming-finished') {
-                        publish({journalStatus:'saved'});
-                    }
-                    return;
-                } catch (error) {
-                    if (attempt === 1) {
-                        console.warn(
-                            '[Analista] No se guardó el evento WebRTC ' + evento + '.', error
-                        );
-                        if (['ended','declined','missed'].includes(evento) &&
-                            state.callToken === current.callToken &&
-                            state.phase === 'incoming-finished') {
-                            publish({journalStatus:'error'});
-                        }
-                    }
-                }
-            }
-        });
-    };
-
-    const clearSdkOnlyIncoming = function (reason) {
+    const clearSdkOnlyIncoming = function () {
         if (!state.active || !isSdkOnlyIncoming()) return;
-        const previous = state;
-        const answered = previous.phase === 'in-progress' && answeredAtMs > 0;
-        const elapsed = answered ? currentDuration() : 0;
-        reportSdkEvent(reason === 'declined' ? 'declined' :
-            (answered ? 'ended' : 'missed'), previous);
         answeredAtMs = 0;
         muted = false;
-        publish({
-            phase: 'incoming-finished',
-            active: false,
-            muted: false,
-            direction: 'incoming',
-            status: answered ? 'completed' :
-                (reason === 'declined' ? 'declined' : 'no-answer'),
-            duration: elapsed,
-            answeredAtMs: 0,
-            journalStatus: 'pending',
-            message: 'Llamada finalizada. Registro WebRTC sin confirmación PBX.',
-            finalMetadata: null
-        });
+        state = emptyState();
+        state.hostReady = widgetReady;
+        state.phase = widgetReady ? 'ready' : 'idle';
+        publish(state);
     };
 
     const startAnalystSdkObserver = function () {
@@ -614,14 +553,6 @@
                         '-' + Math.random().toString(36).slice(2, 9);
                     answeredAtMs = 0;
                     muted = false;
-                    reportSdkEvent('ringing', {
-                        callToken: token,
-                        destination: number,
-                        context: {
-                            type: 'SDK_INCOMING',
-                            callerName: String(call?.callerName || '').slice(0, 100)
-                        }
-                    });
                     publish({
                         active: true,
                         phase: 'incoming-ringing',
@@ -644,20 +575,25 @@
                     });
                 },
                 onConnected: function () {
-                    // Evidencia visual de llamada SIP conectada observada en
-                    // el widget, SIN fingir un evento PBX firmado.
-                    if (!isSdkOnlyIncoming() || !state.active ||
+                    // La llamada transferida puede recibir su PBX ID ANTES
+                    // de que el SDK anuncie audio. La señal local sigue
+                    // siendo válida sin inventar un NOTIFY_ANSWER firmado.
+                    const sdkOnly = isSdkOnlyIncoming();
+                    const pbxIncoming = state.active &&
+                        state.direction === 'incoming' &&
+                        state.context?.type === 'INCOMING' &&
+                        String(state.pbxCallId || '') !== '';
+                    if ((!sdkOnly && !pbxIncoming) || !state.active ||
                         !['incoming-ringing','answering'].includes(state.phase)) return;
                     answeredAtMs = Date.now();
-                    reportSdkEvent('answered', state);
+                    if (sdkOnly) reportSdkEvent('answered', state);
                     publish({
-                        phase:'in-progress',
-                        status:'in-progress',
-                        answeredAtMs:answeredAtMs,
-                        duration:0,
-                        message:'',
+                        phase:'in-progress', status:'in-progress',
+                        answeredAtMs:answeredAtMs, duration:0, message:'',
                         context:Object.assign({},state.context,{
-                            verified:false,source:'SDK_WEBRTC'
+                            sdkConnected:true,
+                            verified:Boolean(state.context?.pbxAnswered),
+                            source:'SDK_WEBRTC'
                         })
                     });
                 },
@@ -666,14 +602,38 @@
                     // Al atender, el SDK deja de timbrar pero la conversación
                     // CONTINÚA. Sólo limpiar un timbrado que no se contestó.
                     if (state.phase === 'incoming-ringing') {
-                        clearSdkOnlyIncoming('missed');
+                        clearSdkOnlyIncoming();
                     }
                 },
                 onIdle: function () {
-                    // El widget volvió al reposo (sin «incoming» ni control
-                    // de colgar durante 2 s). Esto cubre cuando la OTRA
-                    // extensión termina una conversación sin webhook PBX.
-                    if (isSdkOnlyIncoming()) clearSdkOnlyIncoming('remote');
+                    // El audio local terminó. Esperar cierre PBX, pero no
+                    // mantener la pantalla/cronómetro en conversación falsa.
+                    if (isSdkOnlyIncoming()) {
+                        clearSdkOnlyIncoming();
+                        return;
+                    }
+                    if (!state.active || state.direction !== 'incoming' ||
+                        !['incoming-ringing','answering','in-progress'].includes(state.phase) ||
+                        !state.pbxCallId) return;
+                    const token = String(state.pbxCallId);
+                    const duration = currentDuration();
+                    answeredAtMs = 0;
+                    publish({
+                        phase:'finishing',status:'finishing',duration,
+                        answeredAtMs:0,
+                        message:'El audio terminó. Esperando cierre de Zadarma.'
+                    });
+                    window.setTimeout(function () {
+                        // Sin NOTIFY_END sólo mostramos cierre provisional.
+                        // No fabricar evento PBX ni grabación.
+                        if (state.active && state.phase === 'finishing' &&
+                            String(state.pbxCallId) === token) {
+                            finalizarEntrante({
+                                pbx_call_id:token,duration,
+                                disposition:'ended-unconfirmed'
+                            }, false);
+                        }
+                    },8000);
                 }
             }
         ) || null;
@@ -727,7 +687,7 @@
                 'rounded',
                 'es',
                 true,
-                "{right:'10px',bottom:'10px'}"
+                "{right:'-9999px',bottom:'-9999px'}"
             );
             widgetInitialized = true;
             ocultarInterfazNativa();
@@ -798,28 +758,18 @@
     };
 
     window.IMPE_ZADARMA_INCOMING = Object.freeze({
-        retryJournal: function () {
-            if (state.phase !== 'incoming-finished' ||
-                state.context?.type !== 'SDK_INCOMING') return false;
-            const call = state;
-            publish({journalStatus:'pending'});
-            reportSdkEvent('ringing', call);
-            if (call.status === 'completed') reportSdkEvent('answered', call);
-            reportSdkEvent(call.status === 'completed' ? 'ended' :
-                (call.status === 'declined' ? 'declined' : 'missed'), call);
-            return true;
-        },
         canAnswer: function () {
             return Boolean(permiteEntrantes && incomingBridge?.available());
         },
         answer: function () {
-            const sdkOnly = isSdkOnlyIncoming() &&
+            const answeringIncoming = state.active &&
+                state.direction === 'incoming' &&
                 state.phase === 'incoming-ringing';
             const token = String(state.callToken || '');
             const sent = Boolean(permiteEntrantes && incomingBridge?.answer());
             if (!sent) return false;
 
-            if (sdkOnly && state.active &&
+            if (answeringIncoming && state.active &&
                 String(state.callToken || '') === token) {
                 analystSdkObserver?.markAnswerRequested?.();
                 // Bloquear un segundo clic hasta tener una señal observada del
@@ -840,7 +790,7 @@
                 state.phase === 'incoming-ringing';
             const sent = Boolean(permiteEntrantes && incomingBridge?.decline());
             if (sent) {
-                if (sdkOnly) clearSdkOnlyIncoming('declined');
+                if (sdkOnly) clearSdkOnlyIncoming();
                 else actualizarEstadoTrasAccion();
             }
             return sent;
@@ -853,7 +803,7 @@
                 state.phase === 'in-progress';
             const sent = Boolean(permiteEntrantes && incomingBridge?.hangup());
             if (sent) {
-                if (sdkOnly) clearSdkOnlyIncoming('local');
+                if (sdkOnly) clearSdkOnlyIncoming();
                 else actualizarEstadoTrasAccion();
             }
             return sent;
@@ -941,6 +891,7 @@
         window.clearTimeout(
             incomingFinishedTimer
         );
+        retirePbxCall(token);
 
         publish({
             phase: 'incoming-finished',
@@ -1023,7 +974,8 @@
         const incomingStatus =
             String(call.estado || '').trim();
 
-        if (pbxCallId === '') {
+        if (pbxCallId === '' ||
+            (!state.active && retiredIds.has(pbxCallId))) {
             return;
         }
 
@@ -1062,16 +1014,34 @@
             return;
         }
 
-        const answered =
-            incomingStatus === 'answered';
-
-        const nuevaLlamadaEntrante =
-            state.direction !== 'incoming' ||
-            String(state.pbxCallId || '') !==
-                pbxCallId;
-
-        if (nuevaLlamadaEntrante) {
+        const samePbxCall = state.direction === 'incoming' &&
+            String(state.pbxCallId || '') === pbxCallId;
+        // Un sondeo "ringing" tardío nunca degrada una llamada que el SDK
+        // ya confirmó en conversación, ni reinicia el reloj a cero.
+        // El PBX sólo puede absorber una sesión SDK reciente de este host.
+        const digits10 = value => String(value || '').replace(/\D+/g, '').slice(-10);
+        const sameCaller = digits10(state.destination).length === 10 &&
+            digits10(state.destination) === digits10(call.caller_id);
+        const recentSdkAudio = state.active &&
+            state.direction === 'incoming' &&
+            state.context?.type === 'SDK_INCOMING' &&
+            Boolean(state.context?.sdkConnected) &&
+            answeredAtMs > 0 && Date.now() - answeredAtMs < 15000;
+        const sdkAnswered = Boolean(state.active &&
+            state.direction === 'incoming' && state.context?.sdkConnected &&
+            (samePbxCall || (recentSdkAudio &&
+                (sameCaller || (String(state.destination || '').replace(/\D+/g,'').length < 10 &&
+                 analystSdkObserver?.isConnected?.())))));
+        const pbxAnswered = incomingStatus === 'answered' ||
+            (samePbxCall && Boolean(state.context?.pbxAnswered));
+        const answered = pbxAnswered || sdkAnswered;
+        const nuevaLlamadaEntrante = !samePbxCall;
+        // La PBX puede tardar después de que el audio ya desapareció.
+        if (samePbxCall && state.phase === 'finishing') return;
+        if (nuevaLlamadaEntrante && !sdkAnswered) {
             answeredAtMs = 0;
+        } else if (sdkAnswered && answeredAtMs <= 0) {
+            answeredAtMs = Number(state.answeredAtMs) || Date.now();
         }
 
         if (
@@ -1083,16 +1053,17 @@
                     String(call.answer_at || '')
                         .replace(' ', 'T')
                 );
-            answeredAtMs =
-                Number.isFinite(answerAt)
-                    ? answerAt
-                    : Date.now();
+            // Sólo una marca razonablemente reciente puede iniciar
+            // el reloj; jamás usar una fecha vieja que genere horas.
+            answeredAtMs = Number.isFinite(answerAt) &&
+                answerAt <= Date.now() && Date.now() - answerAt < 3600000
+                ? answerAt : Date.now();
         }
 
         publish({
-            phase: answered
-                ? 'in-progress'
-                : 'incoming-ringing',
+            phase: answered ? 'in-progress' :
+                (samePbxCall && state.phase === 'answering'
+                    ? 'answering' : 'incoming-ringing'),
             active: true,
             // No reiniciar el silencio en cada sondeo del webhook PBX.
             muted: nuevaLlamadaEntrante ? false : Boolean(state.muted),
@@ -1102,9 +1073,9 @@
             calledDid:
                 String(call.called_did || ''),
             institution: '',
-            status: answered
-                ? 'in-progress'
-                : 'incoming-ringing',
+            status: answered ? 'in-progress' :
+                (samePbxCall && state.phase === 'answering'
+                    ? 'answering' : 'incoming-ringing'),
             // Antes de contestar, el reloj siempre comienza en 00:00.
             // Si ya se contestó, el valor pertenece al PBX call actual.
             duration: answered
@@ -1117,11 +1088,11 @@
             pbxCallId: pbxCallId,
             callToken: pbxCallId,
             context: {
-                type: 'INCOMING',
-                callerId:
-                    String(call.caller_id || ''),
-                calledDid:
-                    String(call.called_did || '')
+                type:'INCOMING',
+                callerId:String(call.caller_id || ''),
+                calledDid:String(call.called_did || ''),
+                sdkConnected:sdkAnswered,
+                pbxAnswered:pbxAnswered
             },
             finalMetadata: null,
             message: answered

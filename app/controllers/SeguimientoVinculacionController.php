@@ -1355,6 +1355,8 @@ class SeguimientoVinculacionController
             ], 500);
         }
 
+        $interaccionCreadaId = $modelo->obtenerUltimaInteraccionCreadaId();
+
         $seguimientoActualizado = $this->obtenerSeguimientoPorModo(
             $modelo,
             $usuarioId,
@@ -1372,6 +1374,7 @@ class SeguimientoVinculacionController
 
         $this->responderJson([
             'ok' => true,
+            'interaccion_id' => $interaccionCreadaId,
             'mensaje' => $notificadosCuentaClave > 0
                 ? 'Interacción registrada. Cuenta Clave fue notificada del cambio de contacto.'
                 : 'Interacción registrada correctamente.',
