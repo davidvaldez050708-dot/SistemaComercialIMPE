@@ -42,6 +42,11 @@
                 port: '587',
                 encryption: 'tls'
             },
+            OUTLOOK: {
+                host: 'smtp-mail.outlook.com',
+                port: '587',
+                encryption: 'tls'
+            },
             HOSTINGER: {
                 host: 'smtp.hostinger.com',
                 port: '587',
