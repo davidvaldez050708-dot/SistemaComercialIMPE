@@ -438,6 +438,7 @@
                 const crearTarjetaHistorial = function (llamada) {
                     const tarjeta = document.createElement('article');
                     tarjeta.className = 'linkage-call-history-card';
+                    tarjeta.dataset.callInteractionId = String(llamada.id || '');
 
                     const icono = document.createElement('span');
                     icono.className = 'linkage-call-recording-card-icon';
@@ -708,6 +709,11 @@
                                     historyList.appendChild(crearTarjetaHistorial(llamada));
                                 });
                             }
+
+                            document.dispatchEvent(new CustomEvent(
+                                'impe:expediente-llamadas-actualizadas',
+                                {detail: {seguimientoId: seguimientoId, llamadas: llamadas}}
+                            ));
 
                             window.clearTimeout(temporizadorGrabacion);
                             if (hayGrabacionesProcesando && reintentosGrabacion < 6) {
