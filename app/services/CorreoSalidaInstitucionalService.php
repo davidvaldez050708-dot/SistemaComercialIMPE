@@ -63,7 +63,7 @@ class CorreoSalidaInstitucionalService
 
         $hostinger = $this->cargarHostinger();
         if ($hostinger['token'] !== '') {
-            return $this->enviarHostinger(
+            $envioHostinger = $this->enviarHostinger(
                 $remitente,
                 $nombreRemitente,
                 $destinatario,
@@ -75,6 +75,14 @@ class CorreoSalidaInstitucionalService
                 $adjuntos,
                 $htmlAdicional
             );
+
+            if (!empty($envioHostinger['ok'])) {
+                return $envioHostinger;
+            }
+
+            if (empty($envioHostinger['fallback_smtp'])) {
+                return $envioHostinger;
+            }
         }
 
         return $this->enviarSmtp(
@@ -141,10 +149,11 @@ class CorreoSalidaInstitucionalService
         }
 
         if ($resourceId === '') {
-            return $this->error(
-                'Tu correo no corresponde a un buzón autorizado para enviar desde el sistema.',
-                422
-            );
+            return [
+                'ok' => false,
+                'fallback_smtp' => true,
+                'mensaje' => 'El correo del usuario no pertenece a un buzón de Hostinger; se intentará el envío mediante SMTP.'
+            ];
         }
 
         $firmaDisponible = $rutaFirma !== '' && is_file($rutaFirma);
@@ -282,7 +291,10 @@ class CorreoSalidaInstitucionalService
         $fromName = $this->config('MAIL_FROM_NAME', $nombreRemitente !== '' ? $nombreRemitente : 'Fundación Red Educativa México');
 
         if ($host === '' || $puerto <= 0 || $from === '' || !filter_var($from, FILTER_VALIDATE_EMAIL)) {
-            return $this->error('La configuración SMTP institucional está incompleta.', 500);
+            return $this->error(
+                'La cuenta de envío SMTP del sistema no está configurada. El correo del usuario puede ser de cualquier dominio, pero el servidor necesita una cuenta de salida válida.',
+                500
+            );
         }
 
         try {
