@@ -1091,9 +1091,18 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
                     <div class="system-form-grid">
                         <div class="system-form-full">
                             <?php
-                            $clasificacionCrear = strtolower(trim(
-                                (string)(($datosCrear['tipo'] ?? '') . '|' . ($datosCrear['subtipo'] ?? ''))
-                            ));
+                            $tipoCrearActual = strtolower(
+                                trim((string)($datosCrear['tipo'] ?? ''))
+                            );
+                            $subtipoCrearActual = strtolower(
+                                trim((string)($datosCrear['subtipo'] ?? ''))
+                            );
+                            $clasificacionCrear = (
+                                $tipoCrearActual !== '' &&
+                                $subtipoCrearActual !== ''
+                            )
+                                ? $tipoCrearActual . '|' . $subtipoCrearActual
+                                : '';
                             $clasificacionCrearLabel = 'Selecciona una opción';
 
                             foreach ($clasificacionesDisponibles as $clasificacion) {
