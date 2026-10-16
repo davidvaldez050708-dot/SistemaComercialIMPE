@@ -686,7 +686,7 @@ class CorreoMarketingService
         $remitente = strtolower(trim((string)($usuario['correo'] ?? '')));
         if ($remitente === '' || !filter_var($remitente, FILTER_VALIDATE_EMAIL)) {
             return $this->error(
-                'Tu usuario no tiene un correo institucional válido para realizar el envío.',
+                'Tu usuario no tiene un correo electrónico válido para realizar el envío.',
                 422
             );
         }
