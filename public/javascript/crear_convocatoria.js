@@ -174,8 +174,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
     const baseUrl = String(module.dataset.convocatoriaBaseUrl || '');
-    const urlMarcarAtendido =
-        'index.php?controller=crearConvocatoria&action=marcarAtendido';
 
     const setText = function (selector, value, fallback) {
         const element = modalElement.querySelector(selector);
@@ -281,7 +279,6 @@ document.addEventListener('DOMContentLoaded', function () {
             );
 
             if (createLink) {
-                createLink._convenioCard = card;
                 const stateId = Number(data.estado_id || 0);
                 const stateName = String(data.estado || '').trim();
                 const seguimientoId = Number(data.seguimiento_id || 0);
@@ -314,76 +311,5 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    const createLink = modalElement.querySelector(
-        '[data-convenio-create-link]'
-    );
 
-    createLink?.addEventListener('click', async function (event) {
-        const href = String(createLink.href || '').trim();
-        const card = createLink._convenioCard || null;
-
-        let data = {};
-
-        try {
-            data = JSON.parse(card?.dataset.convenio || '{}');
-        } catch (error) {
-            data = {};
-        }
-
-        const seguimientoId = Number(data.seguimiento_id || 0);
-
-        if (seguimientoId <= 0 || href === '') {
-            return;
-        }
-
-        event.preventDefault();
-
-        const formData = new FormData();
-        formData.append(
-            'seguimiento_id',
-            String(seguimientoId)
-        );
-
-        try {
-            const response = await fetch(urlMarcarAtendido, {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            });
-
-            const payload = await response.json();
-
-            if (!response.ok || !payload.ok) {
-                throw new Error(
-                    payload.mensaje ||
-                    'No fue posible actualizar el estado del convenio.'
-                );
-            }
-
-            setAttentionStatus('con_convocatoria', card);
-
-            if (card) {
-                try {
-                    const cardData = JSON.parse(
-                        card.dataset.convenio || '{}'
-                    );
-                    cardData.estado_atencion = 'con_convocatoria';
-                    cardData.estado_atencion_etiqueta =
-                        'Con convocatoria';
-                    card.dataset.convenio = JSON.stringify(cardData);
-                } catch (error) {
-                    // La etiqueta visual ya quedó actualizada.
-                }
-            }
-
-            window.location.href = href;
-        } catch (error) {
-            window.alert(
-                error.message ||
-                'No fue posible actualizar el estado del convenio.'
-            );
-        }
-    });
 });
