@@ -85,4 +85,90 @@ for ambiguous in (
     except ValueError:
         pass
 
+# Variante real reportada por Hostinger: registrar() recibe
+# referencia_llamada y numero_origen; anteriormente ignoraba el bool.
+production_original = """                    (new TelefoniaTransferenciaContextoService())->registrar(
+                        (int)$_SESSION['usuario_id'], (string)($_SESSION['rol'] ?? ''),
+                        (string)($origen['extension'] ?? ''),
+                        (int)$destino['usuario_id'], (string)$destino['extension'],
+                        (int)$destino['estado_id'], (int)$data['seguimiento_id'],
+                        (string)($data['referencia_llamada'] ?? ''),
+                        (string)($data['numero_origen'] ?? '')
+                    );
+                } catch (Throwable $e) {
+                    error_log('[telefonia_contexto_guardar] ' . get_class($e));
+                    // La transferencia de audio se mantiene independiente.
+                }
+"""
+base_original = """                    $contextoGuardado = (new TelefoniaTransferenciaContextoService())->registrar(
+                        (int)$_SESSION['usuario_id'], (string)($_SESSION['rol'] ?? ''),
+                        (string)($origen['extension'] ?? ''),
+                        (int)$destino['usuario_id'], (string)$destino['extension'],
+                        (int)$destino['estado_id'], (int)$data['seguimiento_id'],
+                        (string)($data['pbx_call_id'] ?? '')
+                    );
+                    if (!$contextoGuardado) {
+                        // No mostrar errores de metadatos al teléfono. Dejar
+                        // evidencia técnica sin revelar datos del expediente.
+                        error_log('[telefonia_contexto_transferencia] Validación de traspaso no confirmada.');
+                    }
+                } catch (Throwable $error) {
+                    // La PBX puede transferir aunque fallen datos opcionales.
+                    error_log('[telefonia_contexto_no_disponible] ' . get_class($error));
+                }
+"""
+assert original_php.count(base_original) == 1
+custom_controller = original_php.replace(base_original, production_original, 1)
+custom_controller = custom_controller.replace(
+    "            $pbxCallId = trim((string)($_POST['pbx_call_id'] ?? ''));",
+    "            $numeroOrigen = trim((string)($_POST['numero_origen'] ?? ''));\n"
+    "            $referencia = trim((string)($_POST['referencia_llamada'] ?? ''));",
+    1,
+)
+custom_controller = custom_controller.replace(
+    "                'pbx_call_id'=>$pbxCallId,",
+    "                'numero_origen'=>$numeroOrigen,\n"
+    "                'referencia_llamada'=>$referencia,",
+    1,
+)
+assert "'referencia_llamada'=>$referencia" in custom_controller
+assert custom_controller.count(production_original) == 1
+
+patched_custom, custom_mode = deploy.aplicar_ajuste_selectivo(
+    custom_controller, controller
+)
+assert custom_mode == "contexto Hostinger validado"
+assert patched_custom.count("No fue posible conservar la institución confirmada.") == 2
+assert "$contextoGuardado = (new TelefoniaTransferenciaContextoService())->registrar(" in patched_custom
+assert "(string)($data['numero_origen'] ?? '')" in patched_custom
+assert "(string)($data['referencia_llamada'] ?? '')" in patched_custom
+assert "'numero_origen'=>$numeroOrigen" in patched_custom
+assert "'referencia_llamada'=>$referencia" in patched_custom
+assert "'pbx_call_id'=>$pbxCallId," not in patched_custom
+
+# Comprobación de sintaxis PHP sin ejecutar ni conectar la base de datos.
+import tempfile
+import subprocess
+with tempfile.NamedTemporaryFile(mode="w", suffix=".php", encoding="utf-8") as fixture:
+    fixture.write(patched_custom)
+    fixture.flush()
+    check = subprocess.run(
+        ["php", "-l", fixture.name],
+        capture_output=True, text=True,
+    )
+    assert check.returncode == 0, check.stderr or check.stdout
+
+for invalid in (
+    patched_custom,
+    custom_controller.replace("'referencia_llamada'=>$referencia,", "", 1),
+    custom_controller.replace(production_original, "", 1),
+    custom_controller.replace(production_original,
+                              production_original + production_original, 1),
+):
+    try:
+        deploy.aplicar_ajuste_selectivo(invalid, controller)
+        raise AssertionError("El instalador aceptó un controlador incompatible o ya actualizado")
+    except ValueError:
+        pass
+
 print("Instalador selectivo: personalizaciones preservadas y conflictos bloqueados OK")
