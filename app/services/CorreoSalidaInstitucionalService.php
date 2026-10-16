@@ -74,79 +74,11 @@ class CorreoSalidaInstitucionalService
         $rutaFirma = $this->firmaService->obtenerRuta($remitente);
 
         /*
-         * Los envíos manuales de un usuario deben salir con la cuenta que
-         * ese usuario conectó. No hacemos fallback silencioso a Hostinger,
-         * porque eso cambiaría la identidad real del remitente.
+         * Todos los envíos interactivos usan una cuenta de salida administrada
+         * por el sistema. El usuario no configura SMTP ni credenciales.
+         * Su correo personal/institucional se conserva como Reply-To cuando
+         * el transporte utilizado lo permite.
          */
-        if ($usuarioId > 0) {
-            try {
-                $cuentaUsuario = (new CuentaCorreoUsuarioService())
-                    ->obtener($usuarioId, true);
-
-                if (!is_array($cuentaUsuario)) {
-                    return $this->error(
-                        'No tienes una cuenta de correo conectada. Ve a Mi perfil > Cuenta de correo para envíos y configura tu cuenta.',
-                        422
-                    );
-                }
-
-                if (empty($cuentaUsuario['activo'])) {
-                    return $this->error(
-                        'Tu cuenta de correo está desactivada. Revisa la configuración en Mi perfil.',
-                        422
-                    );
-                }
-
-                if (
-                    trim((string)($cuentaUsuario['smtp_host'] ?? '')) === '' ||
-                    trim((string)($cuentaUsuario['smtp_username'] ?? '')) === '' ||
-                    trim((string)($cuentaUsuario['smtp_password'] ?? '')) === ''
-                ) {
-                    return $this->error(
-                        'La configuración SMTP de tu cuenta está incompleta. Vuelve a guardarla desde Mi perfil.',
-                        422
-                    );
-                }
-
-                return $this->enviarSmtp(
-                    $remitente,
-                    $nombreRemitente,
-                    $destinatario,
-                    $nombreDestinatario,
-                    $asunto,
-                    $cuerpo,
-                    $rutaFirma,
-                    $imagenesEmbebidas,
-                    $adjuntos,
-                    $htmlAdicional,
-                    $cuentaUsuario
-                );
-            } catch (Throwable $errorCuenta) {
-                error_log(
-                    'Cuenta de correo del usuario ' .
-                    $usuarioId . ': ' .
-                    $errorCuenta->getMessage()
-                );
-
-                return $this->error(
-                    'No fue posible cargar la configuración de tu cuenta de correo.',
-                    500
-                );
-            }
-        }
-
-        /*
-         * El transporte global (Hostinger / cuenta de servicio) queda reservado
-         * exclusivamente para procesos automáticos que lo indiquen de forma
-         * explícita. Los correos redactados por usuarios nunca dependerán de
-         * Hostinger.
-         */
-        if (!$esEnvioSistema) {
-            return $this->error(
-                'Conecta una cuenta de correo para enviar. Puedes usar Gmail, Microsoft 365, Outlook, Hostinger u otro servidor SMTP autorizado.',
-                422
-            );
-        }
 
         $hostinger = $this->cargarHostinger();
         if ($hostinger['token'] !== '') {
@@ -291,6 +223,13 @@ class CorreoSalidaInstitucionalService
 
         if ($nombreRemitente !== '') {
             $payload['displayName'] = $nombreRemitente;
+        }
+
+        if (
+            $remitente !== '' &&
+            filter_var($remitente, FILTER_VALIDATE_EMAIL)
+        ) {
+            $payload['replyTo'] = $remitente;
         }
 
         if ($firmaDisponible) {
@@ -438,7 +377,7 @@ class CorreoSalidaInstitucionalService
 
         if ($host === '' || $puerto <= 0 || $from === '' || !filter_var($from, FILTER_VALIDATE_EMAIL)) {
             return $this->error(
-                'No hay una cuenta SMTP disponible para este proceso automático. Configura una cuenta de servicio para los envíos del sistema.',
+                'La cuenta de salida del sistema no está disponible. Contacta al administrador para revisar la configuración del servicio de correo.',
                 500
             );
         }
