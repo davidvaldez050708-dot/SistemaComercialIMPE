@@ -16,9 +16,9 @@ verify(str_contains($source, 'if (count($transferencias) === 0)'), 'Sólo altern
 verify(str_contains($source, "internal = '100'"), 'Origen recepción PBX');
 verify(str_contains($source, "evento = 'NOTIFY_ANSWER' AND internal = ?"), 'Respuesta destinatario');
 verify(str_contains($source, "evento = 'NOTIFY_RECORD'"), 'Grabación firmada');
-verify(str_contains($source, "count($candidatas) > 1"), 'Rechaza múltiples grupos');
+verify(str_contains($source, 'count($candidatas) > 1'), 'Rechaza múltiples grupos');
 verify(str_contains($source, 'count($iniciosRecepcion) >= 150'), 'Rechaza ventanas truncadas');
-verify(str_contains($source, "if ($contextosPbx)"), 'No elude el contexto si existe');
+verify(str_contains($source, 'if ($contextosPbx)'), 'No elude el contexto si existe');
 verify(str_contains($source, 'count($sesiones) !== 1'), 'Sesión única del expediente');
 verify(!str_contains($source, "duracion_segundos"), 'No comparar duración PBX/WebRTC');
 echo "Vínculo PBX sin contexto: OK (12 comprobaciones).\n";
