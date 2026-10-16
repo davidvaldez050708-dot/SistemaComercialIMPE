@@ -11,6 +11,7 @@ assert 'count($candidates) === 1' in store
 assert 'abs(time() - $desdeUnix) > 1800' in store
 assert 'buscarPbxSalienteUnico($extension, $destino, $desdeUnix)' in api
 assert 'obtenerPorPbxCallId($pbxCallId)' in api
+assert 'id_externo = ?' in api and '$pbxOcupada' in api
 assert 'app/services/ZadarmaWebhookEventStoreService.php' in installer
 assert 'prueba_telefonia/api/vincular_interaccion_zadarma.php' in installer
 assert installer.count('".vinculacion-salientes.tmp"') == 3
