@@ -4769,9 +4769,15 @@
 }
 
 .convocatoria-form-type-option.is-selected {
-    background: #edf3ff;
-    color: #17357f;
+    background: var(--color-primary);
+    color: #ffffff;
     font-weight: 700;
+}
+
+.convocatoria-form-type-option.is-selected:hover,
+.convocatoria-form-type-option.is-selected:focus-visible {
+    background: var(--color-primary);
+    color: #ffffff;
 }
 
 
@@ -5396,9 +5402,17 @@
 
 #modalCrearConvocatoria
 [data-convocatoria-classification-option].is-selected {
-    background: #edf3ff;
-    color: #17357f;
+    background: var(--color-primary);
+    color: #ffffff;
     font-weight: 700;
+}
+
+#modalCrearConvocatoria
+[data-convocatoria-classification-option].is-selected:hover,
+#modalCrearConvocatoria
+[data-convocatoria-classification-option].is-selected:focus-visible {
+    background: var(--color-primary);
+    color: #ffffff;
 }
 
 #modalCrearConvocatoria [data-convocatoria-classification-menu]::-webkit-scrollbar {
