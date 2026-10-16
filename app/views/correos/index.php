@@ -438,9 +438,9 @@ $texto = static fn($valor) => htmlspecialchars(
                     <div class="correo-marketing-mail-note">
                         <i class="bi bi-info-circle"></i>
                         <span>
-                            El correo se enviará desde tu cuenta institucional.
-                            Si tienes una firma configurada en Mi perfil,
-                            se incluirá automáticamente.
+                            Puedes usar un correo de usuario de cualquier dominio.
+                            El sistema utilizará la cuenta de salida configurada y
+                            tu correo quedará como dirección de respuesta. Los adjuntos son opcionales.
                         </span>
                     </div>
                 </div>
