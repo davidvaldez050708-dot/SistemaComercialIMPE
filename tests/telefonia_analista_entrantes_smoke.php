@@ -92,8 +92,10 @@ $checks = [
         str_contains($vista, 'data-incoming-sdk-confirm') &&
         str_contains($jsShell, 'finishedSdk'),
     'La recepción de Marketing continúa independiente' =>
-        str_contains($shell, "'autoReception' => " . '$marketingShell || $analistaEntrantesShell') &&
-        str_contains($shell, '$marketingShell'),
+        str_contains($shell, "'autoReception' => " . '$puedeRecibirShell') &&
+        str_contains($shell, '$marketingShell') &&
+        str_contains($shell, '$analistaEntrantesShell') &&
+        str_contains($shell, "tienePermiso('telefonia.recibir')"),
 ];
 foreach ($checks as $nombre => $ok) {
     if (!$ok) {
