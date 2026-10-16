@@ -17,6 +17,7 @@
         const subtituloComponer = tituloComponer
             ?.closest('.system-form-modal-header')
             ?.querySelector('.system-form-modal-subtitle');
+        const remitente = modalElement.querySelector('[data-marketing-mail-from]');
         const destinatario = modalElement.querySelector('[data-marketing-mail-to]');
         const destinatarioResumen = modalElement.querySelector('[data-marketing-mail-recipient]');
 
@@ -1057,7 +1058,7 @@
                             'shown.bs.modal',
                             enfocarBorrador
                         );
-                        destinatario?.focus();
+                        remitente?.focus();
                     }
                 );
             };
@@ -1180,9 +1181,16 @@
 
             limpiarError();
 
+            const correoOrigen = String(remitente?.value || '').trim();
             const correo = String(destinatario?.value || '').trim();
             const asuntoValor = String(asunto?.value || '').trim();
             const cuerpoValor = String(cuerpo?.value || '').trim();
+
+            if (correoOrigen === '') {
+                mostrarError('Ingresa el correo de origen.');
+                remitente?.focus();
+                return;
+            }
 
             if (correo === '') {
                 mostrarError('Ingresa el correo del destinatario.');
