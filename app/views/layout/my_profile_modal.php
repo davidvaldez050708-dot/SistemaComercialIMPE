@@ -12,6 +12,7 @@
     data-signature-delete-url="<?= BASE_URL ?>index.php?controller=firmaCorreo&action=eliminar"
     data-mail-account-status-url="<?= BASE_URL ?>index.php?controller=cuentaCorreoUsuario&action=estado"
     data-mail-account-save-url="<?= BASE_URL ?>index.php?controller=cuentaCorreoUsuario&action=guardar"
+    data-mail-account-test-url="<?= BASE_URL ?>index.php?controller=cuentaCorreoUsuario&action=probar"
     data-mail-account-delete-url="<?= BASE_URL ?>index.php?controller=cuentaCorreoUsuario&action=eliminar">
     <div class="modal-dialog modal-dialog-centered system-form-dialog">
         <div class="modal-content system-form-modal">
@@ -216,7 +217,7 @@
                                             placeholder="Déjala vacía para conservar la actual"
                                             data-mail-account-password>
                                         <div class="form-text">
-                                            Gmail y algunas cuentas Microsoft pueden requerir una contraseña de aplicación.
+                                            El sistema enviará con esta cuenta, no con la cuenta global de Hostinger. Gmail puede requerir contraseña de aplicación y Microsoft puede requerir SMTP AUTH habilitado.
                                         </div>
                                     </div>
                                 </div>
@@ -228,6 +229,13 @@
                                         data-mail-account-save>
                                         <i class="bi bi-envelope-check me-1"></i>
                                         Guardar cuenta
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="btn btn-system-light btn-sm"
+                                        data-mail-account-test>
+                                        <i class="bi bi-plug me-1"></i>
+                                        Probar conexión
                                     </button>
                                     <button
                                         type="button"
