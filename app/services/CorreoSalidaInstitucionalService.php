@@ -21,6 +21,7 @@ class CorreoSalidaInstitucionalService
         $remitente = strtolower(trim((string)($datos['remitente'] ?? '')));
         $usuarioId = (int)($datos['usuario_id'] ?? 0);
         $esEnvioSistema = !empty($datos['envio_sistema']);
+        $usarRemitenteExacto = !empty($datos['usar_remitente_exacto']);
 
         /*
          * Compatibilidad con módulos existentes: si el llamador todavía no
@@ -73,11 +74,48 @@ class CorreoSalidaInstitucionalService
         $rutaFirma = $this->firmaService->obtenerRuta($remitente);
 
         /*
-         * Todos los envíos interactivos usan una cuenta de salida administrada
-         * por el sistema. El usuario no configura SMTP ni credenciales.
-         * Su correo personal/institucional se conserva como Reply-To cuando
-         * el transporte utilizado lo permite.
+         * Marketing puede solicitar un remitente concreto, pero las
+         * credenciales siguen siendo administradas por el sistema.
+         * Si ese remitente coincide con la cuenta SMTP central, usamos SMTP.
+         * Si corresponde a un buzón autorizado por Hostinger Mail API,
+         * usamos ese buzón. Nunca suplantamos direcciones no autorizadas.
          */
+        $archivoConfigSmtp = $this->rootPath .
+            DIRECTORY_SEPARATOR . 'config' .
+            DIRECTORY_SEPARATOR . 'mail_config.php';
+
+        if (is_file($archivoConfigSmtp)) {
+            require_once $archivoConfigSmtp;
+        }
+
+        $smtpFromConfigurado = strtolower(
+            trim((string)$this->config('MAIL_FROM_ADDRESS'))
+        );
+        $smtpUsuarioConfigurado = trim(
+            (string)$this->config('MAIL_USERNAME')
+        );
+        $smtpPasswordConfigurado = (string)$this->config('MAIL_PASSWORD');
+
+        if (
+            $usarRemitenteExacto &&
+            $smtpFromConfigurado !== '' &&
+            strcasecmp($remitente, $smtpFromConfigurado) === 0 &&
+            $smtpUsuarioConfigurado !== '' &&
+            $smtpPasswordConfigurado !== ''
+        ) {
+            return $this->enviarSmtp(
+                $remitente,
+                $nombreRemitente,
+                $destinatario,
+                $nombreDestinatario,
+                $asunto,
+                $cuerpo,
+                $rutaFirma,
+                $imagenesEmbebidas,
+                $adjuntos,
+                $htmlAdicional
+            );
+        }
 
         $hostinger = $this->cargarHostinger();
         if ($hostinger['token'] !== '') {
@@ -91,7 +129,8 @@ class CorreoSalidaInstitucionalService
                 $hostinger,
                 $imagenesEmbebidas,
                 $adjuntos,
-                $htmlAdicional
+                $htmlAdicional,
+                $usarRemitenteExacto
             );
 
             if (!empty($envioHostinger['ok'])) {
@@ -101,6 +140,19 @@ class CorreoSalidaInstitucionalService
             if (empty($envioHostinger['fallback_smtp'])) {
                 return $envioHostinger;
             }
+        }
+
+        if (
+            $usarRemitenteExacto &&
+            (
+                $smtpFromConfigurado === '' ||
+                strcasecmp($remitente, $smtpFromConfigurado) !== 0
+            )
+        ) {
+            return $this->error(
+                'No es posible enviar mostrando ese correo como origen porque no está autorizado en Hostinger ni coincide con la cuenta central configurada.',
+                422
+            );
         }
 
         return $this->enviarSmtp(
@@ -127,7 +179,8 @@ class CorreoSalidaInstitucionalService
         $config,
         $imagenesEmbebidas,
         $adjuntos,
-        $htmlAdicional
+        $htmlAdicional,
+        $usarRemitenteExacto = false
     )
     {
         if (!function_exists('curl_init')) {
@@ -183,12 +236,19 @@ class CorreoSalidaInstitucionalService
                     continue;
                 }
 
-                if ($resourceId === '') {
+                if ($address === $remitente) {
+                    $resourceId = $id;
+                    $direccionSalida = $address;
+                    break;
+                }
+
+                if (!$usarRemitenteExacto && $resourceId === '') {
                     $resourceId = $id;
                     $direccionSalida = $address;
                 }
 
                 if (
+                    !$usarRemitenteExacto &&
                     $direccionPreferida !== '' &&
                     $address === $direccionPreferida
                 ) {
@@ -203,7 +263,9 @@ class CorreoSalidaInstitucionalService
             return [
                 'ok' => false,
                 'fallback_smtp' => true,
-                'mensaje' => 'No hay ningún buzón de salida autorizado disponible.'
+                'mensaje' => $usarRemitenteExacto
+                    ? 'El correo de origen no está autorizado como cuenta de salida. Usa una cuenta configurada en el sistema o un buzón autorizado de Hostinger.'
+                    : 'No hay ningún buzón de salida autorizado disponible.'
             ];
         }
 
