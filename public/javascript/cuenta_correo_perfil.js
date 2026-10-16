@@ -9,6 +9,7 @@
 
         const urlEstado = modal.dataset.mailAccountStatusUrl || '';
         const urlGuardar = modal.dataset.mailAccountSaveUrl || '';
+        const urlProbar = modal.dataset.mailAccountTestUrl || '';
         const urlEliminar = modal.dataset.mailAccountDeleteUrl || '';
 
         const proveedor = modal.querySelector('[data-mail-account-provider]');
@@ -20,11 +21,12 @@
         const password = modal.querySelector('[data-mail-account-password]');
         const estado = modal.querySelector('[data-mail-account-status]');
         const guardar = modal.querySelector('[data-mail-account-save]');
+        const probar = modal.querySelector('[data-mail-account-test]');
         const eliminar = modal.querySelector('[data-mail-account-delete]');
 
         if (
             !proveedor || !correo || !host || !puerto || !cifrado ||
-            !usuario || !password || !estado || !guardar || !eliminar
+            !usuario || !password || !estado || !guardar || !probar || !eliminar
         ) {
             return;
         }
@@ -79,7 +81,7 @@
 
             bootstrap.Toast.getOrCreateInstance(elemento, {
                 autohide: true,
-                delay: error ? 4500 : 3000
+                delay: error ? 5500 : 3000
             }).show();
         };
 
@@ -110,6 +112,21 @@
             if (usuario.value.trim() === '') {
                 usuario.value = correo.value.trim();
             }
+        };
+
+        const datosFormulario = function () {
+            sincronizarUsuario();
+
+            const datos = new FormData();
+            datos.set('proveedor', proveedor.value);
+            datos.set('correo', correo.value.trim());
+            datos.set('smtp_host', host.value.trim());
+            datos.set('smtp_port', puerto.value.trim());
+            datos.set('smtp_encryption', cifrado.value);
+            datos.set('smtp_username', usuario.value.trim());
+            datos.set('smtp_password', password.value);
+
+            return datos;
         };
 
         const pintarEstado = function (configurada, cuenta) {
@@ -170,28 +187,60 @@
 
         correo.addEventListener('change', sincronizarUsuario);
 
+        probar.addEventListener('click', async function () {
+            if (!urlProbar) {
+                toast('La prueba de conexión no está disponible.', true);
+                return;
+            }
+
+            const html = probar.innerHTML;
+            probar.disabled = true;
+            guardar.disabled = true;
+            probar.innerHTML =
+                '<span class="spinner-border spinner-border-sm me-2"></span>' +
+                'Probando...';
+
+            try {
+                const respuesta = await fetch(urlProbar, {
+                    method: 'POST',
+                    body: datosFormulario(),
+                    headers: {
+                        'X-Requested-With': 'fetch'
+                    }
+                });
+                const json = await respuesta.json();
+
+                if (!respuesta.ok || !json.ok) {
+                    throw new Error(
+                        json.mensaje || 'No fue posible validar la conexión SMTP.'
+                    );
+                }
+
+                toast(
+                    json.mensaje || 'Conexión SMTP validada correctamente.',
+                    false
+                );
+            } catch (error) {
+                toast(error.message, true);
+            } finally {
+                probar.disabled = false;
+                guardar.disabled = false;
+                probar.innerHTML = html;
+            }
+        });
+
         guardar.addEventListener('click', async function () {
-            sincronizarUsuario();
-
-            const datos = new FormData();
-            datos.set('proveedor', proveedor.value);
-            datos.set('correo', correo.value.trim());
-            datos.set('smtp_host', host.value.trim());
-            datos.set('smtp_port', puerto.value.trim());
-            datos.set('smtp_encryption', cifrado.value);
-            datos.set('smtp_username', usuario.value.trim());
-            datos.set('smtp_password', password.value);
-
             const html = guardar.innerHTML;
             guardar.disabled = true;
+            probar.disabled = true;
             guardar.innerHTML =
                 '<span class="spinner-border spinner-border-sm me-2"></span>' +
-                'Guardando...';
+                'Verificando...';
 
             try {
                 const respuesta = await fetch(urlGuardar, {
                     method: 'POST',
-                    body: datos,
+                    body: datosFormulario(),
                     headers: {
                         'X-Requested-With': 'fetch'
                     }
@@ -205,12 +254,16 @@
                 }
 
                 password.value = '';
-                toast(json.mensaje || 'Cuenta de correo guardada.', false);
+                toast(
+                    json.mensaje || 'Cuenta verificada y guardada.',
+                    false
+                );
                 await cargar();
             } catch (error) {
                 toast(error.message, true);
             } finally {
                 guardar.disabled = false;
+                probar.disabled = false;
                 guardar.innerHTML = html;
             }
         });
