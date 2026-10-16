@@ -2,6 +2,9 @@
 
 require_once __DIR__ . '/../../config/db_connection.php';
 require_once __DIR__ . '/../../config/private_config.php';
+require_once __DIR__ . '/../../vendor/autoload.php';
+
+use PHPMailer\PHPMailer\PHPMailer;
 
 class CuentaCorreoUsuarioService
 {
@@ -11,7 +14,7 @@ class CuentaCorreoUsuarioService
     public function __construct()
     {
         $this->connection = (new Database())->connect();
-        $this->clave = $this->cargarClave();
+        $this->clave = $this->cargarOGenerarClave();
     }
 
     public function obtener($usuarioId, $incluirSecreto = false)
@@ -74,11 +77,121 @@ class CuentaCorreoUsuarioService
 
         if ($this->clave === '') {
             return $this->error(
-                'Falta configurar la clave privada para proteger las credenciales de correo.',
+                'No fue posible inicializar la protección de credenciales de correo.',
                 500
             );
         }
 
+        $config = $this->normalizarConfiguracion($usuarioId, $datos);
+        if (!($config['ok'] ?? false)) {
+            return $config;
+        }
+
+        $prueba = $this->probarConfiguracion($config['cuenta']);
+        if (!($prueba['ok'] ?? false)) {
+            return $prueba;
+        }
+
+        $cuenta = $config['cuenta'];
+        $cifrado = $this->cifrar($cuenta['smtp_password']);
+        if (!($cifrado['ok'] ?? false)) {
+            return $cifrado;
+        }
+
+        $activo = 1;
+        $sql = "INSERT INTO usuario_correo_config (
+                    usuario_id,
+                    proveedor,
+                    correo,
+                    smtp_host,
+                    smtp_port,
+                    smtp_encryption,
+                    smtp_username,
+                    smtp_password_cipher,
+                    smtp_password_iv,
+                    smtp_password_tag,
+                    activo,
+                    created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                ON DUPLICATE KEY UPDATE
+                    proveedor = VALUES(proveedor),
+                    correo = VALUES(correo),
+                    smtp_host = VALUES(smtp_host),
+                    smtp_port = VALUES(smtp_port),
+                    smtp_encryption = VALUES(smtp_encryption),
+                    smtp_username = VALUES(smtp_username),
+                    smtp_password_cipher = VALUES(smtp_password_cipher),
+                    smtp_password_iv = VALUES(smtp_password_iv),
+                    smtp_password_tag = VALUES(smtp_password_tag),
+                    activo = VALUES(activo)";
+
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bind_param(
+            'isssisssssi',
+            $usuarioId,
+            $cuenta['proveedor'],
+            $cuenta['correo'],
+            $cuenta['smtp_host'],
+            $cuenta['smtp_port'],
+            $cuenta['smtp_encryption'],
+            $cuenta['smtp_username'],
+            $cifrado['cipher'],
+            $cifrado['iv'],
+            $cifrado['tag'],
+            $activo
+        );
+        $stmt->execute();
+
+        return [
+            'ok' => true,
+            'mensaje' => 'Cuenta verificada y guardada correctamente.',
+            'proveedor' => $cuenta['proveedor']
+        ];
+    }
+
+    public function probar($usuarioId, array $datos)
+    {
+        $usuarioId = (int)$usuarioId;
+        if ($usuarioId <= 0) {
+            return $this->error('La sesión no está activa.', 401);
+        }
+
+        if (!$this->tablaDisponible()) {
+            return $this->error(
+                'Falta aplicar la migración de configuración de correo.',
+                500
+            );
+        }
+
+        $config = $this->normalizarConfiguracion($usuarioId, $datos);
+        if (!($config['ok'] ?? false)) {
+            return $config;
+        }
+
+        return $this->probarConfiguracion($config['cuenta']);
+    }
+
+    public function eliminar($usuarioId)
+    {
+        $usuarioId = (int)$usuarioId;
+        if ($usuarioId <= 0 || !$this->tablaDisponible()) {
+            return $this->error('No hay una cuenta de correo para eliminar.', 404);
+        }
+
+        $stmt = $this->connection->prepare(
+            "DELETE FROM usuario_correo_config WHERE usuario_id = ?"
+        );
+        $stmt->bind_param('i', $usuarioId);
+        $stmt->execute();
+
+        return [
+            'ok' => true,
+            'mensaje' => 'Cuenta de correo eliminada.'
+        ];
+    }
+
+    private function normalizarConfiguracion($usuarioId, array $datos)
+    {
         $proveedor = strtoupper(trim((string)($datos['proveedor'] ?? 'OTRO')));
         $correo = strtolower(trim((string)($datos['correo'] ?? '')));
         $host = trim((string)($datos['smtp_host'] ?? ''));
@@ -115,81 +228,109 @@ class CuentaCorreoUsuarioService
             );
         }
 
-        $cifrado = $this->cifrar($password);
-        if (!($cifrado['ok'] ?? false)) {
-            return $cifrado;
-        }
-
-        $activo = 1;
-
-        $sql = "INSERT INTO usuario_correo_config (
-                    usuario_id,
-                    proveedor,
-                    correo,
-                    smtp_host,
-                    smtp_port,
-                    smtp_encryption,
-                    smtp_username,
-                    smtp_password_cipher,
-                    smtp_password_iv,
-                    smtp_password_tag,
-                    activo,
-                    created_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
-                ON DUPLICATE KEY UPDATE
-                    proveedor = VALUES(proveedor),
-                    correo = VALUES(correo),
-                    smtp_host = VALUES(smtp_host),
-                    smtp_port = VALUES(smtp_port),
-                    smtp_encryption = VALUES(smtp_encryption),
-                    smtp_username = VALUES(smtp_username),
-                    smtp_password_cipher = VALUES(smtp_password_cipher),
-                    smtp_password_iv = VALUES(smtp_password_iv),
-                    smtp_password_tag = VALUES(smtp_password_tag),
-                    activo = VALUES(activo)";
-        $stmt = $this->connection->prepare($sql);
-        $stmt->bind_param(
-            'isssisssssi',
-            $usuarioId,
-            $proveedor,
-            $correo,
-            $host,
-            $port,
-            $encryption,
-            $username,
-            $cifrado['cipher'],
-            $cifrado['iv'],
-            $cifrado['tag'],
-            $activo
-        );
-        $stmt->execute();
-
         return [
             'ok' => true,
-            'mensaje' => 'Cuenta de correo guardada correctamente.'
+            'cuenta' => [
+                'proveedor' => $proveedor,
+                'correo' => $correo,
+                'smtp_host' => $host,
+                'smtp_port' => $port,
+                'smtp_encryption' => $encryption,
+                'smtp_username' => $username,
+                'smtp_password' => $password
+            ]
         ];
     }
 
-    public function eliminar($usuarioId)
+    private function probarConfiguracion(array $cuenta)
     {
-        $usuarioId = (int)$usuarioId;
-        if ($usuarioId <= 0 || !$this->tablaDisponible()) {
-            return $this->error('No hay una cuenta de correo para eliminar.', 404);
+        $mail = new PHPMailer(true);
+
+        try {
+            $mail->CharSet = 'UTF-8';
+            $mail->isSMTP();
+            $mail->Host = (string)$cuenta['smtp_host'];
+            $mail->Port = (int)$cuenta['smtp_port'];
+            $mail->SMTPAuth = true;
+            $mail->Username = (string)$cuenta['smtp_username'];
+            $mail->Password = (string)$cuenta['smtp_password'];
+            $mail->Timeout = 15;
+            $mail->Timelimit = 15;
+            $mail->SMTPDebug = 0;
+
+            $encryption = strtolower((string)$cuenta['smtp_encryption']);
+            if ($encryption === 'ssl') {
+                $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
+            } elseif ($encryption === 'tls') {
+                $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+            } else {
+                $mail->SMTPAutoTLS = false;
+                $mail->SMTPSecure = false;
+            }
+
+            if (!$mail->smtpConnect()) {
+                return $this->error(
+                    'No fue posible conectar con el servidor SMTP.',
+                    422
+                );
+            }
+
+            $mail->smtpClose();
+
+            return [
+                'ok' => true,
+                'mensaje' => 'Conexión SMTP validada correctamente.'
+            ];
+        } catch (Throwable $error) {
+            error_log(
+                'Prueba SMTP usuario: ' .
+                $error->getMessage()
+            );
+
+            return $this->error(
+                $this->mensajeErrorSmtp(
+                    (string)$cuenta['proveedor'],
+                    $mail->ErrorInfo !== '' ? $mail->ErrorInfo : $error->getMessage()
+                ),
+                422
+            );
         }
-
-        $stmt = $this->connection->prepare(
-            "DELETE FROM usuario_correo_config WHERE usuario_id = ?"
-        );
-        $stmt->bind_param('i', $usuarioId);
-        $stmt->execute();
-
-        return [
-            'ok' => true,
-            'mensaje' => 'Cuenta de correo eliminada.'
-        ];
     }
 
-    private function cargarClave()
+    private function mensajeErrorSmtp($proveedor, $detalle)
+    {
+        $texto = strtolower((string)$detalle);
+
+        if (
+            strpos($texto, 'authenticate') !== false ||
+            strpos($texto, 'authentication') !== false ||
+            strpos($texto, 'username and password') !== false ||
+            strpos($texto, '535') !== false
+        ) {
+            if ($proveedor === 'GMAIL') {
+                return 'Gmail rechazó las credenciales. Usa una contraseña de aplicación si tu cuenta tiene verificación en dos pasos.';
+            }
+
+            if ($proveedor === 'MICROSOFT') {
+                return 'Microsoft rechazó las credenciales SMTP. Verifica la contraseña y que SMTP AUTH esté habilitado para la cuenta.';
+            }
+
+            return 'El servidor rechazó el usuario o la contraseña SMTP.';
+        }
+
+        if (
+            strpos($texto, 'connect') !== false ||
+            strpos($texto, 'connection') !== false ||
+            strpos($texto, 'timed out') !== false ||
+            strpos($texto, 'getaddrinfo') !== false
+        ) {
+            return 'No fue posible establecer conexión con el servidor SMTP. Revisa servidor, puerto y seguridad.';
+        }
+
+        return 'El servidor SMTP rechazó la conexión. Revisa los datos de la cuenta y las políticas de seguridad del proveedor.';
+    }
+
+    private function cargarOGenerarClave()
     {
         $env = getenv('MAIL_ACCOUNT_ENCRYPTION_KEY');
         if ($env !== false && trim((string)$env) !== '') {
@@ -197,7 +338,55 @@ class CuentaCorreoUsuarioService
         }
 
         $config = impeLeerConfigPrivada('mail_account.local.php');
-        return trim((string)($config['encryption_key'] ?? ''));
+        $existente = trim((string)($config['encryption_key'] ?? ''));
+        if ($existente !== '') {
+            return $existente;
+        }
+
+        try {
+            $clave = bin2hex(random_bytes(32));
+        } catch (Throwable $error) {
+            error_log('Clave de correo: ' . $error->getMessage());
+            return '';
+        }
+
+        $directorio = $this->directorioPrivadoEscritura();
+        if ($directorio === '') {
+            return '';
+        }
+
+        if (!is_dir($directorio)) {
+            if (!@mkdir($directorio, 0700, true) && !is_dir($directorio)) {
+                return '';
+            }
+        }
+
+        $ruta = rtrim($directorio, '/\\') . DIRECTORY_SEPARATOR . 'mail_account.local.php';
+        $contenido = "<?php\n\nreturn [\n    'encryption_key' => '" .
+            addslashes($clave) .
+            "',\n];\n";
+
+        if (@file_put_contents($ruta, $contenido, LOCK_EX) === false) {
+            return '';
+        }
+
+        @chmod($ruta, 0600);
+        return $clave;
+    }
+
+    private function directorioPrivadoEscritura()
+    {
+        $explicito = trim((string)(getenv('IMPE_PRIVATE_CONFIG_DIR') ?: ''));
+        if ($explicito !== '') {
+            return $explicito;
+        }
+
+        $root = dirname(__DIR__, 2);
+        if (basename($root) === 'public_html') {
+            return dirname($root) . DIRECTORY_SEPARATOR . 'impe-private';
+        }
+
+        return $root . DIRECTORY_SEPARATOR . 'config';
     }
 
     private function cifrar($texto)
