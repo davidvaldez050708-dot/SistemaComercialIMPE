@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/../helpers/PermissionHelper.php';
 require_once __DIR__ . '/../services/CorreoMarketingService.php';
+require_once __DIR__ . '/../services/CuentaCorreoUsuarioService.php';
 require_once __DIR__ . '/../models/ConvocatoriaModel.php';
 
 class CorreoMarketingController
@@ -233,6 +234,102 @@ class CorreoMarketingController
         unset($resultado['codigo_http']);
 
         $this->responder($resultado, $codigoHttp);
+    }
+
+    public function cuentaCorreoDiagnostico()
+    {
+        $this->validarAccesoMarketing();
+
+        $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
+        $service = new CuentaCorreoUsuarioService();
+
+        $this->responder(
+            $service->diagnostico($usuarioId),
+            200
+        );
+    }
+
+    public function cuentaCorreoEstado()
+    {
+        $this->validarAccesoMarketing();
+
+        $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
+        $service = new CuentaCorreoUsuarioService();
+        $cuenta = $service->obtener($usuarioId, false);
+
+        $this->responder([
+            'ok' => true,
+            'configurada' => is_array($cuenta),
+            'cuenta' => $cuenta
+        ]);
+    }
+
+    public function cuentaCorreoGuardar()
+    {
+        $this->validarAccesoMarketing();
+
+        if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
+            $this->responder([
+                'ok' => false,
+                'mensaje' => 'Método no permitido.'
+            ], 405);
+        }
+
+        $service = new CuentaCorreoUsuarioService();
+        $resultado = $service->guardar(
+            (int)($_SESSION['usuario_id'] ?? 0),
+            $_POST
+        );
+
+        $codigo = (int)($resultado['codigo_http'] ?? 200);
+        unset($resultado['codigo_http']);
+
+        $this->responder($resultado, $codigo);
+    }
+
+    public function cuentaCorreoProbar()
+    {
+        $this->validarAccesoMarketing();
+
+        if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
+            $this->responder([
+                'ok' => false,
+                'mensaje' => 'Método no permitido.'
+            ], 405);
+        }
+
+        $service = new CuentaCorreoUsuarioService();
+        $resultado = $service->probar(
+            (int)($_SESSION['usuario_id'] ?? 0),
+            $_POST
+        );
+
+        $codigo = (int)($resultado['codigo_http'] ?? 200);
+        unset($resultado['codigo_http']);
+
+        $this->responder($resultado, $codigo);
+    }
+
+    public function cuentaCorreoEliminar()
+    {
+        $this->validarAccesoMarketing();
+
+        if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
+            $this->responder([
+                'ok' => false,
+                'mensaje' => 'Método no permitido.'
+            ], 405);
+        }
+
+        $service = new CuentaCorreoUsuarioService();
+        $resultado = $service->eliminar(
+            (int)($_SESSION['usuario_id'] ?? 0)
+        );
+
+        $codigo = (int)($resultado['codigo_http'] ?? 200);
+        unset($resultado['codigo_http']);
+
+        $this->responder($resultado, $codigo);
     }
 
     private function validarAccesoMarketing()
