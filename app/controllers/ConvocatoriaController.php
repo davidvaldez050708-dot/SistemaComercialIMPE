@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../models/ConvocatoriaModel.php';
+require_once __DIR__ . '/../models/CrearConvocatoriaModel.php';
 require_once __DIR__ . '/../models/TerritorioModel.php';
 require_once __DIR__ . '/../helpers/PermissionHelper.php';
 
@@ -373,6 +374,9 @@ class ConvocatoriaController
 
         $modelo = new ConvocatoriaModel();
         $territorioId = (int)($_POST['territorio_id'] ?? 0);
+        $seguimientoOrigenIdGuardar = (int)(
+            $_POST['seguimiento_origen_id'] ?? 0
+        );
         $tipoConvocatoria = strtolower(trim((string)($_POST['tipo'] ?? '')));
         $subtipoConvocatoria = strtolower(trim((string)($_POST['subtipo'] ?? '')));
         $clasificacion = strtolower(trim((string)($_POST['clasificacion'] ?? '')));
@@ -429,6 +433,28 @@ class ConvocatoriaController
 
         if ($modelo->crear($datos, $estadosIds)) {
             $_SESSION['mensaje_convocatoria'] = 'Convocatoria registrada correctamente.';
+
+            /*
+             * El convenio cambia a "Con convocatoria" únicamente después de
+             * que la convocatoria se guardó correctamente. Abrir o cancelar
+             * el modal no modifica su estado.
+             */
+            if ($seguimientoOrigenIdGuardar > 0) {
+                $modeloConvenio = new CrearConvocatoriaModel();
+
+                if (
+                    !$modeloConvenio->marcarConvenioAtendido(
+                        $seguimientoOrigenIdGuardar,
+                        (int)$_SESSION['usuario_id']
+                    )
+                ) {
+                    error_log(
+                        'No fue posible actualizar el estado del convenio ' .
+                        $seguimientoOrigenIdGuardar .
+                        ' después de guardar la convocatoria.'
+                    );
+                }
+            }
         } else {
             if (!empty($imagen['nueva'])) {
                 $this->eliminarImagen($imagen['ruta']);
