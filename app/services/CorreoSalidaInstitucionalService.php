@@ -700,15 +700,34 @@ class CorreoSalidaInstitucionalService
 
     private function cargarHostinger()
     {
-        $archivo = $this->rootPath . DIRECTORY_SEPARATOR . 'config' . DIRECTORY_SEPARATOR . 'hostinger_mail_config.php';
-        if (is_file($archivo)) {
+        /*
+         * La configuración del servicio de correo es administrativa y privada.
+         * Puede vivir fuera de public_html (impe-private) o en config/ para
+         * instalaciones locales. Los usuarios finales no configuran SMTP.
+         */
+        $archivo = function_exists('impeRutaConfigPrivada')
+            ? impeRutaConfigPrivada('hostinger_mail_config.php')
+            : null;
+
+        if ($archivo !== null && is_file($archivo)) {
             require_once $archivo;
+        } else {
+            $fallback = $this->rootPath .
+                DIRECTORY_SEPARATOR . 'config' .
+                DIRECTORY_SEPARATOR . 'hostinger_mail_config.php';
+
+            if (is_file($fallback)) {
+                require_once $fallback;
+            }
         }
 
         return [
             'token' => $this->config('HOSTINGER_MAIL_API_TOKEN'),
             'base_url' => rtrim(
-                $this->config('HOSTINGER_MAIL_API_BASE_URL', self::HOSTINGER_BASE_DEFAULT),
+                $this->config(
+                    'HOSTINGER_MAIL_API_BASE_URL',
+                    self::HOSTINGER_BASE_DEFAULT
+                ),
                 '/'
             )
         ];
