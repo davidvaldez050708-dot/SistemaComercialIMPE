@@ -9,11 +9,7 @@
     data-profile-update-url="<?= BASE_URL ?>index.php?controller=usuario&action=actualizarMiPerfil"
     data-signature-status-url="<?= BASE_URL ?>index.php?controller=firmaCorreo&action=estado"
     data-signature-save-url="<?= BASE_URL ?>index.php?controller=firmaCorreo&action=guardar"
-    data-signature-delete-url="<?= BASE_URL ?>index.php?controller=firmaCorreo&action=eliminar"
-    data-mail-account-status-url="<?= BASE_URL ?>index.php?controller=correoMarketing&action=cuentaCorreoEstado"
-    data-mail-account-save-url="<?= BASE_URL ?>index.php?controller=correoMarketing&action=cuentaCorreoGuardar"
-    data-mail-account-test-url="<?= BASE_URL ?>index.php?controller=correoMarketing&action=cuentaCorreoProbar"
-    data-mail-account-delete-url="<?= BASE_URL ?>index.php?controller=correoMarketing&action=cuentaCorreoEliminar">
+    data-signature-delete-url="<?= BASE_URL ?>index.php?controller=firmaCorreo&action=eliminar">
     <div class="modal-dialog modal-dialog-centered system-form-dialog">
         <div class="modal-content system-form-modal">
             <div class="modal-header system-form-modal-header">
@@ -121,131 +117,6 @@
                                 </div>
                                 <div class="mail-signature-help text-muted">
                                     Máximo 3 MB. Si cambias tu correo, guarda primero el perfil y después vuelve a cargar la firma.
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="system-form-grid-full">
-                            <div class="mail-account-box border rounded-3 bg-light">
-                                <div class="mail-account-heading">
-                                    <div>
-                                        <label class="form-label login-label mb-0">Cuenta de correo para envíos</label>
-                                        <div class="mail-account-description text-muted">
-                                            Conecta la cuenta que quieres usar para enviar correos desde el sistema.
-                                        </div>
-                                    </div>
-                                    <span class="mail-account-status badge text-bg-light border" data-mail-account-status>
-                                        Sin configurar
-                                    </span>
-                                </div>
-
-                                <div class="system-form-grid mt-3">
-                                    <div>
-                                        <label class="form-label login-label" for="mi_correo_proveedor">Proveedor</label>
-                                        <select
-                                            class="form-select system-form-control"
-                                            id="mi_correo_proveedor"
-                                            data-mail-account-provider>
-                                            <option value="GMAIL">Gmail / Google Workspace</option>
-                                            <option value="MICROSOFT">Microsoft 365 institucional</option>
-                                            <option value="OUTLOOK">Outlook / Hotmail personal</option>
-                                            <option value="HOSTINGER">Hostinger</option>
-                                            <option value="OTRO">Otro SMTP</option>
-                                        </select>
-                                    </div>
-
-                                    <div>
-                                        <label class="form-label login-label" for="mi_correo_cuenta">Correo</label>
-                                        <input
-                                            class="form-control system-form-control"
-                                            id="mi_correo_cuenta"
-                                            type="email"
-                                            placeholder="usuario@dominio.com"
-                                            data-mail-account-email>
-                                    </div>
-
-                                    <div>
-                                        <label class="form-label login-label" for="mi_correo_host">Servidor SMTP</label>
-                                        <input
-                                            class="form-control system-form-control"
-                                            id="mi_correo_host"
-                                            placeholder="smtp.servidor.com"
-                                            data-mail-account-host>
-                                    </div>
-
-                                    <div>
-                                        <label class="form-label login-label" for="mi_correo_port">Puerto</label>
-                                        <input
-                                            class="form-control system-form-control"
-                                            id="mi_correo_port"
-                                            type="number"
-                                            min="1"
-                                            max="65535"
-                                            value="587"
-                                            data-mail-account-port>
-                                    </div>
-
-                                    <div>
-                                        <label class="form-label login-label" for="mi_correo_security">Seguridad</label>
-                                        <select
-                                            class="form-select system-form-control"
-                                            id="mi_correo_security"
-                                            data-mail-account-encryption>
-                                            <option value="tls">TLS</option>
-                                            <option value="ssl">SSL</option>
-                                            <option value="none">Sin cifrado</option>
-                                        </select>
-                                    </div>
-
-                                    <div>
-                                        <label class="form-label login-label" for="mi_correo_usuario">Usuario SMTP</label>
-                                        <input
-                                            class="form-control system-form-control"
-                                            id="mi_correo_usuario"
-                                            placeholder="Normalmente es tu correo"
-                                            data-mail-account-username>
-                                    </div>
-
-                                    <div class="system-form-grid-full">
-                                        <label class="form-label login-label" for="mi_correo_password">
-                                            Contraseña / contraseña de aplicación
-                                        </label>
-                                        <input
-                                            class="form-control system-form-control"
-                                            id="mi_correo_password"
-                                            type="password"
-                                            autocomplete="new-password"
-                                            placeholder="Déjala vacía para conservar la actual"
-                                            data-mail-account-password>
-                                        <div class="form-text">
-                                            El sistema enviará con esta cuenta, no con la cuenta global de Hostinger. Gmail puede requerir contraseña de aplicación y Microsoft puede requerir SMTP AUTH habilitado.
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="mail-account-actions mt-3">
-                                    <button
-                                        type="button"
-                                        class="btn btn-system-save btn-sm"
-                                        data-mail-account-save>
-                                        <i class="bi bi-envelope-check me-1"></i>
-                                        Guardar cuenta
-                                    </button>
-                                    <button
-                                        type="button"
-                                        class="btn btn-system-light btn-sm"
-                                        data-mail-account-test>
-                                        <i class="bi bi-plug me-1"></i>
-                                        Probar conexión
-                                    </button>
-                                    <button
-                                        type="button"
-                                        class="btn btn-system-light btn-sm"
-                                        data-mail-account-delete
-                                        disabled>
-                                        <i class="bi bi-trash me-1"></i>
-                                        Quitar cuenta
-                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -463,26 +334,4 @@
     }
 }
 
-#modalMiPerfil .mail-account-box {
-    padding: .8rem .9rem;
-}
-
-#modalMiPerfil .mail-account-heading {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: .75rem;
-}
-
-#modalMiPerfil .mail-account-description {
-    margin-top: .15rem;
-    font-size: .76rem;
-    line-height: 1.35;
-}
-
-#modalMiPerfil .mail-account-actions {
-    display: flex;
-    gap: .5rem;
-    flex-wrap: wrap;
-}
 </style>
