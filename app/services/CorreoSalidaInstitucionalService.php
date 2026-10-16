@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/FirmaCorreoService.php';
+require_once __DIR__ . '/CuentaCorreoUsuarioService.php';
 
 class CorreoSalidaInstitucionalService
 {
@@ -19,6 +20,7 @@ class CorreoSalidaInstitucionalService
     public function enviar($datos)
     {
         $remitente = strtolower(trim((string)($datos['remitente'] ?? '')));
+        $usuarioId = (int)($datos['usuario_id'] ?? 0);
         $nombreRemitente = trim((string)($datos['nombre_remitente'] ?? ''));
         $destinatario = trim((string)($datos['destinatario'] ?? ''));
         $nombreDestinatario = trim((string)($datos['nombre_destinatario'] ?? ''));
@@ -60,6 +62,42 @@ class CorreoSalidaInstitucionalService
         }
 
         $rutaFirma = $this->firmaService->obtenerRuta($remitente);
+
+        /*
+         * Si el usuario conectó su propia cuenta, esa configuración tiene
+         * prioridad sobre la cuenta global del sistema.
+         */
+        if ($usuarioId > 0) {
+            try {
+                $cuentaUsuario = (new CuentaCorreoUsuarioService())
+                    ->obtener($usuarioId, true);
+
+                if (
+                    is_array($cuentaUsuario) &&
+                    !empty($cuentaUsuario['activo']) &&
+                    trim((string)($cuentaUsuario['smtp_password'] ?? '')) !== ''
+                ) {
+                    return $this->enviarSmtp(
+                        $remitente,
+                        $nombreRemitente,
+                        $destinatario,
+                        $nombreDestinatario,
+                        $asunto,
+                        $cuerpo,
+                        $rutaFirma,
+                        $imagenesEmbebidas,
+                        $adjuntos,
+                        $htmlAdicional,
+                        $cuentaUsuario
+                    );
+                }
+            } catch (Throwable $errorCuenta) {
+                error_log(
+                    'Cuenta de correo de usuario: ' .
+                    $errorCuenta->getMessage()
+                );
+            }
+        }
 
         $hostinger = $this->cargarHostinger();
         if ($hostinger['token'] !== '') {
@@ -300,7 +338,8 @@ class CorreoSalidaInstitucionalService
         $rutaFirma,
         $imagenesEmbebidas,
         $adjuntos,
-        $htmlAdicional
+        $htmlAdicional,
+        $configUsuario = null
     )
     {
         $autoload = $this->rootPath . DIRECTORY_SEPARATOR . 'vendor' . DIRECTORY_SEPARATOR . 'autoload.php';
@@ -317,13 +356,36 @@ class CorreoSalidaInstitucionalService
             require_once $archivoConfig;
         }
 
-        $host = $this->config('MAIL_HOST');
-        $puerto = (int)$this->config('MAIL_PORT', '587');
-        $usuario = $this->config('MAIL_USERNAME');
-        $password = $this->config('MAIL_PASSWORD');
-        $encriptacion = strtolower($this->config('MAIL_ENCRYPTION', 'tls'));
-        $from = $this->config('MAIL_FROM_ADDRESS', $usuario);
-        $fromName = $this->config('MAIL_FROM_NAME', $nombreRemitente !== '' ? $nombreRemitente : 'Fundación Red Educativa México');
+        if (is_array($configUsuario)) {
+            $host = trim((string)($configUsuario['smtp_host'] ?? ''));
+            $puerto = (int)($configUsuario['smtp_port'] ?? 587);
+            $usuario = trim((string)($configUsuario['smtp_username'] ?? ''));
+            $password = (string)($configUsuario['smtp_password'] ?? '');
+            $encriptacion = strtolower(
+                trim((string)($configUsuario['smtp_encryption'] ?? 'tls'))
+            );
+            $from = strtolower(
+                trim((string)($configUsuario['correo'] ?? $usuario))
+            );
+            $fromName = $nombreRemitente !== ''
+                ? $nombreRemitente
+                : $from;
+        } else {
+            $host = $this->config('MAIL_HOST');
+            $puerto = (int)$this->config('MAIL_PORT', '587');
+            $usuario = $this->config('MAIL_USERNAME');
+            $password = $this->config('MAIL_PASSWORD');
+            $encriptacion = strtolower(
+                $this->config('MAIL_ENCRYPTION', 'tls')
+            );
+            $from = $this->config('MAIL_FROM_ADDRESS', $usuario);
+            $fromName = $this->config(
+                'MAIL_FROM_NAME',
+                $nombreRemitente !== ''
+                    ? $nombreRemitente
+                    : 'Fundación Red Educativa México'
+            );
+        }
 
         if ($host === '' || $puerto <= 0 || $from === '' || !filter_var($from, FILTER_VALIDATE_EMAIL)) {
             return $this->error(
@@ -349,10 +411,17 @@ class CorreoSalidaInstitucionalService
 
             $mail->setFrom($from, $fromName);
             $mail->addAddress($destinatario, $nombreDestinatario);
-            $mail->addReplyTo(
-                $remitenteUsuario,
-                $nombreRemitente !== '' ? $nombreRemitente : $remitenteUsuario
-            );
+            if (
+                $remitenteUsuario !== '' &&
+                strcasecmp($remitenteUsuario, $from) !== 0
+            ) {
+                $mail->addReplyTo(
+                    $remitenteUsuario,
+                    $nombreRemitente !== ''
+                        ? $nombreRemitente
+                        : $remitenteUsuario
+                );
+            }
 
             $firmaDisponible = $rutaFirma !== '' && is_file($rutaFirma);
             if ($firmaDisponible) {
