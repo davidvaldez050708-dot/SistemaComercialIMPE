@@ -582,3 +582,43 @@
     text-decoration: underline;
     outline: none;
 }
+
+
+/* Estado de atención de convenios */
+.crear-convocatoria-attention-badge,
+.crear-convocatoria-modal-attention {
+    min-height: 26px;
+    padding: 5px 9px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    font-size: 9px;
+    font-weight: 800;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.crear-convocatoria-attention-badge.is-pending,
+.crear-convocatoria-modal-attention.is-pending {
+    border-color: #f1d39a;
+    background: #fff7e8;
+    color: #9a5d00;
+}
+
+.crear-convocatoria-attention-badge.is-done,
+.crear-convocatoria-modal-attention.is-done {
+    border-color: #bee8db;
+    background: #eaf8f4;
+    color: #087866;
+}
+
+.crear-convocatoria-modal-attention {
+    margin-top: 8px;
+}
+
+.crear-convocatoria-notification-status {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
