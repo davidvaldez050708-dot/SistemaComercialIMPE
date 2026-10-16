@@ -21,6 +21,15 @@ class CorreoSalidaInstitucionalService
     {
         $remitente = strtolower(trim((string)($datos['remitente'] ?? '')));
         $usuarioId = (int)($datos['usuario_id'] ?? 0);
+
+        /*
+         * Compatibilidad con módulos existentes: si el llamador todavía no
+         * manda usuario_id, reutilizamos el usuario autenticado de la sesión.
+         * Así todos los envíos interactivos usan la cuenta SMTP personal.
+         */
+        if ($usuarioId <= 0 && isset($_SESSION['usuario_id'])) {
+            $usuarioId = (int)$_SESSION['usuario_id'];
+        }
         $nombreRemitente = trim((string)($datos['nombre_remitente'] ?? ''));
         $destinatario = trim((string)($datos['destinatario'] ?? ''));
         $nombreDestinatario = trim((string)($datos['nombre_destinatario'] ?? ''));
@@ -415,7 +424,7 @@ class CorreoSalidaInstitucionalService
 
         if ($host === '' || $puerto <= 0 || $from === '' || !filter_var($from, FILTER_VALIDATE_EMAIL)) {
             return $this->error(
-                'La cuenta de envío SMTP del sistema no está configurada. El correo del usuario puede ser de cualquier dominio, pero el servidor necesita una cuenta de salida válida.',
+                'No hay una cuenta SMTP disponible para este proceso automático. Configura una cuenta de servicio para los envíos del sistema.',
                 500
             );
         }
