@@ -19,6 +19,9 @@
             ?.querySelector('.system-form-modal-subtitle');
         const destinatario = modalElement.querySelector('[data-marketing-mail-to]');
         const destinatarioResumen = modalElement.querySelector('[data-marketing-mail-recipient]');
+        const remitenteCard = modalElement.querySelector('[data-marketing-mail-sender-card]');
+        const remitenteTexto = modalElement.querySelector('[data-marketing-mail-sender]');
+        const remitenteAyuda = modalElement.querySelector('[data-marketing-mail-sender-help]');
         const convocatoria = modalElement.querySelector('[data-marketing-mail-convocatoria]');
         const asunto = modalElement.querySelector('[data-marketing-mail-subject]');
         const cuerpo = modalElement.querySelector('[data-marketing-mail-body]');
@@ -56,6 +59,8 @@
         const urlRecuperarAdjunto =
             'index.php?controller=correoMarketing&action=recuperarAdjunto';
         let enviando = false;
+        let cuentaEnvioConfigurada = false;
+        let correoCuentaEnvio = '';
         let correoDetalleActual = null;
         let adjuntosBorradorActual = [];
         let estadoBandeja = '';
@@ -118,6 +123,71 @@
                 mensaje || 'No fue posible enviar el correo.',
                 true
             );
+        };
+
+        const cargarCuentaEnvio = async function () {
+            if (!remitenteCard || !remitenteTexto) {
+                return false;
+            }
+
+            const url = remitenteCard.dataset.mailAccountStatusUrl || '';
+            cuentaEnvioConfigurada = false;
+            correoCuentaEnvio = '';
+            remitenteTexto.textContent = 'Consultando cuenta conectada...';
+
+            if (!url) {
+                remitenteTexto.textContent = 'Cuenta de envío no disponible';
+                remitenteAyuda && (remitenteAyuda.textContent =
+                    'No fue posible consultar la configuración de correo.');
+                return false;
+            }
+
+            try {
+                const respuesta = await fetch(url, {
+                    headers: {
+                        'X-Requested-With': 'fetch'
+                    },
+                    cache: 'no-store'
+                });
+                const json = await respuesta.json();
+
+                if (!respuesta.ok || !json.ok) {
+                    throw new Error(
+                        json.mensaje ||
+                        'No fue posible consultar la cuenta de envío.'
+                    );
+                }
+
+                const cuenta = json.cuenta || null;
+                cuentaEnvioConfigurada =
+                    Boolean(json.configurada) &&
+                    Boolean(cuenta) &&
+                    Boolean(cuenta.activo);
+
+                if (!cuentaEnvioConfigurada) {
+                    remitenteTexto.textContent = 'Sin cuenta de envío conectada';
+                    remitenteAyuda && (remitenteAyuda.textContent =
+                        'Ve a Mi perfil > Cuenta de correo para envíos y conecta la cuenta desde la que deseas enviar.');
+                    remitenteCard.classList.add('border-danger');
+                    return false;
+                }
+
+                correoCuentaEnvio = String(cuenta.correo || '').trim();
+                remitenteTexto.textContent =
+                    correoCuentaEnvio || 'Cuenta SMTP conectada';
+                remitenteAyuda && (remitenteAyuda.textContent =
+                    'El mensaje se enviará realmente desde esta cuenta mediante su servidor SMTP.');
+                remitenteCard.classList.remove('border-danger');
+                return true;
+            } catch (errorCuenta) {
+                console.error(errorCuenta);
+                remitenteTexto.textContent = 'No fue posible validar la cuenta de envío';
+                remitenteAyuda && (remitenteAyuda.textContent =
+                    errorCuenta.message ||
+                    'Revisa la configuración de correo en Mi perfil.');
+                remitenteCard.classList.add('border-danger');
+                return false;
+            }
         };
 
         const reconstruirArchivosSeleccionados = function (archivosConservados) {
@@ -1067,7 +1137,7 @@
             modalDetalle?.hide();
         });
 
-        botonRedactar.addEventListener('click', function () {
+        botonRedactar.addEventListener('click', async function () {
             limpiarFormulario();
             modal.show();
 
@@ -1081,6 +1151,7 @@
                     destinatario?.focus();
                 }
             );
+            await cargarCuentaEnvio();
         });
 
         destinatario?.addEventListener('input', actualizarDestinatario);
@@ -1171,6 +1242,14 @@
 
         form?.addEventListener('submit', async function (event) {
             event.preventDefault();
+
+            const cuentaLista = await cargarCuentaEnvio();
+            if (!cuentaLista) {
+                mostrarError(
+                    'No hay una cuenta de envío conectada. Configúrala en Mi perfil > Cuenta de correo para envíos.'
+                );
+                return;
+            }
 
             if (enviando) {
                 return;
