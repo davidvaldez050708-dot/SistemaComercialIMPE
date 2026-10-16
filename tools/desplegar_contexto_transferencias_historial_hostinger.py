@@ -86,13 +86,63 @@ def aplicar_ajuste_selectivo(actual, relative):
         catch = "                } catch (Throwable $error) {\n"
         required = (
             "if (($data['tipo'] ?? '') === 'INSTITUCION'",
-            "$contextoGuardado = (new TelefoniaTransferenciaContextoService())->registrar(",
             "private function responderJson(array $datos",
         )
         if (not all(item in actual for item in required)
-                or scope.count(guard) != 1
-                or scope.count(catch) != 1
                 or "No fue posible conservar la institución confirmada." in scope):
+            raise ValueError("Contexto personalizado no verificable; no se modifica")
+        # La variante personalizada de Hostinger no asignaba el booleano
+        # devuelto por registrar(), y consideraba exitosa la transferencia
+        # aunque la institución no hubiese quedado vinculada.
+        if "$contextoGuardado = (new TelefoniaTransferenciaContextoService())->registrar(" not in scope:
+            custom = """                    (new TelefoniaTransferenciaContextoService())->registrar(
+                        (int)$_SESSION['usuario_id'], (string)($_SESSION['rol'] ?? ''),
+                        (string)($origen['extension'] ?? ''),
+                        (int)$destino['usuario_id'], (string)$destino['extension'],
+                        (int)$destino['estado_id'], (int)$data['seguimiento_id'],
+                        (string)($data['referencia_llamada'] ?? ''),
+                        (string)($data['numero_origen'] ?? '')
+                    );
+                } catch (Throwable $e) {
+                    error_log('[telefonia_contexto_guardar] ' . get_class($e));
+                    // La transferencia de audio se mantiene independiente.
+                }
+"""
+            if (scope.count(custom) != 1 or
+                    scope.count("new TelefoniaTransferenciaContextoService())->registrar(") != 1 or
+                    scope.count("} catch (Throwable $e) {") != 1 or
+                    "'referencia_llamada'=>$referencia" not in actual or
+                    "'numero_origen'=>$numeroOrigen" not in actual):
+                raise ValueError("Contexto Hostinger personalizado no verificable; no se modifica")
+            fixed = """                    $contextoGuardado = (new TelefoniaTransferenciaContextoService())->registrar(
+                        (int)$_SESSION['usuario_id'], (string)($_SESSION['rol'] ?? ''),
+                        (string)($origen['extension'] ?? ''),
+                        (int)$destino['usuario_id'], (string)$destino['extension'],
+                        (int)$destino['estado_id'], (int)$data['seguimiento_id'],
+                        (string)($data['referencia_llamada'] ?? ''),
+                        (string)($data['numero_origen'] ?? '')
+                    );
+                    if (!$contextoGuardado) {
+                        error_log('[telefonia_contexto_transferencia] Identificación institucional no vinculada.');
+                        $this->responderJson([
+                            'ok'=>false,
+                            'mensaje'=>'No fue posible conservar la institución confirmada. No se transfirió la llamada; vuelve a intentarlo.'
+                        ], 409);
+                    }
+                } catch (Throwable $e) {
+                    error_log('[telefonia_contexto_guardar] ' . get_class($e));
+                    // Una transferencia institucional requiere contexto autorizado:
+                    // si falta, conservar la llamada activa sin emitir DTMF.
+                    $this->responderJson([
+                        'ok'=>false,
+                        'mensaje'=>'No fue posible conservar la institución confirmada. No se transfirió la llamada; vuelve a intentarlo.'
+                    ], 409);
+                }
+"""
+            scope = scope.replace(custom, fixed, 1)
+            return actual[:start] + scope + actual[end:], "contexto Hostinger validado"
+
+        if (scope.count(guard) != 1 or scope.count(catch) != 1):
             raise ValueError("Contexto personalizado no verificable; no se modifica")
         fail = (
             "                        error_log('[telefonia_contexto_transferencia] "
