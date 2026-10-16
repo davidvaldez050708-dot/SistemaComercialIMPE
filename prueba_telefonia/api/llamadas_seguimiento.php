@@ -453,6 +453,19 @@ foreach ($modelo->obtenerInteraccionesSeguimiento($seguimientoId) as $interaccio
     ];
 }
 
+// La consulta SQL ordena fechas DATETIME originales, pero las sesiones
+// ZADARMA_WEBRTC se normalizan de UTC a México durante la lectura.
+// Reordenar DESPUÉS de normalizar evita mezclar llamadas de distintas zonas.
+// En empates conservar el identificador más reciente primero.
+usort($llamadas, static function (array $a, array $b): int {
+    $fechaA = (string)($a['fecha_inicio'] ?? '');
+    $fechaB = (string)($b['fecha_inicio'] ?? '');
+    $ordenFecha = strcmp($fechaB, $fechaA);
+    return $ordenFecha !== 0
+        ? $ordenFecha
+        : ((int)($b['id'] ?? 0) <=> (int)($a['id'] ?? 0));
+});
+
 $etapaHistorial = 'generar_respuesta';
 echo json_encode([
     'ok' => true,
