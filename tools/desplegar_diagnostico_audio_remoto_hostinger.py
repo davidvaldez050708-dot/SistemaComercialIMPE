@@ -139,11 +139,11 @@ def main():
             if dest.exists():
                 shutil.copymode(dest, tmp)
         for relative, dest, _ in pending:
-            dest.with_name(dest.name + ".grabaciones.tmp").replace(dest)
+            dest.with_name(dest.name + ".diagnostico-audio.tmp").replace(dest)
             print("INSTALADO:", relative)
     except Exception:
         for relative, dest, _ in pending:
-            tmp = dest.with_name(dest.name + ".grabaciones.tmp")
+            tmp = dest.with_name(dest.name + ".diagnostico-audio.tmp")
             if tmp.exists():
                 tmp.unlink()
             original = backup / relative
