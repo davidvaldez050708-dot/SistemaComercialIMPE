@@ -152,18 +152,26 @@
     const validId = id => /^sdk-[a-z0-9-]{12,94}$/.test(String(id || ''));
 
     let active = null;
+    let pbxSession = null;
     let finished = null;
     let lastSignature = '';
     let chain = Promise.resolve();
     const contextKey = id => 'impe:crm:transfer-context:' + userId + ':' + id;
+    const usableCallerNumber = value => {
+        const digits = String(value || '').replace(/\D+/g, '');
+        return digits.length >= 10 && digits.length <= 14;
+    };
+    const contextStillLive = id =>
+        active?.id === id || pbxSession?.id === id;
     const fetchReceptionContext = async (id, phone, attempt = 0) => {
-        if (!id || !phone || !root.fetch || active?.id !== id) return;
+        if (!id || !usableCallerNumber(phone) || !root.fetch ||
+            !contextStillLive(id)) return;
         // Al empezar el timbrado el traspaso de Tania puede estar aún
         // validándose. Un GET único llegaba demasiado pronto y dejaba el
         // expediente ausente. Reintentar durante hasta 13 segundos, sólo
         // mientras siga activa esta misma sesión SDK.
         const retry = () => {
-            if (attempt < 16 && active?.id === id) {
+            if (attempt < 16 && contextStillLive(id)) {
                 root.setTimeout?.(() => {
                     void fetchReceptionContext(id, phone, attempt + 1);
                 }, 800);
@@ -178,7 +186,7 @@
                 headers:{Accept:'application/json'}
             });
             const data = await response.json();
-            if (active?.id !== id) return;
+            if (!contextStillLive(id)) return;
             if (!response.ok || !data.ok || !data.contexto) {
                 retry();
                 return;
@@ -379,6 +387,27 @@
         if (!state || Number(state.userId) !== userId ||
             !Number.isFinite(Number(state.updatedAt)) ||
             Date.now() - Number(state.updatedAt) > 6000) return;
+        // El evento PBX puede aparecer antes del timbrado observado por el SDK.
+        // También en esa ruta se consulta el contexto confirmado por Recepción.
+        const pbx = state.active && state.direction === 'incoming' &&
+            state.context?.type === 'INCOMING' &&
+            /^[A-Za-z0-9_-]{6,100}$/.test(String(state.pbxCallId || ''));
+        if (pbx) {
+            const id = String(state.pbxCallId);
+            const phone = String(state.destination || '')
+                .replace(/[^0-9+*#]/g, '').slice(0, 40);
+            if (!pbxSession || pbxSession.id !== id) {
+                pbxSession = {id, number:''};
+                transferContext.hidden = true;
+                transferContext.replaceChildren?.();
+            }
+            if (usableCallerNumber(phone) && pbxSession.number !== phone) {
+                pbxSession.number = phone;
+                void fetchReceptionContext(id, phone);
+            }
+        } else if (!state.active) {
+            pbxSession = null;
+        }
         const incoming = state.direction === 'incoming' &&
             state.context?.type === 'SDK_INCOMING' &&
             validId(state.callToken);

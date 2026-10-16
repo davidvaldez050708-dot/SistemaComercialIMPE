@@ -25,6 +25,8 @@ let attributeMutation = null;
 let cssNode = null;
 let shellContext = 0;
 let createdButtons = 0;
+let createdContext = 0;
+let consistencyInterval = null;
 
 const node = () => {
     const listeners = {};
@@ -83,7 +85,10 @@ const panel = Object.assign(node(), {
         return controls.get(selector) || null;
     }
 });
-const crm={src:''};
+const crm={src:'',contentWindow:{},addEventListener(type,fn) {
+    assert.equal(type,'load');
+    handlers['crm-load']=fn;
+}};
 const runtime={
     IMPE_PHONE_SHELL_CONFIG: {
         userId:7,analystIncomingResults:true,
@@ -99,6 +104,7 @@ const runtime={
             appendChild(obj) {cssNode=obj;}
         },
         querySelector(selector) {
+            if (selector==='[data-analyst-dismiss-call]') return null;
             assert.equal(selector,'[data-incoming-panel]');
             return panel;
         },
@@ -108,6 +114,12 @@ const runtime={
         },
         createElement(tag) {
             if (tag==='style') return node();
+            // El contexto institucional se inserta dentro de la misma
+            // tarjeta; no se permite construir otra sección telefónica.
+            if (tag==='div') {
+                createdContext++;
+                return node();
+            }
             assert.equal(tag,'button','NO se puede crear otra tarjeta telefónica');
             createdButtons++;
             return node();
@@ -134,8 +146,9 @@ const runtime={
     },
     addEventListener(type,fn) {handlers[type]=fn;},
     setInterval(fn,ms) {
-        assert.equal(ms,500);
-        interval=fn;
+        if (ms===500) interval=fn;
+        else if (ms===600) consistencyInterval=fn;
+        else throw new Error('Intervalo telefónico inesperado '+ms);
     },
     localStorage: {
         getItem(k) {return store.get(k)||null;}
@@ -149,7 +162,9 @@ vm.runInNewContext(script, {window:runtime, URL, URLSearchParams}, {
     filename:'telefonia_analista_historial_pasivo.js'
 });
 assert.equal(createdButtons,2,'Agregar las acciones al modal existente');
+assert.equal(createdContext,1,'Insertar solo el contexto dentro de la tarjeta');
 assert.equal(typeof interval,'function');
+assert.equal(typeof consistencyInterval,'function');
 assert.equal(typeof attributeMutation,'function');
 assert.equal(cssNode.textContent.includes('data-incoming-close-finished'),true);
 assert.match(cssNode.textContent, /display:flex!important;flex-direction:row;/,
@@ -192,7 +207,8 @@ assert.equal(status('[data-incoming-title]').textContent,'Llamada finalizada');
 assert.equal(status('[data-incoming-hangup]').hidden,true);
 assert.equal(status('[data-incoming-answer]').hidden,true);
 assert.equal(status('[data-incoming-timer]').textContent.length,5);
-assert.equal(status('[data-incoming-close-finished]').hidden,false);
+assert.equal(status('[data-incoming-close-finished]').hidden,true,
+    'No se puede cerrar una atendida sin registrar el resultado');
 panel.hidden=true; // emula render periódico del shell antiguo
 attributeMutation();
 assert.equal(panel.hidden,false,'El render del shell no puede ocultar el resumen');
@@ -207,7 +223,15 @@ assert.equal(panel.hidden,false,'El render del shell no puede ocultar el resumen
     status('[data-incoming-register-finished]').listeners.click();
     assert.match(crm.src,/sdk_session_id=sdk-l5lm1oo-b1c2d3e/);
     assert.equal(panel.hidden,true);
-    assert.equal(runtime.IMPE_ANALYST_WEBRTC_JOURNAL_DEBUG.hasFinalized(),false);
+    assert.equal(runtime.IMPE_ANALYST_WEBRTC_JOURNAL_DEBUG.hasFinalized(),true,
+        'Abrir formulario NO equivale a guardar resultado');
+    handlers.message({
+        origin:'https://fundacionrededumex.org',
+        source:crm.contentWindow,
+        data:{type:'IMPE_ANALYST_RESULT_SAVED',callId:callId}
+    });
+    assert.equal(runtime.IMPE_ANALYST_WEBRTC_JOURNAL_DEBUG.hasFinalized(),false,
+        'Sólo un OK del servidor libera el resultado pendiente');
 
     publish({callToken:'sdk-l5lm1oo-e7f8g9h'});
     publish({callToken:'',active:false,phase:'ready',direction:''});

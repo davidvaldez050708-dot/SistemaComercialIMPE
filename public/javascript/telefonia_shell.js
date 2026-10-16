@@ -527,7 +527,9 @@
         }
         // Mantener el modal visible al colgar mientras llega la confirmación
         // de PBX. El panel lateral sí desaparece inmediatamente.
-        const finishingIncoming = incoming && pending === 'hangup';
+        const finishingIncoming = incoming &&
+            (pending === 'hangup' || state.phase === 'finishing');
+        const waitingAnswer = incoming && state.phase === 'answering';
         const customVisible = (incoming || finishedSdk || finishedIncoming || shownOutgoing) &&
             !nativeVisible &&
             !minimized && pending !== 'decline';
@@ -571,7 +573,8 @@
             incomingTitle.textContent = (finishedSdk || finishedIncoming)
                 ? 'Llamada finalizada' : incoming
                 ? (finishingIncoming ? 'Finalizando llamada…' :
-                    (ringing ? 'Llamada entrante' : 'En conversación'))
+                    (waitingAnswer ? 'Conectando llamada…' :
+                    (ringing ? 'Llamada entrante' : 'En conversación')))
                 : (finished ? 'Llamada finalizada' :
                     (finishing ? 'Finalizando llamada…' :
                     (dialing ? 'Llamando…' : 'En conversación')));
@@ -590,15 +593,18 @@
                 : finishedIncoming
                 ? (phoneState.status === 'transferred'
                     ? 'Finalizada · transferencia confirmada por la centralita'
+                    : phoneState.status === 'ended-unconfirmed'
+                    ? 'Audio finalizado · cierre PBX pendiente'
                     : 'Finalizada · llamada concluida')
                 : shownOutgoing
                 ? (finished ? 'Finalizada · registrada en el historial telefónico'
                     : (finishing ? 'Finalizando la conversación…' :
                     (dialing ? 'Marcando desde la extensión ' + cfg.extension
                         : 'Conversación en curso')))
-                : (finishingIncoming ? 'Esperando confirmación de la centralita…' :
+                : (finishingIncoming ? 'Esperando cierre de la centralita…' :
+                    (waitingAnswer ? 'Esperando confirmación de audio WebRTC…' :
                     (ringing ? 'Llamada entrante a la extensión ' + cfg.extension
-                    : 'Conversación en curso'));
+                    : 'Conversación en curso')));
             // El teclado desaparece; el panel empieza en cero.
             if (preview || finished || finishedSdk || finishedIncoming) {
                 const duration = (finished || finishedSdk || finishedIncoming)
@@ -615,15 +621,15 @@
             compactAnswer.disabled = !ringing || Boolean(pending);
             compactDecline.disabled = !ringing || Boolean(pending);
             muteButton.hidden = finished || finishedSdk || finishedIncoming ||
-                finishing || finishingIncoming || ringing ||
+                finishing || finishingIncoming || waitingAnswer || ringing ||
                 (shownOutgoing && dialing);
             hangupButton.hidden = finished || finishedSdk || finishedIncoming ||
-                finishing || finishingIncoming || ringing;
+                finishing || finishingIncoming || waitingAnswer || ringing;
             compactMute.hidden = finished || finishedSdk || finishedIncoming ||
-                finishing || finishingIncoming || ringing ||
+                finishing || finishingIncoming || waitingAnswer || ringing ||
                 (shownOutgoing && dialing);
             compactHangup.hidden = finished || finishedSdk || finishedIncoming ||
-                finishing || finishingIncoming || ringing;
+                finishing || finishingIncoming || waitingAnswer || ringing;
             if (closeFinished) closeFinished.hidden =
                 !(finished || finishedSdk || finishedIncoming);
             if (registerFinished) registerFinished.hidden =
