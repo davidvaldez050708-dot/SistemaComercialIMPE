@@ -124,6 +124,7 @@ class SeguimientoCorreoContactoService
 
         try {
             $resultadoEnvio = $this->correoService->enviar([
+                'usuario_id' => $usuarioId,
                 'remitente' => (string)($seguimiento['analista_correo'] ?? ''),
                 'nombre_remitente' => trim(
                     (string)($seguimiento['analista_nombre'] ?? '') . ' ' .
