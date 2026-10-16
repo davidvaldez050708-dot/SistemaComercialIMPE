@@ -64,37 +64,63 @@ class CorreoSalidaInstitucionalService
         $rutaFirma = $this->firmaService->obtenerRuta($remitente);
 
         /*
-         * Si el usuario conectó su propia cuenta, esa configuración tiene
-         * prioridad sobre la cuenta global del sistema.
+         * Los envíos manuales de un usuario deben salir con la cuenta que
+         * ese usuario conectó. No hacemos fallback silencioso a Hostinger,
+         * porque eso cambiaría la identidad real del remitente.
          */
         if ($usuarioId > 0) {
             try {
                 $cuentaUsuario = (new CuentaCorreoUsuarioService())
                     ->obtener($usuarioId, true);
 
-                if (
-                    is_array($cuentaUsuario) &&
-                    !empty($cuentaUsuario['activo']) &&
-                    trim((string)($cuentaUsuario['smtp_password'] ?? '')) !== ''
-                ) {
-                    return $this->enviarSmtp(
-                        $remitente,
-                        $nombreRemitente,
-                        $destinatario,
-                        $nombreDestinatario,
-                        $asunto,
-                        $cuerpo,
-                        $rutaFirma,
-                        $imagenesEmbebidas,
-                        $adjuntos,
-                        $htmlAdicional,
-                        $cuentaUsuario
+                if (!is_array($cuentaUsuario)) {
+                    return $this->error(
+                        'No tienes una cuenta de correo conectada. Ve a Mi perfil > Cuenta de correo para envíos y configura tu cuenta.',
+                        422
                     );
                 }
+
+                if (empty($cuentaUsuario['activo'])) {
+                    return $this->error(
+                        'Tu cuenta de correo está desactivada. Revisa la configuración en Mi perfil.',
+                        422
+                    );
+                }
+
+                if (
+                    trim((string)($cuentaUsuario['smtp_host'] ?? '')) === '' ||
+                    trim((string)($cuentaUsuario['smtp_username'] ?? '')) === '' ||
+                    trim((string)($cuentaUsuario['smtp_password'] ?? '')) === ''
+                ) {
+                    return $this->error(
+                        'La configuración SMTP de tu cuenta está incompleta. Vuelve a guardarla desde Mi perfil.',
+                        422
+                    );
+                }
+
+                return $this->enviarSmtp(
+                    $remitente,
+                    $nombreRemitente,
+                    $destinatario,
+                    $nombreDestinatario,
+                    $asunto,
+                    $cuerpo,
+                    $rutaFirma,
+                    $imagenesEmbebidas,
+                    $adjuntos,
+                    $htmlAdicional,
+                    $cuentaUsuario
+                );
             } catch (Throwable $errorCuenta) {
                 error_log(
-                    'Cuenta de correo de usuario: ' .
+                    'Cuenta de correo del usuario ' .
+                    $usuarioId . ': ' .
                     $errorCuenta->getMessage()
+                );
+
+                return $this->error(
+                    'No fue posible cargar la configuración de tu cuenta de correo.',
+                    500
                 );
             }
         }
@@ -405,8 +431,13 @@ class CorreoSalidaInstitucionalService
                 $mail->Username = $usuario;
                 $mail->Password = $password;
             }
-            if ($encriptacion !== '' && $encriptacion !== 'none') {
-                $mail->SMTPSecure = $encriptacion;
+            if ($encriptacion === 'ssl') {
+                $mail->SMTPSecure = \PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_SMTPS;
+            } elseif ($encriptacion === 'tls') {
+                $mail->SMTPSecure = \PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
+            } else {
+                $mail->SMTPAutoTLS = false;
+                $mail->SMTPSecure = false;
             }
 
             $mail->setFrom($from, $fromName);
