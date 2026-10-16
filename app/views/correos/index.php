@@ -308,7 +308,7 @@ $texto = static fn($valor) => htmlspecialchars(
                     <div
                         class="correo-marketing-recipient-card mb-3"
                         data-marketing-mail-sender-card
-                        data-mail-account-status-url="<?= BASE_URL ?>index.php?controller=cuentaCorreoUsuario&action=estado">
+                        data-mail-account-status-url="<?= BASE_URL ?>index.php?controller=correoMarketing&action=cuentaCorreoEstado">
                         <span>DE · CUENTA DE ENVÍO</span>
                         <strong data-marketing-mail-sender>
                             Consultando cuenta conectada...
