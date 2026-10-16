@@ -144,9 +144,10 @@ def aplicar_ajuste_selectivo(actual, relative):
             if (actual.count(function_name) != 1 or actual.count(old) != 1):
                 continue
             start = actual.find(function_name)
-            end = actual.find("const postEvent = function", start)
-            if end <= start:
-                raise ValueError("Observador sin límites verificables; no se modifica")
+            # Los dos patrones se encuentran al comienzo de su función;
+            # usar solo esa ventana impide depender de otras funciones
+            # auxiliares que Hostinger haya renombrado.
+            end = min(len(actual), start + 2200)
             scope = actual[start:end]
             if (scope.count("const retry = () => {") != 1 or
                     scope.count(old) != 1 or
