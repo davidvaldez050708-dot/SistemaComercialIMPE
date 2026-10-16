@@ -225,13 +225,6 @@ class CorreoSalidaInstitucionalService
             $payload['displayName'] = $nombreRemitente;
         }
 
-        if (
-            $remitente !== '' &&
-            filter_var($remitente, FILTER_VALIDATE_EMAIL)
-        ) {
-            $payload['replyTo'] = $remitente;
-        }
-
         if ($firmaDisponible) {
             $contenidoFirma = file_get_contents($rutaFirma);
             if ($contenidoFirma !== false) {
