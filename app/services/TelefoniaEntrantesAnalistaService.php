@@ -110,6 +110,59 @@ class TelefoniaEntrantesAnalistaService
         return max(0, (int)($call['duration'] ?? 0));
     }
 
+    /**
+     * Conciliación exclusivamente de PRESENTACIÓN: una sesión del SDK no
+     * representa otra llamada cuando existe un único evento PBX firmado de
+     * la misma extensión/número y prácticamente al mismo tiempo.
+     * Nunca se descartan sesiones ya clasificadas o vinculadas.
+     */
+    public static function conciliarHistorialPbxWebrtc(array $pbx, array $sdk): array
+    {
+        $matches = [];
+        $usedPbx = [];
+        $eligible = [];
+        foreach ($sdk as $i => $sesion) {
+            if (($sesion['fuente'] ?? '') !== 'SDK_WEBRTC' ||
+                ($sesion['tipo_llamada'] ?? '') !== 'ENTRANTE' ||
+                ($sesion['clasificacion'] ?? '') !== 'PENDIENTE' ||
+                (int)($sesion['seguimiento_id'] ?? 0) !== 0 ||
+                (int)($sesion['interaccion_id'] ?? 0) !== 0 ||
+                ($sesion['estado_pbx'] ?? '') !== 'ended') {
+                continue;
+            }
+            $numero = preg_replace('/\\D+/', '', (string)($sesion['numero'] ?? '')) ?: '';
+            $fecha = strtotime((string)($sesion['fecha'] ?? ''));
+            if (strlen($numero) < 10 || $fecha === false) continue;
+            $candidate = [];
+            foreach ($pbx as $j => $call) {
+                if (($call['fuente'] ?? '') !== 'PBX' ||
+                    ($call['tipo_llamada'] ?? '') !== 'ENTRANTE' ||
+                    ($call['estado_pbx'] ?? '') !== 'ended') continue;
+                $caller = preg_replace('/\\D+/', '', (string)($call['numero'] ?? '')) ?: '';
+                $at = strtotime((string)($call['fecha'] ?? ''));
+                if (strlen($caller) < 10 || $at === false ||
+                    substr($caller, -10) !== substr($numero, -10) ||
+                    abs($at - $fecha) > 25) continue;
+                $candidate[] = $j;
+            }
+            if (count($candidate) === 1) {
+                $eligible[$i] = $candidate[0];
+                $usedPbx[$candidate[0]] = ($usedPbx[$candidate[0]] ?? 0) + 1;
+            }
+        }
+        // Evitar eliminar una observación si dos sesiones SDK reclaman
+        // la misma llamada PBX (o si su correspondencia es ambigua).
+        foreach ($eligible as $i => $j) {
+            if ($usedPbx[$j] !== 1) continue;
+            $matches[$i] = $j;
+        }
+        foreach ($matches as $i => $j) {
+            $pbx[$j]['sesion_webrtc_correlacionada'] = (string)($sdk[$i]['pbx_call_id'] ?? '');
+            unset($sdk[$i]);
+        }
+        return array_merge($pbx, array_values($sdk));
+    }
+
     public function listar(int $usuarioId): array
     {
         $asignacion = $this->extensionActual($usuarioId);
@@ -201,7 +254,7 @@ class TelefoniaEntrantesAnalistaService
                 isset($conAudio[(string)$filaSdk['pbx_call_id']]);
         }
         unset($filaSdk);
-        $llamadas = array_merge($llamadas, $sesiones);
+        $llamadas = self::conciliarHistorialPbxWebrtc($llamadas, $sesiones);
         usort($llamadas, static function ($a, $b) {
             return strcmp((string)($b['fecha'] ?? ''), (string)($a['fecha'] ?? ''));
         });
