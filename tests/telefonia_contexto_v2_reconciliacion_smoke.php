@@ -6,13 +6,24 @@ declare(strict_types=1);
  * Las llamadas y su audio se comprueban por separado, nunca aquí.
  */
 $root = dirname(__DIR__);
-require_once $root . '/app/services/TelefoniaTransferenciaContextoService.php';
-$service = new ReflectionMethod(TelefoniaTransferenciaContextoService::class, 'registrar');
-if ($service->getNumberOfParameters() !== 9 ||
-    $service->getNumberOfRequiredParameters() > 9) {
-    throw new RuntimeException('La firma del servicio v2 no coincide.');
-}
+// No incluir el servicio: su cadena de require_once carga configuración
+// de producción que no está disponible en un worktree de pruebas.
 $source = file_get_contents($root . '/app/services/TelefoniaTransferenciaContextoService.php');
+if ($source === false) {
+    throw new RuntimeException('No se pudo leer el servicio de contexto v2.');
+}
+if (!preg_match('/public function registrar\\s*\\((.*?)\\)\\s*:\\s*bool\\s*\\{/s', $source, $firma)) {
+    throw new RuntimeException('Falta el método registrar(): bool.');
+}
+preg_match_all('/\\$[A-Za-z_][A-Za-z0-9_]*/', $firma[1], $params);
+$esperados = [
+    '$origenId', '$rol', '$origenExtension',
+    '$destinoId', '$destinoExtension', '$estadoId',
+    '$seguimientoId', '$pbxCallId', '$numeroOrigen',
+];
+if ($params[0] !== $esperados) {
+    throw new RuntimeException('La firma del servicio v2 no tiene los nueve parámetros esperados.');
+}
 $controller = file_get_contents($root . '/app/controllers/TelefoniaController.php');
 $checks = [
     'tabla v2' => str_contains($source, 'CREATE TABLE IF NOT EXISTS telefonia_transferencia_contextos_v2'),
