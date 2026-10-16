@@ -257,6 +257,7 @@
         };
 
         const convertirBoton = function (tarjeta, llamada) {
+            if (tarjeta.querySelector('[data-call-recording-toggle]')) return;
             const estadoActual = tarjeta.querySelector('.linkage-call-audio-state.is-available');
 
             if (!estadoActual || !llamada.tiene_grabacion || !llamada.grabacion_url) {
