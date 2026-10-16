@@ -305,6 +305,19 @@ $texto = static fn($valor) => htmlspecialchars(
                 </div>
 
                 <div class="modal-body">
+                    <div
+                        class="correo-marketing-recipient-card mb-3"
+                        data-marketing-mail-sender-card
+                        data-mail-account-status-url="<?= BASE_URL ?>index.php?controller=cuentaCorreoUsuario&action=estado">
+                        <span>DE · CUENTA DE ENVÍO</span>
+                        <strong data-marketing-mail-sender>
+                            Consultando cuenta conectada...
+                        </strong>
+                        <small class="d-block mt-1 text-muted" data-marketing-mail-sender-help>
+                            El correo se enviará realmente desde esta cuenta.
+                        </small>
+                    </div>
+
                     <div class="correo-marketing-recipient-card mb-3">
                         <span>DESTINATARIO</span>
                         <strong data-marketing-mail-recipient>
@@ -438,9 +451,9 @@ $texto = static fn($valor) => htmlspecialchars(
                     <div class="correo-marketing-mail-note">
                         <i class="bi bi-info-circle"></i>
                         <span>
-                            Puedes usar un correo de usuario de cualquier dominio.
-                            El sistema utilizará la cuenta de salida configurada y
-                            tu correo quedará como dirección de respuesta. Los adjuntos son opcionales.
+                            El campo <strong>Para</strong> es únicamente el destinatario.
+                            El mensaje saldrá desde la cuenta indicada en <strong>DE · CUENTA DE ENVÍO</strong>.
+                            Si no hay una cuenta conectada, configura una desde Mi perfil antes de enviar.
                         </span>
                     </div>
                 </div>
