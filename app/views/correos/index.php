@@ -305,12 +305,29 @@ $texto = static fn($valor) => htmlspecialchars(
                 </div>
 
                 <div class="modal-body">
-                    <div class="correo-marketing-recipient-card mb-3">
-                        <span>DE · SISTEMA DE CORREO</span>
-                        <strong>Fundación Red Educativa México</strong>
-                        <small class="d-block mt-1 text-muted">
-                            El sistema gestiona automáticamente la cuenta de salida.
-                        </small>
+                    <div class="mb-3">
+                        <label
+                            class="form-label"
+                            for="correo_marketing_de">
+                            De
+                        </label>
+
+                        <input
+                            class="form-control system-form-control"
+                            id="correo_marketing_de"
+                            type="email"
+                            name="remitente"
+                            maxlength="255"
+                            placeholder="correo@dominio.com"
+                            autocomplete="email"
+                            data-marketing-mail-from
+                            required>
+
+                        <div class="form-text">
+                            Escribe la cuenta de origen que utilizará Marketing.
+                            El sistema elegirá automáticamente Hostinger Mail API
+                            o la cuenta central configurada para ese correo.
+                        </div>
                     </div>
 
                     <div class="correo-marketing-recipient-card mb-3">
@@ -446,8 +463,8 @@ $texto = static fn($valor) => htmlspecialchars(
                     <div class="correo-marketing-mail-note">
                         <i class="bi bi-info-circle"></i>
                         <span>
-                            El campo <strong>Para</strong> es únicamente el destinatario.
-                            El sistema administra automáticamente la cuenta de salida; el usuario no necesita configurar SMTP.
+                            Marketing puede indicar el correo de origen y el destinatario.
+                            Las credenciales permanecen administradas por el sistema y nunca se solicitan al usuario.
                         </span>
                     </div>
                 </div>
