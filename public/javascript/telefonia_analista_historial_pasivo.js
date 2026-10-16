@@ -160,10 +160,10 @@
         if (!id || !phone || !root.fetch || active?.id !== id) return;
         // Al empezar el timbrado el traspaso de Tania puede estar aún
         // validándose. Un GET único llegaba demasiado pronto y dejaba el
-        // expediente ausente durante toda la llamada. Consultar por poco
-        // tiempo, exclusivamente mientras exista esta misma sesión SDK.
+        // expediente ausente. Reintentar durante hasta 13 segundos, sólo
+        // mientras siga activa esta misma sesión SDK.
         const retry = () => {
-            if (attempt < 8 && active?.id === id) {
+            if (attempt < 16 && active?.id === id) {
                 root.setTimeout?.(() => {
                     void fetchReceptionContext(id, phone, attempt + 1);
                 }, 800);
