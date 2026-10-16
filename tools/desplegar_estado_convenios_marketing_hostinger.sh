@@ -44,6 +44,8 @@ FILES=(
     "index.php"
     "app/models/CrearConvocatoriaModel.php"
     "app/controllers/CrearConvocatoriaController.php"
+    "app/controllers/ConvocatoriaController.php"
+    "app/views/convocatorias/index.php"
     "app/views/convocatorias/crear_desde_convenio.php"
     "public/javascript/crear_convocatoria.js"
     "public/css/crear_convocatoria.css"
