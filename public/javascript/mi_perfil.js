@@ -2,15 +2,6 @@
     'use strict';
 
     document.addEventListener('DOMContentLoaded', function () {
-        /*
-         * La configuración SMTP ya no forma parte del perfil del usuario.
-         * Este saneamiento elimina cualquier bloque heredado que pudiera
-         * permanecer en plantillas antiguas o caché intermedia.
-         */
-        document.querySelectorAll('.mail-account-box').forEach(function (bloque) {
-            const contenedor = bloque.closest('.system-form-grid-full') || bloque;
-            contenedor.remove();
-        });
 
         const botonAbrir = document.querySelector('[data-my-profile-open]');
         const modalElemento = document.querySelector('[data-my-profile-modal]');
