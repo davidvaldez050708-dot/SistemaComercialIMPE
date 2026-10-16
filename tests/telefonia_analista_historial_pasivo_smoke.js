@@ -85,7 +85,10 @@ const panel = Object.assign(node(), {
         return controls.get(selector) || null;
     }
 });
-const crm={src:''};
+const crm={src:'',addEventListener(type,fn) {
+    assert.equal(type,'load');
+    handlers['crm-load']=fn;
+}};
 const runtime={
     IMPE_PHONE_SHELL_CONFIG: {
         userId:7,analystIncomingResults:true,
