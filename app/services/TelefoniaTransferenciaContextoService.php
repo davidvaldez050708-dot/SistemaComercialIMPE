@@ -3,6 +3,8 @@
  * Traspaso de identificación institucional validado por servidor.
  * No inventa que el destino respondió ni garantiza la identidad del llamante.
  * Nunca divulga expedientes que no pertenezcan al Analista destinatario.
+ * Respeta el esquema de producción telefonia_transferencia_contextos_v2;
+ * sólo enlaza referencia/telefono con un evento PBX firmado.
  */
 require_once __DIR__ . '/TelefoniaEnrutamientoService.php';
 require_once __DIR__ . '/ZadarmaWebhookEventStoreService.php';
@@ -18,20 +20,20 @@ final class TelefoniaTransferenciaContextoService
 
     private function asegurarTabla(): void
     {
-        $sql = "CREATE TABLE IF NOT EXISTS telefonia_transferencia_contextos (
+        $sql = "CREATE TABLE IF NOT EXISTS telefonia_transferencia_contextos_v2 (
             id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
             origen_usuario_id INT NOT NULL,
             origen_extension VARCHAR(12) NOT NULL,
             destino_usuario_id INT NOT NULL,
             destino_extension VARCHAR(12) NOT NULL,
-            pbx_call_id VARCHAR(100) NOT NULL,
+            referencia_llamada VARCHAR(100) NOT NULL,
             telefono10 CHAR(10) NOT NULL,
             seguimiento_id INT NOT NULL,
             created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             expires_at DATETIME NOT NULL,
             PRIMARY KEY (id),
-            UNIQUE KEY uk_transfer_origin_call (origen_usuario_id,pbx_call_id),
-            KEY ix_transfer_recipient (destino_usuario_id,destino_extension,
+            UNIQUE KEY uk_tr_usu_llamada (origen_usuario_id,referencia_llamada),
+            KEY idx_tr_destino (destino_usuario_id,destino_extension,
                 telefono10,expires_at)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci";
         if (!$this->db->query($sql)) {
@@ -42,7 +44,7 @@ final class TelefoniaTransferenciaContextoService
     public function registrar(
         int $origenId, string $rol, string $origenExtension,
         int $destinoId, string $destinoExtension, int $estadoId,
-        int $seguimientoId, string $pbxCallId
+        int $seguimientoId, string $pbxCallId, string $numeroOrigen = ''
     ): bool {
         if (TelefoniaEnrutamientoService::categoriaRol($rol) !== 'RECEPCION' ||
             $origenId <= 0 || $destinoId <= 0 || $estadoId <= 0 ||
@@ -78,6 +80,15 @@ final class TelefoniaTransferenciaContextoService
             (string)($started['caller_id'] ?? '')
         );
         if ($telefono10 === '') return false;
+        // El número del navegador es meramente informativo: la autoridad
+        // es el caller_id del webhook firmado de esta llamada y extensión.
+        // Cuando venga presente, rechazar un número distinto sin vincular
+        // por accidente el contexto de otra conversación.
+        $numeroDeclarado = trim($numeroOrigen) === '' ? '' :
+            TelefoniaEnrutamientoService::numeroNacional($numeroOrigen);
+        if (trim($numeroOrigen) !== '' && $numeroDeclarado !== $telefono10) {
+            return false;
+        }
 
         // El expediente y territorio están autorizados al destinatario,
         // no basta el número, nombre ni ID capturado desde el navegador.
@@ -95,15 +106,16 @@ final class TelefoniaTransferenciaContextoService
 
         $this->asegurarTabla();
         $stmt = $this->db->prepare(
-            "INSERT INTO telefonia_transferencia_contextos
+            "INSERT INTO telefonia_transferencia_contextos_v2
             (origen_usuario_id, origen_extension, destino_usuario_id,
-             destino_extension, pbx_call_id, telefono10, seguimiento_id, expires_at)
-            VALUES (?,?,?,?,?,?,?,DATE_ADD(NOW(),INTERVAL 3 MINUTE))
+             destino_extension, referencia_llamada, telefono10, seguimiento_id, expires_at)
+            VALUES (?,?,?,?,?,?,?,DATE_ADD(NOW(),INTERVAL 90 SECOND))
             ON DUPLICATE KEY UPDATE
                 destino_usuario_id = VALUES(destino_usuario_id),
                 destino_extension = VALUES(destino_extension),
                 telefono10 = VALUES(telefono10),
                 seguimiento_id = VALUES(seguimiento_id),
+                created_at = NOW(),
                 expires_at = VALUES(expires_at)"
         );
         $stmt->bind_param('isisssi', $origenId, $origenExtension,
@@ -122,9 +134,10 @@ final class TelefoniaTransferenciaContextoService
         $this->asegurarTabla();
         $stmt = $this->db->prepare(
             "SELECT s.id AS seguimiento_id, s.nombre_entidad AS institucion,
-                    e.nombre AS estado, u.nombre AS origen_nombre,
-                    c.pbx_call_id
-             FROM telefonia_transferencia_contextos c
+                    e.nombre AS estado,
+                    TRIM(CONCAT(u.nombre, ' ', COALESCE(u.apellidos, ''))) AS origen_nombre,
+                    c.referencia_llamada AS pbx_call_id
+             FROM telefonia_transferencia_contextos_v2 c
              JOIN seguimientos_vinculacion s
                ON s.id = c.seguimiento_id AND s.analista_id = c.destino_usuario_id
               AND s.activo = 1 AND s.estado_seguimiento <> 'DESCARTADO'
@@ -132,7 +145,7 @@ final class TelefoniaTransferenciaContextoService
              JOIN usuarios u ON u.id = c.origen_usuario_id
              WHERE c.destino_usuario_id = ? AND c.destino_extension = ?
                AND c.telefono10 = ? AND c.expires_at >= NOW()
-               AND c.created_at >= DATE_SUB(NOW(),INTERVAL 3 MINUTE)
+               AND c.created_at >= DATE_SUB(NOW(),INTERVAL 90 SECOND)
              ORDER BY c.id DESC LIMIT 2"
         );
         $stmt->bind_param('iss', $destinoId, $destinoExtension, $numero10);

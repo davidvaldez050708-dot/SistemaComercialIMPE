@@ -557,6 +557,17 @@ class TelefoniaController
             $modo = (string)($_POST['modo'] ?? 'CONSULTADA');
             $seguimientoId = (int)($_POST['seguimiento_id'] ?? 0);
             $pbxCallId = trim((string)($_POST['pbx_call_id'] ?? ''));
+            $referencia = trim((string)($_POST['referencia_llamada'] ?? ''));
+            $numeroOrigen = trim((string)($_POST['numero_origen'] ?? ''));
+            // Aceptar la denominación histórica de Hostinger sin dejar
+            // que dos identificadores distintos seleccionen la llamada.
+            if ($pbxCallId !== '' && $referencia !== '' &&
+                !hash_equals($pbxCallId, $referencia)) {
+                throw new InvalidArgumentException('La referencia de la llamada no coincide.');
+            }
+            if ($pbxCallId === '') {
+                $pbxCallId = $referencia;
+            }
             if (!in_array($modo, ['DIRECTA','CONSULTADA'], true)) {
                 throw new InvalidArgumentException('Modo de transferencia no válido.');
             }
@@ -575,6 +586,9 @@ class TelefoniaController
                 // vuelve a verificar PBX y propiedad antes de compartirla.
                 'seguimiento_id'=>$seguimientoId,
                 'pbx_call_id'=>$pbxCallId,
+                // Alias requerido por la implementación v2 de Hostinger.
+                'referencia_llamada'=>$pbxCallId,
+                'numero_origen'=>$numeroOrigen,
                 'token_hash'=>hash('sha256', $token),
                 'expires'=>time()+20
             ];
@@ -630,7 +644,8 @@ class TelefoniaController
                         (string)($origen['extension'] ?? ''),
                         (int)$destino['usuario_id'], (string)$destino['extension'],
                         (int)$destino['estado_id'], (int)$data['seguimiento_id'],
-                        (string)($data['pbx_call_id'] ?? '')
+                        (string)($data['referencia_llamada'] ?? ''),
+                        (string)($data['numero_origen'] ?? '')
                     );
                     if (!$contextoGuardado) {
                         error_log('[telefonia_contexto_transferencia] Identificación institucional no vinculada.');
