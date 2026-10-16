@@ -522,14 +522,14 @@
 }
 
 .crear-convocatoria-state-option.is-selected {
-    background: var(--color-primary);
+    background: #223A84;
     color: #ffffff;
     font-weight: 700;
 }
 
 .crear-convocatoria-state-option.is-selected:hover,
 .crear-convocatoria-state-option.is-selected:focus-visible {
-    background: var(--color-primary);
+    background: #223A84;
     color: #ffffff;
 }
 
