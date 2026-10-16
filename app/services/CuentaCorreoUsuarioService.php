@@ -171,6 +171,36 @@ class CuentaCorreoUsuarioService
         return $this->probarConfiguracion($config['cuenta']);
     }
 
+    public function diagnostico($usuarioId)
+    {
+        $usuarioId = (int)$usuarioId;
+        $cuenta = $usuarioId > 0 ? $this->obtener($usuarioId, false) : null;
+
+        return [
+            'ok' => true,
+            'release' => 'smtp-user-v4-20261016',
+            'usuario_id' => $usuarioId,
+            'tabla_disponible' => $this->tablaDisponible(),
+            'clave_cifrado_disponible' => $this->clave !== '',
+            'openssl_disponible' =>
+                function_exists('openssl_encrypt') &&
+                function_exists('openssl_decrypt'),
+            'phpmailer_disponible' => class_exists(PHPMailer::class),
+            'cuenta_configurada' => is_array($cuenta),
+            'cuenta' => is_array($cuenta) ? [
+                'proveedor' => (string)($cuenta['proveedor'] ?? ''),
+                'correo' => (string)($cuenta['correo'] ?? ''),
+                'smtp_host' => (string)($cuenta['smtp_host'] ?? ''),
+                'smtp_port' => (int)($cuenta['smtp_port'] ?? 0),
+                'smtp_encryption' => (string)($cuenta['smtp_encryption'] ?? ''),
+                'smtp_username' => (string)($cuenta['smtp_username'] ?? ''),
+                'activo' => !empty($cuenta['activo']),
+                'tiene_password' => !empty($cuenta['tiene_password'])
+            ] : null,
+            'archivo_servicio' => __FILE__
+        ];
+    }
+
     public function eliminar($usuarioId)
     {
         $usuarioId = (int)$usuarioId;
