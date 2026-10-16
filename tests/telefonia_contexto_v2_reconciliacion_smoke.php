@@ -32,18 +32,21 @@ $checks = [
     'pbx firmado' => str_contains($source, "FROM telefonia_zadarma_eventos") &&
         str_contains($source, "evento = 'NOTIFY_INTERNAL'"),
     'propiedad expediente' => str_contains($source, 'analista_id = ? AND estado_id = ?'),
-    'numero PBX' => str_contains($source, "($started['caller_id'] ?? '')"),
+    'numero PBX' => str_contains($source, '$started[\'caller_id\']'),
     'numero navegador validado' => str_contains($source, '$numeroDeclarado !== $telefono10'),
     'vigencia v2' => str_contains($source, 'INTERVAL 90 SECOND'),
-    'sesion con alias' => str_contains($controller, "'referencia_llamada'=>$pbxCallId") &&
-        str_contains($controller, "'numero_origen'=>$numeroOrigen"),
+    'sesion con alias' => str_contains($controller, "'referencia_llamada'=>" . '$pbxCallId') &&
+        str_contains($controller, "'numero_origen'=>" . '$numeroOrigen'),
     'referencias no ambiguas' => str_contains($controller, '!hash_equals($pbxCallId, $referencia)'),
-    'nueve parametros' => str_contains($controller, "(string)($data['numero_origen'] ?? '')"),
+    'nueve parametros' => str_contains($controller, '$data[\'numero_origen\']'),
     'bloqueo sin contexto' => substr_count(
         $controller, 'No fue posible conservar la institución confirmada.'
     ) === 2,
 ];
 foreach ($checks as $name => $valid) {
-    if (!$valid) throw new RuntimeException('Fallo en contexto v2: ' . $name);
+    if (!$valid) {
+        fwrite(STDERR, 'FALLO en contexto v2: ' . $name . "\n");
+        exit(1);
+    }
 }
 echo "Contexto de transferencias Hostinger v2: OK (sin MySQL)\n";
