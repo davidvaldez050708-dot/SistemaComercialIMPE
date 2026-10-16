@@ -66,7 +66,7 @@
             }
 
             panel = document.createElement('div');
-            panel.className = 'linkage-call-inline-player';
+            panel.className = 'linkage-call-inline-player linkage-outgoing-audio-panel';
             panel.hidden = true;
 
             const encabezado = document.createElement('div');
@@ -271,7 +271,7 @@
             boton.setAttribute('aria-expanded', 'false');
             boton.innerHTML =
                 '<i class="bi bi-record-circle"></i>' +
-                '<span>Grabación</span>' +
+                '<span>Consultar grabación</span>' +
                 '<i class="bi bi-chevron-down linkage-call-recording-chevron" aria-hidden="true"></i>';
 
             estadoActual.replaceWith(boton);
