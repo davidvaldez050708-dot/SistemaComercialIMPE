@@ -21,6 +21,7 @@ class CorreoSalidaInstitucionalService
         $remitente = strtolower(trim((string)($datos['remitente'] ?? '')));
         $usuarioId = (int)($datos['usuario_id'] ?? 0);
         $esEnvioSistema = !empty($datos['envio_sistema']);
+        $perfilMarketing = !empty($datos['perfil_marketing']);
         $usarRemitenteExacto = !empty($datos['usar_remitente_exacto']);
 
         /*
@@ -80,21 +81,53 @@ class CorreoSalidaInstitucionalService
          * Si corresponde a un buzón autorizado por Hostinger Mail API,
          * usamos ese buzón. Nunca suplantamos direcciones no autorizadas.
          */
-        $archivoConfigSmtp = $this->rootPath .
-            DIRECTORY_SEPARATOR . 'config' .
-            DIRECTORY_SEPARATOR . 'mail_config.php';
+        $configMarketing = $perfilMarketing
+            ? $this->cargarConfigMarketing()
+            : [];
 
-        if (is_file($archivoConfigSmtp)) {
-            require_once $archivoConfigSmtp;
+        if ($perfilMarketing) {
+            $smtpFromConfigurado = strtolower(trim((string)(
+                $configMarketing['smtp_from_address'] ?? ''
+            )));
+            $smtpUsuarioConfigurado = trim((string)(
+                $configMarketing['smtp_username'] ?? ''
+            ));
+            $smtpPasswordConfigurado = (string)(
+                $configMarketing['smtp_password'] ?? ''
+            );
+
+            $smtpMarketing = [
+                'smtp_host' => trim((string)(
+                    $configMarketing['smtp_host'] ?? ''
+                )),
+                'smtp_port' => (int)(
+                    $configMarketing['smtp_port'] ?? 587
+                ),
+                'smtp_encryption' => strtolower(trim((string)(
+                    $configMarketing['smtp_encryption'] ?? 'tls'
+                ))),
+                'smtp_username' => $smtpUsuarioConfigurado,
+                'smtp_password' => $smtpPasswordConfigurado,
+                'correo' => $smtpFromConfigurado
+            ];
+        } else {
+            $archivoConfigSmtp = $this->rootPath .
+                DIRECTORY_SEPARATOR . 'config' .
+                DIRECTORY_SEPARATOR . 'mail_config.php';
+
+            if (is_file($archivoConfigSmtp)) {
+                require_once $archivoConfigSmtp;
+            }
+
+            $smtpFromConfigurado = strtolower(
+                trim((string)$this->config('MAIL_FROM_ADDRESS'))
+            );
+            $smtpUsuarioConfigurado = trim(
+                (string)$this->config('MAIL_USERNAME')
+            );
+            $smtpPasswordConfigurado = (string)$this->config('MAIL_PASSWORD');
+            $smtpMarketing = null;
         }
-
-        $smtpFromConfigurado = strtolower(
-            trim((string)$this->config('MAIL_FROM_ADDRESS'))
-        );
-        $smtpUsuarioConfigurado = trim(
-            (string)$this->config('MAIL_USERNAME')
-        );
-        $smtpPasswordConfigurado = (string)$this->config('MAIL_PASSWORD');
 
         if (
             $usarRemitenteExacto &&
@@ -113,11 +146,37 @@ class CorreoSalidaInstitucionalService
                 $rutaFirma,
                 $imagenesEmbebidas,
                 $adjuntos,
-                $htmlAdicional
+                $htmlAdicional,
+                $smtpMarketing
             );
         }
 
-        $hostinger = $this->cargarHostinger();
+        $hostinger = $perfilMarketing
+            ? [
+                'token' => trim((string)(
+                    $configMarketing['hostinger_mail_api_token'] ?? ''
+                )),
+                'base_url' => rtrim(
+                    trim((string)(
+                        $configMarketing['hostinger_mail_api_base_url'] ??
+                        self::HOSTINGER_BASE_DEFAULT
+                    )),
+                    '/'
+                ),
+                'from_address' => strtolower(trim((string)(
+                    $configMarketing['hostinger_from_address'] ?? ''
+                )))
+            ]
+            : array_merge(
+                $this->cargarHostinger(),
+                [
+                    'from_address' => strtolower(trim((string)
+                        $this->config('HOSTINGER_MAIL_FROM_ADDRESS')
+                    ))
+                ]
+            );
+
+
         if ($hostinger['token'] !== '') {
             $envioHostinger = $this->enviarHostinger(
                 $remitente,
@@ -130,7 +189,8 @@ class CorreoSalidaInstitucionalService
                 $imagenesEmbebidas,
                 $adjuntos,
                 $htmlAdicional,
-                $usarRemitenteExacto
+                $usarRemitenteExacto,
+                (string)($hostinger['from_address'] ?? '')
             );
 
             if (!empty($envioHostinger['ok'])) {
@@ -165,7 +225,8 @@ class CorreoSalidaInstitucionalService
             $rutaFirma,
             $imagenesEmbebidas,
             $adjuntos,
-            $htmlAdicional
+            $htmlAdicional,
+            $smtpMarketing
         );
     }
 
@@ -180,7 +241,8 @@ class CorreoSalidaInstitucionalService
         $imagenesEmbebidas,
         $adjuntos,
         $htmlAdicional,
-        $usarRemitenteExacto = false
+        $usarRemitenteExacto = false,
+        $direccionPreferidaOverride = ''
     )
     {
         if (!function_exists('curl_init')) {
@@ -214,8 +276,14 @@ class CorreoSalidaInstitucionalService
          * utilizamos el primer buzón autorizado disponible en la API.
          */
         $direccionPreferida = strtolower(
-            trim((string)$this->config('HOSTINGER_MAIL_FROM_ADDRESS'))
+            trim((string)$direccionPreferidaOverride)
         );
+
+        if ($direccionPreferida === '') {
+            $direccionPreferida = strtolower(
+                trim((string)$this->config('HOSTINGER_MAIL_FROM_ADDRESS'))
+            );
+        }
 
         if (is_array($lista)) {
             foreach ($lista as $mailbox) {
@@ -792,6 +860,19 @@ class CorreoSalidaInstitucionalService
                 '/'
             )
         ];
+    }
+
+    private function cargarConfigMarketing()
+    {
+        require_once $this->rootPath .
+            DIRECTORY_SEPARATOR . 'config' .
+            DIRECTORY_SEPARATOR . 'private_config.php';
+
+        $datos = function_exists('impeLeerConfigPrivada')
+            ? impeLeerConfigPrivada('marketing_mail.local.php')
+            : [];
+
+        return is_array($datos) ? $datos : [];
     }
 
     private function config($clave, $default = '')
