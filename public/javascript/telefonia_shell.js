@@ -800,8 +800,10 @@
         const url = new URL(String(cfg.incomingResultsUrl), window.location.href);
         if (url.origin !== window.location.origin) return;
         url.searchParams.set('pbx_call_id', analystPendingCall.id);
+        // Abrir el formulario NO significa que MySQL haya guardado el resultado.
+        // Conservar el pendiente hasta la confirmación IMPE_ANALYST_RESULT_SAVED
+        // emitida por el iframe después del guardado real.
         crm.src = url.toString();
-        dismissAnalystResult();
     });
     analystResultDismiss?.addEventListener('click', dismissAnalystResult);
 
