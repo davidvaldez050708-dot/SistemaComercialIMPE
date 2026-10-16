@@ -36,6 +36,21 @@ class CuentaCorreoUsuarioController
         $this->responder($resultado, $codigo);
     }
 
+    public function probar()
+    {
+        if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
+            $this->responder(['ok' => false, 'mensaje' => 'Método no permitido.'], 405);
+        }
+
+        $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
+        $service = new CuentaCorreoUsuarioService();
+        $resultado = $service->probar($usuarioId, $_POST);
+
+        $codigo = (int)($resultado['codigo_http'] ?? 200);
+        unset($resultado['codigo_http']);
+        $this->responder($resultado, $codigo);
+    }
+
     public function eliminar()
     {
         if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
