@@ -1076,6 +1076,10 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
                 enctype="multipart/form-data"
                 novalidate>
                 <input type="hidden" name="territorio_id" value="<?= (int)$territorioSeleccionado['id'] ?>">
+                <input
+                    type="hidden"
+                    name="seguimiento_origen_id"
+                    value="<?= !empty($desdeConvenio) ? (int)$seguimientoOrigenId : 0 ?>">
         <input type="hidden" name="tipo" value="<?= $texto($tipoConvocatoria) ?>">
                 <input
                     type="hidden"
