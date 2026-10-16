@@ -80,18 +80,25 @@ class TelefoniaGrabacionExpedienteTransferidaService
         // Vincular únicamente transferencias asociadas por Recepción al MISMO
         // expediente y a la MISMA extensión del analista, nunca estadísticas
         // buscadas por un teléfono aislado.
-        $stmt = $this->db->prepare(
-            "SELECT pbx_call_id, created_at
-               FROM telefonia_transferencia_contextos
-              WHERE destino_usuario_id = ? AND destino_extension = ?
-                AND seguimiento_id = ? AND telefono10 = ?
-                AND created_at >= DATE_SUB(NOW(), INTERVAL 60 DAY)
-              ORDER BY created_at DESC LIMIT 120"
+        $tablaContextos = $this->db->query(
+            "SHOW TABLES LIKE 'telefonia_transferencia_contextos'"
         );
-        $stmt->bind_param('isis', $usuarioId, $extension, $seguimientoId, $numero10);
-        $stmt->execute();
-        $transferencias = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-        $stmt->close();
+        $tieneTablaContextos = $tablaContextos && $tablaContextos->num_rows > 0;
+        $transferencias = [];
+        if ($tieneTablaContextos) {
+            $stmt = $this->db->prepare(
+                "SELECT pbx_call_id, created_at
+                   FROM telefonia_transferencia_contextos
+                  WHERE destino_usuario_id = ? AND destino_extension = ?
+                    AND seguimiento_id = ? AND telefono10 = ?
+                    AND created_at >= DATE_SUB(NOW(), INTERVAL 60 DAY)
+                  ORDER BY created_at DESC LIMIT 120"
+            );
+            $stmt->bind_param('isis', $usuarioId, $extension, $seguimientoId, $numero10);
+            $stmt->execute();
+            $transferencias = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+            $stmt->close();
+        }
 
         // En una transferencia hecha desde el teléfono de Recepción (100),
         // Zadarma puede confirmar ambos tramos sin que el contexto opcional
@@ -128,7 +135,8 @@ class TelefoniaGrabacionExpedienteTransferidaService
                 // Si ya hay un contexto institucional para el PBX, debe
                 // corresponder exactamente a este expediente/analista.
                 // Nunca utilizar la búsqueda alternativa para eludirlo.
-                $ctx = $this->db->prepare(
+                if ($tieneTablaContextos) {
+                    $ctx = $this->db->prepare(
                     "SELECT destino_usuario_id, destino_extension, seguimiento_id
                        FROM telefonia_transferencia_contextos
                       WHERE pbx_call_id = ? LIMIT 2"
@@ -137,7 +145,10 @@ class TelefoniaGrabacionExpedienteTransferidaService
                 $ctx->execute();
                 $contextosPbx = $ctx->get_result()->fetch_all(MYSQLI_ASSOC);
                 $ctx->close();
-                if (count($contextosPbx) > 1) return null;
+                    if (count($contextosPbx) > 1) return null;
+                } else {
+                    $contextosPbx = [];
+                }
                 if ($contextosPbx) {
                     $registrado = $contextosPbx[0];
                     if ((int)$registrado['destino_usuario_id'] !== $usuarioId ||
