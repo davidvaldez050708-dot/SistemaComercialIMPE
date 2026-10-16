@@ -236,6 +236,8 @@ class TelefoniaEntrantesAnalistaService
             if (count($inversos[$pi] ?? []) !== 1) continue;
             $sdk = $sesiones[$si];
             $pbx = &$llamadas[$pi];
+            // Conservar el ID WebRTC para el formulario sin cambiar el ID PBX del audio.
+            $pbx['sdk_session_id'] = (string)($sdk['pbx_call_id'] ?? '');
             // El evento PBX conserva identidad, duración y acceso a grabación.
             // La clasificación del registro SDK se aprovecha si PBX sigue pendiente.
             if (($pbx['clasificacion'] ?? 'PENDIENTE') === 'PENDIENTE' &&
