@@ -200,7 +200,7 @@ class CuentaCorreoUsuarioService
         $username = trim((string)($datos['smtp_username'] ?? ''));
         $password = (string)($datos['smtp_password'] ?? '');
 
-        if (!in_array($proveedor, ['GMAIL', 'MICROSOFT', 'HOSTINGER', 'OTRO'], true)) {
+        if (!in_array($proveedor, ['GMAIL', 'MICROSOFT', 'OUTLOOK', 'HOSTINGER', 'OTRO'], true)) {
             return $this->error('El proveedor seleccionado no es válido.', 422);
         }
         if ($correo === '' || !filter_var($correo, FILTER_VALIDATE_EMAIL)) {
@@ -311,7 +311,7 @@ class CuentaCorreoUsuarioService
                 return 'Gmail rechazó las credenciales. Usa una contraseña de aplicación si tu cuenta tiene verificación en dos pasos.';
             }
 
-            if ($proveedor === 'MICROSOFT') {
+            if ($proveedor === 'MICROSOFT' || $proveedor === 'OUTLOOK') {
                 return 'Microsoft rechazó las credenciales SMTP. Verifica la contraseña y que SMTP AUTH esté habilitado para la cuenta.';
             }
 
@@ -350,43 +350,48 @@ class CuentaCorreoUsuarioService
             return '';
         }
 
-        $directorio = $this->directorioPrivadoEscritura();
-        if ($directorio === '') {
-            return '';
-        }
-
-        if (!is_dir($directorio)) {
-            if (!@mkdir($directorio, 0700, true) && !is_dir($directorio)) {
-                return '';
-            }
-        }
-
-        $ruta = rtrim($directorio, '/\\') . DIRECTORY_SEPARATOR . 'mail_account.local.php';
         $contenido = "<?php\n\nreturn [\n    'encryption_key' => '" .
             addslashes($clave) .
             "',\n];\n";
 
-        if (@file_put_contents($ruta, $contenido, LOCK_EX) === false) {
-            return '';
+        foreach ($this->directoriosPrivadosEscritura() as $directorio) {
+            if (!is_dir($directorio)) {
+                if (!@mkdir($directorio, 0700, true) && !is_dir($directorio)) {
+                    continue;
+                }
+            }
+
+            $ruta = rtrim($directorio, '/\\') .
+                DIRECTORY_SEPARATOR .
+                'mail_account.local.php';
+
+            if (@file_put_contents($ruta, $contenido, LOCK_EX) === false) {
+                continue;
+            }
+
+            @chmod($ruta, 0600);
+            return $clave;
         }
 
-        @chmod($ruta, 0600);
-        return $clave;
+        return '';
     }
 
-    private function directorioPrivadoEscritura()
+    private function directoriosPrivadosEscritura()
     {
+        $directorios = [];
         $explicito = trim((string)(getenv('IMPE_PRIVATE_CONFIG_DIR') ?: ''));
         if ($explicito !== '') {
-            return $explicito;
+            $directorios[] = $explicito;
         }
 
         $root = dirname(__DIR__, 2);
         if (basename($root) === 'public_html') {
-            return dirname($root) . DIRECTORY_SEPARATOR . 'impe-private';
+            $directorios[] = dirname($root) . DIRECTORY_SEPARATOR . 'impe-private';
         }
 
-        return $root . DIRECTORY_SEPARATOR . 'config';
+        $directorios[] = $root . DIRECTORY_SEPARATOR . 'config';
+
+        return array_values(array_unique($directorios));
     }
 
     private function cifrar($texto)
