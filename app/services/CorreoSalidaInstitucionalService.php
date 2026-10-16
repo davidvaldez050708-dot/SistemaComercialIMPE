@@ -130,19 +130,52 @@ class CorreoSalidaInstitucionalService
             );
         }
 
-        $json = is_array($mailboxes['json'] ?? null) ? $mailboxes['json'] : [];
+        $json = is_array($mailboxes['json'] ?? null)
+            ? $mailboxes['json']
+            : [];
         $lista = $json['data']['mailboxes'] ?? $json['mailboxes'] ?? [];
         $resourceId = '';
+        $direccionSalida = '';
+
+        /*
+         * El correo del usuario NO tiene que pertenecer a Hostinger.
+         * Buscamos primero una cuenta de salida configurada y, si no existe,
+         * utilizamos el primer buzón autorizado disponible en la API.
+         */
+        $direccionPreferida = strtolower(
+            trim((string)$this->config('HOSTINGER_MAIL_FROM_ADDRESS'))
+        );
 
         if (is_array($lista)) {
             foreach ($lista as $mailbox) {
                 if (!is_array($mailbox)) {
                     continue;
                 }
-                $address = strtolower(trim((string)($mailbox['address'] ?? '')));
-                $id = trim((string)($mailbox['resource_id'] ?? $mailbox['resourceId'] ?? ''));
-                if ($address === $remitente && $id !== '') {
+
+                $address = strtolower(
+                    trim((string)($mailbox['address'] ?? ''))
+                );
+                $id = trim((string)(
+                    $mailbox['resource_id'] ??
+                    $mailbox['resourceId'] ??
+                    ''
+                ));
+
+                if ($id === '' || $address === '') {
+                    continue;
+                }
+
+                if ($resourceId === '') {
                     $resourceId = $id;
+                    $direccionSalida = $address;
+                }
+
+                if (
+                    $direccionPreferida !== '' &&
+                    $address === $direccionPreferida
+                ) {
+                    $resourceId = $id;
+                    $direccionSalida = $address;
                     break;
                 }
             }
@@ -152,7 +185,7 @@ class CorreoSalidaInstitucionalService
             return [
                 'ok' => false,
                 'fallback_smtp' => true,
-                'mensaje' => 'El correo del usuario no pertenece a un buzón de Hostinger; se intentará el envío mediante SMTP.'
+                'mensaje' => 'No hay ningún buzón de salida autorizado disponible.'
             ];
         }
 
@@ -249,6 +282,8 @@ class CorreoSalidaInstitucionalService
         return [
             'ok' => true,
             'proveedor' => 'HOSTINGER_MAIL_API',
+            'cuenta_salida' => $direccionSalida,
+            'correo_usuario' => $remitente,
             'firma_incluida' => $firmaDisponible,
             'imagenes_embebidas' => count($imagenesEmbebidas),
             'adjuntos' => count($adjuntos)
