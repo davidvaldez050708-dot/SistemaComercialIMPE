@@ -331,6 +331,17 @@ switch ($controller) {
         break;
 
 
+    case 'cuentaCorreoUsuario':
+
+        require_once __DIR__ .
+            '/app/controllers/CuentaCorreoUsuarioController.php';
+
+        $controllerInstance =
+            new CuentaCorreoUsuarioController();
+
+        break;
+
+
     case 'telefonia':
 
         require_once __DIR__ .
