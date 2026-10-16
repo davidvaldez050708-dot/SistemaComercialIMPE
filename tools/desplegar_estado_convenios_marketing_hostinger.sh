@@ -60,9 +60,14 @@ for file in "${FILES[@]}"; do
 done
 
 grep -Fq "marketing_convenio_atencion" "$TMP/app/models/CrearConvocatoriaModel.php"
-grep -Fq "marcarAtendido" "$TMP/app/controllers/CrearConvocatoriaController.php"
+grep -Fq "seguimiento_origen_id" "$TMP/app/views/convocatorias/index.php"
+grep -Fq "marcarConvenioAtendido" "$TMP/app/controllers/ConvocatoriaController.php"
 grep -Fq "data-convenio-modal-attention" "$TMP/app/views/convocatorias/crear_desde_convenio.php"
 grep -Fq "Con convocatoria" "$TMP/public/javascript/crear_convocatoria.js"
+if grep -Fq "action=marcarAtendido" "$TMP/public/javascript/crear_convocatoria.js"; then
+    echo "ERROR: el estado todavía se intenta cambiar al pulsar Crear convocatoria." >&2
+    exit 1
+fi
 grep -Fq "Estado de atención de convenios" "$TMP/public/css/crear_convocatoria.css"
 
 if [[ "$MODE" == "--check" ]]; then
