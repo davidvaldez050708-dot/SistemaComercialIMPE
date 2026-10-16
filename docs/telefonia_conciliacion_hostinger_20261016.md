@@ -26,8 +26,10 @@ en `main`: la incompatibilidad entre dos implementaciones del contexto.
   conserva la versión nueva, sin reinstalar el formulario anterior.
 - **`telefonia_analista_historial_pasivo.js`**: `main` ya hace los
   reintentos de lectura de contexto durante la sesión del SDK. Se mantiene
-  el horizonte acotado de unos 13 segundos sin intercambiar todo el
-  observador WebRTC por la variante local.
+  el horizonte acotado de unos 13 segundos. Se añadió una corrección muy
+  localizada: si la sesión empieza sin número válido (o con una extensión
+  corta) y el SDK publica el Caller ID real después, la misma sesión
+  vuelve a iniciar la consulta sin reasignar contextos de otras llamadas.
 
 ## Por qué se preserva `_v2`
 
@@ -46,6 +48,7 @@ php tests/telefonia_contexto_v2_reconciliacion_smoke.php
 php tests/conciliacion_entrantes_pbx_webrtc_smoke.php
 php tests/contexto_transferencias_protegido_smoke.php
 php tests/contexto_transferencia_alias_hostinger_smoke.php
+php tests/telefonia_contexto_caller_diferido_smoke.php
 node --check public/javascript/telefonia_enrutamiento.js
 node --check public/javascript/telefonia_analista_historial_pasivo.js
 ```
@@ -64,6 +67,11 @@ node --check public/javascript/telefonia_analista_historial_pasivo.js
    actuales** de producción y crear respaldo recuperable.
 
 ## Pendiente separado
+
+El contexto de las dos llamadas investigadas sí quedó guardado en producción,
+según la consulta de los eventos PBX y la tabla v2. No está demostrado que
+el número observado por el SDK fuera tardío en esas llamadas; el ajuste
+cubre esa ventana de fallo posible, pero debe comprobarse con trazas reales.
 
 Los cortes a los 7 y 19 segundos vistos en Diego **no están explicados**
 por estos cinco archivos. La PBX registró ambas contestaciones y fin;
